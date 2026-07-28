@@ -15,26 +15,6 @@ pub async fn handle_complexity(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
 mod unit_tests {
     use super::*;
 
@@ -72,14 +52,6 @@ mod unit_tests {
             // Can only call handle_complexity in async context
             // This compile-time check ensures it's async
         }
-    }
-
-    /// Test module documentation exists
-    #[test]
-    fn test_module_documentation() {
-        // This test exists to encourage module documentation
-        // The module should have a doc comment explaining uniform contracts
-        assert!(true); // Module structure verification
     }
 }
 

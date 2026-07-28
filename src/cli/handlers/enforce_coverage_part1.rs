@@ -101,7 +101,6 @@ fn unused_function() {
     println!("This is unused");
 }
 
-
 mod tests {
     use super::*;
 

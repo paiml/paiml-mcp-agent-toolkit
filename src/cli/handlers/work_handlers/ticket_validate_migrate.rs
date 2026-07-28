@@ -91,11 +91,31 @@ fn print_yaml_error_context(error_msg: &str, content: &str) {
     }
 
     println!("{}", c::dim("💡 Common fixes:"));
-    println!("   {}", c::dim("- Use valid status values: completed, done, wip, planned, blocked, review"));
-    println!("   {}", c::dim("- Quote strings with special characters: `:`, `<`, `>`"));
-    println!("   {}", c::dim("- Use proper YAML indentation (2 spaces)"));
+    println!(
+        "   {}",
+        c::dim("- `status` is lenient (aliases, any case): planned, inprogress, blocked, review, completed, cancelled")
+    );
+    println!(
+        "   {}",
+        c::dim("- `item_type` is exact lowercase: task, epic, bug, feature, enhancement, documentation, refactor")
+    );
+    println!(
+        "   {}",
+        c::dim("- `priority` is exact lowercase: low, medium, high, critical")
+    );
+    println!(
+        "   {}",
+        c::dim("- Quote strings with special characters: `:`, `<`, `>`")
+    );
+    println!(
+        "   {}",
+        c::dim("- Use proper YAML indentation (2 spaces)")
+    );
     println!();
-    println!("{}", c::dim("Run `pmat work status --list` to see all valid status values."));
+    println!(
+        "{}",
+        c::dim("Run `pmat work list-statuses` for the status vocabulary, or see docs/roadmap-schema.md.")
+    );
 }
 
 /// Handle work validate command (Part B: UX Improvements)
@@ -126,9 +146,78 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
         }
         Err(e) => {
             print_yaml_error_context(&format!("{}", e), &content);
+            print_row_violations(&collect_row_violations(&content));
             anyhow::bail!("Roadmap validation failed")
         }
     }
+}
+
+/// A schema violation in a single roadmap row, located by index and id.
+#[derive(Debug, PartialEq, Eq)]
+struct RowViolation {
+    index: usize,
+    id: Option<String>,
+    message: String,
+}
+
+/// Validate every roadmap row independently, so one run reports every row that
+/// is broken instead of only the first.
+///
+/// The strict `Roadmap` parse is a single serde pass and therefore stops at the
+/// first violation. Issue #628 reports that conforming a ~1300-entry roadmap
+/// took three fix-and-rerun cycles, one per violation *class* — each on a
+/// different row. Re-deserialising row by row surfaces all of them at once.
+///
+/// Returns empty when the failure is structural (not a per-row problem), in
+/// which case the single strict error is already the most useful output.
+fn collect_row_violations(content: &str) -> Vec<RowViolation> {
+    let Ok(doc) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content) else {
+        return Vec::new();
+    };
+    let Some(rows) = doc.get("roadmap").and_then(|r| r.as_sequence()) else {
+        return Vec::new();
+    };
+
+    rows.iter()
+        .enumerate()
+        .filter_map(|(index, row)| {
+            serde_yaml_ng::from_value::<crate::models::roadmap::RoadmapItem>(row.clone())
+                .err()
+                .map(|e| RowViolation {
+                    index,
+                    id: row
+                        .get("id")
+                        .and_then(serde_yaml_ng::Value::as_str)
+                        .map(String::from),
+                    message: e.to_string(),
+                })
+        })
+        .collect()
+}
+
+/// Print every row-level violation, grouped so repeated classes are obvious.
+fn print_row_violations(violations: &[RowViolation]) {
+    use crate::cli::colors as c;
+
+    if violations.is_empty() {
+        return;
+    }
+
+    println!();
+    println!(
+        "{} {} row(s) with schema violations:",
+        c::subheader("Found"),
+        c::number(&violations.len().to_string())
+    );
+    for v in violations {
+        let id = v.id.as_deref().unwrap_or("<no id>");
+        println!("   roadmap[{}] {}: {}", v.index, c::path(id), v.message);
+    }
+    println!();
+    println!(
+        "{}",
+        c::dim("All rows were checked, so this list is complete for row-level errors.")
+    );
 }
 
 /// Handle work migrate command (Part B: UX Improvements)
@@ -162,79 +251,212 @@ pub async fn handle_work_migrate(
     }
 
     let content = std::fs::read_to_string(&roadmap_path)?;
-    let mut changes: Vec<String> = Vec::new();
-    let mut new_content = content.clone();
+    let (new_content, changes) = normalize_status_values(&content);
+    let suggestions = collect_quoting_suggestions(&content);
 
-    // 1. Normalize status values
-    let status_patterns = [
-        ("status: done", "status: completed"),
-        ("status: Done", "status: completed"),
-        ("status: DONE", "status: completed"),
-        ("status: finished", "status: completed"),
-        ("status: in progress", "status: inprogress"),
-        ("status: In Progress", "status: inprogress"),
-        ("status: WIP", "status: inprogress"),
-        ("status: wip", "status: inprogress"),
-        ("status: stuck", "status: blocked"),
-        ("status: on-hold", "status: blocked"),
-        ("status: todo", "status: planned"),
-        ("status: TODO", "status: planned"),
-        ("status: open", "status: planned"),
-    ];
-
-    for (old, new) in status_patterns {
-        if new_content.contains(old) {
-            changes.push(format!("Normalize status: {} → {}", old, new));
-            new_content = new_content.replace(old, new);
-        }
-    }
-
-    // 2. Quote special characters in titles
-    let special_chars = [':', '<', '>', '≥', '≤', '±', 'ε', '→', '↔'];
-    for line in content.lines() {
-        if line.trim_start().starts_with("title:") || line.trim_start().starts_with("- title:") {
-            let has_special = special_chars
-                .iter()
-                .any(|ch| line.contains(*ch) && !line.contains("\""));
-            if has_special && !line.contains("\"") {
-                // This is a simplistic check - in practice we'd need proper YAML parsing
-                changes.push(format!("Consider quoting: {}", line.trim()));
-            }
-        }
-    }
+    // Advisory suggestions are reported but MUST NOT gate the write. They were
+    // previously concatenated into `changes`, so a roadmap needing no migration
+    // at all was still rewritten (and backed up) and reported as "Updated",
+    // purely because a title tripped the advisory heuristic.
+    print_migration_list("change(s) to apply:", &changes);
+    print_migration_list(
+        "suggestion(s) to review by hand (not applied automatically):",
+        &suggestions,
+    );
 
     if changes.is_empty() {
-        println!("{}", c::pass("No migrations needed - roadmap is already up to date"));
+        println!(
+            "{}",
+            c::pass("No automatic migrations needed - roadmap is already up to date")
+        );
         return Ok(());
     }
-
-    println!("{} {} potential changes:", c::subheader("Found"), c::number(&changes.len().to_string()));
-    for change in &changes {
-        println!("   • {}", change);
-    }
-    println!();
 
     if dry_run {
         println!("{}", c::dim("(Dry run - no changes made)"));
         return Ok(());
     }
 
-    // Create backup
-    if backup {
-        let backup_path = roadmap_path.with_extension("yaml.bak");
-        std::fs::write(&backup_path, &content)?;
-        println!("{}", c::pass(&format!("Created backup: {}", c::path(&backup_path.display().to_string()))));
+    write_migration(&roadmap_path, &content, &new_content, backup)
+}
+
+/// Print a titled bullet list, or nothing at all when the list is empty.
+fn print_migration_list(header: &str, items: &[String]) {
+    use crate::cli::colors as c;
+
+    if items.is_empty() {
+        return;
+    }
+    println!(
+        "{} {} {}",
+        c::subheader("Found"),
+        c::number(&items.len().to_string()),
+        header
+    );
+    for item in items {
+        println!("   • {}", item);
+    }
+    println!();
+}
+
+/// Status spellings rewritten to their canonical form by `pmat work migrate`.
+const STATUS_MIGRATIONS: [(&str, &str); 13] = [
+    ("status: done", "status: completed"),
+    ("status: Done", "status: completed"),
+    ("status: DONE", "status: completed"),
+    ("status: finished", "status: completed"),
+    ("status: in progress", "status: inprogress"),
+    ("status: In Progress", "status: inprogress"),
+    ("status: WIP", "status: inprogress"),
+    ("status: wip", "status: inprogress"),
+    ("status: stuck", "status: blocked"),
+    ("status: on-hold", "status: blocked"),
+    ("status: todo", "status: planned"),
+    ("status: TODO", "status: planned"),
+    ("status: open", "status: planned"),
+];
+
+/// Indicator characters that are only significant at the *start* of a YAML
+/// plain scalar. `-`, `?` and `:` are handled separately because they are only
+/// indicators when followed by a space.
+const LEADING_INDICATORS: [char; 13] = [
+    ',', '[', ']', '{', '}', '#', '&', '*', '!', '\'', '"', '%', '@',
+];
+
+/// Rewrite non-canonical status spellings, returning the new content and a
+/// human-readable description of each substitution performed.
+fn normalize_status_values(content: &str) -> (String, Vec<String>) {
+    let mut new_content = content.to_string();
+    let mut changes = Vec::new();
+
+    for (old, new) in STATUS_MIGRATIONS {
+        if new_content.contains(old) {
+            changes.push(format!("Normalize status: {} → {}", old, new));
+            new_content = new_content.replace(old, new);
+        }
     }
 
-    // Write changes
-    std::fs::write(&roadmap_path, &new_content)?;
-    println!("{}", c::pass(&format!("Updated roadmap: {}", c::path(&roadmap_path.display().to_string()))));
+    (new_content, changes)
+}
 
-    // Verify the changes
-    if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(&new_content).is_ok() {
+/// Extract the inline value of a `title:` line, if this is one.
+///
+/// Returns `None` for non-title lines and for titles whose value lives on
+/// following lines (block scalars and empty values).
+fn title_value(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    let rest = trimmed
+        .strip_prefix("- title:")
+        .or_else(|| trimmed.strip_prefix("title:"))?;
+    let value = rest.trim();
+    if value.is_empty() || is_block_scalar_header(value) {
+        return None;
+    }
+    Some(value)
+}
+
+/// `|`, `>` and their variants (`|-`, `>+`, `|2`) introduce a block scalar, so
+/// the value is on subsequent lines and quoting does not apply.
+fn is_block_scalar_header(value: &str) -> bool {
+    let mut chars = value.chars();
+    if !matches!(chars.next(), Some('|') | Some('>')) {
+        return false;
+    }
+    chars.all(|c| matches!(c, '-' | '+') || c.is_ascii_digit())
+}
+
+/// Whether an unquoted YAML plain scalar actually needs quoting.
+///
+/// This checks the *value*, not the whole line. The previous implementation
+/// tested the entire line against a list that included `:` — and every
+/// `title:` line contains one by construction, so it advised quoting every
+/// unquoted title (202 of 202 on this repo's own roadmap). It also flagged
+/// characters such as `≤` and `→` that are perfectly legal in a plain scalar.
+fn needs_quoting(value: &str) -> bool {
+    if is_quoted(value) {
+        return false;
+    }
+
+    // ": " ends a plain scalar; a trailing ':' makes the line read as a key.
+    if value.contains(": ") || value.ends_with(':') {
+        return true;
+    }
+    // " #" begins a trailing comment.
+    if value.contains(" #") {
+        return true;
+    }
+
+    let Some(first) = value.chars().next() else {
+        return false;
+    };
+    if LEADING_INDICATORS.contains(&first) {
+        return true;
+    }
+    // `-`, `?` and `:` are indicators only when followed by a space.
+    matches!(first, '-' | '?' | ':') && value[first.len_utf8()..].starts_with(' ')
+}
+
+/// A value already wrapped in matching quotes needs no advice.
+fn is_quoted(value: &str) -> bool {
+    let mut chars = value.chars();
+    let (Some(first), Some(last)) = (chars.next(), value.chars().next_back()) else {
+        return false;
+    };
+    value.chars().count() >= 2 && (first == '"' || first == '\'') && first == last
+}
+
+/// Flag `title:` values that would not survive as unquoted YAML plain scalars.
+///
+/// This is a line-level heuristic, not a YAML parse, so it only ever advises —
+/// `handle_work_migrate` never rewrites titles and, since the advisory was
+/// decoupled from `changes`, never writes the file on account of one.
+fn collect_quoting_suggestions(content: &str) -> Vec<String> {
+    content
+        .lines()
+        .filter_map(|line| title_value(line).map(|value| (line, value)))
+        .filter(|(_, value)| needs_quoting(value))
+        .map(|(line, _)| format!("Consider quoting: {}", line.trim()))
+        .collect()
+}
+
+/// Back up (optionally), write the migrated roadmap, and report whether the
+/// result still parses.
+fn write_migration(
+    roadmap_path: &std::path::Path,
+    original: &str,
+    new_content: &str,
+    backup: bool,
+) -> Result<()> {
+    use crate::cli::colors as c;
+
+    if backup {
+        let backup_path = roadmap_path.with_extension("yaml.bak");
+        std::fs::write(&backup_path, original)?;
+        println!(
+            "{}",
+            c::pass(&format!(
+                "Created backup: {}",
+                c::path(&backup_path.display().to_string())
+            ))
+        );
+    }
+
+    std::fs::write(roadmap_path, new_content)?;
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Updated roadmap: {}",
+            c::path(&roadmap_path.display().to_string())
+        ))
+    );
+
+    if serde_yaml_ng::from_str::<crate::models::roadmap::Roadmap>(new_content).is_ok() {
         println!("{}", c::pass("Verified: updated roadmap is valid"));
     } else {
-        println!("{}", c::warn("Warning: updated roadmap may have issues - check manually"));
+        println!(
+            "{}",
+            c::warn("Warning: updated roadmap may have issues - check manually")
+        );
     }
 
     Ok(())
@@ -250,40 +472,10 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     println!("{}{:<15} {:<25} DESCRIPTION{}", c::BOLD, "STATUS", "ALIASES", c::RESET);
     println!("{}", c::separator());
 
-    let statuses = [
-        (
-            "planned",
-            "todo, open, pending, new",
-            "Task not yet started",
-        ),
-        (
-            "inprogress",
-            "wip, active, started",
-            "Currently being worked on",
-        ),
-        (
-            "blocked",
-            "stuck, waiting, on-hold",
-            "Cannot proceed (waiting on something)",
-        ),
-        (
-            "review",
-            "reviewing, pr, pending-review",
-            "Ready for or in code review",
-        ),
-        (
-            "completed",
-            "done, finished, closed",
-            "Work finished successfully",
-        ),
-        (
-            "cancelled",
-            "canceled, dropped, wontfix",
-            "Work abandoned or not needed",
-        ),
-    ];
-
-    for (status, aliases, description) in statuses {
+    // GH #628: this table used to be a hand-maintained copy and had drifted --
+    // it omitted `working`, which `from_string` accepts and the schema doc
+    // documents. It now renders the one vocabulary the parser uses.
+    for &(status, aliases, description) in crate::models::roadmap::ItemStatus::STATUS_TABLE {
         println!("{}{:<15}{} {:<25} {}", c::CYAN, status, c::RESET, aliases, description);
     }
 
@@ -313,68 +505,49 @@ fn migrate_verification_levels(project_path: &std::path::Path, dry_run: bool) ->
     let mut invalid = 0usize;
     let mut scanned = 0usize;
 
-    for entry in std::fs::read_dir(&work_dir).context("read .pmat-work")?.flatten() {
+    for entry in std::fs::read_dir(&work_dir)
+        .context("read .pmat-work")?
+        .flatten()
+    {
         let contract_path = entry.path().join("contract.json");
-        if !contract_path.exists() {
-            continue;
-        }
-        let text = match std::fs::read_to_string(&contract_path) {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-        let mut value: serde_json::Value = match serde_json::from_str(&text) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        let Some(raw) = value.get("verification_level").and_then(|v| v.as_str()) else {
+        let Some((mut value, raw)) = load_contract_level(&contract_path) else {
             continue;
         };
         scanned += 1;
-        if VerificationLevel::parse_strict(raw).is_some() {
+        if VerificationLevel::parse_strict(&raw).is_some() {
             continue; // already canonical
         }
-        let raw_owned = raw.to_string();
-        let first_token = raw_owned.split_whitespace().next().unwrap_or("");
-        let (new_level, note) = match VerificationLevel::parse_lenient(&raw_owned)
-            .or_else(|| VerificationLevel::parse_lenient(first_token))
-        {
-            Some(level) => (level, "canonicalized"),
-            None => {
-                invalid += 1;
-                (VerificationLevel::L0, "invalid; downgraded")
-            }
-        };
-        let audit = format!(
-            "MIGRATION(MACS-004): verification_level '{}' -> {} ({})",
-            raw_owned, new_level, note
-        );
+
+        let (new_level, note) = resolve_level(&raw);
+        if note.is_downgrade() {
+            invalid += 1;
+        }
+
         println!(
             "  {} {}: '{}' -> {}",
-            if dry_run { c::dim("[dry-run]") } else { c::pass("") },
+            if dry_run {
+                c::dim("[dry-run]")
+            } else {
+                c::pass("")
+            },
             entry.file_name().to_string_lossy(),
-            raw_owned,
+            raw,
             new_level
         );
+        migrated += 1;
         if dry_run {
-            migrated += 1;
             continue;
         }
-        value["verification_level"] = serde_json::Value::String(new_level.to_string());
-        if let Some(sections) = value
-            .get_mut("references")
-            .and_then(|r| r.get_mut("spec_sections"))
-            .and_then(|s| s.as_array_mut())
-        {
-            sections.push(serde_json::Value::String(audit));
-        } else {
-            value["references"] = serde_json::json!({
-                "arxiv": [], "spec_sections": [audit],
-                "five_whys_id": null, "oracle_context": null
-            });
-        }
+
+        let audit = format!(
+            "MIGRATION(MACS-004): verification_level '{}' -> {} ({})",
+            raw,
+            new_level,
+            note.as_str()
+        );
+        apply_level_migration(&mut value, new_level, audit);
         let pretty = serde_json::to_string_pretty(&value).context("serialize contract")?;
         std::fs::write(&contract_path, pretty).context("write contract")?;
-        migrated += 1;
     }
 
     println!();
@@ -385,6 +558,81 @@ fn migrate_verification_levels(project_path: &std::path::Path, dry_run: bool) ->
         ))
     );
     Ok(())
+}
+
+/// Why a contract's verification level was rewritten.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LevelMigrationNote {
+    /// A recognisable spelling was mapped onto its canonical form.
+    Canonicalized,
+    /// Nothing recognisable was found, so the level was reset to L0.
+    Downgraded,
+}
+
+impl LevelMigrationNote {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Canonicalized => "canonicalized",
+            Self::Downgraded => "invalid; downgraded",
+        }
+    }
+
+    fn is_downgrade(self) -> bool {
+        matches!(self, Self::Downgraded)
+    }
+}
+
+/// Read a contract and pull out its raw `verification_level` string.
+///
+/// Returns `None` for anything unreadable, unparseable, or lacking the field —
+/// migration skips those rather than failing the whole run.
+fn load_contract_level(contract_path: &std::path::Path) -> Option<(serde_json::Value, String)> {
+    let text = std::fs::read_to_string(contract_path).ok()?;
+    let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let raw = value.get("verification_level")?.as_str()?.to_string();
+    Some((value, raw))
+}
+
+/// Map a non-canonical level spelling onto a canonical level, falling back to
+/// the first whitespace-delimited token before giving up and downgrading to L0.
+fn resolve_level(
+    raw: &str,
+) -> (
+    crate::cli::handlers::work_verification_level::VerificationLevel,
+    LevelMigrationNote,
+) {
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+    let first_token = raw.split_whitespace().next().unwrap_or("");
+    match VerificationLevel::parse_lenient(raw)
+        .or_else(|| VerificationLevel::parse_lenient(first_token))
+    {
+        Some(level) => (level, LevelMigrationNote::Canonicalized),
+        None => (VerificationLevel::L0, LevelMigrationNote::Downgraded),
+    }
+}
+
+/// Write the new level into the contract and append an audit breadcrumb to
+/// `references.spec_sections`, creating that block if it is absent.
+fn apply_level_migration(
+    value: &mut serde_json::Value,
+    new_level: crate::cli::handlers::work_verification_level::VerificationLevel,
+    audit: String,
+) {
+    value["verification_level"] = serde_json::Value::String(new_level.to_string());
+
+    if let Some(sections) = value
+        .get_mut("references")
+        .and_then(|r| r.get_mut("spec_sections"))
+        .and_then(|s| s.as_array_mut())
+    {
+        sections.push(serde_json::Value::String(audit));
+    } else {
+        value["references"] = serde_json::json!({
+            "arxiv": [], "spec_sections": [audit],
+            "five_whys_id": null, "oracle_context": null
+        });
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -476,5 +724,258 @@ mod level_migration_tests {
         assert_eq!(parse("l4"), VerificationLevel::L4, "lenient read migration");
         assert_eq!(parse("L4 (kani_proof)"), VerificationLevel::L4, "annotated");
         assert_eq!(parse("strong"), VerificationLevel::L0, "invalid -> L0");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod migrate_helper_tests {
+    use super::*;
+
+    #[test]
+    fn normalize_rewrites_each_legacy_spelling() {
+        let (out, changes) = normalize_status_values(
+            "status: done\nstatus: WIP\nstatus: TODO\nstatus: on-hold\n",
+        );
+        assert!(out.contains("status: completed"));
+        assert!(out.contains("status: inprogress"));
+        assert!(out.contains("status: planned"));
+        assert!(out.contains("status: blocked"));
+        assert_eq!(changes.len(), 4, "one change entry per applied pattern");
+    }
+
+    #[test]
+    fn normalize_is_idempotent_and_silent_on_canonical_input() {
+        let canonical = "status: completed\nstatus: inprogress\nstatus: planned\n";
+        let (out, changes) = normalize_status_values(canonical);
+        assert_eq!(out, canonical);
+        assert!(
+            changes.is_empty(),
+            "canonical input must report no migrations"
+        );
+
+        // Re-running over its own output must be a no-op.
+        let (again, changes2) = normalize_status_values(&out);
+        assert_eq!(again, out);
+        assert!(changes2.is_empty());
+    }
+
+    /// Table of YAML plain-scalar hazards. The predicate examines the *value*
+    /// after `title:`, not the whole line, so the `title:` prefix no longer
+    /// supplies a `:` that flags every title in the file.
+    #[test]
+    fn needs_quoting_matches_yaml_plain_scalar_rules() {
+        // Genuinely unsafe unquoted.
+        for bad in [
+            "Fix: the parser",   // ": " terminates the scalar
+            "Refactor:",         // trailing ':' reads as a key
+            "Cleanup # 3",       // " #" starts a comment
+            "- leading dash",    // indicator + space
+            "? leading question",
+            ": leading colon",
+            "[bracketed]",
+            "{braced}",
+            "&anchor",
+            "*alias",
+            "!tag",
+            "#comment",
+            "%directive",
+            "@reserved",
+            ",leading comma",
+        ] {
+            assert!(needs_quoting(bad), "expected {bad:?} to need quoting");
+        }
+
+        // Safe unquoted -- these were false positives before.
+        for ok in [
+            "Perfectly fine title",
+            "Latency \u{2264} 5ms",       // non-ASCII is legal in a plain scalar
+            "a \u{2192} b",
+            "ratio 3:1",                  // ':' without a following space is fine
+            "C++ and C#",                 // '#' not preceded by a space
+            "issue-123",
+            "50% faster",                 // '%' only matters at the start
+            "user@example",
+        ] {
+            assert!(!needs_quoting(ok), "expected {ok:?} to be left alone");
+        }
+    }
+
+    #[test]
+    fn quoting_suggestions_only_flag_real_hazards() {
+        let suggestions = collect_quoting_suggestions(
+            "  title: Fix: the parser\n  \
+             title: \"Already: quoted\"\n  \
+             - title: Latency \u{2264} 5ms\n  \
+             title: Plain title\n  \
+             notes: Ignored: not a title\n",
+        );
+
+        assert_eq!(suggestions.len(), 1, "got {suggestions:?}");
+        assert!(suggestions[0].contains("Fix: the parser"));
+        assert!(!suggestions.iter().any(|s| s.contains("Already")));
+        assert!(!suggestions.iter().any(|s| s.contains("Plain title")));
+        assert!(!suggestions.iter().any(|s| s.contains("notes:")));
+    }
+
+    /// Block scalars put the value on following lines, so the header itself is
+    /// never a quoting candidate. A naive "first char is an indicator" check
+    /// flags `|` and `>`; this one must not.
+    #[test]
+    fn quoting_suggestions_skip_block_scalar_headers() {
+        for header in ["  title: |\n", "  title: >\n", "  title: |-\n", "  title: >+\n", "  title: |2\n"] {
+            assert!(
+                collect_quoting_suggestions(header).is_empty(),
+                "block scalar header {header:?} must not be flagged"
+            );
+        }
+        // An empty inline value is likewise not a quoting problem.
+        assert!(collect_quoting_suggestions("  title:\n").is_empty());
+    }
+
+    #[test]
+    fn quoting_suggestions_treat_unterminated_quotes_as_hazards() {
+        // Only a *matched* pair counts as quoted; a stray leading quote is
+        // itself a YAML indicator and must still be reported.
+        assert_eq!(collect_quoting_suggestions("  title: 'tis a test\n").len(), 1);
+        assert_eq!(collect_quoting_suggestions("  title: \"unterminated\n").len(), 1);
+        assert!(collect_quoting_suggestions("  title: 'closed'\n").is_empty());
+        assert!(collect_quoting_suggestions("  title: \"closed\"\n").is_empty());
+    }
+
+    #[test]
+    fn quoting_suggestions_skip_non_title_keys() {
+        assert!(collect_quoting_suggestions("  notes: nothing: here\n").is_empty());
+        assert!(collect_quoting_suggestions("  description: a: b\n").is_empty());
+    }
+
+    #[test]
+    fn resolve_level_canonicalizes_annotates_and_downgrades() {
+        use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+        let (level, note) = resolve_level("l4");
+        assert_eq!(level, VerificationLevel::L4);
+        assert_eq!(note, LevelMigrationNote::Canonicalized);
+        assert!(!note.is_downgrade());
+
+        // Falls back to the first token for annotated values.
+        let (level, note) = resolve_level("L4 (kani_proof)");
+        assert_eq!(level, VerificationLevel::L4);
+        assert_eq!(note, LevelMigrationNote::Canonicalized);
+
+        let (level, note) = resolve_level("strong");
+        assert_eq!(level, VerificationLevel::L0);
+        assert!(note.is_downgrade());
+        assert_eq!(note.as_str(), "invalid; downgraded");
+    }
+
+    #[test]
+    fn load_contract_level_skips_unusable_files() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let missing = dir.path().join("nope.json");
+        assert!(load_contract_level(&missing).is_none(), "missing file");
+
+        let bad_json = dir.path().join("bad.json");
+        std::fs::write(&bad_json, "{not json").unwrap();
+        assert!(load_contract_level(&bad_json).is_none(), "unparseable");
+
+        let no_field = dir.path().join("nofield.json");
+        std::fs::write(&no_field, r#"{"work_item_id":"T"}"#).unwrap();
+        assert!(load_contract_level(&no_field).is_none(), "field absent");
+
+        let ok = dir.path().join("ok.json");
+        std::fs::write(&ok, r#"{"verification_level":"L2"}"#).unwrap();
+        let (_, raw) = load_contract_level(&ok).expect("readable contract");
+        assert_eq!(raw, "L2");
+    }
+
+    #[test]
+    fn apply_level_migration_creates_references_block_when_absent() {
+        use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+        let mut value = serde_json::json!({"verification_level": "l1"});
+        apply_level_migration(&mut value, VerificationLevel::L1, "audit-note".to_string());
+
+        assert_eq!(value["verification_level"], "L1");
+        assert_eq!(value["references"]["spec_sections"][0], "audit-note");
+    }
+
+    #[test]
+    fn apply_level_migration_appends_to_existing_sections() {
+        use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+        let mut value = serde_json::json!({
+            "verification_level": "l1",
+            "references": {"arxiv": [], "spec_sections": ["pre-existing"]}
+        });
+        apply_level_migration(&mut value, VerificationLevel::L1, "audit-note".to_string());
+
+        let sections = value["references"]["spec_sections"].as_array().unwrap();
+        assert_eq!(sections.len(), 2, "must append, not replace");
+        assert_eq!(sections[0], "pre-existing");
+        assert_eq!(sections[1], "audit-note");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod row_violation_tests {
+    use super::*;
+
+    /// The scenario from issue #628: three violation classes on three different
+    /// rows, which the strict parse reports one run at a time.
+    #[test]
+    fn collects_every_broken_row_in_one_pass() {
+        let yaml = "roadmap_version: \"1.0\"\nroadmap:\n  \
+                    - id: OK-1\n    title: fine\n    status: planned\n  \
+                    - id: BAD-TYPE\n    title: t\n    item_type: verification\n    status: planned\n  \
+                    - id: BAD-STATUS\n    title: t\n    status: obsolete\n  \
+                    - id: NO-STATUS\n    title: t\n";
+
+        let violations = collect_row_violations(yaml);
+
+        assert_eq!(violations.len(), 3, "got {violations:?}");
+        assert_eq!(violations[0].index, 1);
+        assert_eq!(violations[0].id.as_deref(), Some("BAD-TYPE"));
+        // Was serde's stock "unknown variant"; `item_type` now reports like
+        // `status` does, which is the last of #628's three asks.
+        assert!(
+            violations[0].message.contains("unknown item_type"),
+            "got: {}",
+            violations[0].message
+        );
+        assert!(
+            violations[0].message.contains("task, epic, bug"),
+            "the error must still enumerate the vocabulary: {}",
+            violations[0].message
+        );
+        assert_eq!(violations[1].id.as_deref(), Some("BAD-STATUS"));
+        assert!(violations[1].message.contains("unknown status"));
+        assert_eq!(violations[2].id.as_deref(), Some("NO-STATUS"));
+        assert!(violations[2].message.contains("missing field"));
+    }
+
+    #[test]
+    fn reports_nothing_for_a_valid_roadmap() {
+        let yaml = "roadmap_version: \"1.0\"\nroadmap:\n  - id: A\n    title: t\n    status: done\n";
+        assert!(collect_row_violations(yaml).is_empty());
+    }
+
+    /// A structural failure is not a row problem; the single strict error is
+    /// already the best output, so the collector must stay quiet.
+    #[test]
+    fn stays_quiet_on_structural_failures() {
+        assert!(collect_row_violations("roadmap: not-a-sequence\n").is_empty());
+        assert!(collect_row_violations("{{{ not yaml at all\n").is_empty());
+        assert!(collect_row_violations("github_enabled: false\n").is_empty());
+    }
+
+    #[test]
+    fn tolerates_rows_without_an_id() {
+        let yaml = "roadmap_version: \"1.0\"\nroadmap:\n  - title: t\n    status: nonsense\n";
+        let violations = collect_row_violations(yaml);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].id, None);
     }
 }

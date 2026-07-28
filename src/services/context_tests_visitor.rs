@@ -1,7 +1,6 @@
 // RustVisitor coverage tests for context service.
 // Included via include!() in context_tests.rs.
 
-
 // RustVisitor tests
 
 #[test]

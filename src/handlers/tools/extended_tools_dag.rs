@@ -72,7 +72,6 @@ fn resolve_project_path(project_path: &Option<String>) -> Result<PathBuf, String
     }
 }
 
-
 fn build_dag_graph(
     project_context: &crate::services::context::ProjectContext,
 ) -> crate::models::dag::DependencyGraph {

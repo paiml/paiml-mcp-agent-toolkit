@@ -301,7 +301,6 @@ fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> Result<PathBuf, String> {
     }
 }
 
-
 /// Toyota Way Helper: Run TDG analysis and format response
 async fn run_and_format_tdg_analysis(
     request_id: serde_json::Value,

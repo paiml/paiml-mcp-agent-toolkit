@@ -62,11 +62,17 @@ impl RoadmapService {
     /// Parse YAML with enhanced error reporting
     fn parse_roadmap_yaml(&self, contents: &str) -> Result<Roadmap> {
         serde_yaml_ng::from_str(contents).map_err(|e| {
-            // Extract line/column info if available
-            let location_info = if let Some(location) = e.location() {
-                format!(" at line {}, column {}", location.line(), location.column())
-            } else {
-                String::new()
+            // Append the location only when the rendered error does not already
+            // carry one. serde_yaml_ng is inconsistent about this: `unknown
+            // variant` renders as "... at line 5 column 16" (so appending here
+            // produced "at line 5 column 16 at line 5, column 16"), while
+            // `missing field` renders bare and depends on this append.
+            let rendered = e.to_string();
+            let location_info = match e.location() {
+                Some(location) if !rendered.contains(" at line ") => {
+                    format!(" at line {}, column {}", location.line(), location.column())
+                }
+                _ => String::new(),
             };
 
             // Build enhanced error message
@@ -78,13 +84,19 @@ impl RoadmapService {
                  \n\
                  Troubleshooting steps:\n\
                  1. Check YAML syntax: python3 -c \"import yaml; yaml.safe_load(open('{path}'))\"\n\
-                 2. Validate against current schema (see docs/roadmap-schema.md)\n\
-                 3. If migrating from old version, run: pmat work init (creates new format)\n\
+                 2. List every broken row in one pass: pmat work validate\n\
+                 3. See the full schema: docs/roadmap-schema.md in the pmat repo\n   \
+                    (https://github.com/paiml/paiml-mcp-agent-toolkit)\n\
+                 4. List valid status values: pmat work list-statuses\n\
+                 5. Auto-fix common issues: pmat work migrate\n\
                  \n\
                  Common issues:\n\
-                 - Unknown fields (e.g., 'commit', 'completion' at phase level)\n\
-                 - Missing required fields (e.g., 'roadmap_version')\n\
-                 - Incorrect field types",
+                 - Missing required fields ('roadmap_version'; per item: 'id', 'title', 'status')\n\
+                 - 'item_type' and 'priority' are exact lowercase with no aliases\n\
+                   (item_type: task, epic, bug, feature, enhancement, documentation, refactor;\n\
+                    priority: low, medium, high, critical)\n\
+                 - This message reports only the first error; 'pmat work validate'\n   \
+                   lists every broken row at once",
                 self.roadmap_path.display(),
                 e,
                 location_info,

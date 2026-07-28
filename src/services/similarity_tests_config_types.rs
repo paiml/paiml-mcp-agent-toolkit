@@ -120,8 +120,10 @@ fn test_detect_structural_similarity_single_file() {
         "fn foo() {\n    let x = 1;\n    let y = 2;\n}\n".to_string(),
     )];
     let similar = detector.detect_structural_similarity(&files, 0.8);
-    // With single file, may have self-similarity or none
-    assert!(similar.is_empty() || !similar.is_empty());
+    assert!(
+        similar.is_empty(),
+        "a single file has no partner to be similar to, got: {similar:?}"
+    );
 }
 
 #[test]

@@ -84,5 +84,4 @@ impl Default for RealContractService {
     }
 }
 
-include!("real_service_property_tests.rs");
 include!("real_service_coverage_tests.rs");

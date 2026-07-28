@@ -91,7 +91,6 @@ include!("ticket_annotate.rs");
 include!("ticket_annotate_output.rs");
 include!("ticket_score.rs");
 
-
 // Tests extracted to work_handlers_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
 #[cfg(all(test, feature = "broken-tests"))]

@@ -239,5 +239,4 @@ impl TdgAnalyzerAst {
         (score * self.config.weights.documentation).min(self.config.weights.documentation)
     }
 
-
 }

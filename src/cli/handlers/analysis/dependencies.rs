@@ -26,26 +26,6 @@ pub async fn handle_symbol_table(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
 mod unit_tests {
     use super::*;
 
@@ -99,16 +79,6 @@ mod unit_tests {
         fn _verify_async_symbol_table() {
             // handle_symbol_table is async - verified at compile time
         }
-    }
-
-    /// Test module organization - dependencies module groups related handlers
-    #[test]
-    fn test_module_organization() {
-        // This module groups three related dependency analysis handlers:
-        // 1. DAG - Directed Acyclic Graph generation
-        // 2. Graph Metrics - centrality, PageRank, betweenness
-        // 3. Symbol Table - symbol enumeration and references
-        assert!(true); // Module structure verification
     }
 }
 

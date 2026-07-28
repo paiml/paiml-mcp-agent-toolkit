@@ -145,7 +145,6 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-
 /// Count entries in a root-level YAML sequence field (0 if absent/not a list).
 fn count_seq(doc: &serde_json::Value, key: &str) -> usize {
     doc.get(key)
@@ -272,7 +271,6 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
         }
     }
 }
-
 
 /// Reads proof-status.json from provable-contracts sibling repo.
 /// pv-compatibility spec §2.3
@@ -411,7 +409,6 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
         }
     }
 }
-
 
 /// CB-1207 helper: is this file a drift-tracked provable contract YAML —
 /// a `.yaml`/`.yml`, not a binding, carrying provable-contracts schema markers?

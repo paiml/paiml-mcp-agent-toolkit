@@ -62,22 +62,6 @@ async fn test_quality_monitor_creation() {
     assert!(metrics.is_empty());
 }
 
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
 mod coverage_tests {
     use super::*;
     use std::time::UNIX_EPOCH;

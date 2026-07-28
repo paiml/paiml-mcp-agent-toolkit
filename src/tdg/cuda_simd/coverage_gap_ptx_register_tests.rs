@@ -195,7 +195,6 @@ ret;
 .entry kernel() {
 // This is a comment
 
-
 // Another comment
 ret;
 }";

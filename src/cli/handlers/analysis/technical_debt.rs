@@ -12,26 +12,6 @@ pub async fn handle_tdg(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
 mod unit_tests {
     use super::*;
 
@@ -64,44 +44,6 @@ mod unit_tests {
         fn _verify_async_nature() {
             // handle_tdg is async - verified at compile time
         }
-    }
-
-    /// Test module organization - technical_debt groups debt-related handlers
-    #[test]
-    fn test_module_organization() {
-        // This module groups technical debt analysis handlers:
-        // 1. TDG (Technical Debt Grade) - composite debt scoring
-        // The TDG score combines complexity, test coverage, SATD, and churn metrics
-        assert!(true); // Module structure verification
-    }
-
-    /// Test that handler delegates to route_analyze_command
-    #[test]
-    fn test_handler_delegates_pattern() {
-        // The handler follows the delegation pattern:
-        // Takes AnalyzeCommands and routes to crate::cli::handlers::route_analyze_command
-        // This ensures uniform contracts across CLI/MCP/HTTP
-        assert!(true); // Delegation pattern verification
-    }
-
-    /// Test technical debt module documentation
-    #[test]
-    fn test_module_documentation() {
-        // This test ensures the module is properly documented
-        // The module should have a doc comment explaining technical debt analysis
-        assert!(true); // Documentation verification
-    }
-
-    /// Test TDG handler purpose
-    #[test]
-    fn test_tdg_handler_purpose() {
-        // TDG (Technical Debt Grade) is a composite metric that combines:
-        // - Cyclomatic and cognitive complexity
-        // - Test coverage percentage
-        // - SATD (Self-Admitted Technical Debt) count
-        // - Git churn (change frequency)
-        // The handler routes to the existing TDG analysis implementation
-        assert!(true); // Purpose verification
     }
 }
 

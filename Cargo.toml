@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.24.2"
+version = "3.25.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -58,7 +58,13 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.50"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+# GH #625: `default = ["cli"]` pulls apr-cli -> aprender-profile, whose cross-platform
+# deps sit under [target.'cfg(unix)'.dependencies] while the code importing them is
+# compiled everywhere -- so `cargo install pmat` cannot link on Windows. pmat uses only
+# the aprender library API, and aprender's lib.rs has zero `cfg(feature)` gates, so
+# turning defaults off costs nothing here. Do not re-enable: every other aprender
+# feature also implies `cli`.
+aprender = { version = "0.50", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
 aprender-compute = { version = "0.50", optional = true }
@@ -75,7 +81,7 @@ aprender-viz = { version = "0.50", optional = true, features = ["terminal", "gra
 wgpu = { version = "29.0", optional = true, features = ["wgsl"] }
 pollster = { version = "0.4", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
-arrow = { version = "59", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (59) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
+arrow = { version = "57", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (57) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
 # Note: parquet is managed by trueno-db dependency
 
 # Document indexing (PDF text extraction for `pmat query --docs`)

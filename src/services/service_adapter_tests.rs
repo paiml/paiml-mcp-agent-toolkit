@@ -39,7 +39,10 @@ mod tests {
         let builder = ServiceRegistryBuilder::default();
         let registry = builder.build();
         let services = registry.list_services();
-        assert!(services.is_empty() || !services.is_empty()); // Just verify no panic
+        assert!(
+            services.is_empty(),
+            "the default builder registers no services, got: {services:?}"
+        );
     }
 
     #[test]
@@ -383,22 +386,3 @@ mod tests {
     // be called from within a tokio runtime.
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}

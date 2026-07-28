@@ -429,11 +429,45 @@ roadmap:
             // Should mention the invalid field
             assert!(error_msg.contains("bugfix") || error_msg.contains("item_type"));
 
-            // Should suggest migration path
-            assert!(error_msg.contains("pmat work init"));
+            // Should suggest a migration path. Previously this asserted on
+            // `pmat work init`, which is a no-op on an existing roadmap (it
+            // refuses to overwrite) and so never helped the user who hit this.
+            assert!(error_msg.contains("pmat work migrate"));
+            assert!(error_msg.contains("pmat work validate"));
 
             // Should list common issues or expected values
             assert!(error_msg.contains("Common issues") || error_msg.contains("expected"));
+        }
+
+        /// Guards issue #628: the parse error pointed at `docs/roadmap-schema.md`
+        /// for years while that file did not exist, which left reverse-engineering
+        /// the vocabulary from repeated failures as the only route. Every doc path
+        /// the message cites must resolve on disk.
+        #[test]
+        fn test_referenced_schema_doc_exists() {
+            let temp_dir = TempDir::new().unwrap();
+            let roadmap_path = temp_dir.path().join("roadmap.yaml");
+            let service = RoadmapService::new(&roadmap_path);
+            fs::write(&roadmap_path, "roadmap_version: '1.0'\nroadmap: [{}]\n").unwrap();
+
+            let error_msg = service.load().unwrap_err().to_string();
+
+            let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+            let mut checked = 0;
+            for token in error_msg.split_whitespace() {
+                let candidate = token.trim_matches(|c: char| !c.is_ascii_graphic() || c == ')');
+                if candidate.starts_with("docs/") && candidate.ends_with(".md") {
+                    checked += 1;
+                    assert!(
+                        repo_root.join(candidate).is_file(),
+                        "parse error cites '{candidate}', which does not exist in the repo"
+                    );
+                }
+            }
+            assert!(
+                checked > 0,
+                "expected the parse error to cite at least one docs/*.md path"
+            );
         }
 
         #[test]

@@ -1,7 +1,6 @@
 // Serialization, clone, and edge case tests for context service.
 // Included via include!() in context_tests.rs.
 
-
 // Serialization tests
 
 #[test]

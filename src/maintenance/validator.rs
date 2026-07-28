@@ -304,6 +304,31 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
+    /// GH #625: `aprender` must never be pulled with its default features.
+    ///
+    /// `default = ["cli"]` drags in `apr-cli` -> `aprender-profile`, which does
+    /// not build on Windows, so re-enabling it silently breaks
+    /// `cargo install pmat` for every Windows user while every Linux CI leg
+    /// stays green. Nothing else in the suite would notice; this is the guard.
+    #[test]
+    fn aprender_default_features_stay_disabled() {
+        let manifest =
+            std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml"))
+                .expect("pmat's own Cargo.toml must be readable");
+
+        let entry = manifest
+            .lines()
+            .find(|l| l.trim_start().starts_with("aprender = "))
+            .expect("Cargo.toml must declare an `aprender` dependency");
+
+        assert!(
+            entry.contains("default-features = false"),
+            "aprender must keep `default-features = false` (GH #625): its default \
+             `cli` feature pulls apr-cli -> aprender-profile, which cannot compile \
+             on Windows. Found: {entry}"
+        );
+    }
+
     #[test]
     fn test_validation_report_creation() {
         let report = ValidationReport::new("Test".to_string());

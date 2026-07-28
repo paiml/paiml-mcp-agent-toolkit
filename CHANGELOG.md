@@ -7,6 +7,219 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.25.0] - 2026-07-28
+
+### Fixed — `cargo install pmat` on Windows (#625)
+- **`aprender` no longer drags an unused CLI into the dependency graph.** pmat
+  declared `aprender = "0.50"`, and aprender's `default = ["cli"]` pulls
+  `apr-cli` → `aprender-profile`, which puts 36 cross-platform dependencies under
+  `[target.'cfg(unix)'.dependencies]` while compiling the code that imports them
+  everywhere. The Windows build failed with 317 errors inside `aprender-profile`
+  before it ever reached pmat's own sources, so the published crate could not be
+  installed on Windows at all. pmat uses only the aprender library API, and
+  aprender's `lib.rs` has no `cfg(feature)` gates, so `default-features = false`
+  severs `apr-cli` with no loss of function. Every other aprender feature also
+  implies `cli`, so this must not be re-enabled.
+
+### Fixed — the falsification ladder's two unsatisfiable gates (#629, #630)
+
+Both of these made `pmat work complete` demand `--override-claims` on a routine
+basis. A gate that is always overridden has stopped being a gate, so the goal in
+each case was to make the claim *clearable by a real action*, not to relax it.
+
+- **The supply-chain claim could never clear (#629).** It reads
+  `.pmat-metrics/deny-status.json` (falling back to `deny-cache.txt`) and blocks
+  once that file is over 24h old — but **nothing has ever written either file**.
+  Not pmat, not the Makefile, not `record-metric.sh`, not CI, not a hook. The
+  advice it printed, "Run `cargo deny check` first", cannot work: cargo-deny
+  writes to stdout, never to the cache. So the claim was unsatisfiable on any
+  machine whose cache had aged out, and the only way past it was
+  `--override-claims supply-chain` — routinely waving through a *security* gate.
+
+  pmat now populates the cache itself, from cargo-deny's exit code, whenever it
+  is stale or missing. The O(1) contract is kept where it matters: a fresh cache
+  is still a stat and a parse, and the subprocess runs at most once per block
+  window. If cargo-deny is not installed the claim fails with an install command
+  rather than an unclearable staleness figure.
+
+  The reporter attributed this to pmat reading the pre-0.14 `~/.cargo/advisory-db`
+  path instead of cargo-deny's `~/.cargo/advisory-dbs/advisory-db-<hash>/`. That
+  is not the cause — pmat reads no advisory directory anywhere, and the matching
+  age was a coincidence of two files written in the same session. No advisory-db
+  probing was added, because none would have helped.
+
+- **The github-sync claim was falsified by pmat's own writes (#630).** `pmat work
+  complete` writes caches, a ledger, receipts, commit metadata and — once the
+  claims pass — the roadmap and CHANGELOG. PMAT-154 had filtered three pmat-owned
+  path prefixes out of the dirty count, but a path filter only ever covers the
+  writes someone remembered to enumerate, and it cannot cover writes into
+  user-owned files.
+
+  The claim is now judged against a snapshot of the working tree taken before
+  pmat writes anything, so the verdict describes the user's work regardless of
+  what the run goes on to touch. Four further defects in the same check, three of
+  them found while verifying the fix:
+  - **Quoted paths escaped the pmat-owned filter.** git renders paths containing
+    spaces as `"…"`, and the leading quote meant `.pmat/some cache.db` was
+    counted as the user's uncommitted work — a false *failure* of the claim.
+  - **A branch with no upstream reported "All changes pushed".** The porcelain
+    header carries no `ahead` when nothing is tracked, so the parse returned 0 and
+    a branch that had never been pushed at all satisfied the claim. A false *pass*
+    on the claim's entire point.
+  - **A diverged branch reported zero unpushed commits.** `[ahead 1, behind 2]`
+    leaves a comma on the number, which `trim_end_matches(']')` did not strip, so
+    the parse failed and fell back to 0 — again a false pass, on exactly the
+    branches most likely to have unpushed work.
+  - **The verdict named no files.** "1 uncommitted file(s)" is not checkable by
+    the person reading it, which is how a true positive came to be filed as a pmat
+    bug. Offending paths are now listed (capped at five).
+
+  Three tests covering this check re-implemented its logic inline rather than
+  calling it, so they asserted against a copy — and the ahead-count copy pinned
+  the `trim_end_matches(']')` bug. They now exercise the shipped functions.
+
+### Fixed — remaining gaps from the roadmap-schema work (#628)
+- **`item_type` now suggests the nearest value on a typo**, the last of #628's
+  three asks. `status` had a "did you mean" hint and `item_type` did not, despite
+  a bad `item_type` being the *first* of the reporter's three fix-and-rerun cycles
+  on a 1300-entry roadmap. The hint stays quiet when nothing is close, so
+  `verification` — the reporter's actual value — is not pointed at `refactor`;
+  strictness is unchanged (`Bug` is still an error, and now says so usefully).
+- **A third copy of the status vocabulary had already drifted.** `pmat work
+  list-statuses` — the command both the parse error and the schema doc name as
+  authoritative — omitted the `working` alias that the parser accepts. It now
+  renders `ItemStatus::STATUS_TABLE`, the single source the parser is checked
+  against, and a new test pins the table to `valid_values()` in both directions.
+  The alias list duplicated in the enum's doc comment is gone.
+- **The schema doc contradicted the fix it shipped with.** `docs/roadmap-schema.md`
+  and the parse error still said only the first error is reported, while the same
+  commit made `pmat work validate` list every broken row. The doc pointer is also
+  qualified as living in the pmat repo, since `docs/` does not exist for someone
+  who installed pmat from crates.io.
+
+### Added
+- **`docs/roadmap-schema.md`** — the roadmap YAML schema reference that the parse
+  error has pointed at since it was written. The file had never existed (#628), so
+  step 2 of the troubleshooting text was a dead end and the only way to learn the
+  vocabulary was to trigger the error repeatedly — once per violation class, since
+  serde stops at the first. Documents required vs. optional fields, both closed
+  vocabularies, the full status alias table, and the transition matrix.
+- **`pmat work validate` now reports every broken row in one pass.** The strict
+  parse is a single serde pass and stops at the first violation; #628 reports
+  three fix-and-rerun cycles on a ~1300-entry roadmap, one per violation class,
+  each on a different row. After the strict error, each row is now
+  re-deserialised independently and all violations are listed with row index and
+  id. Structural failures still fall back to the single strict error, which is
+  the more useful output in that case.
+
+### Fixed
+- **Dead command pointer in `pmat work validate`.** On a parse failure it advised
+  *"Run `pmat work status --list`"* — not a valid command (clap exits 2). The real
+  command is `pmat work list-statuses`.
+- **`ItemStatus::valid_values()` had drifted from `from_string()`**, omitting six
+  accepted aliases (`started`, `working`, `new`, `on-hold`, `pending-review`,
+  `wontfix`). The unknown-status error now derives its "Valid values" list from
+  `valid_values()` instead of a hand-maintained copy, and two regression tests pin
+  the round-trip in both directions.
+- **Stale "Common issues" hint** in the roadmap parse error. It led with *"Unknown
+  fields (e.g. 'commit', 'completion' at phase level)"*, but unknown fields are
+  silently ignored at every level; that has never been a parse failure. Replaced
+  with the real trap: `item_type` and `priority` are exact-lowercase with no
+  aliases, while `status` is case- and separator-insensitive.
+- Troubleshooting text now points at `pmat work validate`, `pmat work list-statuses`,
+  and `pmat work migrate` — all verified live — instead of suggesting `pmat work init`,
+  which is a no-op on an existing roadmap (it refuses to overwrite) and so never
+  helped the user who hit this error.
+- **Flaky test `services::cache::config::tests::test_from_env_with_no_env_vars`.**
+  `CacheConfig::from_env` reads process-global state, and one test cleared
+  `PAIML_CACHE_ENABLE_WATCH` while another set it to `false` — in parallel. The
+  suite had absorbed the race by asserting nothing (`let _ = config.enable_watch`)
+  in 11 tests and accepting "either the set value or the default" in 2 more, which
+  left the env-parsing logic effectively untested while the one honest test failed
+  intermittently. All 14 are now serialized with `serial_test` under a shared key,
+  hardened with an RAII guard that clears every `PAIML_CACHE_*` var on entry and on
+  drop (so a panicking test cannot cascade), and assert real expected values.
+- **Second unserialized env race, in `coverage::profdata`.** Two tests mutated the
+  process-wide `CARGO_TARGET_DIR` concurrently — one setting it, one removing it —
+  with a source comment conceding *"this may race with parallel tests in this
+  module"*. The removing test asserted nothing at all (`let _ = out`) because its
+  result was host-dependent: `collect_fast_candidates` also probes `/mnt/*/targets/*`
+  and the global cargo config. Both are now serialized under a shared key with an
+  RAII restore guard, and the discarded result was replaced by two deterministic
+  assertions — that an existing `CARGO_TARGET_DIR` is returned, and that a candidate
+  which does not exist on disk is never returned.
+
+  A repo-wide audit confirms no remaining test mutates an environment variable
+  without asserting, and no test touching `CARGO_TARGET_DIR` or `PAIML_CACHE_*`
+  runs unserialized.
+
+- **`pmat work migrate` rewrote roadmaps that needed no migration.** Advisory
+  quoting suggestions were concatenated into the same `changes` vector whose
+  emptiness gates the write, so a roadmap with canonical statuses and a
+  perfectly ordinary title was still rewritten, backed up, and reported as
+  "Updated roadmap". Suggestions are now reported separately and only real
+  status migrations trigger a write.
+- **The quoting advisory fired on every unquoted title.** It tested the whole
+  line against a character list containing `:` — and every `title:` line
+  contains one by construction, so it flagged 202 of 202 titles in this repo's
+  own roadmap. It also flagged `≤`, `→` and similar, which are perfectly legal
+  in a YAML plain scalar. It now inspects the *value* using real plain-scalar
+  rules (`": "`, trailing `:`, `" #"`, leading indicators), skips block-scalar
+  headers (`|`, `>`, `|-`, `>+`, `|2`), and treats an unterminated quote as a
+  hazard rather than as "already quoted". False positives on this repo's
+  roadmap: 202 → 0.
+- **Duplicated source location in roadmap parse errors.** The message appended
+  its own `at line N, column M` on top of the one serde had already rendered,
+  producing `... at line 5 column 16 at line 5, column 16`. The append now
+  happens only when the rendered error lacks a location — which `missing field`
+  genuinely does, so both classes stay located.
+- **Typo suggestions were drawn from a stale 10-value list** while
+  `from_string` accepted 27, so typos of the other 17 aliases were pointed at
+  the wrong word (`wontfixx` suggested `done`). Suggestions now rank over the
+  full accepted set, with ties broken toward a canonical status so the
+  `obsolete` → `completed` hint that #628 praised is preserved — the two are
+  equidistant, and the widened pool would otherwise have won it on list order.
+
+
+### Changed
+- **Removed 716 tautological property tests.** A generated
+  `mod property_tests` block had been appended to 358 files containing exactly
+  two tests: `basic_property_stability(_input in ".*")` asserting
+  `prop_assert!(true)`, and `module_consistency_check(_x in 0u32..1000)`
+  asserting `prop_assert!(_x < 1001)` — true for every value the strategy can
+  produce. They could not fail, ran 256 cases each, and inflated the suite's
+  apparent size. Six files consisted of nothing else and were deleted along
+  with their `include!` lines.
+
+  Eight were deliberately left in place, in four files:
+  `lint_hotspot_tests_part1.rs`, `tdg_calculator_tests.rs`,
+  `lang_analyzer_tests_part1.rs` and `deep_context_tests_part2.rs`. `pmat verify`
+  scopes its complexity gate to *changed* files, so merely touching a file
+  subjects it to that gate — and these carry heavy pre-existing complexity debt.
+  Removing two no-op tests is not worth coupling this release to that unrelated
+  debt; the files are named here so the remaining eight are findable.
+- **Removed 14 documentation-only tests** whose entire body was a comment plus
+  `assert!(true)` — including `test_websocket_connection_drop_recovery`, which
+  implied coverage of drop recovery that did not exist.
+- **Replaced 5 self-satisfying assertions** of the form
+  `assert!(x.is_empty() || !x.is_empty())` with real invariants, each verified
+  against the measured value. Two were hiding defects:
+  `test_repository_context_grep_codebase` searched for a "nonexistent" pattern
+  spelled as a literal in its own source file, so it matched 26 files — every
+  stale copy of itself under `./.claude/worktrees/` — making the result depend
+  on how many worktrees the developer had; and `test_adaptive_cache_get_stats`
+  concealed that `AdaptiveCache::get_stats` is a stub that discards the real
+  counters and returns `Default::default()`. The stub is now pinned explicitly
+  so implementing it for real will fail the test and prompt an update.
+- **`handle_work_migrate` and `migrate_verification_levels` split into tested
+  helpers** (`normalize_status_values`, `collect_quoting_suggestions`,
+  `write_migration`, `load_contract_level`, `resolve_level`,
+  `apply_level_migration`). Both functions were over the cognitive-complexity gate,
+  which meant *any* edit to `ticket_validate_migrate.rs` — even a comment — failed
+  `pmat verify`. Behaviour is unchanged; the extracted helpers gained 9 unit tests,
+  including one pinning the pre-existing quirk that the quoting advisory fires on
+  every unquoted `title:` line (the `title:` prefix supplies the `:` it looks for).
+
 ## [3.24.1] - 2026-07-04
 
 Patch release fixing the **3.24.0 MSRV over-declaration** that blocked

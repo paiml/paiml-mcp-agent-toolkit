@@ -119,23 +119,3 @@ pub use simple_unified_server::SimpleUnifiedServer as UnifiedServer;
 pub use server::PmcpServer;
 // Export the discovery service for MCP optimization
 pub use discovery::{Context, DiscoveryMetrics, DiscoveryService, ToolInfo};
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}

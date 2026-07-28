@@ -94,4 +94,3 @@ include!("provability_helpers_json.rs");
 include!("provability_helpers_summary.rs");
 include!("provability_helpers_detailed.rs");
 include!("provability_helpers_sarif.rs");
-include!("provability_helpers_tests.rs");

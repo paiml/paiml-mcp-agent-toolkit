@@ -307,7 +307,6 @@ pub(crate) fn check_agent_evidence_executable(project_path: &Path) -> Compliance
     }
 }
 
-
 #[cfg(test)]
 mod tests_agent_iteration {
     use super::*;
@@ -366,7 +365,6 @@ mod tests_agent_iteration {
         assert!(result.message.contains("lack valid evidence"));
     }
 
-
     // --- CB-1405 tests ---
 
     #[test]
@@ -391,7 +389,6 @@ mod tests_agent_iteration {
         assert!(result.message.contains("1/1"));
     }
 
-
     // --- CB-1406 tests ---
 
     #[test]
@@ -415,7 +412,6 @@ mod tests_agent_iteration {
         assert_eq!(result.status, CheckStatus::Pass);
         assert!(result.message.contains("1/1"));
     }
-
 
     // --- CB-1407 tests ---
 

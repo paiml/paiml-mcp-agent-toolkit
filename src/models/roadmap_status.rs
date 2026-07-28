@@ -4,13 +4,12 @@
 
 /// Item status enumeration with alias support (Part A: YAML Parsing Resilience)
 ///
-/// Supports multiple aliases for user-friendly YAML input:
-/// - completed: "done", "finished", "closed"
-/// - inprogress: "in_progress", "in-progress", "wip", "active", "started"
-/// - planned: "todo", "open", "pending", "new"
-/// - blocked: "stuck", "waiting", "on-hold"
-/// - review: "reviewing", "pr", "pending-review"
-/// - cancelled: "canceled", "dropped", "wontfix"
+/// Aliases make YAML input forgiving; the accepted set is
+/// [`ItemStatus::STATUS_TABLE`], which is also what `pmat work list-statuses`
+/// prints and what `docs/roadmap-schema.md` documents. This doc comment
+/// deliberately does not repeat the list: an earlier copy here and a third in
+/// the `list-statuses` handler both drifted from `from_string`, which is the
+/// defect GH #628 was about.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemStatus {
@@ -33,6 +32,46 @@ impl<'de> serde::Deserialize<'de> for ItemStatus {
 }
 
 impl ItemStatus {
+    /// The status vocabulary, as canonical value / aliases / description.
+    ///
+    /// Single source for everything user-facing: `pmat work list-statuses`
+    /// renders it, and `test_status_table_matches_valid_values` pins it against
+    /// [`Self::valid_values`] in both directions, so an alias can no longer be
+    /// accepted by `from_string` while the command that documents the
+    /// vocabulary omits it (`working` was missing for exactly that reason).
+    pub const STATUS_TABLE: &'static [(&'static str, &'static str, &'static str)] = &[
+        (
+            "planned",
+            "todo, open, pending, new",
+            "Task not yet started",
+        ),
+        (
+            "inprogress",
+            "in-progress, wip, active, started, working",
+            "Currently being worked on",
+        ),
+        (
+            "blocked",
+            "stuck, waiting, on-hold",
+            "Cannot proceed (waiting on something)",
+        ),
+        (
+            "review",
+            "reviewing, pr, pending-review",
+            "Ready for or in code review",
+        ),
+        (
+            "completed",
+            "done, finished, closed",
+            "Work finished successfully",
+        ),
+        (
+            "cancelled",
+            "canceled, dropped, wontfix",
+            "Work abandoned or not needed",
+        ),
+    ];
+
     /// Parse status from string with alias support
     ///
     /// Returns helpful error messages with suggestions for typos
@@ -61,28 +100,29 @@ impl ItemStatus {
             "cancelled" | "canceled" | "dropped" | "wontfix" => Ok(Self::Cancelled),
 
             _ => {
-                // Provide helpful suggestion using Levenshtein distance
-                let valid_statuses = [
-                    "completed",
-                    "done",
-                    "inprogress",
-                    "wip",
-                    "planned",
-                    "todo",
-                    "blocked",
-                    "stuck",
-                    "review",
-                    "cancelled",
-                ];
-                let suggestion = valid_statuses
+                // Rank over the *full* accepted set: this previously used a
+                // hand-maintained list of 10 values while `from_string` accepted
+                // 27, so a single-character typo of any of the other 17 aliases
+                // was confidently pointed at the wrong word ("wontfixx" suggested
+                // "done"). Ties break toward a canonical status, because the
+                // widened pool otherwise lets an obscure alias win on list order
+                // alone — 'obsolete' is distance 5 from both 'completed' and
+                // 'on-hold', and should keep suggesting the canonical one.
+                let suggestion = Self::valid_values()
                     .iter()
-                    .min_by_key(|v| levenshtein_distance(&normalized, v))
+                    .min_by_key(|v| {
+                        let distance = levenshtein_distance(&normalized, &v.replace('-', ""));
+                        (distance, !Self::CANONICAL_VALUES.contains(v))
+                    })
                     .map(|s| format!(" (did you mean '{}'?)", s))
                     .unwrap_or_default();
 
                 Err(format!(
-                    "unknown status '{}'{}\n\nValid values: completed, done, inprogress, wip, planned, todo, blocked, review, cancelled",
-                    s, suggestion
+                    "unknown status '{}'{}\n\nValid values: {}\n\
+                     (case-insensitive; '-' and '_' are ignored)",
+                    s,
+                    suggestion,
+                    Self::valid_values().join(", ")
                 ))
             }
         }
@@ -125,31 +165,50 @@ impl ItemStatus {
         }
     }
 
+    /// The six canonical spellings, preferred when a typo suggestion ties.
+    const CANONICAL_VALUES: [&'static str; 6] = [
+        "planned",
+        "inprogress",
+        "blocked",
+        "review",
+        "completed",
+        "cancelled",
+    ];
+
     /// Get all valid status strings for help text
+    ///
+    /// Must stay in sync with [`ItemStatus::from_string`]; the round-trip is
+    /// guarded by `test_valid_values_all_parse`.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn valid_values() -> &'static [&'static str] {
         &[
-            "completed",
-            "done",
-            "finished",
-            "closed",
-            "inprogress",
-            "in_progress",
-            "wip",
-            "active",
             "planned",
             "todo",
             "open",
             "pending",
+            "new",
+            "inprogress",
+            "in-progress",
+            "wip",
+            "active",
+            "started",
+            "working",
             "blocked",
             "stuck",
             "waiting",
+            "on-hold",
             "review",
             "reviewing",
             "pr",
+            "pending-review",
+            "completed",
+            "done",
+            "finished",
+            "closed",
             "cancelled",
             "canceled",
             "dropped",
+            "wontfix",
         ]
     }
 }

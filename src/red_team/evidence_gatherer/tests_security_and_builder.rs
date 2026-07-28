@@ -145,10 +145,18 @@
     #[test]
     fn test_repository_context_grep_codebase() {
         let context = RepositoryContext::new_mock();
-        // Should return empty since repo_path is "."
-        let results = context.grep_codebase("nonexistent_pattern_xyz123");
-        // May or may not find matches depending on current directory
-        assert!(results.is_empty() || !results.is_empty()); // Just verify it doesn't panic
+        // Build the needle at runtime so the joined form never appears in any
+        // file. Spelling it as one literal made the test find *itself*: the
+        // search root is ".", which includes this source file and every stale
+        // copy of it under ./.claude/worktrees/, so the result was 26 files
+        // while the comment claimed "should be empty" -- and the count varied
+        // with how many worktrees the developer happened to have lying around.
+        let needle = ["pmat", "absent", "needle", "7c1f"].join("_");
+        let results = context.grep_codebase(&needle);
+        assert!(
+            results.is_empty(),
+            "a pattern absent from the tree must match no files, got: {results:?}"
+        );
     }
 
     #[test]

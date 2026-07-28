@@ -56,51 +56,39 @@ mod tests {
         assert_eq!(report.blocking_failures().len(), 1);
     }
 
+    // These three exercise the parsers `test_github_sync` actually calls. They
+    // previously re-implemented the logic inline, so they asserted against a
+    // copy rather than the shipped code -- and the ahead-count copy pinned the
+    // `trim_end_matches(']')` bug that under-counted diverged branches.
     #[test]
     fn test_github_sync_parsing() {
-        // This tests the parsing logic for git status output
+        use crate::cli::handlers::work_falsification::pre_run_tree::parse_ahead_count;
         let status = "## main...origin/main [ahead 2]\n M file.rs\n?? new.rs";
-
-        let ahead = if status.contains("ahead") {
-            status
-                .lines()
-                .next()
-                .and_then(|l| {
-                    l.find("ahead")
-                        .and_then(|i| l.get(i..))
-                        .and_then(|s| s.split_whitespace().nth(1))
-                        .and_then(|n| n.trim_end_matches(']').parse::<usize>().ok())
-                })
-                .unwrap_or(0)
-        } else {
-            0
-        };
-
-        assert_eq!(ahead, 2);
+        assert_eq!(parse_ahead_count(status), 2);
     }
 
     #[test]
     fn test_github_sync_excludes_untracked_files() {
+        use crate::cli::handlers::work_falsification::pre_run_tree::count_dirty_files;
         // Untracked files (??) should NOT count as dirty (#224)
         let status = "## master...origin/master\n?? target\n?? docs/spec.md\n?? scripts/";
-        let dirty_count = status
-            .lines()
-            .skip(1)
-            .filter(|l| !l.is_empty() && !l.starts_with("??"))
-            .count();
-        assert_eq!(dirty_count, 0, "Untracked files should not count as dirty");
+        assert_eq!(
+            count_dirty_files(status),
+            0,
+            "Untracked files should not count as dirty"
+        );
     }
 
     #[test]
     fn test_github_sync_counts_modified_files() {
+        use crate::cli::handlers::work_falsification::pre_run_tree::count_dirty_files;
         // Modified/staged files should count as dirty
         let status = "## master...origin/master\n M src/lib.rs\nA  src/new.rs\n?? untracked.txt";
-        let dirty_count = status
-            .lines()
-            .skip(1)
-            .filter(|l| !l.is_empty() && !l.starts_with("??"))
-            .count();
-        assert_eq!(dirty_count, 2, "Modified and staged files should count");
+        assert_eq!(
+            count_dirty_files(status),
+            2,
+            "Modified and staged files should count"
+        );
     }
 
     // PMAT-154: pmat's own post-commit hook regenerates .pmat/baseline.json,
@@ -198,12 +186,83 @@ mod tests {
         use tempfile::TempDir;
         // A Rust repo (Cargo.toml present) with no deny cache must STILL fail —
         // PMAT-058 must not weaken the gate for real Rust projects.
+        //
+        // GH #629: a missing cache is no longer an automatic verdict; pmat now
+        // refreshes by running cargo-deny. This manifest has no target, so
+        // cargo-deny errors out during `cargo metadata` (fast, no advisory-DB
+        // fetch) and the gate stays falsified — and it stays falsified with the
+        // ToolMissing message if cargo-deny is absent on the runner.
         let temp = TempDir::new().unwrap();
         std::fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
         let result = test_supply_chain_integrity(temp.path()).await.unwrap();
         assert!(
             result.falsified,
-            "Rust repo with no deny cache must still fail the supply-chain gate"
+            "Rust repo whose supply chain cannot be vetted must fail the gate, got: {}",
+            result.explanation
+        );
+    }
+
+    #[tokio::test]
+    async fn test_supply_chain_passes_on_fresh_cache_without_subprocess() {
+        use tempfile::TempDir;
+        // GH #629 hot path: a cache inside the block window is authoritative, so
+        // the O(1) contract survives the refresh fix. Proven by construction —
+        // this manifest has no target, so any call out to cargo-deny would fail
+        // the gate; passing means the cache short-circuited it.
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        std::fs::create_dir_all(temp.path().join(".pmat-metrics")).unwrap();
+        std::fs::write(
+            temp.path().join(".pmat-metrics/deny-status.json"),
+            r#"{"passed": true, "vulnerability_count": 0}"#,
+        )
+        .unwrap();
+
+        let result = test_supply_chain_integrity(temp.path()).await.unwrap();
+
+        assert!(
+            !result.falsified,
+            "fresh deny cache must satisfy the claim, got: {}",
+            result.explanation
+        );
+        assert!(
+            result.explanation.contains("No vulnerabilities"),
+            "expected the cached verdict to be reported, got: {}",
+            result.explanation
+        );
+    }
+
+    #[tokio::test]
+    async fn test_supply_chain_refreshes_a_stale_cache() {
+        use tempfile::TempDir;
+        // GH #629 regression: the reported failure was a `.pmat-metrics/deny-status.json`
+        // 35976 minutes old that no user action could refresh, because nothing
+        // ever wrote it. A stale cache must now be re-derived rather than
+        // reported back as an unclearable "Deny cache too old".
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        std::fs::create_dir_all(temp.path().join(".pmat-metrics")).unwrap();
+        let stale = temp.path().join(".pmat-metrics/deny-status.json");
+        std::fs::write(
+            &stale,
+            r#"{"passed": true, "timestamp": "2026-07-01T21:02:57Z"}"#,
+        )
+        .unwrap();
+        // Backdate well past CACHE_BLOCK_HOURS.
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(60 * 60 * 24 * 25);
+        std::fs::File::options()
+            .write(true)
+            .open(&stale)
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+
+        let result = test_supply_chain_integrity(temp.path()).await.unwrap();
+
+        assert!(
+            !result.explanation.contains("too old"),
+            "a stale cache must be refreshed, not reported as unclearable: {}",
+            result.explanation
         );
     }
 

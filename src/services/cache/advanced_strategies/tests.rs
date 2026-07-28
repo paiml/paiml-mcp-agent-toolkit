@@ -285,8 +285,17 @@ mod tests {
         let _ = cache.get(&"key1".to_string()).await;
 
         let stats = cache.get_stats();
-        // Stats should be retrievable
-        assert!(stats.tier_stats.is_empty() || !stats.tier_stats.is_empty());
+        // NOTE: `AdaptiveCache::get_stats` is currently a stub -- it reads the
+        // real counters into `_stats`, discards them, and returns
+        // `AdaptiveCacheStats::default()` (adaptive_cache.rs:185-192, "Simplified
+        // for now"). So it reports nothing even after a put and a hit. This
+        // assertion pins that stub behaviour deliberately: when get_stats() is
+        // implemented for real this test SHOULD fail and be updated to assert
+        // the actual hit/miss counts.
+        assert!(
+            stats.tier_stats.is_empty(),
+            "get_stats() is a stub returning Default; update this test when it is implemented"
+        );
 
         Ok(())
     }
@@ -810,25 +819,5 @@ mod tests {
         // Should not panic on empty cache
         let result = adaptive_cache.evict_from_tier(&mut cache, CacheTier::L1);
         assert!(result.is_ok());
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
     }
 }

@@ -1,7 +1,6 @@
 // GroupedItems, calculate_item_counts, and format_context tests for context service.
 // Included via include!() in context_tests.rs.
 
-
 // GroupedItems and formatting tests
 
 #[test]

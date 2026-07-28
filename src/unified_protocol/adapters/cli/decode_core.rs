@@ -136,6 +136,9 @@ impl CliAdapter {
             Commands::Mutate(_) => Self::cli_only_command_error(),
 
             Commands::Mcp(_) => Self::cli_only_command_error(),
+
+            // Agy (Google Anti-Gravity translator) is CLI-only, like Mcp.
+            Commands::Agy(_) => Self::cli_only_command_error(),
         }
     }
 

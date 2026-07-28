@@ -159,7 +159,6 @@ fn resolve_project_path_complexity(project_path_arg: Option<String>) -> Result<P
     }
 }
 
-
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
     if let Some(t) = toolchain_arg {
         t.clone()

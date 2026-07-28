@@ -135,17 +135,53 @@ mod tests {
     // Environment Variable Tests
     // =========================================================================
 
+    // =========================================================================
+    // Environment variable tests.
+    //
+    // `from_env` reads process-global state, so these MUST NOT run concurrently
+    // with each other: `serial_test` serializes them under a shared key, and
+    // `EnvGuard` clears every PAIML_CACHE_* var on entry *and* on drop so a
+    // panicking test cannot leak state into the next one. Before this, the
+    // suite worked around the race by asserting nothing (`let _ = field`) or by
+    // accepting "either the set value or the default", which meant the parsing
+    // logic was effectively untested — and `test_from_env_with_no_env_vars`,
+    // the one test that did assert, failed intermittently.
+    // =========================================================================
+
+    /// Clears all cache env vars on construction and on drop.
+    struct EnvGuard;
+
+    impl EnvGuard {
+        fn new() -> Self {
+            Self::clear();
+            Self
+        }
+
+        fn clear() {
+            for key in [
+                "PAIML_CACHE_MAX_MB",
+                "PAIML_CACHE_TTL_AST",
+                "PAIML_CACHE_ENABLE_WATCH",
+                "PAIML_CACHE_GIT_BRANCH_AWARE",
+            ] {
+                std::env::remove_var(key);
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            Self::clear();
+        }
+    }
+
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_with_no_env_vars() {
-        // Clear any potentially set environment variables
-        std::env::remove_var("PAIML_CACHE_MAX_MB");
-        std::env::remove_var("PAIML_CACHE_TTL_AST");
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
-        std::env::remove_var("PAIML_CACHE_GIT_BRANCH_AWARE");
+        let _guard = EnvGuard::new();
 
         let config = CacheConfig::from_env();
 
-        // Should use defaults when no env vars are set
         assert_eq!(config.max_memory_mb, 100);
         assert_eq!(config.ast_ttl_secs, 300);
         assert!(config.enable_watch);
@@ -153,115 +189,131 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_with_max_mb_override() {
-        // Note: env var tests are inherently flaky in parallel test execution
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_MAX_MB", "512");
-        let config = CacheConfig::from_env();
-        // Due to parallel test interference, accept either the set value or default
-        assert!(
-            config.max_memory_mb == 512 || config.max_memory_mb == 100,
-            "Expected 512 or 100, got {}",
-            config.max_memory_mb
-        );
-        std::env::remove_var("PAIML_CACHE_MAX_MB");
+
+        assert_eq!(CacheConfig::from_env().max_memory_mb, 512);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_with_invalid_max_mb() {
-        // Note: env var tests are inherently flaky in parallel test execution
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_MAX_MB", "not_a_number");
-        let config = CacheConfig::from_env();
-        // Due to parallel test interference, we just verify config was created
-        // The value might be default (100) or from another test (512)
-        assert!(
-            config.max_memory_mb == 100 || config.max_memory_mb == 512,
-            "Expected 100 or 512, got {}",
-            config.max_memory_mb
-        );
-        std::env::remove_var("PAIML_CACHE_MAX_MB");
+
+        // Unparseable values are ignored, leaving the default intact.
+        assert_eq!(CacheConfig::from_env().max_memory_mb, 100);
     }
 
-    // Note: All env var tests below are inherently flaky in parallel test execution
-    // They just verify the config was created - parallel test interference may affect values
-
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_with_ast_ttl_override() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_TTL_AST", "120");
-        let config = CacheConfig::from_env();
-        let _ = config.ast_ttl_secs; // Verify field exists
-        std::env::remove_var("PAIML_CACHE_TTL_AST");
+
+        assert_eq!(CacheConfig::from_env().ast_ttl_secs, 120);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_with_invalid_ast_ttl() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_TTL_AST", "invalid");
-        let config = CacheConfig::from_env();
-        let _ = config.ast_ttl_secs; // Verify field exists
-        std::env::remove_var("PAIML_CACHE_TTL_AST");
+
+        assert_eq!(CacheConfig::from_env().ast_ttl_secs, 300);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_enable_watch_true() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_ENABLE_WATCH", "true");
-        let config = CacheConfig::from_env();
-        let _ = config.enable_watch;
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
+
+        assert!(CacheConfig::from_env().enable_watch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_enable_watch_false() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_ENABLE_WATCH", "false");
-        let config = CacheConfig::from_env();
-        let _ = config.enable_watch;
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
+
+        assert!(!CacheConfig::from_env().enable_watch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_enable_watch_one() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_ENABLE_WATCH", "1");
-        let config = CacheConfig::from_env();
-        let _ = config.enable_watch;
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
+
+        assert!(CacheConfig::from_env().enable_watch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_enable_watch_zero() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_ENABLE_WATCH", "0");
-        let config = CacheConfig::from_env();
-        let _ = config.enable_watch;
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
+
+        // Only "true" (any case) and "1" enable it; everything else disables.
+        assert!(!CacheConfig::from_env().enable_watch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_enable_watch_uppercase() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_ENABLE_WATCH", "TRUE");
-        let config = CacheConfig::from_env();
-        let _ = config.enable_watch;
-        std::env::remove_var("PAIML_CACHE_ENABLE_WATCH");
+
+        assert!(CacheConfig::from_env().enable_watch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_git_branch_aware_true() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_GIT_BRANCH_AWARE", "true");
-        let config = CacheConfig::from_env();
-        let _ = config.git_cache_by_branch;
-        std::env::remove_var("PAIML_CACHE_GIT_BRANCH_AWARE");
+
+        assert!(CacheConfig::from_env().git_cache_by_branch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_git_branch_aware_false() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_GIT_BRANCH_AWARE", "false");
-        let config = CacheConfig::from_env();
-        let _ = config.git_cache_by_branch;
-        std::env::remove_var("PAIML_CACHE_GIT_BRANCH_AWARE");
+
+        assert!(!CacheConfig::from_env().git_cache_by_branch);
     }
 
     #[test]
+    #[serial_test::serial(paiml_cache_env)]
     fn test_from_env_git_branch_aware_one() {
+        let _guard = EnvGuard::new();
         std::env::set_var("PAIML_CACHE_GIT_BRANCH_AWARE", "1");
-        let config = CacheConfig::from_env();
-        assert!(config.git_cache_by_branch);
-        std::env::remove_var("PAIML_CACHE_GIT_BRANCH_AWARE");
+
+        assert!(CacheConfig::from_env().git_cache_by_branch);
+    }
+
+    /// The guard must leave the environment clean even when a test panics,
+    /// otherwise one failure cascades into unrelated ones.
+    #[test]
+    #[serial_test::serial(paiml_cache_env)]
+    fn test_env_guard_clears_on_unwind() {
+        let _outer = EnvGuard::new();
+
+        let result = std::panic::catch_unwind(|| {
+            let _guard = EnvGuard::new();
+            std::env::set_var("PAIML_CACHE_MAX_MB", "999");
+            panic!("simulated test failure");
+        });
+
+        assert!(result.is_err());
+        assert!(std::env::var("PAIML_CACHE_MAX_MB").is_err());
+        assert_eq!(CacheConfig::from_env().max_memory_mb, 100);
     }
 
     // =========================================================================

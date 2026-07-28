@@ -90,6 +90,3 @@ include!("agent_mcp_server.rs");
 
 // Unit tests
 include!("agent_handlers_tests.rs");
-
-// Property-based tests
-include!("agent_handlers_property_tests.rs");

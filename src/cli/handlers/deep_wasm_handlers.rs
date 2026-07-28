@@ -261,11 +261,4 @@ pub async fn handle_deep_wasm(
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod tests {
-    #[test]
-    #[allow(clippy::assertions_on_constants)]
-    fn test_handler_compiles() {
-        // Basic compilation test
-        assert!(true);
-    }
-}
+mod tests {}
