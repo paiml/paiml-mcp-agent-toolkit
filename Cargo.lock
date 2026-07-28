@@ -315,11 +315,11 @@ dependencies = [
 
 [[package]]
 name = "aprender-contracts"
-version = "0.50.0"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd4a70482513966050592bf59a2afb88b3c0d0394c5ab44ede0783f2dfd7f8b5"
+checksum = "1953229bb6c55cb28db56e77a7be002c14ffcf41af1f9c30112d6f4eea549719"
 dependencies = [
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.61.0",
  "regex",
  "serde",
  "serde_json",
@@ -332,6 +332,17 @@ name = "aprender-contracts-macros"
 version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce8b019e315ffc778471564d0b423b0dd622159cccef0902402c8cfb2c730148"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
+name = "aprender-contracts-macros"
+version = "0.61.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c20877e54de35add40223e1456909e0342f1c94123951e47d5253b955398431f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5438,7 +5449,7 @@ dependencies = [
  "aprender 0.50.0",
  "aprender-compute 0.50.0",
  "aprender-contracts",
- "aprender-contracts-macros",
+ "aprender-contracts-macros 0.50.0",
  "aprender-db 0.50.0",
  "aprender-graph 0.51.0",
  "aprender-orchestrate",

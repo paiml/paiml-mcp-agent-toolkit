@@ -278,7 +278,7 @@ aprender-contracts-macros = "0.50"
 
 
 [dev-dependencies]
-aprender-contracts = "0.50"
+aprender-contracts = "0.61"
 rmp-serde = "1.3"  # MessagePack codec for integration tests (replaces bincode after its removal)
 dhat = "0.3"
 tokio-test = "0.4"
