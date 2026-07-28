@@ -1,6 +1,4 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
-
-#[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests_mcp_http {
     use super::*;
