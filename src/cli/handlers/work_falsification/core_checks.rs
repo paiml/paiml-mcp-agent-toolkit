@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core falsification checks: manifest, coverage, TDG, complexity, spec, roadmap, git.
 
+use super::coverage_source;
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult, FileManifest};
 use crate::cli::handlers::work_falsification::pre_run_tree::{
     dirty_file_paths, has_upstream, parse_ahead_count, pre_run_status, read_porcelain_status,
@@ -86,14 +87,83 @@ pub(crate) async fn test_differential_coverage(
         ));
     }
 
-    // Coverage data is assumed available from a previous run
-    // In production, this integrates with llvm-cov or similar
+    let Some(coverage) = coverage_source::load(project_path) else {
+        return Ok(FalsificationResult::unmeasured(format!(
+            "{} changed file(s), but no coverage artifact exists — {}",
+            changed_files.len(),
+            coverage_source::COVERAGE_HINT
+        )));
+    };
 
-    Ok(FalsificationResult::unmeasured(format!(
-        "{} changed file(s), but differential coverage is not wired to any coverage \
-         artifact — this claim verifies nothing today",
-        changed_files.len()
-    )))
+    // -U0 so hunk headers describe exactly the lines this work introduced.
+    let diff = Command::new("git")
+        .args(["diff", "-U0", baseline_commit, "HEAD", "--", "*.rs"])
+        .current_dir(project_path)
+        .output()
+        .context("Failed to get git diff for differential coverage")?;
+    let changed_lines = coverage_source::changed_lines(&String::from_utf8_lossy(&diff.stdout));
+
+    Ok(evaluate_differential_coverage(&changed_lines, &coverage))
+}
+
+/// Judge whether every line this work added is executed by the test suite.
+fn evaluate_differential_coverage(
+    changed_lines: &std::collections::HashMap<String, Vec<usize>>,
+    coverage: &coverage_source::LineCoverage,
+) -> FalsificationResult {
+    let mut uncovered: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for (file, lines) in changed_lines {
+        // A file absent from the report is not instrumented (a test file, or
+        // excluded from coverage); it has no lines to require hits for.
+        let Some(file_cov) = coverage_source::lookup(coverage, file) else {
+            continue;
+        };
+        for line in lines {
+            // Lines with no coverage record are not instrumented — comments,
+            // blank lines, `use` statements. Only recorded lines can be missed.
+            let Some(hits) = file_cov.get(line) else {
+                continue;
+            };
+            checked += 1;
+            if *hits == 0 {
+                uncovered.push(format!("{}:{}", file, line));
+            }
+        }
+    }
+
+    if checked == 0 {
+        return FalsificationResult::unmeasured(format!(
+            "no instrumented lines among the changed lines — {}",
+            coverage_source::COVERAGE_HINT
+        ));
+    }
+
+    if uncovered.is_empty() {
+        return FalsificationResult::passed(format!("all {} changed line(s) covered", checked));
+    }
+
+    let shown: Vec<String> = uncovered.iter().take(5).cloned().collect();
+    let rest = uncovered.len().saturating_sub(shown.len());
+    let suffix = if rest > 0 {
+        format!(", +{} more", rest)
+    } else {
+        String::new()
+    };
+    FalsificationResult::failed(
+        format!(
+            "{}/{} changed line(s) uncovered: {}{}",
+            uncovered.len(),
+            checked,
+            shown.join(", "),
+            suffix
+        ),
+        EvidenceType::NumericComparison {
+            actual: uncovered.len() as f64,
+            threshold: 0.0,
+        },
+    )
 }
 
 /// Test absolute coverage threshold
@@ -104,44 +174,46 @@ pub(crate) async fn test_absolute_coverage(
 ) -> Result<FalsificationResult> {
     print!("Checking coverage threshold... ");
 
-    // Try to read coverage from cached metrics
-    let metrics_dir = project_path.join(".pmat-metrics/trends");
-    let coverage_file = metrics_dir.join("test-coverage.json");
+    // Prefer the recorded trend, then whatever a coverage run left on disk. The
+    // trends file is written only by `make coverage` / `pmat record-metric`, so
+    // requiring it made this claim vacuous in every repo that had simply run
+    // coverage once.
+    let measured = read_trend_coverage(project_path).or_else(|| {
+        coverage_source::load(project_path)
+            .as_ref()
+            .and_then(coverage_source::total_percent)
+    });
 
-    if !coverage_file.exists() {
-        return Ok(FalsificationResult::unmeasured(format!(
-            "No coverage data (run 'make coverage' to establish baseline), threshold: {:.1}%",
-            threshold
-        )));
+    Ok(match measured {
+        Some(pct) => judge_coverage(pct, threshold),
+        None => FalsificationResult::unmeasured(format!(
+            "No coverage data (threshold {:.1}%) — {}",
+            threshold,
+            coverage_source::COVERAGE_HINT
+        )),
+    })
+}
+
+/// Latest recorded coverage percentage from `.pmat-metrics/trends`.
+fn read_trend_coverage(project_path: &Path) -> Option<f64> {
+    let path = project_path.join(".pmat-metrics/trends/test-coverage.json");
+    let json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()?;
+    json.as_array()?.last()?.get("value")?.as_f64()
+}
+
+/// Compare a measured coverage percentage against the claim's threshold.
+fn judge_coverage(pct: f64, threshold: f64) -> FalsificationResult {
+    if pct >= threshold {
+        return FalsificationResult::passed(format!("{:.1}% >= {:.1}%", pct, threshold));
     }
-
-    let content = std::fs::read_to_string(&coverage_file)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
-
-    if let Some(entries) = json.as_array() {
-        if let Some(latest) = entries.last() {
-            if let Some(coverage) = latest.get("value").and_then(|v| v.as_f64()) {
-                if coverage >= threshold {
-                    return Ok(FalsificationResult::passed(format!(
-                        "{:.1}% >= {:.1}%",
-                        coverage, threshold
-                    )));
-                } else {
-                    return Ok(FalsificationResult::failed(
-                        format!("{:.1}% < {:.1}% threshold", coverage, threshold),
-                        EvidenceType::NumericComparison {
-                            actual: coverage,
-                            threshold,
-                        },
-                    ));
-                }
-            }
-        }
-    }
-
-    Ok(FalsificationResult::passed(
-        "No coverage entries found".to_string(),
-    ))
+    FalsificationResult::failed(
+        format!("{:.1}% < {:.1}% threshold", pct, threshold),
+        EvidenceType::NumericComparison {
+            actual: pct,
+            threshold,
+        },
+    )
 }
 
 /// Test TDG score regression
@@ -152,39 +224,52 @@ pub(crate) async fn test_tdg_regression(
 ) -> Result<FalsificationResult> {
     print!("Checking TDG score... ");
 
-    // Read current TDG score from cache
-    let tdg_file = project_path.join(".pmat-metrics/tdg-score.json");
-
-    if !tdg_file.exists() {
+    // Nothing writes .pmat-metrics/tdg-score.json, so that path alone made this
+    // claim permanently vacuous. `.pmat/baseline.json` carries the same score
+    // under `summary.avg_score` and IS written — by `pmat analyze tdg
+    // --update-baseline`, which the pre-commit hook runs on every commit.
+    let Some(current_tdg) = read_tdg_score(project_path) else {
         return Ok(FalsificationResult::unmeasured(format!(
-            "No TDG data (baseline: {:.1}); nothing writes .pmat-metrics/tdg-score.json",
+            "No TDG data (baseline: {:.1}); run 'pmat analyze tdg --update-baseline'",
             baseline_tdg
         )));
-    }
+    };
 
-    let content = std::fs::read_to_string(&tdg_file)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
-
-    if let Some(current_tdg) = json.get("score").and_then(|v| v.as_f64()) {
-        if current_tdg >= baseline_tdg {
-            Ok(FalsificationResult::passed(format!(
-                "{:.1} >= {:.1} (baseline)",
-                current_tdg, baseline_tdg
-            )))
-        } else {
-            Ok(FalsificationResult::failed(
-                format!("{:.1} < {:.1} (regression)", current_tdg, baseline_tdg),
-                EvidenceType::NumericComparison {
-                    actual: current_tdg,
-                    threshold: baseline_tdg,
-                },
-            ))
-        }
+    if current_tdg >= baseline_tdg {
+        Ok(FalsificationResult::passed(format!(
+            "{:.1} >= {:.1} (baseline)",
+            current_tdg, baseline_tdg
+        )))
     } else {
-        Ok(FalsificationResult::passed(
-            "No TDG score in cache".to_string(),
+        Ok(FalsificationResult::failed(
+            format!("{:.1} < {:.1} (regression)", current_tdg, baseline_tdg),
+            EvidenceType::NumericComparison {
+                actual: current_tdg,
+                threshold: baseline_tdg,
+            },
         ))
     }
+}
+
+/// Current project TDG score, from whichever artifact carries one.
+///
+/// `.pmat-metrics/tdg-score.json` is the documented location but has no writer
+/// anywhere; `.pmat/baseline.json` is written by `pmat analyze tdg
+/// --update-baseline`, which the pre-commit hook runs on every commit, and
+/// records the same figure as `summary.avg_score`.
+fn read_tdg_score(project_path: &Path) -> Option<f64> {
+    let read_json = |path: PathBuf| -> Option<serde_json::Value> {
+        serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+    };
+
+    read_json(project_path.join(".pmat-metrics/tdg-score.json"))
+        .and_then(|j| j.get("score").and_then(serde_json::Value::as_f64))
+        .or_else(|| {
+            read_json(project_path.join(".pmat/baseline.json"))?
+                .get("summary")?
+                .get("avg_score")?
+                .as_f64()
+        })
 }
 
 /// Test complexity regression: no function should exceed threshold

@@ -14,3 +14,4 @@ pub use enrichment::{
 };
 pub use loader::{enrich_results_with_coverage, load_workspace_coverage};
 pub use parsing::build_coverage_map;
+pub(crate) use parsing::discover_line_coverage;

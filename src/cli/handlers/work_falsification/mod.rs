@@ -16,6 +16,7 @@ pub mod advanced_checks;
 pub mod cache;
 pub mod churn_checks;
 pub mod core_checks;
+pub mod coverage_source;
 pub mod deny_refresh;
 pub mod formal_checks;
 pub mod lint_refresh;

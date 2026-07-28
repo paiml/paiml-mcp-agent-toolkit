@@ -3,6 +3,7 @@
 
 use super::cache::{read_cached_metric, read_lint_cache_fallback};
 use super::churn_checks::get_changed_files;
+use super::coverage_source;
 pub(crate) use super::formal_checks::test_formal_proof_verification;
 use super::lint_refresh::{refresh_lint_cache, LintRefresh, LINT_STATUS_PATH};
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
@@ -360,24 +361,33 @@ pub(crate) async fn test_per_file_coverage(
 ) -> Result<FalsificationResult> {
     print!("Checking per-file coverage... ");
 
-    // Try to read per-file coverage from llvm-cov output
-    let coverage_json = project_path.join("target/llvm-cov/coverage.json");
-
-    if !coverage_json.exists() {
-        // Nothing writes target/llvm-cov/coverage.json; `make coverage`
-        // produces target/coverage/{summary.txt,lcov.info}. Until the reader is
-        // pointed at an artifact that exists, this claim measures nothing.
+    // Read whatever a coverage run actually left. This used to look for
+    // `target/llvm-cov/coverage.json`, which nothing has ever written, so the
+    // check passed on every repository without measuring anything.
+    let Some(coverage) = coverage_source::load(project_path) else {
         return Ok(FalsificationResult::unmeasured(format!(
-            "No per-file coverage data at {} (run 'make coverage'), threshold: {:.1}%",
-            coverage_json.display(),
-            threshold
+            "No per-file coverage data (threshold {:.1}%) — {}",
+            threshold,
+            coverage_source::COVERAGE_HINT
         )));
-    }
+    };
 
-    let content = std::fs::read_to_string(&coverage_json)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
+    let mut files_below: Vec<(PathBuf, f64)> = coverage
+        .iter()
+        .filter(|(path, _)| !is_excluded_from_per_file_coverage(path))
+        .filter_map(|(path, lines)| {
+            coverage_source::file_percent(lines)
+                .filter(|pct| *pct < threshold)
+                .map(|pct| (PathBuf::from(path), pct))
+        })
+        .collect();
+    // Worst first, and deterministic so the message does not churn between runs.
+    files_below.sort_by(|a, b| {
+        a.1.partial_cmp(&b.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
 
-    let files_below = collect_files_below_threshold(&json, threshold);
     Ok(build_per_file_coverage_result(files_below, threshold))
 }
 
