@@ -73,7 +73,7 @@ aprender-db = { version = "0.50", optional = true, default-features = false }
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
 aprender-graph = { version = "0.51", default-features = false }  # CSR graph, PageRank, Louvain
-aprender-rag = { version = "0.50", optional = true }  # RAG pipeline
+aprender-rag = { version = "0.61", optional = true }  # RAG pipeline
 aprender-viz = { version = "0.50", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
