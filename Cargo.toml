@@ -67,7 +67,7 @@ libc = { version = "0.2", optional = true }
 aprender = { version = "0.50", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-aprender-compute = { version = "0.50", optional = true }
+aprender-compute = { version = "0.51", optional = true }
 aprender-db = { version = "0.50", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
