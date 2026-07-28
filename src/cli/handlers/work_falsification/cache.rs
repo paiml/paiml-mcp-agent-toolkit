@@ -63,8 +63,20 @@ pub(crate) fn read_lint_cache_fallback(project_path: &Path) -> Option<CachedMetr
     let candidates = find_cache_file(project_path, "lint-cache.txt");
     for path in candidates {
         if let Ok(content) = std::fs::read_to_string(&path) {
-            let passed = !content.contains("error");
-            let error_count = content.matches("error").count() as u64;
+            // `!content.contains("error")` was wrong in both directions: pmat
+            // depends on `thiserror`, so a cold build's `Compiling thiserror`
+            // scored a clean run as failing, and an empty or stdout-only
+            // capture (clippy writes diagnostics to stderr) scored a failing
+            // run as passing. Count real diagnostics instead, and treat a log
+            // with neither diagnostics nor a success sentinel as no evidence at
+            // all so the caller re-derives the verdict.
+            let error_count = super::lint_refresh::count_lint_errors(&content);
+            let succeeded =
+                content.contains("All linting checks passed!") || content.contains("Finished");
+            if error_count == 0 && !succeeded {
+                continue;
+            }
+            let passed = error_count == 0;
             let age_minutes = file_age_minutes(&path);
             return Some(CachedMetric {
                 value: serde_json::json!({ "passed": passed, "error_count": error_count }),

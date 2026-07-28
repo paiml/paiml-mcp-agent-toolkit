@@ -42,6 +42,7 @@ mod tests {
             passed,
             failed,
             warnings: 0,
+            unmeasured: 0,
             all_passed,
             claim_results: results,
         }

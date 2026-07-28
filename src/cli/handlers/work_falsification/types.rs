@@ -32,6 +32,14 @@ pub struct FalsificationReport {
     /// Number of warnings (non-blocking)
     pub warnings: usize,
 
+    /// Claims that could not be evaluated at all.
+    ///
+    /// Neither corroborated nor falsified — their data source was missing, so
+    /// they tested nothing. Counted apart from `passed` so a report can never
+    /// claim more verification than actually happened.
+    #[serde(default)]
+    pub unmeasured: usize,
+
     /// Individual claim results
     pub claim_results: Vec<ClaimResult>,
 

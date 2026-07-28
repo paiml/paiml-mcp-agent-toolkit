@@ -117,8 +117,19 @@ pub(crate) fn dirty_file_paths(status: &str) -> Vec<String> {
         .skip(1)
         .filter(|l| !l.is_empty() && !l.starts_with("??"))
         .filter(|l| !super::pmat_owned_state::is_pmat_owned_state(l))
-        .filter_map(|l| l.get(3..).map(|p| p.trim().to_string()))
+        .filter_map(|l| l.get(3..).map(display_path))
         .collect()
+}
+
+/// Render one porcelain path field as the path a reader can act on.
+///
+/// Two shapes need handling, or the message shows raw porcelain rather than a
+/// filename: renames arrive as `OLD -> NEW` (the working tree carries NEW), and
+/// paths with spaces or specials arrive quoted.
+fn display_path(field: &str) -> String {
+    let path = field.trim();
+    let path = path.rsplit(" -> ").next().unwrap_or(path).trim();
+    super::pmat_owned_state::unquote_porcelain_path(path).to_string()
 }
 
 /// True if the current branch tracks an upstream.
@@ -138,16 +149,25 @@ pub(crate) fn has_upstream(status: &str) -> bool {
 ///
 /// The header reads `## branch...upstream [ahead 3]`, and on a diverged branch
 /// `[ahead 3, behind 2]` — so the count can be followed by `]` *or* by `,`.
-/// Trimming only `]` left the comma attached and the parse silently yielded 0,
-/// under-reporting exactly the branches most likely to have unpushed work.
+///
+/// The divergence must be read out of the bracketed group, never by searching
+/// the whole header: `"ahead"` also occurs in ordinary branch names, and
+/// `## read-ahead...origin/read-ahead [ahead 1]` then matched inside the branch
+/// name and parsed to 0 — a false pass claiming everything was pushed while a
+/// commit was not. Git rejects `[` in ref names (`git check-ref-format`), so
+/// the bracket is an unambiguous anchor.
 pub(crate) fn parse_ahead_count(status: &str) -> usize {
     let Some(header) = status.lines().next() else {
         return 0;
     };
-    let Some(after) = header.find("ahead").and_then(|i| header.get(i..)) else {
+    let Some(divergence) = header
+        .rsplit_once('[')
+        .map(|(_, tail)| tail)
+        .filter(|tail| tail.starts_with("ahead"))
+    else {
         return 0;
     };
-    after
+    divergence
         .split_whitespace()
         .nth(1)
         .map(|n| n.trim_matches(|c: char| !c.is_ascii_digit()))
@@ -194,9 +214,37 @@ mod tests {
     }
 
     #[test]
-    fn ahead_count_ignores_a_branch_literally_named_ahead() {
-        // The word must be followed by a number to count.
+    fn ahead_count_is_read_from_the_bracket_not_the_branch_name() {
+        // Regression: searching the whole header matched "ahead" inside the
+        // branch name, so this real header parsed to 0 and the claim passed
+        // while a commit was unpushed. The earlier version of this test used
+        // `## ahead...origin/ahead`, where 0 happens to be the right answer —
+        // so it exercised the bug and pinned it as correct.
+        assert_eq!(
+            parse_ahead_count("## read-ahead...origin/read-ahead [ahead 1]\n"),
+            1
+        );
+        assert_eq!(
+            parse_ahead_count("## feat/lookahead...origin/feat/lookahead [ahead 4, behind 2]\n"),
+            4
+        );
+        // A branch merely named "ahead", with nothing unpushed, is still 0.
         assert_eq!(parse_ahead_count("## ahead...origin/ahead\n"), 0);
+    }
+
+    #[test]
+    fn dirty_paths_are_rendered_readably() {
+        // Renames arrive as `OLD -> NEW` and specials arrive quoted; showing
+        // either raw makes the verdict harder to act on, not easier.
+        let status = concat!(
+            "## main...origin/main\n",
+            "R  src/old.rs -> src/new.rs\n",
+            " M \"src/we ird.rs\"\n",
+        );
+        assert_eq!(
+            dirty_file_paths(status),
+            vec!["src/new.rs", "src/we ird.rs"]
+        );
     }
 
     #[test]

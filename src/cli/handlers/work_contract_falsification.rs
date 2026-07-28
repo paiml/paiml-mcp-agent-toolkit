@@ -154,6 +154,20 @@ pub struct FalsificationResult {
 
     /// Human-readable explanation
     pub explanation: String,
+
+    /// Was the claim actually evaluated against evidence?
+    ///
+    /// A claim whose data source is missing is neither corroborated nor
+    /// falsified — it was not tested. Counting those as passes let the ladder
+    /// report "22/22 claims validated" when most had verified nothing, which is
+    /// the one thing a falsification receipt must never say. Defaults to true
+    /// so receipts written before this field stay readable.
+    #[serde(default = "default_measured")]
+    pub measured: bool,
+}
+
+fn default_measured() -> bool {
+    true
 }
 
 impl FalsificationResult {
@@ -164,6 +178,21 @@ impl FalsificationResult {
             falsified: false,
             evidence: None,
             explanation: explanation.into(),
+            measured: true,
+        }
+    }
+
+    /// Create a result for a claim that could not be evaluated.
+    ///
+    /// Not falsified — there is no counter-example — but not corroborated
+    /// either. Reported separately so an absent data source can never be read
+    /// as evidence that the property holds.
+    pub fn unmeasured(explanation: impl Into<String>) -> Self {
+        Self {
+            falsified: false,
+            evidence: None,
+            explanation: explanation.into(),
+            measured: false,
         }
     }
 
@@ -174,6 +203,7 @@ impl FalsificationResult {
             falsified: true,
             evidence: Some(evidence),
             explanation: explanation.into(),
+            measured: true,
         }
     }
 }

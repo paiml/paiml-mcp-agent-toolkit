@@ -393,6 +393,19 @@ pub(super) async fn run_contract_tests(
             "✅ FALSIFICATION RESULT: PASSED ({}/{} claims validated)",
             receipt.summary.passed, receipt.summary.total
         );
+        // A claim whose data source is absent tested nothing. Folding those
+        // into "validated" is how the ladder came to report full corroboration
+        // while most of its claims had not run.
+        let unmeasured = receipt
+            .summary
+            .total
+            .saturating_sub(receipt.summary.passed + receipt.summary.overridden);
+        if unmeasured > 0 {
+            println!(
+                "   ℹ️  {} claim(s) NOT MEASURED (no data source; see per-claim output)",
+                unmeasured
+            );
+        }
         if receipt.summary.overridden > 0 {
             println!(
                 "   ⚠️  {} claim(s) overridden (ticket: {})",

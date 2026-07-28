@@ -44,8 +44,13 @@ pub async fn run_falsification_tests(
             } else {
                 "WARNING"
             }
-        } else {
+        } else if result.measured {
             "PASSED"
+        } else {
+            // Neither corroborated nor falsified: the claim's data source was
+            // absent, so nothing was tested. Printing PASSED here is how a
+            // ladder comes to report full validation having verified nothing.
+            "NOT MEASURED"
         };
 
         println!("{}", result.explanation);
@@ -67,7 +72,16 @@ pub async fn run_falsification_tests(
         });
     }
 
-    let passed = claim_results.iter().filter(|r| !r.result.falsified).count();
+    // Only corroborated claims count as passed; unmeasured ones are reported
+    // separately so the summary cannot overstate what was verified.
+    let passed = claim_results
+        .iter()
+        .filter(|r| !r.result.falsified && r.result.measured)
+        .count();
+    let unmeasured = claim_results
+        .iter()
+        .filter(|r| !r.result.falsified && !r.result.measured)
+        .count();
     let failed = claim_results
         .iter()
         .filter(|r| r.result.falsified && r.is_blocking)
@@ -84,6 +98,7 @@ pub async fn run_falsification_tests(
         passed,
         failed,
         warnings,
+        unmeasured,
         claim_results,
         all_passed,
     })

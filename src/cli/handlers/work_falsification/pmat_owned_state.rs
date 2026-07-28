@@ -11,8 +11,27 @@
 //! files under look-alike paths (`.pmat-baseline.json`, `pmat/…`) are
 //! preserved.
 
-/// Prefixes of pmat-owned state paths to ignore when counting dirty files.
-pub(crate) const PMAT_OWNED_STATE_PREFIXES: &[&str] = &[".pmat/", ".pmat-work/", ".pmat-metrics/"];
+/// Directory names pmat owns outright, wherever they appear.
+///
+/// Matched as a path *segment*, not only as a prefix: porcelain paths are
+/// relative to the repository root, so a project analysed inside a subdirectory
+/// yields `sub/.pmat/context.db`, which a prefix test misses — pmat's own cache
+/// then counted as the user's uncommitted work.
+pub(crate) const PMAT_OWNED_DIRS: &[&str] = &[
+    ".pmat",
+    ".pmat-work",
+    ".pmat-metrics",
+    // `pmat qa` writes generated checklists here; one was committed and shipped
+    // in the published crate before this was covered.
+    ".pmat-qa",
+];
+
+/// Files pmat creates in user-owned locations and cannot clean up.
+///
+/// `RoadmapService` writes `<roadmap>.yaml.lock` on every load, including
+/// reads. It cannot be unlinked on drop: the read lock is shared, so removing
+/// it would race another holder.
+pub(crate) const PMAT_OWNED_SUFFIXES: &[&str] = &[".yaml.lock"];
 
 /// True if a `git status --porcelain -b` line refers to a pmat-owned state file.
 ///
@@ -29,9 +48,19 @@ pub(crate) fn is_pmat_owned_state(porcelain_line: &str) -> bool {
         .unwrap_or(after_status)
         .trim();
     let path = unquote_porcelain_path(path);
-    PMAT_OWNED_STATE_PREFIXES
-        .iter()
-        .any(|p| path.starts_with(p))
+    is_pmat_owned_path(path)
+}
+
+/// True if a repo-relative path is pmat-owned state rather than the user's work.
+pub(crate) fn is_pmat_owned_path(path: &str) -> bool {
+    if PMAT_OWNED_SUFFIXES.iter().any(|s| path.ends_with(s)) {
+        return true;
+    }
+    // A directory match must consume a whole segment, so `.pmat-baseline.json`
+    // and `pmat/context.db` stay the user's.
+    path.split('/')
+        .any(|segment| PMAT_OWNED_DIRS.contains(&segment))
+        && path.contains('/')
 }
 
 /// Strip the quoting git applies to paths containing spaces or specials.
@@ -41,7 +70,7 @@ pub(crate) fn is_pmat_owned_state(porcelain_line: &str) -> bool {
 /// quoted pmat path miss the filter, so `.pmat/some cache.db` counted as the
 /// user's uncommitted work — a false failure of the very claim this filter
 /// exists to keep honest.
-fn unquote_porcelain_path(path: &str) -> &str {
+pub(crate) fn unquote_porcelain_path(path: &str) -> &str {
     path.strip_prefix('"')
         .and_then(|p| p.strip_suffix('"'))
         .unwrap_or(path)
@@ -80,6 +109,28 @@ mod tests {
             "R  src/old.rs -> .pmat-work/archived.rs"
         ));
         assert!(!is_pmat_owned_state("R  .pmat-work/old.rs -> src/new.rs"));
+    }
+
+    #[test]
+    fn nested_and_qa_state_is_owned() {
+        // Porcelain paths are repo-root-relative, so a project analysed in a
+        // subdirectory yields `sub/.pmat/...`; a prefix test missed those and
+        // counted pmat's own cache as the user's uncommitted work.
+        assert!(is_pmat_owned_state(" M sub/.pmat/context.db"));
+        assert!(is_pmat_owned_state(
+            " M a/b/.pmat-metrics/commit-x-meta.json"
+        ));
+        assert!(is_pmat_owned_state("?? .pmat-qa/GH-102/checklist.yaml"));
+        // The roadmap lock is created on every load and cannot be unlinked
+        // safely (the read lock is shared), so it must never count as dirt.
+        assert!(is_pmat_owned_state(" M docs/roadmaps/roadmap.yaml.lock"));
+    }
+
+    #[test]
+    fn lookalikes_in_nested_paths_stay_user_owned() {
+        assert!(!is_pmat_owned_state(" M sub/pmat/context.db"));
+        assert!(!is_pmat_owned_state(" M sub/.pmat-baseline.json"));
+        assert!(!is_pmat_owned_state(" M docs/roadmaps/roadmap.yaml"));
     }
 
     #[test]

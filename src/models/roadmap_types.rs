@@ -214,7 +214,16 @@ fn suggest_from(input: &str, candidates: &[&str]) -> String {
     candidates
         .iter()
         .map(|c| (levenshtein_distance(&normalized, c), *c))
-        .filter(|(distance, candidate)| *distance <= candidate.len().div_ceil(2))
+        // Bound by the SHORTER of the two words. Scaling the cutoff by the
+        // candidate alone let the long candidates swallow unrelated inputs
+        // (`defect` is 4 edits from `refactor`, within `refactor`'s budget of
+        // 4, so it was confidently suggested; `question` reached
+        // `documentation` at 7 edits) while the short ones rejected near
+        // misses. Comparing against the input too keeps the hint honest in
+        // both directions.
+        .filter(|(distance, candidate)| {
+            *distance <= normalized.len().min(candidate.len()).div_ceil(2)
+        })
         .min()
         .map(|(_, candidate)| format!(" (did you mean '{}'?)", candidate))
         .unwrap_or_default()

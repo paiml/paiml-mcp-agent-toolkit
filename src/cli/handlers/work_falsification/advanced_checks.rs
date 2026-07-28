@@ -4,6 +4,7 @@
 use super::cache::{read_cached_metric, read_lint_cache_fallback};
 use super::churn_checks::get_changed_files;
 pub(crate) use super::formal_checks::test_formal_proof_verification;
+use super::lint_refresh::{refresh_lint_cache, LintRefresh, LINT_STATUS_PATH};
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -185,65 +186,95 @@ pub(crate) async fn test_dead_code_detection(
     match output {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) {
-                // Get dead code items
-                let dead_items = json
-                    .get("dead_code")
-                    .or_else(|| json.get("items"))
-                    .and_then(|items| items.as_array())
-                    .map(|a| a.len())
-                    .unwrap_or(0);
-
-                // For now, we report any dead code found
-                // Future: compare with baseline to only flag NEW dead code
-                if dead_items == 0 {
-                    Ok(FalsificationResult::passed(
-                        "No dead code detected".to_string(),
-                    ))
-                } else {
-                    // Check if these are new since baseline
+            match serde_json::from_str::<serde_json::Value>(&stdout) {
+                Ok(json) => {
                     let changed_files = get_changed_files(project_path, baseline_commit)?;
-                    let dead_in_changed: usize = json
-                        .get("dead_code")
-                        .or_else(|| json.get("items"))
-                        .and_then(|items| items.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter(|item| {
-                                    item.get("file")
-                                        .and_then(|f| f.as_str())
-                                        .map(|f| changed_files.iter().any(|cf| cf.ends_with(f)))
-                                        .unwrap_or(false)
-                                })
-                                .count()
-                        })
-                        .unwrap_or(0);
-
-                    if dead_in_changed == 0 {
-                        Ok(FalsificationResult::passed(format!(
-                            "{} existing dead code items (none in changed files)",
-                            dead_items
-                        )))
-                    } else {
-                        Ok(FalsificationResult::failed(
-                            format!("{} dead code item(s) in changed files", dead_in_changed),
-                            EvidenceType::NumericComparison {
-                                actual: dead_in_changed as f64,
-                                threshold: 0.0,
-                            },
-                        ))
-                    }
+                    Ok(evaluate_dead_code_json(&json, &changed_files))
                 }
-            } else {
-                Ok(FalsificationResult::passed(
-                    "Dead code check completed (no JSON output)".to_string(),
-                ))
+                // pmat's own subcommand emitting unparseable JSON means the
+                // claim was not evaluated; that is not a pass.
+                Err(e) => Ok(FalsificationResult::failed(
+                    format!("could not parse 'pmat analyze dead-code' output: {e}"),
+                    EvidenceType::BooleanCheck(false),
+                )),
             }
         }
-        _ => Ok(FalsificationResult::passed(
-            "Dead code analyzer not available".to_string(),
+        _ => Ok(FalsificationResult::failed(
+            "'pmat analyze dead-code' could not be run, so dead code was not checked".to_string(),
+            EvidenceType::BooleanCheck(false),
         )),
     }
+}
+
+/// Total dead items reported by `pmat analyze dead-code --format json`.
+///
+/// The analyzer emits `summary`/`files`/`total_files`/`analyzed_files`; the
+/// previous reader looked for a top-level `dead_code` or `items` array, neither
+/// of which has ever existed, so the count was always 0 and the check always
+/// passed — a blocking gate that could not fail.
+fn dead_item_count(summary: &serde_json::Value) -> u64 {
+    [
+        "dead_functions",
+        "dead_classes",
+        "dead_modules",
+        "unreachable_blocks",
+    ]
+    .iter()
+    .filter_map(|k| summary.get(*k).and_then(serde_json::Value::as_u64))
+    .sum()
+}
+
+/// Judge dead code, attributing it to files changed since the baseline.
+fn evaluate_dead_code_json(
+    json: &serde_json::Value,
+    changed_files: &[String],
+) -> FalsificationResult {
+    let Some(summary) = json.get("summary") else {
+        return FalsificationResult::failed(
+            "'pmat analyze dead-code' output has no summary, so dead code was not checked"
+                .to_string(),
+            EvidenceType::BooleanCheck(false),
+        );
+    };
+
+    let total = dead_item_count(summary);
+    if total == 0 {
+        return FalsificationResult::passed("No dead code detected".to_string());
+    }
+
+    // Only dead code in files this work touched is the author's to answer for.
+    let in_changed: Vec<String> = json
+        .get("files")
+        .and_then(|f| f.as_array())
+        .map(|files| {
+            files
+                .iter()
+                .filter_map(|f| f.get("path").or_else(|| f.get("file")))
+                .filter_map(serde_json::Value::as_str)
+                .filter(|path| changed_files.iter().any(|cf| cf.ends_with(path)))
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if in_changed.is_empty() {
+        return FalsificationResult::passed(format!(
+            "{} existing dead code item(s) (none in changed files)",
+            total
+        ));
+    }
+
+    FalsificationResult::failed(
+        format!(
+            "dead code in {} changed file(s): {}",
+            in_changed.len(),
+            in_changed.join(", ")
+        ),
+        EvidenceType::NumericComparison {
+            actual: in_changed.len() as f64,
+            threshold: 0.0,
+        },
+    )
 }
 
 /// Check if a file should be skipped for per-file coverage checks.
@@ -333,8 +364,12 @@ pub(crate) async fn test_per_file_coverage(
     let coverage_json = project_path.join("target/llvm-cov/coverage.json");
 
     if !coverage_json.exists() {
-        return Ok(FalsificationResult::passed(format!(
-            "No per-file coverage data (run 'make coverage'), threshold: {:.1}%",
+        // Nothing writes target/llvm-cov/coverage.json; `make coverage`
+        // produces target/coverage/{summary.txt,lcov.info}. Until the reader is
+        // pointed at an artifact that exists, this claim measures nothing.
+        return Ok(FalsificationResult::unmeasured(format!(
+            "No per-file coverage data at {} (run 'make coverage'), threshold: {:.1}%",
+            coverage_json.display(),
             threshold
         )));
     }
@@ -351,27 +386,39 @@ pub(crate) async fn test_per_file_coverage(
 pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading lint cache... ");
 
-    // O(1): Read from cache instead of running make lint
-    // Try primary cache location, then fallback to work-item and .pmat directories
-    if let Some(cache) = read_cached_metric(project_path, "lint-status.json")
+    // O(1) hot path: a fresh passing cache is a stat and a parse.
+    //
+    // A stale, absent or failing cache is refreshed rather than reported back,
+    // because nothing else has ever written the file this reads -- the same
+    // unsatisfiable-gate defect GH #629 fixed for the supply-chain claim. Only
+    // a fresh PASS is trusted, so a recorded failure cannot lock the gate for
+    // the whole block window after the user has fixed the lint.
+    let cached = read_cached_metric(project_path, "lint-status.json")
         .or_else(|| read_lint_cache_fallback(project_path))
-    {
-        if cache.is_stale_block {
-            return Ok(FalsificationResult::failed(
-                format!(
-                    "Lint cache too old ({} min). Run 'make lint' first.",
-                    cache.age_minutes
-                ),
-                EvidenceType::BooleanCheck(false),
-            ));
-        }
+        .filter(|c| {
+            !c.is_stale_block && c.value.get("passed").and_then(|v| v.as_bool()) == Some(true)
+        });
 
+    let cache = match cached {
+        Some(cache) => Some(cache),
+        None => match refresh_lint_cache(project_path) {
+            LintRefresh::Recorded(cache) => Some(*cache),
+            LintRefresh::Failed(why) => {
+                return Ok(FalsificationResult::failed(
+                    format!("Could not refresh {LINT_STATUS_PATH}: {why}"),
+                    EvidenceType::BooleanCheck(false),
+                ));
+            }
+        },
+    };
+
+    if let Some(cache) = cache {
         // Validate 'passed' field exists -- reject malformed cache (Popperian Audit v2.1)
         let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
             Some(p) => p,
             None => {
                 return Ok(FalsificationResult::failed(
-                    "Invalid lint cache (missing 'passed' field). Re-run 'make lint'.".to_string(),
+                    format!("Invalid lint cache (missing 'passed' field). Delete {LINT_STATUS_PATH} and re-run."),
                     EvidenceType::BooleanCheck(false),
                 ));
             }
@@ -403,17 +450,9 @@ pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationR
         }
     }
 
-    // No cache - check if Makefile exists and suggest running lint
-    let makefile = project_path.join("Makefile");
-    if !makefile.exists() {
-        return Ok(FalsificationResult::passed(
-            "No Makefile found (skipping lint check)".to_string(),
-        ));
-    }
-
-    // No cache available - block until user runs make lint
+    // Unreachable: the refresh above either produced a cache or returned.
     Ok(FalsificationResult::failed(
-        "No lint cache. Run 'make lint' first (O(1) requirement)".to_string(),
+        "lint verdict unavailable".to_string(),
         EvidenceType::BooleanCheck(false),
     ))
 }

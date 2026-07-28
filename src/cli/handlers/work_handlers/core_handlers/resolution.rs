@@ -247,6 +247,7 @@ mod resolution_pure_tests {
             passed,
             failed,
             warnings,
+            unmeasured: 0,
             claim_results: claims,
             all_passed: failed == 0,
         }
