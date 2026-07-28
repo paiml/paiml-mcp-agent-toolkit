@@ -89,8 +89,9 @@ pub(crate) async fn test_differential_coverage(
     // Coverage data is assumed available from a previous run
     // In production, this integrates with llvm-cov or similar
 
-    Ok(FalsificationResult::passed(format!(
-        "{} changed files (coverage check requires llvm-cov data)",
+    Ok(FalsificationResult::unmeasured(format!(
+        "{} changed file(s), but differential coverage is not wired to any coverage \
+         artifact — this claim verifies nothing today",
         changed_files.len()
     )))
 }
@@ -108,7 +109,7 @@ pub(crate) async fn test_absolute_coverage(
     let coverage_file = metrics_dir.join("test-coverage.json");
 
     if !coverage_file.exists() {
-        return Ok(FalsificationResult::passed(format!(
+        return Ok(FalsificationResult::unmeasured(format!(
             "No coverage data (run 'make coverage' to establish baseline), threshold: {:.1}%",
             threshold
         )));
@@ -155,8 +156,8 @@ pub(crate) async fn test_tdg_regression(
     let tdg_file = project_path.join(".pmat-metrics/tdg-score.json");
 
     if !tdg_file.exists() {
-        return Ok(FalsificationResult::passed(format!(
-            "No TDG data (baseline: {:.1})",
+        return Ok(FalsificationResult::unmeasured(format!(
+            "No TDG data (baseline: {:.1}); nothing writes .pmat-metrics/tdg-score.json",
             baseline_tdg
         )));
     }
@@ -209,51 +210,73 @@ pub(crate) fn test_complexity_regression(
     match output {
         Ok(output) if output.status.success() => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) {
-                // Check for functions exceeding complexity
-                if let Some(functions) = json.get("functions").and_then(|f| f.as_array()) {
-                    let high_complexity: Vec<_> = functions
-                        .iter()
-                        .filter(|f| {
-                            f.get("complexity").and_then(|c| c.as_u64()).unwrap_or(0)
-                                > max_complexity as u64
-                        })
-                        .collect();
-
-                    if high_complexity.is_empty() {
-                        return Ok(FalsificationResult::passed(format!(
-                            "All functions <= {} complexity",
-                            max_complexity
-                        )));
-                    } else {
-                        let names: Vec<String> = high_complexity
-                            .iter()
-                            .filter_map(|f| f.get("name").and_then(|n| n.as_str()))
-                            .map(|s| s.to_string())
-                            .collect();
-                        return Ok(FalsificationResult::failed(
-                            format!(
-                                "{} function(s) exceed complexity {}: {}",
-                                high_complexity.len(),
-                                max_complexity,
-                                names.join(", ")
-                            ),
-                            EvidenceType::NumericComparison {
-                                actual: high_complexity.len() as f64,
-                                threshold: 0.0,
-                            },
-                        ));
-                    }
-                }
+            match serde_json::from_str::<serde_json::Value>(&stdout) {
+                Ok(json) => Ok(evaluate_complexity_json(&json, max_complexity)),
+                // pmat's own subcommand emitting unparseable JSON means the
+                // claim was not evaluated. Reporting that as a pass let an
+                // unmeasured claim satisfy a blocking gate.
+                Err(e) => Ok(FalsificationResult::failed(
+                    format!("could not parse 'pmat analyze complexity' output: {e}"),
+                    EvidenceType::BooleanCheck(false),
+                )),
             }
-            Ok(FalsificationResult::passed(
-                "Complexity check passed".to_string(),
-            ))
         }
-        _ => Ok(FalsificationResult::passed(
-            "Complexity analyzer not available".to_string(),
+        _ => Ok(FalsificationResult::failed(
+            "'pmat analyze complexity' could not be run, so complexity was not checked".to_string(),
+            EvidenceType::BooleanCheck(false),
         )),
     }
+}
+
+/// Judge complexity from `pmat analyze complexity --format json` output.
+///
+/// Reads `violations[]`, which is the shape the analyzer actually emits
+/// (`summary`, `violations`, `hotspots`, `files`, `top_files_limit`). The
+/// previous reader looked for a top-level `functions` array that has never
+/// existed — `functions` appears only nested under `files[]` — so the lookup
+/// always returned None and the check fell through to an unconditional pass.
+/// A blocking gate that cannot fail is worse than no gate.
+fn evaluate_complexity_json(json: &serde_json::Value, max_complexity: u32) -> FalsificationResult {
+    let over: Vec<&serde_json::Value> = json
+        .get("violations")
+        .and_then(|v| v.as_array())
+        .map(|violations| {
+            violations
+                .iter()
+                .filter(|v| {
+                    v.get("value")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0)
+                        > max_complexity as u64
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if over.is_empty() {
+        return FalsificationResult::passed(format!(
+            "All functions <= {} complexity",
+            max_complexity
+        ));
+    }
+
+    let names: Vec<String> = over
+        .iter()
+        .filter_map(|v| v.get("function").and_then(|n| n.as_str()))
+        .map(String::from)
+        .collect();
+    FalsificationResult::failed(
+        format!(
+            "{} function(s) exceed complexity {}: {}",
+            over.len(),
+            max_complexity,
+            names.join(", ")
+        ),
+        EvidenceType::NumericComparison {
+            actual: over.len() as f64,
+            threshold: 0.0,
+        },
+    )
 }
 
 /// Test file size regression: no file should exceed threshold

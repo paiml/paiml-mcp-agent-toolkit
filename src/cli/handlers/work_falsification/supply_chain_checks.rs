@@ -21,7 +21,10 @@ pub(crate) fn is_rust_project(project_path: &Path) -> bool {
     project_path.join("Cargo.toml").exists()
 }
 
-/// Test supply chain integrity: O(1) - reads from cached cargo deny status
+/// Test supply chain integrity.
+///
+/// O(1) on a fresh passing cache; a stale, absent or failing one costs one
+/// bounded `cargo deny check`, which is the only thing that writes that cache.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_supply_chain_integrity(
     project_path: &Path,
@@ -43,7 +46,13 @@ pub(crate) async fn test_supply_chain_integrity(
         .or_else(|| read_deny_cache_fallback(project_path));
 
     match cached {
-        Some(cache) if !cache.is_stale_block => Ok(evaluate_deny_cache(&cache)),
+        // Only a fresh PASS is authoritative. Caching a failing verdict for the
+        // full block window would rebuild #629 in time-boxed form: the user
+        // fixes the advisory, and the gate keeps failing from the recorded
+        // verdict without re-running cargo-deny, with no action that clears it.
+        Some(cache) if !cache.is_stale_block && cache_passed(&cache) => {
+            Ok(evaluate_deny_cache(&cache))
+        }
         // GH #629: a stale or absent cache used to be a dead end. The gate said
         // "Run 'cargo deny check' first", but cargo-deny writes to stdout and
         // nothing ever wrote the file the gate reads, so no user action could
@@ -71,6 +80,15 @@ fn refresh_then_evaluate(project_path: &Path) -> FalsificationResult {
     }
 }
 
+/// True if the cache records a passing verdict.
+///
+/// A malformed cache is deliberately not a pass: it is re-derived rather than
+/// trusted, and `evaluate_deny_cache` still reports the malformed case if the
+/// refresh cannot replace it.
+fn cache_passed(cache: &CachedMetric) -> bool {
+    cache.value.get("passed").and_then(|v| v.as_bool()) == Some(true)
+}
+
 /// Judge the supply-chain claim from a cache entry known to be fresh enough.
 fn evaluate_deny_cache(cache: &CachedMetric) -> FalsificationResult {
     // Validate 'passed' field exists -- reject malformed cache (Popperian Audit v2.1)
@@ -94,18 +112,30 @@ fn evaluate_deny_cache(cache: &CachedMetric) -> FalsificationResult {
     // cargo-deny also fails on bans, licences and sources, none of which carry a
     // vulnerability count. Reporting those as "0 vulnerabilities" phrased a
     // failure as a success, so fall back to the recorded reason.
-    let explanation = match (count, cache.value.get("summary").and_then(|v| v.as_str())) {
-        (0, Some(summary)) if !summary.is_empty() => {
-            format!("supply chain check failed: {}{}", summary, stale_note)
-        }
-        _ => format!("{} vulnerabilities{}", count, stale_note),
-    };
+    if count > 0 {
+        return FalsificationResult::failed(
+            format!("{} vulnerabilities{}", count, stale_note),
+            EvidenceType::NumericComparison {
+                actual: count as f64,
+                threshold: 0.0,
+            },
+        );
+    }
+
+    // A failing check with no vulnerability count is a bans/licence/source
+    // failure, or a text-fallback cache that records no count at all. Reporting
+    // it as "0 vulnerabilities" phrased a failure as a success, and attaching
+    // `0.0 vs 0.0` gave the receipt machine-readable evidence that supported
+    // PASS while the verdict said FAIL.
+    let reason = cache
+        .value
+        .get("summary")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("no vulnerability count in cache");
     FalsificationResult::failed(
-        explanation,
-        EvidenceType::NumericComparison {
-            actual: count as f64,
-            threshold: 0.0,
-        },
+        format!("supply chain check failed: {}{}", reason, stale_note),
+        EvidenceType::BooleanCheck(false),
     )
 }
 
@@ -175,9 +205,9 @@ pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<Falsifi
         ));
     }
 
-    // No cache available - pass with warning (examples are optional)
-    Ok(FalsificationResult::passed(
-        "No examples cache (run 'cargo build --examples' to populate)".to_string(),
+    // No cache available, and nothing in the repo writes one.
+    Ok(FalsificationResult::unmeasured(
+        "No examples cache; nothing writes .pmat-metrics/examples-status.json".to_string(),
     ))
 }
 
@@ -400,8 +430,8 @@ pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<Falsific
         }
     }
 
-    // No cache -- skip gracefully
-    Ok(FalsificationResult::passed(
+    // No cache, and nothing in the repo writes one.
+    Ok(FalsificationResult::unmeasured(
         "No benchmark cache (run benchmarks to populate .pmat-metrics/benchmark-status.json)"
             .to_string(),
     ))

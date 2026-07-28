@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.26.0] - 2026-07-28
+
+An audit of the falsification ladder and of v3.25.0's own new code. The headline
+finding: **of 22 claims `pmat work complete` runs, only 8 were doing real work.**
+The rest read cache files nothing writes, or JSON keys their producer does not
+emit, and reported `PASSED` regardless — so the ladder announced "22/22 claims
+validated" having verified almost nothing. A blocking gate that cannot fail is
+worse than no gate, because it is indistinguishable from one that works.
+
+### Fixed — gates that could never fail
+- **[7] ComplexityRegression read a key that has never existed.** It looked for a
+  top-level `functions` array; `pmat analyze complexity` emits
+  `summary`/`violations`/`hotspots`/`files`, with `functions` only nested under
+  `files[]`. The lookup always returned `None`, so control fell through to an
+  unconditional `passed("Complexity check passed")`. It now reads `violations[]`.
+- **[15] DeadCodeDetection had the same defect**, reading `dead_code`/`items`
+  against an emitter that produces `summary`/`files`. The count was always 0, so
+  it always passed. It now reads `summary.dead_*` and attributes findings to
+  files changed since the baseline.
+- Both checks also reported `passed` when pmat's own subcommand failed to run or
+  emitted unparseable JSON. An unrunnable check is not a passing one; both now
+  fail with the reason.
+- **[17] LintPass was unsatisfiable — the same defect as #629.** It reads
+  `.pmat-metrics/lint-status.json` / `lint-cache.txt`, and **nothing has ever
+  written either**: `make lint` is two `echo`s and a `cargo clippy`, and
+  `record-metric.sh` writes the differently-named `.pmat-metrics/lint.result`.
+  pmat now derives the verdict itself, running the command **CI** enforces
+  (`--all-targets`) rather than the narrower one the Makefile runs.
+- **The lint text fallback was wrong in both directions.** `!content.contains("error")`
+  scored a clean cold build as failing, because cargo prints `Compiling thiserror`;
+  and it scored a *failing* run as passing whenever the capture was empty or
+  stdout-only, since clippy writes diagnostics to stderr. It now counts real
+  diagnostics, and treats a log with neither diagnostics nor a success sentinel
+  as no evidence rather than inventing a verdict.
+
+### Fixed — the ladder no longer overstates what it verified
+- **New `measured` distinction.** A claim whose data source is absent is neither
+  corroborated nor falsified: it was not tested. Those now report `NOT MEASURED`
+  and are counted separately, so a summary can never again fold them into
+  "validated". Applied to differential coverage, absolute coverage, TDG
+  regression, per-file coverage, examples, and the regression gate — each of
+  which reads a path nothing writes. The underlying wiring is unchanged and they
+  remain non-blocking; this release makes the gap visible rather than papering
+  over it. `measured` defaults to true so existing receipts stay readable.
+
+### Fixed — defects in v3.25.0's own new code
+Found by adversarially reviewing the previous release rather than trusting it.
+- **`parse_ahead_count` returned 0 for any branch whose name contains "ahead"**,
+  because it searched the whole header instead of the bracketed divergence
+  group. `## read-ahead...origin/read-ahead [ahead 1]` matched inside the branch
+  name and parsed to 0 — a **false pass** claiming everything was pushed while a
+  commit was not. The test shipped alongside it used `## ahead...origin/ahead`,
+  where 0 is coincidentally correct, so it exercised the bug and pinned it.
+- **A failing cargo-deny verdict was cached for 24h with nothing able to clear
+  it** — #629 rebuilt in time-boxed form. Only a fresh *passing* verdict is now
+  authoritative; a failure is always re-derived.
+- **No timeout on the cargo-deny subprocess.** `cargo deny check` git-fetches the
+  advisory database, so a stalled connection blocked `pmat work complete`
+  indefinitely behind a half-printed line. Now bounded, with both pipes drained
+  on their own threads so the timeout cannot itself deadlock.
+- The `deny-cache.txt` fallback still reported a failing supply chain as
+  "0 vulnerabilities", and attached `0.0 vs 0.0` evidence that supported PASS
+  while the verdict said FAIL.
+- **`ItemType`'s typo hint scaled its cutoff by the candidate alone**, so long
+  candidates swallowed unrelated inputs — `defect` was confidently pointed at
+  `refactor`, and `question` at `documentation` across 7 edits. The cutoff is now
+  symmetric, which also fixes the reverse case where short candidates rejected
+  near misses.
+- Dirty-file paths were printed as raw porcelain: renames showed `OLD -> NEW`
+  and quoted paths kept their quotes.
+
+### Fixed — `pmat verify` now matches CI
+- **The clippy stage diverged from `ci / lint` in both directions**: it ran
+  `--lib --bins` (never linting test, bench or example targets) and omitted
+  `-A unused-variables` (stricter than CI). The first half is what let v3.25.0
+  ship seven `clippy::empty_line_after_outer_attr` violations that CI then
+  rejected. It now runs CI's exact invocation. Cost measured at ~63s warm,
+  against a test stage of ~16 minutes.
+
+### Fixed — pmat state escaping into user repositories
+- **`docs/roadmaps/roadmap.yaml.lock` was tracked in git and shipped in the
+  published crate tarball.** `RoadmapService` creates it on every load —
+  including reads — and cannot safely unlink it, because the read lock is shared
+  and removing it would race another holder. It is now ignored and excluded, and
+  recognised as pmat-owned so it cannot inflate the github-sync claim.
+- A generated `.pmat-qa/GH-102/checklist.yaml` was likewise tracked despite
+  `.pmat-qa/` being gitignored, and shipped in the tarball. `.pmat-qa/` and
+  `.pmat-metrics/` are now in the manifest `exclude`.
+- **The pmat-owned filter only matched path *prefixes***, so a project analysed
+  in a subdirectory produced `sub/.pmat/context.db` — pmat's own cache counted as
+  the user's uncommitted work. It now matches whole path segments, and covers
+  `.pmat-qa/` and `*.yaml.lock`.
+
+### Known and unfixed
+The six claims now reporting `NOT MEASURED` need real data sources wired up
+(differential coverage against lcov, per-file coverage against the artifact
+`make coverage` actually writes, and writers for the TDG/examples/benchmark
+caches). That is deliberately not bundled into this release: the fix is to point
+each reader at data that exists, and doing it blind would trade a silent false
+pass for an unsatisfiable gate — the exact defect #629 was about.
+
 ## [3.25.0] - 2026-07-28
 
 ### Fixed — `cargo install pmat` on Windows (#625)

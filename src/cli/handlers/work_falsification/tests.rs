@@ -27,6 +27,7 @@ mod tests {
             passed: 2,
             failed: 1,
             warnings: 0,
+            unmeasured: 0,
             claim_results: vec![
                 ClaimResult {
                     index: 1,
@@ -54,6 +55,38 @@ mod tests {
 
         assert!(report.has_blocking_failures());
         assert_eq!(report.blocking_failures().len(), 1);
+    }
+
+    #[test]
+    fn unmeasured_is_neither_a_pass_nor_a_falsification() {
+        // The audit found 14 of 22 claims reporting PASSED while their data
+        // source was absent, so the ladder announced full validation having
+        // verified almost nothing. An unmeasured claim must be countable
+        // separately from a corroborated one.
+        let unmeasured = FalsificationResult::unmeasured("no coverage data");
+        assert!(
+            !unmeasured.falsified,
+            "absent data is not a counter-example"
+        );
+        assert!(!unmeasured.measured, "absent data is not corroboration");
+
+        let passed = FalsificationResult::passed("95.0% >= 95.0%");
+        assert!(!passed.falsified);
+        assert!(passed.measured);
+
+        let failed = FalsificationResult::failed("1 vuln", EvidenceType::BooleanCheck(false));
+        assert!(failed.falsified);
+        assert!(failed.measured, "a falsification is itself a measurement");
+    }
+
+    #[test]
+    fn receipts_written_before_the_field_still_deserialize_as_measured() {
+        // `measured` defaults to true so existing receipts stay readable and
+        // are not retroactively downgraded to "not measured".
+        let old: FalsificationResult =
+            serde_json::from_str(r#"{"falsified":false,"evidence":null,"explanation":"ok"}"#)
+                .expect("pre-field receipts must still parse");
+        assert!(old.measured);
     }
 
     // These three exercise the parsers `test_github_sync` actually calls. They
@@ -363,6 +396,7 @@ mod tests {
             passed: 1,
             failed: 1,
             warnings: 1,
+            unmeasured: 0,
             claim_results: vec![
                 ClaimResult {
                     index: 1,
@@ -400,6 +434,7 @@ mod tests {
             passed: 2,
             failed: 0,
             warnings: 0,
+            unmeasured: 0,
             claim_results: vec![
                 ClaimResult {
                     index: 1,
@@ -538,6 +573,7 @@ mod tests {
             passed: 0,
             failed: 0,
             warnings: 0,
+            unmeasured: 0,
             claim_results: vec![],
             all_passed: true,
         };
@@ -553,6 +589,7 @@ mod tests {
             passed: 2,
             failed: 1,
             warnings: 1,
+            unmeasured: 0,
             claim_results: vec![
                 ClaimResult {
                     index: 1,

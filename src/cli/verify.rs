@@ -230,34 +230,44 @@ fn stage_tests() -> (bool, Vec<Violation>, Option<String>) {
     (ok, Vec::new(), tail(&out, 30))
 }
 
+/// Selector and lint flags for the clippy stage, matching `ci / lint` exactly.
+///
+/// The whole promise of `pmat verify` is "green here ⇒ green in CI", so this
+/// must track the reusable sovereign-ci workflow, which runs
+/// `cargo clippy --all-targets -- -D warnings -A unused-variables`.
+///
+/// It previously ran `--lib --bins` and omitted `-A unused-variables`, so it
+/// diverged in *both* directions: it never linted test/bench/example targets
+/// (v3.25.0 shipped seven `clippy::empty_line_after_outer_attr` violations in
+/// test files that CI then rejected), and it was stricter than CI on unused
+/// variables, which can block work CI would accept.
+///
+/// Deliberately NOT `--all-features`: that pulls optional batuta-stack feature
+/// combos CI never builds and that fail to compile. (PMAT_FAST_BUILD is also
+/// deliberately unset — it stubs build.rs codegen and conflicts with a normal
+/// build's target state.)
+const CLIPPY_TARGETS: &str = "--all-targets";
+const CLIPPY_LINTS: &[&str] = &["-D", "warnings", "-A", "unused-variables"];
+
 fn stage_clippy(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
-    // CI-faithful: `cargo clippy --lib --bins -- -D warnings` (the Makefile `lint`
-    // target / CI). NOT `--all-features` — that pulls optional batuta-stack
-    // feature combos (e.g. aprender-compute) that CI never builds and that fail
-    // to compile. (PMAT_FAST_BUILD is deliberately not set — it stubs build.rs
-    // codegen and conflicts with a normal build's target state.)
     if args.fix {
-        let _ = run(cargo().args([
+        let mut fix = cargo();
+        fix.args([
             "clippy",
-            "--lib",
-            "--bins",
+            CLIPPY_TARGETS,
             "--fix",
             "--allow-dirty",
             "--allow-staged",
             "--",
-            "-D",
-            "warnings",
-        ]));
+        ])
+        .args(CLIPPY_LINTS);
+        let _ = run(&mut fix);
     }
-    let (ok, out) = run(cargo().args([
-        "clippy",
-        "--lib",
-        "--bins",
-        "--message-format=json",
-        "--",
-        "-D",
-        "warnings",
-    ]));
+    let mut check = cargo();
+    check
+        .args(["clippy", CLIPPY_TARGETS, "--message-format=json", "--"])
+        .args(CLIPPY_LINTS);
+    let (ok, out) = run(&mut check);
     let violations = parse_clippy_violations(&out);
     let detail = if violations.is_empty() {
         tail(&out, 10)

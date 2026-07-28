@@ -15,8 +15,54 @@
 //! single `stat` + parse, and the subprocess runs at most once per block window.
 
 use super::types::CachedMetric;
+use std::io::Read;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
+use std::time::{Duration, Instant};
+
+/// Run a command, killing it if it outruns `limit`.
+///
+/// Returns `Ok(None)` on timeout. stdout and stderr are drained on their own
+/// threads: polling `try_wait` while the child writes into a full pipe buffer
+/// would deadlock, which is the classic way a hand-rolled timeout makes hangs
+/// *more* likely rather than less.
+pub(crate) fn run_with_timeout(
+    cmd: &mut Command,
+    limit: Duration,
+) -> std::io::Result<Option<Output>> {
+    let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+
+    let mut stdout = child.stdout.take();
+    let mut stderr = child.stderr.take();
+    let drain = |pipe: Option<&mut dyn Read>| -> Vec<u8> {
+        let mut buf = Vec::new();
+        if let Some(p) = pipe {
+            let _ = p.read_to_end(&mut buf);
+        }
+        buf
+    };
+    let out_handle = std::thread::spawn(move || drain(stdout.as_mut().map(|p| p as &mut dyn Read)));
+    let err_handle = std::thread::spawn(move || drain(stderr.as_mut().map(|p| p as &mut dyn Read)));
+
+    let deadline = Instant::now() + limit;
+    let status = loop {
+        match child.try_wait()? {
+            Some(status) => break status,
+            None if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Ok(None);
+            }
+            None => std::thread::sleep(Duration::from_millis(50)),
+        }
+    };
+
+    Ok(Some(Output {
+        status,
+        stdout: out_handle.join().unwrap_or_default(),
+        stderr: err_handle.join().unwrap_or_default(),
+    }))
+}
 
 /// Result of trying to bring the deny cache up to date.
 pub(crate) enum DenyRefresh {
@@ -76,14 +122,30 @@ fn failure_summary(stdout: &str, stderr: &str) -> String {
     first_error.unwrap_or_else(|| "cargo deny check failed".to_string())
 }
 
+/// How long cargo-deny may run before the gate gives up on it.
+///
+/// `cargo deny check` git-fetches the RustSec advisory database, so a stalled
+/// connection would otherwise block `pmat work complete` forever behind a
+/// half-printed "Reading deny cache... " line, with no output and no way to
+/// tell a hang from slow work.
+const DENY_TIMEOUT: Duration = Duration::from_secs(120);
+
 /// Run `cargo deny check` in `project_path` and persist its verdict.
 pub(crate) fn refresh_deny_cache(project_path: &Path) -> DenyRefresh {
-    let output = match Command::new("cargo")
-        .args(["deny", "check"])
-        .current_dir(project_path)
-        .output()
-    {
-        Ok(output) => output,
+    let output = match run_with_timeout(
+        Command::new("cargo")
+            .args(["deny", "check"])
+            .current_dir(project_path),
+        DENY_TIMEOUT,
+    ) {
+        Ok(Some(output)) => output,
+        Ok(None) => {
+            return DenyRefresh::Failed(format!(
+                "'cargo deny check' did not finish within {}s (advisory-DB fetch may be stalled; \
+                 check connectivity or run it manually)",
+                DENY_TIMEOUT.as_secs()
+            ))
+        }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return DenyRefresh::ToolMissing,
         Err(e) => return DenyRefresh::Failed(format!("could not run 'cargo deny check': {e}")),
     };
@@ -121,7 +183,17 @@ pub(crate) fn refresh_deny_cache(project_path: &Path) -> DenyRefresh {
 /// Persist the verdict to `.pmat-metrics/deny-status.json`, creating the
 /// directory if the consumer repo has never recorded a metric before.
 fn write_status(project_path: &Path, value: &serde_json::Value) -> std::io::Result<()> {
-    let path = project_path.join(DENY_STATUS_PATH);
+    write_json_status(project_path, DENY_STATUS_PATH, value)
+}
+
+/// Write a metric verdict under the project, creating `.pmat-metrics/` if the
+/// consumer repo has never recorded one before.
+pub(crate) fn write_json_status(
+    project_path: &Path,
+    relative: &str,
+    value: &serde_json::Value,
+) -> std::io::Result<()> {
+    let path = project_path.join(relative);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }

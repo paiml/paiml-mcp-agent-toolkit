@@ -279,3 +279,10 @@ golden_traces/*
 .pmat/context.idx/
 .pmat/workspace.idx/
 .pmat/deps-cache.json
+
+# GH #631 audit: pmat-owned artifacts that must never be committed.
+# RoadmapService creates the lock on every load (including reads) and cannot
+# safely unlink it — the read lock is shared, so unlinking would race another
+# holder. Ignoring it is the correct fix; it was tracked and shipped in the
+# published crate tarball.
+*.yaml.lock
