@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.1] - 2026-07-29
+
+### Fixed
+- **The `pmat serve` hint still named a route that does not work.** 3.28.0
+  replaced the dead `PMAT_PMCP_MCP=1` with `pmat agent mcp-server` — and
+  dogfooding the published 3.28.0 binary showed *that* command exits 1 with no
+  output whatsoever. It starts the separate agent-monitoring server, not the
+  one serving the 20 analysis tools. The hint now names only
+  `MCP_VERSION=1 pmat`, which was verified end-to-end (initialize + tools/list
+  → 20 tools) before shipping, and the test asserts the other two forms are
+  absent. A hint is only worth printing if it has been run.
+
+### Known and unfixed
+- **`pmat agent mcp-server` exits 1 silently.** It is advertised in `--help`
+  and recommended by the no-subcommand error message in `src/bin/pmat.rs`.
+  Found while dogfooding 3.28.0; not fixed here because it is a distinct
+  server with its own startup path.
+
 ## [3.28.0] - 2026-07-29
 
 Found by dogfooding v3.27.0 installed from crates.io across all three surfaces:
