@@ -14,13 +14,17 @@
 //!
 //! # Usage
 //!
-//! The pmcp-based server is activated using the `PMAT_PMCP_MCP` environment variable.
-//! With pmcp 1.0, this is now always available as a core feature.
+//! The server is activated by `pmat agent mcp-server`, or by setting the
+//! `MCP_VERSION` environment variable (which is what MCP hosts such as Claude
+//! Desktop set). `PMAT_PMCP_MCP` is documented in older notes but no code has
+//! ever read it.
 //!
 //! ## Running the pmcp server
 //!
 //! ```bash
-//! PMAT_PMCP_MCP=1 pmat
+//! pmat agent mcp-server
+//! # or, as an MCP host would:
+//! MCP_VERSION=1 pmat
 //! ```
 //!
 //! # Example

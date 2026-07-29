@@ -68,18 +68,48 @@ impl DeadCodeFacade {
         &self,
         request: DeadCodeAnalysisRequest,
     ) -> Result<DeadCodeAnalysisResult> {
-        // Mock implementation for interface establishment
+        // Wired to the same analyzer `pmat analyze dead-code` uses.
+        //
+        // This returned a fixed `unused_function` at line 42 with a 5.0% dead
+        // rate for every project, so `analyze comprehensive` — which reaches
+        // this facade through the orchestrator — reported a dead function that
+        // did not exist, in every repository it was ever run against.
+        use crate::services::cargo_dead_code_analyzer::{analyze_dead_code, DeadCodeKind};
+
+        let report = analyze_dead_code(&request.path).await?;
+
+        let dead_items: Vec<DeadCodeItem> = report
+            .files_with_dead_code
+            .iter()
+            .flat_map(|file| {
+                file.dead_items.iter().map(move |item| DeadCodeItem {
+                    file_path: file.file_path.display().to_string(),
+                    item_name: item.name.clone(),
+                    item_type: match item.kind {
+                        DeadCodeKind::Function => DeadCodeType::Function,
+                        DeadCodeKind::Struct | DeadCodeKind::Enum | DeadCodeKind::Trait => {
+                            DeadCodeType::Class
+                        }
+                        DeadCodeKind::Constant | DeadCodeKind::Static | DeadCodeKind::Field => {
+                            DeadCodeType::Variable
+                        }
+                        _ => DeadCodeType::UnreachableCode,
+                    },
+                    line_number: item.line,
+                    reason: item.message.clone(),
+                })
+            })
+            .collect();
+
         Ok(DeadCodeAnalysisResult {
-            total_files: 1,
-            dead_items: vec![DeadCodeItem {
-                file_path: request.path.display().to_string(),
-                item_name: "unused_function".to_string(),
-                item_type: DeadCodeType::Function,
-                line_number: 42,
-                reason: "Function is never called".to_string(),
-            }],
-            dead_percentage: 5.0,
-            summary: format!("Found 1 dead code item in {}", request.path.display()),
+            total_files: report.total_files,
+            summary: format!(
+                "Found {} dead code item(s) in {}",
+                dead_items.len(),
+                request.path.display()
+            ),
+            dead_items,
+            dead_percentage: report.dead_code_percentage,
         })
     }
 

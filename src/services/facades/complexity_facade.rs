@@ -68,25 +68,81 @@ impl ComplexityFacade {
         &self,
         request: ComplexityAnalysisRequest,
     ) -> Result<ComplexityAnalysisResult> {
-        // This is a facade implementation that would orchestrate:
-        // 1. Language detection if not specified
-        // 2. File discovery and filtering
-        // 3. Complexity analysis using appropriate service
-        // 4. Result aggregation and formatting
+        // Wired to the same analyzer `pmat analyze complexity` uses.
+        //
+        // This returned a fixed `example_function` at line 42 with complexity
+        // 15 for every project — two unrelated crates produced byte-identical
+        // "analysis". `analyze comprehensive` reaches this facade through the
+        // orchestrator, so that fabricated violation was what users and CI
+        // gates actually saw.
+        use crate::cli::analysis_utilities::analyze_project_files;
+        use crate::services::complexity::{aggregate_results_with_thresholds, Violation};
 
-        // For now, return a mock result to establish the interface
+        const MAX_CYCLOMATIC: u16 = 20;
+        const MAX_COGNITIVE: u16 = 15;
+
+        let file_metrics = analyze_project_files(
+            &request.path,
+            request.language.as_deref(),
+            &[],
+            MAX_CYCLOMATIC,
+            MAX_COGNITIVE,
+        )
+        .await?;
+
+        let total_files = file_metrics.len();
+        let report = aggregate_results_with_thresholds(
+            file_metrics,
+            Some(MAX_CYCLOMATIC),
+            Some(MAX_COGNITIVE),
+        );
+
+        let violations: Vec<ComplexityViolation> = report
+            .violations
+            .iter()
+            .map(|v| {
+                let (file, function, value, line, kind) = match v {
+                    Violation::Error {
+                        file,
+                        function,
+                        value,
+                        line,
+                        rule,
+                        ..
+                    }
+                    | Violation::Warning {
+                        file,
+                        function,
+                        value,
+                        line,
+                        rule,
+                        ..
+                    } => (file, function, *value, *line, rule),
+                };
+                ComplexityViolation {
+                    file_path: file.clone(),
+                    function_name: function.clone().unwrap_or_else(|| "<file>".to_string()),
+                    line_number: line as usize,
+                    complexity: value as u32,
+                    complexity_type: kind.clone(),
+                }
+            })
+            .collect();
+
+        let max_complexity = violations.iter().map(|v| v.complexity).max().unwrap_or(0);
+        let average_complexity = f64::from(report.summary.median_cyclomatic);
+
         Ok(ComplexityAnalysisResult {
-            total_files: 1,
-            violations: vec![ComplexityViolation {
-                file_path: request.path.display().to_string(),
-                function_name: "example_function".to_string(),
-                line_number: 42,
-                complexity: 15,
-                complexity_type: "cyclomatic".to_string(),
-            }],
-            average_complexity: 8.5,
-            max_complexity: 15,
-            summary: format!("Analyzed {} with {} violations", request.path.display(), 1),
+            total_files,
+            summary: format!(
+                "Analyzed {} file(s) in {} with {} violation(s)",
+                total_files,
+                request.path.display(),
+                violations.len()
+            ),
+            violations,
+            average_complexity,
+            max_complexity,
         })
     }
 

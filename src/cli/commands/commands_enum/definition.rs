@@ -806,7 +806,10 @@ pub enum Commands {
     },
 
     // ── Infrastructure commands ────────────────────────────────────
-    /// Start HTTP API server with WebSocket support
+    /// [NOT IMPLEMENTED] HTTP/WebSocket server — exits with an error.
+    ///
+    /// Advertised as working for long enough that users discovered otherwise by
+    /// running it. Use `pmat agent mcp-server` for MCP over stdio today.
     #[command(visible_aliases = &["server", "api"])]
     Serve {
         /// Port to bind the server to
