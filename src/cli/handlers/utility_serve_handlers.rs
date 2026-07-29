@@ -15,9 +15,11 @@
 //! transports are wired up. Honest failure is strictly better than a lying
 //! success.
 //!
-//! If you need an MCP server today, use stdio transport via
-//! `pmat agent mcp-server` (or `MCP_VERSION=1 pmat`) — see the
-//! `SimpleUnifiedServer` in `mcp_pmcp`.
+//! If you need an MCP server today, use stdio transport via `MCP_VERSION=1
+//! pmat` — see the `SimpleUnifiedServer` in `mcp_pmcp`. Do not add
+//! `pmat agent mcp-server` back here: it is compiled out unless
+//! `--features agent-daemon` is set, and it starts the agent-monitoring
+//! server, not the 20 analysis tools.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use anyhow::Result;
@@ -42,13 +44,17 @@ pub fn write_serve_unimplemented_message<W: std::io::Write>(
         out,
         "  requested: transport={transport} host={host} port={port}"
     )?;
-    // `PMAT_PMCP_MCP` has no reader anywhere in the binary — MCP mode is gated
-    // on `MCP_VERSION` (src/bin/pmat.rs). Naming the dead variable sent anyone
-    // following this hint straight into "no subcommand given and stdin is not
-    // a terminal", which is the opposite of a workaround.
+    // Names only the route verified to serve the 20 analysis tools.
+    //
+    // Two earlier versions of this hint did not work. It first named
+    // `PMAT_PMCP_MCP=1`, an environment variable nothing in the binary reads
+    // (MCP mode is gated on `MCP_VERSION`, src/bin/pmat.rs). The fix for that
+    // led with `pmat agent mcp-server`, which dogfooding then showed exits 1
+    // with no output at all — it starts the separate agent-monitoring server,
+    // not this one. A hint is only worth printing if it has been run.
     writeln!(
         out,
-        "hint: use stdio MCP today — `pmat agent mcp-server`, or `MCP_VERSION=1 pmat`"
+        "hint: use stdio MCP today — `MCP_VERSION=1 pmat` (serves the analysis tools over stdio)"
     )?;
     writeln!(
         out,
@@ -118,12 +124,17 @@ mod tests {
         // `PMAT_PMCP_MCP=1`, an environment variable nothing in the binary
         // reads — so the test pinned advice that could not work.
         assert!(
-            s.contains("pmat agent mcp-server") || s.contains("MCP_VERSION=1"),
+            s.contains("MCP_VERSION=1"),
             "must point users at the working stdio transport, got: {s}"
         );
         assert!(
             !s.contains("PMAT_PMCP_MCP"),
             "must not name an environment variable no code reads, got: {s}"
+        );
+        assert!(
+            !s.contains("agent mcp-server"),
+            "must not name `pmat agent mcp-server`, which exits 1 without \
+             serving these tools, got: {s}"
         );
     }
 

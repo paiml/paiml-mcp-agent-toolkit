@@ -52,6 +52,9 @@ pub async fn handle_analyze_duplicates(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
+    // A nonexistent path previously produced an empty report and exit 0.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     {
         use crate::cli::colors as c;
         eprintln!("{}", c::dim("Analyzing code similarity..."));

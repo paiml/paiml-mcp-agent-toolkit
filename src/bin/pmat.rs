@@ -21,7 +21,7 @@ mod full {
     use std::io::IsTerminal;
     use std::process;
     use std::sync::Arc;
-    use tracing::{debug, error, info, trace};
+    use tracing::{debug, info, trace};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
     enum ExecutionMode {
@@ -159,7 +159,11 @@ mod full {
         let exit_code = match run_main().await {
             Ok(()) => ExitCode::Success,
             Err(e) => {
-                error!("Error: {:#}", e);
+                // NOT `tracing::error!` — MCP-server mode installs
+                // `EnvFilter::new("off")`, which silently discarded this, so
+                // `pmat agent mcp-server` exited 1 printing nothing at all.
+                // See `cli::write_fatal_error` for the full history.
+                cli::write_fatal_error(std::io::stderr(), &e);
                 categorize_error(&e)
             }
         };
@@ -245,9 +249,14 @@ mod full {
                 // "no command supplied" on a terminal.
                 let mut cmd = <pmat::cli::Cli as clap::CommandFactory>::command();
                 let _ = cmd.print_help();
+                // Names only the route that has been run end-to-end. This used
+                // to also offer `pmat agent mcp-server`, which is compiled out
+                // unless `--features agent-daemon` is set (it is not in
+                // `default`), so on every published binary it exits 1 — and,
+                // until `write_fatal_error` existed, did so in total silence.
                 eprintln!(
                     "\nerror: no subcommand given and stdin is not a terminal. \
-                 Set MCP_VERSION=1 (or run `pmat agent mcp-server`) to start the MCP server."
+                 Set MCP_VERSION=1 to start the MCP server (`MCP_VERSION=1 pmat`)."
                 );
                 process::exit(ExitCode::MisuseError as i32);
             }
