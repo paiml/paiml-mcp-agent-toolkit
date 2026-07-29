@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.0] - 2026-07-29
+
+Found by dogfooding v3.27.0 installed from crates.io across all three surfaces:
+551+ CLI invocations, all 20 MCP tools, and the HTTP server. 48 defects were
+independently reproduced. This release fixes the two most severe classes; the
+remainder are listed under *Known and unfixed* rather than quietly carried.
+
+### Fixed — `analyze comprehensive` fabricated its results
+
+The worst defect a quality tool can have. `ComplexityFacade::analyze_project`
+and `DeadCodeFacade::analyze_project` were explicit mocks — "return a mock
+result to establish the interface" — that ignored the project path entirely and
+returned fixed data:
+
+- a complexity violation for `example_function` at line 42, complexity 15
+- a dead `unused_function` at `src/utils.rs:42`, 5.0% dead
+
+`analyze comprehensive` reaches both through the orchestrator, so **every
+project ever analysed got the same fabricated findings**. Two unrelated crates
+produced byte-identical "analysis". Nothing distinguished this from a real
+finding to a human reading a report or to a CI gate consuming the JSON.
+
+Both are now wired to the analyzers the standalone subcommands use —
+`analyze_project_files` + `aggregate_results_with_thresholds` for complexity,
+`cargo_dead_code_analyzer::analyze_dead_code` for dead code — so
+`analyze comprehensive` and `analyze complexity` can no longer disagree.
+
+Four more fabricators in `comprehensive_runners.rs` (a TDG of 2.1, a 0.75
+defect probability for `src/parser.rs`, duplicate blocks in
+`src/handler1.rs`/`src/handler2.rs`) now fail honestly, naming the standalone
+subcommand that does the analysis for real — the same D75 policy
+`pmat serve` already follows.
+
+### Fixed — `pmat serve`'s hint pointed at an environment variable nothing reads
+The unimplemented-HTTP diagnostic told users to run `PMAT_PMCP_MCP=1 pmat`.
+**No code in the binary has ever read `PMAT_PMCP_MCP`** — MCP mode is gated on
+`MCP_VERSION` — so following the hint lands in `error: no subcommand given and
+stdin is not a terminal`. A test asserted on the dead variable, pinning the
+broken advice, exactly as the `read-ahead` test pinned the ahead-count bug two
+releases ago. The hint now names `pmat agent mcp-server` (verified working),
+the test asserts the dead name is *absent*, and `--help` no longer advertises
+`serve` as a working HTTP server.
+
+### Verified clean
+- **MCP: all 20 tools pass** over stdio JSON-RPC. Their schemas are accurate —
+  correct enums, correct types, documented `function_id` format.
+- Per the sweep, `analyze satd`, `dead-code`, `defects`, `defect-prediction`,
+  `name-similarity`, `makefile`, `deep-context`, `entropy`, `cluster` and
+  `topics` all produce correct results in every offered output format.
+
+### Known and unfixed
+Confirmed by reproduction, not yet fixed — recorded so they are not lost:
+- `analyze proof-annotations` and `analyze provability` still return synthetic
+  data (annotations for `borrow_checker_*.rs` files that do not exist;
+  `main`@1 / `test`@10 regardless of the real functions).
+- `analyze duplicates`: the default `--detection-type all` reports 0 blocks
+  where `exact` reports 7, and duplication is reported as 277.8%.
+- `analyze complexity` under-counts `match` arms, and project mode invents line
+  ranges (`main` at 6–56 in an 11-line file) that `--file` mode gets right.
+- ~40 medium/low issues: `--format markdown` byte-identical to `text` in
+  several commands, `tdg --format sarif` emitting a bare float, `config --set`
+  not persisting, and further dead-advice strings.
+
 ## [3.27.0] - 2026-07-28
 
 v3.26.0 made the ladder stop *lying* about the six claims that verified nothing —

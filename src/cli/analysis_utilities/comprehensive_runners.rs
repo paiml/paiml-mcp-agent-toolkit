@@ -1,3 +1,18 @@
+
+// GH dogfood sweep: four of these runners returned hardcoded fixtures —
+// `unused_function` at `src/utils.rs:42`, a TDG of 2.1, a 0.75 defect
+// probability for `src/parser.rs` — regardless of the project being analysed.
+// Two different crates produced byte-identical "analysis". A quality tool
+// fabricating quality data is the worst failure it can have: it is
+// indistinguishable from a real finding to anyone reading a report or a CI
+// gate, and it was doing so for every project.
+//
+// Per this codebase's own D75 policy (honest failure beats lying success, see
+// `utility_serve_handlers`), they no longer invent data. Each returns an error
+// naming the standalone subcommand that does perform the analysis for real
+// (`pmat analyze dead-code`, `analyze tdg`, `analyze defect-prediction`,
+// `analyze duplicates`), all of which the dogfood sweep confirmed correct.
+
 // Comprehensive analysis helper functions - extracted for file health (CB-040)
 async fn run_complexity_analysis(
     project_path: &Path,
@@ -185,20 +200,11 @@ pub fn determine_satd_severity(satd_type: &str) -> &'static str {
 }
 
 async fn create_tdg_report(_project_path: &Path) -> Result<TdgReport> {
-    // Simplified TDG analysis
-    // Mock data for now
-    let files = vec![TdgFile {
-        file: "src/main.rs".to_string(),
-        tdg_score: 3.5,
-        complexity: 25,
-        churn: 10,
-    }];
-
-    Ok(TdgReport {
-        average_tdg: 2.1,
-        critical_files: files,
-        hotspot_count: 1,
-    })
+    anyhow::bail!(
+        "TDG is not wired into `analyze comprehensive` (it previously reported a \
+         fabricated score of 2.1 for every project). Run `pmat analyze tdg` \
+         instead, or `pmat tdg <path>`."
+    )
 }
 
 async fn run_dead_code_analysis(
@@ -206,19 +212,11 @@ async fn run_dead_code_analysis(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<DeadCodeReport> {
-    // Simplified dead code detection
-    let items = vec![DeadCodeItem {
-        name: "unused_function".to_string(),
-        file: "src/utils.rs".to_string(),
-        line: 42,
-        item_type: "function".to_string(),
-    }];
-
-    Ok(DeadCodeReport {
-        total_items: items.len(),
-        dead_code_percentage: 2.5,
-        items,
-    })
+    anyhow::bail!(
+        "dead-code is not wired into `analyze comprehensive` (it previously \
+         reported a fabricated `unused_function` at src/utils.rs:42 for every \
+         project). Run `pmat analyze dead-code` instead."
+    )
 }
 
 async fn run_defect_prediction(
@@ -226,18 +224,11 @@ async fn run_defect_prediction(
     _confidence_threshold: f32,
     _min_lines: usize,
 ) -> Result<DefectReport> {
-    // Simplified defect prediction
-    let predictions = vec![DefectPrediction {
-        file: "src/parser.rs".to_string(),
-        probability: 0.75,
-        factors: vec!["high complexity".to_string(), "recent churn".to_string()],
-    }];
-
-    Ok(DefectReport {
-        high_risk_files: predictions,
-        total_analyzed: 50,
-        high_risk_count: 1,
-    })
+    anyhow::bail!(
+        "defect prediction is not wired into `analyze comprehensive` (it \
+         previously reported a fabricated 0.75 probability for src/parser.rs \
+         for every project). Run `pmat analyze defect-prediction` instead."
+    )
 }
 
 async fn run_duplicate_detection(
@@ -245,17 +236,10 @@ async fn run_duplicate_detection(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<DuplicateReport> {
-    // Simplified duplicate detection
-    let blocks = vec![DuplicateBlock {
-        files: vec!["src/handler1.rs".to_string(), "src/handler2.rs".to_string()],
-        lines: 20,
-        tokens: 150,
-    }];
-
-    Ok(DuplicateReport {
-        duplicate_blocks: blocks.len(),
-        duplicate_lines: 40,
-        duplicate_percentage: 3.2,
-        blocks,
-    })
+    anyhow::bail!(
+        "duplicate detection is not wired into `analyze comprehensive` (it \
+         previously reported fabricated blocks in src/handler1.rs and \
+         src/handler2.rs for every project). Run `pmat analyze duplicates` \
+         instead."
+    )
 }

@@ -16,7 +16,8 @@
 //! success.
 //!
 //! If you need an MCP server today, use stdio transport via
-//! `PMAT_PMCP_MCP=1 pmat` — see the `SimpleUnifiedServer` in `mcp_pmcp`.
+//! `pmat agent mcp-server` (or `MCP_VERSION=1 pmat`) — see the
+//! `SimpleUnifiedServer` in `mcp_pmcp`.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use anyhow::Result;
@@ -41,7 +42,14 @@ pub fn write_serve_unimplemented_message<W: std::io::Write>(
         out,
         "  requested: transport={transport} host={host} port={port}"
     )?;
-    writeln!(out, "hint: use stdio MCP today — `PMAT_PMCP_MCP=1 pmat`")?;
+    // `PMAT_PMCP_MCP` has no reader anywhere in the binary — MCP mode is gated
+    // on `MCP_VERSION` (src/bin/pmat.rs). Naming the dead variable sent anyone
+    // following this hint straight into "no subcommand given and stdin is not
+    // a terminal", which is the opposite of a workaround.
+    writeln!(
+        out,
+        "hint: use stdio MCP today — `pmat agent mcp-server`, or `MCP_VERSION=1 pmat`"
+    )?;
     writeln!(
         out,
         "hint: follow KAIZEN-0191 for the HTTP/WebSocket/SSE wiring"
@@ -106,9 +114,16 @@ mod tests {
         let mut buf = Vec::new();
         write_serve_unimplemented_message(&mut buf, "127.0.0.1", 8080, "http").unwrap();
         let s = String::from_utf8(buf).unwrap();
+        // Must name a route that actually works. This previously asserted on
+        // `PMAT_PMCP_MCP=1`, an environment variable nothing in the binary
+        // reads — so the test pinned advice that could not work.
         assert!(
-            s.contains("PMAT_PMCP_MCP=1"),
+            s.contains("pmat agent mcp-server") || s.contains("MCP_VERSION=1"),
             "must point users at the working stdio transport, got: {s}"
+        );
+        assert!(
+            !s.contains("PMAT_PMCP_MCP"),
+            "must not name an environment variable no code reads, got: {s}"
         );
     }
 
