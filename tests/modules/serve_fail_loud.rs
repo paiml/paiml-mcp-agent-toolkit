@@ -36,10 +36,21 @@ fn pmat_serve_default_fails_with_exit_code_two() {
         stderr.contains("not yet implemented"),
         "stderr must clearly say HTTP is not implemented, got: {stderr}"
     );
+    // This asserted on `PMAT_PMCP_MCP=1` for as long as the hint named it —
+    // an environment variable no code reads. The test did not catch that
+    // because it pinned the string rather than the behaviour, and because
+    // `tests/all.rs` is not part of the `--lib` suite CI runs, so it went on
+    // asserting the bug for two releases after the hint was corrected.
     assert!(
-        stderr.contains("PMAT_PMCP_MCP=1"),
+        stderr.contains("MCP_VERSION=1"),
         "stderr must point users to the working stdio transport, got: {stderr}"
     );
+    for dead in ["PMAT_PMCP_MCP", "agent mcp-server"] {
+        assert!(
+            !stderr.contains(dead),
+            "stderr must not name `{dead}`, which does not start this server, got: {stderr}"
+        );
+    }
 }
 
 #[test]
@@ -65,6 +76,65 @@ fn pmat_serve_echoes_host_and_port() {
     assert!(
         stderr.contains("12345"),
         "stderr must echo requested port, got: {stderr}"
+    );
+}
+
+#[test]
+fn pmat_serve_help_does_not_advertise_a_dead_route() {
+    // `pmat serve --help` renders the doc comment on the `Serve` variant. That
+    // comment recommended `pmat agent mcp-server` while the runtime hint two
+    // files away had already been corrected, so the help text and the error
+    // text disagreed about how to start an MCP server.
+    let out = Command::new(env!("CARGO_BIN_EXE_pmat"))
+        .args(["serve", "--help"])
+        .output()
+        .expect("failed to spawn pmat binary");
+    let help = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        help.contains("MCP_VERSION=1"),
+        "serve help must name the working route, got: {help}"
+    );
+    for dead in ["PMAT_PMCP_MCP", "agent mcp-server"] {
+        assert!(
+            !help.contains(dead),
+            "serve help must not name `{dead}`, got: {help}"
+        );
+    }
+}
+
+/// A non-zero exit must always be accompanied by a diagnostic.
+///
+/// `pmat agent mcp-server` sets `EarlyCliArgs::is_mcp_server`, which installs
+/// `EnvFilter::new("off")`. The fatal error was logged with `tracing::error!`,
+/// so the filter discarded it and the command exited 1 with both streams
+/// empty — the user got a failure with no way to learn why.
+#[test]
+fn fatal_errors_are_never_silent() {
+    let out = Command::new(env!("CARGO_BIN_EXE_pmat"))
+        .args(["agent", "mcp-server"])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("failed to spawn pmat binary");
+
+    // Built without `--features agent-daemon` (not in `default`), this must
+    // fail. If the feature *is* enabled the command is a long-running server,
+    // so only assert the contract when it actually exited non-zero.
+    if out.status.success() {
+        return;
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        !stderr.trim().is_empty(),
+        "a non-zero exit must explain itself on stderr; got an empty stream, \
+         which is the silent-failure regression this test exists to catch"
+    );
+    assert!(
+        stderr.contains("Error:"),
+        "fatal diagnostic must be present, got: {stderr}"
     );
 }
 

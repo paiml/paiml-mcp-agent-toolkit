@@ -25,6 +25,9 @@ pub async fn handle_analyze_big_o(
     perf: bool,
     top_files: usize,
 ) -> Result<()> {
+    // A nonexistent path previously produced an empty report and exit 0.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     let start_time = std::time::Instant::now();
 
     print_analysis_header(&project_path, confidence_threshold);

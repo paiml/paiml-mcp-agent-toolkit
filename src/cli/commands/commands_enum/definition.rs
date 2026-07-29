@@ -809,7 +809,7 @@ pub enum Commands {
     /// [NOT IMPLEMENTED] HTTP/WebSocket server — exits with an error.
     ///
     /// Advertised as working for long enough that users discovered otherwise by
-    /// running it. Use `pmat agent mcp-server` for MCP over stdio today.
+    /// running it. Use `MCP_VERSION=1 pmat` for MCP over stdio today.
     #[command(visible_aliases = &["server", "api"])]
     Serve {
         /// Port to bind the server to

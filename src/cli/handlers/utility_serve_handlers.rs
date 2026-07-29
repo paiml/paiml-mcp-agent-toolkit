@@ -15,9 +15,11 @@
 //! transports are wired up. Honest failure is strictly better than a lying
 //! success.
 //!
-//! If you need an MCP server today, use stdio transport via
-//! `pmat agent mcp-server` (or `MCP_VERSION=1 pmat`) — see the
-//! `SimpleUnifiedServer` in `mcp_pmcp`.
+//! If you need an MCP server today, use stdio transport via `MCP_VERSION=1
+//! pmat` — see the `SimpleUnifiedServer` in `mcp_pmcp`. Do not add
+//! `pmat agent mcp-server` back here: it is compiled out unless
+//! `--features agent-daemon` is set, and it starts the agent-monitoring
+//! server, not the 20 analysis tools.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use anyhow::Result;

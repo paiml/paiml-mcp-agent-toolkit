@@ -19,11 +19,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   → 20 tools) before shipping, and the test asserts the other two forms are
   absent. A hint is only worth printing if it has been run.
 
+- **Fatal errors could exit silently.** Root cause of the above. The top-level
+  handler in `src/bin/pmat.rs` reported failures with `tracing::error!`, which
+  is subject to the `EnvFilter` — and MCP-server mode installs
+  `EnvFilter::new("off")` to keep the JSON-RPC stream clean. Any command
+  matching `pmat agent mcp-server` sets that mode (`EarlyCliArgs::is_mcp_server`,
+  `src/cli/mod.rs:133`), so the filter discarded the fatal message and the
+  process exited 1 with *both* streams empty. The diagnostic was never missing —
+  it was written and then thrown away. It had already said exactly what was
+  wrong: "Agent daemon feature not enabled. Build with --features agent-daemon".
+
+  Fatal errors now go to stderr directly via `cli::write_fatal_error`, so a
+  process's last words no longer depend on log configuration. stderr is safe
+  under MCP; only stdout carries protocol frames. Side benefit: ordinary CLI
+  errors lost their timestamp/`ERROR` prefix and now read as plain
+  `Error: Path not found: /nonexistent`.
+
+- **The same dead advice was in four more places.** 3.28.1's first pass fixed
+  the printed serve hint and missed every other copy, including the doc comment
+  three lines above it. All now name only `MCP_VERSION=1 pmat`:
+  - `src/bin/pmat.rs` — the no-subcommand error, which steered users straight
+    into the silent failure above
+  - `src/cli/commands/commands_enum/definition.rs` — the `serve` doc comment,
+    i.e. what `pmat serve --help` prints, so help and error text disagreed
+  - `src/cli/handlers/utility_serve_handlers.rs` — the module doc
+  - `src/mcp_pmcp/mod.rs` — claimed this server "is activated by
+    `pmat agent mcp-server`", which is false: that starts
+    `ClaudeCodeAgentMcpServer` (four agent-monitoring tools), and
+    `detect_execution_mode` reads `MCP_VERSION` and nothing else
+
+- **Three analysis commands gave a clean bill of health for paths that do not
+  exist.** Found by sweeping every command for "exits 0 without measuring
+  anything" while dogfooding the fixes above. A missing directory walks to zero
+  files, and `analyze satd`, `analyze duplicates` and `analyze big-o` reported
+  that as a pass — `analyze satd --path /nope` printed "Found 0 SATD violations
+  in 0 files" and exited 0. A CI gate cannot distinguish that from a genuinely
+  clean tree, so a typo in a path silently turned the gate green. All three now
+  fail with `Path not found: <path>`, matching the eight handlers that already
+  validated. Both live `satd` entry points are covered (`pmat analyze satd` and
+  the one `pmat enforce` calls). The shared guard is
+  `cli::ensure_analysis_path_exists`, which is what makes the `path_exists`
+  contract annotation these handlers already carried actually true at runtime.
+
+- **An orphaned test had been asserting the original bug for two releases.**
+  `tests/modules/serve_fail_loud.rs` still required the hint to contain
+  `PMAT_PMCP_MCP=1` — the dead environment variable 3.28.0 removed. It never
+  failed because `tests/all.rs` is not in the `--lib` suite CI runs. It now
+  asserts `MCP_VERSION=1` is present and both dead forms are absent.
+
+  The guard against silent exits was placed in the library
+  (`src/cli/mod.rs::write_fatal_error`) specifically so its unit tests run
+  under `--lib`, where CI will actually execute them.
+
 ### Known and unfixed
-- **`pmat agent mcp-server` exits 1 silently.** It is advertised in `--help`
-  and recommended by the no-subcommand error message in `src/bin/pmat.rs`.
-  Found while dogfooding 3.28.0; not fixed here because it is a distinct
-  server with its own startup path.
+- **`pmat agent` is advertised in `--help` but compiled out.** `agent-daemon`
+  is not in `default`, so every `pmat agent …` subcommand fails on every
+  published binary. It now fails loudly with an accurate message, which is the
+  D75 contract, but the help surface should stop offering it at all.
+
+- **The MCP surface still reports success for paths that do not exist.**
+  The CLI fix above does not reach it. `tools/call analyze_complexity` with
+  `{"paths": ["/definitely-not-real"]}` returns `isError: false` and
+  `{"status":"completed","results":{"total_files":0,"violations":[]}}`; the same
+  holds for `analyze_satd`. An agent consuming this cannot distinguish it from
+  a clean repository, and unlike the CLI it has no exit code to check.
+
+  Not fixed here because it is deliberate, not accidental: the behaviour is
+  pinned by tests that say so in as many words —
+  `src/mcp_pmcp/quality_handlers_tests.rs` asserts `result.is_ok()` under the
+  comment "Should succeed (graceful handling of nonexistent paths)". Making
+  these tools strict is a semantic change to a published MCP contract and
+  belongs in its own release, not bundled into a patch. The graceful/strict
+  question is worth settling deliberately: `quality_gate` already errors on a
+  nonexistent `file`, so the surface is currently inconsistent with itself.
 
 ## [3.28.0] - 2026-07-29
 

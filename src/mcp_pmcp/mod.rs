@@ -14,16 +14,21 @@
 //!
 //! # Usage
 //!
-//! The server is activated by `pmat agent mcp-server`, or by setting the
-//! `MCP_VERSION` environment variable (which is what MCP hosts such as Claude
-//! Desktop set). `PMAT_PMCP_MCP` is documented in older notes but no code has
-//! ever read it.
+//! The server is activated by setting the `MCP_VERSION` environment variable
+//! (which is what MCP hosts such as Claude Desktop set). That is the only
+//! trigger: `detect_execution_mode` in `src/bin/pmat.rs` reads `MCP_VERSION`
+//! and nothing else.
+//!
+//! Two other spellings have been documented here over time and neither works.
+//! `PMAT_PMCP_MCP` is read by no code at all. `pmat agent mcp-server` runs a
+//! *different* server — `ClaudeCodeAgentMcpServer`, which exposes four
+//! agent-monitoring tools rather than these analysis tools — and it is
+//! compiled out entirely unless `--features agent-daemon` is set, which is not
+//! in `default`.
 //!
 //! ## Running the pmcp server
 //!
 //! ```bash
-//! pmat agent mcp-server
-//! # or, as an MCP host would:
 //! MCP_VERSION=1 pmat
 //! ```
 //!

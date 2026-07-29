@@ -3,6 +3,12 @@
 // AFTER: Complexity 6 (A+ standard, single responsibility)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
+    // Without this, a nonexistent path walked to zero files and printed
+    // "Found 0 SATD violations in 0 files" with exit 0 — a clean bill of
+    // health for a tree that was never there, indistinguishable to a CI gate
+    // from a genuinely debt-free repository.
+    crate::cli::ensure_analysis_path_exists(&config.path)?;
+
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function

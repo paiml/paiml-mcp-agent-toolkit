@@ -25,6 +25,11 @@ pub async fn handle_analyze_satd(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
+    // Without this, a nonexistent path walked to zero files and printed
+    // "Found 0 SATD violations in 0 files" with exit 0 — a clean bill of
+    // health for a tree that was never there.
+    crate::cli::ensure_analysis_path_exists(&path)?;
+
     // Print analysis info
     print_satd_analysis_info(strict, timeout);
 
