@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.2] - 2026-07-30
+
+### Fixed — MCP stdio truncated responses it had already committed to
+
+`MCP_VERSION=1 pmat` could exit before answering requests it had already taken
+off the wire. Measured on a release build, piping `initialize` +
+`notifications/initialized` + `tools/list` in one write and closing stdin
+answered `tools/list` in only **11 of 30** trials. The client saw a clean exit
+code and a missing response.
+
+`EofSignalingTransport` signalled session end on the *first* receive error. EOF
+is observed by the read side while a request consumed moments earlier is still
+being handled, so `run`'s `select!` took the session-end branch and the process
+exited before that response was written. The comment sitting in `run` asserted
+this was impossible — "All responses for consumed requests were already written
+and flushed" — and that assertion was false. Flushing was never the problem;
+pmcp's `write_message` already flushes every send.
+
+The transport now counts requests in against responses out and defers the
+signal until the count reaches zero: **30/30**, no hangs. A grace timeout would
+not have worked — `analyze_deep_context` can legitimately run for minutes, so
+any fixed deadline is either too short for real work or too long to feel
+responsive. The hang this wrapper originally fixed is unaffected: with nothing
+outstanding, the signal still fires immediately on EOF, and deferral happens
+only when exiting would lose data.
+
+Long-lived hosts (Claude Desktop/Code) hold stdin open and were never affected;
+this only ever hit scripted one-shot pipes.
+
+Guarded by four unit tests driving a scripted transport, verified to fail on the
+old behaviour (2 of 4 fail with "one of two responses is not enough"), plus an
+integration test that spawns the real binary via `CARGO_BIN_EXE_pmat`.
+
+### Fixed — `pmat five-whys` did not analyse the problem it was given (#637)
+
+`CLAUDE.md` calls it "evidence-based" and "the ONLY acceptable debugging
+method". Asked to root-cause the defect above, it returned repo-wide
+boilerplate: every "why" cited the same four metrics, and it named "Frequent
+changes indicate unstable or poorly understood code" as the root cause of an EOF
+race — at **100% confidence**. Four structural faults, all fixed:
+
+1. **Evidence ignored the question.** `gather_evidence` never received the issue
+   text, and `generate_hypothesis` took the question as `_question` — explicitly
+   unused. A new `EvidenceSource::IssueLocation` extracts distinctive terms from
+   the issue and reports real `file:line` matches. Asked about the transport
+   race, it now points at `src/agent/mcp_server_protocol.rs:199`.
+
+2. **Confidence could only ever be 1.0.** Each source contributed
+   `weight * (1.0 + severity)` over a divisor of `weight` alone, so the ratio was
+   always ≥ 1.0 and the final clamp pinned it to exactly 100% for every input.
+   Severity is now in `[0, 1]`. A visible consequence: `analyze` early-terminates
+   at `confidence > 0.9`, so saturation made `--depth` inoperative past 3.
+
+3. **Confidence measured volume, not relevance.** Collecting five repo-wide
+   metrics said nothing about the reported issue. Without at least one
+   issue-specific location the score is now capped at 0.35.
+
+4. **The root cause was a truism.** It is now the deepest hypothesis actually
+   derived from the issue, followed by an explicit statement that no causal
+   chain beyond localisation was derived. When the issue cannot be located at
+   all, both formatters say "**Not determined**" and why, rather than printing a
+   repo-level guess or silently omitting the section — the honest-failure
+   precedent of `FalsificationResult::unmeasured()`.
+
+Five existing tests had encoded the saturation as the goal — one comment read
+"should produce confidence ~1.0 (weight/weight_sum)" — and the test that should
+have caught it asserted only `high >= low`, which `1.0 >= 1.0` satisfied. Each
+was updated to assert the corrected contract rather than relaxed, and the
+severity assertion is now strict.
+
+### Fixed — MCP tools reported success for paths that do not exist (#639)
+
+The CLI got this guard in 3.28.1; the MCP surface did not, so
+`tools/call analyze_complexity {"paths": ["/typo"]}` returned `isError: false`
+with `{"status":"completed","total_files":0,"violations":[]}` — indistinguishable
+from a clean repository, and an MCP client has no exit code to fall back on.
+`resolve_existing_paths` now rejects missing paths at all 18 path-taking tool
+sites, naming them. The two surfaces finally agree, and so does the MCP surface
+with itself: `quality_gate` already errored on a nonexistent `file`.
+
+Seventeen tests passed `"/nonexistent/path"` and asserted `is_ok()`, which meant
+they exercised none of the options they were named for — `top_files`,
+`threshold`, `strict`, output formats — because the tools walked an absent tree
+and reported success. They now use a real fixture directory, so they test what
+they claim to. The two tests genuinely about nonexistent paths assert the
+rejection.
+
+### Fixed — a property test generated invalid Python and asserted it parsed
+
+`enhanced_python_visitor::property_tests::test_visitor_handles_any_valid_python`
+drew identifiers from `[a-zA-Z_][a-zA-Z0-9_]*`, which includes Python keywords —
+`class if:` and `def return(self):` are syntax errors. tree-sitter is
+error-tolerant and still returns a tree, so the `if let Some(tree)` guard did not
+filter them, the visitor extracted fewer than two items, and `items.len() >= 2`
+failed. Correct behaviour on invalid input, not a visitor defect; the generator
+now excludes reserved words (soft keywords `match`/`case`/`type` are still
+allowed). This flaked CI on run 30516976977 with 18252 other tests passing.
+
 ## [3.28.1] - 2026-07-29
 
 ### Fixed

@@ -27,6 +27,13 @@
                 serde_json::json!({"value": 30, "threshold": 20}),
                 "High complexity detected".to_string(),
             ),
+            EvidenceSource::IssueLocation => Evidence::new(
+                source,
+                PathBuf::from("src/test.rs"),
+                "issue_terms".to_string(),
+                serde_json::json!({"terms": ["stdio"], "locations": []}),
+                "Located source lines matching issue terms".to_string(),
+            ),
             EvidenceSource::SATD => Evidence::new(
                 source,
                 PathBuf::from("src/test.rs"),

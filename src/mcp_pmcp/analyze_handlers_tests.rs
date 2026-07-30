@@ -2,6 +2,22 @@
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
+
+    /// A real directory with one analysable source file.
+    ///
+    /// These tests used to pass `"/nonexistent/path"` and assert `is_ok()`,
+    /// which meant they exercised none of the options they are named for — the
+    /// tools walked an absent tree, found nothing, and reported success. Now
+    /// that missing paths are rejected (GH #639) the fixture has to be real.
+    fn fixture_dir() -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            dir.path().join("sample.rs"),
+            "fn sample(a: i32) -> i32 {\n    if a > 2 {\n        a * 3\n    } else {\n        a\n    }\n}\n",
+        )
+        .expect("write fixture");
+        dir
+    }
     use serde_json::json;
     use tokio_util::sync::CancellationToken;
 
@@ -44,13 +60,14 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_complexity_tool_with_all_options() {
         let tool = ComplexityTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "top_files": 5,
             "threshold": 15
         });
         let result = tool.handle(args, test_extra()).await;
-        // Should succeed even with nonexistent path (graceful handling)
         assert!(result.is_ok());
     }
 
@@ -87,8 +104,10 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_satd_tool_with_include_resolved() {
         let tool = SatdTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "include_resolved": true
         });
         let result = tool.handle(args, test_extra()).await;
@@ -128,8 +147,10 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_dead_code_tool_with_include_tests() {
         let tool = DeadCodeTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "include_tests": true
         });
         let result = tool.handle(args, test_extra()).await;

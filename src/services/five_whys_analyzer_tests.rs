@@ -62,15 +62,43 @@ mod tests {
 
     #[tokio::test]
     async fn test_basic_analysis() {
+        // Analyse a fixture tree, not the live repo. The issue text has to name
+        // terms that appear in the source or the analyzer correctly declines to
+        // give a root cause ("Test issue", the previous input, was entirely
+        // stopwords) — and pointing this at `.` would make the test depend on
+        // the crate's own identifiers, so any rename would break it in a way
+        // that looks unrelated.
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir src");
+        std::fs::write(
+            dir.path().join("src/widget.rs"),
+            "fn widget_throttle(retries: u32) -> u32 {\n    \
+             if retries > 3 { retries * 2 } else { retries }\n}\n",
+        )
+        .expect("write fixture");
+
         let analyzer = FiveWhysAnalyzer::new();
+        let issue = "widget_throttle retries miscounted";
         let result = analyzer
-            .analyze("Test issue", Path::new("."), 5)
+            .analyze(issue, dir.path(), 5)
             .await
             .expect("internal error");
 
-        assert_eq!(result.issue, "Test issue");
+        assert_eq!(result.issue, issue);
         assert!(!result.whys.is_empty());
-        assert!(result.root_cause.is_some());
+        assert!(
+            result.root_cause.is_some(),
+            "an issue naming terms present in the source must be located and \
+             yield a cause; got none"
+        );
+        assert!(
+            result
+                .root_cause
+                .as_deref()
+                .is_some_and(|rc| rc.contains("widget.rs")),
+            "the cause should cite where the terms were found, got: {:?}",
+            result.root_cause
+        );
         assert!(!result.recommendations.is_empty());
     }
 }
@@ -119,6 +147,11 @@ mod coverage_tests {
                 EvidenceSource::GitChurn => json!({"commit_count": 15, "days": 30}),
                 EvidenceSource::DeadCode => json!({"count": 3}),
                 EvidenceSource::ManualInspection => json!({"notes": "Manual review"}),
+                EvidenceSource::IssueLocation => {
+                    json!({"terms": ["stdio", "transport"],
+                           "locations": [{"file": "src/x.rs", "line": 12,
+                                          "terms_matched": 2, "term": "stdio+transport"}]})
+                }
                 EvidenceSource::EvoScoreTrajectory => {
                     json!({"evoscore": -0.3, "commits": 5, "gamma": 1.5})
                 }
@@ -284,7 +317,13 @@ mod coverage_tests {
         assert!(result.is_ok());
 
         let analysis = result.expect("should succeed");
-        assert!(analysis.root_cause.is_some());
+        // An empty temp dir contains no source, so the issue cannot be located
+        // and a root cause must be withheld rather than invented from
+        // repo-wide metrics (GH #637).
+        assert_eq!(
+            analysis.root_cause, None,
+            "nothing to locate the issue in -> no root cause may be claimed"
+        );
     }
 
     #[tokio::test]
@@ -470,7 +509,14 @@ mod coverage_tests {
             .calculate_confidence(&high_evidence)
             .expect("should succeed");
 
-        assert!(high_confidence >= low_confidence);
+        // Strictly greater, not `>=`. The old assertion passed while the score
+        // was structurally pinned to exactly 1.0 for every input (each source
+        // contributed `weight * (1.0 + severity)` over a divisor of `weight`),
+        // so `1.0 >= 1.0` hid the fact that confidence never varied at all.
+        assert!(
+            high_confidence > low_confidence,
+            "confidence must respond to severity: low={low_confidence}, high={high_confidence}"
+        );
     }
 
     #[test]
@@ -752,11 +798,29 @@ mod coverage_tests {
             "The hypothesis".to_string(),
         )];
 
-        let result = analyzer.extract_root_cause(&whys);
-        assert!(result.is_ok());
+        // No IssueLocation evidence -> the hypothesis came from repo-wide
+        // metrics alone, so it must not be presented as the root cause.
+        let unlocated = analyzer.extract_root_cause(&whys).expect("should succeed");
+        assert_eq!(
+            unlocated, None,
+            "a root cause must not be asserted when the issue was never located"
+        );
 
-        let root_cause = result.expect("should succeed");
-        assert_eq!(root_cause, Some("The hypothesis".to_string()));
+        // With evidence tied to the issue, the final hypothesis stands.
+        let mut located = whys.clone();
+        located[0].evidence = vec![create_evidence_with_values(
+            EvidenceSource::IssueLocation,
+            json!({"terms": ["hypothesis"], "locations": [{"file": "a.rs", "line": 1}]}),
+        )];
+        let root_cause = analyzer
+            .extract_root_cause(&located)
+            .expect("should succeed")
+            .expect("located evidence should yield a cause");
+        assert!(root_cause.starts_with("The hypothesis"), "got: {root_cause}");
+        assert!(
+            root_cause.contains("no causal chain was derived"),
+            "must state its own limits rather than implying a derived chain, got: {root_cause}"
+        );
     }
 
     #[test]
@@ -768,11 +832,17 @@ mod coverage_tests {
             WhyIteration::new(3, "Q3".to_string(), "Final hypothesis".to_string()),
         ];
 
-        let result = analyzer.extract_root_cause(&whys);
-        assert!(result.is_ok());
-
-        let root_cause = result.expect("should succeed");
-        assert_eq!(root_cause, Some("Final hypothesis".to_string()));
+        // Locating the issue in any single why is enough to report a cause.
+        let mut whys = whys;
+        whys[1].evidence = vec![create_evidence_with_values(
+            EvidenceSource::IssueLocation,
+            json!({"terms": ["final"], "locations": [{"file": "a.rs", "line": 1}]}),
+        )];
+        let root_cause = analyzer
+            .extract_root_cause(&whys)
+            .expect("should succeed")
+            .expect("located evidence should yield a cause");
+        assert!(root_cause.starts_with("Final hypothesis"), "got: {root_cause}");
     }
 
     // ============================================================================
@@ -958,7 +1028,7 @@ mod coverage_tests {
         let analyzer = create_analyzer();
         let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence(temp_dir.path()).await;
+        let result = analyzer.gather_evidence("test issue", temp_dir.path()).await;
         assert!(result.is_ok());
 
         let evidence = result.expect("should succeed");
@@ -980,7 +1050,7 @@ mod coverage_tests {
         let temp_dir = create_evidence_temp_dir();
 
         let evidence = analyzer
-            .gather_evidence(temp_dir.path())
+            .gather_evidence("test issue", temp_dir.path())
             .await
             .expect("should succeed");
         assert!(
@@ -997,7 +1067,7 @@ mod coverage_tests {
         let temp_dir = create_evidence_temp_dir();
 
         let evidence = analyzer
-            .gather_evidence(temp_dir.path())
+            .gather_evidence("test issue", temp_dir.path())
             .await
             .expect("should succeed");
         assert!(
@@ -1020,7 +1090,7 @@ mod coverage_tests {
         let temp_dir = create_evidence_temp_dir();
 
         let evidence = analyzer
-            .gather_evidence(temp_dir.path())
+            .gather_evidence("test issue", temp_dir.path())
             .await
             .expect("should succeed");
         assert!(
@@ -1035,7 +1105,7 @@ mod coverage_tests {
         let temp_dir = create_evidence_temp_dir();
 
         let evidence = analyzer
-            .gather_evidence(temp_dir.path())
+            .gather_evidence("test issue", temp_dir.path())
             .await
             .expect("should succeed");
         assert!(
@@ -1261,7 +1331,7 @@ mod coverage_tests {
             hypotheses in proptest::collection::vec("\\PC{1,50}", 1..5)
         ) {
             let analyzer = create_analyzer();
-            let whys: Vec<WhyIteration> = hypotheses
+            let mut whys: Vec<WhyIteration> = hypotheses
                 .iter()
                 .enumerate()
                 .map(|(i, h)| WhyIteration::new(
@@ -1270,13 +1340,25 @@ mod coverage_tests {
                     h.clone(),
                 ))
                 .collect();
+            // Attach issue-specific evidence: without it the analyzer withholds
+            // the root cause entirely, which is a separate contract covered by
+            // `test_extract_root_cause_single_why`.
+            whys[0].evidence = vec![create_evidence_with_values(
+                EvidenceSource::IssueLocation,
+                json!({"terms": ["x"], "locations": [{"file": "a.rs", "line": 1}]}),
+            )];
 
             let result = analyzer.extract_root_cause(&whys);
             prop_assert!(result.is_ok());
 
             let root_cause = result.expect("should succeed");
             prop_assert!(root_cause.is_some());
-            prop_assert_eq!(root_cause.unwrap(), hypotheses.last().unwrap().clone());
+            // The reported cause now leads with the deepest issue-derived
+            // hypothesis and appends an explicit statement of what was not
+            // derived, so match the prefix rather than the whole string.
+            let root_cause = root_cause.unwrap();
+            prop_assert!(root_cause.starts_with(hypotheses.last().unwrap()));
+            prop_assert!(root_cause.contains("no causal chain was derived"));
         }
     }
 
@@ -1300,7 +1382,9 @@ mod coverage_tests {
         assert_eq!(analysis.issue, "Critical bug in production");
         assert!(!analysis.whys.is_empty());
         assert!(analysis.whys.len() <= 5);
-        assert!(analysis.root_cause.is_some());
+        // Empty temp dir: the issue is unlocatable, so no root cause. The
+        // recommendations still stand — they are generic remediation advice.
+        assert_eq!(analysis.root_cause, None);
         assert!(!analysis.recommendations.is_empty());
 
         // Verify each why iteration
@@ -1373,10 +1457,14 @@ mod coverage_tests {
             json!({"value": 25, "threshold": 20}),
         )];
         let confidence = analyzer.calculate_confidence(&evidence).unwrap();
-        // Complexity at 25% weight with mild severity should produce confidence ~1.0 (weight/weight_sum)
+        // 25 against a threshold of 20 is *mild* (severity 0.25), so confidence
+        // must be mild too. This previously asserted ~1.0 and explained it as
+        // "weight/weight_sum" — which was the saturation bug stated as the
+        // goal: every severity multiplier was `1.0 + s`, so the ratio was
+        // always >= 1.0 and clamped to exactly 100% for any input (GH #637).
         assert!(
-            (0.9..=1.1).contains(&confidence),
-            "Complexity confidence should be ~1.0, got {}",
+            (0.2..=0.3).contains(&confidence),
+            "mild severity should give mild confidence, got {}",
             confidence
         );
     }
@@ -1390,11 +1478,14 @@ mod coverage_tests {
             json!(20.0), // Low TDG score
         )];
         let confidence = analyzer.calculate_confidence(&tdg_evidence).unwrap();
-        // With only TDG (weight=0), weight_sum=0, should return 0.5 (fallback)
-        assert!(
-            (0.49..=0.51).contains(&confidence),
-            "TDG-only confidence should be 0.5 (neutral fallback), got {}",
-            confidence
+        // TDG carries zero weight, so weight_sum is 0 and the neutral 0.5
+        // fallback applies — but TDG says nothing about the reported issue, so
+        // the relevance cap then applies on top of it.
+        assert_eq!(
+            confidence,
+            FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+            "TDG-only evidence never locates the issue, so confidence must be \
+             capped rather than sitting at the 0.5 neutral fallback"
         );
     }
 
@@ -1492,10 +1583,14 @@ mod coverage_tests {
             create_evidence_with_values(EvidenceSource::DeadCode, json!({"count": 0})),
         ];
         let confidence = analyzer.calculate_confidence(&evidence).unwrap();
-        // All at baseline/neutral severity=1.0, so confidence = sum(weight*1.0)/sum(weight) = 1.0
+        // Every source present but all at *zero* severity: nothing is wrong, so
+        // confidence must be near zero. The old assertion demanded ~1.0 because
+        // neutral severity was encoded as the multiplier 1.0, which meant a
+        // completely healthy repository still reported 100% confidence in a
+        // causal claim (GH #637).
         assert!(
-            (0.99..=1.01).contains(&confidence),
-            "All neutral evidence should give confidence ~1.0, got {}",
+            confidence <= 0.05,
+            "all-neutral evidence should give near-zero confidence, got {}",
             confidence
         );
     }
@@ -1690,4 +1785,88 @@ mod coverage_tests {
             prop_assert!(confidence <= 1.0, "Confidence above 1: {}", confidence);
         }
     }
+
+// ── GH #637: the analysis must be about the issue it was given ──────────────
+//
+// Before these, `five-whys` produced identical repo-wide evidence for any
+// input, asserted 100% confidence from it, and named a truism as the root
+// cause. See `FiveWhysAnalyzer::calculate_confidence` for the two structural
+// faults.
+
+#[test]
+fn issue_terms_drop_noise_and_keep_identifiers() {
+    let terms = FiveWhysAnalyzer::issue_terms(
+        "MCP stdio server drops responses when the client closes stdin and this fails",
+    );
+    for kept in ["stdio", "server", "drops", "responses", "client", "closes", "stdin"] {
+        assert!(terms.contains(&kept.to_string()), "should keep {kept}: {terms:?}");
+    }
+    for dropped in ["the", "when", "this", "fails", "mcp"] {
+        assert!(
+            !terms.contains(&dropped.to_string()),
+            "should drop {dropped} (stopword or <4 chars): {terms:?}"
+        );
+    }
+}
+
+#[test]
+fn confidence_is_capped_when_the_issue_was_never_located() {
+    let analyzer = create_analyzer();
+    // Every repo-wide source at maximum severity, but nothing issue-specific.
+    let evidence = vec![
+        create_evidence_with_values(EvidenceSource::Complexity, json!({"value": 500, "threshold": 20})),
+        create_evidence_with_values(EvidenceSource::SATD, json!({"count": 5000})),
+        create_evidence_with_values(EvidenceSource::GitChurn, json!({"commit_count": 900})),
+        create_evidence_with_values(EvidenceSource::CoverageDelta, json!({"delta": -80.0})),
+    ];
+    let confidence = analyzer
+        .calculate_confidence(&evidence)
+        .expect("should succeed");
+    assert!(
+        confidence <= FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+        "piling up repo-wide metrics must not buy confidence about a specific \
+         issue; got {confidence}"
+    );
+}
+
+#[test]
+fn confidence_can_exceed_the_cap_once_the_issue_is_located() {
+    let analyzer = create_analyzer();
+    let locations: Vec<_> = (0..8)
+        .map(|i| json!({"file": "src/x.rs", "line": i, "terms_matched": 2, "term": "a+b"}))
+        .collect();
+    let evidence = vec![
+        create_evidence_with_values(
+            EvidenceSource::IssueLocation,
+            json!({"terms": ["stdio", "transport"], "locations": locations}),
+        ),
+        create_evidence_with_values(EvidenceSource::Complexity, json!({"value": 500, "threshold": 20})),
+    ];
+    let confidence = analyzer
+        .calculate_confidence(&evidence)
+        .expect("should succeed");
+    assert!(
+        confidence > FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+        "located evidence should support real confidence; got {confidence}"
+    );
+}
+
+#[test]
+fn confidence_is_never_pinned_to_one() {
+    // The old formula divided `weight * (1.0 + severity)` by `weight`, so the
+    // result was always >= 1.0 and clamped to exactly 1.0 for every input.
+    let analyzer = create_analyzer();
+    let mild = vec![create_evidence_with_values(
+        EvidenceSource::GitChurn,
+        json!({"commit_count": 1}),
+    )];
+    let confidence = analyzer
+        .calculate_confidence(&mild)
+        .expect("should succeed");
+    assert!(
+        confidence < 0.9,
+        "a single low-severity signal must not read as near-certainty; got {confidence}"
+    );
+}
+
 }

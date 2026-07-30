@@ -42,11 +42,7 @@ pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
 
     output.push_str(&format!("{}\n\n", c::rule()));
 
-    // Root Cause
-    if let Some(root_cause) = &analysis.root_cause {
-        output.push_str(&format!("{}\n", c::label("Root Cause:")));
-        output.push_str(&format!("   {}\n\n", root_cause));
-    }
+    push_root_cause_text(&mut output, analysis);
 
     // Recommendations
     if !analysis.recommendations.is_empty() {
@@ -67,75 +63,106 @@ pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
         output.push('\n');
     }
 
-    // Evidence Summary
+    push_evidence_summary_text(&mut output, analysis);
+
+    Ok(output)
+}
+
+/// Render the Root Cause line, saying so when the cause was withheld.
+///
+/// Extracted to keep `format_text` under the cognitive-complexity gate. See
+/// `push_root_cause_markdown` for why the absent case is stated explicitly
+/// rather than omitted (GH #637).
+fn push_root_cause_text(output: &mut String, analysis: &DebugAnalysis) {
+    use crate::cli::colors as c;
+
+    output.push_str(&format!("{}\n", c::label("Root Cause:")));
+    match &analysis.root_cause {
+        Some(root_cause) => output.push_str(&format!("   {root_cause}\n\n")),
+        None => output.push_str(
+            "   Not determined — no source location matching the reported issue\n   \
+             was found, so the evidence below describes the repository as a whole.\n   \
+             Phrase the issue with terms that appear in the code (identifiers,\n   \
+             module or file names, a log string) to get a located analysis.\n\n",
+        ),
+    }
+}
+
+/// Render the Evidence Summary block.
+///
+/// Extracted so `format_text` stays under the cognitive-complexity gate: the
+/// per-metric colouring is a run of independent conditionals that inflate the
+/// enclosing function without adding logic of its own.
+fn push_evidence_summary_text(output: &mut String, analysis: &DebugAnalysis) {
+    use crate::cli::colors as c;
+
+    let s = &analysis.evidence_summary;
     output.push_str(&format!("{}\n", c::label("Evidence Summary:")));
     output.push_str(&format!(
         "   Complexity violations: {}\n",
-        c::number(&analysis.evidence_summary.complexity_violations.to_string())
+        c::number(&s.complexity_violations.to_string())
     ));
     output.push_str(&format!(
         "   SATD markers: {}\n",
-        c::number(&analysis.evidence_summary.satd_markers.to_string())
+        c::number(&s.satd_markers.to_string())
     ));
-    output.push_str(&format!(
-        "   TDG score: {}\n",
-        c::score(analysis.evidence_summary.tdg_score, 100.0, 80.0, 60.0)
-    ));
-    output.push_str(&format!(
-        "   Git churn: {}\n",
-        if analysis.evidence_summary.git_churn_high {
-            format!("{}HIGH{}", c::RED, c::RESET)
-        } else {
-            format!("{}NORMAL{}", c::GREEN, c::RESET)
-        }
-    ));
-    if analysis.evidence_summary.evoscore_trajectory != 0.0 {
+    output.push_str(&format!("   TDG score: {}\n", tdg_text(s)));
+    output.push_str(&format!("   Git churn: {}\n", churn_text(s.git_churn_high)));
+    if s.evoscore_trajectory != 0.0 {
         output.push_str(&format!(
             "   EvoScore trajectory: {}\n",
-            if analysis.evidence_summary.evoscore_trajectory >= 0.5 {
-                format!(
-                    "{}{:.3} (improving){}",
-                    c::GREEN,
-                    analysis.evidence_summary.evoscore_trajectory,
-                    c::RESET
-                )
-            } else if analysis.evidence_summary.evoscore_trajectory >= 0.0 {
-                format!(
-                    "{}{:.3} (mixed){}",
-                    c::YELLOW,
-                    analysis.evidence_summary.evoscore_trajectory,
-                    c::RESET
-                )
-            } else {
-                format!(
-                    "{}{:.3} (regressing){}",
-                    c::RED,
-                    analysis.evidence_summary.evoscore_trajectory,
-                    c::RESET
-                )
-            }
+            evoscore_text(s.evoscore_trajectory)
         ));
     }
-    if analysis.evidence_summary.coverage_delta != 0.0 {
+    if s.coverage_delta != 0.0 {
         output.push_str(&format!(
             "   Coverage delta: {}\n",
-            if analysis.evidence_summary.coverage_delta >= 0.0 {
-                format!(
-                    "{}+{:.1}% (above baseline){}",
-                    c::GREEN,
-                    analysis.evidence_summary.coverage_delta,
-                    c::RESET
-                )
-            } else {
-                format!(
-                    "{}{:.1}% (below baseline){}",
-                    c::RED,
-                    analysis.evidence_summary.coverage_delta,
-                    c::RESET
-                )
-            }
+            coverage_text(s.coverage_delta)
         ));
     }
+}
 
-    Ok(output)
+/// TDG is not part of the v2 evidence set, so a numeric score would be a
+/// failing grade for an unmeasured metric (GH #637).
+fn tdg_text(s: &EvidenceSummary) -> String {
+    use crate::cli::colors as c;
+
+    if s.tdg_measured {
+        c::score(s.tdg_score, 100.0, 80.0, 60.0)
+    } else {
+        "not measured".to_string()
+    }
+}
+
+fn churn_text(high: bool) -> String {
+    use crate::cli::colors as c;
+
+    if high {
+        format!("{}HIGH{}", c::RED, c::RESET)
+    } else {
+        format!("{}NORMAL{}", c::GREEN, c::RESET)
+    }
+}
+
+fn evoscore_text(trajectory: f64) -> String {
+    use crate::cli::colors as c;
+
+    let (colour, label) = if trajectory >= 0.5 {
+        (c::GREEN, "improving")
+    } else if trajectory >= 0.0 {
+        (c::YELLOW, "mixed")
+    } else {
+        (c::RED, "regressing")
+    };
+    format!("{colour}{trajectory:.3} ({label}){}", c::RESET)
+}
+
+fn coverage_text(delta: f64) -> String {
+    use crate::cli::colors as c;
+
+    if delta >= 0.0 {
+        format!("{}+{delta:.1}% (above baseline){}", c::GREEN, c::RESET)
+    } else {
+        format!("{}{delta:.1}% (below baseline){}", c::RED, c::RESET)
+    }
 }

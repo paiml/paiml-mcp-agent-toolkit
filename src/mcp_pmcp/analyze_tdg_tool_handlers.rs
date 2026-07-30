@@ -78,7 +78,7 @@ impl ToolHandler for TdgTool {
         let params: TdgArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_tdg(
             &paths,

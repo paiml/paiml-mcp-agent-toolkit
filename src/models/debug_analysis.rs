@@ -115,6 +115,13 @@ pub enum EvidenceSource {
     EvoScoreTrajectory,
     /// Coverage delta: did recent changes decrease test coverage?
     CoverageDelta,
+    /// Source locations matching distinctive terms from the reported issue.
+    ///
+    /// Every other variant here is a *repo-wide* metric that is identical no
+    /// matter what issue was reported. Without at least one of these, an
+    /// analysis has not looked at the problem it was asked about, and must not
+    /// present a root cause (GH #637).
+    IssueLocation,
 }
 
 /// Actionable recommendation
@@ -168,6 +175,16 @@ pub struct EvidenceSummary {
     pub complexity_violations: usize,
     pub satd_markers: usize,
     pub tdg_score: f64,
+    /// Was `tdg_score` actually populated by TDG evidence?
+    ///
+    /// TDG was dropped from the v2 evidence set (weight 0, redundant with
+    /// complexity + churn), so nothing produces TDG evidence and `tdg_score`
+    /// keeps its `0.0` default. Reports printed that as "TDG score 0.0/100 ❌",
+    /// a failing grade for something never measured — and one that contradicted
+    /// `pmat analyze`, which reported an average of 95.4 for the same tree
+    /// (GH #637).
+    #[serde(default)]
+    pub tdg_measured: bool,
     pub git_churn_high: bool,
     /// CB-142 EvoScore trajectory: positive = improving, negative = regressing
     #[serde(default)]
@@ -209,8 +226,11 @@ impl EvidenceSummary {
             EvidenceSource::TDG => {
                 if let Some(score) = evidence.value.as_f64() {
                     self.tdg_score = score;
+                    self.tdg_measured = true;
                 }
             }
+            // Locations are rendered per-why, not in the aggregate table.
+            EvidenceSource::IssueLocation => {}
             EvidenceSource::GitChurn => {
                 let commits = evidence
                     .value

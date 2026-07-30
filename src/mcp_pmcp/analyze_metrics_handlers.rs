@@ -34,7 +34,7 @@ impl ToolHandler for LintHotspotTool {
         let params: LintHotspotArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_lint_hotspots(&paths, params.top_files)
             .await
@@ -95,7 +95,7 @@ impl ToolHandler for ChurnTool {
         let params: ChurnArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_churn(&paths, params.days, params.top_files)
             .await
@@ -155,7 +155,7 @@ impl ToolHandler for CouplingTool {
         let params: CouplingArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_coupling(&paths, params.threshold)
             .await
@@ -222,7 +222,7 @@ impl ToolHandler for AnalyzeDagTool {
         let params: AnalyzeDagArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_dag(&paths, params.dag_type)
             .await
@@ -283,7 +283,7 @@ impl ToolHandler for AnalyzeBigOTool {
         let params: AnalyzeBigOArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_big_o(&paths, params.top_files)
             .await
@@ -340,7 +340,7 @@ impl ToolHandler for AnalyzeDeepContextTool {
         let params: AnalyzeDeepContextArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_deep_context(&paths, params.include_patterns)
             .await

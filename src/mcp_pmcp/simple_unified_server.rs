@@ -39,40 +39,106 @@ use tracing::info;
 /// other receive error also signals shutdown, because pmcp's reader task
 /// breaks on every receive error and would otherwise leave the server
 /// permanently deaf.
+///
+/// # Draining in-flight work before signalling
+///
+/// Signalling on the *first* receive error truncated responses. EOF is
+/// observed by the read side while a request consumed moments earlier is
+/// still being handled, so `run`'s `select!` took the session-end branch and
+/// the process exited before that response was ever written. Piping
+/// `initialize` + `tools/list` in one write and closing stdin answered
+/// `tools/list` in only 2 of 5 trials on a release build (5/5 on debug, which
+/// is merely too slow to lose the race). The comment that used to sit in
+/// `run` asserted the opposite — that every consumed request had already been
+/// answered — and that assertion was simply false.
+///
+/// So this counts requests in against responses out and defers the signal
+/// until the count reaches zero. A grace timeout would not do: `analyze_deep_
+/// context` can legitimately run for minutes, and any fixed deadline is either
+/// too short for real work or too long to feel responsive.
+///
+/// The original hang this wrapper was written to fix is unaffected: with no
+/// work outstanding, `in_flight` is already 0 and the signal still fires
+/// immediately on EOF. Deferral happens only when exiting would lose data.
 #[derive(Debug)]
 struct EofSignalingTransport<T: Transport> {
     inner: T,
     session_end_tx: Option<oneshot::Sender<String>>,
+    /// Requests received whose responses have not yet been sent.
+    ///
+    /// A plain field rather than an atomic: pmcp drives the transport from a
+    /// single-owner actor, and both `send` and `receive` take `&mut self`, so
+    /// access is already exclusive.
+    in_flight: usize,
+    /// Why the session ended, recorded on the first receive error and held
+    /// until `in_flight` drains to zero.
+    pending_end: Option<String>,
 }
 
 impl<T: Transport> EofSignalingTransport<T> {
     /// Wrap `inner`, returning the transport and the session-end receiver.
     ///
-    /// The receiver resolves with a human-readable reason once `receive()`
-    /// on the wrapped transport returns an error (EOF or otherwise).
+    /// The receiver resolves with a human-readable reason once `receive()` on
+    /// the wrapped transport has errored (EOF or otherwise) *and* every
+    /// request already taken off the wire has been answered.
     fn new(inner: T) -> (Self, oneshot::Receiver<String>) {
         let (tx, rx) = oneshot::channel();
         (
             Self {
                 inner,
                 session_end_tx: Some(tx),
+                in_flight: 0,
+                pending_end: None,
             },
             rx,
         )
+    }
+
+    /// Fire the session-end signal if the read side is finished and no
+    /// consumed request is still awaiting its response.
+    fn signal_if_drained(&mut self) {
+        if self.in_flight > 0 {
+            return;
+        }
+        let Some(reason) = self.pending_end.take() else {
+            return;
+        };
+        if let Some(tx) = self.session_end_tx.take() {
+            let _ = tx.send(reason);
+        }
     }
 }
 
 #[async_trait]
 impl<T: Transport> Transport for EofSignalingTransport<T> {
     async fn send(&mut self, message: TransportMessage) -> pmcp::Result<()> {
-        self.inner.send(message).await
+        // Only a Response retires a request. Notifications get no reply, and
+        // a Request travelling outbound is the server calling the client
+        // (e.g. sampling), not an answer to anything we counted.
+        let retires_request = matches!(message, TransportMessage::Response(_));
+        let result = self.inner.send(message).await;
+        if retires_request {
+            self.in_flight = self.in_flight.saturating_sub(1);
+            // Attempt the deferred signal even if the send itself failed:
+            // this request is never going to be answered now, and holding the
+            // session open for it would reintroduce the original hang.
+            self.signal_if_drained();
+        }
+        result
     }
 
     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
         let result = self.inner.receive().await;
-        if let Err(e) = &result {
-            if let Some(tx) = self.session_end_tx.take() {
-                let _ = tx.send(e.to_string());
+        match &result {
+            Ok(TransportMessage::Request { .. }) => self.in_flight += 1,
+            Ok(_) => {}
+            Err(e) => {
+                // Record the reason on the first error only, then signal as
+                // soon as everything already consumed has been answered.
+                if self.pending_end.is_none() {
+                    self.pending_end = Some(e.to_string());
+                }
+                self.signal_if_drained();
             }
         }
         result
@@ -186,9 +252,13 @@ impl SimpleUnifiedServer {
                 result?;
             }
             reason = session_end => {
-                // All responses for consumed requests were already written and
-                // flushed (pmcp handles messages sequentially and flushes per
-                // send); flush once more defensively before exiting.
+                // Safe to exit: `EofSignalingTransport` only fires this once
+                // every request taken off the wire has had its response sent,
+                // so nothing is left to truncate. (This comment previously
+                // claimed that was automatic — "responses for consumed
+                // requests were already written" — which was false, and cost
+                // `tools/list` its answer in 3 of 5 one-shot piped sessions.)
+                // Flush once more defensively before exiting.
                 use std::io::Write;
                 let _ = std::io::stdout().flush();
                 let reason = reason.unwrap_or_else(|_| "transport dropped".to_string());
@@ -204,6 +274,150 @@ impl SimpleUnifiedServer {
 impl Default for SimpleUnifiedServer {
     fn default() -> Self {
         Self::new().expect("Failed to create simple unified server")
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod eof_drain_tests {
+    use super::*;
+    use pmcp::types::{JSONRPCResponse, RequestId};
+
+    /// Scripted transport: `receive()` replays `script`, `send()` is a no-op.
+    #[derive(Debug)]
+    struct ScriptedTransport {
+        script: std::collections::VecDeque<Option<TransportMessage>>,
+    }
+
+    impl ScriptedTransport {
+        /// `None` in the script means "return a ConnectionClosed error".
+        fn new(script: Vec<Option<TransportMessage>>) -> Self {
+            Self {
+                script: script.into(),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl Transport for ScriptedTransport {
+        async fn send(&mut self, _message: TransportMessage) -> pmcp::Result<()> {
+            Ok(())
+        }
+        async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
+            match self.script.pop_front() {
+                Some(Some(msg)) => Ok(msg),
+                _ => Err(pmcp::Error::Transport(
+                    pmcp::error::TransportError::ConnectionClosed,
+                )),
+            }
+        }
+        async fn close(&mut self) -> pmcp::Result<()> {
+            Ok(())
+        }
+        fn is_connected(&self) -> bool {
+            true
+        }
+        fn transport_type(&self) -> &'static str {
+            "scripted"
+        }
+    }
+
+    fn a_request() -> TransportMessage {
+        TransportMessage::Request {
+            id: RequestId::from(1i64),
+            request: pmcp::types::Request::Client(Box::new(pmcp::types::ClientRequest::ListTools(
+                Default::default(),
+            ))),
+        }
+    }
+
+    fn a_response() -> TransportMessage {
+        TransportMessage::Response(JSONRPCResponse {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::from(1i64),
+            payload: pmcp::types::jsonrpc::ResponsePayload::Result(serde_json::json!({})),
+        })
+    }
+
+    /// The regression: EOF observed while a request is still being handled
+    /// must NOT end the session, or that response is truncated.
+    #[tokio::test]
+    async fn eof_does_not_signal_while_a_request_is_in_flight() {
+        let (mut transport, mut session_end) =
+            EofSignalingTransport::new(ScriptedTransport::new(vec![Some(a_request()), None]));
+
+        assert!(transport.receive().await.is_ok(), "request should arrive");
+        assert!(transport.receive().await.is_err(), "then EOF");
+
+        assert!(
+            session_end.try_recv().is_err(),
+            "session must stay open while a consumed request is unanswered — \
+             signalling here is what truncated tools/list"
+        );
+
+        transport.send(a_response()).await.unwrap();
+
+        assert!(
+            session_end.try_recv().is_ok(),
+            "once the response is sent, the session must end"
+        );
+    }
+
+    /// The original hang must stay fixed: with nothing outstanding, EOF ends
+    /// the session immediately.
+    #[tokio::test]
+    async fn eof_signals_immediately_when_nothing_is_in_flight() {
+        let (mut transport, mut session_end) =
+            EofSignalingTransport::new(ScriptedTransport::new(vec![None]));
+
+        assert!(transport.receive().await.is_err());
+        assert!(
+            session_end.try_recv().is_ok(),
+            "with no work outstanding the session must end at once, or the \
+             one-shot pipe hangs until killed (the bug this wrapper fixed)"
+        );
+    }
+
+    /// Several requests may be consumed before EOF; all must be answered.
+    #[tokio::test]
+    async fn waits_for_every_outstanding_request() {
+        let (mut transport, mut session_end) =
+            EofSignalingTransport::new(ScriptedTransport::new(vec![
+                Some(a_request()),
+                Some(a_request()),
+                None,
+            ]));
+
+        transport.receive().await.unwrap();
+        transport.receive().await.unwrap();
+        assert!(transport.receive().await.is_err());
+
+        transport.send(a_response()).await.unwrap();
+        assert!(
+            session_end.try_recv().is_err(),
+            "one of two responses is not enough"
+        );
+
+        transport.send(a_response()).await.unwrap();
+        assert!(session_end.try_recv().is_ok(), "now both are answered");
+    }
+
+    /// Notifications carry no response, so they must not hold the session open.
+    #[tokio::test]
+    async fn notifications_do_not_count_as_outstanding_work() {
+        let notification = TransportMessage::Notification(pmcp::types::Notification::Client(
+            pmcp::types::ClientNotification::Initialized,
+        ));
+        let (mut transport, mut session_end) =
+            EofSignalingTransport::new(ScriptedTransport::new(vec![Some(notification), None]));
+
+        transport.receive().await.unwrap();
+        assert!(transport.receive().await.is_err());
+
+        assert!(
+            session_end.try_recv().is_ok(),
+            "a notification is never answered, so it must not defer shutdown"
+        );
     }
 }
 

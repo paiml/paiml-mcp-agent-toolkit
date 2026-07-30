@@ -55,3 +55,46 @@ pub fn paths_object_schema(extra_properties: Value, required: Vec<&str>) -> Valu
         "required": req
     })
 }
+
+/// Convert MCP `paths` arguments to `PathBuf`s, rejecting ones that do not exist.
+///
+/// # Why this exists (GH #639)
+///
+/// Every path-taking tool did `params.paths.into_iter().map(PathBuf::from)` and
+/// analysed whatever came back. A path that does not exist walks to zero files,
+/// so `tools/call analyze_complexity {"paths": ["/typo"]}` returned
+/// `isError: false` with `{"status":"completed","total_files":0,"violations":[]}`
+/// — indistinguishable from a clean repository. Unlike the CLI, an MCP client
+/// has no exit code to fall back on, so a mistyped path read as a passing
+/// quality check.
+///
+/// The CLI was given the same guard in v3.28.1
+/// (`cli::ensure_analysis_path_exists`); this is its MCP counterpart, so the two
+/// surfaces now agree. It also makes the surface self-consistent: `quality_gate`
+/// already errored on a nonexistent `file`.
+///
+/// # Errors
+///
+/// Returns a validation error naming every missing path. An empty `paths` list
+/// is allowed through — tools interpret that as "use the default scope", which
+/// is a separate contract.
+pub fn resolve_existing_paths(paths: Vec<String>) -> pmcp::Result<Vec<std::path::PathBuf>> {
+    let resolved: Vec<std::path::PathBuf> =
+        paths.into_iter().map(std::path::PathBuf::from).collect();
+
+    let missing: Vec<String> = resolved
+        .iter()
+        .filter(|p| !p.exists())
+        .map(|p| p.display().to_string())
+        .collect();
+
+    if !missing.is_empty() {
+        return Err(pmcp::Error::validation(format!(
+            "path(s) not found: {}. Analysing a nonexistent path would report zero \
+             findings, which is indistinguishable from a clean result.",
+            missing.join(", ")
+        )));
+    }
+
+    Ok(resolved)
+}

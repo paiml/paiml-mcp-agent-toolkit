@@ -326,11 +326,37 @@ mod property_tests {
         parser.parse(code, None)
     }
 
+    /// Python reserved words. `[a-zA-Z_][a-zA-Z0-9_]*` happily generates these,
+    /// but `class if:` and `def return(self):` are syntax errors — so the
+    /// generated source was not "valid Python" as the test name claims.
+    ///
+    /// tree-sitter is error-tolerant and still returns a tree for invalid input,
+    /// so the `if let Some(tree)` guard below does not filter them out; the
+    /// visitor then extracts fewer than two items and `items.len() >= 2` fails.
+    /// That is correct behaviour on invalid input, not a visitor defect, and it
+    /// made this test flake whenever proptest happened to draw a keyword
+    /// (observed in CI on run 30516976977).
+    ///
+    /// Soft keywords (`match`, `case`, `type`) are legal identifiers and are
+    /// deliberately not excluded.
+    const PY_KEYWORDS: &[&str] = &[
+        "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
+        "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global",
+        "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return",
+        "try", "while", "with", "yield",
+    ];
+
+    fn is_valid_identifier(name: &str) -> bool {
+        !PY_KEYWORDS.contains(&name)
+    }
+
     proptest! {
         #[test]
         fn test_visitor_handles_any_valid_python(
-            func_name in "[a-zA-Z_][a-zA-Z0-9_]*",
+            func_name in "[a-zA-Z_][a-zA-Z0-9_]*"
+                .prop_filter("Python keywords are not valid identifiers", |n| is_valid_identifier(n)),
             class_name in "[a-zA-Z_][a-zA-Z0-9_]*"
+                .prop_filter("Python keywords are not valid identifiers", |n| is_valid_identifier(n))
         ) {
             let code = format!(r#"
 class {}:

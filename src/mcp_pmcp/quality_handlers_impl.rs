@@ -10,7 +10,7 @@ impl ToolHandler for QualityGateTool {
         let params: QualityGateArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         // If a specific file is requested, check only that file
         if let Some(file_path) = params.file {
@@ -51,7 +51,7 @@ impl ToolHandler for QualityGateSummaryTool {
         let params: QualityGateSummaryArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let summary = tool_functions::quality_gate_summary(&paths)
             .await
@@ -77,7 +77,7 @@ impl ToolHandler for QualityGateBaselineTool {
         let params: QualityGateBaselineArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
         let output_path = params.output.map(PathBuf::from);
 
         let baseline = tool_functions::quality_gate_baseline(&paths, output_path.as_deref())
@@ -97,7 +97,7 @@ impl ToolHandler for QualityGateCompareTool {
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
         let baseline_path = PathBuf::from(params.baseline);
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let comparison = tool_functions::quality_gate_compare(baseline_path.as_ref(), &paths)
             .await
