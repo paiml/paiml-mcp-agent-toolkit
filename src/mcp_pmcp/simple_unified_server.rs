@@ -996,3 +996,43 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 }
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dependency_bound_tests {
+    /// The `pmcp` requirement must stay bounded to a tested minor series.
+    ///
+    /// `cargo install pmat` ignores `Cargo.lock`, so users build against whatever
+    /// the version requirement admits — not what CI tested. A caret `"2.9"`
+    /// requirement let users resolve pmcp 2.17, whose transport actor defeats the
+    /// EOF-drain fix in this file: identical pmat source answers `tools/list` in
+    /// **40/40** one-shot piped sessions against pmcp 2.11 and **10/40** against
+    /// 2.17. v3.28.2 shipped a headline fix that did not work for anyone who
+    /// installed it, because every pre-release measurement used a lockfile build.
+    ///
+    /// Widening this requirement is allowed — but only together with a
+    /// fresh-resolution measurement (`cargo install --path .` *without*
+    /// `--locked`) of that race. This test exists so the requirement cannot be
+    /// widened silently.
+    #[test]
+    fn pmcp_requirement_is_bounded_to_a_tested_series() {
+        let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
+            .expect("read own Cargo.toml");
+        let line = manifest
+            .lines()
+            .find(|l| l.trim_start().starts_with("pmcp = "))
+            .expect("pmcp dependency line must exist");
+
+        assert!(
+            line.contains("~2.11") || line.contains("=2.11"),
+            "pmcp must stay pinned to the tested 2.11 series. If you are widening \
+             it deliberately, re-measure the MCP one-shot truncation race with a \
+             fresh (non---locked) `cargo install` first and update this test with \
+             the new numbers. Got: {line}"
+        );
+        assert!(
+            !line.trim_start().starts_with("pmcp = { version = \"2."),
+            "a bare caret requirement admits untested minors; use ~ or =. Got: {line}"
+        );
+    }
+}

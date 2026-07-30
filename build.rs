@@ -6,6 +6,10 @@ use std::io::Write;
 use std::path::Path;
 
 fn main() {
+    // Embed the source revision so a binary can be checked against the tree it
+    // claims to come from (see `emit_build_provenance`).
+    emit_build_provenance();
+
     // Only watch files that actually exist - missing files cause constant rebuilds
     println!("cargo:rerun-if-changed=assets/vendor/");
     println!("cargo:rerun-if-changed=assets/demo/");
@@ -1734,4 +1738,49 @@ fn make_contract_env_key(contract: &str, equation: &str) -> String {
     // Strip .yaml suffix
     let c = c.trim_end_matches("_YAML");
     format!("CONTRACT_{c}_{e}")
+}
+
+/// Embed the exact source revision the binary was built from.
+///
+/// Version numbers repeat across builds, so `pmat --version` alone cannot tell a
+/// fresh binary from a stale one. During v3.28.2 three separate measurements were
+/// reported against binaries that did not match the tree being tested — a stale
+/// artifact, a workspace build, and a lockfile build — and one of those shipped a
+/// headline fix that did not work. A commit SHA plus a dirty flag makes the
+/// mismatch checkable instead of a matter of trust.
+///
+/// Emits `unknown` when there is no git metadata, which is the normal case for a
+/// crates.io tarball build; verification tooling treats `unknown` as "cannot
+/// confirm" rather than as a pass.
+fn emit_build_provenance() {
+    let sha = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // `--porcelain` prints one line per modified path; empty means clean.
+    let dirty = std::process::Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=no"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| {
+            if String::from_utf8_lossy(&o.stdout).trim().is_empty() {
+                "clean"
+            } else {
+                "dirty"
+            }
+        })
+        .unwrap_or("unknown");
+
+    println!("cargo:rustc-env=PMAT_GIT_SHA={sha}");
+    println!("cargo:rustc-env=PMAT_GIT_DIRTY={dirty}");
+    // Rebuild when the checked-out revision changes, so the embedded SHA cannot
+    // go stale behind an otherwise-cached build.
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/index");
 }
