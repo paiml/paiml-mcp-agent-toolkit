@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.28.2] - 2026-07-29
+## [3.28.2] - 2026-07-30
 
 ### Fixed — MCP stdio truncated responses it had already committed to
 
