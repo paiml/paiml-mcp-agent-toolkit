@@ -115,6 +115,7 @@ mod mcp_semantic_integration;
 mod mcp_server_integration;
 #[cfg(feature = "mcp-integration")]
 mod mcp_server_tests;
+mod mcp_stdio_no_truncation;
 #[cfg(feature = "cli-integration")]
 mod mcp_tool_composition;
 mod mermaid_artifact_tests;

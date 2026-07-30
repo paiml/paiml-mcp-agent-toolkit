@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.2] - 2026-07-29
+
+### Fixed — MCP stdio truncated responses it had already committed to
+
+`MCP_VERSION=1 pmat` could exit before answering requests it had already taken
+off the wire. Measured on a release build, piping `initialize` +
+`notifications/initialized` + `tools/list` in one write and closing stdin
+answered `tools/list` in only **11 of 30** trials. The client saw a clean exit
+code and a missing response.
+
+`EofSignalingTransport` signalled session end on the *first* receive error. EOF
+is observed by the read side while a request consumed moments earlier is still
+being handled, so `run`'s `select!` took the session-end branch and the process
+exited before that response was written. The comment sitting in `run` asserted
+this was impossible — "All responses for consumed requests were already written
+and flushed" — and that assertion was false. Flushing was never the problem;
+pmcp's `write_message` already flushes every send.
+
+The transport now counts requests in against responses out and defers the
+signal until the count reaches zero: **30/30**, no hangs. A grace timeout would
+not have worked — `analyze_deep_context` can legitimately run for minutes, so
+any fixed deadline is either too short for real work or too long to feel
+responsive. The hang this wrapper originally fixed is unaffected: with nothing
+outstanding, the signal still fires immediately on EOF, and deferral happens
+only when exiting would lose data.
+
+Long-lived hosts (Claude Desktop/Code) hold stdin open and were never affected;
+this only ever hit scripted one-shot pipes.
+
+Guarded by four unit tests driving a scripted transport, verified to fail on the
+old behaviour (2 of 4 fail with "one of two responses is not enough"), plus an
+integration test that spawns the real binary via `CARGO_BIN_EXE_pmat`.
+
+### Known and unfixed
+- **`pmat five-whys` does not analyse the problem it is given.** Asked to root-
+  cause this defect, it ignored the problem statement and emitted repo-wide
+  boilerplate: every "why" cites the same four metrics with `.` as the evidence
+  path, and it concluded "Frequent changes indicate unstable or poorly
+  understood code" at 100% confidence — a truism, not a cause of an EOF race.
+  It also contradicts other pmat commands in the same run (TDG `0.0/100` where
+  `analyze` reports an average of 95.4; "773 TODO/FIXME/HACK markers" alongside
+  "SATD markers 2319"). `CLAUDE.md` calls it "evidence-based" and "the ONLY
+  acceptable debugging method"; on this defect it contributed nothing, and the
+  root cause was found by tracing the transport instead. This is the same
+  defect class as the fabricated `analyze comprehensive` output fixed in 3.28.0
+  — a tool reporting conclusions it never derived — and it should be held to the
+  same standard.
+
+- **`.cargo/config.toml` is a committed file that says "DO NOT COMMIT".** It
+  hardcodes `target-dir` to an absolute machine-specific path
+  (`/mnt/nvme-raid0/coverage/...`) for *all* builds, not just coverage runs, and
+  its history includes "fix: restore .cargo/config.toml (gitignore keeps
+  deleting it)". Consequence: `cargo build --release` writes somewhere other
+  than where a reader would look, which produced a false "improved to 8/12"
+  measurement during this very fix — against a binary two hours stale that
+  contained none of the change. Resolving it means deciding whether the
+  redirect is wanted at all, which is a workflow call, so it is recorded rather
+  than changed here. The new integration test uses `CARGO_BIN_EXE_pmat` so cargo
+  resolves the path and the mistake cannot silently recur in CI.
+
 ## [3.28.1] - 2026-07-29
 
 ### Fixed
