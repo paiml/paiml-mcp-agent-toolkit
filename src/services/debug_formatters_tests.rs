@@ -75,6 +75,7 @@ fn create_multi_why_analysis() -> DebugAnalysis {
     analysis.evidence_summary.complexity_violations = 5;
     analysis.evidence_summary.satd_markers = 10;
     analysis.evidence_summary.tdg_score = 65.5;
+    analysis.evidence_summary.tdg_measured = true;
     analysis.evidence_summary.git_churn_high = true;
 
     analysis
@@ -255,8 +256,15 @@ fn test_format_markdown_empty_analysis() {
 
     assert!(output.contains("# Five Whys Root Cause Analysis"));
     assert!(output.contains("**Issue**: Empty issue"));
-    // Should not contain root cause section
-    assert!(!output.contains("## Root Cause"));
+    // The Root Cause section is always rendered now: when the analyzer withheld
+    // a cause it must say so explicitly rather than silently omit the heading,
+    // which left readers unable to tell "no cause" from "section forgotten"
+    // (GH #637).
+    assert!(output.contains("## Root Cause"));
+    assert!(
+        output.contains("**Not determined.**"),
+        "a withheld cause must be stated, got: {output}"
+    );
     // Should not contain recommendations section
     assert!(!output.contains("## Recommendations"));
 }
@@ -313,16 +321,22 @@ fn test_format_markdown_tdg_score_icons() {
     // Low TDG score - should show red icon
     let mut analysis = create_test_analysis();
     analysis.evidence_summary.tdg_score = 30.0;
+    analysis.evidence_summary.tdg_measured = true;
+    // Without this the row reads "not measured": a numeric score is only shown
+    // when TDG evidence actually produced one (GH #637).
+    analysis.evidence_summary.tdg_measured = true;
     let output = format_markdown(&analysis).unwrap();
     assert!(output.contains("❌"));
 
     // Medium TDG score - should show warning
     analysis.evidence_summary.tdg_score = 70.0;
+    analysis.evidence_summary.tdg_measured = true;
     let output = format_markdown(&analysis).unwrap();
     assert!(output.contains("⚠️"));
 
     // High TDG score - should show check
     analysis.evidence_summary.tdg_score = 90.0;
+    analysis.evidence_summary.tdg_measured = true;
     let output = format_markdown(&analysis).unwrap();
     assert!(output.contains("✅"));
 }
@@ -333,6 +347,7 @@ fn test_format_markdown_no_violations() {
     analysis.evidence_summary.complexity_violations = 0;
     analysis.evidence_summary.satd_markers = 0;
     analysis.evidence_summary.tdg_score = 95.0;
+    analysis.evidence_summary.tdg_measured = true;
     analysis.evidence_summary.git_churn_high = false;
 
     let output = format_markdown(&analysis).unwrap();

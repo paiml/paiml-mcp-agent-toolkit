@@ -38,7 +38,7 @@ impl ToolHandler for ContextGenerateTool {
         let params: ContextGenerateArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let context =
             tool_functions::generate_context(&paths, params.max_depth, params.include_dependencies)
@@ -108,7 +108,7 @@ impl ToolHandler for ContextAnalyzeTool {
         let params: ContextAnalyzeArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let analyses = tool_functions::analyze_context(&paths, &params.analysis_types)
             .await
@@ -151,7 +151,7 @@ impl ToolHandler for ContextSummaryTool {
         let params: ContextSummaryArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
-        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+        let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let summary = tool_functions::context_summary(&paths, params.level.as_deref())
             .await

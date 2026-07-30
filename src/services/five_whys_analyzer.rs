@@ -91,7 +91,7 @@ impl FiveWhysAnalyzer {
         let question = self.formulate_question(issue, depth, previous_whys)?;
 
         // Gather evidence from PMAT services
-        let evidence = self.gather_evidence(path).await?;
+        let evidence = self.gather_evidence(issue, path).await?;
 
         // Generate hypothesis based on evidence
         let hypothesis = self.generate_hypothesis(&question, &evidence, depth)?;
@@ -129,8 +129,15 @@ impl FiveWhysAnalyzer {
     /// v2 evidence sources: Complexity (25%), SATD (20%), Git churn (15%),
     /// EvoScore trajectory (15%), Coverage delta (15%), Dead code (10%).
     /// TDG removed (redundant with complexity+churn).
-    async fn gather_evidence(&self, path: &Path) -> Result<Vec<Evidence>> {
+    async fn gather_evidence(&self, issue: &str, path: &Path) -> Result<Vec<Evidence>> {
         let mut evidence = Vec::new();
+
+        // Evidence about the reported issue. Everything below this line is a
+        // repo-wide metric that is identical whatever the issue was, so this is
+        // the only source that makes the analysis about the question asked.
+        if let Some(loc_ev) = Self::gather_issue_location_evidence(issue, path) {
+            evidence.push(loc_ev);
+        }
 
         // Real SATD evidence: count TODO/FIXME/HACK/WORKAROUND in source
         if let Some(satd_ev) = Self::gather_satd_evidence(path) {
@@ -185,6 +192,156 @@ impl FiveWhysAnalyzer {
     const SATD_EXTENSIONS: &'static [&'static str] =
         &["rs", "py", "ts", "js", "go", "lua", "c", "cpp", "java"];
     const SATD_MARKERS: &'static [&'static str] = &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
+
+    /// Words too common to identify anything, dropped from issue terms.
+    const ISSUE_STOPWORDS: &'static [&'static str] = &[
+        "the", "this", "that", "with", "when", "from", "into", "have", "does", "than", "then",
+        "them", "they", "there", "which", "while", "will", "would", "could", "should", "been",
+        "being", "before", "after", "because", "always", "never", "error", "fails", "failed",
+        "failure", "issue", "problem", "broken", "wrong", "silent", "silently", "reported",
+        "returns", "return", "value", "values", "code", "test", "tests",
+    ];
+
+    /// Most matching locations to report; enough to orient, few enough to read.
+    const MAX_ISSUE_LOCATIONS: usize = 12;
+
+    /// Highest confidence an analysis may claim when it never located the issue.
+    ///
+    /// Repo-wide metrics describe the repository, not the defect. Collecting
+    /// more of them must not raise confidence in a causal claim about a
+    /// specific issue.
+    pub const NO_ISSUE_EVIDENCE_CEILING: f64 = 0.35;
+
+    /// Did any evidence actually pertain to the reported issue?
+    fn has_issue_evidence(evidence: &[Evidence]) -> bool {
+        evidence
+            .iter()
+            .any(|e| e.source == EvidenceSource::IssueLocation)
+    }
+
+    /// Distinctive terms from the issue text, used to locate relevant source.
+    ///
+    /// Keeps tokens of 4+ characters that are not stopwords, so
+    /// "MCP stdio server drops responses when stdin reaches EOF" yields
+    /// `stdio`, `server`, `drops`, `responses`, `stdin`, `reaches` — terms that
+    /// can actually be found in code.
+    fn issue_terms(issue: &str) -> Vec<String> {
+        let mut terms: Vec<String> = issue
+            .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .filter(|t| t.len() >= 4)
+            .map(str::to_lowercase)
+            .filter(|t| !Self::ISSUE_STOPWORDS.contains(&t.as_str()))
+            .collect();
+        terms.sort();
+        terms.dedup();
+        terms
+    }
+
+    /// Locate source lines mentioning the issue's distinctive terms.
+    ///
+    /// This is the only evidence source tied to the *reported issue*; every
+    /// other one is a repo-wide metric identical for any input. Before this
+    /// existed, asking about an EOF race in the MCP transport produced the same
+    /// four repo metrics as asking about anything else, and the analysis
+    /// concluded "Frequent changes indicate unstable or poorly understood code"
+    /// at 100% confidence — a statement about the repository, not the defect
+    /// (GH #637).
+    ///
+    /// Returns `None` when nothing matches, which callers must treat as "the
+    /// issue was not located" rather than as an absence of problems.
+    fn gather_issue_location_evidence(issue: &str, path: &Path) -> Option<Evidence> {
+        let terms = Self::issue_terms(issue);
+        if terms.is_empty() {
+            return None;
+        }
+        let src_dir = path.join("src");
+        let dir = if src_dir.is_dir() { &src_dir } else { path };
+
+        let mut hits = Vec::new();
+        Self::collect_term_matches(dir, &terms, &mut hits);
+        if hits.is_empty() {
+            return None;
+        }
+
+        // Rank by how many distinct issue terms a file matches: a file
+        // mentioning several of them is likelier to be the subject.
+        hits.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.cmp(&b.0)));
+        hits.truncate(Self::MAX_ISSUE_LOCATIONS);
+
+        let locations: Vec<serde_json::Value> = hits
+            .iter()
+            .map(|(file, line, score, term)| {
+                json!({"file": file, "line": line, "terms_matched": score, "term": term})
+            })
+            .collect();
+        let top = hits
+            .iter()
+            .take(3)
+            .map(|(f, l, _, _)| format!("{f}:{l}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        Some(Evidence::new(
+            EvidenceSource::IssueLocation,
+            path.to_path_buf(),
+            "issue_terms".to_string(),
+            json!({"terms": terms, "locations": locations}),
+            format!(
+                "Located {} source line(s) matching issue terms; strongest: {top}",
+                hits.len()
+            ),
+        ))
+    }
+
+    /// Walk `dir`, recording `(file, line_no, distinct_terms_on_line, term)`.
+    fn collect_term_matches(
+        dir: &Path,
+        terms: &[String],
+        out: &mut Vec<(String, usize, usize, String)>,
+    ) {
+        // Bail once we have plenty; this walks a whole source tree.
+        if out.len() >= Self::MAX_ISSUE_LOCATIONS * 8 {
+            return;
+        }
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                Self::collect_term_matches(&p, terms, out);
+                continue;
+            }
+            let is_source = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| Self::SATD_EXTENSIONS.contains(&e));
+            if !is_source {
+                continue;
+            }
+            let Ok(content) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            for (idx, line) in content.lines().enumerate() {
+                let lower = line.to_lowercase();
+                let matched: Vec<&String> = terms.iter().filter(|t| lower.contains(*t)).collect();
+                // Two or more distinct issue terms on one line is a real
+                // signal; one is usually an incidental word.
+                if matched.len() >= 2 {
+                    out.push((
+                        p.display().to_string(),
+                        idx + 1,
+                        matched.len(),
+                        matched
+                            .iter()
+                            .map(|s| s.as_str())
+                            .collect::<Vec<_>>()
+                            .join("+"),
+                    ));
+                }
+            }
+        }
+    }
 
     fn count_satd_markers(dir: &Path) -> usize {
         let entries = match std::fs::read_dir(dir) {
@@ -499,6 +656,10 @@ struct EvidenceSignals {
     high_churn: bool,
     regressing_evoscore: bool,
     low_coverage: bool,
+    /// `(file, total_locations)` for the strongest issue-term match, when the
+    /// issue was located at all. Hypotheses must cite this when present:
+    /// without it they describe the repository, not the reported defect.
+    located: Option<(String, usize)>,
 }
 
 impl EvidenceSignals {
@@ -534,10 +695,48 @@ impl EvidenceSignals {
                 e.source == EvidenceSource::CoverageDelta
                     && e.value.get("delta").and_then(|v| v.as_f64()).unwrap_or(0.0) < 0.0
             }),
+            located: evidence
+                .iter()
+                .find(|e| e.source == EvidenceSource::IssueLocation)
+                .and_then(|e| {
+                    let locs = e.value.get("locations")?.as_array()?;
+                    let first = locs.first()?;
+                    let file = first.get("file")?.as_str()?.to_string();
+                    let line = first.get("line").and_then(serde_json::Value::as_u64);
+                    Some((
+                        line.map_or(file.clone(), |l| format!("{file}:{l}")),
+                        locs.len(),
+                    ))
+                }),
         }
     }
 
     fn hypothesis_for_depth(&self, depth: u8) -> String {
+        // When the issue was located, lead with that: it is the only statement
+        // here derived from the issue rather than from repo-wide metrics. The
+        // deeper rungs remain repo-level and say so, instead of being presented
+        // as the cause of a specific defect (GH #637).
+        if let Some((where_, count)) = &self.located {
+            return match depth {
+                1 => format!(
+                    "The issue's terms concentrate at {where_} ({count} matching location(s)) — \
+                     the defect most likely originates in that code path"
+                ),
+                2 => format!(
+                    "{} (repo-level signal, not specific to {where_})",
+                    self.depth_2_hypothesis()
+                ),
+                3 => format!(
+                    "{} (repo-level signal, not specific to {where_})",
+                    self.depth_3_hypothesis()
+                ),
+                4 => "Requirements or constraints were not fully specified (repo-level signal)"
+                    .to_string(),
+                _ => {
+                    "Systematic process gap in development workflow (repo-level signal)".to_string()
+                }
+            };
+        }
         match depth {
             1 => self.depth_1_hypothesis(),
             2 => self.depth_2_hypothesis(),
@@ -586,6 +785,23 @@ impl FiveWhysAnalyzer {
     /// v2 weights: Complexity 25%, SATD 20%, GitChurn 15%,
     /// EvoScoreTrajectory 15%, CoverageDelta 15%, DeadCode 10%.
     /// TDG weight removed (0%) — redundant with complexity+churn.
+    ///
+    /// # Two corrections (GH #637)
+    ///
+    /// **The score could only ever be 1.0.** Each source contributed
+    /// `weight * (1.0 + severity)`, and the total was divided by the sum of the
+    /// weights alone — so the ratio was always at least 1.0 and the final
+    /// `clamp(0.0, 1.0)` pinned it to exactly 100%. Severity is now in `[0, 1]`
+    /// so the score genuinely varies. `test_calculate_confidence_increases_with
+    /// _severity` asserted only `high >= low`, which `1.0 >= 1.0` satisfied, so
+    /// it could not detect this; it now asserts strict inequality.
+    ///
+    /// **Confidence measured volume, not relevance.** Every source except
+    /// [`EvidenceSource::IssueLocation`] is a repo-wide metric that is identical
+    /// whatever issue was reported. Collecting five of them said nothing about
+    /// the question asked, yet produced 100%. Without at least one
+    /// issue-specific location the score is now capped at
+    /// [`Self::NO_ISSUE_EVIDENCE_CEILING`].
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
         if evidence.is_empty() {
@@ -615,15 +831,15 @@ impl FiveWhysAnalyzer {
                     } else {
                         0.0
                     };
-                    (0.25, 1.0 + severity.min(1.0))
+                    (0.25, severity.min(1.0))
                 }
                 EvidenceSource::SATD => {
                     let count = ev.value.get("count").and_then(|v| v.as_u64()).unwrap_or(1);
                     let severity = (count as f64).min(10.0) / 10.0;
-                    (0.20, 1.0 + severity)
+                    (0.20, severity)
                 }
                 // v2: TDG removed (redundant with complexity+churn). Weight = 0.
-                EvidenceSource::TDG => (0.0, 1.0),
+                EvidenceSource::TDG => (0.0, 0.0),
                 EvidenceSource::GitChurn => {
                     let commits = ev
                         .value
@@ -631,9 +847,9 @@ impl FiveWhysAnalyzer {
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
                     let severity = (commits as f64).min(20.0) / 20.0;
-                    (0.15, 1.0 + severity)
+                    (0.15, severity)
                 }
-                EvidenceSource::DeadCode => (0.10, 1.0),
+                EvidenceSource::DeadCode => (0.10, 0.5),
                 EvidenceSource::ManualInspection => (0.15, 1.0),
                 EvidenceSource::EvoScoreTrajectory => {
                     let evoscore = ev
@@ -643,12 +859,25 @@ impl FiveWhysAnalyzer {
                         .unwrap_or(0.0);
                     // Negative evoscore = regressing = higher severity
                     // Positive evoscore = improving = lower severity
+                    // Regression is a stronger signal than improvement, but
+                    // neither is evidence about a specific reported issue.
                     let severity = if evoscore < 0.0 {
-                        1.0 + (-evoscore).min(1.0) // Regression amplifies confidence
+                        (-evoscore).min(1.0)
                     } else {
-                        1.0 // Improvement is neutral
+                        0.0
                     };
                     (0.15, severity)
+                }
+                EvidenceSource::IssueLocation => {
+                    // Severity scales with how many locations matched two or
+                    // more distinct issue terms.
+                    let found = ev
+                        .value
+                        .get("locations")
+                        .and_then(|v| v.as_array())
+                        .map_or(0, Vec::len);
+                    let severity = (found as f64 / 6.0).min(1.0);
+                    (0.35, severity)
                 }
                 EvidenceSource::CoverageDelta => {
                     let delta = ev
@@ -658,9 +887,9 @@ impl FiveWhysAnalyzer {
                         .unwrap_or(0.0);
                     // Negative delta = below 85% baseline = higher severity
                     let severity = if delta < 0.0 {
-                        1.0 + (-delta / 85.0).min(1.0) // Scale by baseline
+                        (-delta / 85.0).min(1.0) // Scale by baseline
                     } else {
-                        1.0
+                        0.0
                     };
                     (0.15, severity)
                 }
@@ -677,18 +906,62 @@ impl FiveWhysAnalyzer {
             0.5
         };
 
-        Ok(normalized)
+        // Repo-wide metrics alone cannot support a confident causal claim about
+        // a specific issue, however many of them were collected.
+        if Self::has_issue_evidence(evidence) {
+            Ok(normalized)
+        } else {
+            Ok(normalized.min(Self::NO_ISSUE_EVIDENCE_CEILING))
+        }
     }
 
     /// Extract root cause from Why iterations
+    /// Extract root cause from Why iterations.
+    ///
+    /// Returns `None` when no evidence pertained to the reported issue. The
+    /// final hypothesis is drawn from a fixed ladder keyed on repo-wide
+    /// metrics, so presenting it as *the root cause* of an unlocated issue
+    /// states a conclusion that was never derived — this is what produced
+    /// "Frequent changes indicate unstable or poorly understood code" as the
+    /// root cause of an EOF race in the MCP transport (GH #637).
+    ///
+    /// Withholding follows the precedent set by
+    /// `FalsificationResult::unmeasured()` in v3.26.0: a receipt that says
+    /// nothing is better than one that overstates.
     fn extract_root_cause(&self, whys: &[WhyIteration]) -> Result<Option<String>> {
-        if whys.is_empty() {
+        let Some(last_why) = whys.last() else {
+            return Ok(None);
+        };
+
+        let located = whys
+            .iter()
+            .any(|why| Self::has_issue_evidence(&why.evidence));
+        if !located {
             return Ok(None);
         }
 
-        // Root cause is the hypothesis from the final Why
-        let last_why = whys.last().expect("internal error");
-        Ok(Some(last_why.hypothesis.clone()))
+        // Report the deepest hypothesis that was actually derived from the
+        // issue. The deeper rungs of the ladder are repo-wide signals (churn,
+        // SATD, coverage) tagged as such; presenting one of those as "the root
+        // cause" is what made an EOF race read as "Frequent changes indicate
+        // unstable or poorly understood code" (GH #637).
+        const REPO_LEVEL_TAG: &str = "repo-level signal";
+        let derived = whys
+            .iter()
+            .rev()
+            .find(|why| !why.hypothesis.contains(REPO_LEVEL_TAG))
+            .unwrap_or(last_why);
+
+        if derived.hypothesis.contains(REPO_LEVEL_TAG) {
+            return Ok(None);
+        }
+
+        Ok(Some(format!(
+            "{}\n\nBeyond localisation no causal chain was derived: the remaining \
+             \"why\" steps are repo-wide signals, not findings about this defect. \
+             Confirm by reading the cited locations.",
+            derived.hypothesis
+        )))
     }
 
     /// Generate actionable recommendations (v2 evidence sources, PMAT-510)
@@ -778,11 +1051,26 @@ impl FiveWhysAnalyzer {
             ));
         }
 
-        // Always add root cause fix recommendation
-        recommendations.push(Recommendation::high(
-            format!("Address root cause: {}", root_cause),
-            None,
-        ));
+        // Root cause fix recommendation — only when there *is* one.
+        //
+        // `analyze` passes `root_cause.unwrap_or_default()`, so a withheld cause
+        // arrives here as an empty string and this printed a bare
+        // "Address root cause: " with nothing after it. When the issue could not
+        // be located, the actionable advice is to make it locatable.
+        if root_cause.trim().is_empty() {
+            recommendations.push(Recommendation::high(
+                "No root cause was determined — the reported issue could not be \
+                 located in the source. Re-run with terms that appear in the code \
+                 (identifiers, module or file names, a log string)."
+                    .to_string(),
+                None,
+            ));
+        } else {
+            recommendations.push(Recommendation::high(
+                format!("Address root cause: {root_cause}"),
+                None,
+            ));
+        }
 
         // Add specification recommendation
         recommendations.push(Recommendation::medium(

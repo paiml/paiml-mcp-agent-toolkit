@@ -269,6 +269,9 @@
             complexity_violations: 3,
             satd_markers: 7,
             tdg_score: 65.5,
+            // A score is only meaningful alongside the flag saying it was
+            // actually measured; see `EvidenceSummary::tdg_measured` (GH #637).
+            tdg_measured: true,
             git_churn_high: true,
             evoscore_trajectory: 0.0,
             coverage_delta: 0.0,

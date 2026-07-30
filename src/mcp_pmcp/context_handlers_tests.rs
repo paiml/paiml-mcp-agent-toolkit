@@ -5,6 +5,22 @@
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
+
+    /// A real directory with one analysable source file.
+    ///
+    /// These tests used to pass `"/nonexistent/path"` and assert `is_ok()`,
+    /// which meant they exercised none of the options they are named for — the
+    /// tools walked an absent tree, found nothing, and reported success. Now
+    /// that missing paths are rejected (GH #639) the fixture has to be real.
+    fn fixture_dir() -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            dir.path().join("sample.rs"),
+            "fn sample(a: i32) -> i32 {\n    if a > 2 {\n        a * 3\n    } else {\n        a\n    }\n}\n",
+        )
+        .expect("write fixture");
+        dir
+    }
     use serde_json::json;
     use tokio_util::sync::CancellationToken;
 
@@ -159,15 +175,23 @@ mod coverage_tests {
             "paths": ["/nonexistent/path"]
         });
         let result = tool.handle(args, test_extra()).await;
-        // Should succeed but with empty results
-        assert!(result.is_ok());
+        // A path that does not exist must be rejected: reporting zero
+        // findings for it is indistinguishable from a clean result, and an
+        // MCP client has no exit code to check (GH #639).
+        let err = result.expect_err("nonexistent path must be rejected");
+        assert!(
+            err.to_string().contains("not found"),
+            "error should name the missing path, got: {err}"
+        );
     }
 
     #[tokio::test]
     async fn test_context_generate_tool_json_format() {
         let tool = ContextGenerateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "json"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -177,8 +201,10 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_context_generate_tool_markdown_format() {
         let tool = ContextGenerateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "markdown"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -190,8 +216,10 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_context_generate_tool_xml_format() {
         let tool = ContextGenerateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "xml"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -214,8 +242,10 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_context_generate_tool_with_all_options() {
         let tool = ContextGenerateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "json",
             "max_depth": 5,
             "include_dependencies": true
@@ -314,15 +344,23 @@ mod coverage_tests {
             "paths": ["/nonexistent/path"]
         });
         let result = tool.handle(args, test_extra()).await;
-        // Summary on nonexistent path should succeed with zeros
-        assert!(result.is_ok());
+        // "Succeed with zeros" is exactly the false pass: an MCP client cannot
+        // tell a summary of nothing from a summary of a clean tree, and it has
+        // no exit code to check (GH #639).
+        let err = result.expect_err("nonexistent path must be rejected");
+        assert!(
+            err.to_string().contains("not found"),
+            "error should name the missing path, got: {err}"
+        );
     }
 
     #[tokio::test]
     async fn test_context_summary_tool_with_level() {
         let tool = ContextSummaryTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "level": "detailed"
         });
         let result = tool.handle(args, test_extra()).await;

@@ -40,32 +40,70 @@ Guarded by four unit tests driving a scripted transport, verified to fail on the
 old behaviour (2 of 4 fail with "one of two responses is not enough"), plus an
 integration test that spawns the real binary via `CARGO_BIN_EXE_pmat`.
 
-### Known and unfixed
-- **`pmat five-whys` does not analyse the problem it is given.** Asked to root-
-  cause this defect, it ignored the problem statement and emitted repo-wide
-  boilerplate: every "why" cites the same four metrics with `.` as the evidence
-  path, and it concluded "Frequent changes indicate unstable or poorly
-  understood code" at 100% confidence — a truism, not a cause of an EOF race.
-  It also contradicts other pmat commands in the same run (TDG `0.0/100` where
-  `analyze` reports an average of 95.4; "773 TODO/FIXME/HACK markers" alongside
-  "SATD markers 2319"). `CLAUDE.md` calls it "evidence-based" and "the ONLY
-  acceptable debugging method"; on this defect it contributed nothing, and the
-  root cause was found by tracing the transport instead. This is the same
-  defect class as the fabricated `analyze comprehensive` output fixed in 3.28.0
-  — a tool reporting conclusions it never derived — and it should be held to the
-  same standard.
+### Fixed — `pmat five-whys` did not analyse the problem it was given (#637)
 
-- **`.cargo/config.toml` is a committed file that says "DO NOT COMMIT".** It
-  hardcodes `target-dir` to an absolute machine-specific path
-  (`/mnt/nvme-raid0/coverage/...`) for *all* builds, not just coverage runs, and
-  its history includes "fix: restore .cargo/config.toml (gitignore keeps
-  deleting it)". Consequence: `cargo build --release` writes somewhere other
-  than where a reader would look, which produced a false "improved to 8/12"
-  measurement during this very fix — against a binary two hours stale that
-  contained none of the change. Resolving it means deciding whether the
-  redirect is wanted at all, which is a workflow call, so it is recorded rather
-  than changed here. The new integration test uses `CARGO_BIN_EXE_pmat` so cargo
-  resolves the path and the mistake cannot silently recur in CI.
+`CLAUDE.md` calls it "evidence-based" and "the ONLY acceptable debugging
+method". Asked to root-cause the defect above, it returned repo-wide
+boilerplate: every "why" cited the same four metrics, and it named "Frequent
+changes indicate unstable or poorly understood code" as the root cause of an EOF
+race — at **100% confidence**. Four structural faults, all fixed:
+
+1. **Evidence ignored the question.** `gather_evidence` never received the issue
+   text, and `generate_hypothesis` took the question as `_question` — explicitly
+   unused. A new `EvidenceSource::IssueLocation` extracts distinctive terms from
+   the issue and reports real `file:line` matches. Asked about the transport
+   race, it now points at `src/agent/mcp_server_protocol.rs:199`.
+
+2. **Confidence could only ever be 1.0.** Each source contributed
+   `weight * (1.0 + severity)` over a divisor of `weight` alone, so the ratio was
+   always ≥ 1.0 and the final clamp pinned it to exactly 100% for every input.
+   Severity is now in `[0, 1]`. A visible consequence: `analyze` early-terminates
+   at `confidence > 0.9`, so saturation made `--depth` inoperative past 3.
+
+3. **Confidence measured volume, not relevance.** Collecting five repo-wide
+   metrics said nothing about the reported issue. Without at least one
+   issue-specific location the score is now capped at 0.35.
+
+4. **The root cause was a truism.** It is now the deepest hypothesis actually
+   derived from the issue, followed by an explicit statement that no causal
+   chain beyond localisation was derived. When the issue cannot be located at
+   all, both formatters say "**Not determined**" and why, rather than printing a
+   repo-level guess or silently omitting the section — the honest-failure
+   precedent of `FalsificationResult::unmeasured()`.
+
+Five existing tests had encoded the saturation as the goal — one comment read
+"should produce confidence ~1.0 (weight/weight_sum)" — and the test that should
+have caught it asserted only `high >= low`, which `1.0 >= 1.0` satisfied. Each
+was updated to assert the corrected contract rather than relaxed, and the
+severity assertion is now strict.
+
+### Fixed — MCP tools reported success for paths that do not exist (#639)
+
+The CLI got this guard in 3.28.1; the MCP surface did not, so
+`tools/call analyze_complexity {"paths": ["/typo"]}` returned `isError: false`
+with `{"status":"completed","total_files":0,"violations":[]}` — indistinguishable
+from a clean repository, and an MCP client has no exit code to fall back on.
+`resolve_existing_paths` now rejects missing paths at all 18 path-taking tool
+sites, naming them. The two surfaces finally agree, and so does the MCP surface
+with itself: `quality_gate` already errored on a nonexistent `file`.
+
+Seventeen tests passed `"/nonexistent/path"` and asserted `is_ok()`, which meant
+they exercised none of the options they were named for — `top_files`,
+`threshold`, `strict`, output formats — because the tools walked an absent tree
+and reported success. They now use a real fixture directory, so they test what
+they claim to. The two tests genuinely about nonexistent paths assert the
+rejection.
+
+### Fixed — a property test generated invalid Python and asserted it parsed
+
+`enhanced_python_visitor::property_tests::test_visitor_handles_any_valid_python`
+drew identifiers from `[a-zA-Z_][a-zA-Z0-9_]*`, which includes Python keywords —
+`class if:` and `def return(self):` are syntax errors. tree-sitter is
+error-tolerant and still returns a tree, so the `if let Some(tree)` guard did not
+filter them, the visitor extracted fewer than two items, and `items.len() >= 2`
+failed. Correct behaviour on invalid input, not a visitor defect; the generator
+now excludes reserved words (soft keywords `match`/`case`/`type` are still
+allowed). This flaked CI on run 30516976977 with 18252 other tests passing.
 
 ## [3.28.1] - 2026-07-29
 

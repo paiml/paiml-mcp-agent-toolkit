@@ -6,6 +6,22 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A real directory with one analysable source file.
+    ///
+    /// These tests used to pass `"/nonexistent/path"` and assert `is_ok()`,
+    /// which meant they exercised none of the options they are named for — the
+    /// tools walked an absent tree, found nothing, and reported success. Now
+    /// that missing paths are rejected (GH #639) the fixture has to be real.
+    fn fixture_dir() -> tempfile::TempDir {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            dir.path().join("sample.rs"),
+            "fn sample(a: i32) -> i32 {\n    if a > 2 {\n        a * 3\n    } else {\n        a\n    }\n}\n",
+        )
+        .expect("write fixture");
+        dir
+    }
     use serde_json::json;
     use tokio_util::sync::CancellationToken;
 
@@ -58,12 +74,13 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_tool_with_strict() {
         let tool = QualityGateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "strict": true
         });
         let result = tool.handle(args, test_extra()).await;
-        // Should succeed (graceful handling of nonexistent paths)
         assert!(result.is_ok());
     }
 
@@ -82,8 +99,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_tool_strict_false() {
         let tool = QualityGateTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "strict": false
         });
         let result = tool.handle(args, test_extra()).await;
@@ -133,8 +152,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_summary_tool_json_format() {
         let tool = QualityGateSummaryTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "json"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -144,8 +165,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_summary_tool_markdown_format() {
         let tool = QualityGateSummaryTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "markdown"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -157,8 +180,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_summary_tool_unsupported_format() {
         let tool = QualityGateSummaryTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "format": "xml"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -170,8 +195,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_summary_tool_default_format() {
         let tool = QualityGateSummaryTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"]
+            "paths": [fixture_dir_path.as_str()]
         });
         let result = tool.handle(args, test_extra()).await;
         // Default format (json) should work
@@ -221,8 +248,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_baseline_tool_with_output() {
         let tool = QualityGateBaselineTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"],
+            "paths": [fixture_dir_path.as_str()],
             "output": "/tmp/baseline.json"
         });
         let result = tool.handle(args, test_extra()).await;
@@ -233,8 +262,10 @@ mod tests {
     #[tokio::test]
     async fn test_quality_gate_baseline_tool_without_output() {
         let tool = QualityGateBaselineTool::new();
+        let fixture = fixture_dir();
+        let fixture_dir_path = fixture.path().display().to_string();
         let args = json!({
-            "paths": ["/nonexistent/path"]
+            "paths": [fixture_dir_path.as_str()]
         });
         let result = tool.handle(args, test_extra()).await;
         assert!(result.is_ok());
