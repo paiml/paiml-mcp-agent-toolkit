@@ -37,11 +37,27 @@ pub fn format_as_json(
     serde_json::to_string_pretty(&json_data).map_err(Into::into)
 }
 
-/// Setup proof annotator with mock sources
+/// Setup the proof annotator with the real proof source.
+///
+/// This used to register three `MockProofSource`s -- a TEST DOUBLE -- in the
+/// production path. Its own doc comment said "with mock sources". The mock
+/// ignores the project path entirely and synthesises `count` annotations
+/// against invented filenames, so `analyze proof-annotations` emitted exactly
+/// 5 + 3 + 2 = 10 annotations naming borrow_checker_0.rs, static_analyzer_1.rs
+/// and friends -- files that exist nowhere on disk -- for ANY path, including
+/// a nonexistent one, each stamped with a fresh UUID and a current-time
+/// `dateVerified`. That is machine-readable fabricated evidence of formal
+/// verification, which is the most damaging thing this tool could emit.
+///
+/// `RustBorrowChecker` is a real, default-feature-enabled `ProofSource` that
+/// walks the project and derives annotations from parsed source. It existed
+/// the whole time with zero callers.
+///
+/// See contracts/pmat-no-fabrication-v1.yaml, `output_derived_from_input`.
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
-    use crate::services::{proof_annotator::MockProofSource, symbol_table::SymbolTable};
+    use crate::services::{rust_borrow_checker::RustBorrowChecker, symbol_table::SymbolTable};
 
     let symbol_table = std::sync::Arc::new(SymbolTable::new());
     let mut annotator = ProofAnnotator::new(symbol_table);
@@ -50,10 +66,7 @@ pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
         annotator.clear_cache();
     }
 
-    // Add mock proof sources
-    annotator.add_source(MockProofSource::new("borrow_checker".to_string(), 10, 5));
-    annotator.add_source(MockProofSource::new("static_analyzer".to_string(), 20, 3));
-    annotator.add_source(MockProofSource::new("formal_verifier".to_string(), 50, 2));
+    annotator.add_source(RustBorrowChecker::default());
 
     annotator
 }

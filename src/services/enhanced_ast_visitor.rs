@@ -18,17 +18,23 @@ pub struct EnhancedAstVisitor {
 
     file_path: PathBuf,
     module_path: Vec<String>,
+    /// Source text, used to resolve REAL 1-based line numbers.
+    ///
+    /// Without it the visitor had nothing to resolve against and fell back to
+    /// an enumeration index -- see `resolve_line`.
+    source: String,
 }
 
 impl EnhancedAstVisitor {
     /// Creates a new enhanced visitor for a given file
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub fn new(file_path: &Path) -> Self {
+    pub fn new(file_path: &Path, source: &str) -> Self {
         Self {
             items: Vec::new(),
             file_path: file_path.to_path_buf(),
             module_path: vec![],
+            source: source.to_string(),
         }
     }
 
@@ -66,32 +72,49 @@ impl EnhancedAstVisitor {
         }
     }
 
-    /// Gets line number from a span debug representation
-    fn get_line_from_span_debug(&self, span_debug: &str) -> usize {
-        // Extract line number from debug representation if available
-        // Format is typically "Span { start: Loc { line: X, ... }, ... }"
-        if let Some(line_start) = span_debug.find("line: ") {
-            let line_str = &span_debug[line_start + 6..];
-            if let Some(comma_pos) = line_str.find(',') {
-                if let Ok(line) = line_str[..comma_pos].parse::<usize>() {
-                    return line;
-                }
+    /// Resolves the real 1-based source line of `keyword name` in the file.
+    ///
+    /// This replaces `get_line`/`get_line_from_span_debug`, which parsed a
+    /// `line: N` field out of a span's Debug string and, failing that, returned
+    /// `self.items.len() + 1` -- an ENUMERATION INDEX. proc-macro2 only carries
+    /// line information when its `span-locations` feature is enabled, and pmat
+    /// does not enable it, so the Debug string never contained `line:` and the
+    /// fallback fired every single time. `context --format json` therefore
+    /// reported functions at lines 1,2,3,4,5 whose real lines were
+    /// 6,651,776,777,778, while `quality-gate` reported the true lines for the
+    /// same file. Any tool jumping to code from context JSON landed nowhere
+    /// near the definition.
+    ///
+    /// Returns `None` when the declaration cannot be located, so the caller can
+    /// omit the location rather than invent one. See
+    /// contracts/pmat-no-fabrication-v1.yaml, `source_location_fidelity`.
+    fn resolve_line(&self, keyword: &str, name: &str) -> Option<usize> {
+        let needle_kw = format!("{keyword} ");
+        for (idx, raw) in self.source.lines().enumerate() {
+            let trimmed = raw.trim();
+            let Some(pos) = trimmed.find(&needle_kw) else {
+                continue;
+            };
+            let before = trimmed.get(..pos).unwrap_or_default();
+            if before.contains("//") || before.contains("/*") {
+                continue;
+            }
+            let after = trimmed.get(pos + needle_kw.len()..).unwrap_or_default();
+            let end = after
+                .find(|c: char| c == '(' || c == '<' || c == '{' || c == ':' || c.is_whitespace())
+                .unwrap_or(after.len());
+            if after.get(..end).unwrap_or_default().trim() == name {
+                return Some(idx + 1);
             }
         }
-
-        // Fallback to sequential numbering
-        self.items.len() + 1
+        None
     }
 
-    /// Gets line number from a Spanned item
-    fn get_line<S: Spanned>(&self, item: &S) -> usize {
-        // In real proc_macro2, spans don't carry line info by default
-        // We'll use a heuristic based on the span's debug representation
-        // For production, we'd integrate with proc_macro2's unstable features
-        // or use a source map approach
-        let span = item.span();
-        let debug_str = format!("{span:?}");
-        self.get_line_from_span_debug(&debug_str)
+    /// Line for a declaration, falling back to 0 ("unknown") rather than to a
+    /// counter. Zero is outside any file's 1-based numbering, so a consumer can
+    /// tell it apart from a real location; an index cannot be told apart.
+    fn line_of(&self, keyword: &str, name: &str) -> usize {
+        self.resolve_line(keyword, name).unwrap_or(0)
     }
 
     /// Creates a qualified name for the current module context
@@ -109,7 +132,9 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let name = self.get_qualified_name(&node.sig.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let is_async = node.sig.asyncness.is_some();
-        let line = self.get_line(node);
+        // Resolve against the BARE ident: the qualified name carries the module
+        // prefix, which never appears in the declaration line.
+        let line = self.line_of("fn", &node.sig.ident.to_string());
 
         self.items.push(AstItem::Function {
             name,
@@ -122,10 +147,11 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
+        let __line = self.line_of("struct", &node.ident.to_string());
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let fields_count = node.fields.len();
-        let line = self.get_line(node);
+        let line = __line;
 
         // Extract derives
         let mut derives = Vec::new();
@@ -160,10 +186,11 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_enum(&mut self, node: &'ast ItemEnum) {
+        let __line = self.line_of("enum", &node.ident.to_string());
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let variants_count = node.variants.len();
-        let line = self.get_line(node);
+        let line = __line;
 
         self.items.push(AstItem::Enum {
             name,
@@ -176,9 +203,10 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_trait(&mut self, node: &'ast ItemTrait) {
+        let __line = self.line_of("trait", &node.ident.to_string());
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
-        let line = self.get_line(node);
+        let line = __line;
 
         self.items.push(AstItem::Trait {
             name,
@@ -204,7 +232,8 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
             .trait_
             .as_ref()
             .map(|(_, path, _)| format!("{:?}", path));
-        let line = self.get_line(node);
+        // `impl` blocks are located by their type name.
+        let line = self.line_of("impl", &type_name);
 
         self.items.push(AstItem::Impl {
             type_name,
@@ -216,9 +245,10 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_mod(&mut self, node: &'ast ItemMod) {
+        let __line = self.line_of("mod", &node.ident.to_string());
         let name = node.ident.to_string();
         let visibility = self.get_visibility(&node.vis);
-        let line = self.get_line(node);
+        let line = __line;
 
         self.items.push(AstItem::Module {
             name: self.get_qualified_name(&name),
@@ -237,7 +267,9 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
         let path = quote::quote!(#node.tree).to_string();
         #[cfg(not(feature = "rust-ast"))]
         let path = format!("{:?}", node.tree);
-        let line = self.get_line(node);
+        // A `use` has no ident to match; 0 means "not located" rather than a
+        // counter masquerading as a line.
+        let line = 0;
 
         self.items.push(AstItem::Use { path, line });
 
@@ -261,7 +293,7 @@ mod tests {
         "#;
 
         let syntax = syn::parse_file(code).unwrap();
-        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), code);
         let items = visitor.extract_items(&syntax);
 
         assert_eq!(items.len(), 3);
@@ -312,7 +344,7 @@ mod tests {
         "#;
 
         let syntax = syn::parse_file(code).unwrap();
-        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), code);
         let items = visitor.extract_items(&syntax);
 
         // Find the service_function
@@ -340,7 +372,7 @@ mod tests {
         "#;
 
         let syntax = syn::parse_file(code).unwrap();
-        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), code);
         let items = visitor.extract_items(&syntax);
 
         assert_eq!(items.len(), 1);
@@ -372,7 +404,7 @@ mod tests {
         "#;
 
         let syntax = syn::parse_file(code).unwrap();
-        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+        let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), code);
         let items = visitor.extract_items(&syntax);
 
         let visibilities: Vec<String> = items
@@ -405,7 +437,7 @@ mod property_tests {
             let code = generate_test_code(seed);
 
             if let Ok(syntax) = syn::parse_file(&code) {
-                let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+                let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), &code);
                 let items = visitor.extract_items(&syntax);
 
                 // All items should have non-empty names
@@ -436,7 +468,7 @@ mod property_tests {
             let code = generate_nested_modules(module_depth);
 
             if let Ok(syntax) = syn::parse_file(&code) {
-                let visitor = EnhancedAstVisitor::new(Path::new("test.rs"));
+                let visitor = EnhancedAstVisitor::new(Path::new("test.rs"), &code);
                 let items = visitor.extract_items(&syntax);
 
                 // Functions in nested modules should have qualified names

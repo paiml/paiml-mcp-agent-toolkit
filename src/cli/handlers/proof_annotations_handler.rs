@@ -27,6 +27,13 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
+    // A path that does not exist must fail, not produce a proof report. This
+    // command used to exit 0 and emit ten annotations for `/no/such/dir`,
+    // because the mock source never looked at the path. Matches the guard
+    // `analyze complexity`/`satd`/`duplicates` already apply.
+    // contracts/pmat-no-fabrication-v1.yaml, equation `missing_path_fails`.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 

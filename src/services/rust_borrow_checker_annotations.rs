@@ -9,7 +9,8 @@ impl RustBorrowChecker {
             property_proven: PropertyType::MemorySafety,
             specification_id: None,
             method: VerificationMethod::BorrowChecker,
-            tool_name: format!("rustc-{}", self.rustc_channel),
+            // "pmat-syn-static-analysis", not a compiler that never ran.
+            tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
             confidence_level: ConfidenceLevel::High,
             assumptions: vec![
@@ -29,7 +30,8 @@ impl RustBorrowChecker {
             property_proven: PropertyType::ThreadSafety,
             specification_id: None,
             method: VerificationMethod::BorrowChecker,
-            tool_name: format!("rustc-{}", self.rustc_channel),
+            // "pmat-syn-static-analysis", not a compiler that never ran.
+            tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
             confidence_level: ConfidenceLevel::High,
             assumptions: vec![
@@ -49,7 +51,8 @@ impl RustBorrowChecker {
             property_proven: PropertyType::Termination,
             specification_id: None,
             method: VerificationMethod::BorrowChecker,
-            tool_name: format!("rustc-{}", self.rustc_channel),
+            // "pmat-syn-static-analysis", not a compiler that never ran.
+            tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
             confidence_level: ConfidenceLevel::High,
             assumptions: vec!["const fn restrictions guarantee termination".to_string()],
@@ -73,7 +76,8 @@ impl RustBorrowChecker {
             property_proven: property,
             specification_id: Some(format!("auto_trait_{trait_name}")),
             method: VerificationMethod::BorrowChecker,
-            tool_name: format!("rustc-{}", self.rustc_channel),
+            // "pmat-syn-static-analysis", not a compiler that never ran.
+            tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
             confidence_level: ConfidenceLevel::High,
             assumptions: vec![format!("{} auto trait implementation", trait_name)],
@@ -102,7 +106,8 @@ impl RustBorrowChecker {
             property_proven: property,
             specification_id: Some(format!("auto_trait_{}", trait_name)),
             method: VerificationMethod::BorrowChecker,
-            tool_name: format!("rustc-{}", self.rustc_channel),
+            // "pmat-syn-static-analysis", not a compiler that never ran.
+            tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
             confidence_level: ConfidenceLevel::High,
             assumptions: vec![format!("{} auto trait implementation", trait_name)],

@@ -127,7 +127,7 @@ pub async fn analyze_rust_file_with_classifier(
         syn::parse_file(&content).map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
 
     // Use enhanced visitor to extract real AST information
-    let visitor = EnhancedAstVisitor::new(path);
+    let visitor = EnhancedAstVisitor::new(path, &content);
     let items = visitor.extract_items(&syntax_tree);
 
     Ok(FileContext {

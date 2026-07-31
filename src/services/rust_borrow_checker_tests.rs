@@ -52,7 +52,18 @@ mod tests {
         assert_eq!(annotation.property_proven, PropertyType::MemorySafety);
         assert_eq!(annotation.method, VerificationMethod::BorrowChecker);
         assert_eq!(annotation.confidence_level, ConfidenceLevel::High);
-        assert_eq!(annotation.tool_name, "rustc-stable");
+
+        // This used to require tool_name == "rustc-stable", pinning a false
+        // provenance claim: pmat never invokes rustc, it parses with syn and
+        // reasons about the result. Attributing a proof annotation to a
+        // compiler that never ran -- on a version nobody queried ("1.70.0
+        // (unknown)") -- is fabricated evidence on the one artifact type where
+        // provenance is the whole point. The test enforced it; it now forbids it.
+        assert_eq!(annotation.tool_name, "pmat-syn-static-analysis");
+        assert!(
+            !annotation.tool_name.contains("rustc"),
+            "must not attribute findings to a compiler pmat never ran"
+        );
     }
 
     #[test]
