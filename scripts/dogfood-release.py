@@ -150,6 +150,140 @@ r = subprocess.run([BIN, "agent", "mcp-server"], capture_output=True, text=True,
 record("fatal errors are never silent",
        r.returncode == 0 or r.stderr.strip() != "")
 
+# ---------------------------------------------------------------------------
+# INTERFACE COVERAGE
+#
+# Everything above pins a specific defect that shipped. The checks below are
+# breadth instead: they walk each of pmat's three interfaces (CLI, MCP, HTTP)
+# so a release cannot ship with a whole surface broken and unnoticed.
+#
+# This section exists because two separate features were found broken this
+# release purely because nothing ever built them: `--features org-intelligence`
+# could not compile its tests (E0004, a `Localize` arm never added), and the
+# pmcp EOF fix regressed under a dependency set CI never resolved. Untested
+# surfaces rot silently.
+# ---------------------------------------------------------------------------
+
+# 8. Every top-level subcommand can at least render its own help.
+#    Catches broken clap wiring, which is invisible to a `--lib` test run.
+help_out = run(["--help"])
+subcommands = []
+for line in help_out.stdout.splitlines():
+    s = line.strip()
+    if not s or s.startswith("-"):
+        continue
+    parts = s.split()
+    # clap lists subcommands as "  name   description"
+    if len(parts) >= 2 and parts[0].isascii() and parts[0].replace("-", "").isalnum():
+        if parts[0] not in ("Usage:", "Commands:", "Options:", "EXAMPLES:", "PMAT"):
+            subcommands.append(parts[0])
+subcommands = sorted(set(subcommands))
+broken = []
+for sc in subcommands:
+    try:
+        r = run([sc, "--help"])
+        if r.returncode != 0:
+            broken.append(f"{sc}({r.returncode})")
+    except subprocess.TimeoutExpired:
+        broken.append(f"{sc}(timeout)")
+record(f"CLI: all {len(subcommands)} subcommands render help", not broken,
+       ", ".join(broken) if broken else f"{len(subcommands)} ok")
+
+# 9. Core analyses produce real, parseable output on a real tree.
+with tempfile.TemporaryDirectory() as d:
+    src = os.path.join(d, "src")
+    os.makedirs(src, exist_ok=True)
+    with open(os.path.join(src, "lib.rs"), "w") as f:
+        f.write(
+            "pub fn tangled(a: u32, b: u32, c: u32) -> u32 {\n"
+            "    if a > 1 { if b > 2 { if c > 3 { return a + b + c; } } }\n"
+            "    // TODO: this is self-admitted technical debt\n"
+            "    let v: Option<u32> = None;\n"
+            "    v.unwrap()\n"
+            "}\n")
+    with open(os.path.join(d, "Cargo.toml"), "w") as f:
+        f.write('[package]\nname = "fixture"\nversion = "0.1.0"\nedition = "2021"\n')
+
+    r = run(["analyze", "complexity", "--path", d, "--format", "json"])
+    ok = r.returncode == 0 and r.stdout.strip().startswith(("{", "["))
+    record("CLI: analyze complexity emits JSON", ok, f"rc={r.returncode}")
+
+    r = run(["analyze", "satd", "--path", d, "--format", "json"])
+    record("CLI: analyze satd emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+    r = run(["context", "--path", d, "--format", "json"])
+    record("CLI: context emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+    r = run(["tdg", d, "--format", "json"])
+    record("CLI: tdg emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+# 10. HTTP interface actually serves, not just prints a hint.
+#     `serve` with no MCP_VERSION should bind and answer. Skipped rather than
+#     failed if the build has no http-server feature, so a default-feature
+#     artifact does not report a false red.
+import socket
+import time
+import urllib.request
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+port = free_port()
+proc = subprocess.Popen([BIN, "serve", "--port", str(port)],
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, stdin=subprocess.DEVNULL)
+served = None
+deadline = time.time() + 30
+while time.time() < deadline:
+    if proc.poll() is not None:
+        break
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as resp:
+            served = resp.status
+            break
+    except Exception:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as resp:
+                served = resp.status
+                break
+        except Exception:
+            time.sleep(0.5)
+out = ""
+if proc.poll() is None:
+    proc.terminate()
+    try:
+        out = proc.communicate(timeout=10)[0] or ""
+    except subprocess.TimeoutExpired:
+        proc.kill()
+else:
+    out = proc.communicate(timeout=5)[0] or ""
+
+if served is not None:
+    record("HTTP: serve binds and answers", served < 500, f"status {served}")
+else:
+    # Distinguish "feature absent" from "feature broken" -- only the latter is a defect.
+    absent = ("http-server" in out or "not enabled" in out.lower()
+              or "unknown" in out.lower() or "unrecognized" in out.lower())
+    record("HTTP: serve binds and answers", absent,
+           "http-server feature absent from this build (expected on default features)"
+           if absent else f"did not bind; output: {out.strip()[:200]}")
+
+# 11. `-V` stays short, `--version` carries provenance. Both must work:
+#     scripts and packagers parse `-V`, humans and verify-artifact.sh read `--version`.
+short = run(["-V"]).stdout.strip()
+record("CLI: -V stays a single line", short.count("\n") == 0 and "commit:" not in short,
+       short)
+
 failed = [n for n, ok, _ in results if not ok]
 print()
 print(f"{len(results) - len(failed)}/{len(results)} checks passed")
