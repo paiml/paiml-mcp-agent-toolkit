@@ -591,4 +591,94 @@ mod tests {
             "Complexity 11 SHOULD violate threshold 10 (11 > 10)"
         );
     }
+
+    mod dag_type_regression {
+        use crate::cli::handlers::complexity_handlers::{
+            count_rendered_elements, filter_graph_by_dag_type,
+        };
+        use crate::cli::DagType;
+        use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+        use rustc_hash::FxHashMap;
+
+        fn node(id: &str, node_type: NodeType) -> NodeInfo {
+            NodeInfo {
+                id: id.to_string(),
+                label: id.to_string(),
+                node_type,
+                file_path: "src/lib.rs".to_string(),
+                line_number: 1,
+                complexity: 1,
+                metadata: FxHashMap::default(),
+            }
+        }
+
+        fn mixed_graph() -> DependencyGraph {
+            let mut graph = DependencyGraph::new();
+            for id in [
+                "caller", "callee", "importer", "imported", "child", "parent",
+            ] {
+                graph.add_node(node(id, NodeType::Function));
+            }
+            graph.add_edge(Edge {
+                from: "caller".to_string(),
+                to: "callee".to_string(),
+                edge_type: EdgeType::Calls,
+                weight: 1,
+            });
+            graph.add_edge(Edge {
+                from: "importer".to_string(),
+                to: "imported".to_string(),
+                edge_type: EdgeType::Imports,
+                weight: 1,
+            });
+            graph.add_edge(Edge {
+                from: "child".to_string(),
+                to: "parent".to_string(),
+                edge_type: EdgeType::Inherits,
+                weight: 1,
+            });
+            graph
+        }
+
+        /// Regression test for #653: `--dag-type` was ignored, so call-graph,
+        /// import-graph, inheritance and full-dependency were byte-identical.
+        #[test]
+        fn test_dag_type_selects_different_subgraphs() {
+            let graph = mixed_graph();
+
+            let calls = filter_graph_by_dag_type(graph.clone(), &DagType::CallGraph);
+            let imports = filter_graph_by_dag_type(graph.clone(), &DagType::ImportGraph);
+            let inheritance = filter_graph_by_dag_type(graph.clone(), &DagType::Inheritance);
+            let full = filter_graph_by_dag_type(graph.clone(), &DagType::FullDependency);
+
+            assert_eq!(calls.edges.len(), 1);
+            assert_eq!(calls.edges[0].edge_type, EdgeType::Calls);
+            assert_eq!(imports.edges.len(), 1);
+            assert_eq!(imports.edges[0].edge_type, EdgeType::Imports);
+            assert_eq!(inheritance.edges.len(), 1);
+            assert_eq!(inheritance.edges[0].edge_type, EdgeType::Inherits);
+            assert_eq!(full.edges.len(), 3);
+
+            // The call graph must not be the same graph as the inheritance graph.
+            assert_ne!(calls.edges[0].edge_type, inheritance.edges[0].edge_type);
+            assert_eq!(calls.nodes.len(), 2);
+        }
+
+        /// Regression test for #653: the announced node count must equal the number
+        /// of nodes actually emitted in the diagram (observed: 6 announced, 4 drawn).
+        #[test]
+        fn test_count_rendered_elements_matches_diagram() {
+            let diagram = "graph TD\n    a[main]\n    b[main]\n    c((Trait))\n\n    a --> b\n    b -.-> c\n\n    style a fill:#fff,stroke-width:1px\n";
+
+            let (nodes, edges) = count_rendered_elements(diagram);
+
+            assert_eq!(nodes, 3);
+            assert_eq!(edges, 2);
+        }
+
+        #[test]
+        fn test_count_rendered_elements_empty_diagram() {
+            assert_eq!(count_rendered_elements("graph TD\n"), (0, 0));
+        }
+    }
 }

@@ -7,17 +7,21 @@ pub async fn handle_analyze_symbol_table(
     format: crate::cli::SymbolTableOutputFormat,
     filter: Option<crate::cli::SymbolTypeFilter>,
     query: Option<String>,
-    include: Option<String>,
-    exclude: Option<String>,
+    include: &[String],
+    exclude: &[String],
     show_unreferenced: bool,
     show_references: bool,
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
+    // missing_path_fails: a nonexistent path must exit non-zero naming the path,
+    // not walk nothing and report an empty (but plausible-looking) table.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔍 Building symbol table for project...");
 
     // Build the symbol table
-    let table = build_symbol_table(&project_path, &include, &exclude).await?;
+    let table = build_symbol_table(&project_path, include, exclude).await?;
 
     // Apply filters
     let filtered = apply_filters(table, filter, query)?;
@@ -39,8 +43,8 @@ pub async fn handle_analyze_symbol_table(
 // Build symbol table from project files
 async fn build_symbol_table(
     project_path: &Path,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<SymbolTable> {
     let mut symbols = Vec::new();
 
@@ -70,10 +74,15 @@ async fn build_symbol_table(
 // Collect files based on include/exclude patterns
 async fn collect_files(
     project_path: &Path,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
+
+    if project_path.is_file() {
+        process_file(project_path.to_path_buf(), &mut files, include)?;
+        return Ok(files);
+    }
 
     collect_files_recursive(project_path, &mut files, include, exclude).await?;
 
@@ -84,8 +93,8 @@ async fn collect_files(
 async fn collect_files_recursive(
     dir: &Path,
     files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<()> {
     let mut entries = tokio::fs::read_dir(dir).await?;
 
@@ -100,8 +109,8 @@ async fn collect_files_recursive(
 async fn process_directory_entry(
     entry: tokio::fs::DirEntry,
     files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<()> {
     let path = entry.path();
 
@@ -117,20 +126,21 @@ async fn process_directory_entry(
 }
 
 /// Check if path should be skipped
-fn should_skip_path(path: &Path, exclude: &Option<String>) -> bool {
-    if let Some(excl) = exclude {
-        let path_str = path.to_string_lossy();
-        return path_str.contains(excl);
-    }
-    false
+///
+/// Defect #654: this used to take `Option<String>` built with `patterns.join(",")`,
+/// so "no --exclude given" arrived as `Some("")` and `path.contains("")` is true for
+/// every path — every file and directory was skipped and `total_symbols` was always 0,
+/// even for the whole pmat source tree. An empty pattern list now excludes nothing.
+fn should_skip_path(path: &Path, exclude: &[String]) -> bool {
+    exclude.iter().any(|pattern| matches_pattern(path, pattern))
 }
 
 /// Process a directory
 async fn process_directory(
     path: &Path,
     files: &mut Vec<PathBuf>,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
 ) -> Result<()> {
     if should_process_directory(path) {
         Box::pin(collect_files_recursive(path, files, include, exclude)).await?;
@@ -145,7 +155,7 @@ fn should_process_directory(path: &Path) -> bool {
 }
 
 /// Process a file
-fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String>) -> Result<()> {
+fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &[String]) -> Result<()> {
     if !is_source_file(&path) {
         return Ok(());
     }
@@ -156,15 +166,33 @@ fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String
     Ok(())
 }
 
-/// Check if file should be included
-fn should_include_file(path: &Path, include: &Option<String>) -> bool {
-    match include {
-        Some(incl) => {
-            let path_str = path.to_string_lossy();
-            path_str.contains(incl)
-        }
-        None => true,
+/// Check if file should be included (an empty pattern list includes everything)
+fn should_include_file(path: &Path, include: &[String]) -> bool {
+    include.is_empty() || include.iter().any(|pattern| matches_pattern(path, pattern))
+}
+
+/// Match a path against a user-supplied pattern.
+///
+/// Glob patterns (`*.rs`, `src/**/mod.rs`) are matched against both the full path and
+/// the file name; plain patterns fall back to substring matching. Defect #654 also
+/// reported `--include '*.rs'` yielding 0 symbols because the old code only ever did
+/// `path.contains("*.rs")`, which no real path satisfies.
+fn matches_pattern(path: &Path, pattern: &str) -> bool {
+    if pattern.is_empty() {
+        return false;
     }
+
+    let path_str = path.to_string_lossy();
+
+    if pattern.contains('*') || pattern.contains('?') || pattern.contains('[') {
+        if let Ok(glob) = glob::Pattern::new(pattern) {
+            let file_name = path.file_name().map(|n| n.to_string_lossy().to_string());
+            return glob.matches(&path_str)
+                || file_name.is_some_and(|name| glob.matches(&name));
+        }
+    }
+
+    path_str.contains(pattern)
 }
 
 // Check if file is a source file

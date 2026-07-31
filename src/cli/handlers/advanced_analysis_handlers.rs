@@ -375,14 +375,17 @@ pub async fn handle_analyze_symbol_table(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
-    // Delegate to the actual implementation
+    // Defect #654: this used to pass `Some(include.join(","))` / `Some(exclude.join(","))`.
+    // With no --exclude given that is `Some("")`, and the collector skipped every path
+    // containing "" — i.e. all of them — so total_symbols was always 0. Pattern lists are
+    // now passed through untouched; empty means "no filter".
     crate::cli::analysis::symbol_table::handle_analyze_symbol_table(
         project_path,
         format,
         filter,
         query,
-        Some(include.join(",")),
-        Some(exclude.join(",")),
+        &include,
+        &exclude,
         show_unreferenced,
         show_references,
         output,

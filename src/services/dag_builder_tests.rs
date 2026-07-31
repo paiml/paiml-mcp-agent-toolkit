@@ -56,6 +56,132 @@ mod tests {
         assert!(builder.type_map.is_empty());
     }
 
+    fn project_with(files: Vec<FileContext>) -> ProjectContext {
+        ProjectContext {
+            project_type: "rust".to_string(),
+            summary: crate::services::context::ProjectSummary {
+                total_files: files.len(),
+                total_functions: 0,
+                total_structs: 0,
+                total_enums: 0,
+                total_traits: 0,
+                total_impls: 0,
+                dependencies: vec![],
+            },
+            files,
+            graph: None,
+        }
+    }
+
+    fn rust_file(path: &str, items: Vec<AstItem>) -> FileContext {
+        FileContext {
+            path: path.to_string(),
+            language: "rust".to_string(),
+            items,
+            complexity_metrics: None,
+        }
+    }
+
+    /// Regression test for #653: `use helper::{..}` in main.rs must yield an Imports
+    /// edge to the analyzed helper module. Before the fix, `resolve_import_path`
+    /// returned an invented node id ("helper"), `finalize_graph` dropped the edge,
+    /// and every project rendered "0 edges".
+    #[test]
+    fn test_import_edge_resolves_to_sibling_module() {
+        let project = project_with(vec![
+            rust_file(
+                "src/main.rs",
+                vec![
+                    AstItem::Use {
+                        path: "helper".to_string(),
+                        line: 1,
+                    },
+                    AstItem::Function {
+                        name: "main".to_string(),
+                        visibility: "private".to_string(),
+                        is_async: false,
+                        line: 4,
+                    },
+                ],
+            ),
+            rust_file(
+                "src/helper.rs",
+                vec![AstItem::Function {
+                    name: "helper_one".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                }],
+            ),
+        ]);
+
+        let graph = DagBuilder::build_from_project(&project);
+
+        let import_edges: Vec<_> = graph
+            .edges
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Imports)
+            .collect();
+        assert_eq!(
+            import_edges.len(),
+            1,
+            "expected 1 import edge, got {:?}",
+            graph.edges
+        );
+        assert_eq!(import_edges[0].from, "src_main");
+        assert_eq!(import_edges[0].to, "src_helper");
+    }
+
+    /// Regression test for #653: a crate-relative path must resolve to the file that
+    /// defines the module, not to the literal first segment "crate".
+    #[test]
+    fn test_import_edge_resolves_crate_relative_path() {
+        let project = project_with(vec![
+            rust_file(
+                "src/main.rs",
+                vec![AstItem::Use {
+                    path: "crate::services::helper::Thing".to_string(),
+                    line: 1,
+                }],
+            ),
+            rust_file("src/services/helper.rs", vec![]),
+        ]);
+
+        let graph = DagBuilder::build_from_project(&project);
+
+        assert_eq!(graph.edges.len(), 1);
+        assert_eq!(graph.edges[0].from, "src_main");
+        assert_eq!(graph.edges[0].to, "src_services_helper");
+    }
+
+    /// An import of an external crate must not invent an edge.
+    #[test]
+    fn test_external_import_creates_no_edge() {
+        let project = project_with(vec![rust_file(
+            "src/main.rs",
+            vec![AstItem::Use {
+                path: "serde::Serialize".to_string(),
+                line: 1,
+            }],
+        )]);
+
+        let graph = DagBuilder::build_from_project(&project);
+
+        assert!(
+            graph.edges.is_empty(),
+            "unresolvable imports must not create edges: {:?}",
+            graph.edges
+        );
+    }
+
+    /// output_derived_from_input: no files, no nodes, no edges.
+    #[test]
+    fn test_empty_project_yields_empty_graph() {
+        let graph = DagBuilder::build_from_project(&project_with(vec![]));
+        assert!(graph.nodes.is_empty());
+        assert!(graph.edges.is_empty());
+    }
+
     #[test]
     fn test_prune_graph_pagerank_no_pruning_needed() {
         let graph = create_test_graph();

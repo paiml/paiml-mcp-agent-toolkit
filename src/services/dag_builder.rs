@@ -57,6 +57,10 @@ pub struct DagBuilder {
     function_map: FxHashMap<String, String>, // function_name -> full_id
     // Track types for inheritance resolution
     type_map: FxHashMap<String, String>, // type_name -> full_id
+    // Track file modules by every suffix of their module path so that a `use`
+    // path can be resolved to the file that defines it (#653: import edges were
+    // always dropped because no such map existed).
+    module_map: FxHashMap<String, Vec<String>>, // module_path_suffix -> module node ids
     // Semantic namer for deterministic display names
     namer: SemanticNamer,
 }

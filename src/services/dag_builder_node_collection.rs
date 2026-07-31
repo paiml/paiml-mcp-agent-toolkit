@@ -2,6 +2,11 @@
 
 impl DagBuilder {
     fn collect_nodes(&mut self, file: &FileContext) {
+        // Register the file's own module node in the FIRST pass so that the second
+        // pass can resolve `use` paths to it (#653: import edges pointed at invented
+        // ids and were then silently dropped by finalize_graph, giving "0 edges").
+        self.collect_file_module_node(file);
+
         // Build complexity lookup maps for O(1) access
         let function_complexity: FxHashMap<&str, u32> = file
             .complexity_metrics
@@ -70,6 +75,34 @@ impl DagBuilder {
                 self.collect_module_node(name, *line, file);
             }
             _ => {}
+        }
+    }
+
+    /// Create the module node that represents the file itself and index it under
+    /// every suffix of its module path (`helpers`, `utils::helpers`, ...).
+    fn collect_file_module_node(&mut self, file: &FileContext) {
+        let id = self.normalize_path(&file.path);
+        let node = NodeInfo {
+            id: id.clone(),
+            label: self.extract_module_name(&file.path),
+            node_type: NodeType::Module,
+            file_path: file.path.clone(),
+            line_number: 0,
+            complexity: file
+                .complexity_metrics
+                .as_ref()
+                .map_or(1, |m| u32::from(m.total_complexity.cognitive)),
+            metadata: FxHashMap::default(),
+        };
+        self.add_node(self.enrich_node(node));
+
+        let segments = module_path_segments(&file.path);
+        for start in 0..segments.len() {
+            let key = segments[start..].join("::");
+            let entry = self.module_map.entry(key).or_default();
+            if !entry.contains(&id) {
+                entry.push(id.clone());
+            }
         }
     }
 
