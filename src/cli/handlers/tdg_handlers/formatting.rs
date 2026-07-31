@@ -52,11 +52,38 @@ pub(crate) fn format_tdg_score(
         TdgOutputFormat::Markdown => {
             format_tdg_score_markdown(&score, git_context, include_components)
         }
-        TdgOutputFormat::Sarif => {
-            // For SARIF format, return simplified score
-            Ok(format!("{:.1}", score.total))
-        }
+        // Issue #669: this arm used to `return format!("{:.1}", score.total)`,
+        // so `tdg --format sarif` emitted exactly `84.0\n` — the same 5 bytes
+        // as `tdg -q`. A SARIF uploader fed that gets a scalar. Reuse the
+        // SARIF 2.1.0 emitter that `analyze tdg --format sarif` already uses.
+        TdgOutputFormat::Sarif => Ok(serde_json::to_string_pretty(
+            &crate::cli::handlers::new_tdg_handler::create_file_sarif_output(&score),
+        )?),
     }
+}
+
+/// Emit SARIF for the top-level `tdg` command (issue #669).
+///
+/// A directory is re-scored per file so every SARIF result names a real source
+/// file; formatting the project *average* would have produced a single finding
+/// with no `file_path` (rendered as the invented uri `"unknown"`).
+pub(crate) async fn emit_tdg_sarif(
+    analyzer: &crate::tdg::TdgAnalyzer,
+    config: &TdgCommandConfig,
+) -> Result<()> {
+    use crate::cli::handlers::new_tdg_handler::{create_file_sarif_output, create_sarif_output};
+
+    let (sarif, score) = if config.path.is_dir() {
+        let project = analyzer.analyze_project(&config.path).await?;
+        let average = project.average();
+        (create_sarif_output(&project), average)
+    } else {
+        let score = analyzer.analyze_file(&config.path).await?;
+        (create_file_sarif_output(&score), score)
+    };
+
+    super::quality_gates::validate_minimum_grade(&score, config)?;
+    write_tdg_output(&serde_json::to_string_pretty(&sarif)?, config)
 }
 
 /// Format TDG score as table

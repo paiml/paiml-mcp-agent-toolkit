@@ -77,3 +77,8 @@ mod quality_routing;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+// Issue #672: report format-fidelity regression tests (live, not quarantined)
+#[cfg(test)]
+#[path = "tests_report_format_fidelity.rs"]
+mod tests_report_format_fidelity;

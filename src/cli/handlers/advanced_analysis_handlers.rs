@@ -123,16 +123,24 @@ pub async fn handle_analyze_deep_context(
         include_features.push("all".to_string());
     }
 
-    let mut combined_exclude = exclude_patterns;
-    // Add common exclusions
-    combined_exclude.extend([
-        "**/target/**".to_string(),
-        "**/node_modules/**".to_string(),
-        "**/.git/**".to_string(),
-        "**/build/**".to_string(),
-        "**/dist/**".to_string(),
-        "**/__pycache__/**".to_string(),
-    ]);
+    let combined_exclude = with_common_exclusions(exclude_patterns);
+
+    // Issue #659: `--format sarif` used to fall through to
+    // `analyzer.format_as_json(&report)`, so its output was byte-identical to
+    // `--format json` (top-level keys summary/files/recommendations; no
+    // $schema, no version, no runs) and no SARIF consumer could ingest it.
+    // `DeepContextAnalyzer::format_as_sarif` — a real SARIF 2.1.0 emitter —
+    // was already compiled into the binary with no caller at all.
+    if matches!(format, DeepContextOutputFormat::Sarif) {
+        let sarif = deep_context_sarif(
+            &project_path,
+            period_days,
+            &include_patterns,
+            &combined_exclude,
+        )
+        .await?;
+        return write_deep_context_output(&sarif, output.as_ref()).await;
+    }
 
     let config = SimpleAnalysisConfig {
         project_path: project_path.clone(),
@@ -160,22 +168,11 @@ pub async fn handle_analyze_deep_context(
             // Terminal output: colorized text
             format_deep_context_text(&report, top_files)
         }
-        (DeepContextOutputFormat::Sarif, _) => {
-            // TRACKED: Implement SARIF format
-            analyzer.format_as_json(&report)?
-        }
+        // Sarif returned earlier via the real DeepContextAnalyzer (issue #659).
+        (DeepContextOutputFormat::Sarif, _) => unreachable!("SARIF handled above"),
     };
 
-    // Write output
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &output_content).await?;
-        info!(
-            "📄 Deep context analysis saved to: {}",
-            output_path.display()
-        );
-    } else {
-        println!("{output_content}");
-    }
+    write_deep_context_output(&output_content, output.as_ref()).await?;
 
     // Print summary
     info!("✅ Deep context analysis completed successfully");
@@ -191,7 +188,57 @@ pub async fn handle_analyze_deep_context(
     Ok(())
 }
 
-/// Handle TDG (Technical Debt Gradient) analysis command  
+/// Append the exclusions every deep-context run applies.
+fn with_common_exclusions(mut exclude_patterns: Vec<String>) -> Vec<String> {
+    exclude_patterns.extend([
+        "**/target/**".to_string(),
+        "**/node_modules/**".to_string(),
+        "**/.git/**".to_string(),
+        "**/build/**".to_string(),
+        "**/dist/**".to_string(),
+        "**/__pycache__/**".to_string(),
+    ]);
+    exclude_patterns
+}
+
+/// Produce SARIF 2.1.0 for `analyze deep-context` (issue #659).
+///
+/// `SimpleDeepContext` carries no line numbers, so SARIF is produced by the
+/// full `DeepContextAnalyzer`, whose findings carry real source locations.
+async fn deep_context_sarif(
+    project_path: &PathBuf,
+    period_days: u32,
+    include_patterns: &[String],
+    exclude_patterns: &[String],
+) -> Result<String> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+
+    let config = DeepContextConfig {
+        period_days,
+        include_patterns: include_patterns.to_vec(),
+        exclude_patterns: exclude_patterns.to_vec(),
+        ..DeepContextConfig::default()
+    };
+    let analyzer = DeepContextAnalyzer::new(config);
+    let context = analyzer.analyze_project(project_path).await?;
+    analyzer.format_as_sarif(&context)
+}
+
+/// Write deep-context output to a file or stdout.
+async fn write_deep_context_output(content: &str, output: Option<&PathBuf>) -> Result<()> {
+    if let Some(output_path) = output {
+        tokio::fs::write(output_path, content).await?;
+        info!(
+            "📄 Deep context analysis saved to: {}",
+            output_path.display()
+        );
+    } else {
+        println!("{content}");
+    }
+    Ok(())
+}
+
+/// Handle TDG (Technical Debt Gradient) analysis command
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_tdg(

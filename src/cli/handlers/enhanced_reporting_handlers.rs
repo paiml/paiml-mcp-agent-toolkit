@@ -194,10 +194,12 @@ pub async fn handle_generate_report(
     let actual_format = determine_output_format(output_format, text, markdown, csv);
     log_report_generation_start(&project_path, &actual_format);
 
+    // Reject an unsupported format before paying for the whole project scan.
+    let service_format = convert_to_service_format(actual_format)?;
+
     let service = DefectReportService::new();
     let report = service.generate_report(&project_path).await?;
 
-    let service_format = convert_to_service_format(actual_format);
     let formatted_output = format_report_output(&service, &report, service_format)?;
 
     write_report_output(formatted_output, output, service_format, &project_path).await?;
@@ -234,16 +236,23 @@ fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutput
 }
 
 /// Convert CLI output format to service format (cognitive complexity ≤7)
-fn convert_to_service_format(actual_format: ReportOutputFormat) -> ReportFormat {
+///
+/// Issue #672: `Html`/`Pdf`/`Dashboard` used to be silently rewritten to
+/// Markdown/Json, so `--format html` produced a file containing no markup and
+/// `--format pdf` produced no PDF. `DefectReportService` has exactly four
+/// emitters (json, csv, markdown, text); there is nothing honest to render
+/// these three as, so they are rejected instead of quietly substituted.
+fn convert_to_service_format(actual_format: ReportOutputFormat) -> Result<ReportFormat> {
     match actual_format {
-        ReportOutputFormat::Json => ReportFormat::Json,
-        ReportOutputFormat::Csv => ReportFormat::Csv,
-        ReportOutputFormat::Markdown => ReportFormat::Markdown,
-        ReportOutputFormat::Text => ReportFormat::Text,
-        // Legacy formats - map to appropriate new format
-        ReportOutputFormat::Html => ReportFormat::Markdown,
-        ReportOutputFormat::Pdf => ReportFormat::Markdown,
-        ReportOutputFormat::Dashboard => ReportFormat::Json,
+        ReportOutputFormat::Json => Ok(ReportFormat::Json),
+        ReportOutputFormat::Csv => Ok(ReportFormat::Csv),
+        ReportOutputFormat::Markdown => Ok(ReportFormat::Markdown),
+        ReportOutputFormat::Text => Ok(ReportFormat::Text),
+        other => anyhow::bail!(
+            "--format {other} is not implemented for `pmat report` \
+             (it previously emitted plain text, not {other}). \
+             Supported formats: json, csv, markdown, text."
+        ),
     }
 }
 
@@ -370,5 +379,48 @@ mod tests {
         .expect("report must be written");
 
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "{\"ok\":true}");
+    }
+
+    /// Issue #672 regression: every declared `--output-format` used to reach
+    /// `ReportFormat::Text`, so csv, markdown, html, pdf and dashboard all
+    /// produced the same 909-byte "CODE QUALITY REPORT" file. Each supported
+    /// value must map to its own service format.
+    #[test]
+    fn test_supported_formats_map_one_to_one() {
+        assert_eq!(
+            convert_to_service_format(ReportOutputFormat::Json).unwrap(),
+            ReportFormat::Json
+        );
+        assert_eq!(
+            convert_to_service_format(ReportOutputFormat::Csv).unwrap(),
+            ReportFormat::Csv
+        );
+        assert_eq!(
+            convert_to_service_format(ReportOutputFormat::Markdown).unwrap(),
+            ReportFormat::Markdown
+        );
+        assert_eq!(
+            convert_to_service_format(ReportOutputFormat::Text).unwrap(),
+            ReportFormat::Text
+        );
+    }
+
+    /// Issue #672: html/pdf/dashboard have no emitter. They used to be
+    /// silently rewritten to Markdown/Json (so `--format html` produced a file
+    /// with no markup); they must now be rejected, not substituted.
+    #[test]
+    fn test_unimplemented_formats_are_rejected_not_substituted() {
+        for format in [
+            ReportOutputFormat::Html,
+            ReportOutputFormat::Pdf,
+            ReportOutputFormat::Dashboard,
+        ] {
+            let name = format.to_string();
+            let err = convert_to_service_format(format)
+                .expect_err("unimplemented format must be rejected");
+            let msg = err.to_string();
+            assert!(msg.contains(&name), "error must name the format: {msg}");
+            assert!(msg.contains("not implemented"), "{msg}");
+        }
     }
 }

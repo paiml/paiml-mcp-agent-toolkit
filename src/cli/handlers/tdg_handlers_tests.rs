@@ -642,11 +642,42 @@ mod unit_tests {
             assert!(result.contains("| Component | Score | Max |"));
         }
 
+        /// Issue #669 regression. This test used to be
+        /// `test_sarif_output_is_score_only` and asserted
+        /// `result.trim() == "75.0"` — it pinned the defect (SARIF emitting a
+        /// bare number). Updated to assert the format contract instead.
         #[test]
-        fn test_sarif_output_is_score_only() {
-            let score = make_test_score(75.0, Grade::B);
+        fn test_sarif_output_is_a_sarif_document() {
+            let mut score = make_test_score(75.0, Grade::B);
+            score.file_path = Some(PathBuf::from("src/lib.rs"));
             let result = format_tdg_score(score, None, TdgOutputFormat::Sarif, false).unwrap();
-            assert_eq!(result.trim(), "75.0");
+
+            assert_ne!(result.trim(), "75.0", "SARIF must not be a bare score");
+            let doc: serde_json::Value =
+                serde_json::from_str(&result).expect("SARIF output must be JSON");
+            assert_eq!(doc["version"], "2.1.0");
+            assert!(doc["$schema"].as_str().unwrap().contains("sarif"));
+            assert!(doc["runs"][0]["tool"]["driver"]["name"].is_string());
+            // 75.0 < 75.0 is false, so a score of exactly 75 yields no result;
+            // the document must still be well formed.
+            assert!(doc["runs"][0]["results"].is_array());
+        }
+
+        /// Issue #669: a below-threshold score must produce a SARIF result
+        /// whose location names the real analyzed file.
+        #[test]
+        fn test_sarif_result_names_the_analyzed_file() {
+            let mut score = make_test_score(40.0, Grade::F);
+            score.file_path = Some(PathBuf::from("src/lib.rs"));
+            let result = format_tdg_score(score, None, TdgOutputFormat::Sarif, false).unwrap();
+
+            let doc: serde_json::Value = serde_json::from_str(&result).unwrap();
+            let results = doc["runs"][0]["results"].as_array().unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(
+                results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+                "src/lib.rs"
+            );
         }
 
         #[test]
@@ -1039,6 +1070,98 @@ mod unit_tests {
 
             // Just verify it doesn't panic
             display_gate_result_table(&result);
+        }
+    }
+}
+
+/// End-to-end format-fidelity tests for the top-level `pmat tdg` command.
+///
+/// These live here (not in `tdg_handlers_coverage_tests2.rs`) because that
+/// file is behind the `broken-tests` quarantine feature and never compiles.
+mod sarif_format_fidelity {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn sarif_config(path: PathBuf, output: PathBuf) -> TdgCommandConfig {
+        TdgCommandConfig {
+            path,
+            command: None,
+            format: TdgOutputFormat::Sarif,
+            config: None,
+            quiet: false,
+            include_components: false,
+            min_grade: None,
+            output: Some(output),
+            with_git_context: false,
+            explain: false,
+            threshold: 10,
+            baseline: None,
+            viz: false,
+            viz_theme: "default".to_string(),
+        }
+    }
+
+    /// Issue #669 regression: `tdg <path> --format sarif` wrote exactly
+    /// `84.0\n` — 5 bytes, identical to `tdg -q` — so any CI step piping it to
+    /// a SARIF uploader got a scalar.
+    #[tokio::test]
+    async fn test_tdg_command_sarif_on_a_file_is_a_sarif_document() {
+        let temp_dir = TempDir::new().unwrap();
+        let rust_file = temp_dir.path().join("sarif_target.rs");
+        std::fs::write(&rust_file, "pub fn sarif_fn() { let _x = 1; }").unwrap();
+        let output_file = temp_dir.path().join("out.sarif");
+
+        handle_tdg_command(sarif_config(rust_file, output_file.clone()))
+            .await
+            .expect("tdg --format sarif should succeed");
+
+        let content = std::fs::read_to_string(&output_file).unwrap();
+        assert!(
+            content.trim().parse::<f64>().is_err(),
+            "SARIF must not be a bare score, got {content:?}"
+        );
+        let doc: serde_json::Value = serde_json::from_str(&content)
+            .unwrap_or_else(|e| panic!("--format sarif must emit JSON, got {content:?}: {e}"));
+        assert_eq!(doc["version"], "2.1.0");
+        assert!(doc["$schema"].as_str().unwrap().contains("sarif"));
+        assert!(doc["runs"][0]["tool"]["driver"]["name"].is_string());
+        assert!(doc["runs"][0]["results"].is_array());
+    }
+
+    /// A directory must be scored per file, so every SARIF result names a
+    /// file that exists rather than the averaged score's absent path.
+    #[tokio::test]
+    async fn test_tdg_command_sarif_on_a_directory_names_real_files() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join("messy.rs"),
+            // Deliberately gnarly so it scores below the SARIF threshold.
+            "pub fn m(a:i32,b:i32)->i32{if a>0{if b>0{if a>b{a}else{b}}else{a-b}}else{-a}}\n"
+                .repeat(20),
+        )
+        .unwrap();
+        let output_file = temp_dir.path().join("out.sarif");
+
+        handle_tdg_command(sarif_config(
+            temp_dir.path().to_path_buf(),
+            output_file.clone(),
+        ))
+        .await
+        .expect("tdg --format sarif should succeed on a directory");
+
+        let content = std::fs::read_to_string(&output_file).unwrap();
+        let doc: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(doc["version"], "2.1.0");
+        for result in doc["runs"][0]["results"].as_array().unwrap() {
+            let uri = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                .as_str()
+                .expect("every result must carry a uri");
+            assert_ne!(uri, "unknown", "SARIF must not invent a uri");
+            assert!(
+                std::path::Path::new(uri).exists(),
+                "SARIF named a path that does not exist: {uri}"
+            );
         }
     }
 }

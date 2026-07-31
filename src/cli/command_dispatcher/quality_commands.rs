@@ -6,6 +6,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
+use crate::cli::enums::ReportOutputFormat;
 use crate::cli::handlers;
 use crate::cli::OutputFormat;
 use std::path::PathBuf;
@@ -82,7 +83,7 @@ impl CommandDispatcher {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_report_command(
         project_path: Option<PathBuf>,
-        output_format: OutputFormat,
+        report_format: ReportOutputFormat,
         include_visualizations: bool,
         include_executive_summary: bool,
         include_recommendations: bool,
@@ -94,15 +95,14 @@ impl CommandDispatcher {
         markdown: bool,
         csv: bool,
     ) -> anyhow::Result<()> {
-        use crate::cli::enums::{AnalysisType, ReportOutputFormat};
+        use crate::cli::enums::AnalysisType;
 
-        // Convert OutputFormat to ReportOutputFormat
-        let report_format = match output_format {
-            OutputFormat::Json => ReportOutputFormat::Json,
-            OutputFormat::Table => ReportOutputFormat::Text,
-            OutputFormat::Yaml => ReportOutputFormat::Text,
-            _ => ReportOutputFormat::Text,
-        };
+        // Issue #672: this used to take the generic `OutputFormat`, so the
+        // dispatcher had already squashed every non-json value to
+        // `OutputFormat::Table` and this function turned that back into
+        // `ReportOutputFormat::Text`. Result: csv/markdown/html/pdf/dashboard
+        // all produced the identical 909-byte "CODE QUALITY REPORT" text.
+        // The caller now passes the user's format through untouched.
 
         // Convert analysis strings to AnalysisType
         let analysis_types: Vec<AnalysisType> = analyses

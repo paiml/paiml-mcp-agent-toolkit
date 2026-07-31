@@ -120,6 +120,10 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         Err(e) if e.to_string().contains("No lint violations found") => {
             use crate::cli::colors as c;
             eprintln!("{}", c::pass("No lint violations found — project is clean"));
+            // Issue #679: this arm used to return here having written nothing
+            // to stdout, so `--format json` produced 0 bytes and `| jq .`
+            // failed. Machine formats now get an empty-but-valid document.
+            emit_clean_output(&params).await?;
             return Ok(());
         }
         Err(e) => return Err(e),
@@ -135,6 +139,22 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
 
     check_exit_conditions(&final_result, &params);
 
+    Ok(())
+}
+
+/// Write the machine-readable "clean project" document (issue #679).
+///
+/// Human formats (`summary`, `detailed`) produce `None` and stay silent on
+/// stdout, matching the pre-existing behaviour for those formats.
+async fn emit_clean_output(params: &LintHotspotParams) -> Result<()> {
+    let Some(content) = output::format_clean_output(&params.format)? else {
+        return Ok(());
+    };
+    if let Some(output_path) = &params.output {
+        tokio::fs::write(output_path, &content).await?;
+    } else {
+        println!("{content}");
+    }
     Ok(())
 }
 

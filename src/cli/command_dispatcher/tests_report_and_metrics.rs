@@ -9,7 +9,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Json,
+            crate::cli::enums::ReportOutputFormat::Json,
             false,
             false,
             false,
@@ -34,7 +34,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Table,
+            crate::cli::enums::ReportOutputFormat::Text,
             true, // include_visualizations
             true, // include_executive_summary
             true, // include_recommendations
@@ -59,7 +59,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Table,
+            crate::cli::enums::ReportOutputFormat::Text,
             false,
             false,
             false,
@@ -84,7 +84,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Table,
+            crate::cli::enums::ReportOutputFormat::Text,
             false,
             false,
             false,
@@ -109,7 +109,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Table,
+            crate::cli::enums::ReportOutputFormat::Text,
             false,
             false,
             false,
