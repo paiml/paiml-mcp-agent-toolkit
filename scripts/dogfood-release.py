@@ -291,6 +291,13 @@ else:
     # If HTTP does not work, nothing shipped may claim it does. pmat has an
     # explicit zero-hallucination documentation policy; its own package
     # description is the one piece of metadata every crates.io visitor reads.
+    #
+    # CAVEAT: this reads the REPO's Cargo.toml, not the binary -- cargo does not
+    # embed the description in the artifact, so it cannot be derived from it.
+    # That means this check does NOT discriminate between binaries: it passes
+    # against an old release that did advertise HTTP, as long as the working
+    # tree is fixed. It is a repo-metadata gate, not an artifact assertion.
+    # Do not read a pass here as evidence about the binary under test.
     if unimplemented:
         manifest = os.path.join(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))), "Cargo.toml")
