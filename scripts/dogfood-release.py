@@ -167,16 +167,22 @@ record("fatal errors are never silent",
 # 8. Every top-level subcommand can at least render its own help.
 #    Catches broken clap wiring, which is invisible to a `--lib` test run.
 help_out = run(["--help"])
+# Parse ONLY the "Commands:" block. Scraping the whole help text picks up option
+# descriptions ("Control", "Force", "Possible", ...) and reports them as broken
+# subcommands -- a harness bug that produces a false red, which is worse than no
+# check at all.
 subcommands = []
+in_commands = False
 for line in help_out.stdout.splitlines():
-    s = line.strip()
-    if not s or s.startswith("-"):
+    if line.startswith("Commands:"):
+        in_commands = True
         continue
-    parts = s.split()
-    # clap lists subcommands as "  name   description"
-    if len(parts) >= 2 and parts[0].isascii() and parts[0].replace("-", "").isalnum():
-        if parts[0] not in ("Usage:", "Commands:", "Options:", "EXAMPLES:", "PMAT"):
-            subcommands.append(parts[0])
+    if in_commands:
+        if not line.strip() or not line.startswith(" "):
+            break
+        name = line.split()[0]
+        if name != "help":  # `pmat help --help` is not a thing
+            subcommands.append(name)
 subcommands = sorted(set(subcommands))
 broken = []
 for sc in subcommands:
@@ -213,7 +219,9 @@ with tempfile.TemporaryDirectory() as d:
            r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
            f"rc={r.returncode}")
 
-    r = run(["context", "--path", d, "--format", "json"])
+    # NB: `context` spells it --project-path, while `analyze *` uses --path and
+    # `tdg` takes a positional. Inconsistent, but that is the real interface.
+    r = run(["context", "--project-path", d, "--format", "json"])
     record("CLI: context emits JSON",
            r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
            f"rc={r.returncode}")
@@ -271,12 +279,33 @@ else:
 if served is not None:
     record("HTTP: serve binds and answers", served < 500, f"status {served}")
 else:
-    # Distinguish "feature absent" from "feature broken" -- only the latter is a defect.
-    absent = ("http-server" in out or "not enabled" in out.lower()
-              or "unknown" in out.lower() or "unrecognized" in out.lower())
-    record("HTTP: serve binds and answers", absent,
-           "http-server feature absent from this build (expected on default features)"
-           if absent else f"did not bind; output: {out.strip()[:200]}")
+    # `pmat serve` HTTP is deliberately unimplemented and says so
+    # (utility_serve_handlers.rs). That is honest, so it is not a failure -- but
+    # it means pmat ships TWO working interfaces, CLI and MCP, not three.
+    unimplemented = "not yet implemented" in out
+    record("HTTP: serve fails honestly when unimplemented",
+           unimplemented and "MCP_VERSION=1" in out,
+           "unimplemented + working hint" if unimplemented
+           else f"did not bind and did not explain why: {out.strip()[:200]}")
+
+    # If HTTP does not work, nothing shipped may claim it does. pmat has an
+    # explicit zero-hallucination documentation policy; its own package
+    # description is the one piece of metadata every crates.io visitor reads.
+    if unimplemented:
+        manifest = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "Cargo.toml")
+        desc = ""
+        try:
+            for line in open(manifest):
+                if line.startswith("description"):
+                    desc = line
+                    break
+        except OSError:
+            pass
+        claims_http = "HTTP" in desc
+        record("docs: package description does not claim unimplemented HTTP",
+               not claims_http,
+               desc.strip()[:160] if claims_http else "description matches reality")
 
 # 11. `-V` stays short, `--version` carries provenance. Both must work:
 #     scripts and packagers parse `-V`, humans and verify-artifact.sh read `--version`.
