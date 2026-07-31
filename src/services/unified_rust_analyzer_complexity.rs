@@ -1,139 +1,120 @@
+/// Per-function complexity collector for the unified (single-parse) analyzer.
+///
+/// #686: this used to be a private `SimpleComplexityVisitor` marked
+/// "GREEN PHASE" that
+///   * counted only *top-level* statements, so `pmat context` reported
+///     cyclomatic 3 for a function `quality-gate` scored 9;
+///   * set `cognitive = cyclomatic` verbatim ("Simplified for GREEN phase"),
+///     so every function's two metrics were identical;
+///   * emitted `line_start: 0`, `line_end: 0` and a hard-coded `lines: 10`,
+///     with the file's own `lines` computed as `functions.len() * 10`.
+///
+/// It now delegates to `accurate_complexity_analyzer::measure_block` — the same
+/// visitor `analyze complexity` and `quality-gate` use — and reads real line
+/// spans off the source text.
+struct UnifiedComplexityVisitor<'a> {
+    functions: Vec<FunctionComplexity>,
+    spans: &'a mut FunctionSpans,
+}
+
+impl<'a> UnifiedComplexityVisitor<'a> {
+    fn new(spans: &'a mut FunctionSpans) -> Self {
+        Self {
+            functions: Vec::new(),
+            spans,
+        }
+    }
+
+    fn record(&mut self, name: String, block: &syn::Block) {
+        let measured = measure_block(&name, block);
+        // Spans are consumed in textual order, matching syn's visit order.
+        let span = self.spans.take(&name).unwrap_or(LineSpan::UNKNOWN);
+
+        self.functions.push(FunctionComplexity {
+            name,
+            line_start: span.start,
+            line_end: span.end,
+            metrics: ComplexityMetrics {
+                cyclomatic: narrow_u16(measured.cyclomatic),
+                cognitive: narrow_u16(measured.cognitive),
+                nesting_max: narrow_u8(measured.max_nesting),
+                // 0 when the definition could not be located in the text.
+                lines: narrow_u16(span.line_count()),
+                halstead: None,
+            },
+        });
+    }
+}
+
+impl<'ast> syn::visit::Visit<'ast> for UnifiedComplexityVisitor<'_> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        self.record(node.sig.ident.to_string(), &node.block);
+        syn::visit::visit_item_fn(self, node);
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        self.record(node.sig.ident.to_string(), &node.block);
+        syn::visit::visit_impl_item_fn(self, node);
+    }
+}
+
+fn narrow_u16(value: u32) -> u16 {
+    u16::try_from(value).unwrap_or(u16::MAX)
+}
+
+fn narrow_u8(value: u32) -> u8 {
+    u8::try_from(value).unwrap_or(u8::MAX)
+}
+
 impl UnifiedRustAnalyzer {
-    /// Extract complexity metrics from parsed syntax tree
+    /// Extract complexity metrics from the parsed syntax tree.
     ///
-    /// GREEN PHASE: Minimal implementation using simplified complexity visitor.
-    /// This will be enhanced in REFACTOR phase with proper complexity calculation.
-    fn extract_complexity_metrics(&self, syntax_tree: &syn::File) -> FileComplexityMetrics {
+    /// `content` is the source text the tree was parsed from; it is required
+    /// because line extents are measured, not guessed.
+    fn extract_complexity_metrics(
+        &self,
+        syntax_tree: &syn::File,
+        content: &str,
+    ) -> FileComplexityMetrics {
         use syn::visit::Visit;
 
-        // Simple visitor to count functions and estimate complexity
-        struct SimpleComplexityVisitor {
-            functions: Vec<FunctionComplexity>,
-            current_function_index: usize,
-        }
+        let mut spans = FunctionSpans::from_source(content);
+        let total_lines = spans.total_lines();
 
-        impl SimpleComplexityVisitor {
-            fn new() -> Self {
-                Self {
-                    functions: Vec::new(),
-                    current_function_index: 0,
-                }
-            }
-        }
-
-        impl<'ast> Visit<'ast> for SimpleComplexityVisitor {
-            fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-                let name = node.sig.ident.to_string();
-
-                // GREEN PHASE: Simple complexity estimation
-                // Just count branches for now
-                let cyclomatic = self.count_branches(&node.block);
-                let cognitive = cyclomatic; // Simplified for GREEN phase
-
-                self.functions.push(FunctionComplexity {
-                    name,
-                    line_start: 0, // Will be improved in REFACTOR
-                    line_end: 0,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: cyclomatic as u16,
-                        cognitive: cognitive as u16,
-                        nesting_max: 0, // Will be calculated in REFACTOR
-                        lines: 10,      // Rough estimate for GREEN phase
-                        halstead: None,
-                    },
-                });
-
-                self.current_function_index += 1;
-
-                // Continue visiting nested items
-                syn::visit::visit_item_fn(self, node);
-            }
-
-            fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-                let name = node.sig.ident.to_string();
-
-                let cyclomatic = self.count_branches_in_impl(&node.block);
-                let cognitive = cyclomatic;
-
-                self.functions.push(FunctionComplexity {
-                    name,
-                    line_start: 0,
-                    line_end: 0,
-                    metrics: ComplexityMetrics {
-                        cyclomatic: cyclomatic as u16,
-                        cognitive: cognitive as u16,
-                        nesting_max: 0,
-                        lines: 10,
-                        halstead: None,
-                    },
-                });
-
-                syn::visit::visit_impl_item_fn(self, node);
-            }
-        }
-
-        impl SimpleComplexityVisitor {
-            fn count_branches(&self, block: &syn::Block) -> u32 {
-                // GREEN PHASE: Simple branch counting
-                // Base complexity is 1
-                let mut complexity = 1;
-
-                for stmt in &block.stmts {
-                    complexity += self.count_branches_in_stmt(stmt);
-                }
-
-                complexity
-            }
-
-            fn count_branches_in_impl(&self, block: &syn::Block) -> u32 {
-                self.count_branches(block)
-            }
-
-            fn count_branches_in_stmt(&self, stmt: &syn::Stmt) -> u32 {
-                match stmt {
-                    syn::Stmt::Expr(expr, _) => self.count_branches_in_expr(expr),
-                    _ => 0,
-                }
-            }
-
-            fn count_branches_in_expr(&self, expr: &syn::Expr) -> u32 {
-                match expr {
-                    syn::Expr::If(_) => 1,
-                    syn::Expr::Match(_) => 1,
-                    syn::Expr::While(_) => 1,
-                    syn::Expr::ForLoop(_) => 1,
-                    syn::Expr::Loop(_) => 1,
-                    _ => 0,
-                }
-            }
-        }
-
-        let mut visitor = SimpleComplexityVisitor::new();
+        let mut visitor = UnifiedComplexityVisitor::new(&mut spans);
         visitor.visit_file(syntax_tree);
+        let functions = visitor.functions;
 
-        // Calculate file-level metrics
-        let total_cyclomatic: u32 = visitor
-            .functions
-            .iter()
-            .map(|f| f.metrics.cyclomatic as u32)
-            .sum();
+        let total_cyclomatic: u32 = functions.iter().map(|f| u32::from(f.metrics.cyclomatic)).sum();
+        let total_cognitive: u32 = functions.iter().map(|f| u32::from(f.metrics.cognitive)).sum();
 
-        let avg_cyclomatic = if visitor.functions.is_empty() {
+        let avg_cyclomatic = if functions.is_empty() {
             1
         } else {
-            total_cyclomatic / visitor.functions.len() as u32
+            total_cyclomatic / functions.len() as u32
         };
+        let avg_cognitive = if functions.is_empty() {
+            0
+        } else {
+            total_cognitive / functions.len() as u32
+        };
+        let nesting_max = functions
+            .iter()
+            .map(|f| f.metrics.nesting_max)
+            .max()
+            .unwrap_or(0);
 
         FileComplexityMetrics {
             path: self.file_path.display().to_string(),
             total_complexity: ComplexityMetrics {
-                cyclomatic: avg_cyclomatic as u16,
-                cognitive: avg_cyclomatic as u16,
-                nesting_max: 0,
-                lines: (visitor.functions.len() * 10) as u16,
+                cyclomatic: narrow_u16(avg_cyclomatic),
+                cognitive: narrow_u16(avg_cognitive),
+                nesting_max,
+                // Real file length; was `functions.len() * 10`.
+                lines: narrow_u16(total_lines),
                 halstead: None,
             },
-            functions: visitor.functions,
+            functions,
             classes: Vec::new(), // Rust doesn't have classes
         }
     }

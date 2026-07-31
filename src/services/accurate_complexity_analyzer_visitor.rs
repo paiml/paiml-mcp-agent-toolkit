@@ -5,6 +5,9 @@ struct ComplexityVisitor {
     cyclomatic: u32,
     cognitive: u32,
     nesting_level: u32,
+    /// Deepest nesting reached. Callers used to approximate this as
+    /// `cognitive / 3`, which is a derived guess, not a measurement.
+    max_nesting: u32,
     function_name: Option<String>,
 }
 
@@ -14,6 +17,7 @@ impl ComplexityVisitor {
             cyclomatic: 1, // Base complexity
             cognitive: 0,
             nesting_level: 0,
+            max_nesting: 0,
             function_name: None,
         }
     }
@@ -32,6 +36,15 @@ impl ComplexityVisitor {
         // According to SonarSource spec, nesting adds extra cognitive load
         self.cognitive += base + self.nesting_level;
     }
+
+    fn enter_nesting(&mut self) {
+        self.nesting_level += 1;
+        self.max_nesting = self.max_nesting.max(self.nesting_level);
+    }
+
+    fn exit_nesting(&mut self) {
+        self.nesting_level = self.nesting_level.saturating_sub(1);
+    }
 }
 
 impl ComplexityVisitor {
@@ -40,11 +53,11 @@ impl ComplexityVisitor {
         self.add_cognitive(1);
 
         self.visit_expr(&if_expr.cond);
-        self.nesting_level += 1;
+        self.enter_nesting();
         for stmt in &if_expr.then_branch.stmts {
             self.visit_stmt(stmt);
         }
-        self.nesting_level -= 1;
+        self.exit_nesting();
 
         if let Some((_, else_expr)) = &if_expr.else_branch {
             self.visit_else_branch(else_expr);
@@ -55,9 +68,9 @@ impl ComplexityVisitor {
         match else_expr {
             Expr::If(_) => self.visit_expr(else_expr),
             _ => {
-                self.nesting_level += 1;
+                self.enter_nesting();
                 self.visit_expr(else_expr);
-                self.nesting_level -= 1;
+                self.exit_nesting();
             }
         }
     }
@@ -75,21 +88,21 @@ impl ComplexityVisitor {
             }
         }
 
-        self.nesting_level += 1;
+        self.enter_nesting();
         for arm in &match_expr.arms {
             self.visit_expr(&arm.body);
         }
-        self.nesting_level -= 1;
+        self.exit_nesting();
     }
 
     fn visit_loop_body_stmts(&mut self, stmts: &[Stmt]) {
         self.add_cyclomatic(1);
         self.add_cognitive(1);
-        self.nesting_level += 1;
+        self.enter_nesting();
         for stmt in stmts {
             self.visit_stmt(stmt);
         }
-        self.nesting_level -= 1;
+        self.exit_nesting();
     }
 
     fn check_recursive_call(&mut self, call: &syn::ExprCall) {
