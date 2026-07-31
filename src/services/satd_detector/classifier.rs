@@ -4,6 +4,18 @@ use regex::RegexSet;
 
 use super::types::{AstContext, AstNodeType, DebtCategory, DebtClassifier, DebtPattern, Severity};
 
+/// Strict-mode marker patterns (issue #651).
+///
+/// They are matched against the comment TEXT (leader already stripped by
+/// `SATDDetector::extract_comment_content`), so they anchor at the start of the
+/// text and allow the residual `/` / `!` / `*` of a doc or block comment.
+/// Case-sensitive on purpose: "strict" means the canonical upper-case markers.
+const STRICT_TODO: &str = r"^[/!*\s]*TODO:\s+\S";
+const STRICT_FIXME: &str = r"^[/!*\s]*FIXME:\s+\S";
+const STRICT_HACK: &str = r"^[/!*\s]*HACK:\s+\S";
+const STRICT_XXX: &str = r"^[/!*\s]*XXX:\s+\S";
+const STRICT_BUG: &str = r"^[/!*\s]*BUG:\s+\S";
+
 impl Default for DebtClassifier {
     fn default() -> Self {
         Self::new()
@@ -248,35 +260,45 @@ impl DebtClassifier {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// New strict.
     pub fn new_strict() -> Self {
-        // Strict mode only includes explicit SATD markers
+        // Strict mode only includes explicit SATD markers.
+        //
+        // Issue #651: these patterns used to be anchored on a literal `//`
+        // (e.g. `//\s*TODO:\s+.+`), but every caller reaches `classify_comment`
+        // through `SATDDetector::extract_comment_content`, which has ALREADY
+        // stripped the comment leader and trimmed the text. The classifier only
+        // ever sees "TODO: rewrite this loop", so no strict pattern could match
+        // and `analyze satd --strict` reported 0 violations on a file holding
+        // exactly TODO/FIXME/HACK/BUG. Anchor on the start of the comment TEXT
+        // instead, tolerating leftover doc-comment punctuation (`/// TODO:` is
+        // handed over as "/ TODO: ..." and `//! TODO:` as "! TODO: ...").
         let patterns = vec![
             // Ultra-strict: ONLY actual comment-based SATD markers
             DebtPattern {
-                regex: r"//\s*TODO:\s+.+".to_string(),
+                regex: STRICT_TODO.to_string(),
                 category: DebtCategory::Requirement,
                 severity: Severity::Low,
                 description: "TODO task marker".to_string(),
             },
             DebtPattern {
-                regex: r"//\s*FIXME:\s+.+".to_string(),
+                regex: STRICT_FIXME.to_string(),
                 category: DebtCategory::Defect,
                 severity: Severity::High,
                 description: "FIXME issue marker".to_string(),
             },
             DebtPattern {
-                regex: r"//\s*HACK:\s+.+".to_string(),
+                regex: STRICT_HACK.to_string(),
                 category: DebtCategory::Design,
                 severity: Severity::Medium,
                 description: "HACK workaround marker".to_string(),
             },
             DebtPattern {
-                regex: r"//\s*XXX:\s+.+".to_string(),
+                regex: STRICT_XXX.to_string(),
                 category: DebtCategory::Design,
                 severity: Severity::Medium,
                 description: "XXX problem marker".to_string(),
             },
             DebtPattern {
-                regex: r"//\s*BUG:\s+.+".to_string(),
+                regex: STRICT_BUG.to_string(),
                 category: DebtCategory::Defect,
                 severity: Severity::High,
                 description: "BUG issue marker".to_string(),

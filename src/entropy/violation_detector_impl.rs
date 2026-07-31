@@ -91,25 +91,50 @@ impl ViolationDetector {
     }
 
     /// Detect low diversity violations
+    ///
+    /// Issues #650 / #677: this used to fire whenever `pattern_diversity` was
+    /// below the threshold — including when NOTHING had been measured. An empty
+    /// directory (total_files_analyzed 0, total_loc 0) produced a concrete
+    /// "Low pattern diversity: 0.0% (minimum: 30.0%)" finding, and because the
+    /// summary was built from constants it was byte-identical for an empty dir
+    /// and for a 7-function maximally-diverse crate. Shannon entropy over an
+    /// empty distribution is undefined, not zero: with no patterns there is no
+    /// measurement, so there is no violation to report.
     fn detect_low_diversity(
         &self,
         _patterns: &PatternCollection,
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
+        // Nothing measured => nothing to report. `pattern_diversity` is 0.0 in
+        // that case only because Shannon entropy of an empty distribution has
+        // no value, not because the code is repetitive.
+        if metrics.total_patterns == 0 || metrics.total_instances == 0 {
+            return Ok(());
+        }
         if metrics.pattern_diversity < self.config.min_pattern_diversity {
             violations.push(ActionableViolation {
                 severity: Severity::Medium,
                 pattern: PatternSummary {
-                    pattern_type: PatternType::ControlFlow,
-                    repetitions: 0,
-                    variation_score: 1.0 - metrics.pattern_diversity,
-                    example_code: "Various repetitive patterns".to_string(),
+                    // Every field below is measured. Previously they were the
+                    // constants ControlFlow / 0 / (1.0 - diversity) /
+                    // "Various repetitive patterns", which contradicted the
+                    // message itself (0.0% diversity yet variation_score 1.00,
+                    // "repetitive" yet repetitions 0).
+                    pattern_type: Self::dominant_pattern_type(metrics),
+                    repetitions: metrics.total_instances,
+                    variation_score: metrics.pattern_diversity,
+                    example_code: format!(
+                        "{} distinct patterns over {} instances",
+                        metrics.total_patterns, metrics.total_instances
+                    ),
                 },
                 message: format!(
-                    "Low pattern diversity: {:.1}% (minimum: {:.1}%)",
+                    "Low pattern diversity: {:.1}% (minimum: {:.1}%) across {} patterns / {} instances",
                     metrics.pattern_diversity * 100.0,
-                    self.config.min_pattern_diversity * 100.0
+                    self.config.min_pattern_diversity * 100.0,
+                    metrics.total_patterns,
+                    metrics.total_instances
                 ),
                 fix_suggestion: "Consider extracting common patterns into reusable functions"
                     .to_string(),
@@ -119,6 +144,17 @@ impl ViolationDetector {
             });
         }
         Ok(())
+    }
+
+    /// The most frequent measured pattern type, used to attribute the
+    /// project-level diversity finding to real data rather than a hardcoded
+    /// `PatternType::ControlFlow`. Only called with a non-empty population.
+    fn dominant_pattern_type(metrics: &EntropyMetrics) -> PatternType {
+        metrics
+            .patterns_by_type
+            .iter()
+            .max_by_key(|(ty, count)| (**count, format!("{ty:?}")))
+            .map_or(PatternType::ControlFlow, |(ty, _)| *ty)
     }
 
     /// Detect cross-file duplication
