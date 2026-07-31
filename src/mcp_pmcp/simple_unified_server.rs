@@ -132,8 +132,9 @@ impl<T: Transport> EofSignalingTransport<T> {
     /// identical to what the transport would have written. Returns whether the
     /// frame was delivered.
     ///
-    /// Reported upstream; remove this once `StdioTransport` stops coupling the
-    /// write side to read-side EOF.
+    /// Reported upstream as paiml/rust-mcp-sdk#316; remove this once
+    /// `StdioTransport` splits its single `closed` flag into read-side and
+    /// write-side state and stops coupling the write side to read-side EOF.
     async fn deliver_refused_response(frame: &TransportMessage) -> bool {
         use tokio::io::AsyncWriteExt;
 

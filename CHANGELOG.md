@@ -27,8 +27,10 @@ only visible once the previous was in place:
    itself rejected it: `StdioTransport` sets one `closed` flag when its **read**
    side hits EOF and `send()` gates on that same flag. A reply to an
    already-accepted request was dropped because the client closed **stdin**,
-   which says nothing about stdout. Reported upstream; the workaround is marked
-   for removal once `StdioTransport` stops coupling the two directions.
+   which says nothing about stdout. Reported upstream as
+   [paiml/rust-mcp-sdk#316](https://github.com/paiml/rust-mcp-sdk/issues/316); the
+   workaround is marked for removal once `StdioTransport` stops coupling the two
+   directions.
 
 Measured on a fresh-resolution build (`cargo install --path .` *without*
 `--locked` — the resolution a real `cargo install pmat` gets): **40/40 answered,
