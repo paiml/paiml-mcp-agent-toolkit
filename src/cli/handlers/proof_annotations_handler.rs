@@ -27,6 +27,11 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
+    // Found alongside GH-663/GH-666: a nonexistent path exited 0 with a ranked
+    // list of annotated files ("borrow_checker_0.rs - 1 annotations", ...) that
+    // do not exist anywhere on disk.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 

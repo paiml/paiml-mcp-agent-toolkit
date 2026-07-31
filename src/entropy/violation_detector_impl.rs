@@ -91,12 +91,23 @@ impl ViolationDetector {
     }
 
     /// Detect low diversity violations
+    ///
+    /// GH-681: with nothing analysed, `pattern_diversity` is 0.0 by construction
+    /// (a 0/0 entropy, not a measurement), so this fired and reported
+    /// "Low pattern diversity: 0.0% (minimum: 30.0%)" — a Medium-severity
+    /// violation with an empty `affected_files` list — for an empty or
+    /// nonexistent tree. Diversity over an empty pattern set is undefined, not a
+    /// violation, so there is nothing to report.
     fn detect_low_diversity(
         &self,
-        _patterns: &PatternCollection,
+        patterns: &PatternCollection,
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
+        if patterns.file_count() == 0 || metrics.total_patterns == 0 {
+            return Ok(());
+        }
+
         if metrics.pattern_diversity < self.config.min_pattern_diversity {
             violations.push(ActionableViolation {
                 severity: Severity::Medium,

@@ -33,6 +33,11 @@ pub struct DefectPredictionConfig {
 /// This reduces complexity from 23 to ~8 by delegating to the facade service.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) -> Result<()> {
+    // GH-666: a nonexistent path scanned zero files and this reported
+    // "Analyzed 0 files: 0 high risk, 0 medium risk, 0 low risk /
+    // ✓ Defect prediction analysis complete" with exit 0.
+    crate::cli::ensure_analysis_path_exists(&config.project_path)?;
+
     // Print analysis header
     print_analysis_header(
         &config.project_path,

@@ -15,6 +15,11 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
     let start = init_timing(config.perf);
 
     let analysis_path = determine_analysis_path(&config);
+    // GH-663: a nonexistent path analysed zero files and this printed
+    // "✓ Comprehensive analysis completed / Quality Score: 100.0% /
+    // Code quality looks good!" with exit 0 — a perfect score for a tree that
+    // was never there, which turns a typo'd CI path green.
+    crate::cli::ensure_analysis_path_exists(&analysis_path)?;
     let result = run_orchestrated_analysis(analysis_path, &config).await?;
     let enhanced_result = enhance_results_if_needed(result, &config).await?;
 

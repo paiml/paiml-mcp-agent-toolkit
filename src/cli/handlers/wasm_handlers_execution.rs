@@ -12,6 +12,11 @@ pub async fn handle_analyze_webassembly(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    // Found alongside GH-663/GH-666: a nonexistent path printed
+    // "📁 Found 0 WebAssembly files" and a complete report with
+    // "**Files analyzed**: 0", exit 0.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔍 Analyzing WebAssembly files...");
     let start = std::time::Instant::now();
 

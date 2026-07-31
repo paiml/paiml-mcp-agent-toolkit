@@ -169,7 +169,8 @@ pub fn write_fatal_error<W: std::io::Write>(mut w: W, error: &anyhow::Error) {
     let _ = writeln!(w, "Error: {error:#}");
 }
 
-/// Fail unless `path` exists, before any analysis reports a result for it.
+/// Fail unless `path` exists and can actually be read, before any analysis
+/// reports a result for it.
 ///
 /// Analysis subcommands walk a directory tree; a tree that is not there yields
 /// zero files, which several handlers then reported as a clean bill of health —
@@ -178,16 +179,39 @@ pub fn write_fatal_error<W: std::io::Write>(mut w: W, error: &anyhow::Error) {
 /// gate cannot tell that apart from a genuinely clean tree, so a typo in a path
 /// silently turned the gate green.
 ///
+/// The same hole exists one step further in: a directory that exists but cannot
+/// be opened (`chmod 000`) also walks to zero files. GH-682 observed
+/// `analyze complexity -p <chmod 000 dir>` exit 0 with only "⚠️  Warning: No
+/// files were found or analyzed", over a tree containing a `Cargo.toml` and a
+/// `src/main.rs` it analyses fine once permissions are restored — while
+/// `analyze satd` on the identical directory exited 1 with "Permission denied".
+/// Listing the directory is the first thing every walker does, so a failure
+/// here is exactly the failure the walk would otherwise swallow.
+///
 /// Several handlers already carry a `path_exists` contract annotation; this is
 /// the runtime check that makes the annotation true.
 ///
 /// # Errors
 ///
-/// Returns `Path not found: <path>` if `path` does not exist, matching the
-/// wording the other analysis handlers already use.
+/// - `Path not found: <path>` if `path` does not exist, matching the wording the
+///   other analysis handlers already use.
+/// - `Path not readable: <path>: <io error>` if `path` is a directory whose
+///   entries cannot be listed.
 pub fn ensure_analysis_path_exists(path: &Path) -> anyhow::Result<()> {
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());
+    }
+    if path.is_dir() {
+        // Carried as context over the io::Error rather than one flat string: the
+        // binary's `categorize_error` keys the exit code off `Error::to_string()`
+        // (the outermost message only), so an inlined "Permission denied" would
+        // have turned this into exit 126 while `analyze satd` — whose io error is
+        // likewise wrapped — exits 1. `{:#}` still renders the whole chain.
+        if let Err(e) = std::fs::read_dir(path) {
+            return Err(
+                anyhow::Error::new(e).context(format!("Path not readable: {}", path.display()))
+            );
+        }
     }
     Ok(())
 }
@@ -244,6 +268,53 @@ mod analysis_path_guard_tests {
         std::fs::write(&file, "fn main() {}").expect("write");
         // `analyze satd --path` accepts a single file, not only a directory.
         assert!(ensure_analysis_path_exists(&file).is_ok());
+    }
+
+    /// GH-682: a `chmod 000` directory exists, so the existence check passed and
+    /// `analyze complexity` reported a clean pass over content it was denied
+    /// access to (exit 0), while `analyze satd` exited 1 on the same directory.
+    #[cfg(unix)]
+    #[test]
+    fn rejects_a_directory_it_cannot_read() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let parent = tempfile::TempDir::new().expect("tempdir");
+        let locked = parent.path().join("noread");
+        std::fs::create_dir(&locked).expect("create dir");
+        std::fs::write(locked.join("main.rs"), "fn main() {}").expect("write");
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000))
+            .expect("chmod 000");
+
+        // Running as root defeats permission bits entirely; detect that by
+        // observation rather than asserting something untrue of the environment.
+        let permissions_bite = std::fs::read_dir(&locked).is_err();
+        let result = ensure_analysis_path_exists(&locked);
+
+        // Restore before asserting so the TempDir can always clean itself up.
+        let _ = std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755));
+
+        if !permissions_bite {
+            return;
+        }
+
+        let err = result.expect_err("an unreadable directory must not be reported as analysable");
+        let msg = err.to_string();
+        assert!(msg.contains("Path not readable"), "got: {msg}");
+        assert!(
+            format!("{err:#}").contains("Permission denied"),
+            "the underlying cause must survive in the chain, got: {err:#}"
+        );
+        // The binary categorises the exit code from `to_string()` alone; keeping
+        // "permission" out of the outermost message is what makes this exit 1
+        // (matching `analyze satd`) instead of 126.
+        assert!(
+            !msg.to_lowercase().contains("permission"),
+            "outermost message must not trip the 126 classifier, got: {msg}"
+        );
+        assert!(
+            msg.contains("noread"),
+            "must name the offending path, got: {msg}"
+        );
     }
 }
 
