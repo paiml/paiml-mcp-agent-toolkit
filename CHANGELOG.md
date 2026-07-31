@@ -7,7 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.28.3] - 2026-07-30
+## [3.29.0] - 2026-07-31
+
+### Fixed — the MCP stdio fix now works on the pmcp version users actually get
+
+3.28.3 (never published) pinned `pmcp = "~2.11"` to stop the bleeding, because
+the EOF-drain fix did not hold against 2.17. The pin is gone: pmcp is now
+**2.17** and the defect is fixed at the root. Three layers were needed, each
+only visible once the previous was in place:
+
+1. **Count requests in against responses out.** Necessary, but not sufficient —
+   pmcp's transport actor breaks its `select!` loop the instant `receive()`
+   errors, *without draining the outbound queue*, so a response the worker had
+   already produced was discarded before `send()` was ever reached.
+2. **Withhold EOF from the actor** while a consumed request is unanswered. The
+   `select!` is `biased` with the outbound arm first, so not resolving keeps it
+   in the loop until the queued response wins. Bounded by a 300s backstop.
+3. **Salvage a refused response.** Layer 2 got the frame to `send()`, where pmcp
+   itself rejected it: `StdioTransport` sets one `closed` flag when its **read**
+   side hits EOF and `send()` gates on that same flag. A reply to an
+   already-accepted request was dropped because the client closed **stdin**,
+   which says nothing about stdout. Reported upstream; the workaround is marked
+   for removal once `StdioTransport` stops coupling the two directions.
+
+Measured on a fresh-resolution build (`cargo install --path .` *without*
+`--locked` — the resolution a real `cargo install pmat` gets): **40/40 answered,
+0 hangs**, up from 10/40.
+
+### Changed — dependency audit: latest where latest is better, reasons where it is not
+
+All 28 direct dependencies whose requirement did not admit the newest release
+were audited. Six must **not** move, and the reason now lives next to each pin:
+
+| Held | Why |
+|---|---|
+| `arrow` 57 | `aprender-db` 0.61 still requires `^57`; pmat passes `RecordBatch` across that boundary |
+| `rusqlite` 0.32 | 0.40 needs Rust 1.95; MSRV was lowered to 1.91 *specifically* to unbreak `cargo install` |
+| `syn` 2 / `prettyplease` 0.2 | syn 3 breaks 6 sites and has near-zero adoption — it would duplicate syn, not replace it |
+| `serial_test` 3 | 4.0.1 needs Rust 1.93.1; a dev-dep, so it raises contributor MSRV for no user gain |
+| `tower-http` 0.6 | 0.7 adds a duplicate — `reqwest` and `octocrab` both require `^0.6` |
+
+Upgraded: the aprender sovereign stack ×11 to **0.61.0** (collapsing a duplicate
+`aprender-graph`), the swc family atomically to 24/27/43/27, plus `gimli` 0.34,
+`lz4_flex` 0.14, `octocrab` 0.54, `pdf-extract` 0.12, `wasmparser` 0.255.
+
+### Removed
+
+- **`organizational-intelligence-plugin`** — an alias for `aprender-orchestrate`
+  whose OIP API upstream removed in 0.41, leaving `pmat org analyze` a stub. It
+  had zero `use` sites: a whole dependency subtree providing nothing. The
+  `org-intelligence` **feature survives** (`= []`) — `pmat org localize` works
+  and is PMAT-native. Note this removes the implicit cargo feature named after
+  the dependency, which is why this is a minor rather than a patch release.
+- Unused dev-dependencies `pretty_assertions`, `futures-test`, `env_logger`, and
+  `serde_yaml_ng` from `[build-dependencies]`.
+
+### Fixed — three claims that were not true
+
+- **`cargo test --features org-intelligence` did not compile** (E0004).
+  `OrgCommands` gained a `Localize` variant and a match was never updated.
+  Nothing in CI or the Makefile builds that feature, so it rotted unnoticed.
+- **`deny.toml` justified two RUSTSEC ignores with a path that no longer
+  existed.** RUSTSEC-2026-0194/0195 cited "transitive via aprender-orchestrate
+  0.50" — false twice over: that crate is gone, and quick-xml moved 0.37.5 →
+  0.39.4, arriving via `syntect → plist` behind an opt-in feature. Still below
+  the 0.41 fix, so the ignores stay, now with true reasons.
+- **The package description advertised an HTTP interface the binary reports as
+  unimplemented.** `pmat serve` prints "HTTP transport not yet implemented"
+  unconditionally. pmat ships two working interfaces, CLI and MCP; the
+  description now says so.
+
+### Added
+
+- `scripts/dogfood-release.py` extended from defect-regression checks to
+  **interface coverage**: every subcommand renders help, four analyses emit
+  parseable JSON, and HTTP `serve` is asserted to fail *honestly* rather than
+  silently. 19/19 against a provenance-verified artifact.
+
+## [3.28.3] - 2026-07-30 (superseded before publication; never released)
+
+> Superseded by 3.29.0. The `~2.11` pin described below never shipped: 3.29.0
+> fixes the underlying defect and moves to pmcp 2.17 instead. The build
+> provenance work described here *did* ship, in 3.29.0.
 
 ### Fixed — v3.28.2's headline fix did not work for anyone who installed it
 
