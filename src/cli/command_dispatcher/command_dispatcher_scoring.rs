@@ -5,7 +5,6 @@
 
 use super::CommandDispatcher;
 use crate::cli::commands::Commands;
-use crate::cli::enums::OutputFormat;
 use crate::cli::handlers;
 use std::sync::Arc;
 
@@ -57,17 +56,17 @@ impl CommandDispatcher {
                 markdown,
                 csv,
             } => {
-                let internal_format = match output_format {
-                    crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
-                    _ => OutputFormat::Table,
-                };
+                // Issue #672: this used to collapse every non-json value to
+                // `OutputFormat::Table`, which execute_report_command mapped
+                // back to `ReportOutputFormat::Text` — so csv, markdown, html,
+                // pdf and dashboard all wrote the same plain-text report.
                 let analysis_strings: Vec<String> = analyses
                     .iter()
                     .map(|a| format!("{a:?}").to_lowercase())
                     .collect();
                 Self::execute_report_command(
                     Some(project_path),
-                    internal_format,
+                    output_format,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,

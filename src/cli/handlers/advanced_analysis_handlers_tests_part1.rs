@@ -352,13 +352,20 @@ clean:
         assert!(result.is_ok());
     }
 
+    /// Issue #659 regression: `analyze deep-context --format sarif` used to
+    /// emit pmat's internal JSON (top-level keys summary/files/
+    /// recommendations), byte-identical to `--format json` — no `$schema`, no
+    /// `version`, no `runs`. This test used to assert only `is_ok()`, which
+    /// the defect satisfied.
     #[tokio::test]
     async fn test_handle_analyze_deep_context_sarif_format() {
         let temp_dir = create_test_project();
+        let sarif_path = temp_dir.path().join("out.sarif");
+        let json_path = temp_dir.path().join("out.json");
 
-        let result = handle_analyze_deep_context(
+        handle_analyze_deep_context(
             temp_dir.path().to_path_buf(),
-            None,
+            Some(sarif_path.clone()),
             DeepContextOutputFormat::Sarif,
             false,
             vec![],
@@ -373,9 +380,43 @@ clean:
             false,
             10,
         )
-        .await;
+        .await
+        .expect("sarif deep-context should succeed");
 
-        assert!(result.is_ok());
+        handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            Some(json_path.clone()),
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await
+        .expect("json deep-context should succeed");
+
+        let sarif_text = fs::read_to_string(&sarif_path).expect("sarif file");
+        let json_text = fs::read_to_string(&json_path).expect("json file");
+        assert_ne!(
+            sarif_text, json_text,
+            "--format sarif must not be byte-identical to --format json"
+        );
+
+        let sarif: serde_json::Value =
+            serde_json::from_str(&sarif_text).expect("SARIF must be JSON");
+        assert_eq!(sarif["version"], "2.1.0");
+        assert!(sarif["$schema"].as_str().unwrap().contains("sarif"));
+        assert!(sarif["runs"].as_array().is_some_and(|r| !r.is_empty()));
+        assert!(sarif["runs"][0]["tool"]["driver"]["name"].is_string());
+        assert!(sarif["runs"][0]["results"].is_array());
     }
 
     #[tokio::test]

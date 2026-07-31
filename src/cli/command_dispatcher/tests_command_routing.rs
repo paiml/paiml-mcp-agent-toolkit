@@ -91,7 +91,7 @@
 
         let result = CommandDispatcher::execute_report_command(
             Some(temp_dir.path().to_path_buf()),
-            OutputFormat::Table,
+            crate::cli::enums::ReportOutputFormat::Text,
             false,
             false,
             false,

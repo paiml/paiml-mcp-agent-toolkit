@@ -25,7 +25,7 @@ pub struct DefectReportService {
 }
 
 /// Output format for reports
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReportFormat {
     /// JSON format (default)
     Json,

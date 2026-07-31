@@ -238,11 +238,11 @@ pub enum ReportOutputFormat {
     Markdown,
     /// Plain text format
     Text,
-    /// HTML format (legacy)
+    /// HTML format — NOT IMPLEMENTED, rejected (issue #672)
     Html,
-    /// PDF format (legacy)
+    /// PDF format — NOT IMPLEMENTED, rejected (issue #672)
     Pdf,
-    /// Dashboard format (legacy)
+    /// Dashboard format — NOT IMPLEMENTED, rejected (issue #672)
     Dashboard,
 }
 

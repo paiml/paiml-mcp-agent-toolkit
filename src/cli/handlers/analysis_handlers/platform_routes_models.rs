@@ -14,10 +14,12 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
             crate::cli::handlers::comply_cb_detect::walkdir_model_files(&project_path);
 
         if model_files.is_empty() {
-            println!(
-                "No model files found (*.gguf, *.apr, *.safetensors) in {}",
-                project_path.display()
-            );
+            let stdout = no_models_stdout(&project_path, &format)?;
+            println!("{stdout}");
+            if matches!(format, cli::OutputFormat::Json) {
+                // The human sentence still exists, just not on the JSON stream.
+                eprintln!("{}", no_models_sentence(&project_path));
+            }
             return Ok(());
         }
 
@@ -145,7 +147,35 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
     println!("{}", "\u{2500}".repeat(width));
 }
 
+/// The human sentence emitted when a project contains no model files.
+fn no_models_sentence(project_path: &std::path::Path) -> String {
+    format!(
+        "No model files found (*.gguf, *.apr, *.safetensors) in {}",
+        project_path.display()
+    )
+}
+
+/// What `analyze models` writes to **stdout** when no model files exist.
+///
+/// Issue #678: this used to be the prose sentence for every format, so
+/// `analyze models --format json` exited 0 having printed
+/// "No model files found (*.gguf, *.apr, *.safetensors) in <path>" — which
+/// does not parse as JSON. Under `--format json` stdout now carries the empty
+/// inventory document; the sentence moves to stderr.
+fn no_models_stdout(project_path: &std::path::Path, format: &cli::OutputFormat) -> Result<String> {
+    if matches!(format, cli::OutputFormat::Json) {
+        render_model_inventory_json(&[], 0)
+    } else {
+        Ok(no_models_sentence(project_path))
+    }
+}
+
 fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
+    println!("{}", render_model_inventory_json(entries, total_size)?);
+    Ok(())
+}
+
+fn render_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<String> {
     let json_entries: Vec<serde_json::Value> = entries
         .iter()
         .map(|e| {
@@ -166,8 +196,7 @@ fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) 
         "models": json_entries,
     });
 
-    println!("{}", serde_json::to_string_pretty(&output)?);
-    Ok(())
+    Ok(serde_json::to_string_pretty(&output)?)
 }
 
 /// Parse .gitattributes files to find LFS-tracked patterns
@@ -244,6 +273,37 @@ mod model_helper_tests {
     //! the pure helpers `format_size`, `is_lfs_tracked`, and the parser
     //! `detect_lfs_patterns` are testable.
     use super::*;
+
+    // ── no_models_stdout (issue #678) ───────────────────────────────────────
+
+    /// Issue #678 regression: `analyze models --format json` on a directory
+    /// with no model files printed the prose sentence "No model files found
+    /// (*.gguf, *.apr, *.safetensors) in <path>" to stdout and exited 0, so
+    /// `python3 -m json.tool` / `jq .` failed.
+    #[test]
+    fn test_no_models_json_stdout_parses_as_json() {
+        let path = std::path::Path::new("/tmp/some-fixture");
+        let out = no_models_stdout(path, &cli::OutputFormat::Json).unwrap();
+
+        assert!(
+            !out.starts_with("No model files found"),
+            "--format json must not emit the prose sentence on stdout, got {out:?}"
+        );
+        let doc: serde_json::Value =
+            serde_json::from_str(&out).expect("--format json must emit parseable JSON");
+        assert_eq!(doc["model_count"], 0);
+        assert_eq!(doc["total_size_bytes"], 0);
+        assert!(doc["models"].as_array().unwrap().is_empty());
+    }
+
+    /// The human formats keep the sentence, and it names the path scanned.
+    #[test]
+    fn test_no_models_table_stdout_is_the_sentence() {
+        let path = std::path::Path::new("/tmp/some-fixture");
+        let out = no_models_stdout(path, &cli::OutputFormat::Table).unwrap();
+        assert!(out.starts_with("No model files found"));
+        assert!(out.contains("/tmp/some-fixture"));
+    }
 
     // ── format_size (delegates to batuta_common::fmt) ──────────────────────
 

@@ -206,7 +206,12 @@ fn format_comparison_result(
     Ok(result)
 }
 
-fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {
+/// Build a SARIF 2.1.0 document from a whole-project TDG score.
+///
+/// `pub(crate)` since issue #669: the top-level `pmat tdg --format sarif`
+/// command had no SARIF emitter of its own and printed a bare score, so it
+/// now reuses this one instead of growing a second implementation.
+pub(crate) fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {
     let results = project
         .files
         .iter()
@@ -290,7 +295,10 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
     })
 }
 
-fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
+/// Build a SARIF 2.1.0 document from a single-file TDG score.
+///
+/// `pub(crate)` since issue #669 — see `create_sarif_output`.
+pub(crate) fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
     let level = if score.total < 50.0 {
         "error"
     } else if score.total < 65.0 {
