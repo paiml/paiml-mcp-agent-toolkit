@@ -226,5 +226,75 @@ mod tests {
     fn test_print_metrics_empty_no_panic() {
         print_metrics(&empty_result());
     }
+
+    // ── #676: summary/total_files must describe the FILTERED result set ──
+
+    fn config_with_severity(severity: Option<SatdSeverity>) -> SatdAnalysisConfig {
+        SatdAnalysisConfig {
+            path: std::path::PathBuf::from("."),
+            format: SatdOutputFormat::Json,
+            severity,
+            critical_only: false,
+            include_tests: false,
+            strict: false,
+            evolution: false,
+            days: 30,
+            metrics: false,
+            output: None,
+            top_files: 0,
+            fail_on_violation: false,
+            timeout: 30,
+            include: vec![],
+            exclude: vec![],
+            extended: false,
+        }
+    }
+
+    #[test]
+    fn test_severity_filter_restates_summary_and_total_files() {
+        // Observed on 3.29.0: {"total_files":1,"total_violations":0,
+        // "summary":"Found 7 SATD violations in 1 files","violations":[]}
+        let filtered = apply_analysis_filters(
+            result_with_all_severities(),
+            &config_with_severity(Some(SatdSeverity::Critical)),
+        )
+        .unwrap();
+
+        assert_eq!(filtered.violations.len(), 1, "only Critical survives");
+        assert_eq!(filtered.total_files, 1, "one file holds the survivor");
+        assert_eq!(
+            filtered.summary, "Found 1 SATD violations in 1 files",
+            "summary must describe the filtered set, not the pre-filter one"
+        );
+    }
+
+    #[test]
+    fn test_severity_filter_removing_everything_reports_zero_files() {
+        let mut only_low = result_with_all_severities();
+        only_low.violations.retain(|v| {
+            matches!(
+                v.severity,
+                crate::services::facades::satd_facade::SatdSeverity::Low
+            )
+        });
+
+        let filtered =
+            apply_analysis_filters(only_low, &config_with_severity(Some(SatdSeverity::Critical)))
+                .unwrap();
+
+        assert_eq!(filtered.violations.len(), 0);
+        assert_eq!(filtered.total_files, 0, "no violations => no files");
+        assert_eq!(filtered.summary, "Found 0 SATD violations in 0 files");
+    }
+
+    #[test]
+    fn test_no_filter_summary_still_matches_payload() {
+        let filtered =
+            apply_analysis_filters(result_with_all_severities(), &config_with_severity(None))
+                .unwrap();
+
+        assert_eq!(filtered.violations.len(), 4);
+        assert_eq!(filtered.summary, "Found 4 SATD violations in 4 files");
+    }
 }
 

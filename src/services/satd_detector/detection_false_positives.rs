@@ -336,12 +336,78 @@ impl SATDDetector {
             && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
 
+    /// Canonical SATD markers. A comment that OPENS with one of these is
+    /// self-admitted technical debt by definition.
+    const SATD_MARKERS: [&'static str; 5] = ["TODO", "FIXME", "HACK", "BUG", "XXX"];
+
+    /// Is this line a comment whose text begins with a canonical SATD marker?
+    ///
+    /// Issues #668 / #674: the heuristics below exist to suppress *incidental*
+    /// mentions of debt words in code, string literals and prose. They were
+    /// suppressing explicit markers too, because they only look at substrings
+    /// anywhere in the line:
+    ///
+    /// * `// FIXME: unwrap` matched `is_doctest_example` (has "// ", has
+    ///   "FIXME", has "unwrap") and was reported as total_satd 0
+    /// * `// TODO: expect here` matched `is_test_code`
+    /// * `// TODO: pay down the technical debt here` matched
+    ///   `is_technical_debt_documentation`
+    /// * `// TODO: fix the detection logic` matched `is_functional_description`
+    ///
+    /// All four are textbook SATD and were silently dropped, which is
+    /// indistinguishable from a genuinely clean tree. An explicit marker always
+    /// wins over the false-positive heuristics.
+    pub(crate) fn is_explicit_satd_marker(&self, line: &str) -> bool {
+        let Some(text) = Self::comment_text_of(line.trim()) else {
+            return false;
+        };
+        Self::SATD_MARKERS
+            .iter()
+            .any(|marker| Self::opens_with_marker(text, marker))
+    }
+
+    /// Strip the comment leader from a trimmed line, or None if not a comment.
+    ///
+    /// Doc comments (`///`, `//!`) deliberately return None so this override
+    /// does not change the long-standing "documentation is not debt" policy in
+    /// `is_module_documentation`; the reported defects are all plain comments.
+    fn comment_text_of(trimmed: &str) -> Option<&str> {
+        if trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            return None;
+        }
+        for leader in ["//", "/*", "<!--", "#", "*"] {
+            if let Some(rest) = trimmed.strip_prefix(leader) {
+                return Some(rest.trim_start());
+            }
+        }
+        None
+    }
+
+    /// Does `text` start with `marker` followed by a separator (`:`, `(`, `!`)
+    /// or whitespace? Requires that boundary so `TODOS` is not a marker, and
+    /// `-` is deliberately NOT a separator: `BUG-012:` is a tracker id, which
+    /// the `is_bug_tracking_id` heuristic below is right to suppress.
+    fn opens_with_marker(text: &str, marker: &str) -> bool {
+        let Some(rest) = text.strip_prefix(marker) else {
+            return false;
+        };
+        match rest.chars().next() {
+            None => false, // bare "// TODO" carries no admitted work item
+            Some(c) => matches!(c, ':' | '(' | '!' | ' ' | '\t'),
+        }
+    }
+
     /// Comprehensive false positive detection for SATD
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
         // First check: Should we exclude this entire file?
         if self.should_exclude_file(file_path) {
             return true;
+        }
+
+        // An explicit marker comment is never a false positive (#668, #674).
+        if self.is_explicit_satd_marker(line) {
+            return false;
         }
 
         // Second check: Is this line a false positive?

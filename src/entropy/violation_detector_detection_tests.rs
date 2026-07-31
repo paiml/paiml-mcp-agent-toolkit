@@ -314,4 +314,127 @@ mod detection_tests {
             assert!(v.severity >= Severity::High);
         }
     }
+
+    // ── #650 / #677: nothing measured => nothing reported ──
+
+    /// Metrics as produced for a directory with no source files at all.
+    fn unmeasured_metrics() -> EntropyMetrics {
+        EntropyMetrics {
+            file_level_entropy: 0.0,
+            module_level_entropy: 0.0,
+            project_level_entropy: 0.0,
+            pattern_diversity: 0.0,
+            total_patterns: 0,
+            total_instances: 0,
+            total_loc: 0,
+            patterns_by_type: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_empty_project_yields_no_low_diversity_violation() {
+        // Observed on 3.29.0 for an empty directory: severity Medium,
+        // "Low pattern diversity: 0.0% (minimum: 30.0%)", affected_files [].
+        let detector = ViolationDetector::new(EntropyConfig::default());
+        let mut violations = Vec::new();
+        detector
+            .detect_low_diversity(&PatternCollection::new(), &unmeasured_metrics(), &mut violations)
+            .unwrap();
+
+        assert!(
+            violations.is_empty(),
+            "zero files analysed must yield zero violations, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn test_empty_project_end_to_end_has_no_actionable_violations() {
+        let detector = ViolationDetector::new(EntropyConfig::default());
+        let violations = detector
+            .detect_violations(&PatternCollection::new(), &unmeasured_metrics())
+            .unwrap();
+        assert!(violations.is_empty(), "got {violations:?}");
+    }
+
+    #[test]
+    fn test_low_diversity_violation_carries_measured_values() {
+        // The summary used to be the constants ControlFlow / repetitions 0 /
+        // variation_score 1.00 / "Various repetitive patterns", so the whole
+        // finding was byte-identical for every project analysed.
+        let config = EntropyConfig {
+            min_pattern_diversity: 0.8,
+            ..EntropyConfig::default()
+        };
+        let detector = ViolationDetector::new(config);
+
+        let mut patterns_by_type = HashMap::new();
+        patterns_by_type.insert(PatternType::ErrorHandling, 40);
+        patterns_by_type.insert(PatternType::ApiCall, 7);
+        let metrics = EntropyMetrics {
+            file_level_entropy: 0.2,
+            module_level_entropy: 0.2,
+            project_level_entropy: 0.2,
+            pattern_diversity: 0.25,
+            total_patterns: 12,
+            total_instances: 47,
+            total_loc: 900,
+            patterns_by_type,
+        };
+
+        let mut violations = Vec::new();
+        detector
+            .detect_low_diversity(&PatternCollection::new(), &metrics, &mut violations)
+            .unwrap();
+
+        assert_eq!(violations.len(), 1);
+        let v = &violations[0];
+        assert_eq!(v.pattern.repetitions, 47, "must report measured instances");
+        assert!(
+            (v.pattern.variation_score - 0.25).abs() < f64::EPSILON,
+            "variation_score must equal the measured diversity, got {}",
+            v.pattern.variation_score
+        );
+        assert_eq!(
+            v.pattern.pattern_type,
+            PatternType::ErrorHandling,
+            "must attribute to the dominant measured pattern type"
+        );
+        assert!(
+            v.message.contains("12 patterns / 47 instances"),
+            "message must carry the measured population: {}",
+            v.message
+        );
+    }
+
+    #[test]
+    fn test_low_diversity_message_names_the_configured_minimum() {
+        // #683: the printed minimum must track the threshold in force.
+        for min in [0.4_f64, 0.9_f64] {
+            let detector = ViolationDetector::new(EntropyConfig {
+                min_pattern_diversity: min,
+                ..EntropyConfig::default()
+            });
+            let metrics = EntropyMetrics {
+                file_level_entropy: 0.1,
+                module_level_entropy: 0.1,
+                project_level_entropy: 0.1,
+                pattern_diversity: 0.1,
+                total_patterns: 3,
+                total_instances: 9,
+                total_loc: 60,
+                patterns_by_type: HashMap::new(),
+            };
+            let mut violations = Vec::new();
+            detector
+                .detect_low_diversity(&PatternCollection::new(), &metrics, &mut violations)
+                .unwrap();
+            assert_eq!(violations.len(), 1);
+            let expected = format!("minimum: {:.1}%", min * 100.0);
+            assert!(
+                violations[0].message.contains(&expected),
+                "expected {expected:?} in {:?}",
+                violations[0].message
+            );
+        }
+    }
 }

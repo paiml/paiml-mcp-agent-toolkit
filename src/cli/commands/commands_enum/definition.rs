@@ -484,8 +484,13 @@ pub enum Commands {
         #[arg(long, default_value = "15.0")]
         max_dead_code: f64,
 
-        /// Minimum required complexity entropy
-        #[arg(long, default_value = "2.0")]
+        /// Minimum required pattern diversity, as a fraction (0.0-1.0)
+        // Issue #650: the default used to be 2.0, i.e. "require 200% pattern
+        // diversity". The value is compared against a normalised Shannon
+        // entropy, so it was silently clamped to 1.0 and every project — an
+        // empty directory included — failed the entropy check. 0.3 is the
+        // library default (`EntropyConfig::default().min_pattern_diversity`).
+        #[arg(long, default_value = "0.3")]
         min_entropy: f64,
 
         /// Maximum allowed cyclomatic complexity p99

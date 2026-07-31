@@ -195,3 +195,128 @@ mod extraction_pure_tests {
         let _ = SATDDetector::new_strict();
     }
 }
+
+#[cfg(test)]
+mod marker_regression_tests {
+    //! Regression tests for issues #651, #668 and #674: `--strict` returned 0
+    //! on a file of pure markers, and the false-positive heuristics silently
+    //! dropped explicit markers whose prose happened to contain "unwrap",
+    //! "expect", "technical debt" or "detection".
+    use super::*;
+
+    /// A path that is neither a test file nor one of the analyzer's own files,
+    /// so `should_exclude_file` does not short-circuit the extraction.
+    fn src_file() -> &'static Path {
+        Path::new("src/lib.rs")
+    }
+
+    fn texts(detector: &SATDDetector, content: &str) -> Vec<String> {
+        detector
+            .extract_from_content(content, src_file())
+            .expect("extraction must succeed")
+            .into_iter()
+            .map(|d| d.text)
+            .collect()
+    }
+
+    // ── #651: --strict must return the markers, not zero ──
+
+    const FOUR_MARKERS: &str = "// TODO: rewrite this loop\n\
+         // FIXME: broken input handling\n\
+         // HACK: temporary workaround\n\
+         // BUG: off by one\n\
+         pub fn f() -> i32 { 1 }\n";
+
+    #[test]
+    fn test_strict_mode_reports_all_four_canonical_markers() {
+        let found = texts(&SATDDetector::new_strict(), FOUR_MARKERS);
+        assert_eq!(
+            found.len(),
+            4,
+            "--strict must report TODO/FIXME/HACK/BUG, got {found:?}"
+        );
+        for marker in ["TODO", "FIXME", "HACK", "BUG"] {
+            assert!(
+                found.iter().any(|t| t.starts_with(marker)),
+                "missing {marker} in {found:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_strict_result_is_a_subset_of_default() {
+        let strict = texts(&SATDDetector::new_strict(), FOUR_MARKERS);
+        let default = texts(&SATDDetector::new(), FOUR_MARKERS);
+        assert!(
+            !strict.is_empty() && strict.len() <= default.len(),
+            "strict {strict:?} must be a non-empty subset of default {default:?}"
+        );
+        for item in &strict {
+            assert!(default.contains(item), "{item:?} missing from default run");
+        }
+    }
+
+    #[test]
+    fn test_strict_ignores_bare_prose_mentioning_markers() {
+        // "strict" still means an explicit marker with a work item after it.
+        let found = texts(&SATDDetector::new_strict(), "// this is a todo list\n");
+        assert!(found.is_empty(), "strict must not match prose: {found:?}");
+    }
+
+    // ── #668: markers whose text mentions unwrap/expect were dropped ──
+
+    #[test]
+    fn test_fixme_mentioning_unwrap_is_reported() {
+        let found = texts(&SATDDetector::new(), "// FIXME: unwrap\npub fn a() {}\n");
+        assert_eq!(found.len(), 1, "`// FIXME: unwrap` was dropped: {found:?}");
+    }
+
+    #[test]
+    fn test_todo_mentioning_expect_is_reported() {
+        let found = texts(&SATDDetector::new(), "// TODO: expect here\n");
+        assert_eq!(found.len(), 1, "`// TODO: expect here` dropped: {found:?}");
+    }
+
+    // ── #674: markers whose prose names debt concepts were dropped ──
+
+    #[test]
+    fn test_todo_about_technical_debt_is_reported() {
+        let content = "// TODO: pay down the technical debt here\n\
+             // TODO: fix the detection logic\n\
+             pub fn f() -> i32 { 1 }\n";
+        let found = texts(&SATDDetector::new(), content);
+        assert_eq!(found.len(), 2, "both TODOs must be reported: {found:?}");
+    }
+
+    #[test]
+    fn test_todo_calling_itself_satd_is_reported() {
+        let found = texts(
+            &SATDDetector::new(),
+            "// TODO: this is self-admitted technical debt\n",
+        );
+        assert_eq!(found.len(), 1, "dropped self-describing TODO: {found:?}");
+    }
+
+    // ── Guard rails: the override must not swallow the heuristics whole ──
+
+    #[test]
+    fn test_incidental_mention_in_code_is_still_suppressed() {
+        let detector = SATDDetector::new();
+        let found = texts(&detector, "    assert!(line.contains(\"TODO\"));\n");
+        assert!(found.is_empty(), "code line reported as debt: {found:?}");
+    }
+
+    #[test]
+    fn test_bug_tracking_id_is_still_suppressed() {
+        let detector = SATDDetector::new();
+        let found = texts(&detector, "// BUG-012: single language override\n");
+        assert!(found.is_empty(), "tracker id reported as debt: {found:?}");
+    }
+
+    #[test]
+    fn test_doc_comment_policy_unchanged() {
+        let detector = SATDDetector::new();
+        let found = texts(&detector, "/// TODO: documented follow-up\n");
+        assert!(found.is_empty(), "doc comment policy changed: {found:?}");
+    }
+}

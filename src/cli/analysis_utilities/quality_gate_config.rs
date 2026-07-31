@@ -28,39 +28,58 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
 /// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml` > CLI default.
 /// Reads from `[entropy] min_pattern_diversity`, `[thresholds] entropy_min_diversity`,
 /// or `[quality] min_pattern_diversity`.
-/// Clamps result to 0.0-1.0 range to prevent unreachable thresholds.
 ///
 /// For small repos (<50 source files), the threshold is automatically scaled down
 /// to avoid false positives (#248). Small codebases naturally have lower pattern
 /// diversity because there are fewer files to establish diverse patterns.
-fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
+///
+/// Issue #683: the threshold used to be silently `clamp(0.0, 1.0)`ed, so
+/// `--min-entropy 1.0`, `2.0`, `3.5` and `42` all collapsed to the same
+/// effective value and printed the identical "(minimum: 50.0%)" — a threshold
+/// the user never chose and could not explain. Pattern diversity is a
+/// normalised fraction; a value outside 0.0-1.0 is a unit mistake, so say so
+/// and stop instead of substituting a plausible one. The size scaling that
+/// remains is announced on stderr so the printed minimum is traceable.
+fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> Result<f64> {
     let mut result = cli_value;
+    let mut source = "--min-entropy";
 
     // Load from pmat.toml [quality] (lowest config priority, #227)
     if let Some(val) = read_entropy_threshold_from_pmat_toml(project_path) {
         result = val;
+        source = "pmat.toml [quality] min_pattern_diversity";
     }
 
     // Load from .pmat-metrics.toml (medium priority)
-    if let Some(val) = read_entropy_threshold_from_file(
-        &project_path.join(".pmat-metrics.toml"),
-    ) {
+    if let Some(val) = read_entropy_threshold_from_file(&project_path.join(".pmat-metrics.toml")) {
         result = val;
+        source = ".pmat-metrics.toml entropy threshold";
     }
 
     // Load from .pmat-gates.toml (highest priority, #219)
-    if let Some(val) = read_entropy_threshold_from_file(
-        &project_path.join(".pmat-gates.toml"),
-    ) {
+    if let Some(val) = read_entropy_threshold_from_file(&project_path.join(".pmat-gates.toml")) {
         result = val;
+        source = ".pmat-gates.toml [entropy] min_pattern_diversity";
     }
 
-    // Clamp to valid range (#219: prevent 200% unreachable thresholds)
-    let clamped = result.clamp(0.0, 1.0);
+    if !(0.0..=1.0).contains(&result) {
+        anyhow::bail!(
+            "{source} = {result} is out of range: pattern diversity is a normalised \
+             fraction, so the minimum must be between 0.0 and 1.0 (0.3 = 30% diversity)"
+        );
+    }
 
     // #248: Scale threshold for small repos to reduce false positives.
     // Small repos (<50 files) naturally have lower pattern diversity.
-    scale_entropy_for_project_size(project_path, clamped)
+    let file_count = count_source_files(project_path);
+    let effective = result * size_scale(file_count);
+    if (effective - result).abs() > f64::EPSILON {
+        eprintln!(
+            "  \u{2139}\u{fe0f}  entropy minimum {result:.2} scaled to {effective:.2} \
+             for a {file_count}-source-file project (#248)"
+        );
+    }
+    Ok(effective)
 }
 
 /// Scale entropy threshold based on project size (#248).
@@ -71,9 +90,14 @@ fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
 /// - <50 files: threshold * 0.85
 /// - >=50 files: no scaling (full threshold)
 fn scale_entropy_for_project_size(project_path: &Path, threshold: f64) -> f64 {
-    let file_count = count_source_files(project_path);
+    threshold * size_scale(count_source_files(project_path))
+}
 
-    let scale = if file_count < 10 {
+/// Scale factor for a project of `file_count` source files (#248).
+/// Extracted so `load_entropy_threshold` can report the count it scaled by
+/// without walking the tree twice.
+fn size_scale(file_count: usize) -> f64 {
+    if file_count < 10 {
         0.5
     } else if file_count < 25 {
         0.7
@@ -81,9 +105,7 @@ fn scale_entropy_for_project_size(project_path: &Path, threshold: f64) -> f64 {
         0.85
     } else {
         1.0
-    };
-
-    threshold * scale
+    }
 }
 
 /// Count source files in the project (quick heuristic, not a full walk).

@@ -127,7 +127,7 @@ async fn run_entropy_check_gated(
         return Ok(());
     }
 
-    let ent_threshold = load_entropy_threshold(project_path, min_entropy);
+    let ent_threshold = load_entropy_threshold(project_path, min_entropy)?;
     let mut ent_excludes = load_entropy_exclude_paths(project_path);
     merge_excludes(&mut ent_excludes, &gate_config.exclude);
 
