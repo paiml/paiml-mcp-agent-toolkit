@@ -158,19 +158,42 @@ fn filter_blocks_by_files(
     });
 }
 
-/// Recalculate statistics after filtering
+/// Recalculate statistics after filtering.
+///
+/// Counts DISTINCT physical lines that participate in duplication.
+///
+/// This was `block.lines * block.locations.len()`, which counts one physical
+/// line once per window covering it. Detection uses an overlapping sliding
+/// window, so a single 5-line function is reported at lines 2-6, 3-7 AND 4-8 —
+/// three "locations" over the same 5 lines. Summing them produced
+/// `duplicate_lines` GREATER than `total_lines` and percentages that cannot
+/// exist: a 36-line fixture reported "Duplication: 455.6% (164 / 36 lines)",
+/// and a file of four entirely distinct functions reported 211.5%.
+///
+/// A percentage above 100 is self-evidently fabricated, so this is measured as
+/// a set: a line is duplicated, or it is not, however many windows cover it.
+/// See contracts/pmat-no-fabrication-v1.yaml, equation `measured_or_absent`.
 fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
-    let mut duplicate_lines = 0;
+    let mut duplicated: std::collections::HashSet<(&str, usize)> = std::collections::HashSet::new();
     for block in &report.duplicate_blocks {
-        duplicate_lines += block.lines * block.locations.len();
+        for loc in &block.locations {
+            for line in loc.start_line..=loc.end_line {
+                duplicated.insert((loc.file.as_str(), line));
+            }
+        }
     }
+    let duplicate_lines = duplicated.len();
 
     report.duplicate_lines = duplicate_lines;
     report.total_duplicates = report.duplicate_blocks.len();
 
     if report.total_lines > 0 {
-        report.duplication_percentage =
-            (duplicate_lines as f32 / report.total_lines as f32) * 100.0;
+        #[allow(clippy::cast_precision_loss)]
+        let pct = (duplicate_lines as f32 / report.total_lines as f32) * 100.0;
+        // Distinct duplicated lines can never exceed the lines counted, but
+        // total_lines is gathered by a separate pass; clamp so a disagreement
+        // between the two surfaces as 100%, never as an impossible number.
+        report.duplication_percentage = pct.min(100.0);
     }
 }
 

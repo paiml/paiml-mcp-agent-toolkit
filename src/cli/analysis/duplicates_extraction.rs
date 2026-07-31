@@ -200,7 +200,30 @@ fn find_duplicate_blocks(
 
     // Find duplicates
     let mut duplicates = Vec::new();
-    for (hash, locations) in hash_groups {
+    for (hash, mut locations) in hash_groups {
+        // Collapse OVERLAPPING windows within a file before deciding anything is
+        // duplicated. Detection slides a window one line at a time, so a single
+        // 5-line function yields windows at 2-6, 3-7 and 4-8 whose normalised
+        // text can hash identically. Counting those as three "locations" made a
+        // file of four entirely distinct functions report four duplicates at
+        // 211.5% duplication. Overlapping windows are the same code, not copies
+        // of it.
+        //
+        // Greedy sweep per file: keep a window, skip every later one that starts
+        // before the kept one ends.
+        locations.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+        let mut kept: Vec<(String, usize, usize, String)> = Vec::new();
+        for loc in locations {
+            let overlaps_kept = kept
+                .last()
+                .is_some_and(|last| last.0 == loc.0 && loc.1 <= last.2);
+            if !overlaps_kept {
+                kept.push(loc);
+            }
+        }
+        let locations = kept;
+
+        // Two or more NON-OVERLAPPING sites is what makes it a duplicate.
         if locations.len() > 1 {
             let lines = locations[0].2 - locations[0].1 + 1;
             let tokens = count_tokens(&locations[0].3);

@@ -62,27 +62,44 @@ impl GitAnalysisService {
             )));
         }
 
-        // Checked, and clamped to the beginning of representable time.
+        // Checked arithmetic: `Utc::now() - Duration::days(...)` aborts the
+        // process with SIGABRT ("`DateTime - TimeDelta` overflowed") past
+        // roughly 10^8 days, reachable from the CLI as `-d 2147483647`. A
+        // user-supplied integer must never reach unchecked calendar arithmetic.
+        // See contracts/pmat-no-fabrication-v1.yaml, `bounded_time_arithmetic`.
         //
-        // This was `Utc::now() - Duration::days(i64::from(period_days))`, which
-        // aborts the process with SIGABRT ("`DateTime - TimeDelta` overflowed")
-        // for any lookback beyond roughly 10^8 days — reachable from the CLI as
-        // `analyze churn -d 2147483647`. A user-supplied integer must never
-        // reach unchecked calendar arithmetic; asking for "all of history" is a
-        // reasonable request, not a crash.
+        // An out-of-range lookback means "all of history", and is expressed to
+        // git by OMITTING --since rather than by naming a date.
         //
-        // Clamping rather than erroring keeps the obvious intent working: a
-        // huge -d means "since the beginning", and git simply reports every
-        // commit. See contracts/pmat-no-fabrication-v1.yaml,
-        // equation `bounded_time_arithmetic`.
-        let since_date = Duration::try_days(i64::from(period_days))
+        // Clamping to DateTime::MIN_UTC was wrong in a way that is worse than
+        // the SIGABRT it replaced: the resulting year is one `git log --since`
+        // parses erratically, so results became non-monotonic and silently
+        // empty. On a 2-commit repository, -d 400000 found 1 file, -d 730000
+        // found ZERO ("Analyzed 0 files with changes" for a live repo), -d
+        // 800000 found 1 again. A confidently wrong zero is a fabrication;
+        // asking for more history must never return less.
+        // The floor is the Unix epoch, not the limit of chrono's range. Checked
+        // arithmetic alone was not enough: 400_000 days is ~year 931, which
+        // chrono represents happily and `git log --since` then parses
+        // erratically. On a 2-commit repo that produced a NON-MONOTONIC series
+        // -- -d 400000 found 1 file, -d 730000 found ZERO ("Analyzed 0 files
+        // with changes" on a live repo), -d 800000 found 1 again. Asking for
+        // more history must never return less, and a confident zero is a
+        // fabrication.
+        //
+        // Any window reaching past 1970 means "all of history", which is
+        // expressed to git by OMITTING --since rather than naming a date git
+        // will mis-parse.
+        let epoch = DateTime::from_timestamp(0, 0).unwrap_or_else(Utc::now);
+        let since_str = Duration::try_days(i64::from(period_days))
             .and_then(|d| Utc::now().checked_sub_signed(d))
-            .unwrap_or(chrono::DateTime::<Utc>::MIN_UTC);
-        let since_str = since_date.format("%Y-%m-%d").to_string();
+            .filter(|since| *since >= epoch)
+            .map(|since| since.format("%Y-%m-%d").to_string());
 
         info!("Analyzing code churn for last {} days", period_days);
 
-        let (file_metrics, total_commits) = Self::get_file_metrics(project_path, &since_str)?;
+        let (file_metrics, total_commits) =
+            Self::get_file_metrics(project_path, since_str.as_deref())?;
         let summary = Self::generate_summary(&file_metrics, total_commits);
 
         Ok(CodeChurnAnalysis {
@@ -103,17 +120,22 @@ impl GitAnalysisService {
     /// fixture repo with a single commit touching two files.
     fn get_file_metrics(
         project_path: &Path,
-        since_date: &str,
+        since_date: Option<&str>,
     ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
-        let since = since_date.to_string();
+        let since = since_date.map(std::string::ToString::to_string);
         std::thread::spawn(move || {
-            let result = Command::new("git")
-                .arg("log")
-                .arg("--since")
-                .arg(&since)
+            let mut cmd = Command::new("git");
+            cmd.arg("log");
+            // No --since at all means "all history", which is what an
+            // out-of-range lookback asks for. Naming an extreme date instead
+            // makes `git log` return erratic, sometimes empty, results.
+            if let Some(ref since) = since {
+                cmd.arg("--since").arg(since);
+            }
+            let result = cmd
                 .arg("--pretty=format:%H|%an|%aI")
                 .arg("--numstat")
                 .current_dir(&project_dir)
