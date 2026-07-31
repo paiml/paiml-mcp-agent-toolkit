@@ -131,6 +131,7 @@ pub mod context_graph; // O(1) Context Graph: trueno-graph integration for fast 
 pub mod coupling_analyzer;
 pub mod coverage_improvement;
 pub mod dag_builder;
+pub mod dag_call_edges;
 pub mod dead_code_analyzer;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

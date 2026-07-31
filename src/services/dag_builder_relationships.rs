@@ -2,21 +2,9 @@
 
 impl DagBuilder {
     fn process_relationships(&mut self, file: &FileContext) {
-        // Create module node for the file itself
+        // The module node for the file itself is created during node collection
+        // (pass 1) so that imports can resolve against it here in pass 2.
         let file_module_id = self.normalize_path(&file.path);
-        let node = NodeInfo {
-            id: file_module_id.clone(),
-            label: self.extract_module_name(&file.path),
-            node_type: NodeType::Module,
-            file_path: file.path.clone(),
-            line_number: 0,
-            complexity: file
-                .complexity_metrics
-                .as_ref()
-                .map_or(1, |m| u32::from(m.total_complexity.cognitive)),
-            metadata: FxHashMap::default(),
-        };
-        self.add_node(self.enrich_node(node));
 
         for item in &file.items {
             self.process_single_relationship(item, &file_module_id);
@@ -205,34 +193,112 @@ impl DagBuilder {
             .to_string()
     }
 
+    /// Resolve a `use`/import path to a node that actually exists in the graph.
+    ///
+    /// Defect #653: the old version ended with
+    /// `Some(import_path.replace("::", "_"))` — an id for a node that was never
+    /// created — so `finalize_graph` dropped every one of those edges and
+    /// `analyze dag` reported "0 edges" on every project. Unresolvable (i.e.
+    /// external) imports now return None instead of an invented target.
     fn resolve_import_path(&self, import_path: &str) -> Option<String> {
-        // Try to resolve the import to a known node
-        // First check if it's a direct type reference
+        // Direct hit on a declared symbol (rare, but cheap to check).
         if let Some(type_id) = self.type_map.get(import_path) {
             return Some(type_id.clone());
         }
-
-        // Check if it's a function reference
         if let Some(func_id) = self.function_map.get(import_path) {
             return Some(func_id.clone());
         }
 
-        // For module paths like "crate::models::dag", try to find a matching module
-        let parts: Vec<&str> = import_path.split("::").collect();
-        if let Some(last_part) = parts.last() {
-            // Try as type
-            if let Some(type_id) = self.type_map.get(*last_part) {
-                return Some(type_id.clone());
-            }
-            // Try as function
-            if let Some(func_id) = self.function_map.get(*last_part) {
-                return Some(func_id.clone());
+        let (segments, intra_crate) = normalize_import_segments(import_path);
+        if segments.is_empty() {
+            return None;
+        }
+
+        // Longest-prefix match against the module paths of analyzed files:
+        // "crate::services::dag_builder::DagBuilder" -> module "services::dag_builder".
+        if let Some(module_id) = self.resolve_module_prefix(&segments) {
+            return Some(module_id);
+        }
+
+        // Intra-crate paths may name an item defined in a file we did analyze even
+        // when the module path itself does not match; external crates never do.
+        if intra_crate {
+            if let Some(last) = segments.last() {
+                if let Some(type_id) = self.type_map.get(*last) {
+                    return Some(type_id.clone());
+                }
+                if let Some(func_id) = self.function_map.get(*last) {
+                    return Some(func_id.clone());
+                }
             }
         }
 
-        // If nothing found, create a module node for the import
-        Some(import_path.replace("::", "_"))
+        None
     }
+
+    /// Find the analyzed file whose module path matches the longest prefix of
+    /// `segments`. Ambiguous matches resolve to nothing rather than to a guess.
+    fn resolve_module_prefix(&self, segments: &[&str]) -> Option<String> {
+        for len in (1..=segments.len()).rev() {
+            let key = segments[..len].join("::");
+            if let Some(candidates) = self.module_map.get(&key) {
+                if candidates.len() == 1 {
+                    return Some(candidates[0].clone());
+                }
+                return None; // ambiguous — do not invent an edge
+            }
+        }
+        None
+    }
+}
+
+/// Split a file path into module path segments: `src/utils/helpers.rs` ->
+/// ["src", "utils", "helpers"], `src/utils/mod.rs` -> ["src", "utils"].
+fn module_path_segments(file_path: &str) -> Vec<String> {
+    let trimmed = file_path.trim_start_matches("./").trim_start_matches('/');
+    let path = std::path::Path::new(trimmed);
+
+    let mut segments: Vec<String> = path
+        .parent()
+        .map(|parent| {
+            parent
+                .components()
+                .filter_map(|c| c.as_os_str().to_str())
+                .filter(|s| !s.is_empty() && *s != "." && *s != "..")
+                .map(std::string::ToString::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // `foo/mod.rs` IS module `foo`, so it contributes no extra segment.
+    if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+        if stem != "mod" {
+            segments.push(stem.to_string());
+        }
+    }
+
+    segments
+}
+
+/// Strip `crate::`/`self::`/`super::`/glob decorations from an import path and
+/// report whether the path was crate-relative.
+fn normalize_import_segments(import_path: &str) -> (Vec<&str>, bool) {
+    let mut segments: Vec<&str> = import_path
+        .split("::")
+        .filter(|s| !s.is_empty() && *s != "*")
+        .collect();
+
+    let mut intra_crate = false;
+    while let Some(first) = segments.first() {
+        if matches!(*first, "crate" | "$crate" | "self" | "super") {
+            intra_crate = true;
+            segments.remove(0);
+        } else {
+            break;
+        }
+    }
+
+    (segments, intra_crate)
 }
 
 /// Detect programming language from file path extension

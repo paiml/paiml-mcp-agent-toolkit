@@ -9,6 +9,7 @@ impl DagBuilder {
             graph: DependencyGraph::new(),
             function_map: FxHashMap::default(),
             type_map: FxHashMap::default(),
+            module_map: FxHashMap::default(),
             namer: SemanticNamer::new(),
         }
     }

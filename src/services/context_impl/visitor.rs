@@ -116,18 +116,43 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_use(&mut self, node: &'ast ItemUse) {
-        let path = match &node.tree {
-            syn::UseTree::Path(p) => p.ident.to_string(),
-            syn::UseTree::Name(n) => n.ident.to_string(),
-            syn::UseTree::Rename(r) => r.ident.to_string(),
-            syn::UseTree::Glob(_) => "*".to_string(),
-            syn::UseTree::Group(_) => "...".to_string(),
-        };
+        // Defect #653: this recorded only the FIRST segment of the use tree, so
+        // `use crate::services::dag_builder::DagBuilder;` was reported as the path
+        // "crate". Every intra-crate import collapsed onto "crate"/"super"/"std",
+        // which made import resolution (and therefore every DAG import edge)
+        // impossible. Record the full path down to the first group/glob instead.
+        let mut path = String::new();
+        collect_use_path(&node.tree, &mut path);
 
         self.items.push(AstItem::Use {
             path,
             line: 1, // Default line number
         });
+    }
+}
+
+/// Flatten a `use` tree into its `::`-joined path, stopping at the first group.
+///
+/// `use std::io;` -> "std::io", `use std::io as x;` -> "std::io",
+/// `use std::prelude::*;` -> "std::prelude::*", `use std::{io, fs};` -> "std"
+/// (the shared prefix, which is what import resolution keys on).
+fn collect_use_path(tree: &syn::UseTree, out: &mut String) {
+    let push = |out: &mut String, segment: &str| {
+        if !out.is_empty() {
+            out.push_str("::");
+        }
+        out.push_str(segment);
+    };
+
+    match tree {
+        syn::UseTree::Path(p) => {
+            push(out, &p.ident.to_string());
+            collect_use_path(&p.tree, out);
+        }
+        syn::UseTree::Name(n) => push(out, &n.ident.to_string()),
+        syn::UseTree::Rename(r) => push(out, &r.ident.to_string()),
+        syn::UseTree::Glob(_) => push(out, "*"),
+        syn::UseTree::Group(_) => {}
     }
 }
 

@@ -42,11 +42,17 @@ fn test_rust_visitor_use_statement_path() {
 
     assert_eq!(visitor.items.len(), 1);
     if let AstItem::Use { path, .. } = &visitor.items[0] {
-        assert_eq!(path, "std");
+        // Updated for #653: the recorded path used to be the first segment only
+        // ("std"), which erased every intra-crate import target.
+        assert_eq!(path, "std::io");
     } else {
         panic!("Expected Use item");
     }
 }
+
+// NOTE: this file is not included by any module (see context_tests.rs, which nothing
+// include!s), so nothing here runs. The #653 regression tests for `use` paths live in
+// context_impl/formatting_tests.rs, which is compiled.
 
 #[test]
 fn test_rust_visitor_use_statement_name() {

@@ -415,7 +415,7 @@ pub async fn handle_analyze_complexity(
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_dag(
-    _dag_type: DagType,
+    dag_type: DagType,
     project_path: PathBuf,
     output: Option<PathBuf>,
     max_depth: Option<usize>,
@@ -431,6 +431,9 @@ pub async fn handle_analyze_dag(
         mermaid_generator::{MermaidGenerator, MermaidOptions},
     };
 
+    // missing_path_fails: never render a graph for a path that does not exist.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔄 Generating dependency analysis graph...");
 
     // Analyze project to get context
@@ -443,16 +446,14 @@ pub async fn handle_analyze_dag(
     // Build DAG based on type
     use crate::services::dag_builder::DagBuilder;
 
-    // DagBuilder builds a full dependency graph by default
-    let graph = DagBuilder::build_from_project(&project_context);
+    // DagBuilder covers module/import/inheritance relationships; call edges need the
+    // function bodies, which only the sources carry (#653: no Calls edge ever existed).
+    let mut graph = DagBuilder::build_from_project(&project_context);
+    crate::services::dag_call_edges::add_call_edges(&mut graph, &project_path);
 
-    eprintln!(
-        "📊 Generated graph with {} nodes and {} edges",
-        graph.nodes.len(),
-        graph.edges.len()
-    );
-
-    let enriched_graph = graph;
+    // #653: `--dag-type` used to be ignored entirely, so call-graph, import-graph,
+    // inheritance and full-dependency produced byte-identical output.
+    let enriched_graph = filter_graph_by_dag_type(graph, &dag_type);
 
     // Generate Mermaid diagram
     let options = MermaidOptions {
@@ -476,6 +477,10 @@ pub async fn handle_analyze_dag(
         generator.generate(&enriched_graph)
     };
 
+    // #653: the announced counts used to be the pre-render graph's, which disagreed
+    // with the diagram (75 announced / 41 drawn). Count what was actually emitted.
+    report_graph_size(&dag_type, &enriched_graph, &mermaid_content);
+
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &mermaid_content).await?;
@@ -492,4 +497,75 @@ pub async fn handle_analyze_dag(
     }
 
     Ok(())
+}
+
+/// Reduce the full dependency graph to the sub-graph the requested `--dag-type` names.
+///
+/// Each type keeps only its own edges and the nodes those edges touch, so the four
+/// types genuinely differ (#653: they were byte-identical).
+fn filter_graph_by_dag_type(
+    graph: crate::models::dag::DependencyGraph,
+    dag_type: &DagType,
+) -> crate::models::dag::DependencyGraph {
+    use crate::models::dag::EdgeType;
+
+    match dag_type {
+        DagType::CallGraph => graph.filter_by_edge_types(&[EdgeType::Calls]),
+        DagType::ImportGraph => graph.filter_by_edge_types(&[EdgeType::Imports]),
+        DagType::Inheritance => {
+            graph.filter_by_edge_types(&[EdgeType::Inherits, EdgeType::Implements])
+        }
+        DagType::FullDependency => graph,
+    }
+}
+
+/// Report the size of the diagram that was actually emitted, plus the size of the
+/// graph it was rendered from when the renderer's node budget dropped some of it.
+fn report_graph_size(
+    dag_type: &DagType,
+    graph: &crate::models::dag::DependencyGraph,
+    mermaid_content: &str,
+) {
+    let (rendered_nodes, rendered_edges) = count_rendered_elements(mermaid_content);
+
+    eprintln!("📊 {dag_type}: rendered {rendered_nodes} nodes and {rendered_edges} edges");
+
+    if rendered_nodes < graph.nodes.len() || rendered_edges < graph.edges.len() {
+        eprintln!(
+            "   (analyzed {} nodes and {} edges; the diagram is capped for readability)",
+            graph.nodes.len(),
+            graph.edges.len()
+        );
+    }
+}
+
+/// Count the node and edge lines present in a generated Mermaid diagram.
+fn count_rendered_elements(mermaid_content: &str) -> (usize, usize) {
+    let mut nodes = 0;
+    let mut edges = 0;
+
+    for line in mermaid_content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty()
+            || trimmed.starts_with("graph ")
+            || trimmed.starts_with("style ")
+            || trimmed.starts_with("classDef ")
+            || trimmed.starts_with("subgraph")
+            || trimmed == "end"
+        {
+            continue;
+        }
+
+        if is_mermaid_edge_line(trimmed) {
+            edges += 1;
+        } else {
+            nodes += 1;
+        }
+    }
+
+    (nodes, edges)
+}
+
+fn is_mermaid_edge_line(line: &str) -> bool {
+    line.contains("-->") || line.contains("-.->") || line.contains(" --- ")
 }

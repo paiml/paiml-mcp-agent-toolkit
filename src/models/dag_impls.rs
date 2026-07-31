@@ -143,6 +143,65 @@ impl DependencyGraph {
             edges: filtered_edges,
         }
     }
+
+    /// Creates the sub-graph induced by a set of edge types
+    ///
+    /// Unlike [`Self::filter_by_edge_type`], the result never falls back to
+    /// "all nodes": a graph asked for its call edges either contains call edges and
+    /// the functions they connect, or is empty. `analyze --dag-type` relies on this
+    /// to make its four graph types genuinely different (#653).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+    /// use rustc_hash::FxHashMap;
+    ///
+    /// let mut graph = DependencyGraph::new();
+    /// for id in ["a", "b", "c"] {
+    ///     graph.add_node(NodeInfo {
+    ///         id: id.to_string(),
+    ///         label: id.to_string(),
+    ///         node_type: NodeType::Function,
+    ///         file_path: "src/lib.rs".to_string(),
+    ///         line_number: 1,
+    ///         complexity: 1,
+    ///         metadata: FxHashMap::default(),
+    ///     });
+    /// }
+    /// graph.add_edge(Edge { from: "a".into(), to: "b".into(), edge_type: EdgeType::Calls, weight: 1 });
+    /// graph.add_edge(Edge { from: "b".into(), to: "c".into(), edge_type: EdgeType::Imports, weight: 1 });
+    ///
+    /// let calls = graph.filter_by_edge_types(&[EdgeType::Calls]);
+    /// assert_eq!(calls.edges.len(), 1);
+    /// assert_eq!(calls.nodes.len(), 2); // only a and b
+    /// ```
+    #[must_use]
+    pub fn filter_by_edge_types(&self, edge_types: &[EdgeType]) -> Self {
+        let filtered_edges: Vec<Edge> = self
+            .edges
+            .iter()
+            .filter(|e| edge_types.contains(&e.edge_type))
+            .cloned()
+            .collect();
+
+        let used_nodes: FxHashSet<&String> = filtered_edges
+            .iter()
+            .flat_map(|e| [&e.from, &e.to])
+            .collect();
+
+        let filtered_nodes: FxHashMap<String, NodeInfo> = self
+            .nodes
+            .iter()
+            .filter(|(id, _)| used_nodes.contains(id))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+
+        Self {
+            nodes: filtered_nodes,
+            edges: filtered_edges,
+        }
+    }
 }
 
 impl Default for DependencyGraph {
