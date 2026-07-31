@@ -11,6 +11,22 @@ use super::commands_enum::Commands;
     name = "pmat",
     about = "PMAT - Professional Multi-language Analysis Toolkit for code quality, complexity, and technical debt",
     version,
+    // `--version` reports the revision the binary was actually built from.
+    //
+    // A version number repeats across builds, so it cannot distinguish a fresh
+    // binary from a stale one. v3.28.2 shipped a headline fix that did not work
+    // because three measurements were taken against binaries that did not match
+    // the tree under test. This makes that mismatch checkable.
+    //
+    // The plain version stays the first token, so existing assertions of the form
+    // `--version` output contains "3.28.3" keep working. `-V` remains short.
+    long_version = concat!(
+        env!("CARGO_PKG_VERSION"),
+        "\ncommit: ",
+        env!("PMAT_GIT_SHA"),
+        "\nworktree: ",
+        env!("PMAT_GIT_DIRTY"),
+    ),
     long_about = None,
     after_help = "EXAMPLES:
 # Analyze code complexity

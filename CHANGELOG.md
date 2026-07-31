@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.28.3] - 2026-07-30
+
+### Fixed — v3.28.2's headline fix did not work for anyone who installed it
+
+v3.28.2 claimed the MCP stdio truncation was fixed, measured at 30/30. Verified
+against the **published** binary immediately after release: **11 of 30**, which
+is the unfixed baseline. The fix was real but only under the dependency set
+`Cargo.lock` pins, and that is not the set users get.
+
+`Cargo.toml` required `pmcp = "2.9"` — a caret requirement admitting anything
+below 3.0 — while `Cargo.lock` pinned **2.11.0**. `cargo install` ignores the
+lockfile, so users resolved **2.17.0**. Identical pmat source, same build mode,
+only the pmcp version differing:
+
+| pmcp | `tools/list` answered |
+|---|---|
+| 2.11.0 (`--locked`) | **30/30** |
+| 2.17.0 (fresh resolution) | **9/30** |
+
+pmcp 2.17's transport actor `select!`s between receive and outbound sends and
+drops in-flight receives, which defeats the request-in/response-out counting
+`EofSignalingTransport` relies on. The requirement is now `~2.11`, so a fresh
+`cargo install` resolves the series CI actually tests: **40/40, 0 hangs**,
+measured on `cargo install --path .` *without* `--locked`.
+
+The root defect was not the race. It was that **every release was validated
+against a dependency set users never receive**, so any behaviour depending on a
+dependency's internals could ship broken while all gates stayed green. Supporting
+pmcp 2.17 is separate follow-up work; it needs the drain logic reworked against
+that actor, and a fresh-resolution measurement to prove it.
+
+Guarded by `dependency_bound_tests::pmcp_requirement_is_bounded_to_a_tested_series`,
+which fails if the requirement is widened. Widening is fine — but only with a new
+fresh-resolution measurement of the race, which the test says in as many words.
+
+### Process
+
+Pre-release verification for anything touching dependency behaviour must use
+`cargo install --path .` without `--locked`, not `cargo build --release`. Three
+separate measurements in this work were taken against builds that did not match
+the artifact: a stale binary (a false "8/12 improved"), a workspace build
+(30/30 where users got 11/30), and a lockfile build. Only the last of these was
+caught before publishing.
+
 ## [3.28.2] - 2026-07-30
 
 ### Fixed — MCP stdio truncated responses it had already committed to
