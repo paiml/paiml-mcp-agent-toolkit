@@ -315,10 +315,13 @@ pub async fn handle_analyze_complexity(
         }
     }
 
-    // Validate path exists
-    if !project_path.exists() {
-        anyhow::bail!("Path not found: {}", project_path.display());
-    }
+    // GH-682: this used to be a bare `project_path.exists()` check, which a
+    // `chmod 000` directory passes — the walk then found zero files and the
+    // command exited 0 with "⚠️  Warning: No files were found or analyzed",
+    // reporting a clean pass over content it was denied access to. The shared
+    // guard also refuses a directory whose entries cannot be listed, which is
+    // what `analyze satd` already did (exit 1, "Permission denied").
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
 
     // Create configuration and analyze files
     let config = ComplexityConfig::from_args(
@@ -432,6 +435,9 @@ pub async fn handle_analyze_dag(
     };
 
     // missing_path_fails: never render a graph for a path that does not exist.
+    // GH-666: a nonexistent path walked to zero files and this printed
+    // "📁 Analyzed 0 files / 📊 Generated graph with 0 nodes and 0 edges" with
+    // exit 0 — an empty-but-successful graph for a tree that was never there.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
     eprintln!("🔄 Generating dependency analysis graph...");

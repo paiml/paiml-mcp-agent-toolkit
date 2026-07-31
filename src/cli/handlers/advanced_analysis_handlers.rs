@@ -103,6 +103,13 @@ pub async fn handle_analyze_deep_context(
     verbose: bool,
     top_files: usize,
 ) -> Result<()> {
+    // The doc comment above already promised "Returns an error if: Project path
+    // doesn't exist" and the `path_exists` contract annotation asserted it, but
+    // nothing checked: a nonexistent path produced a full report ending in
+    // "Average Complexity: 0.0 / 1. No functions detected - verify file
+    // discovery patterns" with exit 0. Found alongside GH-663/GH-666.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
     info!("📊 Analysis period: {} days", period_days);

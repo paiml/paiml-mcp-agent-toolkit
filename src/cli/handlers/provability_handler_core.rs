@@ -40,6 +40,11 @@ pub struct ProvabilityConfig {
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
+    // GH-666: a nonexistent path discovered zero functions and this reported
+    // "📊 Found 0 source files / ✓ Analyzed 0 functions" with exit 0 — a
+    // successful empty analysis of a tree that was never there.
+    crate::cli::ensure_analysis_path_exists(&config.project_path)?;
+
     use crate::cli::colors as c;
     eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
 

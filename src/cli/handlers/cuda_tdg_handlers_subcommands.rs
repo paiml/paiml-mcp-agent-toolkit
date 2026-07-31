@@ -18,6 +18,11 @@ async fn handle_score(
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
+    // GH-662: no files read ⇒ no score to report (see `format_unmeasured`).
+    if report_if_unmeasured(&result, config)? {
+        return Ok(());
+    }
+
     let output = if breakdown {
         format_score_breakdown(&result.score, config)?
     } else {
@@ -39,10 +44,20 @@ async fn handle_report(
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
-    let report = match format {
-        "html" => format_html_report(&result)?,
-        "json" => serde_json::to_string_pretty(&result)?,
-        _ => format_markdown_report(&result)?,
+    // GH-662: no files read ⇒ no score to report, but the report still has to
+    // be delivered wherever the caller asked for it (see `format_unmeasured`).
+    let report = if result.files_analyzed == 0 {
+        if format == "json" {
+            format_unmeasured_json(&result)?
+        } else {
+            format_unmeasured_text(&result)
+        }
+    } else {
+        match format {
+            "html" => format_html_report(&result)?,
+            "json" => serde_json::to_string_pretty(&result)?,
+            _ => format_markdown_report(&result)?,
+        }
     };
 
     if let Some(output_path) = output {

@@ -28,6 +28,10 @@ pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         let analyzer = EntropyAnalyzer::with_config(config);
 
         let analysis_path = file.unwrap_or(path);
+        // GH-681: a nonexistent path (via `-p` or `--file`) exited 0 reporting
+        // "Files Analyzed: 0 / Total Violations: 1" — a Medium-severity quality
+        // finding about code on a path that does not exist.
+        crate::cli::ensure_analysis_path_exists(&analysis_path)?;
         let report = analyzer.analyze(&analysis_path).await?;
 
         let output_content = format_entropy_report(&report, format, top_violations)?;

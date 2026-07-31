@@ -10,6 +10,8 @@ pub mod agent_handlers;
 pub mod agy_handler;
 pub mod analysis;
 pub mod analysis_handlers;
+#[cfg(test)]
+mod analysis_path_guard_regression_tests; // GH-662/663/664/666/681/682
 pub mod analyze_defects_handler; // Known Defects: Project-wide defect scanning
 #[cfg(test)]
 pub mod annotation_tdd_tests;

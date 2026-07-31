@@ -56,6 +56,13 @@ impl CudaSimdAnalyzer {
     /// Analyze a file or directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze(&self, path: &Path) -> anyhow::Result<CudaSimdTdgResult> {
+        // GH-662: a nonexistent path is neither `is_file()` nor `is_dir()`, so
+        // both branches below were skipped and `calculate_score` still produced
+        // a number — every missing path scored an identical 55.5/100, Grade D,
+        // "Gateway: PASSED", with exit 0. The `path_exists` contract annotation
+        // on this function had no runtime check behind it.
+        crate::cli::ensure_analysis_path_exists(path)?;
+
         let mut defects = Vec::new();
         let mut cuda_files = 0;
         let mut simd_files = 0;
