@@ -97,15 +97,7 @@ minijinja = { version = "2.16", default-features = false, optional = true }
 
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
-# Constrained to the 2.11 series, which is what CI and Cargo.lock actually
-# test. A caret "2.9" requirement let `cargo install pmat` resolve pmcp
-# 2.17, whose transport actor defeats the EOF-drain fix in
-# `simple_unified_server.rs`: identical pmat source answers `tools/list` in
-# 30/30 one-shot piped sessions against 2.11 and 9/30 against 2.17. Users
-# were getting a dependency set no test had ever run against, because
-# `cargo install` ignores Cargo.lock. Widen this only together with a
-# fresh-resolution (non---locked) measurement of that race.
-pmcp = { version = "~2.11", features = ["websocket", "http", "sse", "validation"] }
+pmcp = { version = "2.17", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
 lru = { version = "0.18", features = ["hashbrown"], optional = true }
