@@ -113,14 +113,18 @@ impl ViolationDetector {
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        // Nothing measured => nothing to report. Union of the two guards this
-        // was fixed with independently (#650/#677 and #681): diversity is 0.0
-        // by construction over an empty distribution, which is the absence of a
+        // Nothing measured => nothing to report. Diversity is 0.0 by
+        // construction over an empty distribution, which is the absence of a
         // measurement, not a finding.
-        if patterns.file_count() == 0
-            || metrics.total_patterns == 0
-            || metrics.total_instances == 0
-        {
+        //
+        // The condition is on the METRICS, not on `patterns.file_count()`.
+        // Two independent fixes (#650/#677 and #681) proposed slightly
+        // different guards, and unioning them was wrong: the collection is a
+        // separate structure that callers legitimately leave empty while
+        // supplying real measured metrics, so keying off its file count
+        // suppressed genuine violations. An empty tree still yields
+        // total_patterns == 0, so the empty-directory case remains covered.
+        if metrics.total_patterns == 0 || metrics.total_instances == 0 {
             return Ok(());
         }
 
