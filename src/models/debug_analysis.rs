@@ -260,12 +260,33 @@ impl EvidenceSummary {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// From whys.
+    /// Aggregate the evidence behind a chain of whys, counting each distinct
+    /// measurement once.
+    ///
+    /// Five Whys attaches the SAME repo-level measurement to every iteration —
+    /// each why's evidence for a 4-marker codebase says `{"count": 4}` — so
+    /// summing over iterations made the summary a function of `--depth` rather
+    /// than of the code: `satd_markers` was 4 at depth 1, 12 at depth 3 and 20
+    /// at depth 5 for a file containing exactly 4 markers (GH #670). The same
+    /// arithmetic inflated `complexity_violations` by one per iteration.
+    ///
+    /// Identity of a measurement is (source, file, metric, value): two whys
+    /// citing genuinely different SATD findings still contribute twice.
     pub fn from_whys(whys: &[WhyIteration]) -> Self {
         let mut summary = Self::default();
+        let mut seen: std::collections::HashSet<(String, PathBuf, String, String)> =
+            std::collections::HashSet::new();
         for why in whys {
             for evidence in &why.evidence {
-                summary.process_evidence(evidence);
+                let key = (
+                    format!("{:?}", evidence.source),
+                    evidence.file.clone(),
+                    evidence.metric.clone(),
+                    evidence.value.to_string(),
+                );
+                if seen.insert(key) {
+                    summary.process_evidence(evidence);
+                }
             }
         }
         summary

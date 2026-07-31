@@ -1181,4 +1181,80 @@ mod coverage_tests {
         );
         Ok(())
     }
+
+    /// GH #667: `analyze_deep_context` returned maintainability_index 70.0,
+    /// modularity_score 85.0 and technical_debt_hours 40.0 for six wildly
+    /// different code bases — a 5-file toy fixture and pmat's own 3891-file
+    /// tree included. Anything pmat cannot measure must be `null` and named in
+    /// `not_measured`, never a plausible number.
+    #[test]
+    fn mcp_scorecard_marks_unmeasured_fields_instead_of_inventing_them() {
+        use crate::services::deep_context::QualityScorecard;
+
+        let nothing_measured = QualityScorecard::default();
+        let json = quality_scorecard_json(&nothing_measured);
+
+        for field in [
+            "overall_health",
+            "complexity_score",
+            "maintainability_index",
+            "modularity_score",
+            "test_coverage",
+            "technical_debt_hours",
+        ] {
+            assert!(
+                json[field].is_null(),
+                "{field} must be null when unmeasured, got {}",
+                json[field]
+            );
+            assert!(
+                json["not_measured"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|n| n == field),
+                "{field} must be listed in not_measured: {json}"
+            );
+        }
+
+        // None of the constants that used to be reported may appear.
+        let text = json.to_string();
+        for fabricated in ["70.0", "85.0", "40.0", "65.0"] {
+            assert!(
+                !text.contains(fabricated),
+                "unmeasured scorecard still emits {fabricated}: {text}"
+            );
+        }
+    }
+
+    /// Measured fields pass through, and are not listed as unmeasured.
+    #[test]
+    fn mcp_scorecard_passes_measured_values_through() {
+        use crate::services::deep_context::QualityScorecard;
+
+        let scorecard = QualityScorecard {
+            overall_health: Some(62.5),
+            complexity_score: Some(62.5),
+            maintainability_index: None,
+            modularity_score: None,
+            test_coverage: Some(41.0),
+            technical_debt_hours: Some(12.25),
+        };
+        let json = quality_scorecard_json(&scorecard);
+
+        assert_eq!(json["complexity_score"], 62.5);
+        assert_eq!(json["test_coverage"], 41.0);
+        assert_eq!(json["technical_debt_hours"], 12.25);
+
+        let not_measured: Vec<_> = json["not_measured"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(
+            not_measured,
+            vec!["maintainability_index", "modularity_score"]
+        );
+    }
 }

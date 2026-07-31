@@ -572,18 +572,25 @@ fn test_project_score_f_grade_capping() {
 
 #[test]
 fn test_project_score_no_f_grade_capping() {
-    // Test that projects without F-grades are not capped
+    // Test that projects without F-grades are not capped.
+    //
+    // `has_contract_coverage: true` is now load-bearing: since GH #680 the
+    // project grade goes through the same mapping as the file grades, which
+    // caps the A-tier at A- when contract coverage is missing. Leaving it at
+    // the `TdgScore::default()` of `false` would test that cap, not F-capping.
     let scores = vec![
         TdgScore {
             total: 95.0,
             grade: Grade::APLus,
             language: Language::Rust,
+            has_contract_coverage: true,
             ..TdgScore::default()
         },
         TdgScore {
             total: 90.0,
             grade: Grade::A,
             language: Language::Rust,
+            has_contract_coverage: true,
             ..TdgScore::default()
         },
     ];
@@ -593,6 +600,32 @@ fn test_project_score_no_f_grade_capping() {
     assert!(!project.grade_capped);
     // Average: (95+90)/2 = 92.5 -> A (90-94 range)
     assert_eq!(project.average_grade, Grade::A);
+}
+
+/// GH #680: the same two files WITHOUT contract coverage cap at A-, exactly as
+/// each file's own grade does. The project grade may never beat its files'.
+#[test]
+fn test_project_score_respects_contract_coverage_cap() {
+    let scores = vec![
+        TdgScore {
+            total: 95.0,
+            grade: TdgScore::grade_for(95.0, false),
+            language: Language::Rust,
+            has_contract_coverage: false,
+            ..TdgScore::default()
+        },
+        TdgScore {
+            total: 90.0,
+            grade: TdgScore::grade_for(90.0, false),
+            language: Language::Rust,
+            has_contract_coverage: false,
+            ..TdgScore::default()
+        },
+    ];
+    let project = ProjectScore::aggregate(scores);
+
+    assert_eq!(project.average_grade, Grade::AMinus);
+    assert!(project.files.iter().all(|f| f.grade == Grade::AMinus));
 }
 
 #[test]

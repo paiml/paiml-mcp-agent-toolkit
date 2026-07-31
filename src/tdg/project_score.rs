@@ -51,18 +51,23 @@ impl ProjectScore {
             }
         }
 
+        // The project grade must come from the SAME mapping the per-file grades
+        // came from. `Grade::from_score(average_score)` alone skipped the
+        // CB-1400 contract-coverage cap that `TdgScore::calculate_total` applies
+        // to every file, so a single-file project reported files[0].grade
+        // "AMinus" and average_grade "APLus" for one and the same score of 99.7
+        // (GH #680). A project is only eligible for the A-tier if every file it
+        // contains was.
+        let all_files_have_contract_coverage = scores.iter().all(|s| s.has_contract_coverage);
+
         // F-GRADE CAPPING: Any F-grade file caps the project grade at B
         // This prevents hiding critical quality issues in averaging
-        let (average_grade, grade_capped) = if f_grade_count > 0 {
-            let uncapped_grade = Grade::from_score(average_score);
+        let uncapped_grade = TdgScore::grade_for(average_score, all_files_have_contract_coverage);
+        let (average_grade, grade_capped) = if f_grade_count > 0 && uncapped_grade < Grade::B {
             // Cap at B (score 79.9 equivalent) if any F-grades exist
-            if uncapped_grade < Grade::B {
-                (Grade::B, true)
-            } else {
-                (uncapped_grade, false)
-            }
+            (Grade::B, true)
         } else {
-            (Grade::from_score(average_score), false)
+            (uncapped_grade, false)
         };
 
         Self {
@@ -94,6 +99,10 @@ impl ProjectScore {
         let mut avg = TdgScore::default();
         let count = self.files.len() as f32;
 
+        // Carried so `calculate_total()` below applies the same CB-1400 cap the
+        // files were graded with (GH #680).
+        avg.has_contract_coverage = self.files.iter().all(|s| s.has_contract_coverage);
+
         avg.structural_complexity = self
             .files
             .iter()
@@ -113,11 +122,20 @@ impl ProjectScore {
         avg.entropy_score = self.files.iter().map(|s| s.entropy_score).sum::<f32>() / count;
         avg.confidence = self.files.iter().map(|s| s.confidence).sum::<f32>() / count;
 
-        // Set language to the most common language in the project
+        // Set language to the most common language in the project.
+        //
+        // The tiebreak is part of the answer, not a detail: `language_distribution`
+        // is a HashMap, so `max_by_key(count)` alone returned whichever tied
+        // language the randomised iteration order happened to visit last. Two
+        // .rs and two .md files made `tdg <dir>` report "Rust" and "Markdown"
+        // in alternate runs over unchanged input — 7 vs 5 out of 12 runs, with
+        // a byte-identical score and confidence (GH #673). Ties now resolve to
+        // the lowest `Language` discriminant, which orders source languages
+        // ahead of YAML/Markdown.
         if let Some((&lang, _)) = self
             .language_distribution
             .iter()
-            .max_by_key(|(_, &count)| count)
+            .max_by_key(|(&lang, &count)| (count, std::cmp::Reverse(lang as usize)))
         {
             avg.language = lang;
         }
@@ -223,5 +241,94 @@ impl Comparison {
             improvements,
             regressions,
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod no_contradiction_tests {
+    use super::*;
+
+    fn file_score(total: f32, language: Language, has_contract_coverage: bool) -> TdgScore {
+        // Drive the real scoring path so `grade` is whatever pmat would print.
+        let mut score = TdgScore {
+            language,
+            has_contract_coverage,
+            structural_complexity: total * 0.25,
+            semantic_complexity: total * 0.20,
+            duplication_ratio: total * 0.20,
+            coupling_score: total * 0.15,
+            doc_coverage: total * 0.10,
+            consistency_score: total * 0.10,
+            entropy_score: 0.0,
+            ..TdgScore::default()
+        };
+        score.calculate_total();
+        score
+    }
+
+    /// GH #680: a single-file project reported files[0].grade "AMinus" and
+    /// average_grade "APLus" for the same score — two grades for one number in
+    /// one document.
+    #[test]
+    fn single_file_project_grade_equals_that_files_grade() {
+        let file = file_score(99.7, Language::Rust, false);
+        let expected = file.grade;
+        let project = ProjectScore::aggregate(vec![file]);
+
+        assert_eq!(project.total_files, 1);
+        assert_eq!(
+            project.average_grade, expected,
+            "average_grade must equal the only file's grade"
+        );
+        assert_eq!(
+            project.average_grade, project.files[0].grade,
+            "the same score must map to the same grade in both places"
+        );
+    }
+
+    /// The A-tier contract-coverage cap must apply to the project grade too,
+    /// not only per file.
+    #[test]
+    fn project_grade_respects_contract_coverage_cap() {
+        let files = vec![
+            file_score(100.0, Language::Rust, false),
+            file_score(100.0, Language::Rust, false),
+        ];
+        let project = ProjectScore::aggregate(files);
+        assert_eq!(project.average_grade, Grade::AMinus);
+    }
+
+    /// GH #673: identical input flipped between Rust and Markdown run to run
+    /// because the winner of a tie came out of HashMap iteration order.
+    /// Deterministic over many freshly built maps, and source beats docs.
+    #[test]
+    fn tied_language_distribution_is_deterministic() {
+        for _ in 0..64 {
+            let files = vec![
+                file_score(90.0, Language::Rust, true),
+                file_score(90.0, Language::Markdown, true),
+                file_score(90.0, Language::Rust, true),
+                file_score(90.0, Language::Markdown, true),
+            ];
+            let project = ProjectScore::aggregate(files);
+            assert_eq!(
+                project.average().language,
+                Language::Rust,
+                "a 2-2 Rust/Markdown tie must always resolve the same way"
+            );
+        }
+    }
+
+    /// A clear majority still wins; the tiebreak only settles equal counts.
+    #[test]
+    fn language_majority_still_wins_over_the_tiebreak() {
+        let files = vec![
+            file_score(90.0, Language::Markdown, true),
+            file_score(90.0, Language::Markdown, true),
+            file_score(90.0, Language::Rust, true),
+        ];
+        let project = ProjectScore::aggregate(files);
+        assert_eq!(project.average().language, Language::Markdown);
     }
 }

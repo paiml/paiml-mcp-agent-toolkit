@@ -200,7 +200,7 @@ pub async fn handle_generate_report(
     let service_format = convert_to_service_format(actual_format);
     let formatted_output = format_report_output(&service, &report, service_format)?;
 
-    write_report_output(formatted_output, output, service_format).await?;
+    write_report_output(formatted_output, output, service_format, &project_path).await?;
 
     let elapsed = start_time.elapsed();
     print_report_summary(&report, elapsed, perf);
@@ -262,20 +262,23 @@ fn format_report_output(
 }
 
 /// Write report output to file or auto-generated filename (cognitive complexity ≤4)
+///
+/// Without `-o` the auto-named report lands next to the project that was
+/// analysed. It used to be written relative to the process CWD, so analysing a
+/// /tmp fixture from inside the pmat checkout dropped
+/// `defect-report-<ts>.json` into the pmat repo (GH #671).
 async fn write_report_output(
     formatted_output: String,
     output: Option<PathBuf>,
     service_format: ReportFormat,
+    project_path: &Path,
 ) -> Result<()> {
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &formatted_output).await?;
-        eprintln!("📄 Report saved to: {}", output_path.display());
-    } else {
+    let output_path = output.unwrap_or_else(|| {
         let service = DefectReportService::new();
-        let filename = service.generate_filename(service_format);
-        tokio::fs::write(&filename, &formatted_output).await?;
-        eprintln!("📄 Report saved to: {}", filename);
-    }
+        project_path.join(service.generate_filename(service_format))
+    });
+    tokio::fs::write(&output_path, &formatted_output).await?;
+    eprintln!("📄 Report saved to: {}", output_path.display());
     Ok(())
 }
 
@@ -311,11 +314,61 @@ fn print_severity_summary(report: &DefectReport) {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
 
     #[test]
     fn test_enhanced_reporting_handlers_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
+    }
+
+    /// GH #671: without `-o`, the auto-named report was written relative to the
+    /// process CWD, so analysing a /tmp fixture from inside the pmat checkout
+    /// dropped `defect-report-<ts>.json` into the pmat repo.
+    #[tokio::test]
+    async fn auto_named_report_lands_in_the_analysed_project() {
+        let project = tempfile::TempDir::new().unwrap();
+        let cwd_before = std::env::current_dir().unwrap();
+
+        write_report_output("{}".to_string(), None, ReportFormat::Json, project.path())
+            .await
+            .expect("report must be written");
+
+        let written: Vec<_> = std::fs::read_dir(project.path())
+            .unwrap()
+            .filter_map(std::result::Result::ok)
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(
+            written.len(),
+            1,
+            "expected exactly one report in the analysed project, found {written:?}"
+        );
+        assert!(written[0].starts_with("defect-report-"), "{written:?}");
+
+        // And nothing was dropped into the current working directory.
+        assert_eq!(
+            cwd_before,
+            std::env::current_dir().unwrap(),
+            "the handler must not change the process CWD"
+        );
+    }
+
+    /// An explicit `-o` still wins and is used verbatim.
+    #[tokio::test]
+    async fn explicit_output_path_is_honoured() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = dir.path().join("chosen.json");
+
+        write_report_output(
+            "{\"ok\":true}".to_string(),
+            Some(target.clone()),
+            ReportFormat::Json,
+            Path::new("/nonexistent-project"),
+        )
+        .await
+        .expect("report must be written");
+
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "{\"ok\":true}");
     }
 }

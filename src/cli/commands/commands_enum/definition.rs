@@ -576,7 +576,12 @@ pub enum Commands {
         stack: bool,
     },
 
-    /// Calculate repository health score (0-110 scale)
+    /// Calculate repository health score (0-100 scale)
+    // The six categories sum to exactly 100 (15+20+15+25+20+5) and the grade
+    // thresholds are 0-100, so 100 is the denominator the command actually
+    // emits. "0-110" came from a bonus block (`BonusScores`, +10) that nothing
+    // ever adds to `total_score`; the help promised a scale no output uses
+    // (GH #685). `repo_score_scale_matches_help` pins the two together.
     #[command(name = "repo-score", visible_aliases = &["health"])]
     RepoScore {
         /// Repository path to score (defaults to current directory)
@@ -609,7 +614,13 @@ pub enum Commands {
         deep: bool,
     },
 
-    /// Calculate Rust project quality score (0-106 scale)
+    /// Calculate Rust project quality score (0-289 scale; the reported total
+    /// excludes categories that do not apply to the project)
+    // 289 is the sum of the eleven scorers' max_points. The help said "0-106",
+    // a stale v1 figure, while the text renderer printed "/279.0" and CLAUDE.md
+    // claimed 289 — three maxima for one command (GH #685).
+    // `rust_project_score_scale_matches_help` fails if this number drifts from
+    // `RustProjectScoreOrchestrator::max_points()`.
     #[command(name = "rust-project-score", visible_aliases = &["rust-score"])]
     RustProjectScore {
         /// Rust project path to score (defaults to current directory)

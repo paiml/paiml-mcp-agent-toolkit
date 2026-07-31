@@ -1,7 +1,11 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat rust-project-score` command
 //!
-//! Calculates Rust project quality score (0-106 scale) across 6 categories.
+//! Calculates Rust project quality score (0-289 scale) across 11 categories.
+//!
+//! The JSON/YAML `total_possible` and the text renderer's denominator are the
+//! sum of the APPLICABLE categories only, so they are ≤ 289 for a given project
+//! (e.g. 279 when GPU/SIMD is N/A). 289 is the full scale.
 //!
 //! # Module Structure (include! pattern)
 //!
@@ -18,9 +22,10 @@ use std::path::Path;
 
 /// Handle the rust-project-score command
 ///
-/// Analyzes a Rust project and calculates a comprehensive quality score (0-106 scale)
-/// across six categories: Rust Tooling Compliance, Code Quality, Testing Excellence,
-/// Documentation, Performance & Benchmarking, and Dependency Health.
+/// Analyzes a Rust project and calculates a comprehensive quality score (0-289 scale)
+/// across eleven categories: Rust Tooling & CI/CD, Code Quality, Testing Excellence,
+/// Documentation, Performance & Benchmarking, Dependency Health, Formal Verification,
+/// Known Defects, GPU/SIMD Quality, Build Performance and Reproducibility.
 ///
 /// # Arguments
 ///

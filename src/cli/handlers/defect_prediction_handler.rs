@@ -259,51 +259,23 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         );
 
         let _ = writeln!(output, "    {}Risk Metrics:{}", c::BOLD, c::RESET);
-        let _ = writeln!(
-            output,
-            "      {}Complexity:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.complexity_score,
-            c::RESET
-        );
-        let _ = writeln!(
-            output,
-            "      {}Churn:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.churn_score,
-            c::RESET
-        );
-        let _ = writeln!(
-            output,
-            "      {}Coupling:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.coupling_score,
-            c::RESET
-        );
-        let _ = writeln!(
-            output,
-            "      {}Size:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.size_score,
-            c::RESET
-        );
-        let _ = writeln!(
-            output,
-            "      {}Duplication:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.duplication_score,
-            c::RESET
-        );
+        for (name, value) in [
+            ("Complexity", prediction.metrics.complexity_score),
+            ("Churn", prediction.metrics.churn_score),
+            ("Coupling", prediction.metrics.coupling_score),
+            ("Size", prediction.metrics.size_score),
+            ("Duplication", prediction.metrics.duplication_score),
+        ] {
+            let _ = writeln!(
+                output,
+                "      {}{name}:{} {}{}{}",
+                c::BOLD,
+                c::RESET,
+                c::BOLD_WHITE,
+                risk_metric(value),
+                c::RESET
+            );
+        }
 
         if !prediction.contributing_factors.is_empty() {
             let _ = writeln!(output, "    {}Contributing Factors:{}", c::BOLD, c::RESET);
@@ -316,6 +288,20 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
     output
 }
 
+/// Render a risk factor, or say plainly that it was not measured.
+///
+/// These were compile-time constants (churn 0.3, coupling 0.2, duplication 0.1)
+/// presented as measurements (GH #657). `None` must never print as 0.0 — a zero
+/// risk score reads as a finding.
+fn risk_metric(value: Option<f32>) -> String {
+    value.map_or_else(|| "not measured".to_string(), |v| format!("{v:.1}"))
+}
+
+/// CSV cell for a risk factor: empty means not measured, never 0.000.
+fn risk_metric_csv(value: Option<f32>) -> String {
+    value.map_or_else(String::new, |v| format!("{v:.3}"))
+}
+
 /// Format as CSV
 fn format_csv(result: &DefectPredictionResult) -> String {
     let mut output = String::new();
@@ -323,16 +309,16 @@ fn format_csv(result: &DefectPredictionResult) -> String {
 
     for prediction in &result.predictions {
         output.push_str(&format!(
-            "{},{:?},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}\n",
+            "{},{:?},{:.3},{:.3},{},{},{},{},{}\n",
             prediction.file_path,
             prediction.risk_level,
             prediction.defect_probability,
             prediction.confidence,
-            prediction.metrics.complexity_score,
-            prediction.metrics.churn_score,
-            prediction.metrics.coupling_score,
-            prediction.metrics.size_score,
-            prediction.metrics.duplication_score
+            risk_metric_csv(prediction.metrics.complexity_score),
+            risk_metric_csv(prediction.metrics.churn_score),
+            risk_metric_csv(prediction.metrics.coupling_score),
+            risk_metric_csv(prediction.metrics.size_score),
+            risk_metric_csv(prediction.metrics.duplication_score)
         ));
     }
 
@@ -432,11 +418,11 @@ mod tests {
                 risk_level: RiskLevel::High,
                 confidence: 0.9,
                 metrics: FileRiskMetrics {
-                    complexity_score: 0.8,
-                    churn_score: 0.7,
-                    coupling_score: 0.6,
-                    size_score: 0.5,
-                    duplication_score: 0.4,
+                    complexity_score: Some(0.8),
+                    churn_score: Some(0.7),
+                    coupling_score: Some(0.6),
+                    size_score: Some(0.5),
+                    duplication_score: Some(0.4),
                 },
                 contributing_factors: vec!["High complexity".to_string()],
             }],
@@ -449,5 +435,51 @@ mod tests {
         assert!(output.contains("test.rs"));
         assert!(output.contains("80.0%"));
         assert!(output.contains("Test recommendation"));
+    }
+
+    /// GH #657: an unmeasured risk factor must say so, never render as 0.0 — a
+    /// zero risk score reads as a finding.
+    #[test]
+    fn unmeasured_risk_factors_render_as_not_measured() {
+        assert_eq!(risk_metric(Some(0.42)), "0.4");
+        assert_eq!(risk_metric(None), "not measured");
+        assert_ne!(risk_metric(None), "0.0");
+
+        // CSV leaves the cell empty rather than writing 0.000.
+        assert_eq!(risk_metric_csv(Some(0.42)), "0.420");
+        assert_eq!(risk_metric_csv(None), "");
+    }
+
+    /// A file whose churn could not be measured says so in the detailed view.
+    #[test]
+    fn detailed_output_names_the_unmeasured_factor() {
+        let result = DefectPredictionResult {
+            total_files_analyzed: 1,
+            high_risk_files: 0,
+            medium_risk_files: 0,
+            low_risk_files: 1,
+            predictions: vec![FilePrediction {
+                file_path: "nogit.rs".to_string(),
+                defect_probability: 0.2,
+                risk_level: RiskLevel::Low,
+                confidence: 0.75,
+                metrics: FileRiskMetrics {
+                    complexity_score: Some(0.1),
+                    churn_score: None,
+                    coupling_score: Some(0.2),
+                    size_score: Some(0.05),
+                    duplication_score: Some(0.0),
+                },
+                contributing_factors: vec![],
+            }],
+            summary: "s".to_string(),
+            recommendations: vec![],
+        };
+
+        let output = format_detailed(&result);
+        assert!(
+            output.contains("Churn:") && output.contains("not measured"),
+            "churn must be reported as unmeasured, not as a number: {output}"
+        );
     }
 }

@@ -483,17 +483,51 @@ pub async fn analyze_deep_context(
                 "generated_at": context.metadata.generated_at.to_rfc3339(),
                 "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
             },
-            "quality_scorecard": {
-                "overall_health": context.quality_scorecard.overall_health,
-                "complexity_score": context.quality_scorecard.complexity_score,
-                "maintainability_index": context.quality_scorecard.maintainability_index,
-                "modularity_score": context.quality_scorecard.modularity_score,
-                "technical_debt_hours": context.quality_scorecard.technical_debt_hours,
-            },
+            "quality_scorecard": quality_scorecard_json(&context.quality_scorecard),
             "file_count": context.file_tree.total_files,
             "ast_contexts": context.analyses.ast_contexts.len(),
         }
     }))
+}
+
+/// Serialise a quality scorecard for MCP consumers.
+///
+/// Unmeasured fields are `null` AND listed by name in `not_measured`, because
+/// this payload is read by models that cannot tell a measurement from a
+/// placeholder. Every one of these was a constant: six wildly different code
+/// bases — a 5-file toy fixture and pmat's own 3891-file tree among them — all
+/// returned maintainability_index 70.0, modularity_score 85.0 and
+/// technical_debt_hours 40.0, while file_count and ast_contexts varied
+/// correctly, which is exactly what made the scorecard read as measured
+/// (GH #667, same root cause as #643 on the CLI side).
+///
+/// `test_coverage` is included here; the MCP payload used to omit it entirely
+/// while the CLI reported it.
+fn quality_scorecard_json(
+    scorecard: &crate::services::deep_context::QualityScorecard,
+) -> serde_json::Value {
+    let fields = [
+        ("overall_health", scorecard.overall_health),
+        ("complexity_score", scorecard.complexity_score),
+        ("maintainability_index", scorecard.maintainability_index),
+        ("modularity_score", scorecard.modularity_score),
+        ("test_coverage", scorecard.test_coverage),
+        ("technical_debt_hours", scorecard.technical_debt_hours),
+    ];
+
+    let mut object = serde_json::Map::new();
+    let mut not_measured = Vec::new();
+    for (name, value) in fields {
+        if value.is_none() {
+            not_measured.push(serde_json::Value::from(name));
+        }
+        object.insert(name.to_string(), json!(value));
+    }
+    object.insert(
+        "not_measured".to_string(),
+        serde_json::Value::Array(not_measured),
+    );
+    serde_json::Value::Object(object)
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

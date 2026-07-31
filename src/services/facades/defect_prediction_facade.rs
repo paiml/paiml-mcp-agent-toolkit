@@ -7,7 +7,7 @@
 use crate::services::service_registry::ServiceRegistry;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Request for defect prediction analysis
@@ -56,14 +56,26 @@ pub enum RiskLevel {
     Low,
 }
 
-/// Risk metrics for a file
+/// Risk metrics for a file, each normalised to 0.0-1.0.
+///
+/// `None` means pmat did not measure the factor for this file — not that it
+/// measured zero. Four of the five were compile-time constants
+/// (`churn_score = 0.3`, `coupling_score = 0.2`, `duplication_score = 0.1`,
+/// `confidence = 0.75`), each tagged "would be calculated from …", so
+/// `defect_probability` was a function of file length alone while five named
+/// "ML-based" metrics were presented as measurements (GH #657). churn was
+/// reported as 0.3 even for directories with no git repository at all.
+///
+/// See `contracts/pmat-no-fabrication-v1.yaml`, equation `measured_or_absent`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileRiskMetrics {
-    pub complexity_score: f32,
-    pub churn_score: f32,
-    pub coupling_score: f32,
-    pub size_score: f32,
-    pub duplication_score: f32,
+    pub complexity_score: Option<f32>,
+    /// Derived from git history. `None` when the project has no repository, or
+    /// when the file has no commits in the window.
+    pub churn_score: Option<f32>,
+    pub coupling_score: Option<f32>,
+    pub size_score: Option<f32>,
+    pub duplication_score: Option<f32>,
 }
 
 /// Facade for defect prediction analysis
@@ -89,11 +101,14 @@ impl DefectPredictionFacade {
         // Discover source files to analyze
         let files = self.discover_files(&request).await?;
 
+        // One git pass for the whole project rather than per file.
+        let churn = Self::churn_by_path(&request.project_path).await;
+
         // Analyze each file for defect probability
         let mut predictions = Vec::new();
         for file_path in files.iter().take(request.top_files * 2) {
             // Analyze more than needed for filtering
-            if let Ok(prediction) = self.analyze_file(file_path, &request).await {
+            if let Ok(prediction) = self.analyze_file(file_path, &request, churn.as_ref()).await {
                 // Apply filters
                 if request.high_risk_only
                     && matches!(prediction.risk_level, RiskLevel::Low | RiskLevel::Medium)
@@ -163,13 +178,62 @@ impl DefectPredictionFacade {
         Ok(files)
     }
 
+    /// Per-file churn from the project's git history, keyed by absolute path.
+    ///
+    /// `None` when the project has no repository — a directory with no git
+    /// history has no churn to report, and reporting one anyway is what made
+    /// `churn_score` 0.3 for a tree `analyze churn` correctly refuses to
+    /// analyse (GH #657).
+    async fn churn_by_path(project_path: &Path) -> Option<std::collections::HashMap<PathBuf, f32>> {
+        let analysis =
+            crate::services::git_analysis::GitAnalysisService::analyze_code_churn(project_path, 90)
+                .ok()?;
+        Some(
+            analysis
+                .files
+                .into_iter()
+                .map(|f| (f.path, f.churn_score))
+                .collect(),
+        )
+    }
+
+    /// Weighted defect probability over the factors that were actually
+    /// measured, with the weights renormalised across them.
+    ///
+    /// The old formula multiplied three literals by their weights and added
+    /// them in unconditionally, so ~55% of every score was a constant.
+    fn weighted_probability(metrics: &FileRiskMetrics) -> Option<f32> {
+        // (value, weight) — the published model weights.
+        let factors = [
+            (metrics.complexity_score, 0.30_f32),
+            (metrics.churn_score, 0.25),
+            (metrics.coupling_score, 0.20),
+            (metrics.size_score, 0.15),
+            (metrics.duplication_score, 0.10),
+        ];
+
+        let mut weighted = 0.0_f32;
+        let mut total_weight = 0.0_f32;
+        for (value, weight) in factors {
+            if let Some(value) = value {
+                weighted += value * weight;
+                total_weight += weight;
+            }
+        }
+
+        if total_weight <= 0.0 {
+            return None;
+        }
+        Some((weighted / total_weight).clamp(0.0, 1.0))
+    }
+
     /// Analyze a single file for defect probability
     async fn analyze_file(
         &self,
         file_path: &PathBuf,
         request: &DefectPredictionRequest,
+        churn: Option<&std::collections::HashMap<PathBuf, f32>>,
     ) -> Result<FilePrediction> {
-        // Get file metrics (would integrate with real analysis services)
         let lines = tokio::fs::read_to_string(file_path).await?.lines().count();
 
         // Skip files below minimum line threshold
@@ -177,20 +241,38 @@ impl DefectPredictionFacade {
             return Err(anyhow::anyhow!("File too small"));
         }
 
-        // Calculate risk metrics (simplified for now)
-        let complexity_score = (lines as f32 / 100.0).min(1.0);
-        let churn_score = 0.3; // Would be calculated from git history
-        let coupling_score = 0.2; // Would be calculated from dependency analysis
-        let size_score = (lines as f32 / 1000.0).min(1.0);
-        let duplication_score = 0.1; // Would be calculated from duplicate detector
+        // Complexity, coupling and duplication come from the TDG factor
+        // calculators, which read the file. They were 0.6-from-LOC, 0.2 and 0.1.
+        // TDG factors are on a 0-5 scale; the risk metrics are 0-1.
+        let tdg = crate::services::tdg_calculator::TDGCalculator::new()
+            .with_project_root(request.project_path.clone());
+        let tdg_score = tdg.calculate_file(file_path).await.ok();
+        let normalise = |v: f64| ((v / 5.0) as f32).clamp(0.0, 1.0);
 
-        // Calculate overall defect probability
-        let defect_probability = (complexity_score * 0.3
-            + churn_score * 0.25
-            + coupling_score * 0.2
-            + size_score * 0.15
-            + duplication_score * 0.1)
-            .min(1.0);
+        let complexity_score = tdg_score
+            .as_ref()
+            .map(|s| normalise(s.components.complexity));
+        let coupling_score = tdg_score.as_ref().map(|s| normalise(s.components.coupling));
+        let duplication_score = tdg_score
+            .as_ref()
+            .map(|s| normalise(s.components.duplication));
+
+        // Real git churn, absent where there is no repository.
+        let churn_score = churn.map(|map| map.get(file_path).copied().unwrap_or(0.0));
+
+        #[allow(clippy::cast_precision_loss)]
+        let size_score = Some((lines as f32 / 1000.0).min(1.0));
+
+        let metrics = FileRiskMetrics {
+            complexity_score,
+            churn_score,
+            coupling_score,
+            size_score,
+            duplication_score,
+        };
+
+        let defect_probability = Self::weighted_probability(&metrics)
+            .ok_or_else(|| anyhow::anyhow!("no risk factor could be measured for this file"))?;
 
         // Determine risk level
         let risk_level = match defect_probability {
@@ -200,19 +282,38 @@ impl DefectPredictionFacade {
             _ => RiskLevel::Low,
         };
 
-        // Calculate confidence (based on available metrics)
-        let confidence = 0.75; // Would be based on data quality
+        // Confidence is the share of the model's weight that was actually
+        // measured — the honest version of the old constant 0.75.
+        let measured_weight = [
+            (metrics.complexity_score, 0.30_f32),
+            (metrics.churn_score, 0.25),
+            (metrics.coupling_score, 0.20),
+            (metrics.size_score, 0.15),
+            (metrics.duplication_score, 0.10),
+        ]
+        .into_iter()
+        .filter(|(value, _)| value.is_some())
+        .map(|(_, weight)| weight)
+        .sum::<f32>();
+        let confidence = measured_weight.clamp(0.0, 1.0);
 
         // Identify contributing factors
         let mut contributing_factors = Vec::new();
-        if complexity_score > 0.7 {
+        if complexity_score.is_some_and(|v| v > 0.7) {
             contributing_factors.push("High complexity".to_string());
         }
-        if churn_score > 0.5 {
+        if churn_score.is_some_and(|v| v > 0.5) {
             contributing_factors.push("Frequent changes".to_string());
         }
-        if size_score > 0.7 {
+        if size_score.is_some_and(|v| v > 0.7) {
             contributing_factors.push("Large file size".to_string());
+        }
+        if duplication_score.is_some_and(|v| v > 0.5) {
+            contributing_factors.push("Duplicated code".to_string());
+        }
+        if churn_score.is_none() {
+            contributing_factors
+                .push("Churn not measured (no git history for this project)".to_string());
         }
 
         Ok(FilePrediction {
@@ -220,13 +321,7 @@ impl DefectPredictionFacade {
             defect_probability,
             risk_level,
             confidence,
-            metrics: FileRiskMetrics {
-                complexity_score,
-                churn_score,
-                coupling_score,
-                size_score,
-                duplication_score,
-            },
+            metrics,
             contributing_factors,
         })
     }
@@ -317,5 +412,135 @@ mod tests {
     #[test]
     fn test_risk_level_classification() {
         assert_eq!(RiskLevel::Critical, RiskLevel::Critical);
+    }
+
+    fn request_for(path: &Path) -> DefectPredictionRequest {
+        DefectPredictionRequest {
+            project_path: path.to_path_buf(),
+            confidence_threshold: 0.0,
+            min_lines: 1,
+            include_low_confidence: true,
+            high_risk_only: false,
+            include_recommendations: false,
+            include: None,
+            exclude: None,
+            top_files: 50,
+        }
+    }
+
+    /// GH #657: churn/coupling/duplication/complexity were the same four
+    /// constants for every file — {0.3}, {0.2}, {0.1}, and complexity derived
+    /// only from LOC — so only file length moved the answer. Two files that
+    /// differ in content must be able to differ in more than size.
+    #[tokio::test]
+    async fn risk_metrics_vary_with_file_content() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        // EXACTLY the same line count, very different content: one trivial,
+        // one nested and import-heavy. Under the old constants these were
+        // indistinguishable — complexity was `lines / 100` and coupling and
+        // duplication were the literals 0.2 and 0.1 — so equal length meant
+        // equal risk no matter what the code said.
+        let mut simple = String::from("// a\n// b\n// c\n");
+        let mut gnarly = String::from(
+            "use std::collections::HashMap;\nuse std::path::PathBuf;\nuse std::sync::Arc;\n",
+        );
+        for i in 0..60 {
+            simple.push_str(&format!("pub fn s{i}() -> i32 {{ {i} }}\n"));
+            gnarly.push_str(&format!(
+                "pub fn g{i}(x: i32) -> i32 {{ if x > 0 {{ for _ in 0..x {{ if x % 2 == 0 {{ return x; }} }} }} x }}\n"
+            ));
+        }
+        assert_eq!(
+            simple.lines().count(),
+            gnarly.lines().count(),
+            "the fixtures must differ only in content, not in length"
+        );
+        std::fs::write(dir.path().join("simple.rs"), &simple).unwrap();
+        std::fs::write(dir.path().join("gnarly.rs"), &gnarly).unwrap();
+
+        let facade = DefectPredictionFacade::new(Arc::new(ServiceRegistry::new()));
+        let result = facade
+            .analyze_project(request_for(dir.path()))
+            .await
+            .expect("analysis");
+
+        assert_eq!(result.predictions.len(), 2, "both files must be analysed");
+
+        let distinct_complexity: std::collections::BTreeSet<_> = result
+            .predictions
+            .iter()
+            .filter_map(|p| p.metrics.complexity_score.map(|v| format!("{v:.4}")))
+            .collect();
+        let distinct_coupling: std::collections::BTreeSet<_> = result
+            .predictions
+            .iter()
+            .filter_map(|p| p.metrics.coupling_score.map(|v| format!("{v:.4}")))
+            .collect();
+
+        assert!(
+            distinct_complexity.len() > 1 || distinct_coupling.len() > 1,
+            "complexity and coupling were both constant across two very different \
+             files: complexity={distinct_complexity:?} coupling={distinct_coupling:?}"
+        );
+    }
+
+    /// GH #657: churn was reported as 0.3 for a directory with NO git
+    /// repository — a tree `analyze churn` correctly refuses to analyse.
+    #[tokio::test]
+    async fn churn_is_not_measured_without_a_git_repository() {
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("lib.rs"),
+            "pub fn a() -> i32 { 1 }\npub fn b() -> i32 { 2 }\n",
+        )
+        .unwrap();
+
+        let facade = DefectPredictionFacade::new(Arc::new(ServiceRegistry::new()));
+        let result = facade
+            .analyze_project(request_for(dir.path()))
+            .await
+            .expect("analysis");
+
+        assert_eq!(result.predictions.len(), 1);
+        assert_eq!(
+            result.predictions[0].metrics.churn_score, None,
+            "no git repository means churn was not measured; it used to report 0.3"
+        );
+        assert!(
+            result.predictions[0].confidence < 1.0,
+            "confidence must drop when a factor is missing; it used to be a flat 0.75"
+        );
+    }
+
+    /// The probability must use only the factors that were measured — the old
+    /// formula folded three literals in unconditionally.
+    #[test]
+    fn weighted_probability_renormalises_over_measured_factors() {
+        let only_size = FileRiskMetrics {
+            complexity_score: None,
+            churn_score: None,
+            coupling_score: None,
+            size_score: Some(0.5),
+            duplication_score: None,
+        };
+        let p = DefectPredictionFacade::weighted_probability(&only_size).unwrap();
+        assert!(
+            (p - 0.5).abs() < 1e-6,
+            "one measured factor of 0.5 must give 0.5, got {p}"
+        );
+
+        let nothing = FileRiskMetrics {
+            complexity_score: None,
+            churn_score: None,
+            coupling_score: None,
+            size_score: None,
+            duplication_score: None,
+        };
+        assert_eq!(
+            DefectPredictionFacade::weighted_probability(&nothing),
+            None,
+            "with nothing measured there is no probability to report"
+        );
     }
 }
