@@ -54,6 +54,10 @@ use crate::models::complexity_bound::{BigOClass, ComplexityBound};
 #[cfg(test)]
 #[path = "big_o_analyzer_issue54_test.rs"]
 mod issue54_tests;
+
+#[cfg(test)]
+#[path = "big_o_analyzer_fabrication_tests.rs"]
+mod fabrication_tests;
 use crate::services::complexity_patterns::{ComplexityAnalysisResult, ComplexityPatternMatcher};
 use anyhow::Result;
 use std::path::PathBuf;

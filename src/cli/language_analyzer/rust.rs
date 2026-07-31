@@ -42,14 +42,63 @@ impl LanguageAnalyzer for RustAnalyzer {
 }
 
 impl RustAnalyzer {
+    /// True when the trimmed line opens a function definition.
+    ///
+    /// The previous version enumerated seven literal prefixes, so
+    /// `pub(crate) async fn`, `const fn`, `unsafe fn` and `extern "C" fn` were
+    /// silently invisible — one reason `analyze big-o` "missed" real functions
+    /// (#655). Qualifiers are now stripped in any order before checking for the
+    /// `fn` keyword. Comments still cannot match, because a comment line trims
+    /// to `//…` and never reduces to `fn …`.
     fn is_function_declaration(&self, line: &str) -> bool {
-        line.starts_with("fn ")
-            || line.starts_with("pub fn ")
-            || line.starts_with("async fn ")
-            || line.starts_with("pub async fn ")
-            || line.starts_with("pub(crate) fn ")
-            || line.starts_with("pub(super) fn ")
-            || line.starts_with("pub(in ") && line.contains(") fn ")
+        let rest = Self::strip_visibility(line.trim());
+        Self::strip_fn_qualifiers(rest).starts_with("fn ")
+    }
+
+    /// Remove a leading `pub`, `pub(crate)`, `pub(super)`, `pub(in path)`.
+    fn strip_visibility(line: &str) -> &str {
+        let Some(after_pub) = line.strip_prefix("pub") else {
+            return line;
+        };
+        match after_pub.chars().next() {
+            Some('(') => match after_pub.find(')') {
+                Some(close) => after_pub.get(close + 1..).unwrap_or("").trim_start(),
+                None => line,
+            },
+            Some(c) if c.is_whitespace() => after_pub.trim_start(),
+            _ => line,
+        }
+    }
+
+    /// Remove leading `const` / `async` / `unsafe` / `default` / `extern "ABI"`.
+    fn strip_fn_qualifiers(line: &str) -> &str {
+        let mut rest = line;
+        loop {
+            let before = rest;
+            for keyword in ["default ", "const ", "async ", "unsafe "] {
+                if let Some(stripped) = rest.strip_prefix(keyword) {
+                    rest = stripped.trim_start();
+                }
+            }
+            rest = Self::strip_extern_abi(rest);
+            if rest.len() == before.len() {
+                return rest;
+            }
+        }
+    }
+
+    fn strip_extern_abi(line: &str) -> &str {
+        let Some(after) = line.strip_prefix("extern") else {
+            return line;
+        };
+        let after = after.trim_start();
+        let Some(quoted) = after.strip_prefix('"') else {
+            return after;
+        };
+        match quoted.find('"') {
+            Some(close) => quoted.get(close + 1..).unwrap_or("").trim_start(),
+            None => line,
+        }
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {

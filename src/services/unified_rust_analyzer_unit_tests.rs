@@ -337,5 +337,104 @@ mod tests {
         let analyzer = UnifiedRustAnalyzer::new(path.clone());
         assert_eq!(analyzer.file_path(), path.as_path());
     }
+
+    // === #686 regression: this analyzer backs `pmat context` ===
+
+    /// Source used by the #686 regression tests: nested branches inside a loop,
+    /// so cognitive complexity (which charges for nesting) must exceed
+    /// cyclomatic complexity.
+    const NESTED_SOURCE: &str = concat!(
+        "pub fn monster(a: i32, b: i32) -> i32 {\n",
+        "    let mut t = 0;\n",
+        "    for i in 0..a {\n",
+        "        if b > 0 {\n",
+        "            if i % 2 == 0 {\n",
+        "                t += i;\n",
+        "            }\n",
+        "        }\n",
+        "    }\n",
+        "    t\n",
+        "}\n",
+        "\n",
+        "pub fn trivial() -> i32 {\n",
+        "    7\n",
+        "}\n",
+    );
+
+    async fn analyze_source(source: &str) -> crate::services::complexity::FileComplexityMetrics {
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(temp_file.path(), source).unwrap();
+        let analyzer = UnifiedRustAnalyzer::new(temp_file.path().to_path_buf());
+        analyzer.analyze().await.unwrap().file_metrics
+    }
+
+    /// #686: cognitive complexity was assigned `= cyclomatic` verbatim, so the
+    /// two numbers were identical for every function in the file.
+    #[tokio::test]
+    async fn test_cognitive_is_not_a_copy_of_cyclomatic() {
+        let metrics = analyze_source(NESTED_SOURCE).await;
+        let monster = metrics
+            .functions
+            .iter()
+            .find(|f| f.name == "monster")
+            .expect("monster must be analyzed");
+
+        assert!(
+            monster.metrics.cognitive > monster.metrics.cyclomatic,
+            "nesting must cost cognitive complexity: cyclomatic={} cognitive={}",
+            monster.metrics.cyclomatic,
+            monster.metrics.cognitive
+        );
+    }
+
+    /// #686: `context` reported 3 where `quality-gate` reported 9 on the same
+    /// function, because this analyzer only counted top-level statements.
+    #[tokio::test]
+    async fn test_agrees_with_the_accurate_analyzer() {
+        let metrics = analyze_source(NESTED_SOURCE).await;
+        let monster = metrics
+            .functions
+            .iter()
+            .find(|f| f.name == "monster")
+            .expect("monster must be analyzed");
+
+        let parsed: syn::File = syn::parse_str(NESTED_SOURCE).unwrap();
+        let syn::Item::Fn(item) = &parsed.items[0] else {
+            panic!("first item is monster");
+        };
+        let expected =
+            crate::services::accurate_complexity_analyzer::measure_block("monster", &item.block);
+
+        assert_eq!(u32::from(monster.metrics.cyclomatic), expected.cyclomatic);
+        assert_eq!(u32::from(monster.metrics.cognitive), expected.cognitive);
+    }
+
+    /// #686: `line_start`/`line_end` were hard-wired to 0 and `lines` to the
+    /// constant 10, with the file's own `lines` computed as `functions * 10`.
+    #[tokio::test]
+    async fn test_line_spans_are_measured_not_constants() {
+        let metrics = analyze_source(NESTED_SOURCE).await;
+
+        let monster = &metrics.functions[0];
+        assert_eq!(monster.name, "monster");
+        assert_eq!(monster.line_start, 1);
+        assert_eq!(monster.line_end, 11);
+        assert_eq!(monster.metrics.lines, 11);
+
+        let trivial = &metrics.functions[1];
+        assert_eq!(trivial.name, "trivial");
+        assert_eq!(trivial.line_start, 13);
+        assert_eq!(trivial.line_end, 15);
+        assert_eq!(trivial.metrics.lines, 3);
+
+        assert_eq!(
+            metrics.total_complexity.lines, 15,
+            "file length must be the real line count, not functions * 10"
+        );
+        assert_ne!(
+            metrics.total_complexity.lines,
+            (metrics.functions.len() * 10) as u16
+        );
+    }
 }
 

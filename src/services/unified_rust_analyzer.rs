@@ -33,9 +33,11 @@ use std::path::{Path, PathBuf};
 #[cfg(test)]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::services::accurate_complexity_analyzer::measure_block;
 use crate::services::complexity::{ComplexityMetrics, FileComplexityMetrics, FunctionComplexity};
 use crate::services::context::AstItem;
 use crate::services::enhanced_ast_visitor::EnhancedAstVisitor;
+use crate::services::source_line_index::{FunctionSpans, LineSpan};
 
 /// Unified analyzer that parses once, extracts twice
 pub struct UnifiedRustAnalyzer {
