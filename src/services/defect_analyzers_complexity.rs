@@ -6,7 +6,12 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
         let mut defects = Vec::new();
-        let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new();
+        // Git discovery must start at the path being analysed. `TDGCalculator::new()`
+        // leaves `project_root` at "." — the process CWD — so `pmat report -p <repo>`
+        // run from a non-repo directory failed with `No git repository found at "."`
+        // even though -p pointed at a valid repository (GH #671).
+        let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new()
+            .with_project_root(project_path.to_path_buf());
 
         // Analyze all source files
         let files = discover_source_files(project_path).await?;

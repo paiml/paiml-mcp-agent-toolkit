@@ -82,8 +82,8 @@ impl GitAnalysisService {
 
         info!("Analyzing code churn for last {} days", period_days);
 
-        let file_metrics = Self::get_file_metrics(project_path, &since_str)?;
-        let summary = Self::generate_summary(&file_metrics);
+        let (file_metrics, total_commits) = Self::get_file_metrics(project_path, &since_str)?;
+        let summary = Self::generate_summary(&file_metrics, total_commits);
 
         Ok(CodeChurnAnalysis {
             generated_at: Utc::now(),
@@ -94,10 +94,17 @@ impl GitAnalysisService {
         })
     }
 
+    /// Per-file churn metrics plus the number of DISTINCT commits in the window.
+    ///
+    /// The commit count is returned separately because it cannot be recovered
+    /// from `FileChurnMetrics`: summing `commit_count` over files counts one
+    /// commit once per file it touched. That sum was what "Total commits"
+    /// reported (GH #660) — 756 for a window git puts at 40, and 2 for a
+    /// fixture repo with a single commit touching two files.
     fn get_file_metrics(
         project_path: &Path,
         since_date: &str,
-    ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
+    ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
@@ -123,7 +130,7 @@ impl GitAnalysisService {
                     timeout.as_secs(),
                     project_path.display()
                 );
-                return Ok(Vec::new());
+                return Ok((Vec::new(), 0));
             }
         };
 
@@ -131,7 +138,7 @@ impl GitAnalysisService {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             // Handle empty repository case
             if error_msg.contains("does not have any commits yet") {
-                return Ok(Vec::new());
+                return Ok((Vec::new(), 0));
             }
             return Err(TemplateError::NotFound(format!(
                 "Git log failed: {error_msg}"
@@ -141,6 +148,10 @@ impl GitAnalysisService {
         let log_output = String::from_utf8_lossy(&output.stdout);
         let mut file_stats: HashMap<PathBuf, FileStats> = HashMap::with_capacity(64);
         let mut current_commit: Option<CommitInfo> = None;
+        // Distinct commits seen in the window. One header line per commit, so
+        // this equals `git rev-list --count --since=<date>` — including merge
+        // commits, which print a header but no --numstat lines.
+        let mut commit_hashes: HashSet<String> = HashSet::with_capacity(64);
 
         for line in log_output.lines() {
             if line.is_empty() {
@@ -148,6 +159,7 @@ impl GitAnalysisService {
             }
 
             if let Some((hash, author, date)) = Self::parse_commit_line(line) {
+                commit_hashes.insert(hash.clone());
                 current_commit = Some(CommitInfo { hash, author, date });
             } else if let Some(ref commit) = current_commit {
                 if let Some((additions, deletions, file_path)) = Self::parse_numstat_line(line) {
@@ -216,7 +228,7 @@ impl GitAnalysisService {
                 .expect("internal error")
         });
 
-        Ok(metrics)
+        Ok((metrics, commit_hashes.len()))
     }
 
     fn parse_commit_line(line: &str) -> Option<(String, String, String)> {
@@ -244,12 +256,15 @@ impl GitAnalysisService {
         }
     }
 
-    fn generate_summary(files: &[FileChurnMetrics]) -> ChurnSummary {
+    /// Build the summary. `total_commits` is the count of DISTINCT commits in
+    /// the window, supplied by the caller.
+    ///
+    /// It used to be computed here as `sum(file.commit_count)`, i.e. the number
+    /// of file revisions, and was still labelled "Total commits" (GH #660).
+    fn generate_summary(files: &[FileChurnMetrics], total_commits: usize) -> ChurnSummary {
         let mut author_contributions: HashMap<String, usize> = HashMap::with_capacity(64);
-        let mut total_commits = 0;
 
         for file in files {
-            total_commits += file.commit_count;
             for author in &file.unique_authors {
                 *author_contributions.entry(author.clone()).or_insert(0) += 1;
             }
@@ -387,7 +402,7 @@ mod tests {
     #[test]
     fn test_generate_summary_empty() {
         let files: Vec<FileChurnMetrics> = vec![];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 0);
         assert_eq!(summary.total_commits, 0);
         assert_eq!(summary.total_files_changed, 0);
         assert!(summary.hotspot_files.is_empty());
@@ -408,8 +423,12 @@ mod tests {
             last_modified: Utc::now(),
             first_seen: Utc::now(),
         }];
-        let summary = GitAnalysisService::generate_summary(&files);
-        assert_eq!(summary.total_commits, 5);
+        // #660: the summary reports the DISTINCT commit count it is given, not
+        // sum(commit_count). Here 5 revisions of one file came from 3 commits
+        // (two of them touched it twice via amends/rebases in the window), so
+        // "Total commits" must be 3 — the old code answered 5.
+        let summary = GitAnalysisService::generate_summary(&files, 3);
+        assert_eq!(summary.total_commits, 3);
         assert_eq!(summary.total_files_changed, 1);
         assert_eq!(summary.hotspot_files.len(), 1); // churn_score > 0.5
     }
@@ -440,8 +459,10 @@ mod tests {
                 first_seen: Utc::now(),
             },
         ];
-        let summary = GitAnalysisService::generate_summary(&files);
-        assert_eq!(summary.total_commits, 5);
+        // #660: two files with 3 and 2 revisions can come from as few as 3
+        // commits. The old code reported 5 "commits" for exactly this shape.
+        let summary = GitAnalysisService::generate_summary(&files, 3);
+        assert_eq!(summary.total_commits, 3);
         assert_eq!(summary.total_files_changed, 2);
         assert_eq!(summary.author_contributions.len(), 2);
     }
@@ -466,7 +487,7 @@ mod tests {
             last_modified: Utc::now(),
             first_seen: Utc::now(),
         }];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 1);
         assert_eq!(summary.stable_files.len(), 1);
     }
 
@@ -496,11 +517,58 @@ mod tests {
                 first_seen: Utc::now(),
             },
         ];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 4);
         // Mean of 0.2 and 0.8 = 0.5
         assert!((summary.mean_churn_score - 0.5).abs() < 0.01);
         // Variance and stddev should be calculated
         assert!(summary.variance_churn_score >= 0.0);
         assert!(summary.stddev_churn_score >= 0.0);
+    }
+
+    /// GH #660: "Total commits" must equal `git rev-list --count`, not the sum
+    /// of per-file revision counts.
+    ///
+    /// One commit touching three files reported "Total commits: 3" before the
+    /// fix. On the pmat repo the same bug turned 40 commits into 756.
+    #[test]
+    fn churn_total_commits_counts_commits_not_file_revisions() {
+        use std::process::Command;
+
+        let temp = TempDir::new().unwrap();
+        let repo = temp.path();
+
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git must be available")
+        };
+
+        if !git(&["init"]).status.success() {
+            return; // no git in this environment; nothing to assert
+        }
+        let _ = git(&["config", "user.email", "t@example.com"]);
+        let _ = git(&["config", "user.name", "T"]);
+
+        for name in ["a.rs", "b.rs", "c.rs"] {
+            std::fs::write(repo.join(name), "pub fn f() {}\n").unwrap();
+        }
+        let _ = git(&["add", "-A"]);
+        let commit = git(&["commit", "-m", "one commit, three files", "--no-verify"]);
+        if !commit.status.success() {
+            return; // commit hooks / identity unavailable
+        }
+
+        let analysis = GitAnalysisService::analyze_code_churn(repo, 30).expect("churn analysis");
+
+        assert_eq!(
+            analysis.summary.total_files_changed, 3,
+            "three files were touched"
+        );
+        assert_eq!(
+            analysis.summary.total_commits, 1,
+            "one commit touched three files; the pre-fix code reported 3"
+        );
     }
 }

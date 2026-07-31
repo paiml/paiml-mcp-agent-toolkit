@@ -86,7 +86,9 @@ fn print_analysis_header(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
     );
-    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
+    // `coverage_threshold` is already a percentage (`--help`: default 80.0).
+    // Multiplying by 100 here announced "8000.0%" (GH #658).
+    eprintln!("📈 Coverage threshold: {coverage_threshold:.1}%");
 }
 
 /// Output results in the requested format

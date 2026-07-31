@@ -87,13 +87,9 @@ pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> 
                         "generated_at": context.metadata.generated_at.to_rfc3339(),
                         "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
                     },
-                    "quality_scorecard": {
-                        "overall_health": context.quality_scorecard.overall_health,
-                        "complexity_score": context.quality_scorecard.complexity_score,
-                        "maintainability_index": context.quality_scorecard.maintainability_index,
-                        "modularity_score": context.quality_scorecard.modularity_score,
-                        "technical_debt_hours": context.quality_scorecard.technical_debt_hours,
-                    },
+                    // Same renderer as analyze_deep_context, so the two MCP
+                    // tools cannot disagree about what was measured (GH #667).
+                    "quality_scorecard": quality_scorecard_json(&context.quality_scorecard),
                     "file_count": context.file_tree.total_files,
                 }
             }))

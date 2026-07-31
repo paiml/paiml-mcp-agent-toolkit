@@ -385,4 +385,56 @@ mod tests {
         // Should not contain recommendations section when empty
         assert!(!output.contains("## 💡 Recommendations"));
     }
+
+    /// GH #687: three runs over an unchanged project produced three different
+    /// `categories` array orders because `ProjectScore::categories` is a
+    /// HashMap. Rebuild the map repeatedly and require one order.
+    #[test]
+    fn json_categories_are_ordered_stably() {
+        let names = || {
+            let output = format_json(&create_test_score(), &[]).unwrap();
+            let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+            parsed["categories"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| c["name"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>()
+        };
+
+        let expected = vec![
+            "Code Quality".to_string(),
+            "Rust Tooling".to_string(),
+            "Testing".to_string(),
+        ];
+        for _ in 0..64 {
+            assert_eq!(names(), expected, "category order must not vary between runs");
+        }
+    }
+
+    /// The YAML renderer emitted "yet another order" per the issue; it must
+    /// agree with JSON.
+    #[test]
+    fn yaml_categories_match_json_order() {
+        let score = create_test_score();
+        let json: serde_json::Value = serde_json::from_str(&format_json(&score, &[]).unwrap())
+            .expect("json renderer output");
+        let yaml: serde_json::Value = serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap())
+            .expect("yaml renderer output");
+        assert_eq!(json["categories"], yaml["categories"]);
+    }
+
+    /// GH #685: `--help` advertised "0-106 scale" while the command emitted
+    /// 279 and CLAUDE.md claimed 289. The help must state the scale the
+    /// orchestrator actually has, and this test fails if either drifts.
+    #[test]
+    fn rust_project_score_scale_matches_help() {
+        use crate::services::rust_project_score::orchestrator::RustProjectScoreOrchestrator;
+        let max = RustProjectScoreOrchestrator::new().max_points();
+        assert!(
+            (max - 289.0).abs() < f64::EPSILON,
+            "scorer maxima now sum to {max}; update the `rust-project-score` help text \
+             in src/cli/commands/commands_enum/definition.rs to match"
+        );
+    }
 }

@@ -13,25 +13,26 @@ mod tests {
         IncrementalCoverageResult {
             total_files: 10,
             covered_files: 8,
-            coverage_percentage: 0.8,
+            coverage_percentage: Some(80.0),
             files_above_threshold: 6,
             files_below_threshold: 4,
+            files_not_measured: 0,
             changed_files: vec![
                 ChangedFileCoverage {
                     file_path: "src/lib.rs".to_string(),
                     status: CoverageStatus::Improved,
-                    coverage_before: 0.7,
-                    coverage_after: 0.85,
-                    coverage_delta: 0.15,
+                    coverage_before: Some(70.0),
+                    coverage_after: Some(85.0),
+                    coverage_delta: Some(15.0),
                     lines_covered: 85,
                     lines_total: 100,
                 },
                 ChangedFileCoverage {
                     file_path: "src/main.rs".to_string(),
                     status: CoverageStatus::New,
-                    coverage_before: 0.0,
-                    coverage_after: 0.9,
-                    coverage_delta: 0.9,
+                    coverage_before: Some(0.0),
+                    coverage_after: Some(90.0),
+                    coverage_delta: Some(90.0),
                     lines_covered: 45,
                     lines_total: 50,
                 },
@@ -55,9 +56,10 @@ mod tests {
         let result = IncrementalCoverageResult {
             total_files: 0,
             covered_files: 0,
-            coverage_percentage: 0.0,
+            coverage_percentage: Some(0.0),
             files_above_threshold: 0,
             files_below_threshold: 0,
+            files_not_measured: 0,
             changed_files: vec![],
             summary: "Empty project".to_string(),
         };
@@ -92,10 +94,33 @@ mod tests {
         let result = create_test_result();
         let output = format_lcov(&result);
         assert!(output.contains("SF:src/lib.rs"));
-        assert!(output.contains("DA:"));
-        assert!(output.contains("LH:"));
-        assert!(output.contains("LF:"));
+        assert!(output.contains("LH:85"));
+        assert!(output.contains("LF:100"));
         assert!(output.contains("end_of_record"));
+        // The old renderer emitted `DA:<lines_total>,<lines_covered>` — a DA
+        // record is "line N was hit C times", so that was a malformed claim
+        // about a line number that need not exist. Dropped rather than faked.
+        assert!(!output.contains("DA:"));
+    }
+
+    /// GH #658: an unmeasured file must not appear in LCOV at all — `LH:0/LF:0`
+    /// reads as "nothing is covered" rather than "we did not measure".
+    #[test]
+    fn lcov_omits_unmeasured_files() {
+        let mut result = create_test_result();
+        result.changed_files.push(ChangedFileCoverage {
+            file_path: "src/unmeasured.rs".to_string(),
+            status: CoverageStatus::NotMeasured,
+            coverage_before: None,
+            coverage_after: None,
+            coverage_delta: None,
+            lines_covered: 0,
+            lines_total: 0,
+        });
+
+        let output = format_lcov(&result);
+        assert!(output.contains("SF:src/lib.rs"));
+        assert!(!output.contains("src/unmeasured.rs"));
     }
 
     #[test]
@@ -181,7 +206,7 @@ mod tests {
             base_branch: "main".to_string(),
             target_branch: Some("feature".to_string()),
             format: IncrementalCoverageOutputFormat::Summary,
-            coverage_threshold: 0.8,
+            coverage_threshold: 80.0,
             changed_files_only: true,
             detailed: false,
             output: None,
@@ -192,7 +217,8 @@ mod tests {
         };
         let cloned = config.clone();
         assert_eq!(cloned.base_branch, "main");
-        assert_eq!(cloned.coverage_threshold, 0.8);
+        // Percentage, matching `--coverage-threshold`'s documented units (#658).
+        assert_eq!(cloned.coverage_threshold, 80.0);
     }
 
     #[test]
@@ -202,7 +228,7 @@ mod tests {
             base_branch: "main".to_string(),
             target_branch: None,
             format: IncrementalCoverageOutputFormat::Json,
-            coverage_threshold: 0.75,
+            coverage_threshold: 75.0,
             changed_files_only: false,
             detailed: true,
             output: Some(PathBuf::from("output.json")),

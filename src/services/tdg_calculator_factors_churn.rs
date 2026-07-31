@@ -51,6 +51,17 @@ impl TDGCalculator {
                 Ok(analysis)
             }
             Err(e) => {
+                // No git history is not an analysis failure: `calculate_churn_factor`
+                // already has an mtime-based fallback for exactly this case, and
+                // per-file scoring proceeds from real file data.
+                //
+                // Returning `Err` here while *also* caching the empty analysis made
+                // the first call fail and every later call succeed, and it aborted
+                // `pmat report` outright with `No git repository found` (GH #671).
+                tracing::warn!(
+                    "no git churn available for {}: {e}; falling back to file age",
+                    self.project_root.display()
+                );
                 let empty_analysis = crate::models::churn::CodeChurnAnalysis {
                     generated_at: chrono::Utc::now(),
                     period_days: 90,
@@ -67,8 +78,8 @@ impl TDGCalculator {
                         stddev_churn_score: 0.0,
                     },
                 };
-                *cache = Some(empty_analysis);
-                Err(e.into())
+                *cache = Some(empty_analysis.clone());
+                Ok(empty_analysis)
             }
         }
     }

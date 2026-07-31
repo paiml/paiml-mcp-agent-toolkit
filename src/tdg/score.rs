@@ -94,17 +94,30 @@ impl TdgScore {
             self.total = 0.0;
             self.grade = Grade::F;
         } else {
-            self.grade = Grade::from_score(self.total);
+            self.grade = Self::grade_for(self.total, self.has_contract_coverage);
+        }
+    }
 
-            // CB-1400: Provable-contract coverage required for A-tier grades.
-            // A "perfect" file without contract coverage caps at A-.
-            // This enforces contract-first design as a hard requirement for
-            // the highest quality tier — you cannot be truly "excellent"
-            // without provable guarantees.
-            // Note: Grade enum ordering is APLus < A < AMinus (lower = better)
-            if !self.has_contract_coverage && self.grade < Grade::AMinus {
-                self.grade = Grade::AMinus;
-            }
+    /// The single score → grade mapping. Every grade pmat prints must come
+    /// through here.
+    ///
+    /// The CB-1400 contract-coverage cap used to live inline in
+    /// `calculate_total`, so aggregation sites that called `Grade::from_score`
+    /// directly produced a *better* grade than the files they summarised:
+    /// `analyze tdg` on a single file reported files[0].grade "AMinus" and
+    /// average_grade "APLus" for the same 99.7 (GH #680).
+    ///
+    /// CB-1400: provable-contract coverage is required for A-tier grades. A
+    /// "perfect" file without contract coverage caps at A- — you cannot be
+    /// truly "excellent" without provable guarantees.
+    #[must_use]
+    pub fn grade_for(total: f32, has_contract_coverage: bool) -> Grade {
+        let grade = Grade::from_score(total);
+        // Note: Grade enum ordering is APLus < A < AMinus (lower = better)
+        if !has_contract_coverage && grade < Grade::AMinus {
+            Grade::AMinus
+        } else {
+            grade
         }
     }
 

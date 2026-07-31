@@ -54,9 +54,10 @@ proptest! {
         let result = IncrementalCoverageResult {
             total_files: total,
             covered_files: above,
-            coverage_percentage: 0.8,
+            coverage_percentage: Some(80.0),
             files_above_threshold: above,
             files_below_threshold: below,
+            files_not_measured: 0,
             changed_files: vec![],
             summary: String::new(),
         };
@@ -77,9 +78,10 @@ proptest! {
         let result = IncrementalCoverageResult {
             total_files: total,
             covered_files: covered,
-            coverage_percentage: 0.8,
+            coverage_percentage: Some(80.0),
             files_above_threshold: above,
             files_below_threshold: below,
+            files_not_measured: 0,
             changed_files: vec![],
             summary: "Test".to_string(),
         };
@@ -124,18 +126,42 @@ proptest! {
         // covered should not exceed total in valid data
         let valid_covered = covered.min(total);
 
+        // Percentages in 0-100, and `None` when unmeasured (GH #658).
         let file_coverage = ChangedFileCoverage {
             file_path: "test.rs".to_string(),
-            coverage_before: 0.0,
-            coverage_after: valid_covered as f64 / total as f64,
-            coverage_delta: 0.0,
-            status: CoverageStatus::Unchanged,
+            coverage_before: None,
+            coverage_after: Some(valid_covered as f64 / total as f64 * 100.0),
+            coverage_delta: None,
+            status: CoverageStatus::NotMeasured,
             lines_covered: valid_covered,
             lines_total: total,
         };
 
         prop_assert!(file_coverage.lines_covered <= file_coverage.lines_total);
-        prop_assert!(file_coverage.coverage_after >= 0.0);
-        prop_assert!(file_coverage.coverage_after <= 1.0);
+        let after = file_coverage.coverage_after.unwrap();
+        prop_assert!(after >= 0.0);
+        prop_assert!(after <= 100.0);
+    }
+
+    /// GH #658: an unmeasured factor must stay unmeasured through serde, never
+    /// deserialize back as 0.0.
+    #[test]
+    fn unmeasured_coverage_survives_serialization(covered in 0usize..100) {
+        let file_coverage = ChangedFileCoverage {
+            file_path: "test.rs".to_string(),
+            coverage_before: None,
+            coverage_after: None,
+            coverage_delta: None,
+            status: CoverageStatus::NotMeasured,
+            lines_covered: covered,
+            lines_total: 0,
+        };
+
+        let json = serde_json::to_string(&file_coverage).unwrap();
+        let back: ChangedFileCoverage = serde_json::from_str(&json).expect("serde roundtrip");
+        prop_assert_eq!(back.coverage_before, None);
+        prop_assert_eq!(back.coverage_after, None);
+        prop_assert_eq!(back.coverage_delta, None);
+        prop_assert!(json.contains("null"));
     }
 }
