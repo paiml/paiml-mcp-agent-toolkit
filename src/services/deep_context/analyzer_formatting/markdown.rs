@@ -71,20 +71,20 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<()> {
         output.push_str("## Quality Scorecard\n\n");
         output.push_str(&format!(
-            "- Overall Health: {:.1}%\n",
-            scorecard.overall_health
+            "- Overall Health: {}\n",
+            QualityScorecard::render(scorecard.overall_health, "%")
         ));
         output.push_str(&format!(
-            "- Maintainability Index: {:.1}%\n",
-            scorecard.maintainability_index
+            "- Maintainability Index: {}\n",
+            QualityScorecard::render(scorecard.maintainability_index, "%")
         ));
         output.push_str(&format!(
-            "- Refactoring Time: {:.1} hours\n",
-            scorecard.technical_debt_hours
+            "- Refactoring Time: {}\n",
+            QualityScorecard::render(scorecard.technical_debt_hours, " hours")
         ));
         output.push_str(&format!(
-            "- Complexity Score: {:.1}%\n",
-            scorecard.complexity_score
+            "- Complexity Score: {}\n",
+            QualityScorecard::render(scorecard.complexity_score, "%")
         ));
         output.push('\n');
         Ok(())

@@ -26,29 +26,38 @@ pub fn format_executive_summary(context: &DeepContext) -> String {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn format_quality_scorecard(context: &DeepContext) -> String {
     let mut output = String::new();
+    use crate::services::deep_context::QualityScorecard;
+
 
     output.push_str("\n## Quality Scorecard\n\n");
 
+    // An unmeasured score gets no verdict emoji: "❌" for a value nobody
+    // computed would read as a finding.
     let health_emoji = match context.quality_scorecard.overall_health {
-        h if h >= 80.0 => "✅",
-        h if h >= 60.0 => "⚠️",
-        _ => "❌",
+        Some(h) if h >= 80.0 => "✅",
+        Some(h) if h >= 60.0 => "⚠️",
+        Some(_) => "❌",
+        None => "—",
     };
 
     let _ = writeln!(
         &mut output,
-        "- **Overall Health**: {} ({:.1}/100)",
-        health_emoji, context.quality_scorecard.overall_health
+        "- **Overall Health**: {} ({})",
+        health_emoji,
+        QualityScorecard::render(context.quality_scorecard.overall_health, "/100")
     );
     let _ = writeln!(
         &mut output,
-        "- **Maintainability Index**: {:.1}",
-        context.quality_scorecard.maintainability_index
+        "- **Maintainability Index**: {}",
+        QualityScorecard::render(context.quality_scorecard.maintainability_index, "")
     );
     let _ = writeln!(
         &mut output,
-        "- **Technical Debt**: {:.1} hours estimated",
-        context.quality_scorecard.technical_debt_hours
+        "- **Technical Debt**: {}",
+        QualityScorecard::render(
+            context.quality_scorecard.technical_debt_hours,
+            " hours estimated"
+        )
     );
 
     output

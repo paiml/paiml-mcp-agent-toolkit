@@ -391,8 +391,21 @@ mod tests {
         let r = populated_report_with_blocks(2);
         let out = format_output(&r, crate::cli::DuplicateOutputFormat::Json).unwrap();
         assert!(out.contains("\"total_duplicates\""));
-        assert!(out.contains("\"entropy_analysis\""));
         assert!(out.contains("\"metrics\""));
+
+        // This assertion used to require `entropy_analysis` to be PRESENT, which
+        // pinned a fabrication: the block was emitted with the constants
+        // average_entropy 0.5 / high_entropy_blocks 0 in every run, and this
+        // command performs no entropy analysis at all. The test was enforcing
+        // the bug. It now enforces the fix.
+        assert!(
+            !out.contains("\"entropy_analysis\""),
+            "duplicates JSON must not emit an entropy block it never measured"
+        );
+        assert!(
+            !out.contains("\"analysis_time_ms\""),
+            "duplicates JSON must not emit a hardcoded analysis time"
+        );
     }
 
     #[test]

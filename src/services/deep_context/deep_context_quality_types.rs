@@ -3,13 +3,39 @@
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 /// Quality scorecard.
+///
+/// `None` means pmat did NOT measure the field — not that it measured zero.
+/// Four of these were hardcoded literals (`maintainability_index = 70.0`,
+/// `modularity_score = 85.0`, `test_coverage = 65.0`, `technical_debt_hours =
+/// 40.0`, each tagged `// Placeholder for now`), so an empty directory and the
+/// whole pmat repo reported the same "Overall Health: 85.0%". Because the
+/// neighbouring `complexity_score` IS real, the constants read as measurements.
+///
+/// Anything that cannot be measured in the caller's scope must stay `None` and
+/// render as "not measured". See `contracts/pmat-no-fabrication-v1.yaml`,
+/// equation `measured_or_absent`.
 pub struct QualityScorecard {
-    pub overall_health: f64,
-    pub complexity_score: f64,
-    pub maintainability_index: f64,
-    pub modularity_score: f64,
+    pub overall_health: Option<f64>,
+    pub complexity_score: Option<f64>,
+    pub maintainability_index: Option<f64>,
+    pub modularity_score: Option<f64>,
     pub test_coverage: Option<f64>,
-    pub technical_debt_hours: f64,
+    pub technical_debt_hours: Option<f64>,
+}
+
+impl QualityScorecard {
+    /// Render a score, or say plainly that it was not measured.
+    ///
+    /// Every display path must go through this: a `None` silently formatted as
+    /// `0` would be a fresh fabrication, and a worse one, because zero looks
+    /// like a finding.
+    #[must_use]
+    pub fn render(value: Option<f64>, unit: &str) -> String {
+        value.map_or_else(
+            || "not measured".to_string(),
+            |v| format!("{v:.1}{unit}"),
+        )
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

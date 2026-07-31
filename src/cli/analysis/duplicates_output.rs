@@ -25,13 +25,16 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
         "file_statistics": report.file_statistics,
         "exact_duplicates": report.duplicate_blocks.iter().filter(|b| b.similarity >= 1.0).count(),
         "structural_similarities": report.duplicate_blocks.iter().filter(|b| b.similarity >= 0.8 && b.similarity < 1.0).count(),
-        "entropy_analysis": {
-            "high_entropy_blocks": 0,
-            "low_entropy_blocks": report.duplicate_blocks.len(),
-            "average_entropy": 0.5
-        },
+        // `entropy_analysis` and `analysis_time_ms` used to be emitted here as
+        // the constants 0.5 / 0 / 100 in EVERY run, regardless of input. This
+        // command runs no entropy analysis and did not time itself, so those
+        // were fabricated measurements sitting beside real ones -- which is
+        // precisely what makes them dangerous: the real neighbours lend them
+        // credibility. They are omitted rather than defaulted; a consumer that
+        // needs entropy should call `pmat analyze entropy`, which measures it.
+        //
+        // See contracts/pmat-no-fabrication-v1.yaml, equation `measured_or_absent`.
         "metrics": {
-            "analysis_time_ms": 100,
             "files_processed": report.file_statistics.len(),
             "blocks_analyzed": report.duplicate_blocks.len()
         }

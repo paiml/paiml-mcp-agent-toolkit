@@ -143,16 +143,76 @@ falsification_tests:
   test: cargo test --lib -- check_handlers -- with tempdir (no files)
   if_fails: Check panics on missing input, breaks CI for clean projects
 kani_harnesses:
-- verify_geometric_mean_bounded
-- verify_geometric_mean_empty
-- verify_geometric_mean_identity
-- verify_geometric_mean_zero_absorbing
-- verify_impact_score_non_negative
-- verify_impact_score_zero_missed
-- verify_impact_score_monotonic_missed
-- verify_rrf_score_bounded
-- verify_rrf_score_monotonic_decreasing
-- verify_rrf_rank_zero_maximum
+- id: KANI-PMAT-001
+  obligation: geometric mean of non-negatives stays within [0, max]
+  property: composite in [0.0, 100.0] for all sub_scores >= 0.0
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_geometric_mean_bounded
+- id: KANI-PMAT-002
+  obligation: geometric mean of an empty set is undefined, not zero
+  property: sub_scores.len() == 0 implies no composite is produced
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_geometric_mean_empty
+- id: KANI-PMAT-003
+  obligation: geometric mean of identical values is that value
+  property: all(s == k) implies composite == k
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_geometric_mean_identity
+- id: KANI-PMAT-004
+  obligation: a zero sub-score absorbs the geometric mean
+  property: any(s == 0.0) implies composite == 0.0
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_geometric_mean_zero_absorbing
+- id: KANI-PMAT-005
+  obligation: impact score is never negative
+  property: score >= 0.0 for all non-negative factors
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_impact_score_non_negative
+- id: KANI-PMAT-006
+  obligation: zero missed lines yields zero impact
+  property: missed == 0 implies score == 0.0
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_impact_score_zero_missed
+- id: KANI-PMAT-007
+  obligation: impact is monotonic in missed lines
+  property: missed_a <= missed_b implies score_a <= score_b
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_impact_score_monotonic_missed
+- id: KANI-PMAT-008
+  obligation: RRF score stays within its bound
+  property: rrf in (0.0, 1.0] for rank >= 0
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_rrf_score_bounded
+- id: KANI-PMAT-009
+  obligation: RRF decreases monotonically with rank
+  property: rank_a < rank_b implies rrf_a > rrf_b
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_rrf_score_monotonic_decreasing
+- id: KANI-PMAT-010
+  obligation: rank zero maximises RRF
+  property: argmax(rrf) == 0
+  bound: 8
+  strategy: bounded_int
+  solver: cadical
+  harness: verify_rrf_rank_zero_maximum
 verification_summary:
   total_obligations: 3
   l2_property_tested: 3

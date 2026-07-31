@@ -44,7 +44,7 @@ impl DeepContextAnalyzer {
             .execute_defect_correlation_phase(&analyses, &main_progress)
             .await?;
         let quality_scorecard = self
-            .execute_quality_scoring_phase(&analyses, &defect_summary, &main_progress)
+            .execute_quality_scoring_phase(&analyses, &defect_summary, project_path, &main_progress)
             .await?;
         let recommendations = self
             .execute_recommendations_phase(&analyses, &defect_summary, &main_progress)
@@ -164,11 +164,12 @@ impl DeepContextAnalyzer {
         &self,
         analyses: &ParallelAnalysisResults,
         defect_summary: &DefectSummary,
+        project_path: &std::path::Path,
         progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<QualityScorecard> {
         progress.set_message("Calculating quality scores...");
         let quality_scorecard = self
-            .calculate_quality_scorecard(analyses, defect_summary)
+            .calculate_quality_scorecard(analyses, defect_summary, project_path)
             .await?;
         debug!("Quality scoring completed");
         Ok(quality_scorecard)

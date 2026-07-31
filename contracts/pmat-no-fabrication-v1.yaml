@@ -1,0 +1,213 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-31"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/documentation-accuracy-enforcement.md (zero-hallucination policy)"
+    - "CHANGELOG.md v3.28.0 (analyze comprehensive no longer fabricates its results)"
+    - "CHANGELOG.md v3.27.0 (every falsification claim now measures something)"
+    - "CHANGELOG.md v3.26.0 (falsification ladder audit: 14 of 22 claims verified nothing)"
+    - "scripts/dogfood-release.py (interface-coverage harness that detects fabricated output)"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The anti-fabrication contract for pmat's analysis surface. pmat is a code
+    QUALITY tool: its output is consumed as evidence, and increasingly by LLMs
+    that cannot tell a measurement from a placeholder. A number pmat prints is
+    therefore a claim about the input, and a claim that was never computed from
+    the input is a fabrication regardless of how plausible it looks.
+
+    This contract exists because the 3.29.0 pre-release dogfood found nine
+    blocker-level fabrications shipped simultaneously: a Quality Scorecard whose
+    health/maintainability/coverage were compile-time constants identical for an
+    empty directory and the whole pmat repo; a provability analyzer that emitted
+    the same two phantom functions (main@1, test@10) for every file; a
+    proof-annotation command that emitted ten annotations for files that exist
+    nowhere, each with a freshly generated UUID and a current-time dateVerified;
+    a duplicate detector whose DEFAULT mode returned zero on byte-identical
+    files; and analysis commands that exited 0 with a score for paths that do
+    not exist.
+
+    The unifying failure is that nothing in the build, the test suite, or CI
+    distinguishes "computed from the input" from "constant that type-checks".
+    These equations make that distinction falsifiable.
+  contract: pmat-no-fabrication
+  status: active
+
+equations:
+  measured_or_absent:
+    formula: >
+      forall m in reported_metrics(cmd, input):
+        derived_from(m, input) or marked_unmeasured(m)
+    domain: cmd in AnalysisCommand, input in Path
+    codomain: Report
+    invariants:
+      - a metric that is a compile-time constant is NEVER rendered as a measurement
+      - a metric that cannot be measured in the command's scope is rendered as an
+        explicit unmeasured marker (None / "not measured" / omitted field), never
+        as a plausible default
+      - varying the input must be able to vary every reported metric; a metric
+        that is invariant across all inputs is by definition not measuring the input
+      - "test coverage is only reported when a coverage run actually produced it"
+    preconditions:
+      - the command declares which metrics it computes
+
+  output_derived_from_input:
+    formula: >
+      analyze(empty_input) = empty_result  and  analyze(i) = f(files_read(i))
+    domain: i in Path
+    codomain: AnalysisResult
+    invariants:
+      - an input containing zero analysable files yields zero findings
+      - every finding references a file that was actually read from the given path
+      - no finding names a path that does not exist on disk
+      - result size is a function of input size, not a constant
+    preconditions:
+      - the path exists and is readable
+
+  missing_path_fails:
+    formula: "not exists(p) -> analyze(p) = Err(PathNotFound) and exit_code != 0"
+    domain: p in Path
+    codomain: Result<AnalysisResult>
+    invariants:
+      - a nonexistent path NEVER yields exit 0
+      - a nonexistent path NEVER yields a score, grade, percentage or "PASSED"
+      - the failure names the offending path
+    preconditions: []
+
+  detection_mode_superset:
+    formula: "results(All) >= union(results(m) for m in sub_modes)"
+    domain: mode in DetectionType
+    codomain: Vec<Duplicate>
+    invariants:
+      - "|results(All)| >= |results(m)| for every single mode m"
+      - the documented default mode can never report fewer findings than an
+        explicitly selected sub-mode on the same input
+      - byte-identical files are reported as duplicates under the default mode
+    preconditions:
+      - at least one sub-mode is implemented
+
+  source_location_fidelity:
+    formula: "reported_line(item) = true_source_line(item)"
+    domain: item in AstItem
+    codomain: LineNumber
+    invariants:
+      - a reported line is the item's line in its source file
+      - a reported line is NEVER an enumeration index or array position
+      - line numbers agree across commands analysing the same file
+      - reported_line <= file_line_count
+    preconditions:
+      - the AST layer carries the true line
+
+  bounded_time_arithmetic:
+    formula: "clamp(now - days(n)) is defined for all n in u32"
+    domain: n in u32 (user-supplied lookback)
+    codomain: DateTime<Utc>
+    invariants:
+      - no user-supplied integer reaches unchecked DateTime arithmetic
+      - an out-of-range lookback is clamped or rejected, never panicked on
+      - the process never terminates by SIGABRT on user input
+    preconditions: []
+
+  session_survives_recoverable_frame:
+    formula: >
+      recoverable(err) -> (emit_jsonrpc_error(err) and session_alive)
+      and connection_closed(err) -> session_ends
+    domain: err in TransportError
+    codomain: SessionState
+    invariants:
+      - a malformed frame, unknown method or invalid params yields a JSON-RPC
+        error response and the session continues to serve later requests
+      - only ConnectionClosed or a genuine IO failure ends the session
+      - the server NEVER exits 0 silently mid-conversation
+      - requests already accepted are still answered before the session ends
+    preconditions:
+      - the transport distinguishes recoverable errors from connection loss
+
+falsification:
+  - condition: "A reported metric is identical for an empty directory and a large real repository"
+    severity: P0
+    action: reject_push
+  - condition: "An analysis result names a file path that does not exist on disk"
+    severity: P0
+    action: reject_push
+  - condition: "A command exits 0 and prints a score for a path that does not exist"
+    severity: P0
+    action: reject_push
+  - condition: "A proof/verification artifact is emitted with a current-time dateVerified without a verification having run"
+    severity: P0
+    action: reject_push
+  - condition: "The default detection mode returns fewer findings than a sub-mode on identical input"
+    severity: P0
+    action: reject_push
+  - condition: "A reported source line is an enumeration index rather than the true line"
+    severity: P1
+    action: reject_push
+  - condition: "User-supplied integer input causes a panic or SIGABRT"
+    severity: P0
+    action: reject_push
+  - condition: "An MCP session terminates silently with exit 0 on a recoverable protocol error"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: FALSIFY-NOFAB-001
+    rule: A reported metric must vary with the input, or be marked unmeasured
+    prediction: >
+      Running a metric-reporting command against an empty directory and against a
+      populated project yields different values, OR the metric is rendered as an
+      explicit unmeasured marker. Before the fix, `pmat context` reported
+      Overall Health 85.0 / Maintainability Index 70.0 / Test Coverage 65.0 for
+      BOTH an empty directory and the 3252-file pmat repo.
+    test: cargo test --lib no_fabrication::metric_varies_with_input
+    if_fails: pmat reports compile-time constants as measurements
+  - id: FALSIFY-NOFAB-002
+    rule: An empty input yields an empty result
+    prediction: >
+      `analyze proof-annotations` on an empty directory reports zero annotations.
+      Before the fix it emitted ten annotations naming borrow_checker_0.rs and
+      other files that exist nowhere on the filesystem.
+    test: cargo test --lib no_fabrication::empty_input_empty_result
+    if_fails: pmat invents findings for input it never read
+  - id: FALSIFY-NOFAB-003
+    rule: A nonexistent path fails loudly
+    prediction: >
+      Every analysis command given a path that does not exist exits non-zero and
+      names the path. Before the fix, `analyze proof-annotations`, `cuda-tdg`,
+      `analyze comprehensive`, `analyze dag`, `analyze provability`,
+      `analyze defect-prediction` and `analyze defects` all exited 0, some
+      printing "Quality Score: 100.0%" or "Gateway: PASSED".
+    test: cargo test --lib no_fabrication::missing_path_is_an_error
+    if_fails: a typo in a path silently produces a passing quality report
+  - id: FALSIFY-NOFAB-004
+    rule: The default duplicate-detection mode is a superset of every sub-mode
+    prediction: >
+      On two byte-identical files, the default (`--detection-type all`) reports
+      at least as many duplicates as `--detection-type exact`. Before the fix,
+      exact found 13 and all found 0 on the same input (124 vs 0 on real source).
+    test: cargo test --lib no_fabrication::all_mode_is_superset
+    if_fails: the default invocation reports clean code as clean when it is duplicated
+  - id: FALSIFY-NOFAB-005
+    rule: Reported source lines are real source lines
+    prediction: >
+      `context --format json` reports the same line for a function as
+      `quality-gate` does for the same file. Before the fix, context emitted
+      1,2,3,4,5 (enumeration indices) where the true lines were 6,651,776,777,778.
+    test: cargo test --lib no_fabrication::line_numbers_are_source_lines
+    if_fails: any tool consuming context JSON to jump to code lands in the wrong place
+  - id: FALSIFY-NOFAB-006
+    rule: User-supplied lookback never panics
+    prediction: >
+      `analyze churn -d N` terminates normally for every u32 N, including
+      2147483647 and 4294967295. Before the fix, N >= ~100000000 aborted with
+      SIGABRT at src/services/git_analysis.rs:65 ("`DateTime - TimeDelta` overflowed").
+    test: cargo test --lib no_fabrication::churn_lookback_is_clamped
+    if_fails: a user-supplied integer crashes the process with a core dump
+  - id: FALSIFY-NOFAB-007
+    rule: A recoverable MCP frame does not end the session
+    prediction: >
+      An unknown method or malformed JSON line produces a JSON-RPC error and the
+      NEXT valid request is still answered. Before the fix, the session died
+      silently with exit 0 and every subsequent request was lost.
+    test: cargo test --lib no_fabrication::session_survives_bad_frame
+    if_fails: an MCP host sees the server "succeed" and vanish mid-conversation

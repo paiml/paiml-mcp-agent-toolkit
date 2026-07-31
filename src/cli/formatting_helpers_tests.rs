@@ -57,12 +57,12 @@ fn create_test_deep_context() -> DeepContext {
             big_o_analysis: None,
         },
         quality_scorecard: QualityScorecard {
-            overall_health: 75.5,
-            complexity_score: 8.2,
-            maintainability_index: 68.2,
-            modularity_score: 7.5,
+            overall_health: Some(75.5),
+            complexity_score: Some(8.2),
+            maintainability_index: Some(68.2),
+            modularity_score: Some(7.5),
             test_coverage: Some(65.0),
-            technical_debt_hours: 24.5,
+            technical_debt_hours: Some(24.5),
         },
         template_provenance: None,
         defect_summary: DefectSummary {
@@ -119,7 +119,7 @@ fn test_format_executive_summary() {
 #[test]
 fn test_format_quality_scorecard_high_health() {
     let mut context = create_test_deep_context();
-    context.quality_scorecard.overall_health = 85.0;
+    context.quality_scorecard.overall_health = Some(85.0);
 
     let result = format_quality_scorecard(&context);
 
@@ -133,7 +133,7 @@ fn test_format_quality_scorecard_high_health() {
 #[test]
 fn test_format_quality_scorecard_medium_health() {
     let mut context = create_test_deep_context();
-    context.quality_scorecard.overall_health = 65.0;
+    context.quality_scorecard.overall_health = Some(65.0);
 
     let result = format_quality_scorecard(&context);
 
@@ -144,7 +144,7 @@ fn test_format_quality_scorecard_medium_health() {
 #[test]
 fn test_format_quality_scorecard_low_health() {
     let mut context = create_test_deep_context();
-    context.quality_scorecard.overall_health = 45.0;
+    context.quality_scorecard.overall_health = Some(45.0);
 
     let result = format_quality_scorecard(&context);
 

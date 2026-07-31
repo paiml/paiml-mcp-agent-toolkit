@@ -656,12 +656,12 @@ mod dead_code_and_metrics_tests {
     #[test]
     fn test_quality_scorecard_creation() {
         let scorecard = QualityScorecard {
-            overall_health: 85.0,
-            complexity_score: 90.0,
-            maintainability_index: 80.0,
-            modularity_score: 75.0,
+            overall_health: Some(85.0),
+            complexity_score: Some(90.0),
+            maintainability_index: Some(80.0),
+            modularity_score: Some(75.0),
             test_coverage: Some(70.0),
-            technical_debt_hours: 40.0,
+            technical_debt_hours: Some(40.0),
         };
 
         assert_eq!(scorecard.overall_health, 85.0);

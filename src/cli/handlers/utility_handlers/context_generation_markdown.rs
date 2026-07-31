@@ -45,20 +45,23 @@ fn generate_markdown_context(
 
     // Add quality scorecard
     builder.content.push_str("## Quality Scorecard\n\n");
+    use crate::services::deep_context::QualityScorecard;
     // Normalize Overall Health as TDG score (0-100 range)
-    let tdg_score = (context.quality_scorecard.overall_health)
-        .min(100.0)
-        .max(0.0);
-    builder
-        .content
-        .push_str(&format!("- **Overall Health**: {:.1}%\n", tdg_score));
+    let tdg_score = context
+        .quality_scorecard
+        .overall_health
+        .map(|h| h.clamp(0.0, 100.0));
     builder.content.push_str(&format!(
-        "- **Maintainability Index**: {:.1}\n",
-        context.quality_scorecard.maintainability_index
+        "- **Overall Health**: {}\n",
+        QualityScorecard::render(tdg_score, "%")
     ));
     builder.content.push_str(&format!(
-        "- **Complexity Score**: {:.1}\n",
-        context.quality_scorecard.complexity_score
+        "- **Maintainability Index**: {}\n",
+        QualityScorecard::render(context.quality_scorecard.maintainability_index, "")
+    ));
+    builder.content.push_str(&format!(
+        "- **Complexity Score**: {}\n",
+        QualityScorecard::render(context.quality_scorecard.complexity_score, "")
     ));
     if let Some(coverage) = context.quality_scorecard.test_coverage {
         // Normalize test coverage to 0-100 range (remove meaningless percentages)

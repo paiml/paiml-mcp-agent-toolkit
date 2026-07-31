@@ -62,7 +62,22 @@ impl GitAnalysisService {
             )));
         }
 
-        let since_date = Utc::now() - Duration::days(i64::from(period_days));
+        // Checked, and clamped to the beginning of representable time.
+        //
+        // This was `Utc::now() - Duration::days(i64::from(period_days))`, which
+        // aborts the process with SIGABRT ("`DateTime - TimeDelta` overflowed")
+        // for any lookback beyond roughly 10^8 days — reachable from the CLI as
+        // `analyze churn -d 2147483647`. A user-supplied integer must never
+        // reach unchecked calendar arithmetic; asking for "all of history" is a
+        // reasonable request, not a crash.
+        //
+        // Clamping rather than erroring keeps the obvious intent working: a
+        // huge -d means "since the beginning", and git simply reports every
+        // commit. See contracts/pmat-no-fabrication-v1.yaml,
+        // equation `bounded_time_arithmetic`.
+        let since_date = Duration::try_days(i64::from(period_days))
+            .and_then(|d| Utc::now().checked_sub_signed(d))
+            .unwrap_or(chrono::DateTime::<Utc>::MIN_UTC);
         let since_str = since_date.format("%Y-%m-%d").to_string();
 
         info!("Analyzing code churn for last {} days", period_days);

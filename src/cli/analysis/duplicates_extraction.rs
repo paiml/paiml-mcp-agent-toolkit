@@ -9,14 +9,37 @@ fn extract_blocks(
     let mut blocks = Vec::new();
     let file_str = path.to_string_lossy().to_string();
 
+    // Exhaustive on purpose. This match used to end in `_ => {}`, which
+    // silently swallowed `All` -- the DOCUMENTED DEFAULT. So the default
+    // invocation extracted zero blocks and reported "total_duplicates: 0,
+    // duplication_percentage: 0.0" for byte-identical files, while
+    // `--detection-type exact` on the same input found 124. Reporting
+    // duplicated code as clean is worse than reporting nothing at all.
+    //
+    // Keeping it exhaustive means a new DuplicateType variant is a compile
+    // error here rather than another silent zero.
     match detection_type {
         crate::cli::DuplicateType::Exact => {
             extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        crate::cli::DuplicateType::Fuzzy => {
+        crate::cli::DuplicateType::Fuzzy | crate::cli::DuplicateType::Gapped => {
             extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        _ => {} // Structural matching not implemented yet
+        // `All` must be a superset of every sub-mode, never a subset. Both
+        // extractors run and their blocks are unioned; the hashes cannot
+        // collide across modes because `extract_fuzzy_blocks` hashes a
+        // structural signature while `extract_exact_blocks` hashes normalised
+        // source, and identical content legitimately matching under both is a
+        // genuine duplicate either way.
+        crate::cli::DuplicateType::All => {
+            extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+            extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+        }
+        // Type-2 (renamed) and Type-4 (semantic) have no implementation here.
+        // They extract nothing rather than pretending: the caller reports the
+        // honest zero for an explicitly requested mode, which is different from
+        // the default silently reporting zero for everything.
+        crate::cli::DuplicateType::Renamed | crate::cli::DuplicateType::Semantic => {}
     }
 
     blocks

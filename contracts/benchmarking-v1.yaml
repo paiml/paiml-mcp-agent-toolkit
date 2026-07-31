@@ -2,6 +2,10 @@ metadata:
   version: "1.0.0"
   created: "2026-04-08"
   author: PAIML Engineering
+  references:
+    - "benches/coverage_gaps_bench.rs (criterion harness these budgets gate)"
+    - ".github/workflows/nightly-bench.yml (where the budgets are enforced)"
+    - "docs/specifications/components/repo-health.md (Build Performance category, 15pts)"
   registry: true
   description: >
     Benchmarking and profiling contract — performance budgets for all

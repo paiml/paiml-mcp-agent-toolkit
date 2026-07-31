@@ -2,6 +2,9 @@ metadata:
   version: "1.0.0"
   created: "2026-04-08"
   author: PAIML Engineering
+  references:
+    - "../pmat-book/src/ch07-00-quality-gates.md (the chapter this contract gates)"
+    - "src/cli/handlers/quality_gate_handlers.rs (the command the chapter documents)"
   registry: true
   description: >
     PMAT-BOOK Chapter 7: Quality Gates

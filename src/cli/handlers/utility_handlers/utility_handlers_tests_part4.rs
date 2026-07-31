@@ -199,12 +199,12 @@ mod comprehensive_coverage_tests {
         DeepContext {
             analyses: create_test_analysis_results_with_dead_code(),
             quality_scorecard: QualityScorecard {
-                overall_health: 85.0,
-                complexity_score: 75.0,
-                maintainability_index: 80.0,
-                modularity_score: 70.0,
+                overall_health: Some(85.0),
+                complexity_score: Some(75.0),
+                maintainability_index: Some(80.0),
+                modularity_score: Some(70.0),
                 test_coverage: Some(65.0),
-                technical_debt_hours: 4.5,
+                technical_debt_hours: Some(4.5),
             },
             recommendations: vec![
                 PrioritizedRecommendation {
@@ -400,12 +400,12 @@ mod comprehensive_coverage_tests {
     fn test_add_quality_scorecard() {
         let mut builder = MarkdownBuilder::new();
         let scorecard = QualityScorecard {
-            overall_health: 85.0,
-            complexity_score: 75.0,
-            maintainability_index: 80.0,
-            modularity_score: 70.0,
+            overall_health: Some(85.0),
+            complexity_score: Some(75.0),
+            maintainability_index: Some(80.0),
+            modularity_score: Some(70.0),
             test_coverage: Some(65.0),
-            technical_debt_hours: 4.5,
+            technical_debt_hours: Some(4.5),
         };
 
         add_quality_scorecard(&mut builder, &scorecard);
