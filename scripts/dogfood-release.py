@@ -150,6 +150,176 @@ r = subprocess.run([BIN, "agent", "mcp-server"], capture_output=True, text=True,
 record("fatal errors are never silent",
        r.returncode == 0 or r.stderr.strip() != "")
 
+# ---------------------------------------------------------------------------
+# INTERFACE COVERAGE
+#
+# Everything above pins a specific defect that shipped. The checks below are
+# breadth instead: they walk each of pmat's three interfaces (CLI, MCP, HTTP)
+# so a release cannot ship with a whole surface broken and unnoticed.
+#
+# This section exists because two separate features were found broken this
+# release purely because nothing ever built them: `--features org-intelligence`
+# could not compile its tests (E0004, a `Localize` arm never added), and the
+# pmcp EOF fix regressed under a dependency set CI never resolved. Untested
+# surfaces rot silently.
+# ---------------------------------------------------------------------------
+
+# 8. Every top-level subcommand can at least render its own help.
+#    Catches broken clap wiring, which is invisible to a `--lib` test run.
+help_out = run(["--help"])
+# Parse ONLY the "Commands:" block. Scraping the whole help text picks up option
+# descriptions ("Control", "Force", "Possible", ...) and reports them as broken
+# subcommands -- a harness bug that produces a false red, which is worse than no
+# check at all.
+subcommands = []
+in_commands = False
+for line in help_out.stdout.splitlines():
+    if line.startswith("Commands:"):
+        in_commands = True
+        continue
+    if in_commands:
+        if not line.strip() or not line.startswith(" "):
+            break
+        name = line.split()[0]
+        if name != "help":  # `pmat help --help` is not a thing
+            subcommands.append(name)
+subcommands = sorted(set(subcommands))
+broken = []
+for sc in subcommands:
+    try:
+        r = run([sc, "--help"])
+        if r.returncode != 0:
+            broken.append(f"{sc}({r.returncode})")
+    except subprocess.TimeoutExpired:
+        broken.append(f"{sc}(timeout)")
+record(f"CLI: all {len(subcommands)} subcommands render help", not broken,
+       ", ".join(broken) if broken else f"{len(subcommands)} ok")
+
+# 9. Core analyses produce real, parseable output on a real tree.
+with tempfile.TemporaryDirectory() as d:
+    src = os.path.join(d, "src")
+    os.makedirs(src, exist_ok=True)
+    with open(os.path.join(src, "lib.rs"), "w") as f:
+        f.write(
+            "pub fn tangled(a: u32, b: u32, c: u32) -> u32 {\n"
+            "    if a > 1 { if b > 2 { if c > 3 { return a + b + c; } } }\n"
+            "    // TODO: this is self-admitted technical debt\n"
+            "    let v: Option<u32> = None;\n"
+            "    v.unwrap()\n"
+            "}\n")
+    with open(os.path.join(d, "Cargo.toml"), "w") as f:
+        f.write('[package]\nname = "fixture"\nversion = "0.1.0"\nedition = "2021"\n')
+
+    r = run(["analyze", "complexity", "--path", d, "--format", "json"])
+    ok = r.returncode == 0 and r.stdout.strip().startswith(("{", "["))
+    record("CLI: analyze complexity emits JSON", ok, f"rc={r.returncode}")
+
+    r = run(["analyze", "satd", "--path", d, "--format", "json"])
+    record("CLI: analyze satd emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+    # NB: `context` spells it --project-path, while `analyze *` uses --path and
+    # `tdg` takes a positional. Inconsistent, but that is the real interface.
+    r = run(["context", "--project-path", d, "--format", "json"])
+    record("CLI: context emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+    r = run(["tdg", d, "--format", "json"])
+    record("CLI: tdg emits JSON",
+           r.returncode == 0 and r.stdout.strip().startswith(("{", "[")),
+           f"rc={r.returncode}")
+
+# 10. HTTP interface actually serves, not just prints a hint.
+#     `serve` with no MCP_VERSION should bind and answer. Skipped rather than
+#     failed if the build has no http-server feature, so a default-feature
+#     artifact does not report a false red.
+import socket
+import time
+import urllib.request
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+port = free_port()
+proc = subprocess.Popen([BIN, "serve", "--port", str(port)],
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        text=True, stdin=subprocess.DEVNULL)
+served = None
+deadline = time.time() + 30
+while time.time() < deadline:
+    if proc.poll() is not None:
+        break
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as resp:
+            served = resp.status
+            break
+    except Exception:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as resp:
+                served = resp.status
+                break
+        except Exception:
+            time.sleep(0.5)
+out = ""
+if proc.poll() is None:
+    proc.terminate()
+    try:
+        out = proc.communicate(timeout=10)[0] or ""
+    except subprocess.TimeoutExpired:
+        proc.kill()
+else:
+    out = proc.communicate(timeout=5)[0] or ""
+
+if served is not None:
+    record("HTTP: serve binds and answers", served < 500, f"status {served}")
+else:
+    # `pmat serve` HTTP is deliberately unimplemented and says so
+    # (utility_serve_handlers.rs). That is honest, so it is not a failure -- but
+    # it means pmat ships TWO working interfaces, CLI and MCP, not three.
+    unimplemented = "not yet implemented" in out
+    record("HTTP: serve fails honestly when unimplemented",
+           unimplemented and "MCP_VERSION=1" in out,
+           "unimplemented + working hint" if unimplemented
+           else f"did not bind and did not explain why: {out.strip()[:200]}")
+
+    # If HTTP does not work, nothing shipped may claim it does. pmat has an
+    # explicit zero-hallucination documentation policy; its own package
+    # description is the one piece of metadata every crates.io visitor reads.
+    #
+    # CAVEAT: this reads the REPO's Cargo.toml, not the binary -- cargo does not
+    # embed the description in the artifact, so it cannot be derived from it.
+    # That means this check does NOT discriminate between binaries: it passes
+    # against an old release that did advertise HTTP, as long as the working
+    # tree is fixed. It is a repo-metadata gate, not an artifact assertion.
+    # Do not read a pass here as evidence about the binary under test.
+    if unimplemented:
+        manifest = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), "Cargo.toml")
+        desc = ""
+        try:
+            for line in open(manifest):
+                if line.startswith("description"):
+                    desc = line
+                    break
+        except OSError:
+            pass
+        claims_http = "HTTP" in desc
+        record("docs: package description does not claim unimplemented HTTP",
+               not claims_http,
+               desc.strip()[:160] if claims_http else "description matches reality")
+
+# 11. `-V` stays short, `--version` carries provenance. Both must work:
+#     scripts and packagers parse `-V`, humans and verify-artifact.sh read `--version`.
+short = run(["-V"]).stdout.strip()
+record("CLI: -V stays a single line", short.count("\n") == 0 and "commit:" not in short,
+       short)
+
 failed = [n for n, ok, _ in results if not ok]
 print()
 print(f"{len(results) - len(failed)}/{len(results)} checks passed")

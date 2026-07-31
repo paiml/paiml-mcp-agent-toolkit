@@ -19,7 +19,8 @@ use super::commands_enum::Commands;
     // the tree under test. This makes that mismatch checkable.
     //
     // The plain version stays the first token, so existing assertions of the form
-    // `--version` output contains "3.28.3" keep working. `-V` remains short.
+    // "`--version` output contains <the version number>" keep working, and `-V`
+    // remains a single line for packagers and scripts that parse it.
     long_version = concat!(
         env!("CARGO_PKG_VERSION"),
         "\ncommit: ",

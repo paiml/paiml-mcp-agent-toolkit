@@ -21,8 +21,12 @@ ignore = [
     # Reviewed 2026-07-02 (MACS-000 bootstrap, #612) — all transitive via the
     # aprender 0.50 sovereign stack; fixes require upstream aprender releases.
     { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2: unmaintained, transitive via validator_derive→validator→apr-cli; no safe upgrade available" },
-    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.37.5 quadratic attr check: transitive via aprender-orchestrate 0.50; fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
-    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.37.5 NsReader allocation DoS: transitive via aprender-orchestrate 0.50; fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
+    # Re-verified 2026-07-31 against Cargo.lock. The path changed: aprender-orchestrate
+    # was removed as a dependency, and quick-xml now arrives only via
+    # syntect -> plist, behind the opt-in `syntax-highlighting` feature (NOT default).
+    # The version also moved 0.37.5 -> 0.39.4, which is still below the 0.41 fix.
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39.4 quadratic attr check: transitive via syntect->plist (opt-in syntax-highlighting only); fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39.4 NsReader allocation DoS: transitive via syntect->plist (opt-in syntax-highlighting only); fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
 ]
 
 [licenses]

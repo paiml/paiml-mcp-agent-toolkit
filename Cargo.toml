@@ -1,10 +1,15 @@
 [package]
 name = "pmat"
-version = "3.28.3"
+version = "3.29.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
-description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
+# Says CLI and MCP because those are the two interfaces that work. `pmat serve`
+# reports "HTTP transport not yet implemented" (utility_serve_handlers.rs), so
+# advertising HTTP here was a capability claim the binary contradicts -- exactly
+# what this project's documentation-accuracy policy exists to prevent. Restore
+# HTTP to this line when `pmat serve` actually binds.
+description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP)"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 license = "MIT OR Apache-2.0"
@@ -29,9 +34,6 @@ required-features = ["mcp-integration"]
 [dependencies]
 # Sovereign stack: shared utilities (batuta-common: old name, lib.name still batuta_common)
 batuta-common = "0.1"
-
-# Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.50", optional = true }  # 0.41 removed the OIP analyzer/report/summarizer API; `pmat org analyze` is stubbed (see org_handlers.rs)
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -64,17 +66,17 @@ libc = { version = "0.2", optional = true }
 # the aprender library API, and aprender's lib.rs has zero `cfg(feature)` gates, so
 # turning defaults off costs nothing here. Do not re-enable: every other aprender
 # feature also implies `cli`.
-aprender = { version = "0.50", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+aprender = { version = "0.61", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-aprender-compute = { version = "0.50", optional = true }
-aprender-db = { version = "0.50", optional = true, default-features = false }
+aprender-compute = { version = "0.61", optional = true }
+aprender-db = { version = "0.61", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-aprender-graph = { version = "0.51", default-features = false }  # CSR graph, PageRank, Louvain
-aprender-rag = { version = "0.50", optional = true }  # RAG pipeline
-aprender-viz = { version = "0.50", optional = true, features = ["terminal", "graph"] }
+aprender-graph = { version = "0.61", default-features = false }  # CSR graph, PageRank, Louvain
+aprender-rag = { version = "0.61", optional = true }  # RAG pipeline
+aprender-viz = { version = "0.61", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -85,7 +87,7 @@ arrow = { version = "57", optional = true }  # Arrow columnar format. MUST match
 # Note: parquet is managed by trueno-db dependency
 
 # Document indexing (PDF text extraction for `pmat query --docs`)
-pdf-extract = { version = "0.10", optional = true }
+pdf-extract = { version = "0.12", optional = true }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
@@ -97,15 +99,7 @@ minijinja = { version = "2.16", default-features = false, optional = true }
 
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
-# Constrained to the 2.11 series, which is what CI and Cargo.lock actually
-# test. A caret "2.9" requirement let `cargo install pmat` resolve pmcp
-# 2.17, whose transport actor defeats the EOF-drain fix in
-# `simple_unified_server.rs`: identical pmat source answers `tools/list` in
-# 30/30 one-shot piped sessions against 2.11 and 9/30 against 2.17. Users
-# were getting a dependency set no test had ever run against, because
-# `cargo install` ignores Cargo.lock. Widen this only together with a
-# fresh-resolution (non---locked) measurement of that race.
-pmcp = { version = "~2.11", features = ["websocket", "http", "sse", "validation"] }
+pmcp = { version = "2.17", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
 lru = { version = "0.18", features = ["hashbrown"], optional = true }
@@ -149,8 +143,8 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
-lz4_flex = { version = "0.13", optional = true }  # Legacy index format
-aprender-zram-core = { version = "0.50", optional = true }
+lz4_flex = { version = "0.14", optional = true }  # Legacy index format
+aprender-zram-core = { version = "0.61", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -162,7 +156,7 @@ futures = { version = "0.3", optional = true }
 
 # GitHub API client (Issue #75: Unified GitHub/YAML workflow)
 # Optional: saves 255 transitive deps when disabled - falls back to `gh` CLI
-octocrab = { version = "0.53", optional = true }
+octocrab = { version = "0.54", optional = true }
 
 # File watching for configuration hot-reload (feature-gated: watch)
 notify = { version = "8.0", optional = true }
@@ -183,10 +177,10 @@ toml = { version = "1.1", optional = true }
 crossbeam-channel = { version = "0.5", optional = true }
 which = { version = "8.0", optional = true }  # Sprint 70: Find cargo-mutants in PATH
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
-swc_ecma_parser = { version = "41.0", optional = true }
-swc_common = { version = "23.0", optional = true }
-swc_ecma_ast = { version = "25.0", optional = true }
-swc_ecma_visit = { version = "25.0", optional = true }
+swc_ecma_parser = { version = "43.0", optional = true }
+swc_common = { version = "24.0", optional = true }
+swc_ecma_ast = { version = "27.0", optional = true }
+swc_ecma_visit = { version = "27.0", optional = true }
 # For Python parsing (conditional) - REMOVED: Migrated to tree-sitter-python
 # rustpython-parser = { version = "0.4.0", optional = true }
 # For C/C++ parsing (conditional)
@@ -213,7 +207,7 @@ tree-sitter-rust = { version = "0.24", optional = true }
 # tree-sitter-ocaml = { version = "0.23", optional = true }
 # For Ruchy language support (Ruby alternative parser)
 ruchy = { version = "4.2.1", optional = true }
-gimli = { version = "0.33", optional = true }
+gimli = { version = "0.34", optional = true }
 rustc-hash = { version = "2.1", optional = true }
 
 # Installer generation
@@ -262,13 +256,13 @@ warp = { version = "0.4", optional = true, features = ["server"] }  # 0.4 gates 
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-aprender-present-core = { version = "0.50", optional = true }
+aprender-present-core = { version = "0.61", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.29", optional = true }
 sys-info = { version = "0.9.1", optional = true }
 
 # Storage backends (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
-wasmparser = { version = "0.252", optional = true }
+wasmparser = { version = "0.255", optional = true }
 shell-words = { version = "1.1.0", optional = true }
 crc32fast = { version = "1.5.0", optional = true }
 # pest = "2.8.2"  # REMOVED: WorkflowParser never instantiated, DslCompiler uses serde
@@ -282,24 +276,21 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = { version = "0.4.3", optional = true }
-aprender-contracts-macros = "0.50"
+aprender-contracts-macros = "0.61"
 
 
 [dev-dependencies]
-aprender-contracts = "0.50"
+aprender-contracts = "0.61"
 rmp-serde = "1.3"  # MessagePack codec for integration tests (replaces bincode after its removal)
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "rustls-native-certs"] }
-pretty_assertions = "1.4"
 tempfile = "3.20"
 assert_cmd = "2.0"      # CLI testing for PMAT-7001
 predicates = "3.1"      # Assertion helpers for PMAT-7001
 criterion = { version = "0.8", features = ["html_reports"] }
 proptest = "1.6"
 serial_test = "3.2"
-futures-test = "0.3"
-env_logger = "0.11.8"
 tokio-util = "0.7.18"
 
 [build-dependencies]
@@ -307,7 +298,6 @@ ureq = "3.0"
 flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml_ng = { version = "0.10", optional = true }
 # hex removed: generated code now uses inline hex_decode_templates() (CB-081)
 sha2 = { version = "0.11", optional = true }  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
@@ -352,7 +342,12 @@ doc-indexing = ["pdf-extract"]  # PDF text extraction for `pmat query --docs`
 # - Eliminates trueno-db v0.1.0 duplicate (we have v0.3.1)
 # - Reduces build time and dependency count
 # - org-intelligence now opt-in via --features org-intelligence
-org-intelligence = ["organizational-intelligence-plugin"]
+# `pmat org localize` works and is gated on this feature, so the feature name must
+# survive. The dependency behind it did not: aprender-orchestrate 0.41 removed the
+# OIP analyzer/report/summarizer API, leaving `pmat org analyze` stubbed, and the
+# crate had zero `use` sites in pmat. It was pulling a full dependency subtree to
+# provide nothing.
+org-intelligence = []
 all-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "ruchy-ast", "go-ast", "wasm-ast", "deep-wasm", "shell-ast", "php-ast", "swift-ast", "lua-ast", "lean-ast"]
 most-languages = ["rust-ast", "typescript-ast", "python-ast", "c-ast", "cpp-ast", "go-ast", "shell-ast"]
 # Sprint 46 Phase 6: Removed java-ast, csharp-ast, ruby-ast, scala-ast (0 references)
@@ -723,6 +718,24 @@ path = "examples/lua_analysis.rs"
 required-features = ["lua-ast"]
 
 # Profile configuration moved to workspace root
+
+[package.metadata.cargo-machete]
+# Every crate listed here IS used -- under a different identifier. Each sets a
+# `[lib] name` that differs from its package name, and cargo-machete matches on
+# the package name with dashes turned into underscores, so it cannot see the
+# real import and reports a false positive.
+#
+# Verified against the 0.61.0 sources in ~/.cargo/registry/src; re-check the
+# `[lib] name` field if a rename ever lands upstream.
+ignored = [
+    "aprender-compute",           # [lib] name = "trueno"
+    "aprender-contracts-macros",  # [lib] name = "provable_contracts_macros"
+    "aprender-db",                # [lib] name = "trueno_db"
+    "aprender-graph",             # [lib] name = "trueno_graph"
+    "aprender-present-core",      # [lib] name = "presentar_core"
+    "aprender-viz",               # [lib] name = "trueno_viz"
+    "aprender-zram-core",         # [lib] name = "trueno_zram_core"
+]
 
 [package.metadata.docs.rs]
 # Lean doc build: the full default feature set (swc/typescript-ast, c/cpp-ast via

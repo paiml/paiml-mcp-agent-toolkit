@@ -229,9 +229,17 @@ mod tests {
             min_frequency: 3,
         };
 
+        // Exhaustive on purpose: `OrgCommands` gained a `Localize` variant and this
+        // match was never updated, so `cargo test --features org-intelligence` failed
+        // with E0004. Nothing in CI or the Makefile builds that feature, so it went
+        // unnoticed. Keep this exhaustive (no wildcard) -- a new variant should break
+        // here loudly rather than be silently ignored.
         match cmd {
             OrgCommands::Analyze { org, .. } => {
                 assert_eq!(org, "testorg");
+            }
+            OrgCommands::Localize { .. } => {
+                panic!("constructed an Analyze command, got Localize");
             }
         }
     }

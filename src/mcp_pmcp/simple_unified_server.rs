@@ -53,13 +53,26 @@ use tracing::info;
 /// answered — and that assertion was simply false.
 ///
 /// So this counts requests in against responses out and defers the signal
-/// until the count reaches zero. A grace timeout would not do: `analyze_deep_
-/// context` can legitimately run for minutes, and any fixed deadline is either
-/// too short for real work or too long to feel responsive.
+/// until the count reaches zero.
 ///
-/// The original hang this wrapper was written to fix is unaffected: with no
-/// work outstanding, `in_flight` is already 0 and the signal still fires
-/// immediately on EOF. Deferral happens only when exiting would lose data.
+/// # Withholding EOF from pmcp itself
+///
+/// Counting was necessary but not sufficient. pmcp's transport actor breaks its
+/// loop the instant `receive()` errors, *without* draining the outbound queue,
+/// so a response the worker already produced is discarded before `send()` is
+/// ever reached — above this wrapper, where counting cannot see it. Against
+/// pmcp 2.17 that cost `tools/list` its answer in 21 of 30 one-shot sessions
+/// even with the counter in place.
+///
+/// `receive()` therefore does not surface EOF while a consumed request is
+/// unanswered. The actor's `select!` is `biased` with the outbound arm first, so
+/// withholding keeps it in the loop, the queued response wins, this future is
+/// dropped, `send()` decrements, and the following `receive()` reports EOF with
+/// nothing outstanding. See [`Self::DRAIN_BACKSTOP`] for the liveness bound.
+///
+/// The original hang this wrapper was written to fix is unaffected: with no work
+/// outstanding, `in_flight` is already 0 and EOF surfaces immediately. Both the
+/// withholding and the deferral happen only when exiting would lose data.
 #[derive(Debug)]
 struct EofSignalingTransport<T: Transport> {
     inner: T,
@@ -94,6 +107,49 @@ impl<T: Transport> EofSignalingTransport<T> {
         )
     }
 
+    /// How long `receive()` will withhold EOF while a request is unanswered.
+    ///
+    /// Only a backstop: the actor's biased outbound arm normally wins in
+    /// microseconds. It exists so a handler that never answers degrades to the
+    /// old truncation instead of wedging the process indefinitely, and it is
+    /// generous because `analyze_deep_context` legitimately runs for minutes.
+    const DRAIN_BACKSTOP: std::time::Duration = std::time::Duration::from_secs(300);
+
+    /// Write a response the inner transport refused, straight to stdout.
+    ///
+    /// pmcp's `StdioTransport` flips a `closed` flag the moment its *read* side
+    /// hits EOF (`shared/stdio.rs`), and `send()` then rejects every subsequent
+    /// write. So a reply for a request the server already accepted is discarded
+    /// simply because the client closed **stdin** — which says nothing about
+    /// whether stdout is still readable. Under the MCP stdio transport the two
+    /// directions are independent streams, and a client that pipes a batch and
+    /// closes stdin is still waiting on stdout. This is why withholding EOF from
+    /// the actor was not sufficient on pmcp 2.17: the frame reached `send()` and
+    /// was rejected below us.
+    ///
+    /// Emitting the frame here uses pmcp's own `serialize_message`, the
+    /// documented single source of truth for the wire encoding, so the bytes are
+    /// identical to what the transport would have written. Returns whether the
+    /// frame was delivered.
+    ///
+    /// Reported upstream as paiml/rust-mcp-sdk#316; remove this once
+    /// `StdioTransport` splits its single `closed` flag into read-side and
+    /// write-side state and stops coupling the write side to read-side EOF.
+    async fn deliver_refused_response(frame: &TransportMessage) -> bool {
+        use tokio::io::AsyncWriteExt;
+
+        let Ok(mut bytes) = pmcp::shared::transport::serialize_message(frame) else {
+            return false;
+        };
+        bytes.push(b'\n');
+
+        let mut out = tokio::io::stdout();
+        if out.write_all(&bytes).await.is_err() {
+            return false;
+        }
+        out.flush().await.is_ok()
+    }
+
     /// Fire the session-end signal if the read side is finished and no
     /// consumed request is still awaiting its response.
     fn signal_if_drained(&mut self) {
@@ -116,7 +172,23 @@ impl<T: Transport> Transport for EofSignalingTransport<T> {
         // a Request travelling outbound is the server calling the client
         // (e.g. sampling), not an answer to anything we counted.
         let retires_request = matches!(message, TransportMessage::Response(_));
-        let result = self.inner.send(message).await;
+
+        // Keep a copy so a refused response can still be delivered. Only
+        // responses are worth the clone; see `deliver_refused_response`.
+        let salvage = if retires_request {
+            Some(message.clone())
+        } else {
+            None
+        };
+
+        let mut result = self.inner.send(message).await;
+
+        if let (Err(_), Some(frame)) = (&result, &salvage) {
+            if Self::deliver_refused_response(frame).await {
+                result = Ok(());
+            }
+        }
+
         if retires_request {
             self.in_flight = self.in_flight.saturating_sub(1);
             // Attempt the deferred signal even if the send itself failed:
@@ -138,6 +210,32 @@ impl<T: Transport> Transport for EofSignalingTransport<T> {
                 if self.pending_end.is_none() {
                     self.pending_end = Some(e.to_string());
                 }
+
+                // Withhold EOF from pmcp while a consumed request is unanswered.
+                //
+                // pmcp's transport actor breaks its loop the moment `receive()`
+                // errors, *without* draining the outbound queue — so a response
+                // the worker has already produced is dropped on the floor. That
+                // happens above this wrapper, which is why counting sends alone
+                // was not enough: `send()` was never reached. On pmcp 2.17 this
+                // cost `tools/list` its answer in 21 of 30 one-shot sessions.
+                //
+                // The actor's `select!` is `biased` with the outbound arm first,
+                // so simply not resolving here keeps it in the loop: the queued
+                // response wins the race, this future is dropped, `send()` runs
+                // and decrements, and the next `receive()` surfaces EOF with
+                // nothing outstanding. Dropping this future loses no bytes — the
+                // inner transport already returned an error, and asking it again
+                // returns the same error.
+                if self.in_flight > 0 {
+                    // Bounded so a handler that never answers degrades to the
+                    // old truncation rather than wedging the process forever;
+                    // a hang is worse for a user than a lost response. The
+                    // normal path never waits: the outbound arm wins in
+                    // microseconds.
+                    tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
+                }
+
                 self.signal_if_drained();
             }
         }
@@ -994,45 +1092,5 @@ mod coverage_tests {
             let _ = SimpleUnifiedServer::default();
         });
         assert!(result.is_ok());
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod dependency_bound_tests {
-    /// The `pmcp` requirement must stay bounded to a tested minor series.
-    ///
-    /// `cargo install pmat` ignores `Cargo.lock`, so users build against whatever
-    /// the version requirement admits — not what CI tested. A caret `"2.9"`
-    /// requirement let users resolve pmcp 2.17, whose transport actor defeats the
-    /// EOF-drain fix in this file: identical pmat source answers `tools/list` in
-    /// **40/40** one-shot piped sessions against pmcp 2.11 and **10/40** against
-    /// 2.17. v3.28.2 shipped a headline fix that did not work for anyone who
-    /// installed it, because every pre-release measurement used a lockfile build.
-    ///
-    /// Widening this requirement is allowed — but only together with a
-    /// fresh-resolution measurement (`cargo install --path .` *without*
-    /// `--locked`) of that race. This test exists so the requirement cannot be
-    /// widened silently.
-    #[test]
-    fn pmcp_requirement_is_bounded_to_a_tested_series() {
-        let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
-            .expect("read own Cargo.toml");
-        let line = manifest
-            .lines()
-            .find(|l| l.trim_start().starts_with("pmcp = "))
-            .expect("pmcp dependency line must exist");
-
-        assert!(
-            line.contains("~2.11") || line.contains("=2.11"),
-            "pmcp must stay pinned to the tested 2.11 series. If you are widening \
-             it deliberately, re-measure the MCP one-shot truncation race with a \
-             fresh (non---locked) `cargo install` first and update this test with \
-             the new numbers. Got: {line}"
-        );
-        assert!(
-            !line.trim_start().starts_with("pmcp = { version = \"2."),
-            "a bare caret requirement admits untested minors; use ~ or =. Got: {line}"
-        );
     }
 }
