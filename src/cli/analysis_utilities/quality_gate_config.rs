@@ -23,18 +23,29 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
         .unwrap_or(DEFAULT_PROVABILITY_THRESHOLD)
 }
 
-/// Load entropy min_pattern_diversity from config files (#194, #219, #227, #248).
+/// Default entropy threshold when neither the CLI nor any config supplies one.
+/// Matches `EntropyConfig::default().min_pattern_diversity`.
+pub(crate) const DEFAULT_MIN_PATTERN_DIVERSITY: f64 = 0.3;
+
+/// Resolve the pattern-diversity threshold the entropy check will apply.
 ///
-/// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml` > CLI default.
-/// Reads from `[entropy] min_pattern_diversity`, `[thresholds] entropy_min_diversity`,
-/// or `[quality] min_pattern_diversity`.
-/// Clamps result to 0.0-1.0 range to prevent unreachable thresholds.
+/// #683: an explicit `--min-entropy` now wins outright. It used to be the *lowest*
+/// priority input, so `--min-entropy 0.0` on a repo whose `pmat.toml` carries
+/// `min_pattern_diversity = 0.30` silently ran at 0.30 — the user's request had
+/// no effect on the result at all. An explicit value is also exempt from the
+/// small-repo scaling below: scaling a number the user typed changes what they
+/// asked for.
 ///
-/// For small repos (<50 source files), the threshold is automatically scaled down
-/// to avoid false positives (#248). Small codebases naturally have lower pattern
-/// diversity because there are fewer files to establish diverse patterns.
-fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
-    let mut result = cli_value;
+/// With no explicit value the order is `.pmat-gates.toml`, then
+/// `.pmat-metrics.toml`, then `pmat.toml`, then `DEFAULT_MIN_PATTERN_DIVERSITY`;
+/// the result is clamped to 0.0-1.0 (#219) and scaled down for small repos
+/// (#248), which naturally show lower pattern diversity.
+fn load_entropy_threshold(project_path: &Path, cli_value: Option<f64>) -> f64 {
+    if let Some(explicit) = cli_value {
+        return explicit.clamp(0.0, 1.0);
+    }
+
+    let mut result = DEFAULT_MIN_PATTERN_DIVERSITY;
 
     // Load from pmat.toml [quality] (lowest config priority, #227)
     if let Some(val) = read_entropy_threshold_from_pmat_toml(project_path) {

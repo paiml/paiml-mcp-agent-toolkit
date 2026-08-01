@@ -4,7 +4,7 @@ mod detection_tests {
     use super::*;
     use crate::entropy::entropy_calculator::EntropyMetrics;
     use crate::entropy::pattern_extractor::{AstPattern, Location, PatternCollection};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_detect_cross_file_duplication() {
@@ -258,14 +258,14 @@ mod detection_tests {
         });
 
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.8,
-            module_level_entropy: 0.8,
-            project_level_entropy: 0.8,
-            pattern_diversity: 0.8,
+            file_level_entropy: Some(0.8),
+            module_level_entropy: Some(0.8),
+            project_level_entropy: Some(0.8),
+            pattern_diversity: Some(0.8),
             total_patterns: 2,
             total_instances: 18,
             total_loc: 100,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let violations = detector.detect_violations(&patterns, &metrics).unwrap();
@@ -297,14 +297,14 @@ mod detection_tests {
         });
 
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.8,
-            module_level_entropy: 0.8,
-            project_level_entropy: 0.8,
-            pattern_diversity: 0.8,
+            file_level_entropy: Some(0.8),
+            module_level_entropy: Some(0.8),
+            project_level_entropy: Some(0.8),
+            pattern_diversity: Some(0.8),
             total_patterns: 1,
             total_instances: 4,
             total_loc: 20,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let violations = detector.detect_violations(&patterns, &metrics).unwrap();

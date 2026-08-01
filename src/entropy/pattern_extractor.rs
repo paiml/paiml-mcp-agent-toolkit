@@ -5,7 +5,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use super::EntropyConfig;
@@ -13,7 +13,7 @@ use super::EntropyConfig;
 // Types: PatternType, Location, AstPattern, PatternCollection, ProjectContext
 include!("pattern_extractor_types.rs");
 
-// Core: PatternExtractor struct, extract_patterns, get_project_context, scan_directory_fallback
+// Core: PatternExtractor struct, extract_patterns, get_project_context, scan_source_files
 include!("pattern_extractor_core.rs");
 
 // Rust pattern extraction methods (error handling, validation, resource mgmt, control flow, etc.)

@@ -239,8 +239,10 @@ pub async fn enrich_results_with_entropy(
         .await
         .map_err(|e| format!("Entropy analysis failed: {e}"))?;
 
-    // Get overall pattern diversity
-    let overall_diversity = report.entropy_metrics.pattern_diversity as f32;
+    // Get overall pattern diversity. `None` means the analysis found no pattern
+    // distribution to measure; leave those results untouched rather than
+    // stamping them with a number that was never computed.
+    let overall_diversity = report.entropy_metrics.pattern_diversity.map(|d| d as f32);
 
     // Build file -> pattern count map from violations
     let mut file_pattern_count: HashMap<String, usize> = HashMap::new();
@@ -263,9 +265,9 @@ pub async fn enrich_results_with_entropy(
         if let Some(&pattern_count) = file_pattern_count.get(&result.file_path) {
             // Lower diversity = more repetitive patterns
             result.pattern_diversity = 1.0 - (pattern_count as f32 / max_patterns).min(1.0);
-        } else {
+        } else if let Some(diversity) = overall_diversity {
             // No violations = high diversity (good)
-            result.pattern_diversity = overall_diversity;
+            result.pattern_diversity = diversity;
         }
     }
 

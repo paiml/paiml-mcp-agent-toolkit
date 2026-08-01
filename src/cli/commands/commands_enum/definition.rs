@@ -484,9 +484,16 @@ pub enum Commands {
         #[arg(long, default_value = "15.0")]
         max_dead_code: f64,
 
-        /// Minimum required complexity entropy
-        #[arg(long, default_value = "2.0")]
-        min_entropy: f64,
+        // #683: this was `min_entropy: f64` with `default_value = "2.0"`. Pattern
+        // diversity is measured on a 0.0-1.0 scale, so 2.0 was clamped to
+        // "require 100% diversity" — unreachable, so the check reported FAILED
+        // whatever the user asked for. As an Option, an explicit value is
+        // distinguishable from "unset" and can outrank project config.
+        /// Minimum required pattern diversity, 0.0-1.0 (0.0 = no diversity
+        /// required, always passes) [default: `[entropy] min_pattern_diversity`
+        /// from .pmat-gates.toml / .pmat-metrics.toml / pmat.toml, else 0.3]
+        #[arg(long)]
+        min_entropy: Option<f64>,
 
         /// Maximum allowed cyclomatic complexity p99
         #[arg(long, default_value = "50")]

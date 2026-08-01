@@ -1027,8 +1027,9 @@ fn test_limited_pattern_extraction() {
     }
 }
 
-/// scan_directory_fallback reads only Rust/Ruchy files and skips others.
-/// Exercises the fallback path when `pmat` subprocess fails or isn't on PATH.
+/// scan_source_files reads only Rust/Ruchy files and skips others.
+/// This is now the only file-discovery path (the `pmat` subprocess was removed
+/// because the analyzed file set must not depend on what is on `$PATH`).
 #[tokio::test]
 async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -1042,9 +1043,9 @@ async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
 
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let context = extractor
-        .scan_directory_fallback(root)
+        .scan_source_files(root)
         .await
-        .expect("fallback should succeed");
+        .expect("source scan should succeed");
 
     // Only .rs, .ruchy, .rh extensions are included.
     let names: std::collections::HashSet<_> = context
@@ -1059,9 +1060,7 @@ async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
     assert!(!names.contains("skip.txt"));
 }
 
-/// get_project_context tolerates a failed/missing pmat binary and returns an
-/// empty context via the fallback on an empty directory. Covers the
-/// `_ => return self.scan_directory_fallback(...)` branch.
+/// get_project_context returns an empty context for an empty directory.
 #[tokio::test]
 async fn test_get_project_context_empty_dir_yields_empty_context() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -1070,7 +1069,6 @@ async fn test_get_project_context_empty_dir_yields_empty_context() {
         .get_project_context(dir.path())
         .await
         .expect("get_project_context must not error on empty dir");
-    // Empty directory produces no files regardless of whether pmat ran or fallback fired.
     assert!(context.files.is_empty());
 }
 

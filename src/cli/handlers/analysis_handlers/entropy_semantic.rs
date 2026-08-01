@@ -87,16 +87,27 @@ pub(crate) fn format_entropy_report(
 }
 
 /// Format summary report
+///
+/// Reports the same measured values the JSON renderer emits — including
+/// "not measured" where the JSON carries `null` — so the two renderers of this
+/// command cannot disagree about a number.
 fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
     use crate::cli::colors as c;
 
     let violations = get_top_violations(&report.actionable_violations, top_violations);
+    let note = report
+        .measurement_note
+        .as_ref()
+        .map_or_else(String::new, |n| format!("Note: {n}\n"));
 
     format!(
         "{}{}Entropy Analysis Summary{}\n\n\
          {}Files Analyzed:{} {}{}{}\n\
+         {}Source Lines Analyzed:{} {}{}{}\n\
+         {}Pattern Diversity:{} {}{}{}\n\
          {}Total Violations:{} {}{}{}\n\
-         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\n\
+         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\
+         {}\n\
          {}Top Violations:{}\n{}\n",
         c::BOLD,
         c::UNDERLINE,
@@ -105,6 +116,16 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
         c::RESET,
         c::BOLD_WHITE,
         report.total_files_analyzed,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        report.entropy_metrics.total_loc,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        crate::entropy::EntropyReport::render_measurement(report.entropy_metrics.pattern_diversity),
         c::RESET,
         c::BOLD,
         c::RESET,
@@ -119,6 +140,7 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
         c::BOLD_WHITE,
         report.reduction_percentage(),
         c::RESET,
+        note,
         c::BOLD,
         c::RESET,
         format_violation_list(&violations)
@@ -133,17 +155,27 @@ fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations
         top_violations
     };
 
+    let note = report
+        .measurement_note
+        .as_ref()
+        .map_or_else(String::new, |n| format!("\n> {n}\n"));
+
     format!(
         "# Entropy Analysis Report\n\n\
          ## Summary\n\n\
          - **Files Analyzed**: {}\n\
+         - **Source Lines Analyzed**: {}\n\
+         - **Pattern Diversity**: {}\n\
          - **Total Violations**: {}\n\
-         - **Potential LOC Reduction**: {} lines ({:.1}%)\n\n\
+         - **Potential LOC Reduction**: {} lines ({:.1}%)\n{}\n\
          ## Violations\n\n{}\n",
         report.total_files_analyzed,
+        report.entropy_metrics.total_loc,
+        crate::entropy::EntropyReport::render_measurement(report.entropy_metrics.pattern_diversity),
         report.actionable_violations.len(),
         report.total_loc_reduction(),
         report.reduction_percentage(),
+        note,
         format_markdown_violations(&report.actionable_violations, max_violations)
     )
 }

@@ -46,7 +46,7 @@ pub struct QualityCheckConfig<'a> {
     pub project_path: &'a Path,
     pub checks: &'a [QualityCheckType],
     pub max_dead_code: f64,
-    pub min_entropy: f64,
+    pub min_entropy: Option<f64>,
     pub max_complexity_p99: u32,
     pub perf: bool,
 }
@@ -90,7 +90,7 @@ pub async fn run_project_checks(
 async fn run_all_checks(
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -115,7 +115,7 @@ struct IndividualChecksConfig<'a> {
     checks: &'a [QualityCheckType],
     project_path: &'a Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     perf: bool,
 }

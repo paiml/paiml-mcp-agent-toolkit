@@ -15,7 +15,7 @@ impl EntropyReport {
     /// use pmat::entropy::entropy_calculator::{EntropyReport, EntropyMetrics};
     /// use pmat::entropy::violation_detector::PatternSummary;
     /// use pmat::entropy::PatternType;
-    /// use std::collections::HashMap;
+    /// use std::collections::BTreeMap;
     ///
     /// // Create a mock report with empty violations for demonstration
     /// let pattern_summary = PatternSummary {
@@ -30,15 +30,16 @@ impl EntropyReport {
     ///     actionable_violations: vec![],  // Empty for simplicity
     ///     pattern_summary,
     ///     entropy_metrics: EntropyMetrics {
-    ///         file_level_entropy: 0.7,
-    ///         module_level_entropy: 0.6,
-    ///         project_level_entropy: 0.55,
-    ///         pattern_diversity: 0.6,
+    ///         file_level_entropy: Some(0.7),
+    ///         module_level_entropy: Some(0.6),
+    ///         project_level_entropy: Some(0.55),
+    ///         pattern_diversity: Some(0.6),
     ///         total_patterns: 8,
     ///         total_instances: 24,
     ///         total_loc: 500,
-    ///         patterns_by_type: HashMap::new(),
+    ///         patterns_by_type: BTreeMap::new(),
     ///     },
+    ///     measurement_note: None,
     /// };
     ///
     /// // With no actionable violations, LOC reduction should be 0
@@ -64,7 +65,7 @@ impl EntropyReport {
     /// use pmat::entropy::entropy_calculator::{EntropyReport, EntropyMetrics};
     /// use pmat::entropy::violation_detector::PatternSummary;
     /// use pmat::entropy::PatternType;
-    /// use std::collections::HashMap;
+    /// use std::collections::BTreeMap;
     ///
     /// let pattern_summary = PatternSummary {
     ///     pattern_type: PatternType::ErrorHandling,
@@ -78,15 +79,16 @@ impl EntropyReport {
     ///     actionable_violations: vec![], // Empty violations
     ///     pattern_summary,
     ///     entropy_metrics: EntropyMetrics {
-    ///         file_level_entropy: 0.8,
-    ///         module_level_entropy: 0.75,
-    ///         project_level_entropy: 0.7,
-    ///         pattern_diversity: 0.75,
+    ///         file_level_entropy: Some(0.8),
+    ///         module_level_entropy: Some(0.75),
+    ///         project_level_entropy: Some(0.7),
+    ///         pattern_diversity: Some(0.75),
     ///         total_patterns: 0,
     ///         total_instances: 0,
     ///         total_loc: 1000, // Total lines analyzed
-    ///         patterns_by_type: HashMap::new(),
+    ///         patterns_by_type: BTreeMap::new(),
     ///     },
+    ///     measurement_note: None,
     /// };
     ///
     /// // With no violations, reduction percentage should be 0
@@ -113,9 +115,21 @@ impl EntropyReport {
 
         report.push_str(&format!("Files Analyzed: {}\n", self.total_files_analyzed));
         report.push_str(&format!(
-            "Actionable Violations: {}\n\n",
+            "Source Lines Analyzed: {}\n",
+            self.entropy_metrics.total_loc
+        ));
+        report.push_str(&format!(
+            "Pattern Diversity: {}\n",
+            Self::render_measurement(self.entropy_metrics.pattern_diversity)
+        ));
+        report.push_str(&format!(
+            "Actionable Violations: {}\n",
             self.actionable_violations.len()
         ));
+        if let Some(note) = &self.measurement_note {
+            report.push_str(&format!("Note: {note}\n"));
+        }
+        report.push('\n');
 
         // Group violations by severity
         let mut high = Vec::new();
@@ -163,5 +177,11 @@ impl EntropyReport {
         ));
 
         report
+    }
+
+    /// Render an optional measurement without ever printing a placeholder number.
+    #[must_use]
+    pub fn render_measurement(value: Option<f64>) -> String {
+        value.map_or_else(|| "not measured".to_string(), |v| format!("{v:.3}"))
     }
 }
