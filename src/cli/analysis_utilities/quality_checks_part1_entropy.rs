@@ -71,27 +71,20 @@ pub async fn check_entropy_with_excludes(
     // Run AST-based entropy analysis
     let report = analyzer.analyze(project_path).await?;
 
-    // #683: the threshold must actually gate the check. Previously `min_entropy`
-    // only reached `EntropyConfig::min_pattern_diversity`, which is consulted by
-    // exactly one of four detectors, so `--min-entropy 0.0` ("require zero
-    // diversity", which must always pass) reported the same FAILED / 8 violations
-    // as `--min-entropy 0.99`.
-    let Some(measured) = report.entropy_metrics.pattern_diversity else {
-        // Nothing measurable ⇒ nothing to compare against ⇒ nothing to report.
-        return Ok(vec![]);
-    };
-    if measured >= min_entropy {
-        return Ok(vec![]);
-    }
-    // #683: every emitted violation names what was compared, so a reader can tell
-    // which threshold produced it. The old text ("ApiCall pattern repeated 10
-    // times (saves 302 lines)") never mentioned a threshold at all.
-    let threshold_context = format!(
-        " [pattern diversity {:.1}% < required {:.1}% (--min-entropy {:.2})]",
-        measured * 100.0,
-        min_entropy * 100.0,
-        min_entropy
-    );
+    // #683: the threshold must actually gate. It reaches
+    // `EntropyConfig::min_pattern_diversity`, which is what decides whether the
+    // low-diversity violation is raised — so raising or lowering `--min-entropy`
+    // changes the violation set, as the flag's help promises.
+    //
+    // What it must NOT do is act as a master switch over unrelated findings.
+    // Returning early when `measured >= min_entropy` suppressed everything:
+    // `--min-entropy 0.3` on a tree measured at 62.6% diversity hid six
+    // High-severity concrete repetition violations that `analyze entropy`
+    // reports on the same tree with file lists, and the default gate therefore
+    // certified "Total violations: 0" for code the sibling command flags 14
+    // times. Repetition, cross-file duplication and inconsistency are measured
+    // against their own thresholds and are reported regardless of diversity.
+    let threshold_context = diversity_context(report.entropy_metrics.pattern_diversity, min_entropy);
 
     // Convert actionable violations to QualityViolation format
     Ok(report
@@ -99,6 +92,24 @@ pub async fn check_entropy_with_excludes(
         .into_iter()
         .map(|violation| to_quality_violation(violation, &threshold_context))
         .collect())
+}
+
+/// Annotation appended to the low-diversity row naming the comparison that
+/// produced it (#683).
+///
+/// `min_entropy` is printed with `{}` (shortest round-trip form), not `{:.2}`:
+/// `--min-entropy 0.999` rendered as "required 99.9% (--min-entropy 1.00)",
+/// where the two halves of one sentence named different values and the echo
+/// named a number the user never passed.
+fn diversity_context(measured: Option<f64>, min_entropy: f64) -> String {
+    measured.map_or_else(String::new, |m| {
+        format!(
+            " [pattern diversity {:.1}% < required {:.1}% (--min-entropy {})]",
+            m * 100.0,
+            min_entropy * 100.0,
+            min_entropy
+        )
+    })
 }
 
 /// Build the entropy analyzer config used by the quality gate.
@@ -118,21 +129,13 @@ fn build_entropy_config(
         min_pattern_diversity: min_entropy,
         // Load max_pattern_repetition from config files (#219)
         max_pattern_repetition: load_max_pattern_repetition(project_path),
+        // Exactly the list `analyze entropy` uses. This function used to build a
+        // narrower one (`**/*_tests.rs` and friends where analyze had
+        // `**/*test*.rs`), so the gate walked 1328 files where analyze walked 939
+        // and the two commands answered the same question differently.
+        exclude_paths: EntropyConfig::analysis_excludes(false),
         ..Default::default()
     };
-    for pattern in [
-        "**/target/**",
-        "**/node_modules/**",
-        "**/*.test.rs",
-        "**/*_tests.rs",
-        "**/*_tests_*.rs",
-        "**/*tests_part*.rs",
-        "**/tests/**",
-        "**/examples/**",
-        "**/benches/**",
-    ] {
-        config.exclude_paths.push(pattern.to_string());
-    }
 
     // Apply extra exclude paths from .pmat-metrics.toml [exclude] (#195)
     for path in extra_exclude_paths {
@@ -150,13 +153,21 @@ fn build_entropy_config(
 
 /// Render one actionable entropy violation as a quality-gate violation.
 ///
-/// `threshold_context` is appended to the message so the row always states the
-/// threshold that produced it (#683).
+/// `diversity_context` is appended only to the project-level diversity row — the
+/// row `--min-entropy` actually decides. Stamping "[pattern diversity 62.6% <
+/// required 30%]" onto an `ApiCall pattern repeated 17 times` row told the reader
+/// that a repetition finding came from the diversity threshold, which it did not.
 fn to_quality_violation(
     violation: crate::entropy::ActionableViolation,
-    threshold_context: &str,
+    diversity_context: &str,
 ) -> QualityViolation {
     use crate::entropy::violation_detector::Severity;
+
+    let context = if violation.pattern.is_none() {
+        diversity_context
+    } else {
+        ""
+    };
 
     QualityViolation {
         check_type: "entropy".to_string(),
@@ -171,11 +182,11 @@ fn to_quality_violation(
         ),
         line: None, // Pattern violations span multiple lines
         message: format!(
-            "{} (saves {} lines) - Fix: {}{}",
+            "{} (saves {}) - Fix: {}{}",
             violation.message,
-            violation.estimated_loc_reduction,
+            violation.render_loc_reduction(),
             violation.fix_suggestion,
-            threshold_context
+            context
         ),
         details: Some(ViolationDetails {
             affected_files: violation
@@ -183,13 +194,21 @@ fn to_quality_violation(
                 .iter()
                 .map(|p| p.to_string_lossy().to_string())
                 .collect(),
-            example_code: Some(violation.pattern.example_code.clone()),
+            // Absent for project-level findings rather than the old placeholder
+            // "Various repetitive patterns" / "repetitions: 0" / a variation_score
+            // that was just `1 - diversity` restated (#650).
+            example_code: violation.pattern.as_ref().map(|p| p.example_code.clone()),
             fix_suggestion: Some(violation.fix_suggestion.clone()),
-            score_factors: vec![
-                format!("pattern_type: {:?}", violation.pattern.pattern_type),
-                format!("repetitions: {}", violation.pattern.repetitions),
-                format!("variation_score: {:.2}", violation.pattern.variation_score),
-            ],
+            score_factors: violation.pattern.as_ref().map_or_else(
+                || vec!["scope: project-wide pattern distribution".to_string()],
+                |p| {
+                    vec![
+                        format!("pattern_type: {:?}", p.pattern_type),
+                        format!("repetitions: {}", p.repetitions),
+                        format!("variation_score: {:.2}", p.variation_score),
+                    ]
+                },
+            ),
         }),
     }
 }

@@ -108,8 +108,13 @@ pub struct EntropyReport {
     pub total_files_analyzed: usize,
     /// List of repetitive patterns that can be refactored with specific suggestions
     pub actionable_violations: Vec<ActionableViolation>,
-    /// Statistical summary of all patterns found in the codebase
-    pub pattern_summary: PatternSummary,
+    /// The most-repeated pattern found, or `None` when no pattern was found.
+    ///
+    /// An analysis that found nothing used to emit a synthesised summary reading
+    /// `{"pattern_type": "ControlFlow", "repetitions": 0, ...}` — a default
+    /// rendered as a measurement.
+    #[serde(default)]
+    pub pattern_summary: Option<PatternSummary>,
     /// Detailed entropy measurements at different granularities
     pub entropy_metrics: EntropyMetrics,
     /// Set when the entropy figures could not be measured, explaining why, so a

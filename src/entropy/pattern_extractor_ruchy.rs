@@ -22,20 +22,10 @@ impl PatternExtractor {
         // Only detect as pattern if we have multiple actors or multiple receive handlers
         if actor_matches.len() > 1 || receive_matches.len() > 2 {
             let pattern_hash = self.hash_pattern(&format!("ruchy_actor_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in actor_matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
+            // MEASURED, UNCAPPED: was a hand-rolled loop that stopped after the
+            // 10th match, so the location list was a truncated total.
+            let locations = Self::distinct_line_locations(file_path, content, &actor_matches);
+            let line_count = locations.len();
 
             let pattern = AstPattern {
                 pattern_type: PatternType::ControlFlow, // Actor model is control flow pattern
@@ -56,7 +46,10 @@ impl PatternExtractor {
                             .to_string()
                     })
                     .unwrap_or_default(),
-                estimated_loc: actor_matches.len() * 8 + receive_matches.len() * 4,
+                // MEASURED: the source lines these occurrences sit on. Was
+                // `actor_matches.len() * 8 + receive_matches.len() * 4`, a guess
+                // at how many lines each construct spans that nothing measured.
+                estimated_loc: line_count,
             };
 
             collection.add_pattern(pattern);
@@ -85,20 +78,9 @@ impl PatternExtractor {
             // Need at least 3 pipeline operations to be a pattern
             let pattern_hash =
                 self.hash_pattern(&format!("ruchy_pipeline_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 15 {
-                    break;
-                }
-            }
+            // MEASURED, UNCAPPED (was truncated after the 15th match).
+            let locations = Self::distinct_line_locations(file_path, content, &matches);
+            let line_count = locations.len();
 
             let pattern = AstPattern {
                 pattern_type: PatternType::DataTransformation, // Pipeline is data transformation
@@ -114,7 +96,9 @@ impl PatternExtractor {
                         content.get(start..end).unwrap_or_default().to_string()
                     })
                     .unwrap_or_default(),
-                estimated_loc: matches.len() * 2, // Each pipeline operation is ~2 lines
+                // MEASURED lines occupied; was `matches.len() * 2` on the
+                // unmeasured assumption that each pipeline operation is ~2 lines.
+                estimated_loc: line_count,
             };
 
             collection.add_pattern(pattern);
@@ -149,20 +133,13 @@ impl PatternExtractor {
         if total_messages > 2 || spawn_matches.len() > 1 {
             let pattern_hash =
                 self.hash_pattern(&format!("ruchy_messaging_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in send_matches.iter().chain(query_matches.iter()).enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 10 {
-                    break;
-                }
-            }
+            // MEASURED, UNCAPPED (was truncated after the 10th match).
+            let locations = Self::distinct_line_locations(
+                file_path,
+                content,
+                send_matches.iter().chain(query_matches.iter()),
+            );
+            let line_count = locations.len();
 
             let pattern = AstPattern {
                 pattern_type: PatternType::ApiCall, // Message passing is like API calls
@@ -184,7 +161,9 @@ impl PatternExtractor {
                             .to_string()
                     })
                     .unwrap_or_default(),
-                estimated_loc: total_messages * 2 + spawn_matches.len() * 3,
+                // MEASURED lines occupied; was `total_messages * 2 +
+                // spawn_matches.len() * 3`, neither factor measured.
+                estimated_loc: line_count,
             };
 
             collection.add_pattern(pattern);
@@ -210,20 +189,9 @@ impl PatternExtractor {
         if matches.len() > 1 {
             let pattern_hash =
                 self.hash_pattern(&format!("ruchy_error_handling_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 8 {
-                    break;
-                }
-            }
+            // MEASURED, UNCAPPED (was truncated after the 8th match).
+            let locations = Self::distinct_line_locations(file_path, content, &matches);
+            let line_count = locations.len();
 
             let pattern = AstPattern {
                 pattern_type: PatternType::ErrorHandling,
@@ -240,7 +208,9 @@ impl PatternExtractor {
                             .to_string()
                     })
                     .unwrap_or_default(),
-                estimated_loc: matches.len() * 6, // Error handling typically 6 lines
+                // MEASURED lines occupied; was `matches.len() * 6` on the
+                // unmeasured assumption that error handling is typically 6 lines.
+                estimated_loc: line_count,
             };
 
             collection.add_pattern(pattern);
@@ -274,20 +244,9 @@ impl PatternExtractor {
             // Multiple matches with many arms
             let pattern_hash =
                 self.hash_pattern(&format!("ruchy_pattern_matching_{}", file_path.display()));
-            let mut locations = Vec::new();
-
-            for (i, m) in match_matches.iter().enumerate() {
-                let line_num = content.get(..m.start()).unwrap_or_default().lines().count() + 1;
-                locations.push(Location {
-                    file: file_path.to_owned(),
-                    line: line_num,
-                    column: 1,
-                });
-
-                if i >= 8 {
-                    break;
-                }
-            }
+            // MEASURED, UNCAPPED (was truncated after the 8th match).
+            let locations = Self::distinct_line_locations(file_path, content, &match_matches);
+            let line_count = locations.len();
 
             let pattern = AstPattern {
                 pattern_type: PatternType::ControlFlow,
@@ -309,7 +268,9 @@ impl PatternExtractor {
                             .to_string()
                     })
                     .unwrap_or_default(),
-                estimated_loc: match_matches.len() * 5 + arrow_matches.len(),
+                // MEASURED lines occupied; was `match_matches.len() * 5 +
+                // arrow_matches.len()`, neither factor measured.
+                estimated_loc: line_count,
             };
 
             collection.add_pattern(pattern);

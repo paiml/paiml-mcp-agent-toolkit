@@ -74,18 +74,18 @@ impl ViolationDetector {
 
                 violations.push(ActionableViolation {
                     severity,
-                    pattern: PatternSummary {
+                    pattern: Some(PatternSummary {
                         pattern_type: pattern.pattern_type,
                         repetitions: pattern.frequency,
                         variation_score: pattern.variation_score,
                         example_code: pattern.example_code.clone(),
-                    },
+                    }),
                     message: format!(
                         "{:?} pattern repeated {} times",
                         pattern.pattern_type, pattern.frequency
                     ),
                     fix_suggestion: self.generate_fix_suggestion(pattern),
-                    estimated_loc_reduction: loc_reduction,
+                    estimated_loc_reduction: Some(loc_reduction),
                     // Was collected through a HashSet, so the file list (and the
                     // "file" a quality-gate row was attributed to, which is the
                     // first entry) changed between runs.
@@ -113,12 +113,13 @@ impl ViolationDetector {
         if diversity < self.config.min_pattern_diversity {
             violations.push(ActionableViolation {
                 severity: Severity::Medium,
-                pattern: PatternSummary {
-                    pattern_type: PatternType::ControlFlow,
-                    repetitions: 0,
-                    variation_score: 1.0 - diversity,
-                    example_code: "Various repetitive patterns".to_string(),
-                },
+                // No pattern: this finding is about the project's pattern
+                // *distribution*, not about any one construct. It used to carry
+                // a placeholder summary whose `variation_score` was `1 - diversity`,
+                // so the same object reported "diversity LOW (11.9%)" and
+                // "variation_score HIGH (0.88)" — one number stated twice, in
+                // opposite directions (#650).
+                pattern: None,
                 message: format!(
                     "Low pattern diversity: {:.1}% (minimum: {:.1}%)",
                     diversity * 100.0,
@@ -126,7 +127,12 @@ impl ViolationDetector {
                 ),
                 fix_suggestion: "Consider extracting common patterns into reusable functions"
                     .to_string(),
-                estimated_loc_reduction: (metrics.total_loc as f64 * 0.15) as usize,
+                // Was `total_loc * 0.15`, invariant to the diversity it claimed
+                // to derive from: 358 LOC -> "saves 53", 1200 -> 180,
+                // 158020 -> 23703, and a project measured at 0.0% diversity got
+                // the same 15% as one measured at 11.9%. Nothing here is
+                // measured, so nothing is reported.
+                estimated_loc_reduction: None,
                 affected_files: vec![],
                 priority_score: 5.0,
             });
@@ -153,12 +159,12 @@ impl ViolationDetector {
 
                 violations.push(ActionableViolation {
                     severity,
-                    pattern: PatternSummary {
+                    pattern: Some(PatternSummary {
                         pattern_type: pattern.pattern_type,
                         repetitions: pattern.frequency,
                         variation_score: pattern.variation_score,
                         example_code: pattern.example_code.clone(),
-                    },
+                    }),
                     message: format!(
                         "{:?} pattern duplicated across {} files",
                         pattern.pattern_type,
@@ -168,7 +174,7 @@ impl ViolationDetector {
                         "Extract to shared module: {}",
                         self.suggest_module_name(pattern.pattern_type)
                     ),
-                    estimated_loc_reduction: self.estimate_loc_reduction(pattern),
+                    estimated_loc_reduction: Some(self.estimate_loc_reduction(pattern)),
                     affected_files: unique_files,
                     priority_score: 8.0,
                 });
@@ -187,12 +193,12 @@ impl ViolationDetector {
             if pattern.variation_score > self.config.max_inconsistency_score {
                 violations.push(ActionableViolation {
                     severity: Severity::Medium,
-                    pattern: PatternSummary {
+                    pattern: Some(PatternSummary {
                         pattern_type: pattern.pattern_type,
                         repetitions: pattern.frequency,
                         variation_score: pattern.variation_score,
                         example_code: pattern.example_code.clone(),
-                    },
+                    }),
                     message: format!(
                         "Inconsistent {:?} implementations (variation: {:.1}%)",
                         pattern.pattern_type,
@@ -204,7 +210,7 @@ impl ViolationDetector {
                     ),
                     // estimated_loc already covers all `frequency` instances;
                     // multiplying by frequency again counted every line twice over.
-                    estimated_loc_reduction: (pattern.estimated_loc as f64 * 0.3) as usize,
+                    estimated_loc_reduction: Some((pattern.estimated_loc as f64 * 0.3) as usize),
                     affected_files: Self::sorted_affected_files(pattern),
                     priority_score: 6.0,
                 });
@@ -322,13 +328,7 @@ impl ViolationDetector {
         let mut unique_violations: BTreeMap<String, ActionableViolation> = BTreeMap::new();
 
         for violation in violations {
-            // Create a key based on pattern type and the core pattern identifier
-            let key = format!(
-                "{}:{}:{}",
-                violation.pattern.pattern_type as u8,
-                violation.pattern.repetitions,
-                violation.pattern.example_code.len() // Use code length as pattern identifier
-            );
+            let key = Self::dedup_key(&violation);
 
             // Keep the violation with highest severity/priority
             match unique_violations.get(&key) {
@@ -343,5 +343,26 @@ impl ViolationDetector {
         }
 
         unique_violations.into_values().collect()
+    }
+
+    /// Identity of the *finding* a violation is about, so that the same pattern
+    /// surfaced by two detectors collapses to one row.
+    ///
+    /// Keyed on the full `example_code`, not `example_code.len()`: with the
+    /// length, two structurally different patterns of the same type, the same
+    /// repetition count and coincidentally equal snippet lengths collapsed into
+    /// one and the other was dropped without trace.
+    ///
+    /// A project-level finding has no pattern, so it is keyed on its own message.
+    fn dedup_key(violation: &ActionableViolation) -> String {
+        violation.pattern.as_ref().map_or_else(
+            || format!("project:{}", violation.message),
+            |p| {
+                format!(
+                    "pattern:{}:{}:{}",
+                    p.pattern_type as u8, p.repetitions, p.example_code
+                )
+            },
+        )
     }
 }

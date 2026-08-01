@@ -112,8 +112,18 @@
         use crate::entropy::violation_detector::Severity;
         let config = create_entropy_config(EntropySeverity::Low, true);
         assert!(matches!(config.min_severity, Severity::Low));
-        // Default has tests/** and examples/** - include_tests=true doesn't add more
-        assert_eq!(config.exclude_paths.len(), 2);
+        // UPDATED (round 3): the exclusion list is now the one shared with
+        // `quality-gate --checks entropy` and the MCP entropy tool, so this
+        // asserts identity with that list rather than a hard-coded length that
+        // said nothing about whether the two commands agree.
+        assert_eq!(
+            config.exclude_paths,
+            crate::entropy::EntropyConfig::analysis_excludes(true)
+        );
+        assert!(
+            !config.exclude_paths.iter().any(|p| p.contains("test")),
+            "include_tests=true must not exclude test files"
+        );
     }
 
     #[test]
@@ -159,15 +169,15 @@
 
         ActionableViolation {
             severity: Severity::High,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 5,
                 variation_score: 0.1,
                 example_code: "fn example() {}".to_string(),
-            },
+            }),
             message: message.to_string(),
             fix_suggestion: "Extract into function".to_string(),
-            estimated_loc_reduction: loc_reduction,
+            estimated_loc_reduction: Some(loc_reduction),
             affected_files: vec![PathBuf::from("src/test.rs")],
             priority_score: 0.9,
         }

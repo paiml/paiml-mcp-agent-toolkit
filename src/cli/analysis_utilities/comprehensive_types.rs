@@ -14,10 +14,30 @@ pub struct QualityGateResults {
     pub section_violations: usize,
     pub provability_violations: usize,
     pub provability_score: Option<f64>,
-    pub violations: Vec<String>, // Simplified for test purposes
+    /// One line per violation, in the same order as the full `violations` array
+    /// emitted alongside these results.
+    ///
+    /// This was left permanently empty while `total_violations` and
+    /// `entropy_violations` beside it reported 3 — a count heading a list that
+    /// contradicted it. A consumer reading `results.violations` saw nothing.
+    pub violations: Vec<String>,
 }
 
 impl QualityGateResults {
+    /// Fill `violations` from the violation list these counts describe, so the
+    /// summary object never heads an empty list with a non-zero count.
+    pub fn set_violation_lines(&mut self, violations: &[QualityViolation]) {
+        self.violations = violations
+            .iter()
+            .map(|v| {
+                let where_ = v
+                    .line
+                    .map_or_else(|| v.file.clone(), |l| format!("{}:{l}", v.file));
+                format!("[{}] {} - {}", v.check_type, where_, v.message)
+            })
+            .collect();
+    }
+
     /// Recalculate per-category violation counts from the filtered violations list (#196).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn recalculate_from(&mut self, violations: &[QualityViolation]) {
@@ -31,6 +51,7 @@ impl QualityGateResults {
         self.section_violations = violations.iter().filter(|v| v.check_type == "sections").count();
         self.provability_violations = violations.iter().filter(|v| v.check_type == "provability").count();
         self.total_violations = violations.len();
+        self.set_violation_lines(violations);
     }
 }
 
