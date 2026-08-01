@@ -534,107 +534,22 @@ pub use services::template_service::{
     generate_template, list_templates, scaffold_project, search_templates, validate_template,
 };
 
-// MCP server runner function (cognitive complexity ≤8)
-#[cfg(feature = "standard-deps")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) -> Result<()> {
-    use std::io::{self, BufRead};
-    use tracing::info;
-
-    info!("MCP server ready, waiting for requests on stdin...");
-
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
-
-    for line in stdin.lock().lines() {
-        let line = line?;
-
-        if should_skip_line(&line) {
-            continue;
-        }
-
-        process_mcp_line(&line, Arc::clone(&server), &mut stdout).await?;
-    }
-
-    Ok(())
-}
-
-/// Check if line should be skipped (cognitive complexity ≤2)
-#[cfg(feature = "standard-deps")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn should_skip_line(line: &str) -> bool {
-    line.trim().is_empty()
-}
-
-/// Process a single MCP line request (cognitive complexity ≤8)
-#[cfg(feature = "standard-deps")]
-async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
-    line: &str,
-    server: Arc<T>,
-    stdout: &mut W,
-) -> Result<()> {
-    match parse_mcp_request(line) {
-        Ok(request) => handle_valid_request(request, server, stdout).await,
-        Err(e) => handle_parse_error(&e, stdout),
-    }
-}
-
-/// Parse MCP request from line (cognitive complexity ≤2)
-#[cfg(feature = "standard-deps")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
-    serde_json::from_str(line).map_err(anyhow::Error::from)
-}
-
-/// Handle valid MCP request (cognitive complexity ≤6)
-#[cfg(feature = "standard-deps")]
-async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Write>(
-    request: crate::models::mcp::McpRequest,
-    server: Arc<T>,
-    stdout: &mut W,
-) -> Result<()> {
-    use tracing::info;
-
-    info!(
-        "Received request: method={}, id={:?}",
-        request.method, request.id
-    );
-
-    let response = handlers::handle_request(server, request).await;
-    write_response_to_stdout(&response, stdout)
-}
-
-/// Handle JSON parse error (cognitive complexity ≤4)
-#[cfg(feature = "standard-deps")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) -> Result<()> {
-    use crate::models::mcp::McpResponse;
-    use tracing::error;
-
-    error!("Failed to parse JSON-RPC request: {}", error);
-
-    let error_response = McpResponse::error(
-        serde_json::Value::Null,
-        -32700,
-        format!("Parse error: {error}"),
-    );
-
-    write_response_to_stdout(&error_response, stdout)
-}
-
-/// Write response to stdout with error handling (cognitive complexity ≤3)
-#[cfg(feature = "standard-deps")]
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn write_response_to_stdout<W: std::io::Write>(
-    response: &crate::models::mcp::McpResponse,
-    stdout: &mut W,
-) -> Result<()> {
-    let response_json = serde_json::to_string(response)?;
-    writeln!(stdout, "{response_json}")?;
-    stdout.flush()?;
-    Ok(())
-}
+// #696: `pub async fn run_mcp_server<T: TemplateServerTrait>(…)` used to live
+// here, together with its private helper chain (`should_skip_line`,
+// `process_mcp_line`, `parse_mcp_request`, `handle_valid_request`,
+// `handle_parse_error`, `write_response_to_stdout`). It was a SECOND MCP stdio
+// server, reachable from the library API and kept alive by its own tests, and
+// it did not serve what `pmat` serves: 21 tools against the live server's 20,
+// only 7 names in common, those 7 taking different arguments
+// (`project_path` string vs `paths` array), and 7 of the 21 describing
+// themselves as "(unimplemented stub — KAIZEN-0200)" and answering -32001.
+// An advertised path that reaches a different server is the defect, so it is
+// deleted rather than re-pointed.
+//
+// The one MCP stdio entry point is `crate::mcp_pmcp::run_stdio_server`, which
+// `src/bin/pmat.rs` and `cli::run` both call. `mcp_pmcp`'s
+// `lib_rs_exposes_no_second_mcp_stdio_server` test fails if this file grows
+// another one.
 
 // Tests previously included via #[path = "../tests/..."] are now compiled
 // only through tests/all.rs to avoid "file loaded as module multiple times"
@@ -645,50 +560,11 @@ fn write_response_to_stdout<W: std::io::Write>(
 mod lib_unit_tests {
     use super::*;
 
-    #[test]
-    fn test_should_skip_line() {
-        assert!(should_skip_line(""));
-        assert!(should_skip_line("   "));
-        assert!(should_skip_line("\t\n"));
-        assert!(!should_skip_line("{\"method\":\"test\"}"));
-    }
-
-    #[test]
-    fn test_parse_mcp_request_valid() {
-        let line = r#"{"jsonrpc":"2.0","method":"test","id":1}"#;
-        let result = parse_mcp_request(line);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_parse_mcp_request_invalid() {
-        let line = "not valid json";
-        let result = parse_mcp_request(line);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_write_response_to_stdout() {
-        use crate::models::mcp::McpResponse;
-
-        let response =
-            McpResponse::error(serde_json::Value::Null, -32600, "Test error".to_string());
-        let mut output = Vec::new();
-        let result = write_response_to_stdout(&response, &mut output);
-        assert!(result.is_ok());
-        assert!(!output.is_empty());
-    }
-
-    #[test]
-    fn test_handle_parse_error() {
-        let error = anyhow::anyhow!("Test error");
-        let mut output = Vec::new();
-        let result = handle_parse_error(&error, &mut output);
-        assert!(result.is_ok());
-
-        let output_str = String::from_utf8(output).unwrap();
-        assert!(output_str.contains("Parse error"));
-    }
+    // #696: the unit tests for the legacy MCP stdio server
+    // (`test_should_skip_line`, `test_parse_mcp_request_valid`,
+    // `test_parse_mcp_request_invalid`, `test_write_response_to_stdout`,
+    // `test_handle_parse_error`) went with the code they tested. The one MCP
+    // stdio server is covered in `mcp_pmcp`.
 
     #[tokio::test]
     async fn test_template_server_new() {
@@ -738,32 +614,9 @@ mod lib_unit_tests {
         let _client = S3Client; // Just verify it can be constructed
     }
 
-    #[tokio::test]
-    async fn test_process_mcp_line_valid() {
-        let server = Arc::new(TemplateServer::new().await.unwrap());
-        let mut output = Vec::new();
-
-        // Valid but will get error response (deprecated server)
-        let line = r#"{"jsonrpc":"2.0","method":"tools/list","id":1}"#;
-        let result = process_mcp_line(line, server, &mut output).await;
-
-        // Should succeed (write to output) even though server is deprecated
-        assert!(result.is_ok() || result.is_err()); // Either outcome is fine
-    }
-
-    #[tokio::test]
-    async fn test_process_mcp_line_invalid_json() {
-        let server = Arc::new(TemplateServer::new().await.unwrap());
-        let mut output = Vec::new();
-
-        let line = "not json at all";
-        let result = process_mcp_line(line, server, &mut output).await;
-
-        // Should succeed (error response written)
-        assert!(result.is_ok());
-        let output_str = String::from_utf8(output).unwrap();
-        assert!(output_str.contains("Parse error"));
-    }
+    // #696: `test_process_mcp_line_valid` / `test_process_mcp_line_invalid_json`
+    // were deleted with `process_mcp_line`. The first also asserted
+    // `result.is_ok() || result.is_err()`, which is true of every `Result`.
 
     #[tokio::test]
     async fn test_template_server_warm_cache() {

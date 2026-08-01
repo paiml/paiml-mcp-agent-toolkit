@@ -23,14 +23,16 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     // so this branch is only reached by other embedders of `cli::run`. It used
     // to call `crate::run_mcp_server`, a *second* MCP server whose 21-tool
     // inventory shares only 7 names with the unified server's 20 — and those 7
-    // take different arguments (`project_path` string vs `paths` array), with 6
-    // of the 21 self-described unimplemented stubs. `--mode mcp` must not reach
-    // a different server than `MCP_VERSION=1 pmat` does.
+    // take different arguments (`project_path` string vs `paths` array), with 7
+    // of the 21 describing themselves as "(unimplemented stub — KAIZEN-0200)"
+    // (that server has since been deleted, #696). `--mode mcp` must not reach a
+    // different server than
+    // `MCP_VERSION=1 pmat` does — #697: this branch built its own
+    // `UnifiedServer` while the binary built another, so "the same server" was
+    // an unenforced coincidence. Both now call the one entry point.
     if let Some(commands::Mode::Mcp) = cli.mode {
         info!("Forced MCP mode detected");
-        let unified = crate::mcp_pmcp::UnifiedServer::new()
-            .map_err(|e| anyhow::anyhow!("Failed to create unified server: {e}"))?;
-        return unified.run().await.map_err(|e| anyhow::anyhow!("{e}"));
+        return crate::mcp_pmcp::run_stdio_server().await;
     }
 
     // Use command dispatcher for improved modularity

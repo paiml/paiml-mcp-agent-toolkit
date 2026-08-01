@@ -256,12 +256,12 @@ mod full {
                 if !cli.is_mcp_server {
                     info!("Running unified MCP server (pmcp SDK)");
                 }
-                let unified_server = pmat::mcp_pmcp::UnifiedServer::new()
-                    .map_err(|e| anyhow::anyhow!("Failed to create unified server: {}", e))?;
-                unified_server
-                    .run()
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))
+                // #697: this used to construct the server here, and `cli::run`
+                // constructed a second one for its `--mode mcp` branch. Two
+                // call sites, free to drift into two inventories. There is now
+                // exactly one, and `exactly_one_mcp_stdio_entry_point` fails if
+                // either route grows its own again.
+                pmat::mcp_pmcp::run_stdio_server().await
             }
             ExecutionMode::Cli => {
                 if !cli.is_mcp_server {

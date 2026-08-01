@@ -23,6 +23,18 @@ where
     serde::Serialize::serialize(&ordered, serializer)
 }
 
+/// Default `--max-density`: the quality gate fails above 5 violations per 100
+/// lines of code.
+///
+/// #699: this used to be spelled `5.0` in two unconnected places (the clap
+/// `default_value_t` and `contracts::contract_definitions::default_max_density`)
+/// while `check_quality_gates` compares against `violations / sloc`. 5 lint
+/// violations per LINE is unreachable, so the documented gate never fired:
+/// a fixture hotspot measuring `defect_density: 2.0` (200 violations per 100
+/// lines) reported `"passed": true` and exited 0. Both interfaces now read
+/// this one constant so they cannot drift apart again.
+pub const DEFAULT_MAX_DENSITY: f64 = 0.05;
+
 /// Parameters for lint hotspot analysis
 pub struct LintHotspotParams {
     pub project_path: PathBuf,

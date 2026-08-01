@@ -5,7 +5,7 @@ fn parse_clippy_output(
     stdout: &[u8],
     abs_file_path: &Path,
     file_path: &Path,
-    base_dir: &Path,
+    base_dirs: &[PathBuf],
 ) -> Result<(
     Vec<ViolationDetail>,
     Vec<ViolationDetail>,
@@ -22,7 +22,7 @@ fn parse_clippy_output(
 
     for line in std::io::BufRead::lines(reader) {
         let line = line?;
-        if let Some(violation) = parse_clippy_line(&line, abs_file_path, file_path, base_dir)? {
+        if let Some(violation) = parse_clippy_line(&line, abs_file_path, file_path, base_dirs)? {
             if !seen.insert(violation_key(&violation)) {
                 continue;
             }
@@ -77,7 +77,7 @@ fn parse_clippy_line(
     line: &str,
     abs_file_path: &Path,
     file_path: &Path,
-    base_dir: &Path,
+    base_dirs: &[PathBuf],
 ) -> Result<Option<ViolationDetail>> {
     let Some(msg) = decode_clippy_line(line)? else {
         return Ok(None);
@@ -91,16 +91,30 @@ fn parse_clippy_line(
         return Ok(None);
     };
 
-    // #679: cargo emits span paths RELATIVE to the directory it ran in, so a
-    // user-supplied absolute `--file /abs/src/lib.rs` matched none of the
-    // comparisons below and the command reported 0 violations for a file that
-    // had 20. Resolve the span against the same base before comparing.
-    let resolved = resolve_diagnostic_path(&span.file_name, base_dir);
-    if !is_target_file(&resolved, abs_file_path, file_path) {
+    // #679: cargo emits span paths RELATIVE, so a user-supplied absolute
+    // `--file /abs/src/lib.rs` matched none of the comparisons below and the
+    // command reported 0 violations for a file that had 20. #698: they are
+    // relative to the WORKSPACE ROOT, not to `-p`, so `span_base_dirs` supplies
+    // both candidates and each is compared for path identity.
+    if !span_matches_target(&span.file_name, base_dirs, abs_file_path, file_path) {
         return Ok(None);
     }
 
     Ok(Some(create_violation_detail(file_path, span, diagnostic)))
+}
+
+/// Does a span's `file_name`, resolved against any plausible base, name the
+/// file the user asked for?
+fn span_matches_target(
+    span_file: &str,
+    base_dirs: &[PathBuf],
+    abs_file_path: &Path,
+    file_path: &Path,
+) -> bool {
+    base_dirs.iter().any(|base| {
+        let resolved = resolve_diagnostic_path(span_file, base);
+        is_target_file(&resolved, abs_file_path, file_path)
+    })
 }
 
 /// Resolve a diagnostic's `file_name` to an absolute path using the directory
@@ -125,11 +139,28 @@ fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> 
         .find(|s| s.is_primary || diagnostic.spans.len() == 1)
 }
 
+/// Does this diagnostic belong to the file the user named with `--file`?
+///
+/// #698: the third arm used to be `diagnostic_path.ends_with(file_path)`.
+/// `Path::ends_with` matches on trailing path COMPONENTS, so `--file main.rs`
+/// claimed every file named `main.rs` anywhere in the project (and
+/// `--file src/lib.rs` claimed every workspace member's `src/lib.rs`).
+///
+/// Observed on a two-binary fixture whose root `main.rs` is clean and whose
+/// `src/main.rs` carries 8 `clippy::len_zero`:
+/// `--file main.rs` reported `total_violations: 22`, `sloc: 3`,
+/// `defect_density: 7.33`, every entry labelled `"file": "main.rs"` while
+/// carrying line/column numbers from `src/main.rs` — and the quality gate
+/// failed with exit 1 on a file that has nothing wrong with it. The same run
+/// with `--file src/main.rs` reported density 0.58 and exit 0.
+///
+/// `diagnostic_file` has already been resolved to an absolute (canonical where
+/// the file exists) path by `resolve_diagnostic_path`, so file identity is the
+/// only correct test. The `file_path` arm keeps the caller-supplied spelling
+/// working when the span is already exactly that string.
 fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
     let diagnostic_path = PathBuf::from(diagnostic_file);
-    diagnostic_path == *abs_file_path
-        || diagnostic_path == *file_path
-        || diagnostic_path.ends_with(file_path)
+    diagnostic_path == *abs_file_path || diagnostic_path == *file_path
 }
 
 fn create_violation_detail(
