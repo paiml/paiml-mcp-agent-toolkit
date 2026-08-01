@@ -5,11 +5,16 @@
 //! using streaming analysis of Clippy's JSON output.
 //!
 //! By default, uses EXTREME quality standards:
-//! - `--all-targets`: Lints library, binaries, tests, and examples
-//! - `-D warnings`: Zero tolerance for warnings (fails on any warning)
-//! - `-D clippy::pedantic`: Strictest built-in lint group
-//! - `-D clippy::nursery`: Experimental lints
-//! - `-D clippy::cargo`: Cargo.toml manifest lints
+//! - `--all-targets`: Lints library, binaries, tests, and examples. Because the
+//!   same source file is compiled once per target, cargo emits each finding
+//!   once per target; identical findings are collapsed so the reported count is
+//!   the number of distinct violations, not the number of compilations.
+//! - `-W warnings`, `-W clippy::pedantic`, `-W clippy::nursery`,
+//!   `-W clippy::cargo` (see the `--clippy-flags` default). These are rustc
+//!   flags and are passed after the `--` separator.
+//!
+//! If `cargo clippy` cannot complete, this command returns an error. It never
+//! reports a clean project it did not establish.
 
 pub mod clippy;
 pub mod metrics;
@@ -113,20 +118,12 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
 
     log_analysis_start(&params.format);
 
-    let result = run_analysis_by_mode(&params).await;
-
-    let mut result = match result {
-        Ok(r) => r,
-        Err(e) if e.to_string().contains("No lint violations found") => {
-            use crate::cli::colors as c;
-            eprintln!("{}", c::pass("No lint violations found — project is clean"));
-            // This arm used to return here having written NOTHING to stdout,
-            // so every format produced 0 bytes (md5 d41d8cd9…) on a clean
-            // project and a piped `--format json | jq .` got an empty stream.
-            emit_clean_output(&params, start_time.elapsed()).await?;
-            return Ok(());
-        }
-        Err(e) => return Err(e),
+    // `None` = clippy ran to completion and found nothing. An unusable run is an
+    // Err and propagates: #679 shipped a version that turned "cargo rejected our
+    // argv" into "project is clean", which is the one outcome a linter must
+    // never invent.
+    let Some(mut result) = run_analysis_by_mode(&params).await? else {
+        return report_measured_clean(&params).await;
     };
 
     apply_file_filters(&mut result, &params)?;
@@ -183,7 +180,10 @@ fn is_machine_format(format: &LintHotspotOutputFormat) -> bool {
 }
 
 /// Run analysis based on single file or project mode
-async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotResult> {
+///
+/// `Ok(None)` means "clippy ran and reported nothing", never "we could not
+/// measure" — the latter is an `Err`.
+async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<Option<LintHotspotResult>> {
     if let Some(ref file_path) = params.file {
         log_single_file_mode(file_path, &params.format);
         clippy::run_clippy_analysis_single_file(
@@ -192,9 +192,31 @@ async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotR
             &params.clippy_flags,
         )
         .await
+        .map(Some)
     } else {
         clippy::run_clippy_analysis(&params.project_path, &params.clippy_flags).await
     }
+}
+
+/// Emit an explicitly empty, well-formed result for a project clippy actually
+/// measured and found clean.
+///
+/// Before this, the clean path wrote a line to STDERR and produced NOTHING on
+/// stdout, so `--format json` (a declared format) yielded an empty document.
+async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
+    use crate::cli::colors as c;
+
+    let content = output::format_clean_result(&params.format)?;
+    if let Some(output_path) = &params.output {
+        tokio::fs::write(output_path, &content).await?;
+    } else {
+        println!("{content}");
+    }
+    eprintln!(
+        "{}",
+        c::pass("cargo clippy completed and reported no lint violations")
+    );
+    Ok(())
 }
 
 /// Log single file analysis mode

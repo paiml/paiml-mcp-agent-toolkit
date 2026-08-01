@@ -5,6 +5,7 @@ fn parse_clippy_output(
     stdout: &[u8],
     abs_file_path: &Path,
     file_path: &Path,
+    base_dir: &Path,
 ) -> Result<(
     Vec<ViolationDetail>,
     Vec<ViolationDetail>,
@@ -14,10 +15,17 @@ fn parse_clippy_output(
     let mut file_violations = Vec::new();
     let mut all_violations = Vec::new();
     let mut severity_dist = SeverityDistribution::default();
+    // `--all-targets` compiles the same source file once per target (lib, test,
+    // bench, …) so cargo emits an identical diagnostic once per target. Counting
+    // them all reported 40 findings for a fixture that has 20.
+    let mut seen: std::collections::HashSet<ViolationKey> = std::collections::HashSet::new();
 
     for line in std::io::BufRead::lines(reader) {
         let line = line?;
-        if let Some(violation) = parse_clippy_line(&line, abs_file_path, file_path)? {
+        if let Some(violation) = parse_clippy_line(&line, abs_file_path, file_path, base_dir)? {
+            if !seen.insert(violation_key(&violation)) {
+                continue;
+            }
             file_violations.push(violation.clone());
             update_severity_distribution(&mut severity_dist, &violation.severity);
             all_violations.push(violation);
@@ -27,14 +35,52 @@ fn parse_clippy_output(
     Ok((file_violations, all_violations, severity_dist))
 }
 
+/// Identity of a single clippy finding, used to collapse the per-target copies
+/// `--all-targets` produces.
+type ViolationKey = (PathBuf, u32, u32, u32, u32, String, String);
+
+fn violation_key(v: &ViolationDetail) -> ViolationKey {
+    (
+        v.file.clone(),
+        v.line,
+        v.column,
+        v.end_line,
+        v.end_column,
+        v.lint_name.clone(),
+        v.message.clone(),
+    )
+}
+
+/// Decode one line of cargo's JSON stream.
+///
+/// Returns `Ok(None)` for blank lines. Any other line that cannot be decoded is
+/// an ERROR, not a silent skip: `ClippyMessage` accepts every JSON object cargo
+/// emits (both fields are optional), so a decode failure means the schema moved
+/// under us. Swallowing those failures is exactly how #679 hid — a field-name
+/// typo in the span struct made every text-carrying diagnostic undecodable and
+/// the parser dropped them without a word, reporting the project as clean.
+fn decode_clippy_line(line: &str) -> Result<Option<ClippyMessage>> {
+    if line.trim().is_empty() {
+        return Ok(None);
+    }
+    match serde_json::from_str::<ClippyMessage>(line) {
+        Ok(msg) => Ok(Some(msg)),
+        Err(e) => Err(anyhow::anyhow!(
+            "could not decode a `cargo clippy --message-format=json` record, so the \
+             lint count would silently under-report: {e}\nrecord: {}",
+            line.chars().take(400).collect::<String>()
+        )),
+    }
+}
+
 fn parse_clippy_line(
     line: &str,
     abs_file_path: &Path,
     file_path: &Path,
+    base_dir: &Path,
 ) -> Result<Option<ViolationDetail>> {
-    let msg = match serde_json::from_str::<ClippyMessage>(line) {
-        Ok(msg) => msg,
-        Err(_) => return Ok(None),
+    let Some(msg) = decode_clippy_line(line)? else {
+        return Ok(None);
     };
 
     let (Some("compiler-message"), Some(diagnostic)) = (msg.reason.as_deref(), &msg.message) else {
@@ -45,11 +91,31 @@ fn parse_clippy_line(
         return Ok(None);
     };
 
-    if !is_target_file(&span.file_name, abs_file_path, file_path) {
+    // #679: cargo emits span paths RELATIVE to the directory it ran in, so a
+    // user-supplied absolute `--file /abs/src/lib.rs` matched none of the
+    // comparisons below and the command reported 0 violations for a file that
+    // had 20. Resolve the span against the same base before comparing.
+    let resolved = resolve_diagnostic_path(&span.file_name, base_dir);
+    if !is_target_file(&resolved, abs_file_path, file_path) {
         return Ok(None);
     }
 
     Ok(Some(create_violation_detail(file_path, span, diagnostic)))
+}
+
+/// Resolve a diagnostic's `file_name` to an absolute path using the directory
+/// cargo was run in, canonicalizing when the file exists on disk.
+fn resolve_diagnostic_path(diagnostic_file: &str, base_dir: &Path) -> String {
+    let raw = Path::new(diagnostic_file);
+    let joined = if raw.is_absolute() {
+        raw.to_path_buf()
+    } else {
+        base_dir.join(raw)
+    };
+    std::fs::canonicalize(&joined)
+        .unwrap_or(joined)
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> {
@@ -121,16 +187,15 @@ pub(crate) fn process_diagnostic(
         .or_else(|| diagnostic.spans.first());
 
     if let Some(span) = primary_span {
-        let mut file_path = PathBuf::from(&span.file_name);
-
-        // Handle workspace paths - if path starts with "server/", strip it for consistent handling
-        // But preserve the original path structure for examples
-        if let Ok(stripped) = file_path.strip_prefix("server/") {
-            file_path = PathBuf::from(stripped);
-        } else if file_path.starts_with("examples/") {
-            // Keep examples/ paths as-is since they are relative to server/
-            file_path = PathBuf::from("server").join(&file_path);
-        }
+        // Use the path exactly as cargo stated it.
+        //
+        // This used to rewrite `examples/foo.rs` to `server/examples/foo.rs`
+        // for a `server/` crate layout that no longer exists. On pmat's own
+        // tree that invented a path for 85 example files, none of which could
+        // then be found on disk, so their SLOC stayed 0 — they counted toward
+        // `total_project_violations` but were silently excluded from the
+        // per-file list and the hotspot ranking.
+        let file_path = PathBuf::from(&span.file_name);
 
         // Skip non-Rust files (config files, etc.)
         if file_path.extension().is_none_or(|ext| ext != "rs") {
@@ -184,17 +249,30 @@ pub(crate) fn parse_clippy_json_output(
     let reader = BufReader::new(output.stdout.as_slice());
     let mut file_metrics: HashMap<PathBuf, FileMetrics> = HashMap::new();
     let mut message_count = 0;
+    // See `parse_clippy_output`: `--all-targets` re-emits every diagnostic once
+    // per target, so without this the same finding is counted 2-4 times.
+    let mut seen: std::collections::HashSet<ViolationKey> = std::collections::HashSet::new();
 
     for line in std::io::BufRead::lines(reader) {
         let line = line?;
-        if let Ok(msg) = serde_json::from_str::<ClippyMessage>(&line) {
-            if let Some(diagnostic) = msg.message {
-                if msg.reason == Some("compiler-message".to_string()) {
-                    message_count += 1;
-                    process_diagnostic(&diagnostic, &mut file_metrics);
-                }
+        // Strict decode: a record we cannot read must not be silently dropped
+        // (that is how #679's 0-violation "clean" verdict was manufactured).
+        let Some(msg) = decode_clippy_line(&line)? else {
+            continue;
+        };
+        if msg.reason.as_deref() != Some("compiler-message") {
+            continue;
+        }
+        let Some(diagnostic) = msg.message else {
+            continue;
+        };
+        if let Some(key) = diagnostic_dedup_key(&diagnostic) {
+            if !seen.insert(key) {
+                continue;
             }
         }
+        message_count += 1;
+        process_diagnostic(&diagnostic, &mut file_metrics);
     }
 
     if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
@@ -203,4 +281,25 @@ pub(crate) fn parse_clippy_json_output(
     }
 
     Ok(file_metrics)
+}
+
+/// Dedup key for a raw diagnostic, taken from its primary span.
+fn diagnostic_dedup_key(diagnostic: &DiagnosticMessage) -> Option<ViolationKey> {
+    let span = diagnostic
+        .spans
+        .iter()
+        .find(|s| s.is_primary)
+        .or_else(|| diagnostic.spans.first())?;
+    Some((
+        PathBuf::from(&span.file_name),
+        span.line_start,
+        span.column_start,
+        span.line_end,
+        span.column_end,
+        diagnostic
+            .code
+            .as_ref()
+            .map_or_else(String::new, |c| c.code.clone()),
+        diagnostic.message.clone(),
+    ))
 }

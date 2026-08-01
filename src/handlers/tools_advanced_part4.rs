@@ -255,12 +255,12 @@ async fn execute_lint_hotspot_analysis(
 ) -> Result<Option<crate::cli::handlers::lint_hotspot_handlers::LintHotspotResult>, String> {
     use crate::cli::handlers::lint_hotspot_handlers::clippy::run_clippy_analysis;
 
-    match run_clippy_analysis(project_path, "").await {
-        Ok(result) => Ok(Some(result)),
-        // Clean project — not an error condition over MCP; callers get an empty result.
-        Err(e) if e.to_string().contains("No lint violations found") => Ok(None),
-        Err(e) => Err(format!("Failed to analyze lint hotspots: {e}")),
-    }
+    // `Ok(None)` = clippy ran and found nothing (a measured clean result).
+    // Anything that prevented the measurement is an Err and must surface as an
+    // MCP error rather than as an empty, clean-looking result (#679).
+    run_clippy_analysis(project_path, "")
+        .await
+        .map_err(|e| format!("Failed to analyze lint hotspots: {e}"))
 }
 
 struct LintHotspotData {

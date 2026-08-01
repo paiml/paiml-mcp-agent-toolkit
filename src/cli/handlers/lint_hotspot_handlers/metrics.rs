@@ -6,7 +6,11 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Find the file with highest defect density (including detailed violations)
+/// Find the file with highest defect density (including detailed violations).
+///
+/// Returns `Ok(None)` when no file carried a violation — a measured "nothing
+/// found", which the caller renders as an explicitly empty result rather than
+/// as an error.
 ///
 /// # Errors
 ///
@@ -14,23 +18,24 @@ use std::path::PathBuf;
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn find_hotspot_with_details(
     file_metrics: HashMap<PathBuf, FileMetrics>,
-) -> Result<LintHotspot> {
-    let mut hotspot_file = None;
-    let mut max_density = 0.0;
-
-    if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+) -> Result<Option<LintHotspot>> {
+    let debug = std::env::var("LINT_HOTSPOT_DEBUG").is_ok();
+    if debug {
         eprintln!("🔍 Finding hotspot from {} files", file_metrics.len());
     }
 
-    // Iterate in path order, not hash order. `density > max_density` keeps the
-    // FIRST file seen at a tied density, so walking a HashMap meant two runs
-    // over identical input could name different hotspot files (and therefore
-    // print different reports). Sorting makes the winner reproducible.
-    let mut file_metrics: Vec<(PathBuf, FileMetrics)> = file_metrics.into_iter().collect();
-    file_metrics.sort_by(|a, b| a.0.cmp(&b.0));
+    // DETERMINISM: iterating the HashMap directly and keeping the first file to
+    // reach `max_density` meant that two files with equal density produced a
+    // different hotspot from run to run on unchanged input. Visit in path order
+    // and break ties on the path.
+    let mut entries: Vec<(PathBuf, FileMetrics)> = file_metrics.into_iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
 
-    for (file_path, metrics) in file_metrics {
-        if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
+    let mut hotspot_file: Option<LintHotspot> = None;
+    let mut max_density = 0.0;
+
+    for (file_path, metrics) in entries {
+        if debug {
             eprintln!(
                 "  File: {}, SLOC: {}, Errors: {}, Warnings: {}",
                 file_path.display(),
@@ -44,22 +49,23 @@ pub(crate) fn find_hotspot_with_details(
             continue;
         }
 
-        let total_violations = metrics.severity_counts.error
-            + metrics.severity_counts.warning
-            + metrics.severity_counts.suggestion;
+        let total_violations = calculate_total_violations(&metrics);
+        if total_violations == 0 {
+            continue;
+        }
 
-        let density = (total_violations as f64) / (metrics.sloc as f64);
+        let density = calculate_defect_density(total_violations, metrics.sloc);
 
         if density > max_density {
             max_density = density;
 
-            // Get top 10 lint violations. Sorting by count alone is not enough:
-            // `violations` is a HashMap, so equal-count lints came out in hash
-            // order and the "top 10" varied between runs on identical input.
-            // Break ties on the lint name.
             let mut top_lints: Vec<_> = metrics.violations.into_iter().collect();
+            // DETERMINISM: ties previously fell back to HashMap order.
             top_lints.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
             top_lints.truncate(10);
+
+            let mut detailed_violations = metrics.detailed_violations;
+            sort_violations(&mut detailed_violations);
 
             hotspot_file = Some(LintHotspot {
                 file: file_path,
@@ -68,12 +74,24 @@ pub(crate) fn find_hotspot_with_details(
                 sloc: metrics.sloc,
                 severity_distribution: metrics.severity_counts,
                 top_lints,
-                detailed_violations: metrics.detailed_violations,
+                detailed_violations,
             });
         }
     }
 
-    hotspot_file.ok_or_else(|| anyhow::anyhow!("No lint violations found in any Rust files"))
+    Ok(hotspot_file)
+}
+
+/// Stable ordering for a violation list so identical input renders identically.
+pub(crate) fn sort_violations(violations: &mut [ViolationDetail]) {
+    violations.sort_by(|a, b| {
+        a.file
+            .cmp(&b.file)
+            .then_with(|| a.line.cmp(&b.line))
+            .then_with(|| a.column.cmp(&b.column))
+            .then_with(|| a.lint_name.cmp(&b.lint_name))
+            .then_with(|| a.message.cmp(&b.message))
+    });
 }
 
 /// Calculate enforcement metadata
@@ -136,20 +154,23 @@ pub(crate) fn generate_refactor_chain(hotspot: &LintHotspot, min_confidence: f64
         }
     }
 
+    // DETERMINISM: the id used to embed `Utc::now()`, so the same input never
+    // produced the same output twice and no baseline could be diffed. It is now
+    // derived from the file the chain is for.
+    let id = format!("lint-hotspot-{}", hotspot.file.display());
+
+    // A chain with no steps automates nothing; the old expression was
+    // `sum / steps.len()` = 0/0 = NaN, which serde renders as JSON `null`.
+    let automation_confidence = if steps.is_empty() {
+        0.0
+    } else {
+        steps.iter().map(|s| s.confidence).sum::<f64>() / steps.len() as f64
+    };
+
     RefactorChain {
-        // Derived from the analysed input, not the wall clock. The id used to
-        // be `Utc::now()` down to the second, so two runs over identical input
-        // produced different `enforcement-json` documents.
-        id: format!(
-            "lint-hotspot-{}-{}",
-            hotspot.file.file_name().map_or_else(
-                || "unknown".to_string(),
-                |n| n.to_string_lossy().replace(['/', '\\', ' '], "_")
-            ),
-            hotspot.total_violations
-        ),
+        id,
         estimated_reduction: total_impact,
-        automation_confidence: steps.iter().map(|s| s.confidence).sum::<f64>() / steps.len() as f64,
+        automation_confidence,
         steps,
     }
 }
@@ -191,13 +212,15 @@ pub(crate) fn check_quality_gates(hotspot: &LintHotspot, max_density: f64) -> Qu
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn build_lint_hotspot_result(
     file_metrics: HashMap<PathBuf, FileMetrics>,
-) -> Result<LintHotspotResult> {
+) -> Result<Option<LintHotspotResult>> {
     let (all_violations, summary_by_file, total_project_violations) =
         collect_project_violations(&file_metrics);
 
-    let hotspot = find_hotspot_with_details(file_metrics)?;
+    let Some(hotspot) = find_hotspot_with_details(file_metrics)? else {
+        return Ok(None);
+    };
 
-    Ok(LintHotspotResult {
+    Ok(Some(LintHotspotResult {
         hotspot,
         all_violations,
         summary_by_file,
@@ -209,7 +232,7 @@ pub(crate) fn build_lint_hotspot_result(
             violations: vec![],
             blocking: false,
         },
-    })
+    }))
 }
 
 /// Collect all violations across the project (cognitive complexity <=7)
@@ -240,17 +263,9 @@ fn collect_project_violations(
         );
     }
 
-    // `file_metrics` is a HashMap, so `all_violations` was assembled in hash
-    // order: `--format enforcement-json` serialised the same violations in a
-    // different order on every run. Sort into a stable source-location order.
-    all_violations.sort_by(|a, b| {
-        a.file
-            .cmp(&b.file)
-            .then_with(|| a.line.cmp(&b.line))
-            .then_with(|| a.column.cmp(&b.column))
-            .then_with(|| a.lint_name.cmp(&b.lint_name))
-            .then_with(|| a.message.cmp(&b.message))
-    });
+    // DETERMINISM: `all_violations` was built by iterating a HashMap, so the
+    // JSON array came out in a different order on every run for the same tree.
+    sort_violations(&mut all_violations);
 
     (all_violations, summary_by_file, total_project_violations)
 }
