@@ -49,31 +49,76 @@ use tracing::info;
 pub struct GitAnalysisService;
 
 impl GitAnalysisService {
+    /// Find the git repository root that *contains* `start`, the way git
+    /// itself does: walk up until a `.git` entry is found.
+    ///
+    /// #657: churn was silently unmeasured for every non-root path because the
+    /// only check was `project_path.join(".git").exists()`. Asking for
+    /// `<repo>/src/utils` inside a repository with 3855 commits reported
+    /// "No git repository found" and produced null churn for every file.
+    ///
+    /// `.git` may be a directory (normal clone) or a file (submodule / linked
+    /// worktree), so existence — not `is_dir()` — is the test.
+    #[must_use]
+    pub fn discover_repository_root(start: &Path) -> Option<PathBuf> {
+        // Canonicalize so `..` components and symlinks don't stop the walk
+        // early; fall back to the path as given if it cannot be resolved.
+        let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
+        let mut current: Option<&Path> = Some(start.as_path());
+        while let Some(dir) = current {
+            if dir.join(".git").exists() {
+                return Some(dir.to_path_buf());
+            }
+            current = dir.parent();
+        }
+        None
+    }
+
+    /// Path of `target` relative to `root`, or `None` when `target` *is* the
+    /// root (i.e. the query is unscoped).
+    fn scope_within_root(root: &Path, target: &Path) -> Option<PathBuf> {
+        let target = target
+            .canonicalize()
+            .unwrap_or_else(|_| target.to_path_buf());
+        let rel = target.strip_prefix(root).ok()?;
+        if rel.as_os_str().is_empty() {
+            None
+        } else {
+            Some(rel.to_path_buf())
+        }
+    }
+
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze code churn.
+    ///
+    /// `project_path` may be the repository root or **any directory inside
+    /// it**; the repository root is discovered by walking up (#657) and the
+    /// git query is then scoped to the requested subtree, so asking for
+    /// `<repo>/src/utils` measures churn for `src/utils` rather than failing.
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,
     ) -> Result<CodeChurnAnalysis, TemplateError> {
-        if !project_path.join(".git").exists() {
-            return Err(TemplateError::NotFound(format!(
-                "No git repository found at {project_path:?}"
-            )));
-        }
+        let repo_root = Self::discover_repository_root(project_path).ok_or_else(|| {
+            TemplateError::NotFound(format!(
+                "No git repository found at {project_path:?} or any of its parent directories"
+            ))
+        })?;
+        let scope = Self::scope_within_root(&repo_root, project_path);
 
         let since_date = Utc::now() - Duration::days(i64::from(period_days));
         let since_str = since_date.format("%Y-%m-%d").to_string();
 
         info!("Analyzing code churn for last {} days", period_days);
 
-        let file_metrics = Self::get_file_metrics(project_path, &since_str)?;
+        let file_metrics = Self::get_file_metrics(&repo_root, &since_str, scope.as_deref())?;
         let summary = Self::generate_summary(&file_metrics);
 
         Ok(CodeChurnAnalysis {
             generated_at: Utc::now(),
             period_days,
-            repository_root: project_path.to_path_buf(),
+            repository_root: repo_root,
             files: file_metrics,
             summary,
         })
@@ -82,20 +127,28 @@ impl GitAnalysisService {
     fn get_file_metrics(
         project_path: &Path,
         since_date: &str,
+        scope: Option<&Path>,
     ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
         let since = since_date.to_string();
+        let scope = scope.map(Path::to_path_buf);
         std::thread::spawn(move || {
-            let result = Command::new("git")
+            let mut command = Command::new("git");
+            command
                 .arg("log")
                 .arg("--since")
                 .arg(&since)
                 .arg("--pretty=format:%H|%an|%aI")
-                .arg("--numstat")
-                .current_dir(&project_dir)
-                .output();
+                .arg("--numstat");
+            // #657: restrict the history to the requested subtree so a
+            // subdirectory query reports that subtree's churn, not the whole
+            // repository's.
+            if let Some(scope) = &scope {
+                command.arg("--").arg(scope);
+            }
+            let result = command.current_dir(&project_dir).output();
             let _ = tx.send(result);
         });
 
@@ -487,5 +540,154 @@ mod tests {
         // Variance and stddev should be calculated
         assert!(summary.variance_churn_score >= 0.0);
         assert!(summary.stddev_churn_score >= 0.0);
+    }
+
+    // ── #657: churn must be measurable from any directory inside a repo ─────
+
+    /// Build a throwaway repo with commits under `src/utils/` and `docs/`.
+    fn init_repo_with_subdir_commits() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+
+        let git = |args: &[&str]| {
+            let status = std::process::Command::new("git")
+                .args(args)
+                .current_dir(root)
+                .output()
+                .expect("git must be available for this test");
+            assert!(
+                status.status.success(),
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&status.stderr)
+            );
+        };
+
+        git(&["init", "--initial-branch=main"]);
+        git(&["config", "user.email", "test@example.com"]);
+        git(&["config", "user.name", "Test User"]);
+
+        std::fs::create_dir_all(root.join("src/utils")).unwrap();
+        std::fs::create_dir_all(root.join("docs")).unwrap();
+
+        for i in 0..3 {
+            std::fs::write(
+                root.join("src/utils/helper.rs"),
+                format!("pub fn helper() {{ let _ = {i}; }}\n"),
+            )
+            .unwrap();
+            std::fs::write(root.join("docs/readme.md"), format!("doc revision {i}\n")).unwrap();
+            git(&["add", "."]);
+            git(&["commit", "-m", &format!("change {i}")]);
+        }
+
+        temp
+    }
+
+    #[test]
+    fn test_discover_repository_root_walks_up() {
+        let temp = init_repo_with_subdir_commits();
+        let expected = temp.path().canonicalize().unwrap();
+
+        // From the root itself, and from two levels down.
+        for start in [
+            temp.path().to_path_buf(),
+            temp.path().join("src"),
+            temp.path().join("src/utils"),
+        ] {
+            assert_eq!(
+                GitAnalysisService::discover_repository_root(&start),
+                Some(expected.clone()),
+                "should have walked up to the repo root from {start:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_discover_repository_root_none_outside_repo() {
+        let temp = TempDir::new().unwrap();
+        assert!(GitAnalysisService::discover_repository_root(temp.path()).is_none());
+    }
+
+    /// #657 regression: `analyze_code_churn` on a SUBDIRECTORY used to return
+    /// `NotFound("No git repository found at .../src/utils")` because the only
+    /// check was `.git` in the path itself. It must now measure that subtree.
+    #[test]
+    fn test_analyze_code_churn_from_subdirectory_is_measured() {
+        let temp = init_repo_with_subdir_commits();
+        let subdir = temp.path().join("src/utils");
+
+        let analysis = GitAnalysisService::analyze_code_churn(&subdir, 365)
+            .expect("churn inside a repository must be measurable from a subdirectory");
+
+        assert_eq!(
+            analysis.repository_root,
+            temp.path().canonicalize().unwrap(),
+            "repository_root must be the discovered root, not the queried subpath"
+        );
+        assert!(
+            !analysis.files.is_empty(),
+            "subdirectory churn must not be empty for a subtree with commits"
+        );
+        assert!(
+            analysis.summary.total_commits > 0,
+            "total_commits must be measured, got {}",
+            analysis.summary.total_commits
+        );
+    }
+
+    /// The subtree query must be *scoped* — `docs/` commits must not leak into
+    /// a `src/utils` query, otherwise "output derived from input" fails.
+    #[test]
+    fn test_analyze_code_churn_subdirectory_is_scoped() {
+        let temp = init_repo_with_subdir_commits();
+
+        let scoped = GitAnalysisService::analyze_code_churn(&temp.path().join("src/utils"), 365)
+            .expect("scoped churn");
+        let whole = GitAnalysisService::analyze_code_churn(temp.path(), 365).expect("root churn");
+
+        assert!(
+            scoped
+                .files
+                .iter()
+                .all(|f| f.relative_path.starts_with("src/utils")),
+            "scoped query returned files outside the requested subtree: {:?}",
+            scoped
+                .files
+                .iter()
+                .map(|f| f.relative_path.clone())
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            whole.files.len() > scoped.files.len(),
+            "whole-repo churn ({}) must cover more files than src/utils ({})",
+            whole.files.len(),
+            scoped.files.len()
+        );
+    }
+
+    /// Identical input, identical output — five runs, byte-compared.
+    #[test]
+    fn test_analyze_code_churn_is_deterministic_over_5_runs() {
+        let temp = init_repo_with_subdir_commits();
+        let subdir = temp.path().join("src/utils");
+
+        let fingerprint = |a: &CodeChurnAnalysis| {
+            a.files
+                .iter()
+                .map(|f| {
+                    format!(
+                        "{}|{}|{}|{}|{:.6}",
+                        f.relative_path, f.commit_count, f.additions, f.deletions, f.churn_score
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        let first = fingerprint(&GitAnalysisService::analyze_code_churn(&subdir, 365).unwrap());
+        for i in 1..5 {
+            let again = fingerprint(&GitAnalysisService::analyze_code_churn(&subdir, 365).unwrap());
+            assert_eq!(first, again, "churn output differed on run {i}");
+        }
     }
 }

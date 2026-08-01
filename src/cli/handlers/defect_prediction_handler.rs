@@ -184,13 +184,48 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         "{}\n",
         c::header("Defect Prediction Detailed Report")
     );
+    // #657: report the real counts. `Total files analyzed` used to be the
+    // post-truncation prediction count, so it read "10" for a 3863-file repo.
     let _ = writeln!(
         output,
-        "  {}Total files analyzed:{} {}{}{}",
+        "  {}Files discovered:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.total_files_discovered,
+        c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Files analyzed:{} {}{}{}",
         c::BOLD,
         c::RESET,
         c::BOLD_WHITE,
         result.total_files_analyzed,
+        c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Predictions shown:{} {}{} of {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.predictions_reported,
+        result.files_matching_filters,
+        if result.predictions_truncated {
+            " (truncated by --top-files)"
+        } else {
+            ""
+        },
+        c::RESET
+    );
+    let _ = writeln!(
+        output,
+        "  {}Churn source:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.churn_source.describe(),
         c::RESET
     );
     let _ = writeln!(
@@ -268,13 +303,15 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
             prediction.metrics.complexity_score,
             c::RESET
         );
+        // #657: an unmeasured churn renders as "not measured", never as a
+        // number — 0.0 would read as "this file never changed".
         let _ = writeln!(
             output,
-            "      {}Churn:{} {}{:.1}{}",
+            "      {}Churn:{} {}{}{}",
             c::BOLD,
             c::RESET,
             c::BOLD_WHITE,
-            prediction.metrics.churn_score,
+            format_optional_score(prediction.metrics.churn_score),
             c::RESET
         );
         let _ = writeln!(
@@ -316,6 +353,15 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
     output
 }
 
+/// Render a possibly-unmeasured 0-1 score.
+///
+/// #657: `churn_score` used to be the constant 0.3 for every file. When it
+/// cannot be measured it must render as "not measured" — never as a plausible
+/// default and never as 0, which looks like a finding.
+fn format_optional_score(score: Option<f32>) -> String {
+    score.map_or_else(|| "not measured".to_string(), |v| format!("{v:.3}"))
+}
+
 /// Format as CSV
 fn format_csv(result: &DefectPredictionResult) -> String {
     let mut output = String::new();
@@ -323,13 +369,13 @@ fn format_csv(result: &DefectPredictionResult) -> String {
 
     for prediction in &result.predictions {
         output.push_str(&format!(
-            "{},{:?},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}\n",
+            "{},{:?},{:.3},{:.3},{:.3},{},{:.3},{:.3},{:.3}\n",
             prediction.file_path,
             prediction.risk_level,
             prediction.defect_probability,
             prediction.confidence,
             prediction.metrics.complexity_score,
-            prediction.metrics.churn_score,
+            format_optional_score(prediction.metrics.churn_score),
             prediction.metrics.coupling_score,
             prediction.metrics.size_score,
             prediction.metrics.duplication_score
@@ -416,16 +462,23 @@ fn format_sarif(result: &DefectPredictionResult) -> String {
 mod tests {
     use super::*;
     use crate::services::facades::defect_prediction_facade::{
-        FilePrediction, FileRiskMetrics, RiskLevel,
+        ChurnSource, FilePrediction, FileRiskMetrics, RiskLevel,
     };
 
-    #[test]
-    fn test_format_summary() {
-        let result = DefectPredictionResult {
+    fn sample_result(
+        churn_score: Option<f32>,
+        churn_source: ChurnSource,
+    ) -> DefectPredictionResult {
+        DefectPredictionResult {
+            total_files_discovered: 12,
             total_files_analyzed: 10,
+            files_matching_filters: 10,
             high_risk_files: 3,
             medium_risk_files: 4,
             low_risk_files: 3,
+            predictions_reported: 1,
+            predictions_truncated: true,
+            churn_source,
             predictions: vec![FilePrediction {
                 file_path: "test.rs".to_string(),
                 defect_probability: 0.8,
@@ -433,7 +486,7 @@ mod tests {
                 confidence: 0.9,
                 metrics: FileRiskMetrics {
                     complexity_score: 0.8,
-                    churn_score: 0.7,
+                    churn_score,
                     coupling_score: 0.6,
                     size_score: 0.5,
                     duplication_score: 0.4,
@@ -442,12 +495,60 @@ mod tests {
             }],
             summary: "Test summary".to_string(),
             recommendations: vec!["Test recommendation".to_string()],
-        };
+        }
+    }
+
+    #[test]
+    fn test_format_summary() {
+        let result = sample_result(
+            Some(0.7),
+            ChurnSource::GitHistory {
+                window_days: 90,
+                files_with_churn: 4,
+            },
+        );
 
         let output = format_summary(&result);
         assert!(output.contains("Test summary"));
         assert!(output.contains("test.rs"));
         assert!(output.contains("80.0%"));
         assert!(output.contains("Test recommendation"));
+    }
+
+    /// #657: an unmeasured churn must never render as a number.
+    #[test]
+    fn test_format_optional_score_absent_says_not_measured() {
+        assert_eq!(format_optional_score(None), "not measured");
+        assert_eq!(format_optional_score(Some(0.0)), "0.000");
+    }
+
+    #[test]
+    fn test_format_detailed_renders_absent_churn_as_not_measured() {
+        let result = sample_result(
+            None,
+            ChurnSource::NotMeasured {
+                reason: "No git repository found".to_string(),
+            },
+        );
+        let output = format_detailed(&result);
+        assert!(
+            output.contains("not measured"),
+            "detailed output must not invent a churn number: {output}"
+        );
+        // The cap must be visible as a cap, not as the total.
+        assert!(output.contains("Files discovered:"));
+        assert!(output.contains("truncated by --top-files"));
+    }
+
+    #[test]
+    fn test_format_csv_renders_absent_churn_as_not_measured() {
+        let result = sample_result(
+            None,
+            ChurnSource::NotMeasured {
+                reason: "No git repository found".to_string(),
+            },
+        );
+        let csv = format_csv(&result);
+        assert!(csv.contains("not measured"), "csv churn column: {csv}");
     }
 }

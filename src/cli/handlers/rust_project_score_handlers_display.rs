@@ -24,19 +24,13 @@ fn format_text(
     output.push_str(&format!("{}\n", c::rule()));
     output.push('\n');
 
-    // Summary — exclude N/A categories from totals (#237)
-    let applicable_earned: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.earned)
-        .sum();
-    let applicable_possible: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.max)
-        .sum();
+    // Summary — exclude N/A categories from totals (#237).
+    // #687: folded via `aggregation` (name-sorted, rounded) rather than over
+    // `HashMap::values()`, so text cannot disagree with json/yaml about the
+    // same number.
+    use crate::services::rust_project_score::aggregation;
+    let applicable_earned = aggregation::applicable_earned(&score.categories);
+    let applicable_possible = aggregation::applicable_possible(&score.categories);
     output.push_str(&format!("{}\n", c::label("Summary")));
     output.push_str(&format!(
         "  Score: {}\n",
@@ -55,9 +49,9 @@ fn format_text(
     // Categories
     output.push_str(&format!("{}\n", c::label("Categories")));
 
-    // Sort categories by name for consistent output
-    let mut categories: Vec<_> = score.categories.iter().collect();
-    categories.sort_by_key(|(name, _)| *name);
+    // Sort categories by name for consistent output (#687: same ordering as
+    // the json/yaml/markdown renderers)
+    let categories = aggregation::sorted_categories(&score.categories);
 
     for (name, category) in categories {
         if !category.applicable {
@@ -117,19 +111,11 @@ fn format_markdown(
     // Header
     output.push_str(&format!("# Rust Project Score v{}\n\n", SPEC_VERSION));
 
-    // Summary — exclude N/A categories from totals (#237)
-    let applicable_earned: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.earned)
-        .sum();
-    let applicable_possible: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.max)
-        .sum();
+    // Summary — exclude N/A categories from totals (#237).
+    // #687: same deterministic fold as text/json/yaml.
+    use crate::services::rust_project_score::aggregation;
+    let applicable_earned = aggregation::applicable_earned(&score.categories);
+    let applicable_possible = aggregation::applicable_possible(&score.categories);
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- **Score**: {:.1}/{:.0}\n",
@@ -143,8 +129,7 @@ fn format_markdown(
     output.push_str("| Category | Score | Percentage |\n");
     output.push_str("|----------|-------|------------|\n");
 
-    let mut categories: Vec<_> = score.categories.iter().collect();
-    categories.sort_by_key(|(name, _)| *name);
+    let categories = aggregation::sorted_categories(&score.categories);
 
     for (name, category) in categories {
         let percentage = category.percentage();
