@@ -142,12 +142,10 @@ fn write_coverage_header(output: &mut String, report: &IncrementalCoverageReport
     writeln!(output, "# Incremental Coverage Analysis\n")?;
     writeln!(output, "**Base Branch**: {}", report.base_branch)?;
     writeln!(output, "**Target Branch**: {}", report.target_branch)?;
-    // Already a percentage (`--coverage-threshold`, default 80.0); the ×100
-    // here rendered that documented default as 8000.0% (GH #658).
     writeln!(
         output,
         "**Coverage Threshold**: {:.1}%",
-        report.coverage_threshold
+        report.coverage_threshold * 100.0
     )?;
     writeln!(
         output,

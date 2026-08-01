@@ -446,50 +446,6 @@ fn clean_human_report(detailed: bool, perf: bool, elapsed: std::time::Duration) 
     output
 }
 
-/// Document to emit on stdout when clippy reported no violations at all.
-///
-/// Issue #679: the clean-project path returned early after printing
-/// "✓ No lint violations found — project is clean" to **stderr**, so
-/// `analyze lint-hotspot --format json` wrote **zero bytes** to stdout and
-/// exited 0 — `| jq .` failed on empty input. A machine format must always
-/// yield a parseable document. Human formats keep the stderr-only message,
-/// so `None` means "nothing to write on stdout".
-pub(crate) fn format_clean_output(format: &LintHotspotOutputFormat) -> Result<Option<String>> {
-    let doc = match format {
-        LintHotspotOutputFormat::Summary | LintHotspotOutputFormat::Detailed => return Ok(None),
-        LintHotspotOutputFormat::Json | LintHotspotOutputFormat::EnforcementJson => {
-            serde_json::json!({
-                "hotspot": serde_json::Value::Null,
-                "total_project_violations": 0,
-                "files_with_violations": 0,
-                "quality_gate": {
-                    "passed": true,
-                    "violations": [],
-                    "blocking": false,
-                },
-            })
-        }
-        LintHotspotOutputFormat::Sarif => serde_json::json!({
-            "version": "2.1.0",
-            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-            "runs": [{
-                "tool": {
-                    "driver": {
-                        "name": "pmat-lint-hotspot",
-                        "version": env!("CARGO_PKG_VERSION"),
-                        "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
-                    }
-                },
-                "results": []
-            }]
-        }),
-    };
-
-    Ok(Some(serde_json::to_string_pretty(&doc).context(
-        "Failed to serialize clean lint-hotspot result",
-    )?))
-}
-
 #[cfg(test)]
 mod lint_hotspot_output_tests {
     //! Covers format_output dispatcher + format_json/sarif in
@@ -517,44 +473,6 @@ mod lint_hotspot_output_tests {
                 violations: vec![],
                 blocking: false,
             },
-        }
-    }
-
-    /// Issue #679 regression: `analyze lint-hotspot --format json` on a clean
-    /// project wrote ZERO bytes to stdout and exited 0, so `| jq .` failed on
-    /// empty input. Every machine format must yield a parseable document.
-    #[test]
-    fn test_clean_project_machine_formats_emit_a_document() {
-        for format in [
-            LintHotspotOutputFormat::Json,
-            LintHotspotOutputFormat::EnforcementJson,
-            LintHotspotOutputFormat::Sarif,
-        ] {
-            let out = format_clean_output(&format)
-                .unwrap()
-                .unwrap_or_else(|| panic!("{format} must emit a document on a clean project"));
-            assert!(!out.trim().is_empty(), "{format} emitted zero bytes");
-            let doc: serde_json::Value = serde_json::from_str(&out)
-                .unwrap_or_else(|e| panic!("{format} output must parse as JSON: {e}"));
-            if format == LintHotspotOutputFormat::Sarif {
-                assert_eq!(doc["version"], "2.1.0");
-                assert!(doc["runs"][0]["results"].as_array().unwrap().is_empty());
-            } else {
-                assert!(doc["hotspot"].is_null());
-                assert_eq!(doc["total_project_violations"], 0);
-            }
-        }
-    }
-
-    /// The human formats deliberately stay silent on stdout — the "project is
-    /// clean" line is a stderr message, not a report.
-    #[test]
-    fn test_clean_project_human_formats_write_nothing() {
-        for format in [
-            LintHotspotOutputFormat::Summary,
-            LintHotspotOutputFormat::Detailed,
-        ] {
-            assert!(format_clean_output(&format).unwrap().is_none());
         }
     }
 

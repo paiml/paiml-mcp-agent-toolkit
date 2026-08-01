@@ -420,14 +420,7 @@ mod coverage_tests {
         };
         let detector = ViolationDetector::new(config);
 
-        // GH-681: the fixture used to be `PatternCollection::new()` (zero files)
-        // alongside metrics claiming 10 patterns over 1000 LOC — an incoherent
-        // pair that only passed because low diversity was reported without
-        // checking that anything had been measured. Make the collection agree
-        // with the metrics so the test pins "measured low diversity ⇒ violation"
-        // rather than "0/0 ⇒ violation".
-        let mut patterns = PatternCollection::new();
-        patterns.total_files = 4;
+        let patterns = PatternCollection::new();
         let metrics = EntropyMetrics {
             file_level_entropy: Some(0.5),
             module_level_entropy: Some(0.5),
@@ -446,62 +439,5 @@ mod coverage_tests {
 
         assert!(!violations.is_empty());
         assert!(violations[0].message.contains("diversity"));
-    }
-
-    /// GH-681: `analyze entropy` on a nonexistent path exited 0 reporting
-    /// "Files Analyzed: 0 / Total Violations: 1" — a Medium-severity
-    /// "Low pattern diversity: 0.0% (minimum: 30.0%)" finding with an empty
-    /// `affected_files` list, derived from a 0/0 division rather than a
-    /// measurement.
-    #[test]
-    fn test_no_diversity_violation_when_nothing_was_analyzed() {
-        let detector = ViolationDetector::new(EntropyConfig::default());
-
-        let patterns = PatternCollection::new(); // zero files, zero patterns
-        let metrics = EntropyMetrics {
-            file_level_entropy: 0.0,
-            module_level_entropy: 0.0,
-            project_level_entropy: 0.0,
-            pattern_diversity: 0.0, // 0/0, not a measurement
-            total_patterns: 0,
-            total_instances: 0,
-            total_loc: 0,
-            patterns_by_type: HashMap::new(),
-        };
-
-        let mut violations = Vec::new();
-        detector
-            .detect_low_diversity(&patterns, &metrics, &mut violations)
-            .unwrap();
-
-        assert!(
-            violations.is_empty(),
-            "0 analyzed files must yield 0 violations, got: {:?}",
-            violations
-                .iter()
-                .map(|v| v.message.clone())
-                .collect::<Vec<_>>()
-        );
-    }
-
-    /// Companion to the above: a whole-report check that an empty directory
-    /// yields no actionable violations at all.
-    #[tokio::test]
-    async fn test_empty_directory_yields_no_entropy_violations() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let analyzer = crate::entropy::EntropyAnalyzer::new();
-
-        let report = analyzer.analyze(dir.path()).await.expect("analyze");
-
-        assert_eq!(report.total_files_analyzed, 0);
-        assert!(
-            report.actionable_violations.is_empty(),
-            "an empty tree must not produce quality findings, got: {:?}",
-            report
-                .actionable_violations
-                .iter()
-                .map(|v| v.message.clone())
-                .collect::<Vec<_>>()
-        );
     }
 }

@@ -6,7 +6,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::CommandDispatcher;
-use crate::cli::enums::ReportOutputFormat;
 use crate::cli::handlers;
 use crate::cli::OutputFormat;
 use std::path::PathBuf;
@@ -59,9 +58,6 @@ impl CommandDispatcher {
 
         // Use defaults for optional parameters
         let max_dead = max_dead_code.unwrap_or(0.1); // 10% default
-                                                     // None is forwarded as-is: the entropy threshold resolver applies config
-                                                     // and the documented default, and an explicit value must not be invented
-                                                     // here (it would then outrank the project's own config).
         let max_comp = max_complexity_p99.unwrap_or(20) as u32;
 
         crate::cli::analysis_utilities::handle_quality_gate(

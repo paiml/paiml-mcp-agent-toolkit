@@ -103,7 +103,7 @@ impl ViolationDetector {
     /// must not fail on a number that was never computed.
     fn detect_low_diversity(
         &self,
-        patterns: &PatternCollection,
+        _patterns: &PatternCollection,
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
@@ -132,17 +132,6 @@ impl ViolationDetector {
             });
         }
         Ok(())
-    }
-
-    /// The most frequent measured pattern type, used to attribute the
-    /// project-level diversity finding to real data rather than a hardcoded
-    /// `PatternType::ControlFlow`. Only called with a non-empty population.
-    fn dominant_pattern_type(metrics: &EntropyMetrics) -> PatternType {
-        metrics
-            .patterns_by_type
-            .iter()
-            .max_by_key(|(ty, count)| (**count, format!("{ty:?}")))
-            .map_or(PatternType::ControlFlow, |(ty, _)| *ty)
     }
 
     /// Detect cross-file duplication

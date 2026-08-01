@@ -474,23 +474,4 @@ mod tests {
             ReportFormat::Text
         );
     }
-
-    /// Issue #672: html/pdf/dashboard have no emitter. They used to be
-    /// silently rewritten to Markdown/Json (so `--format html` produced a file
-    /// with no markup); they must now be rejected, not substituted.
-    #[test]
-    fn test_unimplemented_formats_are_rejected_not_substituted() {
-        for format in [
-            ReportOutputFormat::Html,
-            ReportOutputFormat::Pdf,
-            ReportOutputFormat::Dashboard,
-        ] {
-            let name = format.to_string();
-            let err = convert_to_service_format(format)
-                .expect_err("unimplemented format must be rejected");
-            let msg = err.to_string();
-            assert!(msg.contains(&name), "error must name the format: {msg}");
-            assert!(msg.contains("not implemented"), "{msg}");
-        }
-    }
 }

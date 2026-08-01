@@ -146,7 +146,7 @@ async fn execute_entropy_check(
         eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
         return Ok(());
     }
-    let threshold = load_entropy_threshold(project_path, min_entropy)?;
+    let threshold = load_entropy_threshold(project_path, min_entropy);
     let mut exclude_paths = load_entropy_exclude_paths(project_path);
     // Merge per-check excludes from [entropy] section (#220)
     for pattern in &gate_config.exclude {

@@ -113,16 +113,6 @@ impl GitAnalysisService {
         // user-supplied integer must never reach unchecked calendar arithmetic.
         // See contracts/pmat-no-fabrication-v1.yaml, `bounded_time_arithmetic`.
         //
-        // An out-of-range lookback means "all of history", and is expressed to
-        // git by OMITTING --since rather than by naming a date.
-        //
-        // Clamping to DateTime::MIN_UTC was wrong in a way that is worse than
-        // the SIGABRT it replaced: the resulting year is one `git log --since`
-        // parses erratically, so results became non-monotonic and silently
-        // empty. On a 2-commit repository, -d 400000 found 1 file, -d 730000
-        // found ZERO ("Analyzed 0 files with changes" for a live repo), -d
-        // 800000 found 1 again. A confidently wrong zero is a fabrication;
-        // asking for more history must never return less.
         // The floor is the Unix epoch, not the limit of chrono's range. Checked
         // arithmetic alone was not enough: 400_000 days is ~year 931, which
         // chrono represents happily and `git log --since` then parses
@@ -143,8 +133,9 @@ impl GitAnalysisService {
 
         info!("Analyzing code churn for last {} days", period_days);
 
-        let file_metrics = Self::get_file_metrics(&repo_root, &since_str, scope.as_deref())?;
-        let summary = Self::generate_summary(&file_metrics);
+        let (file_metrics, total_commits) =
+            Self::get_file_metrics(&repo_root, since_str.as_deref(), scope.as_deref())?;
+        let summary = Self::generate_summary(&file_metrics, total_commits);
 
         Ok(CodeChurnAnalysis {
             generated_at: Utc::now(),
@@ -164,22 +155,25 @@ impl GitAnalysisService {
     /// fixture repo with a single commit touching two files.
     fn get_file_metrics(
         project_path: &Path,
-        since_date: &str,
+        since_date: Option<&str>,
         scope: Option<&Path>,
-    ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
+    ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
-        let since = since_date.to_string();
+        let since = since_date.map(std::string::ToString::to_string);
         let scope = scope.map(Path::to_path_buf);
         std::thread::spawn(move || {
             let mut command = Command::new("git");
-            command
-                .arg("log")
-                .arg("--since")
-                .arg(&since)
-                .arg("--pretty=format:%H|%an|%aI")
-                .arg("--numstat");
+            command.arg("log");
+            // No --since at all means "all history", which is what a lookback
+            // reaching past the Unix epoch asks for. Naming an extreme date
+            // instead makes `git log --since` return erratic, sometimes empty,
+            // results -- see the monotonicity note above.
+            if let Some(ref since) = since {
+                command.arg("--since").arg(since);
+            }
+            command.arg("--pretty=format:%H|%an|%aI").arg("--numstat");
             // #657: restrict the history to the requested subtree so a
             // subdirectory query reports that subtree's churn, not the whole
             // repository's.

@@ -360,8 +360,7 @@ fn print_coverage_analysis_header(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
     );
-    // Already a percentage (`--coverage-threshold`, default 80.0) — GH #658.
-    eprintln!("📈 Coverage threshold: {coverage_threshold:.1}%");
+    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
     eprintln!("📄 Format: {format:?}");
 }
 
