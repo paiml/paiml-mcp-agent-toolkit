@@ -96,12 +96,27 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
     } else {
         c::YELLOW
     };
+    // Same disclosure as the json/markdown renderers: the LISTED count is
+    // capped by `--top-files`; the FOUND count (from the unfiltered
+    // distribution) is not. Printing only the capped number made the default
+    // run report 24 where the project had 106.
+    let dist_found = report.complexity_distribution.quadratic
+        + report.complexity_distribution.cubic
+        + report.complexity_distribution.exponential;
+    let listed = report.high_complexity_functions.len();
+    let found = dist_found.max(listed);
+    let high_suffix = if listed < found {
+        format!(" (of {found} found; list truncated by --top-files)")
+    } else {
+        String::new()
+    };
     output.push_str(&format!(
-        "  {}: {}{}{}\n\n",
+        "  {}: {}{}{}{}\n\n",
         c::label("High Complexity Functions"),
         high_color,
-        report.high_complexity_functions.len(),
+        listed,
         c::RESET,
+        high_suffix,
     ));
 
     output.push_str(&format!("{}\n", c::subheader("Complexity Distribution:")));
@@ -187,9 +202,16 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
             *file_function_counts.entry(&func.file_path).or_insert(0) += 1;
         }
 
-        // Sort files by total complexity score
+        // Sort files by total complexity score. DETERMINISM: the score is not a
+        // total order (most files tie), the source is a `HashMap`, and
+        // `sort_by` is stable — so which tied file appeared in the top 10 came
+        // out of the process's hash seed. Path breaks the tie.
         let mut sorted_files: Vec<_> = file_scores.into_iter().collect();
-        sorted_files.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_files.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(b.0))
+        });
 
         // Display top 10 files
         for (i, (file_path, score)) in sorted_files.iter().take(10).enumerate() {

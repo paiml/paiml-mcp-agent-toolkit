@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 // ============ Grade Tests ============
@@ -467,7 +467,7 @@ fn test_project_score_average_single() {
     };
     let project = ProjectScore {
         files: vec![tdg_score],
-        language_distribution: HashMap::from([(Language::TypeScript, 1)]),
+        language_distribution: std::collections::BTreeMap::from([(Language::TypeScript, 1)]),
         ..ProjectScore::default()
     };
     let avg = project.average();

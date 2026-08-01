@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_format_project() {
-        let mut language_distribution = std::collections::HashMap::new();
+        let mut language_distribution = std::collections::BTreeMap::new();
         language_distribution.insert(Language::Rust, 10);
         language_distribution.insert(Language::TypeScript, 5);
 
@@ -330,7 +330,7 @@ mod tests {
                 },
             ],
             language_distribution,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
         };

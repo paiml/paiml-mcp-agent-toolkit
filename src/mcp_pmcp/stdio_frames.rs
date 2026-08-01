@@ -361,6 +361,88 @@ fn emit_error_frame(verdict: &FrameVerdict) {
     }
 }
 
+/// Registry listings whose array order must not depend on a hash seed, and the
+/// field each one is ordered by.
+///
+/// MCP does not specify an order for any of these, which is exactly why the
+/// server has to pick one: an unspecified order is not a licence to emit a
+/// different one every time.
+const ORDERED_REGISTRY_ARRAYS: &[(&str, &str)] = &[
+    ("tools", "name"),
+    ("prompts", "name"),
+    ("resources", "uri"),
+    ("resourceTemplates", "uriTemplate"),
+];
+
+/// Sort the registry listings inside an outgoing frame, in place.
+///
+/// DETERMINISM (round-3 sweep): `tools/list` is answered from pmcp's tool
+/// registry, which is a `HashMap`, so the `tools` array came out in a
+/// per-process random order — 8 server processes produced 8 DISTINCT orderings
+/// (first three names went `["pdmt_deterministic_todos","git_operation",
+/// "quality_gate"]`, then `["git_operation","analyze_dead_code",
+/// "analyze_deep_context"]`, then `["scaffold_project",
+/// "pdmt_deterministic_todos","generate_context"]`, …). It was stable WITHIN a
+/// process, which is why in-process tests never caught it. The consequence is
+/// on the record: v3.28.3's own commit claimed "5 identical runs produce
+/// byte-identical output", and 5 runs of the repro session gave 5 different
+/// md5s — localised to this array, because the same session with `tools/list`
+/// removed WAS byte-identical five times over.
+///
+/// Sorting here, at the wire, is deliberate: it is the one place every response
+/// passes through, so no future registry can reintroduce the defect, and pmcp's
+/// own encoder still decides the wire format.
+///
+/// The bytes are left completely untouched unless a listing is actually present
+/// and actually out of order, so no other frame can be reshaped (in particular
+/// nothing else gets round-tripped through `serde_json::Value`).
+pub(crate) fn order_registry_arrays(bytes: &mut Vec<u8>) {
+    let Ok(mut frame) = serde_json::from_slice::<Value>(bytes) else {
+        return;
+    };
+    let Some(result) = frame.get_mut("result").and_then(Value::as_object_mut) else {
+        return;
+    };
+
+    let mut reordered = false;
+    for (array_key, sort_key) in ORDERED_REGISTRY_ARRAYS {
+        let Some(items) = result.get_mut(*array_key).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        let before: Vec<Option<String>> = items
+            .iter()
+            .map(|item| entry_sort_key(item, sort_key))
+            .collect();
+        // Entries without the key sort last, among themselves in arrival order
+        // (a stable sort), rather than being reordered on a guess.
+        items.sort_by(
+            |a, b| match (entry_sort_key(a, sort_key), entry_sort_key(b, sort_key)) {
+                (Some(x), Some(y)) => x.cmp(&y),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            },
+        );
+        let after: Vec<Option<String>> = items
+            .iter()
+            .map(|item| entry_sort_key(item, sort_key))
+            .collect();
+        reordered |= before != after;
+    }
+
+    if !reordered {
+        return;
+    }
+    if let Ok(encoded) = serde_json::to_vec(&frame) {
+        *bytes = encoded;
+    }
+}
+
+/// The value an entry is ordered by, if it has one.
+fn entry_sort_key(entry: &Value, sort_key: &str) -> Option<String> {
+    entry.get(sort_key)?.as_str().map(ToString::to_string)
+}
+
 /// stdio transport that keeps the raw line long enough to answer it properly.
 ///
 /// Drop-in replacement for `pmcp::shared::StdioTransport` in
@@ -406,6 +488,7 @@ impl Transport for RawFrameStdioTransport {
         }
         // pmcp's own encoder: the single source of truth for the wire format.
         let mut bytes = pmcp::shared::transport::serialize_message(&message)?;
+        order_registry_arrays(&mut bytes);
         bytes.push(b'\n');
         self.stdout
             .write_all(&bytes)
@@ -822,6 +905,136 @@ mod tests {
         assert_eq!(frame["id"], serde_json::json!(7));
         assert_eq!(frame["error"]["code"], serde_json::json!(-32601));
         assert_eq!(frame["error"]["message"], "Method not found: x");
+    }
+
+    // -- DETERMINISM: registry listings (round-3 sweep) --
+
+    fn tools_frame(names: &[&str]) -> Vec<u8> {
+        let tools: Vec<Value> = names
+            .iter()
+            .map(|n| serde_json::json!({ "name": n, "description": "d" }))
+            .collect();
+        serde_json::to_vec(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": { "tools": tools },
+        }))
+        .expect("frame serializes")
+    }
+
+    fn tool_names(bytes: &[u8]) -> Vec<String> {
+        let frame: Value = serde_json::from_slice(bytes).expect("frame parses");
+        frame["result"]["tools"]
+            .as_array()
+            .expect("tools array")
+            .iter()
+            .map(|t| t["name"].as_str().expect("name").to_string())
+            .collect()
+    }
+
+    /// `tools/list` is answered from pmcp's registry, which is a `HashMap`, so
+    /// the array came out in a per-process order: 8 server processes produced
+    /// 8 DISTINCT orderings, and 5 runs of issue #648's own repro gave 5
+    /// different md5 sums even after `sort`. The same session with `tools/list`
+    /// removed WAS byte-identical five times over, which localised it here.
+    ///
+    /// Any arrival order must leave by one, sorted order.
+    #[test]
+    fn tools_list_is_sorted_whatever_order_it_arrives_in() {
+        let arrivals = [
+            vec![
+                "pdmt_deterministic_todos",
+                "git_operation",
+                "quality_gate",
+                "analyze_satd",
+            ],
+            vec![
+                "git_operation",
+                "analyze_satd",
+                "pdmt_deterministic_todos",
+                "quality_gate",
+            ],
+            vec![
+                "quality_gate",
+                "pdmt_deterministic_todos",
+                "analyze_satd",
+                "git_operation",
+            ],
+            vec![
+                "analyze_satd",
+                "quality_gate",
+                "git_operation",
+                "pdmt_deterministic_todos",
+            ],
+            vec![
+                "git_operation",
+                "quality_gate",
+                "analyze_satd",
+                "pdmt_deterministic_todos",
+            ],
+        ];
+
+        let expected = vec![
+            "analyze_satd".to_string(),
+            "git_operation".to_string(),
+            "pdmt_deterministic_todos".to_string(),
+            "quality_gate".to_string(),
+        ];
+
+        for arrival in &arrivals {
+            let mut bytes = tools_frame(arrival);
+            order_registry_arrays(&mut bytes);
+            assert_eq!(
+                tool_names(&bytes),
+                expected,
+                "arrival order {arrival:?} must leave sorted"
+            );
+        }
+    }
+
+    /// Nothing else is reshaped: a frame with no registry listing, and a
+    /// listing already in order, come out byte-for-byte unchanged.
+    #[test]
+    fn frames_without_a_registry_listing_are_left_byte_identical() {
+        let untouched = [
+            br#"{"jsonrpc":"2.0","id":1,"result":{}}"#.to_vec(),
+            br#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"x"}}"#.to_vec(),
+            br#"{"jsonrpc":"2.0","id":1e+20,"error":{"code":-32601,"message":"x"}}"#.to_vec(),
+            b"not json at all".to_vec(),
+            tools_frame(&["a_tool", "b_tool", "c_tool"]),
+        ];
+        for original in untouched {
+            let mut bytes = original.clone();
+            order_registry_arrays(&mut bytes);
+            assert_eq!(
+                bytes, original,
+                "a frame that needs no reordering must not be rewritten"
+            );
+        }
+    }
+
+    /// Entries missing the sort key are kept, at the end, rather than dropped
+    /// or reordered on a guess.
+    #[test]
+    fn entries_without_the_sort_key_are_kept() {
+        let mut bytes = serde_json::to_vec(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": { "tools": [
+                { "name": "zed" },
+                { "no_name": true },
+                { "name": "abe" },
+            ]},
+        }))
+        .expect("serializes");
+        order_registry_arrays(&mut bytes);
+
+        let frame: Value = serde_json::from_slice(&bytes).expect("parses");
+        let tools = frame["result"]["tools"].as_array().expect("array");
+        assert_eq!(tools.len(), 3, "no entry may be dropped");
+        assert_eq!(tools[0]["name"], "abe");
+        assert_eq!(tools[1]["name"], "zed");
+        assert_eq!(tools[2]["no_name"], serde_json::json!(true));
     }
 
     #[tokio::test]

@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+// `HashMap` is still used by `find_duplicate_blocks` for hash grouping (order
+// there is erased by an explicit sort); every map that reaches OUTPUT is a
+// `BTreeMap` so JSON key order cannot vary between runs.
 use std::path::{Path, PathBuf};
 
 include!("duplicates_detection.rs");
@@ -185,6 +188,55 @@ mod tests {
         assert!(duplicates.is_empty());
     }
 
+    /// DETERMINISM (round-3 sweep): `find_duplicate_blocks` iterated a
+    /// `HashMap` of hash groups and then sorted only by `lines` — a stable sort,
+    /// so every block of equal length kept the map's per-process order.
+    /// `analyze duplicates --format json` on a fixed two-file fixture produced
+    /// 5 DIFFERENT md5 sums over 5 runs: the same 14 block hashes, reordered
+    /// (run 1 began 9d399b, 272e45, f64c5c, ff7a0d…; run 2 began 9d399b,
+    /// a6cbc6, ff7a0d, a2e02d…).
+    ///
+    /// Every group here is the SAME length, so `lines` decides nothing and the
+    /// tie-break is the whole answer. Each iteration builds a fresh `HashMap`
+    /// inside the function: the in-process stand-in for re-running the binary.
+    #[test]
+    fn duplicate_block_order_is_stable_across_fresh_hash_maps() {
+        fn order() -> Vec<String> {
+            let mut blocks = Vec::new();
+            // Ten 6-line duplicate pairs, all identical in length.
+            for group in 0..10 {
+                for site in 0..2 {
+                    blocks.push((
+                        format!("hash{group:02}"),
+                        format!("file{site}.rs"),
+                        1 + group * 10,
+                        6 + group * 10,
+                        format!("body{group}"),
+                    ));
+                }
+            }
+            find_duplicate_blocks(blocks, 0.8)
+                .into_iter()
+                .map(|b| b.hash)
+                .collect()
+        }
+
+        let first = order();
+        assert_eq!(first.len(), 10, "fixture must produce ten tied blocks");
+        for i in 0..10 {
+            assert_eq!(
+                order(),
+                first,
+                "iteration {i}: identical input must produce an identical block order"
+            );
+        }
+        // Ties resolve on (first location, hash), so the order is a property of
+        // the code rather than of the hash seed.
+        let mut expected = first.clone();
+        expected.sort();
+        assert_eq!(first, expected);
+    }
+
     #[test]
     fn test_find_duplicate_blocks_with_duplicates() {
         let blocks = vec![
@@ -264,7 +316,7 @@ mod tests {
             total_lines: 100,
             duplication_percentage: 10.0,
             duplicate_blocks: vec![],
-            file_statistics: HashMap::new(),
+            file_statistics: BTreeMap::new(),
         };
 
         let result = format_json_output(&report);
@@ -301,7 +353,7 @@ mod tests {
                 tokens: 20,
                 similarity: 1.0,
             }],
-            file_statistics: HashMap::new(),
+            file_statistics: BTreeMap::new(),
         };
 
         let result = format_human_output(&report);
@@ -342,7 +394,7 @@ mod tests {
                 similarity: 1.0,
             })
             .collect();
-        let mut file_stats = HashMap::new();
+        let mut file_stats = BTreeMap::new();
         file_stats.insert(
             "src/x.rs".to_string(),
             FileStats {
@@ -491,7 +543,7 @@ mod tests {
 
     #[test]
     fn test_get_sorted_file_stats_sorts_by_dup_pct_desc() {
-        let mut stats = HashMap::new();
+        let mut stats = BTreeMap::new();
         stats.insert(
             "low.rs".to_string(),
             FileStats {

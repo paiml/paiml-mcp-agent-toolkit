@@ -25,7 +25,10 @@ pub struct DuplicateReport {
     pub total_lines: usize,
     pub duplication_percentage: f32,
     pub duplicate_blocks: Vec<DuplicateBlock>,
-    pub file_statistics: HashMap<String, FileStats>,
+    /// DETERMINISM (round-3 sweep): a `BTreeMap`, not a `HashMap`. serde emits
+    /// a map in iteration order, so `analyze duplicates --format json` listed
+    /// the same per-file statistics under a different key order on every run.
+    pub file_statistics: BTreeMap<String, FileStats>,
 }
 
 #[derive(Debug, Serialize)]
@@ -128,14 +131,18 @@ fn apply_top_files_filtering(report: &mut DuplicateReport, top_files: usize) {
 
 /// Get top files by duplication percentage
 fn get_top_files_by_duplication(
-    file_statistics: &HashMap<String, FileStats>,
+    file_statistics: &BTreeMap<String, FileStats>,
     top_files: usize,
 ) -> std::collections::HashSet<String> {
     let mut file_stats: Vec<_> = file_statistics.iter().collect();
+    // DETERMINISM: duplication percentage is not a total order (whole trees tie
+    // at 0.0), so without the path tie-break `.take(top_files)` kept whichever
+    // tied files the map iteration happened to visit first.
     file_stats.sort_by(|a, b| {
         b.1.duplication_percentage
             .partial_cmp(&a.1.duplication_percentage)
             .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(b.0))
     });
 
     file_stats
@@ -276,13 +283,13 @@ async fn collect_code_blocks(
 ) -> Result<(
     Vec<(String, String, usize, usize, String)>,
     usize,
-    HashMap<String, FileStats>,
+    BTreeMap<String, FileStats>,
 )> {
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let mut all_blocks = Vec::new();
     let mut total_lines = 0usize;
-    let mut file_stats = HashMap::new();
+    let mut file_stats = BTreeMap::new();
 
     let discovered_files = ProjectFileDiscovery::new(project_path.to_path_buf())
         .discover_files()
@@ -337,7 +344,7 @@ async fn process_source_file(
 /// Calculate duplicate statistics and update file stats
 fn calculate_duplicate_statistics(
     duplicate_blocks: &[DuplicateBlock],
-    file_stats: &mut HashMap<String, FileStats>,
+    file_stats: &mut BTreeMap<String, FileStats>,
 ) -> usize {
     let mut duplicate_lines = 0;
 
@@ -356,7 +363,7 @@ fn calculate_duplicate_statistics(
 }
 
 /// Update duplication percentages for all files
-fn update_file_duplication_percentages(file_stats: &mut HashMap<String, FileStats>) {
+fn update_file_duplication_percentages(file_stats: &mut BTreeMap<String, FileStats>) {
     for stats in file_stats.values_mut() {
         if stats.total_lines > 0 {
             stats.duplication_percentage =
@@ -380,7 +387,7 @@ fn build_duplicate_report(
     duplicate_lines: usize,
     total_lines: usize,
     duplication_percentage: f32,
-    file_stats: HashMap<String, FileStats>,
+    file_stats: BTreeMap<String, FileStats>,
 ) -> DuplicateReport {
     DuplicateReport {
         total_duplicates: duplicate_blocks.len(),

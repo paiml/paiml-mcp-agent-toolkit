@@ -16,7 +16,16 @@ pub fn format_provability_json(
                     "line": func_id.line_number,
                 },
                 "provability_score": summary.provability_score,
-                "analysis_time_us": summary.analysis_time_us,
+                // DETERMINISM (round-3 sweep): `analysis_time_us` was the only
+                // thing that moved between runs of
+                // `analyze provability --format json` on an unchanged tree —
+                // the same four functions came back with 28/1/1/1 µs on one run
+                // and 12/2/2/2 µs on the next, so every run diffed. A wall-clock
+                // duration measures the machine and its current load, not the
+                // code under analysis, so it does not belong in the analysis
+                // document; the human renderer (`--format detailed`) still
+                // prints it. See contracts/pmat-no-fabrication-v1.yaml, the
+                // determinism criterion.
                 "verified_properties": summary.verified_properties.len(),
             });
 

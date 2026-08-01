@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::grade::Grade;
 use super::language_simple::Language;
@@ -15,10 +15,23 @@ pub struct ProjectScore {
     #[serde(default)]
     pub average_grade: Grade,
     pub total_files: usize,
-    pub language_distribution: HashMap<Language, usize>,
+    /// Keyed by a `BTreeMap`, not a `HashMap`: serde emits a map in iteration
+    /// order, and `HashMap`'s is randomised per process. See the note on
+    /// `grade_distribution` — the same defect, same fix.
+    pub language_distribution: BTreeMap<Language, usize>,
     /// Grade distribution: count of files per grade (A+, A, ..., F)
+    ///
+    /// DETERMINISM (round-3 sweep): this was a `HashMap<Grade, usize>`, so
+    /// `analyze tdg --format json` emitted the SAME counts under a different
+    /// KEY ORDER on every run — 6 runs over an unchanged tree gave 6 orders
+    /// (`["B","BMinus","BPlus","A","APlus","AMinus"]`,
+    /// `["BMinus","BPlus","B","APlus","AMinus","A"]`, …) with a stable sum of
+    /// 495. A byte-diff of two identical runs was therefore never empty, which
+    /// is what makes a JSON baseline useless. `BTreeMap` emits in `Grade`'s
+    /// declaration order (best grade first), which is also the order a reader
+    /// expects.
     #[serde(default)]
-    pub grade_distribution: HashMap<Grade, usize>,
+    pub grade_distribution: BTreeMap<Grade, usize>,
     /// Count of F-grade files (critical quality issues)
     #[serde(default)]
     pub f_grade_count: usize,
@@ -39,8 +52,8 @@ impl ProjectScore {
             0.0
         };
 
-        let mut language_distribution = HashMap::new();
-        let mut grade_distribution = HashMap::new();
+        let mut language_distribution = BTreeMap::new();
+        let mut grade_distribution = BTreeMap::new();
         let mut f_grade_count = 0;
 
         for score in &scores {
@@ -360,6 +373,67 @@ mod no_contradiction_tests {
                 "a 2-2 Rust/Markdown tie must always resolve the same way"
             );
         }
+    }
+
+    /// DETERMINISM (round-3 sweep): `analyze tdg --format json` emitted
+    /// `grade_distribution` in a different KEY ORDER on every run — 6 runs over
+    /// an unchanged tree gave 6 orders (`["B","BMinus","BPlus","A","APlus",
+    /// "AMinus"]`, `["BMinus","BPlus","B","APlus","AMinus","A"]`, …) while the
+    /// counts summed to a stable 495 every time. Serde emits a map in iteration
+    /// order and `HashMap`'s is randomised per process.
+    ///
+    /// Each iteration aggregates a FRESH set of scores, so each builds a fresh
+    /// map: the in-process stand-in for "run the binary again".
+    #[test]
+    fn distribution_key_order_is_stable_across_fresh_aggregations() {
+        fn serialized() -> (String, String) {
+            let files = vec![
+                file_score(99.0, Language::Rust, false),
+                file_score(96.0, Language::Python, false),
+                file_score(92.0, Language::Rust, false),
+                file_score(88.0, Language::Markdown, false),
+                file_score(84.0, Language::TypeScript, false),
+                file_score(81.0, Language::Go, false),
+                file_score(75.0, Language::Rust, false),
+            ];
+            let project = ProjectScore::aggregate(files);
+            (
+                serde_json::to_string(&project.grade_distribution).unwrap(),
+                serde_json::to_string(&project.language_distribution).unwrap(),
+            )
+        }
+
+        let (grades, languages) = serialized();
+        // More than one key, or the test would pass vacuously.
+        assert!(grades.matches(':').count() > 1, "grades: {grades}");
+        assert!(languages.matches(':').count() > 1, "languages: {languages}");
+
+        for i in 0..10 {
+            assert_eq!(
+                serialized(),
+                (grades.clone(), languages.clone()),
+                "iteration {i}: identical input must serialize byte-identically"
+            );
+        }
+
+        // Ordered by grade, best first — a reader's order, not a hash seed's.
+        let order: Vec<&str> = grades
+            .split('"')
+            .filter(|piece| {
+                !piece.is_empty() && piece.chars().next().is_some_and(char::is_alphabetic)
+            })
+            .collect();
+        let all_grades_best_first = [
+            "APlus", "A", "AMinus", "BPlus", "B", "BMinus", "CPlus", "C", "CMinus", "D", "F",
+        ];
+        let mut expected = order.clone();
+        expected.sort_by_key(|name| {
+            all_grades_best_first
+                .iter()
+                .position(|g| g == name)
+                .expect("known grade")
+        });
+        assert_eq!(order, expected, "grade keys must be in grade order");
     }
 
     /// A clear majority still wins; the tiebreak only settles equal counts.

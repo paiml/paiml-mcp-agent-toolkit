@@ -54,7 +54,16 @@ pub async fn handle_analyze_proof_annotations(
     let annotations = collect_and_filter_annotations(&annotator, &project_path, &filter).await;
     let elapsed = start.elapsed();
 
-    eprintln!("✅ Found {} matching proof annotations", annotations.len());
+    // The run's wall clock lives here, on stderr, and not inside the JSON
+    // document: `dateVerified` used to be stamped onto every one of 1298
+    // annotations and `analysis_time_ms` into the summary, which made two
+    // byte-identical analyses of the same tree diff on every invocation.
+    eprintln!(
+        "✅ Found {} matching proof annotations in {} ms (verified at {})",
+        annotations.len(),
+        elapsed.as_millis(),
+        chrono::Utc::now().to_rfc3339()
+    );
 
     // Format output using helpers
     let content = format_proof_annotations(
@@ -256,6 +265,70 @@ mod active_tests {
         )
         .await;
         assert!(result.is_ok());
+    }
+
+    /// DETERMINISM (round-3 sweep): `analyze proof-annotations --format json`
+    /// produced five different md5 sums over five runs on an unchanged tree.
+    /// Three separate causes, all fixed:
+    ///
+    /// * entry order came out of a `HashMap<Location, _>` (run 1 started at
+    ///   `name_similarity_help…`, run 2 at `satd_formatting.rs`, run 3 at
+    ///   `tdg_handler_analysis…`);
+    /// * `annotationId` was a fresh `Uuid::new_v4()` per annotation per run, so
+    ///   the field could not identify anything;
+    /// * `dateVerified` / `analysis_time_ms` were wall clocks.
+    ///
+    /// This drives the real handler over a real fixture, five times, and
+    /// requires the rendered document to be byte-identical.
+    #[tokio::test]
+    async fn json_output_is_byte_identical_across_five_runs() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        // Several files and several items per file, so both the map ordering
+        // and the per-annotation id have something to disagree about.
+        for name in ["alpha.rs", "beta.rs", "gamma.rs", "delta.rs"] {
+            std::fs::write(
+                temp_dir.path().join(name),
+                "pub fn one(a: u32) -> u32 { a }\n                 pub const fn two(b: u32) -> u32 { b }\n                 pub fn three(c: String) -> String { c }\n",
+            )
+            .expect("write");
+        }
+
+        let render = || async {
+            let out = temp_dir.path().join("out.json");
+            handle_analyze_proof_annotations(
+                temp_dir.path().to_path_buf(),
+                ProofAnnotationOutputFormat::Json,
+                false,
+                true,
+                None,
+                None,
+                Some(out.clone()),
+                false,
+                true,
+            )
+            .await
+            .expect("json render succeeds");
+            let content = std::fs::read_to_string(&out).expect("output written");
+            std::fs::remove_file(&out).ok();
+            content
+        };
+
+        let first = render().await;
+        assert!(
+            first.contains("annotationId"),
+            "fixture must actually produce annotations: {first}"
+        );
+        assert!(
+            !first.contains("dateVerified"),
+            "a per-run wall clock makes the document undiffable: {first}"
+        );
+        for i in 1..5 {
+            assert_eq!(
+                render().await,
+                first,
+                "run {i}: identical input must produce byte-identical JSON"
+            );
+        }
     }
 }
 
