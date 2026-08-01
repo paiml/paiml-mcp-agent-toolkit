@@ -22,6 +22,13 @@ pub(crate) fn find_hotspot_with_details(
         eprintln!("🔍 Finding hotspot from {} files", file_metrics.len());
     }
 
+    // Iterate in path order, not hash order. `density > max_density` keeps the
+    // FIRST file seen at a tied density, so walking a HashMap meant two runs
+    // over identical input could name different hotspot files (and therefore
+    // print different reports). Sorting makes the winner reproducible.
+    let mut file_metrics: Vec<(PathBuf, FileMetrics)> = file_metrics.into_iter().collect();
+    file_metrics.sort_by(|a, b| a.0.cmp(&b.0));
+
     for (file_path, metrics) in file_metrics {
         if std::env::var("LINT_HOTSPOT_DEBUG").is_ok() {
             eprintln!(
@@ -46,9 +53,12 @@ pub(crate) fn find_hotspot_with_details(
         if density > max_density {
             max_density = density;
 
-            // Get top 10 lint violations
+            // Get top 10 lint violations. Sorting by count alone is not enough:
+            // `violations` is a HashMap, so equal-count lints came out in hash
+            // order and the "top 10" varied between runs on identical input.
+            // Break ties on the lint name.
             let mut top_lints: Vec<_> = metrics.violations.into_iter().collect();
-            top_lints.sort_by_key(|b| std::cmp::Reverse(b.1));
+            top_lints.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
             top_lints.truncate(10);
 
             hotspot_file = Some(LintHotspot {
@@ -127,9 +137,16 @@ pub(crate) fn generate_refactor_chain(hotspot: &LintHotspot, min_confidence: f64
     }
 
     RefactorChain {
+        // Derived from the analysed input, not the wall clock. The id used to
+        // be `Utc::now()` down to the second, so two runs over identical input
+        // produced different `enforcement-json` documents.
         id: format!(
-            "lint-hotspot-{}",
-            chrono::Utc::now().format("%Y%m%d-%H%M%S")
+            "lint-hotspot-{}-{}",
+            hotspot.file.file_name().map_or_else(
+                || "unknown".to_string(),
+                |n| n.to_string_lossy().replace(['/', '\\', ' '], "_")
+            ),
+            hotspot.total_violations
         ),
         estimated_reduction: total_impact,
         automation_confidence: steps.iter().map(|s| s.confidence).sum::<f64>() / steps.len() as f64,
@@ -222,6 +239,18 @@ fn collect_project_violations(
             },
         );
     }
+
+    // `file_metrics` is a HashMap, so `all_violations` was assembled in hash
+    // order: `--format enforcement-json` serialised the same violations in a
+    // different order on every run. Sort into a stable source-location order.
+    all_violations.sort_by(|a, b| {
+        a.file
+            .cmp(&b.file)
+            .then_with(|| a.line.cmp(&b.line))
+            .then_with(|| a.column.cmp(&b.column))
+            .then_with(|| a.lint_name.cmp(&b.lint_name))
+            .then_with(|| a.message.cmp(&b.message))
+    });
 
     (all_violations, summary_by_file, total_project_violations)
 }
@@ -462,5 +491,92 @@ mod tests {
         assert!((metadata.enforcement_score - 10.0).abs() < 0.1); // Capped at 10.0
         assert_eq!(metadata.automation_confidence, 0.7); // No "unused" or "redundant"
         assert!(!metadata.requires_enforcement); // Confidence 0.7 < min 0.8
+    }
+
+    // ===================
+    // Determinism (identical input ⇒ identical output)
+    // ===================
+
+    fn tied_file_metrics() -> HashMap<PathBuf, FileMetrics> {
+        let mut map = HashMap::new();
+        for name in [
+            "src/alpha.rs",
+            "src/beta.rs",
+            "src/gamma.rs",
+            "src/delta.rs",
+            "src/epsilon.rs",
+            "src/zeta.rs",
+            "src/eta.rs",
+            "src/theta.rs",
+        ] {
+            let mut violations = HashMap::new();
+            // Two lints with an identical count: sorting by count alone leaves
+            // their relative order to the HashMap.
+            violations.insert("clippy::aaa".to_string(), 2);
+            violations.insert("clippy::bbb".to_string(), 2);
+            map.insert(
+                PathBuf::from(name),
+                FileMetrics {
+                    severity_counts: SeverityDistribution {
+                        error: 1,
+                        warning: 3,
+                        suggestion: 0,
+                        note: 0,
+                    },
+                    sloc: 100,
+                    violations,
+                    detailed_violations: vec![ViolationDetail {
+                        file: PathBuf::from(name),
+                        line: 1,
+                        column: 1,
+                        end_line: 1,
+                        end_column: 2,
+                        lint_name: "clippy::aaa".to_string(),
+                        message: "m".to_string(),
+                        severity: "warning".to_string(),
+                        suggestion: None,
+                        machine_applicable: false,
+                    }],
+                },
+            );
+        }
+        map
+    }
+
+    /// Five builds over identical input must agree on the hotspot file, the
+    /// `top_lints` order and the `all_violations` order. Before the fix all
+    /// three came out of a `HashMap` in per-process hash order.
+    #[test]
+    fn test_build_lint_hotspot_result_is_deterministic_across_five_runs() {
+        let mut baseline: Option<String> = None;
+        for run in 0..5 {
+            let result = build_lint_hotspot_result(tied_file_metrics()).unwrap();
+            let json = serde_json::to_string(&result).unwrap();
+            match &baseline {
+                None => baseline = Some(json),
+                Some(first) => {
+                    assert_eq!(first, &json, "run {run} differed for identical input")
+                }
+            }
+        }
+    }
+
+    /// The refactor-chain id used to embed `Utc::now()`, so `enforcement-json`
+    /// changed every second for the same input.
+    #[test]
+    fn test_refactor_chain_id_is_input_derived_not_clock_derived() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/deep/nested/thing.rs"),
+            defect_density: 0.5,
+            total_violations: 7,
+            sloc: 14,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![("clippy::unused_self".to_string(), 7)],
+            detailed_violations: vec![],
+        };
+        let first = generate_refactor_chain(&hotspot, 0.5).id;
+        let second = generate_refactor_chain(&hotspot, 0.5).id;
+        assert_eq!(first, second);
+        assert_eq!(first, "lint-hotspot-thing.rs-7");
     }
 }

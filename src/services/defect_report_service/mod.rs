@@ -9,7 +9,8 @@ use crate::models::defect_report::{
 use crate::services::defect_analyzer::DefectAnalyzer;
 use anyhow::Result;
 use chrono::Utc;
-#[cfg(feature = "reporting")]
+// Issue #672: this import used to be gated on the non-default `reporting`
+// feature, which made `format_csv` a `bail!` stub in every shipped build.
 use csv::Writer;
 use serde_json;
 use std::collections::{BTreeMap, HashMap};

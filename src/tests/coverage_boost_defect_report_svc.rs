@@ -240,7 +240,6 @@ fn test_format_json_empty_report() {
 
 // ============ format_csv ============
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_headers() {
     let svc = DefectReportService::new();
@@ -254,7 +253,6 @@ fn test_format_csv_headers() {
     assert!(first_line.contains("message"));
 }
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_row_count() {
     let svc = DefectReportService::new();
@@ -265,7 +263,6 @@ fn test_format_csv_row_count() {
     assert_eq!(line_count, 6);
 }
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_empty_report() {
     let svc = DefectReportService::new();
@@ -275,7 +272,6 @@ fn test_format_csv_empty_report() {
     assert_eq!(csv.lines().count(), 1);
 }
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_metrics_included() {
     let svc = DefectReportService::new();
@@ -286,12 +282,18 @@ fn test_format_csv_metrics_included() {
     assert!(second_line.contains("15")); // cyclomatic
 }
 
-#[cfg(not(feature = "reporting"))]
+// Issue #672 regression: this test used to assert `format_csv` returns Err
+// when the non-default `reporting` feature was absent — i.e. it pinned the bug
+// that made `pmat report --format csv` exit rc=1 on every `cargo install pmat`
+// binary. CSV is now unconditional, so the contract is "always succeeds".
 #[test]
-fn test_format_csv_requires_feature() {
+fn test_format_csv_always_available_no_feature_gate() {
     let svc = DefectReportService::new();
     let report = make_report(sample_defects());
-    assert!(svc.format_csv(&report).is_err());
+    let csv = svc
+        .format_csv(&report)
+        .expect("CSV must work in the default feature set (issue #672)");
+    assert!(csv.starts_with("id,severity"));
 }
 
 // ============ format_markdown ============

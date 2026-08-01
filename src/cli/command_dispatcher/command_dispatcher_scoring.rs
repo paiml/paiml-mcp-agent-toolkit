@@ -56,10 +56,12 @@ impl CommandDispatcher {
                 markdown,
                 csv,
             } => {
-                // Issue #672: this used to collapse every non-json value to
-                // `OutputFormat::Table`, which execute_report_command mapped
-                // back to `ReportOutputFormat::Text` — so csv, markdown, html,
-                // pdf and dashboard all wrote the same plain-text report.
+                // Issue #672: `output_format` used to be narrowed to
+                // `OutputFormat::{Json,Table}` here and widened back to
+                // `ReportOutputFormat::{Json,Text}` inside
+                // `execute_report_command`, so `--format csv` reached the
+                // handler as `text` and produced a text report in a .csv file.
+                // The user's declared format is now passed through unchanged.
                 let analysis_strings: Vec<String> = analyses
                     .iter()
                     .map(|a| format!("{a:?}").to_lowercase())

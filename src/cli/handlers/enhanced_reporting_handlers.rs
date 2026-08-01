@@ -61,9 +61,10 @@ use tracing::info;
 /// - **CSV**: Spreadsheet-compatible format for data analysis
 /// - **Markdown**: Documentation-friendly format for README/wiki inclusion
 /// - **Text**: Plain text format for console output and logging
-/// - **HTML**: Web-ready format with embedded visualizations (legacy)
-/// - **PDF**: Print-ready format for formal reports (legacy)
-/// - **Dashboard**: Interactive web dashboard format (legacy)
+///
+/// `html`, `pdf` and `dashboard` are accepted by the parser for backwards
+/// compatibility but are NOT implemented and are rejected with an error
+/// (issue #672) rather than silently rendered as markdown/json.
 ///
 /// # Performance Characteristics
 ///
@@ -151,9 +152,7 @@ use tracing::info;
 ///   --analyses complexity,defects,duplicates \
 ///   --output ci-quality-report.json
 ///
-/// # Management dashboard (legacy HTML format)
-/// pmat generate report /path/to/project --format dashboard \
-///   --include-visualizations --include-executive-summary
+/// # (`--format dashboard` / `html` / `pdf` are NOT implemented and error out)
 /// ```ignore
 ///
 /// # Integration Examples
@@ -242,6 +241,8 @@ fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutput
 /// `--format pdf` produced no PDF. `DefectReportService` has exactly four
 /// emitters (json, csv, markdown, text); there is nothing honest to render
 /// these three as, so they are rejected instead of quietly substituted.
+/// The four listed as supported all really work — `csv` in particular is no
+/// longer behind a non-default feature.
 fn convert_to_service_format(actual_format: ReportOutputFormat) -> Result<ReportFormat> {
     match actual_format {
         ReportOutputFormat::Json => Ok(ReportFormat::Json),
@@ -325,10 +326,79 @@ fn print_severity_summary(report: &DefectReport) {
 mod tests {
     use super::*;
 
+    /// Issue #672 regression. `--help` advertises "csv: CSV format for
+    /// spreadsheet analysis"; on the released binary `pmat report --format csv`
+    /// exited rc=1 with "CSV reporting requires the 'reporting' feature"
+    /// because `reporting` was not in `default`. This test runs in the default
+    /// feature set and fails if csv is ever gated again.
     #[test]
-    fn test_enhanced_reporting_handlers_basic() {
-        // Basic test
-        assert_eq!(1 + 1, 2);
+    fn test_csv_is_available_in_default_feature_set() {
+        let service = DefectReportService::new();
+        let report = DefectReport {
+            metadata: crate::models::defect_report::ReportMetadata {
+                tool: "pmat".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                generated_at: chrono::Utc::now(),
+                project_root: PathBuf::from("/test"),
+                total_files_analyzed: 0,
+                analysis_duration_ms: 0,
+            },
+            defects: vec![],
+            summary: crate::models::defect_report::DefectSummary {
+                total_defects: 0,
+                by_severity: std::collections::BTreeMap::new(),
+                by_category: std::collections::BTreeMap::new(),
+                hotspot_files: vec![],
+            },
+            file_index: std::collections::BTreeMap::new(),
+        };
+
+        let csv = format_report_output(&service, &report, ReportFormat::Csv)
+            .expect("csv must render in the shipped default feature set");
+        assert!(
+            csv.starts_with("id,severity,category"),
+            "csv header missing, got: {csv:?}"
+        );
+    }
+
+    /// Issue #672: html/pdf/dashboard used to be silently substituted with
+    /// markdown/json. A declared format must render or be rejected.
+    #[test]
+    fn test_unimplemented_formats_are_rejected_not_substituted() {
+        for fmt in [
+            ReportOutputFormat::Html,
+            ReportOutputFormat::Pdf,
+            ReportOutputFormat::Dashboard,
+        ] {
+            let err = convert_to_service_format(fmt.clone())
+                .expect_err("unimplemented format must be rejected");
+            let msg = err.to_string();
+            assert!(
+                msg.contains(&fmt.to_string()),
+                "message must name the format: {msg}"
+            );
+            assert!(
+                msg.contains("Supported formats: json, csv, markdown, text."),
+                "message must list only formats that really work: {msg}"
+            );
+        }
+    }
+
+    /// Every format the rejection message advertises must actually convert.
+    /// Guards against the message and the implementation drifting apart again.
+    #[test]
+    fn test_advertised_formats_all_convert() {
+        for fmt in [
+            ReportOutputFormat::Json,
+            ReportOutputFormat::Csv,
+            ReportOutputFormat::Markdown,
+            ReportOutputFormat::Text,
+        ] {
+            assert!(
+                convert_to_service_format(fmt.clone()).is_ok(),
+                "advertised format {fmt} must convert"
+            );
+        }
     }
 
     /// GH #671: without `-o`, the auto-named report was written relative to the
