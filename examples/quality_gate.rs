@@ -22,14 +22,14 @@ async fn main() -> Result<()> {
         PathBuf::from("."),
         None, // No specific file
         QualityGateOutputFormat::Summary,
-        false,  // Don't fail on violation
-        vec![], // All checks
-        15.0,   // Max 15% dead code
-        2.0,    // Min entropy of 2.0
-        50,     // Max cyclomatic complexity of 50
-        false,  // Don't include provability
-        None,   // No output file
-        false,  // No performance mode
+        false,     // Don't fail on violation
+        vec![],    // All checks
+        15.0,      // Max 15% dead code
+        Some(0.3), // Require 30% pattern diversity (0.0-1.0 scale)
+        50,        // Max cyclomatic complexity of 50
+        false,     // Don't include provability
+        None,      // No output file
+        false,     // No performance mode
     )
     .await;
 
@@ -52,9 +52,9 @@ async fn main() -> Result<()> {
             QualityCheckType::DeadCode,
             QualityCheckType::Satd,
         ],
-        5.0, // Max 5% dead code (stricter)
-        3.0, // Min entropy of 3.0 (stricter)
-        20,  // Max cyclomatic complexity of 20 (stricter)
+        5.0,       // Max 5% dead code (stricter)
+        Some(0.6), // Require 60% pattern diversity (stricter)
+        20,        // Max cyclomatic complexity of 20 (stricter)
         false,
         None,
         false,
@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
         false,
         vec![QualityCheckType::Complexity],
         15.0,
-        2.0,
+        Some(0.3),
         30, // Max complexity for single file
         false,
         None,
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
         false,
         vec![],
         15.0,
-        2.0,
+        Some(0.3),
         50,
         true, // Include provability score
         Some(output_path.clone()),

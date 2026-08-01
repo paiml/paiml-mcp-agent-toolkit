@@ -59,7 +59,9 @@ impl CommandDispatcher {
 
         // Use defaults for optional parameters
         let max_dead = max_dead_code.unwrap_or(0.1); // 10% default
-        let min_ent = min_entropy.unwrap_or(0.7); // 70% default
+                                                     // None is forwarded as-is: the entropy threshold resolver applies config
+                                                     // and the documented default, and an explicit value must not be invented
+                                                     // here (it would then outrank the project's own config).
         let max_comp = max_complexity_p99.unwrap_or(20) as u32;
 
         crate::cli::analysis_utilities::handle_quality_gate(
@@ -69,7 +71,7 @@ impl CommandDispatcher {
             fail_on_violation,
             quality_checks,
             max_dead,
-            min_ent,
+            min_entropy,
             max_comp,
             include_provability,
             output,

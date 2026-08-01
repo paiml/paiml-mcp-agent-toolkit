@@ -147,7 +147,9 @@ impl PatternExtractor {
         loc_per_match: usize,
         collection: &mut PatternCollection,
     ) {
-        let mut groups: HashMap<String, Vec<(usize, String)>> = HashMap::new();
+        // BTreeMap so groups are emitted in hash order; with a HashMap the order
+        // in which patterns were handed to `add_pattern` varied per process.
+        let mut groups: BTreeMap<String, Vec<(usize, String)>> = BTreeMap::new();
 
         for m in matches.iter().take(20) {
             let context = Self::extract_match_context(content, m);

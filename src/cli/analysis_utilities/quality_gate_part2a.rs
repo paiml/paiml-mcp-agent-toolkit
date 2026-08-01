@@ -18,7 +18,7 @@ async fn execute_provability_check(
 async fn run_all_project_checks(
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -111,7 +111,7 @@ async fn run_all_project_checks(
 /// Run entropy check with gate config (#220): enabled, excludes, max_violations.
 async fn run_entropy_check_gated(
     project_path: &Path,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,

@@ -6,7 +6,7 @@ pub async fn run_single_project_check(
     check: &QualityCheckType,
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -48,7 +48,7 @@ async fn execute_specific_quality_check(
     check: &QualityCheckType,
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -137,7 +137,7 @@ async fn execute_satd_check(
 /// Helper for entropy check execution (loads config from .pmat-gates.toml, #220)
 async fn execute_entropy_check(
     project_path: &Path,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {

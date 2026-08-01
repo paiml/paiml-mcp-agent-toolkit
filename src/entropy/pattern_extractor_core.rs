@@ -11,19 +11,30 @@ impl PatternExtractor {
         Self { config }
     }
 
-    /// Extract patterns from project using pmat context
+    /// Extract patterns from every source file under `project_path`.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn extract_patterns(&self, project_path: &Path) -> Result<PatternCollection> {
-        // Get project context with AST
+        if !project_path.exists() {
+            anyhow::bail!(
+                "entropy analysis path does not exist: {}",
+                project_path.display()
+            );
+        }
+
+        // Files arrive in path order (ProjectContext is a BTreeMap), so the walk
+        // and everything derived from it is reproducible.
         let context = self.get_project_context(project_path).await?;
 
         let mut collection = PatternCollection::new();
 
-        // Process each file's AST
-        for (file_path, ast_data) in context.files {
-            if self.should_process_file(&file_path) {
-                self.extract_file_patterns(&file_path, &ast_data, &mut collection)?;
+        for (file_path, ast_data) in &context.files {
+            if self.should_process_file(file_path) {
+                self.extract_file_patterns(file_path, ast_data, &mut collection)?;
                 collection.total_files += 1;
+                // Measured, not estimated: the number of source lines we actually
+                // read. Reporting 0 here for a populated crate (defect #650) made
+                // the metrics block indistinguishable from an empty directory.
+                collection.total_loc += Self::count_source_lines(ast_data);
             }
         }
 
@@ -33,57 +44,31 @@ impl PatternExtractor {
         Ok(collection)
     }
 
-    /// Get project context using pmat context command
-    async fn get_project_context(&self, project_path: &Path) -> Result<ProjectContext> {
-        use std::collections::HashMap;
-        use tokio::process::Command;
-
-        // Execute pmat context command to get actual project context.
-        // Falls back to directory scanning if pmat binary is unavailable
-        // (e.g., clean-room CI where it's not on PATH).
-        let output = match Command::new("pmat")
-            .arg("context")
-            .arg(project_path)
-            .arg("--format")
-            .arg("json")
-            .arg("--skip-expensive-metrics")
-            .output()
-            .await
-        {
-            Ok(o) if o.status.success() => o,
-            _ => return self.scan_directory_fallback(project_path).await,
-        };
-
-        let context_json = String::from_utf8(output.stdout)?;
-
-        // Parse the context JSON and extract file information
-        let context_value: serde_json::Value = serde_json::from_str(&context_json)?;
-        let mut files = HashMap::new();
-
-        // Extract file contents from context
-        if let Some(file_tree) = context_value.get("files") {
-            if let Some(file_array) = file_tree.as_array() {
-                for file_info in file_array {
-                    if let (Some(path), Some(content)) = (
-                        file_info.get("path").and_then(|p| p.as_str()),
-                        file_info.get("content").and_then(|c| c.as_str()),
-                    ) {
-                        let path_buf = PathBuf::from(path);
-                        files.insert(path_buf, content.to_string());
-                    }
-                }
-            }
-        }
-
-        Ok(ProjectContext { files })
+    /// Count non-blank source lines in a file's contents.
+    fn count_source_lines(content: &str) -> usize {
+        content.lines().filter(|l| !l.trim().is_empty()).count()
     }
 
-    /// Fallback method to scan directory when pmat context fails
-    async fn scan_directory_fallback(&self, project_path: &Path) -> Result<ProjectContext> {
+    /// Read the source files to analyze.
+    ///
+    /// DETERMINISM: this used to shell out to `pmat context <path> --format json`
+    /// and only scan the directory when that call failed. That made the analyzed
+    /// file set depend on whichever `pmat` happened to be on `$PATH` (a stale or
+    /// differently-configured binary yields a different file set, and a context
+    /// payload without `files[].content` silently yielded zero files). The
+    /// directory scan is now the only path: same directory in, same file set out.
+    async fn get_project_context(&self, project_path: &Path) -> Result<ProjectContext> {
+        self.scan_source_files(project_path).await
+    }
+
+    /// Walk `project_path` and read every source file we know how to analyze.
+    async fn scan_source_files(&self, project_path: &Path) -> Result<ProjectContext> {
         use std::fs;
         use walkdir::WalkDir;
 
-        let mut files = HashMap::new();
+        // BTreeMap: WalkDir yields entries in readdir order, which is not stable
+        // across machines or runs; the map re-imposes path order.
+        let mut files = BTreeMap::new();
 
         // Walk directory and read Rust files
         for entry in WalkDir::new(project_path)

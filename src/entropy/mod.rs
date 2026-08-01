@@ -129,14 +129,39 @@ impl EntropyAnalyzer {
             .detect_violations(&patterns, &entropy_metrics)?;
 
         // Step 4: Generate report
+        let measurement_note = Self::measurement_note(&entropy_metrics, patterns.file_count());
+
         Ok(EntropyReport {
             total_files_analyzed: patterns.file_count(),
             actionable_violations: violations,
             pattern_summary: patterns.summary(),
             entropy_metrics,
+            measurement_note,
         })
     }
+
+    /// Explain an absent entropy measurement instead of leaving the reader with
+    /// a block of zeros (#650): on a small crate no pattern repeats often enough
+    /// to form a distribution, and "0.0 diversity" reads as the worst possible
+    /// finding rather than "nothing to measure".
+    fn measurement_note(metrics: &EntropyMetrics, files: usize) -> Option<String> {
+        if metrics.pattern_diversity.is_some() {
+            return None;
+        }
+        Some(format!(
+            "entropy not measured: no repeated pattern was detected in {files} file(s) \
+             / {loc} source line(s). Pattern detection needs at least 3 structurally \
+             identical occurrences of a construct within a file, so small inputs \
+             legitimately yield no distribution to take the entropy of.",
+            loc = metrics.total_loc
+        ))
+    }
 }
+
+// Regression tests for determinism and the measured-or-absent contract.
+#[cfg(test)]
+#[path = "determinism_tests.rs"]
+mod determinism_tests;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

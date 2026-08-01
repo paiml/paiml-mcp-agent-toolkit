@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
         false,                              // fail_on_violation
         vec![QualityCheckType::Complexity], // checks
         15.0,                               // max_dead_code
-        0.5,                                // min_entropy
+        Some(0.5),                          // min_entropy
         20,                                 // max_complexity_p99 (default)
         false,                              // include_provability
         None,                               // output
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
         false,                              // fail_on_violation
         vec![QualityCheckType::Complexity], // checks
         15.0,                               // max_dead_code
-        0.5,                                // min_entropy
+        Some(0.5),                          // min_entropy
         10,                                 // max_complexity_p99 (strict)
         false,                              // include_provability
         None,                               // output
@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         false,                              // fail_on_violation - would be true in real CI/CD
         vec![QualityCheckType::Complexity], // checks
         15.0,                               // max_dead_code
-        0.5,                                // min_entropy
+        Some(0.5),                          // min_entropy
         15,                                 // max_complexity_p99
         false,                              // include_provability
         None,                               // output

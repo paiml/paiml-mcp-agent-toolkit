@@ -39,14 +39,26 @@ impl ViolationDetector {
         // Issue: Same pattern reported by multiple detection methods
         violations = self.deduplicate_violations(violations);
 
-        // Sort by priority
+        // Sort by priority, then by message and affected file. Without the
+        // tie-breaks a stable sort just preserves whatever order dedup produced,
+        // so equal-priority violations came out shuffled between runs.
         violations.sort_by(|a, b| {
             b.priority_score
                 .partial_cmp(&a.priority_score)
-                .expect("internal error")
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.message.cmp(&b.message))
+                .then_with(|| a.affected_files.cmp(&b.affected_files))
         });
 
         Ok(violations)
+    }
+
+    /// Distinct files a pattern occurs in, in a fixed order.
+    fn sorted_affected_files(pattern: &AstPattern) -> Vec<PathBuf> {
+        let mut files: Vec<PathBuf> = pattern.locations.iter().map(|l| l.file.clone()).collect();
+        files.sort();
+        files.dedup();
+        files
     }
 
     /// Detect repetitive pattern violations
@@ -74,15 +86,10 @@ impl ViolationDetector {
                     ),
                     fix_suggestion: self.generate_fix_suggestion(pattern),
                     estimated_loc_reduction: loc_reduction,
-                    affected_files: pattern
-                        .locations
-                        .iter()
-                        .map(|l| l.file.clone())
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .collect::<std::collections::HashSet<_>>()
-                        .into_iter()
-                        .collect(),
+                    // Was collected through a HashSet, so the file list (and the
+                    // "file" a quality-gate row was attributed to, which is the
+                    // first entry) changed between runs.
+                    affected_files: Self::sorted_affected_files(pattern),
                     priority_score: self.calculate_priority(severity, loc_reduction),
                 });
             }
@@ -92,65 +99,30 @@ impl ViolationDetector {
 
     /// Detect low diversity violations
     ///
-    /// Issues #650 / #677: this used to fire whenever `pattern_diversity` was
-    /// below the threshold — including when NOTHING had been measured. An empty
-    /// directory (total_files_analyzed 0, total_loc 0) produced a concrete
-    /// "Low pattern diversity: 0.0% (minimum: 30.0%)" finding, and because the
-    /// summary was built from constants it was byte-identical for an empty dir
-    /// and for a 7-function maximally-diverse crate. Shannon entropy over an
-    /// empty distribution is undefined, not zero: with no patterns there is no
-    /// measurement, so there is no violation to report.
-    ///
-    /// GH-681: with nothing analysed, `pattern_diversity` is 0.0 by construction
-    /// (a 0/0 entropy, not a measurement), so this fired and reported
-    /// "Low pattern diversity: 0.0% (minimum: 30.0%)" — a Medium-severity
-    /// violation with an empty `affected_files` list — for an empty or
-    /// nonexistent tree. Diversity over an empty pattern set is undefined, not a
-    /// violation, so there is nothing to report.
+    /// An unmeasured diversity (`None`) can never be below a threshold — a gate
+    /// must not fail on a number that was never computed.
     fn detect_low_diversity(
         &self,
         patterns: &PatternCollection,
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        // Nothing measured => nothing to report. Diversity is 0.0 by
-        // construction over an empty distribution, which is the absence of a
-        // measurement, not a finding.
-        //
-        // The condition is on the METRICS, not on `patterns.file_count()`.
-        // Two independent fixes (#650/#677 and #681) proposed slightly
-        // different guards, and unioning them was wrong: the collection is a
-        // separate structure that callers legitimately leave empty while
-        // supplying real measured metrics, so keying off its file count
-        // suppressed genuine violations. An empty tree still yields
-        // total_patterns == 0, so the empty-directory case remains covered.
-        if metrics.total_patterns == 0 || metrics.total_instances == 0 {
+        let Some(diversity) = metrics.pattern_diversity else {
             return Ok(());
-        }
-
-        if metrics.pattern_diversity < self.config.min_pattern_diversity {
+        };
+        if diversity < self.config.min_pattern_diversity {
             violations.push(ActionableViolation {
                 severity: Severity::Medium,
                 pattern: PatternSummary {
-                    // Every field below is measured. Previously they were the
-                    // constants ControlFlow / 0 / (1.0 - diversity) /
-                    // "Various repetitive patterns", which contradicted the
-                    // message itself (0.0% diversity yet variation_score 1.00,
-                    // "repetitive" yet repetitions 0).
-                    pattern_type: Self::dominant_pattern_type(metrics),
-                    repetitions: metrics.total_instances,
-                    variation_score: metrics.pattern_diversity,
-                    example_code: format!(
-                        "{} distinct patterns over {} instances",
-                        metrics.total_patterns, metrics.total_instances
-                    ),
+                    pattern_type: PatternType::ControlFlow,
+                    repetitions: 0,
+                    variation_score: 1.0 - diversity,
+                    example_code: "Various repetitive patterns".to_string(),
                 },
                 message: format!(
-                    "Low pattern diversity: {:.1}% (minimum: {:.1}%) across {} patterns / {} instances",
-                    metrics.pattern_diversity * 100.0,
-                    self.config.min_pattern_diversity * 100.0,
-                    metrics.total_patterns,
-                    metrics.total_instances
+                    "Low pattern diversity: {:.1}% (minimum: {:.1}%)",
+                    diversity * 100.0,
+                    self.config.min_pattern_diversity * 100.0
                 ),
                 fix_suggestion: "Consider extracting common patterns into reusable functions"
                     .to_string(),
@@ -181,8 +153,7 @@ impl ViolationDetector {
     ) -> Result<()> {
         // Find patterns that appear in multiple files
         for pattern in patterns.patterns.values() {
-            let unique_files: std::collections::HashSet<_> =
-                pattern.locations.iter().map(|l| &l.file).collect();
+            let unique_files = Self::sorted_affected_files(pattern);
 
             if unique_files.len() > 2 {
                 let severity = if unique_files.len() > 5 {
@@ -208,8 +179,8 @@ impl ViolationDetector {
                         "Extract to shared module: {}",
                         self.suggest_module_name(pattern.pattern_type)
                     ),
-                    estimated_loc_reduction: pattern.estimated_loc * (unique_files.len() - 1),
-                    affected_files: unique_files.into_iter().cloned().collect(),
+                    estimated_loc_reduction: self.estimate_loc_reduction(pattern),
+                    affected_files: unique_files,
                     priority_score: 8.0,
                 });
             }
@@ -242,9 +213,10 @@ impl ViolationDetector {
                         "Standardize {} pattern across codebase",
                         self.pattern_name(pattern.pattern_type)
                     ),
-                    estimated_loc_reduction: ((pattern.estimated_loc * pattern.frequency) as f64
-                        * 0.3) as usize,
-                    affected_files: pattern.locations.iter().map(|l| l.file.clone()).collect(),
+                    // estimated_loc already covers all `frequency` instances;
+                    // multiplying by frequency again counted every line twice over.
+                    estimated_loc_reduction: (pattern.estimated_loc as f64 * 0.3) as usize,
+                    affected_files: Self::sorted_affected_files(pattern),
                     priority_score: 6.0,
                 });
             }
@@ -264,13 +236,20 @@ impl ViolationDetector {
     }
 
     /// Estimate LOC reduction from fixing a pattern
+    ///
+    /// `estimated_loc` is the LOC covered by *all* `frequency` instances, so the
+    /// per-instance size has to be divided back out. The old code multiplied the
+    /// whole-group figure by `frequency - 1` again, which is where numbers like
+    /// "saves 302 lines" for a ten-line pattern came from.
     fn estimate_loc_reduction(&self, pattern: &AstPattern) -> usize {
-        // Estimate: (instances - 1) * average_pattern_size * reduction_factor
-        let instances_to_remove = pattern.frequency.saturating_sub(1);
-        let avg_size = pattern.estimated_loc;
+        if pattern.frequency <= 1 {
+            return 0;
+        }
+        let instances_to_remove = pattern.frequency - 1;
+        let per_instance = pattern.estimated_loc as f64 / pattern.frequency as f64;
         let reduction_factor = 0.8; // Assume 80% can be eliminated
 
-        ((instances_to_remove * avg_size) as f64 * reduction_factor) as usize
+        (instances_to_remove as f64 * per_instance * reduction_factor) as usize
     }
 
     /// Generate fix suggestion for a pattern
@@ -346,9 +325,12 @@ impl ViolationDetector {
         &self,
         violations: Vec<ActionableViolation>,
     ) -> Vec<ActionableViolation> {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
 
-        let mut unique_violations: HashMap<String, ActionableViolation> = HashMap::new();
+        // BTreeMap: `into_values()` on a HashMap emitted the survivors in a
+        // per-process random order, which the stable priority sort below then
+        // preserved for equal priorities.
+        let mut unique_violations: BTreeMap<String, ActionableViolation> = BTreeMap::new();
 
         for violation in violations {
             // Create a key based on pattern type and the core pattern identifier
