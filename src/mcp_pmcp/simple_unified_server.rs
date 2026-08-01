@@ -13,9 +13,10 @@ use crate::mcp_pmcp::handlers::{
 use crate::mcp_pmcp::pdmt_handler::PdmtTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+use crate::mcp_pmcp::stdio_frames::RawFrameStdioTransport;
 use crate::mcp_server::state_manager::StateManager;
 use async_trait::async_trait;
-use pmcp::shared::{StdioTransport, Transport, TransportMessage};
+use pmcp::shared::{Transport, TransportMessage};
 use pmcp::{Server, ServerCapabilities};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -170,44 +171,74 @@ impl<T: Transport> EofSignalingTransport<T> {
         )
     }
 
-    /// How many consecutive unparseable frames to answer before giving up.
+    /// How many consecutive non-terminal receive errors to tolerate.
     ///
-    /// `StdioTransport::read_line` consumes the line *before* parsing it, so a
-    /// bad frame cannot be re-read and this loop always makes progress. The cap
-    /// only bounds a hypothetical transport that errors without consuming, so a
-    /// bug there degrades to exit rather than a spin.
+    /// [`RawFrameStdioTransport`] consumes a line before it can reject it, so
+    /// this loop always makes progress and the cap is never reached in
+    /// production. It only bounds a hypothetical inner transport that errors
+    /// without consuming, so a bug there degrades to exit rather than a spin.
     const MAX_CONSECUTIVE_BAD_FRAMES: u32 = 1024;
 
-    /// Emit a JSON-RPC error for a frame that could not be parsed.
+    /// Read until a message arrives or the session is genuinely over.
     ///
-    /// The id is `null` because it is genuinely unrecoverable here: the inner
-    /// transport consumed and rejected the line, so this wrapper never sees the
-    /// raw bytes and cannot echo the client's id back. JSON-RPC 2.0 specifies
-    /// `null` for exactly this case (§5, "If there was an error in detecting the
-    /// id ... it MUST be Null"), so `-32700` with a null id is the correct and
-    /// honest response rather than a guess.
+    /// A frame the inner transport could not turn into a message must not end
+    /// the session: pmcp's actor breaks its `select!` the instant `receive()`
+    /// returns Err, so merely declining to signal session-end would turn a
+    /// silent exit into a hang — the error must not be propagated at all.
     ///
-    /// Written straight to stdout for the same reason as
-    /// [`Self::deliver_refused_response`]: the inner transport may already be
-    /// refusing writes.
-    async fn deliver_parse_error(detail: &str) -> bool {
-        use tokio::io::AsyncWriteExt;
-
-        let frame = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": serde_json::Value::Null,
-            "error": { "code": -32700, "message": format!("Parse error: {detail}") },
-        });
-        let Ok(mut bytes) = serde_json::to_vec(&frame) else {
-            return false;
-        };
-        bytes.push(b'\n');
-
-        let mut out = tokio::io::stdout();
-        if out.write_all(&bytes).await.is_err() {
-            return false;
+    /// The JSON-RPC error response for such a frame is emitted by the inner
+    /// transport, NOT here: [`RawFrameStdioTransport`] is the only layer that
+    /// still holds the raw line and can therefore echo the client's id and pick
+    /// the right code. This wrapper used to answer instead, and could only ever
+    /// emit `{"id":null,"code":-32700}` — which left every host correlating by
+    /// id waiting on a promise that never resolved (#648).
+    async fn receive_past_bad_frames(&mut self) -> pmcp::Result<TransportMessage> {
+        let mut bad_frames: u32 = 0;
+        loop {
+            let attempt = self.inner.receive().await;
+            match &attempt {
+                Err(e) if !Self::is_session_over(e) => {
+                    bad_frames += 1;
+                    if bad_frames >= Self::MAX_CONSECUTIVE_BAD_FRAMES {
+                        return attempt;
+                    }
+                }
+                _ => return attempt,
+            }
         }
-        out.flush().await.is_ok()
+    }
+
+    /// Record why the session ended and hold EOF back until nothing is owed.
+    ///
+    /// pmcp's transport actor breaks its loop the moment `receive()` errors,
+    /// *without* draining the outbound queue — so a response the worker has
+    /// already produced is dropped on the floor. That happens above this
+    /// wrapper, which is why counting sends alone was not enough: `send()` was
+    /// never reached. On pmcp 2.17 this cost `tools/list` its answer in 21 of 30
+    /// one-shot sessions.
+    ///
+    /// The actor's `select!` is `biased` with the outbound arm first, so simply
+    /// not resolving here keeps it in the loop: the queued response wins the
+    /// race, this future is dropped, `send()` runs and decrements, and the next
+    /// `receive()` surfaces EOF with nothing outstanding. Dropping this future
+    /// loses no bytes — the inner transport already returned an error, and
+    /// asking it again returns the same error.
+    async fn handle_terminal_receive_error(&mut self, e: &pmcp::Error) {
+        // Record the reason on the first error only, then signal as soon as
+        // everything already consumed has been answered.
+        if self.pending_end.is_none() {
+            self.pending_end = Some(e.to_string());
+        }
+
+        if self.in_flight > 0 {
+            // Bounded so a handler that never answers degrades to the old
+            // truncation rather than wedging the process forever; a hang is
+            // worse for a user than a lost response. The normal path never
+            // waits: the outbound arm wins in microseconds.
+            tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
+        }
+
+        self.signal_if_drained();
     }
 
     /// Fire the session-end signal if the read side is finished and no
@@ -260,64 +291,11 @@ impl<T: Transport> Transport for EofSignalingTransport<T> {
     }
 
     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
-        // Loop so a frame we could not parse does not end the session. pmcp's
-        // actor breaks its `select!` the instant `receive()` returns Err, so
-        // merely declining to signal session-end would turn a silent exit into
-        // a hang — the error must not be propagated at all. Instead the bad
-        // frame is answered with a JSON-RPC error here and reading continues.
-        let mut bad_frames: u32 = 0;
-        let result = loop {
-            let attempt = self.inner.receive().await;
-            match &attempt {
-                Err(e) if !Self::is_session_over(e) => {
-                    bad_frames += 1;
-                    Self::deliver_parse_error(&e.to_string()).await;
-                    if bad_frames >= Self::MAX_CONSECUTIVE_BAD_FRAMES {
-                        break attempt;
-                    }
-                    continue;
-                }
-                _ => break attempt,
-            }
-        };
-
+        let result = self.receive_past_bad_frames().await;
         match &result {
             Ok(TransportMessage::Request { .. }) => self.in_flight += 1,
             Ok(_) => {}
-            Err(e) => {
-                // Record the reason on the first error only, then signal as
-                // soon as everything already consumed has been answered.
-                if self.pending_end.is_none() {
-                    self.pending_end = Some(e.to_string());
-                }
-
-                // Withhold EOF from pmcp while a consumed request is unanswered.
-                //
-                // pmcp's transport actor breaks its loop the moment `receive()`
-                // errors, *without* draining the outbound queue — so a response
-                // the worker has already produced is dropped on the floor. That
-                // happens above this wrapper, which is why counting sends alone
-                // was not enough: `send()` was never reached. On pmcp 2.17 this
-                // cost `tools/list` its answer in 21 of 30 one-shot sessions.
-                //
-                // The actor's `select!` is `biased` with the outbound arm first,
-                // so simply not resolving here keeps it in the loop: the queued
-                // response wins the race, this future is dropped, `send()` runs
-                // and decrements, and the next `receive()` surfaces EOF with
-                // nothing outstanding. Dropping this future loses no bytes — the
-                // inner transport already returned an error, and asking it again
-                // returns the same error.
-                if self.in_flight > 0 {
-                    // Bounded so a handler that never answers degrades to the
-                    // old truncation rather than wedging the process forever;
-                    // a hang is worse for a user than a lost response. The
-                    // normal path never waits: the outbound arm wins in
-                    // microseconds.
-                    tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
-                }
-
-                self.signal_if_drained();
-            }
+            Err(e) => self.handle_terminal_receive_error(e).await,
         }
         result
     }
@@ -424,7 +402,12 @@ impl SimpleUnifiedServer {
         // `Server::run` keep-alive future never completes (even after the
         // reader task exits on EOF), so without this the process leaks after
         // one-shot piped sessions. See `EofSignalingTransport`.
-        let (transport, session_end) = EofSignalingTransport::new(StdioTransport::new());
+        //
+        // The inner transport is ours rather than `pmcp::shared::StdioTransport`
+        // because pmcp discards the raw line the moment `parse_message` fails,
+        // leaving no way to echo the client's id (#648): every bad frame came
+        // back `{"id":null,...,"code":-32700}`. See [`RawFrameStdioTransport`].
+        let (transport, session_end) = EofSignalingTransport::new(RawFrameStdioTransport::new());
         tokio::select! {
             result = server.run(transport) => {
                 result?;
