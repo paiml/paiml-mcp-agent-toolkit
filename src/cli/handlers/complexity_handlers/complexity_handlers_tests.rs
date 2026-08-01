@@ -681,4 +681,83 @@ mod tests {
             assert_eq!(count_rendered_elements("graph TD\n"), (0, 0));
         }
     }
+
+    /// Round 3: `analyze complexity --format json` aggregated the summary over
+    /// the `--top-files` SLICE while `summary.total_files` claimed whole-project
+    /// scope. On one unchanged 1070-file tree the default `--top-files 10`
+    /// reported total_files 1070 next to total_functions 159 (true 10148),
+    /// technical_debt_hours 388.75 (true 1644.25) and max_cyclomatic 29 (true
+    /// project maximum 31): a cap wearing the word "total".
+    mod summary_scope {
+        use super::*;
+        use crate::cli::handlers::complexity_handlers::analysis::{
+            apply_top_files_limit, build_report_over_analyzed_files,
+        };
+        use crate::services::complexity::aggregate_results_with_thresholds;
+
+        fn file_with(name: &str, cyclomatic: u16) -> FileComplexityMetrics {
+            FileComplexityMetrics {
+                path: name.to_string(),
+                total_complexity: ComplexityMetrics::new(cyclomatic, cyclomatic, 3, 100),
+                functions: vec![FunctionComplexity {
+                    name: format!("{name}_f"),
+                    line_start: 1,
+                    line_end: 20,
+                    metrics: ComplexityMetrics::new(cyclomatic, cyclomatic, 2, 20),
+                }],
+                classes: vec![],
+            }
+        }
+
+        #[test]
+        fn test_summary_is_invariant_to_the_top_files_cap() {
+            let all: Vec<_> = (0..40)
+                .map(|i| file_with(&format!("f{i:02}.rs"), 5 + u16::try_from(i).unwrap()))
+                .collect();
+
+            // The whole-project aggregate, computed once over every file.
+            let full = aggregate_results_with_thresholds(all.clone(), None, None);
+
+            for cap in [1usize, 5, 10, 39] {
+                let mut listed = all.clone();
+                apply_top_files_limit(&mut listed, cap);
+                assert_eq!(listed.len(), cap, "cap {cap} must truncate the LIST");
+
+                // Exactly what the handler does.
+                let report = build_report_over_analyzed_files(all.clone(), listed, None, None);
+
+                assert_eq!(
+                    report.summary.total_files, 40,
+                    "total_files must be the analyzed count, not the cap"
+                );
+                assert!(report.files.len() <= report.summary.total_files);
+                assert_eq!(report.summary.total_functions, full.summary.total_functions);
+                assert_eq!(report.summary.max_cyclomatic, full.summary.max_cyclomatic);
+                assert!(
+                    (report.summary.technical_debt_hours - full.summary.technical_debt_hours).abs()
+                        < f32::EPSILON,
+                    "technical debt must not shrink with the display cap"
+                );
+            }
+        }
+
+        /// The defect in one assertion: aggregating the truncated list gives a
+        /// smaller total than aggregating everything, so the pre-fix summary
+        /// could not have been describing `total_files` files.
+        #[test]
+        fn test_aggregating_the_slice_understates_the_project() {
+            let all: Vec<_> = (0..40)
+                .map(|i| file_with(&format!("f{i:02}.rs"), 5 + u16::try_from(i).unwrap()))
+                .collect();
+            let mut sliced = all.clone();
+            apply_top_files_limit(&mut sliced, 10);
+
+            let full = aggregate_results_with_thresholds(all, None, None);
+            let capped = aggregate_results_with_thresholds(sliced, None, None);
+
+            assert!(capped.summary.total_functions < full.summary.total_functions);
+            assert_eq!(capped.summary.total_files, 10);
+            assert_eq!(full.summary.total_files, 40);
+        }
+    }
 }

@@ -163,17 +163,19 @@ impl DeadCodeAnalyzer {
             }
         }
 
-        // Calculate total lines and percentages for each file
+        // Calculate total lines and percentages for each file.
+        //
+        // The line count is READ, never estimated. It used to be
+        // `file_info.items.len() * 10` ("rough estimate: 10 lines per item")
+        // whenever the file appeared in the project context, and
+        // `dead_percentage` was then computed against that invented total —
+        // the same defect class as `analyze dead-code`'s hardcoded
+        // `total_lines: 100`. When the file cannot be read the count stays 0
+        // and `update_percentage` leaves the percentage at 0.0 rather than
+        // dividing by a number nobody measured.
         for (file_path, metrics) in &mut file_map {
-            // Try to get total lines from the project context or read from file
-            if let Some(file_info) = project_context.files.iter().find(|f| f.path == *file_path) {
-                // Estimate total lines from file info (we don't have content, so we'll estimate)
-                metrics.total_lines = file_info.items.len() * 10; // Rough estimate: 10 lines per item
-            } else {
-                // Fallback: read file directly
-                if let Ok(content) = std::fs::read_to_string(file_path) {
-                    metrics.total_lines = content.lines().count();
-                }
+            if let Ok(content) = std::fs::read_to_string(file_path) {
+                metrics.total_lines = content.lines().count();
             }
 
             metrics.update_percentage();

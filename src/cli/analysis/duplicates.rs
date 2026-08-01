@@ -522,4 +522,154 @@ mod tests {
         assert_eq!(sorted[1].0, "mid.rs");
         assert_eq!(sorted[2].0, "low.rs");
     }
+
+    // ── per-file duplication can never exceed the file ──────────────────────
+
+    /// Round 3: round 2 fixed only the aggregate. Two byte-identical 17-line
+    /// files still reported `file_statistics[a.rs] = {duplicate_lines: 76,
+    /// total_lines: 17, duplication_percentage: 447.06}` — a part 4.5x its own
+    /// whole — because overlapping sliding windows that hash differently were
+    /// still summed per file.
+    #[tokio::test]
+    async fn test_per_file_duplication_never_exceeds_the_file() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        let body = (0..17)
+            .map(|i| format!("    let v{} = {} + 1;\n", i % 4, i))
+            .collect::<String>();
+        std::fs::write(temp.path().join("a.rs"), &body).unwrap();
+        std::fs::write(temp.path().join("b.rs"), &body).unwrap();
+
+        for detection in [
+            crate::cli::DuplicateType::Exact,
+            crate::cli::DuplicateType::All,
+        ] {
+            let report = detect_duplicates(temp.path(), detection, 0.8, 5, 100, &None, &None)
+                .await
+                .expect("detection must not fail");
+
+            for (path, stats) in &report.file_statistics {
+                assert!(
+                    stats.duplicate_lines <= stats.total_lines,
+                    "{path}: {} duplicate lines in a {}-line file",
+                    stats.duplicate_lines,
+                    stats.total_lines
+                );
+                assert!(
+                    stats.duplication_percentage <= 100.0,
+                    "{path}: {}% duplication",
+                    stats.duplication_percentage
+                );
+            }
+            assert!(
+                report.duplicate_lines <= report.total_lines,
+                "project total {} > {} lines counted",
+                report.duplicate_lines,
+                report.total_lines
+            );
+            assert!(report.duplication_percentage <= 100.0);
+            // The headline must be the sum of the rows it heads.
+            let row_sum: usize = report
+                .file_statistics
+                .values()
+                .map(|s| s.duplicate_lines)
+                .sum();
+            assert_eq!(
+                report.duplicate_lines, row_sum,
+                "the project total must agree with the per-file rows"
+            );
+        }
+    }
+
+    /// Two identical files are 100% duplicated — not 447%, and not 50%.
+    #[tokio::test]
+    async fn test_two_identical_files_are_fully_duplicated() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        let body = (0..12)
+            .map(|i| format!("    let v{i} = {i} + 1;\n"))
+            .collect::<String>();
+        std::fs::write(temp.path().join("a.rs"), &body).unwrap();
+        std::fs::write(temp.path().join("b.rs"), &body).unwrap();
+
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::Exact,
+            0.8,
+            5,
+            100,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.total_lines, 24);
+        // The sliding window does not always reach the final line of a file,
+        // so this is "nearly all of both files" rather than exactly all of it —
+        // what matters is that it is BELOW 100%, where 447.06% was reported.
+        assert!(
+            (80.0..=100.0).contains(&report.duplication_percentage),
+            "two identical files must read as almost fully duplicated, got {}%",
+            report.duplication_percentage
+        );
+        for (path, stats) in &report.file_statistics {
+            assert_eq!(stats.total_lines, 12, "{path}");
+            assert!(
+                stats.duplicate_lines <= 12,
+                "{path}: {} of 12 lines",
+                stats.duplicate_lines
+            );
+            assert!(stats.duplicate_lines >= 10, "{path}");
+        }
+    }
+
+    /// The per-file statistics are accumulated from a HashMap of blocks; five
+    /// runs over the same input must agree exactly.
+    #[tokio::test]
+    async fn test_file_statistics_are_identical_across_5_runs() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        for name in ["a.rs", "b.rs", "c.rs"] {
+            let body = (0..15)
+                .map(|i| format!("    let v{} = {} * 3;\n", i % 5, i))
+                .collect::<String>();
+            std::fs::write(temp.path().join(name), body).unwrap();
+        }
+
+        let snapshot = |report: &DuplicateReport| {
+            let mut rows: Vec<String> = report
+                .file_statistics
+                .iter()
+                .map(|(p, s)| {
+                    format!(
+                        "{p}|{}|{}|{:.4}",
+                        s.duplicate_lines, s.total_lines, s.duplication_percentage
+                    )
+                })
+                .collect();
+            rows.sort();
+            format!("{}|{}|{rows:?}", report.duplicate_lines, report.total_lines)
+        };
+
+        let mut first: Option<String> = None;
+        for run in 0..5 {
+            let report = detect_duplicates(
+                temp.path(),
+                crate::cli::DuplicateType::Exact,
+                0.8,
+                5,
+                100,
+                &None,
+                &None,
+            )
+            .await
+            .unwrap();
+            let current = snapshot(&report);
+            match &first {
+                None => first = Some(current),
+                Some(expected) => assert_eq!(*expected, current, "run {run} differed"),
+            }
+        }
+    }
 }

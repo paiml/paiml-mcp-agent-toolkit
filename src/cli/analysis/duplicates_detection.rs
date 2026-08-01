@@ -160,41 +160,19 @@ fn filter_blocks_by_files(
 
 /// Recalculate statistics after filtering.
 ///
-/// Counts DISTINCT physical lines that participate in duplication.
-///
-/// This was `block.lines * block.locations.len()`, which counts one physical
-/// line once per window covering it. Detection uses an overlapping sliding
-/// window, so a single 5-line function is reported at lines 2-6, 3-7 AND 4-8 —
-/// three "locations" over the same 5 lines. Summing them produced
-/// `duplicate_lines` GREATER than `total_lines` and percentages that cannot
-/// exist: a 36-line fixture reported "Duplication: 455.6% (164 / 36 lines)",
-/// and a file of four entirely distinct functions reported 211.5%.
-///
-/// A percentage above 100 is self-evidently fabricated, so this is measured as
-/// a set: a line is duplicated, or it is not, however many windows cover it.
-/// See contracts/pmat-no-fabrication-v1.yaml, equation `measured_or_absent`.
+/// Delegates to `calculate_duplicate_statistics` so the per-file map is
+/// recomputed too. Round 2 fixed only the aggregate here, which left
+/// `file_statistics` reporting 447.06% for a 17-line file — and only in the
+/// `--top-files > 0` path, so `--top-files 0` still printed 447.06% at the top
+/// level as well.
 fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
-    let mut duplicated: std::collections::HashSet<(&str, usize)> = std::collections::HashSet::new();
-    for block in &report.duplicate_blocks {
-        for loc in &block.locations {
-            for line in loc.start_line..=loc.end_line {
-                duplicated.insert((loc.file.as_str(), line));
-            }
-        }
-    }
-    let duplicate_lines = duplicated.len();
+    let duplicate_lines =
+        calculate_duplicate_statistics(&report.duplicate_blocks, &mut report.file_statistics);
 
     report.duplicate_lines = duplicate_lines;
     report.total_duplicates = report.duplicate_blocks.len();
-
-    if report.total_lines > 0 {
-        #[allow(clippy::cast_precision_loss)]
-        let pct = (duplicate_lines as f32 / report.total_lines as f32) * 100.0;
-        // Distinct duplicated lines can never exceed the lines counted, but
-        // total_lines is gathered by a separate pass; clamp so a disagreement
-        // between the two surfaces as 100%, never as an impossible number.
-        report.duplication_percentage = pct.min(100.0);
-    }
+    report.duplication_percentage =
+        calculate_duplication_percentage(duplicate_lines, report.total_lines);
 }
 
 /// Print duplicate analysis summary
@@ -334,41 +312,63 @@ async fn process_source_file(
     }
 }
 
-/// Calculate duplicate statistics and update file stats
+/// Count the DISTINCT physical lines that participate in duplication, per file.
+///
+/// Detection uses an overlapping sliding window, so one physical line is
+/// covered by several blocks that hash differently (a.rs 1-11, 1-5, 2-6, 3-7
+/// and 4-8 all appear in one run). Summing `block.lines` per location counted
+/// each of those lines once per window: two byte-identical 17-line files were
+/// reported as `duplicate_lines: 76, total_lines: 17,
+/// duplication_percentage: 447.06` — a part 4.5x its own whole, printed to the
+/// user as "1. a.rs - 447.1% duplication (76 / 17 lines)".
+///
+/// A line is duplicated or it is not, however many windows cover it. See
+/// `contracts/pmat-no-fabrication-v1.yaml`, equation `measured_or_absent`.
 fn calculate_duplicate_statistics(
     duplicate_blocks: &[DuplicateBlock],
     file_stats: &mut HashMap<String, FileStats>,
 ) -> usize {
-    let mut duplicate_lines = 0;
-
+    let mut duplicated: HashMap<&str, std::collections::HashSet<usize>> = HashMap::new();
     for block in duplicate_blocks {
-        duplicate_lines += block.lines * block.locations.len();
-
         for loc in &block.locations {
-            if let Some(stats) = file_stats.get_mut(&loc.file) {
-                stats.duplicate_lines += block.lines;
+            let lines = duplicated.entry(loc.file.as_str()).or_default();
+            for line in loc.start_line..=loc.end_line {
+                lines.insert(line);
             }
         }
     }
 
-    update_file_duplication_percentages(file_stats);
-    duplicate_lines
-}
-
-/// Update duplication percentages for all files
-fn update_file_duplication_percentages(file_stats: &mut HashMap<String, FileStats>) {
-    for stats in file_stats.values_mut() {
-        if stats.total_lines > 0 {
-            stats.duplication_percentage =
-                (stats.duplicate_lines as f32 / stats.total_lines as f32) * 100.0;
-        }
+    for (path, stats) in file_stats.iter_mut() {
+        let counted = duplicated.get(path.as_str()).map_or(0, |set| {
+            // A block may name a line past the end of the file if extraction
+            // over-ran; clamp so no part can exceed its whole.
+            set.iter().filter(|line| **line <= stats.total_lines).count()
+        });
+        stats.duplicate_lines = counted;
+        stats.duplication_percentage = if stats.total_lines > 0 {
+            #[allow(clippy::cast_precision_loss)]
+            let pct = (counted as f32 / stats.total_lines as f32) * 100.0;
+            pct.min(100.0)
+        } else {
+            0.0
+        };
     }
+
+    // The project total is the sum of the per-file totals, so the headline and
+    // the rows can never disagree.
+    file_stats.values().map(|s| s.duplicate_lines).sum()
 }
 
-/// Calculate overall duplication percentage
+/// Calculate overall duplication percentage.
+///
+/// Clamped at 100: distinct duplicated lines can never exceed the lines
+/// counted, but the two come from separate passes, so a disagreement must
+/// surface as 100%, never as an impossible number.
 fn calculate_duplication_percentage(duplicate_lines: usize, total_lines: usize) -> f32 {
     if total_lines > 0 {
-        (duplicate_lines as f32 / total_lines as f32) * 100.0
+        #[allow(clippy::cast_precision_loss)]
+        let pct = (duplicate_lines as f32 / total_lines as f32) * 100.0;
+        pct.min(100.0)
     } else {
         0.0
     }

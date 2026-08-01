@@ -96,8 +96,11 @@ pub fn format_dead_code_as_summary(
 
     write_dead_code_header(&mut output, result)?;
 
-    if result.summary.dead_functions > 0 {
-        write_dead_code_by_type_section(&mut output, &result.summary)?;
+    // Print the breakdown whenever there is anything to break down. Gating on
+    // `dead_functions > 0` hid it exactly when it was needed: a report of 26
+    // dead lines made entirely of dead fields showed no types at all.
+    if result.summary.total_dead_lines > 0 || !result.files.is_empty() {
+        write_dead_code_by_type_section(&mut output, result)?;
     }
 
     if !result.files.is_empty() {
@@ -128,6 +131,23 @@ fn write_dead_code_header(
         c::label("Files with dead code:"),
         c::number(&result.summary.files_with_dead_code.to_string())
     )?;
+    // Name the cap instead of letting the reported count stand for the total:
+    // `files_with_dead_code: 26` used to head a list of 4.
+    let omitted = result.files_omitted();
+    if omitted > 0 {
+        writeln!(
+            output,
+            "  {} {} ({} not listed: below --min-dead-lines{})",
+            c::label("Files found with dead code:"),
+            c::number(&result.files_with_dead_code_found.to_string()),
+            c::number(&omitted.to_string()),
+            if result.files_truncated {
+                " or beyond --top-files"
+            } else {
+                ""
+            }
+        )?;
+    }
     writeln!(
         output,
         "  {} {}",
@@ -148,39 +168,43 @@ fn write_dead_code_header(
     Ok(())
 }
 
-/// Write dead code by type breakdown section
+/// Write dead code by type breakdown section.
+///
+/// Every reported dead item lands in exactly one row. The "Dead variables" row
+/// used to print `summary.dead_modules` — a module count under a variable label
+/// — and fields, constants and statics were counted in no row at all, so a
+/// report of 26 dead lines could show four zeros beneath it.
 fn write_dead_code_by_type_section(
     output: &mut String,
-    summary: &crate::models::dead_code::DeadCodeSummary,
+    result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
     use crate::cli::colors as c;
+    use crate::models::dead_code::DeadCodeType;
     use std::fmt::Write;
 
+    let summary = &result.summary;
+    let other_items = result
+        .files
+        .iter()
+        .flat_map(|f| f.items.iter())
+        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
+        .count();
+
     writeln!(output, "{}\n", c::subheader("Dead Code by Type"))?;
-    writeln!(
-        output,
-        "  {} {}",
-        c::label("Dead functions:"),
-        c::number(&summary.dead_functions.to_string())
-    )?;
-    writeln!(
-        output,
-        "  {} {}",
-        c::label("Dead classes:"),
-        c::number(&summary.dead_classes.to_string())
-    )?;
-    writeln!(
-        output,
-        "  {} {}",
-        c::label("Dead variables:"),
-        c::number(&summary.dead_modules.to_string())
-    )?;
-    writeln!(
-        output,
-        "  {} {}",
-        c::label("Unreachable blocks:"),
-        c::number(&summary.unreachable_blocks.to_string())
-    )?;
+    for (label, value) in [
+        ("Dead functions:", summary.dead_functions),
+        ("Dead classes:", summary.dead_classes),
+        ("Dead modules:", summary.dead_modules),
+        ("Other (fields, constants, statics):", other_items),
+        ("Unreachable blocks:", summary.unreachable_blocks),
+    ] {
+        writeln!(
+            output,
+            "  {} {}",
+            c::label(label),
+            c::number(&value.to_string())
+        )?;
+    }
 
     Ok(())
 }

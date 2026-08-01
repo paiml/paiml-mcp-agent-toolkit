@@ -224,15 +224,21 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         },
         c::RESET
     );
-    let _ = writeln!(
-        output,
-        "  {}Churn source:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        result.churn_source.describe(),
-        c::RESET
-    );
+    // Every factor states where it came from, or why it is absent (#657).
+    for (label, description) in [
+        ("Churn source:", result.churn_source.describe()),
+        ("Coupling source:", result.coupling_source.describe()),
+        ("Duplication source:", result.duplication_source.describe()),
+    ] {
+        let _ = writeln!(
+            output,
+            "  {}{label}{} {}{description}{}",
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            c::RESET
+        );
+    }
     let _ = writeln!(
         output,
         "  {}High risk files:{} {}{}{}",
@@ -319,13 +325,15 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
             format_optional_score(prediction.metrics.churn_score),
             c::RESET
         );
+        // Same rule for coupling and duplication (#657): both were constants
+        // (0.2 and 0.1) presented with the authority of a measurement.
         let _ = writeln!(
             output,
-            "      {}Coupling:{} {}{:.1}{}",
+            "      {}Coupling:{} {}{}{}",
             c::BOLD,
             c::RESET,
             c::BOLD_WHITE,
-            prediction.metrics.coupling_score,
+            format_optional_score(prediction.metrics.coupling_score),
             c::RESET
         );
         let _ = writeln!(
@@ -339,11 +347,11 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         );
         let _ = writeln!(
             output,
-            "      {}Duplication:{} {}{:.1}{}",
+            "      {}Duplication:{} {}{}{}",
             c::BOLD,
             c::RESET,
             c::BOLD_WHITE,
-            prediction.metrics.duplication_score,
+            format_optional_score(prediction.metrics.duplication_score),
             c::RESET
         );
 
@@ -374,16 +382,16 @@ fn format_csv(result: &DefectPredictionResult) -> String {
 
     for prediction in &result.predictions {
         output.push_str(&format!(
-            "{},{:?},{:.3},{:.3},{:.3},{},{:.3},{:.3},{:.3}\n",
+            "{},{:?},{:.3},{:.3},{:.3},{},{},{:.3},{}\n",
             prediction.file_path,
             prediction.risk_level,
             prediction.defect_probability,
             prediction.confidence,
             prediction.metrics.complexity_score,
             format_optional_score(prediction.metrics.churn_score),
-            prediction.metrics.coupling_score,
+            format_optional_score(prediction.metrics.coupling_score),
             prediction.metrics.size_score,
-            prediction.metrics.duplication_score
+            format_optional_score(prediction.metrics.duplication_score)
         ));
     }
 
@@ -467,7 +475,7 @@ fn format_sarif(result: &DefectPredictionResult) -> String {
 mod tests {
     use super::*;
     use crate::services::facades::defect_prediction_facade::{
-        ChurnSource, FilePrediction, FileRiskMetrics, RiskLevel,
+        ChurnSource, CouplingSource, DuplicationSource, FilePrediction, FileRiskMetrics, RiskLevel,
     };
 
     fn sample_result(
@@ -484,6 +492,10 @@ mod tests {
             predictions_reported: 1,
             predictions_truncated: true,
             churn_source,
+            coupling_source: CouplingSource::EfferentImports {
+                imports_at_full_scale: 20,
+            },
+            duplication_source: DuplicationSource::not_run(),
             predictions: vec![FilePrediction {
                 file_path: "test.rs".to_string(),
                 defect_probability: 0.8,
@@ -492,11 +504,15 @@ mod tests {
                 metrics: FileRiskMetrics {
                     complexity_score: 0.8,
                     churn_score,
-                    coupling_score: 0.6,
+                    coupling_score: Some(0.6),
                     size_score: 0.5,
-                    duplication_score: 0.4,
+                    duplication_score: None,
+                    lines: 800,
+                    imports: Some(12),
+                    commits_in_window: churn_score.map(|_| 3),
+                    changed_lines_in_window: churn_score.map(|_| 40),
                 },
-                contributing_factors: vec!["High complexity".to_string()],
+                contributing_factors: vec!["Long file (800 lines)".to_string()],
             }],
             summary: "Test summary".to_string(),
             recommendations: vec!["Test recommendation".to_string()],
@@ -510,6 +526,8 @@ mod tests {
             ChurnSource::GitHistory {
                 window_days: 90,
                 files_with_churn: 4,
+                commits_at_full_scale: 20,
+                changed_lines_at_full_scale: 1000,
             },
         );
 
@@ -555,5 +573,49 @@ mod tests {
         );
         let csv = format_csv(&result);
         assert!(csv.contains("not measured"), "csv churn column: {csv}");
+    }
+
+    /// Round 3: the disclosure round 2 added for churn must exist for the two
+    /// other fields #657 named. Pre-fix, `coupling_score` (0.2) and
+    /// `duplication_score` (0.1) were rendered as plain numbers with no
+    /// provenance in any renderer.
+    #[test]
+    fn test_detailed_and_csv_disclose_coupling_and_duplication_sources() {
+        let result = sample_result(
+            Some(0.4),
+            ChurnSource::GitHistory {
+                window_days: 90,
+                files_with_churn: 4,
+                commits_at_full_scale: 20,
+                changed_lines_at_full_scale: 1000,
+            },
+        );
+
+        let detailed = format_detailed(&result);
+        assert!(
+            detailed.contains("Coupling source:"),
+            "coupling must state where it came from: {detailed}"
+        );
+        assert!(
+            detailed.contains("Duplication source:"),
+            "duplication must state why it is absent: {detailed}"
+        );
+        // duplication_score is None in the sample → never a number. (The
+        // renderer interleaves colour codes, so match the two halves.)
+        let duplication_line = detailed
+            .lines()
+            .find(|l| l.contains("Duplication:") && !l.contains("Duplication source:"))
+            .expect("a Duplication metric row");
+        assert!(
+            duplication_line.contains("not measured"),
+            "duplication must not render as a number: {duplication_line}"
+        );
+
+        let csv = format_csv(&result);
+        let data_line = csv.lines().nth(1).expect("one data row");
+        assert!(
+            data_line.ends_with("not measured"),
+            "csv duplication column must be 'not measured', got: {data_line}"
+        );
     }
 }
