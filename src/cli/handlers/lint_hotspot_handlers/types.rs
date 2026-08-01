@@ -2,9 +2,26 @@
 //! Types, enums, and structs for lint hotspot analysis
 
 use crate::cli::LintHotspotOutputFormat;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize, Serializer};
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+
+/// Serialize a `HashMap` keyed by path in sorted key order.
+///
+/// DETERMINISM: `serde_json` emits `HashMap` entries in hash order, so two runs
+/// over the same tree produced the same data under a different JSON key order.
+/// Collecting into a `BTreeMap` first makes the rendered map byte-identical run
+/// to run.
+fn serialize_paths_sorted<S>(
+    map: &HashMap<PathBuf, FileSummary>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let ordered: BTreeMap<&PathBuf, &FileSummary> = map.iter().collect();
+    serde::Serialize::serialize(&ordered, serializer)
+}
 
 /// Parameters for lint hotspot analysis
 pub struct LintHotspotParams {
@@ -29,6 +46,7 @@ pub struct LintHotspotParams {
 pub struct LintHotspotResult {
     pub hotspot: LintHotspot,
     pub all_violations: Vec<ViolationDetail>,
+    #[serde(serialize_with = "serialize_paths_sorted")]
     pub summary_by_file: HashMap<PathBuf, FileSummary>,
     pub total_project_violations: usize,
     pub enforcement: Option<EnforcementMetadata>,
@@ -157,6 +175,22 @@ pub(crate) struct DiagnosticCode {
     pub(crate) code: String,
 }
 
+// #679 ROOT CAUSE (silent under-report): this struct used to carry
+//   #[serde(default, rename = "text")] _text: Vec<DiagnosticText>
+// where `DiagnosticText` declared fields literally named `_text`,
+// `_highlight_start` and `_highlight_end` — names cargo's JSON never emits
+// (they are `text`, `highlight_start`, `highlight_end`). Every span that
+// carried source text therefore failed to deserialize, which failed the whole
+// `ClippyMessage`, which the parsers dropped with `Ok(None)`.
+//
+// Observed wrong value: `analyze lint-hotspot --file src/lib.rs` on a fixture
+// with 20 real clippy findings reported 12 — exactly the 12 that had an EMPTY
+// `text` array (clippy::cargo_common_metadata). All 8 code lints (ptr_arg,
+// needless_bool, needless_return, len_zero, needless_range_loop,
+// must_use_candidate, missing_const_for_fn) were discarded.
+//
+// The text is not used by any consumer, so the field is gone entirely; serde
+// ignores unknown JSON keys by default.
 #[derive(Debug, Deserialize)]
 pub(crate) struct DiagnosticSpan {
     pub(crate) file_name: String,
@@ -166,19 +200,10 @@ pub(crate) struct DiagnosticSpan {
     pub(crate) column_end: u32,
     #[serde(default)]
     pub(crate) is_primary: bool,
-    #[serde(default, rename = "text")]
-    pub(crate) _text: Vec<DiagnosticText>,
     #[serde(default)]
     pub(crate) suggested_replacement: Option<String>,
     #[serde(default)]
     pub(crate) suggestion_applicability: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct DiagnosticText {
-    pub(crate) _text: String,
-    pub(crate) _highlight_start: u32,
-    pub(crate) _highlight_end: u32,
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
