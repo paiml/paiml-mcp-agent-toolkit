@@ -85,7 +85,17 @@ fn extract_fuzzy_blocks(
     let mut i = 0;
     while i < lines.len() {
         if is_block_start(lines[i]) {
-            let end = find_block_end(&lines[i..]).unwrap_or(min_lines) + i;
+            // Clamped: `find_block_end` returning None falls back to
+            // `min_lines`, and `i + min_lines` can run past the end of the
+            // file — `&lines[i..end]` then panics with "range end index 131 out
+            // of range for slice of length 130".
+            //
+            // This was latent: `All` used to fall into a `_ => {}` arm so this
+            // extractor was never reached on the DEFAULT detection type. Making
+            // `All` a real superset turned a dormant panic into a crash on
+            // `pmat analyze duplicates` over any ordinary source tree,
+            // including pmat's own (SIGABRT, rc=134).
+            let end = (find_block_end(&lines[i..]).unwrap_or(min_lines) + i).min(lines.len());
             if end - i >= min_lines {
                 let block_lines = &lines[i..end];
                 let content = normalize_block(block_lines);
