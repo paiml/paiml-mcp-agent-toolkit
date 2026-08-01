@@ -112,6 +112,7 @@ pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
 pub mod simple_unified_server;
+pub mod stdio_frames; // #648: raw-line stdio transport with honest JSON-RPC errors
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tdg_git_context_tests;
