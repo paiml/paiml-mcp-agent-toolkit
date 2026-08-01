@@ -72,6 +72,11 @@ include!("defect_report.rs");
 #[cfg(all(test, feature = "broken-tests"))]
 mod tests;
 
+// Entropy quality-gate regression tests (#683 + determinism).
+#[cfg(test)]
+#[path = "entropy_gate_tests.rs"]
+mod entropy_gate_tests;
+
 #[cfg(test)]
 mod churn_tests {
     //! PMAT-650: cover churn.rs pure formatting helpers.

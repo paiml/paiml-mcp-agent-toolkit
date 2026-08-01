@@ -206,6 +206,71 @@
         assert_eq!(summary.satd_markers, 8);
     }
 
+    /// GH #670: the SAME measurement repeated across whys is one measurement.
+    ///
+    /// `five-whys` attaches identical repo-level SATD evidence to every
+    /// iteration, so summing made the reported debt a function of `--depth`:
+    /// a file with exactly 4 markers reported 4 / 12 / 20 at depth 1 / 3 / 5,
+    /// contradicting the per-why evidence it was summarising.
+    #[test]
+    fn satd_markers_do_not_scale_with_depth() {
+        let repeated = || {
+            Evidence::new(
+                EvidenceSource::SATD,
+                PathBuf::from("awful.rs"),
+                "todo_markers".to_string(),
+                serde_json::json!({"count": 4}),
+                "Found 4 TODO/FIXME/HACK markers".to_string(),
+            )
+        };
+
+        for depth in 1u8..=5 {
+            let whys: Vec<_> = (1..=depth)
+                .map(|d| {
+                    let mut why = create_test_why_iteration(d, 0.5);
+                    why.add_evidence(repeated());
+                    why
+                })
+                .collect();
+
+            let summary = EvidenceSummary::from_whys(&whys);
+            assert_eq!(
+                summary.satd_markers, 4,
+                "depth {depth} must not multiply the marker count (pre-fix: {})",
+                4 * depth
+            );
+        }
+    }
+
+    /// The same accumulation bug inflated `complexity_violations` by one per
+    /// iteration for a single repeated violation.
+    #[test]
+    fn complexity_violations_do_not_scale_with_depth() {
+        let repeated = || {
+            Evidence::new(
+                EvidenceSource::Complexity,
+                PathBuf::from("awful.rs"),
+                "cyclomatic".to_string(),
+                serde_json::json!({"value": 42.0, "threshold": 20.0}),
+                "Complexity 42 exceeds 20".to_string(),
+            )
+        };
+
+        let whys: Vec<_> = (1..=5u8)
+            .map(|d| {
+                let mut why = create_test_why_iteration(d, 0.5);
+                why.add_evidence(repeated());
+                why
+            })
+            .collect();
+
+        let summary = EvidenceSummary::from_whys(&whys);
+        assert_eq!(
+            summary.complexity_violations, 1,
+            "one violation cited five times is still one violation"
+        );
+    }
+
     #[test]
     fn test_evidence_summary_extracts_tdg_score() {
         let mut why = create_test_why_iteration(1, 0.5);

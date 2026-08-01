@@ -25,22 +25,22 @@
 //!
 //! ```rust
 //! use pmat::entropy::entropy_calculator::{EntropyMetrics, EntropyReport};
-//! use std::collections::HashMap;
+//! use std::collections::BTreeMap;
 //!
 //! // Example metrics showing good pattern diversity
 //! let metrics = EntropyMetrics {
-//!     file_level_entropy: 0.85,
-//!     module_level_entropy: 0.75,
-//!     project_level_entropy: 0.70,
-//!     pattern_diversity: 0.78,
+//!     file_level_entropy: Some(0.85),
+//!     module_level_entropy: Some(0.75),
+//!     project_level_entropy: Some(0.70),
+//!     pattern_diversity: Some(0.78),
 //!     total_patterns: 42,
 //!     total_instances: 156,
 //!     total_loc: 2500,
-//!     patterns_by_type: HashMap::new(),
+//!     patterns_by_type: BTreeMap::new(),
 //! };
 //!
 //! // High entropy indicates good pattern diversity (low duplication)
-//! assert!(metrics.pattern_diversity > 0.7);
+//! assert!(metrics.pattern_diversity.unwrap() > 0.7);
 //!
 //! // Pattern density calculation
 //! let pattern_density = metrics.total_instances as f64 / metrics.total_loc as f64;

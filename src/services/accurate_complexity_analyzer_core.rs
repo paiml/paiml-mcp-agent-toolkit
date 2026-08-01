@@ -7,16 +7,19 @@ impl AccurateComplexityAnalyzer {
         let content = tokio::fs::read_to_string(path).await?;
         let ast = syn::parse_file(&content)?;
 
-        // Build a lookup of function name -> line number from source text
-        let line_map = build_function_line_map(&content);
+        // Measured spans (start AND end) for every function in the source text.
+        let mut line_map = build_function_line_map(&content);
+        let total_lines = line_map.total_lines();
 
         let mut functions = Vec::new();
 
         for item in ast.items {
             if let Item::Fn(func) = item {
                 let name = func.sig.ident.to_string();
-                let line_start = line_map.get(&name).copied().unwrap_or(0);
-                let metrics = self.analyze_function(&func, line_start);
+                // Spans are consumed in textual order so duplicate names in
+                // different scopes don't all collapse onto the first one.
+                let span = line_map.take(&name).unwrap_or(LineSpan::UNKNOWN);
+                let metrics = self.analyze_function(&func, span);
                 functions.push(metrics);
             }
         }
@@ -24,6 +27,7 @@ impl AccurateComplexityAnalyzer {
         Ok(FileComplexityResult {
             functions,
             file_path: path.display().to_string(),
+            total_lines,
         })
     }
 
@@ -58,19 +62,20 @@ impl AccurateComplexityAnalyzer {
     }
 
     /// Analyze a single function
-    fn analyze_function(&self, func: &ItemFn, line_start: u32) -> FunctionMetrics {
+    fn analyze_function(&self, func: &ItemFn, span: LineSpan) -> FunctionMetrics {
         let name = func.sig.ident.to_string();
         let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
 
-        let mut visitor = ComplexityVisitor::new().with_function_name(name.clone());
-        visitor.visit_item_fn(func);
+        let complexity = measure_block(&name, &func.block);
 
         FunctionMetrics {
             name,
-            cyclomatic_complexity: visitor.cyclomatic,
-            cognitive_complexity: visitor.cognitive,
+            cyclomatic_complexity: complexity.cyclomatic,
+            cognitive_complexity: complexity.cognitive,
+            max_nesting: complexity.max_nesting,
             suppressed,
-            line_start,
+            line_start: span.start,
+            line_end: span.end,
         }
     }
 

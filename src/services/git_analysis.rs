@@ -49,53 +49,138 @@ use tracing::info;
 pub struct GitAnalysisService;
 
 impl GitAnalysisService {
+    /// Find the git repository root that *contains* `start`, the way git
+    /// itself does: walk up until a `.git` entry is found.
+    ///
+    /// #657: churn was silently unmeasured for every non-root path because the
+    /// only check was `project_path.join(".git").exists()`. Asking for
+    /// `<repo>/src/utils` inside a repository with 3855 commits reported
+    /// "No git repository found" and produced null churn for every file.
+    ///
+    /// `.git` may be a directory (normal clone) or a file (submodule / linked
+    /// worktree), so existence — not `is_dir()` — is the test.
+    #[must_use]
+    pub fn discover_repository_root(start: &Path) -> Option<PathBuf> {
+        // Canonicalize so `..` components and symlinks don't stop the walk
+        // early; fall back to the path as given if it cannot be resolved.
+        let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
+        let mut current: Option<&Path> = Some(start.as_path());
+        while let Some(dir) = current {
+            if dir.join(".git").exists() {
+                return Some(dir.to_path_buf());
+            }
+            current = dir.parent();
+        }
+        None
+    }
+
+    /// Path of `target` relative to `root`, or `None` when `target` *is* the
+    /// root (i.e. the query is unscoped).
+    fn scope_within_root(root: &Path, target: &Path) -> Option<PathBuf> {
+        let target = target
+            .canonicalize()
+            .unwrap_or_else(|_| target.to_path_buf());
+        let rel = target.strip_prefix(root).ok()?;
+        if rel.as_os_str().is_empty() {
+            None
+        } else {
+            Some(rel.to_path_buf())
+        }
+    }
+
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze code churn.
+    ///
+    /// `project_path` may be the repository root or **any directory inside
+    /// it**; the repository root is discovered by walking up (#657) and the
+    /// git query is then scoped to the requested subtree, so asking for
+    /// `<repo>/src/utils` measures churn for `src/utils` rather than failing.
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,
     ) -> Result<CodeChurnAnalysis, TemplateError> {
-        if !project_path.join(".git").exists() {
-            return Err(TemplateError::NotFound(format!(
-                "No git repository found at {project_path:?}"
-            )));
-        }
+        let repo_root = Self::discover_repository_root(project_path).ok_or_else(|| {
+            TemplateError::NotFound(format!(
+                "No git repository found at {project_path:?} or any of its parent directories"
+            ))
+        })?;
+        let scope = Self::scope_within_root(&repo_root, project_path);
 
-        let since_date = Utc::now() - Duration::days(i64::from(period_days));
-        let since_str = since_date.format("%Y-%m-%d").to_string();
+        // Checked arithmetic: `Utc::now() - Duration::days(...)` aborts the
+        // process with SIGABRT ("`DateTime - TimeDelta` overflowed") past
+        // roughly 10^8 days, reachable from the CLI as `-d 2147483647`. A
+        // user-supplied integer must never reach unchecked calendar arithmetic.
+        // See contracts/pmat-no-fabrication-v1.yaml, `bounded_time_arithmetic`.
+        //
+        // The floor is the Unix epoch, not the limit of chrono's range. Checked
+        // arithmetic alone was not enough: 400_000 days is ~year 931, which
+        // chrono represents happily and `git log --since` then parses
+        // erratically. On a 2-commit repo that produced a NON-MONOTONIC series
+        // -- -d 400000 found 1 file, -d 730000 found ZERO ("Analyzed 0 files
+        // with changes" on a live repo), -d 800000 found 1 again. Asking for
+        // more history must never return less, and a confident zero is a
+        // fabrication.
+        //
+        // Any window reaching past 1970 means "all of history", which is
+        // expressed to git by OMITTING --since rather than naming a date git
+        // will mis-parse.
+        let epoch = DateTime::from_timestamp(0, 0).unwrap_or_else(Utc::now);
+        let since_str = Duration::try_days(i64::from(period_days))
+            .and_then(|d| Utc::now().checked_sub_signed(d))
+            .filter(|since| *since >= epoch)
+            .map(|since| since.format("%Y-%m-%d").to_string());
 
         info!("Analyzing code churn for last {} days", period_days);
 
-        let file_metrics = Self::get_file_metrics(project_path, &since_str)?;
-        let summary = Self::generate_summary(&file_metrics);
+        let (file_metrics, total_commits) =
+            Self::get_file_metrics(&repo_root, since_str.as_deref(), scope.as_deref())?;
+        let summary = Self::generate_summary(&file_metrics, total_commits);
 
         Ok(CodeChurnAnalysis {
             generated_at: Utc::now(),
             period_days,
-            repository_root: project_path.to_path_buf(),
+            repository_root: repo_root,
             files: file_metrics,
             summary,
         })
     }
 
+    /// Per-file churn metrics plus the number of DISTINCT commits in the window.
+    ///
+    /// The commit count is returned separately because it cannot be recovered
+    /// from `FileChurnMetrics`: summing `commit_count` over files counts one
+    /// commit once per file it touched. That sum was what "Total commits"
+    /// reported (GH #660) — 756 for a window git puts at 40, and 2 for a
+    /// fixture repo with a single commit touching two files.
     fn get_file_metrics(
         project_path: &Path,
-        since_date: &str,
-    ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
+        since_date: Option<&str>,
+        scope: Option<&Path>,
+    ) -> Result<(Vec<FileChurnMetrics>, usize), TemplateError> {
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();
-        let since = since_date.to_string();
+        let since = since_date.map(std::string::ToString::to_string);
+        let scope = scope.map(Path::to_path_buf);
         std::thread::spawn(move || {
-            let result = Command::new("git")
-                .arg("log")
-                .arg("--since")
-                .arg(&since)
-                .arg("--pretty=format:%H|%an|%aI")
-                .arg("--numstat")
-                .current_dir(&project_dir)
-                .output();
+            let mut command = Command::new("git");
+            command.arg("log");
+            // No --since at all means "all history", which is what a lookback
+            // reaching past the Unix epoch asks for. Naming an extreme date
+            // instead makes `git log --since` return erratic, sometimes empty,
+            // results -- see the monotonicity note above.
+            if let Some(ref since) = since {
+                command.arg("--since").arg(since);
+            }
+            command.arg("--pretty=format:%H|%an|%aI").arg("--numstat");
+            // #657: restrict the history to the requested subtree so a
+            // subdirectory query reports that subtree's churn, not the whole
+            // repository's.
+            if let Some(scope) = &scope {
+                command.arg("--").arg(scope);
+            }
+            let result = command.current_dir(&project_dir).output();
             let _ = tx.send(result);
         });
 
@@ -108,7 +193,7 @@ impl GitAnalysisService {
                     timeout.as_secs(),
                     project_path.display()
                 );
-                return Ok(Vec::new());
+                return Ok((Vec::new(), 0));
             }
         };
 
@@ -116,7 +201,7 @@ impl GitAnalysisService {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             // Handle empty repository case
             if error_msg.contains("does not have any commits yet") {
-                return Ok(Vec::new());
+                return Ok((Vec::new(), 0));
             }
             return Err(TemplateError::NotFound(format!(
                 "Git log failed: {error_msg}"
@@ -126,6 +211,10 @@ impl GitAnalysisService {
         let log_output = String::from_utf8_lossy(&output.stdout);
         let mut file_stats: HashMap<PathBuf, FileStats> = HashMap::with_capacity(64);
         let mut current_commit: Option<CommitInfo> = None;
+        // Distinct commits seen in the window. One header line per commit, so
+        // this equals `git rev-list --count --since=<date>` — including merge
+        // commits, which print a header but no --numstat lines.
+        let mut commit_hashes: HashSet<String> = HashSet::with_capacity(64);
 
         for line in log_output.lines() {
             if line.is_empty() {
@@ -133,6 +222,7 @@ impl GitAnalysisService {
             }
 
             if let Some((hash, author, date)) = Self::parse_commit_line(line) {
+                commit_hashes.insert(hash.clone());
                 current_commit = Some(CommitInfo { hash, author, date });
             } else if let Some(ref commit) = current_commit {
                 if let Some((additions, deletions, file_path)) = Self::parse_numstat_line(line) {
@@ -201,7 +291,7 @@ impl GitAnalysisService {
                 .expect("internal error")
         });
 
-        Ok(metrics)
+        Ok((metrics, commit_hashes.len()))
     }
 
     fn parse_commit_line(line: &str) -> Option<(String, String, String)> {
@@ -229,12 +319,15 @@ impl GitAnalysisService {
         }
     }
 
-    fn generate_summary(files: &[FileChurnMetrics]) -> ChurnSummary {
+    /// Build the summary. `total_commits` is the count of DISTINCT commits in
+    /// the window, supplied by the caller.
+    ///
+    /// It used to be computed here as `sum(file.commit_count)`, i.e. the number
+    /// of file revisions, and was still labelled "Total commits" (GH #660).
+    fn generate_summary(files: &[FileChurnMetrics], total_commits: usize) -> ChurnSummary {
         let mut author_contributions: HashMap<String, usize> = HashMap::with_capacity(64);
-        let mut total_commits = 0;
 
         for file in files {
-            total_commits += file.commit_count;
             for author in &file.unique_authors {
                 *author_contributions.entry(author.clone()).or_insert(0) += 1;
             }
@@ -372,7 +465,7 @@ mod tests {
     #[test]
     fn test_generate_summary_empty() {
         let files: Vec<FileChurnMetrics> = vec![];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 0);
         assert_eq!(summary.total_commits, 0);
         assert_eq!(summary.total_files_changed, 0);
         assert!(summary.hotspot_files.is_empty());
@@ -393,8 +486,12 @@ mod tests {
             last_modified: Utc::now(),
             first_seen: Utc::now(),
         }];
-        let summary = GitAnalysisService::generate_summary(&files);
-        assert_eq!(summary.total_commits, 5);
+        // #660: the summary reports the DISTINCT commit count it is given, not
+        // sum(commit_count). Here 5 revisions of one file came from 3 commits
+        // (two of them touched it twice via amends/rebases in the window), so
+        // "Total commits" must be 3 — the old code answered 5.
+        let summary = GitAnalysisService::generate_summary(&files, 3);
+        assert_eq!(summary.total_commits, 3);
         assert_eq!(summary.total_files_changed, 1);
         assert_eq!(summary.hotspot_files.len(), 1); // churn_score > 0.5
     }
@@ -425,8 +522,10 @@ mod tests {
                 first_seen: Utc::now(),
             },
         ];
-        let summary = GitAnalysisService::generate_summary(&files);
-        assert_eq!(summary.total_commits, 5);
+        // #660: two files with 3 and 2 revisions can come from as few as 3
+        // commits. The old code reported 5 "commits" for exactly this shape.
+        let summary = GitAnalysisService::generate_summary(&files, 3);
+        assert_eq!(summary.total_commits, 3);
         assert_eq!(summary.total_files_changed, 2);
         assert_eq!(summary.author_contributions.len(), 2);
     }
@@ -451,7 +550,7 @@ mod tests {
             last_modified: Utc::now(),
             first_seen: Utc::now(),
         }];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 1);
         assert_eq!(summary.stable_files.len(), 1);
     }
 
@@ -481,11 +580,160 @@ mod tests {
                 first_seen: Utc::now(),
             },
         ];
-        let summary = GitAnalysisService::generate_summary(&files);
+        let summary = GitAnalysisService::generate_summary(&files, 4);
         // Mean of 0.2 and 0.8 = 0.5
         assert!((summary.mean_churn_score - 0.5).abs() < 0.01);
         // Variance and stddev should be calculated
         assert!(summary.variance_churn_score >= 0.0);
         assert!(summary.stddev_churn_score >= 0.0);
+    }
+
+    // ── #657: churn must be measurable from any directory inside a repo ─────
+
+    /// Build a throwaway repo with commits under `src/utils/` and `docs/`.
+    fn init_repo_with_subdir_commits() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        let root = temp.path();
+
+        let git = |args: &[&str]| {
+            let status = std::process::Command::new("git")
+                .args(args)
+                .current_dir(root)
+                .output()
+                .expect("git must be available for this test");
+            assert!(
+                status.status.success(),
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&status.stderr)
+            );
+        };
+
+        git(&["init", "--initial-branch=main"]);
+        git(&["config", "user.email", "test@example.com"]);
+        git(&["config", "user.name", "Test User"]);
+
+        std::fs::create_dir_all(root.join("src/utils")).unwrap();
+        std::fs::create_dir_all(root.join("docs")).unwrap();
+
+        for i in 0..3 {
+            std::fs::write(
+                root.join("src/utils/helper.rs"),
+                format!("pub fn helper() {{ let _ = {i}; }}\n"),
+            )
+            .unwrap();
+            std::fs::write(root.join("docs/readme.md"), format!("doc revision {i}\n")).unwrap();
+            git(&["add", "."]);
+            git(&["commit", "-m", &format!("change {i}")]);
+        }
+
+        temp
+    }
+
+    #[test]
+    fn test_discover_repository_root_walks_up() {
+        let temp = init_repo_with_subdir_commits();
+        let expected = temp.path().canonicalize().unwrap();
+
+        // From the root itself, and from two levels down.
+        for start in [
+            temp.path().to_path_buf(),
+            temp.path().join("src"),
+            temp.path().join("src/utils"),
+        ] {
+            assert_eq!(
+                GitAnalysisService::discover_repository_root(&start),
+                Some(expected.clone()),
+                "should have walked up to the repo root from {start:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_discover_repository_root_none_outside_repo() {
+        let temp = TempDir::new().unwrap();
+        assert!(GitAnalysisService::discover_repository_root(temp.path()).is_none());
+    }
+
+    /// #657 regression: `analyze_code_churn` on a SUBDIRECTORY used to return
+    /// `NotFound("No git repository found at .../src/utils")` because the only
+    /// check was `.git` in the path itself. It must now measure that subtree.
+    #[test]
+    fn test_analyze_code_churn_from_subdirectory_is_measured() {
+        let temp = init_repo_with_subdir_commits();
+        let subdir = temp.path().join("src/utils");
+
+        let analysis = GitAnalysisService::analyze_code_churn(&subdir, 365)
+            .expect("churn inside a repository must be measurable from a subdirectory");
+
+        assert_eq!(
+            analysis.repository_root,
+            temp.path().canonicalize().unwrap(),
+            "repository_root must be the discovered root, not the queried subpath"
+        );
+        assert!(
+            !analysis.files.is_empty(),
+            "subdirectory churn must not be empty for a subtree with commits"
+        );
+        assert!(
+            analysis.summary.total_commits > 0,
+            "total_commits must be measured, got {}",
+            analysis.summary.total_commits
+        );
+    }
+
+    /// The subtree query must be *scoped* — `docs/` commits must not leak into
+    /// a `src/utils` query, otherwise "output derived from input" fails.
+    #[test]
+    fn test_analyze_code_churn_subdirectory_is_scoped() {
+        let temp = init_repo_with_subdir_commits();
+
+        let scoped = GitAnalysisService::analyze_code_churn(&temp.path().join("src/utils"), 365)
+            .expect("scoped churn");
+        let whole = GitAnalysisService::analyze_code_churn(temp.path(), 365).expect("root churn");
+
+        assert!(
+            scoped
+                .files
+                .iter()
+                .all(|f| f.relative_path.starts_with("src/utils")),
+            "scoped query returned files outside the requested subtree: {:?}",
+            scoped
+                .files
+                .iter()
+                .map(|f| f.relative_path.clone())
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            whole.files.len() > scoped.files.len(),
+            "whole-repo churn ({}) must cover more files than src/utils ({})",
+            whole.files.len(),
+            scoped.files.len()
+        );
+    }
+
+    /// Identical input, identical output — five runs, byte-compared.
+    #[test]
+    fn test_analyze_code_churn_is_deterministic_over_5_runs() {
+        let temp = init_repo_with_subdir_commits();
+        let subdir = temp.path().join("src/utils");
+
+        let fingerprint = |a: &CodeChurnAnalysis| {
+            a.files
+                .iter()
+                .map(|f| {
+                    format!(
+                        "{}|{}|{}|{}|{:.6}",
+                        f.relative_path, f.commit_count, f.additions, f.deletions, f.churn_score
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        let first = fingerprint(&GitAnalysisService::analyze_code_churn(&subdir, 365).unwrap());
+        for i in 1..5 {
+            let again = fingerprint(&GitAnalysisService::analyze_code_churn(&subdir, 365).unwrap());
+            assert_eq!(first, again, "churn output differed on run {i}");
+        }
     }
 }

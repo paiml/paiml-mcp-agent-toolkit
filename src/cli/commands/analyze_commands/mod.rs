@@ -451,7 +451,8 @@ pub enum AnalyzeCommands {
         #[arg(short, long, default_value = "1.5")]
         threshold: f64,
 
-        /// Number of top files to show
+        /// Number of worst-scoring files to list (0 = all). Project totals are
+        /// never truncated; JSON reports files_reported/files_truncated.
         #[arg(short = 'n', long, default_value = "10")]
         top_files: usize,
 
@@ -750,7 +751,11 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: DefectPredictionOutputFormat,
 
-        /// Show only high-risk files (probability > 0.7)
+        // The number must stay equal to
+        // `services::facades::defect_prediction_facade::HIGH_RISK_PROBABILITY`.
+        // It said "> 0.7" while the band it selects starts at 0.6, so the flag
+        // returned files at 0.6069833 and 0.657 — both below the documented cut.
+        /// Show only high-risk files (probability >= 0.6)
         #[arg(long)]
         high_risk_only: bool,
 
@@ -1157,7 +1162,10 @@ pub enum AnalyzeCommands {
         filter: Option<SymbolTypeFilter>,
 
         /// Search query for specific symbols
-        #[arg(long, short = 'q')]
+        // No `short = 'q'`: the global `-q/--quiet` flag already owns it, and clap's
+        // debug assertion ("Short option names must be unique") aborted
+        // `pmat analyze symbol-table` outright in any debug build (#654).
+        #[arg(long)]
         query: Option<String>,
 
         /// Include file patterns

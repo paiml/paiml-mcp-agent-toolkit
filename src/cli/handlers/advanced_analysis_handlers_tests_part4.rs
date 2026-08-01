@@ -239,26 +239,39 @@ mod edge_case_tests {
         let _ = result;
     }
 
+    /// Regression test for #654. This test used to end in `let _ = result;`, which
+    /// passed while the command reported `total_symbols: 0` for every project: the
+    /// empty `--include`/`--exclude` vectors were joined into `Some("")` and every
+    /// path "contains" the empty string, so the walker skipped everything.
     #[tokio::test]
     async fn test_handle_symbol_table_empty_include_exclude() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let main_rs = temp_dir.path().join("main.rs");
-        fs::write(&main_rs, "fn main() {}").expect("Failed to write file");
+        fs::write(&main_rs, "fn main() {}\npub struct Config {}\n").expect("Failed to write file");
+        let out = temp_dir.path().join("symbols.json");
 
-        let result = handle_analyze_symbol_table(
+        handle_analyze_symbol_table(
             temp_dir.path().to_path_buf(),
-            SymbolTableOutputFormat::Summary,
+            SymbolTableOutputFormat::Json,
             None,
             None,
             vec![], // Empty include
             vec![], // Empty exclude
             false,
             false,
-            None,
+            Some(out.clone()),
             false,
+            10,
         )
-        .await;
+        .await
+        .expect("symbol table analysis must succeed");
 
-        let _ = result;
+        let report: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&out).expect("read report"))
+                .expect("valid JSON");
+        assert_eq!(
+            report["total_symbols"], 2,
+            "expected the 2 declared symbols, got {report}"
+        );
     }
 }

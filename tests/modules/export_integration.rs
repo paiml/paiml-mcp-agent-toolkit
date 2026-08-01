@@ -343,7 +343,7 @@ mod export_integration_tests {
                 max_cognitive: 20,
                 p90_cyclomatic: 12,
                 p90_cognitive: 18,
-                technical_debt_hours: 4.5,
+                technical_debt_hours: Some(4.5),
             },
             violations: vec![],
             hotspots: vec![],

@@ -83,19 +83,23 @@ min_coverage_pct = 85.0
 
     // --- Entropy threshold tests (#194) ---
 
+    // These three tests previously asserted that a CLI-supplied threshold was
+    // scaled and outranked by config. That is the #683 defect, so they now assert
+    // the corrected contract: an explicit --min-entropy is applied verbatim.
+
     #[test]
-    fn test_load_entropy_threshold_no_file() {
+    fn test_load_entropy_threshold_no_file_no_cli_uses_default() {
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let threshold = load_entropy_threshold(temp_dir.path(), 0.3);
-        // #248: Empty temp dir has 0 source files (<10), so threshold is scaled by 0.5
+        let threshold = load_entropy_threshold(temp_dir.path(), None);
+        // #248: Empty temp dir has 0 source files (<10), so the *default* is scaled by 0.5
         assert!(
-            (threshold - 0.15).abs() < f64::EPSILON,
-            "Should fall back to CLI value (0.3) scaled for small repo (0.5) = 0.15, got {threshold}"
+            (threshold - DEFAULT_MIN_PATTERN_DIVERSITY * 0.5).abs() < f64::EPSILON,
+            "No CLI value and no config should use the scaled default, got {threshold}"
         );
     }
 
     #[test]
-    fn test_load_entropy_threshold_from_config() {
+    fn test_load_entropy_threshold_from_config_when_cli_absent() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let config_content = r#"
 [thresholds]
@@ -103,28 +107,47 @@ entropy_min_diversity = 0.0
 "#;
         std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
 
-        let threshold = load_entropy_threshold(temp_dir.path(), 0.3);
+        let threshold = load_entropy_threshold(temp_dir.path(), None);
         assert!(
             threshold.abs() < f64::EPSILON,
             "Should read entropy_min_diversity=0.0 from config, got {threshold}"
         );
     }
 
+    /// #683 regression: an explicit `--min-entropy` must beat project config and
+    /// must not be rescaled. Before the fix the CLI value was the *lowest*
+    /// priority input, so `--min-entropy 0.0` on a repo carrying
+    /// `min_pattern_diversity = 0.30` silently ran at 0.30 (and at 0.15 after
+    /// small-repo scaling) — the user's request changed nothing.
     #[test]
-    fn test_load_entropy_threshold_missing_key_falls_back_to_cli() {
+    fn test_load_entropy_threshold_explicit_cli_beats_config_and_scaling() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let config_content = r#"
 [thresholds]
-provability_min = 0.70
+entropy_min_diversity = 0.30
 "#;
         std::fs::write(temp_dir.path().join(".pmat-metrics.toml"), config_content).unwrap();
 
-        let threshold = load_entropy_threshold(temp_dir.path(), 0.5);
-        // #248: Empty temp dir has 0 source files (<10), so threshold is scaled by 0.5
+        let zero = load_entropy_threshold(temp_dir.path(), Some(0.0));
         assert!(
-            (threshold - 0.25).abs() < f64::EPSILON,
-            "Should fall back to CLI value (0.5) scaled for small repo (0.5) = 0.25, got {threshold}"
+            zero.abs() < f64::EPSILON,
+            "--min-entropy 0.0 must be applied as 0.0, got {zero}"
         );
+
+        let high = load_entropy_threshold(temp_dir.path(), Some(0.99));
+        assert!(
+            (high - 0.99).abs() < f64::EPSILON,
+            "--min-entropy 0.99 must be applied verbatim (no #248 scaling), got {high}"
+        );
+    }
+
+    /// Out-of-range explicit values are still clamped onto the 0.0-1.0 scale
+    /// the measurement uses, rather than becoming unreachable thresholds (#219).
+    #[test]
+    fn test_load_entropy_threshold_clamps_explicit_out_of_range() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        assert!((load_entropy_threshold(temp_dir.path(), Some(2.0)) - 1.0).abs() < f64::EPSILON);
+        assert!(load_entropy_threshold(temp_dir.path(), Some(-1.0)).abs() < f64::EPSILON);
     }
 
     // --- Exclude paths tests (#195) ---

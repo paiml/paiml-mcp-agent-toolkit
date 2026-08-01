@@ -55,14 +55,18 @@ impl CollectionState {
 impl RustBorrowChecker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
+    /// # Errors
+    ///
+    /// Currently infallible; the signature is kept for callers.
     pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        // Use a simple default version since we don't have rustc_version crate
-        let version = "1.70.0 (unknown)".to_string();
-        let channel = "stable".to_string();
-
+        // These name the analysis that ACTUALLY runs. This used to report
+        // tool_name "rustc-stable" and tool_version "1.70.0 (unknown)", but pmat
+        // never invokes rustc -- it parses with syn and reasons about the
+        // result. Attributing findings to a compiler that never ran, on a
+        // version nobody queried, is fabricated provenance on a proof artifact.
         Ok(Self {
-            rustc_version: version,
-            rustc_channel: channel,
+            rustc_version: env!("CARGO_PKG_VERSION").to_string(),
+            rustc_channel: "syn-static-analysis".to_string(),
         })
     }
 }

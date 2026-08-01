@@ -7,7 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.29.0] - 2026-07-31
+## [3.29.0] - 2026-08-01
+
+### Fixed — pmat no longer reports numbers it never measured
+
+A pre-release dogfood of the *installed artifact* found **46 verified defects,
+9 of them blockers**, against a tree with green CI, 18k passing tests and a
+clean clippy. None of those gates can tell a measurement from a constant.
+
+The worst were **stubs and test doubles left wired into production**, each
+announcing itself in a comment nobody re-read:
+
+- `// Placeholder for now` x4 — the whole `context` Quality Scorecard. Overall
+  Health was identically `(complexity_score + 155) / 3`, so it could take only
+  three values ever, and an empty directory reported the same "85.0% health,
+  65.0% test coverage" as the 3252-file pmat repo.
+- `// For stub implementation, add common function names` — `analyze
+  provability` emitted the same two phantom functions (`main`@1, `test`@10) for
+  every file, one of them at line 10 of a one-line file.
+- `/// Setup proof annotator with mock sources` — `MockProofSource` **was** the
+  production `ProofSource`. `analyze proof-annotations` emitted ten annotations
+  naming files that exist nowhere, for any path including nonexistent ones, each
+  with a fresh UUID and a current-time `dateVerified`: machine-readable
+  fabricated evidence of formal verification. The real `RustBorrowChecker` had
+  zero callers.
+
+Also fixed: `context --format json` reported enumeration indices as source lines
+(1,2,3 where the truth was 6,651,776); `analyze duplicates`' documented default
+returned zero on byte-identical files; `analyze churn -d <large N>` aborted with
+SIGABRT; and the MCP server died silently on one bad frame, losing every
+subsequent request.
+
+### Fixed — commands no longer succeed at nothing
+
+Every `analyze` subcommand now rejects a path that does not exist. Previously
+`cuda-tdg` printed "Gateway: PASSED" and `analyze comprehensive` printed
+"Quality Score: 100.0%" for directories that were never there. Verified: 0 of 31
+subcommands exit 0 on a missing path.
+
+### Fixed — identical input now produces identical output
+
+`big-o`, `tdg` grade distribution, `duplicates`, `proof-annotations` and MCP
+`tools/list` all varied between runs (HashMap iteration order), plus a random
+UUID and three wall-clock fields that made two identical analyses diff. Verified:
+0 of 31 subcommands vary across repeated runs.
+
+### Fixed — counts, caps and percentages
+
+`duplicate_lines` exceeded `total_lines` (455.6% duplication); `dead-code`
+hardcoded per-file `total_lines: 100`; `defect-prediction` reported coupling and
+duplication as constants; several "totals" were silently caps. Counts now agree
+with the lists they head, and no percentage exceeds 100.
+
+### Fixed — formats do what they say
+
+`tdg --format sarif` emitted a bare number; `deep-context --format sarif` emitted
+pmat's internal JSON; `report` produced byte-identical text for 6 of 7 declared
+formats; `lint-hotspot --format json` wrote zero bytes. A declared format now
+produces that format or is refused — silently emitting a different one was the
+defect.
+
+### Changed — dependencies
+
+28 outdated direct dependencies audited. 17 upgraded (the aprender sovereign
+stack to 0.61, the swc family, pmcp to 2.17). **Six deliberately held**, with the
+reason recorded next to each: `arrow` (aprender-db pins ^57 and pmat passes
+`RecordBatch` across that boundary), `rusqlite` (0.40 needs Rust 1.95; MSRV was
+lowered to 1.91 specifically to unbreak `cargo install`), `syn` (v3 has near-zero
+ecosystem adoption and would duplicate the crate), `tower-http` (0.7 duplicates
+what reqwest and octocrab already require), plus `prettyplease` and
+`serial_test`. Five unused dependencies removed.
+
+### Added — enforcement
+
+`contracts/pmat-no-fabrication-v1.yaml`, a pv contract with seven equations
+(`measured_or_absent`, `output_derived_from_input`, `missing_path_fails`,
+`detection_mode_superset`, `source_location_fidelity`, `bounded_time_arithmetic`,
+`session_survives_recoverable_frame`). Each falsification test names the actual
+observed fabricated value, so it is refutable rather than aspirational.
+
+`pv lint` itself was unrunnable — `pmat-core.yaml` did not parse under pv 0.49
+and five contracts had empty `metadata.references`. All 135 contracts now
+validate.
+
+### Note on how this was verified
+
+Every fix was checked against the **`cargo install` artifact**, not a debug
+build, because v3.28.2 shipped a fix that measured 30/30 in testing and 4/30 for
+users. Three verification rounds were needed: the first two found that roughly a
+third of the fixes had introduced new defects, including a 455% duplication
+percentage and a SIGABRT on a default code path. Those are fixed and re-verified.
+
+45 issues (#643–#687) track the full set; #688 is the tracking issue.
+
 
 ### Fixed — the MCP stdio fix now works on the pmcp version users actually get
 

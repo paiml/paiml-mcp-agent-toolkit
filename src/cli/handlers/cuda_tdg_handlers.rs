@@ -54,6 +54,10 @@ pub async fn handle_cuda_tdg_command(config: CudaTdgCommandConfig) -> Result<()>
     let analyzer = CudaSimdAnalyzer::with_config(analyzer_config);
     let result = analyzer.analyze(&config.path)?;
 
+    if report_if_unmeasured(&result, &config)? {
+        return Ok(());
+    }
+
     let output = format_result(&result, &config)?;
     write_output(&output, &config)?;
 
@@ -61,6 +65,58 @@ pub async fn handle_cuda_tdg_command(config: CudaTdgCommandConfig) -> Result<()>
     // Default report mode prints results without hard-failing.
 
     Ok(())
+}
+
+/// Render the "nothing was measured" report for a path with no analysable files.
+///
+/// GH-662: with `files_analyzed == 0` the scoring path still produced a number —
+/// an identical 55.5/100, Grade D, "Gateway: PASSED" for two different
+/// nonexistent paths *and* for an empty real directory. A score manufactured
+/// from no measured files is worse than no score, because it looks like a
+/// finding, so say so instead of printing one.
+fn format_unmeasured(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) -> Result<String> {
+    match config.format {
+        CudaTdgOutputFormat::Json => format_unmeasured_json(result),
+        _ => Ok(format_unmeasured_text(result)),
+    }
+}
+
+/// Machine-readable form of the unmeasured report: explicit nulls, never zeros —
+/// a zero score would read as a finding.
+fn format_unmeasured_json(result: &CudaSimdTdgResult) -> Result<String> {
+    Ok(serde_json::to_string_pretty(&serde_json::json!({
+        "path": result.path.display().to_string(),
+        "files_analyzed": 0,
+        "measured": false,
+        "score": serde_json::Value::Null,
+        "grade": serde_json::Value::Null,
+        "gateway_passed": serde_json::Value::Null,
+        "reason": "no analysable source files were read",
+    }))?)
+}
+
+fn format_unmeasured_text(result: &CudaSimdTdgResult) -> String {
+    format!(
+        "CUDA-SIMD TDG Analysis\n\
+         ======================\n\n\
+         Path: {}\n\
+         Files: 0 analysable source files found\n\n\
+         Score: not measured\n\
+         Gateway: not measured\n\n\
+         Nothing was read, so nothing can be scored.\n",
+        result.path.display()
+    )
+}
+
+/// Write the unmeasured report when nothing was analysed; `Ok(true)` means the
+/// caller must stop rather than print a score.
+fn report_if_unmeasured(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) -> Result<bool> {
+    if result.files_analyzed > 0 {
+        return Ok(false);
+    }
+    let output = format_unmeasured(result, config)?;
+    write_output(&output, config)?;
+    Ok(true)
 }
 
 /// Handle CUDA-TDG subcommands

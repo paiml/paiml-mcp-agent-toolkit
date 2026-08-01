@@ -5,11 +5,16 @@
 //! using streaming analysis of Clippy's JSON output.
 //!
 //! By default, uses EXTREME quality standards:
-//! - `--all-targets`: Lints library, binaries, tests, and examples
-//! - `-D warnings`: Zero tolerance for warnings (fails on any warning)
-//! - `-D clippy::pedantic`: Strictest built-in lint group
-//! - `-D clippy::nursery`: Experimental lints
-//! - `-D clippy::cargo`: Cargo.toml manifest lints
+//! - `--all-targets`: Lints library, binaries, tests, and examples. Because the
+//!   same source file is compiled once per target, cargo emits each finding
+//!   once per target; identical findings are collapsed so the reported count is
+//!   the number of distinct violations, not the number of compilations.
+//! - `-W warnings`, `-W clippy::pedantic`, `-W clippy::nursery`,
+//!   `-W clippy::cargo` (see the `--clippy-flags` default). These are rustc
+//!   flags and are passed after the `--` separator.
+//!
+//! If `cargo clippy` cannot complete, this command returns an error. It never
+//! reports a clean project it did not establish.
 
 pub mod clippy;
 pub mod metrics;
@@ -113,16 +118,12 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
 
     log_analysis_start(&params.format);
 
-    let result = run_analysis_by_mode(&params).await;
-
-    let mut result = match result {
-        Ok(r) => r,
-        Err(e) if e.to_string().contains("No lint violations found") => {
-            use crate::cli::colors as c;
-            eprintln!("{}", c::pass("No lint violations found — project is clean"));
-            return Ok(());
-        }
-        Err(e) => return Err(e),
+    // `None` = clippy ran to completion and found nothing. An unusable run is an
+    // Err and propagates: #679 shipped a version that turned "cargo rejected our
+    // argv" into "project is clean", which is the one outcome a linter must
+    // never invent.
+    let Some(mut result) = run_analysis_by_mode(&params).await? else {
+        return report_measured_clean(&params).await;
     };
 
     apply_file_filters(&mut result, &params)?;
@@ -138,15 +139,51 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     Ok(())
 }
 
-/// Log analysis start message
+/// Write the machine/human "clean project" report to stdout (or `--output`).
+///
+/// Uses the same sink as `output_results` so a clean run and a dirty run of the
+/// same command land in the same place.
+async fn emit_clean_output(params: &LintHotspotParams, elapsed: std::time::Duration) -> Result<()> {
+    let content = output::format_clean_output(&params.format, params.perf, elapsed)?;
+    write_output(&content, params).await
+}
+
+/// Single stdout/`--output` sink for every lint-hotspot report.
+async fn write_output(content: &str, params: &LintHotspotParams) -> Result<()> {
+    if let Some(output_path) = &params.output {
+        tokio::fs::write(output_path, content).await?;
+    } else {
+        println!("{content}");
+    }
+    Ok(())
+}
+
+/// Log analysis start message.
+///
+/// Progress chatter is suppressed for every machine-readable format, not just
+/// `json`: `enforcement-json` and `sarif` are parsed by tools too, and their
+/// stderr should not differ from `json`'s for the same run.
 fn log_analysis_start(format: &LintHotspotOutputFormat) {
-    if *format != LintHotspotOutputFormat::Json {
+    if !is_machine_format(format) {
         eprintln!("🔍 Running Clippy analysis...");
     }
 }
 
+/// True for formats consumed by tools rather than humans.
+fn is_machine_format(format: &LintHotspotOutputFormat) -> bool {
+    matches!(
+        format,
+        LintHotspotOutputFormat::Json
+            | LintHotspotOutputFormat::EnforcementJson
+            | LintHotspotOutputFormat::Sarif
+    )
+}
+
 /// Run analysis based on single file or project mode
-async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotResult> {
+///
+/// `Ok(None)` means "clippy ran and reported nothing", never "we could not
+/// measure" — the latter is an `Err`.
+async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<Option<LintHotspotResult>> {
     if let Some(ref file_path) = params.file {
         log_single_file_mode(file_path, &params.format);
         clippy::run_clippy_analysis_single_file(
@@ -155,14 +192,36 @@ async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotR
             &params.clippy_flags,
         )
         .await
+        .map(Some)
     } else {
         clippy::run_clippy_analysis(&params.project_path, &params.clippy_flags).await
     }
 }
 
+/// Emit an explicitly empty, well-formed result for a project clippy actually
+/// measured and found clean.
+///
+/// Before this, the clean path wrote a line to STDERR and produced NOTHING on
+/// stdout, so `--format json` (a declared format) yielded an empty document.
+async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
+    use crate::cli::colors as c;
+
+    let content = output::format_clean_result(&params.format)?;
+    if let Some(output_path) = &params.output {
+        tokio::fs::write(output_path, &content).await?;
+    } else {
+        println!("{content}");
+    }
+    eprintln!(
+        "{}",
+        c::pass("cargo clippy completed and reported no lint violations")
+    );
+    Ok(())
+}
+
 /// Log single file analysis mode
 fn log_single_file_mode(file_path: &Path, format: &LintHotspotOutputFormat) {
-    if *format != LintHotspotOutputFormat::Json {
+    if !is_machine_format(format) {
         eprintln!("📄 Analyzing single file: {}", file_path.display());
     }
 }
@@ -276,13 +335,7 @@ async fn output_results(
         params.top_files,
     )?;
 
-    if let Some(output_path) = &params.output {
-        tokio::fs::write(output_path, &output_content).await?;
-    } else {
-        println!("{output_content}");
-    }
-
-    Ok(())
+    write_output(&output_content, params).await
 }
 
 /// Execute enforcement if requested and conditions are met

@@ -231,10 +231,43 @@ impl TdgAnalyzerAst {
 
 /// Check if a file is tracked by git (has at least one commit).
 /// Returns false for new/untracked files, enabling graceful degradation (issue #279).
+///
+/// The git query MUST be rooted at the ANALYSED FILE, never at the process
+/// working directory. Before this was fixed the command was plain
+/// `git log --oneline -1 -- <path>`, which git resolves against the CWD: run
+/// from anywhere outside the analysed repository git exits 128 ("not a git
+/// repository"), the committed file was read as untracked, and
+/// `has_critical_defects` was silently cleared. Observed on one unchanged
+/// fixture (round 3): `cd <repo> && pmat analyze tdg -p .` scored 0.0 / grade F
+/// while `cd /tmp && pmat analyze tdg -p <repo>` scored 100.0 / grade A+ — a
+/// 5-band grade swing produced by nothing but the caller's CWD, which also made
+/// the Known-Defects auto-fail unreachable from the normal CI invocation form.
 fn is_file_git_tracked(path: &Path) -> bool {
+    // Resolve to an absolute path so the query is independent of the CWD, and
+    // run git from the file's own directory so it discovers the file's repo.
+    let absolute = path
+        .canonicalize()
+        .unwrap_or_else(|_| std::env::current_dir().map_or_else(|_| path.to_path_buf(), |cwd| cwd.join(path)));
+    let repo_anchor = if absolute.is_dir() {
+        absolute.clone()
+    } else {
+        absolute.parent().map_or_else(
+            || absolute.clone(),
+            |parent| {
+                if parent.as_os_str().is_empty() {
+                    absolute.clone()
+                } else {
+                    parent.to_path_buf()
+                }
+            },
+        )
+    };
+
     std::process::Command::new("git")
+        .arg("-C")
+        .arg(&repo_anchor)
         .args(["log", "--oneline", "-1", "--"])
-        .arg(path)
+        .arg(&absolute)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
         .output()

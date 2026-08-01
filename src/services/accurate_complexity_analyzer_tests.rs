@@ -61,6 +61,69 @@ mod tests {
         assert_eq!(result.functions[1].line_start, 5);
     }
 
+    /// #652/#656 regression: extents and file length must be measured.
+    /// Pre-fix, `line_end` was not recorded at all and callers substituted
+    /// `line_start + 50` for the last function.
+    #[tokio::test]
+    async fn test_line_end_and_total_lines_are_measured() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.rs");
+
+        fs::write(
+            &test_file,
+            "fn first() -> i32 {\n    42\n}\n\nfn second() -> i32 {\n    99\n}\n",
+        )
+        .unwrap();
+
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let result = analyzer.analyze_file(&test_file).await.unwrap();
+
+        assert_eq!(result.total_lines, 7, "file is 7 lines long");
+        assert_eq!(result.functions[0].line_end, 3);
+        assert_eq!(result.functions[1].line_end, 7);
+        for func in &result.functions {
+            assert!(
+                func.line_end <= result.total_lines,
+                "{} ends at {} but the file has {} lines",
+                func.name,
+                func.line_end,
+                result.total_lines
+            );
+        }
+    }
+
+    /// #656 exact reproduction: a one-line file.
+    #[tokio::test]
+    async fn test_single_line_file_does_not_report_51_lines() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("one.rs");
+        fs::write(&test_file, "fn only_one() -> i32 { 42 }\n").unwrap();
+
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let result = analyzer.analyze_file(&test_file).await.unwrap();
+
+        assert_eq!(result.total_lines, 1);
+        assert_eq!(result.functions.len(), 1);
+        assert_eq!(result.functions[0].line_start, 1);
+        assert_eq!(result.functions[0].line_end, 1);
+    }
+
+    /// Nesting depth is measured, not derived as `cognitive / 3`.
+    #[tokio::test]
+    async fn test_max_nesting_is_measured() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("nest.rs");
+        fs::write(
+            &test_file,
+            "fn deep(a: i32) -> i32 {\n    if a > 0 {\n        if a > 1 {\n            if a > 2 {\n                return 3;\n            }\n        }\n    }\n    0\n}\n",
+        )
+        .unwrap();
+
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let result = analyzer.analyze_file(&test_file).await.unwrap();
+        assert_eq!(result.functions[0].max_nesting, 3);
+    }
+
     #[tokio::test]
     async fn test_line_numbers_with_attributes() {
         let temp_dir = TempDir::new().unwrap();
@@ -83,21 +146,24 @@ mod tests {
         assert_eq!(result.functions[1].line_start, 7);
     }
 
+    // Updated for the span API: the map now records the measured end line too,
+    // because recording only the start is what forced callers to invent one.
     #[test]
     fn test_build_function_line_map() {
         let content = "fn foo() {}\n\npub fn bar() {}\n\nasync fn baz() {}\n";
         let map = build_function_line_map(content);
-        assert_eq!(map.get("foo"), Some(&1));
-        assert_eq!(map.get("bar"), Some(&3));
-        assert_eq!(map.get("baz"), Some(&5));
+        assert_eq!(map.peek("foo"), Some(LineSpan { start: 1, end: 1 }));
+        assert_eq!(map.peek("bar"), Some(LineSpan { start: 3, end: 3 }));
+        assert_eq!(map.peek("baz"), Some(LineSpan { start: 5, end: 5 }));
+        assert_eq!(map.total_lines(), 5);
     }
 
     #[test]
     fn test_build_function_line_map_skips_comments() {
         let content = "// fn not_a_function() {}\nfn real() {}\n";
         let map = build_function_line_map(content);
-        assert_eq!(map.get("real"), Some(&2));
-        assert!(!map.contains_key("not_a_function"));
+        assert_eq!(map.peek("real"), Some(LineSpan { start: 2, end: 2 }));
+        assert_eq!(map.peek("not_a_function"), None);
     }
 }
 
@@ -173,41 +239,8 @@ mod unit_tests {
         assert!(analyzer.is_test_file(path));
     }
 
-    #[test]
-    fn test_extract_fn_name_simple() {
-        let result = extract_fn_name("fn foo() {}");
-        assert_eq!(result, Some("foo".to_string()));
-    }
-
-    #[test]
-    fn test_extract_fn_name_pub() {
-        let result = extract_fn_name("pub fn bar() {}");
-        assert_eq!(result, Some("bar".to_string()));
-    }
-
-    #[test]
-    fn test_extract_fn_name_async() {
-        let result = extract_fn_name("async fn baz() {}");
-        assert_eq!(result, Some("baz".to_string()));
-    }
-
-    #[test]
-    fn test_extract_fn_name_pub_async() {
-        let result = extract_fn_name("pub async fn qux() {}");
-        assert_eq!(result, Some("qux".to_string()));
-    }
-
-    #[test]
-    fn test_extract_fn_name_generic() {
-        let result = extract_fn_name("fn generic<T>() {}");
-        assert_eq!(result, Some("generic".to_string()));
-    }
-
-    #[test]
-    fn test_extract_fn_name_no_fn() {
-        let result = extract_fn_name("let x = 42;");
-        assert_eq!(result, None);
-    }
+    // `extract_fn_name` moved to `services::source_line_index`; its cases are
+    // covered by `source_line_index::tests::extract_fn_name_handles_qualifiers_and_rejects_non_functions`.
 
     #[test]
     fn test_default_impl() {
@@ -232,7 +265,7 @@ mod unit_tests {
         // respect_annotations=true AND #[allow(complex_function)] → suppressed=true.
         let func = parse_fn("#[allow(complex_function)] fn f() { if true {} else {} }");
         let analyzer = AccurateComplexityAnalyzer::new().respect_annotations(true);
-        let metrics = analyzer.analyze_function(&func, 1);
+        let metrics = analyzer.analyze_function(&func, LineSpan { start: 1, end: 1 });
         assert_eq!(metrics.name, "f");
         assert!(metrics.suppressed, "both sides true: must be suppressed");
     }
@@ -242,7 +275,7 @@ mod unit_tests {
         // Kills `&&`→`||`: flag true but no attribute → suppressed must be false.
         let func = parse_fn("fn f() { if true {} else {} }");
         let analyzer = AccurateComplexityAnalyzer::new().respect_annotations(true);
-        let metrics = analyzer.analyze_function(&func, 1);
+        let metrics = analyzer.analyze_function(&func, LineSpan { start: 1, end: 1 });
         assert!(
             !metrics.suppressed,
             "respect_annotations alone must not suppress"
@@ -254,7 +287,7 @@ mod unit_tests {
         // Kills `&&`→`||`: attribute present but respect_annotations=false → suppressed=false.
         let func = parse_fn("#[allow(complex_function)] fn f() { if true {} else {} }");
         let analyzer = AccurateComplexityAnalyzer::new(); // respect_annotations defaults to false
-        let metrics = analyzer.analyze_function(&func, 1);
+        let metrics = analyzer.analyze_function(&func, LineSpan { start: 1, end: 1 });
         assert!(
             !metrics.suppressed,
             "attr alone must not suppress without respect_annotations=true"
@@ -265,7 +298,7 @@ mod unit_tests {
     fn test_analyze_function_not_suppressed_when_both_false() {
         let func = parse_fn("fn f() {}");
         let analyzer = AccurateComplexityAnalyzer::new();
-        let metrics = analyzer.analyze_function(&func, 42);
+        let metrics = analyzer.analyze_function(&func, LineSpan { start: 42, end: 44 });
         assert!(!metrics.suppressed);
         assert_eq!(metrics.line_start, 42, "line_start must be propagated");
     }

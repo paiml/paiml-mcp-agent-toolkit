@@ -59,7 +59,7 @@ async fn test_in_memory_storage() {
     // Check hot cache
     let hot_entry = storage.get_hot(&hash).unwrap();
     assert_eq!(hot_entry.total_score, 100.0); // TdgScore::default() = 100.0
-    assert_eq!(hot_entry.grade, Grade::APLus as u8);
+    assert_eq!(hot_entry.grade, Grade::APlus as u8);
 
     // Retrieve full record
     let retrieved = storage.retrieve_full(&hash).await.unwrap().unwrap();
@@ -79,7 +79,7 @@ async fn test_store_and_retrieve() {
     // Check hot cache
     let hot_entry = storage.get_hot(&hash).unwrap();
     assert_eq!(hot_entry.total_score, 100.0); // TdgScore::default() = 100.0
-    assert_eq!(hot_entry.grade, Grade::APLus as u8);
+    assert_eq!(hot_entry.grade, Grade::APlus as u8);
 
     // Retrieve full record
     let retrieved = storage.retrieve_full(&hash).await.unwrap().unwrap();
@@ -730,7 +730,7 @@ fn test_hot_cache_entry_from_record_with_different_grades() {
 
     // Test with different grades
     for (grade, expected_score) in [
-        (Grade::APLus, 100.0),
+        (Grade::APlus, 100.0),
         (Grade::A, 90.0),
         (Grade::B, 80.0),
         (Grade::C, 70.0),
@@ -1058,7 +1058,7 @@ mod extended_tests {
     #[test]
     fn test_hot_cache_entry_grade_boundary_values() {
         let grades = [
-            (Grade::APLus, 0),
+            (Grade::APlus, 0),
             (Grade::A, 1),
             (Grade::AMinus, 2),
             (Grade::BPlus, 3),

@@ -20,6 +20,52 @@ use proptest::prelude::*;
 #[allow(unused_imports)]
 use std::path::PathBuf;
 
+/// Regression tests: report/TDG churn must be rooted at the analysed path,
+/// never at the process CWD.
+mod cwd_independence {
+    use super::super::enclosing_repo_root;
+    use std::path::Path;
+    use std::process::Command;
+
+    fn init_repo(dir: &Path) {
+        let ok = Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["init", "-q"])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        assert!(ok, "git init must succeed");
+    }
+
+    #[test]
+    fn test_enclosing_repo_root_walks_up_from_a_subdirectory() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let root = temp.path().canonicalize().expect("canonicalize");
+        init_repo(&root);
+        let nested = root.join("src").join("deep");
+        std::fs::create_dir_all(&nested).expect("mkdir");
+
+        // Pre-fix the calculator used ".", i.e. the caller's CWD.
+        assert_eq!(enclosing_repo_root(&nested), root);
+        assert_eq!(enclosing_repo_root(&root), root);
+    }
+
+    #[test]
+    fn test_enclosing_repo_root_falls_back_to_the_path_itself() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let plain = temp.path().join("no_repo_here");
+        std::fs::create_dir_all(&plain).expect("mkdir");
+        // No repository anywhere above a tempdir: the analysed path is used,
+        // and crucially NOT the process CWD (which IS a repository).
+        let resolved = enclosing_repo_root(&plain);
+        assert!(
+            resolved.starts_with(temp.path().canonicalize().expect("canonicalize")),
+            "resolved to {resolved:?}, which is outside the analysed path"
+        );
+    }
+}
+
 mod tests {
     use super::*;
     use crate::models::complexity_bound::{BigOClass, ComplexityBound, InputVariable};

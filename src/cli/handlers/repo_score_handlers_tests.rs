@@ -240,4 +240,34 @@ mod tests {
         // Should not error, just skip
         assert!(result.is_ok(), "Missing README should not cause error");
     }
+
+    /// GH #685: `repo-score --help` advertised "0-110 scale" while the six
+    /// categories sum to 100 and the text renderer prints "/100.0". The bonus
+    /// block that would have made it 110 is never added to `total_score`.
+    #[test]
+    fn repo_score_scale_matches_help() {
+        let categories = CategoryScores::default();
+        let max: f64 = categories.documentation.max_score
+            + categories.precommit_hooks.max_score
+            + categories.repository_hygiene.max_score
+            + categories.build_test_automation.max_score
+            + categories.continuous_integration.max_score
+            + categories.pmat_compliance.max_score;
+        assert!(
+            (max - 100.0).abs() < f64::EPSILON,
+            "categories now sum to {max}; update the `repo-score` help text in \
+             src/cli/commands/commands_enum/definition.rs to match"
+        );
+
+        // And a perfect score really is 100, not 110 — `total()` never adds the
+        // bonus points the old help text was counting.
+        let mut perfect = CategoryScores::default();
+        perfect.documentation.score = perfect.documentation.max_score;
+        perfect.precommit_hooks.score = perfect.precommit_hooks.max_score;
+        perfect.repository_hygiene.score = perfect.repository_hygiene.max_score;
+        perfect.build_test_automation.score = perfect.build_test_automation.max_score;
+        perfect.continuous_integration.score = perfect.continuous_integration.max_score;
+        perfect.pmat_compliance.score = perfect.pmat_compliance.max_score;
+        assert!((perfect.total() - 100.0).abs() < f64::EPSILON);
+    }
 }

@@ -36,10 +36,10 @@ impl UnifiedRustAnalyzer {
             syn::parse_file(&content).map_err(|e| AnalysisError::Parse(e.to_string()))?;
 
         // 3. Extract AST items using existing EnhancedAstVisitor
-        let ast_items = self.extract_ast_items(&syntax_tree);
+        let ast_items = self.extract_ast_items(&syntax_tree, &content);
 
-        // 4. Extract complexity metrics (minimal implementation for GREEN phase)
-        let file_metrics = self.extract_complexity_metrics(&syntax_tree);
+        // 4. Extract complexity metrics (measured against the same source text)
+        let file_metrics = self.extract_complexity_metrics(&syntax_tree, &content);
 
         Ok(UnifiedAnalysis {
             ast_items,
@@ -56,8 +56,10 @@ impl UnifiedRustAnalyzer {
     }
 
     /// Extract AST items from parsed syntax tree
-    fn extract_ast_items(&self, syntax_tree: &syn::File) -> Vec<AstItem> {
-        let visitor = EnhancedAstVisitor::new(&self.file_path);
+    fn extract_ast_items(&self, syntax_tree: &syn::File, source: &str) -> Vec<AstItem> {
+        // `source` is required: without it the visitor cannot resolve real line
+        // numbers and previously fell back to an enumeration index.
+        let visitor = EnhancedAstVisitor::new(&self.file_path, source);
         visitor.extract_items(syntax_tree)
     }
 }

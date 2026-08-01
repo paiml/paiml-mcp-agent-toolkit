@@ -213,19 +213,25 @@ impl FixedGraphBuilder {
         let mut nodes = BTreeMap::new();
         let mut edges = Vec::new();
 
-        // Add selected nodes with semantic names
+        // Add selected nodes with semantic names.
+        //
+        // Defect #653: this map used to be keyed by `semantic_name`, so two distinct
+        // nodes that render with the same display name (e.g. the module `main` and the
+        // function `main`) silently overwrote each other. `analyze dag` then announced
+        // "6 nodes" while emitting only 4. Key by node id — the value that is actually
+        // unique — and keep the semantic name as the label.
         for node_id in &selected_nodes {
             if let Some(node) = original_graph.nodes.get(node_id) {
                 let semantic_name = self.namer.get_semantic_name(node_id, node);
 
                 let fixed_node = FixedNode {
                     id: node_id.clone(),
-                    display_name: semantic_name.clone(),
+                    display_name: semantic_name,
                     node_type: node.node_type.clone(),
                     complexity: u64::from(node.complexity),
                 };
 
-                nodes.insert(semantic_name, fixed_node);
+                nodes.insert(node_id.clone(), fixed_node);
             }
         }
 

@@ -31,7 +31,7 @@ fn test_pattern_collection() {
     };
 
     collection.add_pattern(pattern);
-    let summary = collection.summary();
+    let summary = collection.summary().expect("a pattern was added");
     assert_eq!(summary.repetitions, 3);
     assert_eq!(summary.pattern_type, PatternType::ErrorHandling);
 }
@@ -406,7 +406,7 @@ fn test_pattern_collection_summary_with_patterns() {
         estimated_loc: 5,
     });
 
-    let summary = collection.summary();
+    let summary = collection.summary().expect("patterns were added");
     // Should return the pattern with highest frequency
     assert_eq!(summary.repetitions, 10);
     assert_eq!(summary.pattern_type, PatternType::DataValidation);
@@ -1005,30 +1005,43 @@ fn test_variation_score_utf8_boundary() {
     assert!(score >= 0.0);
 }
 
+/// UPDATED (round 3): this test asserted `pattern.locations.len() <= 10`, i.e.
+/// it pinned the cap. One file with N identical lines reported N up to 10 and
+/// then 10 forever — 11, 12, 20, 40 and 100 copies were all "repeated 10 times"
+/// — while `estimated_loc` kept following the real N, so at N=100 the message
+/// read "repeated 10 times (saves 43 lines)". The count must measure the input.
 #[test]
-fn test_limited_pattern_extraction() {
+fn test_repetition_count_is_not_capped() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
 
-    // Create content with structurally identical compound matches to test limiting
-    let mut content = String::new();
-    for _ in 0..20 {
-        content.push_str("if input.is_empty() && input.len() > 0 { }\n");
-    }
+    for n in [6usize, 10, 11, 20, 40, 100] {
+        let mut content = String::new();
+        for _ in 0..n {
+            content.push_str("if input.is_empty() && input.len() > 0 { }\n");
+        }
 
-    let mut collection = PatternCollection::new();
-    extractor
-        .extract_data_validation_patterns(&file_path, &content, &mut collection)
-        .expect("Should limit patterns");
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_data_validation_patterns(&file_path, &content, &mut collection)
+            .expect("extract");
 
-    // Should have extracted patterns (limited to 10 locations by group_by_structural_hash)
-    for pattern in collection.patterns.values() {
-        assert!(pattern.locations.len() <= 10);
+        let total: usize = collection.patterns.values().map(|p| p.frequency).sum();
+        assert_eq!(total, n, "{n} identical lines must report {n}, not a cap");
+
+        for pattern in collection.patterns.values() {
+            assert_eq!(
+                pattern.locations.len(),
+                pattern.frequency,
+                "the location list must agree with the count that heads it"
+            );
+        }
     }
 }
 
-/// scan_directory_fallback reads only Rust/Ruchy files and skips others.
-/// Exercises the fallback path when `pmat` subprocess fails or isn't on PATH.
+/// scan_source_files reads only Rust/Ruchy files and skips others.
+/// This is now the only file-discovery path (the `pmat` subprocess was removed
+/// because the analyzed file set must not depend on what is on `$PATH`).
 #[tokio::test]
 async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -1042,9 +1055,9 @@ async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
 
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let context = extractor
-        .scan_directory_fallback(root)
+        .scan_source_files(root)
         .await
-        .expect("fallback should succeed");
+        .expect("source scan should succeed");
 
     // Only .rs, .ruchy, .rh extensions are included.
     let names: std::collections::HashSet<_> = context
@@ -1059,9 +1072,7 @@ async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
     assert!(!names.contains("skip.txt"));
 }
 
-/// get_project_context tolerates a failed/missing pmat binary and returns an
-/// empty context via the fallback on an empty directory. Covers the
-/// `_ => return self.scan_directory_fallback(...)` branch.
+/// get_project_context returns an empty context for an empty directory.
 #[tokio::test]
 async fn test_get_project_context_empty_dir_yields_empty_context() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -1070,7 +1081,6 @@ async fn test_get_project_context_empty_dir_yields_empty_context() {
         .get_project_context(dir.path())
         .await
         .expect("get_project_context must not error on empty dir");
-    // Empty directory produces no files regardless of whether pmat ran or fallback fired.
     assert!(context.files.is_empty());
 }
 

@@ -5,7 +5,7 @@
         let mut baseline = TdgBaseline::new(None);
         baseline.add_entry(
             PathBuf::from("test.rs"),
-            create_test_entry(95.0, Grade::APLus),
+            create_test_entry(95.0, Grade::APlus),
         );
         baseline.add_entry(
             PathBuf::from("test2.rs"),
@@ -35,7 +35,7 @@
         let mut a = TdgBaseline::new(None);
         let mut b = TdgBaseline::new(None);
         let entries = [
-            ("zeta.rs", 95.0, Grade::APLus),
+            ("zeta.rs", 95.0, Grade::APlus),
             ("alpha.rs", 85.0, Grade::AMinus),
             ("mid.rs", 75.0, Grade::B),
         ];
@@ -85,7 +85,7 @@
         let mut populated = TdgBaseline::new(None);
         populated.add_entry(
             PathBuf::from("a.rs"),
-            create_test_entry(95.0, Grade::APLus),
+            create_test_entry(95.0, Grade::APlus),
         );
         populated.add_entry(PathBuf::from("b.rs"), create_test_entry(70.0, Grade::B));
         let json = serde_json::to_string(&populated).expect("serialize");

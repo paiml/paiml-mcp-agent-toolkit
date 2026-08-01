@@ -131,6 +131,7 @@ pub mod context_graph; // O(1) Context Graph: trueno-graph integration for fast 
 pub mod coupling_analyzer;
 pub mod coverage_improvement;
 pub mod dag_builder;
+pub mod dag_call_edges;
 pub mod dead_code_analyzer;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -234,6 +235,7 @@ pub mod satd_detector;
 pub mod semantic; // PMAT-SEARCH-001: Semantic code search services
 pub mod semantic_naming;
 pub mod simple_deep_context;
+pub mod source_line_index; // Measured function line spans (#652/#656/#686)
 pub mod spec_falsification; // RAG-powered Popperian falsification for specs
 pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;

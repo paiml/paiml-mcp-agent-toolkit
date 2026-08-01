@@ -6,13 +6,26 @@ use crate::services::satd_detector::SATDAnalysisResult;
 use anyhow::Result;
 use std::path::PathBuf;
 
+/// What the emitted `files` list is a slice of.
+///
+/// Exists so a capped list can never be mistaken for the whole analysis:
+/// `summary.total_files` describes what the aggregates were computed over,
+/// `files_listed` describes the array itself.
+pub(super) struct ListingDisclosure {
+    pub top_files: usize,
+    pub files_listed: usize,
+    pub files_analyzed: usize,
+    pub files_discovered: usize,
+    pub truncated: bool,
+}
+
 /// Format and write complexity analysis output
 pub(super) async fn format_and_write_output(
     summary: &ComplexityReport,
     _file_metrics: &[FileComplexityMetrics],
     format: ComplexityOutputFormat,
     output: Option<PathBuf>,
-    top_files: usize,
+    listing: ListingDisclosure,
 ) -> Result<()> {
     use crate::services::complexity::{
         format_as_sarif, format_complexity_report, format_complexity_summary,
@@ -28,16 +41,44 @@ pub(super) async fn format_and_write_output(
             let mut json_output = serde_json::to_value(summary)
                 .map_err(|e| anyhow::anyhow!("JSON conversion failed: {e}"))?;
 
-            if top_files > 0 {
-                if let Some(obj) = json_output.as_object_mut() {
-                    obj.insert("top_files_limit".to_string(), serde_json::json!(top_files));
+            if let Some(obj) = json_output.as_object_mut() {
+                if listing.top_files > 0 {
+                    obj.insert(
+                        "top_files_limit".to_string(),
+                        serde_json::json!(listing.top_files),
+                    );
                 }
+                // Name both numbers: the array is a slice, the summary is not.
+                obj.insert(
+                    "files_listed".to_string(),
+                    serde_json::json!(listing.files_listed),
+                );
+                obj.insert(
+                    "files_analyzed".to_string(),
+                    serde_json::json!(listing.files_analyzed),
+                );
+                obj.insert(
+                    "files_discovered".to_string(),
+                    serde_json::json!(listing.files_discovered),
+                );
+                obj.insert(
+                    "files_truncated".to_string(),
+                    serde_json::json!(listing.truncated),
+                );
             }
 
             serde_json::to_string_pretty(&json_output)
                 .map_err(|e| anyhow::anyhow!("JSON serialization failed: {e}"))
         }
     }?;
+
+    if listing.truncated {
+        eprintln!(
+            "ℹ️  Listing the {} most complex of {} analyzed files (--top-files {}); \
+             the summary covers all {}.",
+            listing.files_listed, listing.files_analyzed, listing.top_files, listing.files_analyzed
+        );
+    }
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &formatted_output).await?;

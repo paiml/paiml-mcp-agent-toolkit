@@ -2,6 +2,9 @@ metadata:
   version: "1.0.0"
   created: "2026-04-08"
   author: PAIML Engineering
+  references:
+    - "../pmat-book/src/ch13-00-multi-language.md (the chapter this contract gates)"
+    - "CLAUDE.md (Chapter 13 is CRITICAL - must always pass)"
   registry: true
   description: >
     PMAT-BOOK file:ch13 — Multi-Language Project Examples (CRITICAL)

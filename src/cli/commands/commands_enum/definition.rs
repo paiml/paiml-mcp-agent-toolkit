@@ -484,9 +484,16 @@ pub enum Commands {
         #[arg(long, default_value = "15.0")]
         max_dead_code: f64,
 
-        /// Minimum required complexity entropy
-        #[arg(long, default_value = "2.0")]
-        min_entropy: f64,
+        // #683: this was `min_entropy: f64` with `default_value = "2.0"`. Pattern
+        // diversity is measured on a 0.0-1.0 scale, so 2.0 was clamped to
+        // "require 100% diversity" — unreachable, so the check reported FAILED
+        // whatever the user asked for. As an Option, an explicit value is
+        // distinguishable from "unset" and can outrank project config.
+        /// Minimum required pattern diversity, 0.0-1.0 (0.0 = no diversity
+        /// required, always passes) [default: `[entropy] min_pattern_diversity`
+        /// from .pmat-gates.toml / .pmat-metrics.toml / pmat.toml, else 0.3]
+        #[arg(long)]
+        min_entropy: Option<f64>,
 
         /// Maximum allowed cyclomatic complexity p99
         #[arg(long, default_value = "50")]
@@ -548,7 +555,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 50)]
         confidence_threshold: u8,
 
-        /// Output file path
+        /// Output file path (default: stdout; no file is created)
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
 
@@ -576,7 +583,12 @@ pub enum Commands {
         stack: bool,
     },
 
-    /// Calculate repository health score (0-110 scale)
+    /// Calculate repository health score (0-100 scale)
+    // The six categories sum to exactly 100 (15+20+15+25+20+5) and the grade
+    // thresholds are 0-100, so 100 is the denominator the command actually
+    // emits. "0-110" came from a bonus block (`BonusScores`, +10) that nothing
+    // ever adds to `total_score`; the help promised a scale no output uses
+    // (GH #685). `repo_score_scale_matches_help` pins the two together.
     #[command(name = "repo-score", visible_aliases = &["health"])]
     RepoScore {
         /// Repository path to score (defaults to current directory)
@@ -609,7 +621,13 @@ pub enum Commands {
         deep: bool,
     },
 
-    /// Calculate Rust project quality score (0-106 scale)
+    /// Calculate Rust project quality score (0-289 scale; the reported total
+    /// excludes categories that do not apply to the project)
+    // 289 is the sum of the eleven scorers' max_points. The help said "0-106",
+    // a stale v1 figure, while the text renderer printed "/279.0" and CLAUDE.md
+    // claimed 289 — three maxima for one command (GH #685).
+    // `rust_project_score_scale_matches_help` fails if this number drifts from
+    // `RustProjectScoreOrchestrator::max_points()`.
     #[command(name = "rust-project-score", visible_aliases = &["rust-score"])]
     RustProjectScore {
         /// Rust project path to score (defaults to current directory)

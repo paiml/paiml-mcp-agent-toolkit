@@ -89,7 +89,18 @@ pub(super) fn calculate_file_complexity_scores(
         })
         .collect();
 
-    file_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    // DETERMINISM (round-3 sweep): score alone is not a total order. Most files
+    // tie (a single O(n^2) function scores 5.0 everywhere), the input came out
+    // of a `HashMap`, and `sort_by` is stable — so `.take(top_files)` kept
+    // whichever tied files that process's iteration order happened to visit
+    // first. `analyze big-o --format json` over an unchanged tree gave 6
+    // DISTINCT `high_complexity_functions` sets in 6 runs (only 16 of 24 slots
+    // were stable; the union was 42 functions). The path breaks every tie.
+    file_scores.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(&b.0))
+    });
     file_scores
 }
 

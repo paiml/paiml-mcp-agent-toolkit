@@ -6,7 +6,7 @@
 //! for measuring pattern diversity across codebases.
 
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::entropy::pattern_extractor::{AstPattern, PatternCollection};
 use crate::entropy::EntropyConfig;
@@ -27,36 +27,35 @@ impl EntropyCalculator {
     }
 
     /// Calculate entropy metrics from patterns
+    ///
+    /// The entropy figures are only produced when there is a pattern distribution
+    /// to take the entropy of. With no patterns they are `None` ("not measured")
+    /// rather than `0.0`, which previously claimed zero diversity — the worst
+    /// possible score — for a three-line crate that had nothing to repeat (#650).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate(&self, patterns: &PatternCollection) -> Result<EntropyMetrics> {
         let total_patterns = patterns.patterns.len();
         let total_instances: usize = patterns.patterns.values().map(|p| p.frequency).sum();
 
-        let total_loc: usize = patterns
-            .patterns
-            .values()
-            .map(|p| p.estimated_loc * p.frequency)
-            .sum();
+        // Measured input size, not an estimate rolled up from the patterns. The
+        // old value was sum(estimated_loc * frequency), which reported 0 for a
+        // populated crate and inflated square-law numbers for a large one.
+        let total_loc = patterns.total_loc;
 
-        // Calculate pattern diversity (Shannon entropy of pattern distribution)
-        let pattern_diversity = self.calculate_pattern_diversity(patterns);
+        let measurable = total_patterns > 0 && total_instances > 0;
 
-        // Calculate entropy at different levels
-        let file_level_entropy = self.calculate_file_level_entropy(patterns);
-        let module_level_entropy = self.calculate_module_level_entropy(patterns);
-        let project_level_entropy = self.calculate_project_level_entropy(patterns);
-
-        // Count patterns by type
-        let mut patterns_by_type = HashMap::new();
+        // Count patterns by type (BTreeMap keeps JSON key order stable)
+        let mut patterns_by_type = BTreeMap::new();
         for pattern in patterns.patterns.values() {
             *patterns_by_type.entry(pattern.pattern_type).or_insert(0) += pattern.frequency;
         }
 
         Ok(EntropyMetrics {
-            file_level_entropy,
-            module_level_entropy,
-            project_level_entropy,
-            pattern_diversity,
+            file_level_entropy: measurable.then(|| self.calculate_file_level_entropy(patterns)),
+            module_level_entropy: measurable.then(|| self.calculate_module_level_entropy(patterns)),
+            project_level_entropy: measurable
+                .then(|| self.calculate_project_level_entropy(patterns)),
+            pattern_diversity: measurable.then(|| self.calculate_pattern_diversity(patterns)),
             total_patterns,
             total_instances,
             total_loc,
@@ -100,8 +99,10 @@ impl EntropyCalculator {
                 continue;
             }
 
-            // Count pattern frequencies in this file
-            let mut pattern_counts = HashMap::new();
+            // Count pattern frequencies in this file. BTreeMap, not HashMap:
+            // the counts are summed as f64 below and float addition is not
+            // associative, so iteration order can move the result.
+            let mut pattern_counts = BTreeMap::new();
             for pattern_hash in file_patterns {
                 *pattern_counts.entry(pattern_hash).or_insert(0) += 1;
             }
@@ -132,8 +133,9 @@ impl EntropyCalculator {
     /// Calculate entropy at module level
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_module_level_entropy(&self, patterns: &PatternCollection) -> f64 {
-        // Group files by module (simplified: by directory)
-        let mut modules: HashMap<String, Vec<&AstPattern>> = HashMap::new();
+        // Group files by module (simplified: by directory). BTreeMap keeps the
+        // per-module float additions in a fixed order.
+        let mut modules: BTreeMap<String, Vec<&AstPattern>> = BTreeMap::new();
 
         for pattern in patterns.patterns.values() {
             for location in &pattern.locations {
@@ -156,7 +158,7 @@ impl EntropyCalculator {
                 continue;
             }
 
-            let mut pattern_counts = HashMap::new();
+            let mut pattern_counts = BTreeMap::new();
             for pattern in module_patterns {
                 *pattern_counts.entry(pattern.pattern_type).or_insert(0) += 1;
             }

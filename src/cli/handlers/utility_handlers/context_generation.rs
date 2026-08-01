@@ -12,8 +12,10 @@ struct ContextJsonProject {
     path: String,
     total_files: usize,
     total_functions: usize,
-    overall_health: f64,
-    maintainability_index: f64,
+    /// `null` when not measured — never a plausible-looking default. These were
+    /// the constants 85.0 and 70.0 for every project, including empty ones.
+    overall_health: Option<f64>,
+    maintainability_index: Option<f64>,
 }
 
 #[derive(serde::Serialize)]

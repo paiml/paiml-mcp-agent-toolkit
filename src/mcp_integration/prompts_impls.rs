@@ -113,7 +113,8 @@ impl McpPrompt for RepoScorePrompt {
         PromptMetadata {
             name: "repo_score".to_string(),
             description: Some(
-                "Assess repository health with quantitative scoring (0-110 scale)".to_string(),
+                // 0-100, matching what repo-score emits. See GH #685.
+                "Assess repository health with quantitative scoring (0-100 scale)".to_string(),
             ),
             arguments: Some(vec![
                 PromptArgument {
@@ -152,9 +153,8 @@ impl McpPrompt for RepoScorePrompt {
                 content: PromptContent::Text(format!(
                     r#"You are a repository health assessment expert using PMAT's repo-score system.
 
-**Repository Scoring System (0-110 scale):**
-- **100 base points** across 6 categories (A-F)
-- **10 bonus points** for advanced quality practices
+**Repository Scoring System (0-100 scale):**
+- **100 points** across 6 categories (A-F)
 
 **Categories (100 base points):**
 
@@ -183,11 +183,10 @@ impl McpPrompt for RepoScorePrompt {
    - F1: Config Present (2.5 pts) - .pmat-gates.toml exists & valid
    - F2: No Violations (2.5 pts) - Quality gates defined
 
-**Bonus Features (+10 points):**
-- Property-based testing (proptest) → +3 points
-- Fuzzing (cargo-fuzz) → +2 points
-- Mutation testing (cargo-mutants) → +2 points
-- Living documentation (mdBook) → +3 points
+**Not scored:** `BonusScores` (property tests, fuzzing, mutation testing,
+living documentation) is defined in the model but never added to the total, so
+no run can exceed 100. Describing it as "+10 bonus points" advertised a scale
+the command does not emit (GH #685).
 
 **Grading Scale:**
 - A+ (95-110): Exceptional (includes bonus)

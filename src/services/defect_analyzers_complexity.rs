@@ -1,12 +1,34 @@
 // ComplexityDefectAnalyzer: trait impl and helper methods for TDG-based complexity detection.
 
+/// Repository root enclosing `start`, or `start` itself when there is none.
+///
+/// Git history must be read relative to the ANALYSED path, never to the
+/// process CWD: `TDGCalculator::new()` defaults `project_root` to `"."`, so
+/// `pmat report -p X` read churn from whatever repository the caller happened
+/// to stand in, and aborted with `No git repository found at "."` when the
+/// caller stood outside one at all.
+pub(crate) fn enclosing_repo_root(start: &Path) -> PathBuf {
+    let absolute = start
+        .canonicalize()
+        .unwrap_or_else(|_| start.to_path_buf());
+    let mut cursor: Option<&Path> = Some(absolute.as_path());
+    while let Some(dir) = cursor {
+        if dir.join(".git").exists() {
+            return dir.to_path_buf();
+        }
+        cursor = dir.parent();
+    }
+    absolute
+}
+
 #[async_trait]
 impl DefectAnalyzer for ComplexityDefectAnalyzer {
     type Config = ComplexityConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
         let mut defects = Vec::new();
-        let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new();
+        let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new()
+            .with_project_root(enclosing_repo_root(project_path));
 
         // Analyze all source files
         let files = discover_source_files(project_path).await?;

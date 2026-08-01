@@ -222,31 +222,19 @@ impl RustProjectScoreOrchestrator {
         // Build CategoryScores struct
         let categories = category_map.clone();
 
-        // Calculate total earned
-        let total_earned: f64 = category_map.values().map(|cs| cs.earned).sum();
-
-        // Calculate normalized percentage: average of per-category percentages
-        // for APPLICABLE categories only. Non-applicable categories (e.g., Rust
+        // #687: these used to fold `category_map.values()` directly. HashMap
+        // iteration order is randomised per process, float addition is not
+        // associative, and the resulting one-ULP wobble made `--format json`
+        // non-reproducible on an unchanged project (28.001373626373628 vs
+        // 28.001373626373624 across runs). `aggregation` folds in name-sorted
+        // order and rounds, so identical input gives identical output.
+        //
+        // The percentage is the mean of the per-category percentages of the
+        // APPLICABLE categories only. Non-applicable categories (e.g. Rust
         // Tooling for a pure Lean project) are excluded so they don't penalize
         // projects where the category is irrelevant.
-        let applicable: Vec<&CategoryScore> =
-            category_map.values().filter(|cs| cs.applicable).collect();
-        let num_applicable = applicable.len() as f64;
-        let percentage = if num_applicable > 0.0 {
-            let sum_pcts: f64 = applicable
-                .iter()
-                .map(|cs| {
-                    if cs.max > 0.0 {
-                        (cs.earned / cs.max) * 100.0
-                    } else {
-                        100.0
-                    }
-                })
-                .sum();
-            sum_pcts / num_applicable
-        } else {
-            0.0
-        };
+        let total_earned = super::aggregation::total_earned(&category_map);
+        let percentage = super::aggregation::normalized_percentage(&category_map);
 
         // v3.0: Falsifiability gateway (Jidoka) — if Cat A < 60%, cap at grade F
         let gateway_failed =
@@ -315,45 +303,60 @@ pub struct WorkspaceScore {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn discover_workspace_members(project_path: &Path) -> Vec<(String, std::path::PathBuf)> {
     let cargo_toml = project_path.join("Cargo.toml");
-    let content = match std::fs::read_to_string(&cargo_toml) {
-        Ok(c) => c,
-        Err(_) => return vec![],
+    let Ok(content) = std::fs::read_to_string(&cargo_toml) else {
+        return vec![];
     };
 
-    // Parse [workspace] members
+    // Extracted into `parse_members_line` / `strip_member_quotes` so this
+    // function stays under the cognitive-complexity ceiling (it measured 44
+    // before the split, which trips the gate on every edit to this file).
     let mut in_members = false;
     let mut members = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("members") && trimmed.contains('[') {
-            in_members = true;
-            // Handle inline: members = ["crate1", "crate2"]
-            if let Some(bracket_content) = trimmed.split('[').nth(1) {
-                for item in bracket_content.split(']').next().unwrap_or("").split(',') {
-                    let member = item.trim().trim_matches('"').trim_matches('\'');
-                    if !member.is_empty() {
-                        expand_member(project_path, member, &mut members);
-                    }
-                }
+        if !in_members {
+            if let Some(inline) = members_list_opening(trimmed) {
+                in_members = true;
+                push_members(project_path, inline, &mut members);
             }
             continue;
         }
-        if in_members {
-            if trimmed.starts_with(']') {
-                break;
-            }
-            // Wave 39 release-prep: BUG #3 fix — was using sequential
-            // `.trim_matches('"').trim_matches('\'').trim_matches(',')` which
-            // left a trailing `"` for inputs like `"foo",` because the comma
-            // sat between the quote and the end. Use a char-set predicate to
-            // strip all three in one pass.
-            let member = trimmed.trim_matches(|c: char| c == '"' || c == '\'' || c == ',');
-            if !member.is_empty() && !member.starts_with('#') {
-                expand_member(project_path, member, &mut members);
-            }
+        if trimmed.starts_with(']') {
+            break;
         }
+        push_member_entry(project_path, trimmed, &mut members);
     }
     members
+}
+
+/// If `trimmed` opens the `members = [...]` list, return whatever sits after
+/// the `[` on the same line (possibly the whole inline list, possibly empty).
+fn members_list_opening(trimmed: &str) -> Option<&str> {
+    if !(trimmed.starts_with("members") && trimmed.contains('[')) {
+        return None;
+    }
+    Some(trimmed.split('[').nth(1).unwrap_or(""))
+}
+
+/// Push every comma-separated entry of an inline `members = ["a", "b"]` list.
+fn push_members(root: &Path, inline: &str, members: &mut Vec<(String, std::path::PathBuf)>) {
+    for item in inline.split(']').next().unwrap_or("").split(',') {
+        push_member_entry(root, item, members);
+    }
+}
+
+/// Push a single (quoted, possibly comma-suffixed) member entry.
+fn push_member_entry(root: &Path, raw: &str, members: &mut Vec<(String, std::path::PathBuf)>) {
+    // Wave 39 release-prep: BUG #3 fix — sequential
+    // `.trim_matches('"').trim_matches('\'').trim_matches(',')` left a trailing
+    // `"` for inputs like `"foo",` because the comma sat between the quote and
+    // the end. A char-set predicate strips all three in one pass.
+    let member = raw
+        .trim()
+        .trim_matches(|c: char| c == '"' || c == '\'' || c == ',');
+    if !member.is_empty() && !member.starts_with('#') {
+        expand_member(root, member, members);
+    }
 }
 
 /// Expand a workspace member path (with glob support)

@@ -7,7 +7,7 @@ async fn test_analyze_coverage_changes_modified_file() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -24,8 +24,11 @@ async fn test_analyze_coverage_changes_modified_file() {
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].file_path, "modified.rs");
-    // Modified file should have coverage_before = 0.75
-    assert!((result[0].coverage_before - 0.75).abs() < f64::EPSILON);
+    // GH #658: this used to assert `coverage_before == 0.75`, i.e. it pinned
+    // the mock. Baseline coverage needs a coverage artifact for the base
+    // branch, which is not on disk, so it is not measured.
+    assert_eq!(result[0].coverage_before, None);
+    assert_eq!(result[0].coverage_delta, None);
 }
 
 #[tokio::test]
@@ -37,7 +40,7 @@ async fn test_analyze_coverage_changes_added_file() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -54,8 +57,9 @@ async fn test_analyze_coverage_changes_added_file() {
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].file_path, "new.rs");
-    // Added file should have coverage_before = 0.0
-    assert!((result[0].coverage_before - 0.0).abs() < f64::EPSILON);
+    // GH #658: previously asserted the mock's `coverage_before == 0.0`. An
+    // added file has no baseline to measure either — absent, not zero.
+    assert_eq!(result[0].coverage_before, None);
 }
 
 #[tokio::test]
@@ -67,7 +71,7 @@ async fn test_analyze_coverage_changes_deleted_file_ignored() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -95,7 +99,7 @@ async fn test_analyze_coverage_changes_top_files_limit() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -128,7 +132,7 @@ async fn test_analyze_coverage_changes_coverage_status() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -144,12 +148,11 @@ async fn test_analyze_coverage_changes_coverage_status() {
         .expect("Failed to analyze coverage changes");
 
     assert_eq!(result.len(), 1);
-    // With mock implementation: before=0.75, after=0.85, delta=0.10 > 0
-    // So status should be Improved
-    match result[0].status {
-        CoverageStatus::Improved => (),
-        _ => panic!("Expected Improved status"),
-    }
+    // GH #658: this used to assert `Improved`, which followed from the mock's
+    // constant before=0.75 / after=0.85. With no coverage artifact for the
+    // project there is no direction to claim.
+    assert_eq!(result[0].status, CoverageStatus::NotMeasured);
+    assert_eq!(result[0].coverage_delta, None);
 }
 
 #[tokio::test]
@@ -228,7 +231,7 @@ async fn test_analyze_project_with_valid_git_repo() {
         project_path: temp_dir.path().to_path_buf(),
         base_branch: "HEAD~1".to_string(),
         target_branch: Some("HEAD".to_string()),
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -269,9 +272,10 @@ fn test_incremental_coverage_result_clone() {
     let result = IncrementalCoverageResult {
         total_files: 5,
         covered_files: 4,
-        coverage_percentage: 0.80,
+        coverage_percentage: Some(80.0),
         files_above_threshold: 3,
         files_below_threshold: 2,
+        files_not_measured: 0,
         changed_files: vec![],
         summary: "Test summary".to_string(),
     };
@@ -288,7 +292,7 @@ fn test_summary_format_contains_expected_info() {
         project_path: PathBuf::from("/test"),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -298,9 +302,9 @@ fn test_summary_format_contains_expected_info() {
 
     let coverage_data = vec![ChangedFileCoverage {
         file_path: "test.rs".to_string(),
-        coverage_before: 0.70,
-        coverage_after: 0.85,
-        coverage_delta: 0.15,
+        coverage_before: Some(70.0),
+        coverage_after: Some(85.0),
+        coverage_delta: Some(15.0),
         status: CoverageStatus::Improved,
         lines_covered: 85,
         lines_total: 100,
@@ -323,7 +327,7 @@ fn test_zero_coverage_files() {
         project_path: PathBuf::from("/test"),
         base_branch: "main".to_string(),
         target_branch: None,
-        coverage_threshold: 0.8,
+        coverage_threshold: 80.0,
         changed_files_only: true,
         detailed: false,
         cache_dir: None,
@@ -333,9 +337,9 @@ fn test_zero_coverage_files() {
 
     let coverage_data = vec![ChangedFileCoverage {
         file_path: "uncovered.rs".to_string(),
-        coverage_before: 0.0,
-        coverage_after: 0.0,
-        coverage_delta: 0.0,
+        coverage_before: Some(0.0),
+        coverage_after: Some(0.0),
+        coverage_delta: Some(0.0),
         status: CoverageStatus::Unchanged,
         lines_covered: 0,
         lines_total: 100,

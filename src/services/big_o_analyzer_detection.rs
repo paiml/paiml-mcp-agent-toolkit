@@ -12,11 +12,40 @@ impl BigOAnalyzer {
         }
     }
 
+    /// True when `line` calls `function_name` somewhere other than its own
+    /// definition.
+    ///
+    /// #661: the old test was `contains(name) && !starts_with("fn")`. Because
+    /// the analyzed text began at the function's *name*, its first line always
+    /// contained the name and never started with "fn" — so every function
+    /// looked recursive, `determine_time_complexity` returned `unknown()` with
+    /// confidence 0, the averaged confidence fell to 45, and the whole function
+    /// was dropped below the default threshold of 50. That is why `analyze
+    /// big-o` reported "Total Functions Analyzed: 0" on files whose functions
+    /// contain no loops.
     fn detect_recursive_call(line: &str, function_name: &str) -> bool {
-        let trimmed = line.trim();
-        trimmed.contains(function_name)
-            && !trimmed.starts_with("fn")
-            && !trimmed.starts_with("function")
+        if function_name.is_empty() {
+            return false;
+        }
+        let needle = format!("{function_name}(");
+        let mut from = 0usize;
+        while let Some(rel) = line.get(from..).and_then(|tail| tail.find(&needle)) {
+            let at = from + rel;
+            let before = line.get(..at).unwrap_or_default().trim_end();
+            if !Self::is_definition_keyword_suffix(before) {
+                return true;
+            }
+            from = at + needle.len();
+        }
+        false
+    }
+
+    /// Does `before` end with the keyword that introduces a definition of the
+    /// name that follows it (so the occurrence is the definition, not a call)?
+    fn is_definition_keyword_suffix(before: &str) -> bool {
+        ["fn", "def", "func", "function", "fun"]
+            .iter()
+            .any(|kw| before.ends_with(kw))
     }
 
     fn detect_sorting_operation(line: &str) -> bool {
@@ -50,6 +79,14 @@ impl BigOAnalyzer {
             .any(|pattern| function_body.contains(pattern))
     }
 
+    /// `trimmed` begins with `keyword` as a whole word.
+    fn starts_with_keyword(trimmed: &str, keyword: &str) -> bool {
+        trimmed.strip_prefix(keyword).is_some_and(|rest| {
+            rest.is_empty()
+                || !rest.starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '!')
+        })
+    }
+
     fn calculate_loop_depth(lines: &[&str], loop_keywords: &[&str]) -> usize {
         let mut loop_depth = 0;
         let mut max_loop_depth = 0;
@@ -59,7 +96,10 @@ impl BigOAnalyzer {
 
             // Track loop depth
             for keyword in loop_keywords {
-                if trimmed.starts_with(keyword) {
+                // Word boundary required: `format!(..)` starts with "for" but
+                // is not a loop, and counting it reported loop-free functions
+                // as O(n).
+                if Self::starts_with_keyword(trimmed, keyword) {
                     loop_depth += 1;
                     max_loop_depth = max_loop_depth.max(loop_depth);
                 }

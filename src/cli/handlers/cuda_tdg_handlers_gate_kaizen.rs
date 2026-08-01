@@ -14,6 +14,15 @@ async fn handle_gate(
     let analyzer = CudaSimdAnalyzer::with_config(analyzer_config);
     let result = analyzer.analyze(path)?;
 
+    // GH-662: the gate used to print "Gateway (Falsifiability): PASSED" for a
+    // path with zero files read. A gate that measured nothing has not passed.
+    if report_if_unmeasured(&result, config)? {
+        return Err(anyhow!(
+            "Quality gate not evaluated: no analysable source files found under {}",
+            path.display()
+        ));
+    }
+
     let passes = analyzer.passes_quality_gate(&result);
 
     let output = match config.format {

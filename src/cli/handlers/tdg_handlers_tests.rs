@@ -60,7 +60,7 @@ mod unit_tests {
 
         #[test]
         fn test_format_grade_a_plus() {
-            assert_eq!(format_grade(Grade::APLus), "A+");
+            assert_eq!(format_grade(Grade::APlus), "A+");
         }
 
         #[test]
@@ -116,7 +116,7 @@ mod unit_tests {
         #[test]
         fn test_format_grade_all_grades_return_non_empty() {
             let grades = [
-                Grade::APLus,
+                Grade::APlus,
                 Grade::A,
                 Grade::AMinus,
                 Grade::BPlus,
@@ -152,7 +152,7 @@ mod unit_tests {
 
         #[test]
         fn test_parse_grade_a_plus() {
-            assert_eq!(parse_grade("A+").unwrap(), Grade::APLus);
+            assert_eq!(parse_grade("A+").unwrap(), Grade::APlus);
         }
 
         #[test]
@@ -207,7 +207,7 @@ mod unit_tests {
 
         #[test]
         fn test_parse_grade_lowercase() {
-            assert_eq!(parse_grade("a+").unwrap(), Grade::APLus);
+            assert_eq!(parse_grade("a+").unwrap(), Grade::APlus);
             assert_eq!(parse_grade("b").unwrap(), Grade::B);
             assert_eq!(parse_grade("c-").unwrap(), Grade::CMinus);
             assert_eq!(parse_grade("f").unwrap(), Grade::F);
@@ -215,8 +215,8 @@ mod unit_tests {
 
         #[test]
         fn test_parse_grade_mixed_case() {
-            assert_eq!(parse_grade("a+").unwrap(), Grade::APLus);
-            assert_eq!(parse_grade("A+").unwrap(), Grade::APLus);
+            assert_eq!(parse_grade("a+").unwrap(), Grade::APlus);
+            assert_eq!(parse_grade("A+").unwrap(), Grade::APlus);
         }
 
         #[test]
@@ -241,7 +241,7 @@ mod unit_tests {
         #[test]
         fn test_parse_format_roundtrip() {
             let grades = [
-                Grade::APLus,
+                Grade::APlus,
                 Grade::A,
                 Grade::AMinus,
                 Grade::BPlus,
@@ -497,14 +497,14 @@ mod unit_tests {
         }
 
         /// Direction pins — the old `score.grade < min_grade` comparison was
-        /// inverted (Grade ordering is APLus < ... < F, smaller = better):
+        /// inverted (Grade ordering is APlus < ... < F, smaller = better):
         /// it rejected grades better than the minimum and accepted worse
         /// ones. Equal-grade tests alone cannot catch that.
         #[test]
         fn test_grade_better_than_minimum_passes() {
             let mut config = make_test_config(PathBuf::from("."));
             config.min_grade = Some("B".to_string());
-            let score = make_test_score(95.0, Grade::APLus);
+            let score = make_test_score(95.0, Grade::APlus);
             assert!(
                 validate_minimum_grade(&score, &config).is_ok(),
                 "A+ must satisfy a B minimum"
@@ -642,11 +642,42 @@ mod unit_tests {
             assert!(result.contains("| Component | Score | Max |"));
         }
 
+        /// Issue #669 regression. This test used to be
+        /// `test_sarif_output_is_score_only` and asserted
+        /// `result.trim() == "75.0"` — it pinned the defect (SARIF emitting a
+        /// bare number). Updated to assert the format contract instead.
         #[test]
-        fn test_sarif_output_is_score_only() {
-            let score = make_test_score(75.0, Grade::B);
+        fn test_sarif_output_is_a_sarif_document() {
+            let mut score = make_test_score(75.0, Grade::B);
+            score.file_path = Some(PathBuf::from("src/lib.rs"));
             let result = format_tdg_score(score, None, TdgOutputFormat::Sarif, false).unwrap();
-            assert_eq!(result.trim(), "75.0");
+
+            assert_ne!(result.trim(), "75.0", "SARIF must not be a bare score");
+            let doc: serde_json::Value =
+                serde_json::from_str(&result).expect("SARIF output must be JSON");
+            assert_eq!(doc["version"], "2.1.0");
+            assert!(doc["$schema"].as_str().unwrap().contains("sarif"));
+            assert!(doc["runs"][0]["tool"]["driver"]["name"].is_string());
+            // 75.0 < 75.0 is false, so a score of exactly 75 yields no result;
+            // the document must still be well formed.
+            assert!(doc["runs"][0]["results"].is_array());
+        }
+
+        /// Issue #669: a below-threshold score must produce a SARIF result
+        /// whose location names the real analyzed file.
+        #[test]
+        fn test_sarif_result_names_the_analyzed_file() {
+            let mut score = make_test_score(40.0, Grade::F);
+            score.file_path = Some(PathBuf::from("src/lib.rs"));
+            let result = format_tdg_score(score, None, TdgOutputFormat::Sarif, false).unwrap();
+
+            let doc: serde_json::Value = serde_json::from_str(&result).unwrap();
+            let results = doc["runs"][0]["results"].as_array().unwrap();
+            assert_eq!(results.len(), 1);
+            assert_eq!(
+                results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+                "src/lib.rs"
+            );
         }
 
         #[test]
@@ -1040,6 +1071,274 @@ mod unit_tests {
             // Just verify it doesn't panic
             display_gate_result_table(&result);
         }
+    }
+}
+
+/// End-to-end format-fidelity tests for the top-level `pmat tdg` command.
+///
+/// These live here (not in `tdg_handlers_coverage_tests2.rs`) because that
+/// file is behind the `broken-tests` quarantine feature and never compiles.
+mod sarif_format_fidelity {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn sarif_config(path: PathBuf, output: PathBuf) -> TdgCommandConfig {
+        TdgCommandConfig {
+            path,
+            command: None,
+            format: TdgOutputFormat::Sarif,
+            config: None,
+            quiet: false,
+            include_components: false,
+            min_grade: None,
+            output: Some(output),
+            with_git_context: false,
+            explain: false,
+            threshold: 10,
+            baseline: None,
+            viz: false,
+            viz_theme: "default".to_string(),
+        }
+    }
+
+    /// Issue #669 regression: `tdg <path> --format sarif` wrote exactly
+    /// `84.0\n` — 5 bytes, identical to `tdg -q` — so any CI step piping it to
+    /// a SARIF uploader got a scalar.
+    #[tokio::test]
+    async fn test_tdg_command_sarif_on_a_file_is_a_sarif_document() {
+        let temp_dir = TempDir::new().unwrap();
+        let rust_file = temp_dir.path().join("sarif_target.rs");
+        std::fs::write(&rust_file, "pub fn sarif_fn() { let _x = 1; }").unwrap();
+        let output_file = temp_dir.path().join("out.sarif");
+
+        handle_tdg_command(sarif_config(rust_file, output_file.clone()))
+            .await
+            .expect("tdg --format sarif should succeed");
+
+        let content = std::fs::read_to_string(&output_file).unwrap();
+        assert!(
+            content.trim().parse::<f64>().is_err(),
+            "SARIF must not be a bare score, got {content:?}"
+        );
+        let doc: serde_json::Value = serde_json::from_str(&content)
+            .unwrap_or_else(|e| panic!("--format sarif must emit JSON, got {content:?}: {e}"));
+        assert_eq!(doc["version"], "2.1.0");
+        assert!(doc["$schema"].as_str().unwrap().contains("sarif"));
+        assert!(doc["runs"][0]["tool"]["driver"]["name"].is_string());
+        assert!(doc["runs"][0]["results"].is_array());
+    }
+
+    /// A directory must be scored per file, so every SARIF result names a
+    /// file that exists rather than the averaged score's absent path.
+    #[tokio::test]
+    async fn test_tdg_command_sarif_on_a_directory_names_real_files() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join("messy.rs"),
+            // Deliberately gnarly so it scores below the SARIF threshold.
+            "pub fn m(a:i32,b:i32)->i32{if a>0{if b>0{if a>b{a}else{b}}else{a-b}}else{-a}}\n"
+                .repeat(20),
+        )
+        .unwrap();
+        let output_file = temp_dir.path().join("out.sarif");
+
+        handle_tdg_command(sarif_config(
+            temp_dir.path().to_path_buf(),
+            output_file.clone(),
+        ))
+        .await
+        .expect("tdg --format sarif should succeed on a directory");
+
+        let content = std::fs::read_to_string(&output_file).unwrap();
+        let doc: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(doc["version"], "2.1.0");
+        for result in doc["runs"][0]["results"].as_array().unwrap() {
+            let uri = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                .as_str()
+                .expect("every result must carry a uri");
+            assert_ne!(uri, "unknown", "SARIF must not invent a uri");
+            assert!(
+                std::path::Path::new(uri).exists(),
+                "SARIF named a path that does not exist: {uri}"
+            );
+        }
+    }
+
+    // ===== second round of #669 / #680 =====
+
+    fn config_with_format(
+        path: PathBuf,
+        output: PathBuf,
+        format: TdgOutputFormat,
+    ) -> TdgCommandConfig {
+        let mut config = sarif_config(path, output);
+        config.format = format;
+        config
+    }
+
+    async fn render(path: &std::path::Path, format: TdgOutputFormat, tag: &str) -> String {
+        let out = path.join(format!("out-{tag}.txt"));
+        handle_tdg_command(config_with_format(path.to_path_buf(), out.clone(), format))
+            .await
+            .expect("tdg should succeed");
+        std::fs::read_to_string(&out).unwrap()
+    }
+
+    /// Write a small tree that scores well, so the top of the grade scale is
+    /// actually exercised.
+    fn clean_fixture() -> TempDir {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("clean.rs"),
+            "//! A tiny, documented module.\n\n/// Adds two numbers.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .unwrap();
+        dir
+    }
+
+    /// Issue #669, second round: `--format sarif` reported a score no other
+    /// format agreed with — SARIF said `TDG Score: 72.5/100 (B-)` on a tree
+    /// where `--format json` said total 94.15 / A- and table and markdown both
+    /// said 94.2/100 (A-). Every renderer of one command must state the same
+    /// number.
+    #[tokio::test]
+    async fn test_every_format_reports_the_same_project_score() {
+        let dir = clean_fixture();
+        // A second, messier file so the per-file spread is non-trivial.
+        std::fs::write(
+            dir.path().join("messy.rs"),
+            "pub fn m(a:i32,b:i32)->i32{if a>0{if b>0{if a>b{a}else{b}}else{a-b}}else{-a}}\n"
+                .repeat(20),
+        )
+        .unwrap();
+
+        let json: serde_json::Value =
+            serde_json::from_str(&render(dir.path(), TdgOutputFormat::Json, "json").await).unwrap();
+        let json_total = json["score"]["total"].as_f64().unwrap();
+        let json_grade = json["score"]["grade"].as_str().unwrap().to_string();
+
+        let sarif: serde_json::Value =
+            serde_json::from_str(&render(dir.path(), TdgOutputFormat::Sarif, "sarif").await)
+                .unwrap();
+        let sarif_total = sarif["runs"][0]["properties"]["average_score"]
+            .as_f64()
+            .expect("SARIF must state the project score");
+        let sarif_grade = sarif["runs"][0]["properties"]["average_grade"]
+            .as_str()
+            .expect("SARIF must state the project grade");
+
+        assert!(
+            (sarif_total - json_total).abs() < 0.05,
+            "sarif says {sarif_total}, json says {json_total}"
+        );
+        assert_eq!(sarif_grade, json_grade, "sarif and json disagree on grade");
+
+        let markdown = render(dir.path(), TdgOutputFormat::Markdown, "md").await;
+        assert!(
+            markdown.contains(&format!("{json_total:.1}/100 ({json_grade})")),
+            "markdown disagrees with json: {markdown}"
+        );
+    }
+
+    /// Issue #669, second round: the SARIF document was BYTE-IDENTICAL (1065
+    /// bytes, `results: []`) for an empty directory, a small clean fixture and
+    /// a deliberately awful one. A document that does not move when the input
+    /// moves is not a measurement, and an uploader fed it uploads nothing.
+    #[tokio::test]
+    async fn test_sarif_findings_vary_with_the_input() {
+        let empty = TempDir::new().unwrap();
+        let clean = clean_fixture();
+        let awful = TempDir::new().unwrap();
+        std::fs::write(
+            awful.path().join("awful.rs"),
+            "pub fn a(x:i32)->i32{let mut r=0;for i in 0..x{if i%2==0{r+=i}else if i%3==0{r-=i}else if i%5==0{r*=2}else{r+=1}}r}\n"
+                .repeat(40),
+        )
+        .unwrap();
+
+        let mut docs = Vec::new();
+        for (dir, tag) in [
+            (empty.path(), "empty"),
+            (clean.path(), "clean"),
+            (awful.path(), "awful"),
+        ] {
+            let raw = render(dir, TdgOutputFormat::Sarif, tag).await;
+            let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            let results = doc["runs"][0]["results"].as_array().unwrap();
+            assert!(
+                !results.is_empty(),
+                "{tag}: SARIF must always carry at least the project-level result"
+            );
+            docs.push((tag, raw));
+        }
+
+        for i in 0..docs.len() {
+            for j in (i + 1)..docs.len() {
+                assert_ne!(
+                    docs[i].1, docs[j].1,
+                    "SARIF for {} and {} are byte-identical",
+                    docs[i].0, docs[j].0
+                );
+            }
+        }
+    }
+
+    /// Identical input, identical bytes — over five runs, not one.
+    #[tokio::test]
+    async fn test_sarif_is_deterministic_over_repeated_runs() {
+        let dir = clean_fixture();
+        std::fs::write(dir.path().join("b.rs"), "/// b\npub fn b() -> u8 { 2 }\n").unwrap();
+        std::fs::write(dir.path().join("a.rs"), "/// a\npub fn a() -> u8 { 1 }\n").unwrap();
+
+        let first = render(dir.path(), TdgOutputFormat::Sarif, "run0").await;
+        for run in 1..6 {
+            let again = render(dir.path(), TdgOutputFormat::Sarif, &format!("run{run}")).await;
+            assert_eq!(again, first, "SARIF differed on run {run}");
+        }
+    }
+
+    /// `--quiet` must not silently downgrade a declared machine format to a
+    /// bare number. `tdg -q --format sarif` used to write `84.0`.
+    #[tokio::test]
+    async fn test_quiet_does_not_defeat_the_declared_sarif_format() {
+        let dir = clean_fixture();
+        let out = dir.path().join("quiet.sarif");
+        let mut config = sarif_config(dir.path().to_path_buf(), out.clone());
+        config.quiet = true;
+        handle_tdg_command(config).await.unwrap();
+
+        let content = std::fs::read_to_string(&out).unwrap();
+        assert!(
+            content.trim().parse::<f64>().is_err(),
+            "-q --format sarif emitted a bare score: {content:?}"
+        );
+        let doc: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(doc["version"], "2.1.0");
+    }
+
+    /// GH #680, second round: the reported grade must be the grade the reported
+    /// score maps to. v3.29.0 printed `Overall Score: 100.0/100 (A-)` because a
+    /// separate, capped mapping produced the grade.
+    #[tokio::test]
+    async fn test_reported_grade_matches_the_reported_score() {
+        let dir = clean_fixture();
+        let json: serde_json::Value =
+            serde_json::from_str(&render(dir.path(), TdgOutputFormat::Json, "j").await).unwrap();
+        let total = json["score"]["total"].as_f64().unwrap();
+        let grade = json["score"]["grade"].as_str().unwrap();
+
+        #[allow(clippy::cast_possible_truncation)]
+        let expected = format_grade(crate::tdg::Grade::from_score(total as f32));
+        assert_eq!(
+            grade, expected,
+            "score {total} was reported as grade {grade}, but {total} maps to {expected}"
+        );
+        assert!(
+            total >= 85.0,
+            "fixture no longer exercises the top of the scale ({total}); \
+             pick a cleaner fixture or this test proves nothing"
+        );
     }
 }
 

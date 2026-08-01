@@ -151,6 +151,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -172,6 +173,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -193,6 +195,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -214,6 +217,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -235,6 +239,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -256,6 +261,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
             true, // show_references
             None,
             false,
+            10,
         )
         .await;
 
@@ -288,6 +294,7 @@ fn complex_function(x: i32, y: i32) -> i32 {
                 false,
                 None,
                 false,
+                10,
             )
             .await;
 

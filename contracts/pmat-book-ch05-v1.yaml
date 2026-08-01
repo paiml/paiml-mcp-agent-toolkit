@@ -2,6 +2,9 @@ metadata:
   version: "1.0.0"
   created: "2026-04-08"
   author: PAIML Engineering
+  references:
+    - "../pmat-book/src/ch05-00-analyze-suite.md (the chapter this contract gates)"
+    - "Makefile target validate-book (runs the chapter's test scripts)"
   registry: true
   description: >
     PMAT-BOOK Chapter 5: The Analyze Command Suite

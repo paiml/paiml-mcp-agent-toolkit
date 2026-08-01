@@ -91,11 +91,27 @@ fn apply_analysis_filters(
     }
 
     // Apply severity and criticality filters
-    Ok(apply_filters(
-        result,
-        config.severity.clone(),
-        config.critical_only,
-    ))
+    let mut filtered = apply_filters(result, config.severity.clone(), config.critical_only);
+
+    // Issue #676: `summary` and `total_files` were left at their PRE-filter
+    // values while `violations`/`total_violations` were post-filter, so
+    // `--severity high` printed {"total_files":1,"total_violations":0,
+    //  "summary":"Found 7 SATD violations in 1 files","violations":[]} — one
+    // document, two contradictory answers. Restate both from what survived.
+    recompute_totals(&mut filtered);
+    Ok(filtered)
+}
+
+/// Restate `total_files` and `summary` from the violations actually retained.
+fn recompute_totals(result: &mut SatdAnalysisResult) {
+    let unique_files: std::collections::HashSet<_> =
+        result.violations.iter().map(|v| &v.file_path).collect();
+    result.total_files = unique_files.len();
+    result.summary = format!(
+        "Found {} SATD violations in {} files",
+        result.violations.len(),
+        result.total_files
+    );
 }
 
 /// Format and write SATD output - EXTRACTED FUNCTION

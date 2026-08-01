@@ -17,10 +17,20 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     // Apply UX settings (TICKET-PMAT-6006)
     apply_ux_settings(&cli);
 
-    // Handle forced mode
+    // Handle forced mode.
+    //
+    // The binary decides this before clap runs (`cli::forced_mode_from_args`),
+    // so this branch is only reached by other embedders of `cli::run`. It used
+    // to call `crate::run_mcp_server`, a *second* MCP server whose 21-tool
+    // inventory shares only 7 names with the unified server's 20 — and those 7
+    // take different arguments (`project_path` string vs `paths` array), with 6
+    // of the 21 self-described unimplemented stubs. `--mode mcp` must not reach
+    // a different server than `MCP_VERSION=1 pmat` does.
     if let Some(commands::Mode::Mcp) = cli.mode {
         info!("Forced MCP mode detected");
-        return crate::run_mcp_server(server).await;
+        let unified = crate::mcp_pmcp::UnifiedServer::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create unified server: {e}"))?;
+        return unified.run().await.map_err(|e| anyhow::anyhow!("{e}"));
     }
 
     // Use command dispatcher for improved modularity

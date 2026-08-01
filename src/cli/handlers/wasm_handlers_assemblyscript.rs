@@ -11,6 +11,11 @@ pub async fn handle_analyze_assemblyscript(
     _timeout: u64,
     perf: bool,
 ) -> Result<()> {
+    // Found alongside GH-663/GH-666: a nonexistent path printed
+    // "📁 Found 0 AssemblyScript files" and a complete report with
+    // "**Files analyzed**: 0", exit 0.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     eprintln!("🔍 Analyzing AssemblyScript code...");
     let start = std::time::Instant::now();
 

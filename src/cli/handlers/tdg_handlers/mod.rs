@@ -146,7 +146,7 @@ fn is_analyzable_file(path: &Path) -> bool {
 fn parse_grade(s: &str) -> Result<crate::tdg::Grade> {
     use crate::tdg::Grade;
     match s.to_uppercase().as_str() {
-        "A+" => Ok(Grade::APLus),
+        "A+" => Ok(Grade::APlus),
         "A" => Ok(Grade::A),
         "A-" => Ok(Grade::AMinus),
         "B+" => Ok(Grade::BPlus),
@@ -165,7 +165,7 @@ fn parse_grade(s: &str) -> Result<crate::tdg::Grade> {
 
 fn format_grade(grade: Grade) -> String {
     match grade {
-        Grade::APLus => "A+",
+        Grade::APlus => "A+",
         Grade::A => "A",
         Grade::AMinus => "A-",
         Grade::BPlus => "B+",
@@ -216,11 +216,14 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
         return viz::handle_viz_mode(&analyzer, &config).await;
     }
 
-    let score = quality_gates::execute_tdg_analysis(&analyzer, &config).await?;
-    quality_gates::validate_minimum_grade(&score, &config)?;
+    // Issue #669, second round: ONE analysis, many renderers. SARIF used to
+    // fork here into its own `analyze_project` call and reported a score no
+    // other format agreed with.
+    let analysis = quality_gates::run_tdg_analysis(&analyzer, &config).await?;
+    quality_gates::validate_minimum_grade(&analysis.score, &config)?;
 
     let git_context = analyzer.get_git_context();
-    let output_str = formatting::format_tdg_output(&score, git_context, &config)?;
+    let output_str = formatting::format_tdg_analysis(&analysis, git_context, &config)?;
     formatting::write_tdg_output(&output_str, &config)?;
 
     Ok(())

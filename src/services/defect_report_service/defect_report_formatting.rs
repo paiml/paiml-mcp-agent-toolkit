@@ -8,7 +8,12 @@ impl DefectReportService {
     }
 
     /// Format report as CSV
-    #[cfg(feature = "reporting")]
+    ///
+    /// Issue #672: this was `#[cfg(feature = "reporting")]`, and `reporting`
+    /// was not in `default`, so on a `cargo install pmat` binary
+    /// `pmat report --format csv` exited rc=1 with
+    /// "CSV reporting requires the 'reporting' feature" while `--help` still
+    /// advertised csv. CSV is now always compiled in.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_csv(&self, report: &DefectReport) -> Result<String> {
         let mut wtr = Writer::from_writer(vec![]);
@@ -53,13 +58,6 @@ impl DefectReportService {
 
         let data = wtr.into_inner()?;
         Ok(String::from_utf8(data)?)
-    }
-
-    /// Format report as CSV (stub when reporting feature disabled)
-    #[cfg(not(feature = "reporting"))]
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub fn format_csv(&self, _report: &DefectReport) -> Result<String> {
-        anyhow::bail!("CSV reporting requires the 'reporting' feature")
     }
 
     /// Format report as Markdown

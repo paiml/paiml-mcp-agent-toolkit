@@ -38,7 +38,7 @@ impl Default for TdgScore {
             consistency_score: 10.0,
             entropy_score: 0.0, // New: Start with 0, calculated during analysis
             total: 100.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             confidence: 1.0,
             language: Language::Unknown,
             file_path: None,
@@ -94,17 +94,21 @@ impl TdgScore {
             self.total = 0.0;
             self.grade = Grade::F;
         } else {
+            // GH #680, second round. Both the file path and the aggregate path
+            // now use `Grade::from_score` and nothing else, so the grade is a
+            // function of the score alone.
+            //
+            // What used to sit here was the CB-1400 override
+            // `if !has_contract_coverage && grade < AMinus { grade = AMinus }`.
+            // `has_contract_coverage` is false whenever contract coverage was
+            // never *measured* (no `contracts/binding.yaml` ⇒ the field keeps
+            // its `false` default), so the cap fired for essentially every
+            // project: a fixture totalling 100.0 was graded `AMinus`, and
+            // `pmat tdg` printed `Overall Score: 100.0/100 (A-)`. An unmeasured
+            // signal must never rewrite a measured one. Contract coverage is
+            // still recorded on `has_contract_coverage` and still gated by
+            // `pmat comply` (CB-1400).
             self.grade = Grade::from_score(self.total);
-
-            // CB-1400: Provable-contract coverage required for A-tier grades.
-            // A "perfect" file without contract coverage caps at A-.
-            // This enforces contract-first design as a hard requirement for
-            // the highest quality tier — you cannot be truly "excellent"
-            // without provable guarantees.
-            // Note: Grade enum ordering is APLus < A < AMinus (lower = better)
-            if !self.has_contract_coverage && self.grade < Grade::AMinus {
-                self.grade = Grade::AMinus;
-            }
         }
     }
 

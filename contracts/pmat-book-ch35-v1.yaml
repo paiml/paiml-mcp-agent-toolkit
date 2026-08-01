@@ -2,6 +2,9 @@ metadata:
   version: "1.0.0"
   created: "2026-04-08"
   author: PAIML Engineering
+  references:
+    - "../pmat-book/src/ch35-00-semantic-search.md (the chapter this contract gates)"
+    - "docs/specifications/semantic-search-feature.md"
   registry: true
   description: >
     PMAT-BOOK file:ch35 — Semantic Search and Code Clustering (pmat query)

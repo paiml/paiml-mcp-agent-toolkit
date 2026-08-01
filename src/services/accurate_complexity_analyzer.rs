@@ -11,6 +11,8 @@ use std::path::Path;
 use syn::{visit::Visit, Attribute, Expr, Item, ItemFn, Stmt};
 use walkdir::WalkDir;
 
+use crate::services::source_line_index::{FunctionSpans, LineSpan};
+
 /// Accurate complexity analyzer with proper AST-based calculation
 pub struct AccurateComplexityAnalyzer {
     exclude_tests: bool,
@@ -56,6 +58,10 @@ impl AccurateComplexityAnalyzer {
 pub struct FileComplexityResult {
     pub functions: Vec<FunctionMetrics>,
     pub file_path: String,
+    /// Real number of lines in the file. Callers used to derive this from the
+    /// last function's invented `line_end`, which reported a 13-line file as
+    /// 61 lines (#652).
+    pub total_lines: u32,
 }
 
 /// Metrics for a single function
@@ -64,9 +70,40 @@ pub struct FunctionMetrics {
     pub name: String,
     pub cyclomatic_complexity: u32,
     pub cognitive_complexity: u32,
+    /// Deepest nesting level reached inside the body (measured, not derived
+    /// from cognitive complexity).
+    pub max_nesting: u32,
     pub suppressed: bool,
-    /// 1-based line number where the function starts in the source file
+    /// 1-based line number where the function starts; 0 when not located.
     pub line_start: u32,
+    /// 1-based inclusive line where the function ends; 0 when not located.
+    pub line_end: u32,
+}
+
+/// Cyclomatic/cognitive/nesting for one function body.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BlockComplexity {
+    pub cyclomatic: u32,
+    pub cognitive: u32,
+    pub max_nesting: u32,
+}
+
+/// Measure one function body with the visitor `analyze complexity` and
+/// `quality-gate` use.
+///
+/// `pmat context` used to run a private "GREEN PHASE" stub that only inspected
+/// top-level statements and set `cognitive = cyclomatic`; on the same function
+/// it reported 3/3 where this visitor reports 9/15 (#686). Routing every caller
+/// through here is what makes the commands agree.
+#[must_use]
+pub fn measure_block(function_name: &str, block: &syn::Block) -> BlockComplexity {
+    let mut visitor = ComplexityVisitor::new().with_function_name(function_name.to_string());
+    visitor.visit_block(block);
+    BlockComplexity {
+        cyclomatic: visitor.cyclomatic,
+        cognitive: visitor.cognitive,
+        max_nesting: visitor.max_nesting,
+    }
 }
 
 /// Result of analyzing a project
@@ -76,39 +113,13 @@ pub struct ProjectComplexityResult {
     pub file_metrics: Vec<FileComplexityResult>,
 }
 
-/// Build a map of function name -> 1-based line number from source text.
+/// Build a map of function name -> measured 1-based line span from source text.
 ///
-/// For duplicate function names (e.g. in different impl blocks), stores the
-/// first occurrence so the analyzer can match them in order of appearance.
-fn build_function_line_map(content: &str) -> std::collections::HashMap<String, u32> {
-    let mut map = std::collections::HashMap::new();
-    for (line_idx, line) in content.lines().enumerate() {
-        if let Some(name) = extract_fn_name(line.trim()) {
-            let line_number = (line_idx + 1) as u32;
-            map.entry(name).or_insert(line_number);
-        }
-    }
-    map
-}
-
-/// Extract a function name from a trimmed source line, if it contains a function definition.
-/// Returns None for comments and non-function lines.
-fn extract_fn_name(trimmed: &str) -> Option<String> {
-    let fn_pos = trimmed.find("fn ")?;
-    let before = trimmed.get(..fn_pos).unwrap_or_default();
-    if before.contains("//") || before.contains("/*") {
-        return None;
-    }
-    let after = trimmed.get(fn_pos + 3..).unwrap_or_default();
-    let name_end = after
-        .find(|c: char| c == '(' || c == '<' || c.is_whitespace())
-        .unwrap_or(after.len());
-    let name = after.get(..name_end).unwrap_or_default().trim();
-    if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        Some(name.to_string())
-    } else {
-        None
-    }
+/// Spans come from [`FunctionSpans`], which reads the real closing brace. The
+/// previous version recorded only the start line, which forced callers to
+/// invent an end (#652, #656).
+fn build_function_line_map(content: &str) -> FunctionSpans {
+    FunctionSpans::from_source(content)
 }
 
 // --- Submodule includes ---

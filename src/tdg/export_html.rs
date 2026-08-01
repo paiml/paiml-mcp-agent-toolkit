@@ -4,7 +4,7 @@
 impl TdgExporter {
     fn score_to_html(score: &TdgScore, options: &ExportOptions) -> Result<String> {
         let grade_color = match score.grade {
-            Grade::APLus | Grade::A | Grade::AMinus => "#4CAF50",
+            Grade::APlus | Grade::A | Grade::AMinus => "#4CAF50",
             Grade::BPlus | Grade::B | Grade::BMinus => "#2196F3",
             Grade::CPlus | Grade::C | Grade::CMinus => "#FF9800",
             Grade::D => "#FF5722",

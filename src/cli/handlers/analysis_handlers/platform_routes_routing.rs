@@ -175,10 +175,13 @@ pub(super) async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<
         show_references,
         output,
         perf,
-        top_files: _top_files,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
+        // `--top-files` was bound to `_top_files` and thrown away, so the flag
+        // documented as "Number of top files to show (0 = all)" changed nothing:
+        // `-n 3`, `-n 10` and `-n 25` all produced the same 10-row tables.
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_symbol_table(
             path,
             format,
@@ -190,6 +193,7 @@ pub(super) async fn route_symbol_table_analysis(cmd: AnalyzeCommands) -> Result<
             show_references,
             output,
             perf,
+            top_files,
         )
         .await
     } else {

@@ -11,19 +11,56 @@ use crate::tdg::TdgAnalyzer;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
+/// The single TDG analysis every `pmat tdg` renderer formats.
+///
+/// Issue #669, second round: `--format sarif` used to take its own branch out
+/// of `handle_tdg_command`, run its own `analyze_project`, and report a number
+/// no other format agreed with (SARIF said 72.5/100 (B-) where `--format json`
+/// said 94.15/A-). One analysis, many renderers — so there is nothing left for
+/// two formats to disagree about.
+pub(crate) struct TdgAnalysis {
+    /// Per-file scores; `None` when a single file was analyzed.
+    pub(crate) project: Option<crate::tdg::ProjectScore>,
+    /// The score EVERY format prints as "the" score.
+    pub(crate) score: crate::tdg::TdgScore,
+    /// The path that was analyzed, for SARIF locations.
+    pub(crate) root: PathBuf,
+}
+
+/// Run the one TDG analysis backing every output format.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn run_tdg_analysis<'a>(
+    analyzer: &'a TdgAnalyzer,
+    config: &'a TdgCommandConfig,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<TdgAnalysis>> + 'a>> {
+    Box::pin(async move {
+        let root = config.path.clone();
+        if config.path.is_dir() {
+            let project = analyzer.analyze_project(&config.path).await?;
+            let score = project.average();
+            Ok(TdgAnalysis {
+                project: Some(project),
+                score,
+                root,
+            })
+        } else {
+            let score = analyzer.analyze_file(&config.path).await?;
+            Ok(TdgAnalysis {
+                project: None,
+                score,
+                root,
+            })
+        }
+    })
+}
+
 /// Execute TDG analysis on file or directory (cognitive complexity ≤3)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn execute_tdg_analysis<'a>(
     analyzer: &'a TdgAnalyzer,
     config: &'a TdgCommandConfig,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<crate::tdg::TdgScore>> + 'a>> {
-    Box::pin(async move {
-        if config.path.is_dir() {
-            Ok(analyzer.analyze_project(&config.path).await?.average())
-        } else {
-            analyzer.analyze_file(&config.path).await
-        }
-    })
+    Box::pin(async move { Ok(run_tdg_analysis(analyzer, config).await?.score) })
 }
 
 /// Validate minimum grade requirement (cognitive complexity ≤4)
@@ -34,7 +71,7 @@ pub(crate) fn validate_minimum_grade(
 ) -> Result<()> {
     if let Some(min_grade_str) = &config.min_grade {
         let min_grade = parse_grade(min_grade_str)?;
-        // Grade ordering is APLus < A < ... < F (smaller = better), so the
+        // Grade ordering is APlus < A < ... < F (smaller = better), so the
         // old `score.grade < min_grade` rejected grades BETTER than the
         // minimum and accepted worse ones
         if !score.grade.meets_threshold(min_grade) {

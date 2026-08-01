@@ -6,19 +6,19 @@ mod tests {
     use crate::entropy::entropy_calculator::*;
     use crate::entropy::violation_detector::{ActionableViolation, PatternSummary};
     use crate::entropy::PatternType;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_entropy_metrics_creation() {
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.5,
-            module_level_entropy: 0.6,
-            project_level_entropy: 0.7,
-            pattern_diversity: 0.4,
+            file_level_entropy: Some(0.5),
+            module_level_entropy: Some(0.6),
+            project_level_entropy: Some(0.7),
+            pattern_diversity: Some(0.4),
             total_patterns: 10,
             total_instances: 50,
             total_loc: 1000,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         assert_eq!(metrics.total_patterns, 10);
@@ -31,33 +31,34 @@ mod tests {
             total_files_analyzed: 10,
             actionable_violations: vec![ActionableViolation {
                 severity: crate::entropy::Severity::High,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 10,
                     variation_score: 0.0,
                     example_code: "test".to_string(),
-                },
+                }),
                 message: "test".to_string(),
                 fix_suggestion: "test".to_string(),
-                estimated_loc_reduction: 100,
+                estimated_loc_reduction: Some(100),
                 affected_files: vec![],
                 priority_score: 10.0,
             }],
-            pattern_summary: PatternSummary {
+            pattern_summary: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 10,
                 variation_score: 0.0,
                 example_code: "test".to_string(),
-            },
+            }),
+            measurement_note: None,
             entropy_metrics: EntropyMetrics {
-                file_level_entropy: 0.5,
-                module_level_entropy: 0.6,
-                project_level_entropy: 0.7,
-                pattern_diversity: 0.4,
+                file_level_entropy: Some(0.5),
+                module_level_entropy: Some(0.6),
+                project_level_entropy: Some(0.7),
+                pattern_diversity: Some(0.4),
                 total_patterns: 10,
                 total_instances: 50,
                 total_loc: 1000,
-                patterns_by_type: HashMap::new(),
+                patterns_by_type: BTreeMap::new(),
             },
         };
 
@@ -72,16 +73,16 @@ mod property_tests {
 
     #[test]
     fn test_entropy_metrics_serialization() {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         let metrics = EntropyMetrics {
-            file_level_entropy: 2.5,
-            module_level_entropy: 1.8,
-            project_level_entropy: 3.2,
-            pattern_diversity: 0.75,
+            file_level_entropy: Some(2.5),
+            module_level_entropy: Some(1.8),
+            project_level_entropy: Some(3.2),
+            pattern_diversity: Some(0.75),
             total_patterns: 10,
             total_instances: 50,
             total_loc: 1000,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let serialized = format!("{:?}", metrics);
@@ -91,16 +92,16 @@ mod property_tests {
 
     #[test]
     fn test_entropy_metrics_clone() {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         let metrics = EntropyMetrics {
-            file_level_entropy: 2.5,
-            module_level_entropy: 1.8,
-            project_level_entropy: 3.2,
-            pattern_diversity: 0.75,
+            file_level_entropy: Some(2.5),
+            module_level_entropy: Some(1.8),
+            project_level_entropy: Some(3.2),
+            pattern_diversity: Some(0.75),
             total_patterns: 10,
             total_instances: 50,
             total_loc: 1000,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let cloned = metrics.clone();
@@ -112,16 +113,16 @@ mod property_tests {
 
     #[test]
     fn test_entropy_metrics_memory_safety() {
-        use std::collections::HashMap;
+        use std::collections::BTreeMap;
         let metrics = EntropyMetrics {
-            file_level_entropy: 2.5,
-            module_level_entropy: 1.8,
-            project_level_entropy: 3.2,
-            pattern_diversity: 0.75,
+            file_level_entropy: Some(2.5),
+            module_level_entropy: Some(1.8),
+            project_level_entropy: Some(3.2),
+            pattern_diversity: Some(0.75),
             total_patterns: 10,
             total_instances: 50,
             total_loc: 1000,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let _cloned = metrics.clone();
@@ -139,7 +140,7 @@ mod coverage_tests {
     use crate::entropy::violation_detector::{ActionableViolation, PatternSummary};
     use crate::entropy::{EntropyConfig, PatternType, Severity};
     use proptest::prelude::*;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use std::path::PathBuf;
 
     // ============================================
@@ -148,15 +149,15 @@ mod coverage_tests {
 
     #[test]
     fn test_entropy_metrics_with_all_fields() {
-        let mut patterns_by_type = HashMap::new();
+        let mut patterns_by_type = BTreeMap::new();
         patterns_by_type.insert(PatternType::ErrorHandling, 10);
         patterns_by_type.insert(PatternType::DataValidation, 5);
 
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.85,
-            module_level_entropy: 0.75,
-            project_level_entropy: 0.70,
-            pattern_diversity: 0.78,
+            file_level_entropy: Some(0.85),
+            module_level_entropy: Some(0.75),
+            project_level_entropy: Some(0.70),
+            pattern_diversity: Some(0.78),
             total_patterns: 42,
             total_instances: 156,
             total_loc: 2500,
@@ -166,8 +167,8 @@ mod coverage_tests {
         assert_eq!(metrics.total_patterns, 42);
         assert_eq!(metrics.total_instances, 156);
         assert_eq!(metrics.total_loc, 2500);
-        assert!(metrics.file_level_entropy > 0.8);
-        assert!(metrics.pattern_diversity > 0.7);
+        assert!(metrics.file_level_entropy.expect("measured") > 0.8);
+        assert!(metrics.pattern_diversity.expect("measured") > 0.7);
         assert_eq!(
             metrics.patterns_by_type.get(&PatternType::ErrorHandling),
             Some(&10)
@@ -177,14 +178,14 @@ mod coverage_tests {
     #[test]
     fn test_entropy_metrics_serialization_json() {
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.5,
-            module_level_entropy: 0.6,
-            project_level_entropy: 0.7,
-            pattern_diversity: 0.55,
+            file_level_entropy: Some(0.5),
+            module_level_entropy: Some(0.6),
+            project_level_entropy: Some(0.7),
+            pattern_diversity: Some(0.55),
             total_patterns: 5,
             total_instances: 25,
             total_loc: 500,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let json = serde_json::to_string(&metrics).unwrap();
@@ -199,18 +200,18 @@ mod coverage_tests {
     #[test]
     fn test_entropy_metrics_zero_values() {
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.0,
-            module_level_entropy: 0.0,
-            project_level_entropy: 0.0,
-            pattern_diversity: 0.0,
+            file_level_entropy: Some(0.0),
+            module_level_entropy: Some(0.0),
+            project_level_entropy: Some(0.0),
+            pattern_diversity: Some(0.0),
             total_patterns: 0,
             total_instances: 0,
             total_loc: 0,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         assert_eq!(metrics.total_loc, 0);
-        assert_eq!(metrics.pattern_diversity, 0.0);
+        assert_eq!(metrics.pattern_diversity, Some(0.0));
     }
 
     // ============================================
@@ -221,21 +222,22 @@ mod coverage_tests {
         EntropyReport {
             total_files_analyzed: 10,
             actionable_violations: violations,
-            pattern_summary: PatternSummary {
+            pattern_summary: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 0,
                 variation_score: 0.0,
                 example_code: String::new(),
-            },
+            }),
+            measurement_note: None,
             entropy_metrics: EntropyMetrics {
-                file_level_entropy: 0.5,
-                module_level_entropy: 0.6,
-                project_level_entropy: 0.7,
-                pattern_diversity: 0.55,
+                file_level_entropy: Some(0.5),
+                module_level_entropy: Some(0.6),
+                project_level_entropy: Some(0.7),
+                pattern_diversity: Some(0.55),
                 total_patterns: 5,
                 total_instances: 25,
                 total_loc,
-                patterns_by_type: HashMap::new(),
+                patterns_by_type: BTreeMap::new(),
             },
         }
     }
@@ -243,15 +245,15 @@ mod coverage_tests {
     fn create_test_violation(severity: Severity, loc_reduction: usize) -> ActionableViolation {
         ActionableViolation {
             severity,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 5,
                 variation_score: 0.1,
                 example_code: "test code".to_string(),
-            },
+            }),
             message: "Test violation message".to_string(),
             fix_suggestion: "Fix suggestion".to_string(),
-            estimated_loc_reduction: loc_reduction,
+            estimated_loc_reduction: Some(loc_reduction),
             affected_files: vec![PathBuf::from("test.rs")],
             priority_score: 5.0,
         }
@@ -332,15 +334,38 @@ mod coverage_tests {
         assert!(formatted.contains("MEDIUM SEVERITY (1)"));
     }
 
+    /// UPDATED (round 3): this asserted `!formatted.contains("LOW SEVERITY")`,
+    /// pinning a count that disagreed with the list it heads — with
+    /// `--min-severity low` the report printed "Actionable Violations: 1" and
+    /// then listed nothing.
     #[test]
-    fn test_entropy_report_format_report_with_low_severity() {
-        // Low severity violations are not shown in the format_report
+    fn test_entropy_report_format_report_lists_low_severity() {
         let violations = vec![create_test_violation(Severity::Low, 25)];
         let report = create_test_report(violations, 1000);
         let formatted = report.format_report();
 
-        // Low severity is not displayed in the report
-        assert!(!formatted.contains("LOW SEVERITY"));
+        assert!(formatted.contains("Actionable Violations: 1"));
+        assert!(
+            formatted.contains("LOW SEVERITY (1)"),
+            "a counted violation must appear in the list, got:\n{formatted}"
+        );
+    }
+
+    /// A violation whose saving was never estimated renders as "not estimated",
+    /// not as "saves 0 lines" — a plausible default is still a fabrication.
+    #[test]
+    fn test_unestimated_saving_is_not_rendered_as_zero() {
+        let mut violation = create_test_violation(Severity::Medium, 25);
+        violation.estimated_loc_reduction = None;
+        let report = create_test_report(vec![violation], 1000);
+        let formatted = report.format_report();
+
+        assert!(
+            formatted.contains("saves not estimated"),
+            "got:\n{formatted}"
+        );
+        assert!(!formatted.contains("saves 0 lines"));
+        assert_eq!(report.total_loc_reduction(), 0);
     }
 
     #[test]
@@ -411,7 +436,13 @@ mod coverage_tests {
         assert_eq!(metrics.total_patterns, 0);
         assert_eq!(metrics.total_instances, 0);
         assert_eq!(metrics.total_loc, 0);
-        assert_eq!(metrics.pattern_diversity, 0.0);
+        // CONTRACT UPDATED (#650): with no patterns there is no distribution to
+        // take the entropy of. This used to assert 0.0, i.e. "zero diversity" —
+        // the worst possible score — for input that simply had nothing to repeat.
+        assert_eq!(
+            metrics.pattern_diversity, None,
+            "an uncomputable diversity must be absent, not 0.0"
+        );
     }
 
     #[test]
@@ -438,7 +469,10 @@ mod coverage_tests {
 
         assert_eq!(metrics.total_patterns, 1);
         assert_eq!(metrics.total_instances, 5);
-        assert_eq!(metrics.total_loc, 50); // 5 * 10
+        // CONTRACT UPDATED (#650): total_loc is now the measured source size of
+        // the analyzed input, not sum(estimated_loc * frequency). This collection
+        // was hand-built with no files read, so nothing was measured.
+        assert_eq!(metrics.total_loc, 0);
     }
 
     #[test]
@@ -479,8 +513,9 @@ mod coverage_tests {
 
         assert_eq!(metrics.total_patterns, 2);
         assert_eq!(metrics.total_instances, 8); // 5 + 3
-        assert_eq!(metrics.total_loc, 65); // 5*10 + 3*5
-        assert!(metrics.pattern_diversity > 0.0);
+                                                // CONTRACT UPDATED (#650): measured source size, and nothing was read here.
+        assert_eq!(metrics.total_loc, 0);
+        assert!(metrics.pattern_diversity.expect("measurable") > 0.0);
     }
 
     #[test]
@@ -739,19 +774,19 @@ mod coverage_tests {
             diversity in 0.0f64..=1.0,
         ) {
             let metrics = EntropyMetrics {
-                file_level_entropy: file_entropy,
-                module_level_entropy: module_entropy,
-                project_level_entropy: project_entropy,
-                pattern_diversity: diversity,
+                file_level_entropy: Some(file_entropy),
+                module_level_entropy: Some(module_entropy),
+                project_level_entropy: Some(project_entropy),
+                pattern_diversity: Some(diversity),
                 total_patterns: 10,
                 total_instances: 50,
                 total_loc: 1000,
-                patterns_by_type: HashMap::new(),
+                patterns_by_type: BTreeMap::new(),
             };
 
-            prop_assert!(metrics.file_level_entropy >= 0.0 && metrics.file_level_entropy <= 1.0);
-            prop_assert!(metrics.module_level_entropy >= 0.0 && metrics.module_level_entropy <= 1.0);
-            prop_assert!(metrics.pattern_diversity >= 0.0 && metrics.pattern_diversity <= 1.0);
+            prop_assert!((0.0..=1.0).contains(&metrics.file_level_entropy.unwrap()));
+            prop_assert!((0.0..=1.0).contains(&metrics.module_level_entropy.unwrap()));
+            prop_assert!((0.0..=1.0).contains(&metrics.pattern_diversity.unwrap()));
         }
 
         #[test]
@@ -844,7 +879,7 @@ mod coverage_tests {
 
         let metrics = calculator.calculate(&patterns).unwrap();
         assert_eq!(metrics.total_patterns, 100);
-        assert!(metrics.pattern_diversity > 0.0);
+        assert!(metrics.pattern_diversity.expect("measured") > 0.0);
     }
 
     #[test]
@@ -911,14 +946,14 @@ mod coverage_tests {
     #[test]
     fn test_entropy_metrics_with_empty_patterns_by_type() {
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.5,
-            module_level_entropy: 0.5,
-            project_level_entropy: 0.5,
-            pattern_diversity: 0.5,
+            file_level_entropy: Some(0.5),
+            module_level_entropy: Some(0.5),
+            project_level_entropy: Some(0.5),
+            pattern_diversity: Some(0.5),
             total_patterns: 0,
             total_instances: 0,
             total_loc: 0,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         assert!(metrics.patterns_by_type.is_empty());

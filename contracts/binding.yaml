@@ -196,3 +196,47 @@ bindings:
   source_file: src/cli/handlers/work_quality_handlers.rs
   function: run_popper_falsification
   status: implemented
+# --- pmat-no-fabrication-v1: every function fixed in the anti-fabrication sweep
+# binds to the equation it now satisfies. A binding here is the claim that this
+# function no longer reports a value it did not measure; the equation's
+# falsification_tests are what make that claim refutable.
+- contract: pmat-no-fabrication-v1.yaml
+  equation: measured_or_absent
+  source_file: src/services/deep_context/analyzer_core/quality.rs
+  function: DeepContextAnalyzer::calculate_quality_scorecard
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: measured_or_absent
+  source_file: src/services/deep_context/deep_context_quality_types.rs
+  function: QualityScorecard::render
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: output_derived_from_input
+  source_file: src/services/deep_context/analyzer_core/quality.rs
+  function: DeepContextAnalyzer::measured_line_coverage
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: detection_mode_superset
+  source_file: src/cli/analysis/duplicates_extraction.rs
+  function: extract_blocks
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: measured_or_absent
+  source_file: src/cli/analysis/duplicates_output.rs
+  function: format_json_output
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: bounded_time_arithmetic
+  source_file: src/services/git_analysis.rs
+  function: GitAnalysisService::analyze_code_churn
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: session_survives_recoverable_frame
+  source_file: src/mcp_pmcp/simple_unified_server.rs
+  function: EofSignalingTransport::is_session_over
+  status: implemented
+- contract: pmat-no-fabrication-v1.yaml
+  equation: session_survives_recoverable_frame
+  source_file: src/mcp_pmcp/simple_unified_server.rs
+  function: EofSignalingTransport::receive
+  status: implemented

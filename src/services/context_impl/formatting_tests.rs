@@ -3,6 +3,55 @@
 mod visitor_tests {
     use super::*;
 
+    fn use_paths(code: &str) -> Vec<String> {
+        let syntax = syn::parse_str::<syn::File>(code).expect("parse");
+        let mut visitor = RustVisitor::new(code.to_string());
+        visitor.visit_file(&syntax);
+        visitor
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                AstItem::Use { path, .. } => Some(path.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Regression test for #653: the visitor recorded only the first segment of a
+    /// use tree ("crate", "std", "super"), which erased every intra-crate import
+    /// target and made DAG import edges impossible to resolve.
+    #[test]
+    fn test_use_statement_records_full_path() {
+        assert_eq!(
+            use_paths("use crate::services::dag_builder::DagBuilder;"),
+            vec!["crate::services::dag_builder::DagBuilder".to_string()]
+        );
+        assert_eq!(
+            use_paths("use std::io;"),
+            vec!["std::io".to_string()],
+            "path must be the whole path, not just its first segment"
+        );
+        assert_eq!(use_paths("use io;"), vec!["io".to_string()]);
+        assert_eq!(
+            use_paths("use std::io as stdio;"),
+            vec!["std::io".to_string()]
+        );
+        assert_eq!(
+            use_paths("use std::prelude::*;"),
+            vec!["std::prelude::*".to_string()]
+        );
+    }
+
+    /// A braced group keeps the shared module prefix — the key DAG import
+    /// resolution matches on.
+    #[test]
+    fn test_use_group_keeps_module_prefix() {
+        assert_eq!(
+            use_paths("use helper::{helper_one, helper_two};"),
+            vec!["helper".to_string()]
+        );
+    }
+
     #[tokio::test]
     async fn test_analyze_rust_file() {
         let temp_dir = std::env::temp_dir();

@@ -81,7 +81,7 @@ pub async fn handle_quality_gate(
     fail_on_violation: bool,
     checks: Vec<QualityCheckType>,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     include_provability: bool,
     output: Option<PathBuf>,

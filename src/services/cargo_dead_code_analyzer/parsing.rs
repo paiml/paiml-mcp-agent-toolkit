@@ -114,45 +114,36 @@ impl CargoDeadCodeAnalyzer {
         file_map
             .into_iter()
             .map(|(file_path, dead_items)| {
-                // Calculate file-specific percentage
-                let file_dead_percentage = self
-                    .calculate_file_percentage(&file_path, &dead_items)
-                    .unwrap_or(0.0);
+                // Measure the file once and carry BOTH numbers. The percentage
+                // used to be derived from a line count that was then thrown
+                // away, and the renderer substituted the constant 100.
+                let total_lines = self.count_file_lines(&file_path);
+                let file_dead_percentage = file_percentage(total_lines, &dead_items);
 
                 FileDeadCode {
                     file_path,
                     dead_items,
                     file_dead_percentage,
+                    total_lines,
                 }
             })
             .collect()
     }
 
-    /// Calculate dead code percentage for a specific file
-    fn calculate_file_percentage(&self, file_path: &Path, dead_items: &[DeadItem]) -> Result<f64> {
+    /// Physical line count for a file, or `None` when it cannot be read.
+    ///
+    /// `None` means "not measured" and must never be rendered as a number —
+    /// see `contracts/pmat-no-fabrication-v1.yaml`, `measured_or_absent`.
+    fn count_file_lines(&self, file_path: &Path) -> Option<usize> {
         let full_path = if file_path.is_absolute() {
             file_path.to_path_buf()
         } else {
             self.project_path.join(file_path)
         };
 
-        if !full_path.exists() {
-            return Ok(0.0);
-        }
-
-        let content =
-            std::fs::read_to_string(&full_path).context("Failed to read file for line counting")?;
-
-        let total_lines = content.lines().count();
-        if total_lines == 0 {
-            return Ok(0.0);
-        }
-
-        // Estimate dead lines (approximate 3-5 lines per item)
-        let estimated_dead_lines = dead_items.len() * 4;
-        let percentage = (estimated_dead_lines as f64 / total_lines as f64) * 100.0;
-
-        Ok(percentage.min(100.0))
+        std::fs::read_to_string(&full_path)
+            .ok()
+            .map(|content| content.lines().count())
     }
 
     /// Calculate overall metrics
@@ -192,20 +183,17 @@ impl CargoDeadCodeAnalyzer {
             }
         }
 
-        // Count dead lines and categorize by type
+        // Count dead lines and categorize by type. The line estimate uses the
+        // SAME per-kind weights as the per-file figure (`estimated_dead_lines`)
+        // — the two used to disagree (project total 94 from 5/3/2 weights vs
+        // 76 from `items * 4` summed over the listed files), so the summary
+        // contradicted the list underneath it.
         for file in &files {
             for item in &file.dead_items {
                 let kind_str = dead_code_kind_to_str(&item.kind);
                 *dead_by_type.entry(kind_str.to_string()).or_insert(0) += 1;
-
-                // Estimate lines per item type
-                let lines = match item.kind {
-                    DeadCodeKind::Function | DeadCodeKind::Method => 5,
-                    DeadCodeKind::Struct | DeadCodeKind::Enum => 3,
-                    _ => 2,
-                };
-                dead_lines += lines;
             }
+            dead_lines += estimated_dead_lines(&file.dead_items);
         }
 
         let dead_code_percentage = if total_lines > 0 {
@@ -223,6 +211,38 @@ impl CargoDeadCodeAnalyzer {
             dead_lines,
             dead_by_type,
         })
+    }
+}
+
+/// Estimated dead lines for a set of dead items.
+///
+/// This is the single estimator for the whole command: a function or method is
+/// charged 5 lines, a struct or enum 3, anything else 2. It is an estimate of
+/// lines from a measured item count, not a measured line span — the summary and
+/// the per-file rows must at least agree with each other.
+pub(crate) fn estimated_dead_lines(items: &[DeadItem]) -> usize {
+    items
+        .iter()
+        .map(|item| match item.kind {
+            DeadCodeKind::Function | DeadCodeKind::Method => 5,
+            DeadCodeKind::Struct | DeadCodeKind::Enum => 3,
+            _ => 2,
+        })
+        .sum()
+}
+
+/// Dead-code percentage for one file: estimated dead lines over the file's
+/// measured line count. `0.0` when the line count is unavailable — the caller
+/// reports `total_lines: null` alongside, so the zero is not read as a
+/// measurement of "no dead code".
+fn file_percentage(total_lines: Option<usize>, items: &[DeadItem]) -> f64 {
+    match total_lines {
+        Some(lines) if lines > 0 => {
+            #[allow(clippy::cast_precision_loss)]
+            let pct = (estimated_dead_lines(items) as f64 / lines as f64) * 100.0;
+            pct.min(100.0)
+        }
+        _ => 0.0,
     }
 }
 

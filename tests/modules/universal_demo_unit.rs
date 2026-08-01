@@ -81,12 +81,12 @@ mod universal_demo_unit_tests {
                 ast_contexts: vec![],
             },
             quality_scorecard: QualityScorecard {
-                overall_health: 75.0,
-                complexity_score: 80.0,
-                maintainability_index: 70.0,
-                modularity_score: 85.0,
+                overall_health: Some(75.0),
+                complexity_score: Some(80.0),
+                maintainability_index: Some(70.0),
+                modularity_score: Some(85.0),
                 test_coverage: Some(0.0),
-                technical_debt_hours: 0.0,
+                technical_debt_hours: Some(0.0),
             },
             template_provenance: None,
             defect_summary: DefectSummary {

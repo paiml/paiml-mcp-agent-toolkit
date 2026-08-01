@@ -591,4 +591,173 @@ mod tests {
             "Complexity 11 SHOULD violate threshold 10 (11 > 10)"
         );
     }
+
+    mod dag_type_regression {
+        use crate::cli::handlers::complexity_handlers::{
+            count_rendered_elements, filter_graph_by_dag_type,
+        };
+        use crate::cli::DagType;
+        use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+        use rustc_hash::FxHashMap;
+
+        fn node(id: &str, node_type: NodeType) -> NodeInfo {
+            NodeInfo {
+                id: id.to_string(),
+                label: id.to_string(),
+                node_type,
+                file_path: "src/lib.rs".to_string(),
+                line_number: 1,
+                complexity: 1,
+                metadata: FxHashMap::default(),
+            }
+        }
+
+        fn mixed_graph() -> DependencyGraph {
+            let mut graph = DependencyGraph::new();
+            for id in [
+                "caller", "callee", "importer", "imported", "child", "parent",
+            ] {
+                graph.add_node(node(id, NodeType::Function));
+            }
+            graph.add_edge(Edge {
+                from: "caller".to_string(),
+                to: "callee".to_string(),
+                edge_type: EdgeType::Calls,
+                weight: 1,
+            });
+            graph.add_edge(Edge {
+                from: "importer".to_string(),
+                to: "imported".to_string(),
+                edge_type: EdgeType::Imports,
+                weight: 1,
+            });
+            graph.add_edge(Edge {
+                from: "child".to_string(),
+                to: "parent".to_string(),
+                edge_type: EdgeType::Inherits,
+                weight: 1,
+            });
+            graph
+        }
+
+        /// Regression test for #653: `--dag-type` was ignored, so call-graph,
+        /// import-graph, inheritance and full-dependency were byte-identical.
+        #[test]
+        fn test_dag_type_selects_different_subgraphs() {
+            let graph = mixed_graph();
+
+            let calls = filter_graph_by_dag_type(graph.clone(), &DagType::CallGraph);
+            let imports = filter_graph_by_dag_type(graph.clone(), &DagType::ImportGraph);
+            let inheritance = filter_graph_by_dag_type(graph.clone(), &DagType::Inheritance);
+            let full = filter_graph_by_dag_type(graph.clone(), &DagType::FullDependency);
+
+            assert_eq!(calls.edges.len(), 1);
+            assert_eq!(calls.edges[0].edge_type, EdgeType::Calls);
+            assert_eq!(imports.edges.len(), 1);
+            assert_eq!(imports.edges[0].edge_type, EdgeType::Imports);
+            assert_eq!(inheritance.edges.len(), 1);
+            assert_eq!(inheritance.edges[0].edge_type, EdgeType::Inherits);
+            assert_eq!(full.edges.len(), 3);
+
+            // The call graph must not be the same graph as the inheritance graph.
+            assert_ne!(calls.edges[0].edge_type, inheritance.edges[0].edge_type);
+            assert_eq!(calls.nodes.len(), 2);
+        }
+
+        /// Regression test for #653: the announced node count must equal the number
+        /// of nodes actually emitted in the diagram (observed: 6 announced, 4 drawn).
+        #[test]
+        fn test_count_rendered_elements_matches_diagram() {
+            let diagram = "graph TD\n    a[main]\n    b[main]\n    c((Trait))\n\n    a --> b\n    b -.-> c\n\n    style a fill:#fff,stroke-width:1px\n";
+
+            let (nodes, edges) = count_rendered_elements(diagram);
+
+            assert_eq!(nodes, 3);
+            assert_eq!(edges, 2);
+        }
+
+        #[test]
+        fn test_count_rendered_elements_empty_diagram() {
+            assert_eq!(count_rendered_elements("graph TD\n"), (0, 0));
+        }
+    }
+
+    /// Round 3: `analyze complexity --format json` aggregated the summary over
+    /// the `--top-files` SLICE while `summary.total_files` claimed whole-project
+    /// scope. On one unchanged 1070-file tree the default `--top-files 10`
+    /// reported total_files 1070 next to total_functions 159 (true 10148),
+    /// technical_debt_hours 388.75 (true 1644.25) and max_cyclomatic 29 (true
+    /// project maximum 31): a cap wearing the word "total".
+    mod summary_scope {
+        use super::*;
+        use crate::cli::handlers::complexity_handlers::analysis::{
+            apply_top_files_limit, build_report_over_analyzed_files,
+        };
+        use crate::services::complexity::aggregate_results_with_thresholds;
+
+        fn file_with(name: &str, cyclomatic: u16) -> FileComplexityMetrics {
+            FileComplexityMetrics {
+                path: name.to_string(),
+                total_complexity: ComplexityMetrics::new(cyclomatic, cyclomatic, 3, 100),
+                functions: vec![FunctionComplexity {
+                    name: format!("{name}_f"),
+                    line_start: 1,
+                    line_end: 20,
+                    metrics: ComplexityMetrics::new(cyclomatic, cyclomatic, 2, 20),
+                }],
+                classes: vec![],
+            }
+        }
+
+        #[test]
+        fn test_summary_is_invariant_to_the_top_files_cap() {
+            let all: Vec<_> = (0..40)
+                .map(|i| file_with(&format!("f{i:02}.rs"), 5 + u16::try_from(i).unwrap()))
+                .collect();
+
+            // The whole-project aggregate, computed once over every file.
+            let full = aggregate_results_with_thresholds(all.clone(), None, None);
+
+            for cap in [1usize, 5, 10, 39] {
+                let mut listed = all.clone();
+                apply_top_files_limit(&mut listed, cap);
+                assert_eq!(listed.len(), cap, "cap {cap} must truncate the LIST");
+
+                // Exactly what the handler does.
+                let report = build_report_over_analyzed_files(all.clone(), listed, None, None);
+
+                assert_eq!(
+                    report.summary.total_files, 40,
+                    "total_files must be the analyzed count, not the cap"
+                );
+                assert!(report.files.len() <= report.summary.total_files);
+                assert_eq!(report.summary.total_functions, full.summary.total_functions);
+                assert_eq!(report.summary.max_cyclomatic, full.summary.max_cyclomatic);
+                assert!(
+                    (report.summary.technical_debt_hours - full.summary.technical_debt_hours).abs()
+                        < f32::EPSILON,
+                    "technical debt must not shrink with the display cap"
+                );
+            }
+        }
+
+        /// The defect in one assertion: aggregating the truncated list gives a
+        /// smaller total than aggregating everything, so the pre-fix summary
+        /// could not have been describing `total_files` files.
+        #[test]
+        fn test_aggregating_the_slice_understates_the_project() {
+            let all: Vec<_> = (0..40)
+                .map(|i| file_with(&format!("f{i:02}.rs"), 5 + u16::try_from(i).unwrap()))
+                .collect();
+            let mut sliced = all.clone();
+            apply_top_files_limit(&mut sliced, 10);
+
+            let full = aggregate_results_with_thresholds(all, None, None);
+            let capped = aggregate_results_with_thresholds(sliced, None, None);
+
+            assert!(capped.summary.total_functions < full.summary.total_functions);
+            assert_eq!(capped.summary.total_files, 10);
+            assert_eq!(full.summary.total_files, 40);
+        }
+    }
 }

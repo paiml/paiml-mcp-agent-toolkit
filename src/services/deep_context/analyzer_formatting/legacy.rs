@@ -80,19 +80,19 @@ impl DeepContextAnalyzer {
         writeln!(output, "\n## Quality Scorecard\n")?;
         writeln!(
             output,
-            "- **Overall Health**: {} ({:.1}/100)",
+            "- **Overall Health**: {} ({})",
             self.overall_health_emoji(scorecard.overall_health),
-            scorecard.overall_health
+            QualityScorecard::render(scorecard.overall_health, "/100")
         )?;
         writeln!(
             output,
-            "- **Maintainability Index**: {:.1}",
-            scorecard.maintainability_index
+            "- **Maintainability Index**: {}",
+            QualityScorecard::render(scorecard.maintainability_index, "")
         )?;
         writeln!(
             output,
-            "- **Refactoring Time**: {:.1} hours estimated",
-            scorecard.technical_debt_hours
+            "- **Refactoring Time**: {}",
+            QualityScorecard::render(scorecard.technical_debt_hours, " hours estimated")
         )?;
         Ok(())
     }

@@ -288,7 +288,7 @@ async fn test_handle_quality_gate_nonexistent_path() {
         false,
         vec![],
         0.15,
-        0.5,
+        Some(0.5),
         20,
         false,
         None,
@@ -959,6 +959,8 @@ mod dead_code_formatter_comprehensive {
             files,
             total_files: file_count,
             analyzed_files: file_count,
+            files_with_dead_code_found: file_count,
+            files_truncated: false,
         }
     }
 

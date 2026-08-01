@@ -34,9 +34,14 @@ proptest! {
     }
 
     /// Test entropy check with various thresholds
+    ///
+    /// The old ignore reason ("fails when min_entropy = 0.0 produces no
+    /// violations") described the #683 defect, which is fixed: 0.0 now correctly
+    /// produces no violations and every emitted message names the threshold.
+    /// Still ignored purely for cost — it re-scans the whole repository once per
+    /// proptest case.
     #[test]
-    #[ignore] // Property test fails when min_entropy = 0.0 produces no violations
-              // Assertion expects violations but empty list is valid (Sprint 45 Round 1)
+    #[ignore = "SLOW: scans entire codebase per proptest case"]
     fn test_entropy_threshold_property(min_entropy in 0.0..1.0) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let result = rt.block_on(async {
@@ -64,9 +69,12 @@ proptest! {
     }
 
     /// Test entropy threshold ordering
-    /// IGNORED: Property test - scans entire codebase per iteration (> 60s execution time)
+    ///
+    /// The "flaky" note predates the determinism fix; the analysis now returns
+    /// the same numbers for the same input. Still ignored for cost: two full
+    /// repository scans per proptest case.
     #[test]
-    #[ignore] // Flaky in coverage run
+    #[ignore = "SLOW: two full-repository scans per proptest case"]
     fn test_entropy_monotonicity(
         low_threshold in 0.1..0.5,
         high_threshold in 0.5..0.9,
@@ -130,9 +138,12 @@ proptest! {
     }
 
     /// Test violation message quality
+    ///
+    /// Entropy messages now always carry the threshold context
+    /// ("... [pattern diversity X% < required Y% (--min-entropy Y)]"), so the
+    /// keyword assertion below holds. Still ignored for cost.
     #[test]
-    #[ignore] // Property test fails - entropy violations may not contain "entropy"/"diversity" keywords
-              // Actual message format differs from test expectations (Sprint 45 Round 2)
+    #[ignore = "SLOW: scans entire codebase per proptest case"]
     fn test_violation_message_quality(check_type in prop::sample::select(vec!["dead_code", "entropy"])) {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let violations = rt.block_on(async {

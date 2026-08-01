@@ -23,7 +23,11 @@ impl RustBorrowChecker {
 
     /// Analyze thread safety via trait bounds and type analysis
     #[cfg(feature = "rust-ast")]
-    fn analyze_thread_safety(&self, item_fn: &ItemFn) -> Option<ProofAnnotation> {
+    fn analyze_thread_safety(
+        &self,
+        location: &Location,
+        item_fn: &ItemFn,
+    ) -> Option<ProofAnnotation> {
         // Conservative analysis: only if all parameters appear to be Send+Sync
         let params_likely_send_sync = item_fn.sig.inputs.iter().all(|arg| {
             match arg {
@@ -36,7 +40,7 @@ impl RustBorrowChecker {
         });
 
         if params_likely_send_sync {
-            Some(self.create_thread_safety_annotation())
+            Some(self.create_thread_safety_annotation(location))
         } else {
             None
         }
@@ -142,16 +146,17 @@ impl RustBorrowChecker {
                 let loc = Location::new(file_path.to_owned(), start, end);
 
                 // Memory safety guarantee for safe functions
-                annotations.push((loc.clone(), self.memory_safety_annotation()));
+                annotations.push((loc.clone(), self.memory_safety_annotation(&loc)));
 
                 // Thread safety analysis
-                if let Some(thread_safety) = self.analyze_thread_safety(item_fn) {
+                if let Some(thread_safety) = self.analyze_thread_safety(&loc, item_fn) {
                     annotations.push((loc.clone(), thread_safety));
                 }
 
                 // Termination analysis for const fn
                 if item_fn.sig.constness.is_some() {
-                    annotations.push((loc, self.const_fn_termination()));
+                    let annotation = self.const_fn_termination(&loc);
+                    annotations.push((loc, annotation));
                 }
             }
             Item::Impl(item_impl) if !self.contains_unsafe_impl(item_impl) => {
@@ -161,7 +166,8 @@ impl RustBorrowChecker {
                         let start = 0u32;
                         let end = 100u32;
                         let loc = Location::new(file_path.to_owned(), start, end);
-                        annotations.push((loc, self.auto_trait_annotation(trait_path)));
+                        let annotation = self.auto_trait_annotation(&loc, trait_path);
+                        annotations.push((loc, annotation));
                     }
                 }
             }
@@ -185,7 +191,8 @@ impl RustBorrowChecker {
         if !self.contains_unsafe(&content) {
             // If no unsafe code found, assume memory safety
             let loc = Location::new(file_path.to_owned(), 0, content.len() as u32);
-            annotations.push((loc, self.memory_safety_annotation()));
+            let annotation = self.memory_safety_annotation(&loc);
+            annotations.push((loc, annotation));
         }
 
         Ok(annotations)

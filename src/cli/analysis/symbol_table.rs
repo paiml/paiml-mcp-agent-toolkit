@@ -2,8 +2,16 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
+
+/// How many resolved use sites `--show-references` prints per symbol before
+/// summarising the rest as "(+N more)".
+const REFERENCE_SITES_SHOWN: usize = 5;
+
+/// How many symbols of each kind `--format summary` lists before "... and N more".
+/// `--format detailed` lists all of them.
+const SYMBOLS_PER_GROUP_IN_SUMMARY: usize = 10;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Symbol.
@@ -17,7 +25,10 @@ pub struct Symbol {
     pub references: Vec<Reference>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+// `Ord` is derived (declaration order) so symbol groups can be held in a
+// `BTreeMap` and rendered in a fixed order; a `HashMap` reshuffled the sections
+// between runs of the same command.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// Symbol kind.
 pub enum SymbolKind {
     Function,
@@ -65,9 +76,20 @@ pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub total_symbols: usize,
     pub unreferenced_symbols: Vec<String>,
+    /// The top `--top-files` names by resolved use sites.
+    ///
+    /// This was hard-capped at 10 with nothing saying so and `--top-files`
+    /// ignored, so its length was 10 whether the project had 11 referenced
+    /// names or 11 000 — a cap wearing the shape of a total. It now honours the
+    /// flag, and [`Self::referenced_symbol_count`] names the population it is
+    /// drawn from.
     pub most_referenced: Vec<(String, usize)>,
+    /// How many distinct names have at least one resolved use site — the whole
+    /// that `most_referenced` is the top slice of.
+    pub referenced_symbol_count: usize,
 }
 
+include!("symbol_table_references.rs");
 include!("symbol_table_extraction.rs");
 include!("symbol_table_formatting.rs");
 include!("symbol_table_tests.rs");

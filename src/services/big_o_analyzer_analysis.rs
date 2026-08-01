@@ -94,6 +94,18 @@ impl BigOAnalyzer {
     }
 
     /// Analyze single file for complexity
+    ///
+    /// #655/#661: this used to run a bare `fn\s+(\w+)` regex over the raw file
+    /// and then hand `content[name_start..]` — *the entire rest of the file* —
+    /// to the body analyzer. Two consequences:
+    ///   * every function in a file inherited the deepest loop nest that
+    ///     appeared anywhere below it, so a loop-free `a + b` was reported
+    ///     O(n^2) with the same confidence as the nested-loop function under it;
+    ///   * the regex matched comment text, inventing functions named "2" and "3"
+    ///     out of `/// fn 2: ...` doc lines.
+    ///
+    /// Function boundaries now come from the same `LanguageAnalyzer` the
+    /// complexity path uses, and each function sees only its own body.
     async fn analyze_file(
         &self,
         file_path: &PathBuf,
@@ -108,46 +120,50 @@ impl BigOAnalyzer {
             .and_then(|ext| ext.to_str())
             .unwrap_or("");
 
-        let (pattern, lang) = Self::detect_language_pattern(extension);
+        let (_pattern, lang) = Self::detect_language_pattern(extension);
+        let language = crate::cli::language_analyzer::Language::from_path(file_path);
 
         // Unknown file type, skip analysis
-        if pattern.is_empty() {
+        if lang.is_empty() || language == crate::cli::language_analyzer::Language::Unknown {
             return Ok(functions);
         }
 
-        // Use only the appropriate pattern for this file's language
-        let regex = regex::Regex::new(pattern)?;
-        for cap in regex.captures_iter(&content) {
-            if let Some(name_match) = cap.get(cap.len() - 1) {
-                let function_name = name_match.as_str().to_string();
-                let line_number = content
-                    .get(..name_match.start())
-                    .unwrap_or_default()
-                    .lines()
-                    .count();
+        let extractor = crate::cli::language_analyzer::create_analyzer(language);
+        let lines: Vec<&str> = content.lines().collect();
 
-                // Analyze function complexity
-                let complexity = self.analyze_function_complexity(
-                    &function_name,
-                    content.get(name_match.start()..).unwrap_or_default(),
-                    lang,
-                );
+        for info in extractor.extract_functions(&content) {
+            let Some(body) = Self::function_body(&lines, info.line_start, info.line_end) else {
+                continue;
+            };
 
-                if complexity.confidence >= config.confidence_threshold {
-                    functions.push(FunctionComplexity {
-                        file_path: file_path.clone(),
-                        function_name,
-                        line_number,
-                        time_complexity: complexity.time_complexity,
-                        space_complexity: complexity.space_complexity,
-                        confidence: complexity.confidence,
-                        notes: complexity.notes,
-                    });
-                }
+            let complexity = self.analyze_function_complexity(&info.name, &body, lang);
+
+            if complexity.confidence >= config.confidence_threshold {
+                functions.push(FunctionComplexity {
+                    file_path: file_path.clone(),
+                    function_name: info.name,
+                    // 1-based real source line, not a prefix line count that
+                    // rendered a function at the top of a file as "line 0".
+                    line_number: info.line_start + 1,
+                    time_complexity: complexity.time_complexity,
+                    space_complexity: complexity.space_complexity,
+                    confidence: complexity.confidence,
+                    notes: complexity.notes,
+                });
             }
         }
 
         Ok(functions)
+    }
+
+    /// Join the source lines a function actually occupies (0-based, inclusive).
+    fn function_body(lines: &[&str], start: usize, end: usize) -> Option<String> {
+        let last = lines.len().checked_sub(1)?;
+        let end = end.min(last);
+        if start > end {
+            return None;
+        }
+        Some(lines[start..=end].join("\n"))
     }
 
     /// Detect language pattern and name from file extension
@@ -178,7 +194,9 @@ impl BigOAnalyzer {
         language: &str,
     ) -> ComplexityAnalysisResult {
         let mut notes = Vec::new();
-        let lines: Vec<&str> = function_body.lines().take(100).collect();
+        // No `.take(100)` any more: `function_body` is now this function's body,
+        // not the rest of the file, so there is nothing to truncate away.
+        let lines: Vec<&str> = function_body.lines().collect();
 
         // Get language-specific loop keywords
         let loop_keywords = Self::get_loop_keywords(language);

@@ -21,6 +21,18 @@ pub async fn handle_analyze_defects(
 
     let target_path = path.unwrap_or_else(|| Path::new("."));
 
+    // GH-666: a nonexistent `--path` walked to zero files and printed
+    // "Total Files Scanned: 0 ... Exit code: 0 (no critical defects)".
+    crate::cli::ensure_analysis_path_exists(target_path)?;
+
+    // GH-664: a nonexistent `--file` was pushed into the scan list unread, so
+    // the read silently failed and the summary still claimed
+    // "Total Files Scanned: 1" (and `total_files_scanned: 1` in JSON) for a file
+    // that does not exist. `analyze complexity --file` already errored here.
+    if let Some(specific_file) = file {
+        crate::cli::ensure_analysis_path_exists(specific_file)?;
+    }
+
     // Collect all Rust files to scan
     let files_to_scan = if let Some(specific_file) = file {
         vec![specific_file.to_path_buf()]

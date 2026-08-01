@@ -945,4 +945,154 @@ mod tests {
         // 1.0 + 2.0 + 3.0 = 6.0
         assert!((scores[0].1 - 6.0).abs() < f64::EPSILON);
     }
+
+    // ============================================
+    // DETERMINISM (round-3 sweep)
+    // ============================================
+
+    /// `analyze big-o --format json` returned a DIFFERENT set of
+    /// `high_complexity_functions` on every run over an unchanged tree: 6 runs
+    /// gave 6 distinct membership sets, only 16 of 24 slots stable, union 42
+    /// functions. Cause: `--top-files` ranks files by a score on which nearly
+    /// every file TIES (one O(n^2) function is 5.0 everywhere), the ranking is
+    /// built from a `HashMap`, and `sort_by` is stable — so `.take(n)` kept
+    /// whichever tied files that process's hash seed visited first.
+    ///
+    /// Each iteration builds a FRESH `HashMap`, which gets its own
+    /// `RandomState` and therefore its own iteration order: the in-process
+    /// stand-in for "run the binary again".
+    #[test]
+    fn top_files_selection_is_stable_across_fresh_hash_maps() {
+        fn top_two() -> Vec<PathBuf> {
+            // Eight files, all tied at exactly one Quadratic function (5.0).
+            let functions: Vec<FunctionComplexity> = (0..8)
+                .map(|i| {
+                    create_test_function_complexity(
+                        "f",
+                        &format!("src/tied_{i}.rs"),
+                        1,
+                        BigOClass::Quadratic,
+                        90,
+                    )
+                })
+                .collect();
+            let grouped = group_functions_by_file(&functions);
+            let scores = calculate_file_complexity_scores(&grouped);
+            let mut kept: Vec<PathBuf> = get_top_file_paths(scores, 2).into_iter().collect();
+            kept.sort();
+            kept
+        }
+
+        let first = top_two();
+        assert_eq!(first.len(), 2);
+        for i in 0..10 {
+            assert_eq!(
+                top_two(),
+                first,
+                "iteration {i}: tied files must be ranked by path, not by hash seed"
+            );
+        }
+        // Ties resolve to the lexicographically smallest paths, so the answer
+        // is a property of the tree rather than of the process.
+        assert_eq!(
+            first,
+            vec![
+                PathBuf::from("src/tied_0.rs"),
+                PathBuf::from("src/tied_1.rs")
+            ]
+        );
+    }
+
+    /// A COUNT MUST AGREE WITH THE LIST IT HEADS, and a total that is secretly
+    /// a cap must say so. `summary.high_complexity_count` was the length of the
+    /// TRUNCATED list while the distribution beside it counted the whole
+    /// project: 24 vs 106 on pmat's own tree, with no truncation flag.
+    #[test]
+    fn json_summary_names_both_the_listed_and_the_found_high_complexity_counts() {
+        let analyzer = BigOAnalyzer::new();
+        let report = BigOAnalysisReport {
+            analyzed_functions: 100,
+            complexity_distribution: ComplexityDistribution {
+                constant: 40,
+                logarithmic: 0,
+                linear: 30,
+                linearithmic: 0,
+                // 20 + 5 + 5 = 30 functions qualified as high complexity...
+                quadratic: 20,
+                cubic: 5,
+                exponential: 5,
+                unknown: 0,
+            },
+            // ...but only two survived `--top-files`.
+            high_complexity_functions: vec![
+                create_test_function_complexity("a", "src/a.rs", 1, BigOClass::Quadratic, 90),
+                create_test_function_complexity("b", "src/b.rs", 2, BigOClass::Cubic, 90),
+            ],
+            pattern_matches: vec![],
+            recommendations: vec![],
+        };
+
+        let json: serde_json::Value =
+            serde_json::from_str(&analyzer.format_as_json(&report).unwrap()).unwrap();
+        let summary = &json["summary"];
+        let listed = json["high_complexity_functions"].as_array().unwrap().len();
+
+        assert_eq!(
+            summary["high_complexity_count"].as_u64().unwrap() as usize,
+            listed,
+            "the count must equal the length of the list it heads"
+        );
+        assert_eq!(summary["high_complexity_found"].as_u64().unwrap(), 30);
+        assert_eq!(
+            summary["high_complexity_truncated"],
+            serde_json::json!(true)
+        );
+
+        let markdown = analyzer.format_as_markdown(&report);
+        assert!(
+            markdown.contains("2 listed of 30 found"),
+            "markdown must disclose the truncation too: {markdown}"
+        );
+    }
+
+    /// No part may exceed its whole: an untruncated report reports the same
+    /// number twice and does not claim to be truncated.
+    #[test]
+    fn json_summary_does_not_claim_truncation_when_nothing_was_cut() {
+        let analyzer = BigOAnalyzer::new();
+        let report = BigOAnalysisReport {
+            analyzed_functions: 10,
+            complexity_distribution: ComplexityDistribution {
+                constant: 8,
+                logarithmic: 0,
+                linear: 0,
+                linearithmic: 0,
+                quadratic: 2,
+                cubic: 0,
+                exponential: 0,
+                unknown: 0,
+            },
+            high_complexity_functions: vec![
+                create_test_function_complexity("a", "src/a.rs", 1, BigOClass::Quadratic, 90),
+                create_test_function_complexity("b", "src/b.rs", 2, BigOClass::Quadratic, 90),
+            ],
+            pattern_matches: vec![],
+            recommendations: vec![],
+        };
+
+        let json: serde_json::Value =
+            serde_json::from_str(&analyzer.format_as_json(&report).unwrap()).unwrap();
+        assert_eq!(
+            json["summary"]["high_complexity_count"].as_u64().unwrap(),
+            2
+        );
+        assert_eq!(
+            json["summary"]["high_complexity_found"].as_u64().unwrap(),
+            2
+        );
+        assert_eq!(
+            json["summary"]["high_complexity_truncated"],
+            serde_json::json!(false)
+        );
+    }
 }

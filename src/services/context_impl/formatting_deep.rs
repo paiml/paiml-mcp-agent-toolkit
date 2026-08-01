@@ -34,28 +34,30 @@ fn format_quality_scorecard(
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
     output.push_str("## Quality Scorecard\n\n");
+    use crate::services::deep_context::QualityScorecard as QS;
     output.push_str(&format!(
-        "- **Overall Health**: {:.1}%\n",
-        scorecard.overall_health
+        "- **Overall Health**: {}\n",
+        QS::render(scorecard.overall_health, "%")
     ));
     output.push_str(&format!(
-        "- **Complexity Score**: {:.1}%\n",
-        scorecard.complexity_score
+        "- **Complexity Score**: {}\n",
+        QS::render(scorecard.complexity_score, "%")
     ));
     output.push_str(&format!(
-        "- **Maintainability Index**: {:.1}%\n",
-        scorecard.maintainability_index
+        "- **Maintainability Index**: {}\n",
+        QS::render(scorecard.maintainability_index, "%")
     ));
     output.push_str(&format!(
-        "- **Modularity Score**: {:.1}%\n",
-        scorecard.modularity_score
+        "- **Modularity Score**: {}\n",
+        QS::render(scorecard.modularity_score, "%")
     ));
+    // Only rendered when a coverage artifact was actually found.
     if let Some(coverage) = scorecard.test_coverage {
         output.push_str(&format!("- **Test Coverage**: {coverage:.1}%\n"));
     }
     output.push_str(&format!(
-        "- **Refactoring Estimate**: {:.1} hours\n\n",
-        scorecard.technical_debt_hours
+        "- **Refactoring Estimate**: {}\n\n",
+        QS::render(scorecard.technical_debt_hours, " hours")
     ));
 }
 

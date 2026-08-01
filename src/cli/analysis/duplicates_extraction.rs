@@ -9,14 +9,37 @@ fn extract_blocks(
     let mut blocks = Vec::new();
     let file_str = path.to_string_lossy().to_string();
 
+    // Exhaustive on purpose. This match used to end in `_ => {}`, which
+    // silently swallowed `All` -- the DOCUMENTED DEFAULT. So the default
+    // invocation extracted zero blocks and reported "total_duplicates: 0,
+    // duplication_percentage: 0.0" for byte-identical files, while
+    // `--detection-type exact` on the same input found 124. Reporting
+    // duplicated code as clean is worse than reporting nothing at all.
+    //
+    // Keeping it exhaustive means a new DuplicateType variant is a compile
+    // error here rather than another silent zero.
     match detection_type {
         crate::cli::DuplicateType::Exact => {
             extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        crate::cli::DuplicateType::Fuzzy => {
+        crate::cli::DuplicateType::Fuzzy | crate::cli::DuplicateType::Gapped => {
             extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        _ => {} // Structural matching not implemented yet
+        // `All` must be a superset of every sub-mode, never a subset. Both
+        // extractors run and their blocks are unioned; the hashes cannot
+        // collide across modes because `extract_fuzzy_blocks` hashes a
+        // structural signature while `extract_exact_blocks` hashes normalised
+        // source, and identical content legitimately matching under both is a
+        // genuine duplicate either way.
+        crate::cli::DuplicateType::All => {
+            extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+            extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+        }
+        // Type-2 (renamed) and Type-4 (semantic) have no implementation here.
+        // They extract nothing rather than pretending: the caller reports the
+        // honest zero for an explicitly requested mode, which is different from
+        // the default silently reporting zero for everything.
+        crate::cli::DuplicateType::Renamed | crate::cli::DuplicateType::Semantic => {}
     }
 
     blocks
@@ -62,7 +85,17 @@ fn extract_fuzzy_blocks(
     let mut i = 0;
     while i < lines.len() {
         if is_block_start(lines[i]) {
-            let end = find_block_end(&lines[i..]).unwrap_or(min_lines) + i;
+            // Clamped: `find_block_end` returning None falls back to
+            // `min_lines`, and `i + min_lines` can run past the end of the
+            // file — `&lines[i..end]` then panics with "range end index 131 out
+            // of range for slice of length 130".
+            //
+            // This was latent: `All` used to fall into a `_ => {}` arm so this
+            // extractor was never reached on the DEFAULT detection type. Making
+            // `All` a real superset turned a dormant panic into a crash on
+            // `pmat analyze duplicates` over any ordinary source tree,
+            // including pmat's own (SIGABRT, rc=134).
+            let end = (find_block_end(&lines[i..]).unwrap_or(min_lines) + i).min(lines.len());
             if end - i >= min_lines {
                 let block_lines = &lines[i..end];
                 let content = normalize_block(block_lines);
@@ -177,7 +210,30 @@ fn find_duplicate_blocks(
 
     // Find duplicates
     let mut duplicates = Vec::new();
-    for (hash, locations) in hash_groups {
+    for (hash, mut locations) in hash_groups {
+        // Collapse OVERLAPPING windows within a file before deciding anything is
+        // duplicated. Detection slides a window one line at a time, so a single
+        // 5-line function yields windows at 2-6, 3-7 and 4-8 whose normalised
+        // text can hash identically. Counting those as three "locations" made a
+        // file of four entirely distinct functions report four duplicates at
+        // 211.5% duplication. Overlapping windows are the same code, not copies
+        // of it.
+        //
+        // Greedy sweep per file: keep a window, skip every later one that starts
+        // before the kept one ends.
+        locations.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+        let mut kept: Vec<(String, usize, usize, String)> = Vec::new();
+        for loc in locations {
+            let overlaps_kept = kept
+                .last()
+                .is_some_and(|last| last.0 == loc.0 && loc.1 <= last.2);
+            if !overlaps_kept {
+                kept.push(loc);
+            }
+        }
+        let locations = kept;
+
+        // Two or more NON-OVERLAPPING sites is what makes it a duplicate.
         if locations.len() > 1 {
             let lines = locations[0].2 - locations[0].1 + 1;
             let tokens = count_tokens(&locations[0].3);
@@ -209,8 +265,31 @@ fn find_duplicate_blocks(
         }
     }
 
-    // Sort by lines descending
-    duplicates.sort_by_key(|b| std::cmp::Reverse(b.lines));
+    // Sort by lines descending.
+    //
+    // DETERMINISM (round-3 sweep): `hash_groups` is a `HashMap`, so the vector
+    // above was built in a per-process random order, and `sort_by_key` is
+    // stable — every block of the same `lines` therefore kept that random
+    // order. `analyze duplicates --format json` on a fixed two-file fixture
+    // produced 5 DIFFERENT md5 sums over 5 runs, with the same 14 block hashes
+    // merely reordered. The (file, start_line, hash) suffix is a total order
+    // over blocks: `locations` is already sorted by (file, start) above, and no
+    // two surviving blocks share a hash.
+    duplicates.sort_by(|a, b| {
+        b.lines
+            .cmp(&a.lines)
+            .then_with(|| {
+                let a_first = a.locations.first();
+                let b_first = b.locations.first();
+                match (a_first, b_first) {
+                    (Some(x), Some(y)) => (&x.file, x.start_line).cmp(&(&y.file, y.start_line)),
+                    (None, Some(_)) => std::cmp::Ordering::Less,
+                    (Some(_), None) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                }
+            })
+            .then_with(|| a.hash.cmp(&b.hash))
+    });
 
     duplicates
 }

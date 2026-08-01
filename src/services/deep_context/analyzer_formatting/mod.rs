@@ -44,7 +44,12 @@ impl DeepContextAnalyzer {
             .map_err(|e| anyhow::anyhow!("Failed to serialize to JSON: {e}"))
     }
 
-    fn overall_health_emoji(&self, health: f64) -> &'static str {
+    fn overall_health_emoji(&self, health: Option<f64>) -> &'static str {
+        // An unmeasured health score gets a neutral marker, never "❌" --
+        // a failure verdict on a number nobody computed is a fabrication.
+        let Some(health) = health else {
+            return "\u{2014}";
+        };
         if health >= 80.0 {
             "\u{2705}"
         } else if health >= 60.0 {

@@ -28,7 +28,7 @@ pub(crate) fn grade_delta(from: Grade, to: Grade) -> String {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn grade_to_number(grade: Grade) -> i32 {
     match grade {
-        Grade::APLus => 11,
+        Grade::APlus => 11,
         Grade::A => 10,
         Grade::AMinus => 9,
         Grade::BPlus => 8,
@@ -57,7 +57,7 @@ pub(crate) fn format_metric_name(metric: &crate::tdg::MetricCategory) -> &'stati
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn grade_description(grade: Grade) -> &'static str {
     match grade {
-        Grade::APLus => {
+        Grade::APlus => {
             "**A+** (95-100): Exceptional code quality. Production-ready with excellent practices."
         }
         Grade::A => "**A** (90-94): High quality code with minor room for improvement.",

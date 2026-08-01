@@ -226,9 +226,12 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
         return None;
     }
 
+    // Ties break alphabetically, not by HashMap iteration order. Same defect
+    // class as GH #673: an unbroken tie made the reported language flip between
+    // runs over unchanged input.
     lang_counts
         .into_iter()
-        .max_by_key(|&(_, count)| count)
+        .max_by_key(|&(lang, count)| (count, std::cmp::Reverse(lang)))
         .map(|(lang, count)| {
             let confidence = (f64::from(count) / f64::from(total_files)) * 100.0;
             (lang.to_string(), confidence)

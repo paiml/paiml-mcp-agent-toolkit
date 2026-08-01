@@ -44,6 +44,56 @@ mod tests {
         DependencyGraph { nodes, edges }
     }
 
+    /// Regression test for #653: two nodes that render with the same display name
+    /// (the module `main` and the function `main`) both have to survive. The map was
+    /// keyed by display name, so one silently overwrote the other and `analyze dag`
+    /// announced more nodes than it drew ("6 nodes", 4 node lines).
+    #[test]
+    fn test_nodes_with_identical_display_names_are_both_kept() {
+        let mut nodes = FxHashMap::default();
+        nodes.insert(
+            "src_main".to_string(),
+            NodeInfo {
+                id: "src_main".to_string(),
+                label: "main".to_string(),
+                node_type: NodeType::Module,
+                file_path: "src/main.rs".to_string(),
+                line_number: 0,
+                complexity: 1,
+                metadata: FxHashMap::default(),
+            },
+        );
+        nodes.insert(
+            "src_main::main".to_string(),
+            NodeInfo {
+                id: "src_main::main".to_string(),
+                label: "main".to_string(),
+                node_type: NodeType::Function,
+                file_path: "src/main.rs".to_string(),
+                line_number: 4,
+                complexity: 2,
+                metadata: FxHashMap::default(),
+            },
+        );
+        let graph = DependencyGraph {
+            nodes,
+            edges: vec![],
+        };
+
+        let builder = FixedGraphBuilder::new(GraphConfig {
+            max_nodes: 50,
+            max_edges: 400,
+            grouping: GroupingStrategy::Module,
+        });
+        let fixed = builder.build(&graph).unwrap();
+
+        assert_eq!(
+            fixed.nodes.len(),
+            2,
+            "distinct nodes must not be merged by display name"
+        );
+    }
+
     #[test]
     fn test_deterministic_build() {
         let config = GraphConfig::default();

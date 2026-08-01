@@ -24,19 +24,13 @@ fn format_text(
     output.push_str(&format!("{}\n", c::rule()));
     output.push('\n');
 
-    // Summary — exclude N/A categories from totals (#237)
-    let applicable_earned: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.earned)
-        .sum();
-    let applicable_possible: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.max)
-        .sum();
+    // Summary — exclude N/A categories from totals (#237).
+    // #687: folded via `aggregation` (name-sorted, rounded) rather than over
+    // `HashMap::values()`, so text cannot disagree with json/yaml about the
+    // same number.
+    use crate::services::rust_project_score::aggregation;
+    let applicable_earned = aggregation::applicable_earned(&score.categories);
+    let applicable_possible = aggregation::applicable_possible(&score.categories);
     output.push_str(&format!("{}\n", c::label("Summary")));
     output.push_str(&format!(
         "  Score: {}\n",
@@ -45,6 +39,20 @@ fn format_text(
     output.push_str(&format!(
         "  Normalized: {} (avg of category %)\n",
         c::pct(score.percentage, 80.0, 60.0)
+    ));
+    // The points ratio, spelled out. "Score: 236.9/289" above and "Normalized:
+    // 87.2%" here are two different quantities; naming the third makes the
+    // relationship checkable instead of leaving the reader to divide and
+    // conclude one of them is wrong.
+    #[allow(clippy::cast_precision_loss)]
+    let points_percentage = if applicable_possible > 0.0 {
+        (applicable_earned / applicable_possible) * 100.0
+    } else {
+        0.0
+    };
+    output.push_str(&format!(
+        "  Points: {} of possible points\n",
+        c::pct(points_percentage, 80.0, 60.0)
     ));
     output.push_str(&format!(
         "  Grade: {}\n",
@@ -55,9 +63,9 @@ fn format_text(
     // Categories
     output.push_str(&format!("{}\n", c::label("Categories")));
 
-    // Sort categories by name for consistent output
-    let mut categories: Vec<_> = score.categories.iter().collect();
-    categories.sort_by_key(|(name, _)| *name);
+    // Sort categories by name for consistent output (#687: same ordering as
+    // the json/yaml/markdown renderers)
+    let categories = aggregation::sorted_categories(&score.categories);
 
     for (name, category) in categories {
         if !category.applicable {
@@ -117,25 +125,36 @@ fn format_markdown(
     // Header
     output.push_str(&format!("# Rust Project Score v{}\n\n", SPEC_VERSION));
 
-    // Summary — exclude N/A categories from totals (#237)
-    let applicable_earned: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.earned)
-        .sum();
-    let applicable_possible: f64 = score
-        .categories
-        .values()
-        .filter(|cat| cat.applicable)
-        .map(|cat| cat.max)
-        .sum();
+    // Summary — exclude N/A categories from totals (#237).
+    // #687: same deterministic fold as text/json/yaml.
+    use crate::services::rust_project_score::aggregation;
+    let applicable_earned = aggregation::applicable_earned(&score.categories);
+    let applicable_possible = aggregation::applicable_possible(&score.categories);
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- **Score**: {:.1}/{:.0}\n",
         applicable_earned, applicable_possible
     ));
-    output.push_str(&format!("- **Percentage**: {:.1}%\n", score.percentage));
+    // ARITHMETIC SANITY: `percentage` does NOT follow from the two numbers on
+    // the line above it — it is the unweighted mean of the 11 category
+    // percentages, not `earned/possible`. On pmat's own tree that is 87.2% for
+    // a 236.9/289 score whose points ratio is 82.0%. Markdown used to print the
+    // two adjacent with no disclaimer at all (only the text renderer said
+    // "avg of category %"), so a reader had every reason to check the division
+    // and conclude one of them was wrong. Both are now named.
+    #[allow(clippy::cast_precision_loss)]
+    let points_percentage = if applicable_possible > 0.0 {
+        (applicable_earned / applicable_possible) * 100.0
+    } else {
+        0.0
+    };
+    output.push_str(&format!(
+        "- **Percentage**: {:.1}% (mean of category percentages — the grade is derived from this)\n",
+        score.percentage
+    ));
+    output.push_str(&format!(
+        "- **Points**: {points_percentage:.1}% of possible points ({applicable_earned:.1}/{applicable_possible:.0})\n"
+    ));
     output.push_str(&format!("- **Grade**: {}\n\n", score.grade));
 
     // Categories
@@ -143,8 +162,7 @@ fn format_markdown(
     output.push_str("| Category | Score | Percentage |\n");
     output.push_str("|----------|-------|------------|\n");
 
-    let mut categories: Vec<_> = score.categories.iter().collect();
-    categories.sort_by_key(|(name, _)| *name);
+    let categories = aggregation::sorted_categories(&score.categories);
 
     for (name, category) in categories {
         let percentage = category.percentage();

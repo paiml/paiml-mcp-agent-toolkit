@@ -152,6 +152,14 @@
         }
 
         #[test]
+        /// GH #670: DISTINCT SATD findings accumulate; the same finding cited by
+        /// several whys does not.
+        ///
+        /// This property previously put the same measurement on every why (same
+        /// file, same metric) and asserted the sum, which is the bug: it made
+        /// `satd_markers` a function of `--depth` (4 markers reported as 4/12/20
+        /// at depth 1/3/5). Each why now carries evidence about a different
+        /// file, so summing is the right answer for a real reason.
         fn prop_satd_count_accumulates(counts in proptest::collection::vec(0u64..100, 1..10)) {
             let mut whys = Vec::new();
 
@@ -159,7 +167,7 @@
                 let mut why = create_test_why_iteration((i + 1) as u8, 0.5);
                 why.add_evidence(Evidence::new(
                     EvidenceSource::SATD,
-                    PathBuf::from("test.rs"),
+                    PathBuf::from(format!("file{i}.rs")),
                     "satd".to_string(),
                     serde_json::json!({"count": count}),
                     "markers".to_string(),
@@ -170,6 +178,30 @@
             let summary = EvidenceSummary::from_whys(&whys);
             let expected: u64 = counts.iter().sum();
             prop_assert_eq!(summary.satd_markers, expected as usize);
+        }
+
+        /// The dual property: repeating ONE finding across N whys still counts
+        /// it once, whatever N is.
+        fn prop_satd_count_is_independent_of_depth(
+            count in 0u64..100,
+            depth in 1usize..10
+        ) {
+            let whys: Vec<_> = (0..depth)
+                .map(|i| {
+                    let mut why = create_test_why_iteration((i + 1) as u8, 0.5);
+                    why.add_evidence(Evidence::new(
+                        EvidenceSource::SATD,
+                        PathBuf::from("test.rs"),
+                        "satd".to_string(),
+                        serde_json::json!({"count": count}),
+                        "markers".to_string(),
+                    ));
+                    why
+                })
+                .collect();
+
+            let summary = EvidenceSummary::from_whys(&whys);
+            prop_assert_eq!(summary.satd_markers, count as usize);
         }
 
         #[test]

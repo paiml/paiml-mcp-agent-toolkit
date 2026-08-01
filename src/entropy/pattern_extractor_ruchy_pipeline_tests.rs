@@ -31,11 +31,18 @@ fn four_pipeline_ops_create_data_transformation_pattern() {
     let pattern = collection.patterns.values().next().unwrap();
     assert_eq!(pattern.pattern_type, PatternType::DataTransformation);
     assert_eq!(pattern.frequency, 4);
+    // UPDATED (round 3): asserted `estimated_loc == 8` from
+    // `matches.len() * 2`, an unmeasured "each pipeline operation is ~2 lines".
+    // All four operations are on one line, so one line is what they occupy.
     assert_eq!(
-        pattern.estimated_loc, 8,
-        "estimated_loc = matches.len() * 2"
+        pattern.estimated_loc, 1,
+        "estimated_loc is the measured source lines occupied"
     );
-    assert_eq!(pattern.locations.len(), 4);
+    assert_eq!(
+        pattern.locations.len(),
+        1,
+        "four operations on one line are one location"
+    );
     for loc in &pattern.locations {
         assert_eq!(loc.file, PathBuf::from("pipeline.ruchy"));
         assert_eq!(loc.column, 1);
@@ -60,13 +67,17 @@ fn zero_pipeline_ops_produce_no_pattern() {
     assert!(collection.patterns.is_empty());
 }
 
+/// UPDATED (round 3): this test was named `..._truncate_locations_at_sixteen`
+/// and asserted `locations.len() == 16` for 20 operations — it pinned a
+/// truncated list presented as the pattern's locations, and an `estimated_loc`
+/// of 40 that came from the constant `20 * 2` rather than from any line count.
 #[test]
-fn twenty_pipeline_ops_truncate_locations_at_sixteen() {
-    // Build 20 pipeline operations. The loop breaks when i >= 15, AFTER
-    // pushing — so locations ends up with 16 entries (indices 0..=15).
-    // frequency still reflects all 20 matches.
-    let ops = (0..20).map(|i| format!(" |> f{}()", i)).collect::<String>();
-    let content = format!("seed{}", ops);
+fn twenty_pipeline_ops_record_every_line() {
+    // One operation per line, so lines and operations coincide.
+    let ops = (0..20)
+        .map(|i| format!("  |> f{}()\n", i))
+        .collect::<String>();
+    let content = format!("seed\n{}", ops);
     let collection = run_pipeline(&content);
     assert_eq!(collection.patterns.len(), 1);
     let pattern = collection.patterns.values().next().unwrap();
@@ -76,10 +87,13 @@ fn twenty_pipeline_ops_truncate_locations_at_sixteen() {
     );
     assert_eq!(
         pattern.locations.len(),
-        16,
-        "locations capped by `if i >= 15 {{ break; }}` after push"
+        20,
+        "every occurrence is recorded, not the first sixteen"
     );
-    assert_eq!(pattern.estimated_loc, 40, "estimated_loc = 20 * 2");
+    assert_eq!(
+        pattern.estimated_loc, 20,
+        "estimated_loc is the measured line count"
+    );
 }
 
 #[test]

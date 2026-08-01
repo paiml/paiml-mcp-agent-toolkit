@@ -1,5 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+pub(crate) mod boxdraw;
 mod comparison;
 pub(crate) mod helpers;
 mod human;

@@ -13,9 +13,10 @@ use crate::mcp_pmcp::handlers::{
 use crate::mcp_pmcp::pdmt_handler::PdmtTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+use crate::mcp_pmcp::stdio_frames::RawFrameStdioTransport;
 use crate::mcp_server::state_manager::StateManager;
 use async_trait::async_trait;
-use pmcp::shared::{StdioTransport, Transport, TransportMessage};
+use pmcp::shared::{Transport, TransportMessage};
 use pmcp::{Server, ServerCapabilities};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -141,6 +142,9 @@ impl<T: Transport> EofSignalingTransport<T> {
         let Ok(mut bytes) = pmcp::shared::transport::serialize_message(frame) else {
             return false;
         };
+        // Same ordering the normal write path applies, so a salvaged response
+        // is not the one frame whose `tools` array is hash-ordered.
+        crate::mcp_pmcp::stdio_frames::order_registry_arrays(&mut bytes);
         bytes.push(b'\n');
 
         let mut out = tokio::io::stdout();
@@ -148,6 +152,96 @@ impl<T: Transport> EofSignalingTransport<T> {
             return false;
         }
         out.flush().await.is_ok()
+    }
+
+    /// Does this `receive()` error mean the session is genuinely over?
+    ///
+    /// Only a closed connection or a broken stdin does. A frame we could not
+    /// parse — a malformed line, an unknown method, bad params — says nothing
+    /// about whether the client is still there, and JSON-RPC defines error
+    /// responses precisely so the conversation can continue.
+    ///
+    /// Treating every error as terminal is what made a single bad frame kill
+    /// the whole session: `initialize` was answered, then an unknown method
+    /// ended the process with exit 0 and the *next valid* request was never
+    /// answered. A host sees the server succeed and vanish mid-conversation.
+    fn is_session_over(e: &pmcp::Error) -> bool {
+        matches!(
+            e,
+            pmcp::Error::Transport(
+                pmcp::error::TransportError::ConnectionClosed | pmcp::error::TransportError::Io(_)
+            )
+        )
+    }
+
+    /// How many consecutive non-terminal receive errors to tolerate.
+    ///
+    /// [`RawFrameStdioTransport`] consumes a line before it can reject it, so
+    /// this loop always makes progress and the cap is never reached in
+    /// production. It only bounds a hypothetical inner transport that errors
+    /// without consuming, so a bug there degrades to exit rather than a spin.
+    const MAX_CONSECUTIVE_BAD_FRAMES: u32 = 1024;
+
+    /// Read until a message arrives or the session is genuinely over.
+    ///
+    /// A frame the inner transport could not turn into a message must not end
+    /// the session: pmcp's actor breaks its `select!` the instant `receive()`
+    /// returns Err, so merely declining to signal session-end would turn a
+    /// silent exit into a hang — the error must not be propagated at all.
+    ///
+    /// The JSON-RPC error response for such a frame is emitted by the inner
+    /// transport, NOT here: [`RawFrameStdioTransport`] is the only layer that
+    /// still holds the raw line and can therefore echo the client's id and pick
+    /// the right code. This wrapper used to answer instead, and could only ever
+    /// emit `{"id":null,"code":-32700}` — which left every host correlating by
+    /// id waiting on a promise that never resolved (#648).
+    async fn receive_past_bad_frames(&mut self) -> pmcp::Result<TransportMessage> {
+        let mut bad_frames: u32 = 0;
+        loop {
+            let attempt = self.inner.receive().await;
+            match &attempt {
+                Err(e) if !Self::is_session_over(e) => {
+                    bad_frames += 1;
+                    if bad_frames >= Self::MAX_CONSECUTIVE_BAD_FRAMES {
+                        return attempt;
+                    }
+                }
+                _ => return attempt,
+            }
+        }
+    }
+
+    /// Record why the session ended and hold EOF back until nothing is owed.
+    ///
+    /// pmcp's transport actor breaks its loop the moment `receive()` errors,
+    /// *without* draining the outbound queue — so a response the worker has
+    /// already produced is dropped on the floor. That happens above this
+    /// wrapper, which is why counting sends alone was not enough: `send()` was
+    /// never reached. On pmcp 2.17 this cost `tools/list` its answer in 21 of 30
+    /// one-shot sessions.
+    ///
+    /// The actor's `select!` is `biased` with the outbound arm first, so simply
+    /// not resolving here keeps it in the loop: the queued response wins the
+    /// race, this future is dropped, `send()` runs and decrements, and the next
+    /// `receive()` surfaces EOF with nothing outstanding. Dropping this future
+    /// loses no bytes — the inner transport already returned an error, and
+    /// asking it again returns the same error.
+    async fn handle_terminal_receive_error(&mut self, e: &pmcp::Error) {
+        // Record the reason on the first error only, then signal as soon as
+        // everything already consumed has been answered.
+        if self.pending_end.is_none() {
+            self.pending_end = Some(e.to_string());
+        }
+
+        if self.in_flight > 0 {
+            // Bounded so a handler that never answers degrades to the old
+            // truncation rather than wedging the process forever; a hang is
+            // worse for a user than a lost response. The normal path never
+            // waits: the outbound arm wins in microseconds.
+            tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
+        }
+
+        self.signal_if_drained();
     }
 
     /// Fire the session-end signal if the read side is finished and no
@@ -200,44 +294,11 @@ impl<T: Transport> Transport for EofSignalingTransport<T> {
     }
 
     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
-        let result = self.inner.receive().await;
+        let result = self.receive_past_bad_frames().await;
         match &result {
             Ok(TransportMessage::Request { .. }) => self.in_flight += 1,
             Ok(_) => {}
-            Err(e) => {
-                // Record the reason on the first error only, then signal as
-                // soon as everything already consumed has been answered.
-                if self.pending_end.is_none() {
-                    self.pending_end = Some(e.to_string());
-                }
-
-                // Withhold EOF from pmcp while a consumed request is unanswered.
-                //
-                // pmcp's transport actor breaks its loop the moment `receive()`
-                // errors, *without* draining the outbound queue — so a response
-                // the worker has already produced is dropped on the floor. That
-                // happens above this wrapper, which is why counting sends alone
-                // was not enough: `send()` was never reached. On pmcp 2.17 this
-                // cost `tools/list` its answer in 21 of 30 one-shot sessions.
-                //
-                // The actor's `select!` is `biased` with the outbound arm first,
-                // so simply not resolving here keeps it in the loop: the queued
-                // response wins the race, this future is dropped, `send()` runs
-                // and decrements, and the next `receive()` surfaces EOF with
-                // nothing outstanding. Dropping this future loses no bytes — the
-                // inner transport already returned an error, and asking it again
-                // returns the same error.
-                if self.in_flight > 0 {
-                    // Bounded so a handler that never answers degrades to the
-                    // old truncation rather than wedging the process forever;
-                    // a hang is worse for a user than a lost response. The
-                    // normal path never waits: the outbound arm wins in
-                    // microseconds.
-                    tokio::time::sleep(Self::DRAIN_BACKSTOP).await;
-                }
-
-                self.signal_if_drained();
-            }
+            Err(e) => self.handle_terminal_receive_error(e).await,
         }
         result
     }
@@ -344,7 +405,12 @@ impl SimpleUnifiedServer {
         // `Server::run` keep-alive future never completes (even after the
         // reader task exits on EOF), so without this the process leaks after
         // one-shot piped sessions. See `EofSignalingTransport`.
-        let (transport, session_end) = EofSignalingTransport::new(StdioTransport::new());
+        //
+        // The inner transport is ours rather than `pmcp::shared::StdioTransport`
+        // because pmcp discards the raw line the moment `parse_message` fails,
+        // leaving no way to echo the client's id (#648): every bad frame came
+        // back `{"id":null,...,"code":-32700}`. See [`RawFrameStdioTransport`].
+        let (transport, session_end) = EofSignalingTransport::new(RawFrameStdioTransport::new());
         tokio::select! {
             result = server.run(transport) => {
                 result?;
@@ -1092,5 +1158,158 @@ mod coverage_tests {
             let _ = SimpleUnifiedServer::default();
         });
         assert!(result.is_ok());
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod recoverable_frame_tests {
+    use super::*;
+    use pmcp::types::RequestId;
+
+    /// Transport whose `receive()` replays a script of Ok/Err outcomes.
+    ///
+    /// Unlike `eof_drain_tests::ScriptedTransport` this can yield a *recoverable*
+    /// error — the case that used to kill the session.
+    #[derive(Debug)]
+    struct FlakyTransport {
+        script: std::collections::VecDeque<pmcp::Result<TransportMessage>>,
+        /// Reads attempted after the script ran dry. Proves the wrapper kept
+        /// reading rather than giving up on the first bad frame.
+        reads_past_end: usize,
+    }
+
+    impl FlakyTransport {
+        fn new(script: Vec<pmcp::Result<TransportMessage>>) -> Self {
+            Self {
+                script: script.into(),
+                reads_past_end: 0,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl Transport for FlakyTransport {
+        async fn send(&mut self, _message: TransportMessage) -> pmcp::Result<()> {
+            Ok(())
+        }
+        async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
+            match self.script.pop_front() {
+                Some(outcome) => outcome,
+                None => {
+                    self.reads_past_end += 1;
+                    Err(pmcp::Error::Transport(
+                        pmcp::error::TransportError::ConnectionClosed,
+                    ))
+                }
+            }
+        }
+        async fn close(&mut self) -> pmcp::Result<()> {
+            Ok(())
+        }
+        fn is_connected(&self) -> bool {
+            true
+        }
+        fn transport_type(&self) -> &'static str {
+            "flaky"
+        }
+    }
+
+    fn a_request() -> TransportMessage {
+        TransportMessage::Request {
+            id: RequestId::from(7i64),
+            request: pmcp::types::Request::Client(Box::new(pmcp::types::ClientRequest::ListTools(
+                Default::default(),
+            ))),
+        }
+    }
+
+    fn unparseable() -> pmcp::Error {
+        pmcp::Error::Transport(pmcp::error::TransportError::InvalidMessage(
+            "not json".to_string(),
+        ))
+    }
+
+    /// The regression (#648): one unparseable frame used to end the whole
+    /// session, so every later valid request was silently lost.
+    ///
+    /// Before the fix `receive()` returned the error, pmcp's actor broke its
+    /// loop, and the process exited 0 without answering the request that
+    /// followed. This asserts the wrapper skips the bad frame and surfaces the
+    /// NEXT valid message instead.
+    #[tokio::test]
+    async fn recoverable_error_does_not_end_the_session() {
+        let inner = FlakyTransport::new(vec![Err(unparseable()), Ok(a_request())]);
+        let (mut transport, mut rx) = EofSignalingTransport::new(inner);
+
+        let got = transport.receive().await;
+
+        assert!(
+            matches!(got, Ok(TransportMessage::Request { .. })),
+            "a bad frame must be skipped and the next valid request returned, got: {got:?}"
+        );
+        assert_eq!(
+            transport.in_flight, 1,
+            "the request surfaced past the bad frame must still be counted"
+        );
+        assert!(
+            rx.try_recv().is_err(),
+            "an unparseable frame must NOT signal session end"
+        );
+    }
+
+    /// Several bad frames in a row are each skipped, not just the first.
+    #[tokio::test]
+    async fn consecutive_recoverable_errors_are_all_skipped() {
+        let inner = FlakyTransport::new(vec![
+            Err(unparseable()),
+            Err(unparseable()),
+            Err(unparseable()),
+            Ok(a_request()),
+        ]);
+        let (mut transport, mut rx) = EofSignalingTransport::new(inner);
+
+        assert!(matches!(
+            transport.receive().await,
+            Ok(TransportMessage::Request { .. })
+        ));
+        assert!(
+            rx.try_recv().is_err(),
+            "repeated bad frames must not end the session"
+        );
+    }
+
+    /// The complement, so the fix cannot be "never end the session": a genuine
+    /// ConnectionClosed with nothing outstanding must still end it promptly.
+    #[tokio::test]
+    async fn connection_closed_still_ends_the_session() {
+        let inner = FlakyTransport::new(vec![Err(pmcp::Error::Transport(
+            pmcp::error::TransportError::ConnectionClosed,
+        ))]);
+        let (mut transport, mut rx) = EofSignalingTransport::new(inner);
+
+        let got = transport.receive().await;
+
+        assert!(got.is_err(), "EOF must still surface as an error");
+        assert!(
+            rx.try_recv().is_ok(),
+            "ConnectionClosed with nothing in flight must signal session end"
+        );
+    }
+
+    /// An IO failure on stdin is a broken stream, not a bad frame: it must end
+    /// the session rather than spin trying to read more.
+    #[tokio::test]
+    async fn io_error_ends_the_session() {
+        let inner = FlakyTransport::new(vec![Err(pmcp::Error::Transport(
+            pmcp::error::TransportError::Io("stdin exploded".to_string()),
+        ))]);
+        let (mut transport, mut rx) = EofSignalingTransport::new(inner);
+
+        assert!(transport.receive().await.is_err());
+        assert!(
+            rx.try_recv().is_ok(),
+            "an IO error must be treated as terminal"
+        );
     }
 }

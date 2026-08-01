@@ -16,7 +16,10 @@ fn generate_json_context(
         path: project_path.display().to_string(),
         total_files,
         total_functions,
-        overall_health: context.quality_scorecard.overall_health.clamp(0.0, 100.0),
+        overall_health: context
+            .quality_scorecard
+            .overall_health
+            .map(|h| h.clamp(0.0, 100.0)),
         maintainability_index: context.quality_scorecard.maintainability_index,
     };
 

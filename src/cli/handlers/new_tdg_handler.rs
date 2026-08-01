@@ -95,10 +95,12 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
 
     let analyzer = TdgAnalyzer::new()?;
     let _threshold = config.threshold.unwrap_or(1.5);
-    let _top_files = config.top_files.unwrap_or(10);
+    // `-n/--top-files` was read into a discarded binding, so it truncated
+    // nothing: -n 5 / -n 10 / -n 100000 all emitted the same file list.
+    let top_files = config.top_files.unwrap_or(10);
 
     let result = if config.path.is_dir() {
-        analyze_project_path(&analyzer, &config.path, &config.format).await?
+        analyze_project_path(&analyzer, &config.path, &config.format, top_files).await?
     } else {
         analyze_single_file(&analyzer, &config.path, &config.format).await?
     };
@@ -116,9 +118,15 @@ async fn analyze_project_path(
     analyzer: &TdgAnalyzer,
     path: &Path,
     format: &TdgOutputFormat,
+    top_files: usize,
 ) -> Result<String> {
-    let project_score = analyzer.analyze_project(path).await?;
-    format_project_result(&project_score, format)
+    let mut project_score = analyzer.analyze_project(path).await?;
+    // Honour --top-files for every renderer; aggregates stay whole-project and
+    // the truncation is disclosed (files_reported / files_truncated).
+    project_score.limit_to_worst_files(top_files);
+    // `root` is the analysed path, not the process CWD -- that distinction is
+    // the #680-round-3 fix for grades depending on the caller's directory.
+    format_project_result(&project_score, path, format)
 }
 
 async fn analyze_single_file(
@@ -132,6 +140,7 @@ async fn analyze_single_file(
 
 fn format_project_result(
     project_score: &crate::tdg::ProjectScore,
+    root: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
     let result = match format {
@@ -139,7 +148,7 @@ fn format_project_result(
         TdgOutputFormat::Json => serde_json::to_string_pretty(project_score)?,
         TdgOutputFormat::Markdown => format_project(project_score),
         TdgOutputFormat::Sarif => {
-            let sarif = create_sarif_output(project_score);
+            let sarif = create_sarif_output(project_score, root);
             serde_json::to_string_pretty(&sarif)?
         }
     };
@@ -206,61 +215,146 @@ fn format_comparison_result(
     Ok(result)
 }
 
-fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {
-    let results = project
-        .files
+/// SARIF severity band for a TDG score.
+///
+/// One band table for the project summary and for every file, so a single
+/// document can never grade the same number two different ways. `"none"` is a
+/// legal SARIF level and is what a passing measurement should carry.
+fn sarif_level(total: f32) -> &'static str {
+    if total < 50.0 {
+        "error"
+    } else if total < 65.0 {
+        "warning"
+    } else if total < 75.0 {
+        "note"
+    } else {
+        "none"
+    }
+}
+
+fn sarif_location(uri: String) -> serde_json::Value {
+    serde_json::json!([{
+        "physicalLocation": {
+            "artifactLocation": { "uri": uri }
+        }
+    }])
+}
+
+fn sarif_score_properties(score: &crate::tdg::TdgScore) -> serde_json::Value {
+    serde_json::json!({
+        "tdg_score": score.total,
+        "grade": score.grade.to_string(),
+        "language": score.language.to_string(),
+        "confidence": score.confidence,
+        "structural_complexity": score.structural_complexity,
+        "semantic_complexity": score.semantic_complexity,
+        "duplication_ratio": score.duplication_ratio,
+        "coupling_score": score.coupling_score,
+        "doc_coverage": score.doc_coverage,
+        "consistency_score": score.consistency_score,
+        "has_contract_coverage": score.has_contract_coverage,
+    })
+}
+
+/// One SARIF result per analyzed file — emitted for every file, not only for
+/// files under a threshold.
+///
+/// Issue #669, second round: the filter used to be `total < 75.0`, so an empty
+/// directory, a 3-function fixture (100.0/A+) and a 40-branch "awful" fixture
+/// (85.0/A-) all produced the SAME 1065-byte document with `results: []`. A
+/// document that does not change when the input changes is not a measurement.
+fn sarif_file_result(score: &crate::tdg::TdgScore) -> serde_json::Value {
+    let issues = score
+        .penalties_applied
         .iter()
-        .filter(|score| score.total < 75.0)
-        .map(|score| {
-            let level = if score.total < 50.0 {
-                "error"
-            } else if score.total < 65.0 {
-                "warning"
-            } else {
-                "note"
-            };
+        .map(|p| p.issue.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let issues = if issues.is_empty() {
+        "none recorded".to_string()
+    } else {
+        issues
+    };
 
-            let message = format!(
-                "TDG Score: {:.1}/100 ({}). Issues: {}",
-                score.total,
-                score.grade,
-                score
-                    .penalties_applied
-                    .iter()
-                    .map(|p| p.issue.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
+    serde_json::json!({
+        "ruleId": "TDG001",
+        "level": sarif_level(score.total),
+        "message": {
+            "text": format!(
+                "File TDG score {:.1}/100 ({}). Issues: {}",
+                score.total, score.grade, issues
+            )
+        },
+        "locations": sarif_location(
+            score
+                .file_path
+                .as_ref()
+                .map_or_else(|| "unknown".to_string(), |p| p.display().to_string()),
+        ),
+        "properties": sarif_score_properties(score),
+    })
+}
 
-            serde_json::json!({
-                "ruleId": "TDG001",
-                "level": level,
-                "message": {
-                    "text": message
-                },
-                "locations": [{
-                    "physicalLocation": {
-                        "artifactLocation": {
-                            "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
-                        }
-                    }
-                }],
-                "properties": {
-                    "tdg_score": score.total,
-                    "grade": score.grade.to_string(),
-                    "language": score.language.to_string(),
-                    "confidence": score.confidence,
-                    "structural_complexity": score.structural_complexity,
-                    "semantic_complexity": score.semantic_complexity,
-                    "duplication_ratio": score.duplication_ratio,
-                    "coupling_score": score.coupling_score,
-                    "doc_coverage": score.doc_coverage,
-                    "consistency_score": score.consistency_score
-                }
-            })
-        })
-        .collect::<Vec<_>>();
+/// The project-level result: the ONE number a SARIF consumer should read as
+/// "the" score, and the same number `--format json/markdown/table` print.
+///
+/// Issue #669, second round: SARIF used to state no project score at all. Its
+/// only "TDG Score:" line came from a per-file finding, so on a tree whose
+/// project score was 94.15/A- the SARIF document announced 72.5/100 (B-) — the
+/// worst file — and disagreed with every other renderer of the same command.
+fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serde_json::Value {
+    let text = if project.total_files == 0 {
+        format!(
+            "No analyzable files were found under {}; project TDG score {:.1}/100 ({}) is not based on any measured file.",
+            root.display(),
+            project.average_score,
+            project.average_grade
+        )
+    } else {
+        format!(
+            "Project TDG score {:.1}/100 ({}) over {} file(s).",
+            project.average_score, project.average_grade, project.total_files
+        )
+    };
 
+    serde_json::json!({
+        "ruleId": "TDG000",
+        "level": if project.total_files == 0 { "error" } else { sarif_level(project.average_score) },
+        "message": { "text": text },
+        "locations": sarif_location(root.display().to_string()),
+        "properties": {
+            "tdg_score": project.average_score,
+            "grade": project.average_grade.to_string(),
+            "total_files": project.total_files,
+            "f_grade_count": project.f_grade_count,
+            "grade_capped": project.grade_capped,
+        },
+    })
+}
+
+fn sarif_rules() -> serde_json::Value {
+    serde_json::json!([
+        {
+            "id": "TDG000",
+            "name": "ProjectTechnicalDebtGrading",
+            "shortDescription": { "text": "Project-level Technical Debt Grading (TDG) score" },
+            "fullDescription": { "text": "The aggregate TDG score for the analyzed path. This is the same number reported by --format json, markdown and table." },
+            "help": { "text": "Raise the project score by improving the lowest-scoring files reported under TDG001." }
+        },
+        {
+            "id": "TDG001",
+            "name": "TechnicalDebtGrading",
+            "shortDescription": { "text": "Technical Debt Grading (TDG) quality assessment" },
+            "fullDescription": { "text": "Comprehensive code quality assessment using orthogonal metrics: structural complexity, semantic complexity, code duplication, coupling, documentation, and consistency." },
+            "help": { "text": "Review the specific issues identified in the TDG analysis and consider refactoring to improve code quality." }
+        }
+    ])
+}
+
+fn sarif_document(
+    results: Vec<serde_json::Value>,
+    properties: serde_json::Value,
+) -> serde_json::Value {
     serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -270,105 +364,63 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
                     "name": "pmat-tdg",
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
                     "version": env!("CARGO_PKG_VERSION"),
-                    "rules": [{
-                        "id": "TDG001",
-                        "name": "TechnicalDebtGrading",
-                        "shortDescription": {
-                            "text": "Technical Debt Grading (TDG) quality assessment"
-                        },
-                        "fullDescription": {
-                            "text": "Comprehensive code quality assessment using orthogonal metrics: structural complexity, semantic complexity, code duplication, coupling, documentation, and consistency."
-                        },
-                        "help": {
-                            "text": "Review the specific issues identified in the TDG analysis and consider refactoring to improve code quality."
-                        }
-                    }]
+                    "rules": sarif_rules(),
                 }
             },
+            // Supplied by the caller: SARIF has nowhere else to say that the
+            // result set covers only the worst --top-files entries, and a
+            // capped list must never read as the whole project.
+            "properties": properties,
             "results": results
         }]
     })
 }
 
-fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
-    let level = if score.total < 50.0 {
-        "error"
-    } else if score.total < 65.0 {
-        "warning"
-    } else {
-        "note"
-    };
+/// Build a SARIF 2.1.0 document from a whole-project TDG score.
+///
+/// `pub(crate)` since issue #669: the top-level `pmat tdg --format sarif`
+/// command had no SARIF emitter of its own and printed a bare score, so it
+/// now reuses this one instead of growing a second implementation.
+pub(crate) fn create_sarif_output(
+    project: &crate::tdg::ProjectScore,
+    root: &Path,
+) -> serde_json::Value {
+    // Ordered by path, not by whatever order the directory walk produced:
+    // identical input must produce a byte-identical document.
+    let mut files: Vec<&crate::tdg::TdgScore> = project.files.iter().collect();
+    files.sort_by(|a, b| a.file_path.cmp(&b.file_path));
 
-    let message = format!(
-        "TDG Score: {:.1}/100 ({}). Issues: {}",
-        score.total,
-        score.grade,
-        score
-            .penalties_applied
-            .iter()
-            .map(|p| p.issue.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    let mut results = vec![sarif_project_result(project, root)];
+    results.extend(files.into_iter().map(sarif_file_result));
 
-    let results = if score.total < 75.0 {
-        vec![serde_json::json!({
-            "ruleId": "TDG001",
-            "level": level,
-            "message": {
-                "text": message
-            },
-            "locations": [{
-                "physicalLocation": {
-                    "artifactLocation": {
-                        "uri": score.file_path.as_ref().map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
-                    }
-                }
-            }],
-            "properties": {
-                "tdg_score": score.total,
-                "grade": score.grade.to_string(),
-                "language": score.language.to_string(),
-                "confidence": score.confidence,
-                "structural_complexity": score.structural_complexity,
-                "semantic_complexity": score.semantic_complexity,
-                "duplication_ratio": score.duplication_ratio,
-                "coupling_score": score.coupling_score,
-                "doc_coverage": score.doc_coverage,
-                "consistency_score": score.consistency_score
-            }
-        })]
-    } else {
-        vec![]
-    };
+    sarif_document(
+        results,
+        serde_json::json!({
+            "total_files": project.total_files,
+            "average_score": project.average_score,
+            "average_grade": project.average_grade.to_string(),
+            "f_grade_count": project.f_grade_count,
+            "grade_capped": project.grade_capped,
+        }),
+    )
+}
 
-    serde_json::json!({
-        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-        "version": "2.1.0",
-        "runs": [{
-            "tool": {
-                "driver": {
-                    "name": "pmat-tdg",
-                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
-                    "version": env!("CARGO_PKG_VERSION"),
-                    "rules": [{
-                        "id": "TDG001",
-                        "name": "TechnicalDebtGrading",
-                        "shortDescription": {
-                            "text": "Technical Debt Grading (TDG) quality assessment"
-                        },
-                        "fullDescription": {
-                            "text": "Comprehensive code quality assessment using orthogonal metrics: structural complexity, semantic complexity, code duplication, coupling, documentation, and consistency."
-                        },
-                        "help": {
-                            "text": "Review the specific issues identified in the TDG analysis and consider refactoring to improve code quality."
-                        }
-                    }]
-                }
-            },
-            "results": results
-        }]
-    })
+/// Build a SARIF 2.1.0 document from a single-file TDG score.
+///
+/// `pub(crate)` since issue #669 — see `create_sarif_output`.
+pub(crate) fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
+    // Issue #669, second round: this used to emit `results: []` for any file
+    // scoring >= 75, so a clean file and an unreadable one produced the same
+    // document. Every analyzed file now produces exactly one result whose
+    // `level` carries the verdict.
+    sarif_document(
+        vec![sarif_file_result(score)],
+        serde_json::json!({
+            "total_files": 1,
+            "average_score": score.total,
+            "average_grade": score.grade.to_string(),
+        }),
+    )
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

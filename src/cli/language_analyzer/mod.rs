@@ -14,7 +14,10 @@ mod rust;
 mod types;
 
 // Re-export all public items that were previously public from the single file
+// `find_brace_balanced_end` is the codebase's real, string-aware end-of-block
+// finder; services use it instead of guessing function extents (#652, #656).
 pub use c::CAnalyzer;
+pub(crate) use complexity::find_brace_balanced_end;
 pub use dynamic::{LuaAnalyzer, ScalaAnalyzer, SqlAnalyzer};
 pub use javascript::JavaScriptAnalyzer;
 pub use python::PythonAnalyzer;
@@ -153,7 +156,11 @@ fn create_empty_metrics(path: &Path, content: &str) -> FileComplexityMetrics {
     }
 }
 
-fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
+/// Build the analyzer for a language. Public so other services (Big-O) can
+/// extract the *same* function boundaries the complexity path uses, instead of
+/// running their own regex over the raw file (#655, #661).
+#[must_use]
+pub fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
     match language {
         Language::Rust => Box::new(RustAnalyzer),
         Language::JavaScript | Language::TypeScript => Box::new(JavaScriptAnalyzer),

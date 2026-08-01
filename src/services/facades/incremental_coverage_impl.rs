@@ -49,48 +49,79 @@ impl IncrementalCoverageFacade {
         get_changed_files_for_coverage(project_path, base_branch, target_branch).await
     }
 
-    /// Analyze coverage changes for files
+    /// Line coverage for each changed file, read from the coverage artifact the
+    /// project already has on disk.
+    ///
+    /// This used to be `coverage_before = 0.75`, `coverage_after = 0.85`,
+    /// `lines 85/100` for every file, under `// Mock coverage analysis for now`
+    /// — identical numbers whatever the project contained. Now it reads the same
+    /// lcov/llvm-cov artifact `pmat context` reads, and reports "not measured"
+    /// when there is none instead of a plausible default.
     async fn analyze_coverage_changes(
         &self,
-        _project_path: &Path,
+        project_path: &Path,
         changed_files: &[(PathBuf, String)],
         request: &IncrementalCoverageRequest,
     ) -> Result<Vec<ChangedFileCoverage>> {
+        let measured = Self::load_line_coverage(project_path);
         let mut coverage_data = Vec::new();
 
         for (path, status) in changed_files {
-            if status == "M" || status == "A" {
-                // Mock coverage analysis for now - would integrate with real coverage analyzer
-                let coverage_before = if status == "A" { 0.0 } else { 0.75 };
-                let coverage_after = 0.85;
-                let coverage_delta = coverage_after - coverage_before;
+            if status != "M" && status != "A" {
+                continue;
+            }
 
-                let file_coverage = ChangedFileCoverage {
-                    file_path: path.display().to_string(),
-                    coverage_before,
-                    coverage_after,
-                    coverage_delta,
-                    status: if coverage_delta > 0.0 {
-                        CoverageStatus::Improved
-                    } else if coverage_delta < 0.0 {
-                        CoverageStatus::Degraded
-                    } else {
-                        CoverageStatus::Unchanged
-                    },
-                    lines_covered: 85,
-                    lines_total: 100,
-                };
+            coverage_data.push(Self::file_coverage(path, measured.as_ref()));
 
-                coverage_data.push(file_coverage);
-
-                // Only analyze top N files if requested
-                if coverage_data.len() >= request.top_files {
-                    break;
-                }
+            // Only analyze top N files if requested
+            if coverage_data.len() >= request.top_files {
+                break;
             }
         }
 
         Ok(coverage_data)
+    }
+
+    /// Line-hit counts for the project, or `None` when no coverage run has
+    /// produced an artifact. Never runs a coverage tool.
+    fn load_line_coverage(
+        project_path: &Path,
+    ) -> Option<std::collections::HashMap<String, std::collections::HashMap<usize, u64>>> {
+        crate::services::agent_context::query::discover_line_coverage(project_path)
+    }
+
+    /// Coverage for one changed file. Absent from the artifact ⇒ not measured.
+    fn file_coverage(
+        path: &Path,
+        measured: Option<
+            &std::collections::HashMap<String, std::collections::HashMap<usize, u64>>,
+        >,
+    ) -> ChangedFileCoverage {
+        let key = path.to_string_lossy().to_string();
+        let lines = measured.and_then(|m| m.get(&key));
+
+        let (coverage_after, lines_covered, lines_total) = match lines {
+            Some(hits) if !hits.is_empty() => {
+                let total = hits.len();
+                let covered = hits.values().filter(|count| **count > 0).count();
+                #[allow(clippy::cast_precision_loss)]
+                let pct = (covered as f64 / total as f64) * 100.0;
+                (Some(pct), covered, total)
+            }
+            _ => (None, 0, 0),
+        };
+
+        ChangedFileCoverage {
+            file_path: key,
+            // Not measurable: this needs coverage for the base branch, which is
+            // not on disk. It used to be reported as 0.75 / 0.0.
+            coverage_before: None,
+            coverage_after,
+            coverage_delta: None,
+            status: CoverageStatus::NotMeasured,
+            lines_covered,
+            lines_total,
+        }
     }
 
     /// Build the final coverage result
@@ -101,44 +132,53 @@ impl IncrementalCoverageFacade {
         request: &IncrementalCoverageRequest,
     ) -> IncrementalCoverageResult {
         let total_files = changed_files.len();
-        let covered_files = coverage_data
+        let measured: Vec<f64> = coverage_data
             .iter()
-            .filter(|f| f.coverage_after > 0.0)
-            .count();
+            .filter_map(|f| f.coverage_after)
+            .collect();
 
-        let avg_coverage = if coverage_data.is_empty() {
-            0.0
+        let covered_files = measured.iter().filter(|pct| **pct > 0.0).count();
+        let files_not_measured = coverage_data.len() - measured.len();
+
+        // Absent, not zero: "no coverage artifact" is not "0% covered".
+        #[allow(clippy::cast_precision_loss)]
+        let coverage_percentage = if measured.is_empty() {
+            None
         } else {
-            coverage_data.iter().map(|f| f.coverage_after).sum::<f64>()
-                / coverage_data.len() as f64
+            Some(measured.iter().sum::<f64>() / measured.len() as f64)
         };
 
-        let files_above_threshold = coverage_data
+        // Both sides of the comparison are percentages in 0-100 now. The
+        // threshold used to be rendered as `threshold * 100.0`, turning the
+        // documented default of 80.0 into "8000.0%" (GH #658).
+        let files_above_threshold = measured
             .iter()
-            .filter(|f| f.coverage_after >= request.coverage_threshold)
+            .filter(|pct| **pct >= request.coverage_threshold)
             .count();
+        let files_below_threshold = measured.len() - files_above_threshold;
 
-        let files_below_threshold = coverage_data
-            .iter()
-            .filter(|f| f.coverage_after < request.coverage_threshold)
-            .count();
+        let coverage_text = coverage_percentage
+            .map_or_else(|| "not measured".to_string(), |pct| format!("{pct:.1}%"));
 
         let summary = format!(
-            "Analyzed {} changed files: {} covered ({:.1}%), {} above threshold ({:.1}%), {} below threshold",
+            "Analyzed {} changed files: {} covered (mean {}), {} above threshold ({:.1}%), \
+             {} below threshold, {} not measured",
             total_files,
             covered_files,
-            avg_coverage * 100.0,
+            coverage_text,
             files_above_threshold,
-            request.coverage_threshold * 100.0,
-            files_below_threshold
+            request.coverage_threshold,
+            files_below_threshold,
+            files_not_measured
         );
 
         IncrementalCoverageResult {
             total_files,
             covered_files,
-            coverage_percentage: avg_coverage,
+            coverage_percentage,
             files_above_threshold,
             files_below_threshold,
+            files_not_measured,
             changed_files: coverage_data,
             summary,
         }
@@ -155,7 +195,8 @@ impl IncrementalCoverageFacade {
             project_path,
             base_branch,
             target_branch: None,
-            coverage_threshold: 0.8,
+            // Percent, matching `--coverage-threshold`'s documented default.
+            coverage_threshold: 80.0,
             changed_files_only: true,
             detailed: false,
             cache_dir: None,

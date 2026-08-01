@@ -41,12 +41,12 @@ mod tests {
                 big_o_analysis: None,
             },
             quality_scorecard: QualityScorecard {
-                overall_health: 0.8,
-                complexity_score: 0.8,
-                maintainability_index: 0.8,
-                modularity_score: 0.8,
+                overall_health: Some(0.8),
+                complexity_score: Some(0.8),
+                maintainability_index: Some(0.8),
+                modularity_score: Some(0.8),
                 test_coverage: Some(0.8),
-                technical_debt_hours: 10.0,
+                technical_debt_hours: Some(10.0),
             },
             template_provenance: None,
             defect_summary: DefectSummary {

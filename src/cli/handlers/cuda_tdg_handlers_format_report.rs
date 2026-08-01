@@ -31,7 +31,7 @@ fn format_terminal_output(result: &CudaSimdTdgResult) -> Result<String> {
 
 fn grade_color(grade: &CudaTdgGrade) -> &'static str {
     match grade {
-        CudaTdgGrade::APLus | CudaTdgGrade::A => "\x1b[32m",
+        CudaTdgGrade::APlus | CudaTdgGrade::A => "\x1b[32m",
         CudaTdgGrade::B => "\x1b[33m",
         CudaTdgGrade::C | CudaTdgGrade::D => "\x1b[31m",
         CudaTdgGrade::F | CudaTdgGrade::GatewayFail => "\x1b[91m",

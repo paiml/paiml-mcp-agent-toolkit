@@ -4,7 +4,7 @@ mod coverage_tests {
     use super::*;
     use crate::entropy::entropy_calculator::EntropyMetrics;
     use crate::entropy::pattern_extractor::{AstPattern, PatternCollection};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     // Severity tests
     #[test]
@@ -36,35 +36,35 @@ mod coverage_tests {
     fn test_actionable_violation_creation() {
         let violation = ActionableViolation {
             severity: Severity::High,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 5,
                 variation_score: 0.3,
                 example_code: "match result {}".to_string(),
-            },
+            }),
             message: "Test message".to_string(),
             fix_suggestion: "Fix it".to_string(),
-            estimated_loc_reduction: 50,
+            estimated_loc_reduction: Some(50),
             affected_files: vec![PathBuf::from("test.rs")],
             priority_score: 10.0,
         };
         assert_eq!(violation.severity, Severity::High);
-        assert_eq!(violation.estimated_loc_reduction, 50);
+        assert_eq!(violation.estimated_loc_reduction, Some(50));
     }
 
     #[test]
     fn test_actionable_violation_serialization() {
         let violation = ActionableViolation {
             severity: Severity::Low,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ControlFlow,
                 repetitions: 3,
                 variation_score: 0.5,
                 example_code: "if else".to_string(),
-            },
+            }),
             message: "msg".to_string(),
             fix_suggestion: "fix".to_string(),
-            estimated_loc_reduction: 10,
+            estimated_loc_reduction: Some(10),
             affected_files: vec![],
             priority_score: 5.0,
         };
@@ -143,8 +143,12 @@ mod coverage_tests {
         };
 
         let reduction = detector.estimate_loc_reduction(&pattern);
-        // (5 - 1) * 10 * 0.8 = 32
-        assert_eq!(reduction, 32);
+        // CONTRACT UPDATED: `estimated_loc` is the LOC covered by all `frequency`
+        // instances together (10 lines over 5 instances = 2 lines each), so
+        // collapsing 4 of them saves 4 * 2 * 0.8 = 6 lines. The old expectation of
+        // 32 treated the whole-group figure as a per-instance size and so
+        // "saved" three times more lines than the pattern occupies.
+        assert_eq!(reduction, 6);
     }
 
     #[test]
@@ -367,14 +371,14 @@ mod coverage_tests {
         let detector = ViolationDetector::new(EntropyConfig::default());
         let patterns = PatternCollection::new();
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.5,
-            module_level_entropy: 0.5,
-            project_level_entropy: 0.5,
-            pattern_diversity: 0.5,
+            file_level_entropy: Some(0.5),
+            module_level_entropy: Some(0.5),
+            project_level_entropy: Some(0.5),
+            pattern_diversity: Some(0.5),
             total_patterns: 0,
             total_instances: 0,
             total_loc: 0,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let violations = detector.detect_violations(&patterns, &metrics).unwrap();
@@ -418,14 +422,14 @@ mod coverage_tests {
 
         let patterns = PatternCollection::new();
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.5,
-            module_level_entropy: 0.5,
-            project_level_entropy: 0.5,
-            pattern_diversity: 0.3, // Below threshold
+            file_level_entropy: Some(0.5),
+            module_level_entropy: Some(0.5),
+            project_level_entropy: Some(0.5),
+            pattern_diversity: Some(0.3), // Below threshold
             total_patterns: 10,
             total_instances: 100,
             total_loc: 1000,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let mut violations = Vec::new();

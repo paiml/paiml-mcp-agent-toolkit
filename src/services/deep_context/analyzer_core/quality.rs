@@ -24,29 +24,96 @@ impl DeepContextAnalyzer {
         &self,
         analyses: &ParallelAnalysisResults,
         _defect_summary: &DefectSummary,
+        project_path: &Path,
     ) -> anyhow::Result<QualityScorecard> {
-        // Calculate quality scores based on analyses
-        let complexity_score = if let Some(ref report) = analyses.complexity_report {
-            // Calculate based on the number of violations
-            let violation_penalty = (report.violations.len() as f64 * 5.0).min(50.0);
-            100.0 - violation_penalty
+        // Only measured values reach the scorecard. Four of these fields used to
+        // be literals tagged `// Placeholder for now`, which made
+        // `overall_health` identically `(complexity_score + 155) / 3` — so it
+        // could only ever take three values, and an empty directory reported the
+        // same "85.0% healthy, 65.0% covered" as a 3252-file repository.
+
+        // Real: derived from violations actually found. Absent when no
+        // complexity analysis ran — previously defaulted to 75.0, which is a
+        // measurement-shaped answer to "we did not look".
+        // The `files.is_empty()` guard matters: with nothing analysed there are
+        // trivially zero violations, and the old arithmetic turned that into a
+        // perfect 100.0 — an empty directory scoring better than real code.
+        // "No files were analysed" is not a quality result.
+        let complexity_score = analyses
+            .complexity_report
+            .as_ref()
+            .filter(|report| !report.files.is_empty())
+            .map(|report| {
+                let violation_penalty = (report.violations.len() as f64 * 5.0).min(50.0);
+                100.0 - violation_penalty
+            });
+
+        // Real: already computed by calculate_technical_debt() and sitting one
+        // field away from where 40.0 was being invented.
+        let technical_debt_hours = analyses
+            .complexity_report
+            .as_ref()
+            .map(|report| f64::from(report.summary.technical_debt_hours));
+
+        // Real when a coverage artifact exists, honestly absent otherwise.
+        // `context` runs no coverage tool, so this reads whatever lcov/llvm-cov
+        // output is already on disk and reports nothing when there is none.
+        // It never shells out; see discover_line_coverage.
+        let test_coverage = Self::measured_line_coverage(project_path);
+
+        // Not measured. The SEI maintainability formula needs a Halstead volume,
+        // and `ComplexityMetrics.halstead` is `None` at every production
+        // construction site, so there is nothing to compute from. Modularity has
+        // no implementation at all — the graph modularity in src/graph is
+        // Newman-Girvan Q over a community assignment, a different quantity in a
+        // different range, and relabelling it "Modularity Score %" would be a
+        // new lie rather than a fix.
+        let maintainability_index = None;
+        let modularity_score = None;
+
+        // Averaging over only what was measured. Averaging in a constant is how
+        // the old value became a function of one real input and two literals.
+        let measured: Vec<f64> = [complexity_score, maintainability_index, modularity_score]
+            .into_iter()
+            .flatten()
+            .collect();
+        let overall_health = if measured.is_empty() {
+            None
         } else {
-            75.0
+            Some(measured.iter().sum::<f64>() / measured.len() as f64)
         };
 
-        let maintainability_index = 70.0; // Placeholder for now
-        let modularity_score = 85.0; // Placeholder for now
-        let test_coverage = Some(65.0); // Placeholder for now
-        let technical_debt_hours = 40.0; // Placeholder for now
-
         Ok(QualityScorecard {
-            overall_health: (complexity_score + maintainability_index + modularity_score) / 3.0,
+            overall_health,
             complexity_score,
             maintainability_index,
             modularity_score,
             test_coverage,
             technical_debt_hours,
         })
+    }
+
+    /// Percentage of instrumented lines already recorded on disk, if any.
+    ///
+    /// Reads an existing lcov/llvm-cov artifact; never runs a coverage tool.
+    /// Returns `None` when nothing is instrumented, so the caller reports
+    /// "not measured" rather than inventing a figure.
+    fn measured_line_coverage(project_root: &Path) -> Option<f64> {
+        let coverage = crate::services::agent_context::query::discover_line_coverage(project_root)?;
+        let (mut total, mut hit) = (0u64, 0u64);
+        for lines in coverage.values() {
+            for count in lines.values() {
+                total += 1;
+                if *count > 0 {
+                    hit += 1;
+                }
+            }
+        }
+        if total == 0 {
+            return None;
+        }
+        #[allow(clippy::cast_precision_loss)]
+        Some((hit as f64 / total as f64) * 100.0)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

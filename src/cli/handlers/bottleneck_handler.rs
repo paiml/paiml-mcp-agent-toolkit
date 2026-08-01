@@ -10,6 +10,34 @@ use std::path::Path;
 /// Git churn data: (file touch counts, commit file groups, total commits)
 type GitChurnData = (HashMap<String, usize>, Vec<Vec<String>>, usize);
 
+/// Largest lookback git's approxidate parser handles reliably.
+///
+/// `--since=<n> days ago` silently stops matching anything once the resulting
+/// date crosses the Unix epoch — measured here, 20 000 days (≈1971) still
+/// returns every commit and 21 000 returns none. That is why `--period
+/// 99999999` reported "Total commits: 0" for a repository with one commit while
+/// `--period 100000` reported 1 (GH #665): a *larger* window matched *fewer*
+/// commits, and the empty result was printed as a legitimate zero.
+const MAX_LOOKBACK_DAYS: u32 = 20_000;
+
+/// `--since` argument for a user-supplied lookback.
+///
+/// `None` means "no `--since` at all" — a lookback past the epoch is a request
+/// for the whole history, and asking git for the whole history is exactly how
+/// you get the whole history. See
+/// `contracts/pmat-no-fabrication-v1.yaml`, equation `bounded_time_arithmetic`.
+fn since_arg(period: u32) -> Option<String> {
+    (period <= MAX_LOOKBACK_DAYS).then(|| format!("--since={period} days ago"))
+}
+
+/// `git log` argument list with the lookback applied.
+fn git_log_args(period: u32, extra: &[&str]) -> Vec<String> {
+    let mut args = vec!["log".to_string()];
+    args.extend(since_arg(period));
+    args.extend(extra.iter().map(|s| (*s).to_string()));
+    args
+}
+
 /// A detected bottleneck file
 #[derive(Debug, serde::Serialize)]
 struct BottleneckFile {
@@ -136,14 +164,23 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
 /// Get file touch counts from git log
 fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
     let output = std::process::Command::new("git")
-        .args([
-            "log",
-            &format!("--since={} days ago", period),
-            "--name-only",
-            "--pretty=format:COMMIT_SEPARATOR",
-        ])
+        .args(git_log_args(
+            period,
+            &["--name-only", "--pretty=format:COMMIT_SEPARATOR"],
+        ))
         .current_dir(path)
         .output()?;
+
+    // A failed `git log` used to be parsed as an empty log, so a missing
+    // repository or a rejected revision range was reported as a legitimate
+    // "Total commits: 0" (GH #665).
+    if !output.status.success() {
+        anyhow::bail!(
+            "git log failed in {}: {}",
+            path.display(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut file_touches: HashMap<String, usize> = HashMap::new();
@@ -194,12 +231,7 @@ fn get_file_authors(
     let mut author_map: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
 
     let output = std::process::Command::new("git")
-        .args([
-            "log",
-            &format!("--since={} days ago", period),
-            "--format=%H %an",
-            "--name-only",
-        ])
+        .args(git_log_args(period, &["--format=%H %an", "--name-only"]))
         .current_dir(path)
         .output()?;
 
@@ -529,5 +561,74 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
+    }
+
+    /// GH #665: a monotonically larger `--period` must never report fewer
+    /// commits. `--since=99999999 days ago` overflowed git's approxidate into a
+    /// future date, so the window matched nothing and the swallowed failure was
+    /// printed as "Total commits: 0" for a repo that has commits.
+    #[test]
+    fn since_arg_drops_the_bound_past_the_epoch() {
+        assert_eq!(since_arg(30).as_deref(), Some("--since=30 days ago"));
+        assert_eq!(
+            since_arg(MAX_LOOKBACK_DAYS).as_deref(),
+            Some("--since=20000 days ago")
+        );
+        // Past the epoch git's approxidate stops matching anything, so ask for
+        // the whole history instead of an unparseable bound.
+        assert_eq!(since_arg(100_000), None);
+        assert_eq!(since_arg(99_999_999), None);
+        assert_eq!(since_arg(u32::MAX), None);
+    }
+
+    #[test]
+    fn git_log_args_omit_since_for_a_huge_period() {
+        let bounded = git_log_args(30, &["--name-only"]);
+        assert_eq!(bounded[0], "log");
+        assert_eq!(bounded[1], "--since=30 days ago");
+        assert_eq!(bounded[2], "--name-only");
+
+        let unbounded = git_log_args(99_999_999, &["--name-only"]);
+        assert_eq!(unbounded, vec!["log", "--name-only"]);
+        assert!(!unbounded.iter().any(|a| a.starts_with("--since")));
+    }
+
+    /// End-to-end: the count for a huge period must match the count for a
+    /// modest one on a repo whose history is entirely inside both windows.
+    #[test]
+    fn huge_period_reports_the_same_commit_count_as_a_normal_one() {
+        use std::process::Command;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        let repo = temp.path();
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git must be available")
+        };
+        if !git(&["init"]).status.success() {
+            return;
+        }
+        let _ = git(&["config", "user.email", "t@example.com"]);
+        let _ = git(&["config", "user.name", "T"]);
+        std::fs::write(repo.join("a.rs"), "pub fn f() {}\n").unwrap();
+        let _ = git(&["add", "-A"]);
+        if !git(&["commit", "-m", "init", "--no-verify"])
+            .status
+            .success()
+        {
+            return;
+        }
+
+        let (_, _, small) = get_git_churn(repo, 30).expect("small window");
+        let (_, _, huge) = get_git_churn(repo, 99_999_999).expect("huge window");
+        assert_eq!(small, 1, "the fixture repo has exactly one commit");
+        assert_eq!(
+            huge, small,
+            "a larger --period reported fewer commits (pre-fix: 0)"
+        );
     }
 }

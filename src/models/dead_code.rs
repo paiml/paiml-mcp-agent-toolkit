@@ -424,8 +424,28 @@ mod tests {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Result of dead code operation.
 pub struct DeadCodeResult {
+    /// Aggregate of the files in `files` — never of a wider set. Reporting the
+    /// pre-filter count here is what made `files_with_dead_code: 26` head a
+    /// 4-entry array (and `1` head an EMPTY one).
     pub summary: DeadCodeSummary,
     pub files: Vec<FileDeadCodeMetrics>,
     pub total_files: usize,
     pub analyzed_files: usize,
+    /// Files found to contain dead code BEFORE `--min-dead-lines` and
+    /// `--top-files` reduced the list. `files.len()` is what is listed; both
+    /// numbers are named so the cap is never mistaken for the total.
+    #[serde(default)]
+    pub files_with_dead_code_found: usize,
+    /// True when `--top-files` cut the list short.
+    #[serde(default)]
+    pub files_truncated: bool,
+}
+
+impl DeadCodeResult {
+    /// How many files with dead code are not listed (threshold + cap).
+    #[must_use]
+    pub fn files_omitted(&self) -> usize {
+        self.files_with_dead_code_found
+            .saturating_sub(self.files.len())
+    }
 }

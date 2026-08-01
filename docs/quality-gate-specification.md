@@ -101,7 +101,8 @@ pmat quality-gate --checks all
 ### Thresholds
 - `--max-complexity-p99`: Maximum allowed cyclomatic complexity (default: 20)
 - `--max-dead-code`: Maximum allowed dead code percentage (default: 15.0)
-- `--min-entropy`: Minimum required code entropy (default: 0.5)
+- `--min-entropy`: Minimum required pattern diversity as a fraction, 0.0-1.0 (default: 0.3).
+  Values outside that range are rejected, not clamped (#650, #683).
 
 ## Sprint 78 Fix
 

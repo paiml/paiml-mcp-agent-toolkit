@@ -308,7 +308,7 @@ mod tests {
         let gate = MinimumGradeGate::new(config);
 
         let grades_and_expected = vec![
-            (Grade::APLus, true),
+            (Grade::APlus, true),
             (Grade::A, true),
             (Grade::AMinus, true),
             (Grade::BPlus, true),
@@ -323,7 +323,7 @@ mod tests {
 
         for (grade, should_pass) in grades_and_expected {
             let score = match grade {
-                Grade::APLus => 97.0,
+                Grade::APlus => 97.0,
                 Grade::A => 93.0,
                 Grade::AMinus => 90.0,
                 Grade::BPlus => 87.0,

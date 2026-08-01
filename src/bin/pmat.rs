@@ -64,9 +64,11 @@ mod full {
     }
 
     fn detect_execution_mode() -> ExecutionMode {
+        let args: Vec<String> = std::env::args().collect();
         classify_execution_mode(
+            cli::forced_mode_from_args(&args),
             std::env::var("MCP_VERSION").is_ok(),
-            std::env::args().len() == 1,
+            args.len() == 1,
             !std::io::stdin().is_terminal(),
         )
     }
@@ -74,10 +76,23 @@ mod full {
     /// Pure decision function for execution mode so it can be unit-tested
     /// without touching real stdin / env vars (see GH-285 regression test).
     fn classify_execution_mode(
+        forced: Option<cli::commands::Mode>,
         mcp_version_env: bool,
         no_args: bool,
         stdin_is_pipe: bool,
     ) -> ExecutionMode {
+        // `--help` calls `--mode` "Force specific mode (auto-detected by
+        // default)", so it outranks every auto-detection signal, MCP_VERSION
+        // included — otherwise `--mode cli` could not override a host's env.
+        // It used to be read nowhere at all; `--mode mcp <subcommand>` swallowed
+        // the subcommand and started a legacy MCP server with a *different*
+        // tool inventory. See `cli::forced_mode_from_args`.
+        match forced {
+            Some(cli::commands::Mode::Mcp) => return ExecutionMode::Mcp,
+            Some(cli::commands::Mode::Cli) => return ExecutionMode::Cli,
+            None => {}
+        }
+
         // Explicit MCP opt-in via env var always wins (e.g. Claude Desktop sets this).
         if mcp_version_env {
             return ExecutionMode::Mcp;
@@ -97,6 +112,16 @@ mod full {
     /// Initialize the enhanced tracing system based on CLI flags
     fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
         let filter = create_env_filter(cli)?;
+        // `fmt::layer()` defaults to `ansi = true` unconditionally, so
+        // `--color never` on a pipe still produced
+        // `\x1b[2m…\x1b[0m WARN churn not measured …` on stderr — the flag was
+        // obeyed by the command's output and ignored by the log beside it. This
+        // is decided from raw argv because clap has not parsed yet; see
+        // `cli::tracing_ansi_enabled`.
+        let ansi = cli::tracing_ansi_enabled(
+            &std::env::args().collect::<Vec<_>>(),
+            std::io::stderr().is_terminal(),
+        );
 
         tracing_subscriber::registry()
             .with(filter)
@@ -106,6 +131,7 @@ mod full {
                     .with_thread_ids(cli.trace)
                     .with_file(cli.trace)
                     .with_line_number(cli.trace)
+                    .with_ansi(ansi)
                     .compact()
                     .with_writer(std::io::stderr),
             )
@@ -275,14 +301,14 @@ mod full {
         //! timeout 3 target/debug/pmat < /dev/null; echo exit=$?
         //! ```
         //! Both should print help and exit with code 2.
-        use super::{classify_execution_mode, ExecutionMode};
+        use super::{classify_execution_mode, cli, ExecutionMode};
 
         #[test]
         fn bare_invocation_on_tty_is_cli() {
             // `pmat` typed into a terminal with no pipe -> normal CLI (clap
             // will then print help on missing subcommand).
             assert!(matches!(
-                classify_execution_mode(false, true, false),
+                classify_execution_mode(None, false, true, false),
                 ExecutionMode::Cli
             ));
         }
@@ -291,7 +317,7 @@ mod full {
         fn piped_stdin_with_no_args_prints_help_instead_of_hanging() {
             // GH-285: This used to enter MCP mode and block on stdin forever.
             assert!(matches!(
-                classify_execution_mode(false, true, true),
+                classify_execution_mode(None, false, true, true),
                 ExecutionMode::HelpAndExit
             ));
         }
@@ -301,11 +327,11 @@ mod full {
             // Claude Desktop and similar hosts set MCP_VERSION; they must still
             // get the MCP server regardless of TTY state.
             assert!(matches!(
-                classify_execution_mode(true, true, true),
+                classify_execution_mode(None, true, true, true),
                 ExecutionMode::Mcp
             ));
             assert!(matches!(
-                classify_execution_mode(true, false, false),
+                classify_execution_mode(None, true, false, false),
                 ExecutionMode::Mcp
             ));
         }
@@ -315,7 +341,40 @@ mod full {
             // `echo foo | pmat analyze ...` must dispatch to the CLI subcommand,
             // not to help-and-exit.
             assert!(matches!(
-                classify_execution_mode(false, false, true),
+                classify_execution_mode(None, false, false, true),
+                ExecutionMode::Cli
+            ));
+        }
+
+        /// `--mode mcp` is advertised in `--help` but was read nowhere: with no
+        /// subcommand it failed "requires a subcommand", and with one it
+        /// swallowed the subcommand and started a legacy MCP server whose
+        /// 21-tool inventory shares only 7 names with the unified server's 20.
+        /// It must now reach the same server `MCP_VERSION=1 pmat` does.
+        #[test]
+        fn mode_mcp_selects_the_mcp_server_with_or_without_a_subcommand() {
+            let mcp = Some(cli::commands::Mode::Mcp);
+            assert!(matches!(
+                classify_execution_mode(mcp.clone(), false, true, false),
+                ExecutionMode::Mcp
+            ));
+            assert!(matches!(
+                classify_execution_mode(mcp.clone(), false, false, false),
+                ExecutionMode::Mcp
+            ));
+            // …and it must not be defeated by the GH-285 help-and-exit rule.
+            assert!(matches!(
+                classify_execution_mode(mcp, false, true, true),
+                ExecutionMode::Mcp
+            ));
+        }
+
+        /// "Force specific mode" has to be able to force the *other* way too,
+        /// or a host that exports MCP_VERSION could never run a subcommand.
+        #[test]
+        fn mode_cli_overrides_the_mcp_version_env() {
+            assert!(matches!(
+                classify_execution_mode(Some(cli::commands::Mode::Cli), true, false, true),
                 ExecutionMode::Cli
             ));
         }

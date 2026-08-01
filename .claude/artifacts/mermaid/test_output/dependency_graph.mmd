@@ -1,0 +1,24 @@
+graph TD
+    ast_parser_Parser((Parser(T)))
+    dag_rs_DependencyGraph[DependencyGraph]
+    embedded_templates_rs_get_template[get_template]
+    lib_rs_TemplateServer[TemplateServer]
+    main_rs_main[main]
+    mermaid_generator_rs_MermaidGenerator[MermaidGenerator]
+    template_service_rs_TemplateService((TemplateService))
+
+    main_rs_main --- lib_rs_TemplateServer
+    lib_rs_TemplateServer -->|implements| template_service_rs_TemplateService
+    mermaid_generator_rs_MermaidGenerator --- dag_rs_DependencyGraph
+    main_rs_main --> mermaid_generator_rs_MermaidGenerator
+    lib_rs_TemplateServer --> embedded_templates_rs_get_template
+    ast_parser_Parser -.-> dag_rs_DependencyGraph
+    mermaid_generator_rs_MermaidGenerator -->|inherits| template_service_rs_TemplateService
+
+    style ast_parser_Parser fill:#FF6347,stroke:#4169E1,stroke-width:3px
+    style dag_rs_DependencyGraph fill:#90EE90,stroke-width:2px
+    style embedded_templates_rs_get_template fill:#FF6347,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style lib_rs_TemplateServer fill:#FFA500,stroke-width:2px
+    style main_rs_main fill:#FFD700,stroke:#333,stroke-dasharray: 5 5,stroke-width:2px
+    style mermaid_generator_rs_MermaidGenerator fill:#FFA500,stroke-width:2px
+    style template_service_rs_TemplateService fill:#FFD700,stroke:#663399,stroke-width:3px

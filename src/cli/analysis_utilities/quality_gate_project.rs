@@ -6,7 +6,7 @@ async fn handle_project_quality_gate(
     fail_on_violation: bool,
     checks: Vec<QualityCheckType>,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     include_provability: bool,
     output: Option<PathBuf>,
@@ -76,6 +76,9 @@ async fn handle_project_quality_gate(
     // Calculate overall pass/fail
     results.passed = violations.is_empty();
     results.total_violations = violations.len();
+    // `results.violations` shipped as a permanently-empty array while
+    // `results.total_violations` beside it said 3.
+    results.set_violation_lines(&violations);
 
     // Persist violations to SQLite for `pmat sql` queryability
     persist_violations_to_sqlite(&project_path, &violations, quiet);
@@ -103,7 +106,7 @@ async fn run_project_checks(
     project_path: &Path,
     checks: &[QualityCheckType],
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
@@ -148,7 +151,7 @@ async fn run_individual_project_checks(
     checks: &[QualityCheckType],
     project_path: &Path,
     max_dead_code: f64,
-    min_entropy: f64,
+    min_entropy: Option<f64>,
     max_complexity_p99: u32,
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,

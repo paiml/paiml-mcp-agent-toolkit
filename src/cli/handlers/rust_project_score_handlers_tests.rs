@@ -385,4 +385,188 @@ mod tests {
         // Should not contain recommendations section when empty
         assert!(!output.contains("## 💡 Recommendations"));
     }
+
+    // ── #687: `--format json` must be byte-reproducible ─────────────────────
+    //
+    // Observed defect: five runs on an UNCHANGED project produced two distinct
+    // md5 sums, differing only in
+    //   "percentage": 28.001373626373628  vs  28.001373626373624
+    // because the categories live in a HashMap whose iteration order is
+    // randomised per process. Each iteration below builds a *fresh* HashMap,
+    // which gets its own RandomState and therefore its own iteration order —
+    // the in-process stand-in for "run the binary again". A single run proves
+    // nothing, so these run 10+ times.
+
+    /// The eleven real pmat categories with values whose per-category
+    /// percentages are non-terminating in binary, so their sum genuinely
+    /// depends on the fold order.
+    fn realistic_score() -> ProjectScore {
+        use crate::services::rust_project_score::aggregation;
+
+        let raw: [(&str, f64, f64); 11] = [
+            ("Build Performance", 4.0, 15.0),
+            ("Code Quality", 7.0, 26.0),
+            ("Dependency Health", 5.0, 12.0),
+            ("Documentation", 11.0, 15.0),
+            ("Formal Verification", 1.0, 16.0),
+            ("GPU/SIMD Quality", 3.0, 10.0),
+            ("Known Defects", 13.0, 20.0),
+            ("Performance & Benchmarking", 7.0, 10.0),
+            ("Reproducibility", 2.0, 15.0),
+            ("Rust Tooling & CI/CD", 91.0, 130.0),
+            ("Testing Excellence", 3.0, 20.0),
+        ];
+        let categories: HashMap<String, CategoryScore> = raw
+            .iter()
+            .map(|(name, earned, max)| ((*name).to_string(), CategoryScore::new(*earned, *max)))
+            .collect();
+
+        let percentage = aggregation::normalized_percentage(&categories);
+        ProjectScore {
+            total_earned: aggregation::total_earned(&categories),
+            total_possible: 289.0,
+            percentage,
+            grade: crate::services::rust_project_score::models::Grade::from_normalized(percentage),
+            categories,
+            recommendations: vec!["Add more tests".to_string()],
+        }
+    }
+
+    #[test]
+    fn test_format_json_is_byte_reproducible_across_12_runs() {
+        let first = format_json(&realistic_score(), &["Add more tests".to_string()]).unwrap();
+        for i in 1..12 {
+            let again = format_json(&realistic_score(), &["Add more tests".to_string()]).unwrap();
+            assert_eq!(
+                first, again,
+                "#687: --format json differed on run {i}; an unchanged project must \
+                 produce byte-identical JSON so it can be a CI baseline"
+            );
+        }
+    }
+
+    #[test]
+    fn test_format_yaml_is_byte_reproducible_across_12_runs() {
+        let first = format_yaml(&realistic_score(), &[]).unwrap();
+        for i in 1..12 {
+            assert_eq!(
+                first,
+                format_yaml(&realistic_score(), &[]).unwrap(),
+                "#687: --format yaml differed on run {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_format_json_categories_are_alphabetical() {
+        // Random HashMap order must not leak into the emitted array.
+        let output = format_json(&realistic_score(), &[]).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let names: Vec<String> = parsed["categories"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap().to_string())
+            .collect();
+        let mut expected = names.clone();
+        expected.sort();
+        assert_eq!(names, expected, "#687: JSON category order must be sorted");
+    }
+
+    /// "Two renderers of the same command MUST NOT disagree about the same
+    /// number" — json, yaml, text and markdown all read the same totals.
+    #[test]
+    fn test_renderers_agree_on_totals() {
+        let score = realistic_score();
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[]).unwrap()).unwrap();
+        let yaml: serde_json::Value =
+            serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap()).unwrap();
+
+        assert_eq!(json["total_earned"], yaml["total_earned"]);
+        assert_eq!(json["total_possible"], yaml["total_possible"]);
+        assert_eq!(json["percentage"], yaml["percentage"]);
+
+        // Text and markdown print the same figures at 1 decimal place.
+        let earned = json["total_earned"].as_f64().unwrap();
+        let possible = json["total_possible"].as_f64().unwrap();
+        let text = strip_ansi(&format_text(&score, &[], false));
+        let markdown = format_markdown(&score, &[], false);
+        assert!(
+            text.contains(&format!("{earned:.1}")),
+            "text output must show the same earned total: {text}"
+        );
+        assert!(
+            markdown.contains(&format!("{earned:.1}/{possible:.0}")),
+            "markdown output must show the same earned total: {markdown}"
+        );
+    }
+
+    /// ARITHMETIC SANITY (round-3 sweep): `percentage` does NOT follow from the
+    /// `total_earned` / `total_possible` printed beside it — it is the
+    /// unweighted MEAN of the per-category percentages. On pmat's own tree json
+    /// and yaml emitted `total_earned: 236.9`, `total_possible: 289.0`,
+    /// `percentage: 87.22669`, while `236.9 / 289 * 100 = 81.972318`. Every
+    /// category was `applicable: true`, so the documented "excludes categories
+    /// that do not apply" caveat did not explain the gap. Only the text
+    /// renderer admitted what the number was; markdown printed the two adjacent
+    /// with no disclaimer and json/yaml carried no label at all.
+    ///
+    /// The document must now name both quantities and both must be checkable.
+    #[test]
+    fn every_renderer_says_which_percentage_it_is_showing() {
+        let score = realistic_score();
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[]).unwrap()).unwrap();
+
+        let earned = json["total_earned"].as_f64().unwrap();
+        let possible = json["total_possible"].as_f64().unwrap();
+        let percentage = json["percentage"].as_f64().unwrap();
+        let points = json["points_percentage"].as_f64().unwrap();
+
+        // The two are genuinely different numbers on this fixture, or the test
+        // would pass without proving anything.
+        assert!(
+            (percentage - points).abs() > 1.0,
+            "fixture must exercise the discrepancy: {percentage} vs {points}"
+        );
+
+        // `points_percentage` follows from the two totals beside it.
+        assert!(
+            (points - (earned / possible) * 100.0).abs() < 0.001,
+            "points_percentage must equal total_earned/total_possible: \
+             {points} vs {earned}/{possible}"
+        );
+        // And `percentage` is labelled as what it actually is.
+        assert_eq!(
+            json["percentage_basis"],
+            serde_json::json!("mean of applicable category percentages")
+        );
+        // No percentage above 100.
+        assert!((0.0..=100.0).contains(&percentage));
+        assert!((0.0..=100.0).contains(&points));
+
+        // yaml carries the same fields.
+        let yaml: serde_json::Value =
+            serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap()).unwrap();
+        assert_eq!(yaml["points_percentage"], json["points_percentage"]);
+        assert_eq!(yaml["percentage_basis"], json["percentage_basis"]);
+
+        // markdown no longer prints the two adjacent without saying which is
+        // which, and text names the points ratio too.
+        let markdown = format_markdown(&score, &[], false);
+        assert!(
+            markdown.contains("mean of category percentages"),
+            "markdown must label the percentage: {markdown}"
+        );
+        assert!(
+            markdown.contains("of possible points"),
+            "markdown must also give the points ratio: {markdown}"
+        );
+        let text = strip_ansi(&format_text(&score, &[], false));
+        assert!(
+            text.contains("of possible points"),
+            "text must also give the points ratio: {text}"
+        );
+    }
 }

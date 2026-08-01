@@ -4,7 +4,7 @@ mod detection_tests {
     use super::*;
     use crate::entropy::entropy_calculator::EntropyMetrics;
     use crate::entropy::pattern_extractor::{AstPattern, Location, PatternCollection};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_detect_cross_file_duplication() {
@@ -141,29 +141,29 @@ mod detection_tests {
         let violations = vec![
             ActionableViolation {
                 severity: Severity::Medium,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 5,
                     variation_score: 0.1,
                     example_code: "code1".to_string(),
-                },
+                }),
                 message: "msg1".to_string(),
                 fix_suggestion: "fix1".to_string(),
-                estimated_loc_reduction: 10,
+                estimated_loc_reduction: Some(10),
                 affected_files: vec![],
                 priority_score: 5.0,
             },
             ActionableViolation {
                 severity: Severity::High,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 5,
                     variation_score: 0.1,
                     example_code: "code1".to_string(), // Same length = duplicate
-                },
+                }),
                 message: "msg2".to_string(),
                 fix_suggestion: "fix2".to_string(),
-                estimated_loc_reduction: 20,
+                estimated_loc_reduction: Some(20),
                 affected_files: vec![],
                 priority_score: 10.0, // Higher priority - should be kept
             },
@@ -186,29 +186,29 @@ mod detection_tests {
         let violations = vec![
             ActionableViolation {
                 severity: Severity::High,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 5,
                     variation_score: 0.1,
                     example_code: "code1".to_string(),
-                },
+                }),
                 message: "higher_first".to_string(),
                 fix_suggestion: "fix1".to_string(),
-                estimated_loc_reduction: 20,
+                estimated_loc_reduction: Some(20),
                 affected_files: vec![],
                 priority_score: 10.0, // Inserted first, must survive.
             },
             ActionableViolation {
                 severity: Severity::Medium,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 5,
                     variation_score: 0.1,
                     example_code: "code1".to_string(), // Same dedupe key.
-                },
+                }),
                 message: "lower_second".to_string(),
                 fix_suggestion: "fix2".to_string(),
-                estimated_loc_reduction: 10,
+                estimated_loc_reduction: Some(10),
                 affected_files: vec![],
                 priority_score: 5.0, // Must be discarded via the keep-existing arm.
             },
@@ -258,14 +258,14 @@ mod detection_tests {
         });
 
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.8,
-            module_level_entropy: 0.8,
-            project_level_entropy: 0.8,
-            pattern_diversity: 0.8,
+            file_level_entropy: Some(0.8),
+            module_level_entropy: Some(0.8),
+            project_level_entropy: Some(0.8),
+            pattern_diversity: Some(0.8),
             total_patterns: 2,
             total_instances: 18,
             total_loc: 100,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let violations = detector.detect_violations(&patterns, &metrics).unwrap();
@@ -297,14 +297,14 @@ mod detection_tests {
         });
 
         let metrics = EntropyMetrics {
-            file_level_entropy: 0.8,
-            module_level_entropy: 0.8,
-            project_level_entropy: 0.8,
-            pattern_diversity: 0.8,
+            file_level_entropy: Some(0.8),
+            module_level_entropy: Some(0.8),
+            project_level_entropy: Some(0.8),
+            pattern_diversity: Some(0.8),
             total_patterns: 1,
             total_instances: 4,
             total_loc: 20,
-            patterns_by_type: HashMap::new(),
+            patterns_by_type: BTreeMap::new(),
         };
 
         let violations = detector.detect_violations(&patterns, &metrics).unwrap();

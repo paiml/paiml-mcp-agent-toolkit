@@ -2,7 +2,12 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+// `Ord` is derived (declaration order) so `Language` can key a `BTreeMap`:
+// `ProjectScore::language_distribution` used to be a `HashMap` and its JSON key
+// order was randomised per process. Declaration order also puts source
+// languages ahead of Yaml/Markdown/Unknown, which is the order the existing
+// tie-break in `ProjectScore::average` already assumes.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// Language.
 pub enum Language {
     Rust,

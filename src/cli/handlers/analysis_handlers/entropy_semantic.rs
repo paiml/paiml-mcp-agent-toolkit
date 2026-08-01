@@ -28,6 +28,10 @@ pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         let analyzer = EntropyAnalyzer::with_config(config);
 
         let analysis_path = file.unwrap_or(path);
+        // GH-681: a nonexistent path (via `-p` or `--file`) exited 0 reporting
+        // "Files Analyzed: 0 / Total Violations: 1" — a Medium-severity quality
+        // finding about code on a path that does not exist.
+        crate::cli::ensure_analysis_path_exists(&analysis_path)?;
         let report = analyzer.analyze(&analysis_path).await?;
 
         let output_content = format_entropy_report(&report, format, top_violations)?;
@@ -56,17 +60,16 @@ pub(crate) fn create_entropy_config(
         EntropySeverity::High => Severity::High,
     };
 
-    let mut config = EntropyConfig {
+    // The exclusion list is shared with `quality-gate --checks entropy` and the
+    // MCP entropy tool. It used to be assembled here from a different set of
+    // globs than the gate used, so on the same `-p` the two commands analyzed
+    // 939 and 1328 files and reported 62.6% / 14 violations against
+    // 63.9% / 16 for the same metric on the same tree.
+    EntropyConfig {
         min_severity: min_sev,
+        exclude_paths: EntropyConfig::analysis_excludes(include_tests),
         ..Default::default()
-    };
-
-    if !include_tests {
-        config.exclude_paths.push("**/*test*.rs".to_string());
-        config.exclude_paths.push("tests/**".to_string());
     }
-
-    config
 }
 
 /// Format entropy report based on output format
@@ -87,16 +90,27 @@ pub(crate) fn format_entropy_report(
 }
 
 /// Format summary report
+///
+/// Reports the same measured values the JSON renderer emits — including
+/// "not measured" where the JSON carries `null` — so the two renderers of this
+/// command cannot disagree about a number.
 fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
     use crate::cli::colors as c;
 
     let violations = get_top_violations(&report.actionable_violations, top_violations);
+    let note = report
+        .measurement_note
+        .as_ref()
+        .map_or_else(String::new, |n| format!("Note: {n}\n"));
 
     format!(
         "{}{}Entropy Analysis Summary{}\n\n\
          {}Files Analyzed:{} {}{}{}\n\
+         {}Source Lines Analyzed:{} {}{}{}\n\
+         {}Pattern Diversity:{} {}{}{}\n\
          {}Total Violations:{} {}{}{}\n\
-         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\n\
+         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\
+         {}\n\
          {}Top Violations:{}\n{}\n",
         c::BOLD,
         c::UNDERLINE,
@@ -105,6 +119,16 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
         c::RESET,
         c::BOLD_WHITE,
         report.total_files_analyzed,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        report.entropy_metrics.total_loc,
+        c::RESET,
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        crate::entropy::EntropyReport::render_measurement(report.entropy_metrics.pattern_diversity),
         c::RESET,
         c::BOLD,
         c::RESET,
@@ -119,6 +143,7 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
         c::BOLD_WHITE,
         report.reduction_percentage(),
         c::RESET,
+        note,
         c::BOLD,
         c::RESET,
         format_violation_list(&violations)
@@ -133,17 +158,27 @@ fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations
         top_violations
     };
 
+    let note = report
+        .measurement_note
+        .as_ref()
+        .map_or_else(String::new, |n| format!("\n> {n}\n"));
+
     format!(
         "# Entropy Analysis Report\n\n\
          ## Summary\n\n\
          - **Files Analyzed**: {}\n\
+         - **Source Lines Analyzed**: {}\n\
+         - **Pattern Diversity**: {}\n\
          - **Total Violations**: {}\n\
-         - **Potential LOC Reduction**: {} lines ({:.1}%)\n\n\
+         - **Potential LOC Reduction**: {} lines ({:.1}%)\n{}\n\
          ## Violations\n\n{}\n",
         report.total_files_analyzed,
+        report.entropy_metrics.total_loc,
+        crate::entropy::EntropyReport::render_measurement(report.entropy_metrics.pattern_diversity),
         report.actionable_violations.len(),
         report.total_loc_reduction(),
         report.reduction_percentage(),
+        note,
         format_markdown_violations(&report.actionable_violations, max_violations)
     )
 }
@@ -176,14 +211,17 @@ pub(crate) fn format_violation_list(
                 crate::entropy::violation_detector::Severity::Medium => c::YELLOW,
                 crate::entropy::violation_detector::Severity::Low => c::GREEN,
             };
+            // "saves" renders "not estimated" where no per-pattern size was
+            // measured (the low-diversity finding), instead of the old fixed
+            // 15%-of-total_loc figure printed as if it were derived.
             format!(
-                "  {}. {}{:?}{} {} (saves {} lines)\n     {}Fix:{} {}",
+                "  {}. {}{:?}{} {} (saves {})\n     {}Fix:{} {}",
                 c::number(&(i + 1).to_string()),
                 sev_color,
                 v.severity,
                 c::RESET,
                 v.message,
-                c::number(&v.estimated_loc_reduction.to_string()),
+                c::number(&v.render_loc_reduction()),
                 c::BOLD,
                 c::RESET,
                 v.fix_suggestion
@@ -203,18 +241,28 @@ pub(crate) fn format_markdown_violations(
         .iter()
         .take(max_count)
         .map(|v| {
+            // A project-level finding (low diversity) has no pattern; it used to
+            // be rendered with a placeholder "ControlFlow (repeated 0 times)".
+            let pattern_line = v.pattern.as_ref().map_or_else(
+                || "**Pattern**: project-wide (not a single construct)\n".to_string(),
+                |p| {
+                    format!(
+                        "**Pattern**: {:?} (repeated {} times)\n",
+                        p.pattern_type, p.repetitions
+                    )
+                },
+            );
             format!(
                 "### {} ({:?})\n\n\
-                 **Pattern**: {:?} (repeated {} times)\n\
+                 {}\
                  **Fix**: {}\n\
-                 **LOC Reduction**: {} lines\n\
+                 **LOC Reduction**: {}\n\
                  **Affected Files**: {}\n",
                 v.message,
                 v.severity,
-                v.pattern.pattern_type,
-                v.pattern.repetitions,
+                pattern_line,
                 v.fix_suggestion,
-                v.estimated_loc_reduction,
+                v.render_loc_reduction(),
                 v.affected_files.len()
             )
         })

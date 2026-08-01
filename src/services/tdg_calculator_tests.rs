@@ -1333,4 +1333,49 @@ mod simd_equivalence_tests {
             "Extract duplicated code into shared utilities"
         );
     }
+
+    /// GH #671: a project without git history must not abort the analysis.
+    ///
+    /// `get_or_compute_churn_analysis` built an empty analysis, cached it, and
+    /// then returned `Err` anyway — so the first call failed while every later
+    /// call succeeded, and `pmat report` died with
+    /// `Not found: No git repository found at "."`.
+    #[tokio::test]
+    async fn churn_analysis_without_a_repository_is_empty_not_an_error() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let calculator = TDGCalculator::new().with_project_root(dir.path().to_path_buf());
+
+        let first = calculator.get_or_compute_churn_analysis().await;
+        assert!(
+            first.is_ok(),
+            "a directory with no git history must yield an empty analysis, not Err"
+        );
+        let first = first.unwrap();
+        assert!(first.files.is_empty());
+        assert_eq!(first.summary.total_commits, 0);
+
+        // Second call must agree with the first — it used to differ.
+        let second = calculator
+            .get_or_compute_churn_analysis()
+            .await
+            .expect("cached analysis");
+        assert_eq!(second.files.len(), first.files.len());
+        assert_eq!(second.summary.total_commits, first.summary.total_commits);
+    }
+
+    /// And a file in such a project still gets a real, file-derived score
+    /// rather than failing.
+    #[tokio::test]
+    async fn file_scoring_survives_a_project_without_git() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let file = dir.path().join("lib.rs");
+        std::fs::write(&file, "pub fn a() -> i32 { 1 }\n").unwrap();
+
+        let calculator = TDGCalculator::new().with_project_root(dir.path().to_path_buf());
+        let score = calculator.calculate_file(&file).await;
+        assert!(
+            score.is_ok(),
+            "scoring must not depend on git being present"
+        );
+    }
 }

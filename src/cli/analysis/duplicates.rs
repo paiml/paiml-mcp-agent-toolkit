@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+// `HashMap` is still used by `find_duplicate_blocks` for hash grouping (order
+// there is erased by an explicit sort); every map that reaches OUTPUT is a
+// `BTreeMap` so JSON key order cannot vary between runs.
 use std::path::{Path, PathBuf};
 
 include!("duplicates_detection.rs");
@@ -185,6 +188,55 @@ mod tests {
         assert!(duplicates.is_empty());
     }
 
+    /// DETERMINISM (round-3 sweep): `find_duplicate_blocks` iterated a
+    /// `HashMap` of hash groups and then sorted only by `lines` — a stable sort,
+    /// so every block of equal length kept the map's per-process order.
+    /// `analyze duplicates --format json` on a fixed two-file fixture produced
+    /// 5 DIFFERENT md5 sums over 5 runs: the same 14 block hashes, reordered
+    /// (run 1 began 9d399b, 272e45, f64c5c, ff7a0d…; run 2 began 9d399b,
+    /// a6cbc6, ff7a0d, a2e02d…).
+    ///
+    /// Every group here is the SAME length, so `lines` decides nothing and the
+    /// tie-break is the whole answer. Each iteration builds a fresh `HashMap`
+    /// inside the function: the in-process stand-in for re-running the binary.
+    #[test]
+    fn duplicate_block_order_is_stable_across_fresh_hash_maps() {
+        fn order() -> Vec<String> {
+            let mut blocks = Vec::new();
+            // Ten 6-line duplicate pairs, all identical in length.
+            for group in 0..10 {
+                for site in 0..2 {
+                    blocks.push((
+                        format!("hash{group:02}"),
+                        format!("file{site}.rs"),
+                        1 + group * 10,
+                        6 + group * 10,
+                        format!("body{group}"),
+                    ));
+                }
+            }
+            find_duplicate_blocks(blocks, 0.8)
+                .into_iter()
+                .map(|b| b.hash)
+                .collect()
+        }
+
+        let first = order();
+        assert_eq!(first.len(), 10, "fixture must produce ten tied blocks");
+        for i in 0..10 {
+            assert_eq!(
+                order(),
+                first,
+                "iteration {i}: identical input must produce an identical block order"
+            );
+        }
+        // Ties resolve on (first location, hash), so the order is a property of
+        // the code rather than of the hash seed.
+        let mut expected = first.clone();
+        expected.sort();
+        assert_eq!(first, expected);
+    }
+
     #[test]
     fn test_find_duplicate_blocks_with_duplicates() {
         let blocks = vec![
@@ -264,7 +316,7 @@ mod tests {
             total_lines: 100,
             duplication_percentage: 10.0,
             duplicate_blocks: vec![],
-            file_statistics: HashMap::new(),
+            file_statistics: BTreeMap::new(),
         };
 
         let result = format_json_output(&report);
@@ -301,7 +353,7 @@ mod tests {
                 tokens: 20,
                 similarity: 1.0,
             }],
-            file_statistics: HashMap::new(),
+            file_statistics: BTreeMap::new(),
         };
 
         let result = format_human_output(&report);
@@ -342,7 +394,7 @@ mod tests {
                 similarity: 1.0,
             })
             .collect();
-        let mut file_stats = HashMap::new();
+        let mut file_stats = BTreeMap::new();
         file_stats.insert(
             "src/x.rs".to_string(),
             FileStats {
@@ -391,8 +443,21 @@ mod tests {
         let r = populated_report_with_blocks(2);
         let out = format_output(&r, crate::cli::DuplicateOutputFormat::Json).unwrap();
         assert!(out.contains("\"total_duplicates\""));
-        assert!(out.contains("\"entropy_analysis\""));
         assert!(out.contains("\"metrics\""));
+
+        // This assertion used to require `entropy_analysis` to be PRESENT, which
+        // pinned a fabrication: the block was emitted with the constants
+        // average_entropy 0.5 / high_entropy_blocks 0 in every run, and this
+        // command performs no entropy analysis at all. The test was enforcing
+        // the bug. It now enforces the fix.
+        assert!(
+            !out.contains("\"entropy_analysis\""),
+            "duplicates JSON must not emit an entropy block it never measured"
+        );
+        assert!(
+            !out.contains("\"analysis_time_ms\""),
+            "duplicates JSON must not emit a hardcoded analysis time"
+        );
     }
 
     #[test]
@@ -478,7 +543,7 @@ mod tests {
 
     #[test]
     fn test_get_sorted_file_stats_sorts_by_dup_pct_desc() {
-        let mut stats = HashMap::new();
+        let mut stats = BTreeMap::new();
         stats.insert(
             "low.rs".to_string(),
             FileStats {
@@ -508,5 +573,155 @@ mod tests {
         assert_eq!(sorted[0].0, "high.rs");
         assert_eq!(sorted[1].0, "mid.rs");
         assert_eq!(sorted[2].0, "low.rs");
+    }
+
+    // ── per-file duplication can never exceed the file ──────────────────────
+
+    /// Round 3: round 2 fixed only the aggregate. Two byte-identical 17-line
+    /// files still reported `file_statistics[a.rs] = {duplicate_lines: 76,
+    /// total_lines: 17, duplication_percentage: 447.06}` — a part 4.5x its own
+    /// whole — because overlapping sliding windows that hash differently were
+    /// still summed per file.
+    #[tokio::test]
+    async fn test_per_file_duplication_never_exceeds_the_file() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        let body = (0..17)
+            .map(|i| format!("    let v{} = {} + 1;\n", i % 4, i))
+            .collect::<String>();
+        std::fs::write(temp.path().join("a.rs"), &body).unwrap();
+        std::fs::write(temp.path().join("b.rs"), &body).unwrap();
+
+        for detection in [
+            crate::cli::DuplicateType::Exact,
+            crate::cli::DuplicateType::All,
+        ] {
+            let report = detect_duplicates(temp.path(), detection, 0.8, 5, 100, &None, &None)
+                .await
+                .expect("detection must not fail");
+
+            for (path, stats) in &report.file_statistics {
+                assert!(
+                    stats.duplicate_lines <= stats.total_lines,
+                    "{path}: {} duplicate lines in a {}-line file",
+                    stats.duplicate_lines,
+                    stats.total_lines
+                );
+                assert!(
+                    stats.duplication_percentage <= 100.0,
+                    "{path}: {}% duplication",
+                    stats.duplication_percentage
+                );
+            }
+            assert!(
+                report.duplicate_lines <= report.total_lines,
+                "project total {} > {} lines counted",
+                report.duplicate_lines,
+                report.total_lines
+            );
+            assert!(report.duplication_percentage <= 100.0);
+            // The headline must be the sum of the rows it heads.
+            let row_sum: usize = report
+                .file_statistics
+                .values()
+                .map(|s| s.duplicate_lines)
+                .sum();
+            assert_eq!(
+                report.duplicate_lines, row_sum,
+                "the project total must agree with the per-file rows"
+            );
+        }
+    }
+
+    /// Two identical files are 100% duplicated — not 447%, and not 50%.
+    #[tokio::test]
+    async fn test_two_identical_files_are_fully_duplicated() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        let body = (0..12)
+            .map(|i| format!("    let v{i} = {i} + 1;\n"))
+            .collect::<String>();
+        std::fs::write(temp.path().join("a.rs"), &body).unwrap();
+        std::fs::write(temp.path().join("b.rs"), &body).unwrap();
+
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::Exact,
+            0.8,
+            5,
+            100,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(report.total_lines, 24);
+        // The sliding window does not always reach the final line of a file,
+        // so this is "nearly all of both files" rather than exactly all of it —
+        // what matters is that it is BELOW 100%, where 447.06% was reported.
+        assert!(
+            (80.0..=100.0).contains(&report.duplication_percentage),
+            "two identical files must read as almost fully duplicated, got {}%",
+            report.duplication_percentage
+        );
+        for (path, stats) in &report.file_statistics {
+            assert_eq!(stats.total_lines, 12, "{path}");
+            assert!(
+                stats.duplicate_lines <= 12,
+                "{path}: {} of 12 lines",
+                stats.duplicate_lines
+            );
+            assert!(stats.duplicate_lines >= 10, "{path}");
+        }
+    }
+
+    /// The per-file statistics are accumulated from a HashMap of blocks; five
+    /// runs over the same input must agree exactly.
+    #[tokio::test]
+    async fn test_file_statistics_are_identical_across_5_runs() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        for name in ["a.rs", "b.rs", "c.rs"] {
+            let body = (0..15)
+                .map(|i| format!("    let v{} = {} * 3;\n", i % 5, i))
+                .collect::<String>();
+            std::fs::write(temp.path().join(name), body).unwrap();
+        }
+
+        let snapshot = |report: &DuplicateReport| {
+            let mut rows: Vec<String> = report
+                .file_statistics
+                .iter()
+                .map(|(p, s)| {
+                    format!(
+                        "{p}|{}|{}|{:.4}",
+                        s.duplicate_lines, s.total_lines, s.duplication_percentage
+                    )
+                })
+                .collect();
+            rows.sort();
+            format!("{}|{}|{rows:?}", report.duplicate_lines, report.total_lines)
+        };
+
+        let mut first: Option<String> = None;
+        for run in 0..5 {
+            let report = detect_duplicates(
+                temp.path(),
+                crate::cli::DuplicateType::Exact,
+                0.8,
+                5,
+                100,
+                &None,
+                &None,
+            )
+            .await
+            .unwrap();
+            let current = snapshot(&report);
+            match &first {
+                None => first = Some(current),
+                Some(expected) => assert_eq!(*expected, current, "run {run} differed"),
+            }
+        }
     }
 }

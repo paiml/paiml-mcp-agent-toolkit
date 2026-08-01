@@ -21,7 +21,7 @@ mod coverage_instrumented_tests {
     fn test_ci_format_human_excellent_range() {
         let score = TdgScore {
             total: 96.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             confidence: 0.98,
             file_path: None,
@@ -298,7 +298,7 @@ mod coverage_instrumented_tests {
 
     #[test]
     fn test_ci_format_project_basic() {
-        let mut lang_dist = std::collections::HashMap::new();
+        let mut lang_dist = std::collections::BTreeMap::new();
         lang_dist.insert(Language::Rust, 8);
         lang_dist.insert(Language::Python, 2);
 
@@ -309,7 +309,7 @@ mod coverage_instrumented_tests {
             files: vec![
                 TdgScore {
                     total: 95.0,
-                    grade: Grade::APLus,
+                    grade: Grade::APlus,
                     ..TdgScore::default()
                 },
                 TdgScore {
@@ -324,9 +324,11 @@ mod coverage_instrumented_tests {
                 },
             ],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
+            files_reported: 3,
+            files_truncated: false,
         };
         let output = format_project(&project);
         assert!(output.contains("Project TDG Score Report"));
@@ -339,7 +341,7 @@ mod coverage_instrumented_tests {
 
     #[test]
     fn test_ci_format_project_single_file() {
-        let mut lang_dist = std::collections::HashMap::new();
+        let mut lang_dist = std::collections::BTreeMap::new();
         lang_dist.insert(Language::Go, 1);
 
         let project = ProjectScore {
@@ -352,9 +354,11 @@ mod coverage_instrumented_tests {
                 ..TdgScore::default()
             }],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
+            files_reported: 1,
+            files_truncated: false,
         };
         let output = format_project(&project);
         assert!(output.contains("70.0/100"));
@@ -385,7 +389,7 @@ mod coverage_instrumented_tests {
     fn test_ci_grade_description_all_grades() {
         // Exercise all 11 branches of grade_description
         let descriptions = [
-            (Grade::APLus, "A+"),
+            (Grade::APlus, "A+"),
             (Grade::A, "A"),
             (Grade::AMinus, "A-"),
             (Grade::BPlus, "B+"),
