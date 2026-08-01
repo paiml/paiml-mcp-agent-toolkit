@@ -62,6 +62,16 @@ pub struct FileDeadCode {
     pub file_path: PathBuf,
     pub dead_items: Vec<DeadItem>,
     pub file_dead_percentage: f64,
+    /// Physical lines in the file, counted while computing
+    /// `file_dead_percentage`. `None` when the file could not be read.
+    ///
+    /// The consumer used to substitute the literal `100` for every file
+    /// (`FileDeadCodeMetrics.total_lines`), so a 1287-line file and a 370-line
+    /// file both reported `total_lines: 100` next to a `dead_percentage`
+    /// computed from the real count — 24 dead lines "of 100" printed as 6.49%.
+    /// The count is measured here, once, and carried instead of re-invented.
+    #[serde(default)]
+    pub total_lines: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -369,6 +369,8 @@ mod tests {
             }],
             total_files: 100,
             analyzed_files: 100,
+            files_with_dead_code_found: 10,
+            files_truncated: false,
         }
     }
 

@@ -157,6 +157,34 @@ pub(super) fn apply_complexity_filters(
     filtered_count
 }
 
+/// Aggregate over every analyzed file, then list only the top-N slice.
+///
+/// The summary and the list are built here together so they cannot drift: the
+/// handler used to aggregate AFTER truncation and then overwrite
+/// `summary.total_files` with the project count, which is how one unchanged
+/// 1070-file tree reported `total_files: 1070` next to `total_functions: 159`
+/// (true value 10148) and `technical_debt_hours: 388.75` (true 1644.25).
+///
+/// `analyzed` is consumed for the aggregate; `listed` is what the renderer
+/// prints. See `contracts/pmat-no-fabrication-v1.yaml` — a cap must never be
+/// presented as a total.
+pub(super) fn build_report_over_analyzed_files(
+    analyzed: Vec<FileComplexityMetrics>,
+    listed: Vec<FileComplexityMetrics>,
+    max_cyclomatic: Option<u16>,
+    max_cognitive: Option<u16>,
+) -> crate::services::complexity::ComplexityReport {
+    let analyzed_count = analyzed.len();
+    let mut report = crate::services::complexity::aggregate_results_with_thresholds(
+        analyzed,
+        max_cyclomatic,
+        max_cognitive,
+    );
+    report.summary.total_files = analyzed_count;
+    report.files = listed;
+    report
+}
+
 /// Apply top files limit by sorting and truncating results
 ///
 /// Sorts files by total complexity (cyclomatic + cognitive) in descending order

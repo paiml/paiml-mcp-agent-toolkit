@@ -292,8 +292,6 @@ pub async fn handle_analyze_complexity(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
-    use crate::services::complexity::aggregate_results_with_thresholds;
-
     if watch {
         #[cfg(feature = "watch")]
         {
@@ -342,7 +340,18 @@ pub async fn handle_analyze_complexity(
     // Apply filtering and aggregation
     let _filtered_count =
         analysis::apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
+
+    // The summary is aggregated over every file that survived the thresholds —
+    // NOT over the --top-files slice. It used to be computed after truncation
+    // while `total_files` was overwritten with the whole-project count, so one
+    // unchanged 1070-file tree reported total_files 1070 next to
+    // total_functions 159 (true value 10148, 64x low), technical_debt_hours
+    // 388.75 (true 1644.25) and max_cyclomatic 29 (true project max 31) — the
+    // default --top-files 10 was a cap wearing the word "total".
+    let analyzed_file_count = file_metrics.len();
+    let aggregated_metrics = file_metrics.clone();
     analysis::apply_top_files_limit(&mut file_metrics, config.top_files);
+    let files_truncated = file_metrics.len() < analyzed_file_count;
 
     // Check if all files were filtered out and provide helpful message
     if original_file_count > 0 && file_metrics.is_empty() {
@@ -363,15 +372,25 @@ pub async fn handle_analyze_complexity(
         eprintln!("   3. Use --verbose to see detailed analysis of all files\n");
     }
 
-    // Create summary with original file count for accurate reporting
-    let mut summary =
-        aggregate_results_with_thresholds(file_metrics.clone(), max_cyclomatic, max_cognitive);
-
-    // Fix: Update summary to reflect actual files analyzed before filtering
-    summary.summary.total_files = original_file_count;
+    // Aggregate over every analyzed file, then list only the top-N slice.
+    // `total_files` now means "files this summary aggregates", which is what
+    // the other summary fields are computed from.
+    let summary = analysis::build_report_over_analyzed_files(
+        aggregated_metrics,
+        file_metrics.clone(),
+        max_cyclomatic,
+        max_cognitive,
+    );
 
     // Format and write output
-    output::format_and_write_output(&summary, &file_metrics, format, output, top_files).await?;
+    let listing = output::ListingDisclosure {
+        top_files,
+        files_listed: file_metrics.len(),
+        files_analyzed: analyzed_file_count,
+        files_discovered: original_file_count,
+        truncated: files_truncated,
+    };
+    output::format_and_write_output(&summary, &file_metrics, format, output, listing).await?;
 
     // Check violations if required
     analysis::check_complexity_violations(

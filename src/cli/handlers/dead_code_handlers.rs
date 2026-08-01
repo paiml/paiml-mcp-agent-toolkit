@@ -200,6 +200,8 @@ mod output_tests {
             ],
             total_files: 5,
             analyzed_files: 5,
+            files_with_dead_code_found: 2,
+            files_truncated: false,
         }
     }
 
@@ -209,6 +211,8 @@ mod output_tests {
             files: vec![],
             total_files: 5,
             analyzed_files: 5,
+            files_with_dead_code_found: 2,
+            files_truncated: false,
         }
     }
 
@@ -279,13 +283,18 @@ mod output_tests {
     }
 
     #[test]
-    fn test_summary_no_dead_functions_skips_breakdown() {
+    /// UPDATED in round 3: this asserted that the breakdown is skipped whenever
+    /// `dead_functions == 0`, which hid it exactly when it was needed — on the
+    /// real repo every dead item was a field, so 26 dead lines were reported
+    /// with no types at all. Dead code that is not a function is still dead
+    /// code, and it now has a row of its own.
+    fn test_summary_without_dead_functions_still_breaks_down_by_type() {
         let mut res = populated_result();
         res.summary.dead_functions = 0;
         let r = format_dead_code_as_summary(&res).unwrap();
-        // Breakdown skipped when dead_functions == 0.
-        assert!(!r.contains("Dead Code by Type"));
-        // But Top Files still emitted (files non-empty).
+        assert!(r.contains("Dead Code by Type"));
+        assert!(r.contains("Other (fields, constants, statics):"));
+        // Top Files still emitted (files non-empty).
         assert!(r.contains("Top Files"));
     }
 
@@ -358,5 +367,133 @@ mod output_tests {
         assert!(r.contains("## Recommendations"));
         assert!(r.contains("High Confidence Dead Code"));
         assert!(r.contains("Test Coverage"));
+    }
+
+    // ── round 3: measured line counts and self-consistent summaries ─────────
+
+    use crate::services::cargo_dead_code_analyzer::{
+        DeadCodeKind, DeadItem, FileDeadCode as CargoFileDeadCode,
+    };
+
+    fn cargo_item(name: &str, kind: DeadCodeKind, line: usize) -> DeadItem {
+        DeadItem {
+            name: name.to_string(),
+            kind,
+            line,
+            column: 1,
+            message: format!("`{name}` is never used"),
+        }
+    }
+
+    /// Observed on the real repo: every listed file reported `total_lines: 100`
+    /// — a 370-line file, a 503-line file and a 1287-line file alike — next to
+    /// a `dead_percentage` computed from the REAL count, so the two disagreed
+    /// by up to 13x (dead_lines 24 / total_lines 100 printed as 6.49%).
+    #[test]
+    fn test_per_file_total_lines_is_the_measured_count() {
+        let files = vec![
+            CargoFileDeadCode {
+                file_path: std::path::PathBuf::from("src/big.rs"),
+                dead_items: vec![
+                    cargo_item("f", DeadCodeKind::Function, 10),
+                    cargo_item("S", DeadCodeKind::Struct, 20),
+                ],
+                file_dead_percentage: 8.0 / 370.0 * 100.0,
+                total_lines: Some(370),
+            },
+            CargoFileDeadCode {
+                file_path: std::path::PathBuf::from("src/small.rs"),
+                dead_items: vec![cargo_item("g", DeadCodeKind::Function, 3)],
+                file_dead_percentage: 5.0 / 20.0 * 100.0,
+                total_lines: Some(20),
+            },
+        ];
+
+        let metrics = convert_cargo_files_to_metrics(files, 0);
+
+        assert_eq!(metrics.len(), 2);
+        let by_path = |name: &str| {
+            metrics
+                .iter()
+                .find(|m| m.path.ends_with(name))
+                .unwrap_or_else(|| panic!("{name} missing"))
+        };
+        let big = by_path("big.rs");
+        let small = by_path("small.rs");
+        assert_eq!(big.total_lines, 370, "the constant 100 is the bug");
+        assert_eq!(small.total_lines, 20);
+        assert_ne!(
+            big.total_lines, small.total_lines,
+            "two files of different length cannot share one line count"
+        );
+        // dead_lines uses the shared estimator: 5 (fn) + 3 (struct) = 8.
+        assert_eq!(big.dead_lines, 8);
+        assert_eq!(small.dead_lines, 5);
+        // The percentage beside it must be that ratio, not a different one.
+        let expected = 8.0 / 370.0 * 100.0;
+        assert!(
+            (big.dead_percentage - expected).abs() < 0.01,
+            "dead_percentage {} does not match dead_lines/total_lines {expected}",
+            big.dead_percentage
+        );
+        // Items are carried, so the counts above are checkable.
+        assert_eq!(big.items.len(), 2);
+    }
+
+    /// Observed on the real repo: `summary.files_with_dead_code: 26` above a
+    /// 4-entry `files` array (and `1` above an EMPTY array on a fixture), with
+    /// `total_dead_lines: 94` while the rows summed to 76.
+    #[test]
+    fn test_summary_agrees_with_the_list_it_heads() {
+        let listed = vec![
+            file("src/a.rs", ConfidenceLevel::High, vec![]),
+            file("src/b.rs", ConfidenceLevel::High, vec![]),
+        ];
+        let mut summary = DeadCodeSummary {
+            total_files_analyzed: 4257,
+            files_with_dead_code: 26, // the pre-fix value
+            total_dead_lines: 94,     // from a different estimator
+            dead_percentage: 9.9,
+            dead_functions: 11,
+            dead_classes: 5,
+            dead_modules: 2,
+            unreachable_blocks: 0,
+        };
+
+        resummarize_from_listed_files(&mut summary, &listed, 10_000);
+
+        assert_eq!(summary.files_with_dead_code, listed.len());
+        assert_eq!(
+            summary.total_dead_lines,
+            listed.iter().map(|f| f.dead_lines).sum::<usize>()
+        );
+        assert_eq!(
+            summary.dead_functions,
+            listed.iter().map(|f| f.dead_functions).sum::<usize>()
+        );
+        // percentage = listed dead lines / project lines, and never above 100.
+        assert!((summary.dead_percentage - 0.2).abs() < 1e-4);
+        assert!(summary.dead_percentage <= 100.0);
+    }
+
+    /// An empty list must summarise as zeros, not as the pre-filter counts.
+    #[test]
+    fn test_empty_list_summarises_as_empty() {
+        let mut summary = DeadCodeSummary {
+            total_files_analyzed: 10,
+            files_with_dead_code: 1,
+            total_dead_lines: 40,
+            dead_percentage: 4.0,
+            dead_functions: 2,
+            dead_classes: 0,
+            dead_modules: 0,
+            unreachable_blocks: 0,
+        };
+
+        resummarize_from_listed_files(&mut summary, &[], 1000);
+
+        assert_eq!(summary.files_with_dead_code, 0);
+        assert_eq!(summary.total_dead_lines, 0);
+        assert_eq!(summary.dead_percentage, 0.0);
     }
 }

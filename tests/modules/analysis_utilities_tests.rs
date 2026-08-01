@@ -959,6 +959,8 @@ mod dead_code_formatter_comprehensive {
             files,
             total_files: file_count,
             analyzed_files: file_count,
+            files_with_dead_code_found: file_count,
+            files_truncated: false,
         }
     }
 
