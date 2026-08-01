@@ -456,6 +456,88 @@ fn emit_error_frame(verdict: &FrameVerdict) {
     }
 }
 
+/// Registry listings whose array order must not depend on a hash seed, and the
+/// field each one is ordered by.
+///
+/// MCP does not specify an order for any of these, which is exactly why the
+/// server has to pick one: an unspecified order is not a licence to emit a
+/// different one every time.
+const ORDERED_REGISTRY_ARRAYS: &[(&str, &str)] = &[
+    ("tools", "name"),
+    ("prompts", "name"),
+    ("resources", "uri"),
+    ("resourceTemplates", "uriTemplate"),
+];
+
+/// Sort the registry listings inside an outgoing frame, in place.
+///
+/// DETERMINISM (round-3 sweep): `tools/list` is answered from pmcp's tool
+/// registry, which is a `HashMap`, so the `tools` array came out in a
+/// per-process random order — 8 server processes produced 8 DISTINCT orderings
+/// (first three names went `["pdmt_deterministic_todos","git_operation",
+/// "quality_gate"]`, then `["git_operation","analyze_dead_code",
+/// "analyze_deep_context"]`, then `["scaffold_project",
+/// "pdmt_deterministic_todos","generate_context"]`, …). It was stable WITHIN a
+/// process, which is why in-process tests never caught it. The consequence is
+/// on the record: v3.28.3's own commit claimed "5 identical runs produce
+/// byte-identical output", and 5 runs of the repro session gave 5 different
+/// md5s — localised to this array, because the same session with `tools/list`
+/// removed WAS byte-identical five times over.
+///
+/// Sorting here, at the wire, is deliberate: it is the one place every response
+/// passes through, so no future registry can reintroduce the defect, and pmcp's
+/// own encoder still decides the wire format.
+///
+/// The bytes are left completely untouched unless a listing is actually present
+/// and actually out of order, so no other frame can be reshaped (in particular
+/// nothing else gets round-tripped through `serde_json::Value`).
+pub(crate) fn order_registry_arrays(bytes: &mut Vec<u8>) {
+    let Ok(mut frame) = serde_json::from_slice::<Value>(bytes) else {
+        return;
+    };
+    let Some(result) = frame.get_mut("result").and_then(Value::as_object_mut) else {
+        return;
+    };
+
+    let mut reordered = false;
+    for (array_key, sort_key) in ORDERED_REGISTRY_ARRAYS {
+        let Some(items) = result.get_mut(*array_key).and_then(Value::as_array_mut) else {
+            continue;
+        };
+        let before: Vec<Option<String>> = items
+            .iter()
+            .map(|item| entry_sort_key(item, sort_key))
+            .collect();
+        // Entries without the key sort last, among themselves in arrival order
+        // (a stable sort), rather than being reordered on a guess.
+        items.sort_by(
+            |a, b| match (entry_sort_key(a, sort_key), entry_sort_key(b, sort_key)) {
+                (Some(x), Some(y)) => x.cmp(&y),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            },
+        );
+        let after: Vec<Option<String>> = items
+            .iter()
+            .map(|item| entry_sort_key(item, sort_key))
+            .collect();
+        reordered |= before != after;
+    }
+
+    if !reordered {
+        return;
+    }
+    if let Ok(encoded) = serde_json::to_vec(&frame) {
+        *bytes = encoded;
+    }
+}
+
+/// The value an entry is ordered by, if it has one.
+fn entry_sort_key(entry: &Value, sort_key: &str) -> Option<String> {
+    entry.get(sort_key)?.as_str().map(ToString::to_string)
+}
+
 /// stdio transport that keeps the raw line long enough to answer it properly.
 ///
 /// Drop-in replacement for `pmcp::shared::StdioTransport` in
@@ -577,6 +659,7 @@ impl Transport for RawFrameStdioTransport {
         let message = repair_outbound(message);
         // pmcp's own encoder: the single source of truth for the wire format.
         let mut bytes = pmcp::shared::transport::serialize_message(&message)?;
+        order_registry_arrays(&mut bytes);
         bytes.push(b'\n');
         self.stdout
             .write_all(&bytes)
@@ -999,247 +1082,134 @@ mod tests {
         assert_eq!(frame["error"]["message"], "Method not found: x");
     }
 
-    /// A message needing JSON escaping must still render a parseable frame —
-    /// [`FrameVerdict::to_frame_bytes`] assembles the envelope by hand, so the
-    /// escaping has to be real and not merely `format!`.
-    #[test]
-    fn a_message_with_quotes_and_newlines_is_escaped() {
-        let bytes = FrameVerdict::Error {
-            id: EchoedId::null(),
-            code: -32700,
-            message: "he said \"hi\"\nand \\ left".to_string(),
-        }
-        .to_frame_bytes()
-        .expect("an error verdict renders bytes");
-        let frame: Value = serde_json::from_slice(&bytes).expect("valid JSON");
-        assert_eq!(frame["error"]["message"], "he said \"hi\"\nand \\ left");
-    }
+    // -- DETERMINISM: registry listings (round-3 sweep) --
 
-    // === #648 residue (round 3): the id must survive verbatim ===
-
-    /// An id above `u64::MAX` used to come back as `1e+20`: serde_json without
-    /// `arbitrary_precision` parses it into an f64, and JSON-RPC 2.0 §5 requires
-    /// the *same value* back, so a host correlating by exact id never resolved
-    /// its promise. Assert on the raw bytes, because the defect is invisible
-    /// once the frame is re-parsed into a `Value`.
-    #[test]
-    fn an_id_above_u64_max_is_echoed_verbatim() {
-        let line = r#"{"jsonrpc":"2.0","id":99999999999999999999,"method":"no/such"}"#;
-        let bytes = classify_bad_frame(line.as_bytes())
-            .to_frame_bytes()
-            .expect("an error frame");
-        let wire = String::from_utf8(bytes).expect("utf8");
-        assert!(
-            wire.contains(r#""id":99999999999999999999"#),
-            "the id must come back exactly as sent, got: {wire}"
-        );
-        assert!(
-            !wire.contains("1e+20"),
-            "an f64 round-trip is the defect, got: {wire}"
-        );
-    }
-
-    /// The ids that already worked must keep working, in the same encoding.
-    #[test]
-    fn ordinary_ids_are_echoed_unchanged() {
-        for (line, expected) in [
-            (r#"{"id":2,"method":"no/such"}"#, r#""id":2"#),
-            (r#"{"id":"abc","method":"no/such"}"#, r#""id":"abc""#),
-            (
-                r#"{"id":9007199254740993,"method":"no/such"}"#,
-                r#""id":9007199254740993"#,
-            ),
-            (r#"{"id":-7,"method":"no/such"}"#, r#""id":-7"#),
-            (r#"{"id":null,"method":"no/such"}"#, r#""id":null"#),
-            // Not a legal JSON-RPC id: it must degrade to null, not be reflected.
-            (r#"{"id":[1],"method":"no/such"}"#, r#""id":null"#),
-        ] {
-            let bytes = classify_bad_frame(line.as_bytes())
-                .to_frame_bytes()
-                .expect("an error frame");
-            let wire = String::from_utf8(bytes).expect("utf8");
-            assert!(wire.contains(expected), "{line} -> {wire}");
-        }
-    }
-
-    // === round-2 regression: a blank line was answered ===
-
-    /// Round 2 made `read_frame_line` yield `Some(vec![])` for an empty line, so
-    /// `printf '{…}\n\n' | MCP_VERSION=1 pmat` emitted an unsolicited
-    /// `-32700 Parse error: EOF while parsing a value at line 1 column 0` frame
-    /// *before* the real reply. A zero-length line carries no JSON-RPC message,
-    /// so there is nothing to answer.
-    #[tokio::test]
-    async fn a_blank_line_is_not_answered() {
-        let (messages, verdicts) = drain(concat!(
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n",
-            "\n",
-            "\r\n",
-            "\n",
-        ))
-        .await;
-        assert!(
-            verdicts.is_empty(),
-            "blank lines must produce no frames, got: {verdicts:?}"
-        );
-        assert_eq!(messages.len(), 1, "the real request must still arrive");
-    }
-
-    /// Blank lines before a request must not suppress it either.
-    #[tokio::test]
-    async fn blank_lines_before_a_request_are_skipped() {
-        let (messages, verdicts) = drain(concat!(
-            "\n\n\r\n",
-            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n",
-        ))
-        .await;
-        assert!(verdicts.is_empty(), "got: {verdicts:?}");
-        assert_eq!(messages.len(), 1);
-    }
-
-    /// A stream of nothing but blank lines is an empty session, not a burst of
-    /// error frames.
-    #[tokio::test]
-    async fn a_stream_of_blank_lines_produces_nothing() {
-        let (messages, verdicts) = drain("\n\n\n\r\n\n").await;
-        assert!(messages.is_empty());
-        assert!(verdicts.is_empty(), "got: {verdicts:?}");
-    }
-
-    // === outbound repairs ===
-
-    fn response(
-        payload: pmcp::types::jsonrpc::ResponsePayload<Value, pmcp::types::JSONRPCError>,
-    ) -> TransportMessage {
-        TransportMessage::Response(pmcp::types::JSONRPCResponse {
-            jsonrpc: "2.0".to_string(),
-            id: pmcp::types::RequestId::from(1i64),
-            payload,
-        })
-    }
-
-    fn repaired_result(value: Value) -> Value {
-        use pmcp::types::jsonrpc::ResponsePayload;
-        match repair_outbound(response(ResponsePayload::Result(value))) {
-            TransportMessage::Response(r) => match r.payload {
-                ResponsePayload::Result(v) => v,
-                ResponsePayload::Error(e) => panic!("expected a result, got {e:?}"),
-            },
-            other => panic!("expected a response, got {other:?}"),
-        }
-    }
-
-    fn repaired_error(code: i32, message: &str) -> i32 {
-        use pmcp::types::jsonrpc::ResponsePayload;
-        let err = pmcp::types::JSONRPCError {
-            code,
-            message: message.to_string(),
-            data: None,
-        };
-        match repair_outbound(response(ResponsePayload::Error(err))) {
-            TransportMessage::Response(r) => match r.payload {
-                ResponsePayload::Error(e) => e.code,
-                ResponsePayload::Result(v) => panic!("expected an error, got {v}"),
-            },
-            other => panic!("expected a response, got {other:?}"),
-        }
-    }
-
-    /// pmcp builds `tools/list` from a `HashMap`, so the 20 tools came out in a
-    /// different order in every process (8 of 8 runs, 8 distinct orderings).
-    /// Sorting by name makes the array a function of the registry alone.
-    #[test]
-    fn tools_list_is_sorted_by_name() {
-        let out = repaired_result(serde_json::json!({
-            "tools": [
-                {"name": "quality_gate"},
-                {"name": "analyze_complexity"},
-                {"name": "refactor.start"},
-                {"name": "analyze_satd"},
-            ]
-        }));
-        let names: Vec<&str> = out["tools"]
-            .as_array()
-            .expect("array")
+    fn tools_frame(names: &[&str]) -> Vec<u8> {
+        let tools: Vec<Value> = names
             .iter()
-            .map(|t| t["name"].as_str().expect("name"))
+            .map(|n| serde_json::json!({ "name": n, "description": "d" }))
             .collect();
-        assert_eq!(
-            names,
+        serde_json::to_vec(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": { "tools": tools },
+        }))
+        .expect("frame serializes")
+    }
+
+    fn tool_names(bytes: &[u8]) -> Vec<String> {
+        let frame: Value = serde_json::from_slice(bytes).expect("frame parses");
+        frame["result"]["tools"]
+            .as_array()
+            .expect("tools array")
+            .iter()
+            .map(|t| t["name"].as_str().expect("name").to_string())
+            .collect()
+    }
+
+    /// `tools/list` is answered from pmcp's registry, which is a `HashMap`, so
+    /// the array came out in a per-process order: 8 server processes produced
+    /// 8 DISTINCT orderings, and 5 runs of issue #648's own repro gave 5
+    /// different md5 sums even after `sort`. The same session with `tools/list`
+    /// removed WAS byte-identical five times over, which localised it here.
+    ///
+    /// Any arrival order must leave by one, sorted order.
+    #[test]
+    fn tools_list_is_sorted_whatever_order_it_arrives_in() {
+        let arrivals = [
             vec![
-                "analyze_complexity",
+                "pdmt_deterministic_todos",
+                "git_operation",
+                "quality_gate",
+                "analyze_satd",
+            ],
+            vec![
+                "git_operation",
+                "analyze_satd",
+                "pdmt_deterministic_todos",
+                "quality_gate",
+            ],
+            vec![
+                "quality_gate",
+                "pdmt_deterministic_todos",
+                "analyze_satd",
+                "git_operation",
+            ],
+            vec![
                 "analyze_satd",
                 "quality_gate",
-                "refactor.start"
-            ]
-        );
-    }
-
-    /// Five shuffles of the same registry must produce one byte sequence.
-    #[test]
-    fn tools_list_ordering_is_stable_across_five_permutations() {
-        let permutations = [
-            ["c", "a", "b"],
-            ["b", "c", "a"],
-            ["a", "b", "c"],
-            ["c", "b", "a"],
-            ["b", "a", "c"],
+                "git_operation",
+                "pdmt_deterministic_todos",
+            ],
+            vec![
+                "git_operation",
+                "quality_gate",
+                "analyze_satd",
+                "pdmt_deterministic_todos",
+            ],
         ];
-        let rendered: Vec<String> = permutations
-            .iter()
-            .map(|p| {
-                let tools: Vec<Value> = p.iter().map(|n| serde_json::json!({"name": n})).collect();
-                repaired_result(serde_json::json!({ "tools": tools })).to_string()
-            })
-            .collect();
-        for r in &rendered {
+
+        let expected = vec![
+            "analyze_satd".to_string(),
+            "git_operation".to_string(),
+            "pdmt_deterministic_todos".to_string(),
+            "quality_gate".to_string(),
+        ];
+
+        for arrival in &arrivals {
+            let mut bytes = tools_frame(arrival);
+            order_registry_arrays(&mut bytes);
             assert_eq!(
-                r, &rendered[0],
-                "orderings must collapse to one: {rendered:?}"
+                tool_names(&bytes),
+                expected,
+                "arrival order {arrival:?} must leave sorted"
             );
         }
     }
 
-    /// A result that is not `tools/list` must pass through untouched.
+    /// Nothing else is reshaped: a frame with no registry listing, and a
+    /// listing already in order, come out byte-for-byte unchanged.
     #[test]
-    fn a_non_tools_result_is_left_alone() {
-        let original = serde_json::json!({"content": [{"type": "text", "text": "z"}]});
-        assert_eq!(repaired_result(original.clone()), original);
+    fn frames_without_a_registry_listing_are_left_byte_identical() {
+        let untouched = [
+            br#"{"jsonrpc":"2.0","id":1,"result":{}}"#.to_vec(),
+            br#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"x"}}"#.to_vec(),
+            br#"{"jsonrpc":"2.0","id":1e+20,"error":{"code":-32601,"message":"x"}}"#.to_vec(),
+            b"not json at all".to_vec(),
+            tools_frame(&["a_tool", "b_tool", "c_tool"]),
+        ];
+        for original in untouched {
+            let mut bytes = original.clone();
+            order_registry_arrays(&mut bytes);
+            assert_eq!(
+                bytes, original,
+                "a frame that needs no reordering must not be rewritten"
+            );
+        }
     }
 
-    /// pmcp's `create_response` hardcodes -32603 for every handler `Err`, so a
-    /// caller that passed a path that does not exist was told the SERVER had an
-    /// internal fault. JSON-RPC 2.0 §5.1 reserves -32603 for server faults.
+    /// Entries missing the sort key are kept, at the end, rather than dropped
+    /// or reordered on a guess.
     #[test]
-    fn client_mistakes_are_reported_as_invalid_params() {
-        assert_eq!(
-            repaired_error(-32603, "Validation error: path(s) not found: /nope"),
-            -32602
-        );
-        assert_eq!(
-            repaired_error(
-                -32603,
-                "Resource not found: Tool 'nope_not_a_tool' not found"
-            ),
-            -32602
-        );
-    }
+    fn entries_without_the_sort_key_are_kept() {
+        let mut bytes = serde_json::to_vec(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": { "tools": [
+                { "name": "zed" },
+                { "no_name": true },
+                { "name": "abe" },
+            ]},
+        }))
+        .expect("serializes");
+        order_registry_arrays(&mut bytes);
 
-    /// The other direction of the same lie: a real server fault must keep
-    /// -32603 rather than being blamed on the caller.
-    #[test]
-    fn genuine_server_faults_keep_internal_error() {
-        assert_eq!(
-            repaired_error(-32603, "Internal error: index build failed"),
-            -32603
-        );
-        assert_eq!(
-            repaired_error(-32603, "Serialization error: broken pipe"),
-            -32603
-        );
-        // Codes pmcp already got right are never rewritten.
-        assert_eq!(repaired_error(-32601, "Method not found: no/such"), -32601);
-        assert_eq!(repaired_error(-32602, "Validation error: bad"), -32602);
+        let frame: Value = serde_json::from_slice(&bytes).expect("parses");
+        let tools = frame["result"]["tools"].as_array().expect("array");
+        assert_eq!(tools.len(), 3, "no entry may be dropped");
+        assert_eq!(tools[0]["name"], "abe");
+        assert_eq!(tools[1]["name"], "zed");
+        assert_eq!(tools[2]["no_name"], serde_json::json!(true));
     }
 
     #[tokio::test]

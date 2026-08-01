@@ -86,3 +86,47 @@ pub enum EvidenceType {
         algorithm: String,
     },
 }
+
+/// Derive a proof annotation's id from what it asserts, instead of drawing a
+/// fresh random one.
+///
+/// DETERMINISM (round-3 sweep): `annotation_id` was `Uuid::new_v4()` at every
+/// construction site, so `analyze proof-annotations --format json` gave every
+/// annotation a NEW identity on every invocation — 1298 annotations whose
+/// content was identical run to run but whose `annotationId` was different
+/// every time. An identifier that changes when nothing changed cannot identify
+/// anything: no baseline can be diffed and no annotation can be referenced.
+///
+/// `seed` must name the site and the claim (file, span, property, method,
+/// tool). Identical input therefore yields an identical id, and two distinct
+/// annotations yield distinct ids.
+///
+/// The digest is `DefaultHasher`, which is SipHash-1-3 with FIXED keys (unlike
+/// `RandomState`, which seeds per process) — the same construction
+/// `analyze duplicates` already relies on for its stable block hashes. Two
+/// independent 64-bit digests are taken over differently-prefixed inputs to
+/// fill the 128 bits. The result is stamped as UUID version 8 (RFC 9562
+/// custom), which is exactly what it is: a vendor-defined, name-derived id —
+/// claiming v4 (random) or v5 (SHA-1 name-based) would misdescribe it.
+#[must_use]
+pub fn derive_annotation_id(seed: &str) -> Uuid {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    fn digest(prefix: &str, seed: &str) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        prefix.hash(&mut hasher);
+        seed.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    let mut bytes = [0u8; 16];
+    bytes[..8].copy_from_slice(&digest("pmat.proof.hi\u{1}", seed).to_be_bytes());
+    bytes[8..].copy_from_slice(&digest("pmat.proof.lo\u{2}", seed).to_be_bytes());
+
+    // Version 8 (custom) in the high nibble of byte 6, RFC 4122 variant in the
+    // top bits of byte 8.
+    bytes[6] = (bytes[6] & 0x0f) | 0x80;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    Uuid::from_bytes(bytes)
+}

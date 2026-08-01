@@ -40,6 +40,20 @@ fn format_text(
         "  Normalized: {} (avg of category %)\n",
         c::pct(score.percentage, 80.0, 60.0)
     ));
+    // The points ratio, spelled out. "Score: 236.9/289" above and "Normalized:
+    // 87.2%" here are two different quantities; naming the third makes the
+    // relationship checkable instead of leaving the reader to divide and
+    // conclude one of them is wrong.
+    #[allow(clippy::cast_precision_loss)]
+    let points_percentage = if applicable_possible > 0.0 {
+        (applicable_earned / applicable_possible) * 100.0
+    } else {
+        0.0
+    };
+    output.push_str(&format!(
+        "  Points: {} of possible points\n",
+        c::pct(points_percentage, 80.0, 60.0)
+    ));
     output.push_str(&format!(
         "  Grade: {}\n",
         c::grade(&score.grade.to_string())
@@ -121,7 +135,26 @@ fn format_markdown(
         "- **Score**: {:.1}/{:.0}\n",
         applicable_earned, applicable_possible
     ));
-    output.push_str(&format!("- **Percentage**: {:.1}%\n", score.percentage));
+    // ARITHMETIC SANITY: `percentage` does NOT follow from the two numbers on
+    // the line above it — it is the unweighted mean of the 11 category
+    // percentages, not `earned/possible`. On pmat's own tree that is 87.2% for
+    // a 236.9/289 score whose points ratio is 82.0%. Markdown used to print the
+    // two adjacent with no disclaimer at all (only the text renderer said
+    // "avg of category %"), so a reader had every reason to check the division
+    // and conclude one of them was wrong. Both are now named.
+    #[allow(clippy::cast_precision_loss)]
+    let points_percentage = if applicable_possible > 0.0 {
+        (applicable_earned / applicable_possible) * 100.0
+    } else {
+        0.0
+    };
+    output.push_str(&format!(
+        "- **Percentage**: {:.1}% (mean of category percentages — the grade is derived from this)\n",
+        score.percentage
+    ));
+    output.push_str(&format!(
+        "- **Points**: {points_percentage:.1}% of possible points ({applicable_earned:.1}/{applicable_possible:.0})\n"
+    ));
     output.push_str(&format!("- **Grade**: {}\n\n", score.grade));
 
     // Categories

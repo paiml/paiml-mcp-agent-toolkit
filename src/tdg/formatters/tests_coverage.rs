@@ -324,11 +324,7 @@ mod coverage_instrumented_tests {
                 },
             ],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::BTreeMap::from([
-                (Grade::APLus, 1),
-                (Grade::AMinus, 1),
-                (Grade::B, 1),
-            ]),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
             files_reported: 3,
@@ -358,7 +354,7 @@ mod coverage_instrumented_tests {
                 ..TdgScore::default()
             }],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::BTreeMap::from([(Grade::BMinus, 1)]),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
             files_reported: 1,

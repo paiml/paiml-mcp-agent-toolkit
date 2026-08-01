@@ -35,11 +35,30 @@ fn build_score_document(
         })
         .collect();
 
+    // ARITHMETIC SANITY (round-3 sweep): `percentage` is the unweighted MEAN of
+    // the per-category percentages, not `total_earned / total_possible`. json
+    // and yaml printed all three side by side with no label, so the document
+    // contradicted itself on its face: `236.9 / 289 * 100 = 81.97`, not the
+    // `87.22669` shown next to it (the mean of the 11 category percentages,
+    // 959.49359/11). Every category was `applicable: true`, so the documented
+    // "excludes categories that do not apply" caveat did not explain the gap
+    // either. Both figures are now emitted and both are named; `percentage`
+    // keeps its meaning (the grade is derived from it) rather than being
+    // silently redefined.
+    #[allow(clippy::cast_precision_loss)]
+    let points_percentage = if applicable_possible > 0.0 {
+        aggregation::round_score((applicable_earned / applicable_possible) * 100.0)
+    } else {
+        0.0
+    };
+
     serde_json::json!({
-        "version": "1.1",
+        "version": "1.2",
         "total_earned": applicable_earned,
         "total_possible": applicable_possible,
         "percentage": aggregation::round_score(score.percentage),
+        "percentage_basis": "mean of applicable category percentages",
+        "points_percentage": points_percentage,
         "grade": score.grade.to_string(),
         "categories": categories,
         "recommendations": recommendations,

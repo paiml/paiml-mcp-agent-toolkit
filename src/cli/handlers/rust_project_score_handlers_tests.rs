@@ -501,4 +501,72 @@ mod tests {
             "markdown output must show the same earned total: {markdown}"
         );
     }
+
+    /// ARITHMETIC SANITY (round-3 sweep): `percentage` does NOT follow from the
+    /// `total_earned` / `total_possible` printed beside it — it is the
+    /// unweighted MEAN of the per-category percentages. On pmat's own tree json
+    /// and yaml emitted `total_earned: 236.9`, `total_possible: 289.0`,
+    /// `percentage: 87.22669`, while `236.9 / 289 * 100 = 81.972318`. Every
+    /// category was `applicable: true`, so the documented "excludes categories
+    /// that do not apply" caveat did not explain the gap. Only the text
+    /// renderer admitted what the number was; markdown printed the two adjacent
+    /// with no disclaimer and json/yaml carried no label at all.
+    ///
+    /// The document must now name both quantities and both must be checkable.
+    #[test]
+    fn every_renderer_says_which_percentage_it_is_showing() {
+        let score = realistic_score();
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[]).unwrap()).unwrap();
+
+        let earned = json["total_earned"].as_f64().unwrap();
+        let possible = json["total_possible"].as_f64().unwrap();
+        let percentage = json["percentage"].as_f64().unwrap();
+        let points = json["points_percentage"].as_f64().unwrap();
+
+        // The two are genuinely different numbers on this fixture, or the test
+        // would pass without proving anything.
+        assert!(
+            (percentage - points).abs() > 1.0,
+            "fixture must exercise the discrepancy: {percentage} vs {points}"
+        );
+
+        // `points_percentage` follows from the two totals beside it.
+        assert!(
+            (points - (earned / possible) * 100.0).abs() < 0.001,
+            "points_percentage must equal total_earned/total_possible: \
+             {points} vs {earned}/{possible}"
+        );
+        // And `percentage` is labelled as what it actually is.
+        assert_eq!(
+            json["percentage_basis"],
+            serde_json::json!("mean of applicable category percentages")
+        );
+        // No percentage above 100.
+        assert!((0.0..=100.0).contains(&percentage));
+        assert!((0.0..=100.0).contains(&points));
+
+        // yaml carries the same fields.
+        let yaml: serde_json::Value =
+            serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap()).unwrap();
+        assert_eq!(yaml["points_percentage"], json["points_percentage"]);
+        assert_eq!(yaml["percentage_basis"], json["percentage_basis"]);
+
+        // markdown no longer prints the two adjacent without saying which is
+        // which, and text names the points ratio too.
+        let markdown = format_markdown(&score, &[], false);
+        assert!(
+            markdown.contains("mean of category percentages"),
+            "markdown must label the percentage: {markdown}"
+        );
+        assert!(
+            markdown.contains("of possible points"),
+            "markdown must also give the points ratio: {markdown}"
+        );
+        let text = strip_ansi(&format_text(&score, &[], false));
+        assert!(
+            text.contains("of possible points"),
+            "text must also give the points ratio: {text}"
+        );
+    }
 }

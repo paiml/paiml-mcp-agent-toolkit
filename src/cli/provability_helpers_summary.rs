@@ -230,7 +230,16 @@ fn calculate_file_averages<'a>(
         })
         .collect();
 
-    file_avg_scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    // DETERMINISM (round-3 sweep): the average score is not a total order —
+    // two files can score identically, and on a small tree they usually do —
+    // and the ranking is built from a `HashMap`, so `.take(n)` printed
+    // "1. b.rs / 2. a.rs" on one run and "1. a.rs / 2. b.rs" on the next for
+    // byte-identical input. Path breaks the tie.
+    file_avg_scores.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(b.0))
+    });
     file_avg_scores
 }
 

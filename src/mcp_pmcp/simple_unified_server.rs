@@ -142,6 +142,9 @@ impl<T: Transport> EofSignalingTransport<T> {
         let Ok(mut bytes) = pmcp::shared::transport::serialize_message(frame) else {
             return false;
         };
+        // Same ordering the normal write path applies, so a salvaged response
+        // is not the one frame whose `tools` array is hash-ordered.
+        crate::mcp_pmcp::stdio_frames::order_registry_arrays(&mut bytes);
         bytes.push(b'\n');
 
         let mut out = tokio::io::stdout();

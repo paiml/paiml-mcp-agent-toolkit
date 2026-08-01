@@ -394,7 +394,7 @@ mod tests {
                 },
             ],
             language_distribution,
-            grade_distribution: std::collections::BTreeMap::from([(Grade::A, 10), (Grade::B, 5)]),
+            grade_distribution: std::collections::BTreeMap::new(),
             f_grade_count: 0,
             grade_capped: false,
             files_reported: 2,

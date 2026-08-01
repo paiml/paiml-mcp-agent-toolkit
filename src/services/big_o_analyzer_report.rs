@@ -41,10 +41,23 @@ impl BigOAnalyzer {
             })
             .collect();
 
-        high_complexity.sort_by_key(|f| f.time_complexity.class as u8);
+        // DETERMINISM: sorting on the class alone leaves every same-class
+        // function in input order, which is only accidentally stable. The
+        // (file, line, name) suffix makes the order a function of the code.
+        high_complexity.sort_by(|a, b| {
+            (a.time_complexity.class as u8)
+                .cmp(&(b.time_complexity.class as u8))
+                .then_with(|| a.file_path.cmp(&b.file_path))
+                .then_with(|| a.line_number.cmp(&b.line_number))
+                .then_with(|| a.function_name.cmp(&b.function_name))
+        });
 
         // Generate pattern matches
-        let pattern_matches: Vec<_> = pattern_counts
+        //
+        // DETERMINISM: `pattern_counts` is an `FxHashMap`, so collecting it
+        // straight into a `Vec` put the same patterns in a different array
+        // order on every run. Sorted by descending occurrences then by name.
+        let mut pattern_matches: Vec<_> = pattern_counts
             .into_iter()
             .map(|(name, count)| PatternMatch {
                 pattern_name: name,
@@ -52,6 +65,11 @@ impl BigOAnalyzer {
                 typical_complexity: BigOClass::Linear, // Default
             })
             .collect();
+        pattern_matches.sort_by(|a, b| {
+            b.occurrences
+                .cmp(&a.occurrences)
+                .then_with(|| a.pattern_name.cmp(&b.pattern_name))
+        });
 
         // Generate recommendations
         let recommendations =
@@ -64,6 +82,22 @@ impl BigOAnalyzer {
             pattern_matches,
             recommendations,
         }
+    }
+
+    /// How many high-complexity functions are LISTED vs how many were FOUND.
+    ///
+    /// The distribution is computed over every analysed function and is never
+    /// touched by the `--top-files` / `--high-complexity-only` filters, so
+    /// `quadratic + cubic + exponential` (Factorial is folded into
+    /// `exponential` by `increment_distribution`) is exactly the number of
+    /// functions that qualified before truncation. `.max(listed)` keeps a part
+    /// from ever exceeding its whole if a caller hands us a report whose
+    /// distribution and list disagree.
+    fn high_complexity_listed_and_found(report: &BigOAnalysisReport) -> (usize, usize) {
+        let listed = report.high_complexity_functions.len();
+        let dist = &report.complexity_distribution;
+        let found = (dist.quadratic + dist.cubic + dist.exponential).max(listed);
+        (listed, found)
     }
 
     /// Increment the appropriate distribution counter for a complexity class
@@ -142,10 +176,19 @@ impl BigOAnalyzer {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_json(&self, report: &BigOAnalysisReport) -> Result<String> {
+        let (listed, found) = Self::high_complexity_listed_and_found(report);
         let json = serde_json::json!({
             "summary": {
                 "analyzed_functions": report.analyzed_functions,
-                "high_complexity_count": report.high_complexity_functions.len(),
+                // A TOTAL THAT IS SECRETLY A CAP is a fabrication. This field
+                // is the length of `high_complexity_functions`, and the default
+                // `--top-files 10` truncates that list: on pmat's own tree the
+                // distribution said O(n^2)+O(n^3)+O(2^n) = 106 while
+                // `high_complexity_count` said 24, with nothing saying so. Both
+                // numbers are now named, and the flag is explicit.
+                "high_complexity_count": listed,
+                "high_complexity_found": found,
+                "high_complexity_truncated": listed < found,
             },
             "distribution": {
                 "O(1)": report.complexity_distribution.constant,
@@ -192,10 +235,16 @@ impl BigOAnalyzer {
             "- **Total Functions Analyzed**: {}\n",
             report.analyzed_functions
         ));
-        md.push_str(&format!(
-            "- **High Complexity Functions**: {}\n\n",
-            report.high_complexity_functions.len()
-        ));
+        // Same truncation disclosure as `format_as_json`: the listed count is
+        // capped by `--top-files`, the found count is not.
+        let (listed, found) = Self::high_complexity_listed_and_found(report);
+        if listed < found {
+            md.push_str(&format!(
+                "- **High Complexity Functions**: {listed} listed of {found} found (truncated by --top-files)\n\n"
+            ));
+        } else {
+            md.push_str(&format!("- **High Complexity Functions**: {listed}\n\n"));
+        }
 
         Self::format_distribution_table(&mut md, report);
 

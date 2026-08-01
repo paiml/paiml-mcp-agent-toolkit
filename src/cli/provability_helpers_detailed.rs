@@ -15,11 +15,15 @@ pub fn format_provability_detailed(
     Ok(output)
 }
 
+/// DETERMINISM (round-3 sweep): a `BTreeMap`, not a `HashMap` — the caller
+/// iterates this map to emit one section per file, so the file sections came
+/// out in a per-process order and `--format markdown` / `--format full` on an
+/// unchanged tree diffed against itself.
 fn group_functions_by_file<'a>(
     function_ids: &'a [FunctionId],
     summaries: &'a [ProofSummary],
-) -> HashMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
-    let mut by_file = HashMap::new();
+) -> std::collections::BTreeMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
+    let mut by_file = std::collections::BTreeMap::new();
 
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
         by_file
@@ -33,7 +37,7 @@ fn group_functions_by_file<'a>(
 
 fn write_detailed_analysis_by_file(
     output: &mut String,
-    by_file: HashMap<&str, Vec<(&FunctionId, &ProofSummary)>>,
+    by_file: std::collections::BTreeMap<&str, Vec<(&FunctionId, &ProofSummary)>>,
     include_evidence: bool,
 ) -> Result<()> {
     for (file_path, functions) in by_file {
@@ -79,11 +83,12 @@ fn write_function_details(
         "    Provability Score: {}",
         c::pct(summary.provability_score * 100.0, 80.0, 50.0)
     )?;
-    writeln!(
-        output,
-        "    Analysis Time: {}\u{00b5}s",
-        c::number(&summary.analysis_time_us.to_string())
-    )?;
+    // DETERMINISM (round-3 sweep): `analysis_time_us` used to be printed here
+    // and in the JSON. It is how long THIS machine took under whatever load it
+    // was under — the same four functions came back 28/1/1/1 µs on one run and
+    // 12/2/2/2 µs on the next — so it made `--format markdown` diff against
+    // itself on unchanged input while telling the reader nothing about the
+    // code. The command's total elapsed time is still reported by the handler.
 
     // Show which properties are verified vs missing (#229)
     let all_types = [

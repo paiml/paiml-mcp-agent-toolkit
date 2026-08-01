@@ -265,8 +265,31 @@ fn find_duplicate_blocks(
         }
     }
 
-    // Sort by lines descending
-    duplicates.sort_by_key(|b| std::cmp::Reverse(b.lines));
+    // Sort by lines descending.
+    //
+    // DETERMINISM (round-3 sweep): `hash_groups` is a `HashMap`, so the vector
+    // above was built in a per-process random order, and `sort_by_key` is
+    // stable — every block of the same `lines` therefore kept that random
+    // order. `analyze duplicates --format json` on a fixed two-file fixture
+    // produced 5 DIFFERENT md5 sums over 5 runs, with the same 14 block hashes
+    // merely reordered. The (file, start_line, hash) suffix is a total order
+    // over blocks: `locations` is already sorted by (file, start) above, and no
+    // two surviving blocks share a hash.
+    duplicates.sort_by(|a, b| {
+        b.lines
+            .cmp(&a.lines)
+            .then_with(|| {
+                let a_first = a.locations.first();
+                let b_first = b.locations.first();
+                match (a_first, b_first) {
+                    (Some(x), Some(y)) => (&x.file, x.start_line).cmp(&(&y.file, y.start_line)),
+                    (None, Some(_)) => std::cmp::Ordering::Less,
+                    (Some(_), None) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                }
+            })
+            .then_with(|| a.hash.cmp(&b.hash))
+    });
 
     duplicates
 }
