@@ -3,27 +3,41 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-#[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// Grade.
+///
+/// One serialization, everywhere: the symbolic form (`"A+"`, `"B-"`), which is
+/// what `Display`, SARIF and `pmat tdg --format json` already emitted. The
+/// derived Rust variant names used to leak through serde, so the SAME binary
+/// reported the SAME score as `"grade": "A+"` from `pmat tdg --format json`
+/// and `"grade": "APlus"` from `pmat analyze tdg --format json`, and no machine
+/// consumer could match on one string. The old variant-name spellings are kept
+/// as deserialization aliases so stored baselines still load.
+#[derive(
+    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub enum Grade {
-    /// Every pmat up to and including v3.29.0 misspelled this variant with a
-    /// capital L. The name reaches JSON through `{:?}` in the MCP tools and
-    /// through serde in every persisted TDG baseline, so `Deserialize` is
-    /// implemented by hand and matches variant names case-insensitively —
-    /// documents written by those builds still load, and the wrong spelling
-    /// never has to appear as a string literal (a `grep` for it over the
-    /// shipped binary must come back empty).
-    APlus,
+    #[serde(rename = "A+", alias = "APLus", alias = "APlus")]
+    APLus,
+    #[serde(rename = "A")]
     A,
+    #[serde(rename = "A-", alias = "AMinus")]
     AMinus,
+    #[serde(rename = "B+", alias = "BPlus")]
     BPlus,
+    #[serde(rename = "B")]
     B,
+    #[serde(rename = "B-", alias = "BMinus")]
     BMinus,
+    #[serde(rename = "C+", alias = "CPlus")]
     CPlus,
     #[default]
+    #[serde(rename = "C")]
     C,
+    #[serde(rename = "C-", alias = "CMinus")]
     CMinus,
+    #[serde(rename = "D")]
     D,
+    #[serde(rename = "F")]
     F,
 }
 
@@ -207,6 +221,44 @@ mod tests {
             assert!(!Grade::F.meets_threshold(*threshold));
         }
         assert!(Grade::F.meets_threshold(Grade::F));
+    }
+
+    /// Regression: one serialization for one grade. `pmat tdg --format json`
+    /// and `pmat analyze tdg --format json` used to disagree ("A+" vs "APlus")
+    /// on the identical score.
+    #[test]
+    fn test_grade_serializes_symbolically_like_display() {
+        for grade in BEST_TO_WORST {
+            let json = serde_json::to_string(&grade).expect("serialize");
+            assert_eq!(
+                json,
+                format!("\"{grade}\""),
+                "JSON form must match the displayed grade"
+            );
+        }
+    }
+
+    /// Baselines written with the old variant names must still load.
+    #[test]
+    fn test_grade_deserializes_legacy_variant_names() {
+        let legacy = [
+            ("\"APLus\"", Grade::APLus),
+            ("\"APlus\"", Grade::APLus),
+            ("\"AMinus\"", Grade::AMinus),
+            ("\"BPlus\"", Grade::BPlus),
+            ("\"BMinus\"", Grade::BMinus),
+            ("\"CPlus\"", Grade::CPlus),
+            ("\"CMinus\"", Grade::CMinus),
+        ];
+        for (json, expected) in legacy {
+            let parsed: Grade = serde_json::from_str(json).expect("legacy grade must deserialize");
+            assert_eq!(parsed, expected, "legacy form {json}");
+        }
+        // ... and so must the new symbolic form, including as a map key.
+        let map: std::collections::BTreeMap<Grade, usize> =
+            serde_json::from_str("{\"A+\":2,\"B-\":1,\"APLus\":3}").expect("map of grades");
+        assert_eq!(map.get(&Grade::APLus), Some(&3));
+        assert_eq!(map.get(&Grade::BMinus), Some(&1));
     }
 
     #[test]

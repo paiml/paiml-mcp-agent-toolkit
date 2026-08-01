@@ -95,10 +95,12 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
 
     let analyzer = TdgAnalyzer::new()?;
     let _threshold = config.threshold.unwrap_or(1.5);
-    let _top_files = config.top_files.unwrap_or(10);
+    // `-n/--top-files` was read into a discarded binding, so it truncated
+    // nothing: -n 5 / -n 10 / -n 100000 all emitted the same file list.
+    let top_files = config.top_files.unwrap_or(10);
 
     let result = if config.path.is_dir() {
-        analyze_project_path(&analyzer, &config.path, &config.format).await?
+        analyze_project_path(&analyzer, &config.path, &config.format, top_files).await?
     } else {
         analyze_single_file(&analyzer, &config.path, &config.format).await?
     };
@@ -116,9 +118,13 @@ async fn analyze_project_path(
     analyzer: &TdgAnalyzer,
     path: &Path,
     format: &TdgOutputFormat,
+    top_files: usize,
 ) -> Result<String> {
-    let project_score = analyzer.analyze_project(path).await?;
-    format_project_result(&project_score, path, format)
+    let mut project_score = analyzer.analyze_project(path).await?;
+    // Honour --top-files for every renderer; aggregates stay whole-project and
+    // the truncation is disclosed (files_reported / files_truncated).
+    project_score.limit_to_worst_files(top_files);
+    format_project_result(&project_score, format)
 }
 
 async fn analyze_single_file(
@@ -359,8 +365,15 @@ fn sarif_document(
                     "rules": sarif_rules(),
                 }
             },
-            "results": results,
-            "properties": properties,
+            // Name both numbers: SARIF has nowhere else to say that the result
+            // set covers only the worst --top-files entries, and a capped list
+            // must never read as the whole project.
+            "properties": {
+                "filesAnalyzed": project.total_files,
+                "filesReported": project.files_reported,
+                "filesTruncated": project.files_truncated
+            },
+            "results": results
         }]
     })
 }

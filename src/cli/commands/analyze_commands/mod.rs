@@ -451,7 +451,8 @@ pub enum AnalyzeCommands {
         #[arg(short, long, default_value = "1.5")]
         threshold: f64,
 
-        /// Number of top files to show
+        /// Number of worst-scoring files to list (0 = all). Project totals are
+        /// never truncated; JSON reports files_reported/files_truncated.
         #[arg(short = 'n', long, default_value = "10")]
         top_files: usize,
 

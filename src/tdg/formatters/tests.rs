@@ -15,6 +15,69 @@ mod tests {
     use std::collections::HashSet;
     use std::path::PathBuf;
 
+    /// Regression: every framed row must close in the same column.
+    /// The renderers used to hand-pad each row with a literal run of spaces, so
+    /// `│  Overall Score: 99.5/100 (A+)                  │` and
+    /// `│  Total Files: 1593                               │` came out of the
+    /// same fixed-width frame.
+    fn assert_box_is_rectangular(rendered: &str, label: &str) {
+        let widths: Vec<usize> = rendered
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(super::super::boxdraw::visible_width)
+            .collect();
+        assert!(!widths.is_empty(), "{label}: nothing rendered");
+        for (i, w) in widths.iter().enumerate() {
+            assert_eq!(
+                *w,
+                widths[0],
+                "{label}: line {i} is {w} cols wide, frame is {} — {:?}",
+                widths[0],
+                rendered.lines().nth(i)
+            );
+        }
+    }
+
+    #[test]
+    fn test_rendered_boxes_are_rectangular() {
+        // Contents of very different widths must not move the right border.
+        for total in [0.0_f32, 99.5, 100.0] {
+            let score = TdgScore {
+                total,
+                grade: Grade::from_score(total),
+                file_path: Some(PathBuf::from("src/some/rather/long/path/module.rs")),
+                penalties_applied: vec![PenaltyAttribution {
+                    source_metric: MetricCategory::Coupling,
+                    amount: 8.0,
+                    applied_to: HashSet::new(),
+                    issue: "Excessive coupling between modules detected in this analysis"
+                        .to_string(),
+                }],
+                ..TdgScore::default()
+            };
+            assert_box_is_rectangular(&format_human(&score), &format!("format_human({total})"));
+        }
+
+        for count in [0_usize, 1, 1593] {
+            let project = ProjectScore {
+                average_score: if count == 0 { 0.0 } else { 99.5 },
+                average_grade: if count == 0 { Grade::F } else { Grade::APLus },
+                total_files: count,
+                files: Vec::new(),
+                language_distribution: std::collections::BTreeMap::from([(Language::Rust, count)]),
+                grade_distribution: std::collections::BTreeMap::from([(Grade::APLus, count)]),
+                f_grade_count: 0,
+                grade_capped: false,
+                files_reported: 0,
+                files_truncated: count > 0,
+            };
+            assert_box_is_rectangular(
+                &format_project(&project),
+                &format!("format_project({count})"),
+            );
+        }
+    }
+
     #[test]
     fn test_format_human() {
         let score = TdgScore {
@@ -309,10 +372,11 @@ mod tests {
 
     #[test]
     fn test_format_project() {
-        let mut language_distribution = std::collections::HashMap::new();
+        let mut language_distribution = std::collections::BTreeMap::new();
         language_distribution.insert(Language::Rust, 10);
         language_distribution.insert(Language::TypeScript, 5);
 
+        // 15 files analysed, only the 2 worst listed (--top-files 2).
         let project = ProjectScore {
             average_score: 85.0,
             average_grade: Grade::AMinus,
@@ -330,9 +394,11 @@ mod tests {
                 },
             ],
             language_distribution,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::from([(Grade::A, 10), (Grade::B, 5)]),
             f_grade_count: 0,
             grade_capped: false,
+            files_reported: 2,
+            files_truncated: true,
         };
 
         let output = format_project(&project);
@@ -340,5 +406,10 @@ mod tests {
         assert!(output.contains("85.0/100"));
         assert!(output.contains("Language Distribution"));
         assert!(output.contains("Grade Distribution"));
+        // A truncated list must name both numbers.
+        assert!(output.contains("Files Listed: 2 of 15"));
+        // Distributions describe the analysed population, not the short list.
+        assert!(output.contains("A:  10 files"));
+        assert!(output.contains("B:   5 files"));
     }
 }

@@ -56,29 +56,25 @@ impl CommandDispatcher {
                 markdown,
                 csv,
             } => {
-                // Issue #672: `output_format` used to be narrowed to
-                // `OutputFormat::{Json,Table}` here and widened back to
-                // `ReportOutputFormat::{Json,Text}` inside
-                // `execute_report_command`, so `--format csv` reached the
-                // handler as `text` and produced a text report in a .csv file.
-                // The user's declared format is now passed through unchanged.
-                let analysis_strings: Vec<String> = analyses
-                    .iter()
-                    .map(|a| format!("{a:?}").to_lowercase())
-                    .collect();
-                Self::execute_report_command(
-                    Some(project_path),
+                // Pass ReportOutputFormat straight through. It used to be
+                // squeezed into OutputFormat (everything non-JSON -> Table) and
+                // then widened back to ReportOutputFormat::Text, so
+                // `pmat report --output-format markdown` silently produced a
+                // plain-text report — a declared --format that did not do what
+                // it says. Verified: `-f markdown` emitted the Text renderer.
+                handlers::enhanced_reporting_handlers::handle_generate_report(
+                    project_path,
                     output_format,
-                    include_visualizations,
-                    include_executive_summary,
-                    include_recommendations,
-                    analysis_strings,
-                    Some(f64::from(confidence_threshold) / 100.0),
-                    output,
-                    perf,
                     text,
                     markdown,
                     csv,
+                    include_visualizations,
+                    include_executive_summary,
+                    include_recommendations,
+                    analyses,
+                    confidence_threshold,
+                    output,
+                    perf,
                 )
                 .await
             }

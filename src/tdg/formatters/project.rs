@@ -1,7 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use std::fmt::Write;
 
-use super::super::{Grade, ProjectScore};
+use super::super::ProjectScore;
+use super::boxdraw::{box_blank, box_bottom, box_row, box_separator, box_top};
 
 /// Format project-level TDG score.
 ///
@@ -25,79 +26,61 @@ use super::super::{Grade, ProjectScore};
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_project(project: &ProjectScore) -> String {
     let mut output = String::new();
+    let mut line = |text: String| {
+        writeln!(output, "{text}").expect("Writing to String buffer cannot fail");
+    };
 
-    writeln!(
-        output,
-        "╭─────────────────────────────────────────────────╮"
-    )
-    .expect("Writing to String buffer cannot fail");
-    writeln!(output, "│  Project TDG Score Report                      │")
-        .expect("Writing to String buffer cannot fail");
-    writeln!(
-        output,
-        "├─────────────────────────────────────────────────┤"
-    )
-    .expect("Writing to String buffer cannot fail");
-    writeln!(
-        output,
-        "│  Average Score: {:.1}/100 ({})                 │",
+    line(box_top());
+    line(box_row("Project TDG Score Report"));
+    line(box_separator());
+    line(box_row(&format!(
+        "Average Score: {:.1}/100 ({})",
         project.average_score, project.average_grade
-    )
-    .expect("Writing to String buffer cannot fail");
-    writeln!(
-        output,
-        "│  Total Files: {}                               │",
-        project.total_files
-    )
-    .expect("Writing to String buffer cannot fail");
-    writeln!(
-        output,
-        "│                                                 │"
-    )
-    .expect("Writing to String buffer cannot fail");
+    )));
+    line(box_row(&format!("Total Files: {}", project.total_files)));
+    // A truncated list must say so next to the total it sits under, so the
+    // header count and the list below it can never contradict each other.
+    if project.files_truncated {
+        line(box_row(&format!(
+            "Files Listed: {} of {} (--top-files)",
+            project.files_reported, project.total_files
+        )));
+    }
+    line(box_blank());
 
-    writeln!(output, "│  Language Distribution:                        │")
-        .expect("Writing to String buffer cannot fail");
+    line(box_row("Language Distribution:"));
+    // Distributions come from the whole analysed set, never from the possibly
+    // truncated `files` vector.
     for (language, count) in &project.language_distribution {
-        let percentage = (*count as f32 / project.total_files as f32) * 100.0;
-        writeln!(
-            output,
-            "│  ├─ {:12}: {:3} files ({:4.1}%)         │",
+        let percentage = percent_of(*count, project.total_files);
+        line(box_row(&format!(
+            "├─ {:12}: {:3} files ({:4.1}%)",
             language.to_string(),
             count,
             percentage
-        )
-        .expect("Writing to String buffer cannot fail");
+        )));
     }
 
-    writeln!(
-        output,
-        "│                                                 │"
-    )
-    .expect("Writing to String buffer cannot fail");
+    line(box_blank());
 
-    let mut files_by_grade: std::collections::BTreeMap<Grade, usize> =
-        std::collections::BTreeMap::new();
-    for score in &project.files {
-        *files_by_grade.entry(score.grade).or_insert(0) += 1;
+    line(box_row("Grade Distribution:"));
+    for (grade, count) in &project.grade_distribution {
+        let percentage = percent_of(*count, project.total_files);
+        line(box_row(&format!(
+            "├─ {grade}: {count:3} files ({percentage:4.1}%)"
+        )));
     }
 
-    writeln!(output, "│  Grade Distribution:                           │")
-        .expect("Writing to String buffer cannot fail");
-    for (grade, count) in files_by_grade {
-        let percentage = (count as f32 / project.total_files as f32) * 100.0;
-        writeln!(
-            output,
-            "│  ├─ {grade}: {count:3} files ({percentage:4.1}%)                  │"
-        )
-        .expect("Writing to String buffer cannot fail");
-    }
-
-    writeln!(
-        output,
-        "╰─────────────────────────────────────────────────╯"
-    )
-    .expect("Writing to String buffer cannot fail");
+    line(box_bottom());
 
     output
+}
+
+/// Percentage of `total`, or 0.0 when nothing was analysed (never NaN).
+fn percent_of(count: usize, total: usize) -> f32 {
+    if total == 0 {
+        0.0
+    } else {
+        (count as f32 / total as f32) * 100.0
+    }
 }

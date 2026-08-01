@@ -555,7 +555,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 50)]
         confidence_threshold: u8,
 
-        /// Output file path
+        /// Output file path (default: stdout; no file is created)
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
 
