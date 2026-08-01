@@ -173,6 +173,19 @@ pub fn label(text: &str) -> String {
     paint(BOLD, text)
 }
 
+/// Wrap `text` in an explicit ANSI sequence, or return it unchanged when colour
+/// is off.
+///
+/// For call sites where no semantic helper fits — a colour picked by
+/// [`grade_color`], or a one-off highlight. Prefer the semantic helpers when one
+/// applies; the point of both is that they consult [`colors_enabled`], which the
+/// raw `pub const`s cannot.
+#[must_use]
+#[inline]
+pub fn colored(color: &str, text: &str) -> String {
+    paint(color, text)
+}
+
 /// Colour a grade letter is rendered in. Pure: independent of whether colour
 /// is enabled, so it stays assertable when output is plain.
 #[must_use]

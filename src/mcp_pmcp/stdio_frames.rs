@@ -109,6 +109,52 @@ fn is_known_method(method: &str) -> bool {
 /// different parse that would produce a different (i.e. invented) reason.
 const PARAMLESS_METHODS: &[&str] = &["ping", "roots/list"];
 
+/// A client `id`, held as the **verbatim JSON source text** of the request's
+/// `id` member.
+///
+/// # Why not `serde_json::Value`
+///
+/// serde_json is built here without `arbitrary_precision`, so an integer id
+/// larger than `u64::MAX` is parsed into an `f64` and re-serialized in
+/// exponential form. `{"id":99999999999999999999,…}` came back on the wire as
+/// `{"id":1e+20,…}` — JSON-RPC 2.0 §5 requires the response id to be *the same
+/// value* as the request's, so a host correlating by exact id never resolves
+/// that promise. That is the same failure #648 was filed about, one input class
+/// deeper. (`2^53+1` round-tripped fine, which is why it went unnoticed.)
+///
+/// Keeping the source text sidesteps every numeric-representation question:
+/// whatever the client wrote is what comes back. The invariant is that `.0` is
+/// always syntactically valid JSON — it is either the literal `"null"` or a
+/// token lifted straight out of a line `serde_json` already accepted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct EchoedId(String);
+
+impl EchoedId {
+    /// The `null` id, for frames that carry no id we can correlate.
+    fn null() -> Self {
+        Self("null".to_string())
+    }
+
+    /// The verbatim source text; always valid JSON by construction.
+    fn as_json_text(&self) -> &str {
+        &self.0
+    }
+
+    /// Parsed form, for inspection. Lossy for ids beyond `f64`'s exact range —
+    /// which is exactly why the wire path uses [`Self::as_json_text`] instead.
+    #[cfg(test)]
+    fn as_value(&self) -> Value {
+        serde_json::from_str(&self.0).unwrap_or(Value::Null)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<Value> for EchoedId {
+    fn eq(&self, other: &Value) -> bool {
+        self.as_value() == *other
+    }
+}
+
 /// What a frame pmcp could not parse deserves in reply.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FrameVerdict {
@@ -118,8 +164,8 @@ pub(crate) enum FrameVerdict {
     /// Send this JSON-RPC error object.
     Error {
         /// The client's id, echoed so the host can resolve its pending promise.
-        /// `Value::Null` only when the frame genuinely carries no usable id.
-        id: Value,
+        /// `null` only when the frame genuinely carries no usable id.
+        id: EchoedId,
         code: i32,
         message: String,
     },
@@ -127,27 +173,64 @@ pub(crate) enum FrameVerdict {
 
 impl FrameVerdict {
     /// Render as a complete JSON-RPC 2.0 frame, or `None` for [`Self::Silent`].
+    ///
+    /// This is the **only** renderer: the id is spliced in as source text, which
+    /// `serde_json::Value` cannot represent for large integers, so there is no
+    /// second `Value`-shaped path that could disagree with the bytes on the wire.
+    pub(crate) fn to_frame_bytes(&self) -> Option<Vec<u8>> {
+        let Self::Error { id, code, message } = self else {
+            return None;
+        };
+        // `to_string` on a `Value::String` is the JSON encoder, so the message
+        // is escaped exactly as serde_json would escape it.
+        let message = Value::String(message.clone()).to_string();
+        Some(
+            format!(
+                r#"{{"jsonrpc":"2.0","id":{},"error":{{"code":{},"message":{}}}}}"#,
+                id.as_json_text(),
+                code,
+                message,
+            )
+            .into_bytes(),
+        )
+    }
+
+    /// The frame as a `Value`, for tests and inspection. Derived from
+    /// [`Self::to_frame_bytes`] so it can never describe different bytes.
+    #[cfg(test)]
     pub(crate) fn to_frame(&self) -> Option<Value> {
-        match self {
-            Self::Silent => None,
-            Self::Error { id, code, message } => Some(serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": id,
-                "error": { "code": code, "message": message },
-            })),
-        }
+        let bytes = self.to_frame_bytes()?;
+        serde_json::from_slice(&bytes).ok()
     }
 }
 
 /// Echo the client's `id` if it is one JSON-RPC allows (string, number, null).
 ///
+/// `raw` is the id's source text, recovered by [`raw_id_text`]; it is preferred
+/// over the parsed value so that large integers survive (see [`EchoedId`]).
 /// Anything else (object, array, bool) is not a legal id and cannot be
 /// correlated, so it degrades to `null` rather than being reflected verbatim.
-fn echo_id(obj: &Map<String, Value>) -> Value {
+fn echo_id(obj: &Map<String, Value>, raw: Option<&str>) -> EchoedId {
     match obj.get("id") {
-        Some(v @ (Value::String(_) | Value::Number(_))) => v.clone(),
-        _ => Value::Null,
+        Some(Value::String(_) | Value::Number(_)) => match raw {
+            Some(text) => EchoedId(text.to_string()),
+            // Unreachable in practice (the raw pass sees the same bytes), but a
+            // parsed id is still better than dropping the correlation entirely.
+            None => EchoedId(obj["id"].to_string()),
+        },
+        _ => EchoedId::null(),
     }
+}
+
+/// The source text of the top-level `id` member of `line`, or `None` when the
+/// line has no such member.
+///
+/// `RawValue` hands back the exact bytes of the value, whitespace-trimmed, which
+/// is what makes the verbatim echo possible.
+fn raw_id_text(line: &[u8]) -> Option<String> {
+    let members: std::collections::BTreeMap<String, Box<serde_json::value::RawValue>> =
+        serde_json::from_slice(line).ok()?;
+    members.get("id").map(|raw| raw.get().to_string())
 }
 
 /// Rebuild the request body pmcp itself tried to deserialize.
@@ -198,7 +281,7 @@ pub(crate) fn classify_bad_frame(line: &[u8]) -> FrameVerdict {
         Ok(v) => v,
         Err(e) => {
             return FrameVerdict::Error {
-                id: Value::Null,
+                id: EchoedId::null(),
                 code: ErrorCode::PARSE_ERROR.as_i32(),
                 message: format!("Parse error: {e}"),
             }
@@ -207,18 +290,18 @@ pub(crate) fn classify_bad_frame(line: &[u8]) -> FrameVerdict {
 
     let Some(obj) = value.as_object() else {
         return FrameVerdict::Error {
-            id: Value::Null,
+            id: EchoedId::null(),
             code: ErrorCode::INVALID_REQUEST.as_i32(),
             message: "Invalid Request: a JSON-RPC frame must be a JSON object".to_string(),
         };
     };
 
-    classify_object(obj)
+    classify_object(obj, raw_id_text(line).as_deref())
 }
 
 /// Classify a frame that parsed as a JSON object. Split out to keep
 /// [`classify_bad_frame`] under the cognitive-complexity ceiling.
-fn classify_object(obj: &Map<String, Value>) -> FrameVerdict {
+fn classify_object(obj: &Map<String, Value>, raw_id: Option<&str>) -> FrameVerdict {
     let method = obj.get("method");
 
     // A result/error frame is a response to something we sent; JSON-RPC has no
@@ -234,7 +317,7 @@ fn classify_object(obj: &Map<String, Value>) -> FrameVerdict {
     if !obj.contains_key("id") {
         return FrameVerdict::Silent;
     }
-    let id = echo_id(obj);
+    let id = echo_id(obj, raw_id);
 
     let Some(method) = method.and_then(Value::as_str) else {
         return FrameVerdict::Error {
@@ -269,8 +352,14 @@ fn classify_object(obj: &Map<String, Value>) -> FrameVerdict {
 /// into `partial`, so a dropped read resumes exactly where it stopped. (This
 /// mirrors `StdioTransport::read_cancel_safe_line`, which is private to pmcp.)
 ///
-/// An empty line yields `Some(vec![])` so the caller can answer it as the
-/// malformed frame it is instead of silently swallowing client output.
+/// A **zero-length line is skipped**, not returned. It used to yield
+/// `Some(vec![])`, which the caller classified as a malformed frame and
+/// answered — so `printf '{…}\n\n' | MCP_VERSION=1 pmat` put an unsolicited
+/// `{"id":null,"error":{"code":-32700,"message":"Parse error: EOF while parsing
+/// a value at line 1 column 0"}}` on the wire *before* the real reply. A line
+/// with no bytes carries no JSON-RPC message at all, so there is nothing to
+/// answer and nothing being swallowed: replying to it is a frame the host never
+/// asked for. (`\r\n\r\n` is the same case — `take_line` strips the `\r`.)
 ///
 /// A final line with no trailing newline is still returned: at EOF no more bytes
 /// can arrive, so those bytes are a whole frame, not a partial one. pmcp drops
@@ -285,14 +374,23 @@ where
 {
     loop {
         if let Some(idx) = partial.iter().position(|&b| b == b'\n') {
-            return Ok(Some(take_line(partial, idx + 1)));
+            let line = take_line(partial, idx + 1);
+            if line.is_empty() {
+                continue; // blank line: no message, no reply
+            }
+            return Ok(Some(line));
         }
         if reader.read_until(b'\n', partial).await? == 0 {
             if partial.is_empty() {
                 return Ok(None);
             }
             let all = partial.len();
-            return Ok(Some(take_line(partial, all)));
+            let line = take_line(partial, all);
+            // A trailing bare `\r` at EOF is the same nothing as a blank line.
+            if line.is_empty() {
+                return Ok(None);
+            }
+            return Ok(Some(line));
         }
     }
 }
@@ -347,10 +445,7 @@ where
 fn emit_error_frame(verdict: &FrameVerdict) {
     use std::io::Write;
 
-    let Some(frame) = verdict.to_frame() else {
-        return;
-    };
-    let Ok(mut bytes) = serde_json::to_vec(&frame) else {
+    let Some(mut bytes) = verdict.to_frame_bytes() else {
         return;
     };
     bytes.push(b'\n');
@@ -398,12 +493,88 @@ impl RawFrameStdioTransport {
     }
 }
 
+/// Outbound repairs applied to every response before it reaches the wire.
+///
+/// Both fix defects that originate inside pmcp 2.17 and are therefore not
+/// reachable from the tool handlers:
+///
+/// 1. **`tools/list` order.** `Server::handle_list_tools` builds the array from
+///    `self.tool_infos.values()`, a `HashMap`, so the 20 tools came out in a
+///    different order in every process — 8 of 8 runs produced 8 distinct
+///    orderings, which also falsified round 2's "5 identical runs produce
+///    byte-identical output" claim. Sorting by name makes the response a
+///    function of the registry alone.
+/// 2. **Client mistakes reported as server faults.** `Server::create_response`
+///    hardcodes `code: -32603` for *every* `Err` a handler returns, so
+///    `{"code":-32603,"message":"Validation error: path(s) not found: /nope"}`
+///    told the host that pmat had an internal fault when the host had passed a
+///    path that does not exist. JSON-RPC 2.0 §5.1 reserves -32603 for faults in
+///    the server; a rejected argument is -32602, and the MCP specification's own
+///    example for an unknown tool name is -32602 too.
+///
+/// Pure and total: same message in, same message out.
+fn repair_outbound(mut message: TransportMessage) -> TransportMessage {
+    use pmcp::types::jsonrpc::ResponsePayload;
+
+    if let TransportMessage::Response(response) = &mut message {
+        match &mut response.payload {
+            ResponsePayload::Result(value) => sort_tools_by_name(value),
+            ResponsePayload::Error(error) => {
+                if let Some(code) = client_fault_code(error.code, &error.message) {
+                    error.code = code;
+                }
+            }
+        }
+    }
+    message
+}
+
+/// Sort a `tools/list` result in place. Any other result is left untouched.
+fn sort_tools_by_name(result: &mut Value) {
+    let Some(tools) = result.get_mut("tools").and_then(Value::as_array_mut) else {
+        return;
+    };
+    tools.sort_by(|a, b| {
+        let key = |t: &Value| {
+            t.get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string()
+        };
+        key(a).cmp(&key(b))
+    });
+}
+
+/// The code a `-32603` frame should have carried, when its message proves the
+/// fault was the client's.
+///
+/// The `pmcp::Error` variant does not survive `create_response` — only its
+/// `Display` text does — so the message prefix is the only signal left at this
+/// layer. Each prefix below is the `Display` of exactly one variant:
+///
+/// * `"Validation error: "` — `pmcp::Error::Validation`, which every pmat tool
+///   handler raises only for arguments it rejected (a missing field, an
+///   unsupported `format`, a path that does not exist).
+/// * `"Resource not found: Tool '"` — pmcp's own unregistered-tool-name path.
+///
+/// Anything else keeps -32603: guessing wider would relabel real server faults
+/// as the caller's problem, which is the same lie in the other direction.
+fn client_fault_code(code: i32, message: &str) -> Option<i32> {
+    if code != ErrorCode::INTERNAL_ERROR.as_i32() {
+        return None;
+    }
+    let is_client_fault = message.starts_with("Validation error: ")
+        || message.starts_with("Resource not found: Tool '");
+    is_client_fault.then_some(ErrorCode::INVALID_PARAMS.as_i32())
+}
+
 #[async_trait]
 impl Transport for RawFrameStdioTransport {
     async fn send(&mut self, message: TransportMessage) -> pmcp::Result<()> {
         if self.closed {
             return Err(TransportError::ConnectionClosed.into());
         }
+        let message = repair_outbound(message);
         // pmcp's own encoder: the single source of truth for the wire format.
         let mut bytes = pmcp::shared::transport::serialize_message(&message)?;
         bytes.push(b'\n');
@@ -458,7 +629,7 @@ mod tests {
         classify_bad_frame(line.as_bytes())
     }
 
-    fn parts(line: &str) -> (Value, i32, String) {
+    fn parts(line: &str) -> (EchoedId, i32, String) {
         match verdict(line) {
             FrameVerdict::Error { id, code, message } => (id, code, message),
             FrameVerdict::Silent => panic!("expected an error verdict for: {line}"),
@@ -520,6 +691,10 @@ mod tests {
         assert!(message.starts_with("Parse error"), "got: {message}");
     }
 
+    /// Classifying an empty slice is still -32700, but the transport no longer
+    /// hands one over: [`read_frame_line`] skips zero-length lines, so this is
+    /// a defensive property of the pure function rather than reachable
+    /// behaviour. See [`a_blank_line_is_not_answered`].
     #[test]
     fn empty_line_is_a_parse_error() {
         let (id, code, _) = parts("");
@@ -812,7 +987,7 @@ mod tests {
     #[test]
     fn error_verdicts_render_a_well_formed_jsonrpc_frame() {
         let frame = FrameVerdict::Error {
-            id: serde_json::json!(7),
+            id: EchoedId("7".to_string()),
             code: -32601,
             message: "Method not found: x".to_string(),
         }
@@ -822,6 +997,249 @@ mod tests {
         assert_eq!(frame["id"], serde_json::json!(7));
         assert_eq!(frame["error"]["code"], serde_json::json!(-32601));
         assert_eq!(frame["error"]["message"], "Method not found: x");
+    }
+
+    /// A message needing JSON escaping must still render a parseable frame —
+    /// [`FrameVerdict::to_frame_bytes`] assembles the envelope by hand, so the
+    /// escaping has to be real and not merely `format!`.
+    #[test]
+    fn a_message_with_quotes_and_newlines_is_escaped() {
+        let bytes = FrameVerdict::Error {
+            id: EchoedId::null(),
+            code: -32700,
+            message: "he said \"hi\"\nand \\ left".to_string(),
+        }
+        .to_frame_bytes()
+        .expect("an error verdict renders bytes");
+        let frame: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+        assert_eq!(frame["error"]["message"], "he said \"hi\"\nand \\ left");
+    }
+
+    // === #648 residue (round 3): the id must survive verbatim ===
+
+    /// An id above `u64::MAX` used to come back as `1e+20`: serde_json without
+    /// `arbitrary_precision` parses it into an f64, and JSON-RPC 2.0 §5 requires
+    /// the *same value* back, so a host correlating by exact id never resolved
+    /// its promise. Assert on the raw bytes, because the defect is invisible
+    /// once the frame is re-parsed into a `Value`.
+    #[test]
+    fn an_id_above_u64_max_is_echoed_verbatim() {
+        let line = r#"{"jsonrpc":"2.0","id":99999999999999999999,"method":"no/such"}"#;
+        let bytes = classify_bad_frame(line.as_bytes())
+            .to_frame_bytes()
+            .expect("an error frame");
+        let wire = String::from_utf8(bytes).expect("utf8");
+        assert!(
+            wire.contains(r#""id":99999999999999999999"#),
+            "the id must come back exactly as sent, got: {wire}"
+        );
+        assert!(
+            !wire.contains("1e+20"),
+            "an f64 round-trip is the defect, got: {wire}"
+        );
+    }
+
+    /// The ids that already worked must keep working, in the same encoding.
+    #[test]
+    fn ordinary_ids_are_echoed_unchanged() {
+        for (line, expected) in [
+            (r#"{"id":2,"method":"no/such"}"#, r#""id":2"#),
+            (r#"{"id":"abc","method":"no/such"}"#, r#""id":"abc""#),
+            (
+                r#"{"id":9007199254740993,"method":"no/such"}"#,
+                r#""id":9007199254740993"#,
+            ),
+            (r#"{"id":-7,"method":"no/such"}"#, r#""id":-7"#),
+            (r#"{"id":null,"method":"no/such"}"#, r#""id":null"#),
+            // Not a legal JSON-RPC id: it must degrade to null, not be reflected.
+            (r#"{"id":[1],"method":"no/such"}"#, r#""id":null"#),
+        ] {
+            let bytes = classify_bad_frame(line.as_bytes())
+                .to_frame_bytes()
+                .expect("an error frame");
+            let wire = String::from_utf8(bytes).expect("utf8");
+            assert!(wire.contains(expected), "{line} -> {wire}");
+        }
+    }
+
+    // === round-2 regression: a blank line was answered ===
+
+    /// Round 2 made `read_frame_line` yield `Some(vec![])` for an empty line, so
+    /// `printf '{…}\n\n' | MCP_VERSION=1 pmat` emitted an unsolicited
+    /// `-32700 Parse error: EOF while parsing a value at line 1 column 0` frame
+    /// *before* the real reply. A zero-length line carries no JSON-RPC message,
+    /// so there is nothing to answer.
+    #[tokio::test]
+    async fn a_blank_line_is_not_answered() {
+        let (messages, verdicts) = drain(concat!(
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n",
+            "\n",
+            "\r\n",
+            "\n",
+        ))
+        .await;
+        assert!(
+            verdicts.is_empty(),
+            "blank lines must produce no frames, got: {verdicts:?}"
+        );
+        assert_eq!(messages.len(), 1, "the real request must still arrive");
+    }
+
+    /// Blank lines before a request must not suppress it either.
+    #[tokio::test]
+    async fn blank_lines_before_a_request_are_skipped() {
+        let (messages, verdicts) = drain(concat!(
+            "\n\n\r\n",
+            "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n",
+        ))
+        .await;
+        assert!(verdicts.is_empty(), "got: {verdicts:?}");
+        assert_eq!(messages.len(), 1);
+    }
+
+    /// A stream of nothing but blank lines is an empty session, not a burst of
+    /// error frames.
+    #[tokio::test]
+    async fn a_stream_of_blank_lines_produces_nothing() {
+        let (messages, verdicts) = drain("\n\n\n\r\n\n").await;
+        assert!(messages.is_empty());
+        assert!(verdicts.is_empty(), "got: {verdicts:?}");
+    }
+
+    // === outbound repairs ===
+
+    fn response(
+        payload: pmcp::types::jsonrpc::ResponsePayload<Value, pmcp::types::JSONRPCError>,
+    ) -> TransportMessage {
+        TransportMessage::Response(pmcp::types::JSONRPCResponse {
+            jsonrpc: "2.0".to_string(),
+            id: pmcp::types::RequestId::from(1i64),
+            payload,
+        })
+    }
+
+    fn repaired_result(value: Value) -> Value {
+        use pmcp::types::jsonrpc::ResponsePayload;
+        match repair_outbound(response(ResponsePayload::Result(value))) {
+            TransportMessage::Response(r) => match r.payload {
+                ResponsePayload::Result(v) => v,
+                ResponsePayload::Error(e) => panic!("expected a result, got {e:?}"),
+            },
+            other => panic!("expected a response, got {other:?}"),
+        }
+    }
+
+    fn repaired_error(code: i32, message: &str) -> i32 {
+        use pmcp::types::jsonrpc::ResponsePayload;
+        let err = pmcp::types::JSONRPCError {
+            code,
+            message: message.to_string(),
+            data: None,
+        };
+        match repair_outbound(response(ResponsePayload::Error(err))) {
+            TransportMessage::Response(r) => match r.payload {
+                ResponsePayload::Error(e) => e.code,
+                ResponsePayload::Result(v) => panic!("expected an error, got {v}"),
+            },
+            other => panic!("expected a response, got {other:?}"),
+        }
+    }
+
+    /// pmcp builds `tools/list` from a `HashMap`, so the 20 tools came out in a
+    /// different order in every process (8 of 8 runs, 8 distinct orderings).
+    /// Sorting by name makes the array a function of the registry alone.
+    #[test]
+    fn tools_list_is_sorted_by_name() {
+        let out = repaired_result(serde_json::json!({
+            "tools": [
+                {"name": "quality_gate"},
+                {"name": "analyze_complexity"},
+                {"name": "refactor.start"},
+                {"name": "analyze_satd"},
+            ]
+        }));
+        let names: Vec<&str> = out["tools"]
+            .as_array()
+            .expect("array")
+            .iter()
+            .map(|t| t["name"].as_str().expect("name"))
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                "analyze_complexity",
+                "analyze_satd",
+                "quality_gate",
+                "refactor.start"
+            ]
+        );
+    }
+
+    /// Five shuffles of the same registry must produce one byte sequence.
+    #[test]
+    fn tools_list_ordering_is_stable_across_five_permutations() {
+        let permutations = [
+            ["c", "a", "b"],
+            ["b", "c", "a"],
+            ["a", "b", "c"],
+            ["c", "b", "a"],
+            ["b", "a", "c"],
+        ];
+        let rendered: Vec<String> = permutations
+            .iter()
+            .map(|p| {
+                let tools: Vec<Value> = p.iter().map(|n| serde_json::json!({"name": n})).collect();
+                repaired_result(serde_json::json!({ "tools": tools })).to_string()
+            })
+            .collect();
+        for r in &rendered {
+            assert_eq!(
+                r, &rendered[0],
+                "orderings must collapse to one: {rendered:?}"
+            );
+        }
+    }
+
+    /// A result that is not `tools/list` must pass through untouched.
+    #[test]
+    fn a_non_tools_result_is_left_alone() {
+        let original = serde_json::json!({"content": [{"type": "text", "text": "z"}]});
+        assert_eq!(repaired_result(original.clone()), original);
+    }
+
+    /// pmcp's `create_response` hardcodes -32603 for every handler `Err`, so a
+    /// caller that passed a path that does not exist was told the SERVER had an
+    /// internal fault. JSON-RPC 2.0 §5.1 reserves -32603 for server faults.
+    #[test]
+    fn client_mistakes_are_reported_as_invalid_params() {
+        assert_eq!(
+            repaired_error(-32603, "Validation error: path(s) not found: /nope"),
+            -32602
+        );
+        assert_eq!(
+            repaired_error(
+                -32603,
+                "Resource not found: Tool 'nope_not_a_tool' not found"
+            ),
+            -32602
+        );
+    }
+
+    /// The other direction of the same lie: a real server fault must keep
+    /// -32603 rather than being blamed on the caller.
+    #[test]
+    fn genuine_server_faults_keep_internal_error() {
+        assert_eq!(
+            repaired_error(-32603, "Internal error: index build failed"),
+            -32603
+        );
+        assert_eq!(
+            repaired_error(-32603, "Serialization error: broken pipe"),
+            -32603
+        );
+        // Codes pmcp already got right are never rewritten.
+        assert_eq!(repaired_error(-32601, "Method not found: no/such"), -32601);
+        assert_eq!(repaired_error(-32602, "Validation error: bad"), -32602);
     }
 
     #[tokio::test]

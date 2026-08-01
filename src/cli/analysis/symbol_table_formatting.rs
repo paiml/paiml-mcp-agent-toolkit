@@ -5,6 +5,7 @@ fn apply_filters(
     mut table: SymbolTable,
     filter: Option<crate::cli::SymbolTypeFilter>,
     query: Option<String>,
+    top_files: usize,
 ) -> Result<SymbolTable> {
     // Filter by type
     if let Some(type_filter) = filter {
@@ -34,7 +35,7 @@ fn apply_filters(
             .retain(|s| s.name.to_lowercase().contains(&q_lower));
     }
 
-    Ok(rederive_summary(table))
+    Ok(rederive_summary(table, top_files))
 }
 
 /// Recompute the header/summary fields from the symbols that survived filtering.
@@ -44,7 +45,7 @@ fn apply_filters(
 /// function, `--filter functions` reported `total_symbols: 2` above a 1-element
 /// `symbols` array, and `unreferenced_symbols` still named the filtered-out
 /// struct. The header now counts the list it heads.
-fn rederive_summary(mut table: SymbolTable) -> SymbolTable {
+fn rederive_summary(mut table: SymbolTable, top_files: usize) -> SymbolTable {
     let retained: std::collections::HashSet<String> =
         table.symbols.iter().map(|s| s.name.clone()).collect();
 
@@ -52,7 +53,10 @@ fn rederive_summary(mut table: SymbolTable) -> SymbolTable {
     table
         .unreferenced_symbols
         .retain(|name| retained.contains(name));
-    table.most_referenced = find_most_referenced(&table.symbols);
+    let (most_referenced, referenced_symbol_count) =
+        find_most_referenced(&table.symbols, top_files);
+    table.most_referenced = most_referenced;
+    table.referenced_symbol_count = referenced_symbol_count;
     table
 }
 
@@ -93,9 +97,10 @@ fn rederive_summary(mut table: SymbolTable) -> SymbolTable {
 ///     total_symbols: 2,
 ///     unreferenced_symbols: vec!["TestStruct".to_string()],
 ///     most_referenced: vec![("test_function".to_string(), 1)],
+///     referenced_symbol_count: 1,
 /// };
 ///
-/// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false).unwrap();
+/// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false, 10).unwrap();
 /// assert!(output.contains("Top Files by Symbol Count"));
 /// assert!(output.contains("main.rs"));
 /// ```
@@ -105,6 +110,7 @@ pub fn format_output(
     format: crate::cli::SymbolTableOutputFormat,
     show_unreferenced: bool,
     show_references: bool,
+    top_files: usize,
 ) -> Result<String> {
     match format {
         crate::cli::SymbolTableOutputFormat::Json => format_json_output(&table),
@@ -115,6 +121,7 @@ pub fn format_output(
                 show_unreferenced,
                 show_references,
                 max_per_group: SYMBOLS_PER_GROUP_IN_SUMMARY,
+                top_files,
             },
         ),
         // `--help` advertises detailed as "Detailed output with all symbols";
@@ -126,6 +133,7 @@ pub fn format_output(
                 show_unreferenced,
                 show_references: true,
                 max_per_group: usize::MAX,
+                top_files,
             },
         ),
         crate::cli::SymbolTableOutputFormat::Csv => format_csv_output(table),
@@ -137,6 +145,8 @@ struct HumanRender {
     show_unreferenced: bool,
     show_references: bool,
     max_per_group: usize,
+    /// `--top-files`; 0 means "all". Applies to both truncated tables.
+    top_files: usize,
 }
 
 /// Format JSON output (cognitive complexity ≤2)
@@ -155,27 +165,35 @@ fn format_human_output(table: SymbolTable, opts: HumanRender) -> Result<String> 
         write_unreferenced_symbols(&mut output, &table.unreferenced_symbols)?;
     }
 
-    write_most_referenced(&mut output, &table.most_referenced)?;
-    write_top_files_by_count(&mut output, &table.symbols)?;
+    write_most_referenced(
+        &mut output,
+        &table.most_referenced,
+        table.referenced_symbol_count,
+    )?;
+    write_top_files_by_count(&mut output, &table.symbols, opts.top_files)?;
 
     Ok(output)
 }
 
 /// Write header section (cognitive complexity ≤3)
+///
+/// Every renderer below goes through `crate::cli::colors`' helper functions
+/// rather than the raw `pub const` escape sequences. With the constants,
+/// `analyze symbol-table --format summary --color never` emitted 16 lines of
+/// raw ESC bytes — identical to `--color always`, and written *into* the file
+/// given by `-o` — while sibling commands (`analyze complexity`, `dead-code`)
+/// emitted none. The helpers consult `colors_enabled()`; the constants cannot.
 fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
+    writeln!(output, "{}\n", c::header("Symbol Table Analysis"))?;
     writeln!(
         output,
-        "{}{}Symbol Table Analysis{}\n",
-        c::BOLD, c::UNDERLINE, c::RESET
+        "  {} {}",
+        c::label("Total symbols:"),
+        c::number(&total_symbols.to_string())
     )?;
-    writeln!(
-        output,
-        "  {}Total symbols:{} {}{}{}",
-        c::BOLD, c::RESET, c::BOLD_WHITE, total_symbols, c::RESET
-    )?;
-    writeln!(output, "\n{}Symbols by Type{}\n", c::BOLD, c::RESET)?;
+    writeln!(output, "\n{}\n", c::subheader("Symbols by Type"))?;
     Ok(())
 }
 
@@ -217,15 +235,17 @@ fn write_symbol_group(
 
     writeln!(
         output,
-        "{}{:?}{} ({}{}{})",
-        c::BOLD, kind, c::RESET, c::BOLD_WHITE, syms.len(), c::RESET
+        "{} ({})",
+        c::subheader(&format!("{kind:?}")),
+        c::number(&syms.len().to_string())
     )?;
 
     for sym in syms.iter().take(opts.max_per_group) {
         writeln!(
             output,
-            "  - {}{}{}  {}{}:{}{}",
-            c::BOLD_WHITE, sym.name, c::RESET, c::CYAN, sym.file, sym.line, c::RESET
+            "  - {}  {}",
+            c::number(&sym.name),
+            c::path(&format!("{}:{}", sym.file, sym.line))
         )?;
         if opts.show_references {
             write_reference_sites(output, sym)?;
@@ -235,10 +255,8 @@ fn write_symbol_group(
     if syms.len() > opts.max_per_group {
         writeln!(
             output,
-            "  {}... and {} more{}",
-            c::DIM,
-            syms.len() - opts.max_per_group,
-            c::RESET
+            "  {}",
+            c::dim(&format!("... and {} more", syms.len() - opts.max_per_group))
         )?;
     }
 
@@ -264,7 +282,7 @@ fn write_reference_sites(output: &mut String, sym: &Symbol) -> Result<()> {
         .collect();
 
     if sites.is_empty() {
-        writeln!(output, "      {}used at: none resolved{}", c::DIM, c::RESET)?;
+        writeln!(output, "      {}", c::dim("used at: none resolved"))?;
         return Ok(());
     }
 
@@ -276,11 +294,8 @@ fn write_reference_sites(output: &mut String, sym: &Symbol) -> Result<()> {
     };
     writeln!(
         output,
-        "      {}used at: {}{}{}",
-        c::DIM,
-        sites.join(", "),
-        suffix,
-        c::RESET
+        "      {}",
+        c::dim(&format!("used at: {}{}", sites.join(", "), suffix))
     )?;
     Ok(())
 }
@@ -294,16 +309,33 @@ fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> R
         return Ok(());
     }
 
-    writeln!(output, "\n{}Unreferenced Symbols{}\n", c::BOLD, c::RESET)?;
+    writeln!(output, "\n{}\n", c::subheader("Unreferenced Symbols"))?;
     for name in unreferenced {
-        writeln!(output, "  - {}{}{}", c::YELLOW, name, c::RESET)?;
+        writeln!(output, "  - {}", c::colored(c::YELLOW, name))?;
     }
 
     Ok(())
 }
 
+/// Heading for a list that shows only the top `shown` of `total`.
+///
+/// Naming both numbers is the whole point: `Most Referenced Symbols` used to be
+/// a fixed 10 entries with nothing indicating that anything had been left out,
+/// which is a cap wearing the shape of a total.
+fn truncated_heading(title: &str, shown: usize, total: usize) -> String {
+    use crate::cli::colors as c;
+    if shown >= total {
+        return c::subheader(&format!("{title} ({total})"));
+    }
+    c::subheader(&format!("{title} (top {shown} of {total})"))
+}
+
 /// Write most referenced symbols section (cognitive complexity ≤5)
-fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)]) -> Result<()> {
+fn write_most_referenced(
+    output: &mut String,
+    most_referenced: &[(String, usize)],
+    referenced_total: usize,
+) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -311,12 +343,21 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
         return Ok(());
     }
 
-    writeln!(output, "\n{}Most Referenced Symbols{}\n", c::BOLD, c::RESET)?;
+    writeln!(
+        output,
+        "\n{}\n",
+        truncated_heading(
+            "Most Referenced Symbols",
+            most_referenced.len(),
+            referenced_total
+        )
+    )?;
     for (name, count) in most_referenced {
         writeln!(
             output,
-            "  - {}{}{}: {}{}{} references",
-            c::BOLD_WHITE, name, c::RESET, c::BOLD_WHITE, count, c::RESET
+            "  - {}: {} references",
+            c::number(name),
+            c::number(&count.to_string())
         )?;
     }
 
@@ -324,7 +365,15 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
 }
 
 /// Write top files by symbol count (cognitive complexity ≤8)
-fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<()> {
+///
+/// `top_files` is `--top-files`; 0 means "all". It used to be a hard `take(10)`
+/// with the flag discarded, so the table showed the same 10 rows whether the
+/// project had 11 files or 3868 and said nothing about the rest.
+fn write_top_files_by_count(
+    output: &mut String,
+    symbols: &[Symbol],
+    top_files: usize,
+) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -332,17 +381,27 @@ fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<(
         return Ok(());
     }
 
-    writeln!(output, "\n{}Top Files by Symbol Count{}\n", c::BOLD, c::RESET)?;
-
     let sorted_files = get_sorted_file_counts(symbols);
+    let shown = if top_files == 0 {
+        sorted_files.len()
+    } else {
+        top_files.min(sorted_files.len())
+    };
 
-    for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
+    writeln!(
+        output,
+        "\n{}\n",
+        truncated_heading("Top Files by Symbol Count", shown, sorted_files.len())
+    )?;
+
+    for (i, (file_path, count)) in sorted_files.iter().take(shown).enumerate() {
         let filename = extract_filename(file_path);
         writeln!(
             output,
-            "{}{}. {}{}{} - {}{}{} symbols",
-            c::BOLD, i + 1, c::CYAN, filename, c::RESET,
-            c::BOLD_WHITE, count, c::RESET
+            "{}. {} - {} symbols",
+            c::subheader(&(i + 1).to_string()),
+            c::path(filename),
+            c::number(&count.to_string())
         )?;
     }
 

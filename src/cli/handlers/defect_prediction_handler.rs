@@ -76,30 +76,31 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 }
 
 /// Print analysis header information
+///
+/// Every renderer in this file goes through `crate::cli::colors`' helpers, not
+/// its raw `pub const` escape sequences. With the constants,
+/// `analyze defect-prediction --color never` (and `NO_COLOR=1 TERM=dumb`, on a
+/// pipe) emitted byte-identical output to `--color always`: 3 ESC lines in
+/// `--format summary`, 35 in `--format detailed`, plus the stderr preamble —
+/// while `analyze complexity` and `analyze dead-code` honoured the flag. The
+/// helpers consult `colors_enabled()`; the constants cannot.
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
     use crate::cli::colors as c;
     eprintln!("{}", c::dim("Analyzing defect probability..."));
     eprintln!(
-        "  {}Project path:{} {}",
-        c::BOLD,
-        c::RESET,
+        "  {} {}",
+        c::label("Project path:"),
         c::path(&project_path.display().to_string())
     );
     eprintln!(
-        "  {}High risk only:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        high_risk_only,
-        c::RESET
+        "  {} {}",
+        c::label("High risk only:"),
+        c::number(&high_risk_only.to_string())
     );
     eprintln!(
-        "  {}Include low confidence:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        include_low_confidence,
-        c::RESET
+        "  {} {}",
+        c::label("Include low confidence:"),
+        c::number(&include_low_confidence.to_string())
     );
 }
 
@@ -156,15 +157,14 @@ fn format_summary(result: &DefectPredictionResult) -> String {
         };
         let _ = writeln!(
             output,
-            "  {}. {} - {}{:.1}% risk{} ({}{:?}{})",
+            "  {}. {} - {} ({})",
             c::number(&(i + 1).to_string()),
             c::path(&prediction.file_path),
-            risk_color,
-            prediction.defect_probability * 100.0,
-            c::RESET,
-            risk_color,
-            prediction.risk_level,
-            c::RESET,
+            c::colored(
+                risk_color,
+                &format!("{:.1}% risk", prediction.defect_probability * 100.0)
+            ),
+            c::colored(risk_color, &format!("{:?}", prediction.risk_level)),
         );
     }
 
@@ -193,72 +193,54 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
     // post-truncation prediction count, so it read "10" for a 3863-file repo.
     let _ = writeln!(
         output,
-        "  {}Files discovered:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        result.total_files_discovered,
-        c::RESET
+        "  {} {}",
+        c::label("Files discovered:"),
+        c::number(&result.total_files_discovered.to_string())
     );
     let _ = writeln!(
         output,
-        "  {}Files analyzed:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        result.total_files_analyzed,
-        c::RESET
+        "  {} {}",
+        c::label("Files analyzed:"),
+        c::number(&result.total_files_analyzed.to_string())
     );
     let _ = writeln!(
         output,
-        "  {}Predictions shown:{} {}{} of {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        result.predictions_reported,
-        result.files_matching_filters,
-        if result.predictions_truncated {
-            " (truncated by --top-files)"
-        } else {
-            ""
-        },
-        c::RESET
+        "  {} {}",
+        c::label("Predictions shown:"),
+        c::number(&format!(
+            "{} of {}{}",
+            result.predictions_reported,
+            result.files_matching_filters,
+            if result.predictions_truncated {
+                " (truncated by --top-files)"
+            } else {
+                ""
+            }
+        ))
     );
     let _ = writeln!(
         output,
-        "  {}Churn source:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        result.churn_source.describe(),
-        c::RESET
+        "  {} {}",
+        c::label("Churn source:"),
+        c::number(&result.churn_source.describe())
     );
     let _ = writeln!(
         output,
-        "  {}High risk files:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::RED,
-        result.high_risk_files,
-        c::RESET
+        "  {} {}",
+        c::label("High risk files:"),
+        c::colored(c::RED, &result.high_risk_files.to_string())
     );
     let _ = writeln!(
         output,
-        "  {}Medium risk files:{} {}{}{}",
-        c::BOLD,
-        c::RESET,
-        c::YELLOW,
-        result.medium_risk_files,
-        c::RESET
+        "  {} {}",
+        c::label("Medium risk files:"),
+        c::colored(c::YELLOW, &result.medium_risk_files.to_string())
     );
     let _ = writeln!(
         output,
-        "  {}Low risk files:{} {}{}{}\n",
-        c::BOLD,
-        c::RESET,
-        c::GREEN,
-        result.low_risk_files,
-        c::RESET
+        "  {} {}\n",
+        c::label("Low risk files:"),
+        c::colored(c::GREEN, &result.low_risk_files.to_string())
     );
 
     let _ = writeln!(output, "{}", c::subheader("File Analysis"));
@@ -272,83 +254,59 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         let _ = writeln!(output, "\n  {}", c::path(&prediction.file_path));
         let _ = writeln!(
             output,
-            "    {}Risk Level:{} {}{:?}{}",
-            c::BOLD,
-            c::RESET,
-            risk_color,
-            prediction.risk_level,
-            c::RESET
+            "    {} {}",
+            c::label("Risk Level:"),
+            c::colored(risk_color, &format!("{:?}", prediction.risk_level))
         );
         let _ = writeln!(
             output,
-            "    {}Defect Probability:{} {}{:.1}%{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.defect_probability * 100.0,
-            c::RESET
+            "    {} {}%",
+            c::label("Defect Probability:"),
+            c::number(&format!("{:.1}", prediction.defect_probability * 100.0))
         );
         let _ = writeln!(
             output,
-            "    {}Confidence:{} {}{:.1}%{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.confidence * 100.0,
-            c::RESET
+            "    {} {}%",
+            c::label("Confidence:"),
+            c::number(&format!("{:.1}", prediction.confidence * 100.0))
         );
 
-        let _ = writeln!(output, "    {}Risk Metrics:{}", c::BOLD, c::RESET);
+        let _ = writeln!(output, "    {}", c::label("Risk Metrics:"));
         let _ = writeln!(
             output,
-            "      {}Complexity:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.complexity_score,
-            c::RESET
+            "      {} {}",
+            c::label("Complexity:"),
+            c::number(&format!("{:.1}", prediction.metrics.complexity_score))
         );
         // #657: an unmeasured churn renders as "not measured", never as a
         // number — 0.0 would read as "this file never changed".
         let _ = writeln!(
             output,
-            "      {}Churn:{} {}{}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            format_optional_score(prediction.metrics.churn_score),
-            c::RESET
+            "      {} {}",
+            c::label("Churn:"),
+            c::number(&format_optional_score(prediction.metrics.churn_score))
         );
         let _ = writeln!(
             output,
-            "      {}Coupling:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.coupling_score,
-            c::RESET
+            "      {} {}",
+            c::label("Coupling:"),
+            c::number(&format!("{:.1}", prediction.metrics.coupling_score))
         );
         let _ = writeln!(
             output,
-            "      {}Size:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.size_score,
-            c::RESET
+            "      {} {}",
+            c::label("Size:"),
+            c::number(&format!("{:.1}", prediction.metrics.size_score))
         );
         let _ = writeln!(
             output,
-            "      {}Duplication:{} {}{:.1}{}",
-            c::BOLD,
-            c::RESET,
-            c::BOLD_WHITE,
-            prediction.metrics.duplication_score,
-            c::RESET
+            "      {} {}",
+            c::label("Duplication:"),
+            c::number(&format!("{:.1}", prediction.metrics.duplication_score))
         );
 
         if !prediction.contributing_factors.is_empty() {
-            let _ = writeln!(output, "    {}Contributing Factors:{}", c::BOLD, c::RESET);
+            let _ = writeln!(output, "    {}", c::label("Contributing Factors:"));
             for factor in &prediction.contributing_factors {
                 let _ = writeln!(output, "      - {factor}");
             }

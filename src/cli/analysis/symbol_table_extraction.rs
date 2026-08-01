@@ -13,6 +13,7 @@ pub async fn handle_analyze_symbol_table(
     show_references: bool,
     output: Option<PathBuf>,
     _perf: bool,
+    top_files: usize,
 ) -> Result<()> {
     // missing_path_fails: a nonexistent path must exit non-zero naming the path,
     // not walk nothing and report an empty (but plausible-looking) table.
@@ -21,13 +22,13 @@ pub async fn handle_analyze_symbol_table(
     eprintln!("🔍 Building symbol table for project...");
 
     // Build the symbol table
-    let table = build_symbol_table(&project_path, include, exclude).await?;
+    let table = build_symbol_table(&project_path, include, exclude, top_files).await?;
 
     // Apply filters
-    let filtered = apply_filters(table, filter, query)?;
+    let filtered = apply_filters(table, filter, query, top_files)?;
 
     // Format output
-    let content = format_output(filtered, format, show_unreferenced, show_references)?;
+    let content = format_output(filtered, format, show_unreferenced, show_references, top_files)?;
 
     // Write output
     if let Some(output_path) = output {
@@ -45,6 +46,7 @@ async fn build_symbol_table(
     project_path: &Path,
     include: &[String],
     exclude: &[String],
+    top_files: usize,
 ) -> Result<SymbolTable> {
     // Get all relevant files. `collect_files` returns them sorted, so every
     // downstream ordering (symbol order, reference order, tie-breaks) is stable.
@@ -73,13 +75,14 @@ async fn build_symbol_table(
     let unresolved = resolve_references(&sources, &mut symbols);
 
     let unreferenced = find_unreferenced_symbols(&symbols, &unresolved);
-    let most_referenced = find_most_referenced(&symbols);
+    let (most_referenced, referenced_symbol_count) = find_most_referenced(&symbols, top_files);
 
     Ok(SymbolTable {
         total_symbols: symbols.len(),
         symbols,
         unreferenced_symbols: unreferenced,
         most_referenced,
+        referenced_symbol_count,
     })
 }
 
@@ -238,7 +241,27 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
             SymbolKind::Function,
         ),
         (Regex::new(r"(?m)^def\s+(\w+)")?, SymbolKind::Function),
-        (Regex::new(r"(?m)^const\s+(\w+)\s*=")?, SymbolKind::Constant),
+        // `--help` offers `--filter variables` ("Variables and constants") and
+        // `--filter modules` ("Modules and namespaces"), but nothing ever
+        // produced a `Variable` or a `Module`, so a fixture with `pub const
+        // KONST`, `pub static STAT` and `pub mod inner` returned 0 for both —
+        // two of the six advertised filter values could not match anything.
+        //
+        // The old constant pattern was `^const\s+(\w+)\s*=`, which a Rust
+        // `pub const KONST: u32 = 1;` fails twice over (the `pub`, and the type
+        // annotation before `=`). This one covers both it and JS `const x = …`.
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?const\s+(\w+)")?,
+            SymbolKind::Constant,
+        ),
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?static\s+(\w+)")?,
+            SymbolKind::Variable,
+        ),
+        (
+            Regex::new(r"(?m)^(?:pub\s+)?mod\s+(\w+)")?,
+            SymbolKind::Module,
+        ),
         (
             Regex::new(r"(?m)^(?:pub\s+)?struct\s+(\w+)")?,
             SymbolKind::Type,
@@ -263,7 +286,13 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
                         file: file.to_string(),
                         line: line_no + 1,
                         column: name.start(),
-                        visibility: detect_visibility(line),
+                        // Only the text BEFORE the declared name can be a
+                        // modifier of it. Passing the whole line reported the
+                        // private `struct PrivType { pub b: u32 }` as Public,
+                        // because a public *field* put "pub " somewhere on the
+                        // line. (The same struct spread over several lines was
+                        // correctly Internal, which is the tell.)
+                        visibility: detect_visibility(&line[..name.start()]),
                         references: vec![Reference {
                             file: file.to_string(),
                             line: line_no + 1,
@@ -279,13 +308,16 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
     Ok(symbols)
 }
 
-// Detect visibility from line content
-fn detect_visibility(line: &str) -> Visibility {
-    if line.contains("pub ") || line.contains("export ") {
+/// Detect visibility from the modifiers that precede the declared name.
+///
+/// `prefix` must be the part of the declaration line *before* the symbol's own
+/// name — anything after it belongs to the body, not to the declaration.
+fn detect_visibility(prefix: &str) -> Visibility {
+    if prefix.contains("pub ") || prefix.contains("export ") {
         Visibility::Public
-    } else if line.contains("private ") {
+    } else if prefix.contains("private ") {
         Visibility::Private
-    } else if line.contains("protected ") {
+    } else if prefix.contains("protected ") {
         Visibility::Protected
     } else {
         Visibility::Internal
@@ -322,9 +354,14 @@ fn find_unreferenced_symbols(symbols: &[Symbol], unresolved: &HashSet<String>) -
 }
 
 /// Top symbol names by resolved use sites, highest first, name-ascending on a
-/// tie so the list is identical across runs. Names with no resolved use are
-/// omitted — a "most referenced" list of zeros is not a measurement.
-fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
+/// tie so the list is identical across runs, plus **how many names there were in
+/// total**. Names with no resolved use are omitted — a "most referenced" list of
+/// zeros is not a measurement.
+///
+/// `limit` is `--top-files`; 0 means "all". The list used to be `truncate(10)`
+/// with the flag discarded and no total reported, so a project with 11 000
+/// referenced names and one with 11 produced the same-shaped 10-entry list.
+fn find_most_referenced(symbols: &[Symbol], limit: usize) -> (Vec<(String, usize)>, usize) {
     let mut refs: Vec<(String, usize)> = usage_counts_by_name(symbols)
         .into_iter()
         .filter(|(_, count)| *count > 0)
@@ -332,6 +369,9 @@ fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
         .collect();
 
     refs.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    refs.truncate(10);
-    refs
+    let total = refs.len();
+    if limit > 0 {
+        refs.truncate(limit);
+    }
+    (refs, total)
 }

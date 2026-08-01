@@ -750,7 +750,11 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: DefectPredictionOutputFormat,
 
-        /// Show only high-risk files (probability > 0.7)
+        // The number must stay equal to
+        // `services::facades::defect_prediction_facade::HIGH_RISK_PROBABILITY`.
+        // It said "> 0.7" while the band it selects starts at 0.6, so the flag
+        // returned files at 0.6069833 and 0.657 — both below the documented cut.
+        /// Show only high-risk files (probability >= 0.6)
         #[arg(long)]
         high_risk_only: bool,
 

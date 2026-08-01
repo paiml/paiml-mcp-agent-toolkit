@@ -91,7 +91,12 @@ pdf-extract = { version = "0.12", optional = true }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
-serde_json = { version = "1.0", default-features = false, features = ["std"] }
+# `raw_value` is required by src/mcp_pmcp/stdio_frames.rs: without it a JSON-RPC
+# id above u64::MAX is parsed into an f64 and echoed back as `1e+20`, which no
+# host can correlate. It was already switched on by feature unification from a
+# transitive dependency; declared here so a dependency change cannot silently
+# reintroduce the defect.
+serde_json = { version = "1.0", default-features = false, features = ["std", "raw_value"] }
 rmp-serde = { version = "1.3", optional = true }  # MessagePack for .pmat recording format (Sprint 75)
 
 # Template engine (minijinja: fewer deps than handlebars, sovereign stack alignment with aprender)

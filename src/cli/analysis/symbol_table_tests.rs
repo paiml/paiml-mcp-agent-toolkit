@@ -51,7 +51,7 @@ mod tests {
         .expect("write fixture");
 
         // Exactly what the CLI hands over when neither --include nor --exclude is given.
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -73,10 +73,10 @@ mod tests {
             .await
             .expect("write fixture");
 
-        let empty_table = build_symbol_table(empty.path(), &[], &[])
+        let empty_table = build_symbol_table(empty.path(), &[], &[], 10)
             .await
             .expect("symbol table");
-        let populated_table = build_symbol_table(populated.path(), &[], &[])
+        let populated_table = build_symbol_table(populated.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -96,7 +96,7 @@ mod tests {
             .await
             .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &["*.rs".to_string()], &[])
+        let table = build_symbol_table(dir.path(), &["*.rs".to_string()], &[], 10)
             .await
             .expect("symbol table");
 
@@ -115,7 +115,7 @@ mod tests {
             .await
             .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &["drop".to_string()])
+        let table = build_symbol_table(dir.path(), &[], &["drop".to_string()], 10)
             .await
             .expect("symbol table");
 
@@ -137,6 +137,7 @@ mod tests {
             false,
             None,
             false,
+            10,
         )
         .await;
 
@@ -168,7 +169,7 @@ mod tests {
         tokio::fs::write(dir.path().join("main.rs"), CALL_GRAPH_FIXTURE)
             .await
             .expect("write fixture");
-        build_symbol_table(dir.path(), &[], &[])
+        build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table")
     }
@@ -254,7 +255,7 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -285,7 +286,7 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -313,7 +314,7 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -343,7 +344,7 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -373,7 +374,7 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
 
@@ -397,12 +398,12 @@ mod tests {
         .await
         .expect("write fixture");
 
-        let table = build_symbol_table(dir.path(), &[], &[])
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
             .await
             .expect("symbol table");
         assert_eq!(table.total_symbols, 2);
 
-        let filtered = apply_filters(table, Some(crate::cli::SymbolTypeFilter::Functions), None)
+        let filtered = apply_filters(table, Some(crate::cli::SymbolTypeFilter::Functions), None, 10)
             .expect("filter");
 
         assert_eq!(
@@ -437,7 +438,7 @@ mod tests {
 
         let mut renders = Vec::new();
         for _ in 0..5 {
-            let table = build_symbol_table(dir.path(), &[], &[])
+            let table = build_symbol_table(dir.path(), &[], &[], 10)
                 .await
                 .expect("symbol table");
             let json = format_output(
@@ -445,9 +446,10 @@ mod tests {
                 crate::cli::SymbolTableOutputFormat::Json,
                 true,
                 false,
+                10,
             )
             .expect("json");
-            let table = build_symbol_table(dir.path(), &[], &[])
+            let table = build_symbol_table(dir.path(), &[], &[], 10)
                 .await
                 .expect("symbol table");
             let human = format_output(
@@ -455,6 +457,7 @@ mod tests {
                 crate::cli::SymbolTableOutputFormat::Summary,
                 true,
                 true,
+                10,
             )
             .expect("human");
             renders.push((json, human));
@@ -482,6 +485,7 @@ mod tests {
             crate::cli::SymbolTableOutputFormat::Summary,
             false,
             false,
+                10,
         )
         .expect("render");
         let with = format_output(
@@ -489,6 +493,7 @@ mod tests {
             crate::cli::SymbolTableOutputFormat::Summary,
             false,
             true,
+                10,
         )
         .expect("render");
 
@@ -512,12 +517,13 @@ mod tests {
             .await
             .expect("write fixture");
 
-        let build = || build_symbol_table(dir.path(), &[], &[]);
+        let build = || build_symbol_table(dir.path(), &[], &[], 10);
         let summary = format_output(
             build().await.expect("symbol table"),
             crate::cli::SymbolTableOutputFormat::Summary,
             false,
             false,
+                10,
         )
         .expect("render");
         let detailed = format_output(
@@ -525,6 +531,7 @@ mod tests {
             crate::cli::SymbolTableOutputFormat::Detailed,
             false,
             false,
+                10,
         )
         .expect("render");
 
@@ -585,10 +592,304 @@ mod tests {
             total_symbols: 1,
             unreferenced_symbols: vec!["test".to_string()],
             most_referenced: vec![],
+            referenced_symbol_count: 0,
         };
 
         assert_eq!(table.total_symbols, 1);
         assert_eq!(table.unreferenced_symbols.len(), 1);
+    }
+
+    // === round 3: residue of the #654 fix ===
+
+    /// `include!("frag.rs")` splices the fragment into its includer, so a
+    /// file-private item declared in one is visible to the other. Treating them
+    /// as separate files meant such a use matched neither the local index
+    /// (different file) nor the exported index (not `pub`), so nothing was
+    /// attributed: `ArchitectureIndicators` — used at 8 sites across 3 files —
+    /// reported refs:1 and was listed in `unreferenced_symbols`. Same for
+    /// `count_lean_sorry_ast`, called at analyzer_impl1_source_dispatch.rs:71.
+    #[tokio::test]
+    async fn a_private_item_used_across_an_include_fragment_is_referenced() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        tokio::fs::write(
+            dir.path().join("host.rs"),
+            "include!(\"types.rs\");\ninclude!(\"uses.rs\");\n",
+        )
+        .await
+        .expect("write host");
+        tokio::fs::write(
+            dir.path().join("types.rs"),
+            "struct ArchIndicators {\n    a: bool,\n}\n",
+        )
+        .await
+        .expect("write types");
+        tokio::fs::write(
+            dir.path().join("uses.rs"),
+            "fn build() -> ArchIndicators {\n    ArchIndicators { a: true }\n}\n",
+        )
+        .await
+        .expect("write uses");
+
+        let table = build_symbol_table(dir.path(), &[], &[], 0)
+            .await
+            .expect("symbol table");
+
+        let arch = table
+            .symbols
+            .iter()
+            .find(|s| s.name == "ArchIndicators")
+            .expect("the private struct must be extracted");
+        assert!(
+            usage_count(arch) >= 2,
+            "the 2 uses in the sibling fragment must resolve, got {} references",
+            usage_count(arch)
+        );
+        assert!(
+            !table
+                .unreferenced_symbols
+                .contains(&"ArchIndicators".to_string()),
+            "a symbol used twice must not be listed unreferenced: {:?}",
+            table.unreferenced_symbols
+        );
+    }
+
+    /// The honest-path rule: a name we could not attribute must not be reported
+    /// as unreferenced. A `def` in Python carries no visibility marker, so every
+    /// cross-file use of one fell into the branch that attributed nothing — and
+    /// then silently claimed the declaration had no users.
+    #[tokio::test]
+    async fn an_unattributable_cross_file_use_is_not_called_unreferenced() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        tokio::fs::write(dir.path().join("lib.py"), "def helper():\n    return 1\n")
+            .await
+            .expect("write lib");
+        tokio::fs::write(
+            dir.path().join("app.py"),
+            "from lib import helper\n\ndef main():\n    return helper()\n",
+        )
+        .await
+        .expect("write app");
+
+        let table = build_symbol_table(dir.path(), &[], &[], 0)
+            .await
+            .expect("symbol table");
+
+        assert!(
+            !table.unreferenced_symbols.contains(&"helper".to_string()),
+            "helper is called from app.py; claiming it is unreferenced is a \
+             measurement we did not make: {:?}",
+            table.unreferenced_symbols
+        );
+    }
+
+    /// `--filter variables` ("Variables and constants") and `--filter modules`
+    /// ("Modules and namespaces") could never match anything: no `Variable` and
+    /// no `Module` symbol was ever produced. A fixture with `pub const KONST`,
+    /// `pub static STAT` and `pub mod inner` returned 0 for both.
+    #[tokio::test]
+    async fn the_variables_and_modules_filters_can_match_something() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        tokio::fs::write(
+            dir.path().join("lib.rs"),
+            "pub const KONST: u32 = 1;\npub static STAT: u32 = 2;\npub mod inner {}\n",
+        )
+        .await
+        .expect("write fixture");
+
+        for (filter, expected) in [
+            (crate::cli::SymbolTypeFilter::Variables, vec!["KONST", "STAT"]),
+            (crate::cli::SymbolTypeFilter::Modules, vec!["inner"]),
+        ] {
+            let table = build_symbol_table(dir.path(), &[], &[], 0)
+                .await
+                .expect("symbol table");
+            let filtered = apply_filters(table, Some(filter.clone()), None, 0).expect("filter");
+            let mut names: Vec<&str> =
+                filtered.symbols.iter().map(|s| s.name.as_str()).collect();
+            names.sort_unstable();
+            assert_eq!(names, expected, "--filter {filter:?} matched nothing");
+            assert_eq!(
+                filtered.total_symbols,
+                expected.len(),
+                "the header must count the list it heads"
+            );
+        }
+    }
+
+    /// A public *field* put "pub " somewhere on the line, so the private struct
+    /// `struct PrivType { pub b: u32 }` was reported Public. Only the text
+    /// before the declared name can be a modifier of it.
+    #[test]
+    fn a_public_field_does_not_make_a_private_struct_public() {
+        let symbols =
+            extract_symbols_simple("struct PrivType { pub b: u32 }\n", "t.rs").expect("extract");
+        assert_eq!(symbols.len(), 1);
+        assert!(
+            matches!(symbols[0].visibility, Visibility::Internal),
+            "got {:?} for a private struct with a public field",
+            symbols[0].visibility
+        );
+
+        // …and a genuinely public one is still Public.
+        let public =
+            extract_symbols_simple("pub struct PubType { b: u32 }\n", "t.rs").expect("extract");
+        assert!(matches!(public[0].visibility, Visibility::Public));
+    }
+
+    /// `most_referenced` was `truncate(10)` with `--top-files` discarded and no
+    /// total reported, so its length was 10 whether there were 11 referenced
+    /// names or 11 000 — a cap wearing the shape of a total.
+    #[tokio::test]
+    async fn most_referenced_honours_top_files_and_names_the_whole() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // 12 public functions, each called once from main -> 12 referenced names.
+        let mut src = String::new();
+        for i in 0..12 {
+            src.push_str(&format!("pub fn f{i}() {{}}\n"));
+        }
+        src.push_str("pub fn main() {\n");
+        for i in 0..12 {
+            src.push_str(&format!("    f{i}();\n"));
+        }
+        src.push_str("}\n");
+        tokio::fs::write(dir.path().join("lib.rs"), src)
+            .await
+            .expect("write fixture");
+
+        let all = build_symbol_table(dir.path(), &[], &[], 0)
+            .await
+            .expect("symbol table");
+        assert_eq!(
+            all.most_referenced.len(),
+            all.referenced_symbol_count,
+            "--top-files 0 means all"
+        );
+        assert!(
+            all.referenced_symbol_count >= 12,
+            "expected >= 12 referenced names, got {}",
+            all.referenced_symbol_count
+        );
+
+        for limit in [3usize, 5, 10] {
+            let table = build_symbol_table(dir.path(), &[], &[], limit)
+                .await
+                .expect("symbol table");
+            assert_eq!(
+                table.most_referenced.len(),
+                limit,
+                "--top-files {limit} must truncate to {limit}"
+            );
+            assert_eq!(
+                table.referenced_symbol_count, all.referenced_symbol_count,
+                "the whole must not shrink with the slice"
+            );
+        }
+    }
+
+    /// The truncation must be *stated*, not merely applied.
+    #[tokio::test]
+    async fn the_text_render_names_both_numbers_when_it_truncates() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut src = String::new();
+        for i in 0..12 {
+            src.push_str(&format!("pub fn f{i}() {{}}\n"));
+        }
+        src.push_str("pub fn main() {\n");
+        for i in 0..12 {
+            src.push_str(&format!("    f{i}();\n"));
+        }
+        src.push_str("}\n");
+        tokio::fs::write(dir.path().join("lib.rs"), src)
+            .await
+            .expect("write fixture");
+
+        let table = build_symbol_table(dir.path(), &[], &[], 3)
+            .await
+            .expect("symbol table");
+        let total = table.referenced_symbol_count;
+        let out = format_output(
+            table,
+            crate::cli::SymbolTableOutputFormat::Summary,
+            false,
+            false,
+            3,
+        )
+        .expect("render");
+        assert!(
+            out.contains(&format!("Most Referenced Symbols (top 3 of {total})")),
+            "a truncated list must name both numbers, got:\n{out}"
+        );
+    }
+
+    /// `--color never` was inert here: `--format summary` emitted 16 lines of
+    /// raw ESC bytes with `--color never`, with `--color always` and with
+    /// `NO_COLOR=1 TERM=dumb`, all three identical on a non-TTY pipe — and `-o`
+    /// wrote them into the file. The render must now follow the colour decision
+    /// in both directions.
+    #[tokio::test]
+    async fn the_text_render_follows_the_colour_decision() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        tokio::fs::write(
+            dir.path().join("lib.rs"),
+            "pub fn alpha() {}\npub fn beta() {\n    alpha();\n}\n",
+        )
+        .await
+        .expect("write fixture");
+
+        let table = build_symbol_table(dir.path(), &[], &[], 10)
+            .await
+            .expect("symbol table");
+        let out = format_output(
+            table,
+            crate::cli::SymbolTableOutputFormat::Summary,
+            true,
+            true,
+            10,
+        )
+        .expect("render");
+
+        assert_eq!(
+            out.contains('\u{1b}'),
+            crate::cli::colors::colors_enabled(),
+            "ANSI sequences must appear exactly when colour is enabled"
+        );
+    }
+
+    /// Two runs over an unchanged tree must be byte-identical: the include-unit
+    /// grouping walks a `HashMap`, so its representative choice has to be a pure
+    /// function of the (sorted) file list.
+    #[tokio::test]
+    async fn five_runs_over_one_tree_render_identically() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        tokio::fs::write(dir.path().join("host.rs"), "include!(\"frag.rs\");\n")
+            .await
+            .expect("write host");
+        tokio::fs::write(
+            dir.path().join("frag.rs"),
+            "struct Hidden {\n    a: bool,\n}\nfn use_it() -> Hidden {\n    Hidden { a: true }\n}\n",
+        )
+        .await
+        .expect("write frag");
+
+        let mut renders = Vec::new();
+        for _ in 0..5 {
+            let table = build_symbol_table(dir.path(), &[], &[], 0)
+                .await
+                .expect("symbol table");
+            renders.push(
+                format_output(
+                    table,
+                    crate::cli::SymbolTableOutputFormat::Json,
+                    true,
+                    true,
+                    0,
+                )
+                .expect("render"),
+            );
+        }
+        for r in &renders {
+            assert_eq!(r, &renders[0], "identical input must give identical output");
+        }
     }
 }
 

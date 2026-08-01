@@ -261,6 +261,7 @@ mod edge_case_tests {
             false,
             Some(out.clone()),
             false,
+            10,
         )
         .await
         .expect("symbol table analysis must succeed");

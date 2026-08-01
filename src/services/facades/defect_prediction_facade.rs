@@ -235,11 +235,26 @@ fn combine_probability(metrics: &FileRiskMetrics) -> f32 {
     (weighted / total_weight).clamp(0.0, 1.0)
 }
 
+/// Lowest probability that counts as high risk, and therefore exactly what
+/// `--high-risk-only` keeps (`passes_filters` drops Low and Medium).
+///
+/// `--help` used to advertise "Show only high-risk files (probability > 0.7)",
+/// a number that appears nowhere in this file: the flag returned files at
+/// 0.6069833 and 0.657, both below the documented cut. The help text now names
+/// this constant's value; `risk_bands_match_the_documented_thresholds` pins it.
+pub const HIGH_RISK_PROBABILITY: f32 = 0.6;
+
+/// Lowest probability that counts as critical risk.
+pub const CRITICAL_RISK_PROBABILITY: f32 = 0.8;
+
+/// Lowest probability that counts as medium risk.
+pub const MEDIUM_RISK_PROBABILITY: f32 = 0.4;
+
 fn classify(probability: f32) -> RiskLevel {
     match probability {
-        p if p >= 0.8 => RiskLevel::Critical,
-        p if p >= 0.6 => RiskLevel::High,
-        p if p >= 0.4 => RiskLevel::Medium,
+        p if p >= CRITICAL_RISK_PROBABILITY => RiskLevel::Critical,
+        p if p >= HIGH_RISK_PROBABILITY => RiskLevel::High,
+        p if p >= MEDIUM_RISK_PROBABILITY => RiskLevel::Medium,
         _ => RiskLevel::Low,
     }
 }
@@ -520,6 +535,58 @@ mod tests {
 
     fn facade() -> DefectPredictionFacade {
         DefectPredictionFacade::new(Arc::new(ServiceRegistry::new()))
+    }
+
+    /// `--help` claimed `--high-risk-only` selected "probability > 0.7" while
+    /// the band it actually keeps starts at 0.6, so the flag returned files at
+    /// 0.6069833 and 0.657. The help text now quotes `HIGH_RISK_PROBABILITY`;
+    /// this pins the boundaries so the two cannot drift apart again.
+    #[test]
+    fn risk_bands_match_the_documented_thresholds() {
+        assert!((HIGH_RISK_PROBABILITY - 0.6).abs() < f32::EPSILON);
+        assert!((MEDIUM_RISK_PROBABILITY - 0.4).abs() < f32::EPSILON);
+        assert!((CRITICAL_RISK_PROBABILITY - 0.8).abs() < f32::EPSILON);
+
+        // Exactly at the boundary is High; a hair below is Medium. 0.7 — the
+        // number the help used to name — is well inside the High band, so a
+        // reader who trusted it under-estimated what the flag returns.
+        assert!(matches!(classify(HIGH_RISK_PROBABILITY), RiskLevel::High));
+        assert!(matches!(classify(0.5999), RiskLevel::Medium));
+        assert!(matches!(classify(0.7), RiskLevel::High));
+        assert!(matches!(classify(0.657), RiskLevel::High));
+        assert!(matches!(classify(0.6069833), RiskLevel::High));
+    }
+
+    /// `--high-risk-only` keeps exactly the bands at or above
+    /// `HIGH_RISK_PROBABILITY`.
+    #[test]
+    fn high_risk_only_keeps_the_high_band_and_above() {
+        let mut request = request(Path::new("."), 0);
+        request.high_risk_only = true;
+        request.include_low_confidence = true;
+
+        for (probability, kept) in [(0.39, false), (0.5, false), (0.6, true), (0.9, true)] {
+            let prediction = FilePrediction {
+                file_path: "f.rs".to_string(),
+                defect_probability: probability,
+                confidence: 1.0,
+                risk_level: classify(probability),
+                metrics: FileRiskMetrics {
+                    complexity_score: 0.0,
+                    churn_score: None,
+                    coupling_score: 0.0,
+                    size_score: 0.0,
+                    duplication_score: 0.0,
+                },
+                contributing_factors: vec![],
+            };
+            assert_eq!(
+                passes_filters(&prediction, &request),
+                kept,
+                "probability {probability} should {} pass --high-risk-only",
+                if kept { "" } else { "not" }
+            );
+        }
     }
 
     fn request(path: &Path, top_files: usize) -> DefectPredictionRequest {

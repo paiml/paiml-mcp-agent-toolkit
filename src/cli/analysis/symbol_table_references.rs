@@ -19,16 +19,18 @@
 //   2. a candidate declaration only counts if the occurrence has the right
 //      shape for it — a function must actually be *called* (`name(`), while a
 //      type is accepted in any position;
-//   3. if the enclosing file declares that name, the use is attributed there
-//      (locality wins); otherwise only declarations visible outside their own
-//      file are candidates, and the use is attributed only when exactly one
-//      fits;
+//   3. if the enclosing *translation unit* declares that name, the use is
+//      attributed there (locality wins). A unit is a file plus every file it
+//      pulls in with `include!()`, because those really are one module;
+//      otherwise only declarations visible outside their own unit are
+//      candidates, and the use is attributed only when exactly one fits;
 //   4. if several visible declarations share the name (e.g. `new`, declared in
 //      hundreds of files) the use is NOT attributed to a guess, and the name is
 //      recorded as unresolved so it can never be reported as "unreferenced";
-//   5. if no visible declaration exists, the identifier belongs to something we
-//      did not extract. Nothing is attributed, and the file-private
-//      declarations of that name stay fully measured within their own file.
+//   5. if no visible declaration exists, we have a use of a declared name that
+//      we cannot attribute. Nothing is attributed and the name is recorded as
+//      unresolved — claiming "unreferenced" here would be reporting a
+//      measurement we did not make.
 
 use std::collections::HashSet;
 
@@ -330,13 +332,110 @@ fn uses_arrow_member_access(path: &str) -> bool {
     )
 }
 
+/// Group files that Rust's `include!()` splices into one another.
+///
+/// `include!("sibling.rs")` pastes the fragment's tokens into the includer, so
+/// the two are ONE module: a file-private `struct ArchitectureIndicators` in
+/// `polyglot_analyzer_types.rs` really is visible to `polyglot_analyzer_
+/// architecture.rs`, which uses it at 8 sites. Treating them as separate files
+/// meant those uses matched neither the local index (different file) nor the
+/// exported index (not `pub`), so nothing was attributed and the symbol was
+/// listed in `unreferenced_symbols` with refs:1. Same story for
+/// `count_lean_sorry_ast`.
+///
+/// Returns a map from every file path to the path of its unit's representative
+/// (the includer, transitively). Files that neither include nor are included
+/// are their own unit, so the common case is unchanged.
+fn build_include_units(files: &[FileSource]) -> HashMap<String, String> {
+    let index_of: HashMap<PathBuf, usize> = files
+        .iter()
+        .enumerate()
+        .map(|(i, f)| (normalize_path(Path::new(&f.path)), i))
+        .collect();
+
+    // Union-find over include! edges; `parent[i] == i` means "own unit".
+    let mut parent: Vec<usize> = (0..files.len()).collect();
+    for (i, file) in files.iter().enumerate() {
+        let dir = Path::new(&file.path).parent().map(Path::to_path_buf);
+        for target in included_paths(&file.content) {
+            let Some(dir) = dir.as_ref() else { continue };
+            let resolved = normalize_path(&dir.join(target));
+            if let Some(&j) = index_of.get(&resolved) {
+                union(&mut parent, i, j);
+            }
+        }
+    }
+
+    files
+        .iter()
+        .enumerate()
+        .map(|(i, f)| (f.path.clone(), files[find(&mut parent, i)].path.clone()))
+        .collect()
+}
+
+fn find(parent: &mut [usize], mut i: usize) -> usize {
+    while parent[i] != i {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+    }
+    i
+}
+
+fn union(parent: &mut [usize], a: usize, b: usize) {
+    let (ra, rb) = (find(parent, a), find(parent, b));
+    if ra != rb {
+        // Lowest index wins so the representative is a pure function of the
+        // (already sorted) file list, not of edge discovery order.
+        let (lo, hi) = if ra < rb { (ra, rb) } else { (rb, ra) };
+        parent[hi] = lo;
+    }
+}
+
+/// Every `include!("…")` target named in `content`.
+fn included_paths(content: &str) -> Vec<String> {
+    use regex::Regex;
+    use std::sync::OnceLock;
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(r#"include!\s*\(\s*"([^"]+)"\s*\)"#).expect("static regex must compile")
+    });
+    re.captures_iter(content)
+        .filter_map(|c| c.get(1).map(|m| m.as_str().to_string()))
+        .collect()
+}
+
+/// Lexical `.`/`..` resolution. Purely textual: no filesystem access, so the
+/// result does not depend on the process's current working directory.
+fn normalize_path(path: &Path) -> PathBuf {
+    use std::path::Component;
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
 /// Indices into the symbol slice, grouped for attribution.
 struct DefinitionIndex {
     by_name: HashMap<String, Vec<usize>>,
     /// Only the declarations that are visible outside their own file — the only
     /// ones a use in *another* file could possibly be talking about.
     exported_by_name: HashMap<String, Vec<usize>>,
-    by_file: HashMap<String, FileDefinitions>,
+    /// Declarations keyed by translation unit (see [`build_include_units`]),
+    /// not by file, so `include!()` fragments share one local scope.
+    by_unit: HashMap<String, FileDefinitions>,
+    /// Definition sites stay keyed by *file*: two fragments of one unit can
+    /// share a (line, column) pair, and treating one's declaration as the
+    /// other's would drop a real use site.
+    sites_by_file: HashMap<String, HashSet<(usize, usize)>>,
+    /// File path -> its unit's representative path.
+    unit_of: HashMap<String, String>,
 }
 
 /// Whether a declaration can be referenced from another file at all. A bare
@@ -351,19 +450,32 @@ fn is_exported(symbol: &Symbol) -> bool {
 #[derive(Default)]
 struct FileDefinitions {
     by_name: HashMap<String, Vec<usize>>,
-    sites: HashSet<(usize, usize)>,
 }
 
 impl DefinitionIndex {
     fn is_known(&self, ident: &[u8]) -> bool {
         std::str::from_utf8(ident).is_ok_and(|name| self.by_name.contains_key(name))
     }
+
+    /// Declarations local to the translation unit `path` belongs to.
+    fn unit_definitions(&self, path: &str) -> Option<&FileDefinitions> {
+        self.unit_of.get(path).and_then(|u| self.by_unit.get(u))
+    }
+
+    /// Is `(line, column)` in `path` a declaration's own occurrence?
+    fn is_definition_site(&self, path: &str, line: usize, column: usize) -> bool {
+        self.sites_by_file
+            .get(path)
+            .is_some_and(|s| s.contains(&(line, column)))
+    }
 }
 
-fn build_definition_index(symbols: &[Symbol]) -> DefinitionIndex {
+fn build_definition_index(files: &[FileSource], symbols: &[Symbol]) -> DefinitionIndex {
+    let unit_of = build_include_units(files);
     let mut by_name: HashMap<String, Vec<usize>> = HashMap::new();
     let mut exported_by_name: HashMap<String, Vec<usize>> = HashMap::new();
-    let mut by_file: HashMap<String, FileDefinitions> = HashMap::new();
+    let mut by_unit: HashMap<String, FileDefinitions> = HashMap::new();
+    let mut sites_by_file: HashMap<String, HashSet<(usize, usize)>> = HashMap::new();
 
     for (idx, symbol) in symbols.iter().enumerate() {
         by_name.entry(symbol.name.clone()).or_default().push(idx);
@@ -373,19 +485,29 @@ fn build_definition_index(symbols: &[Symbol]) -> DefinitionIndex {
                 .or_default()
                 .push(idx);
         }
-        let per_file = by_file.entry(symbol.file.clone()).or_default();
-        per_file
+        let unit = unit_of
+            .get(&symbol.file)
+            .cloned()
+            .unwrap_or_else(|| symbol.file.clone());
+        by_unit
+            .entry(unit)
+            .or_default()
             .by_name
             .entry(symbol.name.clone())
             .or_default()
             .push(idx);
-        per_file.sites.insert((symbol.line, symbol.column));
+        sites_by_file
+            .entry(symbol.file.clone())
+            .or_default()
+            .insert((symbol.line, symbol.column));
     }
 
     DefinitionIndex {
         by_name,
         exported_by_name,
-        by_file,
+        by_unit,
+        sites_by_file,
+        unit_of,
     }
 }
 
@@ -394,16 +516,16 @@ fn build_definition_index(symbols: &[Symbol]) -> DefinitionIndex {
 /// at least one occurrence we could not attribute — those names must never be
 /// reported as unreferenced, because we did not actually measure them.
 pub(crate) fn resolve_references(files: &[FileSource], symbols: &mut [Symbol]) -> HashSet<String> {
-    let index = build_definition_index(symbols);
+    let index = build_definition_index(files, symbols);
     let mut unresolved: HashSet<String> = HashSet::new();
 
     for file in files {
         let masked = mask_non_code(&file.content, comment_syntax_for(&file.path));
         let occurrences =
             collect_known_occurrences(&masked, &index, uses_arrow_member_access(&file.path));
-        let local = index.by_file.get(&file.path);
+        let local = index.unit_definitions(&file.path);
         for occ in occurrences {
-            if local.is_some_and(|defs| defs.sites.contains(&(occ.line, occ.column))) {
+            if index.is_definition_site(&file.path, occ.line, occ.column) {
                 continue; // the definition itself; already recorded
             }
             let Ok(name) = std::str::from_utf8(&masked[occ.start..occ.end]) else {
@@ -443,9 +565,16 @@ fn attribute_use(
     }
 
     let Some(candidates) = index.exported_by_name.get(name) else {
-        // No declaration of this name is visible outside its own file, so this
-        // identifier is something else entirely. Nothing to attribute, and the
-        // file-private declarations remain fully measured within their file.
+        // Every occurrence collected is a *declared* name (that is what
+        // `is_known` means), yet no declaration of it is visible outside its own
+        // unit. So this is a use we cannot attribute, not a use of something
+        // else: recording it as unresolved is what stops the private
+        // declarations of that name being reported "unreferenced" on the
+        // strength of a measurement we did not make. Languages with no
+        // visibility marker at all (a Python `def`, a bare JS `function`) are
+        // entirely in this branch, so the previous silent `return` made every
+        // cross-file use in those languages invisible.
+        unresolved.insert(name.to_string());
         return;
     };
 

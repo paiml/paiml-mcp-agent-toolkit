@@ -428,6 +428,7 @@ pub async fn handle_analyze_symbol_table(
     show_references: bool,
     output: Option<PathBuf>,
     perf: bool,
+    top_files: usize,
 ) -> Result<()> {
     // Defect #654: this used to pass `Some(include.join(","))` / `Some(exclude.join(","))`.
     // With no --exclude given that is `Some("")`, and the collector skipped every path
@@ -444,6 +445,7 @@ pub async fn handle_analyze_symbol_table(
         show_references,
         output,
         perf,
+        top_files,
     )
     .await
 }

@@ -76,7 +76,17 @@ pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub total_symbols: usize,
     pub unreferenced_symbols: Vec<String>,
+    /// The top `--top-files` names by resolved use sites.
+    ///
+    /// This was hard-capped at 10 with nothing saying so and `--top-files`
+    /// ignored, so its length was 10 whether the project had 11 referenced
+    /// names or 11 000 — a cap wearing the shape of a total. It now honours the
+    /// flag, and [`Self::referenced_symbol_count`] names the population it is
+    /// drawn from.
     pub most_referenced: Vec<(String, usize)>,
+    /// How many distinct names have at least one resolved use site — the whole
+    /// that `most_referenced` is the top slice of.
+    pub referenced_symbol_count: usize,
 }
 
 include!("symbol_table_references.rs");
