@@ -8,6 +8,17 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
         check,
     } = cmd
     {
+        // A path that does not exist must fail, not report "no model files".
+        // This was the LAST `analyze` subcommand still exiting 0 on a missing
+        // path: `analyze models --path /no/such` printed "No model files found
+        // (*.gguf, *.apr, *.safetensors) in /no/such" and returned success, so
+        // a typo was indistinguishable from a project that genuinely has no
+        // models. Note `canonicalize` below silently falls back to the original
+        // path, which is what let a nonexistent one through.
+        //
+        // contracts/pmat-no-fabrication-v1.yaml, equation `missing_path_fails`.
+        crate::cli::ensure_analysis_path_exists(&path)?;
+
         let project_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
 
         let model_files =
