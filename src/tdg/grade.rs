@@ -18,28 +18,17 @@ use std::collections::HashSet;
 // conflicting-impl compile error.
 #[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Grade {
-    #[serde(rename = "A+", alias = "APLus", alias = "APlus")]
     APlus,
-    #[serde(rename = "A")]
     A,
-    #[serde(rename = "A-", alias = "AMinus")]
     AMinus,
-    #[serde(rename = "B+", alias = "BPlus")]
     BPlus,
-    #[serde(rename = "B")]
     B,
-    #[serde(rename = "B-", alias = "BMinus")]
     BMinus,
-    #[serde(rename = "C+", alias = "CPlus")]
     CPlus,
     #[default]
-    #[serde(rename = "C")]
     C,
-    #[serde(rename = "C-", alias = "CMinus")]
     CMinus,
-    #[serde(rename = "D")]
     D,
-    #[serde(rename = "F")]
     F,
 }
 
@@ -63,16 +52,21 @@ impl Grade {
     /// Parse a serialized variant name. Case-insensitive on purpose: see the
     /// note on `Grade::APlus`.
     fn from_variant_name(name: &str) -> Option<Self> {
+        // Accepts BOTH spellings. `Serialize` emits the variant name (what
+        // every stored baseline contains), but symbolic forms reach this from
+        // user input and from output written while the two round-3 fixes
+        // disagreed about the wire format. One serialization, two accepted
+        // inputs -- which is what #669's "two spellings" finding asked for.
         Some(match name.to_ascii_lowercase().as_str() {
-            "aplus" => Grade::APlus,
+            "aplus" | "a+" => Grade::APlus,
             "a" => Grade::A,
-            "aminus" => Grade::AMinus,
-            "bplus" => Grade::BPlus,
+            "aminus" | "a-" => Grade::AMinus,
+            "bplus" | "b+" => Grade::BPlus,
             "b" => Grade::B,
-            "bminus" => Grade::BMinus,
-            "cplus" => Grade::CPlus,
+            "bminus" | "b-" => Grade::BMinus,
+            "cplus" | "c+" => Grade::CPlus,
             "c" => Grade::C,
-            "cminus" => Grade::CMinus,
+            "cminus" | "c-" => Grade::CMinus,
             "d" => Grade::D,
             "f" => Grade::F,
             _ => return None,
@@ -225,18 +219,33 @@ mod tests {
         assert!(Grade::F.meets_threshold(Grade::F));
     }
 
-    /// Regression: one serialization for one grade. `pmat tdg --format json`
+    /// Regression: ONE serialization for one grade. `pmat tdg --format json`
     /// and `pmat analyze tdg --format json` used to disagree ("A+" vs "APlus")
-    /// on the identical score.
+    /// on the identical score, so no machine consumer could match on a string.
+    ///
+    /// Two round-3 fixes each solved this and picked OPPOSITE wire formats.
+    /// Settled on the variant name, because that is what every baseline already
+    /// on disk contains, so no stored file changes meaning. `Display` keeps the
+    /// symbolic form for humans, and `Deserialize` accepts both -- including
+    /// output written while the two fixes disagreed.
     #[test]
-    fn test_grade_serializes_symbolically_like_display() {
+    fn test_grade_has_exactly_one_json_form_and_accepts_both() {
         for grade in BEST_TO_WORST {
             let json = serde_json::to_string(&grade).expect("serialize");
             assert_eq!(
                 json,
-                format!("\"{grade}\""),
-                "JSON form must match the displayed grade"
+                format!("\"{grade:?}\""),
+                "JSON form is the variant name"
             );
+
+            let back: Grade = serde_json::from_str(&json).expect("round trip");
+            assert_eq!(back, grade);
+
+            // The symbolic form a human sees must still parse.
+            let symbolic = format!("\"{grade}\"");
+            let from_symbolic: Grade =
+                serde_json::from_str(&symbolic).expect("displayed form must load");
+            assert_eq!(from_symbolic, grade);
         }
     }
 

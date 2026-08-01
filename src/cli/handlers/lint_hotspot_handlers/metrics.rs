@@ -592,6 +592,11 @@ mod tests {
         let first = generate_refactor_chain(&hotspot, 0.5).id;
         let second = generate_refactor_chain(&hotspot, 0.5).id;
         assert_eq!(first, second);
-        assert_eq!(first, "lint-hotspot-thing.rs-7");
+        // The full path, not the basename: two agents proposed different
+        // schemes and basenames collide across directories (src/a/mod.rs and
+        // src/b/mod.rs would share an id). What the test is really pinning is
+        // that the id is derived from the INPUT and not from a clock -- which
+        // is the assert_eq! above.
+        assert_eq!(first, "lint-hotspot-src/deep/nested/thing.rs");
     }
 }

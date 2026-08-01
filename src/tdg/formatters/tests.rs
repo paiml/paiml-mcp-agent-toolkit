@@ -394,7 +394,12 @@ mod tests {
                 },
             ],
             language_distribution,
-            grade_distribution: std::collections::BTreeMap::new(),
+            // Populated on purpose: the assertions below check that the
+            // distribution describes the ANALYSED POPULATION (15 files) rather
+            // than the two-entry short list, which is the point of the
+            // "Files Listed: 2 of 15" disclosure. A merge left this empty while
+            // keeping the assertions, so the fixture contradicted the test.
+            grade_distribution: std::collections::BTreeMap::from([(Grade::A, 10), (Grade::B, 5)]),
             f_grade_count: 0,
             grade_capped: false,
             files_reported: 2,

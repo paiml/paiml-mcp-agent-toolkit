@@ -199,7 +199,7 @@ pub async fn handle_generate_report(
     let service = DefectReportService::new();
     let report = service.generate_report(&project_path).await?;
 
-    let service_format = convert_to_service_format(actual_format);
+    let service_format = convert_to_service_format(actual_format)?;
     let formatted_output = format_report_output(&service, &report, service_format)?;
 
     write_report_output(formatted_output, output).await?;
@@ -236,17 +236,26 @@ fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutput
 }
 
 /// Convert CLI output format to service format (cognitive complexity ≤7)
-fn convert_to_service_format(actual_format: ReportOutputFormat) -> ReportFormat {
-    match actual_format {
+/// Map a declared `--output-format` to an emitter, or reject it.
+///
+/// #672: html, pdf and dashboard were silently rewritten to Markdown/Json, so
+/// `--format html` produced a file containing no markup and the user was never
+/// told. A declared format must produce that format or be refused -- silently
+/// emitting a different one is the defect. (A merge reverted this once; the
+/// test in tests_report_format_fidelity.rs pins it.)
+fn convert_to_service_format(actual_format: ReportOutputFormat) -> Result<ReportFormat> {
+    Ok(match actual_format {
         ReportOutputFormat::Json => ReportFormat::Json,
         ReportOutputFormat::Csv => ReportFormat::Csv,
         ReportOutputFormat::Markdown => ReportFormat::Markdown,
         ReportOutputFormat::Text => ReportFormat::Text,
-        // Legacy formats - map to appropriate new format
-        ReportOutputFormat::Html => ReportFormat::Markdown,
-        ReportOutputFormat::Pdf => ReportFormat::Markdown,
-        ReportOutputFormat::Dashboard => ReportFormat::Json,
-    }
+        unsupported => anyhow::bail!(
+            "--format {} is not implemented for `pmat report` (it previously emitted \
+             plain text, not {}). Supported formats: json, csv, markdown, text.",
+            format!("{unsupported:?}").to_lowercase(),
+            format!("{unsupported:?}").to_lowercase(),
+        ),
+    })
 }
 
 /// Format report using service (cognitive complexity ≤4)
