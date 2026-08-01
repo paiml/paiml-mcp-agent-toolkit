@@ -46,7 +46,7 @@ jobs:
     continue-on-error: true
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: cargo check --bin pmat (default features)
@@ -64,7 +64,7 @@ jobs:
     needs: [gate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
       - name: Run mutation testing
