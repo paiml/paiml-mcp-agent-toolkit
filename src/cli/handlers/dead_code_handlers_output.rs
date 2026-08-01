@@ -243,7 +243,7 @@ fn format_dead_code_as_markdown(
 
     // Build breakdown section if needed
     if result.summary.dead_functions > 0 {
-        sections.push(format_dead_code_breakdown_section(&result.summary));
+        sections.push(format_dead_code_breakdown_section(result));
     }
 
     // Build file details section if needed
@@ -274,20 +274,40 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
     )
 }
 
+/// Write the markdown breakdown table.
+///
+/// The `Modules` row prints `summary.dead_modules`, which is a MODULE count on
+/// the cargo path. It was labelled `Variables` here -- the same mislabel the
+/// text renderer carried (#721) -- so a cargo run reported its dead modules
+/// under a row heading no producer fills. Fields, constants and statics are
+/// counted from the items themselves, exactly as the text renderer does, so
+/// every reported dead item lands in one row.
 fn format_dead_code_breakdown_section(
-    summary: &crate::models::dead_code::DeadCodeSummary,
+    result: &crate::models::dead_code::DeadCodeResult,
 ) -> String {
+    use crate::models::dead_code::DeadCodeType;
+
+    let summary = &result.summary;
+    let other_items = result
+        .files
+        .iter()
+        .flat_map(|f| f.items.iter())
+        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
+        .count();
+
     format!(
         "## Dead Code Breakdown\n\n\
          | Type | Count |\n\
          |------|-------|\n\
          | Functions | {} |\n\
          | Classes | {} |\n\
-         | Variables | {} |\n\
+         | Modules | {} |\n\
+         | Other (fields, constants, statics) | {} |\n\
          | Unreachable Blocks | {} |\n",
         summary.dead_functions,
         summary.dead_classes,
         summary.dead_modules,
+        other_items,
         summary.unreachable_blocks
     )
 }

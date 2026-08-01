@@ -1,5 +1,114 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
+mod unreachable_block_accounting_tests {
+    use super::*;
+
+    fn empty_context() -> crate::services::context::ProjectContext {
+        crate::services::context::ProjectContext {
+            project_type: "rust".to_string(),
+            files: vec![],
+            summary: crate::services::context::ProjectSummary {
+                total_files: 0,
+                total_functions: 0,
+                total_structs: 0,
+                total_enums: 0,
+                total_traits: 0,
+                total_impls: 0,
+                dependencies: vec![],
+            },
+            graph: None,
+        }
+    }
+
+    fn report_with_one_unreachable_block(
+        file: &str,
+        start: u32,
+        end: u32,
+    ) -> super::super::types::DeadCodeReport {
+        use super::super::types::{DeadCodeReport, DeadCodeSummary, UnreachableBlock};
+        DeadCodeReport {
+            dead_functions: vec![],
+            dead_classes: vec![],
+            dead_variables: vec![],
+            unreachable_code: vec![UnreachableBlock {
+                start_line: start,
+                end_line: end,
+                file_path: file.to_string(),
+                reason: "after return".to_string(),
+            }],
+            summary: DeadCodeSummary {
+                total_dead_code_lines: 0,
+                percentage_dead: 0.0,
+                dead_by_type: std::collections::HashMap::new(),
+                confidence_level: 0.9,
+            },
+        }
+    }
+
+    /// The loop incremented `unreachable_blocks` itself AND called `add_item`,
+    /// which increments it too, so the counter came out at exactly twice the
+    /// item list it heads: one reported block counted as 2.
+    #[test]
+    fn test_unreachable_block_count_agrees_with_the_item_list() {
+        let analyzer = DeadCodeAnalyzer::new(100);
+        let report = report_with_one_unreachable_block("does_not_exist.rs", 10, 14);
+        let config = crate::models::dead_code::DeadCodeAnalysisConfig {
+            include_unreachable: true,
+            include_tests: true,
+            min_dead_lines: 0,
+        };
+
+        let metrics = analyzer
+            .aggregate_by_file(&report, &empty_context(), &config)
+            .unwrap();
+
+        let file = metrics.first().expect("one file must be reported");
+        let items = file
+            .items
+            .iter()
+            .filter(|i| {
+                matches!(
+                    i.item_type,
+                    crate::models::dead_code::DeadCodeType::UnreachableCode
+                )
+            })
+            .count();
+
+        assert_eq!(items, 1, "sanity: exactly one unreachable item was reported");
+        assert_eq!(
+            file.unreachable_blocks, items,
+            "unreachable_blocks ({}) must equal the item list it heads ({items})",
+            file.unreachable_blocks
+        );
+    }
+
+    /// The analyzer reports the block's real extent, so `dead_lines` must be
+    /// that extent -- not the extent PLUS `add_item`'s flat 3-line estimate.
+    #[test]
+    fn test_unreachable_dead_lines_use_the_measured_extent_not_extent_plus_estimate() {
+        let analyzer = DeadCodeAnalyzer::new(100);
+        // Lines 10..=14 inclusive is an extent of 5.
+        let report = report_with_one_unreachable_block("does_not_exist.rs", 10, 14);
+        let config = crate::models::dead_code::DeadCodeAnalysisConfig {
+            include_unreachable: true,
+            include_tests: true,
+            min_dead_lines: 0,
+        };
+
+        let metrics = analyzer
+            .aggregate_by_file(&report, &empty_context(), &config)
+            .unwrap();
+
+        let file = metrics.first().expect("one file must be reported");
+        assert_eq!(
+            file.dead_lines, 5,
+            "measured extent is 5 lines; 8 would mean the flat estimate was added on top"
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
 mod tests {
     use super::*;
 

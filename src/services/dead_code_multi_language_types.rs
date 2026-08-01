@@ -4,6 +4,14 @@ pub struct DeadCodeResult {
     pub language: String,
     pub dead_functions: Vec<DeadFunction>,
     pub total_functions: usize,
+    /// Source files the strategy actually walked (#720).
+    ///
+    /// The caller used to report `total_functions.max(1)` as its file count, so a
+    /// 2-file Python fixture with 4 functions printed "Files Analyzed | 4" while
+    /// the summary beside it correctly said 2. Every strategy already has the
+    /// file list in hand, so this is the count of that list -- never a function
+    /// count, and never `.max(1)` inventing a file for an empty project.
+    pub total_files: usize,
     pub dead_code_percentage: f64,
 }
 

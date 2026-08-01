@@ -68,6 +68,53 @@ mod tests {
         assert!(!result.dead_functions.is_empty());
     }
 
+    /// #720: `total_files` must be a FILE count. The caller used to report
+    /// `total_functions.max(1)` as its file count, so this 1-file / 3-function
+    /// Python project printed "Files Analyzed | 3".
+    #[test]
+    fn test_total_files_is_a_file_count_not_a_function_count() {
+        let temp = create_test_python_project();
+        let result = analyze_dead_code_multi_language(temp.path()).unwrap();
+
+        assert_eq!(
+            result.total_files, 1,
+            "one .py file was walked, but total_files reported {}",
+            result.total_files
+        );
+        // `main` is deliberately skipped by the extractor, leaving
+        // used_function + unused_function.
+        assert_eq!(
+            result.total_functions, 2,
+            "sanity: the fixture yields 2 counted functions"
+        );
+        assert_ne!(
+            result.total_files, result.total_functions,
+            "a function count must never be reported as a file count"
+        );
+    }
+
+    /// #720: two C files, two functions -- the two counts happen to be equal in
+    /// the other fixture, so this one separates them in the opposite direction.
+    #[test]
+    fn test_total_files_counts_every_walked_file() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("main.c"),
+            "int main() { used_function(); return 0; }\n",
+        )
+        .unwrap();
+        std::fs::write(temp.path().join("a.c"), "void used_function() {}\n").unwrap();
+        std::fs::write(temp.path().join("b.c"), "void dead_one() {}\n").unwrap();
+
+        let result = analyze_dead_code_multi_language(temp.path()).unwrap();
+
+        assert_eq!(
+            result.total_files, 3,
+            "three .c files were walked, got {}",
+            result.total_files
+        );
+    }
+
     fn create_test_c_project() -> TempDir {
         let temp = TempDir::new().unwrap();
         std::fs::write(

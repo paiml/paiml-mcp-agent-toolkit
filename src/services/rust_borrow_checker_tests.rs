@@ -49,6 +49,98 @@ mod tests {
         Location::new(std::path::PathBuf::from("src/seed.rs"), 0, 100)
     }
 
+    /// #712: every annotation used to carry the literal span `0..100`
+    /// ("Would need proper span handling"), so all 2964 annotations this
+    /// command produced over `src/` shared ONE location. Because the collector
+    /// deduplicates on `(location, property)`, that constant also silently
+    /// DISCARDED every function after the first in each file.
+    #[cfg(feature = "rust-ast")]
+    #[tokio::test]
+    async fn test_annotation_spans_are_measured_not_the_constant_0_to_100() {
+        let temp_dir = TempDir::new().unwrap();
+        let rust_file = temp_dir.path().join("spans.rs");
+        let source = concat!(
+            "fn alpha() {\n",
+            "    let x = 1;\n",
+            "}\n",
+            "\n",
+            "fn beta() {\n",
+            "    let y = 2;\n",
+            "}\n",
+        );
+        std::fs::write(&rust_file, source).unwrap();
+
+        let checker = RustBorrowChecker::default();
+        let cache = Arc::new(RwLock::new(ProofCache::new()));
+        let symbol_table = Arc::new(SymbolTable::new());
+        let result = checker
+            .collect(temp_dir.path(), &cache, &symbol_table)
+            .await
+            .unwrap();
+
+        let spans: std::collections::BTreeSet<(u32, u32)> = result
+            .annotations
+            .iter()
+            .map(|(loc, _)| (loc.span.start.0, loc.span.end.0))
+            .collect();
+
+        assert!(
+            !spans.contains(&(0, 100)),
+            "the placeholder span 0..100 must not survive; got {spans:?}"
+        );
+        assert_eq!(
+            spans.len(),
+            2,
+            "two functions must produce two distinct spans, got {spans:?}"
+        );
+
+        // Each span must actually bracket its function in the source text.
+        for (start, end) in spans {
+            let slice = &source[start as usize..end as usize];
+            assert!(
+                slice.starts_with("fn "),
+                "span {start}..{end} does not start at a fn: {slice:?}"
+            );
+            assert!(
+                slice.ends_with('}'),
+                "span {start}..{end} does not end at the closing brace: {slice:?}"
+            );
+        }
+    }
+
+    /// #712 companion: distinct locations mean distinct functions survive the
+    /// collector's `(location, property)` deduplication.
+    #[cfg(feature = "rust-ast")]
+    #[tokio::test]
+    async fn test_each_safe_function_yields_its_own_annotation() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::write(
+            temp_dir.path().join("many.rs"),
+            "fn a() {}\nfn b() {}\nfn c() {}\nfn d() {}\n",
+        )
+        .unwrap();
+
+        let checker = RustBorrowChecker::default();
+        let cache = Arc::new(RwLock::new(ProofCache::new()));
+        let symbol_table = Arc::new(SymbolTable::new());
+        let result = checker
+            .collect(temp_dir.path(), &cache, &symbol_table)
+            .await
+            .unwrap();
+
+        let distinct: std::collections::BTreeSet<(u32, u32)> = result
+            .annotations
+            .iter()
+            .map(|(loc, _)| (loc.span.start.0, loc.span.end.0))
+            .collect();
+
+        assert_eq!(
+            distinct.len(),
+            4,
+            "four functions must have four distinct locations, got {distinct:?}"
+        );
+    }
+
     #[test]
     fn test_memory_safety_annotation() {
         let checker = RustBorrowChecker::default();

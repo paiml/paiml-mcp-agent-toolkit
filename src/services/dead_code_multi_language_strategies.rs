@@ -16,7 +16,7 @@ impl DeadCodeStrategy for RustDeadCodeStrategy {
         // This is the current working implementation for Rust
         let dead_functions = analyze_rust_dead_code_with_cargo(path)?;
 
-        let total_functions = count_rust_functions(path)?;
+        let (total_functions, total_files) = count_rust_functions_and_files(path)?;
         let dead_percentage = if total_functions > 0 {
             (dead_functions.len() as f64 / total_functions as f64) * 100.0
         } else {
@@ -27,6 +27,7 @@ impl DeadCodeStrategy for RustDeadCodeStrategy {
             language: "rust".to_string(),
             dead_functions,
             total_functions,
+            total_files,
             dead_code_percentage: dead_percentage,
         })
     }
@@ -70,6 +71,8 @@ impl DeadCodeStrategy for CDeadCodeStrategy {
             language: "c".to_string(),
             dead_functions,
             total_functions,
+            // Every .c/.h file walked for call analysis (#720).
+            total_files: c_all_files.len(),
             dead_code_percentage: dead_percentage,
         })
     }
@@ -109,6 +112,8 @@ impl DeadCodeStrategy for CppDeadCodeStrategy {
             language: "cpp".to_string(),
             dead_functions,
             total_functions,
+            // Every C++ source/header file walked (#720).
+            total_files: cpp_files.len(),
             dead_code_percentage: dead_percentage,
         })
     }
@@ -148,6 +153,9 @@ impl DeadCodeStrategy for PythonDeadCodeStrategy {
             language: "python".to_string(),
             dead_functions,
             total_functions,
+            // Every .py file walked (#720): a 2-file fixture with 4 functions
+            // used to report 4 files analyzed.
+            total_files: py_files.len(),
             dead_code_percentage: dead_percentage,
         })
     }
@@ -184,6 +192,8 @@ impl DeadCodeStrategy for LuaDeadCodeStrategy {
             language: "lua".to_string(),
             dead_functions,
             total_functions,
+            // Every .lua file walked (#720).
+            total_files: lua_files.len(),
             dead_code_percentage: dead_percentage,
         })
     }

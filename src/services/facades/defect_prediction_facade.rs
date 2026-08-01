@@ -55,6 +55,12 @@ const COMMITS_AT_FULL_SCALE: f32 = 20.0;
 const CHANGED_LINES_AT_FULL_SCALE: f32 = 1000.0;
 /// Distinct import statements that put a file at the top of the coupling scale.
 const IMPORTS_AT_FULL_SCALE: f32 = 20.0;
+
+/// Cyclomatic complexity at which `complexity_score` reaches 1.0.
+///
+/// Matches the "very high complexity" band the complexity analyzer already
+/// reports on, so the two commands do not disagree about what "complex" means.
+const CYCLOMATIC_AT_FULL_SCALE: f32 = 30.0;
 /// `churn_score` above this is described as "frequent changes" — with the
 /// measured commit count named alongside, never on its own.
 const FREQUENT_CHANGE_SCORE: f32 = 0.5;
@@ -241,9 +247,17 @@ pub enum RiskLevel {
 /// See `contracts/pmat-no-fabrication-v1.yaml`, equation `measured_or_absent`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileRiskMetrics {
-    /// Length-derived proxy: physical lines / 100, capped at 1.0. `lines` is
-    /// reported beside it so the reader can see what it is derived from.
-    pub complexity_score: f32,
+    /// Measured 0-1 cyclomatic complexity (the file's most complex function,
+    /// normalized by `CYCLOMATIC_AT_FULL_SCALE`), or `None` when the file's
+    /// language has no analyzer here.
+    ///
+    /// #723: this was `lines / 100` — a LENGTH proxy carrying the word
+    /// "complexity", and the same input as `size_score` (`lines / 1000`), so a
+    /// long flat file scored as complex and file length was counted twice in
+    /// the probability. `max_cyclomatic` is reported beside it as evidence.
+    pub complexity_score: Option<f32>,
+    /// Cyclomatic complexity of the file's most complex function.
+    pub max_cyclomatic: Option<u16>,
     /// Measured 0-1 git churn, or `None` when churn could not be measured.
     ///
     /// #657: this was the constant `0.3` for every file. It must never be a
@@ -430,9 +444,13 @@ const W_DUPLICATION: f32 = 0.10;
 ///
 /// This is what `confidence` reports: it is the share of the model that had
 /// data, per file. `duplication` is never measured by this command, so the
-/// ceiling is 0.90; a file with no git history drops to 0.65.
+/// ceiling is 0.90; a file with no git history drops to 0.65, and one whose
+/// language yields no function complexity (#723) drops a further 0.30.
 fn measured_weight(metrics: &FileRiskMetrics) -> f32 {
-    let mut weight = W_COMPLEXITY + W_SIZE;
+    let mut weight = W_SIZE;
+    if metrics.complexity_score.is_some() {
+        weight += W_COMPLEXITY;
+    }
     if metrics.churn_score.is_some() {
         weight += W_CHURN;
     }
@@ -450,8 +468,11 @@ fn measured_weight(metrics: &FileRiskMetrics) -> f32 {
 /// An absent factor drops its term *and* its weight, so the probability stays
 /// derived only from what was actually measured — never from a stand-in.
 fn combine_probability(metrics: &FileRiskMetrics) -> f32 {
-    let mut weighted = metrics.complexity_score * W_COMPLEXITY + metrics.size_score * W_SIZE;
+    let mut weighted = metrics.size_score * W_SIZE;
 
+    if let Some(complexity) = metrics.complexity_score {
+        weighted += complexity * W_COMPLEXITY;
+    }
     if let Some(churn) = metrics.churn_score {
         weighted += churn * W_CHURN;
     }
@@ -611,9 +632,21 @@ impl DefectPredictionFacade {
         let observation = churn.observation_for(file_path);
         let imports = count_imports(file_path, &content);
 
+        // MEASURED (#723) — was `lines / 100`, a length proxy under the name
+        // "complexity". The file's most complex function is the risk signal;
+        // `None` when the language has no analyzer, so the probability drops the
+        // term and its weight rather than assuming an average file.
+        let max_cyclomatic =
+            crate::cli::language_analyzer::analyze_file_complexity(file_path.as_path(), &content)
+                .await
+                .ok()
+                .and_then(|m| m.functions.iter().map(|f| f.metrics.cyclomatic).max());
+
         #[allow(clippy::cast_precision_loss)]
         let metrics = FileRiskMetrics {
-            complexity_score: (lines as f32 / 100.0).min(1.0),
+            complexity_score: max_cyclomatic
+                .map(|c| (f32::from(c) / CYCLOMATIC_AT_FULL_SCALE).min(1.0)),
+            max_cyclomatic,
             // Measured (#657) — no longer the constant 0.3.
             churn_score: observation.map(ChurnObservation::score),
             // Measured (#657) — no longer the constant 0.2.
@@ -681,10 +714,16 @@ fn confidence_for(metrics: &FileRiskMetrics) -> f32 {
 /// the claim, so the reader can check it.
 fn contributing_factors(metrics: &FileRiskMetrics) -> Vec<String> {
     let mut factors = Vec::new();
-    // One factor per input: `complexity_score` and `size_score` are both
-    // derived from the same line count, so they must not be reported as two
-    // independent findings.
-    if metrics.complexity_score > 0.7 || metrics.size_score > 0.7 {
+    // One factor per input. `complexity_score` is now a measured cyclomatic
+    // figure (#723) rather than a second reading of the line count, so it is a
+    // finding in its own right and names the number behind it.
+    if metrics.complexity_score.is_some_and(|c| c > 0.7) {
+        let cyclomatic = metrics.max_cyclomatic.unwrap_or(0);
+        factors.push(format!(
+            "Complex file (most complex function: cyclomatic {cyclomatic})"
+        ));
+    }
+    if metrics.size_score > 0.7 {
         factors.push(format!("Long file ({} lines)", metrics.lines));
     }
     if metrics
@@ -1024,7 +1063,8 @@ mod tests {
     /// Metrics with every factor measured, for the derivation tests.
     fn metrics_all_measured(churn: Option<f32>, coupling: Option<f32>) -> FileRiskMetrics {
         FileRiskMetrics {
-            complexity_score: 1.0,
+            complexity_score: Some(1.0),
+            max_cyclomatic: Some(30),
             churn_score: churn,
             coupling_score: coupling,
             size_score: 1.0,
@@ -1034,6 +1074,79 @@ mod tests {
             commits_in_window: churn.map(|_| 4),
             changed_lines_in_window: churn.map(|_| 80),
         }
+    }
+
+    /// #723: `complexity_score` was `lines / 100` — a LENGTH proxy carrying the
+    /// word "complexity", and the same input as `size_score` (`lines / 1000`),
+    /// so file length was counted twice in the probability. It is now the
+    /// file's most complex function.
+    #[tokio::test]
+    async fn test_complexity_score_measures_branching_not_file_length() {
+        let temp = TempDir::new().unwrap();
+
+        // Same length, wildly different branching.
+        let long_and_flat: String = (0..120).map(|n| format!("// line {n}\n")).collect();
+        std::fs::write(temp.path().join("flat.rs"), &long_and_flat).unwrap();
+
+        let mut branchy = String::from("fn branchy(x: i32) -> i32 {\n");
+        for i in 0..40 {
+            branchy.push_str(&format!("    if x == {i} {{ return {i}; }}\n"));
+        }
+        branchy.push_str("    0\n}\n");
+        std::fs::write(temp.path().join("branchy.rs"), &branchy).unwrap();
+
+        let result = facade()
+            .analyze_project(request(temp.path(), 0))
+            .await
+            .expect("analysis must succeed");
+
+        let by_name = |needle: &str| {
+            result
+                .predictions
+                .iter()
+                .find(|p| p.file_path.contains(needle))
+                .unwrap_or_else(|| panic!("{needle} missing from predictions"))
+        };
+
+        let branchy_score = by_name("branchy.rs").metrics.complexity_score;
+        assert!(
+            branchy_score.is_some_and(|c| c > 0.0),
+            "a 40-branch function must score above zero, got {branchy_score:?}"
+        );
+
+        // The old formula returned lines/100 for BOTH files, so a flat file of
+        // comment lines scored as complex as a deeply branching one.
+        let flat = &by_name("flat.rs").metrics;
+        assert!(
+            flat.complexity_score.unwrap_or(0.0) < branchy_score.unwrap(),
+            "a file of 120 comment lines must not out-score a 40-branch function \
+             (flat={:?}, branchy={branchy_score:?})",
+            flat.complexity_score
+        );
+    }
+
+    /// #723: the score is reported with the number behind it, and is absent —
+    /// never 0.0 — when nothing could be measured.
+    #[test]
+    fn test_absent_complexity_drops_its_weight_instead_of_scoring_zero() {
+        let mut unmeasured = metrics_all_measured(Some(0.5), Some(0.5));
+        unmeasured.complexity_score = None;
+        unmeasured.max_cyclomatic = None;
+
+        // Absent must not be equivalent to a measured 0.0: a measured zero
+        // would drag the probability down as if the file were trivially simple.
+        let mut zeroed = unmeasured.clone();
+        zeroed.complexity_score = Some(0.0);
+        zeroed.max_cyclomatic = Some(0);
+
+        assert!(
+            combine_probability(&unmeasured) > combine_probability(&zeroed),
+            "an unmeasured factor must drop its weight, not score as zero"
+        );
+        assert!(
+            confidence_for(&unmeasured) < confidence_for(&zeroed),
+            "confidence must fall when a factor could not be measured"
+        );
     }
 
     #[test]
@@ -1047,7 +1160,8 @@ mod tests {
     #[test]
     fn test_probability_varies_with_measured_churn() {
         let metrics = |churn: f32| FileRiskMetrics {
-            complexity_score: 0.5,
+            complexity_score: Some(0.5),
+            max_cyclomatic: Some(15),
             churn_score: Some(churn),
             coupling_score: Some(0.2),
             size_score: 0.1,

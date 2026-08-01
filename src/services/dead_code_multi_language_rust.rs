@@ -13,10 +13,15 @@ fn analyze_rust_dead_code_with_cargo(path: &Path) -> Result<Vec<DeadFunction>> {
     Ok(dead_functions)
 }
 
-fn count_rust_functions(path: &Path) -> Result<usize> {
+/// Returns `(defined functions, .rs files walked)`.
+///
+/// The file count is returned alongside the function count so the caller never
+/// has to substitute one for the other (#720): it used to report
+/// `total_functions.max(1)` as its file count.
+fn count_rust_functions_and_files(path: &Path) -> Result<(usize, usize)> {
     let rust_files = find_files_by_extension(path, &["rs"]);
     let (defined_functions, _) = analyze_rust_files(&rust_files)?;
-    Ok(defined_functions.len())
+    Ok((defined_functions.len(), rust_files.len()))
 }
 
 /// Analyze Rust files

@@ -2,6 +2,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// Lines `add_item` bills for a dead item whose real extent is unknown.
+///
+/// Exported so a producer that DOES know the real extent can swap this estimate
+/// out instead of adding a second figure on top of it.
+pub const UNREACHABLE_BLOCK_LINE_ESTIMATE: usize = 3;
+
 /// File-level dead code metrics with ranking support
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileDeadCodeMetrics {
@@ -137,7 +143,7 @@ impl FileDeadCodeMetrics {
             }
             DeadCodeType::UnreachableCode => {
                 self.unreachable_blocks += 1;
-                self.dead_lines += 3; // Estimate 3 lines per unreachable block
+                self.dead_lines += UNREACHABLE_BLOCK_LINE_ESTIMATE;
             }
         }
         self.items.push(item);

@@ -73,8 +73,10 @@ impl SummaryFormatter {
                 ));
             }
             if result.summary.dead_modules > 0 {
+                // `dead_modules` is a MODULE count on the cargo path; it was
+                // labelled "Dead variables" here (#721).
                 output.push_str(&format!(
-                    "- **Dead variables**: {}\n",
+                    "- **Dead modules**: {}\n",
                     result.summary.dead_modules
                 ));
             }
@@ -173,7 +175,9 @@ impl MarkdownFormatter {
             ),
             ("Dead Functions", result.summary.dead_functions.to_string()),
             ("Dead Classes", result.summary.dead_classes.to_string()),
-            ("Dead Variables", result.summary.dead_modules.to_string()),
+            // `dead_modules` is a MODULE count on the cargo path; it was
+            // labelled "Dead Variables" here (#721).
+            ("Dead Modules", result.summary.dead_modules.to_string()),
             (
                 "Unreachable Blocks",
                 result.summary.unreachable_blocks.to_string(),

@@ -146,10 +146,13 @@ impl DeadCodeAnalyzer {
                     crate::models::dead_code::FileDeadCodeMetrics::new(file_path)
                 });
 
-                // Count unreachable lines
-                let unreachable_lines = unreachable.end_line - unreachable.start_line + 1;
-                entry.dead_lines += unreachable_lines as usize;
-                entry.unreachable_blocks += 1;
+                // The real extent is known here, so it replaces `add_item`'s flat
+                // 3-line estimate rather than being added on top of it.
+                //
+                // `unreachable_blocks` is NOT incremented here: `add_item` below
+                // already increments it, so doing both counted every block twice
+                // and the summary reported exactly double the item list it heads.
+                let unreachable_lines = (unreachable.end_line - unreachable.start_line + 1) as usize;
 
                 entry.add_item(crate::models::dead_code::DeadCodeItem {
                     item_type: crate::models::dead_code::DeadCodeType::UnreachableCode,
@@ -160,6 +163,12 @@ impl DeadCodeAnalyzer {
                     line: unreachable.start_line,
                     reason: unreachable.reason.clone(),
                 });
+
+                // Swap the flat estimate `add_item` just billed for the extent
+                // actually reported by the analyzer.
+                entry.dead_lines = entry.dead_lines.saturating_sub(
+                    crate::models::dead_code::UNREACHABLE_BLOCK_LINE_ESTIMATE,
+                ) + unreachable_lines;
             }
         }
 
@@ -176,6 +185,14 @@ impl DeadCodeAnalyzer {
         for (file_path, metrics) in &mut file_map {
             if let Ok(content) = std::fs::read_to_string(file_path) {
                 metrics.total_lines = content.lines().count();
+            }
+
+            // `add_item` bills flat per-item line estimates against this measured
+            // total, so the estimate could exceed the file it describes and yield
+            // a dead_percentage above 100. Dead code cannot occupy more lines than
+            // the file physically has.
+            if metrics.total_lines > 0 {
+                metrics.dead_lines = metrics.dead_lines.min(metrics.total_lines);
             }
 
             metrics.update_percentage();

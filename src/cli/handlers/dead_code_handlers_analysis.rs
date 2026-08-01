@@ -158,6 +158,16 @@ fn run_multi_language_dead_code(
                     reason: dead_fn.reason.clone(),
                 });
             }
+            // `add_item` bills a flat 10 lines per dead function, which is an
+            // estimate, while `total_lines` above is measured. Unbounded, the
+            // estimate exceeded the file it describes: a 2-line h.py with one
+            // dead function reported dead_lines 10 / total_lines 2 = 500.0%,
+            // and a 10-line m.py reported 20 / 10 = 200.0%. Dead code cannot
+            // occupy more lines than the file physically has, so the estimate is
+            // held to the measured file length before any percentage is taken.
+            if total_lines > 0 {
+                metrics.dead_lines = metrics.dead_lines.min(total_lines);
+            }
             // Lua has dynamic dispatch, so Medium confidence for non-local functions
             metrics.confidence = ConfidenceLevel::Medium;
             metrics.update_percentage();
@@ -191,8 +201,13 @@ fn run_multi_language_dead_code(
 
     Ok(crate::models::dead_code::DeadCodeResult {
         summary,
-        total_files: ml_result.total_functions.max(1),
-        analyzed_files: ml_result.total_functions.max(1),
+        // MEASURED file count (#720). These were `total_functions.max(1)` -- a
+        // FUNCTION count under a FILE label, which made a 2-file Python fixture
+        // with 4 functions print "Files Analyzed | 4" directly above a summary
+        // that correctly said 2, and `.max(1)` invented one file for an empty
+        // project.
+        total_files: ml_result.total_files,
+        analyzed_files: ml_result.total_files,
         files,
         files_with_dead_code_found,
         files_truncated,

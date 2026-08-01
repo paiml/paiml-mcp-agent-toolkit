@@ -281,11 +281,14 @@ fn format_detailed(result: &DefectPredictionResult) -> String {
         );
 
         let _ = writeln!(output, "    {}", c::label("Risk Metrics:"));
+        // #723: complexity was `lines / 100`, a length proxy. It is now a
+        // measured cyclomatic figure and renders as "not measured" when the
+        // language has no analyzer, never as a number nobody computed.
         let _ = writeln!(
             output,
             "      {} {}",
             c::label("Complexity:"),
-            c::number(&format!("{:.1}", prediction.metrics.complexity_score))
+            c::number(&format_optional_score(prediction.metrics.complexity_score))
         );
         // #657: an unmeasured churn renders as "not measured", never as a
         // number — 0.0 would read as "this file never changed".
@@ -349,12 +352,14 @@ fn format_csv(result: &DefectPredictionResult) -> String {
 
     for prediction in &result.predictions {
         output.push_str(&format!(
-            "{},{:?},{:.3},{:.3},{:.3},{},{},{:.3},{}\n",
+            "{},{:?},{:.3},{:.3},{},{},{},{:.3},{}\n",
             prediction.file_path,
             prediction.risk_level,
             prediction.defect_probability,
             prediction.confidence,
-            prediction.metrics.complexity_score,
+            // #723: measured cyclomatic, or "not measured" — same rule as the
+            // other optional scores in this row.
+            format_optional_score(prediction.metrics.complexity_score),
             format_optional_score(prediction.metrics.churn_score),
             format_optional_score(prediction.metrics.coupling_score),
             prediction.metrics.size_score,
@@ -469,7 +474,8 @@ mod tests {
                 risk_level: RiskLevel::High,
                 confidence: 0.9,
                 metrics: FileRiskMetrics {
-                    complexity_score: 0.8,
+                    complexity_score: Some(0.8),
+                    max_cyclomatic: Some(24),
                     churn_score,
                     coupling_score: Some(0.6),
                     size_score: 0.5,
