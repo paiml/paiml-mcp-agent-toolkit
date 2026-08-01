@@ -56,7 +56,7 @@
     #[test]
     fn test_add_entry_updates_summary() {
         let mut baseline = TdgBaseline::new(None);
-        let entry = create_test_entry(95.0, Grade::APLus);
+        let entry = create_test_entry(95.0, Grade::APlus);
 
         baseline.add_entry(PathBuf::from("test.rs"), entry);
 
@@ -90,7 +90,7 @@
         );
         baseline.add_entry(
             PathBuf::from("test.rs"),
-            create_test_entry(95.0, Grade::APLus),
+            create_test_entry(95.0, Grade::APlus),
         );
 
         assert_eq!(baseline.summary.total_files, 1);
@@ -101,7 +101,7 @@
     fn test_add_entry_updates_grade_distribution() {
         let mut baseline = TdgBaseline::new(None);
 
-        baseline.add_entry(PathBuf::from("a.rs"), create_test_entry(95.0, Grade::APLus));
+        baseline.add_entry(PathBuf::from("a.rs"), create_test_entry(95.0, Grade::APlus));
         baseline.add_entry(PathBuf::from("b.rs"), create_test_entry(90.0, Grade::A));
         baseline.add_entry(
             PathBuf::from("c.rs"),
@@ -113,7 +113,7 @@
             *baseline
                 .summary
                 .grade_distribution
-                .get(&Grade::APLus)
+                .get(&Grade::APlus)
                 .unwrap(),
             1
         );

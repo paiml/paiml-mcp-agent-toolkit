@@ -268,7 +268,7 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
 
     println!("\n{}", c::subheader("Grade Distribution:"));
     let grade_order = [
-        Grade::APLus,
+        Grade::APlus,
         Grade::A,
         Grade::AMinus,
         Grade::BPlus,

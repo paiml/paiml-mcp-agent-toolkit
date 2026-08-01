@@ -157,12 +157,12 @@
     fn test_summary_grade_distribution_clears_on_recompute() {
         let mut baseline = TdgBaseline::new(None);
 
-        baseline.add_entry(PathBuf::from("a.rs"), create_test_entry(95.0, Grade::APLus));
+        baseline.add_entry(PathBuf::from("a.rs"), create_test_entry(95.0, Grade::APlus));
         assert_eq!(
             *baseline
                 .summary
                 .grade_distribution
-                .get(&Grade::APLus)
+                .get(&Grade::APlus)
                 .unwrap(),
             1
         );
@@ -172,7 +172,7 @@
         assert!(!baseline
             .summary
             .grade_distribution
-            .contains_key(&Grade::APLus));
+            .contains_key(&Grade::APlus));
         assert_eq!(
             *baseline.summary.grade_distribution.get(&Grade::B).unwrap(),
             1
@@ -240,7 +240,7 @@
         let mut baseline = TdgBaseline::new(None);
 
         let grades_and_scores = [
-            ("a.rs", Grade::APLus, 96.0),
+            ("a.rs", Grade::APlus, 96.0),
             ("b.rs", Grade::A, 92.0),
             ("c.rs", Grade::AMinus, 87.0),
             ("d.rs", Grade::BPlus, 82.0),

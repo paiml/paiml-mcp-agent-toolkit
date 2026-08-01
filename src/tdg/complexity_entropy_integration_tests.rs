@@ -275,7 +275,7 @@ fn func5() -> i32 { return 42; }
             // (struct, sem, dup, coup, doc, cons, entropy, expected_grade)
             // Note: With normalization, max components sum to 100 before entropy,
             // and adding entropy scales it down slightly
-            (25.0, 20.0, 20.0, 15.0, 10.0, 10.0, 10.0, Grade::APLus), // Perfect with entropy (~100)
+            (25.0, 20.0, 20.0, 15.0, 10.0, 10.0, 10.0, Grade::APlus), // Perfect with entropy (~100)
             (20.0, 15.0, 15.0, 10.0, 8.0, 8.0, 8.0, Grade::BPlus),    // Good (~84)
             (15.0, 12.0, 12.0, 8.0, 6.0, 6.0, 6.0, Grade::CPlus), // Average (~65) - right at boundary
             (10.0, 8.0, 8.0, 5.0, 4.0, 4.0, 4.0, Grade::F),       // Below average (~43) < 50 = F

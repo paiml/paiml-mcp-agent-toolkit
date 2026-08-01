@@ -21,7 +21,7 @@ mod coverage_instrumented_tests {
     fn test_ci_format_human_excellent_range() {
         let score = TdgScore {
             total: 96.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             confidence: 0.98,
             file_path: None,
@@ -309,7 +309,7 @@ mod coverage_instrumented_tests {
             files: vec![
                 TdgScore {
                     total: 95.0,
-                    grade: Grade::APLus,
+                    grade: Grade::APlus,
                     ..TdgScore::default()
                 },
                 TdgScore {
@@ -385,7 +385,7 @@ mod coverage_instrumented_tests {
     fn test_ci_grade_description_all_grades() {
         // Exercise all 11 branches of grade_description
         let descriptions = [
-            (Grade::APLus, "A+"),
+            (Grade::APlus, "A+"),
             (Grade::A, "A"),
             (Grade::AMinus, "A-"),
             (Grade::BPlus, "B+"),

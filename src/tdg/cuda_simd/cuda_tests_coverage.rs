@@ -133,7 +133,7 @@ mod coverage_tests {
 
     #[test]
     fn test_grade_clone_and_copy() {
-        let grade = CudaTdgGrade::APLus;
+        let grade = CudaTdgGrade::APlus;
         let cloned = grade.clone();
         let copied: CudaTdgGrade = grade;
         assert_eq!(grade, cloned);

@@ -38,7 +38,7 @@ impl Default for TdgScore {
             consistency_score: 10.0,
             entropy_score: 0.0, // New: Start with 0, calculated during analysis
             total: 100.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             confidence: 1.0,
             language: Language::Unknown,
             file_path: None,
@@ -94,30 +94,21 @@ impl TdgScore {
             self.total = 0.0;
             self.grade = Grade::F;
         } else {
-            self.grade = Self::grade_for(self.total, self.has_contract_coverage);
-        }
-    }
-
-    /// The single score → grade mapping. Every grade pmat prints must come
-    /// through here.
-    ///
-    /// The CB-1400 contract-coverage cap used to live inline in
-    /// `calculate_total`, so aggregation sites that called `Grade::from_score`
-    /// directly produced a *better* grade than the files they summarised:
-    /// `analyze tdg` on a single file reported files[0].grade "AMinus" and
-    /// average_grade "APLus" for the same 99.7 (GH #680).
-    ///
-    /// CB-1400: provable-contract coverage is required for A-tier grades. A
-    /// "perfect" file without contract coverage caps at A- — you cannot be
-    /// truly "excellent" without provable guarantees.
-    #[must_use]
-    pub fn grade_for(total: f32, has_contract_coverage: bool) -> Grade {
-        let grade = Grade::from_score(total);
-        // Note: Grade enum ordering is APLus < A < AMinus (lower = better)
-        if !has_contract_coverage && grade < Grade::AMinus {
-            Grade::AMinus
-        } else {
-            grade
+            // GH #680, second round. Both the file path and the aggregate path
+            // now use `Grade::from_score` and nothing else, so the grade is a
+            // function of the score alone.
+            //
+            // What used to sit here was the CB-1400 override
+            // `if !has_contract_coverage && grade < AMinus { grade = AMinus }`.
+            // `has_contract_coverage` is false whenever contract coverage was
+            // never *measured* (no `contracts/binding.yaml` ⇒ the field keeps
+            // its `false` default), so the cap fired for essentially every
+            // project: a fixture totalling 100.0 was graded `AMinus`, and
+            // `pmat tdg` printed `Overall Score: 100.0/100 (A-)`. An unmeasured
+            // signal must never rewrite a measured one. Contract coverage is
+            // still recorded on `has_contract_coverage` and still gated by
+            // `pmat comply` (CB-1400).
+            self.grade = Grade::from_score(self.total);
         }
     }
 

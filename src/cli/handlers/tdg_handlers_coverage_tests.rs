@@ -87,7 +87,7 @@ mod format_grade_tests {
 
     #[test]
     fn test_format_grade_a_plus() {
-        assert_eq!(format_grade(Grade::APLus), "A+");
+        assert_eq!(format_grade(Grade::APlus), "A+");
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod parse_grade_tests {
 
     #[test]
     fn test_parse_grade_a_plus() {
-        assert_eq!(parse_grade("A+").unwrap(), Grade::APLus);
+        assert_eq!(parse_grade("A+").unwrap(), Grade::APlus);
     }
 
     #[test]
@@ -201,7 +201,7 @@ mod parse_grade_tests {
 
     #[test]
     fn test_parse_grade_lowercase() {
-        assert_eq!(parse_grade("a+").unwrap(), Grade::APLus);
+        assert_eq!(parse_grade("a+").unwrap(), Grade::APlus);
         assert_eq!(parse_grade("b").unwrap(), Grade::B);
         assert_eq!(parse_grade("c-").unwrap(), Grade::CMinus);
     }
@@ -532,11 +532,18 @@ mod format_tdg_score_tests {
         assert!(result.contains("**Overall Score**"));
     }
 
+    /// Issue #669: this asserted `result.trim() == "75.0"` — it pinned the
+    /// defect (SARIF emitting a bare score). Updated to the format contract.
+    /// The file is quarantined behind `broken-tests`, which is why the wrong
+    /// assertion survived two rounds of fixes here.
     #[test]
     fn test_sarif_output() {
         let score = make_test_score();
         let result = format_tdg_score(score, None, TdgOutputFormat::Sarif, false).unwrap();
-        assert_eq!(result.trim(), "75.0");
+        assert_ne!(result.trim(), "75.0", "SARIF must not be a bare score");
+        let doc: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(doc["version"], "2.1.0");
+        assert!(!doc["runs"][0]["results"].as_array().unwrap().is_empty());
     }
 
     #[test]
@@ -729,7 +736,7 @@ mod proptest_tests {
         #[test]
         fn test_parse_format_grade_roundtrip(grade_idx in 0usize..11) {
             let grades = [
-                Grade::APLus, Grade::A, Grade::AMinus,
+                Grade::APlus, Grade::A, Grade::AMinus,
                 Grade::BPlus, Grade::B, Grade::BMinus,
                 Grade::CPlus, Grade::C, Grade::CMinus,
                 Grade::D, Grade::F,
@@ -757,7 +764,7 @@ mod proptest_tests {
         #[test]
         fn test_format_grade_returns_valid_string(grade_idx in 0usize..11) {
             let grades = [
-                Grade::APLus, Grade::A, Grade::AMinus,
+                Grade::APlus, Grade::A, Grade::AMinus,
                 Grade::BPlus, Grade::B, Grade::BMinus,
                 Grade::CPlus, Grade::C, Grade::CMinus,
                 Grade::D, Grade::F,

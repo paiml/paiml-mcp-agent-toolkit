@@ -125,17 +125,15 @@ mod red_phase_tests {
     /// Grade calculation should work correctly after normalization
     #[test]
     fn red_test_grade_must_match_normalized_score() {
-        // Enable contract coverage so this test validates raw grade mapping
-        // (the contract cap is tested separately in test_tdg_score_contract_coverage_*)
-        let mut score = TdgScore {
-            has_contract_coverage: true,
-            ..Default::default()
-        };
+        // GH #680, second round: this used to need `has_contract_coverage: true`
+        // to see the real grade mapping at all. There is only one mapping now,
+        // so the default (unmeasured) value must give the same answer.
+        let mut score = TdgScore::default();
 
         // Test various score levels
         let test_cases = vec![
-            (100.0, Grade::APLus),
-            (95.0, Grade::APLus),
+            (100.0, Grade::APlus),
+            (95.0, Grade::APlus),
             (90.0, Grade::A),
             (85.0, Grade::AMinus),
             (75.0, Grade::B),
@@ -307,15 +305,11 @@ mod property_tests {
 
             score.calculate_total();
 
-            // Verify grade matches the score range, accounting for
-            // CB-1400 contract coverage cap (A/A+ → A- without contracts)
-            let raw_grade = crate::tdg::Grade::from_score(score.total);
-            let expected_grade = if !score.has_contract_coverage && raw_grade < crate::tdg::Grade::AMinus {
-                crate::tdg::Grade::AMinus
-            } else {
-                raw_grade
-            };
-            prop_assert_eq!(score.grade, expected_grade);
+            // GH #680, second round: this used to re-implement the CB-1400
+            // A- cap here so the property would agree with it. The grade is a
+            // function of the score and of nothing else, so the property is
+            // now simply that.
+            prop_assert_eq!(score.grade, crate::tdg::Grade::from_score(score.total));
         }
     }
 }

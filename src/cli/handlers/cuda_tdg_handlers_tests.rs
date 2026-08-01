@@ -1121,7 +1121,7 @@ fn test_barrier_convergence() {{
 
     #[test]
     fn test_cuda_tdg_grade_display() {
-        assert_eq!(CudaTdgGrade::APLus.to_string(), "A+");
+        assert_eq!(CudaTdgGrade::APlus.to_string(), "A+");
         assert_eq!(CudaTdgGrade::A.to_string(), "A");
         assert_eq!(CudaTdgGrade::B.to_string(), "B");
         assert_eq!(CudaTdgGrade::C.to_string(), "C");
@@ -1132,7 +1132,7 @@ fn test_barrier_convergence() {{
 
     #[test]
     fn test_cuda_tdg_grade_from_score() {
-        assert_eq!(CudaTdgGrade::from_score(95.0, true), CudaTdgGrade::APLus);
+        assert_eq!(CudaTdgGrade::from_score(95.0, true), CudaTdgGrade::APlus);
         assert_eq!(CudaTdgGrade::from_score(85.0, true), CudaTdgGrade::A);
         assert_eq!(CudaTdgGrade::from_score(75.0, true), CudaTdgGrade::B);
         assert_eq!(CudaTdgGrade::from_score(65.0, true), CudaTdgGrade::C);
@@ -1299,7 +1299,7 @@ fn test_barrier_convergence() {{
 
         assert_eq!(score.total, 100.0);
         assert!(score.gateway_passed);
-        assert_eq!(score.grade, CudaTdgGrade::APLus);
+        assert_eq!(score.grade, CudaTdgGrade::APlus);
     }
 
     #[test]

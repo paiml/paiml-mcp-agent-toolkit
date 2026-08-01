@@ -239,7 +239,11 @@ impl PopperScore {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CudaTdgGrade {
     /// 90-100: Production-ready, minimal debt
-    APLus,
+    ///
+    /// Spelled with a capital L up to and including v3.29.0. Nothing persists
+    /// this enum (it is only ever rendered into a report), so the rename needs
+    /// no compatibility alias.
+    APlus,
     /// 80-89: Production-ready with monitoring
     A,
     /// 70-79: Acceptable, prioritize improvements
@@ -264,7 +268,7 @@ impl CudaTdgGrade {
             return Self::GatewayFail;
         }
         match score {
-            s if s >= 90.0 => Self::APLus,
+            s if s >= 90.0 => Self::APlus,
             s if s >= 80.0 => Self::A,
             s if s >= 70.0 => Self::B,
             s if s >= 60.0 => Self::C,
@@ -277,7 +281,7 @@ impl CudaTdgGrade {
 impl std::fmt::Display for CudaTdgGrade {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::APLus => write!(f, "A+"),
+            Self::APlus => write!(f, "A+"),
             Self::A => write!(f, "A"),
             Self::B => write!(f, "B"),
             Self::C => write!(f, "C"),

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 #[test]
 fn test_grade_from_score() {
-    assert_eq!(Grade::from_score(95.0), Grade::APLus);
+    assert_eq!(Grade::from_score(95.0), Grade::APlus);
     assert_eq!(Grade::from_score(90.0), Grade::A);
     assert_eq!(Grade::from_score(85.0), Grade::AMinus);
     assert_eq!(Grade::from_score(80.0), Grade::BPlus);
@@ -23,7 +23,7 @@ fn test_grade_from_score() {
 
 #[test]
 fn test_grade_from_score_boundaries() {
-    assert_eq!(Grade::from_score(100.0), Grade::APLus);
+    assert_eq!(Grade::from_score(100.0), Grade::APlus);
     assert_eq!(Grade::from_score(94.9), Grade::A);
     assert_eq!(Grade::from_score(89.9), Grade::AMinus);
     assert_eq!(Grade::from_score(49.9), Grade::F);
@@ -33,7 +33,7 @@ fn test_grade_from_score_boundaries() {
 
 #[test]
 fn test_grade_display_all() {
-    assert_eq!(format!("{}", Grade::APLus), "A+");
+    assert_eq!(format!("{}", Grade::APlus), "A+");
     assert_eq!(format!("{}", Grade::A), "A");
     assert_eq!(format!("{}", Grade::AMinus), "A-");
     assert_eq!(format!("{}", Grade::BPlus), "B+");
@@ -54,7 +54,7 @@ fn test_grade_default() {
 
 #[test]
 fn test_grade_ordering() {
-    assert!(Grade::APLus < Grade::A);
+    assert!(Grade::APlus < Grade::A);
     assert!(Grade::A < Grade::AMinus);
     assert!(Grade::AMinus < Grade::BPlus);
     assert!(Grade::D < Grade::F);
@@ -62,7 +62,7 @@ fn test_grade_ordering() {
 
 #[test]
 fn test_grade_clone_copy() {
-    let g1 = Grade::APLus;
+    let g1 = Grade::APlus;
     let g2 = g1;
     let g3 = g1;
     assert_eq!(g1, g2);
@@ -100,7 +100,7 @@ fn test_tdg_score_default() {
     assert_eq!(score.consistency_score, 10.0);
     assert_eq!(score.entropy_score, 0.0);
     assert_eq!(score.total, 100.0);
-    assert_eq!(score.grade, Grade::APLus);
+    assert_eq!(score.grade, Grade::APlus);
     assert_eq!(score.confidence, 1.0);
     assert_eq!(score.language, Language::Unknown);
     assert!(score.file_path.is_none());
@@ -127,7 +127,7 @@ fn test_tdg_score_calculate_total() {
 
     // After clamping: 20+18+19+14+9+8+10(clamped) = 98.0
     assert_eq!(score.total, 98.0);
-    assert_eq!(score.grade, Grade::APLus); // 98.0 >= 95.0 = A+
+    assert_eq!(score.grade, Grade::APlus); // 98.0 >= 95.0 = A+
 }
 
 #[test]
@@ -189,9 +189,13 @@ fn test_tdg_score_critical_defects_autofail() {
     assert_eq!(score.grade, Grade::F);
 }
 
+/// GH #680, second round. Was `test_tdg_score_contract_coverage_caps_a_to_aminus`
+/// and asserted `Grade::AMinus` for a file totalling a perfect 100.0 — it
+/// pinned the very defect that made `pmat tdg` print
+/// `Overall Score: 100.0/100 (A-)`. Rewritten to assert the corrected
+/// contract: a perfect file grades A+, measured or not.
 #[test]
-fn test_tdg_score_contract_coverage_caps_a_to_aminus() {
-    // A file scoring A+ (95+) without contract coverage should be capped at A-
+fn test_tdg_score_perfect_file_grades_a_plus_without_contract_coverage() {
     let mut score = TdgScore {
         structural_complexity: 25.0,
         semantic_complexity: 20.0,
@@ -205,9 +209,8 @@ fn test_tdg_score_contract_coverage_caps_a_to_aminus() {
 
     score.calculate_total();
 
-    // Total is 100 (perfect), but without contract coverage, capped at A-
-    assert!(score.total >= 90.0);
-    assert_eq!(score.grade, Grade::AMinus);
+    assert_eq!(score.total, 100.0);
+    assert_eq!(score.grade, Grade::APlus);
 }
 
 #[test]
@@ -227,7 +230,7 @@ fn test_tdg_score_contract_coverage_allows_a() {
     score.calculate_total();
 
     assert!(score.total >= 95.0);
-    assert_eq!(score.grade, Grade::APLus);
+    assert_eq!(score.grade, Grade::APlus);
 }
 
 #[test]
@@ -502,55 +505,55 @@ fn test_project_score_f_grade_capping() {
     let scores = vec![
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
@@ -581,7 +584,7 @@ fn test_project_score_no_f_grade_capping() {
     let scores = vec![
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             has_contract_coverage: true,
             ..TdgScore::default()
@@ -602,21 +605,24 @@ fn test_project_score_no_f_grade_capping() {
     assert_eq!(project.average_grade, Grade::A);
 }
 
-/// GH #680: the same two files WITHOUT contract coverage cap at A-, exactly as
-/// each file's own grade does. The project grade may never beat its files'.
+/// GH #680, second round. This test used to assert the two files WITHOUT
+/// contract coverage both graded `AMinus` and dragged the project to `AMinus`
+/// — it pinned the cap that made `APlus`/`A` unreachable at any score.
+/// Rewritten to assert the corrected contract: the grade is a function of the
+/// score alone, so contract coverage changes nothing.
 #[test]
-fn test_project_score_respects_contract_coverage_cap() {
+fn test_project_grade_ignores_unmeasured_contract_coverage() {
     let scores = vec![
         TdgScore {
             total: 95.0,
-            grade: TdgScore::grade_for(95.0, false),
+            grade: Grade::from_score(95.0),
             language: Language::Rust,
             has_contract_coverage: false,
             ..TdgScore::default()
         },
         TdgScore {
             total: 90.0,
-            grade: TdgScore::grade_for(90.0, false),
+            grade: Grade::from_score(90.0),
             language: Language::Rust,
             has_contract_coverage: false,
             ..TdgScore::default()
@@ -624,8 +630,11 @@ fn test_project_score_respects_contract_coverage_cap() {
     ];
     let project = ProjectScore::aggregate(scores);
 
-    assert_eq!(project.average_grade, Grade::AMinus);
-    assert!(project.files.iter().all(|f| f.grade == Grade::AMinus));
+    // Same two files as test_project_score_no_f_grades_no_cap, which sets
+    // has_contract_coverage: true — the answer must be identical.
+    assert_eq!(project.average_grade, Grade::A);
+    assert_eq!(project.files[0].grade, Grade::APlus);
+    assert_eq!(project.files[1].grade, Grade::A);
 }
 
 #[test]
@@ -633,7 +642,7 @@ fn test_project_score_grade_distribution() {
     let scores = vec![
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
@@ -652,7 +661,7 @@ fn test_project_score_grade_distribution() {
     ];
     let project = ProjectScore::aggregate(scores);
 
-    assert_eq!(*project.grade_distribution.get(&Grade::APLus).unwrap(), 1);
+    assert_eq!(*project.grade_distribution.get(&Grade::APlus).unwrap(), 1);
     assert_eq!(*project.grade_distribution.get(&Grade::AMinus).unwrap(), 1);
     assert_eq!(*project.grade_distribution.get(&Grade::B).unwrap(), 1);
 }
@@ -663,25 +672,25 @@ fn test_project_score_multiple_f_grades() {
     let scores = vec![
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
@@ -713,25 +722,25 @@ fn test_project_score_f_grade_capping_from_a_plus() {
     let scores = vec![
         TdgScore {
             total: 97.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 97.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 97.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },
         TdgScore {
             total: 97.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             language: Language::Rust,
             ..TdgScore::default()
         },

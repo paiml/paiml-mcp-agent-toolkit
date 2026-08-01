@@ -62,28 +62,33 @@ pub(crate) fn format_tdg_score(
     }
 }
 
-/// Emit SARIF for the top-level `tdg` command (issue #669).
+/// Render the one analysis in the declared format (issue #669, second round).
 ///
-/// A directory is re-scored per file so every SARIF result names a real source
-/// file; formatting the project *average* would have produced a single finding
-/// with no `file_path` (rendered as the invented uri `"unknown"`).
-pub(crate) async fn emit_tdg_sarif(
-    analyzer: &crate::tdg::TdgAnalyzer,
+/// Every format reads the SAME `TdgAnalysis`, so no two renderers of `pmat tdg`
+/// can report different numbers for the same run.
+pub(crate) fn format_tdg_analysis(
+    analysis: &super::quality_gates::TdgAnalysis,
+    git_context: Option<&crate::models::git_context::GitContext>,
     config: &TdgCommandConfig,
-) -> Result<()> {
+) -> Result<String> {
+    if matches!(config.format, TdgOutputFormat::Sarif) {
+        // `--quiet` does NOT downgrade SARIF to a bare number. That is issue
+        // #669 verbatim: `tdg -q --format sarif` wrote `84.0`, which any SARIF
+        // uploader rejects. A declared machine format must produce that format.
+        return Ok(serde_json::to_string_pretty(&sarif_for(analysis))?);
+    }
+    format_tdg_output(&analysis.score, git_context, config)
+}
+
+/// SARIF for the analysis: project document for a directory, file document for
+/// a single file. Both are built from the already-computed scores.
+fn sarif_for(analysis: &super::quality_gates::TdgAnalysis) -> serde_json::Value {
     use crate::cli::handlers::new_tdg_handler::{create_file_sarif_output, create_sarif_output};
 
-    let (sarif, score) = if config.path.is_dir() {
-        let project = analyzer.analyze_project(&config.path).await?;
-        let average = project.average();
-        (create_sarif_output(&project), average)
-    } else {
-        let score = analyzer.analyze_file(&config.path).await?;
-        (create_file_sarif_output(&score), score)
-    };
-
-    super::quality_gates::validate_minimum_grade(&score, config)?;
-    write_tdg_output(&serde_json::to_string_pretty(&sarif)?, config)
+    match &analysis.project {
+        Some(project) => create_sarif_output(project, &analysis.root),
+        None => create_file_sarif_output(&analysis.score),
+    }
 }
 
 /// Format TDG score as table

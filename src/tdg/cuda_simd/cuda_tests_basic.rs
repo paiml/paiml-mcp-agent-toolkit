@@ -96,12 +96,12 @@ mod tests {
 
         assert!(score.gateway_passed);
         assert_eq!(score.total, 100.0);
-        assert_eq!(score.grade, CudaTdgGrade::APLus);
+        assert_eq!(score.grade, CudaTdgGrade::APlus);
     }
 
     #[test]
     fn test_grade_from_score() {
-        assert_eq!(CudaTdgGrade::from_score(95.0, true), CudaTdgGrade::APLus);
+        assert_eq!(CudaTdgGrade::from_score(95.0, true), CudaTdgGrade::APlus);
         assert_eq!(CudaTdgGrade::from_score(85.0, true), CudaTdgGrade::A);
         assert_eq!(CudaTdgGrade::from_score(75.0, true), CudaTdgGrade::B);
         assert_eq!(CudaTdgGrade::from_score(65.0, true), CudaTdgGrade::C);
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_grade_display() {
-        assert_eq!(format!("{}", CudaTdgGrade::APLus), "A+");
+        assert_eq!(format!("{}", CudaTdgGrade::APlus), "A+");
         assert_eq!(format!("{}", CudaTdgGrade::A), "A");
         assert_eq!(format!("{}", CudaTdgGrade::B), "B");
         assert_eq!(format!("{}", CudaTdgGrade::C), "C");
@@ -423,7 +423,7 @@ mod tests {
                 gpu_simd_specific: GpuSimdSpecificScore::default(),
                 total: 90.0,
                 gateway_passed: true,
-                grade: CudaTdgGrade::APLus,
+                grade: CudaTdgGrade::APlus,
             },
             defects: vec![],
             barrier_safety: BarrierSafetyResult::default(),
@@ -508,7 +508,7 @@ mod tests {
                 gpu_simd_specific: GpuSimdSpecificScore::default(),
                 total: 90.0,
                 gateway_passed: true,
-                grade: CudaTdgGrade::APLus,
+                grade: CudaTdgGrade::APlus,
             },
             defects: vec![DetectedDefect {
                 defect_class: DefectClass {
@@ -916,7 +916,7 @@ mod tests {
     #[test]
     fn test_grade_boundary_values() {
         // Test exact boundary values
-        assert_eq!(CudaTdgGrade::from_score(90.0, true), CudaTdgGrade::APLus);
+        assert_eq!(CudaTdgGrade::from_score(90.0, true), CudaTdgGrade::APlus);
         assert_eq!(CudaTdgGrade::from_score(89.9, true), CudaTdgGrade::A);
         assert_eq!(CudaTdgGrade::from_score(80.0, true), CudaTdgGrade::A);
         assert_eq!(CudaTdgGrade::from_score(79.9, true), CudaTdgGrade::B);

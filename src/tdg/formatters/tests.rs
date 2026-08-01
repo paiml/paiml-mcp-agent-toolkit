@@ -52,7 +52,7 @@ mod tests {
     fn test_format_human_excellent_score() {
         let score = TdgScore {
             total: 95.0,
-            grade: Grade::APLus,
+            grade: Grade::APlus,
             ..TdgScore::default()
         };
 
@@ -204,13 +204,13 @@ mod tests {
 
     #[test]
     fn test_grade_delta_extremes() {
-        assert_eq!(grade_delta(Grade::F, Grade::APLus), "↑10");
-        assert_eq!(grade_delta(Grade::APLus, Grade::F), "↓10");
+        assert_eq!(grade_delta(Grade::F, Grade::APlus), "↑10");
+        assert_eq!(grade_delta(Grade::APlus, Grade::F), "↓10");
     }
 
     #[test]
     fn test_grade_to_number() {
-        assert_eq!(grade_to_number(Grade::APLus), 11);
+        assert_eq!(grade_to_number(Grade::APlus), 11);
         assert_eq!(grade_to_number(Grade::A), 10);
         assert_eq!(grade_to_number(Grade::AMinus), 9);
         assert_eq!(grade_to_number(Grade::BPlus), 8);
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_grade_description() {
-        assert!(grade_description(Grade::APLus).contains("A+"));
+        assert!(grade_description(Grade::APlus).contains("A+"));
         assert!(grade_description(Grade::A).contains("A"));
         assert!(grade_description(Grade::AMinus).contains("A-"));
         assert!(grade_description(Grade::BPlus).contains("B+"));

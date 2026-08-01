@@ -198,7 +198,7 @@ mod coverage_tests {
 
     // ============ QUALITY GATE VERDICT DIRECTION TESTS (v3.18.2) ============
     // Regression tests for the inverted `passed` verdict: Grade's derived Ord
-    // makes BETTER grades compare as SMALLER (APLus < ... < F), so the old
+    // makes BETTER grades compare as SMALLER (APlus < ... < F), so the old
     // `grade >= threshold_grade` was true only for grades AT OR WORSE than
     // the threshold. Reproduced as: paths=[src/utils] -> passed:false despite
     // score 88.99 / grade AMinus and zero violations.
@@ -270,7 +270,7 @@ mod coverage_tests {
         let score = result["score"].as_f64().unwrap();
         let grade = result["grade"].as_str().unwrap();
 
-        let grade_meets_b = matches!(grade, "APLus" | "A" | "AMinus" | "BPlus" | "B");
+        let grade_meets_b = matches!(grade, "APlus" | "A" | "AMinus" | "BPlus" | "B");
         assert_eq!(
             passed,
             score >= 70.0 && grade_meets_b,

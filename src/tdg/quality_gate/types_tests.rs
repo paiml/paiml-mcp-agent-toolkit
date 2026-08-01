@@ -197,7 +197,7 @@ fn test_violation_serialization() {
         message: "Critical regression".to_string(),
         old_score: Some(95.0),
         new_score: 60.0,
-        old_grade: Some(Grade::APLus),
+        old_grade: Some(Grade::APlus),
         new_grade: Grade::D,
     };
     let json = serde_json::to_string(&violation).unwrap();
@@ -332,7 +332,7 @@ fn test_violation_all_fields() {
         message: "Info level".to_string(),
         old_score: Some(100.0),
         new_score: 50.0,
-        old_grade: Some(Grade::APLus),
+        old_grade: Some(Grade::APlus),
         new_grade: Grade::F,
     };
 
@@ -341,7 +341,7 @@ fn test_violation_all_fields() {
     assert_eq!(violation.severity, Severity::Info);
     assert_eq!(violation.old_score, Some(100.0));
     assert_eq!(violation.new_score, 50.0);
-    assert_eq!(violation.old_grade, Some(Grade::APLus));
+    assert_eq!(violation.old_grade, Some(Grade::APlus));
     assert_eq!(violation.new_grade, Grade::F);
 }
 

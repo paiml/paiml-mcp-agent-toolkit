@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn test_regression_gate_critical_severity() {
         let baseline =
-            create_test_baseline(vec![(PathBuf::from("src/critical.rs"), 95.0, Grade::APLus)]);
+            create_test_baseline(vec![(PathBuf::from("src/critical.rs"), 95.0, Grade::APlus)]);
         let current =
             create_test_baseline(vec![(PathBuf::from("src/critical.rs"), 60.0, Grade::D)]);
 

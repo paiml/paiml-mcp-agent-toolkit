@@ -51,18 +51,17 @@ impl ProjectScore {
             }
         }
 
-        // The project grade must come from the SAME mapping the per-file grades
-        // came from. `Grade::from_score(average_score)` alone skipped the
-        // CB-1400 contract-coverage cap that `TdgScore::calculate_total` applies
-        // to every file, so a single-file project reported files[0].grade
-        // "AMinus" and average_grade "APLus" for one and the same score of 99.7
-        // (GH #680). A project is only eligible for the A-tier if every file it
-        // contains was.
-        let all_files_have_contract_coverage = scores.iter().all(|s| s.has_contract_coverage);
-
-        // F-GRADE CAPPING: Any F-grade file caps the project grade at B
-        // This prevents hiding critical quality issues in averaging
-        let uncapped_grade = TdgScore::grade_for(average_score, all_files_have_contract_coverage);
+        // GH #680: the project grade and the per-file grades must come from the
+        // SAME mapping, and that mapping is `Grade::from_score` — the score and
+        // nothing else. The first attempt at #680 unified them the other way
+        // round, onto `TdgScore::grade_for(score, has_contract_coverage)`, which
+        // capped at A-: a project averaging 100.0 reported average_grade
+        // `AMinus`. Agreement on a wrong grade is still a wrong grade.
+        //
+        // F-GRADE CAPPING: any F-grade file caps the project grade at B. That
+        // cap IS derived from measured input (a file actually graded F) and is
+        // reported through `grade_capped`, so it stays.
+        let uncapped_grade = Grade::from_score(average_score);
         let (average_grade, grade_capped) = if f_grade_count > 0 && uncapped_grade < Grade::B {
             // Cap at B (score 79.9 equivalent) if any F-grades exist
             (Grade::B, true)
@@ -99,8 +98,9 @@ impl ProjectScore {
         let mut avg = TdgScore::default();
         let count = self.files.len() as f32;
 
-        // Carried so `calculate_total()` below applies the same CB-1400 cap the
-        // files were graded with (GH #680).
+        // Reported, not applied: contract coverage no longer rewrites a grade
+        // (see `Grade::from_score`), but the aggregate should still say whether
+        // every file it covers was contract-covered.
         avg.has_contract_coverage = self.files.iter().all(|s| s.has_contract_coverage);
 
         avg.structural_complexity = self
@@ -141,6 +141,20 @@ impl ProjectScore {
         }
 
         avg.calculate_total();
+
+        // The project has exactly ONE score, and it is `average_score` — the
+        // mean of the per-file totals that `aggregate` already computed and
+        // that `analyze tdg --format json` serialises.
+        //
+        // `calculate_total()` above re-derives a total from the *component*
+        // means instead, and the two disagree whenever any file hit the
+        // >100 → /1.1 rescale branch: on a two-file fixture the components
+        // said 87.75 while `average_score` said 82.75, so `pmat tdg --format
+        // json` printed 87.75 and the SARIF/JSON project properties printed
+        // 82.75 for the same run. The components stay as the breakdown; the
+        // headline number and its grade come from the aggregate.
+        avg.total = self.average_score;
+        avg.grade = self.average_grade;
         avg
     }
 }
@@ -268,7 +282,7 @@ mod no_contradiction_tests {
     }
 
     /// GH #680: a single-file project reported files[0].grade "AMinus" and
-    /// average_grade "APLus" for the same score — two grades for one number in
+    /// average_grade "APlus" for the same score — two grades for one number in
     /// one document.
     #[test]
     fn single_file_project_grade_equals_that_files_grade() {
@@ -287,16 +301,44 @@ mod no_contradiction_tests {
         );
     }
 
-    /// The A-tier contract-coverage cap must apply to the project grade too,
-    /// not only per file.
+    /// GH #680, second round. This test previously asserted the OPPOSITE —
+    /// `assert_eq!(project.average_grade, Grade::AMinus)` for two files each
+    /// totalling 100.0 — i.e. it pinned the defect. Contract coverage is
+    /// unmeasured for any project without `contracts/binding.yaml`, so that cap
+    /// made `APlus`/`A` unreachable at any score. Rewritten to assert the
+    /// corrected contract: a perfect project grades A+ whether or not contract
+    /// coverage was measured, in both the file and the project position.
     #[test]
-    fn project_grade_respects_contract_coverage_cap() {
-        let files = vec![
-            file_score(100.0, Language::Rust, false),
-            file_score(100.0, Language::Rust, false),
-        ];
-        let project = ProjectScore::aggregate(files);
-        assert_eq!(project.average_grade, Grade::AMinus);
+    fn perfect_project_reaches_the_top_grade_regardless_of_contract_coverage() {
+        for coverage in [false, true] {
+            let files = vec![
+                file_score(100.0, Language::Rust, coverage),
+                file_score(100.0, Language::Rust, coverage),
+            ];
+            let project = ProjectScore::aggregate(files);
+            assert_eq!(
+                project.average_grade,
+                Grade::APlus,
+                "100.0 must grade A+ (has_contract_coverage={coverage})"
+            );
+            assert_eq!(project.files[0].grade, Grade::APlus);
+            assert_eq!(project.average().grade, Grade::APlus);
+        }
+    }
+
+    /// The grade is a function of the score and of nothing else: flipping an
+    /// unrelated input must not move it.
+    #[test]
+    fn grade_depends_only_on_the_score() {
+        for total in [100.0, 97.0, 92.0, 87.0, 81.0, 60.0, 10.0] {
+            let with = file_score(total, Language::Rust, true);
+            let without = file_score(total, Language::Rust, false);
+            assert_eq!(
+                with.grade, without.grade,
+                "contract coverage must not change the grade of {total}"
+            );
+            assert_eq!(with.grade, Grade::from_score(with.total));
+        }
     }
 
     /// GH #673: identical input flipped between Rust and Markdown run to run
