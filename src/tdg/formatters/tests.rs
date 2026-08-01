@@ -61,11 +61,11 @@ mod tests {
         for count in [0_usize, 1, 1593] {
             let project = ProjectScore {
                 average_score: if count == 0 { 0.0 } else { 99.5 },
-                average_grade: if count == 0 { Grade::F } else { Grade::APLus },
+                average_grade: if count == 0 { Grade::F } else { Grade::APlus },
                 total_files: count,
                 files: Vec::new(),
                 language_distribution: std::collections::BTreeMap::from([(Language::Rust, count)]),
-                grade_distribution: std::collections::BTreeMap::from([(Grade::APLus, count)]),
+                grade_distribution: std::collections::BTreeMap::from([(Grade::APlus, count)]),
                 f_grade_count: 0,
                 grade_capped: false,
                 files_reported: 0,

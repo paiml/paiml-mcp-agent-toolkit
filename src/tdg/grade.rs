@@ -12,12 +12,14 @@ use std::collections::HashSet;
 /// and `"grade": "APlus"` from `pmat analyze tdg --format json`, and no machine
 /// consumer could match on one string. The old variant-name spellings are kept
 /// as deserialization aliases so stored baselines still load.
-#[derive(
-    Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
-)]
+// `Deserialize` is implemented by hand below (it accepts both the wire
+// spelling and the historical variant names), so it must NOT also be derived --
+// two fix agents each solved this and the merge kept both, which is a
+// conflicting-impl compile error.
+#[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Grade {
     #[serde(rename = "A+", alias = "APLus", alias = "APlus")]
-    APLus,
+    APlus,
     #[serde(rename = "A")]
     A,
     #[serde(rename = "A-", alias = "AMinus")]
@@ -242,8 +244,8 @@ mod tests {
     #[test]
     fn test_grade_deserializes_legacy_variant_names() {
         let legacy = [
-            ("\"APLus\"", Grade::APLus),
-            ("\"APlus\"", Grade::APLus),
+            ("\"APLus\"", Grade::APlus),
+            ("\"APlus\"", Grade::APlus),
             ("\"AMinus\"", Grade::AMinus),
             ("\"BPlus\"", Grade::BPlus),
             ("\"BMinus\"", Grade::BMinus),
@@ -257,7 +259,7 @@ mod tests {
         // ... and so must the new symbolic form, including as a map key.
         let map: std::collections::BTreeMap<Grade, usize> =
             serde_json::from_str("{\"A+\":2,\"B-\":1,\"APLus\":3}").expect("map of grades");
-        assert_eq!(map.get(&Grade::APLus), Some(&3));
+        assert_eq!(map.get(&Grade::APlus), Some(&3));
         assert_eq!(map.get(&Grade::BMinus), Some(&1));
     }
 
@@ -335,7 +337,7 @@ mod tests {
         );
     }
 
-    /// GH #680 (second round): the enum was misspelled `APLus`. What pmat
+    /// GH #680 (second round): the enum was misspelled `APlus`. What pmat
     /// emits from now on is `APlus`; what it accepts still includes the old
     /// spelling, so baselines written by <= v3.29.0 keep loading.
     #[test]

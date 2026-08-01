@@ -124,7 +124,9 @@ async fn analyze_project_path(
     // Honour --top-files for every renderer; aggregates stay whole-project and
     // the truncation is disclosed (files_reported / files_truncated).
     project_score.limit_to_worst_files(top_files);
-    format_project_result(&project_score, format)
+    // `root` is the analysed path, not the process CWD -- that distinction is
+    // the #680-round-3 fix for grades depending on the caller's directory.
+    format_project_result(&project_score, path, format)
 }
 
 async fn analyze_single_file(
@@ -365,14 +367,10 @@ fn sarif_document(
                     "rules": sarif_rules(),
                 }
             },
-            // Name both numbers: SARIF has nowhere else to say that the result
-            // set covers only the worst --top-files entries, and a capped list
-            // must never read as the whole project.
-            "properties": {
-                "filesAnalyzed": project.total_files,
-                "filesReported": project.files_reported,
-                "filesTruncated": project.files_truncated
-            },
+            // Supplied by the caller: SARIF has nowhere else to say that the
+            // result set covers only the worst --top-files entries, and a
+            // capped list must never read as the whole project.
+            "properties": properties,
             "results": results
         }]
     })
