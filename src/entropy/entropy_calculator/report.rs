@@ -48,9 +48,12 @@ impl EntropyReport {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_loc_reduction(&self) -> usize {
+        // Violations whose saving could not be estimated contribute nothing
+        // rather than a plausible default (`filter_map`, not `unwrap_or(0)` on a
+        // number we would then have printed as measured).
         self.actionable_violations
             .iter()
-            .map(|v| v.estimated_loc_reduction)
+            .filter_map(|v| v.estimated_loc_reduction)
             .sum()
     }
 
@@ -144,31 +147,12 @@ impl EntropyReport {
             }
         }
 
-        if !high.is_empty() {
-            report.push_str(&format!("HIGH SEVERITY ({}):\n", high.len()));
-            for (i, v) in high.iter().enumerate() {
-                report.push_str(&format!(
-                    "{}. {}\n   Fix: {} - saves {} lines\n\n",
-                    i + 1,
-                    v.message,
-                    v.fix_suggestion,
-                    v.estimated_loc_reduction
-                ));
-            }
-        }
-
-        if !medium.is_empty() {
-            report.push_str(&format!("MEDIUM SEVERITY ({}):\n", medium.len()));
-            for (i, v) in medium.iter().enumerate() {
-                report.push_str(&format!(
-                    "{}. {}\n   Fix: {} - saves {} lines\n\n",
-                    i + 1,
-                    v.message,
-                    v.fix_suggestion,
-                    v.estimated_loc_reduction
-                ));
-            }
-        }
+        // Every band is rendered. LOW was omitted, so with `--min-severity low`
+        // the "Actionable Violations: N" header counted rows the report never
+        // listed.
+        Self::push_severity_section(&mut report, "HIGH", &high);
+        Self::push_severity_section(&mut report, "MEDIUM", &medium);
+        Self::push_severity_section(&mut report, "LOW", &low);
 
         report.push_str(&format!(
             "Total Potential Reduction: {} lines ({:.1}% of analyzed code)\n",
@@ -177,6 +161,28 @@ impl EntropyReport {
         ));
 
         report
+    }
+
+    /// Render one severity band. `saves` reads "not estimated" where the saving
+    /// was never derived from a measured pattern size, rather than "0 lines".
+    fn push_severity_section(
+        report: &mut String,
+        label: &str,
+        violations: &[&crate::entropy::violation_detector::ActionableViolation],
+    ) {
+        if violations.is_empty() {
+            return;
+        }
+        report.push_str(&format!("{label} SEVERITY ({}):\n", violations.len()));
+        for (i, v) in violations.iter().enumerate() {
+            report.push_str(&format!(
+                "{}. {}\n   Fix: {} - saves {}\n\n",
+                i + 1,
+                v.message,
+                v.fix_suggestion,
+                v.render_loc_reduction()
+            ));
+        }
     }
 
     /// Render an optional measurement without ever printing a placeholder number.

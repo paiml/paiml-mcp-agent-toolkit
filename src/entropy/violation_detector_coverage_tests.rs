@@ -36,35 +36,35 @@ mod coverage_tests {
     fn test_actionable_violation_creation() {
         let violation = ActionableViolation {
             severity: Severity::High,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 5,
                 variation_score: 0.3,
                 example_code: "match result {}".to_string(),
-            },
+            }),
             message: "Test message".to_string(),
             fix_suggestion: "Fix it".to_string(),
-            estimated_loc_reduction: 50,
+            estimated_loc_reduction: Some(50),
             affected_files: vec![PathBuf::from("test.rs")],
             priority_score: 10.0,
         };
         assert_eq!(violation.severity, Severity::High);
-        assert_eq!(violation.estimated_loc_reduction, 50);
+        assert_eq!(violation.estimated_loc_reduction, Some(50));
     }
 
     #[test]
     fn test_actionable_violation_serialization() {
         let violation = ActionableViolation {
             severity: Severity::Low,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ControlFlow,
                 repetitions: 3,
                 variation_score: 0.5,
                 example_code: "if else".to_string(),
-            },
+            }),
             message: "msg".to_string(),
             fix_suggestion: "fix".to_string(),
-            estimated_loc_reduction: 10,
+            estimated_loc_reduction: Some(10),
             affected_files: vec![],
             priority_score: 5.0,
         };

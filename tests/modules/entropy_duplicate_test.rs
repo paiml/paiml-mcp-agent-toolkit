@@ -8,7 +8,14 @@ use std::fs;
 use tempfile::tempdir;
 
 #[tokio::test]
-#[ignore = "TODO: Fix entropy analyzer reporting violations with 0 repetitions"]
+// Still ignored, but for the real reason: the fixture repeats
+// `if let Some(x) = data.get("..")`, which none of the six Rust extractors
+// match — `.get(` was deliberately dropped from the API-call regex because it
+// hits every HashMap/Vec accessor, and the Result-handling regex requires a
+// `Result<..>` in the scrutinee. The old reason ("reporting violations with 0
+// repetitions") described the placeholder pattern summary on the low-diversity
+// finding, which no longer exists.
+#[ignore = "fixture construct is not one the Rust pattern extractors detect"]
 async fn test_no_duplicate_violations_reported() {
     // RED Phase: This test should fail initially, showing duplicates
 
@@ -18,7 +25,11 @@ async fn test_no_duplicate_violations_reported() {
     fs::create_dir(&src_dir).unwrap();
 
     // Create file with repetitive pattern (should produce ONE violation)
-    let test_file = src_dir.join("test.rs");
+    // Renamed from "test.rs": the shared exclusion list every entropy entry
+    // point now uses drops `**/*test*.rs` unless tests are explicitly included,
+    // so a fixture called test.rs analysed zero files and the assertions below
+    // were being made about an empty analysis.
+    let test_file = src_dir.join("processing.rs");
     fs::write(
         &test_file,
         r#"
@@ -82,8 +93,8 @@ fn process_e() {
         println!(
             "  {}. Pattern: {:?}, Repetitions: {}",
             i + 1,
-            violation.pattern.pattern_type,
-            violation.pattern.repetitions
+            violation.pattern.as_ref().map(|p| p.pattern_type),
+            violation.pattern.as_ref().map_or(0, |p| p.repetitions)
         );
     }
 
@@ -98,13 +109,21 @@ fn process_e() {
     // The one violation should identify the pattern correctly
     let violation = &report.actionable_violations[0];
     assert_eq!(
-        violation.pattern.repetitions, 5,
+        violation.pattern.as_ref().map(|p| p.repetitions),
+        Some(5),
         "Should detect 5 repetitions of the pattern"
     );
 }
 
 #[tokio::test]
-#[ignore = "TODO: Fix entropy analyzer reporting violations with 0 repetitions"]
+// Still ignored, but for the real reason: the fixture repeats
+// `if let Some(x) = data.get("..")`, which none of the six Rust extractors
+// match — `.get(` was deliberately dropped from the API-call regex because it
+// hits every HashMap/Vec accessor, and the Result-handling regex requires a
+// `Result<..>` in the scrutinee. The old reason ("reporting violations with 0
+// repetitions") described the placeholder pattern summary on the low-diversity
+// finding, which no longer exists.
+#[ignore = "fixture construct is not one the Rust pattern extractors detect"]
 async fn test_distinct_patterns_reported_separately() {
     // This test ensures different patterns are reported as separate violations
 
@@ -200,7 +219,8 @@ fn validate_4(input: &str) -> bool {
     // Both should have 4 repetitions
     for violation in &report.actionable_violations {
         assert_eq!(
-            violation.pattern.repetitions, 4,
+            violation.pattern.as_ref().map(|p| p.repetitions),
+            Some(4),
             "Each pattern repeated 4 times"
         );
     }

@@ -31,7 +31,7 @@ fn test_pattern_collection() {
     };
 
     collection.add_pattern(pattern);
-    let summary = collection.summary();
+    let summary = collection.summary().expect("a pattern was added");
     assert_eq!(summary.repetitions, 3);
     assert_eq!(summary.pattern_type, PatternType::ErrorHandling);
 }
@@ -406,7 +406,7 @@ fn test_pattern_collection_summary_with_patterns() {
         estimated_loc: 5,
     });
 
-    let summary = collection.summary();
+    let summary = collection.summary().expect("patterns were added");
     // Should return the pattern with highest frequency
     assert_eq!(summary.repetitions, 10);
     assert_eq!(summary.pattern_type, PatternType::DataValidation);
@@ -1005,25 +1005,37 @@ fn test_variation_score_utf8_boundary() {
     assert!(score >= 0.0);
 }
 
+/// UPDATED (round 3): this test asserted `pattern.locations.len() <= 10`, i.e.
+/// it pinned the cap. One file with N identical lines reported N up to 10 and
+/// then 10 forever — 11, 12, 20, 40 and 100 copies were all "repeated 10 times"
+/// — while `estimated_loc` kept following the real N, so at N=100 the message
+/// read "repeated 10 times (saves 43 lines)". The count must measure the input.
 #[test]
-fn test_limited_pattern_extraction() {
+fn test_repetition_count_is_not_capped() {
     let extractor = PatternExtractor::new(EntropyConfig::default());
     let file_path = PathBuf::from("test.rs");
 
-    // Create content with structurally identical compound matches to test limiting
-    let mut content = String::new();
-    for _ in 0..20 {
-        content.push_str("if input.is_empty() && input.len() > 0 { }\n");
-    }
+    for n in [6usize, 10, 11, 20, 40, 100] {
+        let mut content = String::new();
+        for _ in 0..n {
+            content.push_str("if input.is_empty() && input.len() > 0 { }\n");
+        }
 
-    let mut collection = PatternCollection::new();
-    extractor
-        .extract_data_validation_patterns(&file_path, &content, &mut collection)
-        .expect("Should limit patterns");
+        let mut collection = PatternCollection::new();
+        extractor
+            .extract_data_validation_patterns(&file_path, &content, &mut collection)
+            .expect("extract");
 
-    // Should have extracted patterns (limited to 10 locations by group_by_structural_hash)
-    for pattern in collection.patterns.values() {
-        assert!(pattern.locations.len() <= 10);
+        let total: usize = collection.patterns.values().map(|p| p.frequency).sum();
+        assert_eq!(total, n, "{n} identical lines must report {n}, not a cap");
+
+        for pattern in collection.patterns.values() {
+            assert_eq!(
+                pattern.locations.len(),
+                pattern.frequency,
+                "the location list must agree with the count that heads it"
+            );
+        }
     }
 }
 

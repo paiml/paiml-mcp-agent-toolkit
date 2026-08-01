@@ -31,24 +31,24 @@ mod tests {
             total_files_analyzed: 10,
             actionable_violations: vec![ActionableViolation {
                 severity: crate::entropy::Severity::High,
-                pattern: PatternSummary {
+                pattern: Some(PatternSummary {
                     pattern_type: PatternType::ErrorHandling,
                     repetitions: 10,
                     variation_score: 0.0,
                     example_code: "test".to_string(),
-                },
+                }),
                 message: "test".to_string(),
                 fix_suggestion: "test".to_string(),
-                estimated_loc_reduction: 100,
+                estimated_loc_reduction: Some(100),
                 affected_files: vec![],
                 priority_score: 10.0,
             }],
-            pattern_summary: PatternSummary {
+            pattern_summary: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 10,
                 variation_score: 0.0,
                 example_code: "test".to_string(),
-            },
+            }),
             measurement_note: None,
             entropy_metrics: EntropyMetrics {
                 file_level_entropy: Some(0.5),
@@ -222,12 +222,12 @@ mod coverage_tests {
         EntropyReport {
             total_files_analyzed: 10,
             actionable_violations: violations,
-            pattern_summary: PatternSummary {
+            pattern_summary: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 0,
                 variation_score: 0.0,
                 example_code: String::new(),
-            },
+            }),
             measurement_note: None,
             entropy_metrics: EntropyMetrics {
                 file_level_entropy: Some(0.5),
@@ -245,15 +245,15 @@ mod coverage_tests {
     fn create_test_violation(severity: Severity, loc_reduction: usize) -> ActionableViolation {
         ActionableViolation {
             severity,
-            pattern: PatternSummary {
+            pattern: Some(PatternSummary {
                 pattern_type: PatternType::ErrorHandling,
                 repetitions: 5,
                 variation_score: 0.1,
                 example_code: "test code".to_string(),
-            },
+            }),
             message: "Test violation message".to_string(),
             fix_suggestion: "Fix suggestion".to_string(),
-            estimated_loc_reduction: loc_reduction,
+            estimated_loc_reduction: Some(loc_reduction),
             affected_files: vec![PathBuf::from("test.rs")],
             priority_score: 5.0,
         }
@@ -334,15 +334,38 @@ mod coverage_tests {
         assert!(formatted.contains("MEDIUM SEVERITY (1)"));
     }
 
+    /// UPDATED (round 3): this asserted `!formatted.contains("LOW SEVERITY")`,
+    /// pinning a count that disagreed with the list it heads — with
+    /// `--min-severity low` the report printed "Actionable Violations: 1" and
+    /// then listed nothing.
     #[test]
-    fn test_entropy_report_format_report_with_low_severity() {
-        // Low severity violations are not shown in the format_report
+    fn test_entropy_report_format_report_lists_low_severity() {
         let violations = vec![create_test_violation(Severity::Low, 25)];
         let report = create_test_report(violations, 1000);
         let formatted = report.format_report();
 
-        // Low severity is not displayed in the report
-        assert!(!formatted.contains("LOW SEVERITY"));
+        assert!(formatted.contains("Actionable Violations: 1"));
+        assert!(
+            formatted.contains("LOW SEVERITY (1)"),
+            "a counted violation must appear in the list, got:\n{formatted}"
+        );
+    }
+
+    /// A violation whose saving was never estimated renders as "not estimated",
+    /// not as "saves 0 lines" — a plausible default is still a fabrication.
+    #[test]
+    fn test_unestimated_saving_is_not_rendered_as_zero() {
+        let mut violation = create_test_violation(Severity::Medium, 25);
+        violation.estimated_loc_reduction = None;
+        let report = create_test_report(vec![violation], 1000);
+        let formatted = report.format_report();
+
+        assert!(
+            formatted.contains("saves not estimated"),
+            "got:\n{formatted}"
+        );
+        assert!(!formatted.contains("saves 0 lines"));
+        assert_eq!(report.total_loc_reduction(), 0);
     }
 
     #[test]

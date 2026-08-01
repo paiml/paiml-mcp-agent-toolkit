@@ -13,6 +13,84 @@ pub enum PatternType {
     ApiCall,            // HTTP/RPC call patterns
 }
 
+/// Detection thresholds for one Rust construct.
+///
+/// `min_matches_in_file` is how many raw regex matches a file must contain before
+/// the construct is considered at all; `min_identical` is how many *structurally
+/// identical* occurrences must then land in one group for a pattern to be
+/// emitted. A user therefore needs `effective_minimum()` identical copies in one
+/// file before anything is reported.
+///
+/// This table exists so that `EntropyAnalyzer::measurement_note` quotes the real
+/// numbers. Before it existed the note said "needs at least 3 structurally
+/// identical occurrences" for every construct, which is false for four of the six:
+/// a fixture with 5 identical validation lines measured nothing while the note
+/// promised 3 would be enough.
+#[derive(Debug, Clone, Copy)]
+pub struct RustPatternThreshold {
+    /// Human-readable construct name used in the measurement note.
+    pub name: &'static str,
+    /// Minimum raw matches of the construct's regex within one file.
+    pub min_matches_in_file: usize,
+    /// Minimum structurally identical occurrences within one group.
+    pub min_identical: usize,
+}
+
+impl RustPatternThreshold {
+    /// Identical copies a single file must contain before this construct is reported.
+    #[must_use]
+    pub const fn effective_minimum(&self) -> usize {
+        if self.min_matches_in_file > self.min_identical {
+            self.min_matches_in_file
+        } else {
+            self.min_identical
+        }
+    }
+}
+
+/// Thresholds actually applied by the Rust extractors, in `PatternType` order.
+///
+/// Both the extractors and the measurement note read this table, so the
+/// documented rule and the enforced rule cannot diverge.
+pub const RUST_PATTERN_THRESHOLDS: [RustPatternThreshold; 6] = [
+    RustPatternThreshold {
+        name: "Result handling",
+        min_matches_in_file: 2,
+        min_identical: 3,
+    },
+    RustPatternThreshold {
+        name: "input validation",
+        min_matches_in_file: 6,
+        min_identical: 3,
+    },
+    RustPatternThreshold {
+        name: "resource management",
+        min_matches_in_file: 6,
+        min_identical: 3,
+    },
+    RustPatternThreshold {
+        name: "if/else chains",
+        min_matches_in_file: 3,
+        min_identical: 3,
+    },
+    RustPatternThreshold {
+        name: "iterator chains",
+        min_matches_in_file: 9,
+        min_identical: 3,
+    },
+    RustPatternThreshold {
+        name: "API calls",
+        min_matches_in_file: 4,
+        min_identical: 3,
+    },
+];
+
+/// Threshold for one `PatternType`, by its position in the enum.
+#[must_use]
+pub const fn rust_threshold(pattern_type: PatternType) -> RustPatternThreshold {
+    RUST_PATTERN_THRESHOLDS[pattern_type as usize]
+}
+
 /// Location of a pattern in code
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Location {
@@ -78,35 +156,28 @@ impl PatternCollection {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Summary.
-    pub fn summary(&self) -> super::violation_detector::PatternSummary {
+    /// The most-repeated pattern found, or `None` when no pattern was found.
+    ///
+    /// A project with no patterns used to get a synthesised summary —
+    /// `{"pattern_type": "ControlFlow", "repetitions": 0, "variation_score": 0.0,
+    /// "example_code": ""}` — which reads as "the dominant construct here is
+    /// control flow, seen zero times". Nothing was measured, so nothing is
+    /// reported.
+    pub fn summary(&self) -> Option<super::violation_detector::PatternSummary> {
         // Most common pattern, with the hash as an explicit tie-break so two runs
         // over the same input cannot pick different "most common" patterns.
-        let most_common = self
-            .patterns
-            .values()
-            .max_by(|a, b| {
-                a.frequency
-                    .cmp(&b.frequency)
-                    .then_with(|| b.pattern_hash.cmp(&a.pattern_hash))
-            })
-            .cloned()
-            .unwrap_or_else(|| AstPattern {
-                pattern_type: PatternType::ControlFlow,
-                pattern_hash: String::new(),
-                frequency: 0,
-                locations: vec![],
-                variation_score: 0.0,
-                example_code: String::new(),
-                estimated_loc: 0,
-            });
+        let most_common = self.patterns.values().max_by(|a, b| {
+            a.frequency
+                .cmp(&b.frequency)
+                .then_with(|| b.pattern_hash.cmp(&a.pattern_hash))
+        })?;
 
-        super::violation_detector::PatternSummary {
+        Some(super::violation_detector::PatternSummary {
             pattern_type: most_common.pattern_type,
             repetitions: most_common.frequency,
             variation_score: most_common.variation_score,
-            example_code: most_common.example_code,
-        }
+            example_code: most_common.example_code.clone(),
+        })
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

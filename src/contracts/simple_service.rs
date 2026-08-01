@@ -161,8 +161,16 @@ impl SimpleContractService {
         use crate::entropy::violation_detector::Severity;
         use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
-        // Convert contract parameters to entropy config, loading .pmatignore
-        let mut config = EntropyConfig::default().with_project_ignores(&contract.base.path);
+        // Convert contract parameters to entropy config, loading .pmatignore.
+        // The exclusion list is the one shared with `analyze entropy` and
+        // `quality-gate --checks entropy`; three entry points assembling three
+        // different lists meant the MCP tool could report a different diversity
+        // for the same path than the CLI did.
+        let mut config = EntropyConfig {
+            exclude_paths: EntropyConfig::analysis_excludes(contract.base.include_tests),
+            ..Default::default()
+        }
+        .with_project_ignores(&contract.base.path);
 
         if let Some(severity_str) = &contract.min_severity {
             config.min_severity = match severity_str.as_str() {
@@ -171,11 +179,6 @@ impl SimpleContractService {
                 "high" => Severity::High,
                 _ => Severity::Medium,
             };
-        }
-
-        if !contract.base.include_tests {
-            config.exclude_paths.push("**/*test*.rs".to_string());
-            config.exclude_paths.push("tests/**".to_string());
         }
 
         // Create analyzer and run analysis
@@ -255,12 +258,29 @@ impl SimpleContractService {
                                 violation.severity,
                                 crate::entropy::violation_detector::Severity::High
                             ) {
+                                // A project-level finding carries no pattern; it
+                                // used to be labelled `entropy_ControlFlow` with
+                                // "(0 repetitions)" from a placeholder summary.
+                                let (rule, detail) = violation.pattern.as_ref().map_or_else(
+                                    || {
+                                        (
+                                            "entropy_pattern_diversity".to_string(),
+                                            "project-wide".to_string(),
+                                        )
+                                    },
+                                    |p| {
+                                        (
+                                            format!("entropy_{:?}", p.pattern_type),
+                                            format!("{} repetitions", p.repetitions),
+                                        )
+                                    },
+                                );
                                 violations.push(QualityViolation {
-                                    rule: format!("entropy_{:?}", violation.pattern.pattern_type),
+                                    rule,
                                     severity: ViolationSeverity::Warning,
                                     message: format!(
-                                        "High entropy pattern detected: {} ({} repetitions)",
-                                        violation.message, violation.pattern.repetitions
+                                        "High entropy pattern detected: {} ({detail})",
+                                        violation.message
                                     ),
                                     file: contract.base.path.display().to_string(),
                                     line: 1, // We don't have location info in PatternSummary yet

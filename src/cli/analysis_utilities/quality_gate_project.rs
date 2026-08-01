@@ -76,6 +76,9 @@ async fn handle_project_quality_gate(
     // Calculate overall pass/fail
     results.passed = violations.is_empty();
     results.total_violations = violations.len();
+    // `results.violations` shipped as a permanently-empty array while
+    // `results.total_violations` beside it said 3.
+    results.set_violation_lines(&violations);
 
     // Persist violations to SQLite for `pmat sql` queryability
     persist_violations_to_sqlite(&project_path, &violations, quiet);
