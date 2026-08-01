@@ -108,11 +108,15 @@ pub fn format_summary(
 
     // Show top files with lint issues (consistent with other analyze commands)
     output.push_str("## Top Files with Lint Issues\n\n");
+    // Tie-break on path: `summary_by_file` is a HashMap, so files sharing a
+    // defect density were previously ordered by hash and the "top files" list
+    // reshuffled between runs on identical input.
     let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
     sorted_files.sort_by(|a, b| {
         b.1.defect_density
             .partial_cmp(&a.1.defect_density)
             .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.cmp(b.0))
     });
 
     let files_to_show = if _top_files == 0 { 10 } else { _top_files };
@@ -228,8 +232,14 @@ pub(crate) fn format_detailed(
 
     // Add top files by violation count
     output.push_str("\n## Top Files by Violations\n");
+    // Same hash-order hazard as in `format_summary`: tie-break on path so the
+    // list is byte-identical across runs.
     let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
-    sorted_files.sort_by_key(|b| std::cmp::Reverse(b.1.total_violations));
+    sorted_files.sort_by(|a, b| {
+        b.1.total_violations
+            .cmp(&a.1.total_violations)
+            .then_with(|| a.0.cmp(b.0))
+    });
 
     let files_to_show = if top_files == 0 {
         sorted_files.len()
@@ -307,7 +317,35 @@ fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> 
 ///
 /// Returns an error if the operation fails
 fn format_sarif(result: &LintHotspotResult) -> Result<String> {
-    let sarif = serde_json::json!({
+    let results = result
+        .quality_gate
+        .violations
+        .iter()
+        .map(|v| {
+            serde_json::json!({
+                "ruleId": v.rule,
+                "level": if v.severity == "blocking" { "error" } else { "warning" },
+                "message": {
+                    "text": format!("{} exceeded: {:.2} > {:.2}", v.rule, v.actual, v.threshold)
+                },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": result.hotspot.file.to_string_lossy()
+                        }
+                    }
+                }]
+            })
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::to_string_pretty(&sarif_envelope(results)).context("Failed to serialize to SARIF")
+}
+
+/// The single SARIF envelope builder, shared by the populated and the
+/// "nothing found" renderers so the two cannot disagree about tool metadata.
+fn sarif_envelope(results: Vec<serde_json::Value>) -> serde_json::Value {
+    serde_json::json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "runs": [{
@@ -318,26 +356,94 @@ fn format_sarif(result: &LintHotspotResult) -> Result<String> {
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
                 }
             },
-            "results": result.quality_gate.violations.iter().map(|v| {
-                serde_json::json!({
-                    "ruleId": v.rule,
-                    "level": if v.severity == "blocking" { "error" } else { "warning" },
-                    "message": {
-                        "text": format!("{} exceeded: {:.2} > {:.2}", v.rule, v.actual, v.threshold)
-                    },
-                    "locations": [{
-                        "physicalLocation": {
-                            "artifactLocation": {
-                                "uri": result.hotspot.file.to_string_lossy()
-                            }
-                        }
-                    }]
-                })
-            }).collect::<Vec<_>>()
+            "results": results
         }]
-    });
+    })
+}
 
-    serde_json::to_string_pretty(&sarif).context("Failed to serialize to SARIF")
+/// Render the report for a project with zero lint violations.
+///
+/// Two defects are fixed here at once.
+///
+/// 1. `--format summary` and `--format detailed` used to write **zero bytes**
+///    to stdout on a clean project (md5 `d41d8cd9…`, the empty digest) and put
+///    everything on stderr, so `pmat analyze lint-hotspot | …` handed the pipe
+///    nothing. Analysis output belongs on stdout.
+/// 2. `--format json` and `--format enforcement-json` used to emit one shared
+///    174-byte blob (md5 `572e6006…`) — two separately declared formats with
+///    different `--help` descriptions producing byte-identical output. Each
+///    format now emits the *same key set it emits when violations exist*:
+///    `json` the two-key summary document, `enforcement-json` the full
+///    enforcement document.
+///
+/// `hotspot` is `null` rather than a zero-filled object: there is no hotspot to
+/// report, and a fabricated `{"sloc": 0, "defect_density": 0.0}` would read as
+/// a measurement.
+pub(crate) fn format_clean_output(
+    format: &LintHotspotOutputFormat,
+    perf: bool,
+    elapsed: std::time::Duration,
+) -> Result<String> {
+    let doc = match format {
+        LintHotspotOutputFormat::Summary => return Ok(clean_human_report(false, perf, elapsed)),
+        LintHotspotOutputFormat::Detailed => return Ok(clean_human_report(true, perf, elapsed)),
+        // Mirrors `SimpleResult` in `format_json` (hotspot + quality_gate).
+        LintHotspotOutputFormat::Json => serde_json::json!({
+            "hotspot": serde_json::Value::Null,
+            "quality_gate": clean_quality_gate(),
+        }),
+        // Mirrors the full `LintHotspotResult` serialization.
+        LintHotspotOutputFormat::EnforcementJson => serde_json::json!({
+            "hotspot": serde_json::Value::Null,
+            "all_violations": [],
+            "summary_by_file": {},
+            "total_project_violations": 0,
+            "enforcement": serde_json::Value::Null,
+            "refactor_chain": serde_json::Value::Null,
+            "quality_gate": clean_quality_gate(),
+        }),
+        LintHotspotOutputFormat::Sarif => sarif_envelope(vec![]),
+    };
+
+    serde_json::to_string_pretty(&doc).context("Failed to serialize clean lint-hotspot result")
+}
+
+/// Quality-gate object for a project with no violations.
+fn clean_quality_gate() -> serde_json::Value {
+    serde_json::json!({
+        "passed": true,
+        "violations": [],
+        "blocking": false,
+    })
+}
+
+/// Human-readable report for a clean project. `detailed` adds the two extra
+/// sections `format_detailed` adds, so the two formats never coincide.
+fn clean_human_report(detailed: bool, perf: bool, elapsed: std::time::Duration) -> String {
+    let mut output = String::new();
+    output.push_str("# Lint Hotspot Analysis (EXTREME Quality Mode)\n\n");
+    output.push_str("**Total Project Violations**: 0\n");
+    output.push_str("**Files with Issues**: 0\n\n");
+    output.push_str("## Top Files with Lint Issues\n\n");
+    output.push_str("_No lint violations found — project is clean._\n\n");
+    output.push_str("## Hottest File Details\n");
+    output.push_str("**File**: none (no file has any violation)\n");
+
+    if detailed {
+        output.push_str("\n## Detailed Violations in Hotspot File\n");
+        output.push_str("_None._\n");
+        output.push_str("\n## Top Files by Violations\n");
+        output.push_str("_None._\n");
+    }
+
+    if perf {
+        output.push_str(&format!(
+            "\n⏱️  Analysis completed in {:.2}s\n",
+            elapsed.as_secs_f64()
+        ));
+    }
+
+    output
 }
 
 #[cfg(test)]
@@ -447,6 +553,169 @@ mod lint_hotspot_output_tests {
         let enf = format_json(&empty_result(), true).unwrap();
         let _: serde_json::Value = serde_json::from_str(&non_enf).unwrap();
         let _: serde_json::Value = serde_json::from_str(&enf).unwrap();
+    }
+
+    // ── clean-project output (the round-1 regression) ───────────────────────
+
+    fn clean(format: LintHotspotOutputFormat) -> String {
+        format_clean_output(&format, false, std::time::Duration::from_millis(7))
+            .unwrap_or_else(|e| panic!("{format} must render a clean report: {e}"))
+    }
+
+    /// Every declared format must put SOMETHING on stdout on a clean project.
+    /// `summary` and `detailed` shipped writing zero bytes (md5 d41d8cd9…).
+    #[test]
+    fn test_clean_output_no_format_is_empty() {
+        for format in [
+            LintHotspotOutputFormat::Summary,
+            LintHotspotOutputFormat::Detailed,
+            LintHotspotOutputFormat::Json,
+            LintHotspotOutputFormat::EnforcementJson,
+            LintHotspotOutputFormat::Sarif,
+        ] {
+            let out = clean(format.clone());
+            assert!(!out.trim().is_empty(), "{format} emitted zero bytes");
+        }
+    }
+
+    /// `json` and `enforcement-json` shipped BYTE-IDENTICAL on a clean project
+    /// (both md5 572e6006…, 174 bytes) despite being two declared formats with
+    /// distinct `--help` text. No two declared formats may coincide.
+    #[test]
+    fn test_clean_output_formats_are_pairwise_distinct() {
+        let formats = [
+            LintHotspotOutputFormat::Summary,
+            LintHotspotOutputFormat::Detailed,
+            LintHotspotOutputFormat::Json,
+            LintHotspotOutputFormat::EnforcementJson,
+            LintHotspotOutputFormat::Sarif,
+        ];
+        for (i, a) in formats.iter().enumerate() {
+            for b in formats.iter().skip(i + 1) {
+                assert_ne!(
+                    clean(a.clone()),
+                    clean(b.clone()),
+                    "--format {a} and --format {b} produced identical bytes"
+                );
+            }
+        }
+    }
+
+    /// The clean document must carry the same key set the populated document
+    /// carries, so a consumer does not have to special-case "no findings".
+    #[test]
+    fn test_clean_json_key_sets_match_populated_key_sets() {
+        let populated_simple: serde_json::Value =
+            serde_json::from_str(&format_json(&empty_result(), false).unwrap()).unwrap();
+        let clean_simple: serde_json::Value =
+            serde_json::from_str(&clean(LintHotspotOutputFormat::Json)).unwrap();
+        let mut a: Vec<_> = populated_simple.as_object().unwrap().keys().collect();
+        let mut b: Vec<_> = clean_simple.as_object().unwrap().keys().collect();
+        a.sort();
+        b.sort();
+        assert_eq!(a, b, "json clean/populated key sets diverge");
+
+        let populated_full: serde_json::Value =
+            serde_json::from_str(&format_json(&empty_result(), true).unwrap()).unwrap();
+        let clean_full: serde_json::Value =
+            serde_json::from_str(&clean(LintHotspotOutputFormat::EnforcementJson)).unwrap();
+        let mut a: Vec<_> = populated_full.as_object().unwrap().keys().collect();
+        let mut b: Vec<_> = clean_full.as_object().unwrap().keys().collect();
+        a.sort();
+        b.sort();
+        assert_eq!(a, b, "enforcement-json clean/populated key sets diverge");
+    }
+
+    /// `hotspot` must be absent (null), never a zero-filled object: a
+    /// fabricated `sloc: 0 / defect_density: 0.0` reads as a measurement.
+    #[test]
+    fn test_clean_json_reports_hotspot_as_absent_not_zero() {
+        for format in [
+            LintHotspotOutputFormat::Json,
+            LintHotspotOutputFormat::EnforcementJson,
+        ] {
+            let doc: serde_json::Value = serde_json::from_str(&clean(format.clone())).unwrap();
+            assert!(doc["hotspot"].is_null(), "{format} fabricated a hotspot");
+        }
+    }
+
+    /// Identical input, five runs, identical bytes — for every format.
+    #[test]
+    fn test_output_is_deterministic_across_five_runs() {
+        for format in [
+            LintHotspotOutputFormat::Summary,
+            LintHotspotOutputFormat::Detailed,
+            LintHotspotOutputFormat::Json,
+            LintHotspotOutputFormat::EnforcementJson,
+            LintHotspotOutputFormat::Sarif,
+        ] {
+            let mut baseline: Option<String> = None;
+            for run in 0..5 {
+                // Rebuild the result each time: `summary_by_file` is a HashMap
+                // whose iteration order is randomised per map instance.
+                let out = format_output(
+                    &multi_file_result(),
+                    format.clone(),
+                    false,
+                    std::time::Duration::from_millis(1),
+                    10,
+                )
+                .unwrap();
+                match &baseline {
+                    None => baseline = Some(out),
+                    Some(first) => assert_eq!(
+                        first, &out,
+                        "--format {format} differed on run {run} for identical input"
+                    ),
+                }
+            }
+        }
+    }
+
+    /// Several files at an identical defect density, so any hash-order
+    /// dependence shows up as a reordered report.
+    fn multi_file_result() -> LintHotspotResult {
+        let mut summary_by_file = std::collections::HashMap::new();
+        let mut all_violations = Vec::new();
+        for name in [
+            "src/alpha.rs",
+            "src/beta.rs",
+            "src/gamma.rs",
+            "src/delta.rs",
+            "src/epsilon.rs",
+            "src/zeta.rs",
+            "src/eta.rs",
+            "src/theta.rs",
+        ] {
+            summary_by_file.insert(
+                std::path::PathBuf::from(name),
+                FileSummary {
+                    total_violations: 4,
+                    errors: 1,
+                    warnings: 3,
+                    sloc: 100,
+                    defect_density: 0.04,
+                },
+            );
+            all_violations.push(ViolationDetail {
+                file: std::path::PathBuf::from(name),
+                line: 1,
+                column: 1,
+                end_line: 1,
+                end_column: 2,
+                lint_name: "clippy::needless_range_loop".to_string(),
+                message: "m".to_string(),
+                severity: "warning".to_string(),
+                suggestion: None,
+                machine_applicable: false,
+            });
+        }
+
+        let mut result = empty_result();
+        result.summary_by_file = summary_by_file;
+        result.all_violations = all_violations;
+        result.total_project_violations = 32;
+        result
     }
 
     #[test]

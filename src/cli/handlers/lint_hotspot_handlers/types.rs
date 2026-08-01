@@ -2,9 +2,25 @@
 //! Types, enums, and structs for lint hotspot analysis
 
 use crate::cli::LintHotspotOutputFormat;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize, Serializer};
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+
+/// Serialize a `HashMap` keyed by path in sorted key order.
+///
+/// `summary_by_file` is a `HashMap`, and `serde_json` walks it in hash order,
+/// which Rust randomises per process. That made
+/// `analyze lint-hotspot --format enforcement-json` emit a *different byte
+/// stream on every run for identical input* — unusable for CI diffing. Sorting
+/// on the way out costs one BTreeMap build and makes the document reproducible.
+fn serialize_map_sorted<S, V>(map: &HashMap<PathBuf, V>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    V: Serialize,
+{
+    let ordered: BTreeMap<&PathBuf, &V> = map.iter().collect();
+    ordered.serialize(serializer)
+}
 
 /// Parameters for lint hotspot analysis
 pub struct LintHotspotParams {
@@ -29,6 +45,7 @@ pub struct LintHotspotParams {
 pub struct LintHotspotResult {
     pub hotspot: LintHotspot,
     pub all_violations: Vec<ViolationDetail>,
+    #[serde(serialize_with = "serialize_map_sorted")]
     pub summary_by_file: HashMap<PathBuf, FileSummary>,
     pub total_project_violations: usize,
     pub enforcement: Option<EnforcementMetadata>,

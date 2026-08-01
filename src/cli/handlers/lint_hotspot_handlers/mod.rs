@@ -120,6 +120,10 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
         Err(e) if e.to_string().contains("No lint violations found") => {
             use crate::cli::colors as c;
             eprintln!("{}", c::pass("No lint violations found — project is clean"));
+            // This arm used to return here having written NOTHING to stdout,
+            // so every format produced 0 bytes (md5 d41d8cd9…) on a clean
+            // project and a piped `--format json | jq .` got an empty stream.
+            emit_clean_output(&params, start_time.elapsed()).await?;
             return Ok(());
         }
         Err(e) => return Err(e),
@@ -138,11 +142,44 @@ async fn handle_analyze_lint_hotspot_with_params(params: LintHotspotParams) -> R
     Ok(())
 }
 
-/// Log analysis start message
+/// Write the machine/human "clean project" report to stdout (or `--output`).
+///
+/// Uses the same sink as `output_results` so a clean run and a dirty run of the
+/// same command land in the same place.
+async fn emit_clean_output(params: &LintHotspotParams, elapsed: std::time::Duration) -> Result<()> {
+    let content = output::format_clean_output(&params.format, params.perf, elapsed)?;
+    write_output(&content, params).await
+}
+
+/// Single stdout/`--output` sink for every lint-hotspot report.
+async fn write_output(content: &str, params: &LintHotspotParams) -> Result<()> {
+    if let Some(output_path) = &params.output {
+        tokio::fs::write(output_path, content).await?;
+    } else {
+        println!("{content}");
+    }
+    Ok(())
+}
+
+/// Log analysis start message.
+///
+/// Progress chatter is suppressed for every machine-readable format, not just
+/// `json`: `enforcement-json` and `sarif` are parsed by tools too, and their
+/// stderr should not differ from `json`'s for the same run.
 fn log_analysis_start(format: &LintHotspotOutputFormat) {
-    if *format != LintHotspotOutputFormat::Json {
+    if !is_machine_format(format) {
         eprintln!("🔍 Running Clippy analysis...");
     }
+}
+
+/// True for formats consumed by tools rather than humans.
+fn is_machine_format(format: &LintHotspotOutputFormat) -> bool {
+    matches!(
+        format,
+        LintHotspotOutputFormat::Json
+            | LintHotspotOutputFormat::EnforcementJson
+            | LintHotspotOutputFormat::Sarif
+    )
 }
 
 /// Run analysis based on single file or project mode
@@ -162,7 +199,7 @@ async fn run_analysis_by_mode(params: &LintHotspotParams) -> Result<LintHotspotR
 
 /// Log single file analysis mode
 fn log_single_file_mode(file_path: &Path, format: &LintHotspotOutputFormat) {
-    if *format != LintHotspotOutputFormat::Json {
+    if !is_machine_format(format) {
         eprintln!("📄 Analyzing single file: {}", file_path.display());
     }
 }
@@ -276,13 +313,7 @@ async fn output_results(
         params.top_files,
     )?;
 
-    if let Some(output_path) = &params.output {
-        tokio::fs::write(output_path, &output_content).await?;
-    } else {
-        println!("{output_content}");
-    }
-
-    Ok(())
+    write_output(&output_content, params).await
 }
 
 /// Execute enforcement if requested and conditions are met

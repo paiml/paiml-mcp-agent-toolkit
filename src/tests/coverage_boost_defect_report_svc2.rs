@@ -247,7 +247,6 @@ fn test_format_json_empty_report() {
 
 // ==================== format_csv ====================
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_valid() {
     let svc = DefectReportService::new();
@@ -260,7 +259,6 @@ fn test_format_csv_valid() {
     assert!(csv_str.contains("src/main.rs"));
 }
 
-#[cfg(feature = "reporting")]
 #[test]
 fn test_format_csv_empty() {
     let svc = DefectReportService::new();
@@ -270,12 +268,17 @@ fn test_format_csv_empty() {
     assert!(csv_str.contains("id,severity"));
 }
 
-#[cfg(not(feature = "reporting"))]
+// Issue #672 regression: replaced a test that asserted `format_csv` errors
+// without the non-default `reporting` feature. That was the shipped default,
+// so `pmat report --format csv` failed for every installed user.
 #[test]
-fn test_format_csv_requires_feature() {
+fn test_format_csv_always_available_no_feature_gate() {
     let svc = DefectReportService::new();
     let report = make_report(sample_defects());
-    assert!(svc.format_csv(&report).is_err());
+    let csv = svc
+        .format_csv(&report)
+        .expect("CSV must work in the default feature set (issue #672)");
+    assert!(csv.contains("D001"));
 }
 
 // ==================== format_markdown ====================
@@ -481,16 +484,9 @@ fn test_all_formats_contain_defect_data() {
     assert!(md.contains("src/main.rs"));
     assert!(txt.contains("src/main.rs"));
 
-    // CSV requires the 'reporting' feature
-    #[cfg(feature = "reporting")]
-    {
-        let csv = svc.format_csv(&report).unwrap();
-        assert!(csv.contains("D001"));
-    }
-    #[cfg(not(feature = "reporting"))]
-    {
-        assert!(svc.format_csv(&report).is_err());
-    }
+    // Issue #672: CSV is unconditional, no feature gate.
+    let csv = svc.format_csv(&report).unwrap();
+    assert!(csv.contains("D001"));
 }
 
 // ==================== Edge cases ====================
@@ -507,11 +503,8 @@ fn test_defect_without_fix_suggestion() {
     let _ = svc.format_markdown(&report).unwrap();
     let _ = svc.format_text(&report).unwrap();
 
-    // CSV requires the 'reporting' feature
-    #[cfg(feature = "reporting")]
-    {
-        let _ = svc.format_csv(&report).unwrap();
-    }
+    // Issue #672: CSV is unconditional, no feature gate.
+    let _ = svc.format_csv(&report).unwrap();
 }
 
 #[test]
