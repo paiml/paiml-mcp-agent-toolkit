@@ -46,21 +46,33 @@ async fn build_symbol_table(
     include: &[String],
     exclude: &[String],
 ) -> Result<SymbolTable> {
-    let mut symbols = Vec::new();
-
-    // Get all relevant files
+    // Get all relevant files. `collect_files` returns them sorted, so every
+    // downstream ordering (symbol order, reference order, tie-breaks) is stable.
     let files = collect_files(project_path, include, exclude).await?;
 
-    // Extract symbols from each file
+    // Read every file once: definitions come from it, and so do the use sites.
+    let mut sources = Vec::with_capacity(files.len());
     for file in files {
-        let file_symbols = extract_symbols_from_file(&file).await?;
-        symbols.extend(file_symbols);
+        let content = tokio::fs::read_to_string(&file).await?;
+        sources.push(FileSource {
+            path: file.to_string_lossy().to_string(),
+            content,
+        });
     }
 
-    // Find unreferenced symbols
-    let unreferenced = find_unreferenced_symbols(&symbols);
+    let mut symbols = Vec::new();
+    for source in &sources {
+        symbols.extend(extract_symbols_simple(&source.content, &source.path)?);
+    }
 
-    // Find most referenced symbols
+    // Defect #654 (round 2): before this, every symbol carried exactly one
+    // reference — its own Definition — so `unreferenced_symbols` contained all
+    // 16944 of 16944 symbols and `most_referenced` was a list of 1s. Use sites
+    // are now resolved from the sources; `unresolved` holds names we could not
+    // attribute, which must never be reported as unreferenced.
+    let unresolved = resolve_references(&sources, &mut symbols);
+
+    let unreferenced = find_unreferenced_symbols(&symbols, &unresolved);
     let most_referenced = find_most_referenced(&symbols);
 
     Ok(SymbolTable {
@@ -85,6 +97,11 @@ async fn collect_files(
     }
 
     collect_files_recursive(project_path, &mut files, include, exclude).await?;
+
+    // `read_dir` yields entries in filesystem order, which is not stable across
+    // machines (and not guaranteed stable on one). Sorting here is what makes
+    // two runs over an unchanged tree byte-identical.
+    files.sort();
 
     Ok(files)
 }
@@ -203,15 +220,6 @@ fn is_source_file(path: &Path) -> bool {
     )
 }
 
-// Extract symbols from a single file
-async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
-    let content = tokio::fs::read_to_string(file_path).await?;
-    let file_str = file_path.to_string_lossy().to_string();
-
-    // Use simple regex-based extraction for now
-    extract_symbols_simple(&content, &file_str)
-}
-
 // Simple symbol extraction using regex
 fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
     use regex::Regex;
@@ -284,23 +292,46 @@ fn detect_visibility(line: &str) -> Visibility {
     }
 }
 
-// Find unreferenced symbols
-fn find_unreferenced_symbols(symbols: &[Symbol]) -> Vec<String> {
-    symbols
-        .iter()
-        .filter(|s| s.references.len() <= 1)
-        .map(|s| s.name.clone())
-        .collect()
+/// Total resolved use sites per symbol name (definitions excluded), so that a
+/// name declared in several files is reported once rather than once per file.
+fn usage_counts_by_name(symbols: &[Symbol]) -> HashMap<&str, usize> {
+    let mut counts: HashMap<&str, usize> = HashMap::new();
+    for symbol in symbols {
+        *counts.entry(symbol.name.as_str()).or_insert(0) += usage_count(symbol);
+    }
+    counts
 }
 
-// Find most referenced symbols
+/// Names with zero resolved use sites.
+///
+/// Defect #654 (round 2): this used to be `references.len() <= 1`, and every
+/// symbol had exactly one reference (its own `Definition`), so it returned every
+/// symbol in the tree — 16944 of 16944, including `helper_one`, which a fixture
+/// proved was called from both `main()` and `helper_two()`. It now counts real
+/// use sites, and a name whose uses could not be attributed (see
+/// `resolve_references`) is omitted rather than falsely declared unreferenced.
+fn find_unreferenced_symbols(symbols: &[Symbol], unresolved: &HashSet<String>) -> Vec<String> {
+    let counts = usage_counts_by_name(symbols);
+    let mut names: Vec<String> = counts
+        .into_iter()
+        .filter(|(name, count)| *count == 0 && !unresolved.contains(*name))
+        .map(|(name, _)| name.to_string())
+        .collect();
+    names.sort();
+    names
+}
+
+/// Top symbol names by resolved use sites, highest first, name-ascending on a
+/// tie so the list is identical across runs. Names with no resolved use are
+/// omitted — a "most referenced" list of zeros is not a measurement.
 fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
-    let mut refs: Vec<_> = symbols
-        .iter()
-        .map(|s| (s.name.clone(), s.references.len()))
+    let mut refs: Vec<(String, usize)> = usage_counts_by_name(symbols)
+        .into_iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(name, count)| (name.to_string(), count))
         .collect();
 
-    refs.sort_by_key(|b| std::cmp::Reverse(b.1));
+    refs.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     refs.truncate(10);
     refs
 }
