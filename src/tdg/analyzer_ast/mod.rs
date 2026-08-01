@@ -30,3 +30,6 @@ pub struct TdgAnalyzerAst {
 include!("analyzer_impl1.rs");
 include!("analyzer_impl2.rs");
 include!("visitors.rs");
+
+#[cfg(test)]
+mod cwd_independence_tests;

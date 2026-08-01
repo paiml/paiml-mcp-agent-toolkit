@@ -298,7 +298,7 @@ mod coverage_instrumented_tests {
 
     #[test]
     fn test_ci_format_project_basic() {
-        let mut lang_dist = std::collections::HashMap::new();
+        let mut lang_dist = std::collections::BTreeMap::new();
         lang_dist.insert(Language::Rust, 8);
         lang_dist.insert(Language::Python, 2);
 
@@ -324,9 +324,15 @@ mod coverage_instrumented_tests {
                 },
             ],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::from([
+                (Grade::APLus, 1),
+                (Grade::AMinus, 1),
+                (Grade::B, 1),
+            ]),
             f_grade_count: 0,
             grade_capped: false,
+            files_reported: 3,
+            files_truncated: false,
         };
         let output = format_project(&project);
         assert!(output.contains("Project TDG Score Report"));
@@ -339,7 +345,7 @@ mod coverage_instrumented_tests {
 
     #[test]
     fn test_ci_format_project_single_file() {
-        let mut lang_dist = std::collections::HashMap::new();
+        let mut lang_dist = std::collections::BTreeMap::new();
         lang_dist.insert(Language::Go, 1);
 
         let project = ProjectScore {
@@ -352,9 +358,11 @@ mod coverage_instrumented_tests {
                 ..TdgScore::default()
             }],
             language_distribution: lang_dist,
-            grade_distribution: std::collections::HashMap::new(),
+            grade_distribution: std::collections::BTreeMap::from([(Grade::BMinus, 1)]),
             f_grade_count: 0,
             grade_capped: false,
+            files_reported: 1,
+            files_truncated: false,
         };
         let output = format_project(&project);
         assert!(output.contains("70.0/100"));

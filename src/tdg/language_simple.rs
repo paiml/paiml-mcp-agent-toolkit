@@ -2,7 +2,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+// Ord is derived so language-keyed maps can be BTreeMaps: the TDG project
+// report used to iterate a HashMap, which made `language_distribution` key
+// order (and the "most common language" tie-break) differ between runs on
+// identical input.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// Language.
 pub enum Language {
     Rust,

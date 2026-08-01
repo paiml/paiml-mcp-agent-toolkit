@@ -55,6 +55,9 @@ mod core_tests;
 #[cfg(test)]
 mod core_property_tests;
 
+#[cfg(test)]
+mod top_files_determinism_tests;
+
 pub use adaptive::{
     AdaptiveConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, CurrentThresholds,
     PerformanceSample, PerformanceStatistics, PerformanceTrend, ThresholdAdjustment,

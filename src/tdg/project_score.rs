@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::grade::Grade;
 use super::language_simple::Language;
@@ -14,17 +14,31 @@ pub struct ProjectScore {
     pub average_score: f32,
     #[serde(default)]
     pub average_grade: Grade,
+    /// Number of files ANALYSED. Independent of how many entries `files`
+    /// carries — see `files_reported`/`files_truncated`.
     pub total_files: usize,
-    pub language_distribution: HashMap<Language, usize>,
-    /// Grade distribution: count of files per grade (A+, A, ..., F)
+    // BTreeMap, not HashMap: these two maps are serialized straight into JSON,
+    // where HashMap iteration made the key order differ on every run for
+    // byte-identical input (6 runs -> 6 different grade_distribution orders).
+    pub language_distribution: BTreeMap<Language, usize>,
+    /// Grade distribution: count of files per grade (A+, A, ..., F).
+    /// Always covers every analysed file, even when `files` is truncated.
     #[serde(default)]
-    pub grade_distribution: HashMap<Grade, usize>,
+    pub grade_distribution: BTreeMap<Grade, usize>,
     /// Count of F-grade files (critical quality issues)
     #[serde(default)]
     pub f_grade_count: usize,
     /// Whether grade was capped due to F-grade files
     #[serde(default)]
     pub grade_capped: bool,
+    /// Number of entries actually present in `files`. Equals `total_files`
+    /// unless `--top-files` truncated the list.
+    #[serde(default)]
+    pub files_reported: usize,
+    /// True when `files` holds only the worst `--top-files` entries. A capped
+    /// list is never presented as the whole population.
+    #[serde(default)]
+    pub files_truncated: bool,
 }
 
 impl ProjectScore {
@@ -39,8 +53,8 @@ impl ProjectScore {
             0.0
         };
 
-        let mut language_distribution = HashMap::new();
-        let mut grade_distribution = HashMap::new();
+        let mut language_distribution = BTreeMap::new();
+        let mut grade_distribution = BTreeMap::new();
         let mut f_grade_count = 0;
 
         for score in &scores {
@@ -74,7 +88,39 @@ impl ProjectScore {
             grade_distribution,
             f_grade_count,
             grade_capped,
+            files_reported: total_files,
+            files_truncated: false,
         }
+    }
+
+    /// Keep only the `limit` WORST-scoring files in `files` (`limit == 0`
+    /// keeps every file), always in a deterministic worst-first order.
+    ///
+    /// This is what `analyze tdg -n/--top-files` means. The flag used to be a
+    /// complete no-op: `-n 5`, `-n 10` and `-n 100000` returned identical
+    /// output, and `-n 3` on a 1593-file tree still emitted all 1593 entries.
+    ///
+    /// Truncation NEVER touches `total_files`, `grade_distribution`,
+    /// `language_distribution`, `average_score` or `f_grade_count` — those stay
+    /// whole-project — and it records `files_reported` + `files_truncated` so a
+    /// capped list can never be mistaken for the full population.
+    pub fn limit_to_worst_files(&mut self, limit: usize) {
+        // Deterministic order regardless of filesystem walk order: worst score
+        // first, ties broken by path.
+        self.files.sort_by(|a, b| {
+            a.total
+                .partial_cmp(&b.total)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.file_path.cmp(&b.file_path))
+        });
+
+        if limit > 0 && limit < self.files.len() {
+            self.files.truncate(limit);
+            self.files_truncated = true;
+        } else {
+            self.files_truncated = false;
+        }
+        self.files_reported = self.files.len();
     }
 
     #[must_use]

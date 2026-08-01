@@ -5,7 +5,6 @@
 
 use super::CommandDispatcher;
 use crate::cli::commands::Commands;
-use crate::cli::enums::OutputFormat;
 use crate::cli::handlers;
 use std::sync::Arc;
 
@@ -57,27 +56,25 @@ impl CommandDispatcher {
                 markdown,
                 csv,
             } => {
-                let internal_format = match output_format {
-                    crate::cli::enums::ReportOutputFormat::Json => OutputFormat::Json,
-                    _ => OutputFormat::Table,
-                };
-                let analysis_strings: Vec<String> = analyses
-                    .iter()
-                    .map(|a| format!("{a:?}").to_lowercase())
-                    .collect();
-                Self::execute_report_command(
-                    Some(project_path),
-                    internal_format,
-                    include_visualizations,
-                    include_executive_summary,
-                    include_recommendations,
-                    analysis_strings,
-                    Some(f64::from(confidence_threshold) / 100.0),
-                    output,
-                    perf,
+                // Pass ReportOutputFormat straight through. It used to be
+                // squeezed into OutputFormat (everything non-JSON -> Table) and
+                // then widened back to ReportOutputFormat::Text, so
+                // `pmat report --output-format markdown` silently produced a
+                // plain-text report — a declared --format that did not do what
+                // it says. Verified: `-f markdown` emitted the Text renderer.
+                handlers::enhanced_reporting_handlers::handle_generate_report(
+                    project_path,
+                    output_format,
                     text,
                     markdown,
                     csv,
+                    include_visualizations,
+                    include_executive_summary,
+                    include_recommendations,
+                    analyses,
+                    confidence_threshold,
+                    output,
+                    perf,
                 )
                 .await
             }

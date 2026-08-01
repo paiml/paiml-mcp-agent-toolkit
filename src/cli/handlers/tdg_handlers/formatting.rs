@@ -60,86 +60,79 @@ pub(crate) fn format_tdg_score(
 }
 
 /// Format TDG score as table
+///
+/// Rows are padded from their MEASURED width (colour escapes excluded); the
+/// literal space runs this used to carry made the right border drift with the
+/// content, e.g. `(A+)` and `(F)` rows closing in different columns.
 fn format_tdg_score_table(
     score: &crate::tdg::TdgScore,
     git_context: Option<&crate::models::git_context::GitContext>,
     include_components: bool,
 ) -> Result<String> {
+    use crate::tdg::formatters::boxdraw::{box_blank, box_bottom, box_row, box_separator, box_top};
     let mut output = String::new();
+    let mut line = |text: String| {
+        output.push_str(&text);
+        output.push('\n');
+    };
 
     // Header
-    output.push_str("╭─────────────────────────────────────────────────╮\n");
-    if let Some(file_path) = &score.file_path {
-        output.push_str(&format!(
-            "│  TDG Score Report: {}              │\n",
+    line(box_top());
+    match &score.file_path {
+        Some(file_path) => line(box_row(&format!(
+            "TDG Score Report: {}",
             c::path(&file_path.display().to_string())
-        ));
-    } else {
-        output.push_str("│  TDG Score Report                              │\n");
+        ))),
+        None => line(box_row("TDG Score Report")),
     }
-    output.push_str("├─────────────────────────────────────────────────┤\n");
+    line(box_separator());
 
     // Overall score
     let grade_str = format_grade(score.grade);
-    output.push_str(&format!(
-        "│  Overall Score: {}/100 ({})                  │\n",
+    line(box_row(&format!(
+        "Overall Score: {}/100 ({})",
         c::number(&format!("{:.1}", score.total)),
         c::grade(&grade_str)
-    ));
-    output.push_str(&format!(
-        "│  Language: {:?} (confidence: {}%)             │\n",
+    )));
+    line(box_row(&format!(
+        "Language: {:?} (confidence: {}%)",
         score.language,
         c::number(&format!("{:.0}", score.confidence * 100.0))
-    ));
+    )));
 
     // Sprint 65: Git context (if available)
     if let Some(git) = git_context {
-        output.push_str("│                                                 │\n");
-        output.push_str("│  🔗 Git Context:                                │\n");
-        output.push_str(&format!(
-            "│  ├─ Commit:  {}                     │\n",
+        line(box_blank());
+        line(box_row("🔗 Git Context:"));
+        line(box_row(&format!(
+            "├─ Commit:  {}",
             c::number(&git.commit_sha_short)
-        ));
-        output.push_str(&format!(
-            "│  ├─ Branch:  {}                               │\n",
-            c::path(&git.branch)
-        ));
-        output.push_str(&format!(
-            "│  └─ Author:  {}                          │\n",
-            &git.author_name
-        ));
+        )));
+        line(box_row(&format!("├─ Branch:  {}", c::path(&git.branch))));
+        line(box_row(&format!("└─ Author:  {}", &git.author_name)));
     }
 
     if include_components {
-        output.push_str("│                                                 │\n");
-        output.push_str("│  📊 Breakdown:                                  │\n");
-        output.push_str(&format!(
-            "│  ├─ Structural:     {}/25                    │\n",
-            c::score(f64::from(score.structural_complexity), 25.0, 70.0, 40.0)
-        ));
-        output.push_str(&format!(
-            "│  ├─ Semantic:       {}/20                    │\n",
-            c::score(f64::from(score.semantic_complexity), 20.0, 70.0, 40.0)
-        ));
-        output.push_str(&format!(
-            "│  ├─ Duplication:    {}/20                    │\n",
-            c::score(f64::from(score.duplication_ratio), 20.0, 70.0, 40.0)
-        ));
-        output.push_str(&format!(
-            "│  ├─ Coupling:       {}/15                    │\n",
-            c::score(f64::from(score.coupling_score), 15.0, 70.0, 40.0)
-        ));
-        output.push_str(&format!(
-            "│  ├─ Documentation:  {}/10                    │\n",
-            c::score(f64::from(score.doc_coverage), 10.0, 70.0, 40.0)
-        ));
-        output.push_str(&format!(
-            "│  └─ Consistency:    {}/10                    │\n",
-            c::score(f64::from(score.consistency_score), 10.0, 70.0, 40.0)
-        ));
+        line(box_blank());
+        line(box_row("📊 Breakdown:"));
+        for (label, value, max) in [
+            ("├─ Structural:    ", score.structural_complexity, 25.0),
+            ("├─ Semantic:      ", score.semantic_complexity, 20.0),
+            ("├─ Duplication:   ", score.duplication_ratio, 20.0),
+            ("├─ Coupling:      ", score.coupling_score, 15.0),
+            ("├─ Documentation: ", score.doc_coverage, 10.0),
+            ("└─ Consistency:   ", score.consistency_score, 10.0),
+        ] {
+            // c::score already renders "earned/max", so the row must NOT append
+            // another "/25": the old template printed "25.0/25.0/25".
+            line(box_row(&format!(
+                "{label} {}",
+                c::score(f64::from(value), max, 70.0, 40.0)
+            )));
+        }
     }
 
-    output.push_str("╰─────────────────────────────────────────────────╯\n");
+    line(box_bottom());
     Ok(output)
 }
 
@@ -248,33 +241,36 @@ pub(crate) fn format_comparison(
     format: TdgOutputFormat,
 ) -> Result<String> {
     if format == TdgOutputFormat::Table {
+        use crate::tdg::formatters::boxdraw::{box_bottom, box_row, box_separator, box_top};
         let mut output = String::new();
-        output.push_str("╭─────────────────────────────────────────────────╮\n");
-        output.push_str("│  TDG Comparison                                 │\n");
-        output.push_str("├─────────────────────────────────────────────────┤\n");
+        let mut line = |text: String| {
+            output.push_str(&text);
+            output.push('\n');
+        };
+        line(box_top());
+        line(box_row("TDG Comparison"));
+        line(box_separator());
         let grade1 = format_grade(comparison.source1.grade);
         let grade2 = format_grade(comparison.source2.grade);
-        output.push_str(&format!(
-            "│  Source 1: {} ({})                           │\n",
+        line(box_row(&format!(
+            "Source 1: {} ({})",
             c::number(&format!("{:.1}", comparison.source1.total)),
             c::grade(&grade1)
-        ));
-        output.push_str(&format!(
-            "│  Source 2: {} ({})                           │\n",
+        )));
+        line(box_row(&format!(
+            "Source 2: {} ({})",
             c::number(&format!("{:.1}", comparison.source2.total)),
             c::grade(&grade2)
-        ));
-        output.push_str(&format!(
-            "│  Difference: {}                             │\n",
+        )));
+        line(box_row(&format!(
+            "Difference: {}",
             c::delta(f64::from(comparison.delta))
-        ));
-
-        output.push_str(&format!(
-            "│  Winner: {}                                      │\n",
+        )));
+        line(box_row(&format!(
+            "Winner: {}",
             c::label(&comparison.winner)
-        ));
-
-        output.push_str("╰─────────────────────────────────────────────────╯\n");
+        )));
+        line(box_bottom());
         Ok(output)
     } else {
         // For other formats, output as JSON

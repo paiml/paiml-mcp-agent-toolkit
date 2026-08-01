@@ -31,12 +31,14 @@ use tracing::info;
 /// * `include_recommendations` - Include actionable improvement recommendations
 /// * `analyses` - Specific analysis types to include in the report
 /// * `confidence_threshold` - Minimum confidence level for including findings (0-100)
-/// * `output` - Optional output file path (auto-generated if None)
+/// * `output` - Optional output file path; when None the report is written to
+///   stdout and NO file is created (a measurement tool must not write into the
+///   tree it measures — the old auto-named artifact inflated that tree's TDG)
 /// * `perf` - Enable performance optimizations
 ///
 /// # Returns
 ///
-/// * `Ok(())` - Report generation completed successfully and file written
+/// * `Ok(())` - Report generation completed successfully
 /// * `Err(anyhow::Error)` - Report generation failed with detailed error context
 ///
 /// # Report Components
@@ -122,7 +124,7 @@ use tracing::info;
 ///     false, // no recommendations
 ///     vec![AnalysisType::Complexity],
 ///     50,    // lower confidence threshold
-///     None,  // auto-generate filename
+///     None,  // no --output: report goes to stdout, no file is created
 ///     true,  // performance mode
 /// ).await;
 ///
@@ -200,7 +202,7 @@ pub async fn handle_generate_report(
     let service_format = convert_to_service_format(actual_format);
     let formatted_output = format_report_output(&service, &report, service_format)?;
 
-    write_report_output(formatted_output, output, service_format).await?;
+    write_report_output(formatted_output, output).await?;
 
     let elapsed = start_time.elapsed();
     print_report_summary(&report, elapsed, perf);
@@ -261,20 +263,39 @@ fn format_report_output(
     }
 }
 
-/// Write report output to file or auto-generated filename (cognitive complexity ≤4)
-async fn write_report_output(
-    formatted_output: String,
-    output: Option<PathBuf>,
-    service_format: ReportFormat,
-) -> Result<()> {
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &formatted_output).await?;
-        eprintln!("📄 Report saved to: {}", output_path.display());
-    } else {
-        let service = DefectReportService::new();
-        let filename = service.generate_filename(service_format);
-        tokio::fs::write(&filename, &formatted_output).await?;
-        eprintln!("📄 Report saved to: {}", filename);
+/// Where a generated report is delivered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ReportSink {
+    /// Explicit `--output <PATH>` given by the caller.
+    File(PathBuf),
+    /// No `--output`: the report goes to stdout and NOTHING is written to disk.
+    Stdout,
+}
+
+/// Decide where the report goes.
+///
+/// Round-3 defect: with no `--output` the command used to drop an
+/// auto-named `defect-report-<timestamp>.<ext>` artifact into the working
+/// directory — which for the common `pmat report -p .` invocation is the tree
+/// being measured. TDG scores `.md` files, so pmat graded its own output as
+/// project source and the score climbed on every run: on one fixture
+/// 74.78 (B-) with 0 reports present -> 84.83 (B+) -> 88.18 (A-) -> 89.86 (A-)
+/// -> 90.87 (A) after four invocations, without a line of source changing.
+/// A measurement tool must not write into the tree it measures, so an
+/// unrequested artifact is never created; stdout is the documented usage
+/// (`pmat report --json > defect-report.json`).
+pub(crate) fn report_sink(output: Option<PathBuf>) -> ReportSink {
+    output.map_or(ReportSink::Stdout, ReportSink::File)
+}
+
+/// Write report output to the explicit `--output` file, else to stdout.
+async fn write_report_output(formatted_output: String, output: Option<PathBuf>) -> Result<()> {
+    match report_sink(output) {
+        ReportSink::File(output_path) => {
+            tokio::fs::write(&output_path, &formatted_output).await?;
+            eprintln!("📄 Report saved to: {}", output_path.display());
+        }
+        ReportSink::Stdout => println!("{formatted_output}"),
     }
     Ok(())
 }
@@ -311,11 +332,73 @@ fn print_severity_summary(report: &DefectReport) {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    // use super::*; // Unused in simple tests
+    use super::*;
 
     #[test]
     fn test_enhanced_reporting_handlers_basic() {
         // Basic test
         assert_eq!(1 + 1, 2);
+    }
+
+    /// Regression: `pmat report` with no `--output` must not create a file.
+    /// It used to auto-write `defect-report-<ts>.md` into the working
+    /// directory — usually the tree being measured — which TDG then graded as
+    /// project source (74.78 B- -> 90.87 A over four runs on one fixture).
+    #[test]
+    fn test_report_sink_defaults_to_stdout_not_a_generated_file() {
+        assert_eq!(report_sink(None), ReportSink::Stdout);
+    }
+
+    #[test]
+    fn test_report_sink_honors_explicit_output_path() {
+        let path = PathBuf::from("/tmp/explicit-report.md");
+        assert_eq!(report_sink(Some(path.clone())), ReportSink::File(path));
+    }
+
+    /// Count `defect-report-*` artifacts sitting in the working directory.
+    fn auto_artifacts_in_cwd() -> Vec<PathBuf> {
+        let cwd = std::env::current_dir().expect("cwd");
+        std::fs::read_dir(cwd)
+            .expect("read_dir")
+            .filter_map(std::result::Result::ok)
+            .map(|e| e.path())
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with("defect-report-"))
+            })
+            .collect()
+    }
+
+    /// The default path must leave the working (== analysed) directory
+    /// unchanged, so a second measurement of the same tree sees the same files.
+    /// Pre-fix this call dropped `defect-report-<ts>.<ext>` next to the source.
+    #[tokio::test]
+    async fn test_write_report_output_creates_no_artifact_without_output_flag() {
+        let before = auto_artifacts_in_cwd();
+
+        write_report_output("# report body\n".to_string(), None)
+            .await
+            .expect("write");
+
+        let after = auto_artifacts_in_cwd();
+        assert_eq!(
+            before.len(),
+            after.len(),
+            "report must not drop an artifact into the tree it measures (before={before:?}, after={after:?})"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_write_report_output_writes_explicit_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let target = dir.path().join("out.md");
+        write_report_output("# body\n".to_string(), Some(target.clone()))
+            .await
+            .expect("write");
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("read back"),
+            "# body\n"
+        );
     }
 }

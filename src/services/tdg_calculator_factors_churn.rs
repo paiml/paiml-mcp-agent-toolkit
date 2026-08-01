@@ -16,7 +16,15 @@ fn churn_score_from_age(days_old: u64) -> f64 {
 impl TDGCalculator {
     /// Calculate churn factor based on git history
     async fn calculate_churn_factor(&self, path: &Path) -> Result<f64> {
-        let analysis = self.get_or_compute_churn_analysis().await?;
+        // No git history for this project root (not a repo, or git unavailable)
+        // is NOT a fatal condition: fall back to the same mtime-based estimate
+        // already used for files git does not know about. Propagating the error
+        // made `pmat report -p <path>` abort with
+        // `Error: Not found: No git repository found at "."` whenever it was
+        // invoked from a directory that is not itself a repository.
+        let Ok(analysis) = self.get_or_compute_churn_analysis().await else {
+            return self.calculate_churn_fallback(path).await;
+        };
         let relative_path = path.strip_prefix(&self.project_root).unwrap_or(path);
 
         if let Some(file_metrics) = analysis
