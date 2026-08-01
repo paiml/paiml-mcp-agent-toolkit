@@ -123,6 +123,7 @@
 //! let score = RustProjectScore::new();
 //! ```
 
+pub mod aggregation;
 pub mod build_perf_scorer;
 pub mod code_quality_scorer;
 pub mod command_runner;
