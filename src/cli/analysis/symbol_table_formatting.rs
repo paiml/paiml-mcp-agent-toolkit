@@ -34,7 +34,26 @@ fn apply_filters(
             .retain(|s| s.name.to_lowercase().contains(&q_lower));
     }
 
-    Ok(table)
+    Ok(rederive_summary(table))
+}
+
+/// Recompute the header/summary fields from the symbols that survived filtering.
+///
+/// Defect #654 (round 2): `--filter` retained only the matching symbols but left
+/// `total_symbols` at the pre-filter value — on a fixture with one struct and one
+/// function, `--filter functions` reported `total_symbols: 2` above a 1-element
+/// `symbols` array, and `unreferenced_symbols` still named the filtered-out
+/// struct. The header now counts the list it heads.
+fn rederive_summary(mut table: SymbolTable) -> SymbolTable {
+    let retained: std::collections::HashSet<String> =
+        table.symbols.iter().map(|s| s.name.clone()).collect();
+
+    table.total_symbols = table.symbols.len();
+    table
+        .unreferenced_symbols
+        .retain(|name| retained.contains(name));
+    table.most_referenced = find_most_referenced(&table.symbols);
+    table
 }
 
 /// Format symbol table output based on format type
@@ -85,17 +104,39 @@ pub fn format_output(
     table: SymbolTable,
     format: crate::cli::SymbolTableOutputFormat,
     show_unreferenced: bool,
-    _show_references: bool,
+    show_references: bool,
 ) -> Result<String> {
     match format {
         crate::cli::SymbolTableOutputFormat::Json => format_json_output(&table),
         crate::cli::SymbolTableOutputFormat::Human
-        | crate::cli::SymbolTableOutputFormat::Summary
-        | crate::cli::SymbolTableOutputFormat::Detailed => {
-            format_human_output(table, show_unreferenced)
-        }
+        | crate::cli::SymbolTableOutputFormat::Summary => format_human_output(
+            table,
+            HumanRender {
+                show_unreferenced,
+                show_references,
+                max_per_group: SYMBOLS_PER_GROUP_IN_SUMMARY,
+            },
+        ),
+        // `--help` advertises detailed as "Detailed output with all symbols";
+        // it used to be byte-identical to `summary`, listing 10 per group and
+        // no reference sites. It now lists every symbol with where it is used.
+        crate::cli::SymbolTableOutputFormat::Detailed => format_human_output(
+            table,
+            HumanRender {
+                show_unreferenced,
+                show_references: true,
+                max_per_group: usize::MAX,
+            },
+        ),
         crate::cli::SymbolTableOutputFormat::Csv => format_csv_output(table),
     }
+}
+
+/// What the text renderers should include.
+struct HumanRender {
+    show_unreferenced: bool,
+    show_references: bool,
+    max_per_group: usize,
 }
 
 /// Format JSON output (cognitive complexity ≤2)
@@ -104,13 +145,13 @@ fn format_json_output(table: &SymbolTable) -> Result<String> {
 }
 
 /// Format human-readable output (cognitive complexity ≤8)
-fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<String> {
+fn format_human_output(table: SymbolTable, opts: HumanRender) -> Result<String> {
     let mut output = String::new();
 
     write_header(&mut output, table.total_symbols)?;
-    write_symbols_by_type(&mut output, &table.symbols)?;
+    write_symbols_by_type(&mut output, &table.symbols, &opts)?;
 
-    if show_unreferenced {
+    if opts.show_unreferenced {
         write_unreferenced_symbols(&mut output, &table.unreferenced_symbols)?;
     }
 
@@ -139,19 +180,25 @@ fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
 }
 
 /// Write symbols grouped by type (cognitive complexity ≤8)
-fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> {
-    let by_type = group_symbols_by_type(symbols);
-
-    for (kind, syms) in by_type {
-        write_symbol_group(output, &kind, &syms)?;
+fn write_symbols_by_type(
+    output: &mut String,
+    symbols: &[Symbol],
+    opts: &HumanRender,
+) -> Result<()> {
+    for (kind, syms) in group_symbols_by_type(symbols) {
+        write_symbol_group(output, &kind, &syms, opts)?;
     }
 
     Ok(())
 }
 
 /// Group symbols by their kind (cognitive complexity ≤4)
-fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>> {
-    let mut by_type: HashMap<SymbolKind, Vec<&Symbol>> = HashMap::new();
+///
+/// A `BTreeMap` (not a `HashMap`) so the groups come out in `SymbolKind`
+/// declaration order: iterating a `HashMap` reordered the sections on every run,
+/// which made two runs over an unchanged tree produce different bytes.
+fn group_symbols_by_type(symbols: &[Symbol]) -> BTreeMap<SymbolKind, Vec<&Symbol>> {
+    let mut by_type: BTreeMap<SymbolKind, Vec<&Symbol>> = BTreeMap::new();
     for symbol in symbols {
         by_type.entry(symbol.kind.clone()).or_default().push(symbol);
     }
@@ -159,7 +206,12 @@ fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>
 }
 
 /// Write a single symbol group (cognitive complexity ≤6)
-fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) -> Result<()> {
+fn write_symbol_group(
+    output: &mut String,
+    kind: &SymbolKind,
+    syms: &[&Symbol],
+    opts: &HumanRender,
+) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -169,23 +221,67 @@ fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) 
         c::BOLD, kind, c::RESET, c::BOLD_WHITE, syms.len(), c::RESET
     )?;
 
-    for sym in syms.iter().take(10) {
+    for sym in syms.iter().take(opts.max_per_group) {
         writeln!(
             output,
             "  - {}{}{}  {}{}:{}{}",
             c::BOLD_WHITE, sym.name, c::RESET, c::CYAN, sym.file, sym.line, c::RESET
         )?;
+        if opts.show_references {
+            write_reference_sites(output, sym)?;
+        }
     }
 
-    if syms.len() > 10 {
+    if syms.len() > opts.max_per_group {
         writeln!(
             output,
             "  {}... and {} more{}",
-            c::DIM, syms.len() - 10, c::RESET
+            c::DIM,
+            syms.len() - opts.max_per_group,
+            c::RESET
         )?;
     }
 
     writeln!(output)?;
+    Ok(())
+}
+
+/// Write the resolved use sites for one symbol.
+///
+/// `--show-references` used to be bound to `_show_references` and discarded, so
+/// the flag changed nothing in the output. It now renders the sites that
+/// `resolve_references` actually attributed, and says so when there are none.
+fn write_reference_sites(output: &mut String, sym: &Symbol) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
+    let sites: Vec<String> = sym
+        .references
+        .iter()
+        .filter(|r| !matches!(r.kind, ReferenceKind::Definition))
+        .take(REFERENCE_SITES_SHOWN)
+        .map(|r| format!("{}:{}", extract_filename(&r.file), r.line))
+        .collect();
+
+    if sites.is_empty() {
+        writeln!(output, "      {}used at: none resolved{}", c::DIM, c::RESET)?;
+        return Ok(());
+    }
+
+    let total = usage_count(sym);
+    let suffix = if total > sites.len() {
+        format!(" (+{} more)", total - sites.len())
+    } else {
+        String::new()
+    };
+    writeln!(
+        output,
+        "      {}used at: {}{}{}",
+        c::DIM,
+        sites.join(", "),
+        suffix,
+        c::RESET
+    )?;
     Ok(())
 }
 
@@ -254,6 +350,10 @@ fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<(
 }
 
 /// Get file counts sorted by symbol count (cognitive complexity ≤5)
+///
+/// Ties break on the path, not on `HashMap` iteration order: the previous
+/// `sort_by_key(Reverse(count))` left equal-count files in hash order, so the
+/// "Top Files" table was reshuffled on every run of the same command.
 fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
     let mut file_counts: HashMap<&str, usize> = HashMap::new();
 
@@ -262,7 +362,7 @@ fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
     }
 
     let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
-    sorted_files.sort_by_key(|b| std::cmp::Reverse(b.1));
+    sorted_files.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
     sorted_files
 }
 

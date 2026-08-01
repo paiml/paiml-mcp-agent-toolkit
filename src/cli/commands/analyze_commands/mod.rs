@@ -1157,7 +1157,10 @@ pub enum AnalyzeCommands {
         filter: Option<SymbolTypeFilter>,
 
         /// Search query for specific symbols
-        #[arg(long, short = 'q')]
+        // No `short = 'q'`: the global `-q/--quiet` flag already owns it, and clap's
+        // debug assertion ("Short option names must be unique") aborted
+        // `pmat analyze symbol-table` outright in any debug build (#654).
+        #[arg(long)]
         query: Option<String>,
 
         /// Include file patterns
