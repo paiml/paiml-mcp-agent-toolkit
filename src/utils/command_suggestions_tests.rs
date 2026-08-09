@@ -68,7 +68,14 @@ mod extended_tests {
         assert!(examples.contains("pmat analyze dead-code"));
         assert!(examples.contains("pmat context"));
         assert!(examples.contains("pmat quality-gate"));
-        assert!(examples.contains("pmat agent start"));
+        assert!(examples.contains("pmat verify"));
+        // The old assertion pinned `pmat agent start` here, which is compiled
+        // out of the shipped build (#675) — the test was holding the defect in
+        // place. Assert the inverse so it can never come back.
+        assert!(
+            !examples.contains("pmat agent start"),
+            "help examples must run in the default build; the agent daemon does not"
+        );
     }
 
     #[test]

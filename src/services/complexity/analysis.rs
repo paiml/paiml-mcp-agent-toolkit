@@ -225,18 +225,23 @@ fn calculate_max_values(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (u16, 
 }
 
 /// Calculate technical debt hours from violations
+///
+/// The fold is seeded at `+0.0` on purpose. `Iterator::sum::<f32>()` seeds with
+/// `-0.0` (the additive identity that preserves signed zeros through a sum), so
+/// summing an *empty* violation list yields `-0.0`, and every violation-free
+/// project reported `"technical_debt_hours": -0.0` — negative debt, which is not
+/// a quantity that exists (#719). Seeding at `+0.0` changes no non-empty sum.
 pub(super) fn calculate_technical_debt(violations: &[Violation]) -> f32 {
-    let debt_minutes: f32 = violations
-        .iter()
-        .map(|v| match v {
+    let debt_minutes = violations.iter().fold(0.0_f32, |acc, v| {
+        acc + match v {
             Violation::Error {
                 value, threshold, ..
             } => f32::from(value - threshold) * 30.0,
             Violation::Warning {
                 value, threshold, ..
             } => f32::from(value - threshold) * 15.0,
-        })
-        .sum();
+        }
+    });
     debt_minutes / 60.0
 }
 

@@ -270,14 +270,42 @@ fn stage_clippy(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
     let (ok, out) = run(&mut check);
     let violations = parse_clippy_violations(&out);
     let detail = if violations.is_empty() {
-        tail(&out, 10)
+        first_error(&out).or_else(|| tail(&out, 10))
     } else {
         None
     };
     (ok, violations, detail)
 }
 
+/// First error-shaped line of a failed command's output.
+///
+/// Used instead of `tail` when a stage fails with no structured violations. The
+/// tail of a cargo build is the *end* of the progress stream ("Compiling pmat
+/// v3.28.2 …", "warning: build failed, waiting for other jobs to finish") — never
+/// the cause (#640). Cargo's own failures ("error: no such command: `clippy`")
+/// arrive as plain text on stderr, which `run` concatenates onto stdout, so they
+/// are findable here; `--message-format=json` diagnostics start with `{` and are
+/// skipped by the prefix test.
+fn first_error(output: &str) -> Option<String> {
+    output
+        .lines()
+        .map(str::trim)
+        .find(|l| l.starts_with("error"))
+        .map(str::to_string)
+}
+
 /// Parse `cargo clippy --message-format=json` output into structured violations.
+///
+/// Keeps **rustc errors as well as clippy lints**. The filter used to drop every
+/// diagnostic whose code did not start with `clippy::`, so a plain compile error
+/// — `error[E0063]: missing field ...` — left `violations` empty and pushed
+/// `detail` onto its last-10-lines fallback, which for a cargo build is progress
+/// noise ("Compiling pmat v3.28.2 …"). The one gate agents are told to trust
+/// reported strictly less than it already knew (#640).
+///
+/// rustc *warnings* stay filtered out: the clippy stage runs with `-D warnings`,
+/// so anything that actually fails the build arrives at `level == "error"`, and
+/// keeping warnings would bury the cause again under lints CI does not enforce.
 fn parse_clippy_violations(json_stream: &str) -> Vec<Violation> {
     let mut out = Vec::new();
     for line in json_stream.lines() {
@@ -293,7 +321,19 @@ fn parse_clippy_violations(json_stream: &str) -> Vec<Violation> {
             .and_then(|c| c.get("code"))
             .and_then(serde_json::Value::as_str)
             .unwrap_or_default();
-        if !rule.starts_with("clippy::") {
+        let level = msg
+            .get("level")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let text = msg
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        // rustc closes a failed build with "aborting due to N previous errors",
+        // which carries no code and no span. It is a count, not a cause.
+        let is_abort_summary = text.starts_with("aborting due to");
+        let keep = rule.starts_with("clippy::") || (level == "error" && !is_abort_summary);
+        if !keep {
             continue;
         }
         let span = msg
@@ -324,12 +364,15 @@ fn parse_clippy_violations(json_stream: &str) -> Vec<Violation> {
         out.push(Violation {
             file,
             line,
-            rule: rule.to_string(),
-            message: msg
-                .get("message")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
+            // A codeless rustc error ("could not compile `cc` (lib) due to 11
+            // previous errors") still needs a rule slug the JSON consumer can
+            // switch on; `rustc` says which tool spoke.
+            rule: if rule.is_empty() {
+                "rustc".to_string()
+            } else {
+                rule.to_string()
+            },
+            message: text.to_string(),
         });
     }
     out
@@ -396,9 +439,66 @@ mod tests {
         assert_eq!(v[0].line, 230);
     }
 
+    /// A rustc compile error must reach the report (#640).
+    ///
+    /// This is the exact shape that used to render as
+    /// `{"name":"clippy","ok":false,"detail":"{\"reason\":\"build-finished\"…"}`
+    /// — a red gate whose output did not contain the error.
+    #[test]
+    fn test_parse_clippy_violations_keeps_rustc_errors() {
+        let stream = r#"{"reason":"compiler-message","message":{"level":"error","code":{"code":"E0063"},"message":"missing field `tdg_measured` in initializer of `EvidenceSummary`","spans":[{"file_name":"src/services/evidence.rs","line_start":412,"is_primary":true}]}}
+{"reason":"compiler-message","message":{"level":"error","code":null,"message":"aborting due to 1 previous error","spans":[]}}
+{"reason":"compiler-message","message":{"level":"error","code":null,"message":"could not compile `cc` (lib) due to 11 previous errors","spans":[]}}
+{"reason":"build-finished","success":false}"#;
+        let v = parse_clippy_violations(stream);
+
+        assert_eq!(v.len(), 2, "got {v:?}");
+        assert_eq!(v[0].rule, "E0063");
+        assert_eq!(v[0].file, "src/services/evidence.rs");
+        assert_eq!(v[0].line, 412);
+        assert!(v[0].message.contains("tdg_measured"));
+        // Codeless rustc errors still carry a slug and their text.
+        assert_eq!(v[1].rule, "rustc");
+        assert!(v[1].message.contains("could not compile `cc`"));
+        // "aborting due to N previous errors" is a count, not a cause.
+        assert!(!v.iter().any(|x| x.message.starts_with("aborting due to")));
+    }
+
+    /// rustc *warnings* must stay out — `-D warnings` promotes the ones that
+    /// matter to errors, and keeping the rest re-buries the cause.
+    #[test]
+    fn test_parse_clippy_violations_drops_rustc_warnings() {
+        let stream = r#"{"reason":"compiler-message","message":{"level":"warning","code":{"code":"unused_imports"},"message":"unused import: `std::fmt`","spans":[{"file_name":"src/a.rs","line_start":3,"is_primary":true}]}}"#;
+        assert!(parse_clippy_violations(stream).is_empty());
+    }
+
     #[test]
     fn test_tail() {
         assert_eq!(tail("a\n\nb\nc", 2).as_deref(), Some("b\nc"));
         assert_eq!(tail("", 5), None);
+    }
+
+    /// The failure detail must be the first error, not the tail of the progress
+    /// stream (#640).
+    #[test]
+    fn test_first_error_prefers_the_cause_over_progress_noise() {
+        let out = "   Compiling pmat v3.29.1\n\
+                   error: no such command: `clippy`\n\
+                   \n\
+                   	Did you mean `check`?\n\
+                      Compiling serde v1.0.0\n\
+                   warning: build failed, waiting for other jobs to finish";
+        assert_eq!(
+            first_error(out).as_deref(),
+            Some("error: no such command: `clippy`")
+        );
+        // tail(10) would have returned the trailing progress lines instead.
+        assert!(tail(out, 10).unwrap().contains("waiting for other jobs"));
+    }
+
+    #[test]
+    fn test_first_error_none_when_output_has_no_error_line() {
+        assert_eq!(first_error("   Compiling pmat v3.29.1\n    Finished"), None);
+        assert_eq!(first_error(""), None);
     }
 }
