@@ -304,6 +304,21 @@ mod min_grade_flag_tests {
     }
 
     #[test]
+    fn min_grade_a_plus_counts_every_file_the_distribution_puts_below_a_plus() {
+        // The dogfood symptom ran the other way from `--min-grade F`: with
+        // `--min-grade A+` the printed grade distribution said 903 files were
+        // below A+ while the gate reported only 42 violations, because the
+        // built-in rust=B+ entry kept every A/A-/B+ .rs file out of the count.
+        let current = baseline_with("src/good.rs", 93.0, Grade::A);
+        let result = run_primary_gate(false, Some("A+"), None, &current).unwrap();
+        assert!(
+            !result.passed && result.violations.len() == 1,
+            "an A-grade .rs file is below A+ and must be counted, got: {:?}",
+            result.violations
+        );
+    }
+
+    #[test]
     fn without_min_grade_the_per_language_defaults_still_apply() {
         // Not passing --min-grade leaves the built-in rust=B+ table in place.
         let current = baseline_with("src/bad.rs", 83.0, Grade::B);

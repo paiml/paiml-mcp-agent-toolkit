@@ -69,3 +69,7 @@ include!("engine_scoring.rs");
 
 // --- impl AgentContextIndex: regex and literal search modes ---
 include!("engine_search.rs");
+
+#[cfg(test)]
+#[path = "path_pattern_glob_tests.rs"]
+mod path_pattern_glob_tests;

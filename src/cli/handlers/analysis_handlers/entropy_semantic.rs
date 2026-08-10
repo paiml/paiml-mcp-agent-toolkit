@@ -391,6 +391,20 @@ fn format_cluster_results(
                 );
             }
         }
+        OutputFormat::Summary => {
+            // `summary` is documented as "summary statistics only"; it used to be
+            // byte-identical to the default rendering, listing every file.
+            let _ = writeln!(
+                out,
+                "{} clustering: {} document(s) in {} cluster(s)",
+                result.method,
+                result.num_documents,
+                result.clusters.len()
+            );
+            for cluster in &result.clusters {
+                let _ = writeln!(out, "  cluster {}: {} file(s)", cluster.id, cluster.size);
+            }
+        }
         _ => {
             let _ = writeln!(out, "\n\u{1f4ca} Clustering Results ({}):", result.method);
             let _ = writeln!(out, "   Documents: {}", result.num_documents);
@@ -479,6 +493,25 @@ fn format_topic_results(
                     let _ = writeln!(out, "- {term} ({weight:.3})");
                 }
                 out.push('\n');
+            }
+        }
+        OutputFormat::Summary => {
+            // Counts only — see the note on the cluster renderer: `summary` used
+            // to print the full per-topic term listing, identical to `text`.
+            let _ = writeln!(
+                out,
+                "{} document(s), {} topic(s)",
+                result.num_documents,
+                result.topics.len()
+            );
+            for topic in &result.topics {
+                let _ = writeln!(
+                    out,
+                    "  topic {}: {} document(s), {} term(s)",
+                    topic.id,
+                    topic.document_count,
+                    topic.top_terms.len()
+                );
             }
         }
         _ => {
@@ -631,6 +664,7 @@ mod format_coverage_tests {
         let yaml = format_cluster_results(&result, &OutputFormat::Yaml).unwrap();
         let csv = format_cluster_results(&result, &OutputFormat::Csv).unwrap();
         let markdown = format_cluster_results(&result, &OutputFormat::Markdown).unwrap();
+        let summary = format_cluster_results(&result, &OutputFormat::Summary).unwrap();
         let table = format_cluster_results(&result, &OutputFormat::Table).unwrap();
 
         for (name, rendered) in [
@@ -638,6 +672,7 @@ mod format_coverage_tests {
             ("yaml", &yaml),
             ("csv", &csv),
             ("markdown", &markdown),
+            ("summary", &summary),
         ] {
             assert_ne!(
                 rendered, &table,
@@ -647,6 +682,11 @@ mod format_coverage_tests {
         assert!(csv.starts_with("cluster_id,size,file"));
         assert!(markdown.starts_with("# Clustering Results"));
         assert!(yaml.contains("method: kmeans"));
+        // "Summary statistics only" means no per-file listing.
+        assert!(
+            !summary.contains("src/lib.rs"),
+            "--format summary must not print the full per-file listing: {summary}"
+        );
     }
 
     #[test]
@@ -655,12 +695,19 @@ mod format_coverage_tests {
         let csv = format_topic_results(&result, &OutputFormat::Csv).unwrap();
         let markdown = format_topic_results(&result, &OutputFormat::Markdown).unwrap();
         let yaml = format_topic_results(&result, &OutputFormat::Yaml).unwrap();
+        let summary = format_topic_results(&result, &OutputFormat::Summary).unwrap();
         let table = format_topic_results(&result, &OutputFormat::Table).unwrap();
 
         assert!(csv.starts_with("topic_id,document_count,term,weight"));
         assert_ne!(markdown, table);
         assert_ne!(yaml, table);
+        assert_ne!(summary, table);
         assert!(yaml.contains("num_topics"));
+        // "Summary statistics only": counts, not the per-topic term listing.
+        assert!(
+            !summary.contains("network"),
+            "--format summary must not print the term listing: {summary}"
+        );
     }
 
     #[test]
