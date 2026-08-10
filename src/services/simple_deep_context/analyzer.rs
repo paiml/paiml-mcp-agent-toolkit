@@ -114,12 +114,32 @@ impl SimpleDeepContext {
         })
     }
 
+    /// Build the matcher for `--exclude-pattern` (and the common exclusions the
+    /// handler appends).
+    ///
+    /// `analyze deep-context --exclude-pattern '**/*.py'` used to produce a
+    /// byte-identical report to a run without it — `SimpleAnalysisConfig` stored
+    /// `exclude_patterns` and nothing ever read them. An unparseable pattern is
+    /// an error rather than a silently dropped filter, for the same reason.
+    pub(super) fn build_exclude_matcher(patterns: &[String]) -> Result<Option<globset::GlobSet>> {
+        if patterns.is_empty() {
+            return Ok(None);
+        }
+        let mut builder = globset::GlobSetBuilder::new();
+        for pattern in patterns {
+            let glob = globset::Glob::new(pattern)
+                .map_err(|e| anyhow::anyhow!("invalid --exclude-pattern '{pattern}': {e}"))?;
+            builder.add(glob);
+        }
+        Ok(Some(builder.build()?))
+    }
+
     /// Discover source files in the project
     pub(super) async fn discover_source_files(
         &self,
         config: &SimpleAnalysisConfig,
     ) -> Result<Vec<PathBuf>> {
-        use walkdir::WalkDir;
+        use ignore::WalkBuilder;
 
         let source_extensions = [
             "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "h", "wasm", "wat", "rb", "ruchy",
@@ -133,12 +153,25 @@ impl SimpleDeepContext {
             std::env::current_dir()?.join(&config.project_path)
         };
 
+        let excludes = Self::build_exclude_matcher(&config.exclude_patterns)?;
+
         let mut files = Vec::new();
-        for entry in WalkDir::new(&abs_project_path)
+        // Gitignore-aware walk. A bare `WalkDir` here counted every file under
+        // gitignored paths: on this repo the ephemeral `.claude/worktrees/`
+        // duplicate checkouts took `file_count` to 222022 for a tree with 5,497
+        // tracked files (and `total_functions` to 1,012,834 against 25,593).
+        // Duplicating a checkout must not change what the project measures.
+        for entry in WalkBuilder::new(&abs_project_path)
             .follow_links(false)
-            .into_iter()
+            .hidden(false)
+            .parents(true)
+            .ignore(true)
+            .git_ignore(true)
+            .git_global(true)
+            .git_exclude(true)
+            .build()
             .filter_map(std::result::Result::ok)
-            .filter(|e| e.file_type().is_file())
+            .filter(|e| e.file_type().is_some_and(|t| t.is_file()))
         {
             let path = entry.path();
 
@@ -156,6 +189,13 @@ impl SimpleDeepContext {
             };
             if !source_extensions.contains(&ext) {
                 continue;
+            }
+
+            if let Some(excludes) = &excludes {
+                let relative = path.strip_prefix(&abs_project_path).unwrap_or(path);
+                if excludes.is_match(path) || excludes.is_match(relative) {
+                    continue;
+                }
             }
 
             if config.include_patterns.is_empty()
@@ -486,5 +526,80 @@ impl SimpleDeepContext {
         }
 
         markdown
+    }
+}
+
+#[cfg(test)]
+mod discovery_regression_tests {
+    //! What `analyze deep-context` counts as "the project".
+    use super::*;
+
+    fn config(dir: &Path, exclude_patterns: Vec<String>) -> SimpleAnalysisConfig {
+        SimpleAnalysisConfig {
+            project_path: dir.to_path_buf(),
+            include_features: vec![],
+            include_patterns: vec![],
+            exclude_patterns,
+            enable_verbose: false,
+        }
+    }
+
+    #[tokio::test]
+    async fn gitignored_paths_are_not_analyzed() {
+        let dir = tempfile::tempdir().unwrap();
+        // `ignore` applies .gitignore only inside a git repository.
+        std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "worktrees/\n").unwrap();
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}\n").unwrap();
+        std::fs::create_dir_all(dir.path().join("worktrees/copy")).unwrap();
+        std::fs::write(dir.path().join("worktrees/copy/main.rs"), "fn main() {}\n").unwrap();
+
+        let files = SimpleDeepContext::new()
+            .discover_source_files(&config(dir.path(), vec![]))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            files.len(),
+            1,
+            "a gitignored duplicate checkout must not double the file count: {files:?}"
+        );
+        assert!(files[0].ends_with("main.rs"));
+    }
+
+    #[tokio::test]
+    async fn exclude_patterns_drop_matching_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("main.py"), "def main():\n    pass\n").unwrap();
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}\n").unwrap();
+
+        let all = SimpleDeepContext::new()
+            .discover_source_files(&config(dir.path(), vec![]))
+            .await
+            .unwrap();
+        assert_eq!(all.len(), 2);
+
+        let filtered = SimpleDeepContext::new()
+            .discover_source_files(&config(dir.path(), vec!["**/*.py".to_string()]))
+            .await
+            .unwrap();
+        assert_eq!(
+            filtered.len(),
+            1,
+            "--exclude-pattern '**/*.py' must drop the python file: {filtered:?}"
+        );
+        assert!(filtered[0].ends_with("main.rs"));
+    }
+
+    #[tokio::test]
+    async fn an_unparseable_exclude_pattern_is_reported_not_dropped() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}\n").unwrap();
+
+        let err = SimpleDeepContext::new()
+            .discover_source_files(&config(dir.path(), vec!["[".to_string()]))
+            .await
+            .expect_err("an unparseable pattern must not silently filter nothing");
+        assert!(err.to_string().contains("--exclude-pattern"), "{err}");
     }
 }

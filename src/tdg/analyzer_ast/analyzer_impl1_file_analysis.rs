@@ -68,7 +68,7 @@ impl TdgAnalyzerAst {
         start_time: SystemTime,
     ) -> Result<Option<TdgScore>> {
         if let Some(storage) = &self.storage {
-            if let Some(hot_entry) = storage.get_hot(content_hash) {
+            if storage.get_hot(content_hash).is_some() {
                 // Record performance sample for cache hit
                 if let Some(adaptive) = &self.adaptive_manager {
                     let duration = start_time.elapsed().unwrap_or_default();
@@ -76,17 +76,27 @@ impl TdgAnalyzerAst {
                     adaptive.record_sample(sample).await?;
                 }
 
-                // Return cached score with updated timestamp
-                let mut cached_score = TdgScore {
-                    total: hot_entry.total_score,
-                    grade: Grade::from_score(hot_entry.total_score),
-                    language,
-                    confidence: language.confidence(),
-                    file_path: Some(path.to_path_buf()),
-                    ..Default::default()
-                };
-                cached_score.calculate_total();
-                return Ok(Some(cached_score));
+                // A hot-cache entry carries only `total_score` and a grade byte, so
+                // the score used to be rebuilt as `TdgScore { total, ..Default::default() }`
+                // — and `TdgScore::default()` seeds every component with its category
+                // MAXIMUM (25+20+20+15+10+10 = 100). The `calculate_total()` call that
+                // followed re-derived `total` from those maxima, so every content-hash
+                // cache HIT was rewritten to 100.0 / A+, discarding the measured score.
+                // `pmat tdg compare <p> <p>` showed it plainly: source 1 88.0 (A-),
+                // source 2 (the cache hit) 100.0 (A+), "Winner: source2".
+                //
+                // Rebuild from the persisted full record, which carries the real
+                // component breakdown. If that record cannot be read, treat it as a
+                // miss and re-analyze rather than inventing a breakdown we never
+                // measured.
+                if let Some(record) = storage.retrieve_full(content_hash).await.ok().flatten() {
+                    let mut cached_score = record.score;
+                    cached_score.language = language;
+                    cached_score.confidence = language.confidence();
+                    cached_score.file_path = Some(path.to_path_buf());
+                    return Ok(Some(cached_score));
+                }
+                return Ok(None);
             }
         }
         Ok(None)
@@ -205,5 +215,96 @@ impl TdgAnalyzerAst {
 
         self.analyze_file_with_priority(path, OperationPriority::Low)
             .await
+    }
+}
+
+/// Regression tests for the hot-cache score reconstruction.
+///
+/// A cache HIT used to be rebuilt from `TdgScore::default()` (whose components
+/// are the category maxima) and then re-totalled, so the second analysis of the
+/// same content always came back as 100.0 / A+ regardless of what the first
+/// analysis measured.
+#[cfg(test)]
+mod hot_cache_score_regression_tests {
+    use super::*;
+
+    /// A file with enough branching and no documentation that it cannot score a
+    /// perfect 100 — the test is only meaningful when the measured score differs
+    /// from the maxed-out default.
+    const IMPERFECT_SOURCE: &str = r#"
+pub fn classify(a: i32, b: i32, c: i32) -> i32 {
+    let mut acc = 0;
+    for i in 0..a {
+        if i % 2 == 0 && b > 0 {
+            acc += i * b;
+        } else if i % 3 == 0 || c < 0 {
+            acc -= i;
+        } else {
+            match i % 5 {
+                0 => acc += 1,
+                1 => acc -= 1,
+                2 => acc *= 2,
+                _ => acc = acc.saturating_add(c),
+            }
+        }
+    }
+    while acc > 1000 {
+        acc /= 2;
+    }
+    acc
+}
+
+pub fn classify_again(a: i32, b: i32, c: i32) -> i32 {
+    let mut acc = 0;
+    for i in 0..a {
+        if i % 2 == 0 && b > 0 {
+            acc += i * b;
+        } else if i % 3 == 0 || c < 0 {
+            acc -= i;
+        } else {
+            match i % 5 {
+                0 => acc += 1,
+                1 => acc -= 1,
+                2 => acc *= 2,
+                _ => acc = acc.saturating_add(c),
+            }
+        }
+    }
+    acc
+}
+"#;
+
+    #[tokio::test]
+    async fn cache_hit_returns_the_measured_score_not_a_perfect_100() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("hot.rs");
+        fs::write(&file, IMPERFECT_SOURCE).expect("write fixture");
+
+        let analyzer = TdgAnalyzerAst::with_in_memory_storage(TdgConfig::default());
+
+        let first = analyzer.analyze_file(&file).await.expect("first analysis");
+        assert!(
+            first.total < 99.9,
+            "fixture must not score a perfect 100 or the regression is untestable (got {})",
+            first.total
+        );
+
+        // Same content hash => hot-cache hit.
+        let second = analyzer
+            .analyze_file(&file)
+            .await
+            .expect("second analysis (cache hit)");
+
+        assert!(
+            (second.total - first.total).abs() < 0.01,
+            "cache hit returned {} but the file measures {}",
+            second.total,
+            first.total
+        );
+        assert_eq!(
+            second.grade, first.grade,
+            "cache hit regraded the file from {:?} to {:?}",
+            first.grade, second.grade
+        );
     }
 }

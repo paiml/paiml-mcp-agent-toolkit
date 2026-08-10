@@ -6,26 +6,36 @@
 //! docs/specifications/pre-commit-hooks-spec.md
 
 use crate::cli::commands::{ConfigCommands, ConfigFormat};
-use crate::services::configuration_service::{configuration, PmatConfig};
+use crate::services::configuration_service::{configuration, ConfigurationService, PmatConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 
 /// Configuration command interface implementation
-pub struct ConfigCommand {}
+pub struct ConfigCommand {
+    config_path: PathBuf,
+}
 
 impl ConfigCommand {
     /// Create new config command with specified config file
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub fn new(_config_path: PathBuf) -> Self {
-        Self {}
+    pub fn new(config_path: PathBuf) -> Self {
+        Self { config_path }
+    }
+
+    /// Configuration as read from the file this command was pointed at.
+    ///
+    /// The path used to be dropped on the floor (`_config_path`) and every
+    /// reader went to the global service, so `--config-path` and the values
+    /// written by `config --set` had no effect on what was reported.
+    fn config(&self) -> Result<PmatConfig> {
+        ConfigurationService::new(Some(self.config_path.clone())).get_config()
     }
 
     /// Show complete configuration in specified format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn show(&self, format: ConfigFormat) -> Result<String> {
-        let config_service = configuration();
-        let config = config_service.get_config()?;
+        let config = self.config()?;
 
         match format {
             ConfigFormat::Json => Ok(serde_json::to_string_pretty(&config)?),
@@ -37,8 +47,7 @@ impl ConfigCommand {
     /// Get specific configuration value by key path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get(&self, key: &str) -> Result<String> {
-        let config_service = configuration();
-        let config = config_service.get_config()?;
+        let config = self.config()?;
 
         self.get_config_value(&config, key)
     }
@@ -46,8 +55,7 @@ impl ConfigCommand {
     /// Validate configuration file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn validate(&self) -> Result<ValidationResult> {
-        let config_service = configuration();
-        let config = config_service.get_config()?;
+        let config = self.config()?;
 
         let mut errors = Vec::new();
         let warnings = Vec::new();
@@ -358,6 +366,33 @@ request_timeout_seconds = 30
         // Test Env format
         let env_result = config_cmd.show(ConfigFormat::Env).await;
         assert!(env_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_config_reads_the_file_it_was_given() {
+        // Regression: the path handed to ConfigCommand::new was discarded and
+        // every reader answered from the global default config, so a value
+        // persisted by `config --set` was never reported back.
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("pmat.toml");
+        let mut on_disk =
+            crate::services::configuration_service::ConfigurationService::default_config();
+        on_disk.quality.max_complexity = 5;
+        std::fs::write(&config_path, toml::to_string_pretty(&on_disk).unwrap()).unwrap();
+
+        let config_cmd = ConfigCommand::new(config_path);
+
+        let value = config_cmd
+            .get("hooks.quality_gates.max_cyclomatic_complexity")
+            .await
+            .unwrap();
+        assert_eq!(value, "5");
+
+        let shown = config_cmd.show(ConfigFormat::Env).await.unwrap();
+        assert!(
+            shown.contains("PMAT_MAX_CYCLOMATIC_COMPLEXITY=5"),
+            "show() must report the on-disk value, got:\n{shown}"
+        );
     }
 
     #[tokio::test]

@@ -54,6 +54,13 @@ async fn handle_discovery_run(
 
     // Create discovery report (check both stdout and stderr for summary lines)
     let combined_for_count = format!("{}\n{}", stdout, stderr);
+
+    // A runner that never started (missing `cargo nextest`, build failure) used
+    // to be indistinguishable from a clean run: `output.status` was discarded,
+    // the empty output parsed to zero tests, and the command printed
+    // "✅ Discovery complete: Total tests: 0" and exited 0. Zero tests executed
+    // is not a green run — it is a run that produced no evidence at all.
+    check_runner_actually_ran(&output.status, &combined_for_count, &stderr)?;
     let report = DiscoveryReport {
         total_tests: count_total_tests(&combined_for_count)?,
         failures: failures.len(),
@@ -77,6 +84,51 @@ async fn handle_discovery_run(
     print_category_summary(&failures);
 
     Ok(())
+}
+
+/// True when the captured output contains a runner summary line, i.e. proof
+/// that a test binary actually ran to completion.
+fn has_test_summary_line(output: &str) -> bool {
+    output.lines().map(str::trim).any(|line| {
+        line.starts_with("test result:")
+            || (line.starts_with("Summary") && line.contains("tests run"))
+    })
+}
+
+/// Distinguish "tests ran and some failed" from "the runner never ran".
+///
+/// A failing test suite exits non-zero *and* prints a summary line; a missing
+/// `cargo nextest` or a build failure exits non-zero with no summary at all.
+/// Only the second case is an error here — reporting it as a zero-test success
+/// is what let a broken runner masquerade as a green discovery.
+fn check_runner_actually_ran(
+    status: &std::process::ExitStatus,
+    combined_output: &str,
+    stderr: &str,
+) -> Result<()> {
+    if status.success() || has_test_summary_line(combined_output) {
+        return Ok(());
+    }
+
+    let detail = stderr.trim();
+    let detail = if detail.is_empty() {
+        "no output captured".to_string()
+    } else {
+        // Keep the tail: cargo puts the actual error last.
+        detail
+            .lines()
+            .rev()
+            .take(20)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    anyhow::bail!(
+        "test runner did not run any tests (exit status: {status}); no test summary line was produced.\n{detail}"
+    )
 }
 
 /// Parse test output to extract failures from human-readable cargo test / nextest output.
@@ -242,6 +294,57 @@ fn extract_number_before(s: &str, suffix: &str) -> Option<usize> {
     let num_str: String = before.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
     let num_str: String = num_str.chars().rev().collect();
     num_str.parse().ok()
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(all(test, unix))]
+mod runner_status_tests {
+    use super::*;
+
+    fn status(code_is_zero: bool) -> std::process::ExitStatus {
+        let program = if code_is_zero { "true" } else { "false" };
+        std::process::Command::new(program)
+            .status()
+            .expect("spawn /bin/true or /bin/false")
+    }
+
+    #[test]
+    fn runner_that_never_started_is_an_error() {
+        // `cargo nextest` missing: non-zero exit, no summary line anywhere.
+        let stderr = "error: no such command: nextest\n";
+        let err = check_runner_actually_ran(&status(false), stderr, stderr)
+            .expect_err("a runner that produced no test summary must not be a success");
+        let msg = err.to_string();
+        assert!(msg.contains("did not run any tests"), "{msg}");
+        assert!(msg.contains("no such command: nextest"), "{msg}");
+    }
+
+    #[test]
+    fn failing_tests_with_a_cargo_summary_are_not_a_runner_error() {
+        let out = "test foo ... FAILED\ntest result: FAILED. 1 passed; 2 failed; 0 ignored\n";
+        assert!(check_runner_actually_ran(&status(false), out, "").is_ok());
+    }
+
+    #[test]
+    fn failing_tests_with_a_nextest_summary_are_not_a_runner_error() {
+        let out = "Summary [   1.234s] 3 tests run: 1 passed, 2 failed, 0 skipped\n";
+        assert!(check_runner_actually_ran(&status(false), out, "").is_ok());
+    }
+
+    #[test]
+    fn successful_run_is_never_an_error() {
+        assert!(check_runner_actually_ran(&status(true), "", "").is_ok());
+    }
+
+    #[test]
+    fn has_test_summary_line_needs_a_real_summary() {
+        assert!(!has_test_summary_line(""));
+        assert!(!has_test_summary_line("error: could not compile `foo`"));
+        assert!(has_test_summary_line("   test result: ok. 3 passed; 0 failed"));
+        assert!(has_test_summary_line(
+            "Summary [   0.1s] 3 tests run: 3 passed, 0 failed, 0 skipped"
+        ));
+    }
 }
 
 /// Print categorized summary

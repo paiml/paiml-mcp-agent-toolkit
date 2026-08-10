@@ -655,22 +655,101 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
+    /// This test used to read "Since validation_passed is hardcoded to true,
+    /// strict mode should pass" — it asserted the defect. An EMPTY directory
+    /// measures nothing, and two of the four thresholds the header prints
+    /// (coverage, TDG) are not measured at all, so strict mode must refuse
+    /// rather than certify.
     #[tokio::test]
-    async fn test_handle_qdd_validate_strict_mode_passes() {
+    async fn test_handle_qdd_validate_strict_mode_refuses_unmeasured_thresholds() {
         let temp_dir = TempDir::new().unwrap();
         let path = temp_dir.path().to_path_buf();
 
-        // Since validation_passed is hardcoded to true, strict mode should pass
-        let result = handle_qdd_validate(
+        let err = handle_qdd_validate(
             path,
             QddQualityProfile::Extreme,
             QddOutputFormat::Summary,
             None,
             true,
         )
-        .await;
+        .await
+        .expect_err("strict mode cannot pass on thresholds nothing measured");
 
-        assert!(result.is_ok());
+        let rendered = format!("{err:#}");
+        assert!(
+            rendered.contains("not measured"),
+            "the error must say what was not measured, got: {rendered}"
+        );
+    }
+
+    /// The stub passed for a path that does not exist.
+    #[tokio::test]
+    async fn test_handle_qdd_validate_rejects_a_missing_path() {
+        let missing = PathBuf::from("/does/not/exist.rs");
+        let err = handle_qdd_validate(
+            missing.clone(),
+            QddQualityProfile::Standard,
+            QddOutputFormat::Summary,
+            None,
+            false,
+        )
+        .await
+        .expect_err("a path that does not exist must not be validated");
+        assert!(format!("{err:#}").contains("/does/not/exist.rs"));
+    }
+
+    /// A file that violates the thresholds the command prints must FAIL. The
+    /// stub reported "Validation Summary: PASSED" for this repository, whose own
+    /// printed limits ("Max Complexity: 10, Zero SATD: true") it breaks.
+    #[tokio::test]
+    async fn test_handle_qdd_validate_fails_on_real_violations() {
+        let temp_dir = TempDir::new().unwrap();
+        let file = temp_dir.path().join("hot.rs");
+        let mut body = String::from("// TODO: this is self-admitted debt\nfn hot(n: i32) -> i32 {\n    let mut acc = 0;\n");
+        for i in 0..30 {
+            body.push_str(&format!("    if n > {i} {{ acc += {i}; }}\n"));
+        }
+        body.push_str("    acc\n}\n");
+        std::fs::write(&file, body).unwrap();
+
+        let outcome = run_validation_checks(&file, &QualityProfile::standard()).await;
+        assert_eq!(outcome.status(), "failed", "{}", outcome.strict_reason());
+        assert!(!outcome.passed());
+
+        let json = build_validation_json(&outcome, QddQualityProfile::Standard, &file);
+        assert_eq!(json["status"], "failed");
+        let violations = json["violations"].as_array().expect("violations array");
+        assert!(
+            violations.len() >= 2,
+            "complexity and SATD must both be reported: {violations:?}"
+        );
+    }
+
+    /// Coverage and TDG are printed as thresholds but nothing here measures
+    /// them, so they must be reported as unmeasured rather than PASSED.
+    #[tokio::test]
+    async fn test_handle_qdd_validate_never_claims_unmeasured_checks_passed() {
+        let temp_dir = TempDir::new().unwrap();
+        let file = temp_dir.path().join("clean.rs");
+        std::fs::write(&file, "fn clean() -> i32 {\n    1\n}\n").unwrap();
+
+        let outcome = run_validation_checks(&file, &QualityProfile::standard()).await;
+        assert_eq!(
+            outcome.status(),
+            "incomplete",
+            "clean code with unmeasured thresholds is not a pass: {}",
+            outcome.strict_reason()
+        );
+
+        let json = build_validation_json(&outcome, QddQualityProfile::Standard, &file);
+        let unmeasured: Vec<String> = json["not_measured"]
+            .as_array()
+            .expect("not_measured array")
+            .iter()
+            .map(|v| v["check"].as_str().unwrap_or_default().to_string())
+            .collect();
+        assert!(unmeasured.contains(&"coverage".to_string()), "{unmeasured:?}");
+        assert!(unmeasured.contains(&"tdg".to_string()), "{unmeasured:?}");
     }
 
     // ===============================================================
@@ -1158,25 +1237,36 @@ mod coverage_tests {
     // Tests for build_validation_json (JSON purity)
     // ===============================================================
 
+    fn outcome_of(checks: Vec<(&'static str, CheckOutcome)>) -> ValidationOutcome {
+        ValidationOutcome { checks }
+    }
+
     #[test]
     fn test_build_validation_json_passed() {
         let path = PathBuf::from("src/utils/scratch.rs");
-        let json = build_validation_json(true, QddQualityProfile::Standard, &path);
+        let outcome = outcome_of(vec![("complexity", CheckOutcome::Passed("ok".into()))]);
+        let json = build_validation_json(&outcome, QddQualityProfile::Standard, &path);
 
         assert_eq!(json["status"], "passed");
         assert_eq!(json["profile"], "standard");
         assert_eq!(json["path"], "src/utils/scratch.rs");
         assert!(json["validation_time"].is_string());
+        assert!(json["violations"].as_array().unwrap().is_empty());
     }
 
     #[test]
     fn test_build_validation_json_failed() {
         let path = PathBuf::from("/some/dir");
-        let json = build_validation_json(false, QddQualityProfile::Extreme, &path);
+        let outcome = outcome_of(vec![(
+            "complexity",
+            CheckOutcome::Failed("a::b has cyclomatic complexity 31".into()),
+        )]);
+        let json = build_validation_json(&outcome, QddQualityProfile::Extreme, &path);
 
         assert_eq!(json["status"], "failed");
         assert_eq!(json["profile"], "extreme");
         assert_eq!(json["path"], "/some/dir");
+        assert_eq!(json["violations"][0]["check"], "complexity");
     }
 
     #[test]
@@ -1184,7 +1274,8 @@ mod coverage_tests {
         // Stdout in JSON mode is exactly this pretty-printed payload: it must
         // start with '{' (no ANSI header) and round-trip through a JSON parser.
         let path = PathBuf::from(".");
-        let json = build_validation_json(true, QddQualityProfile::Relaxed, &path);
+        let outcome = outcome_of(vec![("complexity", CheckOutcome::Passed("ok".into()))]);
+        let json = build_validation_json(&outcome, QddQualityProfile::Relaxed, &path);
         let pretty = serde_json::to_string_pretty(&json).unwrap();
 
         assert!(pretty.starts_with('{'));

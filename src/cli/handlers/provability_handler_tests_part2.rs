@@ -5,6 +5,25 @@
 // Full handler integration tests
 // ============================================================
 
+/// Write a project containing exactly the named functions.
+///
+/// These tests used to pass an EMPTY `TempDir` together with `--functions
+/// <name>` and assert `is_ok()`. That asserted the fabrication the handler was
+/// fixed for: every spec was turned into a `FunctionId` with no lookup, so
+/// `--functions ghost` against an empty directory printed "✓ Analyzed 1
+/// functions" and scored it 20.0%. Naming a function that does not exist is now
+/// an error, so each format test gets a project where its function really does
+/// exist — which is what these tests were always meant to exercise.
+fn project_with_functions(temp: &TempDir, names: &[&str]) {
+    let src = temp.path().join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    let body: String = names
+        .iter()
+        .map(|n| format!("pub fn {n}(x: i32) -> i32 {{ if x > 0 {{ x }} else {{ -x }} }}\n"))
+        .collect();
+    std::fs::write(src.join("lib.rs"), body).unwrap();
+}
+
 #[tokio::test]
 async fn test_handle_analyze_provability_with_output_file() {
     let temp_dir = TempDir::new().unwrap();
@@ -34,6 +53,7 @@ async fn test_handle_analyze_provability_with_output_file() {
 #[tokio::test]
 async fn test_handle_analyze_provability_summary_format() {
     let temp_dir = TempDir::new().unwrap();
+    project_with_functions(&temp_dir, &["test_func"]);
 
     let config = ProvabilityConfig {
         project_path: temp_dir.path().to_path_buf(),
@@ -53,6 +73,7 @@ async fn test_handle_analyze_provability_summary_format() {
 #[tokio::test]
 async fn test_handle_analyze_provability_sarif_format() {
     let temp_dir = TempDir::new().unwrap();
+    project_with_functions(&temp_dir, &["main"]);
     let output_path = temp_dir.path().join("analysis.sarif");
 
     let config = ProvabilityConfig {
@@ -76,6 +97,7 @@ async fn test_handle_analyze_provability_sarif_format() {
 #[tokio::test]
 async fn test_handle_analyze_provability_full_format_with_evidence() {
     let temp_dir = TempDir::new().unwrap();
+    project_with_functions(&temp_dir, &["complex_fn"]);
 
     let config = ProvabilityConfig {
         project_path: temp_dir.path().to_path_buf(),
@@ -95,6 +117,7 @@ async fn test_handle_analyze_provability_full_format_with_evidence() {
 #[tokio::test]
 async fn test_handle_analyze_provability_markdown_format() {
     let temp_dir = TempDir::new().unwrap();
+    project_with_functions(&temp_dir, &["test"]);
     let output_path = temp_dir.path().join("analysis.md");
 
     let config = ProvabilityConfig {
@@ -115,6 +138,7 @@ async fn test_handle_analyze_provability_markdown_format() {
 #[tokio::test]
 async fn test_handle_analyze_provability_high_confidence_filter() {
     let temp_dir = TempDir::new().unwrap();
+    project_with_functions(&temp_dir, &["fn1", "fn2"]);
 
     let config = ProvabilityConfig {
         project_path: temp_dir.path().to_path_buf(),

@@ -63,17 +63,31 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
 async fn resolve_function_targets(
     config: &ProvabilityConfig,
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
+    use crate::cli::provability_helpers::{discover_project_functions, match_function_spec};
+
+    let discovered = discover_project_functions(&config.project_path).await?;
 
     if config.functions.is_empty() {
-        discover_project_functions(&config.project_path).await
-    } else {
-        let mut ids = Vec::new();
-        for spec in &config.functions {
-            ids.push(parse_function_spec(spec, &config.project_path)?);
-        }
-        Ok(ids)
+        return Ok(discovered);
     }
+
+    // Every --functions spec used to be handed to parse_function_spec, which
+    // built a FunctionId out of the argument string with no lookup at all — so
+    // `--functions ghost` against an EMPTY directory still printed "✓ Analyzed
+    // 1 functions" and scored it 20.0%. A name that is not in the tree has to
+    // come back as an error, not as a result row.
+    let mut ids = Vec::new();
+    for spec in &config.functions {
+        let matches = match_function_spec(spec, &discovered);
+        if matches.is_empty() {
+            anyhow::bail!(
+                "no function named `{spec}` found under {}",
+                config.project_path.display()
+            );
+        }
+        ids.extend(matches);
+    }
+    Ok(ids)
 }
 
 /// Run provability analysis on function targets (cognitive complexity ≤3)

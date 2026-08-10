@@ -227,58 +227,68 @@ mod getter_tests {
         assert_eq!(service.config_path, path);
     }
 
+    /// A service whose config file does not exist, so it reports the built-in
+    /// defaults. `ConfigurationService::new()` now reads the file it is pointed
+    /// at (it used to ignore it entirely), so a getter test that wants defaults
+    /// must not be pointed at the cwd's pmat.toml.
+    fn default_service() -> ConfigurationService {
+        ConfigurationService::new(Some(PathBuf::from(
+            "/nonexistent-pmat-config-dir/pmat.toml",
+        )))
+    }
+
     #[test]
     fn test_get_quality_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let quality = service.get_quality_config().unwrap();
         assert_eq!(quality.max_complexity, 30);
     }
 
     #[test]
     fn test_get_analysis_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let analysis = service.get_analysis_config().unwrap();
         assert_eq!(analysis.max_file_size, 1024 * 1024);
     }
 
     #[test]
     fn test_get_performance_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let perf = service.get_performance_config().unwrap();
         assert_eq!(perf.test_iterations, 10);
     }
 
     #[test]
     fn test_get_mcp_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let mcp = service.get_mcp_config().unwrap();
         assert_eq!(mcp.server_name, "pmat-mcp-server");
     }
 
     #[test]
     fn test_get_roadmap_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let roadmap = service.get_roadmap_config().unwrap();
         assert!(roadmap.auto_generate_todos);
     }
 
     #[test]
     fn test_get_telemetry_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let telemetry = service.get_telemetry_config().unwrap();
         assert!(telemetry.enabled);
     }
 
     #[test]
     fn test_get_semantic_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let semantic = service.get_semantic_config().unwrap();
         assert!(!semantic.enabled);
     }
 
     #[test]
     fn test_get_config_returns_full_config() {
-        let service = ConfigurationService::new(None);
+        let service = default_service();
         let config = service.get_config().unwrap();
         assert_eq!(config.system.project_name, "pmat");
         assert_eq!(config.quality.max_complexity, 30);

@@ -375,28 +375,63 @@ async fn test_resolve_function_targets_with_empty_functions() {
     assert!(result.is_ok() || result.is_err());
 }
 
-#[tokio::test]
-async fn test_resolve_function_targets_with_specific_functions() {
-    // This tests the branch where specific functions are provided
-    let temp_dir = TempDir::new().unwrap();
-    let config = ProvabilityConfig {
-        project_path: temp_dir.path().to_path_buf(),
-        functions: vec!["main".to_string(), "src/lib.rs:helper".to_string()],
+fn provability_config_for(path: &std::path::Path, functions: Vec<String>) -> ProvabilityConfig {
+    ProvabilityConfig {
+        project_path: path.to_path_buf(),
+        functions,
         analysis_depth: 3,
         format: ProvabilityOutputFormat::Summary,
         high_confidence_only: false,
         include_evidence: false,
         output: None,
         top_files: 5,
-    };
+    }
+}
 
-    let result = resolve_function_targets(&config).await;
-    assert!(result.is_ok());
+#[tokio::test]
+async fn test_resolve_function_targets_with_specific_functions() {
+    // Specs must resolve against functions that are really in the tree. This
+    // test used to point at an EMPTY temp dir and assert two ids came back,
+    // which is precisely the fabrication being fixed.
+    let temp_dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(temp_dir.path().join("src")).unwrap();
+    std::fs::write(temp_dir.path().join("src/main.rs"), "pub fn main() {}\n").unwrap();
+    std::fs::write(temp_dir.path().join("src/lib.rs"), "pub fn helper() {}\n").unwrap();
 
-    let ids = result.unwrap();
+    let config = provability_config_for(
+        temp_dir.path(),
+        vec!["main".to_string(), "src/lib.rs:helper".to_string()],
+    );
+
+    let ids = resolve_function_targets(&config).await.unwrap();
     assert_eq!(ids.len(), 2);
     assert_eq!(ids[0].function_name, "main");
+    assert_eq!(ids[0].file_path, "src/main.rs");
     assert_eq!(ids[1].function_name, "helper");
+    assert_eq!(ids[1].file_path, "src/lib.rs");
+}
+
+/// `--functions ghost` against an empty directory used to report
+/// "✓ Analyzed 1 functions / Average provability score: 20.0%" — a result row
+/// manufactured from the argument string. A name with nothing behind it must
+/// be an error.
+#[tokio::test]
+async fn test_resolve_function_targets_rejects_unknown_function_name() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let config = provability_config_for(temp_dir.path(), vec!["ghost".to_string()]);
+    let err = resolve_function_targets(&config)
+        .await
+        .expect_err("a function that is not in the tree must not be analyzed");
+    assert!(err.to_string().contains("ghost"), "unexpected: {err}");
+
+    // Same for a file-qualified spec whose file exists but whose function does not.
+    std::fs::write(temp_dir.path().join("real.rs"), "pub fn present() {}\n").unwrap();
+    let config = provability_config_for(temp_dir.path(), vec!["real.rs:absent".to_string()]);
+    assert!(resolve_function_targets(&config).await.is_err());
+
+    let config = provability_config_for(temp_dir.path(), vec!["real.rs:present".to_string()]);
+    assert_eq!(resolve_function_targets(&config).await.unwrap().len(), 1);
 }
 
 // ============================================================

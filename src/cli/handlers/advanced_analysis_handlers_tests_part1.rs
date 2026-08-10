@@ -442,7 +442,11 @@ clean:
         )
         .await;
 
-        assert!(result.is_ok());
+        // This used to assert `is_ok()`, which is precisely the defect: `--full`
+        // was accepted and discarded, so "full mode" produced a report
+        // byte-identical to the default one. An unimplemented flag is refused.
+        let err = result.expect_err("--full is not implemented");
+        assert!(err.to_string().contains("--full"), "{err}");
     }
 
     #[tokio::test]
@@ -468,7 +472,10 @@ clean:
         )
         .await;
 
-        assert!(result.is_ok());
+        // `--include` selected no analyses — the report was the same with and
+        // without it — so it is refused rather than silently dropped.
+        let err = result.expect_err("--include is not implemented");
+        assert!(err.to_string().contains("--include"), "{err}");
     }
 
     #[tokio::test]
@@ -626,7 +633,10 @@ clean:
         )
         .await;
 
-        assert!(result.is_ok());
+        // `--max-depth` never reached the file walk, so depth 5 and no limit at
+        // all produced the same report; it is refused until it is threaded in.
+        let err = result.expect_err("--max-depth is not implemented");
+        assert!(err.to_string().contains("--max-depth"), "{err}");
     }
 
     #[tokio::test]

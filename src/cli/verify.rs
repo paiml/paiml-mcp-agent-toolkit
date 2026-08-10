@@ -10,7 +10,7 @@
 
 use anyhow::Result;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
@@ -83,14 +83,7 @@ struct VerifyReport {
 /// Run the CI-faithful gate set fail-fast; exit non-zero on any failure.
 pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
     let overall = Instant::now();
-    let selected: Vec<&str> = match args.stage.as_deref() {
-        Some(s) => vec![s],
-        None => STAGES
-            .iter()
-            .copied()
-            .filter(|s| !args.skip.iter().any(|k| k == s))
-            .collect(),
-    };
+    let selected = select_stages(args.stage.as_deref(), &args.skip)?;
 
     let mut stages = Vec::new();
     let mut failed = false;
@@ -131,6 +124,27 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
     Ok(())
 }
 
+/// Resolve which stages to run, rejecting a `--stage` that is not a stage.
+///
+/// An unrecognised name used to be taken at face value, so it matched no stage:
+/// every stage recorded "not-selected", `failed` stayed false, and
+/// `pmat verify --stage nonexistent` printed `ok:true` and exited 0 on a tree
+/// whose format stage was red. A typo in the one gate agents are told to trust
+/// read as a green tree.
+fn select_stages(stage: Option<&str>, skip: &[String]) -> Result<Vec<&'static str>> {
+    match stage {
+        Some(s) => match STAGES.iter().find(|k| **k == s) {
+            Some(&known) => Ok(vec![known]),
+            None => anyhow::bail!("unknown stage `{s}`; valid stages: {}", STAGES.join(",")),
+        },
+        None => Ok(STAGES
+            .iter()
+            .copied()
+            .filter(|s| !skip.iter().any(|k| k == s))
+            .collect()),
+    }
+}
+
 fn skipped(name: &'static str, why: &'static str) -> StageReport {
     StageReport {
         name,
@@ -149,7 +163,14 @@ fn run_stage(name: &str, args: &VerifyArgs) -> (bool, Vec<Violation>, Option<Str
         "satd" => stage_satd(),
         "clippy" => stage_clippy(args),
         "tests" => stage_tests(),
-        _ => (true, Vec::new(), None),
+        // A name that is not a stage must never read as a pass. `select_stages`
+        // rejects unknown names up front, so getting here means this match and
+        // `STAGES` have drifted apart — report that, don't return green.
+        other => (
+            false,
+            Vec::new(),
+            Some(format!("no such verify stage: `{other}`")),
+        ),
     }
 }
 
@@ -189,7 +210,12 @@ fn stage_format(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
         return (true, Vec::new(), None);
     }
     let (ok, out) = run(cargo().args(["fmt", "--all", "--", "--check"]));
-    (ok, Vec::new(), tail(&out, 20))
+    // Same reason as the clippy stage: when `cargo fmt` fails to even start —
+    // run outside a crate, it exits with "error: could not find Cargo.toml"
+    // followed by its whole --help text — `tail` returns the help and buries the
+    // cause, so `verify` reported a "format FAILURE" that looked like a
+    // formatting violation (#640, same family).
+    (ok, Vec::new(), first_error(&out).or_else(|| tail(&out, 20)))
 }
 
 fn stage_complexity() -> (bool, Vec<Violation>, Option<String>) {
@@ -218,8 +244,57 @@ fn stage_complexity() -> (bool, Vec<Violation>, Option<String>) {
 }
 
 fn stage_satd() -> (bool, Vec<Violation>, Option<String>) {
-    let (ok, out) = run(pmat_self().args(["analyze", "satd", "--strict"]));
-    (ok, Vec::new(), tail(&out, 25))
+    // This stage used to shell out to `analyze satd --strict` with no
+    // `--fail-on-violation` and take the child's exit status as its verdict, so
+    // it was green on a tree whose `src/lib.rs` had just gained a FIXME and a
+    // HACK: the subcommand prints "Found 3 SATD violations" and still exits 0.
+    // Ask for the JSON report and read the count ourselves — the gate's verdict
+    // must come from the measurement, not from an exit code that never moves.
+    let (_, out) = run(pmat_self().args([
+        "analyze",
+        "satd",
+        "--strict",
+        "--format",
+        "json",
+        "--fail-on-violation",
+    ]));
+    let (ok, detail) = satd_verdict(&out);
+    (ok, Vec::new(), detail)
+}
+
+/// Decide the satd stage from `analyze satd --format json` output.
+///
+/// No parseable count means the subcommand produced no report; an unmeasured
+/// gate must not read as a pass.
+fn satd_verdict(output: &str) -> (bool, Option<String>) {
+    match parse_satd_violation_count(output) {
+        Some(0) => (true, None),
+        Some(n) => (
+            false,
+            Some(format!(
+                "{n} strict-mode SATD violation(s) (TODO/FIXME/HACK/BUG)\n{}",
+                tail(output, 25).unwrap_or_default()
+            )),
+        ),
+        None => (
+            false,
+            first_error(output)
+                .or_else(|| tail(output, 25))
+                .or_else(|| Some("analyze satd produced no violation count".to_string())),
+        ),
+    }
+}
+
+/// Violation count out of `analyze satd --format json` (`"total_violations": N`).
+fn parse_satd_violation_count(output: &str) -> Option<u64> {
+    const KEY: &str = "\"total_violations\"";
+    let after = output.lines().find_map(|l| l.split_once(KEY))?.1;
+    let digits: String = after
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(char::is_ascii_digit)
+        .collect();
+    digits.parse().ok()
 }
 
 fn stage_tests() -> (bool, Vec<Violation>, Option<String>) {
@@ -379,14 +454,36 @@ fn parse_clippy_violations(json_stream: &str) -> Vec<Violation> {
 }
 
 fn changed_rust_files() -> Vec<String> {
-    let (ok, out) = run(Command::new("git").args(["diff", "--name-only", "HEAD"]));
-    if !ok {
-        return Vec::new();
+    changed_rust_files_in(Path::new("."))
+}
+
+/// Rust files a commit here would introduce or change.
+///
+/// `git diff --name-only HEAD` lists tracked modifications *only*: a brand-new
+/// file is invisible to it until it is `git add`ed, so a freshly written module
+/// with a cyclomatic-46 function passed the complexity stage with `ok:true` and
+/// only went red after staging. Union the working-tree diff with the index and
+/// with untracked-but-not-ignored files, so the gate sees exactly what a commit
+/// would carry.
+fn changed_rust_files_in(dir: &Path) -> Vec<String> {
+    const SOURCES: [&[&str]; 3] = [
+        &["diff", "--name-only", "HEAD"],
+        &["diff", "--name-only", "--cached"],
+        &["ls-files", "--others", "--exclude-standard"],
+    ];
+    let mut files: Vec<String> = Vec::new();
+    for args in SOURCES {
+        let (ok, out) = run(Command::new("git").args(args).current_dir(dir));
+        if !ok {
+            continue;
+        }
+        for line in out.lines().filter(|l| l.ends_with(".rs")) {
+            if !files.iter().any(|f| f == line) {
+                files.push(line.to_string());
+            }
+        }
     }
-    out.lines()
-        .filter(|l| l.ends_with(".rs"))
-        .map(str::to_string)
-        .collect()
+    files
 }
 
 fn print_text(report: &VerifyReport) {
@@ -500,5 +597,117 @@ mod tests {
     fn test_first_error_none_when_output_has_no_error_line() {
         assert_eq!(first_error("   Compiling pmat v3.29.1\n    Finished"), None);
         assert_eq!(first_error(""), None);
+    }
+
+    /// `--stage nonexistent` used to select nothing and report ok:true/exit 0.
+    #[test]
+    fn test_select_stages_rejects_an_unknown_stage_name() {
+        let err = select_stages(Some("nonexistent"), &[])
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("nonexistent"), "{err}");
+        // The message has to say what a valid stage is.
+        for s in STAGES {
+            assert!(err.contains(s), "{err} is missing {s}");
+        }
+    }
+
+    #[test]
+    fn test_select_stages_known_name_and_skip_list() {
+        assert_eq!(select_stages(Some("satd"), &[]).unwrap(), vec!["satd"]);
+        let skip = vec!["format".to_string(), "tests".to_string()];
+        assert_eq!(
+            select_stages(None, &skip).unwrap(),
+            vec!["complexity", "satd", "clippy"]
+        );
+    }
+
+    /// A name that is not a stage must never come back as a pass.
+    #[test]
+    fn test_run_stage_unknown_name_is_not_a_pass() {
+        let args = VerifyArgs {
+            format: VerifyFormat::Json,
+            fix: false,
+            no_fail_fast: false,
+            skip: Vec::new(),
+            stage: None,
+        };
+        let (ok, _, detail) = run_stage("nonexistent", &args);
+        assert!(!ok);
+        assert!(detail.unwrap_or_default().contains("nonexistent"));
+    }
+
+    /// The satd stage must fail on debt the subcommand reports while exiting 0.
+    #[test]
+    fn test_satd_verdict_fails_on_reported_violations() {
+        let report = r#"{
+  "total_files": 1,
+  "total_violations": 3,
+  "summary": "Found 3 SATD violations in 1 files"
+}"#;
+        let (ok, detail) = satd_verdict(report);
+        assert!(!ok, "3 reported violations must fail the stage");
+        assert!(detail.unwrap_or_default().contains('3'));
+        assert_eq!(parse_satd_violation_count(report), Some(3));
+    }
+
+    #[test]
+    fn test_satd_verdict_passes_only_on_a_measured_zero() {
+        let (ok, _) = satd_verdict("{\n  \"total_violations\": 0\n}");
+        assert!(ok);
+        // No count in the output ⇒ nothing was measured ⇒ not a pass.
+        let (ok, detail) = satd_verdict("error: no such subcommand: `satd`");
+        assert!(!ok);
+        assert!(detail.unwrap_or_default().contains("no such subcommand"));
+        assert_eq!(parse_satd_violation_count(""), None);
+    }
+
+    /// A new, not-yet-staged .rs file must be visible to the complexity gate:
+    /// it used to be invisible until `git add`, so a cyclomatic-46 module
+    /// passed verify and only failed after staging.
+    #[test]
+    fn test_changed_rust_files_sees_untracked_files() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let p = dir.path();
+        let git = |args: &[&str]| {
+            let ok = Command::new("git")
+                .args(args)
+                .current_dir(p)
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            assert!(ok, "git {args:?} failed");
+        };
+        git(&["init", "-q"]);
+        git(&["config", "user.email", "t@example.com"]);
+        git(&["config", "user.name", "t"]);
+        std::fs::write(p.join("tracked.rs"), "pub fn a() {}\n").expect("write");
+        git(&["add", "tracked.rs"]);
+        git(&["commit", "-qm", "init"]);
+
+        // Brand-new file, never staged, plus an ignored one and a non-Rust one.
+        std::fs::write(p.join("untracked.rs"), "pub fn b() {}\n").expect("write");
+        std::fs::write(p.join("notes.md"), "hi\n").expect("write");
+        std::fs::write(p.join(".gitignore"), "ignored.rs\n").expect("write");
+        std::fs::write(p.join("ignored.rs"), "pub fn c() {}\n").expect("write");
+
+        let files = changed_rust_files_in(p);
+        assert!(
+            files.iter().any(|f| f == "untracked.rs"),
+            "untracked .rs must be gated: {files:?}"
+        );
+        assert!(!files.iter().any(|f| f == "ignored.rs"), "{files:?}");
+        assert!(!files.iter().any(|f| f.ends_with(".md")), "{files:?}");
+
+        // Staged and modified files stay in, exactly once each.
+        std::fs::write(p.join("tracked.rs"), "pub fn a() -> u8 { 1 }\n").expect("write");
+        git(&["add", "untracked.rs", "tracked.rs"]);
+        let files = changed_rust_files_in(p);
+        assert_eq!(
+            files.iter().filter(|f| *f == "untracked.rs").count(),
+            1,
+            "{files:?}"
+        );
+        assert!(files.iter().any(|f| f == "tracked.rs"), "{files:?}");
     }
 }

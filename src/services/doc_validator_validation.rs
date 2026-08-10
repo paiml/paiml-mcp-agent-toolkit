@@ -315,23 +315,7 @@ impl DocValidator {
         let results = self.validate_links_concurrent(&all_links).await?;
 
         // Compute summary
-        let valid_count = results
-            .iter()
-            .filter(|r| r.status == ValidationStatus::Valid)
-            .count();
-        let broken_count = results
-            .iter()
-            .filter(|r| {
-                matches!(
-                    r.status,
-                    ValidationStatus::NotFound | ValidationStatus::HttpError(_)
-                )
-            })
-            .count();
-        let skipped_count = results
-            .iter()
-            .filter(|r| r.status == ValidationStatus::Skipped)
-            .count();
+        let (valid_count, broken_count, skipped_count) = bucket_statuses(&results);
 
         Ok(ValidationSummary {
             total_files: file_count,
@@ -361,5 +345,93 @@ impl DocValidator {
 impl Default for DocValidator {
     fn default() -> Self {
         Self::new(ValidatorConfig::default())
+    }
+}
+
+/// Split results into (valid, broken, skipped).
+///
+/// This used to be three inline filters, and the broken filter listed only
+/// `NotFound | HttpError(_)`. `NetworkError` and `InvalidLink` therefore landed
+/// in no bucket: running `validate-docs` with the network unreachable reported
+/// "Links found: 4 / Valid links: 0 / Broken links: 0 / Skipped links: 0",
+/// printed "All documentation links are valid!" and exited 0 even under
+/// `--fail-on-error`. A link that could not be reached is not a link that was
+/// validated, so it is broken. The `match` is exhaustive on purpose — adding a
+/// status now forces a bucket decision at compile time instead of silently
+/// dropping it from the totals.
+pub(crate) fn bucket_statuses(results: &[ValidationResult]) -> (usize, usize, usize) {
+    let mut valid = 0;
+    let mut broken = 0;
+    let mut skipped = 0;
+
+    for result in results {
+        match result.status {
+            ValidationStatus::Valid => valid += 1,
+            ValidationStatus::NotFound
+            | ValidationStatus::HttpError(_)
+            | ValidationStatus::NetworkError
+            | ValidationStatus::InvalidLink => broken += 1,
+            ValidationStatus::Skipped => skipped += 1,
+        }
+    }
+
+    (valid, broken, skipped)
+}
+
+#[cfg(test)]
+mod bucket_status_tests {
+    use super::*;
+
+    fn result_with(status: ValidationStatus) -> ValidationResult {
+        ValidationResult {
+            link: Link {
+                text: "a".to_string(),
+                target: "https://example.com".to_string(),
+                source_file: PathBuf::from("README.md"),
+                line_number: 1,
+                link_type: LinkType::ExternalHttp,
+            },
+            status,
+            error_message: None,
+            http_status_code: None,
+            response_time_ms: None,
+        }
+    }
+
+    #[test]
+    fn test_network_error_counts_as_broken() {
+        let results = vec![result_with(ValidationStatus::NetworkError)];
+        let (valid, broken, skipped) = bucket_statuses(&results);
+        assert_eq!(
+            (valid, broken, skipped),
+            (0, 1, 0),
+            "an unreachable link is not a validated link"
+        );
+    }
+
+    #[test]
+    fn test_invalid_link_counts_as_broken() {
+        let results = vec![result_with(ValidationStatus::InvalidLink)];
+        assert_eq!(bucket_statuses(&results), (0, 1, 0));
+    }
+
+    #[test]
+    fn test_every_status_lands_in_exactly_one_bucket() {
+        let results = vec![
+            result_with(ValidationStatus::Valid),
+            result_with(ValidationStatus::NotFound),
+            result_with(ValidationStatus::HttpError(500)),
+            result_with(ValidationStatus::NetworkError),
+            result_with(ValidationStatus::InvalidLink),
+            result_with(ValidationStatus::Skipped),
+        ];
+        let (valid, broken, skipped) = bucket_statuses(&results);
+        assert_eq!(
+            valid + broken + skipped,
+            results.len(),
+            "valid + broken + skipped must equal the total; a status in no bucket \
+             is what let an offline run report zero broken links"
+        );
+        assert_eq!((valid, broken, skipped), (1, 4, 1));
     }
 }

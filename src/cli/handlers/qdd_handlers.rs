@@ -390,6 +390,9 @@ async fn handle_qdd_validate(
     output: Option<PathBuf>,
     strict: bool,
 ) -> Result<()> {
+    // `qdd validate -p /does/not/exist.rs` printed "✓ PASSED" and exited 0.
+    crate::cli::ensure_analysis_path_exists(&path)?;
+
     let quality_profile = match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),
@@ -402,59 +405,56 @@ async fn handle_qdd_validate(
         print_validation_header(&path, profile, &quality_profile);
     }
 
-    // Simple validation placeholder
-    let validation_passed = true; // Would implement actual validation
+    // This used to be `let validation_passed = true; // Would implement actual
+    // validation`, and the Detailed arm printed four hardcoded PASSED lines with
+    // no check behind any of them — so every input passed, including a path that
+    // did not exist and this repository, whose own printed thresholds
+    // ("Max Complexity: 10, Zero SATD: true") it violates. The verdict is now
+    // derived from checks that actually run, and the two thresholds this command
+    // cannot measure say so instead of passing.
+    let outcome = run_validation_checks(&path, &quality_profile).await;
+    let validation_passed = outcome.passed();
 
     match format {
         QddOutputFormat::Summary => {
             println!("\n{}", c::subheader("Validation Summary:"));
-            println!(
-                "{}",
-                if validation_passed {
-                    c::pass("PASSED")
-                } else {
-                    c::fail("FAILED")
-                }
-            );
+            println!("{}", render_status(&outcome));
+            for (name, check) in &outcome.checks {
+                println!("  {} {}", c::label(&format!("{name}:")), check.describe());
+            }
         }
         QddOutputFormat::Detailed => {
             println!("\n{}", c::subheader("Detailed Validation Results:"));
-            println!("{}", c::pass("Quality checks: PASSED"));
-            println!("{}", c::pass("Complexity check: PASSED"));
-            println!("{}", c::pass("Coverage check: PASSED"));
-            println!("{}", c::pass("Technical debt: PASSED"));
+            for (name, check) in &outcome.checks {
+                println!("{}", check.render(name));
+            }
+            println!("{}", render_status(&outcome));
         }
         QddOutputFormat::Json => {
-            let json_result = build_validation_json(validation_passed, profile, &path);
+            let json_result = build_validation_json(&outcome, profile, &path);
             println!("{}", serde_json::to_string_pretty(&json_result)?);
         }
         QddOutputFormat::Markdown => {
             println!("# QDD Validation Report");
             println!();
-            println!(
-                "**Status:** {}",
-                if validation_passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            );
+            println!("**Status:** {}", markdown_status(&outcome));
             println!("**Profile:** {profile:?}");
             println!("**Path:** {}", path.display());
             println!(
                 "**Date:** {}",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
             );
+            println!();
+            for (name, check) in &outcome.checks {
+                println!("- **{name}:** {}", check.describe());
+            }
         }
     }
 
     if let Some(output_path) = output {
         // Write the report before claiming it was written
-        let report = serde_json::to_string_pretty(&build_validation_json(
-            validation_passed,
-            profile,
-            &path,
-        ))?;
+        let report =
+            serde_json::to_string_pretty(&build_validation_json(&outcome, profile, &path))?;
         std::fs::write(&output_path, report)
             .with_context(|| format!("Failed to write report: {}", output_path.display()))?;
         let message = c::pass(&format!(
@@ -469,10 +469,249 @@ async fn handle_qdd_validate(
     }
 
     if strict && !validation_passed {
-        return Err(anyhow::anyhow!("Quality validation failed (strict mode)"));
+        return Err(anyhow::anyhow!(
+            "Quality validation did not pass (strict mode): {}",
+            outcome.strict_reason()
+        ));
     }
 
     Ok(())
+}
+
+/// The result of one threshold this command claims to enforce.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CheckOutcome {
+    Passed(String),
+    Failed(String),
+    /// The threshold is printed by the header but nothing here measures it.
+    /// An unmeasured check is never a pass — see the `cuda-tdg` "not measured"
+    /// reports for the same rule.
+    NotMeasured(String),
+}
+
+impl CheckOutcome {
+    fn describe(&self) -> String {
+        match self {
+            Self::Passed(detail) | Self::Failed(detail) | Self::NotMeasured(detail) => {
+                detail.clone()
+            }
+        }
+    }
+
+    fn verdict(&self) -> &'static str {
+        match self {
+            Self::Passed(_) => "passed",
+            Self::Failed(_) => "failed",
+            Self::NotMeasured(_) => "not measured",
+        }
+    }
+
+    fn render(&self, name: &str) -> String {
+        let line = format!(
+            "{name}: {} ({})",
+            self.verdict().to_uppercase(),
+            self.describe()
+        );
+        match self {
+            Self::Passed(_) => c::pass(&line),
+            Self::Failed(_) => c::fail(&line),
+            Self::NotMeasured(_) => c::warn(&line),
+        }
+    }
+}
+
+/// Every check this run performed, in the order the header prints them.
+struct ValidationOutcome {
+    checks: Vec<(&'static str, CheckOutcome)>,
+}
+
+impl ValidationOutcome {
+    /// `failed` beats `incomplete` beats `passed`: a run that could not measure
+    /// a threshold it prints must not report a pass.
+    fn status(&self) -> &'static str {
+        if self.has(|c| matches!(c, CheckOutcome::Failed(_))) {
+            "failed"
+        } else if self.has(|c| matches!(c, CheckOutcome::NotMeasured(_))) {
+            "incomplete"
+        } else {
+            "passed"
+        }
+    }
+
+    fn has(&self, pred: impl Fn(&CheckOutcome) -> bool) -> bool {
+        self.checks.iter().any(|(_, c)| pred(c))
+    }
+
+    fn passed(&self) -> bool {
+        self.status() == "passed"
+    }
+
+    fn strict_reason(&self) -> String {
+        self.checks
+            .iter()
+            .filter(|(_, c)| !matches!(c, CheckOutcome::Passed(_)))
+            .map(|(name, c)| format!("{name} {}: {}", c.verdict(), c.describe()))
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+
+    fn violations(&self) -> Vec<serde_json::Value> {
+        self.checks
+            .iter()
+            .filter(|(_, c)| matches!(c, CheckOutcome::Failed(_)))
+            .map(|(name, c)| serde_json::json!({ "check": name, "detail": c.describe() }))
+            .collect()
+    }
+
+    fn unmeasured(&self) -> Vec<serde_json::Value> {
+        self.checks
+            .iter()
+            .filter(|(_, c)| matches!(c, CheckOutcome::NotMeasured(_)))
+            .map(|(name, c)| serde_json::json!({ "check": name, "reason": c.describe() }))
+            .collect()
+    }
+}
+
+fn render_status(outcome: &ValidationOutcome) -> String {
+    match outcome.status() {
+        "passed" => c::pass("PASSED"),
+        "failed" => c::fail("FAILED"),
+        other => c::warn(&other.to_uppercase()),
+    }
+}
+
+fn markdown_status(outcome: &ValidationOutcome) -> &'static str {
+    match outcome.status() {
+        "passed" => "✅ PASSED",
+        "failed" => "❌ FAILED",
+        _ => "⚠️ INCOMPLETE (some thresholds were not measured)",
+    }
+}
+
+/// Run the checks behind the thresholds the header prints.
+async fn run_validation_checks(path: &Path, profile: &QualityProfile) -> ValidationOutcome {
+    let thresholds = &profile.thresholds;
+    ValidationOutcome {
+        checks: vec![
+            ("complexity", check_complexity(path, thresholds.max_complexity).await),
+            ("technical debt", check_satd(path, thresholds.zero_satd).await),
+            (
+                "coverage",
+                CheckOutcome::NotMeasured(format!(
+                    "min {}% required; coverage needs an instrumented test run (cargo llvm-cov), which this command does not perform",
+                    thresholds.min_coverage
+                )),
+            ),
+            (
+                "tdg",
+                CheckOutcome::NotMeasured(format!(
+                    "max {} allowed; run `pmat tdg` — this command does not compute TDG",
+                    thresholds.max_tdg
+                )),
+            ),
+        ],
+    }
+}
+
+/// Source files this command can analyse under `path`.
+fn collect_analysable_files(path: &Path) -> Vec<PathBuf> {
+    use crate::cli::language_analyzer::Language;
+
+    let candidates = if path.is_file() {
+        vec![path.to_path_buf()]
+    } else {
+        crate::services::file_discovery::ProjectFileDiscovery::new(path.to_path_buf())
+            .discover_files()
+            .unwrap_or_default()
+    };
+
+    candidates
+        .into_iter()
+        .filter(|p| {
+            !matches!(
+                Language::from_path(p),
+                Language::Unknown | Language::Markdown | Language::Yaml
+            )
+        })
+        .collect()
+}
+
+/// Worst cyclomatic complexity under `path` against the profile threshold.
+async fn check_complexity(path: &Path, max_complexity: u32) -> CheckOutcome {
+    let files = collect_analysable_files(path);
+    let mut worst: Option<(String, u16)> = None;
+    let mut analyzed = 0usize;
+
+    for file in &files {
+        let Ok(metrics) =
+            crate::services::complexity::analyze_file_complexity_uncached(file, None).await
+        else {
+            continue;
+        };
+        analyzed += 1;
+        for func in &metrics.functions {
+            if worst
+                .as_ref()
+                .is_none_or(|(_, c)| func.metrics.cyclomatic > *c)
+            {
+                worst = Some((
+                    format!("{}::{}", metrics.path, func.name),
+                    func.metrics.cyclomatic,
+                ));
+            }
+        }
+    }
+
+    match worst {
+        // Nothing read means nothing measured; a clean pass over zero files is
+        // the fabrication this whole command was guilty of.
+        None => CheckOutcome::NotMeasured(format!(
+            "no functions were read under {} ({analyzed} file(s) analysed)",
+            path.display()
+        )),
+        Some((name, cyclomatic)) if u32::from(cyclomatic) > max_complexity => CheckOutcome::Failed(
+            format!("{name} has cyclomatic complexity {cyclomatic}, over the limit of {max_complexity} ({analyzed} file(s) analysed)"),
+        ),
+        Some((name, cyclomatic)) => CheckOutcome::Passed(format!(
+            "worst function {name} at cyclomatic {cyclomatic}, within {max_complexity} ({analyzed} file(s) analysed)"
+        )),
+    }
+}
+
+/// Self-admitted technical debt against the profile's `zero_satd` threshold.
+async fn check_satd(path: &Path, zero_satd: bool) -> CheckOutcome {
+    use crate::services::satd_detector::SATDDetector;
+
+    if !zero_satd {
+        return CheckOutcome::Passed("this profile does not require zero SATD".to_string());
+    }
+
+    let detector = SATDDetector::new();
+    let debts = if path.is_file() {
+        match std::fs::read_to_string(path) {
+            Ok(content) => detector.extract_from_content(&content, path).ok(),
+            Err(_) => None,
+        }
+    } else {
+        detector.analyze_directory(path).await.ok()
+    };
+
+    match debts {
+        None => CheckOutcome::NotMeasured(format!("could not scan {} for SATD", path.display())),
+        Some(debts) if debts.is_empty() => {
+            CheckOutcome::Passed("no self-admitted technical debt found".to_string())
+        }
+        Some(debts) => {
+            let first = debts
+                .first()
+                .map(|d| format!("{}:{}", d.file.display(), d.line))
+                .unwrap_or_default();
+            CheckOutcome::Failed(format!(
+                "{} self-admitted debt marker(s), first at {first}",
+                debts.len()
+            ))
+        }
+    }
 }
 
 /// Print the validation header and thresholds (human formats only)
@@ -512,15 +751,27 @@ fn print_validation_header(
 }
 
 /// Build the JSON payload for validation results (stdout in JSON mode is this payload only)
+///
+/// The payload used to be `{status, profile, path, validation_time}` with no
+/// field able to carry a violation — status was always "passed" and there was
+/// nowhere for a failure to appear even if one had been found. `checks`,
+/// `violations` and `not_measured` make the verdict auditable.
 fn build_validation_json(
-    validation_passed: bool,
+    outcome: &ValidationOutcome,
     profile: QddQualityProfile,
     path: &Path,
 ) -> serde_json::Value {
     serde_json::json!({
-        "status": if validation_passed { "passed" } else { "failed" },
+        "status": outcome.status(),
         "profile": format!("{profile:?}").to_lowercase(),
         "path": path.display().to_string(),
+        "checks": outcome.checks.iter().map(|(name, check)| serde_json::json!({
+            "check": name,
+            "result": check.verdict(),
+            "detail": check.describe(),
+        })).collect::<Vec<_>>(),
+        "violations": outcome.violations(),
+        "not_measured": outcome.unmeasured(),
         "validation_time": chrono::Utc::now().to_rfc3339()
     })
 }

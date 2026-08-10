@@ -100,6 +100,10 @@ include!("mutation_testing.rs");
 
 // Tests split for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
+#[cfg(test)]
+#[path = "generated_test_validity_tests.rs"]
+mod generated_test_validity_tests;
+
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]
 mod tests;

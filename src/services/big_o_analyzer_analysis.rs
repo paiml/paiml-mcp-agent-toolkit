@@ -42,52 +42,34 @@ impl BigOAnalyzer {
         Ok(report)
     }
 
+    /// Source extensions big-O analysis knows how to read.
+    const SOURCE_EXTENSIONS: [&str; 10] = [
+        "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "java", "go",
+    ];
+
     /// Discover source files based on patterns
+    ///
+    /// This used to be a bare `walkdir::WalkDir` with a six-entry exclude
+    /// list (target/node_modules/.git/build/dist/__pycache__). It therefore
+    /// descended into hidden and gitignored trees that `analyze complexity`
+    /// never sees — `.claude/worktrees` above all — and reported 2,650,897
+    /// functions on a repo where complexity reported 39,907, and 6 functions on
+    /// a fixture holding exactly one. File discovery is now the shared
+    /// `ProjectFileDiscovery` (gitignore-aware, hidden directories skipped), so
+    /// every analyzer is asked about the same corpus.
     async fn discover_source_files(&self, config: &BigOAnalysisConfig) -> Result<Vec<PathBuf>> {
-        use walkdir::WalkDir;
+        let discovery =
+            crate::services::file_discovery::ProjectFileDiscovery::new(config.project_path.clone());
 
-        let extensions = [
-            "rs", "js", "ts", "jsx", "tsx", "py", "cpp", "c", "java", "go",
-        ];
-        let exclude_dirs = [
-            "target",
-            "node_modules",
-            ".git",
-            "build",
-            "dist",
-            "__pycache__",
-        ];
-
-        let mut files = Vec::new();
-
-        for entry in WalkDir::new(&config.project_path)
-            .follow_links(false)
+        let mut files: Vec<PathBuf> = discovery
+            .discover_files()?
             .into_iter()
-            .filter_map(std::result::Result::ok)
-            .filter(|e| e.file_type().is_file())
-        {
-            let path = entry.path();
-
-            // Check exclusions
-            let should_exclude = path.components().any(|comp| {
-                if let Some(name) = comp.as_os_str().to_str() {
-                    exclude_dirs.contains(&name)
-                } else {
-                    false
-                }
-            });
-
-            if should_exclude {
-                continue;
-            }
-
-            // Check extensions
-            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if extensions.contains(&ext) {
-                    files.push(path.to_path_buf());
-                }
-            }
-        }
+            .filter(|path| {
+                path.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|ext| Self::SOURCE_EXTENSIONS.contains(&ext))
+            })
+            .collect();
 
         files.sort_unstable();
         Ok(files)
@@ -266,5 +248,76 @@ impl BigOAnalyzer {
             confidence: (time_complexity.confidence + space_complexity.confidence) / 2,
             notes,
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod discovery_scope_tests {
+    //! Big-O discovery must see the same corpus as `analyze complexity`:
+    //! a raw WalkDir walked hidden tool caches such as `.claude/worktrees`
+    //! and reported 6 functions for a fixture holding exactly one.
+    use super::*;
+
+    fn config(root: &std::path::Path) -> BigOAnalysisConfig {
+        BigOAnalysisConfig {
+            project_path: root.to_path_buf(),
+            include_patterns: vec![],
+            exclude_patterns: vec![],
+            confidence_threshold: 0,
+            analyze_space_complexity: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn discovery_skips_hidden_tool_directories() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::create_dir_all(root.join(".claude/junk")).unwrap();
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").unwrap();
+        for i in 0..5 {
+            std::fs::write(
+                root.join(format!(".claude/junk/h{i}.rs")),
+                format!("pub fn h{i}() -> i32 {{ {i} }}\n"),
+            )
+            .unwrap();
+        }
+
+        let analyzer = BigOAnalyzer::new();
+        let files = analyzer
+            .discover_source_files(&config(root))
+            .await
+            .expect("discovery");
+
+        assert_eq!(
+            files.len(),
+            1,
+            "only src/lib.rs is project source; got {files:?}"
+        );
+        assert!(files[0].ends_with("src/lib.rs"));
+
+        let report = analyzer.analyze(config(root)).await.expect("analysis");
+        assert_eq!(report.analyzed_functions, 1, "one file, one function");
+    }
+
+    #[tokio::test]
+    async fn discovery_skips_gitignored_files() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::create_dir_all(root.join("generated")).unwrap();
+        // `.git` must exist for gitignore rules to apply, exactly as in a checkout.
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::write(root.join(".gitignore"), "generated/\n").unwrap();
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").unwrap();
+        std::fs::write(root.join("generated/g.rs"), "pub fn g() -> i32 { 2 }\n").unwrap();
+
+        let files = BigOAnalyzer::new()
+            .discover_source_files(&config(root))
+            .await
+            .expect("discovery");
+
+        assert_eq!(files.len(), 1, "gitignored trees are not project source: {files:?}");
     }
 }

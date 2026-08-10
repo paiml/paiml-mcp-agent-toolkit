@@ -11,7 +11,15 @@ fn get_simple_function_annotations(
     add_satd_annotation(&mut annotations, file, analyses);
     add_pagerank_annotation(&mut annotations, func_name, file, analyses);
     add_churn_annotation(&mut annotations, file, analyses);
-    annotations.push_str(" [tdg: 2.5]");
+    // No `[tdg: ...]` annotation is emitted: this was the literal
+    // `annotations.push_str(" [tdg: 2.5]")`, so `pmat context` on this repo
+    // printed "22925 [tdg: 2.5]" — one distinct value across 4260 files — and a
+    // three-function toy crate printed the very same 2.5. Every other
+    // annotation on this line is read from `analyses`; `AnalysisResults` carries
+    // no TDG scores at all, so there is nothing to read. An absent annotation is
+    // honest; a constant sitting beside measured neighbours borrows their
+    // credibility. See contracts/pmat-no-fabrication-v1.yaml, equation
+    // `measured_or_absent`.
 
     annotations
 }
@@ -168,5 +176,51 @@ fn add_churn_annotation(
 
     if !churn_added {
         annotations.push_str(" [churn: low(1)]");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod function_annotation_tests {
+    use crate::services::context::FileContext;
+    use crate::services::deep_context::AnalysisResults;
+
+    fn file_ctx(path: &str) -> FileContext {
+        FileContext {
+            path: path.to_string(),
+            language: "rust".to_string(),
+            items: vec![],
+            complexity_metrics: None,
+        }
+    }
+
+    /// `pmat context` annotated EVERY function with the literal `[tdg: 2.5]` —
+    /// 22,925 occurrences of one value on this repo, and the same 2.5 on a
+    /// three-function crate. There is no TDG score in `AnalysisResults` to look
+    /// up, so the annotation must be absent rather than invented.
+    #[test]
+    fn function_annotations_never_carry_an_unmeasured_tdg_score() {
+        let analyses = AnalysisResults::default();
+        let file = file_ctx("src/lib.rs");
+
+        let annotations = super::get_simple_function_annotations("main", &file, &analyses);
+
+        assert!(
+            !annotations.contains("[tdg:"),
+            "no TDG score is measured here, so none may be printed: {annotations}"
+        );
+    }
+
+    /// Guard against the annotation coming back as a constant under a different
+    /// name: two different functions in two different files with no analysis
+    /// data must not be told apart by a TDG figure, and none may appear.
+    #[test]
+    fn tdg_annotation_absent_for_every_function() {
+        let analyses = AnalysisResults::default();
+        for (path, func) in [("src/a.rs", "alpha"), ("src/b/c.rs", "beta")] {
+            let annotations =
+                super::get_simple_function_annotations(func, &file_ctx(path), &analyses);
+            assert!(!annotations.contains("tdg"), "{path}: {annotations}");
+        }
     }
 }

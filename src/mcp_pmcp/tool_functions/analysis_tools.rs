@@ -15,6 +15,11 @@ pub async fn analyze_complexity(
     top_files: Option<usize>,
     threshold: Option<u64>,
 ) -> Result<Value> {
+    // `analyze_file_complexity_uncached` used to run the heuristic counter
+    // while `pmat analyze complexity` ran the AST one, so this tool reported
+    // cyclomatic 10 / cognitive 18 (plus a threshold violation) for the same
+    // function the CLI scored 6 / 9 with no violation. Both surfaces now share
+    // the analyzer; keep them on one entry point.
     use crate::services::complexity::analyze_file_complexity_uncached;
 
     // Validate input

@@ -13,6 +13,12 @@ pub enum CudaTdgOutputFormat {
 }
 
 /// CUDA-SIMD TDG subcommands
+///
+/// The per-subcommand path is `Option<PathBuf>` with NO `default_value`. It used
+/// to default to `"."`, which silently overrode the top-level `cuda-tdg [PATH]`
+/// positional that `--help` documents: `pmat cuda-tdg /does/not/exist score`
+/// graded the current directory and exited 0. `None` now means "fall back to the
+/// top-level path" — see `resolve_subcommand_path`.
 #[derive(Debug, Clone, Subcommand)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum CudaTdgCommand {
@@ -24,9 +30,8 @@ pub enum CudaTdgCommand {
 
     /// Score codebase with 100-point Popper falsification system
     Score {
-        /// Path to analyze
-        #[arg(default_value = ".")]
-        path: PathBuf,
+        /// Path to analyze (defaults to the top-level `cuda-tdg [PATH]`, then `.`)
+        path: Option<PathBuf>,
 
         /// Show detailed category breakdown
         #[arg(long)]
@@ -35,9 +40,8 @@ pub enum CudaTdgCommand {
 
     /// Generate detailed defect report
     Report {
-        /// Path to analyze
-        #[arg(default_value = ".")]
-        path: PathBuf,
+        /// Path to analyze (defaults to the top-level `cuda-tdg [PATH]`, then `.`)
+        path: Option<PathBuf>,
 
         /// Output format (html, json, markdown)
         #[arg(long, default_value = "markdown")]
@@ -71,9 +75,8 @@ pub enum CudaTdgCommand {
 
     /// Quality gate for CI/CD (exits non-zero on failure)
     Gate {
-        /// Path to analyze
-        #[arg(default_value = ".")]
-        path: PathBuf,
+        /// Path to analyze (defaults to the top-level `cuda-tdg [PATH]`, then `.`)
+        path: Option<PathBuf>,
 
         /// Minimum score to pass (0-100)
         #[arg(long, default_value = "85")]
@@ -86,9 +89,8 @@ pub enum CudaTdgCommand {
 
     /// Generate Kaizen continuous improvement report
     Kaizen {
-        /// Path to analyze
-        #[arg(default_value = ".")]
-        path: PathBuf,
+        /// Path to analyze (defaults to the top-level `cuda-tdg [PATH]`, then `.`)
+        path: Option<PathBuf>,
 
         /// Start date for analysis (YYYY-MM-DD)
         #[arg(long)]

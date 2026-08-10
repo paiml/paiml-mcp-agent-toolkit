@@ -293,14 +293,17 @@ fn index_workspace(
     workspace: &Path,
     language: Option<&str>,
 ) -> Result<usize> {
-    println!("\u{1f50d} Indexing source files...");
+    // Progress chatter goes to stderr: with `--format json` these banners used
+    // to precede the JSON document on stdout, so piping the output into a JSON
+    // parser failed on the very first character.
+    eprintln!("\u{1f50d} Indexing source files...");
     let num_docs = engine
         .index_directory(workspace, language)
         .map_err(|e| anyhow::anyhow!("Failed to index directory: {}", e))?;
     if num_docs == 0 {
         anyhow::bail!("No source files found to analyze");
     }
-    println!("\u{1f4c1} Indexed {} source files", num_docs);
+    eprintln!("\u{1f4c1} Indexed {} source files", num_docs);
     Ok(num_docs)
 }
 
@@ -401,7 +404,8 @@ pub(super) async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> 
                 crate::cli::commands::ClusterMethod::Dbscan => "dbscan",
             };
             index_workspace(&mut engine, &workspace, language.as_deref())?;
-            println!("\u{1f9ee} Running {} clustering...", method_str);
+            // stderr, so `--format json` stdout stays a single JSON document.
+            eprintln!("\u{1f9ee} Running {} clustering...", method_str);
             let result = engine
                 .cluster(method_str, k)
                 .map_err(|e| anyhow::anyhow!("Clustering failed: {}", e))?;
@@ -413,12 +417,45 @@ pub(super) async fn route_semantic_analysis(cmd: AnalyzeCommands) -> Result<()> 
             format,
         } => {
             index_workspace(&mut engine, &workspace, language.as_deref())?;
-            println!("\u{1f52c} Extracting {} topics using LDA...", num_topics);
+            // stderr, so `--format json` stdout stays a single JSON document.
+            eprintln!("\u{1f52c} Extracting {} topics using LDA...", num_topics);
             let result = engine
                 .extract_topics(num_topics, language)
                 .map_err(|e| anyhow::anyhow!("Topic extraction failed: {}", e))?;
             output_topic_results(&result, &format)
         }
         _ => unreachable!("Expected semantic analysis command"),
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod stdout_purity_tests {
+    /// `analyze cluster --format json` used to emit its progress banners with
+    /// println!, so stdout began with "🔍 Indexing source files..." and a JSON
+    /// consumer failed at character 0. Pin every banner in this module to
+    /// stderr — there is no way to observe the real process stdout from a unit
+    /// test, so the check is made against the module source itself.
+    #[test]
+    fn test_progress_banners_never_go_to_stdout() {
+        let src = include_str!("entropy_semantic.rs");
+        let banners = [
+            "Indexing source files",
+            "Indexed {} source files",
+            "clustering...",
+            "topics using LDA",
+        ];
+        for line in src.lines() {
+            let trimmed = line.trim_start();
+            if !trimmed.starts_with("println!") {
+                continue;
+            }
+            for banner in banners {
+                assert!(
+                    !trimmed.contains(banner),
+                    "progress banner must be written to stderr: {trimmed}"
+                );
+            }
+        }
     }
 }

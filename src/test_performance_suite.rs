@@ -1,3 +1,22 @@
+/// Report a throughput measurement against its target — and fail when it misses.
+///
+/// These checks used to compute the comparison, emit a `Warning:` line on
+/// stderr, then print the ✅ marker and return `Ok(())` unconditionally, so
+/// `pmat test throughput` reported
+/// "✅ Single-threaded throughput: 1593 LOC/s (target: ≥487000 LOC/s)" and
+/// exited 0 — a measurement 300x under its own target read as a pass. The
+/// comparison now decides both the marker and the return value.
+fn report_throughput(label: &str, actual: f64, required: f64, extra: &str) -> Result<()> {
+    println!(
+        "{} {label}: {actual:.0} LOC/s (target: ≥{required:.0} LOC/s){extra}",
+        if actual < required { "❌" } else { "✅" }
+    );
+    if actual < required {
+        anyhow::bail!("{label}: {actual:.0} LOC/s is below the required {required:.0} LOC/s");
+    }
+    Ok(())
+}
+
 /// Test single-threaded analysis throughput
 pub async fn test_single_threaded_throughput() -> Result<()> {
     let targets = PerformanceTargets::default();
@@ -33,20 +52,9 @@ pub async fn test_single_threaded_throughput() -> Result<()> {
     let duration = start.elapsed();
     let actual_throughput = (test_lines as f64) / duration.as_secs_f64();
 
-    // Performance may vary in test environment
-    if actual_throughput < targets.loc_per_sec_st as f64 * 0.8 {
-        eprintln!(
-            "Warning: Single-threaded throughput: {:.0} LOC/s, expected ≥{} LOC/s",
-            actual_throughput, targets.loc_per_sec_st
-        );
-    }
-
-    println!(
-        "✅ Single-threaded throughput: {:.0} LOC/s (target: ≥{} LOC/s)",
-        actual_throughput, targets.loc_per_sec_st
-    );
-
-    Ok(())
+    // 20% slack for test-environment variance; past that the measurement decides.
+    let required = targets.loc_per_sec_st as f64 * 0.8;
+    report_throughput("Single-threaded throughput", actual_throughput, required, "")
 }
 
 /// Test analysis performance with realistic project size
@@ -90,13 +98,12 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
 
     // More lenient threshold for multi-file analysis due to I/O overhead
     let min_throughput = 100_000; // 100K LOC/s
-    if actual_throughput < f64::from(min_throughput) {
-        eprintln!("Warning: Multi-file analysis throughput: {actual_throughput:.0} LOC/s, expected ≥{min_throughput} LOC/s");
-    }
-
-    println!("✅ Multi-file analysis: {actual_throughput:.0} LOC/s, duration: {duration:?}");
-
-    Ok(())
+    report_throughput(
+        "Multi-file analysis",
+        actual_throughput,
+        f64::from(min_throughput),
+        &format!(", duration: {duration:?}"),
+    )
 }
 
 /// Test large file handling performance
@@ -133,15 +140,20 @@ pub async fn test_large_file_performance() -> Result<()> {
 
     // Large files should still be processed reasonably quickly
     let max_duration_secs = 30; // More lenient for test environments
+    let throughput = (test_lines as f64) / duration.as_secs_f64();
+    // Same defect as the throughput checks above: this used to warn on stderr
+    // and print ✅ anyway.
     if duration.as_secs() > max_duration_secs {
-        eprintln!(
-            "Warning: Large file analysis took {}s, expected ≤{}s for 100K LOC",
+        println!(
+            "❌ Large file performance: {throughput:.0} LOC/s, duration: {duration:?} (budget: ≤{max_duration_secs}s for 100K LOC)"
+        );
+        anyhow::bail!(
+            "Large file analysis took {}s, over the {}s budget for 100K LOC",
             duration.as_secs(),
             max_duration_secs
         );
     }
 
-    let throughput = (test_lines as f64) / duration.as_secs_f64();
     println!("✅ Large file performance: {throughput:.0} LOC/s, duration: {duration:?}");
 
     Ok(())
@@ -284,6 +296,30 @@ pub fn get_memory_usage_mb() -> u64 {
 
     // Fallback for other platforms or if reading fails
     0
+}
+
+#[cfg(test)]
+mod throughput_verdict_tests {
+    use super::*;
+
+    /// A measurement below its target must not report success.
+    #[test]
+    fn test_report_throughput_fails_below_target() {
+        // The exact numbers `pmat test throughput` printed a ✅ for.
+        let err = report_throughput("Single-threaded throughput", 1593.0, 487_000.0, "")
+            .expect_err("1593 LOC/s against a 487000 LOC/s target is a failure");
+        assert!(err.to_string().contains("below the required"), "{err}");
+        assert!(
+            report_throughput("Multi-file analysis", 67944.0, 100_000.0, "").is_err(),
+            "67944 LOC/s against a 100000 LOC/s target is a failure"
+        );
+    }
+
+    #[test]
+    fn test_report_throughput_passes_at_or_above_target() {
+        assert!(report_throughput("t", 100_000.0, 100_000.0, "").is_ok());
+        assert!(report_throughput("t", 500_000.0, 487_000.0, "").is_ok());
+    }
 }
 
 /// Run comprehensive performance test suite

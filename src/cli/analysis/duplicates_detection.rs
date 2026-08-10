@@ -65,7 +65,14 @@ pub async fn handle_analyze_duplicates(
 
     let start_time = std::time::Instant::now();
 
-    let mut report = run_duplicate_detection(
+    // `--top-files` used to be applied HERE, dropping duplicate blocks and then
+    // recomputing the report from what survived: the same tree reported 12.2%
+    // duplication at `--top-files 1` and 19.4% at `--top-files 0`, and one
+    // 301-line file read as "17.6% (53 / 301 lines)" or "33.6% (101 / 301
+    // lines)" depending only on how many rows the user asked to see. A display
+    // limit cannot be allowed to change the measurement, so the report is now
+    // whole-project and `top_files` travels to the renderer instead.
+    let report = run_duplicate_detection(
         &project_path,
         detection_type,
         threshold,
@@ -76,7 +83,6 @@ pub async fn handle_analyze_duplicates(
     )
     .await?;
 
-    apply_top_files_filtering(&mut report, top_files);
     print_duplicate_summary(&report);
 
     if perf {
@@ -93,7 +99,81 @@ pub async fn handle_analyze_duplicates(
         eprintln!("\n{}", c::pass("Analysis Complete"));
     }
 
-    write_duplicate_output(&report, format, output).await
+    write_duplicate_output(&report, format, output, top_files).await
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_files_does_not_change_the_measurement_tests {
+    use super::*;
+
+    /// `--top-files N` dropped every duplicate block outside the top N files and
+    /// then restated the report from the survivors, so the SAME tree reported
+    /// "8 blocks / 12.2%" at `--top-files 1`, "17 / 14.8%" at 3 and "32 / 19.4%"
+    /// at 0 — the answer moved with the size of the list the user asked to see.
+    #[tokio::test]
+    async fn duplication_metrics_are_independent_of_top_files() {
+        use tempfile::TempDir;
+
+        let project = TempDir::new().unwrap();
+        let out = TempDir::new().unwrap();
+        // Two independent clone families plus one unique file: a top-N cut over
+        // files drops the whole second family, which is what used to move the
+        // headline numbers.
+        let family_a: String = (0..14)
+            .map(|line| format!("    let a{} = {line} * 3;\n", line % 3))
+            .collect();
+        let family_b: String = (0..14)
+            .map(|line| format!("    let b{} = {line} - 7;\n", line % 4))
+            .collect();
+        for name in ["a0.rs", "a1.rs", "a2.rs"] {
+            std::fs::write(project.path().join(name), &family_a).unwrap();
+        }
+        for name in ["b0.rs", "b1.rs"] {
+            std::fs::write(project.path().join(name), &family_b).unwrap();
+        }
+        std::fs::write(
+            project.path().join("c0.rs"),
+            "fn unique() {\n    let only = 1;\n}\n",
+        )
+        .unwrap();
+
+        let mut baseline: Option<(u64, u64, String)> = None;
+        for top_files in [1usize, 2, 3, 10, 0] {
+            let report_path = out.path().join(format!("dup-{top_files}.json"));
+            handle_analyze_duplicates(
+                project.path().to_path_buf(),
+                crate::cli::DuplicateType::Exact,
+                0.8,
+                5,
+                100,
+                crate::cli::DuplicateOutputFormat::Json,
+                false,
+                None,
+                None,
+                Some(report_path.clone()),
+                top_files,
+            )
+            .await
+            .expect("analysis must succeed");
+
+            let json: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+            let measured = (
+                json["total_duplicates"].as_u64().unwrap(),
+                json["duplicate_lines"].as_u64().unwrap(),
+                format!("{:.4}", json["duplication_percentage"].as_f64().unwrap()),
+            );
+
+            match &baseline {
+                None => baseline = Some(measured),
+                Some(expected) => assert_eq!(
+                    *expected, measured,
+                    "--top-files {top_files} changed the measured duplication"
+                ),
+            }
+        }
+    }
 }
 
 /// Run duplicate detection analysis
@@ -118,70 +198,6 @@ async fn run_duplicate_detection(
     .await
 }
 
-/// Apply top files filtering to report
-fn apply_top_files_filtering(report: &mut DuplicateReport, top_files: usize) {
-    if top_files == 0 {
-        return;
-    }
-
-    let top_file_names = get_top_files_by_duplication(&report.file_statistics, top_files);
-    filter_blocks_by_files(report, &top_file_names);
-    recalculate_statistics_after_filtering(report);
-}
-
-/// Get top files by duplication percentage
-fn get_top_files_by_duplication(
-    file_statistics: &BTreeMap<String, FileStats>,
-    top_files: usize,
-) -> std::collections::HashSet<String> {
-    let mut file_stats: Vec<_> = file_statistics.iter().collect();
-    // DETERMINISM: duplication percentage is not a total order (whole trees tie
-    // at 0.0), so without the path tie-break `.take(top_files)` kept whichever
-    // tied files the map iteration happened to visit first.
-    file_stats.sort_by(|a, b| {
-        b.1.duplication_percentage
-            .partial_cmp(&a.1.duplication_percentage)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.0.cmp(b.0))
-    });
-
-    file_stats
-        .into_iter()
-        .take(top_files)
-        .map(|(name, _)| name.clone())
-        .collect()
-}
-
-/// Filter blocks to only include those in specified files
-fn filter_blocks_by_files(
-    report: &mut DuplicateReport,
-    top_file_names: &std::collections::HashSet<String>,
-) {
-    report.duplicate_blocks.retain(|block| {
-        block
-            .locations
-            .iter()
-            .any(|loc| top_file_names.contains(&loc.file))
-    });
-}
-
-/// Recalculate statistics after filtering.
-///
-/// Delegates to `calculate_duplicate_statistics` so the per-file map is
-/// recomputed too. Round 2 fixed only the aggregate here, which left
-/// `file_statistics` reporting 447.06% for a 17-line file — and only in the
-/// `--top-files > 0` path, so `--top-files 0` still printed 447.06% at the top
-/// level as well.
-fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
-    let duplicate_lines =
-        calculate_duplicate_statistics(&report.duplicate_blocks, &mut report.file_statistics);
-
-    report.duplicate_lines = duplicate_lines;
-    report.total_duplicates = report.duplicate_blocks.len();
-    report.duplication_percentage =
-        calculate_duplication_percentage(duplicate_lines, report.total_lines);
-}
-
 /// Print duplicate analysis summary
 fn print_duplicate_summary(report: &DuplicateReport) {
     use crate::cli::colors as c;
@@ -200,12 +216,23 @@ fn print_duplicate_summary(report: &DuplicateReport) {
 }
 
 /// Write duplicate output to file or stdout
+///
+/// `top_files` limits the rendered "Top Files by Duplication" list and nothing
+/// else — the machine-readable formats carry the whole measurement.
 async fn write_duplicate_output(
     report: &DuplicateReport,
     format: crate::cli::DuplicateOutputFormat,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
-    let content = format_output(report, format)?;
+    let content = match format {
+        crate::cli::DuplicateOutputFormat::Human
+        | crate::cli::DuplicateOutputFormat::Summary
+        | crate::cli::DuplicateOutputFormat::Detailed => {
+            format_human_output_with_limit(report, top_files)?
+        }
+        other => format_output(report, other)?,
+    };
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;

@@ -12,10 +12,13 @@ mod proptest_generation_tests {
         let target = PathBuf::from("lib.rs");
 
         let module = service
-            .generate_proptest_module(&target, &functions)
+            .generate_proptest_module("tiny_crate", &target, &functions)
             .unwrap();
 
-        assert!(module.contains("use crate::lib::*;"));
+        // Integration tests live in their own crate: `use crate::lib::*;`
+        // (what this asserted before) can never resolve.
+        assert!(module.contains("use tiny_crate::*;"));
+        assert!(!module.contains("use crate::"));
     }
 
     #[test]
@@ -36,7 +39,7 @@ mod proptest_generation_tests {
         let target = PathBuf::from("multi.rs");
 
         let module = service
-            .generate_proptest_module(&target, &functions)
+            .generate_proptest_module("tiny_crate", &target, &functions)
             .unwrap();
 
         assert!(module.contains("fn proptest_func_a"));
@@ -55,10 +58,10 @@ mod proptest_generation_tests {
         let target = PathBuf::from("src/services/coverage.rs");
 
         let module = service
-            .generate_proptest_module(&target, &functions)
+            .generate_proptest_module("my_crate", &target, &functions)
             .unwrap();
 
-        // Should use just the file stem
-        assert!(module.contains("use crate::coverage::*;"));
+        // The import names the crate under test, never the target file stem.
+        assert!(module.contains("use my_crate::*;"));
     }
 }

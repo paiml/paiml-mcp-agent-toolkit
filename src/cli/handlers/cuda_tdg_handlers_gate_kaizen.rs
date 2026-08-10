@@ -79,12 +79,38 @@ fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) ->
     output
 }
 
+/// Render a kaizen metric that the analyzer does not measure.
+///
+/// MTTD/MTTF/escape rate/regression rate have no defect-lifecycle source
+/// behind them (see `build_kaizen_metrics`), so they arrive here as NaN and
+/// must be shown as "not measured" rather than as a number.
+fn kaizen_metric(value: f64, unit: &str) -> String {
+    if value.is_finite() {
+        format!("{:.1}{}", value, unit)
+    } else {
+        "not measured".to_string()
+    }
+}
+
+fn kaizen_percentage(value: f64) -> String {
+    kaizen_metric(value * 100.0, "%")
+}
+
 /// Handle kaizen subcommand
 async fn handle_kaizen(
     path: &PathBuf,
-    _since: Option<&str>,
+    since: Option<&str>,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    // `--since` was bound to `_since` and dropped on the floor, so the flag
+    // silently changed nothing. Nothing this report emits is derived from a
+    // time window, so say so instead of pretending the filter applied.
+    if let Some(since) = since {
+        eprintln!(
+            "Warning: --since {since} ignored — cuda-tdg kaizen reports no history-derived metrics"
+        );
+    }
+
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -108,20 +134,20 @@ fn format_kaizen_markdown(result: &CudaSimdTdgResult) -> String {
         result.kaizen.tickets_resolved
     ));
     md.push_str(&format!(
-        "- **Mean Time to Detect**: {:.1} hours\n",
-        result.kaizen.mttd
+        "- **Mean Time to Detect**: {}\n",
+        kaizen_metric(result.kaizen.mttd, " hours")
     ));
     md.push_str(&format!(
-        "- **Mean Time to Fix**: {:.1} hours\n",
-        result.kaizen.mttf
+        "- **Mean Time to Fix**: {}\n",
+        kaizen_metric(result.kaizen.mttf, " hours")
     ));
     md.push_str(&format!(
-        "- **Escape Rate**: {:.1}%\n",
-        result.kaizen.escape_rate * 100.0
+        "- **Escape Rate**: {}\n",
+        kaizen_percentage(result.kaizen.escape_rate)
     ));
     md.push_str(&format!(
-        "- **Regression Rate**: {:.1}%\n\n",
-        result.kaizen.regression_rate * 100.0
+        "- **Regression Rate**: {}\n\n",
+        kaizen_percentage(result.kaizen.regression_rate)
     ));
 
     if !result.kaizen.ticket_references.is_empty() {
@@ -142,22 +168,57 @@ fn format_kaizen_text(result: &CudaSimdTdgResult) -> String {
         result.kaizen.tickets_resolved
     ));
     output.push_str(&format!(
-        "Mean Time to Detect: {:.1} hours\n",
-        result.kaizen.mttd
+        "Mean Time to Detect: {}\n",
+        kaizen_metric(result.kaizen.mttd, " hours")
     ));
     output.push_str(&format!(
-        "Mean Time to Fix: {:.1} hours\n",
-        result.kaizen.mttf
+        "Mean Time to Fix: {}\n",
+        kaizen_metric(result.kaizen.mttf, " hours")
     ));
     output.push_str(&format!(
-        "Escape Rate: {:.1}%\n",
-        result.kaizen.escape_rate * 100.0
+        "Escape Rate: {}\n",
+        kaizen_percentage(result.kaizen.escape_rate)
     ));
     output.push_str(&format!(
-        "Regression Rate: {:.1}%\n",
-        result.kaizen.regression_rate * 100.0
+        "Regression Rate: {}\n",
+        kaizen_percentage(result.kaizen.regression_rate)
     ));
     output
+}
+
+#[cfg(test)]
+mod kaizen_honesty_tests {
+    use super::*;
+
+    #[test]
+    fn test_unmeasured_kaizen_metrics_render_as_not_measured() {
+        // Regression: these printed 24.0 hours / 48.0 hours / 5.0% / 2.0% for
+        // every input, from literals in build_kaizen_metrics.
+        assert_eq!(kaizen_metric(f64::NAN, " hours"), "not measured");
+        assert_eq!(kaizen_percentage(f64::NAN), "not measured");
+        assert_eq!(kaizen_metric(12.5, " hours"), "12.5 hours");
+        assert_eq!(kaizen_percentage(0.05), "5.0%");
+    }
+
+    #[test]
+    fn test_kaizen_report_does_not_quote_the_old_defaults() {
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(dir.path().join("lib.rs"), "pub fn f() {}\n").unwrap();
+
+        let result = CudaSimdAnalyzer::new().analyze(dir.path()).unwrap();
+        let text = format_kaizen_text(&result);
+
+        assert!(
+            text.contains("Mean Time to Detect: not measured"),
+            "MTTD must not be a hardcoded estimate: {text}"
+        );
+        assert!(
+            text.contains("Escape Rate: not measured"),
+            "escape rate must not be a hardcoded estimate: {text}"
+        );
+        assert!(!text.contains("24.0 hours"), "{text}");
+        assert!(!text.contains("5.0%"), "{text}");
+    }
 }
 
 /// Handle taxonomy subcommand

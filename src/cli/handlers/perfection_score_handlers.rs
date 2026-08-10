@@ -18,6 +18,15 @@ pub async fn handle_perfection_score(
     output: Option<&Path>,
     fast: bool,
 ) -> anyhow::Result<()> {
+    // The `path_exists` contract annotation above was decorative: nothing ever
+    // checked the path, so `perfection-score -p /does/not/exist` ran every
+    // category against an absent tree, each fell back to its zero-files
+    // default, and the run printed 95.2/200 with Technical Debt Grade 40.0/40.0
+    // (A+) and exit 0 — outscoring a real crate. Every peer scoring command
+    // (repo-score, rust-project-score, demo-score, brick-score, popper-score)
+    // exits 1 here; this one now does too.
+    crate::cli::ensure_analysis_path_exists(path)?;
+
     let calculator = PerfectionScoreCalculator::new().fast_mode(fast);
     let mut result = calculator.calculate(path).await?;
 
@@ -217,6 +226,28 @@ mod tests {
 
         assert!(md.contains("# PMAT Perfection Score Report"));
         assert!(md.contains("| Category |"));
+    }
+
+    /// A nonexistent tree used to score 95.2/200 with a perfect TDG 40/40 and
+    /// exit 0, because nothing validated the path before scoring.
+    #[tokio::test]
+    async fn test_perfection_score_rejects_missing_path() {
+        let missing = Path::new("/nonexistent/pmat/perfection/score/path");
+        let err = handle_perfection_score(
+            missing,
+            false,
+            None,
+            PerfectionScoreOutputFormat::Json,
+            None,
+            true,
+        )
+        .await
+        .expect_err("a path that does not exist must not produce a score");
+
+        assert!(
+            err.to_string().contains("Path not found"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]

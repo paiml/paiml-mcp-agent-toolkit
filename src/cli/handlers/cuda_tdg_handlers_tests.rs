@@ -869,7 +869,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
         let cmd = CudaTdgCommand::Score {
-            path: temp_dir.path().to_path_buf(),
+            path: Some(temp_dir.path().to_path_buf()),
             breakdown: true,
         };
 
@@ -882,7 +882,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
         let cmd = CudaTdgCommand::Report {
-            path: temp_dir.path().to_path_buf(),
+            path: Some(temp_dir.path().to_path_buf()),
             format: "markdown".to_string(),
             output: None,
         };
@@ -921,7 +921,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
         let cmd = CudaTdgCommand::Gate {
-            path: temp_dir.path().to_path_buf(),
+            path: Some(temp_dir.path().to_path_buf()),
             min_score: 0.0,
             fail_on_p0: false,
         };
@@ -935,7 +935,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
         let cmd = CudaTdgCommand::Kaizen {
-            path: temp_dir.path().to_path_buf(),
+            path: Some(temp_dir.path().to_path_buf()),
             since: Some("2025-01-01".to_string()),
         };
 
@@ -1335,5 +1335,67 @@ fn test_barrier_convergence() {{
         assert!(config.analyze_wgpu);
         assert_eq!(config.shared_memory_limit, 49152);
         assert_eq!(config.register_limit, 64);
+    }
+}
+
+/// `pmat cuda-tdg [PATH] <SUBCOMMAND>` used to discard the top-level positional:
+/// each subcommand re-defaulted its own path to `"."`, so
+/// `pmat cuda-tdg /does/not/exist score` graded the current directory (81.0/100,
+/// "Gateway: PASSED", exit 0) instead of the path it was given.
+mod top_level_path_is_honoured_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn config_for(path: PathBuf) -> CudaTdgCommandConfig {
+        CudaTdgCommandConfig {
+            path,
+            command: None,
+            format: CudaTdgOutputFormat::Terminal,
+            min_score: 85.0,
+            fail_on_p0: false,
+            simd: true,
+            wgpu: true,
+            output: None,
+            quiet: true,
+        }
+    }
+
+    #[test]
+    fn subcommand_without_a_path_falls_back_to_the_top_level_path() {
+        let config = config_for(PathBuf::from("/top/level"));
+        assert_eq!(
+            resolve_subcommand_path(None, &config),
+            &PathBuf::from("/top/level")
+        );
+    }
+
+    #[test]
+    fn an_explicit_subcommand_path_still_wins() {
+        let config = config_for(PathBuf::from("/top/level"));
+        let explicit = PathBuf::from("/explicit");
+        assert_eq!(resolve_subcommand_path(Some(&explicit), &config), &explicit);
+    }
+
+    #[tokio::test]
+    async fn score_over_a_missing_top_level_path_fails_instead_of_grading_the_cwd() {
+        let dir = TempDir::new().expect("tempdir");
+        let missing = dir.path().join("no-such-tree");
+        let config = config_for(missing.clone());
+
+        let err = handle_cuda_tdg_subcommand(
+            &CudaTdgCommand::Score {
+                path: None,
+                breakdown: false,
+            },
+            &config,
+        )
+        .await
+        .expect_err("a missing path must not be scored as the current directory");
+
+        let rendered = format!("{err:#}");
+        assert!(
+            rendered.contains(&missing.display().to_string()),
+            "the error must name the path that was given, got: {rendered}"
+        );
     }
 }

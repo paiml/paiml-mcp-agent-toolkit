@@ -29,7 +29,7 @@ pub async fn handle_ci_local(
 
     println!("{}\n", c::header("PMAT Local CI Simulation"));
 
-    let checks = build_check_list(quick, matrix);
+    let checks = build_check_list(quick, matrix)?;
     let total = checks.len();
     let mut results: Vec<CiCheckResult> = Vec::new();
 
@@ -101,6 +101,17 @@ pub async fn handle_ci_local(
         }
     }
 
+    if results.is_empty() {
+        // A run that executed no checks has verified nothing. Printing the
+        // strongest go-ahead ("safe to push") with exit 0 after 0 checks is how
+        // an unrecognised --matrix used to sail through CI scripts.
+        println!(
+            "\n{}",
+            c::fail("CI simulation ran 0 checks — nothing was verified")
+        );
+        std::process::exit(1);
+    }
+
     if failed > 0 {
         println!(
             "\n{}",
@@ -115,27 +126,29 @@ pub async fn handle_ci_local(
 }
 
 /// Build the list of checks to run
-fn build_check_list(quick: bool, matrix: Option<&str>) -> Vec<&'static str> {
+///
+/// An unrecognised `--matrix` is an error, not a warning: the catch-all arm used
+/// to eprintln! a note and return an empty list, so 0 checks ran and the summary
+/// still reported "CI simulation PASSED — safe to push" with exit 0.
+fn build_check_list(quick: bool, matrix: Option<&str>) -> Result<Vec<&'static str>> {
     if let Some(m) = matrix {
-        match m {
+        let checks = match m {
             "fmt" => vec!["cargo-fmt"],
             "clippy" => vec!["clippy-default", "clippy-all-features"],
             "test" => vec!["test-fast"],
             "cross" => vec!["cross-check-aarch64"],
             "bench" => vec!["bench-check"],
             "full" => full_checks(),
-            _ => {
-                eprintln!(
-                    "Unknown matrix: {}. Available: fmt, clippy, test, cross, bench, full",
-                    m
-                );
-                vec![]
-            }
-        }
+            _ => anyhow::bail!(
+                "Unknown matrix: {}. Available: fmt, clippy, test, cross, bench, full",
+                m
+            ),
+        };
+        Ok(checks)
     } else if quick {
-        vec!["cargo-fmt", "clippy-default", "test-fast"]
+        Ok(vec!["cargo-fmt", "clippy-default", "test-fast"])
     } else {
-        full_checks()
+        Ok(full_checks())
     }
 }
 
@@ -276,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_build_check_list_quick() {
-        let checks = build_check_list(true, None);
+        let checks = build_check_list(true, None).unwrap();
         assert_eq!(checks.len(), 3);
         assert_eq!(checks[0], "cargo-fmt");
         assert_eq!(checks[1], "clippy-default");
@@ -285,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_build_check_list_full() {
-        let checks = build_check_list(false, None);
+        let checks = build_check_list(false, None).unwrap();
         assert!(checks.len() >= 5);
         assert!(checks.contains(&"cargo-fmt"));
         assert!(checks.contains(&"clippy-default"));
@@ -295,20 +308,40 @@ mod tests {
 
     #[test]
     fn test_build_check_list_matrix_fmt() {
-        let checks = build_check_list(false, Some("fmt"));
+        let checks = build_check_list(false, Some("fmt")).unwrap();
         assert_eq!(checks, vec!["cargo-fmt"]);
     }
 
     #[test]
     fn test_build_check_list_matrix_clippy() {
-        let checks = build_check_list(false, Some("clippy"));
+        let checks = build_check_list(false, Some("clippy")).unwrap();
         assert_eq!(checks, vec!["clippy-default", "clippy-all-features"]);
     }
 
     #[test]
-    fn test_build_check_list_unknown_matrix() {
-        let checks = build_check_list(false, Some("nonexistent"));
-        assert!(checks.is_empty());
+    fn test_build_check_list_unknown_matrix_is_an_error() {
+        // Regression: this used to return an empty Vec, so ci-local ran 0
+        // checks and still printed "CI simulation PASSED — safe to push".
+        let err = build_check_list(false, Some("nonexistent")).unwrap_err();
+        assert!(err.to_string().contains("Unknown matrix"));
+    }
+
+    #[test]
+    fn test_build_check_list_never_returns_an_empty_list_when_ok() {
+        for matrix in [
+            None,
+            Some("fmt"),
+            Some("clippy"),
+            Some("test"),
+            Some("cross"),
+            Some("bench"),
+            Some("full"),
+        ] {
+            for quick in [true, false] {
+                let checks = build_check_list(quick, matrix).unwrap();
+                assert!(!checks.is_empty(), "empty check list for {matrix:?}");
+            }
+        }
     }
 
     #[test]

@@ -24,7 +24,7 @@ pub struct TdgAnalysisConfig {
 /// Auto-fails TDG analysis if critical defects are found
 async fn check_for_critical_defects(path: &Path) -> Result<()> {
     use crate::services::defect_detector::{RustDefectDetector, Severity};
-    use walkdir::WalkDir;
+    use ignore::WalkBuilder;
 
     let detector = RustDefectDetector::new();
     let mut critical_defects_found = false;
@@ -32,11 +32,21 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
 
     eprintln!("🔍 Checking for critical defects...");
 
-    // Scan Rust files in the project
-    for entry in WalkDir::new(path)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(|e| e.ok())
+    // Scan Rust files in the project. Gitignore-aware: the bare `WalkDir`
+    // this replaces also descended into gitignored trees — on this repo the
+    // ephemeral `.claude/worktrees/` checkouts, which are copies of the very
+    // files being scanned, so the same defect was counted once per copy.
+    // `follow_links` stays off for the same reason.
+    for entry in WalkBuilder::new(path)
+        .follow_links(false)
+        .hidden(false)
+        .parents(true)
+        .ignore(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .build()
+        .filter_map(std::result::Result::ok)
     {
         let file_path = entry.path();
 
@@ -91,15 +101,28 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
+    run_tdg_analysis(config, false).await
+}
+
+/// `analyze build-tdg`: the same analysis, plus the documented quality gate.
+///
+/// Kept separate from `handle_analyze_tdg` because `analyze tdg`'s `--threshold`
+/// is documented as a result filter, not a gate; only `build-tdg` promises to
+/// "fail fast" on it.
+pub async fn handle_analyze_tdg_gated(config: TdgAnalysisConfig) -> Result<()> {
+    run_tdg_analysis(config, true).await
+}
+
+async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) -> Result<()> {
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
     let analyzer = TdgAnalyzer::new()?;
-    let _threshold = config.threshold.unwrap_or(1.5);
+    let threshold = config.threshold;
     // `-n/--top-files` was read into a discarded binding, so it truncated
     // nothing: -n 5 / -n 10 / -n 100000 all emitted the same file list.
     let top_files = config.top_files.unwrap_or(10);
 
-    let result = if config.path.is_dir() {
+    let (result, measured_score) = if config.path.is_dir() {
         analyze_project_path(&analyzer, &config.path, &config.format, top_files).await?
     } else {
         analyze_single_file(&analyzer, &config.path, &config.format).await?
@@ -111,6 +134,36 @@ pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
     check_for_critical_defects(&config.path).await?;
 
     eprintln!("✅ TDG analysis complete");
+
+    if enforce_threshold {
+        enforce_tdg_threshold(measured_score, threshold.unwrap_or(2.0))?;
+    }
+    Ok(())
+}
+
+/// The Jidoka gate `analyze build-tdg --help` promises.
+///
+/// The threshold used to be bound to `_threshold` and never compared, so on a
+/// deliberately pathological crate every value from 0.0 to 1000 exited 0 — a
+/// gate that cannot fail is not a gate. It is now enforced against the ONE
+/// number the command just printed.
+///
+/// The flag's help text ("fail if exceeded", defaults 1.5/2.0) is phrased for
+/// the retired 0–5 debt-gradient scale. TDG now scores quality on 0–100 where
+/// HIGHER IS BETTER, so comparing "exceeds" against it would fail every healthy
+/// project; the threshold is enforced as a minimum score instead, and the
+/// comparison is printed in full so the gate is never silent about what it
+/// measured or which way round it read the number.
+fn enforce_tdg_threshold(measured: f32, threshold: f64) -> Result<()> {
+    eprintln!(
+        "🚦 TDG gate: measured {measured:.1}/100 against required minimum {threshold:.1} \
+         (--threshold, on the 0-100 scale where higher is better)"
+    );
+    if f64::from(measured) < threshold {
+        anyhow::bail!(
+            "TDG gate failed: score {measured:.1}/100 is below the required minimum of {threshold:.1} (--threshold)"
+        );
+    }
     Ok(())
 }
 
@@ -119,23 +172,28 @@ async fn analyze_project_path(
     path: &Path,
     format: &TdgOutputFormat,
     top_files: usize,
-) -> Result<String> {
+) -> Result<(String, f32)> {
     let mut project_score = analyzer.analyze_project(path).await?;
     // Honour --top-files for every renderer; aggregates stay whole-project and
     // the truncation is disclosed (files_reported / files_truncated).
     project_score.limit_to_worst_files(top_files);
+    let average_score = project_score.average_score;
     // `root` is the analysed path, not the process CWD -- that distinction is
     // the #680-round-3 fix for grades depending on the caller's directory.
-    format_project_result(&project_score, path, format)
+    Ok((
+        format_project_result(&project_score, path, format)?,
+        average_score,
+    ))
 }
 
 async fn analyze_single_file(
     analyzer: &TdgAnalyzer,
     path: &Path,
     format: &TdgOutputFormat,
-) -> Result<String> {
+) -> Result<(String, f32)> {
     let score = analyzer.analyze_file(path).await?;
-    format_file_result(&score, format)
+    let total = score.total;
+    Ok((format_file_result(&score, format)?, total))
 }
 
 fn format_project_result(
@@ -456,6 +514,59 @@ mod tests {
         let result = handle_analyze_tdg(config).await;
 
         assert!(result.is_ok());
+        Ok(())
+    }
+
+    // ── --threshold is a gate, not a discarded binding ──────────────────────
+
+    #[test]
+    fn threshold_gate_fails_when_the_measured_score_is_below_it() {
+        let err = enforce_tdg_threshold(85.0, 90.0)
+            .expect_err("85.0/100 must not satisfy a required minimum of 90.0");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("85.0"),
+            "gate must state what it measured: {msg}"
+        );
+        assert!(
+            msg.contains("90.0"),
+            "gate must state what it required: {msg}"
+        );
+    }
+
+    #[test]
+    fn threshold_gate_passes_when_the_measured_score_meets_it() {
+        assert!(enforce_tdg_threshold(85.0, 2.0).is_ok());
+        assert!(enforce_tdg_threshold(85.0, 85.0).is_ok());
+    }
+
+    #[tokio::test]
+    async fn build_tdg_gate_rejects_a_project_below_the_threshold() -> Result<()> {
+        // The whole point of the defect: every threshold used to exit 0.
+        let dir = tempfile::tempdir()?;
+        std::fs::write(
+            dir.path().join("lib.rs"),
+            "pub fn a() -> i32 { 1 }\npub fn b() -> i32 { 2 }\n",
+        )?;
+
+        let cfg = |threshold: f64| TdgAnalysisConfig {
+            path: dir.path().to_path_buf(),
+            threshold: Some(threshold),
+            top_files: Some(10),
+            format: TdgOutputFormat::Json,
+            include_components: false,
+            output: Some(dir.path().join("out.json")),
+            critical_only: false,
+            verbose: false,
+        };
+
+        // A minimum nothing can reach must fail the build...
+        assert!(
+            handle_analyze_tdg_gated(cfg(1000.0)).await.is_err(),
+            "--threshold 1000 must fail: no project scores above 100/100"
+        );
+        // ...while the ungated `analyze tdg` path stays a report.
+        assert!(handle_analyze_tdg(cfg(1000.0)).await.is_ok());
         Ok(())
     }
 }

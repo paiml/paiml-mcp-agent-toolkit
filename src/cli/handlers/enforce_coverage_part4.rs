@@ -385,16 +385,32 @@
     mod coverage_analysis_tests {
         use super::*;
 
+        /// Write an lcov report with a known line-coverage percentage.
+        ///
+        /// These tests used to assert `current == 65.0` against a bare temp
+        /// directory, which pinned the literal `let coverage = 65.0; //
+        /// Simulated coverage` the handler has now lost: every project on earth,
+        /// including an empty one, was reported 15 points under the 80% floor.
+        /// The percentage now has to come from a real report, so the tests
+        /// supply one.
+        fn write_lcov(dir: &std::path::Path, hit: u64, found: u64) {
+            std::fs::write(
+                dir.join("lcov.info"),
+                format!("TN:\nSF:src/lib.rs\nLF:{found}\nLH:{hit}\nend_of_record\n"),
+            )
+            .expect("write lcov");
+        }
+
         #[tokio::test]
         async fn test_run_coverage_analysis_below_threshold() {
             let temp_dir = create_test_project();
+            write_lcov(temp_dir.path(), 65, 100); // 65%
             let profile = make_test_profile(); // 80% min coverage
 
             let violations = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
                 .unwrap();
 
-            // Simulated coverage is 65%, so should have violation
             assert!(!violations.is_empty());
             assert_eq!(violations[0].violation_type, "coverage");
             assert_eq!(violations[0].current, 65.0);
@@ -404,6 +420,7 @@
         #[tokio::test]
         async fn test_run_coverage_analysis_above_threshold() {
             let temp_dir = create_test_project();
+            write_lcov(temp_dir.path(), 65, 100); // 65%
             let mut profile = make_test_profile();
             profile.coverage_min = 50.0; // Lower threshold
 
@@ -411,7 +428,23 @@
                 .await
                 .unwrap();
 
-            // Simulated coverage is 65%, above 50% threshold
             assert!(violations.is_empty());
+        }
+
+        /// No lcov report ⇒ nothing measured ⇒ no violation invented.
+        #[tokio::test]
+        async fn test_run_coverage_analysis_reports_nothing_when_unmeasured() {
+            let temp_dir = create_test_project();
+            let profile = make_test_profile(); // 80% min coverage
+
+            let violations = run_coverage_analysis(temp_dir.path(), &profile)
+                .await
+                .unwrap();
+
+            assert!(
+                violations.is_empty(),
+                "a project with no coverage report must not be reported as failing a \
+                 coverage floor; got {violations:?}"
+            );
         }
     }

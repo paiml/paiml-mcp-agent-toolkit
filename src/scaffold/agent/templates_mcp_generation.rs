@@ -61,6 +61,15 @@ impl TemplateGenerator for MCPServerTemplate {
     }
 }
 
+/// The manifest declares only targets the scaffold actually writes.
+///
+/// It used to end with `[[bench]] name = "performance"` while no `benches/`
+/// directory was ever generated, so the scaffolded project was dead on arrival:
+/// `cargo check` failed at manifest PARSE time with "can't find `performance`
+/// bench at `benches/performance.rs`", before a single line of the generated
+/// code was compiled. A declared target with no file (and the criterion
+/// dev-dependency that only existed to serve it) is a promise the scaffold does
+/// not keep.
 fn generate_mcp_cargo_toml(ctx: &AgentContext) -> String {
     format!(
         r#"[package]
@@ -81,11 +90,6 @@ tracing-subscriber = {{ version = "0.3", features = ["env-filter"] }}
 [dev-dependencies]
 proptest = "1.5"
 tokio-test = "0.4"
-criterion = "0.5"
-
-[[bench]]
-name = "performance"
-harness = false
 "#,
         ctx.name
     )
@@ -136,6 +140,12 @@ pub mod transport;
     .to_string()
 }
 
+// None of the generated sources below carry a
+// `#[provable_contracts_macros::contract(...)]` attribute any more. pmat's own
+// sources do, and the attribute was copied into the templates — but
+// `provable_contracts_macros` is not among the `[dependencies]` the scaffold
+// writes, so every generated file that used it failed to resolve the macro
+// crate. Generated code may only use what the generated manifest declares.
 fn generate_mcp_server(ctx: &AgentContext) -> String {
     format!(
         r#"//! MCP server implementation for {}.
@@ -149,7 +159,6 @@ use super::tools::register_tools;
 use super::transport::create_transport;
 
 /// Run the MCP server.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn run() -> Result<()> {{
     let transport = create_transport().await?;
     let agent = AgentCore::new();
@@ -181,7 +190,6 @@ use serde_json::Value;
 use crate::agent::core::AgentCore;
 
 /// Register all tools with the MCP server.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn register_tools(server: &Server, agent: AgentCore) -> Result<()> {
     // Register analyze tool
     server.register_tool(Tool {
@@ -218,7 +226,6 @@ use anyhow::Result;
 use pmcp::transport::{StdioTransport, Transport};
 
 /// Create the transport layer for the MCP server.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn create_transport() -> Result<Box<dyn Transport>> {
     Ok(Box::new(StdioTransport::new()))
 }
@@ -265,7 +272,6 @@ impl AgentCore {{
     }}
 
     /// Analyze input data.
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self, params: Value) -> Result<Value> {{
         // Implementation here
         Ok(serde_json::json!({{
@@ -286,7 +292,6 @@ use anyhow::Result;
 use serde_json::Value;
 
 /// Handle a request.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_request(request: Value) -> Result<Value> {
     // Implementation here
     Ok(serde_json::json!({
@@ -451,4 +456,108 @@ This agent follows {} quality standards.
             QualityLevel::Extreme => "Toyota Way extreme",
         }
     )
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod mcp_scaffold_manifest_tests {
+    use super::*;
+
+    fn generate_mcp_project(quality: QualityLevel) -> GeneratedFiles {
+        MCPServerTemplate::default()
+            .generate(&AgentContext {
+                name: "ag".to_string(),
+                template_type: AgentTemplate::MCPToolServer,
+                features: Default::default(),
+                quality_level: quality,
+                deterministic_core: None,
+                probabilistic_wrapper: None,
+            })
+            .expect("mcp-server template must generate")
+    }
+
+    /// Collect `(target directory, target name)` for every `[[bench]]`,
+    /// `[[bin]]` and `[[example]]` section declared in a manifest.
+    fn declared_targets(manifest: &str) -> Vec<(&'static str, String)> {
+        let mut targets = Vec::new();
+        let mut section: Option<&'static str> = None;
+        for line in manifest.lines() {
+            let trimmed = line.trim();
+            match trimmed {
+                "[[bench]]" => section = Some("benches"),
+                "[[bin]]" => section = Some("src/bin"),
+                "[[example]]" => section = Some("examples"),
+                _ if trimmed.starts_with('[') => section = None,
+                _ => {
+                    if let (Some(dir), Some(rest)) = (section, trimmed.strip_prefix("name")) {
+                        let name = rest.trim_start_matches(['=', ' ']).trim_matches('"');
+                        targets.push((dir, name.to_string()));
+                    }
+                }
+            }
+        }
+        targets
+    }
+
+    /// The generated manifest declared `[[bench]] name = "performance"` while
+    /// the scaffold wrote no `benches/` directory, so `cargo check` in a freshly
+    /// scaffolded project died before compiling anything: "can't find
+    /// `performance` bench at `benches/performance.rs`". A manifest that cannot
+    /// be parsed is a project that was never generated.
+    #[test]
+    fn every_declared_target_has_a_generated_file() {
+        for quality in [
+            QualityLevel::Standard,
+            QualityLevel::Strict,
+            QualityLevel::Extreme,
+        ] {
+            let files = generate_mcp_project(quality);
+            let manifest = files
+                .files
+                .get(&PathBuf::from("Cargo.toml"))
+                .expect("Cargo.toml generated")
+                .as_str()
+                .expect("text manifest")
+                .to_string();
+
+            for (dir, name) in declared_targets(&manifest) {
+                let expected = PathBuf::from(format!("{dir}/{name}.rs"));
+                assert!(
+                    files.files.contains_key(&expected),
+                    "manifest declares {dir} target {name:?} but {} was never generated",
+                    expected.display()
+                );
+            }
+        }
+    }
+
+    /// `src/mcp/server.rs` (and four more generated files) carried
+    /// `#[provable_contracts_macros::contract(...)]`, copied from pmat's own
+    /// sources, while that crate appears nowhere in the generated
+    /// `[dependencies]`.
+    #[test]
+    fn generated_sources_use_only_declared_dependencies() {
+        let files = generate_mcp_project(QualityLevel::Extreme);
+        let manifest = files
+            .files
+            .get(&PathBuf::from("Cargo.toml"))
+            .expect("Cargo.toml generated")
+            .as_str()
+            .expect("text manifest")
+            .to_string();
+
+        for (path, content) in &files.files {
+            let Some(text) = content.as_str() else {
+                continue;
+            };
+            if !path.to_string_lossy().ends_with(".rs") {
+                continue;
+            }
+            assert!(
+                !text.contains("provable_contracts_macros"),
+                "{} uses provable_contracts_macros, which the manifest does not declare:\n{manifest}",
+                path.display()
+            );
+        }
+    }
 }

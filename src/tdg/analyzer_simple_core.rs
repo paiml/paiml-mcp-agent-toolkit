@@ -18,9 +18,35 @@ impl TdgAnalyzer {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze file.
+    ///
+    /// Refuses anything it cannot read as source. The metrics below are
+    /// regex heuristics that only ever *subtract* from each component's cap, so
+    /// input they recognise nothing in came back with the untouched
+    /// 25/20/20/15/10 vector — 90.0 and an A, byte-identical for `README.md` and
+    /// for `fn main( { let x = ;;;`. A file the analyzer cannot parse must not
+    /// be graded at all, let alone graded perfect.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
+        if matches!(
+            language,
+            Language::Unknown | Language::Yaml | Language::Markdown
+        ) {
+            anyhow::bail!(
+                "{}: TDG grades source files; {language} is not one",
+                path.display()
+            );
+        }
         let source = fs::read_to_string(path)?;
+        // Only Rust has a parser here; the other languages stay heuristic, so
+        // their scores remain unverified by a parse.
+        if language == Language::Rust {
+            syn::parse_file(&source).map_err(|e| {
+                anyhow::anyhow!(
+                    "{}: not parseable as Rust ({e}); refusing to grade a file that did not parse",
+                    path.display()
+                )
+            })?;
+        }
         self.analyze_source(&source, language, Some(path.to_path_buf()))
     }
 
@@ -111,6 +137,52 @@ impl TdgAnalyzer {
         };
 
         Ok(Comparison::new(score1, score2))
+    }
+}
+
+#[cfg(test)]
+mod unparseable_input_tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn write_temp(suffix: &str, body: &str) -> NamedTempFile {
+        let mut f = NamedTempFile::with_suffix(suffix).expect("temp file");
+        write!(f, "{body}").expect("write");
+        f.flush().expect("flush");
+        f
+    }
+
+    /// Rust that does not parse used to score 90.0/A — the untouched component
+    /// caps — because the heuristics simply matched nothing in it.
+    #[test]
+    fn test_unparseable_rust_is_not_graded() {
+        let f = write_temp(".rs", "fn main( { let x = ;;;\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("a file that does not parse must not get a score");
+        assert!(err.to_string().contains("not parseable as Rust"), "{err}");
+    }
+
+    /// Prose scored identically to source for the same reason.
+    #[test]
+    fn test_non_source_file_is_not_graded() {
+        let f = write_temp(".md", "# Readme\n\nSome prose about the project.\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("markdown is not source and must not get a score");
+        assert!(err.to_string().contains("not one"), "{err}");
+    }
+
+    #[test]
+    fn test_valid_rust_still_scores() {
+        let f = write_temp(".rs", "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let score = analyzer.analyze_file(f.path()).expect("valid Rust grades");
+        assert_eq!(score.language, Language::Rust);
+        assert!(score.total > 0.0);
     }
 }
 

@@ -33,12 +33,7 @@ pub async fn handle_repo_score(
     }
 
     // Create configuration
-    let config = ScorerConfig {
-        verbose,
-        timeout_seconds: 300,
-        skip_slow_checks: failures_only,
-        deep,
-    };
+    let config = build_scorer_config(verbose, failures_only, deep);
 
     // Run scoring
     let aggregator = ScoreAggregator::new();
@@ -72,6 +67,26 @@ pub async fn handle_repo_score(
     Ok(())
 }
 
+/// Build the configuration handed to the scorers.
+///
+/// `failures_only` is accepted and deliberately DISCARDED. It used to be wired
+/// straight into `skip_slow_checks`, so a flag documented as "show only
+/// failures and warnings" changed what was measured: the pre-commit hook
+/// performance check was skipped, and a skipped check awards a full 10/10
+/// "performance assumed" instead of the measured score. `repo-score` on this
+/// repo scored 96.0 plain and 99.0 with `--failures-only` — the same repository,
+/// two answers, and the higher one from the run that measured less. A
+/// presentation flag must never reach the measurement; filtering belongs in the
+/// formatters.
+fn build_scorer_config(verbose: bool, _failures_only: bool, deep: bool) -> ScorerConfig {
+    ScorerConfig {
+        verbose,
+        timeout_seconds: 300,
+        skip_slow_checks: false,
+        deep,
+    }
+}
+
 // Display/formatting functions (format_text, format_category, format_json, format_yaml, format_markdown)
 include!("repo_score_handlers_display.rs");
 
@@ -80,6 +95,32 @@ include!("repo_score_handlers_badge.rs");
 
 // Unit tests
 include!("repo_score_handlers_tests.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod failures_only_is_a_display_filter_tests {
+    use super::*;
+
+    /// `--failures-only` was wired to `ScorerConfig.skip_slow_checks`, which
+    /// skipped the pre-commit performance check and scored it 10/10 instead of
+    /// the measured 7.0 — total 96.0 without the flag, 99.0 with it. The scorer
+    /// configuration must not vary with a display flag.
+    #[test]
+    fn scorer_config_does_not_vary_with_failures_only() {
+        let plain = build_scorer_config(false, false, false);
+        let filtered = build_scorer_config(false, true, false);
+
+        assert!(
+            !filtered.skip_slow_checks,
+            "--failures-only must not skip checks: a skipped check is scored as a pass"
+        );
+        assert_eq!(
+            format!("{plain:?}"),
+            format!("{filtered:?}"),
+            "a display filter must not change what is measured"
+        );
+    }
+}
 
 // Design-by-contract specifications (Verus-style)
 // #[requires(project_path.is_dir())]

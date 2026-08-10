@@ -25,13 +25,45 @@ impl ConfigurationService {
                 .join("pmat.toml")
         });
 
-        let default_config = Self::default_config();
+        // Read the file here. `load()` is async and was only ever reached from
+        // `start()`, which nothing calls, so every reader saw the built-in
+        // defaults: `config --set quality.max_complexity=5` wrote pmat.toml,
+        // reported success, and the next `config` invocation still printed 30.
+        let config = Self::read_config_file(&default_path).unwrap_or_else(Self::default_config);
 
         Self {
-            config: Arc::new(RwLock::new(default_config)),
+            config: Arc::new(RwLock::new(config)),
             config_path: default_path,
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
             watchers: Arc::new(RwLock::new(Vec::new())),
+        }
+    }
+
+    /// Read and parse a config file, returning None when there is nothing
+    /// usable on disk. A malformed file is reported on stderr rather than
+    /// silently replaced by defaults.
+    fn read_config_file(path: &std::path::Path) -> Option<PmatConfig> {
+        if !path.exists() {
+            return None;
+        }
+        match std::fs::read_to_string(path) {
+            Ok(content) => match toml::from_str::<PmatConfig>(&content) {
+                Ok(config) => Some(config),
+                Err(e) => {
+                    eprintln!(
+                        "warning: {} is not valid pmat configuration ({e}); using defaults",
+                        path.display()
+                    );
+                    None
+                }
+            },
+            Err(e) => {
+                eprintln!(
+                    "warning: could not read {} ({e}); using defaults",
+                    path.display()
+                );
+                None
+            }
         }
     }
 
@@ -304,6 +336,50 @@ impl ConfigurationService {
     pub async fn health_check(&self) -> Result<bool> {
         // Check if we can read the configuration
         self.get_config().map(|_| true)
+    }
+}
+
+#[cfg(test)]
+mod new_reads_disk_tests {
+    use super::ConfigurationService;
+
+    #[test]
+    fn test_new_reports_the_values_on_disk() {
+        // Regression: `config --set quality.max_complexity=5` wrote pmat.toml
+        // and said "Configuration updated successfully", but the readers only
+        // ever saw default_config() because load() was never called.
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("pmat.toml");
+
+        let mut on_disk = ConfigurationService::default_config();
+        on_disk.quality.max_complexity = 5;
+        on_disk.system.project_name = "written-by-set".to_string();
+        std::fs::write(&path, toml::to_string_pretty(&on_disk).unwrap()).unwrap();
+
+        let service = ConfigurationService::new(Some(path));
+        let config = service.get_config().unwrap();
+        assert_eq!(config.quality.max_complexity, 5);
+        assert_eq!(config.system.project_name, "written-by-set");
+    }
+
+    #[test]
+    fn test_new_falls_back_to_defaults_when_no_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let service = ConfigurationService::new(Some(temp.path().join("absent.toml")));
+        let config = service.get_config().unwrap();
+        assert_eq!(
+            config.quality.max_complexity,
+            ConfigurationService::default_config().quality.max_complexity
+        );
+    }
+
+    #[test]
+    fn test_new_survives_a_malformed_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("pmat.toml");
+        std::fs::write(&path, "this is not toml {{{").unwrap();
+        let service = ConfigurationService::new(Some(path));
+        assert!(service.get_config().is_ok());
     }
 }
 

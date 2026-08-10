@@ -81,11 +81,25 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
+    format_human_output_with_limit(report, DEFAULT_TOP_FILES)
+}
+
+/// The CLI's `--top-files` default; also the row limit `format_human_output`
+/// renders with when no explicit limit is supplied.
+const DEFAULT_TOP_FILES: usize = 10;
+
+/// Same report, with the "Top Files by Duplication" list limited to `top_files`
+/// rows (`0` = every file).
+///
+/// The limit reaches the renderer instead of the report: `--top-files` is a
+/// display control, and the row list was independently hardcoded to ten rows,
+/// so `--top-files 3` printed ten.
+pub fn format_human_output_with_limit(report: &DuplicateReport, top_files: usize) -> Result<String> {
     let mut output = String::new();
 
     write_header(&mut output)?;
     write_summary(&mut output, report)?;
-    write_top_files_section(&mut output, report)?;
+    write_top_files_section(&mut output, report, top_files)?;
     write_duplicate_blocks_section(&mut output, report)?;
 
     Ok(output)
@@ -127,7 +141,11 @@ fn write_summary(output: &mut String, report: &DuplicateReport) -> Result<()> {
 }
 
 /// Write the top files by duplication section
-fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Result<()> {
+fn write_top_files_section(
+    output: &mut String,
+    report: &DuplicateReport,
+    top_files: usize,
+) -> Result<()> {
     if report.file_statistics.is_empty() {
         return Ok(());
     }
@@ -137,7 +155,7 @@ fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Res
     writeln!(output, "{}\n", c::subheader("Top Files by Duplication"))?;
 
     let sorted_files = get_sorted_file_stats(&report.file_statistics);
-    write_file_stats_list(output, &sorted_files)?;
+    write_file_stats_list(output, &sorted_files, top_files)?;
 
     Ok(())
 }
@@ -162,11 +180,21 @@ fn get_sorted_file_stats(
 fn write_file_stats_list(
     output: &mut String,
     sorted_files: &[(&String, &FileStats)],
+    top_files: usize,
 ) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
 
-    for (i, (file_path, stats)) in sorted_files.iter().take(10).enumerate() {
+    // Was `.take(10)` regardless of `--top-files`, so the flag documented as
+    // "Number of top files to show by duplication (0 = all)" printed ten rows
+    // for `--top-files 3` and ten rows for `--top-files 0`.
+    let limit = if top_files == 0 {
+        usize::MAX
+    } else {
+        top_files
+    };
+
+    for (i, (file_path, stats)) in sorted_files.iter().take(limit).enumerate() {
         let filename = extract_filename(file_path);
         writeln!(
             output,
@@ -272,6 +300,82 @@ fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Res
         )?;
     }
     Ok(())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_files_is_a_row_limit_tests {
+    use super::*;
+
+    fn report_with_files(n: usize) -> DuplicateReport {
+        let mut file_statistics = BTreeMap::new();
+        for i in 0..n {
+            file_statistics.insert(
+                format!("src/f{i:02}.rs"),
+                FileStats {
+                    duplicate_lines: n - i,
+                    total_lines: 100,
+                    duplication_percentage: (n - i) as f32,
+                },
+            );
+        }
+        DuplicateReport {
+            total_duplicates: 7,
+            duplicate_lines: 42,
+            total_lines: 1000,
+            duplication_percentage: 4.2,
+            duplicate_blocks: vec![],
+            file_statistics,
+        }
+    }
+
+    fn row_count(rendered: &str) -> usize {
+        rendered
+            .lines()
+            .filter(|l| l.contains(" duplication ("))
+            .count()
+    }
+
+    /// The list was hardcoded to `.take(10)`, so every value of `--top-files`
+    /// printed ten rows.
+    #[test]
+    fn top_files_limits_the_printed_rows() {
+        let report = report_with_files(25);
+        for requested in [1usize, 2, 3, 10, 17] {
+            let rendered = format_human_output_with_limit(&report, requested).unwrap();
+            assert_eq!(
+                row_count(&rendered),
+                requested,
+                "--top-files {requested} must print {requested} rows"
+            );
+        }
+    }
+
+    /// `--top-files 0` is documented as "0 = all".
+    #[test]
+    fn top_files_zero_prints_every_file() {
+        let report = report_with_files(25);
+        let rendered = format_human_output_with_limit(&report, 0).unwrap();
+        assert_eq!(row_count(&rendered), 25);
+    }
+
+    /// Changing the row limit must not touch a single measured figure.
+    #[test]
+    fn the_summary_is_identical_at_every_row_limit() {
+        let report = report_with_files(25);
+        let summary_of = |limit: usize| {
+            format_human_output_with_limit(&report, limit)
+                .unwrap()
+                .lines()
+                .filter(|l| l.contains("Duplication percentage") || l.contains("Duplicate lines"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let baseline = summary_of(1);
+        for limit in [2usize, 3, 10, 0] {
+            assert_eq!(baseline, summary_of(limit), "limit {limit} changed the summary");
+        }
+    }
 }
 
 /// Format output as SARIF

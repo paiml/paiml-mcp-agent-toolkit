@@ -294,21 +294,51 @@ fn find_duplicate_blocks(
     duplicates
 }
 
-/// Check if file should be processed
+/// Check if file should be processed.
+///
+/// `--help` advertises these as globs ("Include file patterns (e.g.,
+/// \"**/*.rs\")"), but both were plain `path_str.contains` substring tests, so
+/// the example printed in the help text selected NOTHING: over a directory of
+/// .rs files `--include '**/*.rs'` analysed zero files and reported
+/// "Duplication percentage: 0.0%" with exit 0, while `--exclude '**/*.rs'`
+/// excluded nothing at all. A filter that silently matches no file is reported
+/// as a clean project.
+///
+/// A pattern that carries glob metacharacters is now matched as a glob;
+/// anything else keeps the substring behaviour, which is the only form that
+/// ever worked (`--include path_validator`) and which callers rely on.
 fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<String>) -> bool {
     let path_str = path.to_string_lossy();
 
     if let Some(excl) = exclude {
-        if path_str.contains(excl) {
+        if matches_file_pattern(&path_str, excl) {
             return false;
         }
     }
 
     if let Some(incl) = include {
-        return path_str.contains(incl);
+        return matches_file_pattern(&path_str, incl);
     }
 
     true
+}
+
+/// Match one `--include`/`--exclude` pattern against a path.
+fn matches_file_pattern(path_str: &str, pattern: &str) -> bool {
+    if !pattern.contains(['*', '?', '[', '{']) {
+        return path_str.contains(pattern);
+    }
+
+    // Matched against the whole path, which is usually absolute, so `*` has to
+    // be able to cross a separator — globset's default (`literal_separator`
+    // off) is what makes both `*.rs` and the documented `**/*.rs` match
+    // `/home/u/proj/src/utils/path_validator.rs`.
+    match globset::Glob::new(pattern) {
+        Ok(glob) => glob.compile_matcher().is_match(path_str),
+        // An unparseable pattern falls back to the historical substring test
+        // rather than quietly selecting nothing.
+        Err(_) => path_str.contains(pattern),
+    }
 }
 
 /// Check if file is source code
@@ -317,4 +347,58 @@ fn is_source_file(path: &Path) -> bool {
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "kt" | "kts")
     )
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod include_exclude_pattern_tests {
+    use super::*;
+    use std::path::Path;
+
+    const SOURCE: &str = "/home/u/proj/src/utils/path_validator.rs";
+
+    /// The pattern printed in `--help` selected zero files: `analyze duplicates
+    /// --include '**/*.rs'` over 2902 lines of Rust reported 0 duplicates and
+    /// 0.0% duplication with exit 0, and `--exclude '**/*.rs'` dropped nothing.
+    #[test]
+    fn documented_glob_patterns_match_source_files() {
+        for pattern in ["**/*.rs", "*.rs", "**", "*", "**/utils/*.rs"] {
+            assert!(
+                should_process_file(Path::new(SOURCE), &Some(pattern.to_string()), &None),
+                "--include '{pattern}' must select a .rs file"
+            );
+            assert!(
+                !should_process_file(Path::new(SOURCE), &None, &Some(pattern.to_string())),
+                "--exclude '{pattern}' must drop a .rs file"
+            );
+        }
+    }
+
+    #[test]
+    fn globs_that_do_not_match_still_filter() {
+        assert!(!should_process_file(
+            Path::new(SOURCE),
+            &Some("**/*.py".to_string()),
+            &None
+        ));
+        assert!(should_process_file(
+            Path::new(SOURCE),
+            &None,
+            &Some("**/*.py".to_string())
+        ));
+    }
+
+    /// Glob support must not remove the only form that ever worked: a bare
+    /// substring (`--include path_validator` selected 10 duplicate blocks).
+    #[test]
+    fn substring_patterns_are_still_honoured() {
+        let path = Path::new("src/utils/path_validator.rs");
+        assert!(should_process_file(
+            path,
+            &Some("path_validator".to_string()),
+            &None
+        ));
+        assert!(!should_process_file(path, &Some("tests".to_string()), &None));
+        assert!(!should_process_file(path, &None, &Some(".rs".to_string())));
+    }
 }

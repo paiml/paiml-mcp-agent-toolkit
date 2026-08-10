@@ -55,21 +55,21 @@ use tracing::{debug, info};
 /// # use pmat::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context;
 /// # use std::path::PathBuf;
 /// # async fn example() -> anyhow::Result<()> {
-/// // Full analysis with specific includes
+/// // Pattern-selected analysis written to a file
 /// handle_analyze_deep_context(
 ///     PathBuf::from("./src"),
 ///     Some(PathBuf::from("context.json")),
 ///     DeepContextOutputFormat::Json,
-///     true,                              // full analysis
-///     vec!["complexity".to_string(), "dependencies".to_string()],
-///     vec![],
+///     false,                             // --full is not implemented (rejected)
+///     vec![],                            // --include is not implemented (rejected)
+///     vec![],                            // --exclude is not implemented (rejected)
 ///     90,                                // 90 day history
 ///     Some(DagType::CallGraph),
-///     Some(5),                           // max depth 5
+///     None,                              // --max-depth is not implemented (rejected)
 ///     vec!["**/*.rs".to_string()],       // only Rust files
 ///     vec!["**/tests/**".to_string()],   // exclude tests
 ///     Some("persistent".to_string()),
-///     true,                              // parallel processing
+///     false,                             // --parallel is not implemented (rejected)
 ///     true,                              // verbose output
 ///     20,                                // top 20 files
 /// ).await?;
@@ -81,6 +81,8 @@ use tracing::{debug, info};
 ///
 /// Returns `Ok(())` if analysis completes successfully, or an error if:
 /// - Project path doesn't exist
+/// - An unimplemented flag was supplied (see
+///   `reject_unimplemented_deep_context_flags`)
 /// - No files found to analyze
 /// - Output file cannot be written
 /// - Analysis encounters errors
@@ -92,14 +94,14 @@ pub async fn handle_analyze_deep_context(
     format: DeepContextOutputFormat,
     full: bool,
     include: Vec<String>,
-    _exclude: Vec<String>,
+    exclude: Vec<String>,
     period_days: u32,
     _dag_type: Option<DagType>,
-    _max_depth: Option<usize>,
+    max_depth: Option<usize>,
     include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
     _cache_strategy: Option<String>,
-    _parallel: bool,
+    parallel: bool,
     verbose: bool,
     top_files: usize,
 ) -> Result<()> {
@@ -109,6 +111,8 @@ pub async fn handle_analyze_deep_context(
     // "Average Complexity: 0.0 / 1. No functions detected - verify file
     // discovery patterns" with exit 0. Found alongside GH-663/GH-666.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
+
+    reject_unimplemented_deep_context_flags(full, &include, &exclude, max_depth, parallel)?;
 
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
@@ -186,6 +190,55 @@ pub async fn handle_analyze_deep_context(
     );
 
     Ok(())
+}
+
+/// Refuse the flags `analyze deep-context` accepts but does not implement.
+///
+/// `--full`, `--include`, `--exclude`, `--max-depth` and `--parallel` were
+/// bound to underscore-prefixed parameters and never read, so nine variants of
+/// the command over the same corpus produced one identical report (same md5
+/// after stripping the duration line) — including `--exclude-pattern '*.py'`
+/// runs that still listed `main.py`. `--exclude-pattern`/`--include-pattern`
+/// now really filter; the flags below still do nothing, and a flag that --help
+/// documents as changing the analysis must fail loudly rather than be dropped
+/// on the floor.
+///
+/// `--dag-type` and `--period-days` are not checked here: clap supplies a
+/// default for both, so there is no way to tell "user asked for it" from "clap
+/// filled it in". `--period-days` does reach the SARIF path.
+fn reject_unimplemented_deep_context_flags(
+    full: bool,
+    include: &[String],
+    exclude: &[String],
+    max_depth: Option<usize>,
+    parallel: bool,
+) -> Result<()> {
+    let mut unsupported = Vec::new();
+    if full {
+        unsupported.push("--full");
+    }
+    if !include.is_empty() {
+        unsupported.push("--include");
+    }
+    if !exclude.is_empty() {
+        unsupported.push("--exclude");
+    }
+    if max_depth.is_some() {
+        unsupported.push("--max-depth");
+    }
+    if parallel {
+        unsupported.push("--parallel");
+    }
+
+    if unsupported.is_empty() {
+        return Ok(());
+    }
+
+    anyhow::bail!(
+        "analyze deep-context does not implement {}; the flag(s) would be accepted and ignored. \
+         Use --include-pattern / --exclude-pattern to select files and --top-files to size the report.",
+        unsupported.join(", ")
+    )
 }
 
 /// Append the exclusions every deep-context run applies.
@@ -550,3 +603,70 @@ fn format_deep_context_text(
 #[cfg(test)]
 #[path = "advanced_analysis_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod unimplemented_flag_tests {
+    //! A deep-context flag either changes the analysis or is refused.
+    use super::*;
+
+    #[test]
+    fn supported_invocation_is_accepted() {
+        assert!(reject_unimplemented_deep_context_flags(false, &[], &[], None, false).is_ok());
+    }
+
+    #[test]
+    fn full_is_refused_rather_than_ignored() {
+        let err = reject_unimplemented_deep_context_flags(true, &[], &[], None, false)
+            .expect_err("--full changes nothing, so it must not be accepted");
+        assert!(err.to_string().contains("--full"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn deep_context_refuses_full_instead_of_producing_the_same_report() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}\n").unwrap();
+
+        let err = handle_analyze_deep_context(
+            dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            true, // --full
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            None,
+            false,
+            false,
+            10,
+        )
+        .await
+        .expect_err("--full used to produce a report byte-identical to the default one");
+        assert!(err.to_string().contains("--full"), "{err}");
+    }
+
+    #[test]
+    fn every_unimplemented_flag_is_named() {
+        let err = reject_unimplemented_deep_context_flags(
+            true,
+            &["complexity".to_string()],
+            &["churn".to_string()],
+            Some(0),
+            true,
+        )
+        .unwrap_err()
+        .to_string();
+        for flag in [
+            "--full",
+            "--include",
+            "--exclude",
+            "--max-depth",
+            "--parallel",
+        ] {
+            assert!(err.contains(flag), "{flag} missing from: {err}");
+        }
+    }
+}

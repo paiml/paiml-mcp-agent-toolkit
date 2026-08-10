@@ -121,12 +121,23 @@ impl CudaSimdAnalyzer {
 
         let resolved_count = defects.iter().filter(|d| d.defect_class.resolved).count() as u32;
 
+        // `pmat cuda-tdg kaizen` printed "Mean Time to Detect: 24.0 hours /
+        // Mean Time to Fix: 48.0 hours / Escape Rate: 5.0% / Regression Rate:
+        // 2.0%" for a one-file toy crate, for this 4000-file repo, and for the
+        // repo windowed with --since — byte-identical, because those four
+        // numbers were literals ("Default estimate") with no reference to any
+        // git or issue history. MTTD/MTTF/escape rate/regression rate need
+        // defect lifecycle data (when a defect was introduced, detected,
+        // fixed, reopened) that nothing in this analyzer collects, so they are
+        // reported as not-measured: NaN here, rendered as "not measured" in
+        // text/markdown and as JSON null. `tickets_resolved` and
+        // `ticket_references` below ARE derived from the scanned sources.
         KaizenMetrics {
             tickets_resolved: resolved_count,
-            mttd: 24.0,            // Default estimate
-            mttf: 48.0,            // Default estimate
-            escape_rate: 0.05,     // 5% default
-            regression_rate: 0.02, // 2% default
+            mttd: f64::NAN,
+            mttf: f64::NAN,
+            escape_rate: f64::NAN,
+            regression_rate: f64::NAN,
             ticket_references,
         }
     }

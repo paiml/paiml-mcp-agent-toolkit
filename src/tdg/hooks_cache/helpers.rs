@@ -34,10 +34,23 @@ impl HooksCacheManager {
         Ok(hasher.finalize().to_hex().to_string())
     }
 
-    /// Get git tree hash for HEAD
+    /// Get the tree hash of the content the gates are about to check.
+    ///
+    /// This used to be `git rev-parse HEAD^{tree}` — the tree of the *last
+    /// commit*. A pre-commit run keyed that way is invariant to exactly the
+    /// change it is gating: staging a new FIXME and re-running produced the same
+    /// key, so the hook reported "All quality gates passed (cached)" without
+    /// looking at the staged code. `git write-tree` hashes the index — the
+    /// content a commit would actually contain — which is what must key the
+    /// cache. (It writes the tree objects into the object store, the same
+    /// harmless side effect `git commit` has.)
     pub(super) fn get_tree_hash(&self) -> Result<String> {
-        // Use HEAD^{tree} to get the tree hash of the root tree
-        // This is more reliable than HEAD:. across different git versions
+        if let Some(index_tree) = self.git_stdout(&["write-tree"]) {
+            return Ok(index_tree);
+        }
+
+        // No usable index (unmerged state, bare repo): fall back to the last
+        // commit's tree so whole-tree/CI style runs still get a key.
         let output = Command::new("git")
             .args(["rev-parse", "HEAD^{tree}"])
             .current_dir(&self.project_path)
@@ -52,6 +65,24 @@ impl HooksCacheManager {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    }
+
+    /// Run a git command in the project, returning trimmed stdout on success
+    fn git_stdout(&self, args: &[&str]) -> Option<String> {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(&self.project_path)
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if stdout.is_empty() {
+            None
+        } else {
+            Some(stdout)
+        }
     }
 
     /// Get hash of config files
@@ -97,5 +128,61 @@ impl HooksCacheManager {
             }
         }
         Ok(size)
+    }
+}
+
+#[cfg(test)]
+mod tree_hash_tests {
+    use super::HooksCacheManager;
+    use std::process::Command;
+
+    fn git(dir: &std::path::Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .unwrap_or_else(|e| panic!("git {args:?} failed to spawn: {e}"));
+        assert!(
+            out.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    fn repo_with_one_commit() -> tempfile::TempDir {
+        let temp = tempfile::TempDir::new().unwrap();
+        git(temp.path(), &["init"]);
+        git(temp.path(), &["config", "user.email", "test@test.com"]);
+        git(temp.path(), &["config", "user.name", "Test User"]);
+        std::fs::write(temp.path().join("lib.rs"), "pub fn ok() {}\n").unwrap();
+        git(temp.path(), &["add", "-A"]);
+        git(temp.path(), &["commit", "-m", "initial"]);
+        temp
+    }
+
+    #[test]
+    fn test_tree_hash_follows_the_staged_index_not_the_last_commit() {
+        // Regression: keyed on HEAD^{tree}, a pre-commit run was invariant to
+        // the very change it was gating — stage a FIXME, get a cached pass.
+        let temp = repo_with_one_commit();
+        let manager = HooksCacheManager::new(temp.path());
+
+        let before = manager.get_tree_hash().unwrap();
+
+        std::fs::write(
+            temp.path().join("lib.rs"),
+            "pub fn ok() {}\n// FIXME: broken\n",
+        )
+        .unwrap();
+        git(temp.path(), &["add", "-A"]);
+
+        let after = manager.get_tree_hash().unwrap();
+        assert_ne!(
+            before, after,
+            "staged content must change the hooks cache key"
+        );
+        assert_eq!(after, git(temp.path(), &["write-tree"]));
+        assert_ne!(after, git(temp.path(), &["rev-parse", "HEAD^{tree}"]));
     }
 }
