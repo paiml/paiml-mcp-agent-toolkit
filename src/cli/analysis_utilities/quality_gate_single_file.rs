@@ -16,6 +16,13 @@ async fn handle_single_file_quality_gate(
         eprintln!("📄 Analyzing single file: {}", single_file.display());
     }
 
+    // A file that does not parse cannot be given a quality verdict. Without this
+    // the CLI reported "✅ Quality Gate: PASSED / Total Violations: 0" for
+    // `def f(:` in a .py file, while the MCP `quality_gate` tool — which gained
+    // the guard first — refused the very same file. Same binary, same input,
+    // opposite answers.
+    crate::tdg::ensure_parseable(&single_file)?;
+
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
 

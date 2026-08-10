@@ -141,6 +141,34 @@ impl TdgAnalyzer {
     }
 }
 
+/// Refuse a file this build can *prove* does not parse.
+///
+/// The same gate `TdgAnalyzer::analyze_file` applies, minus its "TDG only
+/// grades source files" rule, so callers that legitimately scan Markdown or
+/// YAML (the SATD checks, for instance) are unaffected. Exposed because the
+/// guard was reachable only through the MCP `quality_gate` tool: the CLI's
+/// `quality-gate --file` ran its own checks and reported
+/// "✅ Quality Gate: PASSED / Total Violations: 0" for `def f(:` in a .py file —
+/// the two surfaces disagreeing about the same file, which is the contradiction
+/// class this sweep exists to remove.
+///
+/// `Ok(())` means "it parsed" OR "this build has no parser for that language",
+/// which are deliberately not distinguished: neither is grounds for refusal.
+pub fn ensure_parseable(path: &Path) -> Result<()> {
+    let language = Language::from_extension(path);
+    let Ok(source) = fs::read_to_string(path) else {
+        // Unreadable / non-UTF-8 is the caller's problem to report, not ours.
+        return Ok(());
+    };
+    if let Some(parse_error) = source_parse_error(&source, language) {
+        anyhow::bail!(
+            "{}: {parse_error}; refusing to report a quality verdict on a file that did not parse",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
 /// Does `source` parse as `language`, in THIS build?
 ///
 /// `None` means either "it parsed" or "this build has no parser for that
