@@ -64,6 +64,12 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 format: format_name.to_string(),
                 size_bytes: file_size,
                 lfs_tracked: is_lfs_tracked(filename, &lfs_patterns),
+                // The format above comes from the EXTENSION; this is the only
+                // thing that has actually looked at the bytes.
+                header_valid:
+                    crate::cli::handlers::comply_cb_detect::model_header_matches_extension(
+                        file_path,
+                    ),
             });
         }
 
@@ -79,7 +85,12 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
         // Optionally run compliance checks
         if check {
             println!();
-            let violations = collect_model_violations(&project_path);
+            let mut violations = collect_model_violations(&project_path);
+            // A file whose header does not parse is not a model that "passes
+            // quality checks": every CB-10xx detector below reads headers, so a
+            // garbage file simply produces no findings and the check reported
+            // success on it.
+            violations.splice(0..0, unreadable_model_violations(&entries));
             if violations.is_empty() {
                 println!("\u{2705} All model files pass quality checks");
             } else {
@@ -107,6 +118,11 @@ struct ModelInventoryEntry {
     format: String,
     size_bytes: u64,
     lfs_tracked: bool,
+    /// True when the file's magic bytes agree with the format its extension
+    /// declares. `format` is derived from the extension and nothing else, so
+    /// without this an unreadable or truncated file is inventoried as a valid
+    /// model of its declared format.
+    header_valid: bool,
 }
 
 fn format_size(bytes: u64) -> String {
@@ -116,6 +132,11 @@ fn format_size(bytes: u64) -> String {
 fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
     let has_lfs = entries.iter().any(|e| e.lfs_tracked);
     let width = if has_lfs { 78 } else { 72 };
+    let invalid: Vec<&str> = entries
+        .iter()
+        .filter(|e| !e.header_valid)
+        .map(|e| e.file.as_str())
+        .collect();
 
     println!(
         "Model Inventory ({} files, {} total)",
@@ -138,11 +159,18 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
         } else {
             entry.file.clone()
         };
+        // The declared format is the file EXTENSION's claim; `(?)` marks the
+        // ones whose bytes do not back that claim up.
+        let format_cell = if entry.header_valid {
+            entry.format.clone()
+        } else {
+            format!("{} (?)", entry.format)
+        };
         if has_lfs {
             println!(
                 "{:<40} {:<12} {:>12} {:>6}",
                 display_file,
-                entry.format,
+                format_cell,
                 format_size(entry.size_bytes),
                 if entry.lfs_tracked { "Yes" } else { "-" }
             );
@@ -150,12 +178,21 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
             println!(
                 "{:<40} {:<12} {:>12}",
                 display_file,
-                entry.format,
+                format_cell,
                 format_size(entry.size_bytes)
             );
         }
     }
     println!("{}", "\u{2500}".repeat(width));
+    if !invalid.is_empty() {
+        println!(
+            "\u{26a0}\u{fe0f}  {} of {} file(s) marked (?) are NOT readable as the format their \
+             extension declares: {}",
+            invalid.len(),
+            entries.len(),
+            invalid.join(", ")
+        );
+    }
 }
 
 /// The human sentence emitted when a project contains no model files.
@@ -196,6 +233,9 @@ fn render_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64)
                 "size_bytes": e.size_bytes,
                 "size_human": format_size(e.size_bytes),
                 "lfs_tracked": e.lfs_tracked,
+                // `format` is what the extension DECLARES; `header_valid` is
+                // the only field here that read the file's bytes.
+                "header_valid": e.header_valid,
             })
         })
         .collect();
@@ -204,6 +244,7 @@ fn render_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64)
         "model_count": entries.len(),
         "total_size_bytes": total_size,
         "total_size_human": format_size(total_size),
+        "invalid_header_count": entries.iter().filter(|e| !e.header_valid).count(),
         "models": json_entries,
     });
 
@@ -246,6 +287,32 @@ fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
         }
     }
     false
+}
+
+/// One error per inventoried file whose bytes do not match the format its
+/// extension declares.
+///
+/// Uses CB-1003, the one unallocated slot in the CB-1000 MLOps series
+/// (1000, 1001, 1002, 1004-1008 are taken by the header-parsing detectors,
+/// none of which can fire on a file whose header never parsed).
+fn unreadable_model_violations(
+    entries: &[ModelInventoryEntry],
+) -> Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation> {
+    entries
+        .iter()
+        .filter(|e| !e.header_valid)
+        .map(|e| crate::cli::handlers::comply_cb_detect::CbPatternViolation {
+            pattern_id: "CB-1003".to_string(),
+            file: e.file.clone(),
+            line: 0,
+            description: format!(
+                "File is not readable as {}: its extension declares that format but the header \
+                 does not parse (truncated, empty or wrong format)",
+                e.format
+            ),
+            severity: crate::cli::handlers::comply_cb_detect::Severity::Error,
+        })
+        .collect()
 }
 
 fn collect_model_violations(
@@ -314,6 +381,87 @@ mod model_helper_tests {
         let out = no_models_stdout(path, &cli::OutputFormat::Table).unwrap();
         assert!(out.starts_with("No model files found"));
         assert!(out.contains("/tmp/some-fixture"));
+    }
+
+    // ── header validation (extension is a claim, not a measurement) ────────
+
+    fn entry(file: &str, format: &str, header_valid: bool) -> ModelInventoryEntry {
+        ModelInventoryEntry {
+            file: file.to_string(),
+            format: format.to_string(),
+            size_bytes: 0,
+            lfs_tracked: false,
+            header_valid,
+        }
+    }
+
+    /// The reported defect: format came from the filename extension only, so a
+    /// 0-byte `.safetensors`, an 8-byte `NOTAGGUF` and a text `.apr` were
+    /// inventoried as three valid models.
+    #[test]
+    fn test_garbage_files_are_not_reported_as_valid_models() {
+        use crate::cli::handlers::comply_cb_detect::model_header_matches_extension;
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("fake.apr"), b"hello world not an apr file").unwrap();
+        std::fs::write(tmp.path().join("garbage.gguf"), b"NOTAGGUF").unwrap();
+        std::fs::write(tmp.path().join("zero.safetensors"), b"").unwrap();
+
+        for name in ["fake.apr", "garbage.gguf", "zero.safetensors"] {
+            assert!(
+                !model_header_matches_extension(&tmp.path().join(name)),
+                "{name} must not validate as a model: its bytes are not that format"
+            );
+        }
+    }
+
+    #[test]
+    fn test_real_gguf_magic_validates() {
+        use crate::cli::handlers::comply_cb_detect::model_header_matches_extension;
+        let tmp = tempfile::tempdir().unwrap();
+        // "GGUF" + version 3 + tensor count 1, then padding to 64 bytes.
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(b"GGUF");
+        bytes.extend_from_slice(&3u32.to_le_bytes());
+        bytes.extend_from_slice(&1u64.to_le_bytes());
+        bytes.resize(64, 0);
+        let path = tmp.path().join("real.gguf");
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(model_header_matches_extension(&path));
+    }
+
+    #[test]
+    fn test_inventory_json_discloses_unverified_headers() {
+        let out = render_model_inventory_json(
+            &[
+                entry("fake.apr", "APR", false),
+                entry("real.gguf", "GGUF", true),
+            ],
+            0,
+        )
+        .unwrap();
+        let doc: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(doc["invalid_header_count"], 1);
+        assert_eq!(doc["models"][0]["header_valid"], false);
+        assert_eq!(doc["models"][1]["header_valid"], true);
+    }
+
+    /// `--check` on a directory of garbage used to print only the missing
+    /// model-card/tokenizer advisories — every header-parsing detector silently
+    /// skips a file whose header does not parse, so the corrupt files
+    /// themselves were reported clean.
+    #[test]
+    fn test_check_reports_unreadable_models() {
+        let violations = unreadable_model_violations(&[
+            entry("fake.apr", "APR", false),
+            entry("real.gguf", "GGUF", true),
+        ]);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].file, "fake.apr");
+        assert_eq!(violations[0].pattern_id, "CB-1003");
+        assert!(matches!(
+            violations[0].severity,
+            crate::cli::handlers::comply_cb_detect::Severity::Error
+        ));
     }
 
     // ── format_size (delegates to batuta_common::fmt) ──────────────────────

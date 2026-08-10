@@ -162,7 +162,7 @@ fn test_compute_summary_all_passed() {
     assert_eq!(summary.degraded, 0);
     assert_eq!(summary.skipped, 0);
     assert!(summary.all_passed);
-    assert!((summary.success_rate - 100.0).abs() < f64::EPSILON);
+    assert!((summary.success_rate.expect("two checks ran") - 100.0).abs() < f64::EPSILON);
 }
 
 #[test]
@@ -195,7 +195,7 @@ fn test_compute_summary_with_failures() {
     assert_eq!(summary.passed, 1);
     assert_eq!(summary.failed, 1);
     assert!(!summary.all_passed);
-    assert!((summary.success_rate - 50.0).abs() < f64::EPSILON);
+    assert!((summary.success_rate.expect("two checks ran") - 50.0).abs() < f64::EPSILON);
 }
 
 #[test]
@@ -253,7 +253,9 @@ fn test_compute_summary_empty() {
     assert_eq!(summary.total, 0);
     assert_eq!(summary.passed, 0);
     assert!(summary.all_passed);
-    assert!((summary.success_rate - 0.0).abs() < f64::EPSILON);
+    // No check executed, so there is no rate. This used to assert 0.0, which
+    // reads as "everything failed" for a run in which nothing was attempted.
+    assert!(summary.success_rate.is_none());
 }
 
 #[test]
@@ -306,7 +308,9 @@ fn test_compute_summary_mixed() {
     assert_eq!(summary.degraded, 1);
     assert_eq!(summary.skipped, 1);
     assert!(!summary.all_passed);
-    assert!((summary.success_rate - 25.0).abs() < f64::EPSILON);
+    // 1 passed of the 3 that RAN. This used to assert 25.0 (1 of 4), counting
+    // the skipped check in the denominator as though it had failed.
+    assert!((summary.success_rate.expect("three checks ran") - 100.0 / 3.0).abs() < 1e-9);
 }
 
 // ============================================================================
@@ -547,7 +551,7 @@ fn test_diagnostic_summary_serialization() {
         degraded: 1,
         skipped: 0,
         all_passed: false,
-        success_rate: 70.0,
+        success_rate: Some(70.0),
     };
 
     let json = serde_json::to_string(&summary).unwrap();
@@ -585,7 +589,7 @@ fn test_diagnostic_report_serialization() {
             degraded: 0,
             skipped: 0,
             all_passed: true,
-            success_rate: 100.0,
+            success_rate: Some(100.0),
         },
         error_context: None,
     };
@@ -612,7 +616,7 @@ fn test_diagnostic_report_with_error_context() {
             degraded: 0,
             skipped: 0,
             all_passed: false,
-            success_rate: 0.0,
+            success_rate: Some(0.0),
         },
         error_context: Some(CompactErrorContext {
             failed_features: vec!["test1".to_string()],
@@ -1058,7 +1062,9 @@ async fn test_run_diagnostic_with_nonexistent_only_filter() {
 
     let report = diagnostic.run_diagnostic(&args).await;
 
-    // No tests should match
+    // No tests should match. `handle_diagnose` rejects this filter before it
+    // gets here (see `unknown_only_filter_is_rejected_not_silently_empty`);
+    // this pins the low-level behaviour of the runner itself.
     assert!(report.features.is_empty());
     assert_eq!(report.summary.total, 0);
 }
@@ -1098,4 +1104,126 @@ fn test_diagnose_args_default_values() {
     assert!(args.only.is_empty());
     assert!(args.skip.is_empty());
     assert_eq!(args.timeout, 60);
+}
+
+// ============================================================================
+// Round-5 dogfood regressions: skipped checks in the rate, unvalidated filters
+// ============================================================================
+
+/// `--skip ast.rust` reported "success_rate: 87.5" beside `failed: 0`,
+/// `degraded: 0` and `all_passed: true`: the denominator was every check the
+/// binary knows about, so skipping a check looked exactly like failing one.
+#[test]
+fn skipped_checks_are_not_counted_as_failures_in_the_rate() {
+    let diagnostic = SelfDiagnostic::new();
+    let mut features = BTreeMap::new();
+
+    for name in ["a", "b", "c", "d", "e", "f", "g"] {
+        features.insert(
+            name.to_string(),
+            FeatureResult {
+                status: FeatureStatus::Ok,
+                duration_us: 1,
+                error: None,
+                metrics: None,
+            },
+        );
+    }
+    features.insert(
+        "skipped".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Skipped("User requested skip".to_string()),
+            duration_us: 0,
+            error: None,
+            metrics: None,
+        },
+    );
+
+    let summary = diagnostic.compute_summary(&features);
+
+    assert_eq!(summary.failed, 0);
+    assert!(summary.all_passed);
+    assert!(
+        (summary.success_rate.expect("seven checks ran") - 100.0).abs() < f64::EPSILON,
+        "nothing failed, so the rate must be 100%, got {:?}",
+        summary.success_rate
+    );
+}
+
+/// Skipping everything leaves nothing to compute a rate from; reporting `0.0`
+/// there claimed a total failure of checks that were never attempted.
+#[test]
+fn a_run_with_nothing_executed_reports_no_rate() {
+    let diagnostic = SelfDiagnostic::new();
+    let mut features = BTreeMap::new();
+    features.insert(
+        "only.one".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Skipped("User requested skip".to_string()),
+            duration_us: 0,
+            error: None,
+            metrics: None,
+        },
+    );
+
+    let summary = diagnostic.compute_summary(&features);
+
+    assert_eq!(summary.skipped, 1);
+    assert!(summary.success_rate.is_none());
+}
+
+/// `pmat diagnose --only nosuchfeature` matched no check, ran zero of them and
+/// still exited 0 with "Total: 0 / Success Rate: 0.0%". A filter naming a check
+/// that does not exist is a typo, and must be reported as one.
+#[tokio::test]
+async fn unknown_only_filter_is_rejected_not_silently_empty() {
+    let args = DiagnoseArgs {
+        format: DiagnosticFormat::Json,
+        only: vec!["nosuchfeature".to_string()],
+        skip: vec![],
+        timeout: 60,
+    };
+
+    let err = handle_diagnose(args)
+        .await
+        .expect_err("an --only value that names no check must fail");
+    let msg = err.to_string();
+    assert!(
+        msg.contains("nosuchfeature") && msg.contains("--only"),
+        "error must name the bad value and the flag: {msg}"
+    );
+    assert!(
+        msg.contains("ast.rust"),
+        "error must list the available checks: {msg}"
+    );
+}
+
+/// Same defect on the other filter: an unknown `--skip` value skipped nothing.
+#[tokio::test]
+async fn unknown_skip_filter_is_rejected() {
+    let args = DiagnoseArgs {
+        format: DiagnosticFormat::Json,
+        only: vec![],
+        skip: vec!["ast.rust".to_string(), "typo.here".to_string()],
+        timeout: 60,
+    };
+
+    let err = handle_diagnose(args)
+        .await
+        .expect_err("a --skip value that names no check must fail");
+    assert!(err.to_string().contains("typo.here"), "{err}");
+}
+
+/// A valid filter still runs.
+#[tokio::test]
+async fn known_filters_are_accepted() {
+    let diagnostic = SelfDiagnostic::new();
+    let args = DiagnoseArgs {
+        format: DiagnosticFormat::Json,
+        only: vec!["ast.rust".to_string()],
+        skip: vec![],
+        timeout: 60,
+    };
+
+    assert!(diagnostic.validate_filters(&args).is_ok());
 }

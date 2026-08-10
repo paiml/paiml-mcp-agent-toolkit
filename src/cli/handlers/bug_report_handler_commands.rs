@@ -137,6 +137,18 @@ pub fn capture_command_error(command: &str, args: &[String], error: &str) {
     }
 }
 
+/// Capture a failing CLI invocation so `pmat maintain bug-report` can find it.
+///
+/// `capture_command_error*` had no caller outside this module's own unit tests,
+/// so nothing ever wrote the store `handle_bug_report` reads: every failing
+/// command left it empty and `maintain bug-report` answered "No captured error
+/// found. Run a pmat command that fails first" no matter how many just had.
+/// `cli::run` calls this on every dispatch error.
+pub fn capture_cli_failure(argv: &[String], error: &anyhow::Error) {
+    let args: Vec<String> = argv.iter().skip(1).cloned().collect();
+    capture_command_error("pmat", &args, &format!("{error:#}"));
+}
+
 /// Capture an error with exit code
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn capture_command_error_with_code(command: &str, args: &[String], error: &str, code: i32) {

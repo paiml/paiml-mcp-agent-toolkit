@@ -114,9 +114,14 @@ impl Default for ValidationCommands {
             unit_tests: "cargo test".to_string(),
             doctests: "cargo test --doc".to_string(),
             property_tests: "cargo test --features property-tests".to_string(),
+            // Both defaults have to be runnable as printed, and they have to
+            // agree with `ImplementationSpecs::default()`, which is what the
+            // same todo tells the user to create. `pmat quality-gate --file`
+            // shipped with a dangling flag and no value — clap rejects it — and
+            // `--example demo` named an example the default specs never list.
             examples: vec!["cargo run --example demo".to_string()],
             coverage_check: "cargo llvm-cov --fail-under-lines 80".to_string(),
-            quality_proxy: "pmat quality-gate --file".to_string(),
+            quality_proxy: "pmat quality-gate --file src/lib.rs".to_string(),
         }
     }
 }

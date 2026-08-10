@@ -114,6 +114,14 @@ fn print_health_table(report: &HealthReport) {
             colors::BOLD_GREEN,
             colors::RESET
         );
+    } else if report.summary.failed == 0 {
+        // Every check skipped. This used to print the healthy banner (see
+        // run_health_checks_internal); "we could not look" is not a pass.
+        eprintln!(
+            "\n⚠️  {}Project health was not measured — every check was skipped{}",
+            colors::YELLOW,
+            colors::RESET
+        );
     } else {
         eprintln!(
             "\n⚠️  {}Project has {} issue(s){}",

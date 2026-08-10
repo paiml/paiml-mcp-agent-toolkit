@@ -480,6 +480,11 @@ pub async fn handle_analyze_dag(
     // inheritance and full-dependency produced byte-identical output.
     let enriched_graph = filter_graph_by_dag_type(graph, &dag_type);
 
+    // `--max-depth` was only stored in `MermaidOptions`, which the renderer never
+    // reads, so every depth produced the same diagram. Traversal depth has to be
+    // applied to the graph itself, before it is rendered.
+    let enriched_graph = limit_graph_depth(enriched_graph, max_depth);
+
     // Generate Mermaid diagram
     let options = MermaidOptions {
         max_depth,
@@ -544,6 +549,84 @@ fn filter_graph_by_dag_type(
     }
 }
 
+/// Keep only the nodes reachable within `max_depth` traversal hops from a root.
+///
+/// Roots are the nodes nothing depends on (in-degree 0); a graph that is all
+/// cycles has no such node, so every node is treated as a root and the depth
+/// bound then measures distance from the nearest cycle entry. `--max-depth 0`
+/// is the roots alone.
+fn limit_graph_depth(
+    graph: crate::models::dag::DependencyGraph,
+    max_depth: Option<usize>,
+) -> crate::models::dag::DependencyGraph {
+    use rustc_hash::{FxHashMap, FxHashSet};
+    use std::collections::VecDeque;
+
+    let Some(max_depth) = max_depth else {
+        return graph;
+    };
+
+    let mut has_incoming: FxHashSet<&String> = FxHashSet::default();
+    for edge in &graph.edges {
+        if edge.from != edge.to {
+            has_incoming.insert(&edge.to);
+        }
+    }
+
+    let mut roots: Vec<&String> = graph
+        .nodes
+        .keys()
+        .filter(|id| !has_incoming.contains(*id))
+        .collect();
+    if roots.is_empty() {
+        roots = graph.nodes.keys().collect();
+    }
+
+    let mut successors: FxHashMap<&String, Vec<&String>> = FxHashMap::default();
+    for edge in &graph.edges {
+        successors.entry(&edge.from).or_default().push(&edge.to);
+    }
+
+    let mut depth: FxHashMap<&String, usize> = FxHashMap::default();
+    let mut queue: VecDeque<&String> = VecDeque::new();
+    for root in roots {
+        depth.insert(root, 0);
+        queue.push_back(root);
+    }
+
+    while let Some(node) = queue.pop_front() {
+        let next_depth = depth[node] + 1;
+        if next_depth > max_depth {
+            continue;
+        }
+        if let Some(children) = successors.get(node) {
+            for child in children {
+                if !depth.contains_key(*child) {
+                    depth.insert(child, next_depth);
+                    queue.push_back(child);
+                }
+            }
+        }
+    }
+
+    let kept: FxHashSet<String> = depth.keys().map(|id| (*id).clone()).collect();
+
+    let edges = graph
+        .edges
+        .iter()
+        .filter(|e| kept.contains(&e.from) && kept.contains(&e.to))
+        .cloned()
+        .collect();
+    let nodes = graph
+        .nodes
+        .iter()
+        .filter(|(id, _)| kept.contains(*id))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    crate::models::dag::DependencyGraph { nodes, edges }
+}
+
 /// Report the size of the diagram that was actually emitted, plus the size of the
 /// graph it was rendered from when the renderer's node budget dropped some of it.
 fn report_graph_size(
@@ -593,4 +676,78 @@ fn count_rendered_elements(mermaid_content: &str) -> (usize, usize) {
 
 fn is_mermaid_edge_line(line: &str) -> bool {
     line.contains("-->") || line.contains("-.->") || line.contains(" --- ")
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dag_depth_tests {
+    use super::limit_graph_depth;
+    use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
+    use rustc_hash::FxHashMap;
+
+    /// a -> b -> c -> d, one chain four deep.
+    fn chain() -> DependencyGraph {
+        let mut graph = DependencyGraph::new();
+        for id in ["a", "b", "c", "d"] {
+            graph.add_node(NodeInfo {
+                id: id.to_string(),
+                label: id.to_string(),
+                node_type: NodeType::Function,
+                file_path: "src/lib.rs".to_string(),
+                line_number: 1,
+                complexity: 1,
+                metadata: FxHashMap::default(),
+            });
+        }
+        for (from, to) in [("a", "b"), ("b", "c"), ("c", "d")] {
+            graph.add_edge(Edge {
+                from: from.to_string(),
+                to: to.to_string(),
+                edge_type: EdgeType::Calls,
+                weight: 1,
+            });
+        }
+        graph
+    }
+
+    /// `--max-depth` was stored in `MermaidOptions` and never read, so
+    /// `analyze dag --max-depth 1` and no `--max-depth` at all wrote
+    /// byte-identical diagrams at every value.
+    #[test]
+    fn max_depth_limits_traversal() {
+        let full = limit_graph_depth(chain(), None);
+        assert_eq!(full.nodes.len(), 4);
+
+        let depth_1 = limit_graph_depth(chain(), Some(1));
+        assert_eq!(depth_1.nodes.len(), 2, "root plus one hop");
+        assert!(depth_1.nodes.contains_key("a") && depth_1.nodes.contains_key("b"));
+        assert_eq!(depth_1.edges.len(), 1);
+
+        let depth_0 = limit_graph_depth(chain(), Some(0));
+        assert_eq!(depth_0.nodes.len(), 1, "roots only");
+        assert!(depth_0.edges.is_empty());
+
+        let depth_9 = limit_graph_depth(chain(), Some(9));
+        assert_eq!(
+            depth_9.nodes.len(),
+            4,
+            "a depth past the graph keeps it all"
+        );
+    }
+
+    /// A graph that is one cycle has no in-degree-0 node; depth limiting must
+    /// still return a graph rather than dropping every node.
+    #[test]
+    fn cyclic_graph_is_not_emptied() {
+        let mut graph = chain();
+        graph.add_edge(Edge {
+            from: "d".to_string(),
+            to: "a".to_string(),
+            edge_type: EdgeType::Calls,
+            weight: 1,
+        });
+
+        let limited = limit_graph_depth(graph, Some(1));
+        assert!(!limited.nodes.is_empty());
+    }
 }

@@ -100,7 +100,13 @@ impl RustDefectDetector {
                     .to_string(),
                 evidence_description: "Cloudflare outage 2025-11-18 (3+ hour network outage)"
                     .to_string(),
-                evidence_url: Some("https://blog.cloudflare.com/2025-01-18-outage".to_string()),
+                // The slug used to say 2025-01-18 while the description said
+                // 2025-11-18: a citation for an outage that never happened, and
+                // the URL 404ed. The post about the November 18 outage — the one
+                // an `.unwrap()` on a bot-features file caused — is this one.
+                evidence_url: Some(
+                    "https://blog.cloudflare.com/18-november-2025-outage/".to_string(),
+                ),
                 instances: unwrap_instances,
             });
         }
@@ -353,6 +359,33 @@ mod colocated_test_module_regression_tests {
         assert!(
             defects.is_empty(),
             "test-module .unwrap() must stay excluded: {defects:?}"
+        );
+    }
+
+    /// The citation used to point at `/2025-01-18-outage` while claiming the
+    /// outage of 2025-11-18: two different dates in one piece of evidence, and
+    /// the URL 404ed. The date in the slug must match the date in the prose.
+    #[test]
+    fn unwrap_evidence_url_matches_its_own_description() {
+        let detector = RustDefectDetector::new();
+        let defects = detector.detect(PRODUCTION_THEN_TEST_MODULE, Path::new("src/lib.rs"));
+        let unwrap = defects
+            .iter()
+            .find(|d| d.id == "RUST-UNWRAP-001")
+            .expect("RUST-UNWRAP-001 must be reported");
+        let url = unwrap
+            .evidence_url
+            .as_deref()
+            .expect("RUST-UNWRAP-001 cites a URL");
+
+        assert!(
+            unwrap.evidence_description.contains("2025-11-18"),
+            "description names the November 2025 outage: {}",
+            unwrap.evidence_description
+        );
+        assert!(
+            url.contains("18-november-2025"),
+            "the cited URL must be the November 2025 outage post, not {url}"
         );
     }
 

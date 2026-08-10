@@ -150,8 +150,10 @@ pub fn print_text_report(report: &DepsAuditReport) {
         report.transitive_deps,
         colors::RESET
     );
+    // Labelled by its source: this is the Cargo.lock package set, and it is
+    // exactly direct + transitive (it used to be a third, smaller population).
     println!(
-        "  Total (graph nodes):   {}{}{}",
+        "  Total (Cargo.lock):    {}{}{}",
         colors::BOLD_WHITE,
         report.total_deps,
         colors::RESET

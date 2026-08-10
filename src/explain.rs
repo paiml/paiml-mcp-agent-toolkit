@@ -48,6 +48,50 @@ pub fn lookup(pattern: &str) -> Vec<&'static CheckExplanation> {
         .collect()
 }
 
+/// Does `pattern` have the shape of an ID the scoring commands print
+/// (`CB-030`, `PV-04`, `RT-12`)?
+///
+/// Used to tell "you typed something that is not an ID" apart from "that IS an
+/// ID pmat prints, but nobody has written an explanation for it yet".
+#[must_use]
+pub fn looks_like_check_id(pattern: &str) -> bool {
+    let Some((prefix, number)) = pattern.split_once('-') else {
+        return false;
+    };
+    !prefix.is_empty()
+        && prefix.chars().all(|c| c.is_ascii_alphabetic())
+        && !number.is_empty()
+        && number.chars().all(|c| c.is_ascii_digit())
+}
+
+/// What to print when [`lookup`] finds nothing.
+///
+/// The old message was "No checks matching 'CB-030'. Run `pmat explain` to list
+/// all." — which reads as "no such check". `CB-030` is a real check
+/// (`CB-030: O(1) Hooks`); the registry below simply does not cover it. Only 11
+/// of the ~153 `CB-*` IDs `pmat comply check` emits have an entry, so the
+/// common case for a user pasting an ID out of a report was being told their
+/// ID was wrong. Say which of the two it is, and point at the check's own
+/// description as the fallback source of truth.
+#[must_use]
+pub fn miss_message(pattern: &str) -> String {
+    let registered = EXPLANATIONS.len();
+    if looks_like_check_id(pattern) {
+        format!(
+            "No explanation is registered for '{pattern}'.\n\
+             The explanation registry covers {registered} IDs; it is not a catalogue of every \
+             check pmat emits, so '{pattern}' may still be a real check.\n\
+             \x20 • `pmat explain` lists every ID that has an explanation\n\
+             \x20 • `pmat comply check --format json` reports each check's own name and message"
+        )
+    } else {
+        format!(
+            "No checks matching '{pattern}' among the {registered} registered explanations. \
+             Run `pmat explain` to list all."
+        )
+    }
+}
+
 /// List all available check IDs grouped by domain.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn list_all() -> Vec<(&'static str, Vec<&'static CheckExplanation>)> {
@@ -430,6 +474,48 @@ mod tdg_grade_registry_tests {
                 "{} documents a grade no score maps to",
                 entry.id
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod miss_message_tests {
+    use super::*;
+
+    /// `CB-030` is a real check (`CB-030: O(1) Hooks`) with no registry entry.
+    /// Telling the user "No checks matching 'CB-030'" reads as "you typed a
+    /// check that does not exist" — the registry's gap, reported as the user's
+    /// mistake.
+    #[test]
+    fn an_unregistered_but_real_check_id_is_not_called_nonexistent() {
+        let msg = miss_message("CB-030");
+        assert!(
+            !msg.contains("No checks matching"),
+            "must not claim the ID does not exist, got: {msg}"
+        );
+        assert!(
+            msg.contains("may still be a real check"),
+            "must say the registry, not the ID, is incomplete, got: {msg}"
+        );
+        assert!(
+            msg.contains("comply check"),
+            "must point at the check's own description, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn a_non_id_pattern_still_reads_as_no_match() {
+        let msg = miss_message("zzzz nonsense");
+        assert!(msg.contains("No checks matching"), "got: {msg}");
+    }
+
+    #[test]
+    fn id_shape_detection() {
+        for id in ["CB-030", "CB-1210", "PV-04", "RT-12", "cb-030"] {
+            assert!(looks_like_check_id(id), "{id} is ID-shaped");
+        }
+        for other in ["unwrap", "CB030", "CB-", "-030", "CB-12a", "complexity"] {
+            assert!(!looks_like_check_id(other), "{other} is not ID-shaped");
         }
     }
 }

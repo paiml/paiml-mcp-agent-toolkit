@@ -1,6 +1,16 @@
 // Proof annotation factory methods for RustBorrowChecker
 // Included by rust_borrow_checker.rs - no `use` imports or `#!` attributes
 
+// CONFIDENCE: every factory below hardcoded `ConfidenceLevel::High`, so
+// `analyze proof-annotations` reported "High confidence: N (100.0%)" for every
+// annotation it has ever produced and `--high-confidence-only` filtered nothing
+// out — neither measured anything. `High` is documented on the enum as
+// "machine-checkable proof", and nothing here is machine checked: pmat never
+// invokes rustc, it walks the file with `syn` and each annotation carries an
+// explicit list of unverified `assumptions`. That is `Medium` ("sound static
+// analysis with assumptions"), and where the evidence is a name match against a
+// hardcoded list it is `Low` ("heuristic-based"). The level now follows the
+// evidence for each claim.
 impl RustBorrowChecker {
     /// Canonical seed for an annotation's id: the site plus the claim.
     ///
@@ -31,7 +41,9 @@ impl RustBorrowChecker {
             // "pmat-syn-static-analysis", not a compiler that never ran.
             tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
-            confidence_level: ConfidenceLevel::High,
+            // Static: the signature is not `unsafe fn`. The body is not
+            // checked, and the assumptions below are not verified.
+            confidence_level: ConfidenceLevel::Medium,
             assumptions: vec![
                 "Safe Rust subset".to_string(),
                 "No compiler bugs".to_string(),
@@ -54,7 +66,9 @@ impl RustBorrowChecker {
             // "pmat-syn-static-analysis", not a compiler that never ran.
             tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
-            confidence_level: ConfidenceLevel::High,
+            // Heuristic: `type_likely_implements_send_sync` matches parameter
+            // type names against a hardcoded allowlist. No bound is resolved.
+            confidence_level: ConfidenceLevel::Low,
             assumptions: vec![
                 "Send + Sync bounds satisfied".to_string(),
                 "No interior mutability without synchronization".to_string(),
@@ -77,7 +91,9 @@ impl RustBorrowChecker {
             // "pmat-syn-static-analysis", not a compiler that never ran.
             tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
-            confidence_level: ConfidenceLevel::High,
+            // Static: `const fn` in the signature. Const evaluation permits
+            // loops, so termination rests on the assumption below.
+            confidence_level: ConfidenceLevel::Medium,
             assumptions: vec!["const fn restrictions guarantee termination".to_string()],
             evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
             evidence_location: None,
@@ -104,7 +120,9 @@ impl RustBorrowChecker {
             // "pmat-syn-static-analysis", not a compiler that never ran.
             tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
-            confidence_level: ConfidenceLevel::High,
+            // Static: a safe `impl <auto trait>` was read out of the AST; the
+            // implementation itself is taken on trust.
+            confidence_level: ConfidenceLevel::Medium,
             assumptions: vec![format!("{} auto trait implementation", trait_name)],
             evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
             evidence_location: None,
@@ -136,7 +154,9 @@ impl RustBorrowChecker {
             // "pmat-syn-static-analysis", not a compiler that never ran.
             tool_name: format!("pmat-{}", self.rustc_channel),
             tool_version: self.rustc_version.clone(),
-            confidence_level: ConfidenceLevel::High,
+            // Static: a safe `impl <auto trait>` was read out of the AST; the
+            // implementation itself is taken on trust.
+            confidence_level: ConfidenceLevel::Medium,
             assumptions: vec![format!("{} auto trait implementation", trait_name)],
             evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
             evidence_location: None,

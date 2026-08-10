@@ -75,15 +75,19 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn check_colon_operator(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
-        if pos + 1 < bytes.len() {
-            match bytes[pos + 1] {
-                b'=' => Some(LineType::Assignment(pos, AssignmentOp::Immediate)),
-                b':' => Some(LineType::Rule(pos, true)),
-                _ => Some(LineType::Rule(pos, false)),
-            }
-        } else {
-            Some(LineType::Rule(pos, false))
+        // A run of colons terminated by '=' is an assignment, not a rule.
+        // POSIX 2012 added `::=` and GNU Make 4.4 added `:::=`; both used to
+        // match the bare `b':'` arm and be reported as a double-colon rule, so
+        // `X ::= hello` yielded a target named `X` and a bogus "should probably
+        // be declared .PHONY" violation for a variable definition.
+        let mut colons = 0;
+        while pos + colons < bytes.len() && bytes[pos + colons] == b':' {
+            colons += 1;
         }
+        if bytes.get(pos + colons) == Some(&b'=') {
+            return Some(LineType::Assignment(pos, AssignmentOp::Immediate));
+        }
+        Some(LineType::Rule(pos, colons >= 2))
     }
 
     fn check_two_char_operator(

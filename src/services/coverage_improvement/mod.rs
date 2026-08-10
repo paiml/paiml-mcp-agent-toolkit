@@ -104,6 +104,10 @@ include!("mutation_testing.rs");
 #[path = "generated_test_validity_tests.rs"]
 mod generated_test_validity_tests;
 
+#[cfg(test)]
+#[path = "baseline_measurement_tests.rs"]
+mod baseline_measurement_tests;
+
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]
 mod tests;

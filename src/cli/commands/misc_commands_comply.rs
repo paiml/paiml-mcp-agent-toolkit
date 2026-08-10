@@ -169,7 +169,12 @@ pub enum ComplyCommands {
     },
 
     /// Layer 3 (Governance): Generate audit artifact with sovereign trail (COMPLY-045)
-    /// Requires clean git state. Produces signed compliance evidence.
+    /// Requires clean git state. Produces UNSIGNED compliance evidence pinned to the HEAD commit.
+    //
+    // The help used to promise "signed compliance evidence". `AuditArtifact`
+    // carries no signature, digest or attestation field of any kind — nothing
+    // in the artifact is verifiable after the fact beyond the git SHA it names,
+    // so the word "signed" was a claim the command never backed.
     Audit {
         /// Project path (defaults to current directory)
         #[arg(short = 'p', long = "path", default_value = ".")]

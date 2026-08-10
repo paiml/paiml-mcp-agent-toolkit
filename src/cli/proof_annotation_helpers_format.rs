@@ -43,10 +43,19 @@ pub fn format_as_json(
         })
         .collect();
 
+    // COMPLETENESS: files the collector could not read or parse contribute no
+    // annotations, and their failure used to stop at one `warn!` line on
+    // stderr. The document then reported a total with nothing to say it was
+    // computed over a subset — 31 unparsed files on this repo, invisible to
+    // anything consuming the JSON. Reported here so a consumer can tell a
+    // complete analysis from a partial one.
+    let files_not_analyzed = annotator.collection_errors();
+
     let json_data = serde_json::json!({
         "proof_annotations": annotations_json,
         "summary": {
             "total_annotations": annotations.len(),
+            "files_not_analyzed": files_not_analyzed,
             "cache_stats": {
                 "size": cache_stats.size,
                 "files_tracked": cache_stats.files_tracked
@@ -135,6 +144,22 @@ pub async fn collect_and_filter_annotations(
     });
 
     collected
+}
+
+/// The disclosure appended to every human-readable report when the collector
+/// skipped files.
+///
+/// `None` when nothing was skipped, so a complete run reads exactly as before.
+/// The JSON document carries the same fact as `summary.files_not_analyzed`.
+#[must_use]
+pub fn incomplete_analysis_note(files_not_analyzed: usize) -> Option<String> {
+    if files_not_analyzed == 0 {
+        return None;
+    }
+    Some(format!(
+        "\nINCOMPLETE: {files_not_analyzed} file(s) could not be read or parsed and \
+         contributed no annotations. The totals above are computed over the rest.\n"
+    ))
 }
 
 /// Format annotations as table output

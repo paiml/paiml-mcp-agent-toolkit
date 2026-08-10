@@ -1,11 +1,25 @@
 // Dead code analysis logic - included from dead_code_handlers.rs
 // NO `use` imports or `#!` inner attributes allowed here.
 
+/// Dead code analysis output: the report, plus the one figure that describes
+/// the PROJECT rather than the reported list.
+///
+/// `report.summary.dead_percentage` is scoped to the files actually listed —
+/// it has to be, a count must agree with the list it heads — so it is not a
+/// number a threshold can be enforced against: it shrinks as `--top-files`
+/// asks for fewer files. `project_dead_percentage` is measured over every line
+/// walked, before `--min-dead-lines` and `--top-files` cut the list down, and
+/// is `None` when the analyzer cannot measure one.
+struct DeadCodeAnalysisOutcome {
+    report: crate::models::dead_code::DeadCodeResult,
+    project_dead_percentage: Option<f32>,
+}
+
 /// Run dead code analysis with include/exclude filters
 async fn run_dead_code_analysis_with_filters(
     path: &Path,
     filters: DeadCodeAnalysisFilters,
-) -> Result<crate::models::dead_code::DeadCodeResult> {
+) -> Result<DeadCodeAnalysisOutcome> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::utils::file_filter::FileFilter;
 
@@ -49,6 +63,11 @@ async fn run_dead_code_analysis_with_filters(
     // the pre-filter number — 26 files claimed above a 4-entry array.
     let files_with_dead_code_found = accurate_report.files_with_dead_code.len();
     let project_total_lines = accurate_report.total_lines;
+    // Measured over every line the analyzer walked, before any filter. This is
+    // the only figure `--fail-on-violation` may compare against; the summary's
+    // is scoped to the list that survived `--top-files`/`--min-dead-lines`.
+    #[allow(clippy::cast_possible_truncation)]
+    let project_dead_percentage = Some(accurate_report.dead_code_percentage as f32);
     let mut analysis_result =
         create_dead_code_ranking_result(accurate_report, filters.min_dead_lines, config);
 
@@ -78,13 +97,16 @@ async fn run_dead_code_analysis_with_filters(
     );
 
     // Convert to DeadCodeResult
-    Ok(crate::models::dead_code::DeadCodeResult {
-        summary: analysis_result.summary.clone(),
-        files: analysis_result.ranked_files,
-        total_files: analysis_result.summary.total_files_analyzed,
-        analyzed_files: analysis_result.summary.total_files_analyzed,
-        files_with_dead_code_found,
-        files_truncated,
+    Ok(DeadCodeAnalysisOutcome {
+        report: crate::models::dead_code::DeadCodeResult {
+            summary: analysis_result.summary.clone(),
+            files: analysis_result.ranked_files,
+            total_files: analysis_result.summary.total_files_analyzed,
+            analyzed_files: analysis_result.summary.total_files_analyzed,
+            files_with_dead_code_found,
+            files_truncated,
+        },
+        project_dead_percentage,
     })
 }
 
@@ -119,7 +141,7 @@ fn run_multi_language_dead_code(
     path: &Path,
     filters: &DeadCodeAnalysisFilters,
     language: &str,
-) -> Result<crate::models::dead_code::DeadCodeResult> {
+) -> Result<DeadCodeAnalysisOutcome> {
     use crate::models::dead_code::{
         ConfidenceLevel, DeadCodeItem, DeadCodeSummary, DeadCodeType, FileDeadCodeMetrics,
     };
@@ -199,18 +221,25 @@ fn run_multi_language_dead_code(
     // summary always agrees with the list that follows it.
     let summary = DeadCodeSummary::from_files(&files);
 
-    Ok(crate::models::dead_code::DeadCodeResult {
-        summary,
-        // MEASURED file count (#720). These were `total_functions.max(1)` -- a
-        // FUNCTION count under a FILE label, which made a 2-file Python fixture
-        // with 4 functions print "Files Analyzed | 4" directly above a summary
-        // that correctly said 2, and `.max(1)` invented one file for an empty
-        // project.
-        total_files: ml_result.total_files,
-        analyzed_files: ml_result.total_files,
-        files,
-        files_with_dead_code_found,
-        files_truncated,
+    Ok(DeadCodeAnalysisOutcome {
+        report: crate::models::dead_code::DeadCodeResult {
+            summary,
+            // MEASURED file count (#720). These were `total_functions.max(1)` --
+            // a FUNCTION count under a FILE label, which made a 2-file Python
+            // fixture with 4 functions print "Files Analyzed | 4" directly above
+            // a summary that correctly said 2, and `.max(1)` invented one file
+            // for an empty project.
+            total_files: ml_result.total_files,
+            analyzed_files: ml_result.total_files,
+            files,
+            files_with_dead_code_found,
+            files_truncated,
+        },
+        // The multi-language analyzer never counts the project's total lines,
+        // only the lines of the files it flagged, so there is no project-wide
+        // ratio to report. `--fail-on-violation` refuses rather than comparing
+        // the list-scoped figure and calling the result a pass.
+        project_dead_percentage: None,
     })
 }
 

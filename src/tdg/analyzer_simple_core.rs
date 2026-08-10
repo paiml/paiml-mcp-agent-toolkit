@@ -37,15 +37,16 @@ impl TdgAnalyzer {
             );
         }
         let source = fs::read_to_string(path)?;
-        // Only Rust has a parser here; the other languages stay heuristic, so
-        // their scores remain unverified by a parse.
-        if language == Language::Rust {
-            syn::parse_file(&source).map_err(|e| {
-                anyhow::anyhow!(
-                    "{}: not parseable as Rust ({e}); refusing to grade a file that did not parse",
-                    path.display()
-                )
-            })?;
+        // The parse gate used to be Rust-only, so `def f(:` in a .py file still
+        // collected the untouched component caps from the line heuristics — the
+        // same fabricated grade the Rust gate was added to stop. Every language
+        // with a grammar in this build is now gated the same way; languages
+        // without one still fall through to the heuristics, unverified.
+        if let Some(parse_error) = source_parse_error(&source, language) {
+            anyhow::bail!(
+                "{}: {parse_error}; refusing to grade a file that did not parse",
+                path.display()
+            );
         }
         self.analyze_source(&source, language, Some(path.to_path_buf()))
     }
@@ -140,6 +141,56 @@ impl TdgAnalyzer {
     }
 }
 
+/// Does `source` parse as `language`, in THIS build?
+///
+/// `None` means either "it parsed" or "this build has no parser for that
+/// language, so there is no verdict to give" — the two are deliberately not
+/// distinguished here, because both leave the heuristics as the only signal and
+/// neither is grounds for refusing the file. `Some(msg)` is a real syntax error.
+fn source_parse_error(source: &str, language: Language) -> Option<String> {
+    if language == Language::Rust {
+        return syn::parse_file(source)
+            .err()
+            .map(|e| format!("not parseable as Rust ({e})"));
+    }
+
+    #[cfg(feature = "tree-sitter")]
+    {
+        let grammar: Option<tree_sitter::Language> = match language {
+            #[cfg(feature = "python-ast")]
+            Language::Python => Some(tree_sitter_python::LANGUAGE.into()),
+            #[cfg(feature = "typescript-ast")]
+            Language::TypeScript => Some(tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()),
+            #[cfg(feature = "javascript-ast")]
+            Language::JavaScript => Some(tree_sitter_javascript::LANGUAGE.into()),
+            #[cfg(feature = "c-ast")]
+            Language::C => Some(tree_sitter_c::LANGUAGE.into()),
+            #[cfg(feature = "cpp-ast")]
+            Language::Cpp => Some(tree_sitter_cpp::LANGUAGE.into()),
+            #[cfg(feature = "lua-ast")]
+            Language::Lua => Some(tree_sitter_lua::LANGUAGE.into()),
+            #[cfg(feature = "go-ast")]
+            Language::Go => Some(tree_sitter_go::LANGUAGE.into()),
+            _ => None,
+        };
+        if let Some(grammar) = grammar {
+            let mut parser = tree_sitter::Parser::new();
+            if parser.set_language(&grammar).is_err() {
+                // No usable grammar ⇒ no verdict, not a failed one.
+                return None;
+            }
+            let Some(tree) = parser.parse(source, None) else {
+                return Some(format!("not parseable as {language}"));
+            };
+            if tree.root_node().has_error() {
+                return Some(format!("not parseable as {language} (syntax error)"));
+            }
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod unparseable_input_tests {
     use super::*;
@@ -174,6 +225,44 @@ mod unparseable_input_tests {
             .analyze_file(f.path())
             .expect_err("markdown is not source and must not get a score");
         assert!(err.to_string().contains("not one"), "{err}");
+    }
+
+    /// The parse gate used to be Rust-only, so unparseable Python collected the
+    /// untouched component caps from the line heuristics — a graded verdict for
+    /// a file nothing had parsed.
+    #[cfg(feature = "python-ast")]
+    #[test]
+    fn test_unparseable_python_is_not_graded() {
+        let f = write_temp(".py", "def f(:\n  ???\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("Python that does not parse must not get a score");
+        assert!(err.to_string().contains("not parseable as Python"), "{err}");
+    }
+
+    #[cfg(feature = "python-ast")]
+    #[test]
+    fn test_valid_python_still_scores() {
+        let f = write_temp(".py", "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let score = analyzer.analyze_file(f.path()).expect("valid Python grades");
+        assert_eq!(score.language, Language::Python);
+        assert!(score.total > 0.0);
+    }
+
+    #[cfg(feature = "typescript-ast")]
+    #[test]
+    fn test_unparseable_typescript_is_not_graded() {
+        let f = write_temp(".ts", "function f( { return ;;; }\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("TypeScript that does not parse must not get a score");
+        assert!(
+            err.to_string().contains("not parseable as TypeScript"),
+            "{err}"
+        );
     }
 
     #[test]

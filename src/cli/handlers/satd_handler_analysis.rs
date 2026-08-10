@@ -9,6 +9,8 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     // from a genuinely debt-free repository.
     crate::cli::ensure_analysis_path_exists(&config.path)?;
 
+    reject_unimplemented_evolution(config.evolution)?;
+
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function
@@ -31,6 +33,29 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     // fail. (A working check existed in complexity_handlers/satd.rs, but on a
     // route nothing dispatches to.)
     enforce_fail_on_violation(&filtered_result, config.fail_on_violation)
+}
+
+/// Refuse `--evolution` rather than answering it with a placeholder sentence.
+///
+/// `--evolution` is documented as "Track debt evolution over time (requires git
+/// history)" and `--days` as the window. Nothing read git history: summary and
+/// SARIF ignored the flag entirely (`analyze satd -p .` and `analyze satd -p .
+/// --evolution --days 90` were byte-identical), JSON answered with
+/// `"evolution": {"message": "Evolution tracking would show SATD trends over
+/// time"}` and Markdown with a `## Evolution (Last N Days)` heading over that
+/// same sentence — so `--days` moved a number in a heading and nothing else.
+/// `DebtEvolution` exists as a type with no producer.
+///
+/// A flag that measures nothing must say so, not emit prose shaped like a
+/// result. Same rule `pmat report --format html` follows (#672).
+fn reject_unimplemented_evolution(evolution: bool) -> Result<()> {
+    if evolution {
+        anyhow::bail!(
+            "--evolution is not implemented for `analyze satd`: no debt history is \
+             computed, and --days selects nothing. Re-run without it."
+        );
+    }
+    Ok(())
 }
 
 /// Turn retained violations into a non-zero exit when the caller asked for one.
@@ -145,13 +170,7 @@ async fn write_satd_output(
     config: &SatdAnalysisConfig,
 ) -> Result<()> {
     // Format output
-    let content = format_output(
-        filtered_result,
-        config.format.clone(),
-        config.evolution,
-        config.days,
-        config.metrics,
-    );
+    let content = format_output(filtered_result, config.format.clone(), config.metrics);
 
     // Write to file or stdout
     if let Some(output_path) = &config.output {

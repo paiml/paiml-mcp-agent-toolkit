@@ -316,8 +316,33 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
     }))
 }
 
+/// Detail levels the `scaffold_project` schema advertises for `level`.
+const SUMMARY_LEVELS: [&str; 3] = ["brief", "normal", "detailed"];
+
+/// Resolve the advertised `level` enum, rejecting anything outside it.
+///
+/// `level` was bound to `_level` and never read, so `brief` and `detailed`
+/// returned byte-identical summaries and a value like `bogus-level-xyz` was
+/// accepted in silence. A schema `enum` the tool does not enforce is a
+/// documented contract the tool does not keep.
+fn resolve_summary_level(level: Option<&str>) -> Result<&'static str> {
+    let Some(requested) = level else {
+        return Ok("normal");
+    };
+    SUMMARY_LEVELS
+        .iter()
+        .find(|known| known.eq_ignore_ascii_case(requested))
+        .copied()
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Unsupported level `{requested}`; expected one of: {}",
+                SUMMARY_LEVELS.join(", ")
+            )
+        })
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<Value> {
+pub async fn context_summary(paths: &[PathBuf], level: Option<&str>) -> Result<Value> {
     use std::collections::HashSet;
     use std::fs;
 
@@ -325,12 +350,17 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
+    let level = resolve_summary_level(level)?;
+
     let project_path = &paths[0];
 
     // Count files and lines
     let mut total_files = 0;
     let mut total_lines = 0;
     let mut languages = HashSet::new();
+    // Per-language breakdown, only rendered above `brief`.
+    let mut per_language: std::collections::BTreeMap<String, (usize, usize)> =
+        std::collections::BTreeMap::new();
 
     fn detect_lang(ext: &str) -> Option<&'static str> {
         match ext {
@@ -360,6 +390,7 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         total_files: &mut usize,
         total_lines: &mut usize,
         languages: &mut HashSet<String>,
+        per_language: &mut std::collections::BTreeMap<String, (usize, usize)>,
     ) -> Result<()> {
         if !dir.is_dir() {
             return Ok(());
@@ -370,7 +401,7 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
             if path.is_dir() {
                 let dominated = path.file_name().and_then(|n| n.to_str()).is_some_and(is_excluded_dir);
                 if !dominated {
-                    traverse_dir(&path, total_files, total_lines, languages)?;
+                    traverse_dir(&path, total_files, total_lines, languages, per_language)?;
                 }
                 continue;
             }
@@ -383,9 +414,14 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
 
             languages.insert(language.to_string());
             *total_files += 1;
+            let mut lines = 0;
             if let Ok(content) = fs::read_to_string(&path) {
-                *total_lines += content.lines().count();
+                lines = content.lines().count();
+                *total_lines += lines;
             }
+            let bucket = per_language.entry(language.to_string()).or_insert((0, 0));
+            bucket.0 += 1;
+            bucket.1 += lines;
         }
         Ok(())
     }
@@ -395,17 +431,93 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         &mut total_files,
         &mut total_lines,
         &mut languages,
+        &mut per_language,
     )?;
 
-    let languages_vec: Vec<String> = languages.into_iter().collect();
+    let mut languages_vec: Vec<String> = languages.into_iter().collect();
+    languages_vec.sort();
+
+    // Levels are nested (brief ⊂ normal ⊂ detailed) so a consumer that asked for
+    // more never loses a key it already parsed.
+    let mut summary = serde_json::Map::new();
+    summary.insert("level".into(), json!(level));
+    summary.insert("total_files".into(), json!(total_files));
+    summary.insert("total_lines".into(), json!(total_lines));
+    summary.insert("languages".into(), json!(languages_vec));
+    if level != "brief" {
+        let by_files: serde_json::Map<String, Value> = per_language
+            .iter()
+            .map(|(lang, (files, _))| (lang.clone(), json!(files)))
+            .collect();
+        summary.insert("files_by_language".into(), Value::Object(by_files));
+    }
+    if level == "detailed" {
+        let by_lines: serde_json::Map<String, Value> = per_language
+            .iter()
+            .map(|(lang, (_, lines))| (lang.clone(), json!(lines)))
+            .collect();
+        summary.insert("lines_by_language".into(), Value::Object(by_lines));
+    }
 
     Ok(json!({
         "status": "completed",
         "message": "Context summary generated from file system analysis",
-        "summary": {
-            "total_files": total_files,
-            "total_lines": total_lines,
-            "languages": languages_vec,
-        }
+        "summary": summary,
     }))
+}
+
+#[cfg(test)]
+mod context_summary_level_tests {
+    use super::*;
+
+    #[test]
+    fn out_of_enum_levels_are_rejected() {
+        // The schema advertises an enum; accepting `bogus-level-xyz` in silence
+        // is the defect.
+        assert!(resolve_summary_level(Some("bogus-level-xyz")).is_err());
+        assert_eq!(resolve_summary_level(None).expect("default"), "normal");
+        for known in ["brief", "normal", "detailed", "DETAILED"] {
+            assert!(resolve_summary_level(Some(known)).is_ok(), "{known}");
+        }
+    }
+
+    #[tokio::test]
+    async fn level_changes_the_summary() {
+        // The reported defect: brief and detailed returned identical summaries.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().to_path_buf();
+        std::fs::write(root.join("a.rs"), "fn a() {}\n").expect("write");
+        std::fs::write(root.join("b.py"), "def b():\n    pass\n").expect("write");
+        let paths = vec![root];
+
+        let brief = context_summary(&paths, Some("brief")).await.expect("brief");
+        let normal = context_summary(&paths, None).await.expect("normal");
+        let detailed = context_summary(&paths, Some("detailed"))
+            .await
+            .expect("detailed");
+
+        assert_ne!(brief["summary"], detailed["summary"]);
+        assert_eq!(brief["summary"]["level"], "brief");
+        assert!(brief["summary"]["files_by_language"].is_null());
+        assert!(normal["summary"]["files_by_language"].is_object());
+        assert!(normal["summary"]["lines_by_language"].is_null());
+        assert_eq!(detailed["summary"]["files_by_language"]["Rust"], 1);
+        assert!(detailed["summary"]["lines_by_language"]["Python"]
+            .as_u64()
+            .expect("line count")
+            >= 2);
+    }
+
+    #[tokio::test]
+    async fn an_unknown_level_is_an_error_not_a_default() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let paths = vec![dir.path().to_path_buf()];
+        let err = context_summary(&paths, Some("verbose"))
+            .await
+            .expect_err("out-of-enum level must be rejected");
+        assert!(
+            err.to_string().contains("Unsupported level"),
+            "got: {err}"
+        );
+    }
 }

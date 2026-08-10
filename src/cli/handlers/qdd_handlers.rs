@@ -350,43 +350,72 @@ async fn execute_refactoring(
 }
 
 /// Display refactoring results
+///
+/// Same defect as [`display_create_results`], one command over: "Coverage: 80.0%"
+/// came from `CodeAnalyzer::estimate_coverage`, which is `count("#[test]") * 10 /
+/// line_count` — no test was compiled, let alone run — and "TDG Score: 0" is a
+/// count of the literals `todo!` and `unwrap` in the text, not a TDG score. Both
+/// are reported as not measured; the two figures that ARE derived from the code
+/// (a keyword count of branching constructs, and the score computed from it) are
+/// labelled as the estimates they are. The estimates still drive the refactoring
+/// loop's stopping condition — they are just no longer printed as measurements.
 fn display_refactor_results(
     file: &Path,
     function: Option<String>,
     profile: QddQualityProfile,
     result: &QddResult,
 ) {
-    println!("{}", c::header("QDD Refactoring Successful!"));
-    println!(
-        "  {} {}",
+    print!(
+        "{}",
+        format_refactor_results(file, function, profile, result)
+    );
+}
+
+/// The text [`display_refactor_results`] prints, as a string so it can be
+/// asserted on.
+fn format_refactor_results(
+    file: &Path,
+    function: Option<String>,
+    profile: QddQualityProfile,
+    result: &QddResult,
+) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("{}\n", c::header("QDD Refactoring Successful!")));
+    out.push_str(&format!(
+        "  {} {}\n",
         c::label("File:"),
         c::path(&file.display().to_string())
-    );
+    ));
     if let Some(func) = function {
-        println!("  {} {}", c::label("Function:"), func);
+        out.push_str(&format!("  {} {}\n", c::label("Function:"), func));
     }
-    println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
-    println!(
-        "  {} {}",
-        c::label("Quality Score:"),
-        c::number(&format!("{:.1}", result.quality_score.overall))
-    );
-    println!(
-        "  {} {}",
-        c::label("Complexity:"),
-        c::number(&format!("{}", result.quality_score.complexity))
-    );
-    println!(
-        "  {} {}",
+    out.push_str(&format!(
+        "{}\n",
+        c::pass(&format!("Quality Profile: {profile:?}"))
+    ));
+    out.push_str(&format!(
+        "  {} {} {}\n",
+        c::label("Quality score (estimated):"),
+        c::number(&format!("{:.1}", result.quality_score.overall)),
+        c::dim("(derived from the estimates below, not an analysis run)")
+    ));
+    out.push_str(&format!(
+        "  {} {} {}\n",
+        c::label("Complexity (estimated):"),
+        c::number(&format!("{}", result.quality_score.complexity)),
+        c::dim("(keyword heuristic over the refactored text)")
+    ));
+    out.push_str(&format!(
+        "  {} {}\n",
         c::label("Coverage:"),
-        c::pct(result.quality_score.coverage, 80.0, 60.0)
-    );
-    println!(
-        "  {} {}",
+        c::dim("not measured (no tests were executed)")
+    ));
+    out.push_str(&format!(
+        "  {} {}\n\n",
         c::label("TDG Score:"),
-        c::number(&format!("{}", result.quality_score.tdg))
-    );
-    println!();
+        c::dim("not measured")
+    ));
+    out
 }
 
 /// Save refactored code to file
@@ -837,6 +866,60 @@ mod qdd_output_tests {
                 checkpoints: vec![],
             },
         }
+    }
+
+    /// Strip ANSI SGR sequences so assertions see the words, not the colours.
+    fn plain(s: &str) -> String {
+        let mut out = String::new();
+        let mut chars = s.chars();
+        while let Some(ch) = chars.next() {
+            if ch == '\u{1b}' {
+                for c in chars.by_ref() {
+                    if c == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                out.push(ch);
+            }
+        }
+        out
+    }
+
+    /// `pmat qdd refactor` printed "Coverage: 80.0%" and "TDG Score: 0" for
+    /// every run: coverage came from `#[test]` occurrences x 10 / line count
+    /// (no test was ever executed) and "TDG" was a count of the literals
+    /// `todo!` and `unwrap`. Neither may be printed as a measurement.
+    #[test]
+    fn refactor_results_do_not_print_a_coverage_measurement() {
+        let mut result = sample_result();
+        result.quality_score.coverage = 80.0;
+        result.quality_score.tdg = 0;
+
+        let text = plain(&format_refactor_results(
+            Path::new("src/lib.rs"),
+            None,
+            QddQualityProfile::Standard,
+            &result,
+        ));
+
+        assert!(
+            text.contains("Coverage: not measured"),
+            "coverage must be reported as not measured, got:\n{text}"
+        );
+        assert!(
+            text.contains("TDG Score: not measured"),
+            "TDG must be reported as not measured, got:\n{text}"
+        );
+        assert!(
+            !text.contains("80.0%"),
+            "the coverage guess must not be printed as a percentage:\n{text}"
+        );
+        // The figures that ARE derived from the code stay, labelled as estimates.
+        assert!(
+            text.contains("Complexity (estimated):"),
+            "the complexity estimate must say it is an estimate:\n{text}"
+        );
     }
 
     /// The Markdown documentation used to be appended to the generated .rs, leaving

@@ -108,7 +108,7 @@ fn test_calculate_summary_with_defects() {
         },
     ];
 
-    let summary = calculate_summary(&files, 3, &defects);
+    let summary = calculate_summary(&files, &defects);
 
     assert_eq!(summary.total_files_scanned, 3);
     assert_eq!(summary.files_with_defects, 3);
@@ -466,4 +466,71 @@ fn test_print_defect_pattern_11_instances() {
 
     // Should show first 10 + "... (1 more)" message
     print_text_report(&report);
+}
+
+// =========================================================================
+// Round-5 dogfood regression: the summary must describe the list it heads
+// =========================================================================
+
+fn one_defect(severity: Severity, file: &str) -> DefectPattern {
+    DefectPattern {
+        id: format!("X-{file}"),
+        name: "defect".to_string(),
+        severity,
+        fix_recommendation: "Fix".to_string(),
+        bad_example: "bad".to_string(),
+        good_example: "good".to_string(),
+        evidence_description: "Evidence".to_string(),
+        evidence_url: None,
+        instances: vec![DefectInstance {
+            file: file.to_string(),
+            line: 1,
+            column: 1,
+            code_snippet: "bad".to_string(),
+        }],
+    }
+}
+
+/// `analyze defects --severity low --format json` on this repo printed
+/// `files_with_defects: 22` next to `total_defects: 0` and an empty `defects`
+/// array: the count was tallied while scanning, BEFORE the severity filter ran,
+/// and nothing recomputed it afterwards. `calculate_summary` now derives the
+/// count from the defects it is given, so a summary cannot outlive its list.
+#[test]
+fn files_with_defects_is_zero_once_the_severity_filter_empties_the_list() {
+    let files = vec![PathBuf::from("a.rs"), PathBuf::from("b.rs")];
+    let scanned = vec![
+        one_defect(Severity::Critical, "a.rs"),
+        one_defect(Severity::High, "b.rs"),
+    ];
+
+    // What `--severity low` does to the scan results.
+    let reported: Vec<DefectPattern> = scanned
+        .into_iter()
+        .filter(|d| d.severity == Severity::Low)
+        .collect();
+
+    let summary = calculate_summary(&files, &reported);
+
+    assert_eq!(summary.total_defects, 0);
+    assert_eq!(
+        summary.files_with_defects, 0,
+        "no defect is reported, so no file can have one"
+    );
+    assert_eq!(summary.total_files_scanned, 2, "the scan still happened");
+}
+
+/// The same derivation must not double-count a file that several patterns hit.
+#[test]
+fn files_with_defects_counts_distinct_files_not_patterns() {
+    let files = vec![PathBuf::from("a.rs")];
+    let reported = vec![
+        one_defect(Severity::Critical, "a.rs"),
+        one_defect(Severity::Low, "a.rs"),
+    ];
+
+    let summary = calculate_summary(&files, &reported);
+
+    assert_eq!(summary.total_defects, 2);
+    assert_eq!(summary.files_with_defects, 1);
 }

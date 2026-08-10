@@ -78,4 +78,58 @@ mod tests {
         let guard = manager.index.read().await;
         assert!(guard.is_none());
     }
+
+    /// A `QueryResult` carrying a source body, built through serde so the test
+    /// does not have to name every field of the struct.
+    fn query_result_with_source() -> crate::services::agent_context::QueryResult {
+        serde_json::from_value(json!({
+            "file_path": "src/workflow/recovery.rs",
+            "function_name": "handle_error",
+            "signature": "fn handle_error()",
+            "doc_comment": null,
+            "start_line": 1,
+            "end_line": 3,
+            "language": "rust",
+            "tdg_score": 1.0,
+            "tdg_grade": "A",
+            "complexity": 1,
+            "big_o": "O(1)",
+            "satd_count": 0,
+            "loc": 3,
+            "relevance_score": 1.0,
+            "source": "fn handle_error() {\n    todo!()\n}"
+        }))
+        .expect("QueryResult fixture must deserialize")
+    }
+
+    /// `include_source` was parsed into a discarded `_include_source`, so
+    /// `pmat_get_function` returned the whole body even when the caller asked
+    /// it not to — the flag was documentation for behaviour the tool lacked.
+    #[test]
+    fn test_get_function_response_omits_source_when_not_requested() {
+        let result = query_result_with_source();
+
+        let with = super::build_get_function_response(
+            "src/workflow/recovery.rs::handle_error",
+            &result,
+            true,
+        );
+        assert!(
+            with["source"].is_string(),
+            "include_source: true must return the body"
+        );
+
+        let without = super::build_get_function_response(
+            "src/workflow/recovery.rs::handle_error",
+            &result,
+            false,
+        );
+        assert!(
+            without.get("source").is_none(),
+            "include_source: false must not return the body, got: {without}"
+        );
+        // Everything else is unaffected by the flag.
+        assert_eq!(without["name"], "handle_error");
+        assert_eq!(without["quality"]["grade"], "A");
+    }
 }

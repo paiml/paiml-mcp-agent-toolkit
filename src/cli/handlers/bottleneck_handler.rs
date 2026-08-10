@@ -142,8 +142,12 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
         })
         .collect();
 
-    // Sort by touches descending
-    bottlenecks.sort_by_key(|b| std::cmp::Reverse(b.touches));
+    // Sort by touches descending. DETERMINISM: `touches` is not a total order
+    // (most files tie), the source is a `HashMap`, and `sort_by_key` is stable —
+    // so which of the tied files survived `truncate(20)` came out of the
+    // process's hash seed. Eight identical runs produced four distinct outputs.
+    // Path breaks the tie.
+    bottlenecks.sort_by(|a, b| b.touches.cmp(&a.touches).then_with(|| a.path.cmp(&b.path)));
     bottlenecks.truncate(20);
 
     // Detect co-change coupling
@@ -352,7 +356,14 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
         })
         .collect();
 
-    pairs.sort_by_key(|b| std::cmp::Reverse(b.co_changes));
+    // Same tie-break as `analyze_bottlenecks`: `co_changes` ties constantly and
+    // the pairs come out of a `HashMap`, so the surviving 15 were hash-seed
+    // dependent.
+    pairs.sort_by(|x, y| {
+        y.co_changes
+            .cmp(&x.co_changes)
+            .then_with(|| (&x.file_a, &x.file_b).cmp(&(&y.file_a, &y.file_b)))
+    });
     pairs.truncate(15);
     pairs
 }
@@ -930,5 +941,119 @@ mod tests {
             huge, small,
             "a larger --period reported fewer commits (pre-fix: 0)"
         );
+    }
+
+    // ── determinism ─────────────────────────────────────────────────────────
+    //
+    // `analyze bottleneck` produced four distinct md5s over eight identical
+    // runs: both result lists are built from a `HashMap`, ranked by a key that
+    // ties constantly (`touches` / `co_changes`) with a *stable* sort, and then
+    // truncated — so which of the tied entries survived came out of the
+    // process's hash seed. `RandomState` reseeds per `HashMap` instance, so
+    // repeated calls inside one test process reproduce the run-to-run variance.
+
+    /// Enough tied pairs to overflow `truncate(15)`, so an unstable tie-break
+    /// changes the *contents*, not just the order.
+    fn tied_commits() -> Vec<Vec<String>> {
+        (0..30)
+            .map(|i| vec!["src/shared.rs".to_string(), format!("src/mod_{i:02}.rs")])
+            .collect()
+    }
+
+    #[test]
+    fn detect_coupling_is_deterministic_across_runs() {
+        let commits = tied_commits();
+        let first = detect_coupling(&commits, 1);
+        assert_eq!(first.len(), 15, "the fixture must exercise the truncation");
+        for run in 1..25 {
+            let again = detect_coupling(&commits, 1);
+            let as_tuples = |p: &[CouplingPair]| {
+                p.iter()
+                    .map(|c| (c.file_a.clone(), c.file_b.clone(), c.co_changes))
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(
+                as_tuples(&first),
+                as_tuples(&again),
+                "run {run} disagreed with run 0: coupling output depends on HashMap order"
+            );
+        }
+    }
+
+    #[test]
+    fn detect_coupling_breaks_ties_by_path() {
+        let pairs = detect_coupling(&tied_commits(), 1);
+        let mut expected: Vec<(String, String)> = pairs
+            .iter()
+            .map(|p| (p.file_a.clone(), p.file_b.clone()))
+            .collect();
+        expected.sort();
+        let actual: Vec<(String, String)> = pairs
+            .iter()
+            .map(|p| (p.file_a.clone(), p.file_b.clone()))
+            .collect();
+        assert_eq!(actual, expected, "tied pairs must be ordered by path");
+    }
+
+    #[test]
+    fn analyze_bottlenecks_is_deterministic_across_runs() {
+        use std::process::Command;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        let repo = temp.path();
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git must be available")
+        };
+        if !git(&["init"]).status.success() {
+            return;
+        }
+        let _ = git(&["config", "user.email", "t@example.com"]);
+        let _ = git(&["config", "user.name", "T"]);
+        std::fs::create_dir_all(repo.join("src")).unwrap();
+        // 30 files, each touched exactly once: every `touches` value ties, and
+        // the list is truncated to 20.
+        for i in 0..30 {
+            std::fs::write(
+                repo.join(format!("src/f{i:02}.rs")),
+                "pub fn f() {}\npub fn g() {}\n",
+            )
+            .unwrap();
+        }
+        let _ = git(&["add", "-A"]);
+        if !git(&["commit", "-m", "init", "--no-verify"])
+            .status
+            .success()
+        {
+            return;
+        }
+
+        let first = analyze_bottlenecks(repo, 99_999_999, 1).expect("analysis must run");
+        assert_eq!(
+            first.bottlenecks.len(),
+            20,
+            "the fixture must exercise the truncation"
+        );
+        let paths = |a: &BottleneckAnalysis| {
+            a.bottlenecks
+                .iter()
+                .map(|b| b.path.clone())
+                .collect::<Vec<_>>()
+        };
+        for run in 1..10 {
+            let again = analyze_bottlenecks(repo, 99_999_999, 1).expect("analysis must run");
+            assert_eq!(
+                paths(&first),
+                paths(&again),
+                "run {run} disagreed with run 0: bottleneck output depends on HashMap order"
+            );
+        }
+        let mut sorted = paths(&first);
+        sorted.sort();
+        assert_eq!(paths(&first), sorted, "tied files must be ordered by path");
     }
 }

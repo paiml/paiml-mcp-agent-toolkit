@@ -182,13 +182,63 @@ fn pmat_self() -> Command {
     Command::new(std::env::current_exe().unwrap_or_else(|_| PathBuf::from("pmat")))
 }
 
+/// Strip ANSI CSI/OSC escape sequences from captured child output.
+///
+/// `cargo fmt --check` colours its diff, and `verify` captured that verbatim
+/// into `StageReport::detail`. So `pmat verify --format json` emitted raw
+/// `\x1b[…m` bytes inside a JSON string — unreadable for the autonomous agent
+/// the JSON format exists for — and `--color never` changed nothing, because
+/// the escapes came from the child, not from us.
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            // CSI: `ESC [` … final byte in 0x40..=0x7E.
+            Some('[') => {
+                for f in chars.by_ref() {
+                    if ('\x40'..='\x7e').contains(&f) {
+                        break;
+                    }
+                }
+            }
+            // OSC: `ESC ]` … terminated by BEL or `ESC \`.
+            Some(']') => {
+                while let Some(f) = chars.next() {
+                    if f == '\x07' {
+                        break;
+                    }
+                    if f == '\x1b' {
+                        let _ = chars.next();
+                        break;
+                    }
+                }
+            }
+            // Any other two-byte escape: drop both bytes.
+            Some(_) | None => {}
+        }
+    }
+    out
+}
+
 /// Run a command capturing output; return (success, combined stdout+stderr).
+///
+/// Output is de-ANSI'd here rather than at each call site: every consumer of it
+/// is a machine-readable `detail` field or a line `print_text` re-colours
+/// itself, so a child's colours can only corrupt them.
 fn run(cmd: &mut Command) -> (bool, String) {
+    // Belt and braces with `strip_ansi`: ask cargo not to colour in the first
+    // place, so the common case needs no stripping at all.
+    cmd.env("CARGO_TERM_COLOR", "never");
     match cmd.output() {
         Ok(out) => {
             let mut s = String::from_utf8_lossy(&out.stdout).into_owned();
             s.push_str(&String::from_utf8_lossy(&out.stderr));
-            (out.status.success(), s)
+            (out.status.success(), strip_ansi(&s))
         }
         Err(e) => (false, format!("failed to spawn command: {e}")),
     }
@@ -493,34 +543,48 @@ fn changed_rust_files_in(dir: &Path) -> Vec<String> {
     files
 }
 
+/// Render the text report.
+///
+/// The escape sequences go through `colors::seq`, which is `""` when colour is
+/// off. They used to be interpolated as bare literals, so `pmat verify --color
+/// never > verify.txt` wrote `^[[32m✓ pass^[[0m` into the file exactly like
+/// `--color auto` did — the flag parsed and changed nothing (GH #684, same
+/// family).
 fn print_text(report: &VerifyReport) {
+    use crate::cli::colors as c;
+    let (green, red, dim, reset) = (
+        c::seq(c::GREEN),
+        c::seq(c::RED),
+        c::seq(c::DIM),
+        c::seq(c::RESET),
+    );
     for s in &report.stages {
         let status = match s.ok {
-            Some(true) => "\x1b[32m✓ pass\x1b[0m",
-            Some(false) => "\x1b[31m✗ FAIL\x1b[0m",
-            None => "\x1b[2m- skip\x1b[0m",
+            Some(true) => format!("{green}✓ pass{reset}"),
+            Some(false) => format!("{red}✗ FAIL{reset}"),
+            None => format!("{dim}- skip{reset}"),
         };
         println!("  {status}  {:<11} {}ms", s.name, s.duration_ms);
         for v in &s.violations {
             println!(
-                "       \x1b[31m{}\x1b[0m {}:{}  {}",
+                "       {red}{}{reset} {}:{}  {}",
                 v.rule, v.file, v.line, v.message
             );
         }
         if let Some(d) = &s.detail {
             for l in d.lines() {
-                println!("       \x1b[2m{l}\x1b[0m");
+                println!("       {dim}{l}{reset}");
             }
         }
     }
     if report.ok {
         println!(
-            "\n\x1b[32m✓ verify passed\x1b[0m ({}ms) — safe to commit",
+            "\n{green}✓ verify passed{reset} ({}ms) — safe to commit",
             report.duration_ms
         );
     } else {
         println!(
-            "\n\x1b[31m✗ verify failed\x1b[0m ({}ms) — fix before committing",
+            "\n{red}✗ verify failed{reset} ({}ms) — fix before committing",
             report.duration_ms
         );
     }
@@ -749,5 +813,42 @@ mod tests {
             "{files:?}"
         );
         assert!(files.iter().any(|f| f == "tracked.rs"), "{files:?}");
+    }
+}
+
+#[cfg(test)]
+mod ansi_tests {
+    use super::*;
+
+    /// `cargo fmt --check` colours its diff, and that colour used to land
+    /// verbatim inside `--format json` `detail` strings. A machine-readable
+    /// field must not carry terminal escapes.
+    #[test]
+    fn strip_ansi_removes_csi_sequences() {
+        let coloured = "Diff in \u{1b}[1msrc/lib.rs\u{1b}[0m at line \u{1b}[31m3\u{1b}[0m:";
+        let plain = strip_ansi(coloured);
+        assert!(!plain.contains('\u{1b}'), "got: {plain:?}");
+        assert_eq!(plain, "Diff in src/lib.rs at line 3:");
+    }
+
+    #[test]
+    fn strip_ansi_removes_osc_and_leaves_plain_text_alone() {
+        assert_eq!(strip_ansi("\u{1b}]0;title\u{7}body"), "body");
+        assert_eq!(strip_ansi("no escapes here"), "no escapes here");
+        // A lone ESC at the very end must not spin or panic.
+        assert_eq!(strip_ansi("tail\u{1b}"), "tail");
+    }
+
+    /// The detail helpers feed off `run`'s output, so once that is stripped the
+    /// tail/first-error extraction is escape-free too.
+    #[test]
+    fn detail_helpers_carry_no_escapes_once_stripped() {
+        let raw = "\u{1b}[1mDiff in a.rs\u{1b}[0m\n\u{1b}[31merror: something broke\u{1b}[0m\n";
+        let cleaned = strip_ansi(raw);
+        assert_eq!(
+            first_error(&cleaned).as_deref(),
+            Some("error: something broke")
+        );
+        assert!(!tail(&cleaned, 5).unwrap().contains('\u{1b}'));
     }
 }

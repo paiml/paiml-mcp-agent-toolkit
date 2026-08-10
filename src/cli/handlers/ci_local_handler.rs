@@ -41,6 +41,14 @@ pub async fn handle_ci_local(
 ) -> Result<()> {
     use crate::cli::colors as c;
 
+    // A path that does not exist is not a CI failure. Without this check every
+    // check spawned into a missing cwd, failed with "No such file or directory
+    // (os error 2)", and the run reported 3 failing stages with fix hints
+    // ("Run `cargo fmt --all`") that address a problem the user does not have.
+    if !path.exists() {
+        anyhow::bail!("Path not found: {}", path.display());
+    }
+
     let human = is_human_format(format);
 
     if human {
@@ -449,6 +457,28 @@ fn get_fix_hint(check: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A missing path used to be reported as 3 failing CI stages, each with a
+    /// fix hint ("Run `cargo fmt --all`") for a problem the user does not have.
+    #[tokio::test]
+    async fn test_missing_path_is_a_path_error_not_three_failing_stages() {
+        let err = handle_ci_local(
+            Path::new("/does/not/exist/pmat-ci-local-missing"),
+            true,
+            None,
+            false,
+            false,
+            OutputFormat::Json,
+        )
+        .await
+        .expect_err("a missing path must be an error, not a CI verdict");
+        let msg = err.to_string();
+        assert!(msg.contains("Path not found"), "{msg}");
+        assert!(
+            !msg.contains("cargo fmt"),
+            "must not suggest a fix for a failure that did not happen: {msg}"
+        );
+    }
 
     #[test]
     fn test_build_check_list_quick() {

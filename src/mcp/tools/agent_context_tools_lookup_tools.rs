@@ -51,7 +51,12 @@ impl McpTool for GetFunctionTool {
             .as_str()
             .ok_or("Missing required parameter: function_id")?;
 
-        let _include_source = params["include_source"].as_bool().unwrap_or(true);
+        // The schema advertises `include_source`, and callers pass
+        // `include_source: false` to keep a large function body out of a
+        // context window. It was parsed into a discarded binding, so `source`
+        // came back either way and the flag was documentation for behaviour the
+        // tool did not have.
+        let include_source = params["include_source"].as_bool().unwrap_or(true);
 
         // Parse function_id: "file_path::function_name"
         let (file_path, function_name) = parse_function_id(function_id)?;
@@ -62,34 +67,53 @@ impl McpTool for GetFunctionTool {
             .get_function(&file_path, &function_name)
             .ok_or_else(|| format!("Function not found: {}", function_id))?;
 
-        let mut response = json!({
-            "id": function_id,
-            "name": result.function_name,
-            "signature": result.signature,
-            "file_path": result.file_path,
-            "start_line": result.start_line,
-            "end_line": result.end_line,
-            "language": result.language,
-            "quality": {
-                "grade": result.tdg_grade,
-                "complexity": result.complexity,
-                "tdg_score": result.tdg_score,
-                "loc": result.loc,
-                "big_o": result.big_o,
-                "satd_count": result.satd_count
-            }
-        });
+        Ok(build_get_function_response(
+            function_id,
+            &result,
+            include_source,
+        ))
+    }
+}
 
-        if let Some(doc) = &result.doc_comment {
-            response["doc_comment"] = json!(doc);
+/// Build the `pmat_get_function` response document.
+///
+/// Split out of `execute` so the `include_source` contract is testable without
+/// an index on disk: the flag used to be parsed into a discarded binding, so
+/// `include_source: false` still returned the full body.
+fn build_get_function_response(
+    function_id: &str,
+    result: &crate::services::agent_context::QueryResult,
+    include_source: bool,
+) -> Value {
+    let mut response = json!({
+        "id": function_id,
+        "name": result.function_name,
+        "signature": result.signature,
+        "file_path": result.file_path,
+        "start_line": result.start_line,
+        "end_line": result.end_line,
+        "language": result.language,
+        "quality": {
+            "grade": result.tdg_grade,
+            "complexity": result.complexity,
+            "tdg_score": result.tdg_score,
+            "loc": result.loc,
+            "big_o": result.big_o,
+            "satd_count": result.satd_count
         }
+    });
 
+    if let Some(doc) = &result.doc_comment {
+        response["doc_comment"] = json!(doc);
+    }
+
+    if include_source {
         if let Some(source) = &result.source {
             response["source"] = json!(source);
         }
-
-        Ok(response)
     }
+
+    response
 }
 
 // ============================================================================

@@ -21,9 +21,12 @@ impl CommandDispatcher {
     ) -> anyhow::Result<()> {
         use crate::services::metric_trends::{MetricTrendStore, TrendDirection};
 
-        // Default to trend mode when no flags specified
-        let _ = trend;
-
+        // `--trend` is the documented opt-in for the trend view (direction,
+        // std dev, slope, recommendations). It used to be dropped here with
+        // `let _ = trend`, so `show-metrics` and `show-metrics --trend`
+        // produced byte-identical output and the flag meant nothing. Without
+        // it the command reports the observations it holds, and nothing it
+        // would need a regression to say.
         let mut store = MetricTrendStore::new()?;
 
         let metrics = if let Some(m) = metric {
@@ -55,22 +58,39 @@ impl CommandDispatcher {
                     serde_json::Value::Object(hot_map),
                 );
 
-                // Add trend analysis
+                // Add trend analysis (only the observations without `--trend`)
                 for metric_name in metrics {
                     if let Ok(trend_analysis) = store.trend(&metric_name, days) {
                         if failures_only && trend_analysis.direction != TrendDirection::Regressing {
                             continue;
                         }
-                        results.insert(metric_name, serde_json::to_value(trend_analysis)?);
+                        let value = if trend {
+                            serde_json::to_value(&trend_analysis)?
+                        } else {
+                            serde_json::json!({
+                                "metric": trend_analysis.metric,
+                                "count": trend_analysis.count,
+                                "mean": trend_analysis.mean,
+                                "min": trend_analysis.min,
+                                "max": trend_analysis.max,
+                            })
+                        };
+                        results.insert(metric_name, value);
                     }
                 }
                 println!("{}", serde_json::to_string_pretty(&results)?);
             }
             _ => {
                 // Table output (default)
+                let heading = if trend {
+                    "Quality Metrics Trends"
+                } else {
+                    "Quality Metrics"
+                };
                 println!(
-                    "\n{}Quality Metrics Trends ({} days){}\n",
+                    "\n{}{} ({} days){}\n",
                     c::BOLD_BLUE,
+                    heading,
                     days,
                     c::RESET
                 );
@@ -105,50 +125,70 @@ impl CommandDispatcher {
                             continue;
                         }
 
-                        let direction_symbol = match trend_analysis.direction {
-                            TrendDirection::Improving => {
-                                format!("{}Improving{}", c::GREEN, c::RESET)
-                            }
-                            TrendDirection::Stable => {
-                                format!("{}Stable{}", c::YELLOW, c::RESET)
-                            }
-                            TrendDirection::Regressing => {
-                                format!("{}Regressing{}", c::RED, c::RESET)
-                            }
-                        };
-
-                        println!("{}{}{}", c::BOLD, metric_name, c::RESET);
-                        println!("  Direction: {}", direction_symbol);
-                        println!("  Mean: {:.2}", trend_analysis.mean);
-                        println!("  Std Dev: {:.2}", trend_analysis.std_dev);
-                        println!(
-                            "  Min/Max: {:.2} / {:.2}",
-                            trend_analysis.min, trend_analysis.max
+                        print!(
+                            "{}",
+                            Self::render_metric_block(&metric_name, &trend_analysis, trend)
                         );
-                        println!("  Slope: {:.2}/day", trend_analysis.slope);
-                        println!("  Observations: {}", trend_analysis.count);
-
-                        // Add recommendations for regressing metrics
-                        if trend_analysis.direction == TrendDirection::Regressing {
-                            let recommendations = Self::generate_metric_recommendations(
-                                &metric_name,
-                                trend_analysis.slope,
-                            );
-                            if !recommendations.is_empty() {
-                                println!("  {}Recommendations:{}", c::BOLD_YELLOW, c::RESET);
-                                for rec in recommendations {
-                                    println!("    - {}", rec);
-                                }
-                            }
-                        }
-
-                        println!();
                     }
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// Render one metric's block for the table view.
+    ///
+    /// `trend` is `show-metrics --trend`. The trend view is direction, spread,
+    /// slope and the regression recommendations (that is what the workflow docs
+    /// show `--trend` printing); without the flag the block states only what was
+    /// observed. Both views used to be the same text, which is what made the
+    /// flag inert.
+    pub(crate) fn render_metric_block(
+        metric_name: &str,
+        analysis: &crate::services::metric_trends::TrendAnalysis,
+        trend: bool,
+    ) -> String {
+        use crate::services::metric_trends::TrendDirection;
+        use std::fmt::Write as _;
+
+        let mut out = String::new();
+        let _ = writeln!(out, "{}{}{}", c::BOLD, metric_name, c::RESET);
+
+        if trend {
+            let direction_symbol = match analysis.direction {
+                TrendDirection::Improving => format!("{}Improving{}", c::GREEN, c::RESET),
+                TrendDirection::Stable => format!("{}Stable{}", c::YELLOW, c::RESET),
+                TrendDirection::Regressing => format!("{}Regressing{}", c::RED, c::RESET),
+            };
+            let _ = writeln!(out, "  Direction: {direction_symbol}");
+        }
+
+        let _ = writeln!(out, "  Mean: {:.2}", analysis.mean);
+        if trend {
+            let _ = writeln!(out, "  Std Dev: {:.2}", analysis.std_dev);
+        }
+        let _ = writeln!(out, "  Min/Max: {:.2} / {:.2}", analysis.min, analysis.max);
+        if trend {
+            let _ = writeln!(out, "  Slope: {:.2}/day", analysis.slope);
+        }
+        let _ = writeln!(out, "  Observations: {}", analysis.count);
+
+        // Recommendations answer "this is regressing, now what" — part of the
+        // trend report, not of a plain observation listing.
+        if trend && analysis.direction == TrendDirection::Regressing {
+            let recommendations =
+                Self::generate_metric_recommendations(metric_name, analysis.slope);
+            if !recommendations.is_empty() {
+                let _ = writeln!(out, "  {}Recommendations:{}", c::BOLD_YELLOW, c::RESET);
+                for rec in recommendations {
+                    let _ = writeln!(out, "    - {rec}");
+                }
+            }
+        }
+
+        out.push('\n');
+        out
     }
 
     /// Execute record-metric command (Phase 3.4 O(1) Quality Gates - CI/CD)
@@ -251,5 +291,59 @@ impl CommandDispatcher {
         }
 
         recommendations
+    }
+}
+
+#[cfg(test)]
+mod trend_flag_tests {
+    use super::*;
+    use crate::services::metric_trends::{TrendAnalysis, TrendDirection};
+
+    fn regressing_lint() -> TrendAnalysis {
+        TrendAnalysis {
+            metric: "lint".to_string(),
+            count: 12,
+            mean: 23_390.5,
+            std_dev: 2156.3,
+            min: 20_000.0,
+            max: 25_500.0,
+            direction: TrendDirection::Regressing,
+            slope: 235.46,
+            p_value: 0.01,
+        }
+    }
+
+    /// `--trend` was `let _ = trend`: `show-metrics` and `show-metrics --trend`
+    /// printed byte-identical reports, so the documented opt-in changed nothing.
+    #[test]
+    fn trend_flag_selects_the_trend_view() {
+        let analysis = regressing_lint();
+        let plain = CommandDispatcher::render_metric_block("lint", &analysis, false);
+        let with_trend = CommandDispatcher::render_metric_block("lint", &analysis, true);
+
+        assert_ne!(plain, with_trend, "--trend must change the report");
+
+        for trend_only in ["Direction", "Std Dev", "Slope", "Recommendations"] {
+            assert!(
+                with_trend.contains(trend_only),
+                "--trend must report {trend_only}"
+            );
+            assert!(
+                !plain.contains(trend_only),
+                "{trend_only} belongs to the trend view, not the default listing"
+            );
+        }
+    }
+
+    /// The observations themselves are not the trend report; both views state them.
+    #[test]
+    fn observations_are_reported_either_way() {
+        let analysis = regressing_lint();
+        for trend in [false, true] {
+            let block = CommandDispatcher::render_metric_block("lint", &analysis, trend);
+            assert!(block.contains("Observations: 12"));
+            assert!(block.contains("Mean: 23390.50"));
+            assert!(block.contains("Min/Max: 20000.00 / 25500.00"));
+        }
     }
 }

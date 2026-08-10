@@ -413,7 +413,9 @@ fn handle_explain(pattern: Option<&str>) {
         Some(pat) => {
             let results = crate::explain::lookup(pat);
             if results.is_empty() {
-                eprintln!("No checks matching '{pat}'. Run `pmat explain` to list all.");
+                // A registered-ID miss and a typo are different failures; the
+                // one message used to claim both were "no such check".
+                eprintln!("{}", crate::explain::miss_message(pat));
                 std::process::exit(1);
             }
             for (i, e) in results.iter().enumerate() {

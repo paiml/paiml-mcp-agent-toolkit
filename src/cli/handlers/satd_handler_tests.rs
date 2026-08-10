@@ -69,8 +69,6 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Summary,
             false,
-            0,
-            false,
         );
         let s = strip_ansi(&r);
         assert!(s.contains("SATD Analysis Summary"));
@@ -82,8 +80,6 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Json,
             false,
-            0,
-            false,
         );
         assert!(r.contains("\"total_violations\": 4"));
     }
@@ -93,8 +89,6 @@ mod tests {
         let r = format_output(
             &result_with_all_severities(),
             SatdOutputFormat::Sarif,
-            false,
-            0,
             false,
         );
         assert!(r.contains("\"version\":\"2.1.0\""));
@@ -106,8 +100,6 @@ mod tests {
         let r = format_output(
             &result_with_all_severities(),
             SatdOutputFormat::Markdown,
-            false,
-            0,
             false,
         );
         assert!(r.contains("# SATD Analysis Report"));
@@ -122,6 +114,30 @@ mod tests {
         assert!(r.contains("High:"));
         assert!(r.contains("Medium:"));
         assert!(r.contains("Low:"));
+        assert!(r.contains("Top Violations"));
+    }
+
+    /// `--color never` (and NO_COLOR, and a redirected stdout) must leave no
+    /// escape sequence in the summary. The Severity Distribution and Top
+    /// Violations blocks interpolated the raw `c::BOLD` / `c::RED` / `c::RESET`
+    /// consts, which are unconditional, so five sequences survived
+    /// `analyze satd --color never` and landed in redirected files.
+    #[test]
+    fn test_format_summary_emits_no_ansi_when_colors_are_disabled() {
+        // Under `cargo test` stdout is captured, so colour resolves to off —
+        // unless the operator forced it on, in which case there is nothing to
+        // assert.
+        if crate::cli::colors::colors_enabled() {
+            return;
+        }
+
+        let r = format_summary(&result_with_all_severities());
+        assert!(
+            !r.contains('\x1b'),
+            "no ANSI escape may survive with colour disabled, got: {r:?}"
+        );
+        // And the content itself is untouched by the migration.
+        assert!(r.contains("Critical:"));
         assert!(r.contains("Top Violations"));
     }
 
@@ -146,11 +162,11 @@ mod tests {
         assert!(!r.contains("V11"));
     }
 
-    // ── format_json: metrics + evolution flag toggles ──
+    // ── format_json: metrics flag toggle ──
 
     #[test]
     fn test_format_json_metrics_flag_adds_metrics_block() {
-        let r = format_json(&result_with_all_severities(), true, false);
+        let r = format_json(&result_with_all_severities(), true);
         assert!(r.contains("\"metrics\""));
         assert!(r.contains("\"critical_count\": 1"));
         assert!(r.contains("\"high_count\": 1"));
@@ -158,15 +174,34 @@ mod tests {
 
     #[test]
     fn test_format_json_no_metrics_flag_omits_metrics() {
-        let r = format_json(&result_with_all_severities(), false, false);
+        let r = format_json(&result_with_all_severities(), false);
         assert!(!r.contains("\"metrics\""));
     }
 
+    /// This test used to assert the opposite: that `--evolution` added
+    /// `"evolution": {"message": "Evolution tracking would show SATD trends
+    /// over time"}` to the document. Nothing computed a trend, so that block
+    /// was a sentence shaped like a measurement. `--evolution` is now refused
+    /// by the handler and no such key can be emitted.
     #[test]
-    fn test_format_json_evolution_flag_adds_evolution_block() {
-        let r = format_json(&result_with_all_severities(), false, true);
-        assert!(r.contains("\"evolution\""));
-        assert!(r.contains("Evolution tracking"));
+    fn test_format_json_never_emits_an_evolution_placeholder() {
+        let r = format_json(&result_with_all_severities(), true);
+        assert!(!r.contains("\"evolution\""));
+        assert!(!r.contains("Evolution tracking"));
+    }
+
+    /// `analyze satd --evolution --days 90` produced output byte-identical to
+    /// `analyze satd` in the summary format and a placeholder sentence in the
+    /// others. A flag that measures nothing must be refused.
+    #[test]
+    fn test_evolution_flag_is_rejected() {
+        assert!(reject_unimplemented_evolution(false).is_ok());
+        let err = reject_unimplemented_evolution(true)
+            .expect_err("--evolution computes nothing and must be refused");
+        assert!(
+            err.to_string().contains("--evolution"),
+            "the error must name the flag: {err}"
+        );
     }
 
     // ── format_sarif: severity → level mapping ──
@@ -186,31 +221,31 @@ mod tests {
         assert!(r.contains("\"results\":[]"));
     }
 
-    // ── format_markdown: evolution + violations table gating ──
+    // ── format_markdown: violations table gating ──
 
+    /// This pair used to assert that `--evolution` emitted a
+    /// `## Evolution (Last 30 Days)` heading over "*Evolution tracking would
+    /// show SATD trends over time*" — a heading and a sentence, with no trend
+    /// behind either, and `--days` feeding only the heading. No evolution
+    /// section may be emitted at all now.
     #[test]
-    fn test_format_markdown_with_evolution_emits_section() {
-        let r = format_markdown(&result_with_all_severities(), true, 30);
-        assert!(r.contains("## Evolution (Last 30 Days)"));
-    }
-
-    #[test]
-    fn test_format_markdown_without_evolution_skips_section() {
-        let r = format_markdown(&result_with_all_severities(), false, 0);
+    fn test_format_markdown_never_emits_an_evolution_section() {
+        let r = format_markdown(&result_with_all_severities());
         assert!(!r.contains("## Evolution"));
+        assert!(!r.contains("Evolution tracking"));
     }
 
     #[test]
     fn test_format_markdown_violations_table_emitted_only_when_non_empty() {
-        let with = format_markdown(&result_with_all_severities(), false, 0);
+        let with = format_markdown(&result_with_all_severities());
         assert!(with.contains("## Violations"));
-        let without = format_markdown(&empty_result(), false, 0);
+        let without = format_markdown(&empty_result());
         assert!(!without.contains("## Violations"));
     }
 
     #[test]
     fn test_format_markdown_metrics_table_includes_critical_high_counts() {
-        let r = format_markdown(&result_with_all_severities(), false, 0);
+        let r = format_markdown(&result_with_all_severities());
         assert!(r.contains("Critical Violations | 1"));
         assert!(r.contains("High Violations | 1"));
     }

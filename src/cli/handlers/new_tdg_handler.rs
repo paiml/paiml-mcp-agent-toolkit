@@ -142,6 +142,21 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
         }
     }
 
+    // `--include-components` adds sections to the human renderers; the machine
+    // ones serialise every component of every reported file unconditionally, so
+    // say that rather than let the flag look inert.
+    if config.include_components
+        && matches!(
+            config.format,
+            TdgOutputFormat::Json | TdgOutputFormat::Sarif
+        )
+    {
+        eprintln!(
+            "ℹ️  --include-components: -f json/sarif already carry every per-file component; \
+             the flag adds breakdown sections to -f table and -f markdown."
+        );
+    }
+
     let (result, measured_score) = if config.path.is_dir() {
         analyze_project_path(
             &analyzer,
@@ -149,6 +164,7 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
             &config.format,
             top_files,
             config.critical_only,
+            config.include_components,
         )
         .await?
     } else {
@@ -200,6 +216,7 @@ async fn analyze_project_path(
     format: &TdgOutputFormat,
     top_files: usize,
     critical_only: bool,
+    include_components: bool,
 ) -> Result<(String, f32)> {
     let mut project_score = analyzer.analyze_project(path).await?;
     // Honour --top-files for every renderer; aggregates stay whole-project and
@@ -218,7 +235,7 @@ async fn analyze_project_path(
     // `root` is the analysed path, not the process CWD -- that distinction is
     // the #680-round-3 fix for grades depending on the caller's directory.
     Ok((
-        format_project_result(&project_score, path, format)?,
+        format_project_result(&project_score, path, format, include_components)?,
         average_score,
     ))
 }
@@ -251,17 +268,171 @@ fn format_project_result(
     project_score: &crate::tdg::ProjectScore,
     root: &Path,
     format: &TdgOutputFormat,
+    include_components: bool,
 ) -> Result<String> {
     let result = match format {
-        TdgOutputFormat::Table => format_project(project_score),
+        TdgOutputFormat::Table => {
+            let mut out = format_project(project_score);
+            if include_components {
+                out.push_str(&components_text(project_score));
+            }
+            out
+        }
         TdgOutputFormat::Json => serde_json::to_string_pretty(project_score)?,
-        TdgOutputFormat::Markdown => format_project(project_score),
+        // `-f markdown` used to dispatch to `format_project`, i.e. the SAME
+        // box-drawing table `-f table` prints (`md5sum` of the two outputs
+        // matched byte for byte). Markdown now gets markdown.
+        TdgOutputFormat::Markdown => project_markdown(project_score, include_components),
         TdgOutputFormat::Sarif => {
             let sarif = create_sarif_output(project_score, root);
             serde_json::to_string_pretty(&sarif)?
         }
     };
     Ok(result)
+}
+
+/// Percentage of `total`, or 0.0 when nothing was analysed (never NaN).
+fn percent_of(count: usize, total: usize) -> f32 {
+    if total == 0 {
+        0.0
+    } else {
+        (count as f32 / total as f32) * 100.0
+    }
+}
+
+/// Render a whole-project TDG score as Markdown.
+///
+/// `-f markdown` shared `format_project` with `-f table`, so it emitted
+/// U+2500/U+2502 box drawing that no Markdown renderer turns into a table.
+fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let w = &mut out;
+
+    let _ = writeln!(w, "# Project TDG Score Report\n");
+    let _ = writeln!(
+        w,
+        "**Average Score:** {:.1}/100 ({})",
+        project.average_score, project.average_grade
+    );
+    let _ = writeln!(w, "**Total Files:** {}", project.total_files);
+    // A truncated list says so, exactly as the box-drawing renderer does.
+    if project.files_truncated {
+        let _ = writeln!(
+            w,
+            "**Files Listed:** {} of {} (--top-files)",
+            project.files_reported, project.total_files
+        );
+    }
+    if project.grade_capped {
+        let _ = writeln!(
+            w,
+            "**Grade Capped:** yes ({} F-grade file(s))",
+            project.f_grade_count
+        );
+    }
+
+    let _ = writeln!(w, "\n## Language Distribution\n");
+    let _ = writeln!(w, "| Language | Files | Share |");
+    let _ = writeln!(w, "|---|---:|---:|");
+    for (language, count) in &project.language_distribution {
+        let _ = writeln!(
+            w,
+            "| {} | {} | {:.1}% |",
+            language,
+            count,
+            percent_of(*count, project.total_files)
+        );
+    }
+
+    let _ = writeln!(w, "\n## Grade Distribution\n");
+    let _ = writeln!(w, "| Grade | Files | Share |");
+    let _ = writeln!(w, "|---|---:|---:|");
+    for (grade, count) in &project.grade_distribution {
+        let _ = writeln!(
+            w,
+            "| {} | {} | {:.1}% |",
+            grade,
+            count,
+            percent_of(*count, project.total_files)
+        );
+    }
+
+    let _ = writeln!(w, "\n## Files\n");
+    let _ = writeln!(w, "| File | Score | Grade |");
+    let _ = writeln!(w, "|---|---:|---|");
+    for file in &project.files {
+        let _ = writeln!(
+            w,
+            "| `{}` | {:.1} | {} |",
+            file_label(file),
+            file.total,
+            file.grade
+        );
+    }
+
+    if include_components {
+        let _ = writeln!(w, "\n## Component Breakdown\n");
+        let _ = writeln!(
+            w,
+            "| File | Structural | Semantic | Duplication | Coupling | Documentation | Consistency |"
+        );
+        let _ = writeln!(w, "|---|---:|---:|---:|---:|---:|---:|");
+        for file in &project.files {
+            let _ = writeln!(
+                w,
+                "| `{}` | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} |",
+                file_label(file),
+                file.structural_complexity,
+                file.semantic_complexity,
+                file.duplication_ratio,
+                file.coupling_score,
+                file.doc_coverage,
+                file.consistency_score
+            );
+        }
+    }
+
+    out
+}
+
+/// The per-file component breakdown for the box-drawing (`-f table`) renderer.
+///
+/// `--include-components` had no reader at all on `analyze tdg`
+/// (`NewTdgConfig.include_components` was dead), so passing it produced
+/// byte-identical output while the top-level `pmat tdg` honoured the same flag.
+fn components_text(project: &crate::tdg::ProjectScore) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "\nComponent Breakdown (--include-components; points earned per metric):"
+    );
+    if project.files.is_empty() {
+        let _ = writeln!(out, "  (no files reported)");
+        return out;
+    }
+    for file in &project.files {
+        let _ = writeln!(
+            out,
+            "  {:<48} structural {:>5.1}  semantic {:>5.1}  duplication {:>5.1}  \
+             coupling {:>5.1}  documentation {:>5.1}  consistency {:>5.1}",
+            file_label(file),
+            file.structural_complexity,
+            file.semantic_complexity,
+            file.duplication_ratio,
+            file.coupling_score,
+            file.doc_coverage,
+            file.consistency_score
+        );
+    }
+    out
+}
+
+fn file_label(file: &crate::tdg::TdgScore) -> String {
+    file.file_path
+        .as_ref()
+        .map_or_else(|| "unknown".to_string(), |p| p.display().to_string())
 }
 
 fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) -> Result<String> {
@@ -670,5 +841,71 @@ mod tests {
         );
         assert_eq!(project.files_reported, 1);
         assert_eq!(project.total_files, 3);
+    }
+
+    // ── -f markdown is markdown, and --include-components is read ───────────
+
+    fn two_file_project() -> crate::tdg::ProjectScore {
+        let mut a = graded("src/a.rs", 98.0, crate::tdg::Grade::APlus);
+        a.structural_complexity = 24.0;
+        a.semantic_complexity = 19.5;
+        a.duplication_ratio = 20.0;
+        a.coupling_score = 14.5;
+        a.doc_coverage = 9.0;
+        a.consistency_score = 10.0;
+        crate::tdg::ProjectScore::aggregate(vec![a, graded("src/b.rs", 91.0, crate::tdg::Grade::A)])
+    }
+
+    /// The reported defect: `-f markdown` dispatched to `format_project`, the
+    /// box-drawing renderer, so `md5sum` of the `-f table` and `-f markdown`
+    /// outputs matched byte for byte.
+    #[test]
+    fn markdown_is_not_the_box_drawing_table() {
+        let project = two_file_project();
+        let root = Path::new("/tmp/x");
+
+        let table = format_project_result(&project, root, &TdgOutputFormat::Table, false).unwrap();
+        let markdown =
+            format_project_result(&project, root, &TdgOutputFormat::Markdown, false).unwrap();
+
+        assert_ne!(
+            table, markdown,
+            "-f markdown must not re-emit the -f table rendering"
+        );
+        assert!(
+            !markdown.contains('\u{2500}') && !markdown.contains('\u{2502}'),
+            "markdown must not contain box-drawing characters: {markdown}"
+        );
+        assert!(markdown.starts_with("# Project TDG Score Report"));
+        assert!(
+            markdown.contains("| File | Score | Grade |"),
+            "markdown must carry a real pipe table: {markdown}"
+        );
+        assert!(markdown.contains("`src/a.rs`"));
+    }
+
+    /// The reported defect: `NewTdgConfig.include_components` had no reader, so
+    /// `--include-components` produced byte-identical output.
+    #[test]
+    fn include_components_changes_the_human_renderings() {
+        let project = two_file_project();
+        let root = Path::new("/tmp/x");
+
+        for format in [TdgOutputFormat::Table, TdgOutputFormat::Markdown] {
+            let without = format_project_result(&project, root, &format, false).unwrap();
+            let with = format_project_result(&project, root, &format, true).unwrap();
+            assert_ne!(
+                without, with,
+                "--include-components must change -f {format:?} output"
+            );
+            assert!(
+                !without.contains("24.0"),
+                "components must be absent without the flag: {without}"
+            );
+            assert!(
+                with.contains("24.0") && with.contains("19.5"),
+                "components must be present with the flag: {with}"
+            );
+        }
     }
 }

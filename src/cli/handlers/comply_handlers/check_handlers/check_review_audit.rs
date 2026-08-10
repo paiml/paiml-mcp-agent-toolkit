@@ -564,4 +564,54 @@ mod tests {
         fs::write(tmp.path().join("newfile.txt"), "x").unwrap();
         assert!(!check_git_clean(tmp.path()));
     }
+
+    // ── the help must not promise evidence the artifact does not carry ──────
+
+    /// `comply audit --help` promised "Produces signed compliance evidence"
+    /// while `AuditArtifact` has no signature, digest or attestation field —
+    /// the serialized document is plain JSON that anyone can edit undetectably.
+    #[test]
+    fn audit_help_does_not_claim_a_signature_the_artifact_lacks() {
+        use clap::Subcommand;
+        let cmd =
+            crate::cli::commands::ComplyCommands::augment_subcommands(clap::Command::new("comply"));
+        let audit = cmd
+            .get_subcommands()
+            .find(|s| s.get_name() == "audit")
+            .expect("comply audit subcommand must exist");
+        let help = audit
+            .get_long_about()
+            .or_else(|| audit.get_about())
+            .map(std::string::ToString::to_string)
+            .unwrap_or_default();
+
+        assert!(
+            !help.contains("signed compliance evidence"),
+            "audit help must not promise a signature: {help}"
+        );
+
+        // And the artifact still carries no such field, which is what makes the
+        // claim false — if one is ever added, this assertion is the reminder to
+        // restore the promise in the help text.
+        let artifact = AuditArtifact {
+            version: "0.0.0".to_string(),
+            timestamp: Utc::now(),
+            git_sha: "deadbeef".to_string(),
+            git_clean: true,
+            layer1_checks: vec![],
+            layer2_review: vec![],
+            reproducibility_level: "L0".to_string(),
+            muda_score: 0.0,
+            golden_traces: "not_configured".to_string(),
+        };
+        let doc: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&artifact).unwrap()).unwrap();
+        let keys: Vec<&String> = doc.as_object().unwrap().keys().collect();
+        assert!(
+            !keys
+                .iter()
+                .any(|k| k.contains("signature") || k.contains("digest") || k.contains("attest")),
+            "artifact keys changed: {keys:?}"
+        );
+    }
 }

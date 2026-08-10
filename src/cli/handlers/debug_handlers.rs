@@ -1,25 +1,71 @@
 // Debug Adapter Protocol (DAP) handlers - Sprint 74
 //
 // Stub: Not yet implemented
+//
+// Honest-failure policy: these exit with
+// [`DEBUG_UNIMPLEMENTED_EXIT_CODE`] (2, "misuse"), the same code `pmat serve`
+// uses for the same situation (utility_serve_handlers). They used to
+// `anyhow::bail!`, which surfaced as exit 1 — the code reserved for "the
+// command ran and found a problem" — so a CI script could not tell "this
+// subcommand does not exist yet" from "the DAP server failed to start".
+
+/// Exit code for a `pmat debug` subcommand that is not implemented.
+///
+/// Kept numerically in step with
+/// [`crate::cli::handlers::utility_serve_handlers::SERVE_UNIMPLEMENTED_EXIT_CODE`].
+pub const DEBUG_UNIMPLEMENTED_EXIT_CODE: i32 = 2;
+
+/// Emit the honest-failure diagnostic for an unimplemented `debug` subcommand.
+///
+/// Extracted so tests can assert on the exact bytes without the process exit.
+pub fn write_debug_unimplemented_message<W: std::io::Write>(
+    mut out: W,
+    subcommand: &str,
+    ticket: &str,
+    requested: &str,
+) -> std::io::Result<()> {
+    writeln!(
+        out,
+        "error: pmat debug {subcommand} is not implemented ({ticket})"
+    )?;
+    writeln!(out, "  requested: {requested}")?;
+    writeln!(
+        out,
+        "hint: no DAP socket is bound and no recording is read — nothing is running"
+    )?;
+    Ok(())
+}
 
 // Placeholder for DAP server handler
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_debug_serve(
-    _port: u16,
-    _host: String,
-    _record_dir: Option<std::path::PathBuf>,
+    port: u16,
+    host: String,
+    record_dir: Option<std::path::PathBuf>,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("Debug serve command not yet implemented (DEBUG-002)")
+    let _ = write_debug_unimplemented_message(
+        std::io::stderr(),
+        "serve",
+        "DEBUG-002",
+        &format!("host={host} port={port} record_dir={record_dir:?}"),
+    );
+    std::process::exit(DEBUG_UNIMPLEMENTED_EXIT_CODE);
 }
 
 // Placeholder for DAP replay handler
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_debug_replay(
-    _recording: std::path::PathBuf,
-    _position: Option<usize>,
-    _interactive: bool,
+    recording: std::path::PathBuf,
+    position: Option<usize>,
+    interactive: bool,
 ) -> anyhow::Result<()> {
-    anyhow::bail!("Debug replay command not yet implemented (DEBUG-003)")
+    let _ = write_debug_unimplemented_message(
+        std::io::stderr(),
+        "replay",
+        "DEBUG-003",
+        &format!("recording={recording:?} position={position:?} interactive={interactive}"),
+    );
+    std::process::exit(DEBUG_UNIMPLEMENTED_EXIT_CODE);
 }
 
 // Placeholder for DAP compare handler
@@ -38,67 +84,97 @@ pub async fn handle_debug_timeline() -> anyhow::Result<()> {
 #[cfg(test)]
 mod coverage_tests {
     use super::*;
-    use std::path::PathBuf;
 
-    /// Test that handle_debug_serve returns the expected error
-    #[tokio::test]
-    async fn test_handle_debug_serve_returns_not_implemented() {
-        let result = handle_debug_serve(8080, "localhost".to_string(), None).await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("DEBUG-002"));
-        assert!(err.to_string().contains("not yet implemented"));
+    // The serve/replay tests below used to call the handlers and assert
+    // `result.is_err()`. Those handlers now exit(2) like `pmat serve` does, so
+    // they are exercised through the message writer instead — same coverage
+    // intent (the diagnostic names the ticket and says it is not implemented),
+    // without killing the test process.
+
+    /// The `debug serve` diagnostic still names DEBUG-002 and says so plainly.
+    #[test]
+    fn serve_message_states_not_implemented_and_names_the_ticket() {
+        let mut buf = Vec::new();
+        write_debug_unimplemented_message(
+            &mut buf,
+            "serve",
+            "DEBUG-002",
+            "host=localhost port=8080 record_dir=None",
+        )
+        .unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("DEBUG-002"), "got: {s}");
+        assert!(s.contains("not implemented"), "got: {s}");
     }
 
-    /// Test handle_debug_serve with various port values
-    #[tokio::test]
-    async fn test_handle_debug_serve_with_different_ports() {
-        // Test with port 0
-        let result = handle_debug_serve(0, "localhost".to_string(), None).await;
-        assert!(result.is_err());
-
-        // Test with max port
-        let result = handle_debug_serve(65535, "127.0.0.1".to_string(), None).await;
-        assert!(result.is_err());
+    /// The diagnostic echoes what was requested, so logs show the port/host.
+    #[test]
+    fn serve_message_echoes_the_request() {
+        let mut buf = Vec::new();
+        write_debug_unimplemented_message(
+            &mut buf,
+            "serve",
+            "DEBUG-002",
+            "host=0.0.0.0 port=65535 record_dir=Some(\"/tmp/debug-recordings\")",
+        )
+        .unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("0.0.0.0"), "got: {s}");
+        assert!(s.contains("65535"), "got: {s}");
+        assert!(s.contains("/tmp/debug-recordings"), "got: {s}");
     }
 
-    /// Test handle_debug_serve with record_dir
-    #[tokio::test]
-    async fn test_handle_debug_serve_with_record_dir() {
-        let record_dir = Some(PathBuf::from("/tmp/debug-recordings"));
-        let result = handle_debug_serve(8080, "0.0.0.0".to_string(), record_dir).await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("DEBUG-002"));
+    /// The `debug replay` diagnostic still names DEBUG-003.
+    #[test]
+    fn replay_message_states_not_implemented_and_names_the_ticket() {
+        let mut buf = Vec::new();
+        write_debug_unimplemented_message(
+            &mut buf,
+            "replay",
+            "DEBUG-003",
+            "recording=\"/tmp/recording.dap\" position=Some(42) interactive=true",
+        )
+        .unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("DEBUG-003"), "got: {s}");
+        assert!(s.contains("not implemented"), "got: {s}");
+        assert!(s.contains("/tmp/recording.dap"), "got: {s}");
     }
 
-    /// Test that handle_debug_replay returns the expected error
-    #[tokio::test]
-    async fn test_handle_debug_replay_returns_not_implemented() {
-        let recording = PathBuf::from("/tmp/recording.dap");
-        let result = handle_debug_replay(recording, None, false).await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("DEBUG-003"));
-        assert!(err.to_string().contains("not yet implemented"));
+    /// `debug serve` must exit 2 ("misuse"), not 1, and must match `pmat serve`.
+    ///
+    /// Exit 1 is the code a command uses when it ran and found a problem; using
+    /// it for "this subcommand does not exist yet" made the two indistinguishable.
+    #[test]
+    fn unimplemented_exit_code_matches_serve() {
+        assert_eq!(DEBUG_UNIMPLEMENTED_EXIT_CODE, 2);
+        assert_eq!(
+            DEBUG_UNIMPLEMENTED_EXIT_CODE,
+            crate::cli::handlers::utility_serve_handlers::SERVE_UNIMPLEMENTED_EXIT_CODE
+        );
     }
 
-    /// Test handle_debug_replay with position and interactive flags
-    #[tokio::test]
-    async fn test_handle_debug_replay_with_options() {
-        let recording = PathBuf::from("/tmp/recording.dap");
-
-        // With position
-        let result = handle_debug_replay(recording.clone(), Some(42), false).await;
-        assert!(result.is_err());
-
-        // With interactive
-        let result = handle_debug_replay(recording.clone(), None, true).await;
-        assert!(result.is_err());
-
-        // With both
-        let result = handle_debug_replay(recording, Some(100), true).await;
-        assert!(result.is_err());
+    /// The `debug` subcommand help must carry the `[NOT IMPLEMENTED]` marker
+    /// that `pmat serve` carries. Without it the only way to learn that
+    /// `debug serve` binds no socket was to run it.
+    #[test]
+    fn serve_and_replay_are_labelled_not_implemented() {
+        use clap::Subcommand;
+        let cmd =
+            crate::cli::commands::DebugCommands::augment_subcommands(clap::Command::new("debug"));
+        for name in ["serve", "replay"] {
+            let about = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == name)
+                .unwrap_or_else(|| panic!("{name} subcommand must exist"))
+                .get_about()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            assert!(
+                about.contains("NOT IMPLEMENTED"),
+                "`debug {name}` must be labelled unimplemented in the command list, got: {about}"
+            );
+        }
     }
 
     /// Test that handle_debug_compare returns the expected error

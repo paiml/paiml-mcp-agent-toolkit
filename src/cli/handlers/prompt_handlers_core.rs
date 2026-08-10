@@ -40,13 +40,38 @@ fn list_prompts() {
 
     println!();
     println!("Usage:");
-    println!("  pmat prompt <name>                       Show prompt in YAML format");
-    println!("  pmat prompt <name> --format json         Show prompt in JSON format");
-    println!("  pmat prompt <name> --format text         Show just the prompt text");
-    println!("  pmat prompt <name> --show-variables      Show available variables");
-    println!("  pmat prompt <name> --set VAR=value       Override prompt variables");
+    for (invocation, description) in LIST_PROMPTS_USAGE {
+        println!("  {invocation:<41} {description}");
+    }
     println!();
 }
+
+/// The invocations advertised by the `--list` footer.
+///
+/// These used to read `pmat prompt <name> …`. `prompt` takes a subcommand, so
+/// every one of them was a command clap rejects with "unrecognized subcommand"
+/// and exit 2 — the footer of a working `pmat prompt show --list` told the
+/// reader to run five things that cannot run. The working form is
+/// `pmat prompt show <name>`.
+const LIST_PROMPTS_USAGE: &[(&str, &str)] = &[
+    ("pmat prompt show <name>", "Show prompt in YAML format"),
+    (
+        "pmat prompt show <name> --format json",
+        "Show prompt in JSON format",
+    ),
+    (
+        "pmat prompt show <name> --format text",
+        "Show just the prompt text",
+    ),
+    (
+        "pmat prompt show <name> --show-variables",
+        "Show available variables",
+    ),
+    (
+        "pmat prompt show <name> --set VAR=value",
+        "Override prompt variables",
+    ),
+];
 
 /// Substitute `${VAR}` placeholders and put object keys in a stable order.
 ///
@@ -277,8 +302,43 @@ mod variable_substitution_tests {
     //! `show_prompt` dropped the variable map, so `--title MYBOOK` emitted ten
     //! literal `${BOOK_TITLE}`s. The HashMap-backed model also gave a different
     //! key order — and so different bytes — on every run.
-    use super::{render_prompt_value, show_prompt, PromptOutputFormat, Value, WorkflowPrompt, PROMPTS};
+    use super::{
+        render_prompt_value, show_prompt, PromptOutputFormat, Value, WorkflowPrompt,
+        LIST_PROMPTS_USAGE, PROMPTS,
+    };
     use std::collections::HashMap;
+
+    /// Every invocation the `--list` footer advertises must be one clap accepts.
+    /// The footer used to print `pmat prompt <name>`, which exits 2 with
+    /// "unrecognized subcommand" — advice that cannot be followed, printed by
+    /// the command that is meant to teach the interface.
+    #[test]
+    fn test_list_usage_lines_are_invocations_clap_accepts() {
+        // 8MB stack: the `Cli` enum overflows the default test stack, the same
+        // reason the other clap parsing tests spawn their own thread.
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(|| {
+                use clap::Parser;
+
+                for (invocation, _) in LIST_PROMPTS_USAGE {
+                    // Substitute the placeholders for a concrete prompt and
+                    // assignment so the line can go to the parser verbatim.
+                    let concrete = invocation
+                        .replace("<name>", "book-documentation")
+                        .replace("VAR=value", "TITLE=x");
+                    let argv: Vec<&str> = concrete.split_whitespace().collect();
+
+                    assert!(
+                        crate::cli::Cli::try_parse_from(&argv).is_ok(),
+                        "advertised usage `{invocation}` is not a runnable command"
+                    );
+                }
+            })
+            .expect("spawn")
+            .join()
+            .expect("advertised usage lines must all parse");
+    }
 
     #[test]
     fn test_show_prompt_substitutes_on_the_yaml_path() {

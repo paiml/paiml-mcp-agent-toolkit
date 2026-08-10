@@ -331,7 +331,7 @@ fn test_calculate_summary_empty() {
     let files: Vec<PathBuf> = vec![];
     let defects: Vec<crate::services::defect_detector::DefectPattern> = vec![];
 
-    let summary = calculate_summary(&files, 0, &defects);
+    let summary = calculate_summary(&files, &defects);
 
     assert_eq!(summary.total_files_scanned, 0);
     assert_eq!(summary.files_with_defects, 0);

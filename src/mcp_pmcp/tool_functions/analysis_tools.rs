@@ -474,12 +474,29 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
                 "file_path": f.file_path,
                 "function_name": f.function_name,
                 "line_number": f.line_number,
-                "time_complexity": f.time_complexity,
-                "space_complexity": f.space_complexity,
+                // `time_complexity` / `space_complexity` used to be the raw
+                // `#[repr(C)]` ComplexityBound, so the payload carried the
+                // struct's alignment padding and its packed flag byte
+                // (`{"class":"Quadratic","coefficient":1,"input_var":"N",
+                // "confidence":75,"flags":2,"_padding":[0,0]}`) to a reader
+                // that cannot tell layout from measurement. The CLI's JSON
+                // emits the notation and the confidence; emit the same.
+                "time_complexity": f.time_complexity.notation(),
+                "time_complexity_confidence": f.time_complexity.confidence,
+                "space_complexity": f.space_complexity.notation(),
+                "space_complexity_confidence": f.space_complexity.confidence,
                 "confidence": f.confidence,
             })
         })
         .collect();
+
+    // A LIST THAT IS SECRETLY A CAP: `top_files` truncated this silently, so
+    // a caller asking for 2 saw 2 and had no way to learn there were 8. The
+    // CLI names both numbers (`high_complexity_count` / `_found` /
+    // `_truncated`); keep the two surfaces telling the same story.
+    let listed = high_complexity.len();
+    let dist = &report.complexity_distribution;
+    let found = (dist.quadratic + dist.cubic + dist.exponential).max(report.high_complexity_functions.len());
 
     Ok(json!({
         "status": "completed",
@@ -488,6 +505,9 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
             "analyzed_functions": report.analyzed_functions,
             "complexity_distribution": report.complexity_distribution,
             "high_complexity_functions": high_complexity,
+            "high_complexity_count": listed,
+            "high_complexity_found": found,
+            "high_complexity_truncated": listed < found,
             "recommendations": report.recommendations,
         }
     }))
@@ -672,6 +692,89 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
             }
         }
     }))
+}
+
+#[cfg(test)]
+mod big_o_payload_tests {
+    //! The tool serialised the raw `#[repr(C)]` ComplexityBound and truncated
+    //! its function list without saying so.
+    use super::*;
+
+    /// Three functions with a doubly-nested loop each: enough for `top_files`
+    /// to bite.
+    fn quadratic_fixture() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut src = String::new();
+        for i in 0..3 {
+            src.push_str(&format!(
+                "pub fn pairs{i}(xs: &[usize]) -> usize {{\n    let mut acc = 0;\n    for a in xs {{\n        for b in xs {{\n            acc += a * b;\n        }}\n    }}\n    acc\n}}\n\n"
+            ));
+        }
+        std::fs::write(dir.path().join("lib.rs"), src).expect("write lib.rs");
+        dir
+    }
+
+    #[tokio::test]
+    async fn test_big_o_payload_has_no_struct_layout_fields() {
+        let dir = quadratic_fixture();
+        let value = analyze_big_o(&[dir.path().to_path_buf()], Some(1))
+            .await
+            .expect("analysis");
+        let payload = serde_json::to_string(&value).expect("serialise");
+
+        assert!(
+            !payload.contains("_padding"),
+            "alignment filler leaked into the MCP payload: {payload}"
+        );
+        let functions = value["results"]["high_complexity_functions"]
+            .as_array()
+            .expect("array");
+        assert!(
+            !functions.is_empty(),
+            "the fixture must produce a high-complexity function, or this asserts nothing"
+        );
+        for func in functions {
+            // A notation string ("O(n²)"), not the packed bound struct.
+            let time = func["time_complexity"].as_str().unwrap_or_else(|| {
+                panic!("time_complexity must be a notation string: {func}")
+            });
+            assert!(time.starts_with("O("), "unexpected notation {time:?}");
+            assert!(func["time_complexity_confidence"].is_number());
+            assert!(func["space_complexity"].is_string());
+        }
+    }
+
+    /// `top_files` capped the list silently: asking for 1 of 3 returned 1,
+    /// with nothing in the payload naming the other two.
+    #[tokio::test]
+    async fn test_big_o_payload_discloses_truncation() {
+        let dir = quadratic_fixture();
+        let results = analyze_big_o(&[dir.path().to_path_buf()], Some(1))
+            .await
+            .expect("analysis");
+        let results = &results["results"];
+
+        let listed = results["high_complexity_functions"]
+            .as_array()
+            .expect("array")
+            .len();
+        let count = results["high_complexity_count"].as_u64().expect("count");
+        let found = results["high_complexity_found"].as_u64().expect("found");
+
+        assert_eq!(count as usize, listed, "count must be the listed length");
+        // The fixture holds three quadratic functions and asks for one, so the
+        // cap must be visible rather than inferred.
+        assert_eq!(count, 1, "top_files=1 must list exactly one");
+        assert!(
+            found > count,
+            "found ({found}) must exceed the listed count ({count}) for this fixture"
+        );
+        assert_eq!(
+            results["high_complexity_truncated"],
+            serde_json::Value::Bool(count < found),
+            "the truncation flag must follow the two counts"
+        );
+    }
 }
 
 #[cfg(test)]

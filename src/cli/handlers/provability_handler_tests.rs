@@ -305,9 +305,27 @@ fn test_format_provability_output_markdown() {
     let result = format_provability_output(&function_ids, &summaries, &config);
     assert!(result.is_ok());
 
-    // Markdown format uses format_provability_detailed
+    // Was: `// Markdown format uses format_provability_detailed` +
+    // `assert!(content.contains("Detailed Provability Analysis"))` — the comment
+    // documented the defect. `-f markdown` fell through to the detailed
+    // renderer, so it emitted ANSI-escaped plain text byte-identical to
+    // `-f full` and nothing a Markdown consumer could use. It has its own
+    // renderer now, so assert actual Markdown.
     let content = result.unwrap();
-    assert!(content.contains("Detailed Provability Analysis"));
+    assert!(
+        content.starts_with("# Provability Analysis"),
+        "markdown must open with an H1, got: {}",
+        content.lines().next().unwrap_or("")
+    );
+    assert!(content.contains("## `src/main.rs`"), "{content}");
+    assert!(
+        content.contains("| Function | Line | Provability | Verified | Missing |"),
+        "{content}"
+    );
+    assert!(
+        !content.contains('\u{1b}'),
+        "markdown must not carry ANSI escapes"
+    );
 }
 
 // ============================================================

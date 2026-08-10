@@ -29,6 +29,18 @@ fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
+/// Whether the file's magic bytes agree with the format its extension claims.
+///
+/// `analyze models` derived the reported format from the FILENAME EXTENSION
+/// alone, so a 0-byte `.safetensors`, an 8-byte `NOTAGGUF` and a plain-text
+/// `.apr` were all inventoried as valid models of their declared format —
+/// while this validator, which reads the actual header, was never called from
+/// the inventory path. A format nobody verified must not be reported as fact.
+#[must_use]
+pub fn model_header_matches_extension(path: &Path) -> bool {
+    parse_model_header(path).is_some()
+}
+
 /// Parse minimal header from model file (never loads tensor data).
 fn parse_model_header(path: &Path) -> Option<ModelMetadata> {
     let ext = path.extension()?.to_str()?;

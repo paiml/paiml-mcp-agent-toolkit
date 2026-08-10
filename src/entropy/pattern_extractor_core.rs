@@ -89,6 +89,14 @@ impl PatternExtractor {
             .add_custom_ignore_filename(".paimlignore")
             .build();
 
+        // Source files in a language this analyzer has no pattern set for. They
+        // were dropped in silence: `analyze entropy` on a TypeScript/Python tree
+        // printed "Files Analyzed: 0" — byte-identical to the output for an
+        // EMPTY directory — so "we cannot analyze this language" and "there is
+        // nothing here" were indistinguishable. Counted so the caller can say
+        // which one happened.
+        let mut skipped_unsupported = 0usize;
+
         for entry in walker.filter_map(std::result::Result::ok) {
             let path = entry.path();
 
@@ -103,11 +111,68 @@ impl PatternExtractor {
                         }
                         Err(_) => continue, // Skip files we can't read
                     }
+                } else if Self::is_unsupported_source_extension(extension)
+                    && self.should_process_file(path)
+                {
+                    skipped_unsupported += 1;
                 }
             }
         }
 
+        // Nothing analyzable, but there IS source here. Reporting a block of
+        // zeros would be a clean bill of health for code that was never read —
+        // and `quality-gate --checks entropy` would pass on it.
+        if files.is_empty() && skipped_unsupported > 0 {
+            anyhow::bail!(
+                "entropy analysis found no analyzable source under {}: it reads Rust and Ruchy \
+                 (.rs/.ruchy/.rh), and the {skipped_unsupported} source file(s) there are in \
+                 other languages. No entropy was measured.",
+                project_path.display()
+            );
+        }
+
         Ok(ProjectContext { files })
+    }
+
+    /// Extensions this analyzer recognises as source but has no pattern set for.
+    ///
+    /// Deliberately a fixed list rather than "anything that is not .rs": a
+    /// README or a lockfile is not source, and must not turn a Rust-only project
+    /// into an error.
+    fn is_unsupported_source_extension(extension: &std::ffi::OsStr) -> bool {
+        let Some(ext) = extension.to_str() else {
+            return false;
+        };
+        matches!(
+            ext,
+            "ts" | "tsx"
+                | "js"
+                | "jsx"
+                | "mjs"
+                | "cjs"
+                | "py"
+                | "pyi"
+                | "go"
+                | "java"
+                | "kt"
+                | "kts"
+                | "scala"
+                | "c"
+                | "h"
+                | "cc"
+                | "cpp"
+                | "cxx"
+                | "hpp"
+                | "cs"
+                | "rb"
+                | "php"
+                | "swift"
+                | "dart"
+                | "lua"
+                | "ex"
+                | "exs"
+                | "zig"
+        )
     }
 
     /// Check if file should be processed
@@ -214,5 +279,59 @@ mod discovery_scope_tests {
             "gitignored output is not source: {:?}",
             context.files.keys().collect::<Vec<_>>()
         );
+    }
+
+    /// Round-5 dogfood: `analyze entropy -p <ts+py dir>` printed
+    /// "Files Analyzed: 0 / Source Lines Analyzed: 0 / Pattern Diversity: not
+    /// measured" and exited 0 — byte-for-byte what an EMPTY directory produces.
+    /// The walk only reads .rs/.ruchy/.rh; every other source file was dropped
+    /// without a word, so a clean report was indistinguishable from "we never
+    /// looked at your code".
+    #[tokio::test]
+    async fn a_tree_of_unanalyzable_source_is_not_reported_as_a_clean_zero() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::write(root.join("app.ts"), "export function a() { return 1; }\n").unwrap();
+        std::fs::write(root.join("main.py"), "def a():\n    return 1\n").unwrap();
+
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let err = extractor
+            .extract_patterns(root)
+            .await
+            .expect_err("a directory of unreadable-to-us source is not a measured zero");
+
+        let msg = err.to_string();
+        assert!(
+            msg.contains("no analyzable source"),
+            "the report must say why nothing was analyzed: {msg}"
+        );
+        assert!(msg.contains('2'), "and how much was skipped: {msg}");
+    }
+
+    /// An actually empty directory still reports zero, quietly: there is
+    /// nothing to explain.
+    #[tokio::test]
+    async fn an_empty_directory_still_analyzes_to_zero_files() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let collection = extractor
+            .extract_patterns(dir.path())
+            .await
+            .expect("an empty directory is not an error");
+        assert_eq!(collection.total_files, 0);
+    }
+
+    /// A Rust project with docs and configs alongside it is untouched.
+    #[tokio::test]
+    async fn non_source_companions_do_not_turn_a_rust_project_into_an_error() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::write(root.join("lib.rs"), "pub fn a() {}\n").unwrap();
+        std::fs::write(root.join("README.md"), "# hi\n").unwrap();
+        std::fs::write(root.join("Cargo.toml"), "[package]\nname=\"x\"\n").unwrap();
+
+        let extractor = PatternExtractor::new(EntropyConfig::default());
+        let collection = extractor.extract_patterns(root).await.expect("scan");
+        assert_eq!(collection.total_files, 1);
     }
 }

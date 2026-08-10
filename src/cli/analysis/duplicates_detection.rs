@@ -226,10 +226,17 @@ async fn write_duplicate_output(
     top_files: usize,
 ) -> Result<()> {
     let content = match format {
-        crate::cli::DuplicateOutputFormat::Human
-        | crate::cli::DuplicateOutputFormat::Summary
-        | crate::cli::DuplicateOutputFormat::Detailed => {
-            format_human_output_with_limit(report, top_files)?
+        // The three text formats used to collapse onto one renderer here, so
+        // `--format summary` printed the full per-block listing and
+        // `--format detailed` printed no more than `--format human`.
+        crate::cli::DuplicateOutputFormat::Human => {
+            format_text_output(report, top_files, TextDetail::Human)?
+        }
+        crate::cli::DuplicateOutputFormat::Summary => {
+            format_text_output(report, top_files, TextDetail::Summary)?
+        }
+        crate::cli::DuplicateOutputFormat::Detailed => {
+            format_text_output(report, top_files, TextDetail::Detailed)?
         }
         other => format_output(report, other)?,
     };

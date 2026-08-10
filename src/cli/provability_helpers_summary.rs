@@ -249,7 +249,14 @@ fn write_top_files_list(
     top_files: usize,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    let files_to_show = if top_files == 0 { 10 } else { top_files };
+    // `--help` documents `--top-files <N>` as "0 = all", but 0 was remapped to
+    // the default 10 here, so asking for every file silently truncated the
+    // ranking at ten and the dropped files were never mentioned. 0 means all.
+    let files_to_show = if top_files == 0 {
+        file_avg_scores.len()
+    } else {
+        top_files
+    };
 
     for (i, (file_path, avg_score, function_count)) in
         file_avg_scores.iter().take(files_to_show).enumerate()
@@ -331,5 +338,40 @@ mod plain_output_tests {
         assert!(rendered.contains("Scoring Model"));
         assert!(rendered.contains("Score Distribution"));
         assert!(rendered.contains("Top Files by Provability"));
+    }
+
+    /// `--top-files` documents "0 = all", but 0 was remapped to the default 10,
+    /// so every file past the tenth vanished from the ranking with no notice.
+    #[test]
+    fn top_files_zero_lists_every_file_not_the_default_ten() {
+        let ids: Vec<FunctionId> = (0..12)
+            .map(|i| FunctionId {
+                file_path: format!("src/f{i:02}.rs"),
+                function_name: format!("f{i}"),
+                line_number: i + 1,
+            })
+            .collect();
+        let summaries: Vec<ProofSummary> = (0..12)
+            .map(|i| ProofSummary {
+                provability_score: f64::from(i) / 100.0,
+                analysis_time_us: 1,
+                verified_properties: vec![],
+                version: 1,
+            })
+            .collect();
+
+        let rendered = format_provability_summary(&ids, &summaries, 0).expect("render");
+        let listed = rendered
+            .lines()
+            .filter(|l| l.contains("avg score"))
+            .count();
+        assert_eq!(
+            listed, 12,
+            "--top-files 0 must list all 12 files, not truncate to the default: {rendered}"
+        );
+        assert!(
+            rendered.contains("f11.rs"),
+            "the eleventh-ranked file was dropped: {rendered}"
+        );
     }
 }

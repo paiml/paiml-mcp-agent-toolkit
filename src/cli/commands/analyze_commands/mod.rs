@@ -1273,7 +1273,12 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "50")]
         confidence_threshold: u8,
 
-        /// Analyze space complexity in addition to time
+        /// NO-OP: space complexity is always reported alongside time
+        ///
+        /// Read as "switches an extra analysis on"; nothing reads the flag past
+        /// the config struct, and every renderer prints space complexity either
+        /// way. Kept accepted so existing invocations do not break, but the
+        /// help must not promise an analysis the flag does not enable.
         #[arg(long)]
         analyze_space: bool,
 

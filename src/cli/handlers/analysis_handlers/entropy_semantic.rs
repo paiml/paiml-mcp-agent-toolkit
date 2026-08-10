@@ -103,49 +103,36 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
         .as_ref()
         .map_or_else(String::new, |n| format!("Note: {n}\n"));
 
+    // COLOUR: every field here interpolated the raw `c::BOLD`/`c::RESET`
+    // consts, which are unconditional — `--color never`, `NO_COLOR=1` and a
+    // redirected stdout all still produced `^[[1mFiles Analyzed:^[[0m`
+    // (GH #684 class). The `c::header`/`c::label`/`c::number` helpers consult
+    // `colors_enabled()` and emit the bare payload when colour is off.
     format!(
-        "{}{}Entropy Analysis Summary{}\n\n\
-         {}Files Analyzed:{} {}{}{}\n\
-         {}Source Lines Analyzed:{} {}{}{}\n\
-         {}Pattern Diversity:{} {}{}{}\n\
-         {}Total Violations:{} {}{}{}\n\
-         {}Potential LOC Reduction:{} {}{}{} lines ({}{:.1}%{})\n\
+        "{}\n\n\
+         {} {}\n\
+         {} {}\n\
+         {} {}\n\
+         {} {}\n\
+         {} {} lines ({})\n\
          {}\n\
-         {}Top Violations:{}\n{}\n",
-        c::BOLD,
-        c::UNDERLINE,
-        c::RESET,
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        report.total_files_analyzed,
-        c::RESET,
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        report.entropy_metrics.total_loc,
-        c::RESET,
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        crate::entropy::EntropyReport::render_measurement(report.entropy_metrics.pattern_diversity),
-        c::RESET,
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        report.actionable_violations.len(),
-        c::RESET,
-        c::BOLD,
-        c::RESET,
-        c::BOLD_WHITE,
-        report.total_loc_reduction(),
-        c::RESET,
-        c::BOLD_WHITE,
-        report.reduction_percentage(),
-        c::RESET,
+         {}\n{}\n",
+        c::header("Entropy Analysis Summary"),
+        c::label("Files Analyzed:"),
+        c::number(&report.total_files_analyzed.to_string()),
+        c::label("Source Lines Analyzed:"),
+        c::number(&report.entropy_metrics.total_loc.to_string()),
+        c::label("Pattern Diversity:"),
+        c::number(&crate::entropy::EntropyReport::render_measurement(
+            report.entropy_metrics.pattern_diversity
+        )),
+        c::label("Total Violations:"),
+        c::number(&report.actionable_violations.len().to_string()),
+        c::label("Potential LOC Reduction:"),
+        c::number(&report.total_loc_reduction().to_string()),
+        c::number(&format!("{:.1}%", report.reduction_percentage())),
         note,
-        c::BOLD,
-        c::RESET,
+        c::label("Top Violations:"),
         format_violation_list(&violations)
     )
 }
@@ -214,16 +201,16 @@ pub(crate) fn format_violation_list(
             // "saves" renders "not estimated" where no per-pattern size was
             // measured (the low-diversity finding), instead of the old fixed
             // 15%-of-total_loc figure printed as if it were derived.
+            // COLOUR: `sev_color`/`c::RESET`/`c::BOLD` were interpolated raw, so
+            // `--color never` still emitted escapes around the severity and the
+            // "Fix:" label. `c::colored`/`c::label` honour `colors_enabled()`.
             format!(
-                "  {}. {}{:?}{} {} (saves {})\n     {}Fix:{} {}",
+                "  {}. {} {} (saves {})\n     {} {}",
                 c::number(&(i + 1).to_string()),
-                sev_color,
-                v.severity,
-                c::RESET,
+                c::colored(sev_color, &format!("{:?}", v.severity)),
                 v.message,
                 c::number(&v.render_loc_reduction()),
-                c::BOLD,
-                c::RESET,
+                c::label("Fix:"),
                 v.fix_suggestion
             )
         })
@@ -720,5 +707,91 @@ mod format_coverage_tests {
             "an unsupported format must be an error naming it, got {err}"
         );
         assert!(format_topic_results(&topic_result(), &OutputFormat::Junit).is_err());
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod colour_gating_tests {
+    //! `analyze entropy --color never` (and `NO_COLOR=1`, and a redirected
+    //! stdout) still wrote `^[[1mFiles Analyzed:^[[0m ^[[1;37m1^[[0m`, because
+    //! the summary renderer interpolated the raw `c::BOLD` / `c::RESET` consts
+    //! rather than the helpers that consult `colors_enabled()`.
+    use super::{format_summary_report, format_violation_list};
+    use crate::entropy::entropy_calculator::{EntropyMetrics, EntropyReport};
+    use crate::entropy::violation_detector::{ActionableViolation, Severity};
+    use std::collections::BTreeMap;
+
+    fn violation(severity: Severity) -> ActionableViolation {
+        ActionableViolation {
+            severity,
+            pattern: None,
+            message: "Result handling repeated 7 times".to_string(),
+            fix_suggestion: "Extract a helper".to_string(),
+            estimated_loc_reduction: Some(12),
+            affected_files: vec![],
+            priority_score: 0.5,
+        }
+    }
+
+    fn report() -> EntropyReport {
+        EntropyReport {
+            total_files_analyzed: 3,
+            actionable_violations: vec![
+                violation(Severity::High),
+                violation(Severity::Medium),
+                violation(Severity::Low),
+            ],
+            pattern_summary: None,
+            entropy_metrics: EntropyMetrics {
+                file_level_entropy: Some(0.8),
+                module_level_entropy: Some(0.7),
+                project_level_entropy: Some(0.65),
+                pattern_diversity: Some(0.72),
+                total_patterns: 5,
+                total_instances: 21,
+                total_loc: 120,
+                patterns_by_type: BTreeMap::new(),
+            },
+            measurement_note: None,
+        }
+    }
+
+    #[test]
+    fn summary_emits_no_ansi_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        let out = format_summary_report(&report(), 10);
+        assert!(
+            !out.contains('\x1b'),
+            "entropy summary must be plain with colour off, got {out:?}"
+        );
+    }
+
+    #[test]
+    fn violation_list_emits_no_ansi_when_colour_is_disabled() {
+        let out = format_violation_list(&[
+            violation(Severity::High),
+            violation(Severity::Medium),
+            violation(Severity::Low),
+        ]);
+        assert!(
+            !out.contains('\x1b'),
+            "entropy violation list must be plain with colour off, got {out:?}"
+        );
+    }
+
+    #[test]
+    fn summary_keeps_its_payload_text() {
+        // The escapes must go, not the values they wrapped.
+        let out = format_summary_report(&report(), 10);
+        assert!(out.contains("Entropy Analysis Summary"), "{out}");
+        assert!(out.contains("Files Analyzed: 3"), "{out}");
+        assert!(out.contains("Source Lines Analyzed: 120"), "{out}");
+        assert!(out.contains("Top Violations:"), "{out}");
+        assert!(out.contains("Fix: Extract a helper"), "{out}");
+        assert!(out.contains("High"), "{out}");
     }
 }

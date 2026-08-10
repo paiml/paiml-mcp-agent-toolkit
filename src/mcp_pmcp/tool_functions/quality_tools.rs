@@ -89,6 +89,21 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         }));
     }
 
+    // With nothing graded there is no score to report. Reporting 0.0/"F" reads as
+    // "measured, and terrible"; `analyze_deep_context` already answers this case
+    // with nulls plus a `not_measured` list, and one server must not use two
+    // conventions for the same fact.
+    let graded = project_score.total_files > 0;
+    let (score, grade, not_measured) = if graded {
+        (
+            json!(project_score.average_score),
+            json!(format!("{:?}", project_score.average_grade)),
+            json!([]),
+        )
+    } else {
+        (Value::Null, Value::Null, json!(["score", "grade"]))
+    };
+
     Ok(json!({
         "status": "completed",
         "message": format!(
@@ -96,8 +111,9 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
             if strict { "strict" } else { "standard" }
         ),
         "passed": passed,
-        "score": project_score.average_score,
-        "grade": format!("{:?}", project_score.average_grade),
+        "score": score,
+        "grade": grade,
+        "not_measured": not_measured,
         "threshold": threshold_score,
         "files_analyzed": project_score.total_files,
         "violations": violations
@@ -515,6 +531,31 @@ mod mcp_quality_gate_parity_tests {
             !violations.is_empty(),
             "the payload must say why nothing was graded: {result}"
         );
+    }
+
+    /// Nothing graded ⇒ nothing to report. `analyze_deep_context` answers this
+    /// case with nulls + `not_measured`; the gate used to answer 0.0/"F", which
+    /// reads as a measured verdict.
+    #[tokio::test]
+    async fn test_ungraded_path_reports_not_measured_not_zero_f() {
+        let tmp = TempDir::new().expect("tempdir");
+        let result = check_quality_gates(&[tmp.path().to_path_buf()], false)
+            .await
+            .expect("empty dir is not an error");
+        assert_eq!(result["files_analyzed"], 0);
+        assert!(
+            result["score"].is_null(),
+            "score must be null when nothing was graded: {result}"
+        );
+        assert!(
+            result["grade"].is_null(),
+            "grade must be null when nothing was graded: {result}"
+        );
+        let not_measured = result["not_measured"]
+            .as_array()
+            .expect("not_measured array");
+        assert!(not_measured.iter().any(|v| v == "score"));
+        assert!(not_measured.iter().any(|v| v == "grade"));
     }
 
     /// The single-file entry point must refuse outright rather than score.

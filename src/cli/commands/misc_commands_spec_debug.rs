@@ -163,7 +163,11 @@ pub enum AnnotateOutputFormat {
 /// Debug subcommands for time-travel debugging
 #[derive(Debug, Clone, Subcommand)]
 pub enum DebugCommands {
-    /// Start DAP (Debug Adapter Protocol) server for time-travel debugging
+    /// [NOT IMPLEMENTED] DAP (Debug Adapter Protocol) server — exits with an error.
+    ///
+    /// Advertised as a working server with no marker at all, so the only way to
+    /// discover it binds no socket was to run it (DEBUG-002). Labelled like
+    /// `pmat serve`, which has the same status.
     #[command(visible_aliases = &["srv", "server"])]
     Serve {
         /// Port to bind DAP server (default: 5678)
@@ -179,7 +183,9 @@ pub enum DebugCommands {
         record_dir: Option<PathBuf>,
     },
 
-    /// Replay execution recording with time-travel navigation
+    /// [NOT IMPLEMENTED] Replay an execution recording — exits with an error.
+    ///
+    /// Same status as `debug serve` (DEBUG-003): nothing replays anything yet.
     #[command(visible_aliases = &["play", "view"])]
     Replay {
         /// Path to execution recording file (.pmat format)
@@ -256,7 +262,9 @@ pub enum MaintainCommands {
         format: OutputFormat,
     },
 
-    /// Validate project health (build, tests, coverage, complexity)
+    // The summary used to promise "build, tests, coverage, complexity" while a
+    // flagless run executed the build check alone (see determine_checks_to_run).
+    /// Validate project health (build only by default; --all adds tests, coverage, complexity, SATD)
     Health {
         /// Project directory
         #[arg(long, default_value = ".")]

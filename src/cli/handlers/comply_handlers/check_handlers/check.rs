@@ -44,11 +44,16 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
+    // A `debug_assert!` is not a guard in a release build: `comply check -p
+    // /does/not/exist` sailed past it, and the first thing that touched the
+    // filesystem was `load_or_create_project_config`, which tried to
+    // `create_dir_all("/does/not/exist/.pmat")`. That surfaced as "Permission
+    // denied (os error 13)" and exit 126 — an error about the wrong thing,
+    // pointing at a permissions problem the user does not have. Reject the
+    // missing path by name, like every other analysis handler does.
+    if !project_path.exists() {
+        anyhow::bail!("Path not found: {}", project_path.display());
+    }
 
     eprintln!("Checking PMAT compliance for {}", project_path.display());
 
@@ -648,3 +653,5 @@ include!("check_individual_ci.rs");
 
 include!("check_handlers_tests_inline.rs");
 include!("check_pv_enforcement_helpers_tests.rs");
+
+include!("check_path_guard_tests.rs");

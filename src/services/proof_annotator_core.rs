@@ -10,7 +10,18 @@ impl ProofAnnotator {
             sources: Vec::new(),
             cache: Arc::new(RwLock::new(ProofCache::new())),
             symbol_table,
+            collection_errors: std::sync::atomic::AtomicUsize::new(0),
         }
+    }
+
+    /// How many files the last [`collect_proofs`](Self::collect_proofs) failed
+    /// to read or parse, and therefore did not contribute annotations.
+    ///
+    /// Zero before any collection has run.
+    #[must_use]
+    pub fn collection_errors(&self) -> usize {
+        self.collection_errors
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Add a proof source to the annotator
@@ -71,7 +82,14 @@ impl ProofAnnotator {
         }
 
         // Merge results with conflict resolution
-        let proof_map = self.merge_with_conflict_resolution(all_results);
+        let (proof_map, total_errors) = self.merge_with_conflict_resolution(all_results);
+
+        // The per-file failures used to end here, as a single `warn!` line on
+        // stderr and nothing else: the stdout report claimed a total with no
+        // hint that N files had been skipped. Retained on the annotator so the
+        // renderers can disclose it alongside the total.
+        self.collection_errors
+            .store(total_errors, std::sync::atomic::Ordering::Relaxed);
 
         let elapsed = start.elapsed();
         let total_annotations = proof_map.values().map(std::vec::Vec::len).sum::<usize>();
@@ -86,8 +104,14 @@ impl ProofAnnotator {
         proof_map
     }
 
-    /// Merge results from multiple sources with conflict resolution
-    fn merge_with_conflict_resolution(&self, results: Vec<ProofCollectionResult>) -> ProofMap {
+    /// Merge results from multiple sources with conflict resolution.
+    ///
+    /// Returns the merged map and the number of per-file errors the sources
+    /// reported, which the caller records on the annotator.
+    fn merge_with_conflict_resolution(
+        &self,
+        results: Vec<ProofCollectionResult>,
+    ) -> (ProofMap, usize) {
         let mut proof_map: ProofMap = std::collections::HashMap::new();
         let mut total_errors = 0;
 
@@ -152,7 +176,7 @@ impl ProofAnnotator {
             );
         }
 
-        proof_map
+        (proof_map, total_errors)
     }
 
     /// Get cache statistics

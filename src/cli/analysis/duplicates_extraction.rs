@@ -272,11 +272,47 @@ fn find_block_end(lines: &[&str]) -> Option<usize> {
     None
 }
 
+/// The `--threshold` default. A value that differs from it was typed by the
+/// user, and the user is owed an answer about what it did.
+const DOCUMENTED_THRESHOLD_DEFAULT: f32 = 0.85;
+
+/// Say once, on stderr, that `--threshold` cannot move any block in or out.
+///
+/// Detection here is hash bucketing: two blocks are duplicates iff they hash
+/// identically under the detection type's normalisation, so every group this
+/// function returns has similarity 1.0 by construction and no cut-off in
+/// 0.0..=1.0 can change the result. The parameter was literally bound as
+/// `_threshold` and dropped, so `--threshold 0.01`, `0.5` and `0.99` printed
+/// the same "Duplication percentage" over the same tree with no indication
+/// that the number had been ignored. A real cut-off needs near-miss (Type-3)
+/// matching between blocks that do NOT hash alike, which this extractor does
+/// not do; until it does, the flag must say so rather than look effective.
+///
+/// Returns whether the value is inert, so the behaviour is testable.
+fn warn_threshold_has_no_effect(threshold: f32) -> bool {
+    if (threshold - DOCUMENTED_THRESHOLD_DEFAULT).abs() < 1e-6 {
+        return false;
+    }
+
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        eprintln!(
+            "warning: --threshold {threshold} was ignored: duplicate detection matches blocks by \
+hash under the selected --detection-type, so every reported clone is an exact match (similarity \
+1.0) and no similarity cut-off changes the result. Use --detection-type to widen or narrow \
+matching instead."
+        );
+    });
+    true
+}
+
 /// Find duplicate blocks from all blocks
 fn find_duplicate_blocks(
     all_blocks: Vec<(String, String, usize, usize, String)>,
-    _threshold: f32,
+    threshold: f32,
 ) -> Vec<DuplicateBlock> {
+    warn_threshold_has_no_effect(threshold);
+
     let mut hash_groups: HashMap<String, Vec<(String, usize, usize, String)>> = HashMap::new();
 
     // Group by hash
@@ -339,7 +375,12 @@ fn find_duplicate_blocks(
                 locations: duplicate_locations,
                 lines,
                 tokens,
-                similarity: 1.0, // Exact match for now
+                // 1.0 is not a placeholder: the group exists because its members
+                // hashed identically under the detection type's normalisation,
+                // which makes them exact matches at that level. Detection that
+                // reports anything else has to compare blocks that do NOT hash
+                // alike — see `warn_threshold_has_no_effect`.
+                similarity: 1.0,
             });
         }
     }
@@ -558,5 +599,32 @@ fn gamma(arg: usize) -> usize {
 
         let c = normalize_identifiers("let total = input - 1;");
         assert_ne!(a, c, "the operator is structure, not a name");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod threshold_tests {
+    use super::*;
+
+    /// `--threshold` was bound as `_threshold` and dropped: 0.01, 0.5 and 0.99
+    /// printed the same duplication percentage with nothing said about the
+    /// number being ignored. Hash bucketing cannot honour a similarity cut-off,
+    /// so a value that cannot act must be reported as inert.
+    #[test]
+    fn a_threshold_that_cannot_act_is_disclosed() {
+        for typed in [0.0_f32, 0.01, 0.5, 0.99, 1.0] {
+            assert!(
+                warn_threshold_has_no_effect(typed),
+                "--threshold {typed} changes nothing and must say so"
+            );
+        }
+    }
+
+    /// The default was not typed by anyone; it must not print a warning on
+    /// every ordinary run.
+    #[test]
+    fn the_default_threshold_is_quiet() {
+        assert!(!warn_threshold_has_no_effect(DOCUMENTED_THRESHOLD_DEFAULT));
     }
 }

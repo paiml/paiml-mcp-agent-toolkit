@@ -33,10 +33,40 @@ pub trait DeadCodeStrategy {
     fn language(&self) -> &str;
 }
 
+/// Languages with a dead-code strategy, and the extensions that identify them.
+///
+/// Used to answer "is there anything here I *can* analyse?" when the project's
+/// dominant language has no strategy.
+const DEAD_CODE_SUPPORTED_LANGUAGES: &[(&str, &[&str])] = &[
+    ("rust", &["rs"]),
+    ("c", &["c", "h"]),
+    ("cpp", &["cpp", "cc", "cxx", "hpp", "hxx"]),
+    ("python", &["py"]),
+    ("lua", &["lua"]),
+];
+
+fn dead_code_strategy_for(language: &str) -> Option<Box<dyn DeadCodeStrategy>> {
+    match language {
+        "rust" => Some(Box::new(RustDeadCodeStrategy)),
+        "c" => Some(Box::new(CDeadCodeStrategy)),
+        "cpp" => Some(Box::new(CppDeadCodeStrategy)),
+        "python" => Some(Box::new(PythonDeadCodeStrategy)),
+        "lua" => Some(Box::new(LuaDeadCodeStrategy)),
+        _ => None,
+    }
+}
+
 /// Analyze dead code using appropriate strategy for the project language
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn analyze_dead_code_multi_language(path: &Path) -> Result<DeadCodeResult> {
     info!("Starting multi-language dead code analysis at: {:?}", path);
+
+    // A missing path used to fall through to language detection, which returned
+    // "unknown", so the user was told "not supported for language: unknown"
+    // instead of that the path does not exist.
+    if !path.exists() {
+        return Err(anyhow::anyhow!("Path not found: {}", path.display()));
+    }
 
     // Step 1: Detect language using enhanced detection from BUG-011
     let detection =
@@ -47,18 +77,34 @@ pub fn analyze_dead_code_multi_language(path: &Path) -> Result<DeadCodeResult> {
         detection.language, detection.confidence
     );
 
-    // Step 2: Select appropriate strategy
-    let strategy: Box<dyn DeadCodeStrategy> = match detection.language.as_str() {
-        "rust" => Box::new(RustDeadCodeStrategy),
-        "c" => Box::new(CDeadCodeStrategy),
-        "cpp" => Box::new(CppDeadCodeStrategy),
-        "python" => Box::new(PythonDeadCodeStrategy),
-        "lua" => Box::new(LuaDeadCodeStrategy),
-        _ => {
-            return Err(anyhow::anyhow!(
-                "Dead code analysis not supported for language: {}. Supported: rust, c, cpp, python, lua",
-                detection.language
-            ));
+    // Step 2: Select a strategy. Detection reports ONE dominant language, so a
+    // tree whose plurality language has no strategy (a TypeScript app with a
+    // handful of Python scripts) used to abort the whole run even though every
+    // supported file in it was analysable. Fall back to a language that is
+    // actually present rather than refusing outright.
+    let strategy: Box<dyn DeadCodeStrategy> = match dead_code_strategy_for(&detection.language) {
+        Some(s) => s,
+        None => {
+            let fallback = DEAD_CODE_SUPPORTED_LANGUAGES
+                .iter()
+                .find(|(_, exts)| !find_files_by_extension(path, exts).is_empty())
+                .and_then(|(lang, _)| {
+                    debug!(
+                        "No strategy for detected language {}; falling back to {lang}",
+                        detection.language
+                    );
+                    dead_code_strategy_for(lang)
+                });
+            match fallback {
+                Some(s) => s,
+                None => {
+                    return Err(anyhow::anyhow!(
+                        "Dead code analysis not supported for language: {}, and no rust, c, cpp, python or lua source files were found under {}",
+                        detection.language,
+                        path.display()
+                    ));
+                }
+            }
         }
     };
 

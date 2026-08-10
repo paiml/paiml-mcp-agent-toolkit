@@ -502,7 +502,13 @@ pub async fn handle_stack_status(format: &OutputFormat) -> Result<()> {
         mismatches: all_mismatches,
     };
 
-    // Output
+    // Output.
+    //
+    // Six of the nine advertised `--format` values (markdown, csv, summary,
+    // text, plain, junit) used to fall through a `_ =>` catch-all to the
+    // coloured table, so `-f csv | column -s,` and `-f junit` handed a CI job
+    // ANSI-decorated prose. Every variant is now spelled out — a new one is a
+    // compile error here rather than another silent fall-through.
     match format {
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&status)?);
@@ -513,8 +519,16 @@ pub async fn handle_stack_status(format: &OutputFormat) -> Result<()> {
         OutputFormat::Table => {
             print_status_table(&repos, &all_deps, &latest_versions, &status);
         }
-        _ => {
-            print_status_table(&repos, &all_deps, &latest_versions, &status);
+        OutputFormat::Markdown
+        | OutputFormat::Csv
+        | OutputFormat::Summary
+        | OutputFormat::Text
+        | OutputFormat::Plain
+        | OutputFormat::Junit => {
+            print!(
+                "{}",
+                render_status_non_table(format, &repos, &all_deps, &latest_versions, &status)
+            );
         }
     }
 
@@ -598,6 +612,281 @@ fn print_status_table(
 
     println!("{}", c::rule());
     println!();
+}
+
+// ── Handler: stack status — non-table renderers ──────────────────────────
+
+/// Render `stack status` in one of the six formats that used to fall through to
+/// the coloured table. `Table`/`Json`/`Yaml` are handled by the caller.
+fn render_status_non_table(
+    format: &OutputFormat,
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+    status: &StackStatus,
+) -> String {
+    match format {
+        OutputFormat::Markdown => render_status_markdown(repos, all_deps, latest_versions, status),
+        OutputFormat::Csv => render_status_csv(repos, all_deps, latest_versions),
+        OutputFormat::Summary => format!("{}\n", render_status_summary(status)),
+        OutputFormat::Junit => render_status_junit(repos, all_deps, latest_versions, status),
+        // text/plain, plus the three the caller already handled — reaching here
+        // with those would be a caller bug, and plain text is the honest answer.
+        _ => render_status_text(repos, all_deps, latest_versions, status),
+    }
+}
+
+/// One line of the status report: either a batuta dependency of a repo, or the
+/// state of a repo that contributes no dependency row (missing / no deps).
+struct StatusRow {
+    repo: String,
+    crate_name: String,
+    current: String,
+    latest: String,
+    state: &'static str,
+}
+
+/// Flatten the discovered repos into report rows, in the order the table prints
+/// them, so every format describes the same run.
+fn status_rows(
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+) -> Vec<StatusRow> {
+    let mut rows = Vec::new();
+
+    for repo in repos {
+        if !repo.exists {
+            rows.push(StatusRow {
+                repo: repo.name.clone(),
+                crate_name: String::new(),
+                current: String::new(),
+                latest: String::new(),
+                state: "missing",
+            });
+            continue;
+        }
+
+        let Some(deps) = all_deps.get(&repo.name) else {
+            continue;
+        };
+
+        let batuta_deps: Vec<&DepInfo> = deps
+            .iter()
+            .filter(|d| is_batuta_crate(&d.name) && d.source == DepSource::Registry)
+            .collect();
+
+        if batuta_deps.is_empty() {
+            rows.push(StatusRow {
+                repo: repo.name.clone(),
+                crate_name: String::new(),
+                current: String::new(),
+                latest: String::new(),
+                state: "no-batuta-deps",
+            });
+            continue;
+        }
+
+        for dep in batuta_deps {
+            let current = dep.version.as_deref().unwrap_or("?").to_string();
+            let latest = latest_versions
+                .get(&dep.name)
+                .cloned()
+                .unwrap_or_else(|| "?".to_string());
+            // "?" is "crates.io was not reached / crate unpublished", which is
+            // not the same as up to date and must not be reported as either.
+            let state = if latest == "?" {
+                "unknown"
+            } else if requirement_is_outdated(&current, &latest) {
+                "outdated"
+            } else {
+                "current"
+            };
+
+            rows.push(StatusRow {
+                repo: repo.name.clone(),
+                crate_name: dep.name.clone(),
+                current,
+                latest,
+                state,
+            });
+        }
+    }
+
+    rows
+}
+
+fn render_status_summary(status: &StackStatus) -> String {
+    format!(
+        "repos_found={} repos_missing={} batuta_deps={} outdated={}",
+        status.repos_found, status.repos_missing, status.total_deps, status.outdated_deps
+    )
+}
+
+fn render_status_csv(
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+) -> String {
+    let mut out = String::from("repo,crate,current,latest,state\n");
+    for row in status_rows(repos, all_deps, latest_versions) {
+        out.push_str(&format!(
+            "{},{},{},{},{}\n",
+            csv_field(&row.repo),
+            csv_field(&row.crate_name),
+            csv_field(&row.current),
+            csv_field(&row.latest),
+            row.state
+        ));
+    }
+    out
+}
+
+/// Quote a CSV field that carries a separator, quote or newline (RFC 4180).
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\n']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+fn render_status_markdown(
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+    status: &StackStatus,
+) -> String {
+    let mut out = String::from("# Stack Dependency Status\n\n");
+    out.push_str(&format!(
+        "- Repos found: {}\n- Repos missing: {}\n- Batuta deps: {}\n- Outdated: {}\n\n",
+        status.repos_found, status.repos_missing, status.total_deps, status.outdated_deps
+    ));
+    out.push_str("| Repo | Crate | Current | Latest | State |\n");
+    out.push_str("|------|-------|---------|--------|-------|\n");
+    for row in status_rows(repos, all_deps, latest_versions) {
+        out.push_str(&format!(
+            "| {} | {} | {} | {} | {} |\n",
+            row.repo,
+            if row.crate_name.is_empty() {
+                "-"
+            } else {
+                &row.crate_name
+            },
+            if row.current.is_empty() {
+                "-"
+            } else {
+                &row.current
+            },
+            if row.latest.is_empty() {
+                "-"
+            } else {
+                &row.latest
+            },
+            row.state
+        ));
+    }
+    out
+}
+
+/// `text`/`plain`: the table's content with no ANSI, for pipes and logs.
+fn render_status_text(
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+    status: &StackStatus,
+) -> String {
+    let mut out = String::from("Stack Dependency Status\n");
+    out.push_str(&format!(
+        "  Repos found: {}  Missing: {}\n  Batuta deps: {}  Outdated: {}\n",
+        status.repos_found, status.repos_missing, status.total_deps, status.outdated_deps
+    ));
+
+    let mut current_repo = String::new();
+    for row in status_rows(repos, all_deps, latest_versions) {
+        if row.repo != current_repo {
+            out.push_str(&format!("  {}\n", row.repo));
+            current_repo = row.repo.clone();
+        }
+        match row.state {
+            "missing" => out.push_str("    (not found)\n"),
+            "no-batuta-deps" => out.push_str("    (no batuta deps)\n"),
+            "outdated" => out.push_str(&format!(
+                "    {} {} -> {}\n",
+                row.crate_name, row.current, row.latest
+            )),
+            _ => out.push_str(&format!(
+                "    {} {} ({})\n",
+                row.crate_name, row.current, row.state
+            )),
+        }
+    }
+
+    out
+}
+
+fn render_status_junit(
+    repos: &[RepoInfo],
+    all_deps: &BTreeMap<String, Vec<DepInfo>>,
+    latest_versions: &BTreeMap<String, String>,
+    status: &StackStatus,
+) -> String {
+    let rows = status_rows(repos, all_deps, latest_versions);
+    let failures = rows
+        .iter()
+        .filter(|r| r.state == "outdated" || r.state == "missing")
+        .count();
+    let skipped = rows.iter().filter(|r| r.state == "unknown").count();
+
+    let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    out.push_str(&format!(
+        "<testsuite name=\"pmat stack status\" tests=\"{}\" failures=\"{}\" errors=\"0\" skipped=\"{}\">\n",
+        rows.len(),
+        failures,
+        skipped
+    ));
+
+    for row in &rows {
+        let name = if row.crate_name.is_empty() {
+            row.repo.clone()
+        } else {
+            format!("{}::{}", row.repo, row.crate_name)
+        };
+        out.push_str(&format!(
+            "  <testcase classname=\"stack-status\" name=\"{}\"",
+            xml_escape(&name)
+        ));
+        match row.state {
+            "outdated" => out.push_str(&format!(
+                ">\n    <failure message=\"{} is {}, latest is {}\"/>\n  </testcase>\n",
+                xml_escape(&row.crate_name),
+                xml_escape(&row.current),
+                xml_escape(&row.latest)
+            )),
+            "missing" => {
+                out.push_str(">\n    <failure message=\"repo not found\"/>\n  </testcase>\n")
+            }
+            // Not measured is not a pass: crates.io was never reached for this
+            // crate, so the case is skipped rather than reported green.
+            "unknown" => out
+                .push_str(">\n    <skipped message=\"latest version unknown\"/>\n  </testcase>\n"),
+            _ => out.push_str("/>\n"),
+        }
+    }
+
+    out.push_str(&format!(
+        "</testsuite>\n<!-- outdated_deps={} -->\n",
+        status.outdated_deps
+    ));
+    out
+}
+
+fn xml_escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 // ── Handler: stack sync ──────────────────────────────────────────────────
@@ -1122,5 +1411,127 @@ serde = "1.0"
             DepSource::Path("/a".to_string()),
             DepSource::Git("https://x".to_string())
         );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod status_format_tests {
+    use super::*;
+
+    /// (repos, deps by repo, latest version by crate, overall status)
+    type StatusFixture = (
+        Vec<RepoInfo>,
+        BTreeMap<String, Vec<DepInfo>>,
+        BTreeMap<String, String>,
+        StackStatus,
+    );
+
+    fn fixture() -> StatusFixture {
+        let repos = vec![
+            RepoInfo {
+                name: "aprender".to_string(),
+                path: PathBuf::from("/tmp/aprender"),
+                exists: true,
+            },
+            RepoInfo {
+                name: "ghost".to_string(),
+                path: PathBuf::from("/tmp/ghost"),
+                exists: false,
+            },
+        ];
+
+        let mut all_deps = BTreeMap::new();
+        all_deps.insert(
+            "aprender".to_string(),
+            vec![DepInfo {
+                name: "trueno".to_string(),
+                version: Some("0.4.30".to_string()),
+                source: DepSource::Registry,
+                section: "dependencies".to_string(),
+            }],
+        );
+
+        let mut latest = BTreeMap::new();
+        latest.insert("trueno".to_string(), "0.5.0".to_string());
+
+        let status = StackStatus {
+            repos_found: 1,
+            repos_missing: 1,
+            total_deps: 1,
+            outdated_deps: 1,
+            mismatches: vec![],
+        };
+
+        (repos, all_deps, latest, status)
+    }
+
+    /// markdown/csv/summary/text/plain/junit used to fall through a `_ =>`
+    /// catch-all to the coloured table, so six of the nine advertised formats
+    /// emitted identical ANSI output.
+    #[test]
+    fn every_format_renders_its_own_shape() {
+        let (repos, all_deps, latest, status) = fixture();
+
+        let render = |format: OutputFormat| {
+            render_status_non_table(&format, &repos, &all_deps, &latest, &status)
+        };
+        let markdown = render(OutputFormat::Markdown);
+        let csv = render(OutputFormat::Csv);
+        let summary = render(OutputFormat::Summary);
+        let text = render(OutputFormat::Text);
+        let junit = render(OutputFormat::Junit);
+
+        assert_eq!(
+            text,
+            render(OutputFormat::Plain),
+            "text and plain are the same report"
+        );
+
+        let rendered = [&markdown, &csv, &summary, &text, &junit];
+        for (i, a) in rendered.iter().enumerate() {
+            for b in rendered.iter().skip(i + 1) {
+                assert_ne!(a, b, "two formats produced the same bytes");
+            }
+            assert!(
+                !a.contains('\u{1b}'),
+                "machine-readable format must not carry ANSI escapes: {a}"
+            );
+        }
+
+        assert!(markdown.starts_with("# Stack Dependency Status"));
+        assert!(markdown.contains("| aprender | trueno | 0.4.30 | 0.5.0 | outdated |"));
+
+        assert!(csv.starts_with("repo,crate,current,latest,state\n"));
+        assert!(csv.contains("aprender,trueno,0.4.30,0.5.0,outdated\n"));
+        assert!(csv.contains("ghost,,,,missing\n"));
+
+        assert_eq!(
+            summary,
+            "repos_found=1 repos_missing=1 batuta_deps=1 outdated=1\n"
+        );
+
+        assert!(text.contains("trueno 0.4.30 -> 0.5.0"));
+        assert!(text.contains("(not found)"));
+
+        assert!(junit.starts_with("<?xml version=\"1.0\""));
+        assert!(junit.contains("<testsuite name=\"pmat stack status\" tests=\"2\" failures=\"2\""));
+        assert!(junit.contains("name=\"aprender::trueno\""));
+        assert!(junit.contains("<failure message=\"repo not found\"/>"));
+    }
+
+    /// A crate whose latest version was never fetched is not "up to date"; the
+    /// JUnit case is skipped rather than reported as a pass.
+    #[test]
+    fn unknown_latest_is_not_a_pass() {
+        let (repos, all_deps, _latest, status) = fixture();
+        let empty = BTreeMap::new();
+
+        let junit = render_status_junit(&repos, &all_deps, &empty, &status);
+        assert!(junit.contains("<skipped message=\"latest version unknown\"/>"));
+        assert!(junit.contains("skipped=\"1\""));
+
+        let csv = render_status_csv(&repos, &all_deps, &empty);
+        assert!(csv.contains("aprender,trueno,0.4.30,?,unknown\n"));
     }
 }

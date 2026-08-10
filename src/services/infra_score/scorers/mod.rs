@@ -1,5 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
-//! Infra-score scorers — 5 base dimensions (100 pts) + 1 bonus (10 pts).
+//! Infra-score scorers — 5 base dimensions (100 pts) + 1 bonus (12 pts).
 //!
 //! Each scorer implements `InfraScorer` and evaluates one dimension
 //! of CI/CD infrastructure quality.

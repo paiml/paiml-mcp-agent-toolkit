@@ -118,8 +118,8 @@ fn format_provability_output(
     config: &ProvabilityConfig,
 ) -> Result<String> {
     use crate::cli::provability_helpers::{
-        format_provability_detailed, format_provability_json, format_provability_sarif,
-        format_provability_summary,
+        format_provability_detailed, format_provability_json, format_provability_markdown,
+        format_provability_sarif, format_provability_summary,
     };
 
     match config.format {
@@ -133,8 +133,11 @@ fn format_provability_output(
             format_provability_detailed(function_ids, summaries, config.include_evidence)
         }
         ProvabilityOutputFormat::Sarif => format_provability_sarif(function_ids, summaries),
+        // `markdown` used to call `format_provability_detailed` — the terminal
+        // renderer — so `-f markdown` and `-f full` produced byte-identical,
+        // ANSI-decorated output containing no markdown at all.
         ProvabilityOutputFormat::Markdown => {
-            format_provability_detailed(function_ids, summaries, config.include_evidence)
+            format_provability_markdown(function_ids, summaries, config.include_evidence)
         }
     }
 }

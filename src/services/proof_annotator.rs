@@ -84,6 +84,13 @@ pub struct ProofAnnotator {
     sources: Vec<Box<dyn ProofSource>>,
     cache: Arc<RwLock<ProofCache>>,
     symbol_table: Arc<SymbolTable>,
+    /// Files the last `collect_proofs` could not read or parse.
+    ///
+    /// These used to be counted, logged once at `warn!` and thrown away, so a
+    /// run over this repo skipped files whose annotations are simply absent
+    /// from the report — and the report said "Total proofs: N" as if it had
+    /// seen everything. Retained so the renderers can disclose the gap.
+    collection_errors: std::sync::atomic::AtomicUsize,
 }
 
 /// Cache statistics

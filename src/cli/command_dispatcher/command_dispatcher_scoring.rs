@@ -339,6 +339,10 @@ impl CommandDispatcher {
             }
             Commands::Maintain { command } => Self::route_maintain_command(command).await,
             Commands::Hooks(hooks_cmd) => handlers::handle_hooks_command(&hooks_cmd).await,
+            // Delegates instead of bailing inline. The inline `bail!`s surfaced
+            // as exit 1 while the sibling executor path (debug_exec.rs) went
+            // through the handlers, so the same command exited 1 or 2 depending
+            // on which dispatcher served it. One route, one exit code.
             Commands::Debug { command } => {
                 use crate::cli::commands::DebugCommands;
                 match command {
@@ -346,15 +350,18 @@ impl CommandDispatcher {
                         port,
                         host,
                         record_dir,
-                    } => {
-                        anyhow::bail!("Debug serve command not yet implemented (DEBUG-002). Port: {}, Host: {}, Record Dir: {:?}", port, host, record_dir)
-                    }
+                    } => handlers::debug_handlers::handle_debug_serve(port, host, record_dir).await,
                     DebugCommands::Replay {
                         recording,
                         position,
                         interactive,
                     } => {
-                        anyhow::bail!("Debug replay command not yet implemented (DEBUG-003). Recording: {:?}, Position: {:?}, Interactive: {}", recording, position, interactive)
+                        handlers::debug_handlers::handle_debug_replay(
+                            recording,
+                            position,
+                            interactive,
+                        )
+                        .await
                     }
                 }
             }

@@ -57,13 +57,12 @@ async fn handle_reset_command() -> Result<()> {
         Ok(())
     }
 
+    // `--reset` is advertised in `--help` on every published binary, but on a
+    // release build it printed a warning marker and exited 0 — a request that
+    // did nothing reported as success. It has to fail.
     #[cfg(not(test))]
     {
-        println!(
-            "{}",
-            c::warn("Telemetry reset is only available in test builds")
-        );
-        Ok(())
+        anyhow::bail!("Telemetry reset is only available in test builds; nothing was reset")
     }
 }
 
@@ -267,20 +266,17 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
         println!();
         println!("{}", c::dim("Raw Data (JSON):"));
         println!("{}", serde_json::to_string_pretty(&service_data)?);
+        Ok(())
     } else {
-        println!(
-            "{}",
-            c::fail(&format!(
-                "No telemetry data found for service: {service_name}"
-            ))
-        );
-        println!(
-            "{}",
-            c::dim("Available services can be seen with: pmat telemetry --system")
-        );
+        // This printed a ✗ failure marker and then exited 0, so `--service`
+        // naming a service that does not exist was indistinguishable from a
+        // successful report to anything scripting pmat. A named service that
+        // cannot be found is an error.
+        Err(anyhow::anyhow!(
+            "No telemetry data found for service: {service_name}. \
+             Available services can be seen with: pmat telemetry --system"
+        ))
     }
-
-    Ok(())
 }
 
 /// Show system overview (default command)
@@ -437,9 +433,32 @@ mod tests {
         let result = show_service_telemetry("telemetry_test_service").await;
         assert!(result.is_ok());
 
-        // Test non-existent service
+        // Test non-existent service. This used to assert `is_ok()` — it was
+        // pinning the defect: the handler printed a ✗ marker and returned Ok,
+        // so `pmat telemetry --service nonexistent` exited 0.
         let result = show_service_telemetry("non_existent_service").await;
-        assert!(result.is_ok()); // Should handle gracefully
+        let err = result.expect_err("an unknown service must not report success");
+        assert!(
+            err.to_string().contains("non_existent_service"),
+            "the error must name the service asked for: {err}"
+        );
+    }
+
+    /// `--service <unknown>` and, on a release build, `--reset` both printed a
+    /// failure marker and then exited 0. A request that could not be carried
+    /// out has to surface as an error.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn unknown_service_makes_the_whole_command_fail() {
+        telemetry().reset();
+        record_test_telemetry_event().await.unwrap();
+
+        let result =
+            handle_telemetry(false, Some("no_such_service".to_string()), false, false).await;
+        assert!(
+            result.is_err(),
+            "pmat telemetry --service no_such_service must exit non-zero"
+        );
     }
 
     #[tokio::test]

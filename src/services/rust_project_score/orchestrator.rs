@@ -38,6 +38,26 @@ use std::path::Path;
 /// v3.0: Added Reproducibility category (Popper B-F absorption) + falsifiability gateway
 pub const SPEC_VERSION: &str = "3.0";
 
+/// Advice a category is still entitled to give.
+///
+/// Every scorer's `recommendations()` used to run unconditionally, so a
+/// category at full marks printed advice contradicting its own score:
+/// `Known Defects: 20.0/20.0 (100.0%)` was followed by "CRITICAL: 1 unwrap()
+/// calls in production code", and RustTooling/CodeQuality push `cargo fmt`,
+/// `cargo clippy --fix` and cargo-mutants with no condition at all. A category
+/// with nothing left to earn has nothing to recommend.
+fn recommendations_for(
+    scorer: &dyn Scorer,
+    project_path: &Path,
+    score: &CategoryScore,
+) -> Vec<String> {
+    if score.is_perfect() {
+        Vec::new()
+    } else {
+        scorer.recommendations(project_path)
+    }
+}
+
 /// Orchestrates all 11 category scorers to produce unified project score
 ///
 /// v3.0: Added Reproducibility scorer (Popper B-F absorption) + falsifiability gateway
@@ -194,7 +214,8 @@ impl RustProjectScoreOrchestrator {
             .filter_map(|scorer| {
                 match scorer.score_with_cache(project_path, mode, file_cache.as_ref()) {
                     Ok(category_score) => {
-                        let recommendations = scorer.recommendations(project_path);
+                        let recommendations =
+                            recommendations_for(scorer.as_ref(), project_path, &category_score);
                         Some((scorer.name().to_string(), category_score, recommendations))
                     }
                     Err(_) => {
@@ -511,6 +532,55 @@ unsafe impl Sync for RustProjectScoreOrchestrator {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A scorer whose advice is loud enough to notice when it should be silent.
+    struct LoudScorer {
+        earned: f64,
+    }
+
+    impl Scorer for LoudScorer {
+        fn name(&self) -> &str {
+            "Known Defects"
+        }
+        fn max_points(&self) -> f64 {
+            20.0
+        }
+        fn score_with_mode(
+            &self,
+            _project_path: &Path,
+            _mode: ScoringMode,
+        ) -> ScorerResult<CategoryScore> {
+            Ok(CategoryScore::new(self.earned, 20.0))
+        }
+        fn recommendations(&self, _project_path: &Path) -> Vec<String> {
+            vec!["CRITICAL: 1 unwrap() calls in production code".to_string()]
+        }
+    }
+
+    /// `Known Defects: 20.0/20.0 (100.0%)` printed
+    /// "CRITICAL: 1 unwrap() calls in production code" directly beneath itself:
+    /// recommendations were collected regardless of the score they described.
+    #[test]
+    fn a_category_at_full_marks_makes_no_recommendations() {
+        let perfect = LoudScorer { earned: 20.0 };
+        let score = perfect.score(Path::new(".")).unwrap();
+        assert!(score.is_perfect());
+        assert!(
+            recommendations_for(&perfect, Path::new("."), &score).is_empty(),
+            "a category with nothing left to earn must not advise on it"
+        );
+    }
+
+    /// …and the advice must still reach a category that did lose points.
+    #[test]
+    fn a_category_below_full_marks_still_makes_recommendations() {
+        let imperfect = LoudScorer { earned: 5.0 };
+        let score = imperfect.score(Path::new(".")).unwrap();
+        assert_eq!(
+            recommendations_for(&imperfect, Path::new("."), &score).len(),
+            1
+        );
+    }
 
     #[test]
     fn test_orchestrator_creation() {

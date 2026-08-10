@@ -163,5 +163,21 @@ mod tests {
         assert_eq!(cache.miss_penalty, 1);
         assert_eq!(cache.working_set, BigOClass::Unknown);
     }
+
+    /// The MCP `analyze_big_o` payload carried this struct verbatim, so
+    /// clients received `"_padding":[0,0]` — `#[repr(C)]` alignment filler —
+    /// alongside the measurements. Padding is layout, never data.
+    #[test]
+    fn test_serialised_bound_carries_no_alignment_padding() {
+        let json = serde_json::to_string(&ComplexityBound::quadratic()).expect("serialise");
+        assert!(
+            !json.contains("_padding"),
+            "alignment filler must not be serialised: {json}"
+        );
+        // The measurements themselves still round-trip.
+        let back: ComplexityBound = serde_json::from_str(&json).expect("deserialise");
+        assert_eq!(back.class, BigOClass::Quadratic);
+        assert_eq!(back.confidence, ComplexityBound::quadratic().confidence);
+    }
 }
 

@@ -101,10 +101,18 @@ async fn handle_validate_tiles(
     let shared_required = tile_kv.saturating_mul(head_dim).saturating_mul(2);
     let overflows = shared_required > shared_memory;
     let undersized = tile_kv < head_dim;
+    // A zero dimension is not a tile. `--head-dim 0 --tile-kv 0` satisfied both
+    // of the checks above (0 >= 0, and 0 bytes fit in any budget) and was
+    // reported "Status: VALID" with exit 0, so a CI job gating on this command
+    // passed a kernel configuration that cannot exist.
+    let degenerate = head_dim == 0 || tile_kv == 0;
 
     let output = match config.format {
         CudaTdgOutputFormat::Json => {
             let mut issues: Vec<&str> = Vec::new();
+            if degenerate {
+                issues.push("Degenerate tile: head_dim and tile_kv must both be > 0");
+            }
             if undersized {
                 issues.push("PAR-041: tile_kv < head_dim causes shared memory overflow");
             }
@@ -133,6 +141,13 @@ async fn handle_validate_tiles(
     // "Status: INVALID / Issue: Shared memory overflow" and exited 0, so CI
     // gating on this command passed a configuration overflowing shared memory
     // by ~400,000x. One verdict now drives both.
+    if degenerate {
+        return Err(anyhow!(
+            "Degenerate tile: head_dim ({}) and tile_kv ({}) must both be > 0",
+            head_dim,
+            tile_kv
+        ));
+    }
     if undersized {
         return Err(anyhow!(
             "PAR-041: tile_kv ({}) < head_dim ({})",
@@ -152,7 +167,10 @@ async fn handle_validate_tiles(
 }
 
 fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: usize) -> String {
-    let valid = tile_kv >= head_dim;
+    // `head_dim > 0` is part of the verdict: a zero dimension satisfies
+    // `tile_kv >= head_dim` and needs 0 bytes, so it used to print VALID.
+    let degenerate = head_dim == 0 || tile_kv == 0;
+    let valid = !degenerate && tile_kv >= head_dim;
     let shared_required = tile_kv.saturating_mul(head_dim).saturating_mul(2); // FP16
 
     let mut output = String::new();
@@ -170,6 +188,13 @@ fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: us
         output.push_str("Status: VALID\n");
     } else {
         output.push_str("Status: INVALID\n\n");
+        if degenerate {
+            output.push_str("Issue: Degenerate tile - head_dim and tile_kv must both be > 0\n");
+            output.push_str(&format!(
+                "Fix: Set head_dim > 0 (currently {}) and tile_kv > 0 (currently {})\n",
+                head_dim, tile_kv
+            ));
+        }
         if tile_kv < head_dim {
             output.push_str("Issue: PAR-041 - tile_kv < head_dim\n");
             output.push_str(&format!(
@@ -244,6 +269,24 @@ mod validate_tiles_verdict_tests {
                 "head_dim={head_dim} tile_kv={tile_kv} shared_memory={shared_memory}: \
                  printed {status} but exit was {}",
                 if ok { "0" } else { "nonzero" }
+            );
+        }
+    }
+
+    /// A zero dimension is not a tile. `--head-dim 0 --tile-kv 0` passed both
+    /// existing checks (0 >= 0, 0 bytes fits) and printed "Status: VALID" with
+    /// exit 0.
+    #[tokio::test]
+    async fn degenerate_dimensions_are_invalid() {
+        for (head_dim, tile_kv) in [(0usize, 0usize), (0, 64), (64, 0)] {
+            let text = format_validate_tiles_text(head_dim, tile_kv, 49152);
+            assert!(
+                text.contains("Status: INVALID"),
+                "head_dim={head_dim} tile_kv={tile_kv} must render INVALID, got:\n{text}"
+            );
+            assert!(
+                !exits_ok(head_dim, tile_kv, 49152).await,
+                "head_dim={head_dim} tile_kv={tile_kv} must exit nonzero"
             );
         }
     }

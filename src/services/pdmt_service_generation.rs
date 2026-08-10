@@ -141,6 +141,19 @@ impl PdmtService {
                 .or_default()
                 .push(base_id.clone());
 
+            // The doc todo used to hardcode `examples/demo.rs` and `cargo run
+            // --example demo` while the base todo for the SAME requirement named
+            // `examples/add_a_demo.rs`: two todos disagreeing about the file, and
+            // a command naming an example neither of them creates. Take the
+            // example from the requirement's own specs.
+            let doc_specs = self.generate_implementation_specs(requirement);
+            let doc_examples: Vec<String> = doc_specs
+                .example_files
+                .iter()
+                .filter_map(|file| example_target_name(file))
+                .map(|name| format!("cargo run --example {name}"))
+                .collect();
+
             let doc_todo = PdmtTodo {
                 id: doc_id,
                 content: format!("Document and create examples for: {requirement}"),
@@ -153,7 +166,7 @@ impl PdmtService {
                     unit_tests: String::new(),
                     doctests: "cargo test --doc".to_string(),
                     property_tests: String::new(),
-                    examples: vec!["cargo run --example demo".to_string()],
+                    examples: doc_examples,
                     coverage_check: String::new(),
                     quality_proxy: "pmat quality-gate --file README.md".to_string(),
                 },
@@ -165,8 +178,8 @@ impl PdmtService {
                 implementation_specs: ImplementationSpecs {
                     primary_files: vec![],
                     test_files: vec![],
-                    doc_files: vec!["README.md".to_string()],
-                    example_files: vec!["examples/demo.rs".to_string()],
+                    doc_files: doc_specs.doc_files,
+                    example_files: doc_specs.example_files,
                 },
             };
             todos.push(doc_todo);
@@ -258,8 +271,18 @@ impl PdmtService {
             } else {
                 String::new()
             },
+            // The example command must name the example this same todo tells the
+            // user to write. It was the literal `cargo run --example demo` while
+            // `implementation_specs.example_files` said `examples/add_a_demo.rs`,
+            // so the command in the response could not run in the project the
+            // response describes.
             examples: if config.require_examples {
-                vec!["cargo run --example demo".to_string()]
+                specs
+                    .example_files
+                    .iter()
+                    .filter_map(|file| example_target_name(file))
+                    .map(|name| format!("cargo run --example {name}"))
+                    .collect()
             } else {
                 vec![]
             },
@@ -328,6 +351,17 @@ impl PdmtService {
             }
         }
     }
+}
+
+/// `examples/add_a_demo.rs` -> `add_a_demo`, the name `cargo run --example`
+/// actually takes. Returns `None` for a path with no usable stem so a bad spec
+/// drops the command rather than emitting an unrunnable one.
+fn example_target_name(example_file: &str) -> Option<String> {
+    std::path::Path::new(example_file)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .filter(|stem| !stem.is_empty())
+        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -421,5 +455,47 @@ mod validation_command_config_tests {
                 todo.id
             );
         }
+
+        // The Default impl is the other place the dangling flag shipped from.
+        assert_eq!(
+            ValidationCommands::default().quality_proxy,
+            "pmat quality-gate --file src/lib.rs"
+        );
+    }
+
+    /// `cargo run --example demo` was a literal, while the same todo's
+    /// `implementation_specs.example_files` said `examples/add_a_demo.rs` — the
+    /// command named an example the response never asks anyone to create.
+    #[test]
+    fn example_commands_name_the_example_the_todo_creates() {
+        let service = PdmtService::new();
+        let list = service
+            .generate_todos(
+                vec!["Add a caching layer".to_string()],
+                Some("demo".to_string()),
+                "high",
+                PdmtQualityConfig::default(),
+            )
+            .expect("generation succeeds");
+
+        let mut checked = 0;
+        for todo in &list.todos {
+            for command in &todo.validation_commands.examples {
+                checked += 1;
+                let target = command
+                    .strip_prefix("cargo run --example ")
+                    .unwrap_or_else(|| panic!("unexpected example command {command}"));
+                assert!(
+                    todo.implementation_specs
+                        .example_files
+                        .iter()
+                        .any(|file| file == &format!("examples/{target}.rs")),
+                    "todo {} runs example '{target}' but creates {:?}",
+                    todo.id,
+                    todo.implementation_specs.example_files
+                );
+            }
+        }
+        assert!(checked > 0, "no example command was generated to check");
     }
 }

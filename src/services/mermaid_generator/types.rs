@@ -12,6 +12,10 @@ pub struct MermaidGenerator {
 /// Configuration options for Mermaid diagram generation
 #[derive(Default)]
 pub struct MermaidOptions {
+    /// Advisory only: the renderer draws the graph it is handed and never
+    /// consults this. Depth is a property of the traversal, so callers must
+    /// prune the graph before rendering (`analyze dag` does, in
+    /// `limit_graph_depth`) — setting it here alone changes nothing.
     pub max_depth: Option<usize>,
     pub filter_external: bool,
     pub group_by_module: bool,

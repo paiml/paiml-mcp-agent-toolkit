@@ -102,6 +102,17 @@ fn is_known_method(method: &str) -> bool {
     PMCP_CLIENT_METHODS.contains(&method) || PMCP_SERVER_METHODS.contains(&method)
 }
 
+/// The only value JSON-RPC 2.0 §4 permits for the `jsonrpc` member.
+///
+/// Nothing in pmcp looks at this member: `parse_message` deserializes by shape
+/// (`method`/`id`/`result`), so `{"jsonrpc":"1.0",…}` and a frame with no
+/// `jsonrpc` at all were both handled as if they said `"2.0"` — the 1.0 frame
+/// was *served a full `tools/list` result*, and the version-less one was
+/// rejected downstream and reported `-32602 Invalid params`, blaming the
+/// params for a defect in the envelope. §4 makes a frame whose `jsonrpc` is
+/// not exactly `"2.0"` an Invalid Request (`-32600`), whatever its params say.
+const JSONRPC_VERSION: &str = "2.0";
+
 /// Methods pmcp deserializes with **no** `params` field at all.
 ///
 /// Mirrors the special cases in `parse_client_request` / `parse_server_request`
@@ -299,6 +310,38 @@ pub(crate) fn classify_bad_frame(line: &[u8]) -> FrameVerdict {
     classify_object(obj, raw_id_text(line).as_deref())
 }
 
+/// What is wrong with this frame's `jsonrpc` member, if anything.
+///
+/// `None` means the member is exactly `"2.0"`; `Some(message)` describes the
+/// deviation using the value the client actually sent, so two different wrong
+/// versions never collapse to the same answer.
+fn jsonrpc_version_problem(obj: &Map<String, Value>) -> Option<String> {
+    match obj.get("jsonrpc") {
+        Some(Value::String(v)) if v == JSONRPC_VERSION => None,
+        Some(other) => Some(format!(
+            "Invalid Request: \"jsonrpc\" must be \"{JSONRPC_VERSION}\", not {other}"
+        )),
+        None => Some(format!(
+            "Invalid Request: \"jsonrpc\" member is missing; it must be \"{JSONRPC_VERSION}\""
+        )),
+    }
+}
+
+/// Is this line a JSON-RPC frame the server must refuse on its envelope alone?
+///
+/// pmcp never inspects `jsonrpc`, so a frame declaring a version we do not
+/// speak would otherwise be **served** — `{"jsonrpc":"1.0",…,"method":
+/// "tools/list"}` came back with the full tool listing, an answer in a protocol
+/// the client did not ask for. Frames that carry no id (notifications) and
+/// response frames still get [`FrameVerdict::Silent`]: §4.1 forbids replying to
+/// them, wrong version or not.
+fn wrong_version_verdict(line: &[u8]) -> Option<FrameVerdict> {
+    let value: Value = serde_json::from_slice(line).ok()?;
+    let obj = value.as_object()?;
+    jsonrpc_version_problem(obj)?;
+    Some(classify_object(obj, raw_id_text(line).as_deref()))
+}
+
 /// Classify a frame that parsed as a JSON object. Split out to keep
 /// [`classify_bad_frame`] under the cognitive-complexity ceiling.
 fn classify_object(obj: &Map<String, Value>, raw_id: Option<&str>) -> FrameVerdict {
@@ -318,6 +361,16 @@ fn classify_object(obj: &Map<String, Value>, raw_id: Option<&str>) -> FrameVerdi
         return FrameVerdict::Silent;
     }
     let id = echo_id(obj, raw_id);
+
+    // The envelope is checked before its contents: a frame that is not
+    // JSON-RPC 2.0 is an Invalid Request no matter how good its params are.
+    if let Some(message) = jsonrpc_version_problem(obj) {
+        return FrameVerdict::Error {
+            id,
+            code: ErrorCode::INVALID_REQUEST.as_i32(),
+            message,
+        };
+    }
 
     let Some(method) = method.and_then(Value::as_str) else {
         return FrameVerdict::Error {
@@ -424,6 +477,13 @@ where
     E: FnMut(&FrameVerdict),
 {
     while let Some(line) = read_frame_line(reader, partial).await? {
+        // The envelope is checked here rather than after `parse_message`,
+        // because pmcp *accepts* a frame whose `jsonrpc` is wrong or missing
+        // and would serve it (see [`wrong_version_verdict`]).
+        if let Some(verdict) = wrong_version_verdict(&line) {
+            emit(&verdict);
+            continue;
+        }
         match pmcp::shared::transport::parse_message(&line) {
             Ok(message) => return Ok(Some(message)),
             // The raw line is still in hand here — this is the whole point of
@@ -799,6 +859,31 @@ mod tests {
         assert_eq!(code, -32600);
     }
 
+    /// JSON-RPC 2.0 §4: the `jsonrpc` member must be exactly "2.0". A frame
+    /// missing it used to reach the method/params classifier and come back
+    /// `-32602 Invalid params for tools/list` — blaming params that were fine
+    /// for a broken envelope.
+    #[test]
+    fn a_frame_without_a_jsonrpc_member_is_invalid_request() {
+        let (id, code, message) = parts(r#"{"id":3,"method":"tools/list","params":{}}"#);
+        assert_eq!(id, serde_json::json!(3), "the client's id must be echoed");
+        assert_eq!(code, -32600, "a missing `jsonrpc` is -32600, not -32602");
+        assert!(
+            message.contains("jsonrpc"),
+            "the message must name the envelope member, got: {message}"
+        );
+    }
+
+    /// A version we do not speak is refused rather than served.
+    #[test]
+    fn a_frame_declaring_jsonrpc_1_0_is_invalid_request() {
+        let (id, code, message) =
+            parts(r#"{"jsonrpc":"1.0","id":4,"method":"tools/list","params":{}}"#);
+        assert_eq!(id, serde_json::json!(4));
+        assert_eq!(code, -32600);
+        assert!(message.contains("1.0"), "got: {message}");
+    }
+
     /// JSON-RPC 2.0 §4.1: a notification is never answered. Emitting a frame
     /// for one puts bytes on the wire the host never asked for.
     #[test]
@@ -1052,6 +1137,39 @@ mod tests {
         let frame = verdicts[0].to_frame().expect("an error frame");
         assert_eq!(frame["id"], serde_json::json!(8));
         assert_eq!(frame["error"]["code"], serde_json::json!(-32601));
+    }
+
+    /// The wire-level half of the `jsonrpc` defect: pmcp parses a 1.0 frame
+    /// happily, so without a check here the server answered
+    /// `{"jsonrpc":"1.0","id":4,"method":"tools/list"}` with the complete tool
+    /// listing — a reply in a protocol version the client never negotiated.
+    #[tokio::test]
+    async fn a_wrong_version_frame_is_refused_instead_of_served() {
+        let (messages, verdicts) = drain(concat!(
+            "{\"jsonrpc\":\"1.0\",\"id\":4,\"method\":\"tools/list\",\"params\":{}}\n",
+            "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/list\",\"params\":{}}\n",
+        ))
+        .await;
+
+        assert_eq!(
+            messages.len(),
+            1,
+            "only the 2.0 frame may reach the server; got {} messages",
+            messages.len()
+        );
+        assert_eq!(verdicts.len(), 1);
+        let frame = verdicts[0].to_frame().expect("an error frame");
+        assert_eq!(frame["id"], serde_json::json!(4));
+        assert_eq!(frame["error"]["code"], serde_json::json!(-32600));
+    }
+
+    /// A notification is still never answered, wrong version or not.
+    #[tokio::test]
+    async fn a_wrong_version_notification_is_dropped_without_a_reply() {
+        let (messages, verdicts) =
+            drain("{\"jsonrpc\":\"1.0\",\"method\":\"notifications/initialized\"}\n").await;
+        assert!(messages.is_empty(), "a 1.0 notification is not served");
+        assert!(verdicts.iter().all(|v| v.to_frame().is_none()));
     }
 
     #[tokio::test]

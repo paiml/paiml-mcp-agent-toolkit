@@ -10,6 +10,16 @@ use tracing::{debug, info};
 use super::filters::apply_report_filters;
 use super::output::{format_analysis_output, write_analysis_output};
 
+/// Warning printed when `--analyze-space` is passed.
+///
+/// Space complexity is computed and printed for every function regardless of
+/// the flag — `analyze_space_complexity` reaches the config struct and no
+/// analyzer or renderer reads it — so `--analyze-space` changes nothing. It was
+/// accepted in silence, which read as if it had switched an extra analysis on.
+/// Named as a const so the note is covered by a test rather than only by eye.
+pub(super) const ANALYZE_SPACE_NOOP_NOTE: &str =
+    "note: --analyze-space is a no-op — space complexity is always reported alongside time";
+
 /// Handle Big-O complexity analysis command
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -31,12 +41,7 @@ pub async fn handle_analyze_big_o(
     let start_time = std::time::Instant::now();
 
     if analyze_space {
-        // Space complexity is computed and printed for every function regardless of
-        // this flag, so --analyze-space changes nothing. It used to be accepted in
-        // silence, which read as if it had switched an extra analysis on.
-        eprintln!(
-            "note: --analyze-space is a no-op — space complexity is always reported alongside time"
-        );
+        eprintln!("{ANALYZE_SPACE_NOOP_NOTE}");
     }
 
     print_analysis_header(&project_path, confidence_threshold);
@@ -109,5 +114,49 @@ pub(super) fn print_analysis_summary(
     if perf {
         let functions_per_sec = report.analyzed_functions as f64 / elapsed.as_secs_f64();
         info!("⚡ Performance: {:.0} functions/second", functions_per_sec);
+    }
+}
+
+#[cfg(test)]
+mod analyze_space_noop_tests {
+    use super::*;
+
+    /// The note is the only thing that tells a user `--analyze-space` does
+    /// nothing; nothing covered it, so it could be deleted without a failure.
+    #[test]
+    fn the_noop_note_says_the_flag_is_a_no_op() {
+        assert!(ANALYZE_SPACE_NOOP_NOTE.contains("--analyze-space"));
+        assert!(ANALYZE_SPACE_NOOP_NOTE.contains("no-op"));
+        assert!(ANALYZE_SPACE_NOOP_NOTE.contains("always reported"));
+    }
+
+    /// The `--analyze-space` help text must not promise an extra analysis the
+    /// flag does not enable. It read "Analyze space complexity in addition to
+    /// time" while changing nothing at all.
+    #[test]
+    fn help_text_does_not_promise_an_extra_analysis() {
+        use clap::Subcommand;
+        let cmd = crate::cli::commands::AnalyzeCommands::augment_subcommands(clap::Command::new(
+            "analyze",
+        ));
+        let big_o = cmd
+            .get_subcommands()
+            .find(|s| s.get_name() == "big-o")
+            .expect("big-o subcommand must exist");
+        let help = big_o
+            .get_arguments()
+            .find(|a| a.get_id() == "analyze_space")
+            .expect("--analyze-space must exist")
+            .get_help()
+            .map(std::string::ToString::to_string)
+            .unwrap_or_default();
+        assert!(
+            help.contains("NO-OP"),
+            "help must state the flag is inert, got: {help}"
+        );
+        assert!(
+            !help.contains("in addition to time"),
+            "help must not promise an analysis the flag does not enable, got: {help}"
+        );
     }
 }

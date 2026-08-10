@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! CLI handler for `pmat infra-score` command
 //!
-//! Calculates Infrastructure Score (0-100 + 10 bonus) for CI/CD,
+//! Calculates Infrastructure Score (0-100 + 12 bonus) for CI/CD,
 //! build reliability, quality pipeline, deployment, supply chain,
 //! and provable contracts.
 
@@ -123,11 +123,16 @@ fn write_infra_summary(out: &mut String, result: &InfraScore) {
             "  Bonus: \x1b[36m+{:.1}\x1b[0m (provable contracts)",
             bonus
         );
+        // Denominator is derived, not hardcoded: the bonus category is worth 12
+        // (PV-01..PV-05), so a hardcoded "/110.0" could print a total above its
+        // own maximum.
         let _ = writeln!(
             out,
-            "  Total with bonus: {}{:.1}\x1b[0m/110.0",
+            "  Total with bonus: {}{:.1}\x1b[0m/{:.1}",
             score_color,
-            result.categories.total_with_bonus()
+            result.categories.total_with_bonus(),
+            crate::services::infra_score::models::INFRA_SCORE_MAX_POINTS
+                + result.categories.provable_contracts.max_score
         );
     }
 }
@@ -487,6 +492,43 @@ mod format_text_tests {
         let r = make_score(95.0, InfraGrade::APlus, false);
         let out = format_text_output(&r, false, false);
         assert!(!out.contains("\x1b[1mRecommendations\x1b[0m"));
+    }
+
+    // ── Bonus denominator ──
+
+    #[test]
+    fn test_bonus_denominator_matches_bonus_category_max() {
+        use crate::services::infra_score::models::{
+            INFRA_SCORE_BONUS_MAX_POINTS, INFRA_SCORE_MAX_POINTS,
+        };
+        let mut r = make_score(99.0, InfraGrade::APlus, false);
+        // A perfect bonus run: the denominator printed must not be smaller than
+        // the bonus the same output claims to have awarded.
+        r.categories.provable_contracts.score = INFRA_SCORE_BONUS_MAX_POINTS;
+        let out = format_text_output(&r, false, false);
+        let expected = format!(
+            "/{:.1}",
+            INFRA_SCORE_MAX_POINTS + INFRA_SCORE_BONUS_MAX_POINTS
+        );
+        assert!(
+            out.contains(&expected),
+            "expected bonus denominator {expected} in:\n{out}"
+        );
+        assert!(!out.contains("/110.0"), "hardcoded /110.0 denominator");
+    }
+
+    #[test]
+    fn test_bonus_category_default_max_matches_scorer_max() {
+        use crate::services::infra_score::scorers::InfraScorer;
+        let scorer =
+            crate::services::infra_score::scorers::provable_contracts::ProvableContractsScorer::new(
+            );
+        let defaults = InfraCategoryScores::default();
+        assert_eq!(
+            defaults.provable_contracts.max_score,
+            scorer.max_score(),
+            "model default and scorer disagree on the bonus maximum"
+        );
     }
 
     // ── Header always present ──

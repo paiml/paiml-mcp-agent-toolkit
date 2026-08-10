@@ -5,13 +5,37 @@ fn format_output(
 ) -> Result<String> {
     match format {
         crate::cli::DuplicateOutputFormat::Json => format_json_output(report),
-        crate::cli::DuplicateOutputFormat::Human
-        | crate::cli::DuplicateOutputFormat::Summary
-        | crate::cli::DuplicateOutputFormat::Detailed => format_human_output(report),
+        crate::cli::DuplicateOutputFormat::Human => format_human_output(report),
+        crate::cli::DuplicateOutputFormat::Summary => {
+            format_text_output(report, DEFAULT_TOP_FILES, TextDetail::Summary)
+        }
+        crate::cli::DuplicateOutputFormat::Detailed => {
+            format_text_output(report, DEFAULT_TOP_FILES, TextDetail::Detailed)
+        }
         crate::cli::DuplicateOutputFormat::Sarif => format_sarif_output(report),
         crate::cli::DuplicateOutputFormat::Csv => format_csv_output(report),
     }
 }
+
+/// How much of the report a text rendering carries.
+///
+/// `--format summary`, `--format detailed` and `--format human` all routed to
+/// `format_human_output`, so the three produced byte-identical output: the
+/// format documented as "Summary statistics only" printed the whole per-block
+/// detail listing, and "Detailed duplicate listing" silently stopped at the
+/// twentieth block.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TextDetail {
+    /// Header + summary + top files. No per-block listing.
+    Summary,
+    /// Summary plus the first [`HUMAN_BLOCK_LIMIT`] blocks.
+    Human,
+    /// Summary plus EVERY block.
+    Detailed,
+}
+
+/// Blocks the default (`human`) rendering lists before summarising the rest.
+const HUMAN_BLOCK_LIMIT: usize = 20;
 
 /// Format output as JSON
 fn format_json_output(report: &DuplicateReport) -> Result<String> {
@@ -95,12 +119,24 @@ const DEFAULT_TOP_FILES: usize = 10;
 /// display control, and the row list was independently hardcoded to ten rows,
 /// so `--top-files 3` printed ten.
 pub fn format_human_output_with_limit(report: &DuplicateReport, top_files: usize) -> Result<String> {
+    format_text_output(report, top_files, TextDetail::Human)
+}
+
+/// The one text renderer behind `--format summary|human|detailed`; `detail`
+/// decides how much of the block listing it carries.
+fn format_text_output(
+    report: &DuplicateReport,
+    top_files: usize,
+    detail: TextDetail,
+) -> Result<String> {
     let mut output = String::new();
 
     write_header(&mut output)?;
     write_summary(&mut output, report)?;
     write_top_files_section(&mut output, report, top_files)?;
-    write_duplicate_blocks_section(&mut output, report)?;
+    if detail != TextDetail::Summary {
+        write_duplicate_blocks_section(&mut output, report, detail)?;
+    }
 
     Ok(output)
 }
@@ -219,7 +255,11 @@ fn extract_filename(file_path: &str) -> &str {
 }
 
 /// Write the duplicate blocks section
-fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport) -> Result<()> {
+fn write_duplicate_blocks_section(
+    output: &mut String,
+    report: &DuplicateReport,
+    detail: TextDetail,
+) -> Result<()> {
     if report.duplicate_blocks.is_empty() {
         return Ok(());
     }
@@ -228,15 +268,28 @@ fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport)
     use std::fmt::Write;
     writeln!(output, "{}\n", c::subheader("Duplicate Blocks"))?;
 
-    write_block_details(output, &report.duplicate_blocks)?;
-    write_remaining_blocks_count(output, report.duplicate_blocks.len())?;
+    // `detailed` is documented as the "Detailed duplicate listing"; capping it
+    // at twenty blocks like the default rendering is what made it identical to
+    // `human`.
+    let block_limit = match detail {
+        TextDetail::Detailed => usize::MAX,
+        _ => HUMAN_BLOCK_LIMIT,
+    };
+    write_block_details(output, &report.duplicate_blocks, block_limit)?;
+    if block_limit != usize::MAX {
+        write_remaining_blocks_count(output, report.duplicate_blocks.len())?;
+    }
 
     Ok(())
 }
 
 /// Write detailed information about duplicate blocks
-fn write_block_details(output: &mut String, duplicate_blocks: &[DuplicateBlock]) -> Result<()> {
-    for (i, block) in duplicate_blocks.iter().enumerate().take(20) {
+fn write_block_details(
+    output: &mut String,
+    duplicate_blocks: &[DuplicateBlock],
+    limit: usize,
+) -> Result<()> {
+    for (i, block) in duplicate_blocks.iter().enumerate().take(limit) {
         write_block_header(output, i + 1, block)?;
         write_block_locations(output, block)?;
         write_block_preview(output, block)?;
@@ -288,14 +341,14 @@ fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()
 
 /// Write count of remaining blocks if there are more than 20
 fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Result<()> {
-    if total_blocks > 20 {
+    if total_blocks > HUMAN_BLOCK_LIMIT {
         use crate::cli::colors as c;
         use std::fmt::Write;
         writeln!(
             output,
             "  {}... and {} more blocks{}",
             c::seq(c::DIM),
-            total_blocks - 20,
+            total_blocks - HUMAN_BLOCK_LIMIT,
             c::seq(c::RESET)
         )?;
     }
@@ -406,6 +459,110 @@ mod top_files_is_a_row_limit_tests {
         assert!(rendered.contains("Preview:"));
     }
 
+    fn report_with_blocks(n: usize) -> DuplicateReport {
+        let mut report = report_with_files(3);
+        report.duplicate_blocks = (0..n)
+            .map(|i| DuplicateBlock {
+                hash: format!("h{i:02}"),
+                lines: 6,
+                tokens: 20,
+                similarity: 1.0,
+                locations: vec![
+                    DuplicateLocation {
+                        file: format!("src/a{i:02}.rs"),
+                        start_line: 1,
+                        end_line: 6,
+                        content_preview: "fn dup() {}".to_string(),
+                    },
+                    DuplicateLocation {
+                        file: format!("src/b{i:02}.rs"),
+                        start_line: 1,
+                        end_line: 6,
+                        content_preview: "fn dup() {}".to_string(),
+                    },
+                ],
+            })
+            .collect();
+        report
+    }
+
+    fn block_count(rendered: &str) -> usize {
+        rendered.lines().filter(|l| l.contains(" locations)")).count()
+    }
+
+    /// `summary`, `detailed` and `human` all routed to `format_human_output`,
+    /// so `md5sum` of the three renderings matched: "Summary statistics only"
+    /// printed the entire per-block detail listing.
+    #[test]
+    fn summary_omits_the_per_block_listing() {
+        let report = report_with_blocks(3);
+        let summary =
+            format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
+
+        assert!(!summary.contains("Duplicate Blocks"), "{summary}");
+        assert_eq!(block_count(&summary), 0);
+        // The statistics themselves must survive.
+        assert!(summary.contains("Total duplicate blocks:"));
+        assert!(summary.contains("Duplication percentage:"));
+        assert!(summary.contains("Top Files by Duplication"));
+    }
+
+    /// The three text formats must not be byte-identical: `detailed` lists
+    /// every block, `human` stops at twenty, `summary` lists none.
+    #[test]
+    fn the_three_text_formats_differ() {
+        let report = report_with_blocks(25);
+        let summary =
+            format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
+        let human = format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Human).unwrap();
+        let detailed =
+            format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Detailed).unwrap();
+
+        assert_eq!(block_count(&summary), 0);
+        assert_eq!(block_count(&human), HUMAN_BLOCK_LIMIT);
+        assert_eq!(block_count(&detailed), 25);
+
+        assert!(human.contains("... and 5 more blocks"));
+        assert!(
+            !detailed.contains("more blocks"),
+            "detailed lists every block, so nothing remains to summarise"
+        );
+
+        assert_ne!(summary, human);
+        assert_ne!(human, detailed);
+    }
+
+    /// The dispatcher is what `--format` reaches; assert there, too, so a
+    /// re-collapse of the match arms fails.
+    #[test]
+    fn the_format_dispatcher_keeps_the_three_text_formats_apart() {
+        let report = report_with_blocks(25);
+        let of = |f| format_output(&report, f).unwrap();
+        let summary = of(crate::cli::DuplicateOutputFormat::Summary);
+        let human = of(crate::cli::DuplicateOutputFormat::Human);
+        let detailed = of(crate::cli::DuplicateOutputFormat::Detailed);
+
+        assert_ne!(summary, human);
+        assert_ne!(human, detailed);
+        assert_ne!(summary, detailed);
+    }
+
+    /// SARIF `tool.driver.version` / `semanticVersion` were the literals
+    /// "1.0.0" and "2.97.0" — a run of any later pmat reported provenance for
+    /// a release it was not.
+    #[test]
+    fn sarif_reports_the_running_pmat_version() {
+        let report = report_with_blocks(1);
+        let sarif = format_sarif_output(&report).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&sarif).unwrap();
+        let driver = &parsed["runs"][0]["tool"]["driver"];
+
+        assert_eq!(driver["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(driver["semanticVersion"], env!("CARGO_PKG_VERSION"));
+        assert_ne!(driver["version"], "1.0.0");
+        assert_ne!(driver["semanticVersion"], "2.97.0");
+    }
+
     /// Changing the row limit must not touch a single measured figure.
     #[test]
     fn the_summary_is_identical_at_every_row_limit() {
@@ -427,6 +584,11 @@ mod top_files_is_a_row_limit_tests {
 
 /// Format output as SARIF
 fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
+    // `tool.driver.version` / `semanticVersion` were the literals "1.0.0" and
+    // "2.97.0" — two different, both wrong, answers to "which pmat produced
+    // this?". SARIF consumers key result provenance on these, so a run from
+    // any pmat since 2.97.0 claimed to be 2.97.0. The running version is the
+    // only honest value.
     let sarif = serde_json::json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -434,9 +596,9 @@ fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
             "tool": {
                 "driver": {
                     "name": "pmat-duplicates",
-                    "version": "1.0.0",
+                    "version": env!("CARGO_PKG_VERSION"),
                     "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
-                    "semanticVersion": "2.97.0"
+                    "semanticVersion": env!("CARGO_PKG_VERSION")
                 }
             },
             "results": report.duplicate_blocks.iter().map(|block| {
