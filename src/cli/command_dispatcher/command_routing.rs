@@ -185,7 +185,12 @@ impl CommandDispatcher {
                 }
                 #[cfg(not(feature = "org-intelligence"))]
                 {
-                    anyhow::bail!("Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence")
+                    // `org analyze` is gone in EVERY build — the feature-enabled
+                    // arm bails with the same removal notice. Sending a user off
+                    // on a multi-minute rebuild to reach a second, different
+                    // error is worse than telling them now. Only `org localize`
+                    // is genuinely gated by the feature.
+                    crate::cli::handlers::org_handlers::org_not_enabled_error(&_org_cmd)
                 }
             }
             Commands::Prompt(prompt_cmd) => handlers::handle_prompt_command(prompt_cmd).await,
@@ -209,15 +214,18 @@ impl CommandDispatcher {
                 quick,
                 matrix,
                 fix,
-                format: _,
+                format,
                 verbose,
             } => {
+                // `format` was bound as `_` here, so every advertised value of
+                // --format printed the same human banner: `-f json` was not JSON.
                 crate::cli::handlers::ci_local_handler::handle_ci_local(
                     &path,
                     quick,
                     matrix.as_deref(),
                     fix,
                     verbose,
+                    format,
                 )
                 .await
             }

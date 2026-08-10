@@ -189,34 +189,62 @@ impl TdgAnalyzerAst {
         Ok(crate::tdg::Comparison::new(score1, score2))
     }
 
+    /// Enumerate the files TDG will score under `dir`.
+    ///
+    /// This was a hand-rolled `read_dir` recursion that consulted nothing but a
+    /// hardcoded directory-name skip list — no `.gitignore`, no hidden-directory
+    /// handling — so it descended into ignored trees and scored them: on this
+    /// repo it discovered 133,825 files for 4,260 tracked ones, because
+    /// `.claude/worktrees/` holds whole copies of the very tree being analysed,
+    /// and every copy contributed its files to the project average. Both
+    /// `pmat tdg <dir>` and `pmat analyze tdg -p <dir>` reported scores over
+    /// that inflated universe. The walk is now `.gitignore`-aware, like the one
+    /// `check_for_critical_defects` already uses.
     fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        let mut files = Vec::new();
-        self.discover_files_recursive(dir, &mut files)?;
-        Ok(files)
-    }
+        use ignore::WalkBuilder;
 
-    fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        let mut files = Vec::new();
         if !dir.is_dir() {
-            return Ok(());
+            return Ok(files);
         }
 
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                if !self.should_skip_directory(&path) {
-                    self.discover_files_recursive(&path, files)?;
+        for entry in WalkBuilder::new(dir)
+            .follow_links(false)
+            .hidden(true)
+            .parents(true)
+            .ignore(true)
+            .git_ignore(true)
+            .git_global(true)
+            .git_exclude(true)
+            // Honour a .gitignore even when the tree is not itself a checkout:
+            // an ignored directory is ignored because it is not source, and
+            // whether `.git` happens to sit above it does not change that.
+            .require_git(false)
+            .filter_entry(|entry| {
+                // Keep the historical name-based skip list on top of the ignore
+                // rules: `tests/`, `vendor/` and friends are analysed by other
+                // surfaces and are not part of the TDG population.
+                if entry.depth() == 0 {
+                    return true;
                 }
-            } else if self.should_analyze_file(&path) {
-                files.push(path);
+                if entry.file_type().is_some_and(|t| t.is_dir()) {
+                    return !Self::is_skipped_directory(entry.path());
+                }
+                true
+            })
+            .build()
+            .filter_map(std::result::Result::ok)
+        {
+            let path = entry.path();
+            if entry.file_type().is_some_and(|t| t.is_file()) && self.should_analyze_file(path) {
+                files.push(path.to_path_buf());
             }
         }
 
-        Ok(())
+        Ok(files)
     }
 
-    fn should_skip_directory(&self, path: &Path) -> bool {
+    fn is_skipped_directory(path: &Path) -> bool {
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             matches!(
                 name,
@@ -278,4 +306,54 @@ impl TdgAnalyzerAst {
         }
     }
 
+}
+
+#[cfg(test)]
+mod discover_files_tests {
+    use super::*;
+
+    /// The 31x file inflation: `discover_files` used to walk gitignored and
+    /// hidden trees, so `.claude/worktrees/` — whole copies of the tree being
+    /// analysed — contributed their files to the project score.
+    #[test]
+    fn discover_files_honours_gitignore_and_hidden_directories() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // A named subdirectory, because `tempfile` roots are themselves dot-
+        // prefixed and this walk skips hidden entries.
+        let root = &dir.path().join("proj");
+        std::fs::create_dir_all(root).expect("mkdir");
+
+        std::fs::write(root.join(".gitignore"), "ignored/\n").expect("write gitignore");
+        std::fs::write(root.join("kept.rs"), "pub fn kept() {}\n").expect("write");
+
+        std::fs::create_dir_all(root.join("ignored")).expect("mkdir");
+        std::fs::write(root.join("ignored/copy.rs"), "pub fn copy() {}\n").expect("write");
+
+        std::fs::create_dir_all(root.join(".worktrees/wt")).expect("mkdir");
+        std::fs::write(root.join(".worktrees/wt/copy.rs"), "pub fn copy() {}\n").expect("write");
+
+        std::fs::create_dir_all(root.join("tests")).expect("mkdir");
+        std::fs::write(root.join("tests/it.rs"), "pub fn it() {}\n").expect("write");
+
+        let analyzer = TdgAnalyzerAst::new().expect("analyzer");
+        let files = analyzer.discover_files(root).expect("discover");
+        let names: Vec<String> = files
+            .iter()
+            .map(|p| p.strip_prefix(root).unwrap_or(p).display().to_string())
+            .collect();
+
+        assert!(names.iter().any(|n| n.ends_with("kept.rs")), "{names:?}");
+        assert!(
+            !names.iter().any(|n| n.contains("ignored")),
+            "gitignored trees must not be scored: {names:?}"
+        );
+        assert!(
+            !names.iter().any(|n| n.contains(".worktrees")),
+            "hidden trees must not be scored: {names:?}"
+        );
+        assert!(
+            !names.iter().any(|n| n.starts_with("tests")),
+            "the historical tests/ skip must survive: {names:?}"
+        );
+    }
 }

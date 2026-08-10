@@ -295,6 +295,44 @@ pub fn is_batuta_crate(name: &str) -> bool {
 
 // ── Mismatch Detection ──────────────────────────────────────────────────
 
+/// Lowest version a manifest requirement admits, with omitted components
+/// filled in as 0 (`"2.17"` -> 2.17.0, `"^0.4.22"` -> 0.4.22).
+fn requirement_floor(req: &str) -> Option<semver::Version> {
+    let head = req.trim().split(',').next()?.trim();
+    let head = head.trim_start_matches(['^', '~', '=', '>', '<']).trim();
+
+    let mut parts = head.split('.');
+    let major = parts.next()?.parse::<u64>().ok()?;
+    let component = |p: Option<&str>| {
+        p.and_then(|p| p.split(['-', '+']).next())
+            .and_then(|p| p.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    let minor = component(parts.next());
+    let patch = component(parts.next());
+
+    Some(semver::Version::new(major, minor, patch))
+}
+
+/// Is the manifest requirement `current` behind registry version `latest`?
+///
+/// This used to be a raw string inequality after stripping `^`/`~`, so
+/// `pmcp = "2.17"` — a requirement 2.17.0 satisfies exactly — was reported as
+/// `2.17 -> 2.17.0`, and the outdated count necessarily equalled the total dep
+/// count (23 of 23 in this repo). Compare versions as versions: a requirement
+/// whose floor already is the latest version is not outdated, whatever the two
+/// strings look like. Unparseable input falls back to the string compare so an
+/// unrecognised requirement is never silently reported as up to date.
+fn requirement_is_outdated(current: &str, latest: &str) -> bool {
+    match (requirement_floor(current), semver::Version::parse(latest)) {
+        (Some(floor), Ok(latest_version)) => floor < latest_version,
+        _ => {
+            let current_clean = current.trim_start_matches('^').trim_start_matches('~');
+            current_clean != latest
+        }
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 /// Detect mismatches.
 pub fn detect_mismatches(
@@ -314,8 +352,7 @@ pub fn detect_mismatches(
         }
         if let Some(current) = &dep.version {
             if let Some(latest) = latest_versions.get(&dep.name) {
-                let current_clean = current.trim_start_matches('^').trim_start_matches('~');
-                if current_clean != latest.as_str() {
+                if requirement_is_outdated(current, latest) {
                     mismatches.push(DepMismatch {
                         repo: repo_name.to_string(),
                         crate_name: dep.name.clone(),
@@ -543,8 +580,7 @@ fn print_status_table(
                 .map(|s| s.as_str())
                 .unwrap_or("?");
 
-            let current_clean = current.trim_start_matches('^').trim_start_matches('~');
-            let is_outdated = latest != "?" && current_clean != latest;
+            let is_outdated = latest != "?" && requirement_is_outdated(current, latest);
 
             if is_outdated {
                 println!(
@@ -948,6 +984,54 @@ proptest = "1.0"
         let mismatches = detect_mismatches("my-repo", &deps, &latest);
         // ^0.4.30 should match 0.4.30 (caret stripped)
         assert_eq!(mismatches.len(), 0);
+    }
+
+    /// `pmcp = "2.17"` is satisfied exactly by 2.17.0, but the freshness check
+    /// was a string inequality, so it printed `✗ pmcp 2.17 -> 2.17.0` and the
+    /// outdated count came back equal to the dep count (23 of 23).
+    #[test]
+    fn test_detect_mismatches_two_component_requirement_is_not_outdated() {
+        let deps = vec![DepInfo {
+            name: "pmcp".to_string(),
+            version: Some("2.17".to_string()),
+            source: DepSource::Registry,
+            section: "dependencies".to_string(),
+        }];
+
+        let mut latest = BTreeMap::new();
+        latest.insert("pmcp".to_string(), "2.17.0".to_string());
+
+        let mismatches = detect_mismatches("my-repo", &deps, &latest);
+        assert!(
+            mismatches.is_empty(),
+            "2.17 is 2.17.0, yet it was reported as {:?}",
+            mismatches
+                .iter()
+                .map(|m| format!("{} -> {}", m.current_version, m.latest_version))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_requirement_floor_pads_missing_components() {
+        assert_eq!(
+            requirement_floor("2.17"),
+            Some(semver::Version::new(2, 17, 0))
+        );
+        assert_eq!(requirement_floor("1"), Some(semver::Version::new(1, 0, 0)));
+        assert_eq!(
+            requirement_floor("^0.4.22"),
+            Some(semver::Version::new(0, 4, 22))
+        );
+        assert_eq!(requirement_floor("*"), None);
+    }
+
+    #[test]
+    fn test_requirement_is_outdated_still_flags_a_real_lag() {
+        // A genuinely older floor is still reported, so `stack sync` keeps working.
+        assert!(requirement_is_outdated("0.61", "0.63.0"));
+        assert!(requirement_is_outdated("^0.4.22", "0.4.30"));
+        assert!(!requirement_is_outdated("0.4.30", "0.4.30"));
     }
 
     #[test]

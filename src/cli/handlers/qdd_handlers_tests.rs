@@ -343,7 +343,7 @@ mod coverage_tests {
         let result = QddResult {
             code: "fn main() { println!(\"Hello\"); }".to_string(),
             tests: "#[test] fn test_main() { assert!(true); }".to_string(),
-            documentation: "/// Main function".to_string(),
+            documentation: "# main\n\nMain function\n".to_string(),
             quality_score: QualityScore {
                 overall: 80.0,
                 complexity: 3,
@@ -360,10 +360,22 @@ mod coverage_tests {
         let res = output_generated_code(Some(output_path.clone()), &result);
         assert!(res.is_ok());
 
+        // This used to assert the Markdown documentation was inside output.rs too.
+        // That encoded the defect: the generator emits Markdown ("# add_two",
+        // "## Returns", a ```rust fence), so concatenating it onto the source
+        // produced a .rs file that could not parse. Rust goes in the source file,
+        // the prose goes in a sibling .md.
         let content = fs::read_to_string(&output_path).unwrap();
         assert!(content.contains("fn main()"));
         assert!(content.contains("#[test]"));
-        assert!(content.contains("/// Main function"));
+        assert!(
+            !content.contains("# main"),
+            "Markdown documentation must not be concatenated into the .rs file: {content}"
+        );
+
+        let doc_content = fs::read_to_string(output_path.with_extension("md")).unwrap();
+        assert!(doc_content.contains("# main"));
+        assert!(doc_content.contains("Main function"));
     }
 
     #[test]

@@ -98,19 +98,26 @@ async fn handle_validate_tiles(
     shared_memory: usize,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    let shared_required = tile_kv.saturating_mul(head_dim).saturating_mul(2);
+    let overflows = shared_required > shared_memory;
+    let undersized = tile_kv < head_dim;
+
     let output = match config.format {
         CudaTdgOutputFormat::Json => {
+            let mut issues: Vec<&str> = Vec::new();
+            if undersized {
+                issues.push("PAR-041: tile_kv < head_dim causes shared memory overflow");
+            }
+            if overflows {
+                issues.push("Shared memory overflow: required exceeds the limit");
+            }
             let result = serde_json::json!({
                 "head_dim": head_dim,
                 "tile_kv": tile_kv,
                 "shared_memory_limit": shared_memory,
-                "valid": tile_kv >= head_dim,
-                "shared_memory_required": tile_kv * head_dim * 2,
-                "issues": if tile_kv < head_dim {
-                    vec!["PAR-041: tile_kv < head_dim causes shared memory overflow"]
-                } else {
-                    vec![]
-                }
+                "valid": issues.is_empty(),
+                "shared_memory_required": shared_required,
+                "issues": issues
             });
             serde_json::to_string_pretty(&result)?
         }
@@ -119,11 +126,25 @@ async fn handle_validate_tiles(
 
     write_output(&output, config)?;
 
-    if tile_kv < head_dim {
+    // The printed verdict and the exit status used to be computed from
+    // different conditions: the text renderer required `tile_kv >= head_dim`
+    // AND the configuration to fit in shared memory, while the only error
+    // return was the PAR-041 check. `--head-dim 99999 --tile-kv 99999` printed
+    // "Status: INVALID / Issue: Shared memory overflow" and exited 0, so CI
+    // gating on this command passed a configuration overflowing shared memory
+    // by ~400,000x. One verdict now drives both.
+    if undersized {
         return Err(anyhow!(
             "PAR-041: tile_kv ({}) < head_dim ({})",
             tile_kv,
             head_dim
+        ));
+    }
+    if overflows {
+        return Err(anyhow!(
+            "Shared memory overflow: {} bytes required, {} bytes available",
+            shared_required,
+            shared_memory
         ));
     }
 
@@ -132,7 +153,7 @@ async fn handle_validate_tiles(
 
 fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: usize) -> String {
     let valid = tile_kv >= head_dim;
-    let shared_required = tile_kv * head_dim * 2; // FP16
+    let shared_required = tile_kv.saturating_mul(head_dim).saturating_mul(2); // FP16
 
     let mut output = String::new();
     output.push_str("Tile Dimension Validation\n");
@@ -162,4 +183,77 @@ fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: us
         }
     }
     output
+}
+
+#[cfg(test)]
+mod validate_tiles_verdict_tests {
+    use super::*;
+
+    fn config(output: Option<PathBuf>) -> CudaTdgCommandConfig {
+        CudaTdgCommandConfig {
+            path: PathBuf::from("."),
+            command: None,
+            format: CudaTdgOutputFormat::Terminal,
+            min_score: 0.0,
+            fail_on_p0: false,
+            simd: false,
+            wgpu: false,
+            output,
+            quiet: true,
+        }
+    }
+
+    fn rendered_status(head_dim: usize, tile_kv: usize, shared_memory: usize) -> String {
+        let text = format_validate_tiles_text(head_dim, tile_kv, shared_memory);
+        if text.contains("Status: VALID") {
+            "VALID".to_string()
+        } else {
+            "INVALID".to_string()
+        }
+    }
+
+    async fn exits_ok(head_dim: usize, tile_kv: usize, shared_memory: usize) -> bool {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg = config(Some(dir.path().join("out.txt")));
+        handle_validate_tiles(head_dim, tile_kv, shared_memory, &cfg)
+            .await
+            .is_ok()
+    }
+
+    /// The printed verdict and the exit status came from different conditions:
+    /// a shared-memory overflow printed "Status: INVALID" and still returned
+    /// Ok(()), so a CI job gating on this command passed the overflowing
+    /// configuration. Every INVALID verdict must exit nonzero.
+    #[tokio::test]
+    async fn every_invalid_verdict_is_an_error() {
+        // (head_dim, tile_kv, shared_memory)
+        let cases = [
+            (64usize, 64usize, 49152usize),   // valid
+            (128, 128, 49152),                // valid
+            (128, 64, 49152),                 // PAR-041: tile_kv < head_dim
+            (99999, 99999, 49152),            // shared memory overflow
+            (128, 256, 1024),                 // overflow only
+        ];
+
+        for (head_dim, tile_kv, shared_memory) in cases {
+            let status = rendered_status(head_dim, tile_kv, shared_memory);
+            let ok = exits_ok(head_dim, tile_kv, shared_memory).await;
+            assert_eq!(
+                status == "VALID",
+                ok,
+                "head_dim={head_dim} tile_kv={tile_kv} shared_memory={shared_memory}: \
+                 printed {status} but exit was {}",
+                if ok { "0" } else { "nonzero" }
+            );
+        }
+    }
+
+    /// The overflow case specifically: it used to be the silent one.
+    #[tokio::test]
+    async fn shared_memory_overflow_is_an_error() {
+        assert!(
+            !exits_ok(99999, 99999, 49152).await,
+            "a configuration overflowing shared memory must not exit 0"
+        );
+    }
 }

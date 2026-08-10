@@ -69,14 +69,11 @@ impl RefactorStateMachine {
             State::Scan { targets } => {
                 if targets.is_empty() {
                     State::Complete {
-                        summary: Summary::default(),
+                        summary: self.session_summary(),
                     }
                 } else {
                     State::Analyze {
-                        current: FileId {
-                            path: targets[0].clone(),
-                            hash: 0, // Will be computed during analysis
-                        },
+                        current: Self::file_id(&targets[0]),
                     }
                 }
             }
@@ -85,12 +82,9 @@ impl RefactorStateMachine {
             },
             State::Plan { violations } => {
                 if violations.is_empty() {
-                    self.next_target().map_or(
-                        State::Complete {
-                            summary: Summary::default(),
-                        },
-                        |t| State::Analyze { current: t },
-                    )
+                    let summary = self.session_summary();
+                    self.next_target()
+                        .map_or(State::Complete { summary }, |t| State::Analyze { current: t })
                 } else {
                     State::Refactor {
                         operation: violations[0].suggested_fix.clone().unwrap_or(
@@ -112,12 +106,11 @@ impl RefactorStateMachine {
             State::Emit { .. } => State::Checkpoint {
                 reason: "cycle_complete".to_string(),
             },
-            State::Checkpoint { .. } => self.next_target().map_or(
-                State::Complete {
-                    summary: Summary::default(),
-                },
-                |t| State::Analyze { current: t },
-            ),
+            State::Checkpoint { .. } => {
+                let summary = self.session_summary();
+                self.next_target()
+                    .map_or(State::Complete { summary }, |t| State::Analyze { current: t })
+            }
             State::Complete { .. } => {
                 return Ok(&self.current);
             }
@@ -182,12 +175,66 @@ impl RefactorStateMachine {
     fn next_target(&mut self) -> Option<FileId> {
         self.current_target_index += 1;
         if self.current_target_index < self.targets.len() {
-            Some(FileId {
-                path: self.targets[self.current_target_index].clone(),
-                hash: 0,
-            })
+            Some(Self::file_id(&self.targets[self.current_target_index]))
         } else {
             None
+        }
+    }
+
+    /// Identify a target by its *contents*.
+    ///
+    /// `FileId.hash` was the literal `0` with the comment "Will be computed
+    /// during analysis" — nothing ever computed it, so `refactor.nextIteration`
+    /// reported `{"path": "…", "hash": 0}` for every file, including files that
+    /// did not exist. An unreadable file keeps hash 0: that is "not measured",
+    /// not "empty".
+    fn file_id(path: &std::path::Path) -> FileId {
+        let hash = std::fs::read(path).map_or(0, |bytes| {
+            let digest = blake3::hash(&bytes);
+            let mut first8 = [0u8; 8];
+            first8.copy_from_slice(&digest.as_bytes()[..8]);
+            u64::from_le_bytes(first8)
+        });
+        FileId {
+            path: path.to_path_buf(),
+            hash,
+        }
+    }
+
+    /// Summarise the session from what actually happened.
+    ///
+    /// Every `State::Complete` used to carry `Summary::default()` — a struct
+    /// of hardcoded zeros — so a session that scanned and analysed a real file
+    /// still reported `files_processed: 0` and `total_time: 0s`. The counts
+    /// below are derived from the recorded transitions. `refactors_applied`,
+    /// `complexity_reduction` and `satd_removed` stay zero because this state
+    /// machine applies nothing (the tools disclose the simulated analysis
+    /// engine in their MCP descriptions); reporting anything else would be
+    /// inventing work that never happened.
+    fn session_summary(&self) -> Summary {
+        let files_processed = self
+            .history
+            .iter()
+            .filter(|t| matches!(t.to, State::Analyze { .. }))
+            .count() as u32;
+
+        let total_time = self
+            .history
+            .first()
+            .and_then(|first| {
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .ok()
+                    .map(|now| Duration::from_secs(now.as_secs().saturating_sub(first.timestamp)))
+            })
+            .unwrap_or_default();
+
+        Summary {
+            files_processed,
+            refactors_applied: 0,
+            complexity_reduction: 0.0,
+            satd_removed: 0,
+            total_time,
         }
     }
 
@@ -207,6 +254,59 @@ impl RefactorStateMachine {
             estimated_improvement: 0.5,
             _padding: [0; 2],
         }
+    }
+}
+
+#[cfg(test)]
+mod session_summary_tests {
+    //! The Complete summary must describe the session that ran, not a
+    //! `Summary::default()` of hardcoded zeros.
+    use super::*;
+
+    #[test]
+    fn completing_a_one_file_session_reports_that_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("lib.rs");
+        std::fs::write(&file, "pub fn f() -> i32 { 1 }\n").expect("write fixture");
+
+        let mut sm = RefactorStateMachine::new(vec![file.clone()], RefactorConfig::default());
+        // Scan -> Analyze
+        sm.advance().expect("scan");
+        let State::Analyze { current } = &sm.current else {
+            panic!("expected Analyze, got {:?}", sm.current)
+        };
+        assert_ne!(
+            current.hash, 0,
+            "the analysed file's id must be a real content hash"
+        );
+
+        sm.advance().expect("analyze"); // -> Plan (no violations)
+        sm.advance().expect("plan"); // -> Complete
+        let State::Complete { summary } = &sm.current else {
+            panic!("expected Complete, got {:?}", sm.current)
+        };
+        assert_eq!(
+            summary.files_processed, 1,
+            "one file was scanned and analysed"
+        );
+    }
+
+    #[test]
+    fn a_files_contents_decide_its_hash() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let a = dir.path().join("a.rs");
+        let b = dir.path().join("b.rs");
+        std::fs::write(&a, "pub fn a() {}\n").expect("write a");
+        std::fs::write(&b, "pub fn b() {}\n").expect("write b");
+        assert_ne!(
+            RefactorStateMachine::file_id(&a).hash,
+            RefactorStateMachine::file_id(&b).hash
+        );
+        // A path that cannot be read is "not measured", i.e. still 0.
+        assert_eq!(
+            RefactorStateMachine::file_id(&dir.path().join("missing.rs")).hash,
+            0
+        );
     }
 }
 

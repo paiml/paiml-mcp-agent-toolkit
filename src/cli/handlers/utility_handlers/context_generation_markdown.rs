@@ -19,15 +19,21 @@ fn generate_markdown_context(
     builder.content.push_str("## Project Structure\n\n");
 
     // Add project-level metrics summary
+    //
+    // These counts must describe the document they head. They used to be read
+    // from `complexity_report` while the body below is rendered from
+    // `analyses.ast_contexts`, so one document carried three mutually different
+    // function totals (32420 in this header, 22925 `- **Function**` entries in
+    // the body, 33754 summed from the per-file lines). Count what is actually
+    // emitted instead.
+    let (total_files, total_functions) = count_emitted_body(context);
+    builder
+        .content
+        .push_str(&format!("- **Total Files**: {}\n", total_files));
+    builder
+        .content
+        .push_str(&format!("- **Total Functions**: {}\n", total_functions));
     if let Some(complexity_report) = &context.analyses.complexity_report {
-        builder.content.push_str(&format!(
-            "- **Total Files**: {}\n",
-            complexity_report.files.len()
-        ));
-        builder.content.push_str(&format!(
-            "- **Total Functions**: {}\n",
-            complexity_report.summary.total_functions
-        ));
         builder.content.push_str(&format!(
             "- **Median Cyclomatic**: {:.2}\n",
             complexity_report.summary.median_cyclomatic
@@ -37,9 +43,6 @@ fn generate_markdown_context(
             complexity_report.summary.median_cognitive
         ));
     } else {
-        // Basic fallback metrics
-        builder.content.push_str("- **Total Files**: 0\n");
-        builder.content.push_str("- **Total Functions**: 0\n");
         builder.content.push('\n');
     }
 
@@ -86,6 +89,28 @@ fn generate_markdown_context(
     Ok(builder.content)
 }
 
+/// Count the file sections and function entries `generate_markdown_context`
+/// will emit into the body, so the header can report them rather than a
+/// different analysis pass's numbers.
+fn count_emitted_body(context: &crate::services::deep_context::DeepContext) -> (usize, usize) {
+    let files = context.analyses.ast_contexts.len();
+    let functions = context
+        .analyses
+        .ast_contexts
+        .iter()
+        .map(|c| count_listed_functions(&c.base))
+        .sum();
+    (files, functions)
+}
+
+/// Number of `- **Function**` entries a file section will emit.
+fn count_listed_functions(file: &crate::services::context::FileContext) -> usize {
+    file.items
+        .iter()
+        .filter(|item| matches!(item, crate::services::context::AstItem::Function { .. }))
+        .count()
+}
+
 /// Add simple file section with annotated AST
 fn add_simple_file_section(
     builder: &mut MarkdownBuilder,
@@ -98,20 +123,20 @@ fn add_simple_file_section(
     // File-level metrics from analyses (BUG-007 FIX: shared path matching)
     let file_metrics = find_file_metrics(file, analyses);
 
+    // **Functions** counts the entries listed immediately below it, not the
+    // complexity report's own tally for the file: the two disagree (the report
+    // also counts methods and nested items this listing does not emit), and
+    // summing the old per-file line gave a third project-wide total that
+    // matched neither the header nor the body.
+    let function_count = count_listed_functions(file);
+
     if let Some(file_metrics) = file_metrics {
         builder.content.push_str(&format!(
             "**File Complexity**: {} | **Functions**: {}\n\n",
-            file_metrics.total_complexity.cyclomatic,
-            file_metrics.functions.len()
+            file_metrics.total_complexity.cyclomatic, function_count
         ));
     } else {
-        // BUG-007 FIX: Fallback - count functions from file.items if complexity report missing
-        let function_count = file
-            .items
-            .iter()
-            .filter(|item| matches!(item, crate::services::context::AstItem::Function { .. }))
-            .count();
-
+        // BUG-007 FIX: Fallback - complexity report missing for this file
         if function_count > 0 || !file.items.is_empty() {
             builder.content.push_str(&format!(
                 "**File Complexity**: N/A | **Functions**: {}\n\n",
@@ -155,5 +180,87 @@ fn format_ast_item_line(
             }
         }
         _ => String::new(),
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod header_body_agreement_tests {
+    use super::*;
+    use crate::services::complexity::{ComplexityReport, ComplexitySummary};
+    use crate::services::context::{AstItem, FileContext};
+    use crate::services::deep_context::{DeepContext, DefectAnnotations, EnhancedFileContext};
+
+    fn file_with_functions(path: &str, names: &[&str]) -> EnhancedFileContext {
+        EnhancedFileContext {
+            base: FileContext {
+                path: path.to_string(),
+                language: "rust".to_string(),
+                items: names
+                    .iter()
+                    .map(|n| AstItem::Function {
+                        name: (*n).to_string(),
+                        visibility: "pub".to_string(),
+                        is_async: false,
+                        line: 1,
+                    })
+                    .collect(),
+                complexity_metrics: None,
+            },
+            complexity_metrics: None,
+            churn_metrics: None,
+            defects: DefectAnnotations {
+                dead_code: None,
+                technical_debt: vec![],
+                complexity_violations: vec![],
+                tdg_score: None,
+            },
+            symbol_id: path.to_string(),
+        }
+    }
+
+    /// The `Total Files` / `Total Functions` header must count what the document
+    /// below it actually contains. It used to be read from the complexity report
+    /// while the body was rendered from `ast_contexts`, so one document carried
+    /// three mutually different function totals.
+    #[test]
+    fn header_totals_match_the_body_they_head() {
+        let mut context = DeepContext::default();
+        context.analyses.ast_contexts = vec![
+            file_with_functions("src/a.rs", &["one", "two"]),
+            file_with_functions("src/b.rs", &["three"]),
+        ];
+        // A complexity report that disagrees with the body, as the real one does.
+        context.analyses.complexity_report = Some(ComplexityReport {
+            summary: ComplexitySummary {
+                total_files: 7,
+                total_functions: 999,
+                ..ComplexitySummary::default()
+            },
+            violations: vec![],
+            hotspots: vec![],
+            files: vec![],
+        });
+
+        let md =
+            generate_markdown_context("rust", std::path::Path::new("/repo"), &context).unwrap();
+
+        assert!(
+            md.contains("- **Total Files**: 2\n"),
+            "header must count the emitted file sections:\n{md}"
+        );
+        assert!(
+            md.contains("- **Total Functions**: 3\n"),
+            "header must count the emitted function entries:\n{md}"
+        );
+        assert!(
+            !md.contains("999"),
+            "header must not report a count from a different analysis pass:\n{md}"
+        );
+
+        let sections = md.matches("\n### ").count();
+        let functions = md.matches("- **Function**").count();
+        assert_eq!(sections, 2);
+        assert_eq!(functions, 3);
     }
 }

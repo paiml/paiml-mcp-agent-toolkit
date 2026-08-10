@@ -165,7 +165,7 @@ impl StorageBackend for LibsqlBackend {
         if let Ok(count) =
             db.query_row::<i64, _, _>("SELECT COUNT(*) FROM tdg_storage", [], |row| row.get(0))
         {
-            stats.insert("entries".to_string(), count.to_string());
+            stats.insert(STAT_KEY_ENTRIES.to_string(), count.to_string());
         }
 
         // Get database size

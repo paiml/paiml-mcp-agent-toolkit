@@ -24,6 +24,30 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "org-intelligence")]
 use tracing::info;
 
+/// The error a build without `org-intelligence` must return for `pmat org …`.
+///
+/// The `#[cfg(not(feature = "org-intelligence"))]` dispatch arms used to bail
+/// with "Rebuild with --features org-intelligence" for every subcommand. For
+/// `org analyze` that hint is known-wrong at build time: the feature-enabled arm
+/// bails too, because the upstream organizational-analysis API was removed. The
+/// rebuild cost the user minutes and delivered a second, different error. Only
+/// `org localize` is genuinely gated by the feature.
+pub fn org_not_enabled_error(org_cmd: &crate::cli::commands::OrgCommands) -> anyhow::Result<()> {
+    match org_cmd {
+        crate::cli::commands::OrgCommands::Analyze { .. } => anyhow::bail!(
+            "`pmat org analyze` is no longer available: the upstream \
+organizational-intelligence-plugin (aprender-orchestrate) crate removed its \
+organizational-analysis API (GitHub mining, defect-pattern analysis, and report \
+generation) in 0.41 with no replacement. Rebuilding with --features \
+org-intelligence will not bring it back. Use `pmat org localize` for native \
+Tarantula fault localization, which is unaffected."
+        ),
+        _ => anyhow::bail!(
+            "Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence"
+        ),
+    }
+}
+
 /// Handle organizational intelligence commands
 #[cfg(feature = "org-intelligence")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -262,5 +286,68 @@ mod tests {
         // This will fail (org doesn't exist) but proves the function signature is correct
         let result = handle_org_command(cmd).await;
         assert!(result.is_err(), "Expected error for nonexistent org");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod org_not_enabled_tests {
+    use crate::cli::commands::OrgCommands;
+    use std::path::PathBuf;
+
+    /// Without the feature, `org analyze` used to be told to rebuild with
+    /// `--features org-intelligence` — but the enabled arm bails too, because
+    /// the upstream analysis API was removed. The hint cost a multi-minute
+    /// rebuild and delivered a second, different error.
+    #[test]
+    fn analyze_is_reported_as_removed_not_as_a_missing_feature() {
+        let cmd = OrgCommands::Analyze {
+            org: "paiml".to_string(),
+            output: PathBuf::from("/tmp/org.json"),
+            max_concurrent: 1,
+            summarize: false,
+            strip_pii: false,
+            top_n: 10,
+            min_frequency: 3,
+        };
+
+        let err = super::org_not_enabled_error(&cmd).unwrap_err().to_string();
+        assert!(
+            err.contains("no longer available"),
+            "must state the command is gone, got: {err}"
+        );
+        assert!(
+            err.contains("org localize"),
+            "must point at the surviving command, got: {err}"
+        );
+        assert!(
+            !err.starts_with("Organizational intelligence feature is not enabled"),
+            "must not send the user off on a rebuild that cannot help: {err}"
+        );
+    }
+
+    /// `org localize` genuinely is feature-gated, so it keeps the rebuild hint.
+    #[test]
+    fn localize_keeps_the_rebuild_hint() {
+        let cmd = OrgCommands::Localize {
+            passed_coverage: PathBuf::from("p.info"),
+            failed_coverage: PathBuf::from("f.info"),
+            passed_count: 1,
+            failed_count: 1,
+            formula: "tarantula".to_string(),
+            top_n: 10,
+            output: None,
+            ensemble: false,
+            calibrated: false,
+            confidence_threshold: 0.5,
+            enrich_tdg: false,
+            repo: PathBuf::from("."),
+        };
+
+        let err = super::org_not_enabled_error(&cmd).unwrap_err().to_string();
+        assert!(
+            err.contains("--features org-intelligence"),
+            "localize really is gated by the feature, got: {err}"
+        );
     }
 }

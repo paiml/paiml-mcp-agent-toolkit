@@ -26,14 +26,11 @@ use serde_json::{json, Value};
 use std::{
     path::PathBuf,
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use tokio::sync::RwLock;
 use tower::ServiceBuilder;
-use tower_http::{
-    cors::{Any, CorsLayer},
-    trace::TraceLayer,
-};
+use tower_http::trace::TraceLayer;
 use tracing::{debug, error, info};
 
 /// Shared state for the TDG dashboard
@@ -45,6 +42,12 @@ pub struct DashboardState {
     pub analyzer: Arc<TdgAnalyzer>,
     /// Real-time metrics cache
     pub metrics_cache: Arc<RwLock<SystemMetrics>>,
+    /// When this dashboard process started serving.
+    ///
+    /// `/api/health` reported `uptime_seconds` as seconds since the UNIX epoch
+    /// (≈56.6 years, and byte-identical to the payload's own `timestamp`), which
+    /// never changed as the server ran. Uptime is measured from here.
+    pub started_at: Instant,
 }
 
 /// System metrics for dashboard display
@@ -60,7 +63,14 @@ pub struct SystemMetrics {
 /// Storage metrics.
 pub struct StorageMetrics {
     pub total_entries: u64,
-    pub cache_hit_ratio: f64,
+    /// Hit ratio of the tiered cache, or `None` when it was not measured.
+    ///
+    /// This was the literal `0.85` in both `/api/metrics` and
+    /// `/api/storage/stats` — reported over a store holding zero entries, and
+    /// fed straight into the `< 0.7` "Low cache hit ratio" health check, which
+    /// therefore could never fire. `TieredStore` keeps no hit/miss counters, so
+    /// until it does the honest answer is `null`, not an estimate.
+    pub cache_hit_ratio: Option<f64>,
     pub compression_ratio: f64,
     pub backend_type: String,
     pub storage_size_mb: f64,
@@ -113,7 +123,7 @@ impl DashboardState {
             timestamp: SystemTime::now(),
             storage_stats: StorageMetrics {
                 total_entries: 0,
-                cache_hit_ratio: 0.0,
+                cache_hit_ratio: None,
                 compression_ratio: 0.0,
                 backend_type: "sled".to_string(),
                 storage_size_mb: 0.0,
@@ -137,6 +147,7 @@ impl DashboardState {
             storage,
             analyzer,
             metrics_cache: Arc::new(RwLock::new(initial_metrics)),
+            started_at: Instant::now(),
         })
     }
 
@@ -154,7 +165,8 @@ impl DashboardState {
         metrics.timestamp = SystemTime::now();
         metrics.storage_stats = StorageMetrics {
             total_entries: storage_stats.total_entries as u64,
-            cache_hit_ratio: 0.85, // Estimated - hot entries / total entries
+            // Not measured: nothing counts cache hits or misses. See the field.
+            cache_hit_ratio: None,
             compression_ratio: f64::from(storage_stats.compression_ratio),
             backend_type: storage_stats.warm_backend.clone(),
             storage_size_mb: storage_stats.hot_memory_kb as f64 / 1024.0, // Convert KB to MB
@@ -178,7 +190,13 @@ impl DashboardState {
                 .push("Consider increasing cache size or optimizing queries".to_string());
         }
 
-        if metrics.storage_stats.cache_hit_ratio < 0.7 {
+        // Only a measured ratio can fail this check. It used to be applied to
+        // the hardcoded 0.85 above, so "Low cache hit ratio" was unreachable.
+        if metrics
+            .storage_stats
+            .cache_hit_ratio
+            .is_some_and(|ratio| ratio < 0.7)
+        {
             issues.push("Low cache hit ratio".to_string());
             recommendations.push("Review access patterns and consider cache tuning".to_string());
         }
@@ -195,10 +213,8 @@ impl DashboardState {
             overall,
             issues,
             recommendations,
-            uptime_seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
+            // Uptime is time since this server started, not time since 1970.
+            uptime_seconds: self.started_at.elapsed().as_secs(),
         };
 
         debug!(
@@ -225,16 +241,15 @@ pub fn create_dashboard_router(state: DashboardState) -> Router {
         .route("/api/diagnostics", get(get_diagnostics))
         // Real-time updates via Server-Sent Events
         .route("/api/events", get(metrics_stream))
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(
-                    CorsLayer::new()
-                        .allow_origin(Any)
-                        .allow_methods(Any)
-                        .allow_headers(Any),
-                ),
-        )
+        // No CORS layer: the dashboard page is served from this same origin, so
+        // it needs none. What used to sit here was
+        // `CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any)`
+        // with no flag guarding it, which let any page the user happened to have
+        // open read `/api/analysis?path=<any filesystem path>` and POST to
+        // `/api/storage/operation`. `pmat serve` gates the same behaviour behind
+        // an explicit `--cors` opt-in; this dashboard has no such flag, so the
+        // permissive policy is simply gone rather than on by default.
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(state)
 }
 
@@ -272,7 +287,8 @@ async fn get_storage_stats(State(state): State<DashboardState>) -> impl IntoResp
     let stats = state.storage.get_statistics();
     Json(json!({
         "total_entries": stats.total_entries,
-        "cache_hit_ratio": 0.85, // Estimated
+        // null, not an estimate: nothing counts hits or misses (see StorageMetrics).
+        "cache_hit_ratio": Value::Null,
         "compression_ratio": stats.compression_ratio,
         "backend_type": stats.warm_backend,
         "hot_memory_kb": stats.hot_memory_kb,
@@ -292,24 +308,66 @@ async fn storage_operation(
     debug!("Executing storage operation: {}", operation.action);
 
     match operation.action.as_str() {
-        "flush" => {
-            // Flush hot cache to persistent storage
-            Json(json!({
+        // Both of these arms used to be success literals that never touched
+        // `state.storage`: "flush" answered "Cache flushed successfully" without
+        // calling `TieredStore::flush()`, and "cleanup" answered
+        // "Cleanup completed" with a hardcoded `entries_cleaned: 0`. They now
+        // do the work and report what actually happened.
+        "flush" => match state.storage.flush() {
+            Ok(()) => Json(json!({
                 "status": "completed",
                 "message": "Cache flushed successfully",
                 "action": "flush"
             }))
-            .into_response()
-        }
+            .into_response(),
+            Err(e) => {
+                error!("Storage flush failed: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "status": "failed",
+                        "action": "flush",
+                        "error": "Storage flush failed",
+                        "message": e.to_string()
+                    })),
+                )
+                    .into_response()
+            }
+        },
         "cleanup" => {
-            // Clean up old entries
-            Json(json!({
-                "status": "completed",
-                "message": "Cleanup completed",
-                "action": "cleanup",
-                "entries_cleaned": 0
-            }))
-            .into_response()
+            // The only cleanup the store implements is evicting hot-cache
+            // entries older than a caller-chosen age. Guessing that age would be
+            // inventing a retention policy, so it is required rather than
+            // defaulted.
+            let max_age_seconds = operation
+                .options
+                .as_ref()
+                .and_then(|options| options.get("max_age_seconds"))
+                .and_then(Value::as_u64);
+
+            match max_age_seconds {
+                Some(max_age_seconds) => {
+                    let entries_cleaned = state.storage.cleanup_hot_cache(max_age_seconds);
+                    Json(json!({
+                        "status": "completed",
+                        "message": format!(
+                            "Evicted {entries_cleaned} hot cache entries older than {max_age_seconds}s"
+                        ),
+                        "action": "cleanup",
+                        "entries_cleaned": entries_cleaned
+                    }))
+                    .into_response()
+                }
+                None => (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "status": "failed",
+                        "action": "cleanup",
+                        "error": "cleanup requires options.max_age_seconds (in seconds)"
+                    })),
+                )
+                    .into_response(),
+            }
         }
         "stats" => {
             let stats = state.storage.get_statistics();

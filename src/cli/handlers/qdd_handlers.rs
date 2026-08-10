@@ -151,40 +151,56 @@ async fn execute_create_operation(
 }
 
 /// Display creation results
+///
+/// The four numbers here used to be printed as measurements: "Quality Score: 98.0,
+/// Complexity: 1, Coverage: 100.0%, TDG Score: 1" — identical for `add two numbers`
+/// and for `a distributed consensus engine with retries and backoff`, over a body
+/// that is `todo!("Implementation needed")`. Coverage is a literal 100 that no test
+/// run ever produced and TDG is a constant, so they are reported as not measured;
+/// the complexity/quality figures are labelled as the template estimates they are.
 fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
-    println!("{}", c::header("QDD Code Creation Successful!"));
+    println!("{}", c::header("QDD Template Generated"));
     println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
+
+    let is_stub = result.code.contains("todo!");
+    if is_stub {
+        println!(
+            "  {}",
+            c::warn("Template only: the generated body is `todo!()` — nothing is implemented yet")
+        );
+    }
+
     println!(
-        "  {} {}",
-        c::label("Quality Score:"),
-        c::number(&format!("{:.1}", result.quality_score.overall))
+        "  {} {} {}",
+        c::label("Template complexity (estimated):"),
+        c::number(&format!("{}", result.quality_score.complexity)),
+        c::dim("(keyword heuristic over the template)")
     );
     println!(
-        "  {} {}",
-        c::label("Complexity:"),
-        c::number(&format!("{}", result.quality_score.complexity))
+        "  {} {} {}",
+        c::label("Template quality score (estimated):"),
+        c::number(&format!("{:.1}", result.quality_score.overall)),
+        c::dim("(derived from the estimate above, not an analysis of your code)")
     );
     println!(
         "  {} {}",
         c::label("Coverage:"),
-        c::pct(result.quality_score.coverage, 80.0, 60.0)
+        c::dim("not measured (no tests were executed)")
     );
-    println!(
-        "  {} {}",
-        c::label("TDG Score:"),
-        c::number(&format!("{}", result.quality_score.tdg))
-    );
+    println!("  {} {}", c::label("TDG Score:"), c::dim("not measured"));
     println!();
 }
 
 /// Output generated code to file or stdout
 fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Result<()> {
     if let Some(output_path) = output_file {
-        let full_content = format!(
-            "{}\n\n{}\n\n{}",
-            result.code, result.tests, result.documentation
-        );
-        std::fs::write(&output_path, full_content)?;
+        // The documentation is Markdown. It used to be concatenated onto the end of
+        // the same file as the code and the tests, so `-o add.rs` produced a file
+        // that carried "# add_two", "## Returns" and a ```rust fence after
+        // `mod tests` — the emitted .rs could not parse. Rust goes in the source
+        // file; the prose goes in a sibling .md.
+        let source = format!("{}\n\n{}\n", result.code, result.tests);
+        std::fs::write(&output_path, source)?;
         println!(
             "{}",
             c::pass(&format!(
@@ -192,6 +208,21 @@ fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Re
                 c::path(&output_path.display().to_string())
             ))
         );
+
+        if !result.documentation.trim().is_empty() {
+            let mut doc_path = output_path.with_extension("md");
+            if doc_path == output_path {
+                doc_path = output_path.with_extension("doc.md");
+            }
+            std::fs::write(&doc_path, format!("{}\n", result.documentation))?;
+            println!(
+                "{}",
+                c::pass(&format!(
+                    "Generated documentation written to: {}",
+                    c::path(&doc_path.display().to_string())
+                ))
+            );
+        }
     } else {
         println!("{}", c::subheader("Generated Code:"));
         println!("{}", result.code);
@@ -778,3 +809,64 @@ fn build_validation_json(
 
 // Tests extracted to qdd_handlers_tests.rs for file health (CB-040).
 include!("qdd_handlers_tests.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod qdd_output_tests {
+    use super::*;
+    use crate::qdd::{QualityMetrics, QualityScore, RollbackPlan};
+
+    fn sample_result() -> QddResult {
+        QddResult {
+            code:
+                "pub fn add_two(a: i32, b: i32) -> i32 {\n    todo!(\"Implementation needed\")\n}\n"
+                    .to_string(),
+            tests: "#[cfg(test)]\nmod tests {\n    use super::*;\n}\n".to_string(),
+            documentation:
+                "# add_two\n\nadd two numbers\n\n## Returns\n\n```rust\nlet x = 1;\n```\n"
+                    .to_string(),
+            quality_score: QualityScore {
+                overall: 98.0,
+                complexity: 1,
+                coverage: 100.0,
+                tdg: 1,
+            },
+            metrics: QualityMetrics::default(),
+            rollback_plan: RollbackPlan {
+                original: String::new(),
+                checkpoints: vec![],
+            },
+        }
+    }
+
+    /// The Markdown documentation used to be appended to the generated .rs, leaving
+    /// a source file that cannot parse. The .rs must contain Rust only.
+    #[test]
+    fn test_documentation_is_not_appended_to_the_rust_file() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let rs_path = tmp.path().join("add.rs");
+
+        output_generated_code(Some(rs_path.clone()), &sample_result()).unwrap();
+
+        let source = std::fs::read_to_string(&rs_path).unwrap();
+        assert!(source.contains("pub fn add_two"), "code missing: {source}");
+        assert!(source.contains("mod tests"), "tests missing: {source}");
+        assert!(
+            !source.contains("# add_two"),
+            "markdown heading leaked into the .rs: {source}"
+        );
+        assert!(
+            !source.contains("## Returns"),
+            "markdown heading leaked into the .rs: {source}"
+        );
+        assert!(
+            !source.contains("```"),
+            "markdown fence leaked into the .rs: {source}"
+        );
+        // The .rs must be parseable Rust.
+        syn::parse_file(&source).expect("generated .rs must parse as Rust");
+
+        let doc = std::fs::read_to_string(tmp.path().join("add.md")).unwrap();
+        assert!(doc.contains("## Returns"), "docs missing: {doc}");
+    }
+}

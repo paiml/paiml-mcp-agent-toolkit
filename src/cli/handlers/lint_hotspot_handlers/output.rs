@@ -409,27 +409,53 @@ fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> 
 ///
 /// Returns an error if the operation fails
 fn format_sarif(result: &LintHotspotResult) -> Result<String> {
-    let results = result
-        .quality_gate
-        .violations
+    // SARIF used to be built from `quality_gate.violations` — the handful of
+    // threshold breaches — so whenever the gate passed the document was
+    // `"results": []` even though `-f detailed` listed 13 located clippy findings
+    // for the same run, and CI consuming the SARIF saw a clean project. The located
+    // findings in `all_violations` are the results; the gate breaches ride along
+    // after them without a region, since they describe the project, not a line.
+    let mut results: Vec<serde_json::Value> = result
+        .all_violations
         .iter()
         .map(|v| {
             serde_json::json!({
-                "ruleId": v.rule,
-                "level": if v.severity == "blocking" { "error" } else { "warning" },
-                "message": {
-                    "text": format!("{} exceeded: {:.2} > {:.2}", v.rule, v.actual, v.threshold)
-                },
+                "ruleId": v.lint_name,
+                "level": if v.severity == "error" { "error" } else { "warning" },
+                "message": { "text": v.message },
                 "locations": [{
                     "physicalLocation": {
                         "artifactLocation": {
-                            "uri": result.hotspot.file.to_string_lossy()
+                            "uri": v.file.to_string_lossy()
+                        },
+                        "region": {
+                            "startLine": v.line.max(1),
+                            "startColumn": v.column.max(1),
+                            "endLine": v.end_line.max(v.line).max(1),
+                            "endColumn": v.end_column.max(1)
                         }
                     }
                 }]
             })
         })
-        .collect::<Vec<_>>();
+        .collect();
+
+    results.extend(result.quality_gate.violations.iter().map(|v| {
+        serde_json::json!({
+            "ruleId": v.rule,
+            "level": if v.severity == "blocking" { "error" } else { "warning" },
+            "message": {
+                "text": format!("{} exceeded: {:.2} > {:.2}", v.rule, v.actual, v.threshold)
+            },
+            "locations": [{
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": result.hotspot.file.to_string_lossy()
+                    }
+                }
+            }]
+        })
+    }));
 
     serde_json::to_string_pretty(&sarif_envelope(results)).context("Failed to serialize to SARIF")
 }
@@ -610,6 +636,52 @@ mod lint_hotspot_output_tests {
         assert!(
             obj.contains_key("version") || obj.contains_key("runs"),
             "SARIF envelope missing"
+        );
+    }
+
+    /// A located clippy finding must appear as a SARIF result even when the quality
+    /// gate passes — SARIF used to serialise only the gate's threshold breaches, so a
+    /// project with 13 located violations handed CI `"results": []`.
+    #[test]
+    fn test_sarif_emits_located_violations_when_gate_passes() {
+        let mut result = empty_result();
+        result.all_violations.push(ViolationDetail {
+            file: "src/lib.rs".into(),
+            line: 17,
+            column: 40,
+            end_line: 17,
+            end_column: 52,
+            lint_name: "clippy::clone_on_copy".to_string(),
+            message: "using `clone` on type `i32` which implements the `Copy` trait".to_string(),
+            severity: "warning".to_string(),
+            suggestion: None,
+            machine_applicable: true,
+        });
+        // Gate passes: no threshold breaches at all.
+        assert!(result.quality_gate.passed);
+
+        let out = format_output(
+            &result,
+            LintHotspotOutputFormat::Sarif,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let results = parsed["runs"][0]["results"].as_array().unwrap();
+        assert_eq!(
+            results.len(),
+            1,
+            "located violation missing from SARIF: {out}"
+        );
+        assert_eq!(results[0]["ruleId"], "clippy::clone_on_copy");
+        let region = &results[0]["locations"][0]["physicalLocation"]["region"];
+        assert_eq!(region["startLine"], 17);
+        assert_eq!(region["startColumn"], 40);
+        assert_eq!(
+            results[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+            "src/lib.rs"
         );
     }
 

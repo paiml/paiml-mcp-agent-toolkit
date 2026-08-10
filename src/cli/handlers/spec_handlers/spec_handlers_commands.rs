@@ -32,8 +32,10 @@ pub async fn handle_spec_score(
         use crate::cli::colors as c;
         println!(
             "\n{}",
+            // `spec comply` cannot fix anything - it only lists the gaps - so
+            // do not point users at it as a fix command.
             c::warn(&format!(
-                "Spec score {:.1} is below 95 threshold. Run `pmat spec comply` to fix.",
+                "Spec score {:.1} is below 95 threshold. Run `pmat spec comply --dry-run` to list what is missing.",
                 score
             ))
         );
@@ -111,12 +113,18 @@ pub async fn handle_spec_comply(
 
         if dry_run {
             println!("\n{}", c::dim("(Dry run - no changes made)"));
-        } else {
-            println!("\n{}", c::warn("Auto-fix not yet implemented. Please apply fixes manually."));
+            return Ok(());
         }
     }
 
-    Ok(())
+    // There is no write path here: auto-fix was never implemented. Returning
+    // Ok(()) made a scripted `spec score || spec comply` loop believe the spec
+    // had been fixed, and made --dry-run indistinguishable from a real run.
+    // Report the unimplemented feature as a failure instead.
+    anyhow::bail!(
+        "spec comply auto-fix is not implemented; apply the {} listed fix(es) manually (use --dry-run to list them without an error)",
+        fixes.len()
+    )
 }
 
 /// Handle spec create command
@@ -444,5 +452,40 @@ mod spec_handlers_commands_tests {
     fn test_print_spec_list_empty_results_markdown_no_panic() {
         let dir = std::path::Path::new("docs");
         print_spec_list(&[], dir, SpecOutputFormat::Markdown).unwrap();
+    }
+
+    // ── spec comply: the unimplemented auto-fix must not report success ──
+
+    fn write_deficient_spec(name: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(name);
+        std::fs::write(&path, "# Deficient Spec\n\nSome prose, no criteria.\n").unwrap();
+        path
+    }
+
+    #[tokio::test]
+    async fn test_spec_comply_non_dry_run_errors_when_fixes_are_needed() {
+        // Regression: the non-dry-run branch printed "Auto-fix not yet
+        // implemented" and returned Ok(()), leaving the file untouched while a
+        // scripted `spec score || spec comply` loop believed the fix landed.
+        let path = write_deficient_spec("pmat_spec_comply_regression.md");
+        let before = std::fs::read_to_string(&path).unwrap();
+
+        let result = handle_spec_comply(&path, false, SpecOutputFormat::Text).await;
+        assert!(
+            result.is_err(),
+            "spec comply must not report success when it cannot fix anything"
+        );
+
+        // And it must not have pretended to write either.
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), before);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn test_spec_comply_dry_run_still_succeeds() {
+        let path = write_deficient_spec("pmat_spec_comply_dryrun.md");
+        let result = handle_spec_comply(&path, true, SpecOutputFormat::Text).await;
+        assert!(result.is_ok(), "--dry-run only lists gaps, it must succeed");
+        let _ = std::fs::remove_file(&path);
     }
 }

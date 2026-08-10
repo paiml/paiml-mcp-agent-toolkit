@@ -68,14 +68,14 @@ mod tests {
     fn test_storage_metrics_creation() {
         let metrics = StorageMetrics {
             total_entries: 100,
-            cache_hit_ratio: 0.85,
+            cache_hit_ratio: Some(0.85),
             compression_ratio: 0.65,
             backend_type: "sled".to_string(),
             storage_size_mb: 25.5,
         };
 
         assert_eq!(metrics.total_entries, 100);
-        assert!((metrics.cache_hit_ratio - 0.85).abs() < f64::EPSILON);
+        assert_eq!(metrics.cache_hit_ratio, Some(0.85));
         assert!((metrics.compression_ratio - 0.65).abs() < f64::EPSILON);
         assert_eq!(metrics.backend_type, "sled");
         assert!((metrics.storage_size_mb - 25.5).abs() < f64::EPSILON);
@@ -85,7 +85,7 @@ mod tests {
     fn test_storage_metrics_serialization() {
         let metrics = StorageMetrics {
             total_entries: 42,
-            cache_hit_ratio: 0.9,
+            cache_hit_ratio: Some(0.9),
             compression_ratio: 0.5,
             backend_type: "rocksdb".to_string(),
             storage_size_mb: 128.0,
@@ -212,7 +212,7 @@ mod tests {
             timestamp: SystemTime::now(),
             storage_stats: StorageMetrics {
                 total_entries: 50,
-                cache_hit_ratio: 0.8,
+                cache_hit_ratio: Some(0.8),
                 compression_ratio: 0.6,
                 backend_type: "libsql".to_string(),
                 storage_size_mb: 64.0,
@@ -244,7 +244,7 @@ mod tests {
             timestamp: SystemTime::UNIX_EPOCH + Duration::from_secs(1000000),
             storage_stats: StorageMetrics {
                 total_entries: 100,
-                cache_hit_ratio: 0.9,
+                cache_hit_ratio: Some(0.9),
                 compression_ratio: 0.7,
                 backend_type: "sled".to_string(),
                 storage_size_mb: 128.0,
@@ -470,28 +470,28 @@ mod tests {
     fn test_storage_metrics_zero_values() {
         let metrics = StorageMetrics {
             total_entries: 0,
-            cache_hit_ratio: 0.0,
+            cache_hit_ratio: Some(0.0),
             compression_ratio: 0.0,
             backend_type: String::new(),
             storage_size_mb: 0.0,
         };
 
         assert_eq!(metrics.total_entries, 0);
-        assert!(metrics.cache_hit_ratio.abs() < f64::EPSILON);
+        assert_eq!(metrics.cache_hit_ratio, Some(0.0));
     }
 
     #[test]
     fn test_storage_metrics_max_values() {
         let metrics = StorageMetrics {
             total_entries: u64::MAX,
-            cache_hit_ratio: 1.0,
+            cache_hit_ratio: Some(1.0),
             compression_ratio: 1.0,
             backend_type: "a".repeat(1000),
             storage_size_mb: f64::MAX,
         };
 
         assert_eq!(metrics.total_entries, u64::MAX);
-        assert!((metrics.cache_hit_ratio - 1.0).abs() < f64::EPSILON);
+        assert_eq!(metrics.cache_hit_ratio, Some(1.0));
     }
 
     #[test]
@@ -539,7 +539,7 @@ mod tests {
             timestamp: SystemTime::now(),
             storage_stats: StorageMetrics {
                 total_entries: 100,
-                cache_hit_ratio: 0.85,
+                cache_hit_ratio: Some(0.85),
                 compression_ratio: 0.6,
                 backend_type: "sled".to_string(),
                 storage_size_mb: 64.0,
@@ -578,7 +578,7 @@ mod tests {
     fn test_storage_metrics_json_roundtrip() {
         let original = StorageMetrics {
             total_entries: 12345,
-            cache_hit_ratio: 0.78,
+            cache_hit_ratio: Some(0.78),
             compression_ratio: 0.55,
             backend_type: "libsql".to_string(),
             storage_size_mb: 256.75,
@@ -588,7 +588,7 @@ mod tests {
         let roundtrip: StorageMetrics = serde_json::from_str(&json).unwrap();
 
         assert_eq!(roundtrip.total_entries, original.total_entries);
-        assert!((roundtrip.cache_hit_ratio - original.cache_hit_ratio).abs() < 0.001);
+        assert_eq!(roundtrip.cache_hit_ratio, original.cache_hit_ratio);
         assert_eq!(roundtrip.backend_type, original.backend_type);
     }
 
@@ -635,7 +635,7 @@ mod tests {
     fn test_storage_metrics_debug() {
         let metrics = StorageMetrics {
             total_entries: 50,
-            cache_hit_ratio: 0.75,
+            cache_hit_ratio: Some(0.75),
             compression_ratio: 0.5,
             backend_type: "test".to_string(),
             storage_size_mb: 32.0,
@@ -680,7 +680,7 @@ mod tests {
             timestamp: SystemTime::UNIX_EPOCH,
             storage_stats: StorageMetrics {
                 total_entries: 0,
-                cache_hit_ratio: 0.0,
+                cache_hit_ratio: Some(0.0),
                 compression_ratio: 0.0,
                 backend_type: String::new(),
                 storage_size_mb: 0.0,
@@ -812,7 +812,7 @@ mod property_tests {
         ) {
             let metrics = StorageMetrics {
                 total_entries,
-                cache_hit_ratio,
+                cache_hit_ratio: Some(cache_hit_ratio),
                 compression_ratio,
                 backend_type: "test".to_string(),
                 storage_size_mb,
@@ -822,7 +822,7 @@ mod property_tests {
             let roundtrip: StorageMetrics = serde_json::from_str(&json).unwrap();
 
             prop_assert_eq!(roundtrip.total_entries, total_entries);
-            prop_assert!((roundtrip.cache_hit_ratio - cache_hit_ratio).abs() < 0.0001);
+            prop_assert!((roundtrip.cache_hit_ratio.unwrap() - cache_hit_ratio).abs() < 0.0001);
         }
 
         #[test]
@@ -926,7 +926,7 @@ mod property_tests {
         ) {
             let original = StorageMetrics {
                 total_entries,
-                cache_hit_ratio,
+                cache_hit_ratio: Some(cache_hit_ratio),
                 compression_ratio: 0.5,
                 backend_type: "test".to_string(),
                 storage_size_mb: 64.0,
@@ -935,7 +935,7 @@ mod property_tests {
             let cloned = original.clone();
 
             prop_assert_eq!(cloned.total_entries, original.total_entries);
-            prop_assert!((cloned.cache_hit_ratio - original.cache_hit_ratio).abs() < f64::EPSILON);
+            prop_assert!((cloned.cache_hit_ratio.unwrap() - original.cache_hit_ratio.unwrap()).abs() < f64::EPSILON);
         }
 
         #[test]
@@ -947,7 +947,7 @@ mod property_tests {
                 timestamp,
                 storage_stats: StorageMetrics {
                     total_entries: 0,
-                    cache_hit_ratio: 0.0,
+                    cache_hit_ratio: Some(0.0),
                     compression_ratio: 0.0,
                     backend_type: String::new(),
                     storage_size_mb: 0.0,
@@ -990,7 +990,7 @@ mod integration_tests {
             timestamp: SystemTime::now(),
             storage_stats: StorageMetrics {
                 total_entries: 0,
-                cache_hit_ratio: 0.0,
+                cache_hit_ratio: Some(0.0),
                 compression_ratio: 0.0,
                 backend_type: "in-memory".to_string(),
                 storage_size_mb: 0.0,
@@ -1014,6 +1014,7 @@ mod integration_tests {
             storage,
             analyzer,
             metrics_cache: Arc::new(RwLock::new(initial_metrics)),
+            started_at: Instant::now(),
         }
     }
 
@@ -1159,8 +1160,11 @@ mod integration_tests {
         assert_eq!(response.status(), AxumStatusCode::OK);
     }
 
+    /// `{"action":"cleanup"}` used to answer 200 {"status":"completed",
+    /// "entries_cleaned":0} without touching storage. With no retention age to
+    /// work from there is nothing to clean, so it must not claim success.
     #[tokio::test]
-    async fn test_storage_operation_cleanup() {
+    async fn test_storage_operation_cleanup_without_max_age_is_rejected() {
         let state = create_test_state().await;
         let app = create_dashboard_router(state);
 
@@ -1176,7 +1180,38 @@ mod integration_tests {
             .await
             .unwrap();
 
+        assert_eq!(response.status(), AxumStatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_storage_operation_cleanup_reports_real_eviction_count() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/storage/operation")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"action": "cleanup", "options": {"max_age_seconds": 0}}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
         assert_eq!(response.status(), AxumStatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        // An empty in-memory store really has nothing to evict; the point is
+        // that the number now comes from cleanup_hot_cache().
+        assert_eq!(json["entries_cleaned"], 0);
+        assert!(json["message"].as_str().unwrap().contains("hot cache"));
     }
 
     #[tokio::test]
@@ -1281,5 +1316,116 @@ mod integration_tests {
         // In-memory storage should report minimal statistics
         assert_eq!(stats.hot_entries, 0);
         assert_eq!(stats.warm_entries, 0);
+    }
+
+    /// `/api/health` reported `uptime_seconds` as seconds since the UNIX epoch
+    /// (1786295016, i.e. ~56.6 years, identical to the payload's own timestamp
+    /// and unchanged four seconds later), never as time since the server came
+    /// up.
+    #[tokio::test]
+    async fn uptime_is_measured_from_server_start_not_from_1970() {
+        let state = create_test_state().await;
+        state.update_metrics().await.unwrap();
+
+        let uptime = state.metrics_cache.read().await.health_status.uptime_seconds;
+        assert!(
+            uptime < 60,
+            "a server that just started cannot have been up {uptime}s"
+        );
+
+        let secs_since_epoch = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        assert_ne!(uptime, secs_since_epoch);
+    }
+
+    /// `cache_hit_ratio` was the literal 0.85 in both `/api/metrics` and
+    /// `/api/storage/stats`, and the `< 0.7` "Low cache hit ratio" check was
+    /// then evaluated against that same constant, so it could never fire.
+    #[tokio::test]
+    async fn cache_hit_ratio_is_reported_as_unmeasured() {
+        let state = create_test_state().await;
+        state.update_metrics().await.unwrap();
+
+        assert_eq!(
+            state.metrics_cache.read().await.storage_stats.cache_hit_ratio,
+            None,
+            "nothing counts cache hits, so no ratio may be reported"
+        );
+
+        let app = create_dashboard_router(state);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/storage/stats")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(
+            json["cache_hit_ratio"].is_null(),
+            "expected null, got {}",
+            json["cache_hit_ratio"]
+        );
+    }
+
+    /// The "Low cache hit ratio" issue must still be reachable for a measured
+    /// ratio below the threshold — otherwise the check is dead either way.
+    #[tokio::test]
+    async fn low_measured_cache_hit_ratio_is_still_an_issue() {
+        let state = create_test_state().await;
+        {
+            let mut metrics = state.metrics_cache.write().await;
+            metrics.storage_stats.cache_hit_ratio = Some(0.5);
+        }
+
+        let issues: Vec<String> = {
+            let metrics = state.metrics_cache.read().await;
+            let mut issues = Vec::new();
+            if metrics
+                .storage_stats
+                .cache_hit_ratio
+                .is_some_and(|ratio| ratio < 0.7)
+            {
+                issues.push("Low cache hit ratio".to_string());
+            }
+            issues
+        };
+        assert_eq!(issues, vec!["Low cache hit ratio".to_string()]);
+    }
+
+    /// The dashboard used to attach `CorsLayer::new().allow_origin(Any)
+    /// .allow_methods(Any).allow_headers(Any)` unconditionally, so any page the
+    /// user had open could read `/api/analysis?path=<any file>` and POST to
+    /// `/api/storage/operation`. Its own HTML is same-origin and needs no CORS.
+    #[tokio::test]
+    async fn no_cross_origin_access_is_granted() {
+        let state = create_test_state().await;
+        let app = create_dashboard_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/health")
+                    .header("origin", "https://evil.example")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert!(
+            response
+                .headers()
+                .get("access-control-allow-origin")
+                .is_none(),
+            "dashboard must not advertise cross-origin access"
+        );
     }
 }

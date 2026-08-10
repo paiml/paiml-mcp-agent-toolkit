@@ -243,16 +243,30 @@ fn is_on_shortest_path(
     }
 }
 
-// Calculate closeness centrality
+// Closeness centrality, Wasserman-Faust normalised.
+//
+// This used to be `(node_count - 1) / sum_of_distances` where the sum ran over
+// the REACHABLE set only, so a node that reached exactly one neighbour scored
+// (N-1)/1 = N-1 — the maximum — while a hub that reached hundreds of nodes
+// scored a small fraction of it. On this repo that put 4557.0 on
+// near-isolated files, and since `filter_results` ranks by the SUM of the four
+// centralities, the unbounded value dominated the sort and inverted the top-k.
+// Scaling by reachable/(N-1) both bounds the value in [0,1] and charges a node
+// for the part of the graph it cannot reach.
 fn calculate_closeness(graph: &SimpleGraph, node: NodeIndex) -> f64 {
     let distances = graph.dijkstra(node, None);
     let total_distance: i32 = distances.values().sum();
+    // `dijkstra` seeds the source at distance 0; it is not a reachable *other*.
+    let reachable = distances.len().saturating_sub(1);
+    let node_count = graph.node_count();
 
-    if total_distance > 0 {
-        (graph.node_count() - 1) as f64 / f64::from(total_distance)
-    } else {
-        0.0
+    if total_distance <= 0 || reachable == 0 || node_count < 2 {
+        return 0.0;
     }
+
+    let inverse_mean_distance = reachable as f64 / f64::from(total_distance);
+    let reachable_fraction = reachable as f64 / (node_count - 1) as f64;
+    inverse_mean_distance * reachable_fraction
 }
 
 // Calculate PageRank
@@ -397,6 +411,63 @@ mod metrics_all_expansion_regression_tests {
         assert!(
             result.nodes.iter().any(|n| n.closeness_centrality > 0.0),
             "--metrics all reported closeness 0.0 for every node of a chain"
+        );
+    }
+
+    /// Closeness used to be unbounded and computed over the reachable subset
+    /// only, so the LAST reachable node of a chain (one neighbour, distance 1)
+    /// scored N-1 while the head that reaches everything scored 0.4.
+    #[test]
+    fn closeness_is_bounded_and_ranks_a_hub_above_a_near_isolated_node() {
+        let graph = chain_graph(5);
+        let head = calculate_closeness(&graph, NodeIndex(0));
+        let next_to_last = calculate_closeness(&graph, NodeIndex(3));
+        let last = calculate_closeness(&graph, NodeIndex(4));
+
+        for (name, value) in [("head", head), ("n3", next_to_last), ("tail", last)] {
+            assert!(
+                (0.0..=1.0).contains(&value),
+                "closeness must be normalised into [0,1]; {name} = {value}"
+            );
+        }
+        assert!(
+            head > next_to_last,
+            "the head reaches 4 nodes, n3 reaches 1: {head} vs {next_to_last}"
+        );
+        // The tail reaches nothing, so it has no closeness at all.
+        assert_eq!(last, 0.0);
+    }
+
+    /// The top-k sort key is the SUM of the centralities, so an unbounded
+    /// closeness inverted the whole ranking.
+    #[test]
+    fn top_k_ranking_is_not_dominated_by_a_near_isolated_node() {
+        let graph = chain_graph(5);
+        let result = calculate_metrics(
+            &graph,
+            vec![GraphMetricType::All],
+            vec![],
+            0.85,
+            100,
+            1e-6,
+        )
+        .unwrap();
+        let ranked = filter_results(result, 5, 0.0);
+        let order: Vec<&str> = ranked.nodes.iter().map(|n| n.name.as_str()).collect();
+        let rank_of = |name: &str| {
+            order
+                .iter()
+                .position(|n| *n == name)
+                .unwrap_or_else(|| panic!("{name} missing from {order:?}"))
+        };
+
+        assert_ne!(
+            order[0], "n3",
+            "a node reaching a single neighbour led the ranking: {order:?}"
+        );
+        assert!(
+            rank_of("n2") < rank_of("n3"),
+            "the middle of the chain must outrank a near-isolated node: {order:?}"
         );
     }
 

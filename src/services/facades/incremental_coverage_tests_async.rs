@@ -119,8 +119,26 @@ async fn test_analyze_coverage_changes_top_files_limit() {
         .await
         .expect("Failed to analyze coverage changes");
 
-    // Should only analyze top 2 files
-    assert_eq!(result.len(), 2);
+    // This used to assert `result.len() == 2`, i.e. that `--top-files 2` stopped
+    // the *analysis* after 2 files. That was the bug: the summary counts were
+    // then derived from the truncated vector while `total_files` came from the
+    // full changed-file list, so `files_not_measured` just echoed `--top-files`
+    // and the remaining changed files were unaccounted for. `--top-files` is a
+    // display limit, applied in `build_coverage_result`, so every changed file
+    // is analyzed here.
+    assert_eq!(result.len(), 4, "every changed file must be analyzed");
+
+    // ...and the display limit still caps what is rendered, without moving any count.
+    let summarized = facade.build_coverage_result(result, changed_files, &request);
+    assert_eq!(
+        summarized.changed_files.len(),
+        2,
+        "--top-files 2 caps the displayed list"
+    );
+    assert_eq!(
+        summarized.total_files, 4,
+        "--top-files must not shrink total_files"
+    );
 }
 
 #[tokio::test]
@@ -160,13 +178,21 @@ async fn test_get_changed_files_nonexistent_repo() {
     let facade = create_test_facade();
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
-    // No git repo initialized, should return empty list (not error)
-    let result = facade
-        .get_changed_files(temp_dir.path(), "main", None)
-        .await
-        .expect("Should not fail on non-git directory");
+    // This used to assert that a non-git directory came back as an empty
+    // changelist ("should return empty list (not error)"). That was the bug:
+    // `git diff` failing was swallowed, so incremental-coverage rendered an
+    // all-zero "clean" gate report and exited 0 for a directory it could not
+    // diff at all. A coverage gate must never report a pass because the diff
+    // could not be taken.
+    let result = facade.get_changed_files(temp_dir.path(), "main", None).await;
 
-    assert!(result.is_empty());
+    let err = result
+        .expect_err("a non-git directory must surface as an error, not an empty changelist")
+        .to_string();
+    assert!(
+        err.contains("git diff"),
+        "the error must say the diff failed: {err}"
+    );
 }
 
 #[tokio::test]

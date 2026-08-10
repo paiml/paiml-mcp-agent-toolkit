@@ -198,8 +198,13 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
+    /// These two used to assert the STUB: `format: "markdown"` returned the
+    /// literal "Context in markdown format (not implemented)" as a string with
+    /// isError=false, and the assertion `value["markdown"].is_string()` was
+    /// satisfied by exactly that. A format the tool cannot render is now
+    /// rejected instead of faked.
     #[tokio::test]
-    async fn test_context_generate_tool_markdown_format() {
+    async fn test_context_generate_tool_markdown_format_is_rejected() {
         let tool = ContextGenerateTool::new();
         let fixture = fixture_dir();
         let fixture_dir_path = fixture.path().display().to_string();
@@ -207,14 +212,15 @@ mod coverage_tests {
             "paths": [fixture_dir_path.as_str()],
             "format": "markdown"
         });
-        let result = tool.handle(args, test_extra()).await;
-        assert!(result.is_ok());
-        let value = result.unwrap();
-        assert!(value["markdown"].is_string());
+        let err = tool
+            .handle(args, test_extra())
+            .await
+            .expect_err("markdown is not rendered, so it must not report success");
+        assert!(err.to_string().contains("Unsupported format"), "{err}");
     }
 
     #[tokio::test]
-    async fn test_context_generate_tool_xml_format() {
+    async fn test_context_generate_tool_xml_format_is_rejected() {
         let tool = ContextGenerateTool::new();
         let fixture = fixture_dir();
         let fixture_dir_path = fixture.path().display().to_string();
@@ -222,10 +228,11 @@ mod coverage_tests {
             "paths": [fixture_dir_path.as_str()],
             "format": "xml"
         });
-        let result = tool.handle(args, test_extra()).await;
-        assert!(result.is_ok());
-        let value = result.unwrap();
-        assert!(value["xml"].is_string());
+        let err = tool
+            .handle(args, test_extra())
+            .await
+            .expect_err("xml is not rendered, so it must not report success");
+        assert!(err.to_string().contains("Unsupported format"), "{err}");
     }
 
     #[tokio::test]

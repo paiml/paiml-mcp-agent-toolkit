@@ -10,6 +10,15 @@ fn count_citations(content: &str) -> usize {
     seen.len()
 }
 
+/// Spec **completeness** score: counts the artefacts a spec carries (issue refs,
+/// examples, criteria, claims, title, test requirements, citations).
+///
+/// This is not the same metric as `pmat qa-work spec`, which verifies each claim
+/// and scores claim **falsifiability**. Both used to advertise themselves as "the
+/// 100-point Popperian score" and print bare "Score: NN/100" lines with different
+/// pass bars (95 here, 60 there), so the same file scored 41.0 FAIL and 50.0 FAIL
+/// and readers had no way to tell the two numbers apart. The renderers below name
+/// the metric they compute.
 fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
     // Scoring based on spec requirements (100 pts total)
     let mut score = 0.0;
@@ -46,14 +55,14 @@ fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
 fn format_spec_score_text(spec: &ParsedSpec, score: f64, verbose: bool) -> String {
     let mut out = String::new();
 
-    out.push_str("📋 Specification Score\n");
+    out.push_str("📋 Specification Completeness Score\n");
     out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
 
     if !spec.title.is_empty() {
         out.push_str(&format!("Title: {}\n", spec.title));
     }
 
-    out.push_str(&format!("Score: {:.1}/100\n", score));
+    out.push_str(&format!("Completeness score: {:.1}/100\n", score));
     out.push_str(&format!(
         "Status: {}\n",
         if score >= 95.0 {
@@ -62,6 +71,9 @@ fn format_spec_score_text(spec: &ParsedSpec, score: f64, verbose: bool) -> Strin
             "❌ FAIL (needs ≥95)"
         }
     ));
+    out.push_str(
+        "Note: counts artefacts present in the spec. For claim verification, run\n      `pmat qa-work spec <file>` (claim falsifiability score, separate bar).\n",
+    );
 
     if verbose {
         out.push_str(&format!("\nClaims: {}\n", spec.claims.len()));
@@ -79,6 +91,10 @@ fn format_spec_score_text(spec: &ParsedSpec, score: f64, verbose: bool) -> Strin
 fn format_spec_score_json(spec: &ParsedSpec, score: f64) -> anyhow::Result<String> {
     let result = serde_json::json!({
         "title": spec.title,
+        // Name the metric so consumers cannot conflate it with qa-work spec's
+        // claim-falsifiability score, which has its own (60) threshold.
+        "metric": "spec_completeness",
+        "threshold": 95.0,
         "score": score,
         "passing": score >= 95.0,
         "claims": spec.claims.len(),
@@ -92,7 +108,7 @@ fn format_spec_score_json(spec: &ParsedSpec, score: f64) -> anyhow::Result<Strin
 fn format_spec_score_markdown(spec: &ParsedSpec, score: f64) -> String {
     let mut out = String::new();
 
-    out.push_str("# Specification Score Report\n\n");
+    out.push_str("# Specification Completeness Score Report\n\n");
 
     if !spec.title.is_empty() {
         out.push_str(&format!("**Title:** {}\n\n", spec.title));
@@ -100,7 +116,7 @@ fn format_spec_score_markdown(spec: &ParsedSpec, score: f64) -> String {
 
     out.push_str("| Metric | Value |\n");
     out.push_str("|--------|-------|\n");
-    out.push_str(&format!("| Score | {:.1}/100 |\n", score));
+    out.push_str(&format!("| Completeness score | {:.1}/100 |\n", score));
     out.push_str(&format!(
         "| Status | {} |\n",
         if score >= 95.0 {

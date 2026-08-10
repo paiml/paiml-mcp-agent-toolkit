@@ -61,6 +61,12 @@ impl BigOAnalyzer {
         let discovery =
             crate::services::file_discovery::ProjectFileDiscovery::new(config.project_path.clone());
 
+        // `--include`/`--exclude` were carried in the config and never read, so
+        // `--exclude '**/*.rs'` on a Rust-only crate still analysed every function
+        // and `--include '**/*.py'` still returned the Rust ones. They are filters now.
+        let include_set = Self::build_pattern_set(&config.include_patterns)?;
+        let exclude_set = Self::build_pattern_set(&config.exclude_patterns)?;
+
         let mut files: Vec<PathBuf> = discovery
             .discover_files()?
             .into_iter()
@@ -69,10 +75,50 @@ impl BigOAnalyzer {
                     .and_then(|e| e.to_str())
                     .is_some_and(|ext| Self::SOURCE_EXTENSIONS.contains(&ext))
             })
+            .filter(|path| {
+                if let Some(ref set) = exclude_set {
+                    if Self::pattern_matches(set, path, &config.project_path) {
+                        return false;
+                    }
+                }
+                match include_set {
+                    Some(ref set) => Self::pattern_matches(set, path, &config.project_path),
+                    None => true,
+                }
+            })
             .collect();
 
         files.sort_unstable();
         Ok(files)
+    }
+
+    /// Compile user-supplied globs, or `None` when no pattern was given.
+    fn build_pattern_set(patterns: &[String]) -> Result<Option<globset::GlobSet>> {
+        if patterns.is_empty() {
+            return Ok(None);
+        }
+        let mut builder = globset::GlobSetBuilder::new();
+        for pattern in patterns {
+            builder.add(globset::Glob::new(pattern)?);
+        }
+        Ok(Some(builder.build()?))
+    }
+
+    /// Match a discovered file against a pattern set.
+    ///
+    /// Tested against the project-relative path, the full path and the bare file
+    /// name, so `src/**`, `**/*.rs` and `lib.rs` all mean what a user expects.
+    fn pattern_matches(
+        set: &globset::GlobSet,
+        path: &std::path::Path,
+        project_path: &std::path::Path,
+    ) -> bool {
+        let relative = path.strip_prefix(project_path).unwrap_or(path);
+        set.is_match(relative)
+            || set.is_match(path)
+            || path
+                .file_name()
+                .is_some_and(|name| set.is_match(std::path::Path::new(name)))
     }
 
     /// Analyze single file for complexity
@@ -319,5 +365,81 @@ mod discovery_scope_tests {
             .expect("discovery");
 
         assert_eq!(files.len(), 1, "gitignored trees are not project source: {files:?}");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod pattern_filter_tests {
+    //! `--include`/`--exclude` were stored in the config and never read, so
+    //! `--exclude '**/*.rs'` on a Rust-only crate still analysed every function.
+    use super::*;
+
+    fn fixture() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").unwrap();
+        dir
+    }
+
+    fn config_with(
+        root: &std::path::Path,
+        include: Vec<&str>,
+        exclude: Vec<&str>,
+    ) -> BigOAnalysisConfig {
+        BigOAnalysisConfig {
+            project_path: root.to_path_buf(),
+            include_patterns: include.into_iter().map(String::from).collect(),
+            exclude_patterns: exclude.into_iter().map(String::from).collect(),
+            confidence_threshold: 0,
+            analyze_space_complexity: false,
+        }
+    }
+
+    async fn discovered(config: &BigOAnalysisConfig) -> usize {
+        BigOAnalyzer::new()
+            .discover_source_files(config)
+            .await
+            .expect("discovery")
+            .len()
+    }
+
+    #[tokio::test]
+    async fn exclude_patterns_remove_files() {
+        let dir = fixture();
+        let root = dir.path();
+
+        assert_eq!(discovered(&config_with(root, vec![], vec![])).await, 1);
+
+        for pattern in ["**/*.rs", "*.rs", "lib.rs", "src/**", "src/lib.rs"] {
+            assert_eq!(
+                discovered(&config_with(root, vec![], vec![pattern])).await,
+                0,
+                "--exclude '{pattern}' must drop the only Rust file"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn include_patterns_restrict_files() {
+        let dir = fixture();
+        let root = dir.path();
+
+        for pattern in ["**/*.py", "nothing_matches_zzz", "*.py"] {
+            assert_eq!(
+                discovered(&config_with(root, vec![pattern], vec![])).await,
+                0,
+                "--include '{pattern}' must match nothing in a Rust-only crate"
+            );
+        }
+
+        for pattern in ["**/*.rs", "lib.rs", "src/lib.rs"] {
+            assert_eq!(
+                discovered(&config_with(root, vec![pattern], vec![])).await,
+                1,
+                "--include '{pattern}' must keep the matching file"
+            );
+        }
     }
 }

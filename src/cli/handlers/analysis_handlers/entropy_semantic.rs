@@ -307,41 +307,199 @@ fn index_workspace(
     Ok(num_docs)
 }
 
+/// Reject a `--format` value this subcommand cannot actually produce.
+///
+/// `--format` accepts nine values but only `json` was ever implemented: yaml,
+/// csv, markdown, junit, summary, text, plain and table all fell through one
+/// `_ =>` arm, so eight of the nine advertised formats emitted byte-identical
+/// human text. The formats below are now produced for real; `junit` describes
+/// test cases, of which a clustering run has none, so it is refused rather than
+/// silently answered with prose.
+fn reject_unsupported_format(
+    subcommand: &str,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<()> {
+    if matches!(format, crate::cli::enums::OutputFormat::Junit) {
+        anyhow::bail!(
+            "`analyze {subcommand} --format junit` is not supported: there are no test cases to \
+             report. Use json, yaml, csv, markdown or table."
+        );
+    }
+    Ok(())
+}
+
+/// Machine-readable view of a clustering run, shared by json/yaml/csv/markdown.
+fn cluster_results_json(
+    result: &crate::services::local_semantic::LocalClusterResult,
+) -> serde_json::Value {
+    serde_json::json!({
+        "method": result.method,
+        "num_documents": result.num_documents,
+        "num_clusters": result.clusters.len(),
+        "clusters": result.clusters.iter().map(|c| serde_json::json!({
+            "id": c.id, "size": c.size,
+            "files": c.files.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
+        })).collect::<Vec<_>>()
+    })
+}
+
+/// Render clustering results in the requested format.
+fn format_cluster_results(
+    result: &crate::services::local_semantic::LocalClusterResult,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<String> {
+    use crate::cli::enums::OutputFormat;
+    use std::fmt::Write as _;
+
+    reject_unsupported_format("cluster", format)?;
+
+    let mut out = String::new();
+    match format {
+        OutputFormat::Json => {
+            out.push_str(&serde_json::to_string_pretty(&cluster_results_json(
+                result,
+            ))?);
+        }
+        OutputFormat::Yaml => {
+            out.push_str(&serde_yaml_ng::to_string(&cluster_results_json(result))?);
+        }
+        OutputFormat::Csv => {
+            out.push_str("cluster_id,size,file\n");
+            for cluster in &result.clusters {
+                for file in &cluster.files {
+                    let _ = writeln!(out, "{},{},{}", cluster.id, cluster.size, file.display());
+                }
+            }
+        }
+        OutputFormat::Markdown => {
+            let _ = writeln!(out, "# Clustering Results ({})\n", result.method);
+            let _ = writeln!(out, "- **Documents**: {}", result.num_documents);
+            let _ = writeln!(out, "- **Clusters**: {}\n", result.clusters.len());
+            out.push_str("| Cluster | Size | Files |\n| --- | --- | --- |\n");
+            for cluster in &result.clusters {
+                let files: Vec<String> = cluster
+                    .files
+                    .iter()
+                    .map(|f| f.display().to_string())
+                    .collect();
+                let _ = writeln!(
+                    out,
+                    "| {} | {} | {} |",
+                    cluster.id,
+                    cluster.size,
+                    files.join("<br>")
+                );
+            }
+        }
+        _ => {
+            let _ = writeln!(out, "\n\u{1f4ca} Clustering Results ({}):", result.method);
+            let _ = writeln!(out, "   Documents: {}", result.num_documents);
+            let _ = writeln!(out, "   Clusters: {}\n", result.clusters.len());
+            for cluster in &result.clusters {
+                let _ = writeln!(out, "   Cluster {} ({} files):", cluster.id, cluster.size);
+                for file in cluster.files.iter().take(5) {
+                    let _ = writeln!(out, "     - {}", file.display());
+                }
+                if cluster.files.len() > 5 {
+                    let _ = writeln!(out, "     ... and {} more", cluster.files.len() - 5);
+                }
+                out.push('\n');
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Output clustering results in the requested format
 fn output_cluster_results(
     result: &crate::services::local_semantic::LocalClusterResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
+    println!("{}", format_cluster_results(result, format)?);
+    Ok(())
+}
+
+/// Machine-readable view of a topic run, shared by json/yaml/csv/markdown.
+fn topic_results_json(
+    result: &crate::services::local_semantic::LocalTopicResult,
+) -> serde_json::Value {
+    serde_json::json!({
+        "num_documents": result.num_documents,
+        "num_topics": result.topics.len(),
+        "topics": result.topics.iter().map(|t| serde_json::json!({
+            "id": t.id, "document_count": t.document_count,
+            "top_terms": t.top_terms.iter().map(|(term, weight)| {
+                serde_json::json!({"term": term, "weight": weight})
+            }).collect::<Vec<_>>()
+        })).collect::<Vec<_>>()
+    })
+}
+
+/// Render topic extraction results in the requested format.
+fn format_topic_results(
+    result: &crate::services::local_semantic::LocalTopicResult,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<String> {
+    use crate::cli::enums::OutputFormat;
+    use std::fmt::Write as _;
+
+    reject_unsupported_format("topics", format)?;
+
+    let mut out = String::new();
     match format {
-        crate::cli::enums::OutputFormat::Json => {
-            let json_output = serde_json::json!({
-                "method": result.method,
-                "num_documents": result.num_documents,
-                "num_clusters": result.clusters.len(),
-                "clusters": result.clusters.iter().map(|c| serde_json::json!({
-                    "id": c.id, "size": c.size,
-                    "files": c.files.iter().map(|f| f.display().to_string()).collect::<Vec<_>>()
-                })).collect::<Vec<_>>()
-            });
-            println!("{}", serde_json::to_string_pretty(&json_output)?);
+        OutputFormat::Json => {
+            out.push_str(&serde_json::to_string_pretty(&topic_results_json(result))?);
+        }
+        OutputFormat::Yaml => {
+            out.push_str(&serde_yaml_ng::to_string(&topic_results_json(result))?);
+        }
+        OutputFormat::Csv => {
+            out.push_str("topic_id,document_count,term,weight\n");
+            for topic in &result.topics {
+                for (term, weight) in &topic.top_terms {
+                    let _ = writeln!(
+                        out,
+                        "{},{},{},{:.6}",
+                        topic.id, topic.document_count, term, weight
+                    );
+                }
+            }
+        }
+        OutputFormat::Markdown => {
+            out.push_str("# Topic Extraction Results\n\n");
+            let _ = writeln!(out, "- **Documents**: {}", result.num_documents);
+            let _ = writeln!(out, "- **Topics**: {}\n", result.topics.len());
+            for topic in &result.topics {
+                let _ = writeln!(
+                    out,
+                    "## Topic {} ({} documents)\n",
+                    topic.id, topic.document_count
+                );
+                for (term, weight) in topic.top_terms.iter().take(10) {
+                    let _ = writeln!(out, "- {term} ({weight:.3})");
+                }
+                out.push('\n');
+            }
         }
         _ => {
-            println!("\n\u{1f4ca} Clustering Results ({}):", result.method);
-            println!("   Documents: {}", result.num_documents);
-            println!("   Clusters: {}\n", result.clusters.len());
-            for cluster in &result.clusters {
-                println!("   Cluster {} ({} files):", cluster.id, cluster.size);
-                for file in cluster.files.iter().take(5) {
-                    println!("     - {}", file.display());
+            out.push_str("\n\u{1f4ca} Topic Extraction Results:\n");
+            let _ = writeln!(out, "   Documents: {}", result.num_documents);
+            let _ = writeln!(out, "   Topics: {}\n", result.topics.len());
+            for topic in &result.topics {
+                let _ = writeln!(
+                    out,
+                    "   Topic {} ({} documents):",
+                    topic.id, topic.document_count
+                );
+                out.push_str("     Top terms:\n");
+                for (term, weight) in topic.top_terms.iter().take(10) {
+                    let _ = writeln!(out, "       - {} ({:.3})", term, weight);
                 }
-                if cluster.files.len() > 5 {
-                    println!("     ... and {} more", cluster.files.len() - 5);
-                }
-                println!();
+                out.push('\n');
             }
         }
     }
-    Ok(())
+    Ok(out)
 }
 
 /// Output topic extraction results in the requested format
@@ -349,37 +507,7 @@ fn output_topic_results(
     result: &crate::services::local_semantic::LocalTopicResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
-    match format {
-        crate::cli::enums::OutputFormat::Json => {
-            let json_output = serde_json::json!({
-                "num_documents": result.num_documents,
-                "num_topics": result.topics.len(),
-                "topics": result.topics.iter().map(|t| serde_json::json!({
-                    "id": t.id, "document_count": t.document_count,
-                    "top_terms": t.top_terms.iter().map(|(term, weight)| {
-                        serde_json::json!({"term": term, "weight": weight})
-                    }).collect::<Vec<_>>()
-                })).collect::<Vec<_>>()
-            });
-            println!("{}", serde_json::to_string_pretty(&json_output)?);
-        }
-        _ => {
-            println!("\n\u{1f4ca} Topic Extraction Results:");
-            println!("   Documents: {}", result.num_documents);
-            println!("   Topics: {}\n", result.topics.len());
-            for topic in &result.topics {
-                println!(
-                    "   Topic {} ({} documents):",
-                    topic.id, topic.document_count
-                );
-                println!("     Top terms:");
-                for (term, weight) in topic.top_terms.iter().take(10) {
-                    println!("       - {} ({:.3})", term, weight);
-                }
-                println!();
-            }
-        }
-    }
+    println!("{}", format_topic_results(result, format)?);
     Ok(())
 }
 
@@ -457,5 +585,93 @@ mod stdout_purity_tests {
                 );
             }
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod format_coverage_tests {
+    //! Regression tests for `analyze cluster` / `analyze topics --format`:
+    //! the enum advertises nine values but only `json` was implemented, so
+    //! yaml, csv, markdown, junit, summary, text, plain and table all produced
+    //! byte-identical human text.
+    use super::{format_cluster_results, format_topic_results};
+    use crate::cli::enums::OutputFormat;
+    use crate::services::local_semantic::{
+        LocalCluster, LocalClusterResult, LocalTopic, LocalTopicResult,
+    };
+
+    fn cluster_result() -> LocalClusterResult {
+        LocalClusterResult {
+            clusters: vec![LocalCluster {
+                id: 0,
+                files: vec![std::path::PathBuf::from("src/lib.rs")],
+                size: 1,
+            }],
+            method: "kmeans".to_string(),
+            num_documents: 1,
+        }
+    }
+
+    fn topic_result() -> LocalTopicResult {
+        LocalTopicResult {
+            topics: vec![LocalTopic {
+                id: 0,
+                top_terms: vec![("network".to_string(), 0.5)],
+                document_count: 1,
+            }],
+            num_documents: 1,
+        }
+    }
+
+    #[test]
+    fn test_cluster_formats_are_distinguishable() {
+        let result = cluster_result();
+        let json = format_cluster_results(&result, &OutputFormat::Json).unwrap();
+        let yaml = format_cluster_results(&result, &OutputFormat::Yaml).unwrap();
+        let csv = format_cluster_results(&result, &OutputFormat::Csv).unwrap();
+        let markdown = format_cluster_results(&result, &OutputFormat::Markdown).unwrap();
+        let table = format_cluster_results(&result, &OutputFormat::Table).unwrap();
+
+        for (name, rendered) in [
+            ("json", &json),
+            ("yaml", &yaml),
+            ("csv", &csv),
+            ("markdown", &markdown),
+        ] {
+            assert_ne!(
+                rendered, &table,
+                "--format {name} must not be the human-text rendering"
+            );
+        }
+        assert!(csv.starts_with("cluster_id,size,file"));
+        assert!(markdown.starts_with("# Clustering Results"));
+        assert!(yaml.contains("method: kmeans"));
+    }
+
+    #[test]
+    fn test_topic_formats_are_distinguishable() {
+        let result = topic_result();
+        let csv = format_topic_results(&result, &OutputFormat::Csv).unwrap();
+        let markdown = format_topic_results(&result, &OutputFormat::Markdown).unwrap();
+        let yaml = format_topic_results(&result, &OutputFormat::Yaml).unwrap();
+        let table = format_topic_results(&result, &OutputFormat::Table).unwrap();
+
+        assert!(csv.starts_with("topic_id,document_count,term,weight"));
+        assert_ne!(markdown, table);
+        assert_ne!(yaml, table);
+        assert!(yaml.contains("num_topics"));
+    }
+
+    #[test]
+    fn test_junit_is_refused_rather_than_answered_with_prose() {
+        let err = format_cluster_results(&cluster_result(), &OutputFormat::Junit)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("junit"),
+            "an unsupported format must be an error naming it, got {err}"
+        );
+        assert!(format_topic_results(&topic_result(), &OutputFormat::Junit).is_err());
     }
 }

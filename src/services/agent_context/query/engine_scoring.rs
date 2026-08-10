@@ -200,9 +200,15 @@ impl AgentContextIndex {
             }
         }
 
-        // Path pattern filter
+        // Path pattern filter.
+        //
+        // The MCP schema calls this a "Path glob pattern filter", but the check
+        // was `file_path.contains(pattern)`: every glob metacharacter matched
+        // nothing, so `**/tdg/**` silently returned an empty set where the bare
+        // substring `src/tdg` returned five hits. `glob_matches` treats a
+        // pattern without `*` as a substring, so plain prefixes keep working.
         if let Some(pattern) = &options.path_pattern {
-            if !func.file_path.contains(pattern) {
+            if !glob_matches(pattern, &func.file_path) {
                 return false;
             }
         }

@@ -86,10 +86,7 @@ pub async fn handle_bottleneck(
 
     let analysis = analyze_bottlenecks(path, period, threshold)?;
 
-    let formatted = match format {
-        crate::cli::enums::OutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-        _ => format_text(&analysis),
-    };
+    let formatted = format_analysis(&analysis, format)?;
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &formatted)?;
@@ -360,6 +357,224 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
     pairs
 }
 
+/// Render the analysis in the format the user asked for.
+///
+/// This used to be `match format { Json => .., _ => format_text() }`: eight of
+/// the nine formats `--help` advertises fell through the catch-all, so
+/// `-f csv`, `-f yaml` and `-f junit` all wrote the same ANSI-decorated table
+/// into files that were supposed to be CSV, YAML and JUnit XML — byte-identical
+/// output for every one of them.
+fn format_analysis(
+    analysis: &BottleneckAnalysis,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<String> {
+    use crate::cli::enums::OutputFormat as F;
+    Ok(match format {
+        F::Json => serde_json::to_string_pretty(analysis)?,
+        F::Yaml => serde_yaml_ng::to_string(analysis)?,
+        F::Markdown => format_markdown(analysis),
+        F::Csv => format_csv(analysis),
+        F::Junit => format_junit(analysis),
+        F::Summary => format_summary(analysis),
+        // The colour-free twins of the table: a redirected `-f text` had ANSI
+        // escapes in it.
+        F::Text | F::Plain => strip_ansi(&format_text(analysis)),
+        F::Table => format_text(analysis),
+    })
+}
+
+/// Drop SGR escape sequences — for the formats that promise plain text.
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' {
+            for esc in chars.by_ref() {
+                if esc.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+            continue;
+        }
+        out.push(ch);
+    }
+    out
+}
+
+/// One CSV field, quoted per RFC 4180 when it has to be.
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\n']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// CSV: the bottleneck rows, then the coupling rows as a second block with its
+/// own header (a spreadsheet reads the first block; `csvkit` reads both).
+fn format_csv(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "path,touches,authors,lines,churn_ratio,pattern,recommendation"
+    );
+    for b in &analysis.bottlenecks {
+        let _ = writeln!(
+            out,
+            "{},{},{},{},{:.1},{},{}",
+            csv_field(&b.path),
+            b.touches,
+            b.authors,
+            b.lines,
+            b.churn_ratio,
+            csv_field(&b.pattern),
+            csv_field(&b.recommendation)
+        );
+    }
+    if !analysis.couplings.is_empty() {
+        let _ = writeln!(out);
+        let _ = writeln!(out, "file_a,file_b,co_changes");
+        for pair in &analysis.couplings {
+            let _ = writeln!(
+                out,
+                "{},{},{}",
+                csv_field(&pair.file_a),
+                csv_field(&pair.file_b),
+                pair.co_changes
+            );
+        }
+    }
+    out
+}
+
+/// Markdown report.
+fn format_markdown(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(out, "# Architectural Bottleneck Analysis\n");
+    let _ = writeln!(out, "- **Period**: {} days", analysis.period_days);
+    let _ = writeln!(out, "- **Total commits**: {}", analysis.total_commits);
+    let _ = writeln!(
+        out,
+        "- **Files changed**: {}\n",
+        analysis.total_files_changed
+    );
+
+    if analysis.bottlenecks.is_empty() {
+        let _ = writeln!(out, "No bottleneck files detected.\n");
+    } else {
+        let _ = writeln!(out, "## Bottleneck Files\n");
+        let _ = writeln!(
+            out,
+            "| File | Touches | Authors | Lines | Churn ratio | Pattern | Recommendation |"
+        );
+        let _ = writeln!(out, "|---|---|---|---|---|---|---|");
+        for b in &analysis.bottlenecks {
+            let _ = writeln!(
+                out,
+                "| `{}` | {} | {} | {} | {:.1} | {} | {} |",
+                b.path, b.touches, b.authors, b.lines, b.churn_ratio, b.pattern, b.recommendation
+            );
+        }
+        let _ = writeln!(out);
+    }
+
+    if !analysis.couplings.is_empty() {
+        let _ = writeln!(out, "## Co-Change Coupling\n");
+        let _ = writeln!(out, "| File A | File B | Co-changes |");
+        let _ = writeln!(out, "|---|---|---|");
+        for pair in &analysis.couplings {
+            let _ = writeln!(
+                out,
+                "| `{}` | `{}` | {} |",
+                pair.file_a, pair.file_b, pair.co_changes
+            );
+        }
+    }
+    out
+}
+
+/// Three lines, no decoration.
+fn format_summary(analysis: &BottleneckAnalysis) -> String {
+    format!(
+        "period_days={}\ncommits={}\nfiles_changed={}\nbottlenecks={}\ncouplings={}\n",
+        analysis.period_days,
+        analysis.total_commits,
+        analysis.total_files_changed,
+        analysis.bottlenecks.len(),
+        analysis.couplings.len()
+    )
+}
+
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+/// JUnit XML: every detected bottleneck is a failing testcase, so CI can gate
+/// on it.
+fn format_junit(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let tests = analysis.bottlenecks.len() + analysis.couplings.len();
+    let _ = writeln!(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    let _ = writeln!(
+        out,
+        "<testsuites name=\"Architectural Bottlenecks\" tests=\"{tests}\" failures=\"{tests}\">"
+    );
+    let _ = writeln!(
+        out,
+        "  <testsuite name=\"Bottleneck Files\" tests=\"{}\" failures=\"{}\">",
+        analysis.bottlenecks.len(),
+        analysis.bottlenecks.len()
+    );
+    for b in &analysis.bottlenecks {
+        let _ = writeln!(
+            out,
+            "    <testcase name=\"{}\" classname=\"Bottleneck\">",
+            xml_escape(&b.path)
+        );
+        let _ = writeln!(
+            out,
+            "      <failure message=\"{} ({} touches, {} lines, churn ratio {:.1})\">{}</failure>",
+            xml_escape(&b.pattern),
+            b.touches,
+            b.lines,
+            b.churn_ratio,
+            xml_escape(&b.recommendation)
+        );
+        let _ = writeln!(out, "    </testcase>");
+    }
+    let _ = writeln!(out, "  </testsuite>");
+    let _ = writeln!(
+        out,
+        "  <testsuite name=\"Co-Change Coupling\" tests=\"{}\" failures=\"{}\">",
+        analysis.couplings.len(),
+        analysis.couplings.len()
+    );
+    for pair in &analysis.couplings {
+        let _ = writeln!(
+            out,
+            "    <testcase name=\"{} &lt;-&gt; {}\" classname=\"Coupling\">",
+            xml_escape(&pair.file_a),
+            xml_escape(&pair.file_b)
+        );
+        let _ = writeln!(
+            out,
+            "      <failure message=\"{} co-changes\" />",
+            pair.co_changes
+        );
+        let _ = writeln!(out, "    </testcase>");
+    }
+    let _ = writeln!(out, "  </testsuite>");
+    let _ = writeln!(out, "</testsuites>");
+    out
+}
+
 /// Format results as colorized text
 fn format_text(analysis: &BottleneckAnalysis) -> String {
     use crate::cli::colors as c;
@@ -561,6 +776,91 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
+    }
+
+    fn sample_analysis() -> BottleneckAnalysis {
+        BottleneckAnalysis {
+            period_days: 30,
+            total_commits: 13,
+            total_files_changed: 709,
+            bottlenecks: vec![BottleneckFile {
+                path: "src/cli/mod.rs".to_string(),
+                touches: 9,
+                authors: 2,
+                lines: 1200,
+                churn_ratio: 0.75,
+                pattern: "Registry/Dispatch".to_string(),
+                recommendation: "Consider proc-macro auto-discovery, e.g. inventory".to_string(),
+            }],
+            couplings: vec![CouplingPair {
+                file_a: "a.rs".to_string(),
+                file_b: "b.rs".to_string(),
+                co_changes: 4,
+            }],
+        }
+    }
+
+    /// `--help` advertises nine formats; eight of them fell through a catch-all
+    /// arm and emitted the SAME ANSI table (956 bytes each), so `-f csv` wrote
+    /// escape sequences into a .csv and `-f junit` was not XML.
+    #[test]
+    fn every_advertised_format_renders_itself() {
+        use crate::cli::enums::OutputFormat as F;
+        let analysis = sample_analysis();
+
+        let yaml = format_analysis(&analysis, &F::Yaml).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).expect("valid yaml");
+        assert_eq!(parsed["total_commits"].as_u64(), Some(13));
+
+        let csv = format_analysis(&analysis, &F::Csv).unwrap();
+        assert!(csv.starts_with("path,touches,authors,lines,churn_ratio,pattern,recommendation\n"));
+        assert!(csv.contains("src/cli/mod.rs,9,2,1200,0.8,Registry/Dispatch,"));
+        assert!(csv.contains("file_a,file_b,co_changes\na.rs,b.rs,4"));
+
+        let junit = format_analysis(&analysis, &F::Junit).unwrap();
+        assert!(junit.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(junit.contains("<testsuites"));
+        assert!(junit.contains("src/cli/mod.rs"));
+
+        let md = format_analysis(&analysis, &F::Markdown).unwrap();
+        assert!(md.starts_with("# Architectural Bottleneck Analysis"));
+        assert!(md.contains("| `src/cli/mod.rs` | 9 |"));
+
+        let summary = format_analysis(&analysis, &F::Summary).unwrap();
+        assert!(summary.contains("bottlenecks=1"));
+
+        let json = format_analysis(&analysis, &F::Json).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        // No two formats may be byte-identical, and only the table may carry
+        // colour.
+        for (name, rendered) in [
+            ("yaml", &yaml),
+            ("csv", &csv),
+            ("junit", &junit),
+            ("markdown", &md),
+            ("summary", &summary),
+            ("json", &json),
+        ] {
+            assert!(
+                !rendered.contains('\u{1b}'),
+                "{name} carries ANSI escapes: {rendered:?}"
+            );
+        }
+    }
+
+    /// `-f text` / `-f plain` keep the table's shape but must not carry colour
+    /// into a redirected file.
+    #[test]
+    fn text_and_plain_are_the_table_without_escapes() {
+        use crate::cli::enums::OutputFormat as F;
+        let analysis = sample_analysis();
+        let text = format_analysis(&analysis, &F::Text).unwrap();
+        let plain = format_analysis(&analysis, &F::Plain).unwrap();
+        assert_eq!(text, plain);
+        assert!(!text.contains('\u{1b}'), "{text:?}");
+        assert!(text.contains("Architectural Bottleneck Analysis"));
+        assert!(text.contains("src/cli/mod.rs"));
     }
 
     /// GH #665: a monotonically larger `--period` must never report fewer

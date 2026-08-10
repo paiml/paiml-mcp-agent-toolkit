@@ -254,10 +254,19 @@ pub static EXPLANATIONS: &[CheckExplanation] = &[
     },
 
     // ── TDG Grades ────────────────────────────────────────────────────
+    //
+    // ONE band per grade `pmat tdg` can print, and the bands are the ones in
+    // `crate::tdg::Grade`'s GRADE_BANDS. What used to sit here was a
+    // hand-written FIVE-grade table whose numbers contradicted the analyzer:
+    // it said A was "Score 85-94" where the analyzer grades 85-89 as A-, and it
+    // had no entry at all for A-, B+, B-, C+, C- or D — so `pmat explain TDG-A-`
+    // answered "No checks matching 'TDG-A-'" for a grade the tool prints
+    // routinely. `tdg_grade_bands_match_the_analyzer` below fails if the two
+    // ever drift again.
     CheckExplanation {
         id: "TDG-A+",
         name: "Grade A+ (Excellent)",
-        what: "Score 95-100. Minimal complexity, full test coverage, clean documentation.",
+        what: "Score [95, 100]. Minimal complexity, full test coverage, clean documentation.",
         why: "A+ functions have near-zero defect probability and serve as reference implementations.",
         fail_when: &[],
         how_to_fix: "Already excellent. Maintain quality.",
@@ -266,37 +275,161 @@ pub static EXPLANATIONS: &[CheckExplanation] = &[
     CheckExplanation {
         id: "TDG-A",
         name: "Grade A (Good)",
-        what: "Score 85-94. Low complexity, good test coverage, acceptable documentation.",
+        what: "Score [90, 95). Low complexity, good test coverage, acceptable documentation.",
         why: "Grade A is the minimum acceptable for production code in projects with min_tdg_grade: A.",
         fail_when: &[],
         how_to_fix: "Reduce cyclomatic complexity, add edge-case tests, improve naming.",
-        see_also: &["TDG-A+ (Excellent)", "TDG-B (Needs Improvement)", "CB-200 (TDG Grade Gate)"],
+        see_also: &["TDG-A+ (Excellent)", "TDG-A- (Next Band Down)", "CB-200 (TDG Grade Gate)"],
+    },
+    CheckExplanation {
+        id: "TDG-A-",
+        name: "Grade A- (Good, Bottom of the A Band)",
+        what: "Score [85, 90). Low complexity with a thin margin on coverage or documentation.",
+        why: "A- passes an `min_tdg_grade: A-` gate but fails an A gate — the most common near-miss.",
+        fail_when: &["CB-200 fails if min_tdg_grade is set to A or A+"],
+        how_to_fix: "Close the smallest component gap first (usually documentation or duplication).",
+        see_also: &["TDG-A (Next Target)", "CB-200 (TDG Grade Gate)"],
+    },
+    CheckExplanation {
+        id: "TDG-B+",
+        name: "Grade B+ (Acceptable)",
+        what: "Score [80, 85). Moderate complexity, or one weak component.",
+        why: "B+ code carries measurably more defects than A code but is not a priority rewrite.",
+        fail_when: &["CB-200 fails if min_tdg_grade is set to A- or higher"],
+        how_to_fix: "Extract helper functions and add the missing test paths for the weakest component.",
+        see_also: &["TDG-A- (Next Target)", "pmat-book Ch4: TDG"],
     },
     CheckExplanation {
         id: "TDG-B",
         name: "Grade B (Needs Improvement)",
-        what: "Score 70-84. Moderate complexity or coverage gaps.",
+        what: "Score [75, 80). Moderate complexity or coverage gaps.",
         why: "Grade B functions have elevated defect risk. Refactor to reduce complexity.",
-        fail_when: &["CB-200 fails if min_tdg_grade is set to A or higher"],
+        fail_when: &["CB-200 fails if min_tdg_grade is set to B+ or higher"],
         how_to_fix: "Extract helper functions, reduce nesting depth, add missing test paths.",
-        see_also: &["TDG-A (Target)", "pmat-book Ch4: TDG"],
+        see_also: &["TDG-B+ (Next Target)", "pmat-book Ch4: TDG"],
+    },
+    CheckExplanation {
+        id: "TDG-B-",
+        name: "Grade B- (Needs Improvement)",
+        what: "Score [70, 75). Several components below target.",
+        why: "This is also the grade a project is CAPPED at when any file grades F, regardless of average.",
+        fail_when: &["CB-200 fails if min_tdg_grade is set to B or higher"],
+        how_to_fix: "Fix the F-grade files first, then the weakest component of this one.",
+        see_also: &["TDG-F (Project Cap)", "pmat-book Ch4: TDG"],
+    },
+    CheckExplanation {
+        id: "TDG-C+",
+        name: "Grade C+ (Poor)",
+        what: "Score [65, 70). High complexity, significant coverage gaps.",
+        why: "Grade C code is a primary defect source and a priority refactoring target.",
+        fail_when: &["CB-200 fails if min_tdg_grade is set to B- or higher"],
+        how_to_fix: "Break into smaller functions and add comprehensive tests.",
+        see_also: &["TDG-B- (Next Target)", "pmat five-whys"],
     },
     CheckExplanation {
         id: "TDG-C",
         name: "Grade C (Poor)",
-        what: "Score 50-69. High complexity, significant coverage gaps.",
+        what: "Score [60, 65). High complexity, significant coverage gaps.",
         why: "Grade C functions are primary defect sources. Priority refactoring target.",
-        fail_when: &["CB-200 fails for any grade gate setting above F"],
+        fail_when: &["CB-200 fails for any grade gate setting above C"],
         how_to_fix: "Break into smaller functions, add comprehensive tests, reduce cyclomatic complexity below 20.",
-        see_also: &["TDG-B (Next Target)", "pmat five-whys"],
+        see_also: &["TDG-C+ (Next Target)", "pmat five-whys"],
+    },
+    CheckExplanation {
+        id: "TDG-C-",
+        name: "Grade C- (Poor)",
+        what: "Score [55, 60). High complexity with little or no test coverage.",
+        why: "At this level the cheapest fix is usually tests, not restructuring — measure first.",
+        fail_when: &["CB-200 fails for any grade gate setting above C-"],
+        how_to_fix: "Add characterization tests, then split the largest function.",
+        see_also: &["TDG-C (Next Target)", "pmat five-whys"],
+    },
+    CheckExplanation {
+        id: "TDG-D",
+        name: "Grade D (Very Poor)",
+        what: "Score [50, 55). Extreme complexity with almost no coverage.",
+        why: "D is one band above the F cap: a small regression here starts capping the project grade.",
+        fail_when: &["CB-200 fails for any grade gate setting above D"],
+        how_to_fix: "Treat as a rewrite candidate: extract testable units before changing behaviour.",
+        see_also: &["TDG-F (Critical)", "pmat five-whys"],
     },
     CheckExplanation {
         id: "TDG-F",
         name: "Grade F (Critical)",
-        what: "Score below 50. Extreme complexity, untested, high defect density.",
-        why: "Grade F functions cap the entire project score at B. Fix these first.",
-        fail_when: &["Any F-grade function causes project-level score cap"],
+        what: "Score [0, 50). Extreme complexity, untested, high defect density.",
+        why: "Grade F files cap the entire PROJECT grade at B — a 99.8/100 project still reports (B) if one file grades F. `pmat tdg` names the cap and the F-grade count when it applies.",
+        fail_when: &["Any F-grade file causes the project grade to be capped at B"],
         how_to_fix: "Rewrite the function. Extract logic into testable units. Add property-based tests.",
-        see_also: &["TDG-C (Intermediate Target)", "pmat five-whys"],
+        see_also: &["TDG-D (Intermediate Target)", "pmat five-whys"],
     },
 ];
+
+#[cfg(test)]
+mod tdg_grade_registry_tests {
+    use super::*;
+    use crate::tdg::Grade;
+
+    /// The band text an entry must open with, derived from the analyzer's own
+    /// table rather than restated here.
+    fn band_text(grade: Grade) -> String {
+        let (floor, ceiling) = grade.score_band();
+        if grade == Grade::APlus {
+            format!("Score [{floor}, {ceiling}]")
+        } else {
+            format!("Score [{floor}, {ceiling})")
+        }
+    }
+
+    /// Every grade `pmat tdg` can print must be explainable, with the bands the
+    /// analyzer actually uses. Before this, `explain` documented five grades
+    /// with a stale table (A = "Score 85-94" against the analyzer's 90..95) and
+    /// `explain TDG-A-` reported that no such check existed.
+    #[test]
+    fn tdg_grade_bands_match_the_analyzer() {
+        for grade in Grade::all() {
+            let id = format!("TDG-{grade}");
+            let entries: Vec<_> = EXPLANATIONS.iter().filter(|e| e.id == id).collect();
+            assert_eq!(
+                entries.len(),
+                1,
+                "{id}: expected exactly one explain entry, found {}",
+                entries.len()
+            );
+            let expected = band_text(grade);
+            assert!(
+                entries[0].what.starts_with(&expected),
+                "{id} documents {:?} but the analyzer's band is {expected}",
+                entries[0].what
+            );
+        }
+    }
+
+    /// `pmat explain TDG-A-` must answer, not report an unknown check.
+    #[test]
+    fn every_grade_id_is_looked_up_exactly() {
+        for grade in Grade::all() {
+            let id = format!("TDG-{grade}");
+            let found = lookup(&id);
+            assert_eq!(
+                found.len(),
+                1,
+                "lookup({id}) returned {} entries",
+                found.len()
+            );
+            assert_eq!(found[0].id, id);
+        }
+    }
+
+    /// ... and the registry must not document a grade the analyzer cannot emit.
+    #[test]
+    fn no_tdg_entry_without_a_grade() {
+        let known: Vec<String> = Grade::all().iter().map(|g| format!("TDG-{g}")).collect();
+        for entry in EXPLANATIONS.iter().filter(|e| e.id.starts_with("TDG-")) {
+            assert!(
+                known.iter().any(|k| k == entry.id),
+                "{} documents a grade no score maps to",
+                entry.id
+            );
+        }
+    }
+}

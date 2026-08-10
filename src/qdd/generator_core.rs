@@ -233,7 +233,9 @@ mod {} {{
             quality_score: QualityScore {
                 overall: metrics.calculate_score(),
                 complexity: metrics.complexity,
-                coverage: 100.0, // Tests provide coverage
+                // NOT a measurement: nothing runs the generated tests. The CLI
+                // reports coverage as not measured rather than as this literal.
+                coverage: 100.0,
                 tdg: 1,
             },
             metrics,
@@ -291,7 +293,7 @@ mod {} {{
         Ok(QualityMetrics {
             complexity: self.estimate_complexity(code),
             cognitive_complexity: self.estimate_complexity(code), // Same for now
-            coverage: 100, // Generated tests provide full coverage
+            coverage: 100, // NOT a measurement — no test run produced this
             tdg: 1,        // Generated code has minimal technical debt
             satd_count: code.matches("TODO").count() as u32,
             dead_code_percentage: 0, // Generated code has no dead code

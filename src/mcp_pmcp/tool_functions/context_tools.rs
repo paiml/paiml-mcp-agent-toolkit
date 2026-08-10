@@ -1,8 +1,47 @@
+/// Is `file` within `max_depth` levels of one of the supplied roots?
+///
+/// Depth is counted the way the tool documents it: a file sitting directly in a
+/// supplied directory is depth 1. A file that is under none of the roots (a
+/// glob expansion, say) cannot be attributed a depth and is kept.
+fn within_max_depth(roots: &[PathBuf], file: &Path, max_depth: usize) -> bool {
+    let mut attributable = false;
+    for root in roots {
+        if root == file {
+            return true;
+        }
+        if let Ok(relative) = file.strip_prefix(root) {
+            attributable = true;
+            if relative.components().count() <= max_depth {
+                return true;
+            }
+        }
+    }
+    !attributable
+}
+
+/// Module paths this file imports, in source order and de-duplicated.
+fn collect_file_dependencies(items: &[crate::services::context::AstItem]) -> Vec<String> {
+    use crate::services::context::AstItem;
+
+    let mut out = Vec::new();
+    for item in items {
+        let dep = match item {
+            AstItem::Use { path, .. } => path.clone(),
+            AstItem::Import { module, .. } => module.clone(),
+            _ => continue,
+        };
+        if !dep.is_empty() && !out.contains(&dep) {
+            out.push(dep);
+        }
+    }
+    out
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn generate_context(
     paths: &[PathBuf],
-    _max_depth: Option<usize>,
-    _include_dependencies: bool,
+    max_depth: Option<usize>,
+    include_dependencies: bool,
 ) -> Result<Value> {
     use crate::services::deep_context::analyze_single_file;
 
@@ -12,14 +51,31 @@ pub async fn generate_context(
 
     // R17-2: Walk directories. Previously only `path.is_file()` was analyzed,
     // yielding instant empty responses for directory inputs (D82).
-    let files = expand_paths_to_source_files(paths);
+    let mut files = expand_paths_to_source_files(paths);
+
+    // `max_depth` and `include_dependencies` were declared as `_max_depth` /
+    // `_include_dependencies` and never read, so the two documented knobs did
+    // nothing at all: max_depth 1, 2 and 99 over a four-level tree returned
+    // byte-identical 1061-file responses, and `dependencies` was always [].
+    // A parameter the schema advertises must either act or not be advertised.
+    if let Some(depth) = max_depth {
+        files.retain(|file| within_max_depth(paths, file, depth));
+    }
+
     let mut all_files = Vec::new();
-    let all_dependencies: Vec<String> = Vec::new();
+    let mut all_dependencies: Vec<String> = Vec::new();
 
     for path in &files {
         // Analyze each file
         match analyze_single_file(path).await {
             Ok(file_context) => {
+                if include_dependencies {
+                    for dep in collect_file_dependencies(&file_context.items) {
+                        if !all_dependencies.contains(&dep) {
+                            all_dependencies.push(dep);
+                        }
+                    }
+                }
                 all_files.push(json!({
                     "path": file_context.path,
                     "language": file_context.language,
@@ -57,6 +113,89 @@ pub async fn generate_context(
             "total_files": all_files.len(),
         }
     }))
+}
+
+#[cfg(test)]
+mod generate_context_knob_tests {
+    use super::*;
+
+    #[test]
+    fn depth_one_keeps_only_the_top_level() {
+        let root = PathBuf::from("/p/src");
+        let roots = vec![root.clone()];
+
+        assert!(within_max_depth(&roots, Path::new("/p/src/lib.rs"), 1));
+        assert!(!within_max_depth(&roots, Path::new("/p/src/a/b.rs"), 1));
+        assert!(within_max_depth(&roots, Path::new("/p/src/a/b.rs"), 2));
+        assert!(!within_max_depth(&roots, Path::new("/p/src/a/b/c.rs"), 2));
+    }
+
+    #[test]
+    fn an_explicitly_named_file_is_always_within_depth() {
+        let file = PathBuf::from("/p/src/lib.rs");
+        assert!(within_max_depth(std::slice::from_ref(&file), &file, 1));
+    }
+
+    #[test]
+    fn a_file_under_no_supplied_root_is_kept() {
+        // Glob expansions are not attributable to a root; dropping them would
+        // silently lose results.
+        let roots = vec![PathBuf::from("/other")];
+        assert!(within_max_depth(&roots, Path::new("/p/src/lib.rs"), 1));
+    }
+
+    #[tokio::test]
+    async fn max_depth_actually_narrows_the_result_set() {
+        // The reported defect: max_depth 1, 2 and 99 returned byte-identical
+        // responses over a four-level tree.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().to_path_buf();
+        std::fs::write(root.join("top.rs"), "pub fn top() {}\n").expect("write");
+        std::fs::create_dir_all(root.join("a/b")).expect("mkdir");
+        std::fs::write(root.join("a/mid.rs"), "pub fn mid() {}\n").expect("write");
+        std::fs::write(root.join("a/b/deep.rs"), "pub fn deep() {}\n").expect("write");
+
+        let paths = vec![root];
+        let count = |v: &Value| v["context"]["total_files"].as_u64().unwrap();
+
+        let d1 = generate_context(&paths, Some(1), false).await.expect("d1");
+        let d2 = generate_context(&paths, Some(2), false).await.expect("d2");
+        let d99 = generate_context(&paths, Some(99), false).await.expect("d99");
+
+        assert_eq!(count(&d1), 1, "depth 1 is the top level only");
+        assert_eq!(count(&d2), 2);
+        assert_eq!(count(&d99), 3);
+    }
+
+    #[tokio::test]
+    async fn include_dependencies_populates_the_dependencies_list() {
+        // `dependencies` was always [] whatever the flag said.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().to_path_buf();
+        std::fs::write(
+            root.join("lib.rs"),
+            "use std::collections::HashMap;\npub fn f(_: HashMap<u8, u8>) {}\n",
+        )
+        .expect("write");
+
+        let paths = vec![root];
+        let with = generate_context(&paths, None, true).await.expect("with");
+        let without = generate_context(&paths, None, false)
+            .await
+            .expect("without");
+
+        assert!(
+            !with["context"]["dependencies"]
+                .as_array()
+                .expect("array")
+                .is_empty(),
+            "include_dependencies=true must report the file's imports"
+        );
+        assert!(without["context"]["dependencies"]
+            .as_array()
+            .expect("array")
+            .is_empty());
+    }
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

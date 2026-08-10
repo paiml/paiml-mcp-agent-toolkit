@@ -105,10 +105,18 @@ pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
         }
     }
 
-    // Find highest score
+    // Find highest score.
+    //
+    // `scores` is a HashMap, so `max_by` on the score alone let RandomState
+    // iteration order pick the winner whenever two languages tied: eight
+    // consecutive `pmat context` runs over one unmodified polyglot tree
+    // (1 .go / 1 .ts / 1 .py, all 33.3) answered python/go/typescript. Ties
+    // now resolve alphabetically, the same tie-break `cli_language_detection`
+    // already carries (`max_by` keeps the LAST maximum, so the comparator is
+    // reversed on the name to keep the alphabetically first one).
     let (best_lang, best_score) = scores
         .iter()
-        .max_by(|a, b| a.1.total_cmp(b.1))
+        .max_by(|a, b| a.1.total_cmp(b.1).then_with(|| b.0.cmp(a.0)))
         .map(|(lang, score)| (lang.clone(), *score))
         .unwrap_or_else(|| ("unknown".to_string(), 0.0));
 
@@ -393,5 +401,28 @@ mod tests {
         let detection = detect_all_languages(temp.path());
         assert_eq!(detection.languages.len(), 2);
         assert_eq!(detection.primary, "rust");
+    }
+
+    #[test]
+    fn tied_polyglot_tree_detects_the_same_language_every_time() {
+        // A tie used to be resolved by HashMap iteration order, so `pmat
+        // context` reported a different language on every run for one
+        // unmodified tree. One file each of Go/TypeScript/Python ties at 33.3.
+        let temp = TempDir::new().expect("internal error");
+        std::fs::write(temp.path().join("main.go"), "package main\n").expect("internal error");
+        std::fs::write(temp.path().join("app.ts"), "export const a = 1;\n")
+            .expect("internal error");
+        std::fs::write(temp.path().join("main.py"), "print('hi')\n").expect("internal error");
+
+        let first = detect_project_language_enhanced(temp.path()).language;
+        for _ in 0..24 {
+            assert_eq!(
+                detect_project_language_enhanced(temp.path()).language,
+                first,
+                "a tied polyglot tree must detect the same language every run"
+            );
+        }
+        // Ties resolve alphabetically, so the answer is also predictable.
+        assert_eq!(first, "go");
     }
 }

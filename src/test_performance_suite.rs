@@ -106,6 +106,17 @@ pub async fn test_realistic_project_analysis() -> Result<()> {
     )
 }
 
+/// Seconds a single analysis in this suite is allowed to take.
+///
+/// `handle_analyze_complexity` takes a `timeout` argument and prints
+/// "⏰ Analysis timeout set to 60 seconds", but nothing enforces it: `pmat test
+/// throughput` sat in `test_large_file_performance` for the whole of a 170s
+/// external `timeout` and was killed at exit 124, having printed the "Analyzing
+/// complexity of file" line and then nothing. Until the handler honours its own
+/// argument, the suite enforces the budget it advertises at the call site — a
+/// perf suite that never returns cannot report anything.
+const ANALYSIS_BUDGET_SECS: u64 = 60;
+
 /// Test large file handling performance
 pub async fn test_large_file_performance() -> Result<()> {
     let test_lines = 100_000; // 100K LOC single file
@@ -119,7 +130,10 @@ pub async fn test_large_file_performance() -> Result<()> {
     let start = Instant::now();
 
     use crate::cli::handlers::complexity_handlers;
-    complexity_handlers::handle_analyze_complexity(
+    // Spawned rather than awaited inline: the analysis is CPU-bound and does
+    // not yield, and `tokio::time::timeout` cannot interrupt a future that
+    // holds its worker thread. Off on its own task, the timer still fires.
+    let analysis = tokio::spawn(complexity_handlers::handle_analyze_complexity(
         temp_dir.path().to_path_buf(),
         Some(test_file), // file
         vec![],          // files
@@ -132,9 +146,20 @@ pub async fn test_large_file_performance() -> Result<()> {
         false,    // watch
         10,       // top_files
         false,    // fail_on_violation
-        60,       // timeout
-    )
-    .await?;
+        ANALYSIS_BUDGET_SECS, // timeout
+    ));
+
+    match tokio::time::timeout(Duration::from_secs(ANALYSIS_BUDGET_SECS), analysis).await {
+        Ok(joined) => joined??,
+        Err(_) => {
+            println!(
+                "❌ Large file performance: no result within {ANALYSIS_BUDGET_SECS}s for {test_lines} LOC"
+            );
+            anyhow::bail!(
+                "Large file analysis exceeded its own {ANALYSIS_BUDGET_SECS}s budget for {test_lines} LOC"
+            );
+        }
+    }
 
     let duration = start.elapsed();
 
@@ -169,8 +194,14 @@ pub async fn test_memory_usage_patterns() -> Result<()> {
     let test_code = generate_test_code(test_lines);
     fs::write(&test_file, &test_code)?;
 
-    // Get initial memory usage (approximate)
-    let initial_memory = get_memory_usage_mb();
+    // Peak resident set, in KB, before the analysis. This used to be
+    // `get_memory_usage_mb()` — VmRSS truncated to whole MB — and the "usage"
+    // was `final.saturating_sub(initial)`, a difference of two rounded-down MB
+    // figures over a transient allocation. It reported "✅ Memory usage: 0MB
+    // for 20K LOC" every single run, so `memory_used <= 10` could not fail and
+    // "Memory tests passed!" was unconditional. VmHWM in KB is the peak the
+    // analysis actually reached, at 1024x the resolution.
+    let before = MemorySample::read()?;
 
     // Run analysis
     use crate::cli::handlers::complexity_handlers;
@@ -191,22 +222,27 @@ pub async fn test_memory_usage_patterns() -> Result<()> {
     )
     .await?;
 
-    let final_memory = get_memory_usage_mb();
-    let memory_used = final_memory.saturating_sub(initial_memory);
+    let after = MemorySample::read()?;
+    let peak_growth_kb = after.peak_kb.saturating_sub(before.peak_kb);
 
     // Memory usage should be reasonable for 20K LOC
-    let expected_memory_mb = 10; // Conservative estimate
-    assert!(
-        memory_used <= expected_memory_mb,
-        "Memory usage: {}MB for {}K LOC, expected ≤{}MB",
-        memory_used,
-        test_lines / 1000,
-        expected_memory_mb
-    );
+    const BUDGET_KB: u64 = 10 * 1024; // 10 MB, as before — now in KB
+    if peak_growth_kb > BUDGET_KB {
+        println!(
+            "❌ Memory usage: peak grew {peak_growth_kb} KB for {}K LOC (budget: ≤{BUDGET_KB} KB)",
+            test_lines / 1000
+        );
+        anyhow::bail!(
+            "Peak resident memory grew {peak_growth_kb} KB for {}K LOC, over the {BUDGET_KB} KB budget",
+            test_lines / 1000
+        );
+    }
 
     println!(
-        "✅ Memory usage: {}MB for {}K LOC",
-        memory_used,
+        "✅ Memory usage: peak RSS {} KB (was {} KB), analysis added {} KB for {}K LOC",
+        after.peak_kb,
+        before.peak_kb,
+        peak_growth_kb,
         test_lines / 1000
     );
 
@@ -277,11 +313,53 @@ pub async fn test_performance_regression_detection() -> Result<()> {
 }
 
 fn parse_vmrss_kb(status: &str) -> Option<u64> {
+    parse_status_kb(status, "VmRSS:")
+}
+
+/// A `/proc/self/status` size field, in KB.
+fn parse_status_kb(status: &str, field: &str) -> Option<u64> {
     status
         .lines()
-        .find(|line| line.starts_with("VmRSS:"))
+        .find(|line| line.starts_with(field))
         .and_then(|line| line.split_whitespace().nth(1))
         .and_then(|kb_str| kb_str.parse::<u64>().ok())
+}
+
+/// Resident memory in KB: current (`VmRSS`) and peak (`VmHWM`).
+///
+/// `read()` fails rather than substituting 0 when the figures are unavailable.
+/// The memory gate used to source its numbers from a function that returned 0
+/// on any read or parse failure, so a platform where nothing could be measured
+/// printed "Memory usage: 0MB" and passed — a gate that cannot measure must not
+/// report a pass.
+#[derive(Debug, Clone, Copy)]
+pub struct MemorySample {
+    pub rss_kb: u64,
+    pub peak_kb: u64,
+}
+
+impl MemorySample {
+    /// Read the current process's resident memory.
+    ///
+    /// # Errors
+    /// Returns an error when `/proc/self/status` cannot be read or does not
+    /// carry `VmRSS`/`VmHWM` — i.e. when the measurement does not exist.
+    pub fn read() -> Result<Self> {
+        #[cfg(target_os = "linux")]
+        {
+            let status = std::fs::read_to_string("/proc/self/status").map_err(|e| {
+                anyhow::anyhow!("cannot measure memory: /proc/self/status unreadable: {e}")
+            })?;
+            let rss_kb = parse_status_kb(&status, "VmRSS:")
+                .ok_or_else(|| anyhow::anyhow!("cannot measure memory: no VmRSS in status"))?;
+            let peak_kb = parse_status_kb(&status, "VmHWM:")
+                .ok_or_else(|| anyhow::anyhow!("cannot measure memory: no VmHWM in status"))?;
+            Ok(Self { rss_kb, peak_kb })
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        anyhow::bail!("cannot measure memory: resident-set reporting is Linux-only on this build")
+    }
 }
 
 /// Approximate memory usage in MB (platform-specific)
@@ -320,12 +398,78 @@ mod throughput_verdict_tests {
         assert!(report_throughput("t", 100_000.0, 100_000.0, "").is_ok());
         assert!(report_throughput("t", 500_000.0, 487_000.0, "").is_ok());
     }
+
+    /// Running zero tests is not a pass. `pmat test performance` reached this
+    /// function with every sub-suite disabled and printed
+    /// "✅ All performance tests passed!".
+    #[tokio::test]
+    async fn test_suite_with_nothing_enabled_is_an_error() {
+        let config = PerformanceTestConfig {
+            enable_regression_tests: false,
+            enable_memory_tests: false,
+            enable_throughput_tests: false,
+            test_iterations: 3,
+        };
+        let err = run_performance_test_suite(config)
+            .await
+            .expect_err("a run that measured nothing must not report success");
+        assert!(err.to_string().contains("nothing was measured"), "{err}");
+    }
+
+    /// The memory gate read whole MB and reported the difference of two rounded
+    /// figures, which was 0 on every run. KB resolution is the point.
+    #[test]
+    fn test_memory_sample_reads_kb_resolution() {
+        let sample = MemorySample::read().expect("linux test host exposes /proc/self/status");
+        assert!(
+            sample.rss_kb > 1024,
+            "RSS {} KB looks unmeasured",
+            sample.rss_kb
+        );
+        assert!(
+            sample.peak_kb >= sample.rss_kb,
+            "peak {} KB below current {} KB",
+            sample.peak_kb,
+            sample.rss_kb
+        );
+
+        // The resolution the old reading threw away: a 500 KB growth is 0 MB
+        // on both sides of the subtraction the gate used to perform.
+        let before = "VmRSS:\t  102400 kB\nVmHWM:\t  102400 kB\n";
+        let after = "VmRSS:\t  102900 kB\nVmHWM:\t  102900 kB\n";
+        let before_kb = parse_status_kb(before, "VmHWM:").unwrap();
+        let after_kb = parse_status_kb(after, "VmHWM:").unwrap();
+        assert_eq!(after_kb - before_kb, 500);
+        assert_eq!(after_kb / 1024 - before_kb / 1024, 0, "the old MB view");
+    }
+
+    #[test]
+    fn test_parse_status_kb_reads_peak_field() {
+        let status = "Name:\tpmat\nVmRSS:\t  123456 kB\nVmHWM:\t  234567 kB\n";
+        assert_eq!(parse_status_kb(status, "VmRSS:"), Some(123_456));
+        assert_eq!(parse_status_kb(status, "VmHWM:"), Some(234_567));
+        assert_eq!(parse_status_kb(status, "VmNope:"), None);
+    }
 }
 
 /// Run comprehensive performance test suite
 pub async fn run_performance_test_suite(config: PerformanceTestConfig) -> Result<()> {
     println!("🏃 Running PMAT Performance Test Suite (SPECIFICATION.md Section 30)");
     println!("================================================================");
+
+    // With every sub-suite disabled this function skipped all three blocks and
+    // printed "✅ All performance tests passed!" anyway — which is what
+    // `pmat test performance` (the CLI default suite) did on every invocation,
+    // byte-identically in an empty directory and in a 4260-file repository.
+    // Zero tests run is not a pass.
+    if !config.enable_throughput_tests
+        && !config.enable_regression_tests
+        && !config.enable_memory_tests
+    {
+        anyhow::bail!(
+            "no performance sub-suite was enabled, so nothing was measured (expected at least one of throughput/regression/memory)"
+        );
+    }
 
     if config.enable_throughput_tests {
         println!("\n📊 Throughput Tests:");

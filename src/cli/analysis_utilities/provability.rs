@@ -48,21 +48,45 @@ pub async fn handle_analyze_provability(
 }
 
 /// Get function IDs based on input parameters
+///
+/// `--functions` used to go through `parse_function_spec`, which manufactured a
+/// `FunctionId { file_path: String::new(), line_number: 0 }` out of a bare name
+/// — its "will search all files" comment described a search nobody wrote. The
+/// analyzer was then handed an empty path, read no source, and returned the
+/// 20% no-evidence baseline for a function that scores 100% when the same tree
+/// is analyzed unfiltered; a name that exists nowhere scored 20% just the same.
+/// A filter must narrow the functions actually discovered, never invent one.
 async fn get_function_ids(
     project_path: &Path,
     functions: &[String],
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
+    use crate::cli::provability_helpers::{discover_project_functions, match_function_spec};
+
+    let discovered = discover_project_functions(project_path).await?;
 
     if functions.is_empty() {
-        discover_project_functions(project_path).await
-    } else {
-        let mut ids = Vec::new();
-        for spec in functions {
-            ids.push(parse_function_spec(spec, project_path)?);
-        }
-        Ok(ids)
+        return Ok(discovered);
     }
+
+    let mut ids = Vec::new();
+    let mut unmatched = Vec::new();
+    for spec in functions {
+        let matches = match_function_spec(spec, &discovered);
+        if matches.is_empty() {
+            unmatched.push(spec.clone());
+        }
+        ids.extend(matches);
+    }
+
+    if !unmatched.is_empty() {
+        anyhow::bail!(
+            "no function matching {} was found under {}",
+            unmatched.join(", "),
+            project_path.display()
+        );
+    }
+
+    Ok(ids)
 }
 
 /// Prepare summaries by filtering and converting
@@ -415,6 +439,44 @@ mod provability_tests {
         let m = create_file_metrics(std::path::Path::new("t.rs"), 5);
         assert_eq!(m.cyclomatic_complexity, 0);
         assert_eq!(m.cognitive_complexity, 0);
+    }
+
+    /// `--functions <name>` must select from the functions actually discovered.
+    /// It used to synthesise `FunctionId { file_path: "", line_number: 0 }`, so
+    /// the analyzer read no source and returned the 20% no-evidence baseline
+    /// for a function that scores 100% when the same tree is analyzed whole.
+    #[tokio::test]
+    async fn test_function_filter_keeps_the_real_source_location() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("lib.rs"),
+            "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .unwrap();
+
+        let ids = get_function_ids(dir.path(), &["add".to_string()])
+            .await
+            .unwrap();
+
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0].function_name, "add");
+        assert!(
+            !ids[0].file_path.is_empty(),
+            "filtering must not erase the file path"
+        );
+        assert_eq!(ids[0].line_number, 1, "line must survive filtering");
+    }
+
+    /// A name that exists nowhere used to be scored anyway.
+    #[tokio::test]
+    async fn test_unknown_function_name_is_an_error_not_a_score() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("lib.rs"), "pub fn add() {}\n").unwrap();
+
+        let err = get_function_ids(dir.path(), &["ghost".to_string()])
+            .await
+            .expect_err("a function that does not exist cannot be analyzed");
+        assert!(err.to_string().contains("ghost"), "{err}");
     }
 
     #[test]

@@ -30,6 +30,15 @@ pub async fn handle_analyze_big_o(
 
     let start_time = std::time::Instant::now();
 
+    if analyze_space {
+        // Space complexity is computed and printed for every function regardless of
+        // this flag, so --analyze-space changes nothing. It used to be accepted in
+        // silence, which read as if it had switched an extra analysis on.
+        eprintln!(
+            "note: --analyze-space is a no-op — space complexity is always reported alongside time"
+        );
+    }
+
     print_analysis_header(&project_path, confidence_threshold);
 
     let config = build_analysis_config(

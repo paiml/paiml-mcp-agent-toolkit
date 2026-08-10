@@ -96,9 +96,17 @@ fn format_output(
         | crate::cli::GraphMetricsOutputFormat::Summary
         | crate::cli::GraphMetricsOutputFormat::Detailed => format_gm_as_human(result),
         crate::cli::GraphMetricsOutputFormat::Csv => format_gm_as_csv(result),
-        crate::cli::GraphMetricsOutputFormat::GraphML => {
-            Ok("GraphML export handled separately.".to_string())
-        }
+        // `-f graph-ml` used to return this developer note as the *document*:
+        // `analyze graph-metrics -f graph-ml -o out.graphml` exited 0 having
+        // written 34 bytes of English prose where a caller expected XML. The
+        // real writer (`export_to_graphml`) needs the `SimpleGraph` to emit
+        // edges, and only `--export-graphml` has it; `format_output` is handed
+        // the metrics alone, so a document produced here could never contain an
+        // edge. Refusing is honest, a nodes-only "GraphML" would not be.
+        crate::cli::GraphMetricsOutputFormat::GraphML => Err(anyhow::anyhow!(
+            "graph-ml is not a rendering format: GraphML is written by `--export-graphml` \
+             together with `-o <PATH>` (which writes <PATH>.graphml)"
+        )),
         crate::cli::GraphMetricsOutputFormat::Markdown => format_gm_as_markdown(result),
     }
 }

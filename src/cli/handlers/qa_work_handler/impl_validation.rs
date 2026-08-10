@@ -32,6 +32,16 @@ fn format_checklist_text(checklist: &QaChecklist) -> String {
     output
 }
 
+/// True for formats a tool parses rather than a human reads.
+///
+/// `qa-work validate -f json` used to print `Running QA validation for task: …`
+/// to STDOUT ahead of the document, so piping it to `jq` failed on the very
+/// first byte. Machine formats own stdout exclusively; progress chatter belongs
+/// on stderr.
+pub(crate) fn qa_format_owns_stdout(format: &QaOutputFormat) -> bool {
+    matches!(format, QaOutputFormat::Json | QaOutputFormat::Yaml)
+}
+
 /// Run automated QA validation
 async fn handle_validate(
     task_id: &str,
@@ -39,8 +49,12 @@ async fn handle_validate(
     strict: bool,
     format: QaOutputFormat,
 ) -> Result<()> {
-    println!("Running QA validation for task: {}", task_id);
-    println!();
+    if qa_format_owns_stdout(&format) {
+        eprintln!("Running QA validation for task: {}", task_id);
+    } else {
+        println!("Running QA validation for task: {}", task_id);
+        println!();
+    }
 
     let mut result = QaValidationResult {
         task_id: task_id.to_string(),
@@ -50,6 +64,16 @@ async fn handle_validate(
         passed: true,
         manual_checks_required: vec![],
     };
+
+    // Safety & Ethics (A1-A5) was silently absent from validate while
+    // generate-checklist and the checklist model both list it, so validate
+    // scored 20 items against a 25-item checklist and the one security
+    // category was the one that vanished. It is now always present; the items
+    // report as unverified rather than as passes nobody measured.
+    let safety_ethics = run_safety_ethics_checks();
+    result
+        .categories
+        .insert("safety_ethics".into(), safety_ethics);
 
     // Run code quality checks
     let code_quality = run_code_quality_checks(project_path).await;
@@ -182,6 +206,47 @@ pub(crate) fn calculate_overall_score(
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn determine_pass(overall_score: f64, strict: bool) -> bool {
     overall_score >= 80.0 && !strict || overall_score >= 95.0
+}
+
+/// Build the Safety & Ethics (A1-A5) category.
+///
+/// The five items mirror `generate-checklist` exactly so validate's denominator
+/// is the checklist's 25, not 20. pmat has no implemented secret/injection/log
+/// scanner behind A1/A3/A4, so they are reported as requiring review rather
+/// than as automated passes — an unmeasured check must never count as a pass.
+fn run_safety_ethics_checks() -> CategoryResult {
+    let specs = [
+        ("A1", "No hardcoded secrets or credentials"),
+        ("A2", "Error handling covers all failure modes"),
+        ("A3", "Input validation prevents injection attacks"),
+        ("A4", "Logging doesn't expose sensitive data"),
+        ("A5", "Rate limiting considered for APIs"),
+    ];
+
+    let items: Vec<ValidationItem> = specs
+        .iter()
+        .map(|(id, description)| ValidationItem {
+            id: (*id).to_string(),
+            description: (*description).to_string(),
+            status: ValidationStatus::Manual,
+            value: None,
+            threshold: None,
+            evidence: Some("No automated safety check is implemented; review manually".into()),
+        })
+        .collect();
+
+    let passed = items
+        .iter()
+        .filter(|i| i.status == ValidationStatus::Passed)
+        .count() as u32;
+    let total = items.len() as u32;
+
+    CategoryResult {
+        name: "Safety & Ethics".into(),
+        passed,
+        total,
+        items,
+    }
 }
 
 /// Run code quality validation checks
@@ -502,3 +567,58 @@ async fn run_process_checks(project_path: &Path, task_id: &str) -> CategoryResul
     }
 }
 
+
+#[cfg(test)]
+mod validation_shape_tests {
+    //! Regressions for two ways `qa-work validate` misreported itself: the
+    //! banner stole stdout from `-f json`, and the Safety & Ethics category was
+    //! dropped so 25 checklist items were scored as 20.
+    use super::*;
+
+    #[test]
+    fn test_machine_formats_own_stdout() {
+        assert!(qa_format_owns_stdout(&QaOutputFormat::Json));
+        assert!(qa_format_owns_stdout(&QaOutputFormat::Yaml));
+        assert!(!qa_format_owns_stdout(&QaOutputFormat::Text));
+        assert!(!qa_format_owns_stdout(&QaOutputFormat::Markdown));
+    }
+
+    #[test]
+    fn test_safety_ethics_category_covers_a1_to_a5() {
+        let cat = run_safety_ethics_checks();
+        assert_eq!(cat.name, "Safety & Ethics");
+        let ids: Vec<&str> = cat.items.iter().map(|i| i.id.as_str()).collect();
+        assert_eq!(ids, vec!["A1", "A2", "A3", "A4", "A5"]);
+        assert_eq!(cat.total, 5);
+    }
+
+    #[test]
+    fn test_safety_ethics_claims_no_unmeasured_passes() {
+        let cat = run_safety_ethics_checks();
+        assert_eq!(
+            cat.passed, 0,
+            "no automated safety check is implemented, so none of A1-A5 may count as passed"
+        );
+        assert!(cat
+            .items
+            .iter()
+            .all(|i| i.status == ValidationStatus::Manual));
+    }
+
+    #[test]
+    fn test_validate_denominator_matches_the_25_point_checklist() {
+        // handle_validate is async and shells out to cargo/git, so the
+        // denominator is asserted over the category constructors it inserts:
+        // safety_ethics(5) + code_quality(5) + testing(5) + documentation(5)
+        // + process(5) = 25, the size of generate-checklist's output. It was
+        // 20 while safety_ethics was silently absent.
+        let checklist = generate_checklist("T-1", QaTaskType::Feature);
+        let checklist_items = checklist.categories.safety_ethics.len()
+            + checklist.categories.code_quality.len()
+            + checklist.categories.testing.len()
+            + checklist.categories.documentation.len()
+            + checklist.categories.process.len();
+        assert_eq!(checklist_items, 25);
+        assert_eq!(run_safety_ethics_checks().total as usize, checklist.categories.safety_ethics.len());
+    }
+}

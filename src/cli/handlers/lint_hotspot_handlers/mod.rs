@@ -41,22 +41,22 @@ use std::path::{Path, PathBuf};
 /// Handle analyze lint-hotspot command
 ///
 /// This function analyzes a Rust project to find lint violations and can enforce
-/// quality standards. When the `--enforce` flag is set, the command will exit
-/// with a non-zero status code if ANY violations are found.
+/// quality standards. `--enforce` reports the breach and makes the exit code
+/// follow the quality gate; it does not lower the threshold.
 ///
 /// # Exit Status
 ///
-/// The command exits with status code 1 in the following cases:
-/// - Quality gate fails (defect density exceeds `max_density` threshold)
-/// - When `--enforce` flag is set AND there are any violations
+/// The command exits with status code 1 when the quality gate fails, i.e. when
+/// the measured defect density exceeds `max_density` (or a single file carries
+/// more than 50 violations) — with or without `--enforce`.
 ///
 /// # Example
 ///
 /// ```bash
-/// # Without enforce flag - only exits non-zero if quality gate fails
+/// # Exits non-zero only if the measured density exceeds --max-density
 /// pmat analyze lint-hotspot --max-density 5.0
 ///
-/// # With enforce flag - exits non-zero if ANY violations exist
+/// # Same gate, plus the enforcement metadata and refactor chain in the report
 /// pmat analyze lint-hotspot --enforce
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
@@ -338,11 +338,31 @@ async fn output_results(
     write_output(&output_content, params).await
 }
 
-/// Execute enforcement if requested and conditions are met
+/// Report that the gate is blocking.
+///
+/// This used to announce "executing refactor chain..." and then admit
+/// "Enforcement execution not yet implemented": a released command advertising
+/// a step it never took. `--enforce` is a gate — it reports the breach and sets
+/// the exit code; the refactor chain it computes is printed in the report for a
+/// human or tool to apply.
 fn execute_enforcement_if_needed(final_result: &LintHotspotResult, params: &LintHotspotParams) {
+    if let Some(notice) = enforcement_notice(final_result, params) {
+        eprintln!("{notice}");
+    }
+}
+
+/// The message `--enforce` prints when the gate is blocking, or `None`.
+///
+/// Split out so the released text can be asserted: it must describe what the
+/// command actually did, never a step it does not perform.
+fn enforcement_notice(
+    final_result: &LintHotspotResult,
+    params: &LintHotspotParams,
+) -> Option<String> {
     if params.enforce && !params.dry_run && final_result.quality_gate.blocking {
-        eprintln!("🚨 Enforcement required - executing refactor chain...");
-        eprintln!("⚠️  Enforcement execution not yet implemented");
+        Some("🚨 Quality gate is blocking - see the refactor chain in the report above".to_string())
+    } else {
+        None
     }
 }
 
@@ -355,21 +375,26 @@ fn check_exit_conditions(final_result: &LintHotspotResult, params: &LintHotspotP
 }
 
 /// Check if we should exit with error code
-fn should_exit_with_error(final_result: &LintHotspotResult, params: &LintHotspotParams) -> bool {
+///
+/// The exit code follows the quality gate, which is what applies
+/// `--max-density`. `--enforce` used to OR in "any violation at all", so
+/// `--max-density 100` still exited 1 on a project measured at 0.72 while the
+/// same run's `enforcement-json` reported `quality_gate.passed = true`. The
+/// exit code and the machine-readable report now come from the same decision.
+fn should_exit_with_error(final_result: &LintHotspotResult, _params: &LintHotspotParams) -> bool {
     !final_result.quality_gate.passed
-        || (params.enforce && final_result.total_project_violations > 0)
 }
 
 /// Log enforcement failure message if conditions are met
 fn log_enforcement_failure_if_needed(final_result: &LintHotspotResult, params: &LintHotspotParams) {
-    if params.enforce
-        && final_result.total_project_violations > 0
-        && final_result.quality_gate.passed
-    {
-        eprintln!(
-            "\n❌ Enforcement failed: {} violations found",
-            final_result.total_project_violations
-        );
+    if params.enforce && !final_result.quality_gate.passed {
+        eprintln!("\n❌ Enforcement failed: quality gate breached");
+        for violation in &final_result.quality_gate.violations {
+            eprintln!(
+                "   {}: {:.2} exceeds {:.2}",
+                violation.rule, violation.actual, violation.threshold
+            );
+        }
     }
 }
 
@@ -518,11 +543,26 @@ mod pure_helper_tests {
     }
 
     #[test]
-    fn test_should_exit_enforce_with_violations() {
-        // PIN: enforce=true AND total_project_violations > 0 forces exit
-        // even when quality_gate passes.
+    fn test_should_exit_enforce_with_violations_under_threshold_passes() {
+        // Regression: `--enforce` used to OR in "any violation at all", so a
+        // project measured well under --max-density still exited 1 while the
+        // same run's enforcement-json said quality_gate.passed = true. This
+        // test previously PINNED that contradiction.
         let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
         result.total_project_violations = 3;
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        assert!(
+            !should_exit_with_error(&result, &params),
+            "exit code must follow quality_gate.passed, which already applies --max-density"
+        );
+    }
+
+    #[test]
+    fn test_should_exit_enforce_follows_failing_gate() {
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        result.total_project_violations = 3;
+        result.quality_gate.passed = false;
         let mut params = make_params(vec![], vec![]);
         params.enforce = true;
         assert!(should_exit_with_error(&result, &params));
@@ -535,6 +575,29 @@ mod pure_helper_tests {
         let mut params = make_params(vec![], vec![]);
         params.enforce = true;
         assert!(!should_exit_with_error(&result, &params));
+    }
+
+    // ── enforcement_notice ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_enforcement_notice_never_announces_an_unimplemented_step() {
+        // Regression: --enforce printed "executing refactor chain..." followed
+        // by "Enforcement execution not yet implemented" in the shipped binary.
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        result.quality_gate.blocking = true;
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        let notice = enforcement_notice(&result, &params).expect("blocking gate must be reported");
+        assert!(!notice.contains("not yet implemented"), "{notice}");
+        assert!(!notice.contains("executing refactor chain"), "{notice}");
+    }
+
+    #[test]
+    fn test_enforcement_notice_silent_when_gate_not_blocking() {
+        let result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        assert!(enforcement_notice(&result, &params).is_none());
     }
 
     // ── generate_enforcement_metadata_if_needed ─────────────────────────────

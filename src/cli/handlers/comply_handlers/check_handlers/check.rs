@@ -290,19 +290,132 @@ fn output_compliance_report(
     Ok(())
 }
 
+/// `-f sarif` emits SARIF — pmat's own compliance findings, always.
+///
+/// This used to try the external `pv` binary and, when that was unavailable
+/// (which is the normal case: it needs a sibling contracts directory AND `pv`
+/// on PATH), silently print pmat's plain JSON report instead. The document
+/// carried no `$schema`, no `version` and no `runs[]`, so GitHub's
+/// upload-sarif action rejected it — and it was byte-identical to `-f json`
+/// apart from the timestamp, so nothing in the output said the fallback had
+/// happened. Even on the happy path the SARIF described pv's YAML contract
+/// lint and never the 154 compliance checks the command was run for; pv's runs
+/// are now MERGED into pmat's document rather than replacing it.
 fn output_sarif_or_fallback(report: &ComplianceReport, project_path: &Path) -> Result<()> {
     debug_assert!(
         project_path.exists(),
         "project_path must exist: {}",
         project_path.display()
     );
-    if let Some(sarif) = try_pv_lint_sarif(project_path) {
-        println!("{sarif}");
-        return Ok(());
+    let mut sarif = build_sarif(report, project_path);
+    if let Some(pv_runs) = pv_lint_runs(project_path) {
+        if let Some(runs) = sarif["runs"].as_array_mut() {
+            runs.extend(pv_runs);
+        }
     }
-    // Fallback: JSON output
-    println!("{}", serde_json::to_string_pretty(report)?);
+    println!("{}", serde_json::to_string_pretty(&sarif)?);
     Ok(())
+}
+
+/// The SARIF rule id for a check: its `CB-nnn` clause when it has one, else a
+/// slug of its name, so a consumer can suppress a single finding.
+fn sarif_rule_id(name: &str) -> String {
+    for token in name.split(|c: char| !(c.is_ascii_alphanumeric() || c == '-')) {
+        let upper = token.to_ascii_uppercase();
+        if upper.starts_with("CB-") && upper[3..].chars().all(|c| c.is_ascii_digit()) {
+            return upper;
+        }
+    }
+    let slug: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("pmat/{}", slug.trim_matches('-'))
+}
+
+/// SARIF level for a check result. Skipped and passing checks produce no
+/// result at all — a SARIF run reports findings, not a roll call.
+fn sarif_level(check: &ComplianceCheck) -> Option<&'static str> {
+    match check.status {
+        CheckStatus::Fail => Some(match check.severity {
+            Severity::Critical | Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::Info => "note",
+        }),
+        CheckStatus::Warn => Some("warning"),
+        CheckStatus::Pass | CheckStatus::Skip => None,
+    }
+}
+
+/// A SARIF 2.1.0 document for pmat's own compliance report.
+fn build_sarif(report: &ComplianceReport, project_path: &Path) -> serde_json::Value {
+    let uri = project_path.display().to_string();
+
+    let rules: Vec<serde_json::Value> = report
+        .checks
+        .iter()
+        .map(|check| {
+            serde_json::json!({
+                "id": sarif_rule_id(&check.name),
+                "name": check.name,
+                "shortDescription": { "text": check.name },
+            })
+        })
+        .collect();
+
+    let results: Vec<serde_json::Value> = report
+        .checks
+        .iter()
+        .filter_map(|check| {
+            let level = sarif_level(check)?;
+            Some(serde_json::json!({
+                "ruleId": sarif_rule_id(&check.name),
+                "level": level,
+                "message": { "text": format!("{}: {}", check.name, check.message) },
+                "locations": [{
+                    "physicalLocation": {
+                        "artifactLocation": { "uri": uri }
+                    }
+                }],
+            }))
+        })
+        .collect();
+
+    serde_json::json!({
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "pmat",
+                    "version": PMAT_VERSION,
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                    "rules": rules,
+                }
+            },
+            "results": results,
+        }]
+    })
+}
+
+/// pv's SARIF `runs[]`, when the external contract linter is available and
+/// produced a SARIF document. Anything else is reported on stderr rather than
+/// swallowed.
+fn pv_lint_runs(project_path: &Path) -> Option<Vec<serde_json::Value>> {
+    let raw = try_pv_lint_sarif(project_path)?;
+    match serde_json::from_str::<serde_json::Value>(&raw) {
+        Ok(value) => value.get("runs").and_then(|runs| runs.as_array()).cloned(),
+        Err(e) => {
+            eprintln!("Warning: `pv lint --format sarif` output was not JSON ({e}); reporting pmat's compliance checks only");
+            None
+        }
+    }
 }
 
 fn try_pv_lint_sarif(project_path: &Path) -> Option<String> {
@@ -428,6 +541,75 @@ mod build_compliance_report_tests {
         };
         // is_compliant=true, no warnings even with strict → Ok (no exit)
         assert!(apply_exit_policy(&report, true).is_ok());
+    }
+
+    /// `comply check -f sarif` used to print pmat's plain JSON report whenever
+    /// the external `pv` linter was unavailable: no `$schema`, no `version`, no
+    /// `runs[]` — a document GitHub's upload-sarif action rejects, and
+    /// byte-identical to `-f json` apart from the timestamp.
+    #[test]
+    fn sarif_is_sarif_and_carries_pmats_own_checks() {
+        let report = ComplianceReport {
+            project_version: "1.0".into(),
+            current_version: "1.0".into(),
+            is_compliant: false,
+            versions_behind: 0,
+            checks: vec![
+                check("Version Currency", CheckStatus::Pass),
+                ComplianceCheck {
+                    name: "CB-030: O(1) Hooks".into(),
+                    status: CheckStatus::Fail,
+                    message: "hook missing".into(),
+                    severity: Severity::Error,
+                },
+                ComplianceCheck {
+                    name: "Quality Thresholds".into(),
+                    status: CheckStatus::Warn,
+                    message: "close to the limit".into(),
+                    severity: Severity::Warning,
+                },
+                check("Disabled Check", CheckStatus::Skip),
+            ],
+            breaking_changes: vec![],
+            recommendations: vec![],
+            timestamp: Utc::now(),
+        };
+
+        let sarif = build_sarif(&report, Path::new("."));
+        assert_eq!(sarif["version"], "2.1.0");
+        assert!(sarif["$schema"].is_string(), "SARIF needs a $schema");
+        let runs = sarif["runs"].as_array().expect("SARIF needs runs[]");
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0]["tool"]["driver"]["name"], "pmat");
+
+        // One result per Fail/Warn, none for Pass/Skip.
+        let results = runs[0]["results"].as_array().expect("results[]");
+        assert_eq!(results.len(), 2, "{results:#?}");
+        assert_eq!(results[0]["ruleId"], "CB-030");
+        assert_eq!(results[0]["level"], "error");
+        assert!(results[0]["message"]["text"]
+            .as_str()
+            .expect("message")
+            .contains("hook missing"));
+        assert_eq!(results[1]["ruleId"], "pmat/quality-thresholds");
+        assert_eq!(results[1]["level"], "warning");
+
+        // The document must NOT be the plain compliance report.
+        assert!(sarif.get("checks").is_none());
+        assert!(sarif.get("is_compliant").is_none());
+    }
+
+    #[test]
+    fn sarif_rule_ids_prefer_the_cb_clause() {
+        assert_eq!(sarif_rule_id("CB-1204: Verification Ladder"), "CB-1204");
+        assert_eq!(
+            sarif_rule_id("Cargo.lock Present"),
+            "pmat/cargo-lock-present"
+        );
+        assert_eq!(
+            sarif_rule_id("OIP Tarantula Patterns (CB-120 to CB-124)"),
+            "CB-120"
+        );
     }
 }
 

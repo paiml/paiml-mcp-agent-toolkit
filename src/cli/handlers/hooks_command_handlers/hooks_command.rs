@@ -103,12 +103,24 @@ impl HooksCommand {
         let hook_path = self.hooks_dir.join("pre-commit");
         let backup_path = self.hooks_dir.join("pre-commit.pmat-backup");
 
+        // `install` writes pre-commit AND pre-push, but uninstall only ever
+        // touched pre-commit: users who uninstalled were told "Pre-commit hook
+        // uninstalled successfully" (and `hooks status` then said "Installed:
+        // ✗ No") while the PMAT pre-push gate kept firing on every push, with
+        // no command that reported or removed it. Remove every hook install
+        // writes.
+        let pre_push_removed = self.remove_pre_push_hook()?;
+
         if !hook_path.exists() {
             return Ok(HookUninstallResult {
                 success: true,
-                hook_removed: false,
+                hook_removed: pre_push_removed,
                 backup_restored: false,
-                message: "No hook to uninstall".to_string(),
+                message: if pre_push_removed {
+                    "Pre-push hook uninstalled successfully (no pre-commit hook)".to_string()
+                } else {
+                    "No hook to uninstall".to_string()
+                },
             });
         }
 
@@ -116,7 +128,7 @@ impl HooksCommand {
         if !self.is_pmat_managed(&hook_path)? {
             return Ok(HookUninstallResult {
                 success: false,
-                hook_removed: false,
+                hook_removed: pre_push_removed,
                 backup_restored: false,
                 message: "Hook is not PMAT-managed".to_string(),
             });
@@ -135,8 +147,27 @@ impl HooksCommand {
             success: true,
             hook_removed: true,
             backup_restored,
-            message: "Pre-commit hook uninstalled successfully".to_string(),
+            message: if pre_push_removed {
+                "Pre-commit and pre-push hooks uninstalled successfully".to_string()
+            } else {
+                "Pre-commit hook uninstalled successfully".to_string()
+            },
         })
+    }
+
+    /// Remove the PMAT-managed pre-push hook, if that is what is there.
+    ///
+    /// Returns whether a hook was removed. A pre-push hook PMAT did not write
+    /// is left alone.
+    fn remove_pre_push_hook(&self) -> Result<bool> {
+        let hook_path = self.hooks_dir.join("pre-push");
+
+        if !hook_path.exists() || !self.is_pmat_managed(&hook_path)? {
+            return Ok(false);
+        }
+
+        fs::remove_file(&hook_path)?;
+        Ok(true)
     }
 
     /// Show hook installation status
@@ -382,5 +413,58 @@ echo "✅ Pre-push gate passed"
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod uninstall_tests {
+    //! `hooks install` writes two hooks; uninstall used to remove one.
+    use super::HooksCommand;
+
+    fn managed_hook(label: &str) -> String {
+        format!(
+            "#!/usr/bin/env bash\n# PMAT {label}\n# auto-managed by PMAT — DO NOT EDIT\nexit 0\n"
+        )
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_removes_the_pre_push_hook_install_wrote() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let hooks_dir = dir.path().join("hooks");
+        std::fs::create_dir_all(&hooks_dir).expect("create hooks dir");
+        std::fs::write(hooks_dir.join("pre-commit"), managed_hook("pre-commit"))
+            .expect("write pre-commit");
+        std::fs::write(hooks_dir.join("pre-push"), managed_hook("pre-push"))
+            .expect("write pre-push");
+
+        let cmd = HooksCommand::new(hooks_dir.clone(), dir.path().join("pmat.toml"));
+        let result = cmd.uninstall(false).await.expect("uninstall");
+
+        assert!(result.success, "{}", result.message);
+        assert!(!hooks_dir.join("pre-commit").exists());
+        assert!(
+            !hooks_dir.join("pre-push").exists(),
+            "uninstall reported \"{}\" but the PMAT pre-push gate is still installed",
+            result.message
+        );
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_leaves_a_foreign_pre_push_hook_alone() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let hooks_dir = dir.path().join("hooks");
+        std::fs::create_dir_all(&hooks_dir).expect("create hooks dir");
+        std::fs::write(hooks_dir.join("pre-commit"), managed_hook("pre-commit"))
+            .expect("write pre-commit");
+        std::fs::write(hooks_dir.join("pre-push"), "#!/bin/sh\n# mine\nexit 0\n")
+            .expect("write pre-push");
+
+        let cmd = HooksCommand::new(hooks_dir.clone(), dir.path().join("pmat.toml"));
+        cmd.uninstall(false).await.expect("uninstall");
+
+        assert!(
+            hooks_dir.join("pre-push").exists(),
+            "a pre-push hook PMAT did not write must survive uninstall"
+        );
     }
 }

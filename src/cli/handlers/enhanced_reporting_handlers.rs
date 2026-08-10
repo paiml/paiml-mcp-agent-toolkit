@@ -191,6 +191,12 @@ pub async fn handle_generate_report(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    // A nonexistent --project-path used to produce a green 0-defect report with
+    // exit 0, shape-identical to a real report on an empty project: nothing in
+    // the pipeline can tell "no defects" from "no such directory". Fail like
+    // deps-audit and five-whys already do.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     let start_time = Instant::now();
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
@@ -395,6 +401,36 @@ mod tests {
             before.len(),
             after.len(),
             "report must not drop an artifact into the tree it measures (before={before:?}, after={after:?})"
+        );
+    }
+
+    /// `pmat report -p /does/not/exist -f json` used to print a clean
+    /// 0-defect document and exit 0 — shape-identical to a real report on an
+    /// empty project, with nothing on stderr. A path that is not there is an
+    /// error, not a clean bill of health.
+    #[tokio::test]
+    async fn test_generate_report_rejects_a_nonexistent_project_path() {
+        let missing = PathBuf::from("/does/not/exist-9f3a-pmat");
+        let result = handle_generate_report(
+            missing,
+            ReportOutputFormat::Json,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            vec![],
+            0,
+            None,
+            false,
+        )
+        .await;
+
+        let err = result.expect_err("a nonexistent project path must be an error");
+        assert!(
+            err.to_string().contains("not found"),
+            "unexpected error: {err}"
         );
     }
 

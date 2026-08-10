@@ -210,12 +210,19 @@ fn stage_format(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
         return (true, Vec::new(), None);
     }
     let (ok, out) = run(cargo().args(["fmt", "--all", "--", "--check"]));
-    // Same reason as the clippy stage: when `cargo fmt` fails to even start —
-    // run outside a crate, it exits with "error: could not find Cargo.toml"
-    // followed by its whole --help text — `tail` returns the help and buries the
-    // cause, so `verify` reported a "format FAILURE" that looked like a
-    // formatting violation (#640, same family).
-    (ok, Vec::new(), first_error(&out).or_else(|| tail(&out, 20)))
+    (ok, Vec::new(), format_detail(&out))
+}
+
+/// Failure detail for the format stage.
+///
+/// Same reason as the clippy stage: when `cargo fmt` fails to even start — run
+/// outside a crate, it exits with "error: could not find Cargo.toml" followed
+/// by its whole rustfmt usage screen — `tail` returned the usage screen and
+/// buried the one actionable line, so `verify --format json` told an agent the
+/// code was misformatted when the real problem was that the directory is not a
+/// cargo project (#640, same family).
+fn format_detail(output: &str) -> Option<String> {
+    first_error(output).or_else(|| tail(output, 20))
 }
 
 fn stage_complexity() -> (bool, Vec<Violation>, Option<String>) {
@@ -591,6 +598,39 @@ mod tests {
         );
         // tail(10) would have returned the trailing progress lines instead.
         assert!(tail(out, 10).unwrap().contains("waiting for other jobs"));
+    }
+
+    /// The format stage run outside a cargo project must report the cargo
+    /// error, not rustfmt's usage screen. This is the verbatim shape 3.29.0
+    /// emitted from a directory with no Cargo.toml.
+    #[test]
+    fn test_format_detail_keeps_the_cargo_error_over_the_usage_screen() {
+        let out = "error: could not find `Cargo.toml` in `/tmp/empty` or any parent directory\n\
+                   Usage: cargo fmt [OPTIONS] [-- <rustfmt_options>...]\n\
+                   Arguments:\n\
+                   \x20 [rustfmt_options]...  Options passed to rustfmt\n\
+                   Options:\n\
+                   \x20 -q, --quiet\n\
+                   \x20 -h, --help\n\
+                   \x20         Print help";
+        let detail = format_detail(out).expect("a failing format stage must say why");
+        assert!(
+            detail.contains("could not find `Cargo.toml`"),
+            "the cause was dropped: {detail}"
+        );
+        assert!(
+            !detail.contains("Print help"),
+            "the usage screen is not a failure detail: {detail}"
+        );
+    }
+
+    /// A genuine formatting diff has no `error:` line, so the tail is still the
+    /// right detail there.
+    #[test]
+    fn test_format_detail_falls_back_to_the_diff_tail() {
+        let out = "Diff in /x/src/lib.rs at line 3:\n-fn a(){}\n+fn a() {}\n";
+        let detail = format_detail(out).expect("detail");
+        assert!(detail.contains("Diff in /x/src/lib.rs"), "{detail}");
     }
 
     #[test]

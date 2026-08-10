@@ -115,23 +115,47 @@ impl ConfigCommand {
     }
 
     /// Get specific configuration value by dot notation path
+    ///
+    /// The read-by-key surface used to be five hardcoded `hooks.*` slices, none of
+    /// which `config show` ever emits — so every key a user could actually see in the
+    /// dump (`quality.max_complexity`, …) answered "not found". The lookup now walks
+    /// the same serialization `show` prints, and the legacy `hooks.*` names are kept
+    /// as aliases so existing callers keep working.
     fn get_config_value(&self, config: &PmatConfig, key: &str) -> Result<String> {
         let parts: Vec<&str> = key.split('.').collect();
 
         match parts.as_slice() {
-            ["hooks", "auto_install"] => Ok("true".to_string()),
+            ["hooks", "auto_install"] => return Ok("true".to_string()),
             ["hooks", "quality_gates", "max_cyclomatic_complexity"] => {
-                Ok(config.quality.max_complexity.to_string())
+                return Ok(config.quality.max_complexity.to_string())
             }
             ["hooks", "quality_gates", "max_cognitive_complexity"] => {
-                Ok(config.quality.max_cognitive_complexity.to_string())
+                return Ok(config.quality.max_cognitive_complexity.to_string())
             }
             ["hooks", "quality_gates", "min_test_coverage"] => {
-                Ok(config.quality.min_coverage.to_string())
+                return Ok(config.quality.min_coverage.to_string())
             }
-            ["hooks", "documentation", "task_id_pattern"] => Ok("PMAT-[0-9]{4}".to_string()),
-            _ => Err(anyhow::anyhow!("Configuration key '{key}' not found")),
+            ["hooks", "documentation", "task_id_pattern"] => return Ok("PMAT-[0-9]{4}".to_string()),
+            _ => {}
         }
+
+        let root = serde_json::to_value(config)?;
+        let mut cursor = &root;
+        for part in &parts {
+            let next = match cursor {
+                serde_json::Value::Object(map) => map.get(*part),
+                serde_json::Value::Array(items) => {
+                    part.parse::<usize>().ok().and_then(|i| items.get(i))
+                }
+                _ => None,
+            };
+            cursor = next.ok_or_else(|| anyhow::anyhow!("Configuration key '{key}' not found"))?;
+        }
+
+        Ok(match cursor {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
     }
 }
 
@@ -405,6 +429,42 @@ request_timeout_seconds = 30
             .get("hooks.quality_gates.max_cyclomatic_complexity")
             .await;
         assert!(result.is_ok());
+    }
+
+    /// Every key `config show` prints must be readable with `config get`; the
+    /// old hardcoded `hooks.*` match answered "not found" for all of them.
+    #[tokio::test]
+    async fn test_config_get_resolves_keys_visible_in_show() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("pmat.toml");
+        let mut on_disk =
+            crate::services::configuration_service::ConfigurationService::default_config();
+        on_disk.quality.max_complexity = 7;
+        on_disk.quality.max_cognitive_complexity = 9;
+        on_disk.system.project_name = "fixture".to_string();
+        std::fs::write(&config_path, toml::to_string_pretty(&on_disk).unwrap()).unwrap();
+
+        let config_cmd = ConfigCommand::new(config_path);
+
+        // Exactly the keys `config show` prints.
+        let shown = config_cmd.show(ConfigFormat::Json).await.unwrap();
+        assert!(shown.contains("\"max_complexity\""), "{shown}");
+
+        assert_eq!(config_cmd.get("quality.max_complexity").await.unwrap(), "7");
+        assert_eq!(
+            config_cmd
+                .get("quality.max_cognitive_complexity")
+                .await
+                .unwrap(),
+            "9"
+        );
+        assert_eq!(
+            config_cmd.get("system.project_name").await.unwrap(),
+            "fixture"
+        );
+
+        // A key that is genuinely absent must still be an error, not a fabricated value.
+        assert!(config_cmd.get("quality.no_such_key").await.is_err());
     }
 
     #[tokio::test]

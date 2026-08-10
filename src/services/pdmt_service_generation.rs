@@ -71,7 +71,7 @@ impl PdmtService {
                 complexity_limit: quality_config.max_complexity,
                 satd_tolerance: false, // Always zero tolerance
             },
-            validation_commands: self.generate_validation_commands(requirement),
+            validation_commands: self.generate_validation_commands(requirement, quality_config),
             success_criteria: self.generate_success_criteria(quality_config),
             implementation_specs: self.generate_implementation_specs(requirement),
         };
@@ -96,14 +96,24 @@ impl PdmtService {
                 quality_gates: base_todo.quality_gates.clone(),
                 validation_commands: ValidationCommands {
                     unit_tests: "cargo test".to_string(),
-                    doctests: "cargo test --doc".to_string(),
-                    property_tests: "cargo test --features property-tests".to_string(),
+                    doctests: if quality_config.require_doctests {
+                        "cargo test --doc".to_string()
+                    } else {
+                        String::new()
+                    },
+                    property_tests: if quality_config.require_property_tests {
+                        "cargo test --features property-tests".to_string()
+                    } else {
+                        String::new()
+                    },
                     examples: vec![],
                     coverage_check: format!(
                         "cargo llvm-cov --fail-under-lines {}",
                         quality_config.coverage_threshold
                     ),
-                    quality_proxy: "pmat quality-gate --file".to_string(),
+                    // `pmat quality-gate --file` with no argument is not a runnable
+                    // command; point it at the file this todo actually produces.
+                    quality_proxy: format!("pmat quality-gate --file tests/{base_id}_test.rs"),
                 },
                 success_criteria: vec![
                     format!(
@@ -145,7 +155,7 @@ impl PdmtService {
                     property_tests: String::new(),
                     examples: vec!["cargo run --example demo".to_string()],
                     coverage_check: String::new(),
-                    quality_proxy: "pmat quality-gate --file".to_string(),
+                    quality_proxy: "pmat quality-gate --file README.md".to_string(),
                 },
                 success_criteria: vec![
                     "Documentation is comprehensive".to_string(),
@@ -213,14 +223,51 @@ impl PdmtService {
     }
 
     /// Generate validation commands for a todo
-    fn generate_validation_commands(&self, _requirement: &str) -> ValidationCommands {
+    ///
+    /// This used to ignore the caller's `PdmtQualityConfig` entirely: it took only
+    /// the requirement text and returned a struct literal with a hardcoded
+    /// `--fail-under-lines 80`, plus doctest/property/example commands even when
+    /// the request had `require_doctests`/`require_property_tests`/`require_examples`
+    /// set to false. A single response therefore contained both the requested
+    /// threshold (in `quality_gates` and `success_criteria`) and the constant 80
+    /// in the command the user was told to run. The commands now come from the
+    /// same config as the gates they are supposed to enforce.
+    fn generate_validation_commands(
+        &self,
+        requirement: &str,
+        config: &PdmtQualityConfig,
+    ) -> ValidationCommands {
+        let specs = self.generate_implementation_specs(requirement);
+        let quality_proxy = specs
+            .primary_files
+            .first()
+            .map_or_else(
+                || "pmat quality-gate".to_string(),
+                |file| format!("pmat quality-gate --file {file}"),
+            );
+
         ValidationCommands {
             unit_tests: "cargo test".to_string(),
-            doctests: "cargo test --doc".to_string(),
-            property_tests: "cargo test --features property-tests".to_string(),
-            examples: vec!["cargo run --example demo".to_string()],
-            coverage_check: "cargo llvm-cov --fail-under-lines 80".to_string(),
-            quality_proxy: "pmat quality-gate --file".to_string(),
+            doctests: if config.require_doctests {
+                "cargo test --doc".to_string()
+            } else {
+                String::new()
+            },
+            property_tests: if config.require_property_tests {
+                "cargo test --features property-tests".to_string()
+            } else {
+                String::new()
+            },
+            examples: if config.require_examples {
+                vec!["cargo run --example demo".to_string()]
+            } else {
+                vec![]
+            },
+            coverage_check: format!(
+                "cargo llvm-cov --fail-under-lines {}",
+                config.coverage_threshold
+            ),
+            quality_proxy,
         }
     }
 
@@ -279,6 +326,100 @@ impl PdmtService {
             if let Some(deps) = dependency_map.get(&todo.id) {
                 todo.dependencies = deps.clone();
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod validation_command_config_tests {
+    use super::*;
+
+    fn strict_config(coverage: f32) -> PdmtQualityConfig {
+        PdmtQualityConfig {
+            coverage_threshold: coverage,
+            require_doctests: false,
+            require_property_tests: false,
+            require_examples: false,
+            ..PdmtQualityConfig::default()
+        }
+    }
+
+    /// The coverage command a todo tells you to run must enforce the coverage
+    /// threshold that todo's own quality gate demands — it used to be the
+    /// constant 80 regardless of the request.
+    #[test]
+    fn coverage_check_uses_requested_threshold() {
+        let service = PdmtService::new();
+        let list = service
+            .generate_todos(
+                vec!["Add a caching layer".to_string()],
+                Some("demo".to_string()),
+                "medium",
+                strict_config(99.0),
+            )
+            .expect("generation succeeds");
+
+        for todo in &list.todos {
+            if todo.validation_commands.coverage_check.is_empty() {
+                continue;
+            }
+            assert!(
+                todo.validation_commands
+                    .coverage_check
+                    .contains("--fail-under-lines 99"),
+                "todo {} reported coverage_check {:?} for a 99% requirement",
+                todo.id,
+                todo.validation_commands.coverage_check
+            );
+            assert!(
+                !todo.validation_commands.coverage_check.contains("80"),
+                "todo {} still carries the hardcoded 80 threshold",
+                todo.id
+            );
+        }
+    }
+
+    /// Doctest/property/example commands must not be emitted when the caller
+    /// explicitly said they are not required.
+    #[test]
+    fn optional_commands_omitted_when_not_required() {
+        let service = PdmtService::new();
+        let list = service
+            .generate_todos(
+                vec!["Add a caching layer".to_string()],
+                Some("demo".to_string()),
+                "medium",
+                strict_config(99.0),
+            )
+            .expect("generation succeeds");
+
+        let base = &list.todos[0];
+        assert_eq!(base.validation_commands.doctests, "");
+        assert_eq!(base.validation_commands.property_tests, "");
+        assert!(base.validation_commands.examples.is_empty());
+    }
+
+    /// `pmat quality-gate --file` with no argument is not a runnable command.
+    #[test]
+    fn quality_proxy_names_a_file() {
+        let service = PdmtService::new();
+        let list = service
+            .generate_todos(
+                vec!["Add a caching layer".to_string()],
+                Some("demo".to_string()),
+                "high",
+                PdmtQualityConfig::default(),
+            )
+            .expect("generation succeeds");
+
+        for todo in &list.todos {
+            let proxy = &todo.validation_commands.quality_proxy;
+            assert_ne!(
+                proxy.trim(),
+                "pmat quality-gate --file",
+                "todo {} emits an argument-less quality-gate command",
+                todo.id
+            );
         }
     }
 }

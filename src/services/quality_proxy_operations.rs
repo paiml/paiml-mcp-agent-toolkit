@@ -176,8 +176,18 @@ impl QualityProxyService {
                     Some(existing) => Ok(format!("{existing}\n{append_content}")),
                     None => match read_proxy_target(&request.file_path)? {
                         Some(existing) => Ok(join_appended(&existing, append_content)),
-                        // Appending to a file that does not exist yet creates it.
-                        None => Ok(append_content.clone()),
+                        // Appending to a file that does not exist yet creates
+                        // it — but only somewhere it could actually be created.
+                        // A path under a directory that does not exist was
+                        // silently treated as "an append to the empty file" and
+                        // came back accepted/passed:true, while `quality_gate`
+                        // rejected the very same path with "File does not
+                        // exist". Two tools in one session must not disagree
+                        // about whether a path is real.
+                        None => {
+                            ensure_appendable(&request.file_path)?;
+                            Ok(append_content.clone())
+                        }
                     },
                 }
             }
@@ -194,6 +204,21 @@ fn read_proxy_target(file_path: &str) -> Result<Option<String>> {
     std::fs::read_to_string(path)
         .map(Some)
         .with_context(|| format!("Failed to read {file_path} for quality proxy"))
+}
+
+/// Refuse an append to a path that could not be created if it were performed.
+///
+/// The file itself may legitimately not exist yet; its directory may not.
+fn ensure_appendable(file_path: &str) -> Result<()> {
+    let path = Path::new(file_path);
+    match path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        Some(dir) if !dir.is_dir() => anyhow::bail!(
+            "Append rejected: {} does not exist and neither does its directory {}",
+            file_path,
+            dir.display()
+        ),
+        _ => Ok(()),
+    }
 }
 
 /// Concatenate appended text without inventing or losing a line break.
@@ -289,6 +314,33 @@ mod proxy_file_path_tests {
         let content = service.get_operation_content(&req).expect("append resolves");
         assert!(content.starts_with(THREE_LINES), "{content}");
         assert!(content.contains("line_four"), "{content}");
+    }
+
+    /// `quality_proxy` accepted edit/append on a path that cannot exist while
+    /// `quality_gate`, in the same session, rejected it with "File does not
+    /// exist". Both must refuse it.
+    #[test]
+    fn test_operations_on_an_impossible_path_are_rejected() {
+        let service = QualityProxyService::new();
+        let missing = std::path::Path::new("/does/not/exist/never_existed.rs");
+
+        let mut edit = request(ProxyOperation::Edit, missing);
+        edit.old_content = Some("x".to_string());
+        edit.new_content = Some("y".to_string());
+        let err = service
+            .get_operation_content(&edit)
+            .expect_err("editing a nonexistent file must fail loudly");
+        assert!(
+            err.to_string().contains("requires the file to exist"),
+            "{err}"
+        );
+
+        let mut append = request(ProxyOperation::Append, missing);
+        append.content = Some("pub fn added() {}\n".to_string());
+        let err = service
+            .get_operation_content(&append)
+            .expect_err("appending under a nonexistent directory must fail loudly");
+        assert!(err.to_string().contains("Append rejected"), "{err}");
     }
 
     /// Appending to a path that does not exist yet still creates it.

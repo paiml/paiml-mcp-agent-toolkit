@@ -1,6 +1,15 @@
 // Mutation testing and iteration orchestration
 // Included into mod.rs via include!() -- no `use` imports or `#!` attributes allowed
 
+/// The value `IterationReport::mutation_score` carries when mutation testing did
+/// not run at all. `serde_json` renders a non-finite float as `null`, which is
+/// what a consumer of `-f json` should see for a measurement that was skipped.
+/// (The field is a plain `f64` in `IterationReport`; turning it into an
+/// `Option<f64>` would be the tidier representation.)
+fn unmeasured_mutation_score() -> f64 {
+    f64::NAN
+}
+
 impl CoverageImprovementService {
     /// Run a single improvement iteration
     async fn run_iteration(
@@ -15,8 +24,17 @@ impl CoverageImprovementService {
         let tests_generated = self.generate_property_tests(&targets).await?;
 
         // Phase 4: Validate with mutation testing
+        //
+        // `--fast` deliberately does NOT run cargo-mutants, so there is no
+        // mutation score to report. This used to substitute `100.0`, i.e. a
+        // *perfect* score, on every iteration of a run where no mutant was ever
+        // generated — `analyze coverage-improve --fast -f json` printed
+        // "mutation_score": 100.0 ten times over with no mutants.out/ on disk.
+        // A measurement that was skipped is reported as not-a-number, which
+        // serialises to JSON `null` rather than to a number nobody measured.
         let mutation_score = if self.config.fast_mode {
-            100.0 // Skip mutation testing in fast mode
+            eprintln!("⏩ --fast: skipping mutation testing (mutation score not measured)");
+            unmeasured_mutation_score()
         } else {
             self.run_mutation_testing(&targets).await?
         };
@@ -118,5 +136,38 @@ impl CoverageImprovementService {
         let _ = tokio::fs::remove_file(json_path).await;
 
         Ok(mutation_score)
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod fast_mode_mutation_score_tests {
+    use super::*;
+
+    /// `--fast` skips cargo-mutants entirely, yet every iteration used to report
+    /// `"mutation_score": 100.0` — a perfect score for a measurement that was
+    /// never taken. Whatever fast mode reports must not be a finite number, and
+    /// must serialise as JSON null.
+    #[test]
+    fn skipped_mutation_testing_is_not_reported_as_a_score() {
+        let score = unmeasured_mutation_score();
+        assert!(
+            !score.is_finite(),
+            "a skipped measurement must not be a number, got {score}"
+        );
+
+        let report = IterationReport {
+            iteration: 1,
+            files_targeted: vec![PathBuf::from("src/lib.rs")],
+            tests_generated: 0,
+            coverage_gain: 0.0,
+            mutation_score: score,
+        };
+        let json = serde_json::to_value(&report).expect("IterationReport serialises");
+        assert!(
+            json["mutation_score"].is_null(),
+            "expected null for an unmeasured score, got {}",
+            json["mutation_score"]
+        );
     }
 }

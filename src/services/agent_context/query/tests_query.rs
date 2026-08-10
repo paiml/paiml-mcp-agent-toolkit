@@ -358,3 +358,47 @@ fn test_is_test_function() {
     entry.file_path = "src/handler_test.rs".to_string();
     assert!(is_test_function(&entry));
 }
+
+#[test]
+fn test_query_path_pattern_accepts_globs() {
+    // `path_pattern` is advertised in the MCP schema as a "Path glob pattern
+    // filter", but the filter was `file_path.contains(pattern)`: any glob
+    // metacharacter silently produced an empty result set instead of matching
+    // the files a bare substring matched.
+    let index = build_test_index();
+    let glob_hits = index
+        .query(
+            "handle",
+            QueryOptions {
+                limit: 10,
+                path_pattern: Some("src/*.rs".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert!(
+        !glob_hits.is_empty(),
+        "a glob over src/ must match the same files the substring 'src/' matches"
+    );
+    for r in &glob_hits {
+        assert!(
+            r.file_path.starts_with("src/") && !r.file_path["src/".len()..].contains('/'),
+            "glob src/*.rs must not match {}",
+            r.file_path
+        );
+    }
+
+    // Substring patterns (no metacharacters) keep working unchanged.
+    let substring_hits = index
+        .query(
+            "handle",
+            QueryOptions {
+                limit: 10,
+                path_pattern: Some("src/".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert!(!substring_hits.is_empty());
+}

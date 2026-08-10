@@ -50,6 +50,22 @@ impl InfraScorer for BuildReliabilityScorer {
 
         let uses_sovereign_ci = all_content.contains("sovereign-ci");
 
+        // No workflow files means no evidence, and the content scans below are
+        // then run against an EMPTY string, where "no continue-on-error", "all
+        // actions pinned" and "no `|| true`" are all trivially true. A repo
+        // without `.github/workflows` scored 15/25 on checks it never made.
+        let no_workflows = workflows.is_empty();
+        let unmeasured = |id: &str, name: &str, max: f64| {
+            InfraCheck::fail(
+                id,
+                name,
+                max,
+                vec![format!(
+                    "{name} NOT MEASURED — no .github/workflows files to scan"
+                )],
+            )
+        };
+
         let mut checks = Vec::new();
         let mut findings = Vec::new();
 
@@ -78,6 +94,8 @@ impl InfraScorer for BuildReliabilityScorer {
                 5.0,
                 vec!["Implied by sovereign-ci.yml".to_string()],
             )
+        } else if no_workflows {
+            unmeasured("BR-02", "No continue-on-error", 5.0)
         } else {
             check_no_continue_on_error(&all_content)
         };
@@ -146,6 +164,8 @@ impl InfraScorer for BuildReliabilityScorer {
                 3.0,
                 vec!["Implied by sovereign-ci.yml (SHA-pinned)".to_string()],
             )
+        } else if no_workflows {
+            unmeasured("BR-05", "Pinned action versions", 3.0)
         } else {
             check_pinned_actions(&workflows)
         };
@@ -162,7 +182,11 @@ impl InfraScorer for BuildReliabilityScorer {
         checks.push(br05);
 
         // BR-06 (2pts): No || true escape hatches
-        let br06 = check_no_or_true(&all_content);
+        let br06 = if no_workflows {
+            unmeasured("BR-06", "No || true escape hatches", 2.0)
+        } else {
+            check_no_or_true(&all_content)
+        };
         if !br06.passed {
             findings.push(InfraFinding {
                 severity: InfraSeverity::Warning,
@@ -264,12 +288,20 @@ async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
             }
         }
         _ => {
-            // gh CLI not available or not in a GitHub repo — skip gracefully
-            InfraCheck::pass(
+            // gh CLI not available, or this is not a GitHub repo. There is no
+            // evidence either way, and an unmeasured check must not score.
+            // This arm used to return pass(5.0) with "assumed pass", so a
+            // project with NO CI at all outscored a real CI whose last ten runs
+            // were under 90% green (that one drops to `partial`).
+            InfraCheck::fail(
                 "BR-01",
                 "CI success rate",
                 5.0,
-                vec!["gh CLI not available — check skipped (assumed pass)".to_string()],
+                vec![
+                    "CI success rate NOT MEASURED — gh CLI unavailable or not a GitHub repo \
+                     (check skipped; an unmeasured check cannot pass)"
+                        .to_string(),
+                ],
             )
         }
     }
@@ -495,14 +527,41 @@ mod tests {
         tmp
     }
 
+    /// A directory with no `.github` at all must earn nothing here. It used to
+    /// score 15/25 — BR-01 "assumed pass" plus BR-02/05/06 scanning an empty
+    /// string and finding no violation — so having no CI outscored a real CI
+    /// with a mediocre run history.
     #[tokio::test]
-    async fn test_empty_repo() {
+    async fn test_empty_repo_scores_nothing_it_did_not_measure() {
         let tmp = TempDir::new().unwrap();
         let scorer = BuildReliabilityScorer::new();
         let result = scorer.score(tmp.path()).await.unwrap();
-        // BR-01 passes (gh skipped), BR-02 passes (no continue-on-error), BR-05 passes (no actions)
-        // BR-06 passes, all others fail
+
         assert_eq!(result.checks.len(), 7);
+        for check in &result.checks {
+            assert!(
+                !check.passed && check.score == 0.0,
+                "{} passed with no evidence: {:?}",
+                check.id,
+                check.evidence
+            );
+        }
+        assert_eq!(result.score, 0.0, "no evidence, no points");
+    }
+
+    /// The BR-01 arm that fires when `gh` cannot answer.
+    #[tokio::test]
+    async fn test_br01_unmeasurable_ci_is_not_a_pass() {
+        // A bare temp dir is not a GitHub repo, so `gh run list` cannot answer.
+        let tmp = TempDir::new().unwrap();
+        let check = check_ci_success_rate(tmp.path()).await;
+        assert!(!check.passed, "{:?}", check.evidence);
+        assert_eq!(check.score, 0.0);
+        assert!(
+            check.evidence.iter().any(|e| e.contains("NOT MEASURED")),
+            "the payload must say the check was not measured: {:?}",
+            check.evidence
+        );
     }
 
     #[test]
@@ -642,7 +701,21 @@ jobs:
         let tmp = setup_repo_with_workflow(content);
         let scorer = BuildReliabilityScorer::new();
         let result = scorer.score(tmp.path()).await.unwrap();
-        // BR-01 skipped (passes), BR-02 pass, BR-03 pass, BR-04 pass, BR-05 pass, BR-06 pass, BR-07 pass
-        assert!((result.score - 25.0).abs() < f64::EPSILON);
+        // BR-02..BR-07 all pass on this workflow: 20 of the 25 points. BR-01
+        // (5pts) cannot be measured in a temp dir — `gh run list` has no repo
+        // to ask about — and an unmeasured check no longer scores.
+        assert!(
+            (result.score - 20.0).abs() < f64::EPSILON,
+            "score={} checks={:?}",
+            result.score,
+            result
+                .checks
+                .iter()
+                .map(|c| (c.id.as_str(), c.score))
+                .collect::<Vec<_>>()
+        );
+        for check in result.checks.iter().filter(|c| c.id != "BR-01") {
+            assert!(check.passed, "{} failed: {:?}", check.id, check.evidence);
+        }
     }
 }

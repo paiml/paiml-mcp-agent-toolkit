@@ -121,7 +121,14 @@ pub enum HooksCommands {
         verbose: bool,
 
         /// Enable O(1) cache check (skip if unchanged)
-        #[arg(long, default_value = "true")]
+        ///
+        /// This carried `default_value = "true"` with no `--no-cache`, so the
+        /// cache was consulted whether or not you asked for it: a bare
+        /// `hooks run --all-files` answered "All quality gates passed (cached)"
+        /// without running a single gate, and nothing short of
+        /// `hooks cache clear` could force a real run. It is opt-in, as the
+        /// help text has always said.
+        #[arg(long)]
         cache: bool,
     },
 
@@ -171,4 +178,50 @@ pub enum ConfigFormat {
     Toml,
     /// Environment variables format
     Env,
+}
+
+#[cfg(test)]
+mod hooks_run_cache_flag_tests {
+    //! Regression: `hooks run` declared `--cache` with `default_value = "true"`
+    //! and shipped no `--no-cache`, so the cache was consulted even when the
+    //! user did not ask for it and a bare run answered "(cached)" without
+    //! running any gate.
+    use crate::cli::commands::{Commands, HooksCommands};
+    use clap::Parser;
+
+    fn parse(args: &[&str]) -> crate::cli::Cli {
+        let owned: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || crate::cli::Cli::try_parse_from(&owned).expect("clap accepts these"))
+            .expect("spawn")
+            .join()
+            .expect("thread panicked")
+    }
+
+    fn cache_flag(cli: &crate::cli::Cli) -> bool {
+        match &cli.command {
+            Commands::Hooks(HooksCommands::Run { cache, .. }) => *cache,
+            other => panic!("expected `hooks run`, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hooks_run_cache_is_opt_in() {
+        assert!(
+            !cache_flag(&parse(&["pmat", "hooks", "run", "--all-files"])),
+            "omitting --cache must run the gates for real, not answer from cache"
+        );
+    }
+
+    #[test]
+    fn test_hooks_run_cache_flag_enables_cache() {
+        assert!(cache_flag(&parse(&[
+            "pmat",
+            "hooks",
+            "run",
+            "--all-files",
+            "--cache"
+        ])));
+    }
 }

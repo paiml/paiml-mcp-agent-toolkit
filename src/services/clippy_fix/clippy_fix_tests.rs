@@ -261,14 +261,35 @@ mod coverage_tests {
 
     #[test]
     fn test_from_json_missing_fields() {
-        // JSON with missing fields should use defaults
+        // A message with neither lint code nor span is not a fixable diagnostic.
+        // It used to parse into a placeholder (code "unknown", file "", line 0)
+        // that was then counted as a fix.
         let json = r#"{"message": {}}"#;
         let result = ClippyDiagnostic::from_json(json);
-        assert!(result.is_ok());
+        assert!(result.is_err(), "empty message must not parse as a fix");
+    }
 
-        let diag = result.unwrap();
-        assert_eq!(diag.code, "unknown");
-        assert_eq!(diag.level, DiagnosticLevel::Warning); // default for "warning"
+    #[test]
+    fn test_from_json_rejects_non_diagnostic_cargo_lines() {
+        // Regression: cargo's non-diagnostic JSON lines each became a "fix"
+        // with file:"" line:0 code:"unknown", inflating total_fixes.
+        let artifact = r#"{"reason":"compiler-artifact","package_id":"cx 0.1.0","target":{"name":"cx"}}"#;
+        assert!(ClippyDiagnostic::from_json(artifact).is_err());
+
+        let build_finished = r#"{"reason":"build-finished","success":true}"#;
+        assert!(ClippyDiagnostic::from_json(build_finished).is_err());
+
+        // The "generated N warnings" summary: a real compiler-message, but with
+        // no lint code and no spans.
+        let summary = r#"{"reason":"compiler-message","message":{"code":null,"level":"warning","message":"1 warning emitted","spans":[]}}"#;
+        assert!(ClippyDiagnostic::from_json(summary).is_err());
+
+        // The real diagnostic in the same stream still parses.
+        let real = r#"{"reason":"compiler-message","message":{"code":{"code":"clippy::clone_on_copy"},"level":"warning","message":"using `clone` on type `i32`","spans":[{"file_name":"src/lib.rs","line_start":17,"line_end":17,"column_start":5,"column_end":14}]}}"#;
+        let diag = ClippyDiagnostic::from_json(real).expect("real diagnostic must parse");
+        assert_eq!(diag.code, "clippy::clone_on_copy");
+        assert_eq!(diag.file, PathBuf::from("src/lib.rs"));
+        assert_eq!(diag.line_start, 17);
     }
 
     // ========================================================================

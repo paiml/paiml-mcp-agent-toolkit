@@ -135,14 +135,17 @@ pub(super) async fn enhance_with_additional_analyses(
     mut result: ComprehensiveAnalysisResult,
     config: AdditionalAnalysisConfig<'_>,
 ) -> Result<ComprehensiveAnalysisResult> {
-    // Add duplicate detection if requested
+    // Duplicate detection is NOT wired into comprehensive analysis. It used to
+    // announce "👥 Detecting duplicates..." and then push the developer note
+    // "Duplicate detection analysis requested - integrate with duplicate
+    // detector" into the user-facing recommendations, which reads as a finding
+    // about the codebase rather than a missing feature — and the flag defaults
+    // to on, so every run carried it. Say what is true, on stderr, and leave
+    // the report free of a result nothing measured.
     if config.include_duplicates {
-        eprintln!("👥 Detecting duplicates...");
-        // Would integrate with duplicate detector service
-        // For now, just note it in the summary
-        result.summary.recommendations.push(
-            "Duplicate detection analysis requested - integrate with duplicate detector"
-                .to_string(),
+        eprintln!(
+            "ℹ️  Duplicate detection is not part of comprehensive analysis; \
+             run `pmat analyze duplicates` for clone results."
         );
     }
 
@@ -172,19 +175,32 @@ pub(super) async fn enhance_with_additional_analyses(
         };
 
         if let Ok(defect_result) = facade.analyze_project(request).await {
-            result.summary.total_issues += defect_result.high_risk_files;
-            result.summary.critical_issues += defect_result.high_risk_files;
-
-            if defect_result.high_risk_files > 0 {
-                result.summary.recommendations.push(format!(
-                    "Focus on {} high-risk files identified by defect prediction",
-                    defect_result.high_risk_files
-                ));
-            }
+            record_defect_prediction(&mut result.summary, defect_result.high_risk_files);
         }
     }
 
     Ok(result)
+}
+
+/// Fold defect prediction's `high_risk_files` into the summary — as a
+/// recommendation only.
+///
+/// It used to be added to BOTH `total_issues` and `critical_issues`. That is a
+/// FILE count going into an ISSUE counter, and the two are not commensurable:
+/// this repo reported `total_files: 4355` with `total_issues: 50747` and
+/// `critical_issues: 49784`, of which 49498 were "high-risk files" — eleven
+/// times more issues than there are files, while the analyses actually present
+/// in the report summed to 1249. An issue count must stay bounded by what the
+/// listed analyses found.
+pub(super) fn record_defect_prediction(
+    summary: &mut crate::services::facades::analysis_orchestrator::AnalysisSummary,
+    high_risk_files: usize,
+) {
+    if high_risk_files > 0 {
+        summary.recommendations.push(format!(
+            "Focus on {high_risk_files} high-risk files identified by defect prediction"
+        ));
+    }
 }
 
 /// Print performance breakdown
@@ -270,6 +286,46 @@ mod additional_config_scope_tests {
             additional.project_path,
             Path::new("."),
             "passing \".\" here is what made the issue counts depend on the caller's cwd"
+        );
+    }
+
+    /// `high_risk_files` is a FILE count from defect prediction; it used to be
+    /// added to `total_issues` AND `critical_issues`, so a 4,355-file project
+    /// reported 50,747 issues of which 49,498 were files.
+    #[test]
+    fn test_defect_prediction_does_not_inflate_the_issue_counters() {
+        use super::record_defect_prediction;
+        use crate::services::facades::analysis_orchestrator::AnalysisSummary;
+
+        let mut summary = AnalysisSummary {
+            total_files: 4355,
+            total_issues: 1249,
+            critical_issues: 286,
+            quality_score: 97.0,
+            recommendations: Vec::new(),
+        };
+
+        record_defect_prediction(&mut summary, 49498);
+
+        assert_eq!(
+            summary.total_issues, 1249,
+            "a file count must not be added to the issue count"
+        );
+        assert_eq!(
+            summary.critical_issues, 286,
+            "a file count must not be added to the critical-issue count"
+        );
+        assert!(
+            summary.total_issues <= summary.total_files * 100,
+            "issue counts must stay bounded by the analyzed corpus"
+        );
+        assert!(
+            summary
+                .recommendations
+                .iter()
+                .any(|r| r.contains("49498 high-risk files")),
+            "the figure is still reported, as its own recommendation: {:?}",
+            summary.recommendations
         );
     }
 

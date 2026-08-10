@@ -17,6 +17,18 @@ pub async fn handle_configuration(
     set: Vec<String>,
     config_path: Option<PathBuf>,
 ) -> Result<()> {
+    // An explicit --config-path that does not exist used to fall through to the
+    // built-in defaults and exit 0, byte-identical to a run with no flag at all, so
+    // a mistyped path silently ignored every setting the user asked for. Reads must
+    // fail loudly; only the implicit ./pmat.toml may be absent, and the writing
+    // operations (--set / --reset) are still allowed to create a new file.
+    let creates_config = reset || !set.is_empty();
+    if let Some(path) = config_path.as_ref() {
+        if !path.exists() && !creates_config {
+            anyhow::bail!("config file not found: {}", path.display());
+        }
+    }
+
     let config_service = create_config_service(config_path);
     execute_configuration_command(
         &config_service,
@@ -91,6 +103,50 @@ include!("configuration_handlers_operations.rs");
 mod tests {
     use super::*;
     use tempfile::tempdir;
+
+    /// `--config-path` naming a file that does not exist must be an error: silently
+    /// substituting the built-in defaults means the user's settings are ignored with
+    /// no signal at all.
+    #[tokio::test]
+    async fn test_handle_configuration_errors_on_missing_explicit_config_path() {
+        let result = handle_configuration(
+            true,
+            false,
+            false,
+            false,
+            None,
+            vec![],
+            Some(PathBuf::from("/does/not/exist/pmat-config-test.toml")),
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "missing --config-path must not use defaults"
+        );
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("not found"), "got: {msg}");
+    }
+
+    /// …but --set may still create a config file that does not exist yet.
+    #[tokio::test]
+    async fn test_handle_configuration_set_may_create_missing_config_path() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("new_config.toml");
+        let result = handle_configuration(
+            false,
+            false,
+            false,
+            false,
+            None,
+            vec!["quality.max_complexity=25".to_string()],
+            Some(config_path.clone()),
+        )
+        .await;
+        assert!(
+            result.is_ok(),
+            "set must still be able to create: {result:?}"
+        );
+    }
 
     #[tokio::test]
     async fn test_configuration_overview() {

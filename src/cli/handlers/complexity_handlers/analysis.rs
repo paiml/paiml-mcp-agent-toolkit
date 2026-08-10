@@ -92,8 +92,16 @@ pub(super) async fn analyze_project(
     detected_toolchain: Option<String>,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    if let Some(ref toolchain) = detected_toolchain {
-        eprintln!("🔍 Analyzing {toolchain} project complexity...");
+    // Auto-detection used to RESTRICT the walk to the one language it guessed.
+    // A directory holding a.go, app.ts and main.py therefore reported
+    // "Files analyzed: 1 / Total functions: 1" — whichever toolchain detection
+    // happened to win that run — and printed the summary as if it covered the
+    // project, with no hint that two of three source files were skipped.
+    // Detection is only a label now; an explicit `--toolchain` still restricts.
+    let explicit_toolchain = config.toolchain.as_deref();
+
+    if let Some(toolchain) = explicit_toolchain {
+        eprintln!("🔍 Analyzing {toolchain} files only (--toolchain {toolchain})...");
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
             Some(toolchain),
@@ -103,11 +111,15 @@ pub(super) async fn analyze_project(
         )
         .await
     } else {
-        // No specific toolchain detected - analyze all supported file types
-        eprintln!("🔍 Analyzing project complexity (multi-language)...");
+        match detected_toolchain {
+            Some(toolchain) => {
+                eprintln!("🔍 Analyzing {toolchain} project complexity (all languages)...");
+            }
+            None => eprintln!("🔍 Analyzing project complexity (multi-language)..."),
+        }
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
-            None, // This will trigger analysis of all supported languages
+            None, // Analyze every supported language, not just the detected one
             &config.include,
             config.max_cyclomatic,
             config.max_cognitive,
@@ -146,15 +158,34 @@ pub(super) fn apply_complexity_filters(
     let filtered_count = original_count - file_metrics.len();
 
     if filtered_count > 0 {
-        let cyc_threshold = max_cyclomatic.unwrap_or(u16::MAX);
-        let cog_threshold = max_cognitive.unwrap_or(u16::MAX);
         eprintln!(
-            "ℹ️  Filtered {} file(s) with no functions exceeding thresholds (cyclomatic > {}, cognitive > {})",
-            filtered_count, cyc_threshold, cog_threshold
+            "ℹ️  Filtered {} file(s) with no functions exceeding thresholds ({})",
+            filtered_count,
+            describe_thresholds(max_cyclomatic, max_cognitive)
         );
     }
 
     filtered_count
+}
+
+/// Name the thresholds that were actually in force.
+///
+/// An unset threshold used to be printed as its saturating sentinel —
+/// "cognitive > 65535" — which reads as a real limit that no function can ever
+/// exceed, and told the user a gate was running that was not. A threshold that
+/// was never set is simply not named.
+fn describe_thresholds(max_cyclomatic: Option<u16>, max_cognitive: Option<u16>) -> String {
+    let mut in_force = Vec::new();
+    if let Some(threshold) = max_cyclomatic {
+        in_force.push(format!("cyclomatic > {threshold}"));
+    }
+    if let Some(threshold) = max_cognitive {
+        in_force.push(format!("cognitive > {threshold}"));
+    }
+    if in_force.is_empty() {
+        return "no thresholds set".to_string();
+    }
+    in_force.join(", ")
 }
 
 /// Aggregate over every analyzed file, then list only the top-N slice.
@@ -284,4 +315,107 @@ pub(crate) fn has_complexity_violations(
             cyclomatic_exceeded || cognitive_exceeded
         })
     })
+}
+
+#[cfg(test)]
+mod multi_language_tests {
+    //! Regression tests for two defects in this module: a detected toolchain
+    //! silently restricted the project walk to one language, and an unset
+    //! threshold was reported as the unreachable sentinel 65535.
+    use super::{analyze_project, describe_thresholds};
+    use crate::cli::handlers::complexity_handlers::ComplexityConfig;
+
+    fn write_polyglot(dir: &std::path::Path) {
+        std::fs::write(
+            dir.join("a.go"),
+            "package main\nfunc Add(a int, b int) int { if a > b { return a }\n return b }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("app.ts"),
+            "export function add(a: number, b: number): number { return a > b ? a : b; }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("main.py"),
+            "def add(a, b):\n    if a > b:\n        return a\n    return b\n",
+        )
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_detected_toolchain_does_not_drop_other_languages() {
+        let temp = tempfile::TempDir::new().unwrap();
+        write_polyglot(temp.path());
+
+        // No `--toolchain` flag: detection may name any one language, but it
+        // must not become the whole project.
+        let config = ComplexityConfig::from_args(
+            temp.path().to_path_buf(),
+            None,
+            None,
+            None,
+            Vec::new(),
+            60,
+            0,
+        );
+        let metrics = analyze_project(Some("typescript".to_string()), &config)
+            .await
+            .unwrap();
+
+        let mut extensions: Vec<String> = metrics
+            .iter()
+            .filter_map(|m| {
+                std::path::Path::new(&m.path)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(str::to_string)
+            })
+            .collect();
+        extensions.sort();
+        extensions.dedup();
+
+        assert!(
+            extensions.len() >= 2,
+            "detecting one toolchain must not restrict the walk to it; analyzed {extensions:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_explicit_toolchain_still_restricts() {
+        let temp = tempfile::TempDir::new().unwrap();
+        write_polyglot(temp.path());
+
+        let config = ComplexityConfig::from_args(
+            temp.path().to_path_buf(),
+            Some("go".to_string()),
+            None,
+            None,
+            Vec::new(),
+            60,
+            0,
+        );
+        let metrics = analyze_project(Some("go".to_string()), &config)
+            .await
+            .unwrap();
+
+        assert!(
+            metrics.iter().all(|m| m.path.ends_with(".go")),
+            "--toolchain go must analyze only Go files"
+        );
+    }
+
+    #[test]
+    fn test_unset_threshold_is_not_reported_as_65535() {
+        let described = describe_thresholds(Some(20), None);
+        assert_eq!(described, "cyclomatic > 20");
+        assert!(
+            !described.contains("65535"),
+            "an unset cognitive threshold must not be printed as u16::MAX"
+        );
+        assert_eq!(
+            describe_thresholds(Some(20), Some(15)),
+            "cyclomatic > 20, cognitive > 15"
+        );
+    }
 }

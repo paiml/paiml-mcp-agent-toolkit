@@ -12,8 +12,22 @@ pub enum TestDiscoveryCommands {
         #[arg(short = 'o', long = "output", default_value = "test-failures.json")]
         output: PathBuf,
 
-        /// Use cargo nextest (faster, parallel)
-        #[arg(long, default_value = "true")]
+        /// Use cargo nextest (faster, parallel); `--use-nextest false` runs `cargo test`
+        ///
+        /// `#[arg(long, default_value = "true")]` derived `ArgAction::SetTrue`,
+        /// which ignores the default and can only ever set the flag to true:
+        /// the value was true whether or not the flag was passed, `--use-nextest
+        /// false` was rejected as an unexpected argument, and the `cargo test`
+        /// branch in `handle_discovery_run` was unreachable. `ArgAction::Set`
+        /// with an optional value keeps nextest the default while making the
+        /// flag actually settable.
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            default_value_t = true,
+            default_missing_value = "true"
+        )]
         use_nextest: bool,
 
         /// Maximum test timeout in seconds
@@ -100,4 +114,36 @@ pub enum TestDiscoveryFormat {
     Json,
     Markdown,
     Text,
+}
+
+#[cfg(test)]
+mod use_nextest_flag_tests {
+    //! `--use-nextest` must be a real switch: it used to derive
+    //! `ArgAction::SetTrue`, so the value was true no matter what the user
+    //! typed and `cargo test` could never run.
+    use super::TestDiscoveryCommands;
+    use clap::Parser;
+
+    #[derive(Parser, Debug)]
+    struct Harness {
+        #[command(subcommand)]
+        cmd: TestDiscoveryCommands,
+    }
+
+    fn use_nextest_of(args: &[&str]) -> bool {
+        match Harness::try_parse_from(args).expect("parse test-discovery run").cmd {
+            TestDiscoveryCommands::Run { use_nextest, .. } => use_nextest,
+            other => panic!("expected `run`, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn use_nextest_defaults_on_but_can_be_switched_off() {
+        assert!(use_nextest_of(&["td", "run"]), "nextest stays the default");
+        assert!(use_nextest_of(&["td", "run", "--use-nextest"]));
+        assert!(
+            !use_nextest_of(&["td", "run", "--use-nextest", "false"]),
+            "--use-nextest false must select `cargo test`"
+        );
+    }
 }

@@ -47,12 +47,21 @@
         assert!(output.contains("medium"));
     }
 
+    /// This test used to pin the defect: it asserted that `-f graph-ml` returns
+    /// the developer note "GraphML export handled separately", which the command
+    /// then wrote out as the whole output file with exit 0.
     #[test]
     fn test_format_output_graphml() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::GraphML).unwrap();
+        let err = format_output(result, GraphMetricsOutputFormat::GraphML)
+            .expect_err("graph-ml must not render prose as a document");
 
-        assert!(output.contains("GraphML export handled separately"));
+        let message = err.to_string();
+        assert!(
+            !message.contains("handled separately"),
+            "the error must tell the user what to run: {message}"
+        );
+        assert!(message.contains("--export-graphml"), "{message}");
     }
 
     #[test]

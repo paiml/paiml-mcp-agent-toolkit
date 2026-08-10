@@ -1869,4 +1869,92 @@ fn confidence_is_never_pinned_to_one() {
     );
 }
 
+
+/// five-whys reported 808 SATD markers for this repo while `pmat analyze satd`
+/// reported 39 for the same path in the same session — the old
+/// `count_satd_markers` was a raw substring scan with no comment awareness, so
+/// it counted pattern tables, fixtures and doc prose. Both surfaces now read the
+/// same detector.
+#[tokio::test]
+async fn satd_evidence_agrees_with_the_analyze_satd_detector() {
+    use crate::services::satd_detector::SATDDetector;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    // A named subdirectory: `tempfile` roots are dot-prefixed and source walks
+    // skip hidden entries.
+    let root = dir.path().join("proj");
+    std::fs::create_dir_all(root.join("src")).expect("mkdir");
+    std::fs::write(
+        root.join("src/lib.rs"),
+        // One genuine SATD comment, plus three lines that a bare substring
+        // scan counts and a detector does not: a string literal, a doc mention
+        // and an identifier.
+        "// TODO: implement retry\n\
+         pub const MARKERS: &[&str] = &[\"TODO\", \"FIXME\", \"HACK\"];\n\
+         /// Explains why the word FIXME appears in the pattern table above.\n\
+         pub fn xxx_helper() -> u32 { 1 }\n",
+    )
+    .expect("write");
+
+    let evidence = FiveWhysAnalyzer::gather_satd_evidence(&root)
+        .await
+        .expect("SATD evidence must be gathered");
+    let five_whys_count = evidence.value["count"].as_u64().expect("count key");
+
+    let detector_count = SATDDetector::new()
+        .analyze_project(&root, false)
+        .await
+        .expect("detector must run")
+        .summary
+        .total_items as u64;
+
+    assert_eq!(
+        five_whys_count, detector_count,
+        "five-whys must report the SATD number `analyze satd` reports"
+    );
+}
+
+
+/// `complexity_violations` was structurally always 0: this producer wrote
+/// `{total_lines, deep_nesting, threshold}` while
+/// `EvidenceSummary::process_complexity_evidence` reads a `value` key nobody
+/// wrote, so the comparison was always `0.0 > 20.0`. The producer and the
+/// consumer must agree on the key.
+#[test]
+fn complexity_evidence_carries_the_key_the_summary_reads() {
+    use crate::models::debug_analysis::{EvidenceSummary, WhyIteration};
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path().join("proj");
+    std::fs::create_dir_all(root.join("src")).expect("mkdir");
+    // Three of four lines sit deeper than the nesting threshold, so the
+    // estimated density is far above 20/1000 lines.
+    std::fs::write(root.join("src/deep.rs"), "{{{{{{\nfoo\nbar\n}}}}}}\n")
+        .expect("write");
+
+    let evidence = FiveWhysAnalyzer::gather_complexity_evidence(&root)
+        .expect("a src/ tree must yield complexity evidence");
+
+    let value = evidence
+        .value
+        .get("value")
+        .and_then(serde_json::Value::as_f64)
+        .expect("the payload must carry the `value` key the summary reads");
+    let threshold = evidence
+        .value
+        .get("threshold")
+        .and_then(serde_json::Value::as_f64)
+        .expect("threshold");
+    assert!(value > threshold, "{value} vs {threshold}");
+
+    let mut why = WhyIteration::new(1, "Why?".to_string(), "H".to_string());
+    why.add_evidence(evidence);
+    let summary = EvidenceSummary::from_whys(&[why]);
+    assert_eq!(
+        summary.complexity_violations, 1,
+        "the summary must see the violation the evidence describes"
+    );
+    assert!(summary.complexity_measured);
+}
+
 }

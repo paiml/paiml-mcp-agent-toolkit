@@ -76,29 +76,89 @@ pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -
     }
 }
 
+/// Whether the storage section should be rendered for this flag combination.
+///
+/// A bare `pmat tdg diagnostics` used to `return Ok(())` before printing
+/// anything — exit 0 with zero bytes on stdout and stderr, from a command whose
+/// help promises "TDG system diagnostics and health status". With no section
+/// selected the caller means "whatever you have", and storage is the only
+/// section that exists.
+fn should_show_storage(storage: bool, scheduler: bool, adaptive: bool, resources: bool) -> bool {
+    storage || !scheduler && !adaptive && !resources
+}
+
+/// Sections `tdg diagnostics` advertises but has no implementation for.
+///
+/// `--scheduler`, `--adaptive` and `--resources` were underscore-prefixed
+/// unused parameters: three documented flags that were compiled-in no-ops.
+/// Naming them as unavailable is the only honest answer while that is true.
+fn unavailable_sections(scheduler: bool, adaptive: bool, resources: bool) -> Vec<&'static str> {
+    let mut out = Vec::new();
+    if scheduler {
+        out.push("scheduler");
+    }
+    if adaptive {
+        out.push("adaptive-thresholds");
+    }
+    if resources {
+        out.push("resources");
+    }
+    out
+}
+
 /// Show TDG system diagnostics
 async fn show_diagnostics(
     base_path: &PathBuf,
     detailed: bool,
     show_storage: bool,
-    _show_scheduler: bool,
-    _show_adaptive: bool,
-    _show_resources: bool,
+    show_scheduler: bool,
+    show_adaptive: bool,
+    show_resources: bool,
     format: DiagnosticOutputFormat,
 ) -> Result<()> {
-    if !show_storage {
-        return Ok(());
+    let show_storage =
+        should_show_storage(show_storage, show_scheduler, show_adaptive, show_resources);
+    let unavailable = unavailable_sections(show_scheduler, show_adaptive, show_resources);
+
+    let structured = matches!(
+        format,
+        DiagnosticOutputFormat::Json | DiagnosticOutputFormat::Yaml
+    );
+
+    // Opening the tiered store creates .pmat/tdg-*.db, so only do it when the
+    // storage section is actually going to be reported.
+    if show_storage || structured {
+        let storage = TieredStorageFactory::create_at_path(base_path)?;
+        let stats = storage.get_statistics();
+
+        match format {
+            DiagnosticOutputFormat::Plain => show_plain_diagnostics(&stats, detailed),
+            DiagnosticOutputFormat::Human => show_human_diagnostics(&stats, detailed),
+            DiagnosticOutputFormat::Json => {
+                show_json_diagnostics(&stats, show_storage, &unavailable)?;
+            }
+            DiagnosticOutputFormat::Yaml => {
+                show_yaml_diagnostics(&stats, show_storage, &unavailable)?;
+            }
+            DiagnosticOutputFormat::Table => show_table_diagnostics(&stats),
+        }
     }
 
-    let storage = TieredStorageFactory::create_at_path(base_path)?;
-    let stats = storage.get_statistics();
-
-    match format {
-        DiagnosticOutputFormat::Plain => show_plain_diagnostics(&stats, detailed),
-        DiagnosticOutputFormat::Human => show_human_diagnostics(&stats, detailed),
-        DiagnosticOutputFormat::Json => show_json_diagnostics(&stats, show_storage)?,
-        DiagnosticOutputFormat::Yaml => show_yaml_diagnostics(&stats, show_storage)?,
-        DiagnosticOutputFormat::Table => show_table_diagnostics(&stats),
+    if !unavailable.is_empty()
+        && matches!(
+            format,
+            DiagnosticOutputFormat::Plain
+                | DiagnosticOutputFormat::Human
+                | DiagnosticOutputFormat::Table
+        )
+    {
+        println!(
+            "{}",
+            c::warn(&format!(
+                "Requested but not implemented: {}. These flags have no diagnostic behind them yet.",
+                unavailable.join(", ")
+            ))
+        );
     }
 
     Ok(())
@@ -133,9 +193,11 @@ fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
 fn show_json_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
     show_storage: bool,
+    unavailable: &[&str],
 ) -> Result<()> {
     let json_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
+        "unavailable_sections": unavailable,
         "note": "Full diagnostic infrastructure in development"
     });
     println!("{}", serde_json::to_string_pretty(&json_output)?);
@@ -145,9 +207,11 @@ fn show_json_diagnostics(
 fn show_yaml_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
     show_storage: bool,
+    unavailable: &[&str],
 ) -> Result<()> {
     let yaml_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
+        "unavailable_sections": unavailable,
         "note": "Full diagnostic infrastructure in development"
     });
     println!("{}", serde_yaml_ng::to_string(&yaml_output)?);
@@ -170,8 +234,8 @@ fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
         stats.warm_backend, stats.cold_backend
     );
     println!(
-        "│ Compression │ {:>16.1}% │ Memory: {:>21} KB │",
-        stats.compression_ratio * 100.0,
+        "│ Compression │ {:>17} │ Memory: {:>21} KB │",
+        stats.compression_ratio_display(),
         stats.hot_memory_kb
     );
     println!("└─────────────┴─────────────────────┴─────────────────────────────────┘");
@@ -201,7 +265,7 @@ fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
     println!(
         "{} {}, {} {} KB",
         c::label("Compression:"),
-        c::number(&format!("{:.1}%", stats.compression_ratio * 100.0)),
+        c::number(&stats.compression_ratio_display()),
         c::label("Memory:"),
         c::number(&format!("{}", stats.hot_memory_kb))
     );
@@ -270,10 +334,17 @@ fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
         c::dim("Total"),
         c::number(&stats.total_entries.to_string())
     );
+    // `tdg storage stats` printed "Compression ratio: 33.0%" over a store with
+    // zero entries, byte-identically before and after a full `pmat tdg .` run.
+    // 0.0 means the ratio was never measured, and must not render as a number.
     println!(
         "   {}: {}",
         c::dim("Compression ratio"),
-        c::pct(f64::from(stats.compression_ratio) * 100.0, 50.0, 20.0)
+        if stats.compression_ratio > 0.0 {
+            c::pct(f64::from(stats.compression_ratio) * 100.0, 50.0, 20.0)
+        } else {
+            c::dim(&stats.compression_ratio_display())
+        }
     );
     println!();
 
@@ -534,14 +605,53 @@ mod tests {
     fn test_show_json_diagnostics_with_storage_includes_field() {
         // The function prints — we can't intercept, but it returns Ok and
         // the json! macro internally serializes. Just exercise both branches.
-        assert!(show_json_diagnostics(&populated_stats(), true).is_ok());
-        assert!(show_json_diagnostics(&populated_stats(), false).is_ok());
+        assert!(show_json_diagnostics(&populated_stats(), true, &[]).is_ok());
+        assert!(show_json_diagnostics(&populated_stats(), false, &["scheduler"]).is_ok());
     }
 
     #[test]
     fn test_show_yaml_diagnostics_no_panic_both_branches() {
-        assert!(show_yaml_diagnostics(&populated_stats(), true).is_ok());
-        assert!(show_yaml_diagnostics(&populated_stats(), false).is_ok());
+        assert!(show_yaml_diagnostics(&populated_stats(), true, &[]).is_ok());
+        assert!(show_yaml_diagnostics(&populated_stats(), false, &["resources"]).is_ok());
+    }
+
+    // ── silent-success diagnostics + fabricated compression ratio ───────────
+
+    /// `pmat tdg diagnostics` with no flags produced zero bytes and exit 0.
+    /// With nothing selected, storage — the only implemented section — must be
+    /// shown.
+    #[test]
+    fn test_bare_diagnostics_selects_storage_section() {
+        // Bare invocation: no flags at all must still render something.
+        assert!(should_show_storage(false, false, false, false));
+        assert!(should_show_storage(true, false, false, false));
+        // An explicit unrelated section does not silently pull storage in.
+        assert!(!should_show_storage(false, true, false, false));
+        assert!(!should_show_storage(false, false, true, true));
+    }
+
+    /// The three flags with no implementation must be named, not ignored.
+    #[test]
+    fn test_unavailable_sections_names_unimplemented_flags() {
+        assert!(unavailable_sections(false, false, false).is_empty());
+        assert_eq!(unavailable_sections(true, false, false), vec!["scheduler"]);
+        assert_eq!(
+            unavailable_sections(true, true, true),
+            vec!["scheduler", "adaptive-thresholds", "resources"]
+        );
+    }
+
+    /// A ratio cannot be derived from zero stored entries; it used to print
+    /// "Compression ratio: 33.0%" regardless.
+    #[test]
+    fn test_compression_ratio_not_reported_for_empty_store() {
+        let rendered = empty_stats().compression_ratio_display();
+        assert!(
+            rendered.contains("not measured"),
+            "empty store must not report a compression percentage, got {rendered}"
+        );
+        assert!(!rendered.contains('%'), "got {rendered}");
+        assert_eq!(populated_stats().compression_ratio_display(), "65.0%");
     }
 
     #[test]

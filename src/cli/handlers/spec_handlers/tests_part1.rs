@@ -350,9 +350,14 @@
         let spec = create_minimal_spec("My Spec");
         let output = format_spec_score_text(&spec, 75.0, false);
 
-        assert!(output.contains("Specification Score"));
+        // Used to assert the bare headings "Specification Score" and
+        // "Score: 75.0/100". Those were the defect: `pmat qa-work spec` prints an
+        // unrelated claim-falsifiability score with the same wording and a
+        // different pass bar (60 vs 95), so the two numbers were indistinguishable.
+        // The renderer now names the metric it computes.
+        assert!(output.contains("Specification Completeness Score"));
         assert!(output.contains("Title: My Spec"));
-        assert!(output.contains("Score: 75.0/100"));
+        assert!(output.contains("Completeness score: 75.0/100"));
         assert!(output.contains("FAIL"));
     }
 
@@ -469,9 +474,13 @@
         let spec = create_minimal_spec("Markdown Spec");
         let output = format_spec_score_markdown(&spec, 75.0);
 
-        assert!(output.contains("# Specification Score Report"));
+        // Used to assert "# Specification Score Report" and "| Score | 75.0/100 |";
+        // that ambiguous wording is what let this completeness score be mistaken for
+        // qa-work spec's claim-falsifiability score. The heading and the table row
+        // now say which metric this is.
+        assert!(output.contains("# Specification Completeness Score Report"));
         assert!(output.contains("**Title:** Markdown Spec"));
-        assert!(output.contains("| Score | 75.0/100 |"));
+        assert!(output.contains("| Completeness score | 75.0/100 |"));
     }
 
     #[test]

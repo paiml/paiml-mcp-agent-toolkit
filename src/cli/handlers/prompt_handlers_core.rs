@@ -48,6 +48,46 @@ fn list_prompts() {
     println!();
 }
 
+/// Substitute `${VAR}` placeholders and put object keys in a stable order.
+///
+/// Substituting on the serialised *value* rather than on the emitted text keeps
+/// YAML/JSON escaping correct, and covers the placeholders that live outside
+/// the main `prompt` field (quality gates, validation tools, …).
+///
+/// The same walk rebuilds every object with sorted keys: the prompt model holds
+/// `HashMap` fields, so four identical `pmat prompt book --title MYBOOK`
+/// invocations produced four different md5s.
+fn render_prompt_value(value: &Value, variables: &HashMap<String, String>) -> Value {
+    match value {
+        Value::String(s) => {
+            let mut rendered = s.clone();
+            for (key, replacement) in variables {
+                rendered = rendered.replace(&format!("${{{key}}}"), replacement);
+            }
+            Value::String(rendered)
+        }
+        Value::Array(items) => Value::Array(
+            items
+                .iter()
+                .map(|item| render_prompt_value(item, variables))
+                .collect(),
+        ),
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            let mut ordered = serde_json::Map::with_capacity(map.len());
+            for key in keys {
+                ordered.insert(
+                    key.clone(),
+                    render_prompt_value(&map[key.as_str()], variables),
+                );
+            }
+            Value::Object(ordered)
+        }
+        other => other.clone(),
+    }
+}
+
 /// Show a specific prompt
 fn show_prompt(
     name: &str,
@@ -93,10 +133,22 @@ fn show_prompt(
         variables.insert(key, value_str);
     }
 
-    // Render output in requested format
+    // Render output in requested format.
+    //
+    // Only the Text arm used to receive `variables`; Yaml and Json called
+    // to_yaml()/to_json() and dropped the map on the floor. Since
+    // `prompt book` and `prompt comply` hardcode Yaml, no flag could ever
+    // substitute anything: `--title MYBOOK` left ten literal `${BOOK_TITLE}`s
+    // in the emitted prompt.
     let output_str = match format {
-        PromptOutputFormat::Yaml => prompt.to_yaml()?,
-        PromptOutputFormat::Json => prompt.to_json()?,
+        PromptOutputFormat::Yaml => {
+            let rendered = render_prompt_value(&serde_json::to_value(&prompt)?, &variables);
+            serde_yaml_ng::to_string(&rendered)?
+        }
+        PromptOutputFormat::Json => {
+            let rendered = render_prompt_value(&serde_json::to_value(&prompt)?, &variables);
+            serde_json::to_string_pretty(&rendered)?
+        }
         PromptOutputFormat::Text => prompt.to_text(&variables),
     };
 
@@ -214,5 +266,100 @@ pub async fn handle_prompt_command(prompt_cmd: PromptCommands) -> Result<()> {
             )
             .await
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod variable_substitution_tests {
+    //! Regression tests for `pmat prompt book` / `pmat prompt comply`: both
+    //! hardcode the Yaml output format, and the Yaml and Json arms of
+    //! `show_prompt` dropped the variable map, so `--title MYBOOK` emitted ten
+    //! literal `${BOOK_TITLE}`s. The HashMap-backed model also gave a different
+    //! key order — and so different bytes — on every run.
+    use super::{render_prompt_value, show_prompt, PromptOutputFormat, Value, WorkflowPrompt, PROMPTS};
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_show_prompt_substitutes_on_the_yaml_path() {
+        // `prompt book` / `prompt comply` hardcode Yaml, and that arm dropped
+        // the variable map entirely — this pins the call site, not just the
+        // renderer. `--output` is used because the alternative is stdout.
+        let temp = tempfile::TempDir::new().unwrap();
+        let out = temp.path().join("book.yaml");
+
+        show_prompt(
+            "book-documentation",
+            false,
+            vec![(
+                "BOOK_TITLE".to_string(),
+                Value::String("MYBOOK".to_string()),
+            )],
+            PromptOutputFormat::Yaml,
+            Some(out.clone()),
+        )
+        .unwrap();
+
+        let written = std::fs::read_to_string(&out).unwrap();
+        assert!(
+            written.contains("MYBOOK"),
+            "--title must reach the YAML that show_prompt writes"
+        );
+        assert!(
+            !written.contains("${BOOK_TITLE}"),
+            "the Yaml arm must not emit unsubstituted placeholders"
+        );
+    }
+
+    fn yaml_of(name: &str, variables: &HashMap<String, String>) -> String {
+        let raw = PROMPTS
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, y)| *y)
+            .expect("prompt must exist");
+        let prompt = WorkflowPrompt::from_yaml(raw).expect("prompt must parse");
+        let value = serde_json::to_value(&prompt).expect("prompt must serialize");
+        serde_yaml_ng::to_string(&render_prompt_value(&value, variables)).expect("yaml")
+    }
+
+    #[test]
+    fn test_book_variables_are_substituted_in_yaml_output() {
+        let mut variables = HashMap::new();
+        variables.insert("BOOK_TITLE".to_string(), "MYBOOK".to_string());
+        variables.insert("MIN_PASS_RATE".to_string(), "42".to_string());
+
+        let yaml = yaml_of("book-documentation", &variables);
+
+        assert!(
+            yaml.contains("MYBOOK"),
+            "--title must reach the emitted prompt"
+        );
+        assert!(
+            !yaml.contains("${BOOK_TITLE}"),
+            "no ${{BOOK_TITLE}} placeholder may survive substitution"
+        );
+        assert!(!yaml.contains("${MIN_PASS_RATE}"));
+    }
+
+    #[test]
+    fn test_identical_input_gives_identical_bytes() {
+        let variables = HashMap::new();
+        // Parsed afresh each time, as two separate invocations would: the
+        // model's HashMap fields otherwise serialise in a different order per
+        // parse.
+        for (name, _) in PROMPTS {
+            let first = yaml_of(name, &variables);
+            let second = yaml_of(name, &variables);
+            assert_eq!(first, second, "prompt {name} is not byte-stable");
+        }
+    }
+
+    #[test]
+    fn test_object_keys_are_emitted_in_sorted_order() {
+        let value = serde_json::json!({"zulu": 1, "alpha": {"yankee": 2, "bravo": 3}});
+        let rendered =
+            serde_json::to_string(&render_prompt_value(&value, &HashMap::new())).unwrap();
+        assert!(rendered.find("alpha").unwrap() < rendered.find("zulu").unwrap());
+        assert!(rendered.find("bravo").unwrap() < rendered.find("yankee").unwrap());
     }
 }

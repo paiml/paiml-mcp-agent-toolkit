@@ -587,10 +587,24 @@ mod coverage_tests {
     async fn test_handle_validate_tiles_shared_memory_overflow() {
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
-        // Large dimensions with small shared memory
+        // Large dimensions with small shared memory: 256 * 128 * 2 = 65536 bytes
+        // required against a 1024 byte limit.
+        //
+        // This used to assert `is_ok()` ("should succeed (tile_kv >= head_dim) but
+        // show warning"). That encoded the defect: the printed verdict said
+        // "Status: INVALID / Issue: Shared memory overflow" while the command still
+        // exited 0, so CI gating on `validate-tiles` passed an overflowing
+        // configuration. An INVALID verdict must exit nonzero.
         let result = handle_validate_tiles(128, 256, 1024, &config).await;
-        // This should succeed (tile_kv >= head_dim) but show warning
-        assert!(result.is_ok());
+        assert!(
+            result.is_err(),
+            "a configuration overflowing shared memory must not exit 0"
+        );
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("Shared memory overflow"),
+            "unexpected error: {err}"
+        );
     }
 
     // Tests for handle_taxonomy

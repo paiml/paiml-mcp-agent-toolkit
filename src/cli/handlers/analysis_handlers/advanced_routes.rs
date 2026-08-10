@@ -179,7 +179,11 @@ pub(super) async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()>
         run_cargo_build(&path, release)?;
     }
 
-    println!("\u{1f4ca} Running TDG analysis...");
+    // This banner was the one progress line on stdout (every sibling line in
+    // new_tdg_handler uses eprintln!), so it landed ahead of the JSON/SARIF
+    // document and `analyze build-tdg -f json | jq` failed to parse for
+    // everyone. Progress belongs on stderr; stdout carries the document only.
+    eprintln!("\u{1f4ca} Running TDG analysis...");
     let config = TdgAnalysisConfig {
         path: path.clone(),
         threshold: Some(threshold),

@@ -57,11 +57,19 @@ impl IncrementalCoverageFacade {
     /// — identical numbers whatever the project contained. Now it reads the same
     /// lcov/llvm-cov artifact `pmat context` reads, and reports "not measured"
     /// when there is none instead of a plausible default.
+    ///
+    /// Every changed file is looked up, not just the `--top-files` display
+    /// slice: the loop used to `break` at `top_files`, and the summary was then
+    /// derived from that truncated vector while `total_files` came from the
+    /// full changed-file list, so `files_not_measured` simply echoed
+    /// `--top-files` (3 -> 3, 10 -> 10, 50 -> 50) and 279 of 289 files were
+    /// unaccounted for. The lookup is a hash-map hit, so there is nothing to
+    /// save by stopping early.
     async fn analyze_coverage_changes(
         &self,
         project_path: &Path,
         changed_files: &[(PathBuf, String)],
-        request: &IncrementalCoverageRequest,
+        _request: &IncrementalCoverageRequest,
     ) -> Result<Vec<ChangedFileCoverage>> {
         let measured = Self::load_line_coverage(project_path);
         let mut coverage_data = Vec::new();
@@ -72,11 +80,6 @@ impl IncrementalCoverageFacade {
             }
 
             coverage_data.push(Self::file_coverage(path, measured.as_ref()));
-
-            // Only analyze top N files if requested
-            if coverage_data.len() >= request.top_files {
-                break;
-            }
         }
 
         Ok(coverage_data)
@@ -138,7 +141,10 @@ impl IncrementalCoverageFacade {
             .collect();
 
         let covered_files = measured.iter().filter(|pct| **pct > 0.0).count();
-        let files_not_measured = coverage_data.len() - measured.len();
+        // Counted against ALL changed files, so the summary reconciles:
+        // measured + not_measured == total_files. Deleted/renamed files, which
+        // get no coverage row at all, are unmeasured too.
+        let files_not_measured = total_files.saturating_sub(measured.len());
 
         // Absent, not zero: "no coverage artifact" is not "0% covered".
         #[allow(clippy::cast_precision_loss)]
@@ -172,6 +178,13 @@ impl IncrementalCoverageFacade {
             files_not_measured
         );
 
+        // --top-files is a display limit only; it must not change any count above.
+        let displayed = if request.top_files == 0 {
+            coverage_data
+        } else {
+            coverage_data.into_iter().take(request.top_files).collect()
+        };
+
         IncrementalCoverageResult {
             total_files,
             covered_files,
@@ -179,7 +192,7 @@ impl IncrementalCoverageFacade {
             files_above_threshold,
             files_below_threshold,
             files_not_measured,
-            changed_files: coverage_data,
+            changed_files: displayed,
             summary,
         }
     }
@@ -205,5 +218,60 @@ impl IncrementalCoverageFacade {
         };
 
         self.analyze_project(request).await
+    }
+}
+
+#[cfg(test)]
+mod top_files_accounting_tests {
+    //! `--top-files` is a display limit; it must not leak into the summary.
+    use super::*;
+    use crate::services::service_registry::ServiceRegistry;
+
+    fn request(top_files: usize) -> IncrementalCoverageRequest {
+        IncrementalCoverageRequest {
+            project_path: PathBuf::from("."),
+            base_branch: "master".to_string(),
+            target_branch: None,
+            coverage_threshold: 80.0,
+            changed_files_only: true,
+            detailed: false,
+            cache_dir: None,
+            force_refresh: false,
+            top_files,
+        }
+    }
+
+    /// `--top-files N` used to make `files_not_measured` come back as exactly N
+    /// (3 -> 3, 10 -> 10, 50 -> 50) against a constant total_files of 289,
+    /// because the summary was derived from the truncated display vector.
+    #[test]
+    fn test_top_files_truncates_the_display_list_not_the_counts() {
+        let facade = IncrementalCoverageFacade::new(Arc::new(ServiceRegistry::new()));
+
+        let changed: Vec<(PathBuf, String)> = (0..25)
+            .map(|i| (PathBuf::from(format!("src/f{i}.rs")), "M".to_string()))
+            .collect();
+        let coverage_data: Vec<ChangedFileCoverage> = changed
+            .iter()
+            .map(|(path, _)| IncrementalCoverageFacade::file_coverage(path, None))
+            .collect();
+
+        let result = facade.build_coverage_result(coverage_data, changed, &request(3));
+
+        assert_eq!(result.total_files, 25);
+        assert_eq!(
+            result.changed_files.len(),
+            3,
+            "--top-files 3 must cap the displayed list"
+        );
+        assert_eq!(
+            result.files_not_measured, 25,
+            "no coverage artifact ⇒ all 25 changed files are unmeasured, not --top-files of them"
+        );
+        assert_eq!(
+            result.files_above_threshold + result.files_below_threshold + result.files_not_measured,
+            result.total_files,
+            "the summary must reconcile with total_files"
+        );
     }
 }

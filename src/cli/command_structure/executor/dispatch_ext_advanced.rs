@@ -74,7 +74,10 @@ impl CommandExecutor {
                 }
                 #[cfg(not(feature = "org-intelligence"))]
                 {
-                    anyhow::bail!("Organizational intelligence feature is not enabled. Rebuild with --features org-intelligence")
+                    // See command_routing.rs: `org analyze` no longer exists in
+                    // any build, so this arm must not promise a rebuild will
+                    // bring it back.
+                    crate::cli::handlers::org_handlers::org_not_enabled_error(&_org_cmd)
                 }
             }
             Commands::Prompt(prompt_cmd) => {

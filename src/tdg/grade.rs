@@ -112,6 +112,42 @@ impl Grade {
             .find(|(floor, _)| score >= *floor)
             .map_or(Grade::F, |(_, grade)| *grade)
     }
+
+    /// The half-open score band this grade covers, `[floor, ceiling)` — the top
+    /// grade's band is closed at 100.0.
+    ///
+    /// Exists so nothing has to restate the bands in prose. `pmat explain`
+    /// used to carry a hand-written five-grade table (A = "Score 85-94") that
+    /// contradicted this one (A = 90..95, and A-/B+/B-/C+/C-/D were not listed
+    /// at all), so `explain TDG-A-` answered "No checks matching 'TDG-A-'" for a
+    /// grade `pmat tdg` prints routinely.
+    #[must_use]
+    pub fn score_band(self) -> (f32, f32) {
+        match GRADE_BANDS.iter().position(|(_, grade)| *grade == self) {
+            // `F` is everything below the last floor.
+            None => (0.0, GRADE_BANDS[GRADE_BANDS.len() - 1].0),
+            Some(0) => (GRADE_BANDS[0].0, 100.0),
+            Some(i) => (GRADE_BANDS[i].0, GRADE_BANDS[i - 1].0),
+        }
+    }
+
+    /// Every grade, best first — the population `pmat explain` must document.
+    #[must_use]
+    pub fn all() -> [Grade; 11] {
+        [
+            Grade::APlus,
+            Grade::A,
+            Grade::AMinus,
+            Grade::BPlus,
+            Grade::B,
+            Grade::BMinus,
+            Grade::CPlus,
+            Grade::C,
+            Grade::CMinus,
+            Grade::D,
+            Grade::F,
+        ]
+    }
 }
 
 /// Score floors, best grade first. `F` is everything below the last floor.
@@ -379,6 +415,29 @@ mod tests {
                 serde_json::from_str(&encoded).unwrap();
             assert_eq!(decoded.get(&grade), Some(&3));
         }
+    }
+
+    /// `score_band` must agree with `from_score` at every boundary, or the
+    /// documentation generated from it would restate the same contradiction
+    /// `pmat explain` used to carry.
+    #[test]
+    fn test_score_band_agrees_with_from_score() {
+        for grade in Grade::all() {
+            let (floor, ceiling) = grade.score_band();
+            assert_eq!(
+                Grade::from_score(floor),
+                grade,
+                "{grade}'s floor {floor} does not map back to {grade}"
+            );
+            // Just under the ceiling is still this grade; at the ceiling it is
+            // the next better one (except for the top band, closed at 100).
+            assert_eq!(Grade::from_score(ceiling - 0.1), grade, "{grade} ceiling");
+            if grade != Grade::APlus {
+                assert_ne!(Grade::from_score(ceiling), grade, "{grade} ceiling is open");
+            }
+        }
+        assert_eq!(Grade::APlus.score_band(), (95.0, 100.0));
+        assert_eq!(Grade::F.score_band(), (0.0, 50.0));
     }
 
     #[test]

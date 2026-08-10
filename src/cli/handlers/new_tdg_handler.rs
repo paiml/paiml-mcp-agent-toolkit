@@ -122,8 +122,35 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
     // nothing: -n 5 / -n 10 / -n 100000 all emitted the same file list.
     let top_files = config.top_files.unwrap_or(10);
 
+    // `--threshold` is a documented result FILTER for `analyze tdg`, but its
+    // default (1.5) and its help text are phrased for the retired 0-5 debt
+    // gradient; scores are now 0-100 where higher is better, so there is no
+    // filter direction that both honours the flag and leaves the default
+    // invocation showing anything at all. It is enforced as a gate by
+    // `analyze build-tdg` and by nothing else — say so instead of accepting the
+    // value and silently discarding it, which is what `let _threshold = ...`
+    // used to do.
+    if !enforce_threshold {
+        if let Some(t) = threshold {
+            if (t - 1.5).abs() > f64::EPSILON {
+                eprintln!(
+                    "⚠️  --threshold {t} was not applied: `analyze tdg` reports every analysed \
+                     file (see -n/--top-files and --critical-only). --threshold gates \
+                     `analyze build-tdg` only."
+                );
+            }
+        }
+    }
+
     let (result, measured_score) = if config.path.is_dir() {
-        analyze_project_path(&analyzer, &config.path, &config.format, top_files).await?
+        analyze_project_path(
+            &analyzer,
+            &config.path,
+            &config.format,
+            top_files,
+            config.critical_only,
+        )
+        .await?
     } else {
         analyze_single_file(&analyzer, &config.path, &config.format).await?
     };
@@ -172,11 +199,21 @@ async fn analyze_project_path(
     path: &Path,
     format: &TdgOutputFormat,
     top_files: usize,
+    critical_only: bool,
 ) -> Result<(String, f32)> {
     let mut project_score = analyzer.analyze_project(path).await?;
     // Honour --top-files for every renderer; aggregates stay whole-project and
     // the truncation is disclosed (files_reported / files_truncated).
     project_score.limit_to_worst_files(top_files);
+    // `--critical-only` had no reader at all: on a tree whose worst file graded
+    // A it still listed all 9 files and called them critical. A "critical" file
+    // is an F-grade file — the same definition `f_grade_count` documents — so
+    // filter to those and let the count fall to zero when there are none.
+    // Applied after the --top-files cap so the reported/truncated bookkeeping
+    // reflects the list actually printed.
+    if critical_only {
+        retain_critical_files(&mut project_score);
+    }
     let average_score = project_score.average_score;
     // `root` is the analysed path, not the process CWD -- that distinction is
     // the #680-round-3 fix for grades depending on the caller's directory.
@@ -184,6 +221,20 @@ async fn analyze_project_path(
         format_project_result(&project_score, path, format)?,
         average_score,
     ))
+}
+
+/// Keep only the critical (F-grade) files in the reported list.
+///
+/// Whole-project aggregates (`total_files`, `average_score`, `grade_distribution`,
+/// `f_grade_count`) are deliberately left untouched, exactly as `--top-files`
+/// truncation leaves them, so the reported subset can never be mistaken for the
+/// analysed population.
+fn retain_critical_files(project_score: &mut crate::tdg::ProjectScore) {
+    project_score
+        .files
+        .retain(|file| file.grade == crate::tdg::Grade::F);
+    project_score.files_reported = project_score.files.len();
+    project_score.files_truncated = project_score.files_reported < project_score.total_files;
 }
 
 async fn analyze_single_file(
@@ -568,5 +619,56 @@ mod tests {
         // ...while the ungated `analyze tdg` path stays a report.
         assert!(handle_analyze_tdg(cfg(1000.0)).await.is_ok());
         Ok(())
+    }
+
+    // ── --critical-only actually filters ────────────────────────────────────
+
+    fn graded(path: &str, total: f32, grade: crate::tdg::Grade) -> crate::tdg::TdgScore {
+        crate::tdg::TdgScore {
+            total,
+            grade,
+            file_path: Some(PathBuf::from(path)),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn critical_only_keeps_nothing_when_no_file_is_critical() {
+        // The reported defect: `analyze tdg --critical-only` on a tree whose
+        // worst file graded A still listed all 9 files as critical.
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![
+            graded("src/a.rs", 98.0, crate::tdg::Grade::APlus),
+            graded("src/b.rs", 91.0, crate::tdg::Grade::A),
+        ]);
+
+        retain_critical_files(&mut project);
+
+        assert!(
+            project.files.is_empty(),
+            "no F-grade file exists, so --critical-only must report none"
+        );
+        assert_eq!(project.files_reported, 0);
+        assert!(project.files_truncated, "the subset must be disclosed");
+        // Whole-project aggregates are never rewritten by a display filter.
+        assert_eq!(project.total_files, 2);
+    }
+
+    #[test]
+    fn critical_only_keeps_exactly_the_f_grade_files() {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![
+            graded("src/a.rs", 98.0, crate::tdg::Grade::APlus),
+            graded("src/bad.rs", 12.0, crate::tdg::Grade::F),
+            graded("src/b.rs", 91.0, crate::tdg::Grade::A),
+        ]);
+
+        retain_critical_files(&mut project);
+
+        assert_eq!(project.files.len(), 1);
+        assert_eq!(
+            project.files[0].file_path,
+            Some(PathBuf::from("src/bad.rs"))
+        );
+        assert_eq!(project.files_reported, 1);
+        assert_eq!(project.total_files, 3);
     }
 }

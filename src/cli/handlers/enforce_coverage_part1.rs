@@ -484,10 +484,19 @@ mod tests {
         }
 
         #[test]
-        fn test_load_quality_profile_default() {
-            let profile = load_quality_profile("default", None).unwrap();
-            // Should return extreme profile as default
-            assert_eq!(profile.coverage_min, 80.0);
+        fn test_load_quality_profile_unknown_name_is_rejected() {
+            // Every arm of `load_quality_profile` used to return the extreme
+            // profile, so an unrecognised name — like the "default" this test
+            // used to assert on — silently enforced the extreme thresholds.
+            assert!(load_quality_profile("default", None).is_err());
+        }
+
+        #[test]
+        fn test_load_quality_profile_standard_is_looser_than_extreme() {
+            let standard = load_quality_profile("standard", None).unwrap();
+            let extreme = load_quality_profile("extreme", None).unwrap();
+            assert!(standard.coverage_min < extreme.coverage_min);
+            assert!(standard.complexity_max > extreme.complexity_max);
         }
 
         #[test]

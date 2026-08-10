@@ -117,11 +117,20 @@ async fn handle_report(
     format: QaOutputFormat,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    println!("{} {}", c::label("Generating QA report for task:"), task_id);
+    // Same defect as `qa-work validate`: this banner used to land on STDOUT
+    // ahead of the JSON/YAML document, so `-f json | jq` never parsed.
+    if qa_format_owns_stdout(&format) {
+        eprintln!("Generating QA report for task: {}", task_id);
+    } else {
+        println!("{} {}", c::label("Generating QA report for task:"), task_id);
+    }
 
     // First run validation
     let mut categories: HashMap<String, CategoryResult> = HashMap::new();
 
+    // Report and validate must score the same checklist: Safety & Ethics is
+    // part of the 25-point checklist, so it belongs in the audit trail too.
+    categories.insert("safety_ethics".into(), run_safety_ethics_checks());
     categories.insert(
         "code_quality".into(),
         run_code_quality_checks(project_path).await,

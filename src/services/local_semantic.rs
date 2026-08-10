@@ -59,7 +59,6 @@ use aprender::text::vectorize::TfidfVectorizer;
 use aprender::traits::UnsupervisedEstimator;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 /// Local semantic analysis engine using aprender
 pub struct LocalSemanticEngine {

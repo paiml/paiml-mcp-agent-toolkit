@@ -12,6 +12,25 @@ use crate::cli::commands::{EmbedCommands, SearchMode, SemanticCommands};
 use crate::cli::semantic_commands::SemanticCli;
 use crate::cli::OutputFormat;
 use crate::services::configuration_service::ConfigurationService;
+use std::path::Path;
+
+/// Where a workspace's embeddings live when the config names no path.
+///
+/// This used to default to a single machine-global `~/.pmat/embeddings.db`,
+/// shared by every project on the machine, while chunk paths are stored
+/// workspace-relative (`./src/main.rs`). One project's leftover index was
+/// therefore returned for every OTHER project, at paths that do not resolve
+/// there: `pmat semantic search` in this repo returned five `./src/main.rs`
+/// chunks from an unrelated crate, and an unrelated crate got the same five.
+/// Keying the store to the workspace makes a relative chunk path mean something
+/// again.
+fn default_vector_db_path(workspace: &Path) -> String {
+    workspace
+        .join(".pmat")
+        .join("embeddings.db")
+        .to_string_lossy()
+        .to_string()
+}
 
 impl CommandDispatcher {
     /// Execute embed commands for semantic search (PMAT-SEARCH-011)
@@ -30,22 +49,15 @@ impl CommandDispatcher {
         // surfaced in --help. The toggle still gates passive/auto behavior
         // (auto-sync, MCP tool registration) elsewhere.
 
-        // Get database path
-        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| {
-                    h.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-                .unwrap_or_else(|| "embeddings.db".to_string())
-        });
-
         // Get workspace path
         let workspace = semantic_config
             .workspace_path
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Get database path — scoped to the workspace being searched.
+        let db_path = semantic_config
+            .vector_db_path
+            .unwrap_or_else(|| default_vector_db_path(&workspace));
 
         // Initialize semantic CLI (no API key needed)
         let semantic_cli = SemanticCli::new(&db_path, &workspace)
@@ -116,22 +128,15 @@ impl CommandDispatcher {
         // surfaced in --help. The toggle still gates passive/auto behavior
         // (auto-sync, MCP tool registration) elsewhere.
 
-        // Get database path
-        let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| {
-                    h.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-                .unwrap_or_else(|| "embeddings.db".to_string())
-        });
-
         // Get workspace path
         let workspace = semantic_config
             .workspace_path
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Get database path — scoped to the workspace being searched.
+        let db_path = semantic_config
+            .vector_db_path
+            .unwrap_or_else(|| default_vector_db_path(&workspace));
 
         // Initialize semantic CLI (no API key needed)
         let semantic_cli = SemanticCli::new(&db_path, &workspace)
@@ -184,5 +189,32 @@ impl CommandDispatcher {
                 Ok(())
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod vector_store_scoping_tests {
+    use super::*;
+
+    /// Two workspaces must not share one embeddings store: with the old
+    /// machine-global `~/.pmat/embeddings.db` default, `pmat semantic search`
+    /// returned another project's chunks at `./src/main.rs` — a path that does
+    /// not exist in the project being searched.
+    #[test]
+    fn test_default_store_is_per_workspace() {
+        let a = default_vector_db_path(Path::new("/home/u/projects/alpha"));
+        let b = default_vector_db_path(Path::new("/home/u/projects/beta"));
+
+        assert_ne!(a, b, "two projects shared one embeddings store");
+        assert!(a.starts_with("/home/u/projects/alpha/"), "{a}");
+        assert!(b.starts_with("/home/u/projects/beta/"), "{b}");
+        assert!(a.ends_with("embeddings.db"), "{a}");
+    }
+
+    /// The store lives beside the project's other pmat state.
+    #[test]
+    fn test_default_store_lives_under_dot_pmat() {
+        let p = default_vector_db_path(Path::new("/w"));
+        assert_eq!(p, "/w/.pmat/embeddings.db");
     }
 }

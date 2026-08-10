@@ -876,7 +876,11 @@ mod extended_tests {
 
         let output = stats.format_diagnostic();
         assert!(output.contains("Hot (memory): 0 entries"));
-        assert!(output.contains("0.0%"));
+        // This used to assert `output.contains("0.0%")` — i.e. it pinned the
+        // very thing the diagnostics defect was about: a ratio rendered as a
+        // measurement over a store holding nothing. 0.0 means unmeasured.
+        assert!(!output.contains("0.0%"), "{output}");
+        assert!(output.contains("not measured"), "{output}");
     }
 
     #[test]

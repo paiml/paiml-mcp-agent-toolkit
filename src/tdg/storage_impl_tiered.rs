@@ -203,6 +203,53 @@ impl TieredStore {
         Ok(())
     }
 
+    /// Warm entries above which the compression ratio is left unmeasured.
+    ///
+    /// Measuring it means reading the stored values back, and the backend
+    /// iterator materialises the whole tier; doing that to a 100 MB warm store
+    /// just to print one percentage is not a trade worth making. Past this
+    /// point `get_statistics` reports the ratio as unmeasured (0.0) rather than
+    /// guessing at it.
+    const COMPRESSION_SAMPLE_MAX_ENTRIES: usize = 4096;
+
+    /// The warm tier's real compressed:uncompressed ratio, or `None` when there
+    /// is nothing to measure.
+    ///
+    /// `get_statistics` used to hand back the literal `compression_ratio: 0.33,
+    /// // Default compression ratio`, which every renderer printed as
+    /// "Compression ratio: 33.0%" — including over a store holding zero
+    /// entries, and identically for an empty directory and a 4260-file repo.
+    /// (The 0.33000001311302185 seen in JSON is only that literal's f32
+    /// round-trip.) `store()` writes warm values through
+    /// `lz4_flex::compress_prepend_size`, which prefixes each blob with its
+    /// uncompressed length as a little-endian u32, so the true ratio can be
+    /// read straight back out of the bytes that are actually stored.
+    fn measure_warm_compression_ratio(&self, warm_entries: usize) -> Option<f32> {
+        if warm_entries == 0 || warm_entries > Self::COMPRESSION_SAMPLE_MAX_ENTRIES {
+            return None;
+        }
+
+        let mut compressed_total: u64 = 0;
+        let mut raw_total: u64 = 0;
+        for item in self.warm_backend.iter().ok()? {
+            let Ok((_, value)) = item else { continue };
+            let Some(header) = value.get(..4) else {
+                continue;
+            };
+            raw_total += u64::from(u32::from_le_bytes([
+                header[0], header[1], header[2], header[3],
+            ]));
+            compressed_total += value.len() as u64;
+        }
+
+        if raw_total == 0 {
+            return None;
+        }
+
+        #[allow(clippy::cast_precision_loss)]
+        Some(compressed_total as f32 / raw_total as f32)
+    }
+
     /// Get storage statistics for monitoring and dogfooding
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -214,12 +261,16 @@ impl TieredStore {
         let warm_stats = self.warm_backend.get_stats();
         let cold_stats = self.cold_backend.get_stats();
 
+        // Ask for the key the backends actually write. This read used to be
+        // `.get("entry_count")`, a key no backend has ever inserted, so it fell
+        // through to unwrap_or(0) and every tier count was zero regardless of
+        // what was stored — see STAT_KEY_ENTRIES.
         let warm_entries = warm_stats
-            .get("entry_count")
+            .get(crate::tdg::storage_backend::STAT_KEY_ENTRIES)
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
         let cold_entries = cold_stats
-            .get("entry_count")
+            .get(crate::tdg::storage_backend::STAT_KEY_ENTRIES)
             .and_then(|v| v.parse::<usize>().ok())
             .unwrap_or(0);
 
@@ -235,10 +286,105 @@ impl TieredStore {
             cold_entries,
             total_entries,
             hot_memory_kb,
-            compression_ratio: 0.33,          // Default compression ratio
-            warm_backend: "sled".to_string(), // Default backend type
-            cold_backend: "sled".to_string(), // Default backend type
+            // 0.0 means "not measured"; see measure_warm_compression_ratio.
+            compression_ratio: self
+                .measure_warm_compression_ratio(warm_entries)
+                .unwrap_or(0.0),
+            // The backends name themselves. Both of these were the literal
+            // "sled" — a backend that was deleted from this tree entirely — so
+            // diagnostics announced "Warm (sled backend)" over libsql files.
+            warm_backend: self.warm_backend.backend_name().to_string(),
+            cold_backend: self.cold_backend.backend_name().to_string(),
             backend_stats,
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tiered_statistics_tests {
+    use super::*;
+
+    fn record_for(content: &[u8]) -> FullTdgRecord {
+        FullTdgRecord {
+            identity: FileIdentity {
+                path: PathBuf::from("test.rs"),
+                content_hash: blake3::hash(content),
+                size_bytes: content.len() as u64,
+                modified_time: SystemTime::now(),
+            },
+            score: TdgScore::default(),
+            components: ComponentScores::default(),
+            semantic_sig: SemanticSignature {
+                ast_structure_hash: 1,
+                identifier_pattern: String::new(),
+                control_flow_pattern: String::new(),
+                import_dependencies: Vec::new(),
+            },
+            metadata: AnalysisMetadata {
+                analyzer_version: "test".to_string(),
+                analysis_duration_ms: 1,
+                language_confidence: 1.0,
+                analysis_timestamp: SystemTime::now(),
+                cache_hit: false,
+            },
+            git_context: None,
+        }
+    }
+
+    /// The reported tier counts must come from the backend the same report
+    /// embeds. They were read under the key "entry_count", which no backend
+    /// writes, so warm/cold/total were always 0 while `backend_stats` in the
+    /// very same payload carried the real count.
+    #[tokio::test]
+    async fn test_warm_entries_match_the_backend_they_describe() {
+        let storage = TieredStore::in_memory();
+        storage.store(record_for(b"fn a() {}")).await.unwrap();
+        storage.store(record_for(b"fn b() {}")).await.unwrap();
+
+        let stats = storage.get_statistics();
+        let backend_entries: usize = stats.backend_stats["warm"]
+            [crate::tdg::storage_backend::STAT_KEY_ENTRIES]
+            .parse()
+            .unwrap();
+
+        assert_eq!(backend_entries, 2, "two records were stored");
+        assert_eq!(
+            stats.warm_entries, backend_entries,
+            "warm_entries must equal the backend count reported beside it"
+        );
+        assert_eq!(stats.total_entries, stats.hot_entries + backend_entries);
+    }
+
+    /// The ratio was the literal 0.33 for every store, empty or not.
+    #[tokio::test]
+    async fn test_compression_ratio_is_measured_not_a_constant() {
+        let empty = TieredStore::in_memory();
+        assert_eq!(
+            empty.get_statistics().compression_ratio,
+            0.0,
+            "nothing is stored, so there is no ratio to report"
+        );
+
+        let storage = TieredStore::in_memory();
+        storage.store(record_for(b"fn a() {}")).await.unwrap();
+        let ratio = storage.get_statistics().compression_ratio;
+        assert!(
+            ratio > 0.0 && ratio < 1.0,
+            "expected a measured lz4 ratio, got {ratio}"
+        );
+        assert!(
+            (ratio - 0.33).abs() > f32::EPSILON,
+            "0.33 is the old hardcoded literal"
+        );
+    }
+
+    /// Both backend names were the literal "sled" — a backend deleted from the
+    /// tree — so diagnostics announced "Warm (sled backend)" over libsql files.
+    #[test]
+    fn test_backend_names_come_from_the_backends() {
+        let stats = TieredStore::in_memory().get_statistics();
+        assert_eq!(stats.warm_backend, "in-memory");
+        assert_eq!(stats.cold_backend, "in-memory");
     }
 }

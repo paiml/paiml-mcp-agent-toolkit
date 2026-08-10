@@ -197,12 +197,16 @@ edition = "2021"
     // Calculator Fast Mode Integration Test
     // ============================================================================
 
+    /// Fast mode cannot run mutation testing, so it must not award points for it.
+    /// This test previously asserted the opposite — that the category came back
+    /// with a flat raw_score of 50.0 ("default credit") — which is exactly how ten
+    /// unearned points ended up inside a total presented as a grade, identically
+    /// for a real repo and for a path that does not exist.
     #[tokio::test]
-    async fn test_calculator_fast_mode_mutation_default_inline() {
+    async fn test_calculator_fast_mode_mutation_earns_nothing() {
         let temp_dir = TempDir::new().unwrap();
         let calc = PerfectionScoreCalculator::new().fast_mode(true);
 
-        // In fast mode, mutation score should be 50.0 (default credit)
         let result = calc.calculate(temp_dir.path()).await.unwrap();
 
         let mutation_cat = result
@@ -210,11 +214,23 @@ edition = "2021"
             .iter()
             .find(|c| c.name == "Mutation Testing")
             .unwrap();
-        assert_eq!(mutation_cat.raw_score, 50.0);
+        assert_eq!(
+            mutation_cat.earned_points, 0.0,
+            "an unmeasured category must not contribute points"
+        );
+        assert_eq!(
+            mutation_cat.max_points, 0,
+            "an unmeasured category must not sit in the denominator"
+        );
         assert!(mutation_cat
             .details
             .as_ref()
-            .is_some_and(|d| d.contains("fast mode")));
+            .is_some_and(|d| d.contains("Not measured")));
+
+        // The reported denominator must equal what was actually measured.
+        assert_eq!(result.max_score, 180);
+        let summed: u16 = result.categories.iter().map(|c| c.max_points).sum();
+        assert_eq!(summed, result.max_score);
     }
 
     #[test]

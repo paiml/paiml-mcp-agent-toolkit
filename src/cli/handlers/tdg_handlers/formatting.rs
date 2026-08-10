@@ -9,6 +9,48 @@ use crate::cli::colors as c;
 use crate::cli::TdgOutputFormat;
 use anyhow::Result;
 
+/// What the project aggregate knows that a bare `TdgScore` cannot say.
+///
+/// Two facts travel with the score to every renderer, because without them the
+/// rendered output contradicts itself:
+///
+/// * the F-GRADE CAP. `ProjectScore::aggregate` caps the project grade at B
+///   whenever any file grades F, so this repo printed
+///   `Overall Score: 99.8/100 (B)` while a 96.7 sub-tree printed `(A+)` — a
+///   strictly higher score with a strictly worse grade, from the same command,
+///   with no explanation anywhere in the six-line box or in the JSON.
+/// * how many files were analysed. Zero means the breakdown is not a
+///   measurement and must not be printed as one.
+type ProjectContext<'a> = Option<&'a crate::tdg::ProjectScore>;
+
+/// The disclosure of the F-grade cap, when it fired.
+fn cap_note(project: ProjectContext<'_>) -> Option<String> {
+    project.filter(|p| p.grade_capped).map(|p| {
+        format!(
+            "capped from {} by {} F-grade file{}",
+            format_grade(p.uncapped_grade()),
+            p.f_grade_count,
+            if p.f_grade_count == 1 { "" } else { "s" }
+        )
+    })
+}
+
+/// Grade text for the headline, disclosing the cap when it fired. Used where
+/// the line has no width budget; the box renderer puts the note on its own row
+/// because `box_row` clips at 47 columns.
+fn grade_headline(score: &crate::tdg::TdgScore, project: ProjectContext<'_>) -> String {
+    let grade = format_grade(score.grade);
+    match cap_note(project) {
+        Some(note) => format!("{grade} — {note}"),
+        None => grade,
+    }
+}
+
+/// True when the run analysed no file at all, so there is no breakdown to show.
+fn nothing_was_measured(project: ProjectContext<'_>) -> bool {
+    project.is_some_and(|p| p.total_files == 0)
+}
+
 /// Format TDG output based on config (cognitive complexity ≤3)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_tdg_output(
@@ -16,14 +58,26 @@ pub(crate) fn format_tdg_output(
     git_context: Option<&crate::models::git_context::GitContext>,
     config: &TdgCommandConfig,
 ) -> Result<String> {
+    format_tdg_output_with_project(score, git_context, config, None)
+}
+
+/// As `format_tdg_output`, but carrying the project aggregate so the renderers
+/// can disclose the F-grade cap and an empty analysis.
+pub(crate) fn format_tdg_output_with_project(
+    score: &crate::tdg::TdgScore,
+    git_context: Option<&crate::models::git_context::GitContext>,
+    config: &TdgCommandConfig,
+    project: ProjectContext<'_>,
+) -> Result<String> {
     if config.quiet {
         Ok(format!("{:.1}", score.total))
     } else {
-        format_tdg_score(
+        format_tdg_score_with_project(
             score.clone(),
             git_context,
             config.format.clone(),
             config.include_components,
+            project,
         )
     }
 }
@@ -46,11 +100,25 @@ pub(crate) fn format_tdg_score(
     format: TdgOutputFormat,
     include_components: bool,
 ) -> Result<String> {
+    format_tdg_score_with_project(score, git_context, format, include_components, None)
+}
+
+pub(crate) fn format_tdg_score_with_project(
+    score: crate::tdg::TdgScore,
+    git_context: Option<&crate::models::git_context::GitContext>,
+    format: TdgOutputFormat,
+    include_components: bool,
+    project: ProjectContext<'_>,
+) -> Result<String> {
     match format {
-        TdgOutputFormat::Table => format_tdg_score_table(&score, git_context, include_components),
-        TdgOutputFormat::Json => format_tdg_score_json(&score, git_context, include_components),
+        TdgOutputFormat::Table => {
+            format_tdg_score_table(&score, git_context, include_components, project)
+        }
+        TdgOutputFormat::Json => {
+            format_tdg_score_json(&score, git_context, include_components, project)
+        }
         TdgOutputFormat::Markdown => {
-            format_tdg_score_markdown(&score, git_context, include_components)
+            format_tdg_score_markdown(&score, git_context, include_components, project)
         }
         // Issue #669: this arm used to `return format!("{:.1}", score.total)`,
         // so `tdg --format sarif` emitted exactly `84.0\n` — the same 5 bytes
@@ -77,7 +145,12 @@ pub(crate) fn format_tdg_analysis(
         // uploader rejects. A declared machine format must produce that format.
         return Ok(serde_json::to_string_pretty(&sarif_for(analysis))?);
     }
-    format_tdg_output(&analysis.score, git_context, config)
+    format_tdg_output_with_project(
+        &analysis.score,
+        git_context,
+        config,
+        analysis.project.as_ref(),
+    )
 }
 
 /// SARIF for the analysis: project document for a directory, file document for
@@ -100,6 +173,7 @@ fn format_tdg_score_table(
     score: &crate::tdg::TdgScore,
     git_context: Option<&crate::models::git_context::GitContext>,
     include_components: bool,
+    project: ProjectContext<'_>,
 ) -> Result<String> {
     use crate::tdg::formatters::boxdraw::{box_blank, box_bottom, box_row, box_separator, box_top};
     let mut output = String::new();
@@ -119,13 +193,19 @@ fn format_tdg_score_table(
     }
     line(box_separator());
 
-    // Overall score
+    // Overall score. The grade may be the F-grade-capped one, and if it is, the
+    // next row says so: an unexplained `99.8/100 (B)` next to a `96.7/100 (A+)`
+    // from the same command is not a report, it is a contradiction. The note
+    // gets its own row because `box_row` clips at the frame width.
     let grade_str = format_grade(score.grade);
     line(box_row(&format!(
         "Overall Score: {}/100 ({})",
         c::number(&format!("{:.1}", score.total)),
         c::grade(&grade_str)
     )));
+    if let Some(note) = cap_note(project) {
+        line(box_row(&format!("⚠ Grade {note}")));
+    }
     line(box_row(&format!(
         "Language: {:?} (confidence: {}%)",
         score.language,
@@ -144,7 +224,13 @@ fn format_tdg_score_table(
         line(box_row(&format!("└─ Author:  {}", &git.author_name)));
     }
 
-    if include_components {
+    if include_components && nothing_was_measured(project) {
+        // No file was analysed, so there is no breakdown. Printing the struct
+        // defaults here showed 25/20/20/15/10/10 — full marks, summing to 100 —
+        // under a total of 0.0.
+        line(box_blank());
+        line(box_row("📊 Breakdown: not measured (0 files analyzed)"));
+    } else if include_components {
         line(box_blank());
         line(box_row("📊 Breakdown:"));
         for (label, value, max) in [
@@ -173,15 +259,26 @@ fn format_tdg_score_json(
     score: &crate::tdg::TdgScore,
     git_context: Option<&crate::models::git_context::GitContext>,
     include_components: bool,
+    project: ProjectContext<'_>,
 ) -> Result<String> {
+    // A machine consumer saw `{"total": 99.83, "grade": "B"}` with nothing to
+    // explain why the grade disagreed with the number, and a full-marks
+    // breakdown under `"total": 0.0` when no file could be parsed. Both facts
+    // now travel with the score.
     let json_value = serde_json::json!({
         "file": score.file_path.as_ref().map(|p| p.to_string_lossy().to_string()),
         "language": format!("{:?}", score.language),
         "confidence": score.confidence,
+        "files_analyzed": project.map(|p| p.total_files),
+        "grade_capped": project.map(|p| p.grade_capped),
+        "grade_uncapped": project
+            .filter(|p| p.grade_capped)
+            .map(|p| format_grade(p.uncapped_grade())),
+        "f_grade_count": project.map(|p| p.f_grade_count),
         "score": {
             "total": score.total,
             "grade": format_grade(score.grade),
-            "breakdown": if include_components {
+            "breakdown": if include_components && !nothing_was_measured(project) {
                 Some(serde_json::json!({
                     "structural_complexity": score.structural_complexity,
                     "semantic_complexity": score.semantic_complexity,
@@ -215,6 +312,7 @@ fn format_tdg_score_markdown(
     score: &crate::tdg::TdgScore,
     _git_context: Option<&crate::models::git_context::GitContext>,
     include_components: bool,
+    project: ProjectContext<'_>,
 ) -> Result<String> {
     let mut output = String::new();
 
@@ -226,7 +324,7 @@ fn format_tdg_score_markdown(
     output.push_str(&format!(
         "**Overall Score**: {:.1}/100 ({})\n",
         score.total,
-        format_grade(score.grade)
+        grade_headline(score, project)
     ));
     output.push_str(&format!(
         "**Language**: {:?} (confidence: {:.0}%)\n\n",
@@ -234,7 +332,9 @@ fn format_tdg_score_markdown(
         score.confidence * 100.0
     ));
 
-    if include_components {
+    if include_components && nothing_was_measured(project) {
+        output.push_str("## Component Breakdown\n\nNot measured — 0 files analyzed.\n");
+    } else if include_components {
         output.push_str("## Component Breakdown\n\n");
         output.push_str("| Component | Score | Max |\n");
         output.push_str("|-----------|-------|-----|\n");
@@ -319,5 +419,113 @@ pub(crate) fn format_comparison(
             "winner": comparison.winner
         });
         Ok(serde_json::to_string_pretty(&json_value)?)
+    }
+}
+
+#[cfg(test)]
+mod cap_disclosure_tests {
+    use super::*;
+    use crate::tdg::{Grade, ProjectScore, TdgScore};
+
+    fn file_at(total: f32) -> TdgScore {
+        let mut score = TdgScore {
+            structural_complexity: total * 0.25,
+            semantic_complexity: total * 0.20,
+            duplication_ratio: total * 0.20,
+            coupling_score: total * 0.15,
+            doc_coverage: total * 0.10,
+            consistency_score: total * 0.10,
+            entropy_score: 0.0,
+            ..TdgScore::default()
+        };
+        score.calculate_total();
+        score
+    }
+
+    /// A project with one F-grade file: the printed score is A+ territory and
+    /// the printed grade is B, and the released binary said nothing about why.
+    fn capped_project() -> ProjectScore {
+        let mut files = vec![file_at(100.0); 19];
+        files.push(file_at(10.0));
+        let project = ProjectScore::aggregate(files);
+        assert!(project.grade_capped, "fixture must exercise the cap");
+        project
+    }
+
+    #[test]
+    fn table_names_the_cap_that_moved_the_grade() {
+        let project = capped_project();
+        let score = project.average();
+        let rendered = format_tdg_score_table(&score, None, false, Some(&project)).expect("render");
+        assert!(
+            rendered.contains("capped from A+"),
+            "the box must say the grade was capped, got:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("1 F-grade file"),
+            "the box must say how many files caused it, got:\n{rendered}"
+        );
+    }
+
+    #[test]
+    fn json_carries_grade_capped_and_the_uncapped_grade() {
+        let project = capped_project();
+        let score = project.average();
+        let rendered = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&rendered).expect("valid json");
+
+        assert_eq!(value["score"]["grade"], "B");
+        assert_eq!(value["grade_capped"], true);
+        assert_eq!(value["grade_uncapped"], "A+");
+        assert_eq!(value["f_grade_count"], 1);
+    }
+
+    /// An uncapped run must not grow a cap note out of nowhere.
+    #[test]
+    fn uncapped_grade_is_printed_bare() {
+        let project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
+        assert!(!project.grade_capped);
+        let score = project.average();
+        assert_eq!(score.grade, Grade::APlus);
+        let rendered = format_tdg_score_table(&score, None, false, Some(&project)).expect("render");
+        assert!(rendered.contains("(A+)"), "got:\n{rendered}");
+        assert!(!rendered.contains("capped"), "got:\n{rendered}");
+    }
+
+    /// `--include-components` over a directory where nothing could be analysed
+    /// printed the full-marks defaults (25/20/20/15/10/10 = 100) under a total
+    /// of 0.0, byte-identically to an empty directory.
+    #[test]
+    fn empty_analysis_emits_no_breakdown() {
+        let project = ProjectScore::aggregate(vec![]);
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, true, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(value["score"]["total"], 0.0);
+        assert!(
+            value["score"]["breakdown"].is_null(),
+            "breakdown must be null when no file was analyzed, got {}",
+            value["score"]["breakdown"]
+        );
+        assert_eq!(value["files_analyzed"], 0);
+
+        let table = format_tdg_score_table(&score, None, true, Some(&project)).expect("render");
+        assert!(table.contains("not measured"), "got:\n{table}");
+        assert!(!table.contains("25.0"), "got:\n{table}");
+
+        let md = format_tdg_score_markdown(&score, None, true, Some(&project)).expect("render");
+        assert!(md.contains("Not measured"), "got:\n{md}");
+    }
+
+    /// A single-file run has no project aggregate; nothing may be suppressed or
+    /// annotated there.
+    #[test]
+    fn single_file_render_is_unchanged() {
+        let score = file_at(96.0);
+        let json = format_tdg_score_json(&score, None, true, None).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert!(value["score"]["breakdown"].is_object());
+        assert!(value["grade_capped"].is_null());
     }
 }

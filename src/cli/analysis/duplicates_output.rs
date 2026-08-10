@@ -251,9 +251,9 @@ fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBl
     writeln!(
         output,
         "  {}Block {}{} ({} lines, {} locations)",
-        c::BOLD,
+        c::seq(c::BOLD),
         block_num,
-        c::RESET,
+        c::seq(c::RESET),
         c::number(&block.lines.to_string()),
         c::number(&block.locations.len().to_string()),
     )?;
@@ -268,9 +268,9 @@ fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<
         writeln!(
             output,
             "    {}{}{}:{}{}{}-{}{}{}",
-            c::CYAN, loc.file, c::RESET,
-            c::BOLD_WHITE, loc.start_line, c::RESET,
-            c::BOLD_WHITE, loc.end_line, c::RESET,
+            c::seq(c::CYAN), loc.file, c::seq(c::RESET),
+            c::seq(c::BOLD_WHITE), loc.start_line, c::seq(c::RESET),
+            c::seq(c::BOLD_WHITE), loc.end_line, c::seq(c::RESET),
         )?;
     }
     Ok(())
@@ -280,8 +280,8 @@ fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<
 fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "    {}Preview:{}", c::DIM, c::RESET)?;
-    writeln!(output, "    {}{}{}", c::DIM, block.locations[0].content_preview, c::RESET)?;
+    writeln!(output, "    {}Preview:{}", c::seq(c::DIM), c::seq(c::RESET))?;
+    writeln!(output, "    {}{}{}", c::seq(c::DIM), block.locations[0].content_preview, c::seq(c::RESET))?;
     writeln!(output)?;
     Ok(())
 }
@@ -294,9 +294,9 @@ fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Res
         writeln!(
             output,
             "  {}... and {} more blocks{}",
-            c::DIM,
+            c::seq(c::DIM),
             total_blocks - 20,
-            c::RESET
+            c::seq(c::RESET)
         )?;
     }
     Ok(())
@@ -357,6 +357,53 @@ mod top_files_is_a_row_limit_tests {
         let report = report_with_files(25);
         let rendered = format_human_output_with_limit(&report, 0).unwrap();
         assert_eq!(row_count(&rendered), 25);
+    }
+
+    /// `--color never` produced the same 68 escape-bearing lines as `--color
+    /// auto` here: the block renderers interpolated the raw `pub const`
+    /// sequences, which cannot consult `colors_enabled()`. `c::seq` can.
+    #[test]
+    fn human_output_is_plain_text_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+
+        let mut report = report_with_files(3);
+        report.duplicate_blocks = vec![DuplicateBlock {
+            hash: "deadbeef".to_string(),
+            lines: 12,
+            tokens: 40,
+            similarity: 1.0,
+            locations: vec![
+                DuplicateLocation {
+                    file: "src/a.rs".to_string(),
+                    start_line: 1,
+                    end_line: 12,
+                    content_preview: "fn dup() {}".to_string(),
+                },
+                DuplicateLocation {
+                    file: "src/b.rs".to_string(),
+                    start_line: 40,
+                    end_line: 51,
+                    content_preview: "fn dup() {}".to_string(),
+                },
+            ],
+        }];
+
+        let rendered = format_human_output(&report).unwrap();
+        assert!(
+            !rendered.contains('\u{1b}'),
+            "no ANSI escape may reach a redirected stdout: {:?}",
+            rendered
+                .lines()
+                .filter(|l| l.contains('\u{1b}'))
+                .collect::<Vec<_>>()
+        );
+        assert!(rendered.contains("Duplicate Code Analysis"));
+        assert!(rendered.contains("Block 1"));
+        assert!(rendered.contains("src/a.rs:1-12"));
+        assert!(rendered.contains("Preview:"));
     }
 
     /// Changing the row limit must not touch a single measured figure.

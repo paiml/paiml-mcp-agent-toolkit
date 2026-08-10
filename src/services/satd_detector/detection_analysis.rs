@@ -9,7 +9,7 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<SATDAnalysisResult, TemplateError> {
-        let files = self.find_source_files(root).await?;
+        let files = self.discover_files(root, include_tests).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
 
         self.process_project_files(&files, include_tests, &mut analysis_stats)
@@ -19,6 +19,60 @@ impl SATDDetector {
             .await;
 
         Ok(self.build_analysis_result(analysis_stats, avg_age_days))
+    }
+
+    /// Discover the files an analysis will read.
+    ///
+    /// `find_source_files` filters every candidate through
+    /// `is_valid_source_file`, which is `is_source_file() && !is_test_file()`:
+    /// test files are dropped during DISCOVERY. So `--include-tests` — whose
+    /// only job is to add them — had nothing left to add, and pointing satd
+    /// straight at a `tests/` directory reported 0 violations. When tests are
+    /// wanted the walk below applies the same directory exclusions and the same
+    /// source-file test, minus that drop.
+    async fn discover_files(
+        &self,
+        root: &Path,
+        include_tests: bool,
+    ) -> Result<Vec<std::path::PathBuf>, TemplateError> {
+        if !include_tests {
+            return self.find_source_files(root).await;
+        }
+        let mut files = Vec::new();
+        self.collect_files_including_tests(root, &mut files).await?;
+        Ok(files)
+    }
+
+    fn collect_files_including_tests<'a>(
+        &'a self,
+        dir: &'a Path,
+        files: &'a mut Vec<std::path::PathBuf>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), TemplateError>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            if dir.is_file() {
+                if self.is_source_file(dir) {
+                    files.push(dir.to_path_buf());
+                }
+                return Ok(());
+            }
+            if !dir.is_dir() {
+                return Ok(());
+            }
+
+            let mut entries = tokio::fs::read_dir(dir).await.map_err(TemplateError::Io)?;
+            while let Some(entry) = entries.next_entry().await.map_err(TemplateError::Io)? {
+                let path = entry.path();
+                if path.is_dir() {
+                    if !self.should_skip_directory(&path) {
+                        self.collect_files_including_tests(&path, files).await?;
+                    }
+                } else if self.is_source_file(&path) {
+                    files.push(path);
+                }
+            }
+            Ok(())
+        })
     }
 
     /// Toyota Way: Extract Method - process all files in project (complexity <=8)
@@ -173,7 +227,7 @@ impl SATDDetector {
         include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut all_debts = Vec::new();
-        let files = self.find_source_files(root).await?;
+        let files = self.discover_files(root, include_tests).await?;
 
         for file_path in files {
             if self

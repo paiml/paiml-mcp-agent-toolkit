@@ -27,9 +27,16 @@ pub async fn handle_telemetry(
         return handle_reset_command().await;
     }
 
-    // Handle test event command
+    // Handle test event command.
+    //
+    // This must NOT return: the telemetry store lives in this process only, so
+    // an early return meant the recorded event was thrown away before anything
+    // could show it. `pmat telemetry --test-event` reported success and the very
+    // next `pmat telemetry --system` reported "Total Operations: 0", and even
+    // `--test-event --system` in one process printed nothing but the success
+    // line. Falling through is what makes the recorded event observable at all.
     if test_event {
-        return handle_test_event_command().await;
+        handle_test_event_command().await?;
     }
 
     // Handle display commands
@@ -61,9 +68,16 @@ async fn handle_reset_command() -> Result<()> {
 }
 
 /// Handle test event recording command
+///
+/// The success line has to say WHERE the event went. Telemetry is an in-memory,
+/// process-local store with no persistence, so "recorded successfully" read as a
+/// promise that a later `pmat telemetry --system` would count it — it never can.
 async fn handle_test_event_command() -> Result<()> {
     record_test_telemetry_event().await?;
-    println!("{}", c::pass("Test telemetry event recorded successfully"));
+    println!(
+        "{}",
+        c::pass("Test telemetry event recorded in this process (telemetry is in-memory and is not persisted between runs)")
+    );
     Ok(())
 }
 
@@ -300,9 +314,16 @@ async fn show_system_overview() -> Result<()> {
 
     if system_data.services.is_empty() {
         println!("{}", c::dim("No service telemetry data available yet"));
+        // The old hint — "Use --test-event to generate sample telemetry data" —
+        // pointed at something that cannot work across invocations: counters
+        // live in this process only, so a separate `--test-event` run always
+        // leaves this report at zero.
         println!(
             "{}",
-            c::dim("Use --test-event to generate sample telemetry data")
+            c::dim(
+                "Telemetry counts operations performed by THIS process and is not persisted; \
+                 use `pmat telemetry --test-event --system` to see a sample event in one run"
+            )
         );
     } else {
         println!(
@@ -390,6 +411,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_command_system() {
         // Reset telemetry for clean test
         telemetry().reset();
@@ -403,6 +425,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_command_service() {
         // Reset telemetry for clean test
         telemetry().reset();
@@ -420,6 +443,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_reset() {
         // Add some data
         record_test_telemetry_event().await.unwrap();
@@ -432,6 +456,29 @@ mod tests {
         let _system_data = telemetry().get_system_telemetry().await.unwrap();
         // Note: Assertion disabled due to test flakiness in parallel test environment
         // assert_eq!(system_data.system_metrics.total_operations, 0);
+    }
+
+    /// `--test-event` used to return before the display path ran, so the event
+    /// it had just recorded was invisible even in the SAME process — and the
+    /// command execution that the display path records never happened either.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_test_event_falls_through_to_the_display_path() {
+        telemetry().reset();
+
+        handle_telemetry(true, None, false, true).await.unwrap();
+
+        let data = telemetry().get_system_telemetry().await.unwrap();
+        assert!(
+            data.services.contains_key("telemetry_test_service"),
+            "the test event itself must be recorded: {:?}",
+            data.services.keys().collect::<Vec<_>>()
+        );
+        assert!(
+            data.services.contains_key("cli_telemetry_handler"),
+            "--test-event returned before the display path ran: {:?}",
+            data.services.keys().collect::<Vec<_>>()
+        );
     }
 
     /// IGNORED: Flaky in parallel test environment - telemetry state races

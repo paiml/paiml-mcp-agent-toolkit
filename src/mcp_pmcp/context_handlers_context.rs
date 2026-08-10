@@ -15,6 +15,22 @@ struct ContextGenerateArgs {
     include_dependencies: bool,
 }
 
+/// Accept only the formats `generate_context` can actually produce.
+///
+/// `format: "markdown"` and `format: "xml"` used to come back as the JSON
+/// context plus the literal string "Context in markdown format (not
+/// implemented)", with status completed and isError=false — a client could not
+/// tell the stub from a rendered document, and the inputSchema advertised both.
+/// This tool emits JSON; anything else is now a validation error.
+fn validate_context_format(format: Option<&str>) -> Result<()> {
+    match format {
+        None | Some("json") => Ok(()),
+        Some(other) => Err(Error::validation(format!(
+            "Unsupported format: {other} (generate_context produces \"json\" only)"
+        ))),
+    }
+}
+
 impl ContextGenerateTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -38,6 +54,10 @@ impl ToolHandler for ContextGenerateTool {
         let params: ContextGenerateArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
+        // Checked before any analysis runs: an unsupported format is an
+        // argument error, not something to discover after the work is done.
+        validate_context_format(params.format.as_deref())?;
+
         let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let context =
@@ -45,24 +65,12 @@ impl ToolHandler for ContextGenerateTool {
                 .await
                 .map_err(|e| Error::internal(format!("Context generation failed: {e}")))?;
 
-        // Format the output based on requested format
-        match params.format.as_deref() {
-            Some("markdown") => Ok(json!({
-                "context": context,
-                "markdown": "Context in markdown format (not implemented)"
-            })),
-            Some("xml") => Ok(json!({
-                "context": context,
-                "xml": "Context in XML format (not implemented)"
-            })),
-            Some("json") | None => Ok(context),
-            Some(format) => Err(Error::validation(format!("Unsupported format: {format}"))),
-        }
+        Ok(context)
     }
 
     fn metadata(&self) -> Option<ToolInfo> {
         let extra = json!({
-            "format":               { "type": "string", "enum": ["json", "markdown", "xml"], "description": "Output format" },
+            "format":               { "type": "string", "enum": ["json"], "description": "Output format" },
             "max_depth":            { "type": "integer", "description": "Max directory-tree depth to include" },
             "include_dependencies": { "type": "boolean", "description": "Include dependency graph" }
         });
@@ -170,5 +178,41 @@ impl ToolHandler for ContextSummaryTool {
             "Produce a high-level project summary scaffold for the given paths.",
             paths_object_schema(extra, vec!["paths"]),
         ))
+    }
+}
+
+#[cfg(test)]
+mod context_format_tests {
+    //! `generate_context` must not advertise, nor silently stub, a format it
+    //! cannot render.
+    use super::*;
+
+    #[test]
+    fn only_json_is_accepted() {
+        assert!(validate_context_format(None).is_ok());
+        assert!(validate_context_format(Some("json")).is_ok());
+        for stubbed in ["markdown", "xml"] {
+            let err = validate_context_format(Some(stubbed))
+                .expect_err("a format the tool cannot render must be an error, not a stub string");
+            assert!(
+                err.to_string().contains("Unsupported format"),
+                "got: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn input_schema_advertises_only_renderable_formats() {
+        use pmcp::ToolHandler;
+
+        let info = ContextGenerateTool::new()
+            .metadata()
+            .expect("generate_context advertises metadata");
+        let formats = info.input_schema["properties"]["format"]["enum"].clone();
+        assert_eq!(
+            formats,
+            json!(["json"]),
+            "the schema must not offer formats the handler rejects"
+        );
     }
 }

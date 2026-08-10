@@ -15,6 +15,14 @@
 //! The raw `pub const` sequences below cannot be made conditional — they are
 //! `const` and interpolated directly at ~490 call sites. Those sites still emit
 //! colour unconditionally; migrating them to the helpers is the remaining work.
+//!
+//! Where no semantic helper fits (a call site that opens a sequence in one
+//! `format!` argument and closes it in another), [`seq`] is the mechanical
+//! migration: `{c::BOLD}` becomes `{}` fed by `c::seq(c::BOLD)`, which is `""`
+//! when colour is off. `analyze provability` and `analyze duplicates` are
+//! migrated; they used to write 17 and 68 escape-bearing lines into a
+//! redirected file under `--color never`, indistinguishable from `--color
+//! auto`.
 
 // ── ANSI escape sequences ───────────────────────────────────────────────────
 
@@ -85,6 +93,23 @@ pub fn colors_enabled() -> bool {
             std::io::stdout().is_terminal(),
         )
     })
+}
+
+/// A raw escape sequence, gated on [`colors_enabled`].
+///
+/// Returns `sequence` when colour is on and `""` when it is off. This is the
+/// escape hatch for call sites that cannot use a semantic helper because the
+/// opening and closing sequences land in different `format!` arguments —
+/// `c::seq(c::BOLD)` is a drop-in for a bare `c::BOLD` interpolation and, unlike
+/// the `const`, honours `--color never`, `NO_COLOR` and a redirected stdout.
+#[must_use]
+#[inline]
+pub fn seq(sequence: &'static str) -> &'static str {
+    if colors_enabled() {
+        sequence
+    } else {
+        ""
+    }
 }
 
 /// Wrap `text` in `color` … `RESET`, or return it unchanged when colour is off.
@@ -460,6 +485,21 @@ mod tests {
     }
 
     // ── painting, exercised in both states ──────────────────────────────────
+
+    /// `--color never` was indistinguishable from `--color auto` on the
+    /// commands that interpolate the raw consts. `seq` is what lets those call
+    /// sites be migrated without restructuring their `format!`s.
+    #[test]
+    fn seq_is_empty_when_colour_is_disabled() {
+        assert!(
+            !colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        for raw in [RESET, BOLD, DIM, GREEN, YELLOW, RED, CYAN, BOLD_WHITE] {
+            assert_eq!(seq(raw), "", "seq must not emit {raw:?} with colour off");
+            assert!(is_plain(seq(raw)));
+        }
+    }
 
     #[test]
     fn paint_wraps_only_when_enabled() {

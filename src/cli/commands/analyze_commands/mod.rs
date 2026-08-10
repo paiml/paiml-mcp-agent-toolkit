@@ -162,11 +162,12 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "60")]
         timeout: u64,
 
-        /// Use ML-based scoring (aprender LinearRegression)
+        /// NOT IMPLEMENTED: ML-based scoring (aprender LinearRegression)
         ///
-        /// When enabled, complexity scores are calculated using trained ML models
-        /// instead of heuristic formulas. This provides more accurate, data-driven
-        /// scores that account for language-specific patterns and project context.
+        /// The handler never consumed this flag, so `--ml` returned exactly the
+        /// heuristic scores under a promise of "trained ML models instead of
+        /// heuristic formulas". It now errors instead of relabelling them; the
+        /// help text stays visible so the refusal is discoverable (GH-97).
         #[arg(long)]
         ml: bool,
     },
@@ -833,24 +834,69 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: ComprehensiveOutputFormat,
 
-        /// Enable duplicate detection analysis
-        #[arg(long, default_value = "true")]
+        // `#[arg(long, default_value = "true")]` on a `bool` gives clap
+        // ArgAction::SetTrue over a value that is already true: passing the
+        // flag is a literal no-op and `--include-tdg=false` is *rejected*, so
+        // five flags documented as "Enable X" could neither enable nor disable
+        // anything. Taking a value (with the bare flag still meaning `=true`)
+        // is what makes them switches.
+        /// Enable duplicate detection analysis (`--include-duplicates=false` to disable)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_duplicates: bool,
 
-        /// Enable dead code analysis
-        #[arg(long, default_value = "true")]
+        /// Enable dead code analysis (`--include-dead-code=false` to disable)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_dead_code: bool,
 
-        /// Enable defect prediction analysis
-        #[arg(long, default_value = "true")]
+        /// Enable defect prediction analysis (`--include-defects=false` to disable)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_defects: bool,
 
-        /// Enable complexity analysis
-        #[arg(long, default_value = "true")]
+        /// Enable complexity analysis (`--include-complexity=false` to disable)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_complexity: bool,
 
-        /// Enable TDG (Technical Debt Gradient) analysis
-        #[arg(long, default_value = "true")]
+        /// Enable SATD analysis (`--include-tdg=false` to disable)
+        ///
+        /// NOTE: this switch drives SATD detection, not a Technical Debt
+        /// Gradient run — comprehensive analysis has no TDG stage. The help
+        /// text used to promise TDG results that never appeared in the report.
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_tdg: bool,
 
         /// Minimum confidence threshold for predictions
@@ -1316,12 +1362,30 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: ComplexityOutputFormat,
 
-        /// Include binary WASM (.wasm) files
-        #[arg(long, default_value = "true")]
+        // Both were `#[arg(long, default_value = "true")]` on a `bool`, i.e.
+        // clap SetTrue over an already-true value: `--include-binary` and
+        // `--include-text` were permanently on and `=false` was rejected, so
+        // neither flag could select or deselect a file kind.
+        /// Include binary WASM (.wasm) files (`--include-binary=false` to exclude)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_binary: bool,
 
-        /// Include text WASM (.wat) files
-        #[arg(long, default_value = "true")]
+        /// Include text WASM (.wat) files (`--include-text=false` to exclude)
+        #[arg(
+            long,
+            action = clap::ArgAction::Set,
+            num_args = 0..=1,
+            require_equals = true,
+            default_value = "true",
+            default_missing_value = "true"
+        )]
         include_text: bool,
 
         /// Memory usage analysis
@@ -1612,4 +1676,114 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         check: bool,
     },
+}
+
+#[cfg(test)]
+mod include_flags_are_switches_tests {
+    //! `#[arg(long, default_value = "true")]` on a `bool` makes clap emit
+    //! `ArgAction::SetTrue` for a value that is already `true`: the flag is a
+    //! no-op when passed and `--flag=false` is a parse error. Seven flags
+    //! documented as "Enable/Include X" behaved that way — `analyze
+    //! comprehensive --include-tdg --include-duplicates` produced byte-identical
+    //! JSON to no flags at all, and `analyze web-assembly --include-text` could
+    //! not stop `.wasm` files being collected.
+    use super::AnalyzeCommands;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct Harness {
+        #[command(subcommand)]
+        cmd: AnalyzeCommands,
+    }
+
+    fn parse(args: &[&str]) -> AnalyzeCommands {
+        let mut argv = vec!["pmat"];
+        argv.extend_from_slice(args);
+        Harness::try_parse_from(argv)
+            .unwrap_or_else(|e| panic!("failed to parse {args:?}: {e}"))
+            .cmd
+    }
+
+    fn comprehensive_flags(args: &[&str]) -> (bool, bool, bool, bool, bool) {
+        match parse(args) {
+            AnalyzeCommands::Comprehensive {
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+                ..
+            } => (
+                include_duplicates,
+                include_dead_code,
+                include_defects,
+                include_complexity,
+                include_tdg,
+            ),
+            other => panic!("expected Comprehensive, got {other:?}"),
+        }
+    }
+
+    fn wasm_flags(args: &[&str]) -> (bool, bool) {
+        match parse(args) {
+            AnalyzeCommands::WebAssembly {
+                include_binary,
+                include_text,
+                ..
+            } => (include_binary, include_text),
+            other => panic!("expected WebAssembly, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn comprehensive_include_flags_default_on() {
+        assert_eq!(
+            comprehensive_flags(&["comprehensive"]),
+            (true, true, true, true, true)
+        );
+    }
+
+    #[test]
+    fn comprehensive_include_flags_can_be_turned_off() {
+        assert!(
+            !comprehensive_flags(&["comprehensive", "--include-tdg=false"]).4,
+            "--include-tdg=false must disable it"
+        );
+        assert!(
+            !comprehensive_flags(&["comprehensive", "--include-duplicates=false"]).0,
+            "--include-duplicates=false must disable it"
+        );
+        assert_eq!(
+            comprehensive_flags(&[
+                "comprehensive",
+                "--include-dead-code=false",
+                "--include-defects=false",
+                "--include-complexity=false",
+            ]),
+            (true, false, false, false, true)
+        );
+    }
+
+    #[test]
+    fn comprehensive_bare_flag_still_means_enabled() {
+        assert_eq!(
+            comprehensive_flags(&["comprehensive", "--include-tdg", "--include-duplicates"]),
+            (true, true, true, true, true)
+        );
+    }
+
+    #[test]
+    fn web_assembly_kind_flags_can_select_one_kind() {
+        assert_eq!(wasm_flags(&["web-assembly"]), (true, true));
+        assert_eq!(
+            wasm_flags(&["web-assembly", "--include-binary=false"]),
+            (false, true),
+            "--include-binary=false must select .wat only"
+        );
+        assert_eq!(
+            wasm_flags(&["web-assembly", "--include-text=false"]),
+            (true, false),
+            "--include-text=false must select .wasm only"
+        );
+    }
 }

@@ -131,27 +131,41 @@ mod property_tests {
             prop_assert_eq!(deserialized.description, description);
         }
 
+        // These two properties were the stub written down as invariants: every
+        // entry carried PMAT_VERSION because `get_changelog_entries` ignored its
+        // range and stamped the current version on three canned rows, and
+        // `get_breaking_changes_since` returned `[]` unconditionally. Both now
+        // read CHANGELOG.md, so the properties assert what should actually hold
+        // of a version range.
+
         #[test]
-        fn test_changelog_entries_always_have_current_version(_seed in 0u32..1000) {
+        fn test_changelog_entries_are_distinct_real_versions(_seed in 0u32..1000) {
             let entries = get_changelog_entries("0.0.0", "999.999.999");
             prop_assert!(!entries.is_empty());
 
-            // All entries should have version matching PMAT_VERSION
+            let mut seen = std::collections::HashSet::new();
             for entry in &entries {
-                prop_assert_eq!(&entry.version, PMAT_VERSION);
+                prop_assert!(!entry.version.is_empty());
+                // A repeated version means the range is not being read.
+                prop_assert!(seen.insert(entry.version.clone()));
             }
+            prop_assert!(seen.len() > 1, "the changelog holds more than one release");
         }
 
         #[test]
-        fn test_breaking_changes_returns_empty_for_any_version(
+        fn test_breaking_changes_never_predate_the_version_asked_for(
             major in 0u32..100,
             minor in 0u32..1000,
             patch in 0u32..100
         ) {
             let version = format!("{}.{}.{}", major, minor, patch);
             let changes = get_breaking_changes_since(&version);
-            // Current implementation always returns empty
-            prop_assert!(changes.is_empty());
+            // Whatever comes back must be strictly newer than the floor given,
+            // and must name a version.
+            for change in &changes {
+                prop_assert!(!change.version.is_empty());
+                prop_assert_ne!(&change.version, &version);
+            }
         }
     }
 

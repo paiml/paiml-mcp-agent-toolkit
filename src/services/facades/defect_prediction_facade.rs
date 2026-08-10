@@ -572,16 +572,23 @@ impl DefectPredictionFacade {
 
     /// Discover source files to analyze, in a deterministic order.
     async fn discover_files(&self, request: &DefectPredictionRequest) -> Result<Vec<PathBuf>> {
-        use walkdir::WalkDir;
+        use ignore::WalkBuilder;
 
+        // Bare `walkdir` saw everything on disk: this repo's `.gitignore` line
+        // `.claude/worktrees/` was invisible to it, so discovery reported
+        // 223673 files for a 4260-file project and ranked a file inside an
+        // ignored worktree copy as the single highest defect risk. `analyze
+        // complexity` honours the ignore files; discovery here must agree with
+        // it or the two commands are describing different projects.
         let mut files = Vec::new();
-        // sort_by_file_name: readdir order is filesystem-dependent, and the
-        // prediction list is derived from it — identical input must produce
-        // identical output.
-        for entry in WalkDir::new(&request.project_path)
+        for entry in WalkBuilder::new(&request.project_path)
             .follow_links(false)
-            .sort_by_file_name()
-            .into_iter()
+            .hidden(true)
+            .git_ignore(true)
+            .git_global(true)
+            .git_exclude(true)
+            .parents(true)
+            .build()
             .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
@@ -590,6 +597,10 @@ impl DefectPredictionFacade {
             }
         }
 
+        // Directory read order is filesystem-dependent and the prediction list
+        // is derived from it — identical input must produce identical output.
+        // (`walkdir::sort_by_file_name` used to do this during the walk.)
+        files.sort();
         Ok(files)
     }
 
@@ -598,13 +609,19 @@ impl DefectPredictionFacade {
         let path_str = path.to_string_lossy();
 
         if let Some(ref excludes) = request.exclude {
-            if excludes.iter().any(|pattern| path_str.contains(pattern)) {
+            if excludes
+                .iter()
+                .any(|pattern| Self::matches_pattern(&path_str, pattern))
+            {
                 return false;
             }
         }
 
         if let Some(ref includes) = request.include {
-            if !includes.iter().any(|pattern| path_str.contains(pattern)) {
+            if !includes
+                .iter()
+                .any(|pattern| Self::matches_pattern(&path_str, pattern))
+            {
                 return false;
             }
         }
@@ -612,6 +629,31 @@ impl DefectPredictionFacade {
         path.extension()
             .and_then(|e| e.to_str())
             .is_some_and(|ext| matches!(ext, "rs" | "py" | "js" | "ts" | "cpp" | "c" | "java"))
+    }
+
+    /// Match one `--include`/`--exclude` pattern against a path.
+    ///
+    /// Both lists used to be `path_str.contains(pattern)`, so `--include
+    /// '**/*.rs'` — the example in the flag's own help text — matched nothing
+    /// and the command exited 0 with an empty analysis, while `--include
+    /// 'src/lib.rs'` matched because it happens to be a substring. Patterns
+    /// containing glob metacharacters are compiled as globs; plain strings keep
+    /// the substring behaviour people already rely on.
+    fn matches_pattern(path_str: &str, pattern: &str) -> bool {
+        if !pattern.contains(['*', '?', '[', '{']) {
+            return path_str.contains(pattern);
+        }
+
+        // Matched against the whole (usually absolute) path, so `*` has to be
+        // able to cross a separator — globset's default `literal_separator`
+        // off is what makes both `*.rs` and the documented `**/*.rs` match
+        // `/home/u/proj/src/lib.rs`.
+        match globset::Glob::new(pattern) {
+            Ok(glob) => glob.compile_matcher().is_match(path_str),
+            // An unparseable pattern falls back to the historical substring
+            // test rather than quietly selecting nothing.
+            Err(_) => path_str.contains(pattern),
+        }
     }
 
     /// Analyze a single file for defect probability
@@ -1414,5 +1456,96 @@ mod tests {
             count_imports(Path::new("a.rs"), "use a;\nuse b;\nfn f() {}\n"),
             Some(2)
         );
+    }
+
+    /// Discovery ignored `.gitignore` entirely: pmat's own ignored
+    /// `.claude/worktrees/` copies were discovered, analyzed and ranked as the
+    /// top defect risk, turning a 4260-file project into 223673 files.
+    #[tokio::test]
+    async fn test_discover_files_honours_gitignore() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        std::fs::write(root.join(".gitignore"), "ignored_dir/\n").unwrap();
+        write_sources(&root.join("src"), 2);
+        write_sources(&root.join("ignored_dir"), 3);
+        // Hidden directories are not project sources either.
+        write_sources(&root.join(".hidden"), 1);
+        init_repo(root);
+
+        let found = facade().discover_files(&request(root, 0)).await.unwrap();
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| p.strip_prefix(root).unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(
+            names.iter().all(|n| !n.contains("ignored_dir")),
+            "gitignored files were discovered: {names:?}"
+        );
+        assert!(
+            names.iter().all(|n| !n.contains(".hidden")),
+            "hidden files were discovered: {names:?}"
+        );
+        assert_eq!(names.len(), 2, "{names:?}");
+        // Deterministic order survives the walker swap.
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted);
+    }
+
+    /// `--include '**/*.rs'` — the example in the flag's own help — matched
+    /// nothing, because both lists were `path_str.contains(pattern)`.
+    #[test]
+    fn test_include_exclude_accept_globs() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        let file = root.join("src").join("lib.rs");
+
+        let mut req = request(root, 0);
+        req.include = Some(vec!["**/*.rs".to_string()]);
+        assert!(
+            DefectPredictionFacade::matches_filters(&file, &req),
+            "the documented glob example must match a .rs file"
+        );
+
+        req.include = None;
+        req.exclude = Some(vec!["**/*.rs".to_string()]);
+        assert!(
+            !DefectPredictionFacade::matches_filters(&file, &req),
+            "the same glob must exclude"
+        );
+
+        // Plain substrings keep working.
+        req.exclude = None;
+        req.include = Some(vec!["src/lib.rs".to_string()]);
+        assert!(DefectPredictionFacade::matches_filters(&file, &req));
+
+        // A glob that genuinely does not match still does not match.
+        req.include = Some(vec!["**/*.py".to_string()]);
+        assert!(!DefectPredictionFacade::matches_filters(&file, &req));
+    }
+
+    #[test]
+    fn test_matches_pattern_glob_vs_substring() {
+        assert!(DefectPredictionFacade::matches_pattern(
+            "/p/src/lib.rs",
+            "**/*.rs"
+        ));
+        assert!(DefectPredictionFacade::matches_pattern(
+            "/p/src/lib.rs",
+            "*"
+        ));
+        assert!(DefectPredictionFacade::matches_pattern(
+            "/p/src/lib.rs",
+            "**/lib.rs"
+        ));
+        assert!(DefectPredictionFacade::matches_pattern(
+            "/p/src/lib.rs",
+            "src/lib.rs"
+        ));
+        assert!(!DefectPredictionFacade::matches_pattern(
+            "/p/src/lib.rs",
+            "**/*.ts"
+        ));
     }
 }

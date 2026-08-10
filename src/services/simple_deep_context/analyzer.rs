@@ -80,7 +80,18 @@ impl SimpleDeepContext {
             self.analyze_complexity(&source_files).await?;
 
         // Phase 3: Generate recommendations
-        let recommendations = self.generate_recommendations(&complexity_metrics);
+        //
+        // `analyze deep-context` is documented as "deep context analysis with
+        // defect detection", but only `--format sarif` ran a defect detector:
+        // json/markdown came through here and reported "Code complexity looks
+        // good! No immediate recommendations." for the very corpus whose SARIF
+        // run listed a High-severity self-admitted-debt finding. The same
+        // detector now runs for every format.
+        let debts = Self::detect_self_admitted_debt(&source_files);
+        let recommendations = Self::with_debt_recommendations(
+            self.generate_recommendations(&complexity_metrics),
+            &debts,
+        );
 
         let analysis_duration = start_time.elapsed();
 
@@ -357,6 +368,55 @@ impl SimpleDeepContext {
         })
     }
 
+    /// Detect self-admitted technical debt in the discovered source files.
+    ///
+    /// Uses the same `SATDDetector` the SARIF path reaches through
+    /// `DeepContextAnalyzer`, so one command cannot report a defect in one
+    /// format and "no immediate recommendations" in another.
+    pub(super) fn detect_self_admitted_debt(
+        source_files: &[PathBuf],
+    ) -> Vec<crate::services::satd_detector::TechnicalDebt> {
+        let detector = crate::services::satd_detector::SATDDetector::new();
+        let mut debts = Vec::new();
+        for file in source_files {
+            let Ok(content) = std::fs::read_to_string(file) else {
+                continue;
+            };
+            if let Ok(found) = detector.extract_from_content(&content, file) {
+                debts.extend(found);
+            }
+        }
+        // File-discovery order is not guaranteed; the report must be.
+        debts.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
+        debts
+    }
+
+    /// Fold detected debt into the recommendation list.
+    ///
+    /// "Code complexity looks good! No immediate recommendations." must not
+    /// survive alongside a detected defect — that sentence was the whole
+    /// contradiction users saw between `--format json` and `--format sarif`.
+    pub(super) fn with_debt_recommendations(
+        mut recommendations: Vec<String>,
+        debts: &[crate::services::satd_detector::TechnicalDebt],
+    ) -> Vec<String> {
+        if debts.is_empty() {
+            return recommendations;
+        }
+        recommendations.retain(|r| !r.starts_with("Code complexity looks good"));
+        let sample: Vec<String> = debts
+            .iter()
+            .take(3)
+            .map(|d| format!("{}:{} {}", d.file.display(), d.line, d.text.trim()))
+            .collect();
+        recommendations.push(format!(
+            "Resolve {} self-admitted technical debt comment(s) (e.g. {})",
+            debts.len(),
+            sample.join("; ")
+        ));
+        recommendations
+    }
+
     /// Generate recommendations based on analysis
     pub(super) fn generate_recommendations(&self, metrics: &ComplexityMetrics) -> Vec<String> {
         let mut recommendations = Vec::new();
@@ -601,5 +661,33 @@ mod discovery_regression_tests {
             .await
             .expect_err("an unparseable pattern must not silently filter nothing");
         assert!(err.to_string().contains("--exclude-pattern"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn a_detected_defect_reaches_the_json_and_markdown_reports() {
+        // corpus/poly reproduced this: `--format sarif` listed a High-severity
+        // "FIXME: broken" in main.py while `--format json` reported "Code
+        // complexity looks good! No immediate recommendations."
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("main.py"),
+            "def f():\n    # FIXME: broken\n    return 1\n",
+        )
+        .unwrap();
+
+        let report = SimpleDeepContext::new()
+            .analyze(config(dir.path(), vec![]))
+            .await
+            .expect("analysis succeeds");
+
+        let recommendations = report.recommendations.join("\n");
+        assert!(
+            recommendations.contains("FIXME"),
+            "a detected defect must appear in the default report, got: {recommendations}"
+        );
+        assert!(
+            !recommendations.contains("Code complexity looks good"),
+            "must not claim all-clear next to a detected defect: {recommendations}"
+        );
     }
 }

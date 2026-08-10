@@ -20,17 +20,28 @@ pub enum CleanupTarget {
     All,
 }
 
+/// The targets `scan_targets` actually dispatches a scanner for.
+///
+/// `docker` and `caches` are declared in the enum and were accepted by
+/// `parse`, but no scanner exists for either — not even under `all`. So
+/// `--targets docker` printed a header, a blank line where the scan phase
+/// belongs, "Items found: 0" and exited 0, which is indistinguishable from a
+/// machine with nothing to clean. Until `cleanup_scanners.rs` grows a
+/// `scan_docker_targets`/`scan_cache_targets`, the names are rejected rather
+/// than silently no-op'd.
+pub const SCANNABLE_TARGETS: &[&str] = &["rust", "node", "git", "logs", "all"];
+
 impl CleanupTarget {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Parse the input.
+    ///
+    /// Returns `None` for `docker` and `caches`: see [`SCANNABLE_TARGETS`].
     pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rust" => Some(Self::Rust),
-            "docker" => Some(Self::Docker),
             "node" => Some(Self::Node),
             "git" => Some(Self::Git),
             "logs" => Some(Self::Logs),
-            "caches" => Some(Self::Caches),
             "all" => Some(Self::All),
             _ => None,
         }
@@ -68,6 +79,19 @@ pub async fn handle_cleanup_resources(
     min_age_days: u32,
     format: OutputFormat,
 ) -> Result<()> {
+    // A typo'd --project-dir used to be indistinguishable from a genuinely
+    // clean project: the walkers simply yielded nothing, so the command printed
+    // "Found 0 Rust target directories" and "Items found: 0" and exited 0 —
+    // for a directory that does not exist. The same flag drives the destructive
+    // --execute mode, and the handler already carries a `path_exists` contract
+    // that nothing enforced at runtime.
+    if !project_dir.exists() {
+        anyhow::bail!("Cleanup path does not exist: {}", project_dir.display());
+    }
+    if !project_dir.is_dir() {
+        anyhow::bail!("Cleanup path is not a directory: {}", project_dir.display());
+    }
+
     // Parse targets
     let parsed_targets: Vec<CleanupTarget> = targets
         .iter()
@@ -76,7 +100,7 @@ pub async fn handle_cleanup_resources(
 
     if parsed_targets.is_empty() {
         println!("⚠️  No valid cleanup targets specified");
-        println!("   Valid targets: rust, docker, node, git, logs, caches, all");
+        println!("   Valid targets: {}", SCANNABLE_TARGETS.join(", "));
         return Ok(());
     }
 
