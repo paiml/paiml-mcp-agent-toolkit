@@ -321,11 +321,14 @@ fn print_evidence(evidence: &EvidenceType) {
 mod unmeasured_blocking_tests {
     use crate::cli::handlers::work_contract::ContractThresholds;
 
-    /// Opting in must be a deliberate act: the default preserves today's
-    /// behaviour so enabling enforcement is never a silent workflow change.
+    /// Enforcement is ON by default: a blocking claim that measured nothing
+    /// has corroborated nothing, so it must not certify a completion.
     #[test]
-    fn block_on_unmeasured_defaults_off() {
-        assert!(!ContractThresholds::default().block_on_unmeasured);
+    fn block_on_unmeasured_defaults_on() {
+        assert!(
+            ContractThresholds::default().block_on_unmeasured,
+            "an always-blocking claim that measured nothing must block by default"
+        );
     }
 
     /// The verdict rule itself, stated directly so it cannot drift back to
@@ -337,8 +340,8 @@ mod unmeasured_blocking_tests {
 
     #[test]
     fn unmeasured_blocking_claim_blocks_only_when_enabled() {
-        // Today's behaviour, preserved by default.
-        assert!(all_passed(0, 3, false), "default must not change behaviour");
+        // Explicitly disabled per contract: unmeasured no longer blocks.
+        assert!(all_passed(0, 3, false), "opt-out must still be honoured");
         // Opted in: a blocking claim that measured nothing stops the run.
         assert!(!all_passed(0, 1, true), "enabled must block on unmeasured");
         // Unmeasured NON-blocking claims never matter (they are not counted).

@@ -77,11 +77,11 @@ pub struct ContractThresholds {
     /// analyzer, a missing spec — left the gate reporting success. That is the
     /// same shape as a gate that cannot fail, one level up.
     ///
-    /// Defaults to FALSE deliberately. Turning it on immediately blocks every
-    /// repo that has not produced a coverage artifact, which is a real workflow
-    /// change and not one to impose silently. The count is always reported, so
-    /// the gap is visible before anyone opts in.
-    #[serde(default)]
+    /// Defaults to TRUE: an always-blocking claim that could not be measured
+    /// stops completion. A repo with no coverage artifact will block until it
+    /// produces one — that is the intent, not a side effect. Set to false per
+    /// contract only with a reason.
+    #[serde(default = "default_true")]
     pub block_on_unmeasured: bool,
 }
 
@@ -108,7 +108,7 @@ impl Default for ContractThresholds {
             max_sorry_count: 0, // Zero sorrys allowed when proof verification enabled
             min_theorem_coverage: 0.0, // No minimum theorem coverage by default
             block_on_file_size: true, // Block on file size regression by default (v4.1)
-            block_on_unmeasured: false, // opt-in; see field docs
+            block_on_unmeasured: true, // unmeasured blocking claims block
         }
     }
 }
