@@ -549,8 +549,20 @@ pub enum AnalyzeCommands {
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: LintHotspotOutputFormat,
 
-        /// Maximum allowed defect density (violations per 100 lines)
-        #[arg(long, default_value_t = 5.0)]
+        /// Maximum allowed defect density, in violations per line of code
+        /// (0.05 = 5 violations per 100 SLOC)
+        //
+        // #699: the help used to say "violations per 100 lines" while
+        // `check_quality_gates` compares against `violations / sloc`, and the
+        // default was 5.0 — i.e. 500 violations per 100 lines, a threshold no
+        // real file can reach, so the documented gate never fired. Observed on
+        // a fixture whose hotspot measured defect_density 2.0 (200 violations
+        // per 100 lines): `passed: true`, exit 0. 0.05 is the same threshold
+        // the help text already promised, spelled in the unit actually used.
+        #[arg(
+            long,
+            default_value_t = crate::cli::handlers::lint_hotspot_handlers::types::DEFAULT_MAX_DENSITY
+        )]
         max_density: f64,
 
         /// Minimum confidence for automated fixes (0.0-1.0)

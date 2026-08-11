@@ -41,13 +41,27 @@
         assert!(is_target_file("src/main.rs", &abs_path, &file_path));
     }
 
+    /// #698: this test used to be called `test_is_target_file_ends_with` and
+    /// was cited as the reason the loose `ends_with` arm had to stay. It never
+    /// exercised that arm — the diagnostic string equals `abs_path`, so it
+    /// matched on identity. Renamed to what it actually pins, and extended
+    /// with the case `ends_with` got wrong: a bare `--file main.rs` must NOT
+    /// claim `src/main.rs` (observed: 22 violations reported against a clean
+    /// 3-line `main.rs`).
     #[test]
-    fn test_is_target_file_ends_with() {
+    fn test_is_target_file_bare_name_matches_only_its_own_file() {
         let abs_path = PathBuf::from("/project/src/main.rs");
         let file_path = PathBuf::from("main.rs");
 
         assert!(is_target_file(
             "/project/src/main.rs",
+            &abs_path,
+            &file_path
+        ));
+
+        // A different `main.rs`, resolved absolutely, is a different file.
+        assert!(!is_target_file(
+            "/project/src/bin/tool/main.rs",
             &abs_path,
             &file_path
         ));

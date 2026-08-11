@@ -66,6 +66,27 @@ fn ensure_cargo_project(project_path: &Path) -> Result<()> {
     )
 }
 
+/// Directories a cargo span path may be relative to, most specific first.
+///
+/// cargo does NOT emit span paths relative to the directory it was spawned in —
+/// it emits them relative to the WORKSPACE ROOT. With
+/// `-p <repo>/src --file cli/handlers/x.rs`, cargo reports `src/cli/handlers/x.rs`,
+/// which resolved against `<repo>/src` gives `<repo>/src/src/cli/handlers/x.rs`
+/// and matches nothing: the file was reported with 0 violations when the
+/// project scan found 9 in it. Both candidates are tried, and each is compared
+/// for path IDENTITY, so offering two bases cannot make an unrelated file match.
+fn span_base_dirs(project_path: &Path) -> Result<Vec<PathBuf>> {
+    let mut bases = Vec::new();
+    if let Some(root) = find_workspace_root(project_path)? {
+        bases.push(std::fs::canonicalize(&root).unwrap_or(root));
+    }
+    let here = std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
+    if !bases.contains(&here) {
+        bases.push(here);
+    }
+    Ok(bases)
+}
+
 /// Run clippy on a single file and analyze the JSON output
 ///
 /// # Errors
@@ -86,15 +107,13 @@ pub(crate) async fn run_clippy_analysis_single_file(
         anyhow::bail!("--file path does not exist: {}", abs_file_path.display());
     }
     let abs_file_path = std::fs::canonicalize(&abs_file_path).unwrap_or(abs_file_path);
-    // cargo emits span paths relative to the directory it is run in.
-    let base_dir =
-        std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
+    let bases = span_base_dirs(project_path)?;
 
     let output = run_clippy_command(project_path, clippy_flags).await?;
     check_clippy_output(&output)?;
 
     let (file_violations, all_violations, severity_dist) =
-        parse_clippy_output(&output.stdout, &abs_file_path, file_path, &base_dir)?;
+        parse_clippy_output(&output.stdout, &abs_file_path, file_path, &bases)?;
 
     // #679: this used to be `.unwrap_or(100)`. An unreadable file produced a
     // FABRICATED SLOC of 100 and a defect density computed against it.
@@ -307,6 +326,113 @@ mod lint_hotspot_measurement_tests {
         let abs = Path::new("/tmp/dirty/src/lib.rs");
         let resolved = resolve_diagnostic_path("src/other.rs", base);
         assert!(!is_target_file(&resolved, abs, Path::new("src/lib.rs")));
+    }
+
+    // ── #698: `--file <bare name>` matched files in other directories ───────
+
+    #[test]
+    fn test_bare_filename_does_not_claim_a_file_in_another_directory() {
+        // PRE-FIX `is_target_file` ended with `diagnostic_path.ends_with(file_path)`,
+        // and `Path::ends_with` compares trailing COMPONENTS. Observed on a
+        // two-binary fixture (clean root `main.rs`, dirty `src/main.rs`):
+        // `--file main.rs` reported total_violations 22 / sloc 3 /
+        // defect_density 7.33 and exited 1, with every violation labelled
+        // `"file": "main.rs"` but carrying `src/main.rs` line numbers.
+        let base = Path::new("/tmp/fx2");
+        let abs = Path::new("/tmp/fx2/main.rs");
+        let rel = Path::new("main.rs");
+        let resolved = resolve_diagnostic_path("src/main.rs", base);
+        assert!(
+            !is_target_file(&resolved, abs, rel),
+            "a diagnostic in {resolved:?} must not be attributed to {abs:?}"
+        );
+    }
+
+    #[test]
+    fn test_workspace_member_lib_does_not_claim_the_root_lib() {
+        // Same defect, the shape that bites every cargo workspace:
+        // `--file src/lib.rs` swallowed `crates/<member>/src/lib.rs` too, so
+        // one file's report carried several crates' violations.
+        let base = Path::new("/repo");
+        let abs = Path::new("/repo/src/lib.rs");
+        let rel = Path::new("src/lib.rs");
+        let resolved = resolve_diagnostic_path("crates/dashboard/src/lib.rs", base);
+        assert!(
+            !is_target_file(&resolved, abs, rel),
+            "a diagnostic in {resolved:?} must not be attributed to {abs:?}"
+        );
+    }
+
+    #[test]
+    fn test_bare_filename_still_matches_its_own_file() {
+        // The tightening must not cost the legitimate match.
+        let base = Path::new("/tmp/fx2");
+        let abs = Path::new("/tmp/fx2/main.rs");
+        let rel = Path::new("main.rs");
+        let resolved = resolve_diagnostic_path("main.rs", base);
+        assert!(is_target_file(&resolved, abs, rel));
+    }
+
+    // ── #698 follow-on: spans are relative to the WORKSPACE ROOT, not to -p ──
+
+    #[test]
+    fn test_span_matches_when_project_path_is_below_the_workspace_root() {
+        // Measured on this repo: `-p <repo>/src --file cli/handlers/.../
+        // platform_routes.rs` reported total_violations 0 while the project
+        // scan reported 9 in that same file, because cargo emits
+        // `src/cli/handlers/.../platform_routes.rs` (workspace-root relative)
+        // and the only base tried was `<repo>/src`, giving `<repo>/src/src/...`.
+        // The loose `ends_with` used to paper over this for RELATIVE --file
+        // values only; with an absolute --file it was wrong even before #698.
+        // A unique dir per run: a fixed /tmp name collides when two `cargo
+        // test` processes overlap.
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let root = tmp.path();
+        let sub = root.join("src");
+        let target = sub.join("thing.rs");
+        std::fs::create_dir_all(&sub).expect("mkdir fixture");
+        std::fs::write(&target, "// fixture\n").expect("write fixture");
+
+        let abs = std::fs::canonicalize(&target).expect("canonicalize target");
+        let bases = vec![
+            std::fs::canonicalize(root).expect("canonicalize root"),
+            std::fs::canonicalize(&sub).expect("canonicalize sub"),
+        ];
+
+        assert!(
+            span_matches_target("src/thing.rs", &bases, &abs, &abs),
+            "a workspace-root-relative span must resolve to {abs:?}"
+        );
+        // Only the workspace-root base can match; the project-path base alone
+        // is what produced the 0-violation report.
+        assert!(
+            !span_matches_target("src/thing.rs", &bases[1..], &abs, &abs),
+            "this pins the wrong-base behaviour that caused the under-report"
+        );
+        // And identity is still required: another file is still rejected.
+        assert!(!span_matches_target("src/other.rs", &bases, &abs, &abs));
+    }
+
+    #[test]
+    fn test_span_base_dirs_lists_workspace_root_before_project_path() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let root = tmp.path();
+        let sub = root.join("crates").join("member");
+        std::fs::create_dir_all(&sub).expect("mkdir fixture");
+        std::fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+            .expect("write workspace manifest");
+        std::fs::write(sub.join("Cargo.toml"), "[package]\nname = \"member\"\n")
+            .expect("write member manifest");
+
+        let bases = span_base_dirs(&sub).expect("bases");
+        assert_eq!(bases.len(), 2, "got {bases:?}");
+        assert_eq!(bases[0], std::fs::canonicalize(root).expect("canon root"));
+        assert_eq!(bases[1], std::fs::canonicalize(&sub).expect("canon sub"));
+
+        // A crate that is its own workspace root yields exactly one base, not
+        // the same directory twice.
+        let solo = span_base_dirs(root).expect("bases");
+        assert_eq!(solo.len(), 1, "got {solo:?}");
     }
 
     // ── determinism ─────────────────────────────────────────────────────────

@@ -413,6 +413,53 @@ mod tests {
         assert_eq!(status.violations[0].rule, "max_defect_density");
     }
 
+    /// #699: the shipped default must be able to fail a realistically dirty
+    /// file. It was 5.0 — compared against `violations / sloc`, so it required
+    /// 5 lint violations on every single line. Observed on a real fixture run:
+    /// the hotspot measured `defect_density: 2.0` (6 violations over 3 SLOC,
+    /// i.e. 200 violations per 100 lines) and the gate reported
+    /// `"passed": true, "blocking": false` with exit 0.
+    #[test]
+    fn test_default_max_density_fails_a_measurably_dirty_hotspot() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("main.rs"),
+            defect_density: 2.0,
+            total_violations: 6,
+            sloc: 3,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, DEFAULT_MAX_DENSITY);
+        assert!(
+            !status.passed,
+            "a hotspot at 200 violations per 100 lines must not pass the default gate"
+        );
+        assert!(status.blocking);
+        assert_eq!(status.violations[0].rule, "max_defect_density");
+        assert_eq!(status.violations[0].threshold, DEFAULT_MAX_DENSITY);
+    }
+
+    /// The default is expressed in the unit the gate actually compares in
+    /// (`violations / sloc`), and stays reachable: a clean file must pass.
+    #[test]
+    fn test_default_max_density_passes_a_clean_hotspot() {
+        let hotspot = LintHotspot {
+            file: PathBuf::from("src/lib.rs"),
+            defect_density: 0.01, // 1 violation per 100 lines
+            total_violations: 2,
+            sloc: 200,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: vec![],
+        };
+
+        let status = check_quality_gates(&hotspot, DEFAULT_MAX_DENSITY);
+        assert!(status.passed);
+        assert!(!status.blocking);
+    }
+
     #[test]
     fn test_check_quality_gates_fail_violations() {
         let hotspot = LintHotspot {

@@ -316,6 +316,37 @@ mod output_tests {
         assert!(r.contains("## Recommendations"));
     }
 
+    /// #721: the breakdown table printed `summary.dead_modules` under a
+    /// "Variables" heading. `dead_modules` is a MODULE count on the cargo path,
+    /// so a cargo run reported its dead modules under a row no producer fills,
+    /// while real Variable items were counted in no row at all.
+    #[test]
+    fn test_markdown_breakdown_labels_dead_modules_as_modules_not_variables() {
+        let r = format_dead_code_as_markdown(&populated_result()).unwrap();
+
+        assert!(
+            r.contains("| Modules | 1 |"),
+            "dead_modules must be labelled Modules; got:\n{r}"
+        );
+        assert!(
+            !r.contains("| Variables |"),
+            "the module count must not be labelled Variables; got:\n{r}"
+        );
+    }
+
+    /// #721 companion: Variable items are counted from the items themselves, in
+    /// their own row, exactly as the text renderer already did.
+    #[test]
+    fn test_markdown_breakdown_counts_variable_items_in_their_own_row() {
+        // populated_result() has exactly one Variable item (src/b.rs).
+        let r = format_dead_code_as_markdown(&populated_result()).unwrap();
+
+        assert!(
+            r.contains("| Other (fields, constants, statics) | 1 |"),
+            "Variable items must be counted in their own row; got:\n{r}"
+        );
+    }
+
     #[test]
     fn test_markdown_empty_skips_breakdown_and_files() {
         let r = format_dead_code_as_markdown(&empty_result()).unwrap();
@@ -495,5 +526,108 @@ mod output_tests {
         assert_eq!(summary.files_with_dead_code, 0);
         assert_eq!(summary.total_dead_lines, 0);
         assert_eq!(summary.dead_percentage, 0.0);
+    }
+}
+
+/// The multi-language path bills a flat 10 lines per dead function against a
+/// MEASURED file length, so the estimate could describe more lines than the file
+/// contains.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod multi_language_percentage_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn filters() -> DeadCodeAnalysisFilters {
+        DeadCodeAnalysisFilters {
+            top_files: None,
+            include_unreachable: false,
+            min_dead_lines: 0,
+            include_tests: false,
+            include: Vec::new(),
+            exclude: Vec::new(),
+            max_depth: 10,
+        }
+    }
+
+    /// Observed before the fix: a 2-line `h.py` holding one dead function
+    /// reported `dead_lines: 10, total_lines: 2, dead_percentage: 500.0`, and a
+    /// 10-line `m.py` with two reported `20 / 10 = 200.0%`. The project summary
+    /// read 250%.
+    #[test]
+    fn test_dead_lines_never_exceed_the_file_and_percentage_never_exceeds_100() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("m.py"),
+            "def used():\n    return 1\n\ndef dead_one():\n    return 2\n\ndef dead_two():\n    return 3\n\nprint(used())\n",
+        )
+        .unwrap();
+        // Two physical lines, one dead function: the flat estimate is 10.
+        std::fs::write(
+            temp.path().join("h.py"),
+            "def helper_dead():\n    return 4\n",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("pyproject.toml"),
+            "[project]\nname=\"t\"\n",
+        )
+        .unwrap();
+
+        let result = run_multi_language_dead_code(temp.path(), &filters(), "python").unwrap();
+
+        for f in &result.files {
+            assert!(
+                f.dead_lines <= f.total_lines,
+                "{}: {} dead lines in a {}-line file -- a part exceeding its whole",
+                f.path,
+                f.dead_lines,
+                f.total_lines
+            );
+            assert!(
+                f.dead_percentage <= 100.0,
+                "{}: dead_percentage {} exceeds 100",
+                f.path,
+                f.dead_percentage
+            );
+        }
+
+        assert!(
+            result.summary.dead_percentage <= 100.0,
+            "project dead_percentage {} exceeds 100",
+            result.summary.dead_percentage
+        );
+    }
+
+    /// #720: the file count reported beside the summary must be the same number
+    /// the summary counted, and must be a FILE count.
+    #[test]
+    fn test_total_files_agrees_with_the_summary_it_heads() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("m.py"),
+            "def used():\n    return 1\n\ndef dead_one():\n    return 2\n\ndef dead_two():\n    return 3\n\nprint(used())\n",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("h.py"),
+            "def helper_dead():\n    return 4\n",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("pyproject.toml"),
+            "[project]\nname=\"t\"\n",
+        )
+        .unwrap();
+
+        let result = run_multi_language_dead_code(temp.path(), &filters(), "python").unwrap();
+
+        // Two .py files on disk. This was 4 -- the function count.
+        assert_eq!(result.total_files, 2, "total_files must be the file count");
+        assert_eq!(result.analyzed_files, 2);
+        assert_eq!(
+            result.total_files, result.summary.total_files_analyzed,
+            "the headline file count must agree with the summary beneath it"
+        );
     }
 }

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.29.1] - 2026-08-01
+
+### Fixed
+
+- **MCP residue collapsed onto one server** (#696, #697, #698, #699). `pmat --help`
+  advertised `--mode <MODE> [cli, mcp]`, but the flag was never read — and
+  `--mode mcp <subcommand>` silently started a SECOND, legacy MCP server with a
+  disjoint 21-tool inventory whose tools took different arguments. An advertised
+  flag that reaches a different server is the defect. Also: `--file main.rs` could
+  match any file named `main.rs` anywhere, via a loose `ends_with` fallback.
+- **Four more fabricated values** in the analysis tail (#712, #720, #721, #723),
+  plus two worse defects found underneath them.
+
+### Not included
+
+Four round-4 fix branches are held back. They were authored against a base
+predating the v3.29.0 work and touch files it rewrote (lint-hotspot, entropy,
+dead-code, rust-project-score, tdg/project_score); merging them as-is would
+revert fixes that shipped in 3.29.0. They cover #693, #700–#709, #714, #717,
+#719, #637 and #640 and will be redone against the correct base.
+
 ## [3.29.0] - 2026-08-01
 
 ### Fixed — pmat no longer reports numbers it never measured

@@ -146,7 +146,8 @@ pub struct AnalyzeLintHotspotContract {
     #[serde(default)]
     pub file: Option<PathBuf>,
 
-    /// Maximum allowed defect density
+    /// Maximum allowed defect density, in violations per line of code
+    /// (0.05 = 5 violations per 100 SLOC)
     #[serde(default = "default_max_density")]
     pub max_density: f64,
 
@@ -163,8 +164,12 @@ pub struct AnalyzeLintHotspotContract {
     pub dry_run: bool,
 }
 
+/// #699: reads the same constant as the `--max-density` clap default, so the
+/// CLI, MCP and HTTP interfaces gate on the same threshold. Both used to spell
+/// `5.0` independently, while the gate compares `violations / sloc` — a value
+/// no file can exceed, so the gate never fired on any interface.
 fn default_max_density() -> f64 {
-    5.0
+    crate::cli::handlers::lint_hotspot_handlers::types::DEFAULT_MAX_DENSITY
 }
 
 fn default_min_confidence() -> f64 {
