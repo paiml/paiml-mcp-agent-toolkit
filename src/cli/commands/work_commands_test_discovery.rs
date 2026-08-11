@@ -131,10 +131,25 @@ mod use_nextest_flag_tests {
     }
 
     fn use_nextest_of(args: &[&str]) -> bool {
-        match Harness::try_parse_from(args).expect("parse test-discovery run").cmd {
-            TestDiscoveryCommands::Run { use_nextest, .. } => use_nextest,
-            other => panic!("expected `run`, got {other:?}"),
-        }
+        // 8MB stack on its own thread — clap's generated parser overflows the
+        // default 2MB test stack, the same reason the other clap parsing tests
+        // in this crate spawn a thread. Inline it aborts the whole test binary
+        // with SIGABRT under CI's coverage job, which sets no RUST_MIN_STACK.
+        let argv: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || {
+                match Harness::try_parse_from(&argv)
+                    .expect("parse test-discovery run")
+                    .cmd
+                {
+                    TestDiscoveryCommands::Run { use_nextest, .. } => use_nextest,
+                    other => panic!("expected `run`, got {other:?}"),
+                }
+            })
+            .expect("spawn clap parse thread")
+            .join()
+            .expect("clap parse thread panicked")
     }
 
     #[test]

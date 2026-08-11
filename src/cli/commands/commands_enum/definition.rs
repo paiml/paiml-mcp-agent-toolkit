@@ -1671,15 +1671,18 @@ mod command_availability_tests {
     use clap::Subcommand;
 
     fn about_of(name: &str) -> String {
-        let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
-        let about = cmd
-            .get_subcommands()
-            .find(|s| s.get_name() == name)
-            .unwrap_or_else(|| panic!("{name} subcommand must exist"))
-            .get_about()
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
-        about
+        let name = name.to_string();
+        crate::cli::commands::on_big_stack(move || {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let about = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == name)
+                .unwrap_or_else(|| panic!("{name} subcommand must exist"))
+                .get_about()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            about
+        })
     }
 
     /// The default (`cargo install pmat`) build cannot run any demo mode, yet
@@ -1724,18 +1727,20 @@ mod command_availability_tests {
     /// deleted — so its own entry must say so in every build.
     #[test]
     fn org_analyze_is_labelled_removed_in_every_build() {
-        let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
-        let org = cmd
-            .get_subcommands()
-            .find(|s| s.get_name() == "org")
-            .expect("org subcommand must exist");
-        let analyze = org
-            .get_subcommands()
-            .find(|s| s.get_name() == "analyze")
-            .expect("org analyze subcommand must exist")
-            .get_about()
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
+        let analyze = crate::cli::commands::on_big_stack(|| {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let about = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "org")
+                .expect("org subcommand must exist")
+                .get_subcommands()
+                .find(|s| s.get_name() == "analyze")
+                .expect("org analyze subcommand must exist")
+                .get_about()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            about
+        });
         assert!(
             analyze.contains("REMOVED"),
             "org analyze must be labelled removed, got: {analyze}"

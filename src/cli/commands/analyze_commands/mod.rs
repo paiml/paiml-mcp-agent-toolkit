@@ -1702,11 +1702,26 @@ mod include_flags_are_switches_tests {
     }
 
     fn parse(args: &[&str]) -> AnalyzeCommands {
-        let mut argv = vec!["pmat"];
-        argv.extend_from_slice(args);
-        Harness::try_parse_from(argv)
-            .unwrap_or_else(|e| panic!("failed to parse {args:?}: {e}"))
-            .cmd
+        // 8MB stack, on its own thread: clap's generated parser recurses deeply
+        // enough over this command tree to overflow the default 2MB test stack,
+        // the same reason every other clap parsing test in this crate spawns a
+        // thread (see `cli::commands::tests_cli_parsing`). Parsing inline aborts
+        // the whole test binary with SIGABRT — invisible under
+        // `RUST_MIN_STACK=8388608`, which is how `pmat verify` runs the suite,
+        // but fatal in CI's coverage job, which sets no such variable.
+        let argv: Vec<String> = std::iter::once("pmat".to_string())
+            .chain(args.iter().map(|s| (*s).to_string()))
+            .collect();
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || {
+                Harness::try_parse_from(&argv)
+                    .unwrap_or_else(|e| panic!("failed to parse {argv:?}: {e}"))
+                    .cmd
+            })
+            .expect("spawn clap parse thread")
+            .join()
+            .expect("clap parse thread panicked")
     }
 
     fn comprehensive_flags(args: &[&str]) -> (bool, bool, bool, bool, bool) {

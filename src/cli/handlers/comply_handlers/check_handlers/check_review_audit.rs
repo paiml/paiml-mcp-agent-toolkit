@@ -573,17 +573,20 @@ mod tests {
     #[test]
     fn audit_help_does_not_claim_a_signature_the_artifact_lacks() {
         use clap::Subcommand;
-        let cmd =
-            crate::cli::commands::ComplyCommands::augment_subcommands(clap::Command::new("comply"));
-        let audit = cmd
-            .get_subcommands()
-            .find(|s| s.get_name() == "audit")
-            .expect("comply audit subcommand must exist");
-        let help = audit
-            .get_long_about()
-            .or_else(|| audit.get_about())
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
+        let help = crate::cli::commands::on_big_stack(|| {
+            let cmd = crate::cli::commands::ComplyCommands::augment_subcommands(
+                clap::Command::new("comply"),
+            );
+            let audit = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "audit")
+                .expect("comply audit subcommand must exist");
+            audit
+                .get_long_about()
+                .or_else(|| audit.get_about())
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default()
+        });
 
         assert!(
             !help.contains("signed compliance evidence"),

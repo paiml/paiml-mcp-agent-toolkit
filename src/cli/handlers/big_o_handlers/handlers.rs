@@ -136,20 +136,22 @@ mod analyze_space_noop_tests {
     #[test]
     fn help_text_does_not_promise_an_extra_analysis() {
         use clap::Subcommand;
-        let cmd = crate::cli::commands::AnalyzeCommands::augment_subcommands(clap::Command::new(
-            "analyze",
-        ));
-        let big_o = cmd
-            .get_subcommands()
-            .find(|s| s.get_name() == "big-o")
-            .expect("big-o subcommand must exist");
-        let help = big_o
-            .get_arguments()
-            .find(|a| a.get_id() == "analyze_space")
-            .expect("--analyze-space must exist")
-            .get_help()
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
+        let help = crate::cli::commands::on_big_stack(|| {
+            let cmd = crate::cli::commands::AnalyzeCommands::augment_subcommands(
+                clap::Command::new("analyze"),
+            );
+            let help = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "big-o")
+                .expect("big-o subcommand must exist")
+                .get_arguments()
+                .find(|a| a.get_id() == "analyze_space")
+                .expect("--analyze-space must exist")
+                .get_help()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            help
+        });
         assert!(
             help.contains("NO-OP"),
             "help must state the flag is inert, got: {help}"

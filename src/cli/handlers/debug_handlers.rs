@@ -160,16 +160,23 @@ mod coverage_tests {
     #[test]
     fn serve_and_replay_are_labelled_not_implemented() {
         use clap::Subcommand;
-        let cmd =
-            crate::cli::commands::DebugCommands::augment_subcommands(clap::Command::new("debug"));
-        for name in ["serve", "replay"] {
-            let about = cmd
-                .get_subcommands()
-                .find(|s| s.get_name() == name)
-                .unwrap_or_else(|| panic!("{name} subcommand must exist"))
-                .get_about()
-                .map(std::string::ToString::to_string)
-                .unwrap_or_default();
+        let abouts = crate::cli::commands::on_big_stack(|| {
+            let cmd = crate::cli::commands::DebugCommands::augment_subcommands(clap::Command::new(
+                "debug",
+            ));
+            ["serve", "replay"]
+                .into_iter()
+                .map(|name| {
+                    cmd.get_subcommands()
+                        .find(|s| s.get_name() == name)
+                        .unwrap_or_else(|| panic!("{name} subcommand must exist"))
+                        .get_about()
+                        .map(std::string::ToString::to_string)
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<_>>()
+        });
+        for (name, about) in ["serve", "replay"].into_iter().zip(abouts) {
             assert!(
                 about.contains("NOT IMPLEMENTED"),
                 "`debug {name}` must be labelled unimplemented in the command list, got: {about}"
