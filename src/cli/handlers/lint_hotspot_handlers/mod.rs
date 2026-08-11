@@ -399,8 +399,15 @@ fn log_enforcement_failure_if_needed(final_result: &LintHotspotResult, params: &
 }
 
 // Tests extracted to lint_hotspot_handlers_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
-#[cfg(all(test, feature = "broken-tests"))]
+//
+// #701: these fragments sat behind the deliberately-non-compiling
+// `broken-tests` feature for so long that they silently drifted off the real
+// types — every `DiagnosticSpan` literal still set a `_text` field that
+// `types.rs` had dropped. Quarantine hid that: the fragments compiled in no
+// profile, so nothing ever told us they were stale, yet they kept being edited
+// (see the #698 comment in part3). Re-enabled under plain `cfg(test)` so the
+// compiler keeps them honest from here on.
+#[cfg(test)]
 #[path = "../lint_hotspot_handlers_tests.rs"]
 mod tests;
 

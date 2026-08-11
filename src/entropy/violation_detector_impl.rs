@@ -85,12 +85,15 @@ impl ViolationDetector {
                         pattern.pattern_type, pattern.frequency
                     ),
                     fix_suggestion: self.generate_fix_suggestion(pattern),
-                    estimated_loc_reduction: Some(loc_reduction),
+                    estimated_loc_reduction: loc_reduction,
                     // Was collected through a HashSet, so the file list (and the
                     // "file" a quality-gate row was attributed to, which is the
                     // first entry) changed between runs.
                     affected_files: Self::sorted_affected_files(pattern),
-                    priority_score: self.calculate_priority(severity, loc_reduction),
+                    // An unestimated saving earns no LOC bonus; the ranking
+                    // is an ordering, not a reported measurement.
+                    priority_score: self
+                        .calculate_priority(severity, loc_reduction.unwrap_or(0)),
                 });
             }
         }
@@ -174,7 +177,7 @@ impl ViolationDetector {
                         "Extract to shared module: {}",
                         self.suggest_module_name(pattern.pattern_type)
                     ),
-                    estimated_loc_reduction: Some(self.estimate_loc_reduction(pattern)),
+                    estimated_loc_reduction: self.estimate_loc_reduction(pattern),
                     affected_files: unique_files,
                     priority_score: 8.0,
                 });
@@ -210,7 +213,14 @@ impl ViolationDetector {
                     ),
                     // estimated_loc already covers all `frequency` instances;
                     // multiplying by frequency again counted every line twice over.
-                    estimated_loc_reduction: Some((pattern.estimated_loc as f64 * 0.3) as usize),
+                    //
+                    // GH #708: this was `estimated_loc * 0.3`, a second
+                    // unmeasured multiplier with no stated derivation. It now
+                    // uses the same measured derivation as every other
+                    // violation — the instances' shared share, which for an
+                    // inconsistency finding (high `variation_score`) is small
+                    // by construction.
+                    estimated_loc_reduction: self.estimate_loc_reduction(pattern),
                     affected_files: Self::sorted_affected_files(pattern),
                     priority_score: 6.0,
                 });
@@ -230,21 +240,36 @@ impl ViolationDetector {
         }
     }
 
-    /// Estimate LOC reduction from fixing a pattern
+    /// Estimate LOC reduction from fixing a pattern, or `None` when the pattern
+    /// carries nothing to derive it from.
     ///
     /// `estimated_loc` is the LOC covered by *all* `frequency` instances, so the
     /// per-instance size has to be divided back out. The old code multiplied the
     /// whole-group figure by `frequency - 1` again, which is where numbers like
     /// "saves 302 lines" for a ten-line pattern came from.
-    fn estimate_loc_reduction(&self, pattern: &AstPattern) -> usize {
+    ///
+    /// GH #708: the eliminable share was then a flat `let reduction_factor =
+    /// 0.8; // Assume 80% can be eliminated` — an unmeasured multiplier applied
+    /// to a measured line count, which makes the product unmeasured too. It is
+    /// now derived from `variation_score`, which IS measured: it is
+    /// `1 - mean Jaccard similarity` over the instances' token sets, so its
+    /// complement is the share those instances actually have in common.
+    /// Structurally identical instances (variation 0.0) can lose every
+    /// duplicate; instances that barely overlap can lose almost nothing. A
+    /// `variation_score` that is not a usable ratio leaves nothing to derive
+    /// from, so the estimate is withheld rather than defaulted.
+    fn estimate_loc_reduction(&self, pattern: &AstPattern) -> Option<usize> {
         if pattern.frequency <= 1 {
-            return 0;
+            return Some(0);
+        }
+        let sharable = 1.0 - pattern.variation_score;
+        if !sharable.is_finite() || !(0.0..=1.0).contains(&sharable) {
+            return None;
         }
         let instances_to_remove = pattern.frequency - 1;
         let per_instance = pattern.estimated_loc as f64 / pattern.frequency as f64;
-        let reduction_factor = 0.8; // Assume 80% can be eliminated
 
-        (instances_to_remove as f64 * per_instance * reduction_factor) as usize
+        Some((instances_to_remove as f64 * per_instance * sharable) as usize)
     }
 
     /// Generate fix suggestion for a pattern

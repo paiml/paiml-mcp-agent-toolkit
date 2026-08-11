@@ -270,11 +270,72 @@ mod coverage_tests {
         let score = result["score"].as_f64().unwrap();
         let grade = result["grade"].as_str().unwrap();
 
-        let grade_meets_b = matches!(grade, "APlus" | "A" | "AMinus" | "BPlus" | "B");
+        // GH #703: this list used to be spelled in Rust variant names, which is
+        // what pinned the `format!("{:?}", ..)` rendering in place. Grades go on
+        // the wire in the one symbolic form `Display`/`Serialize` both emit.
+        let grade_meets_b = matches!(grade, "A+" | "A" | "A-" | "B+" | "B");
         assert_eq!(
             passed,
             score >= 70.0 && grade_meets_b,
             "inverted strict verdict: score={score} grade={grade} passed={passed}"
+        );
+    }
+
+    /// GH #703: MCP rendered grades with `format!("{:?}", ..)`, so the shipped
+    /// stdio server answered `"grade":"AMinus"` for a score that
+    /// `pmat tdg --format json` reported as `"grade":"A-"` — one binary, two
+    /// spellings, and no machine consumer able to match on either. The grade a
+    /// tool returns must be exactly what `Grade` serialises to.
+    #[tokio::test]
+    async fn test_mcp_grade_is_the_one_wire_spelling_not_a_variant_name() {
+        use crate::tdg::Grade;
+
+        // A single documented function grades A+ — one of the six grades whose
+        // variant name ("APlus") and wire spelling ("A+") DIFFER, without which
+        // this test would pass against the defect it exists to catch.
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("graded.rs");
+        fs::write(&file_path, "/// Doc.\npub fn a() -> i32 { 1 }\n").unwrap();
+
+        let file_result = check_quality_gate_file(&file_path, false).await.unwrap();
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let project_result = check_quality_gates(&paths, false).await.unwrap();
+        let summary = quality_gate_summary(&paths).await.unwrap();
+
+        let observed = [
+            file_result["grade"].as_str().unwrap().to_string(),
+            project_result["grade"].as_str().unwrap().to_string(),
+            summary["summary"]["average_grade"]
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ];
+
+        // "A", "B", "C", "D" and "F" spell the same both ways, so a fixture that
+        // only ever hits those proves nothing. Fail loudly rather than pass
+        // vacuously if the scoring ever moves off the +/- bands.
+        let mut discriminating = 0;
+        for grade_str in &observed {
+            let parsed: Grade = serde_json::from_str(&format!("\"{grade_str}\""))
+                .unwrap_or_else(|e| panic!("MCP grade {grade_str:?} is not a Grade: {e}"));
+            if format!("{parsed:?}") != parsed.to_string() {
+                discriminating += 1;
+            }
+            assert_eq!(
+                *grade_str,
+                parsed.to_string(),
+                "MCP must emit the Display/Serialize spelling, not the Rust variant name"
+            );
+            assert_eq!(
+                serde_json::to_string(&parsed).unwrap(),
+                format!("\"{grade_str}\""),
+                "MCP grade must be byte-identical to what serde writes for the same grade"
+            );
+        }
+        assert!(
+            discriminating > 0,
+            "fixture graded {observed:?} — no +/- grade, so this test could not \
+             tell the two spellings apart"
         );
     }
 

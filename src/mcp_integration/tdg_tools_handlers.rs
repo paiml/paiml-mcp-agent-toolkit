@@ -86,11 +86,17 @@ impl McpTool for AnalyzeTechnicalDebtTool {
                 "path": path_str,
                 "total_files": project_score.total_files,
                 "average_score": project_score.average_score,
-                "average_grade": format!("{:?}", project_score.average_grade),
+                // GH #703: these grades were rendered with `format!("{:?}", ..)`,
+                // i.e. the Rust variant name ("AMinus"), while the same binary
+                // printed "A-" from `pmat tdg --format json`. One spelling on the
+                // wire: `Display`, which `Serialize` now matches byte for byte.
+                // GH #704: null when nothing was analysed.
+                "average_grade": project_score.average_grade.map(|g| g.to_string()),
+                "not_measured": project_score.not_measured,
                 "file_scores": project_score.files.iter().map(|score| json!({
                     "file": score.file_path.as_ref().map(|p: &std::path::PathBuf| p.to_string_lossy().to_string()),
                     "total": score.total,
-                    "grade": format!("{:?}", score.grade),
+                    "grade": score.grade.to_string(),
                 })).collect::<Vec<_>>(),
             }))
         } else {
@@ -110,7 +116,7 @@ impl McpTool for AnalyzeTechnicalDebtTool {
                 "path": path_str,
                 "score": {
                     "total": score.total,
-                    "grade": format!("{:?}", score.grade),
+                    "grade": score.grade.to_string(),
                     "confidence": score.confidence,
                     "language": format!("{:?}", score.language),
                     "structural_complexity": score.structural_complexity,
@@ -264,7 +270,7 @@ impl McpTool for GetQualityRecommendationsTool {
             "path": path_str,
             "score": {
                 "total": score.total,
-                "grade": format!("{:?}", score.grade),
+                "grade": score.grade.to_string(),
             },
             "recommendations": recommendations,
             "total_recommendations": recommendations.len(),

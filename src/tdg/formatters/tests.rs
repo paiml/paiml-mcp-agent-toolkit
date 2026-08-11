@@ -15,6 +15,29 @@ mod tests {
     use std::collections::HashSet;
     use std::path::PathBuf;
 
+    /// GH #704: `analyze tdg` on a directory with nothing to grade printed
+    /// `Average Score: 0.0/100 (F)` right above `Total Files: 0` — the struct
+    /// default rendered as a measurement of a project never measured.
+    #[test]
+    fn empty_project_table_states_no_measurement_instead_of_zero_f() {
+        let project = ProjectScore::aggregate(Vec::new());
+        let rendered = format_project(&project);
+
+        assert!(
+            rendered.contains("not measured"),
+            "the box must say the score was not measured, got:\n{rendered}"
+        );
+        assert!(
+            !rendered.contains("0.0/100"),
+            "the box must not print a 0.0 score for 0 analysed files, got:\n{rendered}"
+        );
+        assert!(
+            !rendered.contains("(F)"),
+            "the box must not grade a project it never measured, got:\n{rendered}"
+        );
+        assert!(rendered.contains("Total Files: 0"), "got:\n{rendered}");
+    }
+
     /// Regression: every framed row must close in the same column.
     /// The renderers used to hand-pad each row with a literal run of spaces, so
     /// `│  Overall Score: 99.5/100 (A+)                  │` and
@@ -60,8 +83,11 @@ mod tests {
 
         for count in [0_usize, 1, 1593] {
             let project = ProjectScore {
-                average_score: if count == 0 { 0.0 } else { 99.5 },
-                average_grade: if count == 0 { Grade::F } else { Grade::APlus },
+                // GH #704: 0 analysed files has no score and no grade at
+                // all — the renderer must stay rectangular for that too.
+                average_score: if count == 0 { None } else { Some(99.5) },
+                average_grade: if count == 0 { None } else { Some(Grade::APlus) },
+                not_measured: Vec::new(),
                 total_files: count,
                 files: Vec::new(),
                 language_distribution: std::collections::BTreeMap::from([(Language::Rust, count)]),
@@ -378,8 +404,9 @@ mod tests {
 
         // 15 files analysed, only the 2 worst listed (--top-files 2).
         let project = ProjectScore {
-            average_score: 85.0,
-            average_grade: Grade::AMinus,
+            average_score: Some(85.0),
+            average_grade: Some(Grade::AMinus),
+            not_measured: Vec::new(),
             total_files: 15,
             files: vec![
                 TdgScore {

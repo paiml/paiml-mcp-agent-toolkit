@@ -62,12 +62,15 @@ impl CommandDispatcher {
                 // `pmat report --output-format markdown` silently produced a
                 // plain-text report — a declared --format that did not do what
                 // it says. Verified: `-f markdown` emitted the Text renderer.
-                handlers::enhanced_reporting_handlers::handle_generate_report(
-                    project_path,
+                //
+                // #706: that fix inlined the 12-argument `handle_generate_report`
+                // call here and in dispatch_ext_scoring.rs, which orphaned
+                // `execute_report_command` — the wrapper #672's format-fidelity
+                // tests exercise. Route through the wrapper so the tested path
+                // is the one production runs.
+                Self::execute_report_command(
+                    Some(project_path),
                     output_format,
-                    text,
-                    markdown,
-                    csv,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,
@@ -75,6 +78,9 @@ impl CommandDispatcher {
                     confidence_threshold,
                     output,
                     perf,
+                    text,
+                    markdown,
+                    csv,
                 )
                 .await
             }

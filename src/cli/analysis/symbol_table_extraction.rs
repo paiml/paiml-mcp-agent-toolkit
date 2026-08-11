@@ -229,21 +229,35 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
 
     let mut symbols = Vec::new();
 
-    // Function patterns for different languages
+    // Function patterns for different languages.
+    //
+    // Issue #693: every pattern used to be anchored at `(?m)^` with no leading
+    // whitespace allowed, and they are applied one line at a time below — so
+    // `^` could only ever match column 0 and *any indented declaration was
+    // invisible by construction*: `impl Widget { pub fn new }`, a trait's own
+    // `fn draw`, anything inside an inline `mod inner { … }`. A 12-declaration
+    // fixture reported 5. Each anchor is now `^\s*`; `detect_visibility` below
+    // takes the text before the name, so a leading indent in that prefix is
+    // harmless. `trait` and `type` had no pattern at all, and the `class`
+    // pattern had no `export` prefix — which is why `class PlainClass` was
+    // found while `export class ExportedClass` right above it was not.
     let patterns = vec![
         // `const fn` is a function declaration, not a constant. Without the
         // optional `const\s+` here, `const fn answer()` matched no function
         // pattern at all and `answer` was missing from the table entirely.
         (
-            Regex::new(r"(?m)^(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)")?,
             SymbolKind::Function,
         ),
-        (Regex::new(r"(?m)^class\s+(\w+)")?, SymbolKind::Class),
         (
-            Regex::new(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:export\s+)?class\s+(\w+)")?,
+            SymbolKind::Class,
+        ),
+        (
+            Regex::new(r"(?m)^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)")?,
             SymbolKind::Function,
         ),
-        (Regex::new(r"(?m)^def\s+(\w+)")?, SymbolKind::Function),
+        (Regex::new(r"(?m)^\s*def\s+(\w+)")?, SymbolKind::Function),
         // `--help` offers `--filter variables` ("Variables and constants") and
         // `--filter modules` ("Modules and namespaces"), but nothing ever
         // produced a `Variable` or a `Module`, so a fixture with `pub const
@@ -260,30 +274,41 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
         // constant named "fn", which then out-ranked every real identifier in
         // `most_referenced` (54 266 "references" on pmat itself).
         (
-            Regex::new(r"(?m)^(?:pub\s+)?const\s+(\w+)\s*[:=]")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?const\s+(\w+)\s*[:=]")?,
             SymbolKind::Constant,
         ),
         // Same keyword-capture trap as `const fn`: `static mut COUNTER` used to
         // yield a symbol literally named "mut".
         (
-            Regex::new(r"(?m)^(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*[:=]")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*[:=]")?,
             SymbolKind::Variable,
         ),
         (
-            Regex::new(r"(?m)^(?:pub\s+)?mod\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?mod\s+(\w+)")?,
             SymbolKind::Module,
         ),
         (
-            Regex::new(r"(?m)^(?:pub\s+)?struct\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?struct\s+(\w+)")?,
             SymbolKind::Type,
         ),
         (
-            Regex::new(r"(?m)^(?:pub\s+)?enum\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:pub\s+)?enum\s+(\w+)")?,
             SymbolKind::Enum,
         ),
         (
-            Regex::new(r"(?m)^interface\s+(\w+)")?,
+            Regex::new(r"(?m)^\s*(?:export\s+)?interface\s+(\w+)")?,
             SymbolKind::Interface,
+        ),
+        // #693: `trait` and `type` had no pattern at all, so `pub trait
+        // Drawable` and `pub type WidgetAlias = Widget;` were absent from the
+        // table entirely — as was every TypeScript `export type`.
+        (
+            Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?trait\s+(\w+)")?,
+            SymbolKind::Interface,
+        ),
+        (
+            Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?type\s+(\w+)")?,
+            SymbolKind::Type,
         ),
     ];
 
@@ -434,5 +459,105 @@ mod keyword_capture_tests {
         assert!(names.contains(&"KONST"), "{names:?}");
         assert!(names.contains(&"STAT"), "{names:?}");
         assert!(names.contains(&"js"), "{names:?}");
+    }
+
+    /// Issue #693: every pattern was `(?m)^`-anchored and applied per line, so
+    /// a declaration that is not at column 0 could never match. This exact
+    /// fixture reported 5 of its declarations; the ones below were all silently
+    /// absent from a table that still printed `total_symbols` as if it were a
+    /// count of what is there.
+    #[test]
+    fn indented_declarations_are_not_invisible() {
+        let content = concat!(
+            "pub struct Widget {\n",
+            "    pub id: u32,\n",
+            "}\n",
+            "\n",
+            "pub trait Drawable {\n",
+            "    fn draw(&self);\n",
+            "}\n",
+            "\n",
+            "impl Widget {\n",
+            "    pub fn new() -> Self { Widget { id: 0 } }\n",
+            "    fn helper(&self) -> u32 { self.id }\n",
+            "}\n",
+            "\n",
+            "pub type WidgetAlias = Widget;\n",
+            "\n",
+            "mod inner {\n",
+            "    pub fn nested_fn() {}\n",
+            "}\n",
+            "\n",
+            "pub fn top_level() {}\n",
+        );
+        let symbols = extract_symbols_simple(content, "a.rs").expect("extract");
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        for expected in [
+            "Widget",
+            "Drawable",
+            "draw",
+            "new",
+            "helper",
+            "WidgetAlias",
+            "inner",
+            "nested_fn",
+            "top_level",
+        ] {
+            assert!(
+                names.contains(&expected),
+                "`{expected}` is declared in the fixture but missing from the table: {names:?}"
+            );
+        }
+
+        // An indented `pub fn` is public; the indent must not be mistaken for a
+        // missing `pub` (or vice versa).
+        let new_fn = symbols
+            .iter()
+            .find(|s| s.name == "new")
+            .expect("`new` must be extracted");
+        assert!(
+            matches!(new_fn.visibility, Visibility::Public),
+            "indented `pub fn new` reported as {:?}",
+            new_fn.visibility
+        );
+        let helper = symbols
+            .iter()
+            .find(|s| s.name == "helper")
+            .expect("`helper` must be extracted");
+        assert!(
+            matches!(helper.visibility, Visibility::Internal),
+            "indented private `fn helper` reported as {:?}",
+            helper.visibility
+        );
+    }
+
+    /// Issue #693's tell: `class PlainClass` was found while
+    /// `export class ExportedClass` on the line above it was not, because the
+    /// class pattern had no `(?:export\s+)?` prefix — so a TypeScript file's
+    /// *exported* types were exactly the ones missing.
+    #[test]
+    fn exported_typescript_declarations_are_extracted() {
+        let content = concat!(
+            "export class ExportedClass {\n",
+            "    method() { return 1; }\n",
+            "}\n",
+            "class PlainClass {}\n",
+            "export function exportedFn() {}\n",
+            "export interface Shape {}\n",
+            "export type Alias = Shape;\n",
+        );
+        let symbols = extract_symbols_simple(content, "b.ts").expect("extract");
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+
+        for expected in [
+            "ExportedClass",
+            "PlainClass",
+            "exportedFn",
+            "Shape",
+            "Alias",
+        ] {
+            assert!(names.contains(&expected), "missing `{expected}`: {names:?}");
+        }
     }
 }

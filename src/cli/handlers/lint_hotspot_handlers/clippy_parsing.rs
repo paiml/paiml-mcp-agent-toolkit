@@ -132,7 +132,7 @@ fn resolve_diagnostic_path(diagnostic_file: &str, base_dir: &Path) -> String {
         .into_owned()
 }
 
-fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> {
+pub(super) fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> {
     diagnostic
         .spans
         .iter()
@@ -158,7 +158,7 @@ fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> 
 /// the file exists) path by `resolve_diagnostic_path`, so file identity is the
 /// only correct test. The `file_path` arm keeps the caller-supplied spelling
 /// working when the span is already exactly that string.
-fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
+pub(super) fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
     let diagnostic_path = PathBuf::from(diagnostic_file);
     diagnostic_path == *abs_file_path || diagnostic_path == *file_path
 }
@@ -182,7 +182,7 @@ fn create_violation_detail(
     }
 }
 
-fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
+pub(super) fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
     diagnostic
         .code
         .as_ref()
@@ -190,13 +190,13 @@ fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
         .unwrap_or_default()
 }
 
-fn is_machine_applicable(span: &DiagnosticSpan) -> bool {
+pub(super) fn is_machine_applicable(span: &DiagnosticSpan) -> bool {
     span.suggestion_applicability
         .as_ref()
         .is_some_and(|a| a == "machine-applicable" || a == "maybe-incorrect")
 }
 
-fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level: &str) {
+pub(super) fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level: &str) {
     match level {
         "error" => severity_dist.error += 1,
         "warning" => severity_dist.warning += 1,

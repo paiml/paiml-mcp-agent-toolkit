@@ -42,15 +42,14 @@ fn build_score_document(
     // `87.22669` shown next to it (the mean of the 11 category percentages,
     // 959.49359/11). Every category was `applicable: true`, so the documented
     // "excludes categories that do not apply" caveat did not explain the gap
-    // either. Both figures are now emitted and both are named; `percentage`
-    // keeps its meaning (the grade is derived from it) rather than being
-    // silently redefined.
-    #[allow(clippy::cast_precision_loss)]
-    let points_percentage = if applicable_possible > 0.0 {
-        aggregation::round_score((applicable_earned / applicable_possible) * 100.0)
-    } else {
-        0.0
-    };
+    // either. Both figures are now emitted and both are named.
+    //
+    // #717: and the grade is no longer taken from `percentage` — it is derived
+    // from `points_percentage`, the ratio that actually follows from
+    // `total_earned / total_possible` printed beside it. `grade_basis` names it
+    // so a consumer never has to guess which of the two was graded.
+    let points_percentage =
+        crate::services::rust_project_score::orchestrator::points_percentage(&score.categories);
 
     serde_json::json!({
         "version": "1.2",
@@ -59,7 +58,9 @@ fn build_score_document(
         "percentage": aggregation::round_score(score.percentage),
         "percentage_basis": "mean of applicable category percentages",
         "points_percentage": points_percentage,
+        "points_percentage_basis": "applicable points earned / applicable points possible",
         "grade": score.grade.to_string(),
+        "grade_basis": "points_percentage",
         "categories": categories,
         "recommendations": recommendations,
     })

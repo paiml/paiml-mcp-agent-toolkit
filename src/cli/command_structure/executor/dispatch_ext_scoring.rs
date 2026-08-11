@@ -95,12 +95,14 @@ impl CommandExecutor {
                 output,
                 perf,
             } => {
-                crate::cli::handlers::enhanced_reporting_handlers::handle_generate_report(
-                    project_path,
+                // #706: this arm and CommandDispatcher::route_scoring_command
+                // each held their own copy of the 12-argument report call, so
+                // `execute_report_command` — the wrapper that #672's
+                // format-fidelity tests exercise — had no production caller at
+                // all. One route, one tested entry point.
+                crate::cli::command_dispatcher::CommandDispatcher::execute_report_command(
+                    Some(project_path),
                     output_format,
-                    text,
-                    markdown,
-                    csv,
                     include_visualizations,
                     include_executive_summary,
                     include_recommendations,
@@ -108,6 +110,9 @@ impl CommandExecutor {
                     confidence_threshold,
                     output,
                     perf,
+                    text,
+                    markdown,
+                    csv,
                 )
                 .await
             }

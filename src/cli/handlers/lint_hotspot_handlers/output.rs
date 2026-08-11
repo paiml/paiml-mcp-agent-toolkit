@@ -81,7 +81,10 @@ pub(crate) fn format_output(
 /// let output = pmat::cli::handlers::lint_hotspot_handlers::format_summary(&result, false, Duration::from_secs(1), 10).unwrap();
 ///
 /// assert!(output.contains("# Lint Hotspot Analysis"));
-/// assert!(output.contains("**Total Project Violations**: 5"));
+/// // #700: this result covers exactly one file, so the total is that file's
+/// // total and is labelled as such — never as the project's.
+/// assert!(output.contains("**Total Violations in `src/main.rs`**: 5"));
+/// assert!(!output.contains("**Total Project Violations**"));
 /// assert!(output.contains("## Top Files with Lint Issues"));
 /// assert!(output.contains("1. `main.rs` - 0.05 violations/SLOC"));
 /// assert!(output.contains("## Hottest File Details"));
@@ -97,14 +100,7 @@ pub fn format_summary(
     let mut output = String::new();
 
     output.push_str("# Lint Hotspot Analysis (EXTREME Quality Mode)\n\n");
-    output.push_str(&format!(
-        "**Total Project Violations**: {}\n",
-        result.total_project_violations
-    ));
-    output.push_str(&format!(
-        "**Files with Issues**: {}\n\n",
-        result.summary_by_file.len()
-    ));
+    push_totals_header(&mut output, result);
 
     // Show top files with lint issues (consistent with other analyze commands)
     output.push_str("## Top Files with Lint Issues\n\n");
@@ -310,6 +306,58 @@ pub(crate) fn format_detailed(
     Ok(output)
 }
 
+/// Write the two count lines that head every summary.
+///
+/// #700: the first line said "**Total Project Violations**" unconditionally, but
+/// `total_project_violations` is — in BOTH modes — the sum over the files in
+/// `summary_by_file`, and `--file` mode puts exactly the target file there.
+/// Observed on a two-binary fixture with 20 project-wide findings:
+/// `--file src/main.rs --format summary` printed
+/// "**Total Project Violations**: 14" — 14 is that one file's count, not the
+/// project's. Widening the number is not an option (`--file` deliberately
+/// measures one file, and the quality gate keys off its density), so the report
+/// now names the scope the number actually covers.
+fn push_totals_header(output: &mut String, result: &LintHotspotResult) {
+    if let Some(only_file) = single_file_scope(result) {
+        output.push_str(&format!(
+            "**Total Violations in `{}`**: {}\n",
+            only_file.display(),
+            result.total_project_violations
+        ));
+        output.push_str(
+            "**Files with Issues**: 1 (only this file is included in the total above)\n\n",
+        );
+    } else {
+        output.push_str(&format!(
+            "**Total Project Violations**: {}\n",
+            result.total_project_violations
+        ));
+        output.push_str(&format!(
+            "**Files with Issues**: {}\n\n",
+            result.summary_by_file.len()
+        ));
+    }
+}
+
+/// The single file every reported violation belongs to, when the result covers
+/// exactly one file — which is what `--file` mode always produces.
+///
+/// #700: `LintHotspotResult` carries no scope marker (adding one would touch
+/// every constructor), but the totals are derivable: `total_project_violations`
+/// is the sum over `summary_by_file`, so when that map holds only the hotspot
+/// itself the "total" is that one file's total and must not be announced as the
+/// project's. A project scan whose only dirty file is the hotspot lands here
+/// too, and the sentence is equally true of it.
+fn single_file_scope(result: &LintHotspotResult) -> Option<&std::path::PathBuf> {
+    if result.summary_by_file.len() == 1
+        && result.summary_by_file.contains_key(&result.hotspot.file)
+    {
+        Some(&result.hotspot.file)
+    } else {
+        None
+    }
+}
+
 /// Order `summary_by_file` deterministically: density descending, path ascending.
 ///
 /// DETERMINISM: the previous comparator looked only at `defect_density`, so
@@ -382,7 +430,7 @@ pub(crate) fn format_clean_result(format: &LintHotspotOutputFormat) -> Result<St
 /// # Errors
 ///
 /// Returns an error if the operation fails
-fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> {
+pub(super) fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> {
     if enforcement {
         // Full enforcement-ready JSON
         serde_json::to_string_pretty(result).context("Failed to serialize to JSON")
@@ -408,7 +456,7 @@ fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> 
 /// # Errors
 ///
 /// Returns an error if the operation fails
-fn format_sarif(result: &LintHotspotResult) -> Result<String> {
+pub(super) fn format_sarif(result: &LintHotspotResult) -> Result<String> {
     // SARIF used to be built from `quality_gate.violations` — the handful of
     // threshold breaches — so whenever the gate passed the document was
     // `"results": []` even though `-f detailed` listed 13 located clippy findings
@@ -996,6 +1044,55 @@ mod lint_hotspot_output_tests {
             !out.contains("`ghost.rs` - 0.00 violations/SLOC"),
             "an unmeasurable density was rendered as 0.00:\n{out}"
         );
+    }
+
+    /// #700: `--file` mode's total is the target file's total, and the header
+    /// announced it as the PROJECT's. Measured on a two-binary fixture whose
+    /// project total is 20: `--file src/main.rs --format summary` printed
+    /// "**Total Project Violations**: 14".
+    #[test]
+    fn test_single_file_scope_total_is_not_called_a_project_total() {
+        let mut result = empty_result();
+        // Exactly what `create_single_file_result` builds: one entry, keyed by
+        // the target file, and a "total" that is only that file's.
+        result.hotspot.file = std::path::PathBuf::from("src/main.rs");
+        result.hotspot.total_violations = 14;
+        result.hotspot.sloc = 11;
+        result.hotspot.defect_density = 14.0 / 11.0;
+        result.summary_by_file.insert(
+            std::path::PathBuf::from("src/main.rs"),
+            FileSummary {
+                total_violations: 14,
+                errors: 0,
+                warnings: 14,
+                sloc: 11,
+                defect_density: 14.0 / 11.0,
+            },
+        );
+        result.total_project_violations = 14;
+
+        let out = format_summary(&result, false, std::time::Duration::from_secs(0), 10).unwrap();
+        assert!(
+            !out.contains("**Total Project Violations**"),
+            "14 is one file's count; calling it the project total is the #700 defect:\n{out}"
+        );
+        assert!(
+            out.contains("**Total Violations in `src/main.rs`**: 14"),
+            "the total must name the scope it covers:\n{out}"
+        );
+    }
+
+    /// The relabelling must not leak into a genuine project scan.
+    #[test]
+    fn test_project_scope_total_is_still_called_a_project_total() {
+        let out = format_summary(
+            &multi_file_result(),
+            false,
+            std::time::Duration::from_secs(0),
+            10,
+        )
+        .unwrap();
+        assert!(out.contains("**Total Project Violations**"), "{out}");
     }
 
     #[test]

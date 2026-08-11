@@ -14,7 +14,7 @@ async fn run_clippy_command(
     execute_clippy_command(project_path, &flags).await
 }
 
-fn resolve_absolute_path(project_path: &Path, file_path: &Path) -> PathBuf {
+pub(super) fn resolve_absolute_path(project_path: &Path, file_path: &Path) -> PathBuf {
     if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
@@ -299,7 +299,7 @@ fn resolve_file_path(
 }
 
 /// Count source lines of code (non-empty, non-comment lines)
-fn count_sloc(content: &str) -> usize {
+pub(super) fn count_sloc(content: &str) -> usize {
     content
         .lines()
         .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))

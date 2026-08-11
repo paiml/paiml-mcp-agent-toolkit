@@ -33,10 +33,15 @@ pub fn format_project(project: &ProjectScore) -> String {
     line(box_top());
     line(box_row("Project TDG Score Report"));
     line(box_separator());
-    line(box_row(&format!(
-        "Average Score: {:.1}/100 ({})",
-        project.average_score, project.average_grade
-    )));
+    // GH #704: 0 analysed files used to print "Average Score: 0.0/100 (F)"
+    // right above "Total Files: 0" — a struct default rendered as a
+    // measurement. Nothing analysed, nothing claimed.
+    line(box_row(
+        &match (project.average_score, project.average_grade) {
+            (Some(score), Some(grade)) => format!("Average Score: {score:.1}/100 ({grade})"),
+            _ => "Average Score: not measured (no files analysed)".to_string(),
+        },
+    ));
     line(box_row(&format!("Total Files: {}", project.total_files)));
     // A truncated list must say so next to the total it sits under, so the
     // header count and the list below it can never contradict each other.

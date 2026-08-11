@@ -86,7 +86,6 @@
             column_start: 1,
             column_end: 10,
             is_primary: true,
-            _text: vec![],
             suggested_replacement: Some("fix".to_string()),
             suggestion_applicability: Some("machine-applicable".to_string()),
         };
@@ -103,7 +102,6 @@
             column_start: 1,
             column_end: 10,
             is_primary: true,
-            _text: vec![],
             suggested_replacement: Some("fix".to_string()),
             suggestion_applicability: Some("maybe-incorrect".to_string()),
         };
@@ -120,7 +118,6 @@
             column_start: 1,
             column_end: 10,
             is_primary: true,
-            _text: vec![],
             suggested_replacement: None,
             suggestion_applicability: None,
         };
@@ -137,7 +134,6 @@
             column_start: 1,
             column_end: 10,
             is_primary: true,
-            _text: vec![],
             suggested_replacement: Some("fix".to_string()),
             suggestion_applicability: Some("unspecified".to_string()),
         };
@@ -191,7 +187,6 @@
                     column_start: 1,
                     column_end: 10,
                     is_primary: false,
-                    _text: vec![],
                     suggested_replacement: None,
                     suggestion_applicability: None,
                 },
@@ -202,7 +197,6 @@
                     column_start: 1,
                     column_end: 10,
                     is_primary: true,
-                    _text: vec![],
                     suggested_replacement: None,
                     suggestion_applicability: None,
                 },
@@ -227,7 +221,6 @@
                 column_start: 1,
                 column_end: 10,
                 is_primary: false, // Even if not primary, it's returned as the only span
-                _text: vec![],
                 suggested_replacement: None,
                 suggestion_applicability: None,
             }],
@@ -512,4 +505,6 @@
 
         let runs = parsed["runs"].as_array().unwrap();
         assert_eq!(runs.len(), 1);
+        let tool = &runs[0]["tool"]["driver"];
+        assert_eq!(tool["name"], "pmat-lint-hotspot");
     }

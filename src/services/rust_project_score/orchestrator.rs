@@ -58,6 +58,40 @@ fn recommendations_for(
     }
 }
 
+/// The 0-100 points ratio a project's grade is derived from.
+///
+/// `earned / possible` over the APPLICABLE categories only (#237), rounded the
+/// same way [`super::aggregation`] rounds everything else so the figure the
+/// grade comes from is bit-identical to the `points_percentage` every renderer
+/// prints.
+#[must_use]
+pub fn points_percentage(categories: &HashMap<String, CategoryScore>) -> f64 {
+    let possible = super::aggregation::applicable_possible(categories);
+    if possible <= 0.0 {
+        return 0.0;
+    }
+    let earned = super::aggregation::applicable_earned(categories);
+    super::aggregation::round_score((earned / possible) * 100.0)
+}
+
+/// The letter grade a set of category scores earns.
+///
+/// #717: the grade used to be `Grade::from_normalized(normalized_percentage())`,
+/// i.e. derived from the *unweighted mean of the per-category percentages*. That
+/// silently reweights the rubric — a 10-point category counted as much as the
+/// 130-point one — so the grade was not the grade of the score printed beside
+/// it: `Score: 62.6/267.0` (23.5% of the points) was graded off 33.0%, a 9.5
+/// point gap, easily enough to cross a boundary. The grade now follows the
+/// points actually earned; `percentage` is still reported, as a diagnostic.
+fn grade_for(categories: &HashMap<String, CategoryScore>, gateway_failed: bool) -> Grade {
+    if gateway_failed {
+        // v3.0 falsifiability gateway (Jidoka): Cat A < 60% caps at F.
+        Grade::F
+    } else {
+        Grade::from_normalized(points_percentage(categories))
+    }
+}
+
 /// Orchestrates all 11 category scorers to produce unified project score
 ///
 /// v3.0: Added Reproducibility scorer (Popper B-F absorption) + falsifiability gateway
@@ -261,11 +295,7 @@ impl RustProjectScoreOrchestrator {
         let gateway_failed =
             super::reproducibility_scorer::check_falsifiability_gateway(project_path).is_none();
 
-        let grade = if gateway_failed {
-            Grade::F
-        } else {
-            Grade::from_normalized(percentage)
-        };
+        let grade = grade_for(&category_map, gateway_failed);
 
         if gateway_failed {
             all_recommendations.insert(
@@ -441,7 +471,10 @@ impl RustProjectScoreOrchestrator {
             }
             match self.score_with_mode(member_path, mode) {
                 Ok(score) => {
-                    valid_percentages.push(score.percentage);
+                    // #717: aggregate the same quantity the member grades are
+                    // derived from, or `aggregate_grade` would be graded on a
+                    // different scale than every `score.grade` it summarises.
+                    valid_percentages.push(points_percentage(&score.categories));
                     members.push(WorkspaceMemberScore {
                         name: name.clone(),
                         path: member_path
@@ -467,7 +500,7 @@ impl RustProjectScoreOrchestrator {
         }
 
         // Aggregate: geometric mean of all valid scores (including root)
-        valid_percentages.push(root.percentage);
+        valid_percentages.push(points_percentage(&root.categories));
         let aggregate_percentage = if valid_percentages.is_empty() {
             0.0
         } else {
@@ -580,6 +613,72 @@ mod tests {
             recommendations_for(&imperfect, Path::new("."), &score).len(),
             1
         );
+    }
+
+    // ── #717: the grade grades the score that is printed next to it ─────────
+
+    /// Two categories whose points ratio and whose mean-of-percentages land in
+    /// different grade bands: 65/130 (50%) plus 10/10 (100%) is 75/140 = 53.6%
+    /// of the points, but a mean of (50 + 100)/2 = 75%.
+    fn lopsided_categories() -> HashMap<String, CategoryScore> {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "Rust Tooling & CI/CD".to_string(),
+            CategoryScore::new(65.0, 130.0),
+        );
+        cats.insert(
+            "GPU/SIMD Quality".to_string(),
+            CategoryScore::new(10.0, 10.0),
+        );
+        cats
+    }
+
+    #[test]
+    fn the_grade_follows_the_points_earned_not_the_mean_of_category_percentages() {
+        use crate::services::rust_project_score::aggregation;
+        let cats = lopsided_categories();
+
+        let points = points_percentage(&cats);
+        let mean = aggregation::normalized_percentage(&cats);
+        assert!(
+            (points - 53.571_429).abs() < 1e-5,
+            "75 of 140 points is 53.6%, got {points}"
+        );
+        assert!((mean - 75.0).abs() < 1e-9, "mean of category %, got {mean}");
+
+        // The defect: this project was graded B (off the 75% mean) while its own
+        // "Score: 75.0/140.0" line reports 53.6% of the points.
+        assert_eq!(
+            grade_for(&cats, false),
+            Grade::D,
+            "the grade must grade the points ratio ({points}%), not the mean ({mean}%)"
+        );
+        assert_eq!(Grade::from_normalized(mean), Grade::B, "the old basis");
+    }
+
+    #[test]
+    fn non_applicable_categories_do_not_dilute_the_points_ratio() {
+        // #237 still holds: a category that does not apply cannot cost points.
+        let mut cats = lopsided_categories();
+        cats.insert(
+            "Formal Verification".to_string(),
+            CategoryScore::not_applicable(16.0),
+        );
+        assert!((points_percentage(&cats) - 53.571_429).abs() < 1e-5);
+    }
+
+    #[test]
+    fn the_falsifiability_gateway_still_caps_at_f() {
+        let mut cats = HashMap::new();
+        cats.insert("Everything".to_string(), CategoryScore::new(100.0, 100.0));
+        assert_eq!(grade_for(&cats, false), Grade::APlus);
+        assert_eq!(grade_for(&cats, true), Grade::F);
+    }
+
+    #[test]
+    fn points_percentage_of_nothing_measurable_is_zero_not_nan() {
+        let cats: HashMap<String, CategoryScore> = HashMap::new();
+        assert_eq!(points_percentage(&cats), 0.0);
     }
 
     #[test]

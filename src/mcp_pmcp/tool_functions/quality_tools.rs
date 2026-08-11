@@ -31,8 +31,14 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
 
     // Grade's derived Ord is inverted (better grades compare as smaller),
     // so use the semantic helper instead of a raw `>=` comparison.
-    let tdg_passed = project_score.average_score >= threshold_score
-        && project_score.average_grade.meets_threshold(threshold_grade);
+    // GH #704: both are `Option` — nothing analysed means nothing measured, and
+    // a gate that could not measure must not report a pass.
+    let tdg_passed = project_score
+        .average_score
+        .is_some_and(|score| score >= threshold_score)
+        && project_score
+            .average_grade
+            .is_some_and(|grade| grade.meets_threshold(threshold_grade));
 
     // Collect violations (files below threshold)
     let mut violations: Vec<Value> = project_score
@@ -44,7 +50,7 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
                 "check_type": "tdg",
                 "file": score.file_path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "unknown".to_string()),
                 "score": score.total,
-                "grade": format!("{:?}", score.grade),
+                "grade": score.grade.to_string(),
                 "issues": score.penalties_applied.iter().map(|p| p.issue.clone()).collect::<Vec<_>>()
             })
         })
@@ -97,7 +103,10 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     let (score, grade, not_measured) = if graded {
         (
             json!(project_score.average_score),
-            json!(format!("{:?}", project_score.average_grade)),
+            // GH #703: this was `format!("{:?}", ..)`, so MCP answered "AMinus"
+            // where `pmat tdg --format json` answered "A-" for the same score.
+            // One spelling on the wire: `Display`, which `Serialize` now matches.
+            json!(project_score.average_grade.map(|g| g.to_string())),
             json!([]),
         )
     } else {
@@ -213,7 +222,7 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         "file": file_path.display().to_string(),
         "passed": passed,
         "score": file_score.total,
-        "grade": format!("{:?}", file_score.grade),
+        "grade": file_score.grade.to_string(),
         "threshold": threshold_score,
         "violations": violations,
         "tdg_penalties": tdg_penalties,
@@ -267,7 +276,7 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
     let mut grade_distribution = std::collections::HashMap::new();
     for score in &project_score.files {
         *grade_distribution
-            .entry(format!("{:?}", score.grade))
+            .entry(score.grade.to_string())
             .or_insert(0) += 1;
     }
 
@@ -278,8 +287,11 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
             "total_files": project_score.total_files,
             "passed_files": passed_files,
             "failed_files": failed_files,
+            // GH #704: an unmeasured aggregate is null + `not_measured`,
+            // the same convention `quality_gate` above already uses.
             "average_score": project_score.average_score,
-            "average_grade": format!("{:?}", project_score.average_grade),
+            "average_grade": project_score.average_grade.map(|g| g.to_string()),
+            "not_measured": project_score.not_measured,
             "threshold_score": threshold_score,
             "grade_distribution": grade_distribution,
             "language_distribution": project_score.language_distribution.iter()
@@ -389,7 +401,7 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
                 "total_files": baseline.summary.total_files,
                 "avg_score": baseline.summary.avg_score,
                 "grade_distribution": baseline.summary.grade_distribution.iter()
-                    .map(|(grade, count)| (format!("{:?}", grade), count))
+                    .map(|(grade, count)| (grade.to_string(), count))
                     .collect::<HashMap<_, _>>(),
                 "languages": baseline.summary.languages.clone(),
             },

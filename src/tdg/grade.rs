@@ -6,17 +6,20 @@ use std::collections::HashSet;
 /// Grade.
 ///
 /// One serialization, everywhere: the symbolic form (`"A+"`, `"B-"`), which is
-/// what `Display`, SARIF and `pmat tdg --format json` already emitted. The
-/// derived Rust variant names used to leak through serde, so the SAME binary
+/// what `Display`, SARIF, `pmat tdg --format json` and the `--min-grade`
+/// argument parser already used. `Serialize` was left DERIVED, so the Rust
+/// variant names leaked onto every serde-rendered surface and the SAME binary
 /// reported the SAME score as `"grade": "A+"` from `pmat tdg --format json`
-/// and `"grade": "APlus"` from `pmat analyze tdg --format json`, and no machine
-/// consumer could match on one string. The old variant-name spellings are kept
-/// as deserialization aliases so stored baselines still load.
-// `Deserialize` is implemented by hand below (it accepts both the wire
-// spelling and the historical variant names), so it must NOT also be derived --
-// two fix agents each solved this and the merge kept both, which is a
-// conflicting-impl compile error.
-#[derive(Debug, Clone, Copy, Default, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// and `"grade": "APlus"` from `pmat analyze tdg --format json` and from the
+/// MCP `quality_gate` tool — no machine consumer could match on one string
+/// (GH #703, #669). `Serialize` is therefore written by hand below and emits
+/// exactly what `Display` does. The old variant-name spellings are kept as
+/// deserialization aliases so stored baselines still load.
+// `Serialize`/`Deserialize` are both implemented by hand below (deserialization
+// accepts the wire spelling AND the historical variant names), so neither may
+// also be derived -- two fix agents each solved this and the merge kept both,
+// which is a conflicting-impl compile error.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Grade {
     APlus,
     A,
@@ -32,10 +35,20 @@ pub enum Grade {
     F,
 }
 
-/// Variant names as `Serialize` emits them, for error messages.
-const GRADE_VARIANTS: &[&str] = &[
-    "APlus", "A", "AMinus", "BPlus", "B", "BMinus", "CPlus", "C", "CMinus", "D", "F",
-];
+/// Grade spellings as `Serialize` emits them, for error messages.
+const GRADE_VARIANTS: &[&str] = &["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
+
+impl Serialize for Grade {
+    /// Emits the symbolic form -- byte-identical to `Display`. See the note on
+    /// `Grade`: a derived `Serialize` here is what made one binary print two
+    /// spellings of one grade.
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
 
 impl<'de> Deserialize<'de> for Grade {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -255,33 +268,33 @@ mod tests {
         assert!(Grade::F.meets_threshold(Grade::F));
     }
 
-    /// Regression: ONE serialization for one grade. `pmat tdg --format json`
-    /// and `pmat analyze tdg --format json` used to disagree ("A+" vs "APlus")
-    /// on the identical score, so no machine consumer could match on a string.
+    /// Regression (GH #703, #669): ONE serialization for one grade.
+    /// `pmat tdg --format json` and `pmat analyze tdg --format json` disagreed
+    /// ("A+" vs "APlus") on the identical score, so no machine consumer could
+    /// match on a string.
     ///
-    /// Two round-3 fixes each solved this and picked OPPOSITE wire formats.
-    /// Settled on the variant name, because that is what every baseline already
-    /// on disk contains, so no stored file changes meaning. `Display` keeps the
-    /// symbolic form for humans, and `Deserialize` accepts both -- including
-    /// output written while the two fixes disagreed.
+    /// The wire form is the SYMBOLIC one -- what `Display`, SARIF,
+    /// `pmat tdg --format json` and `--min-grade` all already used. Only the
+    /// derived `Serialize` spoke variant names. `Deserialize` still accepts
+    /// both, so every baseline already on disk keeps its meaning.
     #[test]
     fn test_grade_has_exactly_one_json_form_and_accepts_both() {
         for grade in BEST_TO_WORST {
             let json = serde_json::to_string(&grade).expect("serialize");
             assert_eq!(
                 json,
-                format!("\"{grade:?}\""),
-                "JSON form is the variant name"
+                format!("\"{grade}\""),
+                "JSON form must be the symbolic form Display prints"
             );
 
             let back: Grade = serde_json::from_str(&json).expect("round trip");
             assert_eq!(back, grade);
 
-            // The symbolic form a human sees must still parse.
-            let symbolic = format!("\"{grade}\"");
-            let from_symbolic: Grade =
-                serde_json::from_str(&symbolic).expect("displayed form must load");
-            assert_eq!(from_symbolic, grade);
+            // The historical variant-name form must still parse.
+            let variant = format!("\"{grade:?}\"");
+            let from_variant: Grade =
+                serde_json::from_str(&variant).expect("variant-name form must load");
+            assert_eq!(from_variant, grade);
         }
     }
 
@@ -383,11 +396,11 @@ mod tests {
     }
 
     /// GH #680 (second round): the enum was misspelled `APlus`. What pmat
-    /// emits from now on is `APlus`; what it accepts still includes the old
-    /// spelling, so baselines written by <= v3.29.0 keep loading.
+    /// emits from now on is `"A+"`; what it accepts still includes the variant
+    /// names, so baselines written by <= v3.29.0 keep loading.
     #[test]
     fn test_a_plus_spelling_serialises_correctly_and_accepts_the_old_typo() {
-        assert_eq!(serde_json::to_string(&Grade::APlus).unwrap(), "\"APlus\"");
+        assert_eq!(serde_json::to_string(&Grade::APlus).unwrap(), "\"A+\"");
         assert_eq!(format!("{:?}", Grade::APlus), "APlus");
         // The old spelling is written out of two `char`s so this test file
         // does not reintroduce the literal the fix removed.

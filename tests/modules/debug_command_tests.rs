@@ -19,6 +19,17 @@ fn create_test_evidence(source: EvidenceSource, value: serde_json::Value) -> Evi
     )
 }
 
+/// True when at least one "why" carried evidence that pinned the issue to a
+/// place in the source. `extract_root_cause` withholds the root cause unless
+/// this holds, so it is the precondition every reported root cause must meet.
+fn issue_was_located(analysis: &DebugAnalysis) -> bool {
+    analysis.whys.iter().any(|why| {
+        why.evidence
+            .iter()
+            .any(|e| e.source == EvidenceSource::IssueLocation)
+    })
+}
+
 // ============================================================================
 // SECTION 1: Basic Five Whys Execution
 // ============================================================================
@@ -191,12 +202,26 @@ async fn test_12_confidence_bounded() {
 // ============================================================================
 
 /// TEST 13-17: Root cause and recommendations (simplified)
+///
+/// #709 / #637: this used to assert `result.root_cause.is_some()` flat out,
+/// which pinned the behaviour five-whys was fixed away from — every run, on
+/// any input, got *a* root cause, and for an issue the analyzer could not
+/// locate anywhere in the tree that "root cause" was a repo-wide signal
+/// ("Frequent changes indicate unstable or poorly understood code") dressed up
+/// as a finding about the reported defect. The analyzer now withholds instead.
+/// The assertion below is the anti-fabrication contract itself: a root cause
+/// may be reported only when some "why" actually located the issue in the
+/// source, and never for an issue nothing in the tree matched.
 #[tokio::test]
 async fn test_13_17_root_cause_and_recommendations() {
     let analyzer = FiveWhysAnalyzer::new();
     let result = analyzer.analyze("Issue", Path::new("."), 5).await.unwrap();
 
-    assert!(result.root_cause.is_some());
+    assert!(
+        result.root_cause.is_none() || issue_was_located(&result),
+        "root cause reported without locating the issue: {:?}",
+        result.root_cause
+    );
     assert!(!result.recommendations.is_empty());
 
     // Check recommendations have required fields
@@ -280,9 +305,16 @@ async fn test_23_26_integration() {
         .await
         .unwrap();
 
-    // Verify complete analysis structure
+    // Verify complete analysis structure. #709 / #637: `root_cause.is_some()`
+    // used to be asserted here too; withholding the root cause must not cost
+    // the rest of the analysis, and a reported root cause must be earned by
+    // an actual location in the source — see test_13_17 above.
     assert!(!result.issue.is_empty());
     assert!(!result.whys.is_empty());
-    assert!(result.root_cause.is_some());
+    assert!(
+        result.root_cause.is_none() || issue_was_located(&result),
+        "root cause reported without locating the issue: {:?}",
+        result.root_cause
+    );
     assert!(!result.recommendations.is_empty());
 }

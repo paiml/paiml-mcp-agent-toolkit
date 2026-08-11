@@ -68,9 +68,16 @@ fn test_perfect_score_all_checks_pass() {
     let result = scorer.score(temp.path());
     assert!(result.is_ok());
 
+    // `score()` runs Fast mode, which executes complexity(3) + unsafe(9) +
+    // dead_code(2) = 14 points and SKIPS mutation(4) and build-time(2).
+    // This asserted `max == 26.0` — the full-mode denominator — while only
+    // 14 points could be earned, so a fast-mode run was rated against 12
+    // points it never had the chance to score (#717). A check that did not
+    // run belongs to neither side of the ratio; `max_points()` is still the
+    // category's full 26.
     let score = result.unwrap();
-    assert_eq!(score.max, 26.0);
-    assert!(score.earned >= 0.0 && score.earned <= 26.0);
+    assert_eq!(score.max, 14.0, "fast mode must not count skipped checks");
+    assert!(score.earned >= 0.0 && score.earned <= score.max);
 }
 
 // ============================================================================
@@ -598,7 +605,14 @@ fn test_category_score_structure() {
     let result = scorer.score(temp.path()).unwrap();
 
     // Verify CategoryScore has correct structure
-    assert_eq!(result.max, 26.0);
+    // `score()` runs Fast mode, which executes complexity(3) + unsafe(9) +
+    // dead_code(2) = 14 points and SKIPS mutation(4) and build-time(2).
+    // This asserted `max == 26.0` — the full-mode denominator — while only
+    // 14 points could be earned, so a fast-mode run was rated against 12
+    // points it never had the chance to score (#717). A check that did not
+    // run belongs to neither side of the ratio; `max_points()` is still the
+    // category's full 26.
+    assert_eq!(result.max, 14.0, "fast mode must not count skipped checks");
     assert!(result.earned >= 0.0);
     assert!(result.earned <= result.max);
 
@@ -621,7 +635,19 @@ fn test_score_bounds_property() {
     // Property: Score must be in [0, max]
     assert!(result.earned >= 0.0);
     assert!(result.earned <= result.max);
-    assert_eq!(result.max, 26.0);
+    // `score()` runs Fast mode, which executes complexity(3) + unsafe(9) +
+    // dead_code(2) = 14 points and SKIPS mutation(4) and build-time(2).
+    // This asserted `max == 26.0` — the full-mode denominator — while only
+    // 14 points could be earned, so a fast-mode run was rated against 12
+    // points it never had the chance to score (#717). A check that did not
+    // run belongs to neither side of the ratio; `max_points()` is still the
+    // category's full 26.
+    assert_eq!(result.max, 14.0, "fast mode must not count skipped checks");
+    assert_eq!(
+        scorer.max_points(),
+        26.0,
+        "the category's full denominator is unchanged"
+    );
 }
 
 // ============================================================================

@@ -44,7 +44,211 @@ pub(crate) async fn analyze_single_file(
             full_path.display()
         ))?;
 
-    Ok(vec![metrics])
+    // #702: a Rust file that `include!`s fragments has most of its code in
+    // OTHER files, and the parser only ever sees the includer's own body.
+    // `--file src/cli/handlers/lint_hotspot_handlers/clippy.rs` reported
+    // "total_functions": 4 and listed only the 4 functions written in clippy.rs,
+    // silently omitting the 15 in clippy_parsing.rs and the 16 in
+    // clippy_file_analysis.rs that its two `include!` lines pull in — a partial
+    // count that reads exactly like a complete one. The fragments are analysed
+    // and reported as their OWN entries rather than folded into the includer,
+    // so every function keeps the file and line it actually lives at.
+    let mut analyzed = vec![metrics];
+    analyzed.extend(analyze_included_fragments(&full_path).await?);
+
+    Ok(analyzed)
+}
+
+/// Analyze every file reachable from `root` through top-level `include!("…")`.
+///
+/// See #702. Returns one `FileComplexityMetrics` per included fragment, in
+/// breadth-first include order. Anything that cannot be resolved is reported on
+/// stderr instead of being dropped, because a silently short function list is
+/// indistinguishable from a genuinely small file.
+async fn analyze_included_fragments(root: &Path) -> Result<Vec<FileComplexityMetrics>> {
+    let (included, unresolved) = collect_included_files(root);
+    report_include_expansion(root, &included, &unresolved);
+
+    let mut fragments = Vec::with_capacity(included.len());
+    for path in &included {
+        fragments.push(
+            crate::services::complexity::analyze_file_complexity_uncached(path, None)
+                .await
+                .context(format!(
+                    "Failed to analyze included fragment: {}",
+                    path.display()
+                ))?,
+        );
+    }
+    Ok(fragments)
+}
+
+/// Includes nest (a fragment may include another); this bounds a pathological
+/// or hand-written cycle that the visited set alone would not.
+const MAX_INCLUDE_DEPTH: usize = 8;
+
+/// Breadth-first walk of the `include!` graph rooted at `root`.
+///
+/// Returns the files pulled in (never including `root` itself) and one message
+/// per include that could NOT be followed.
+fn collect_included_files(root: &Path) -> (Vec<PathBuf>, Vec<String>) {
+    let mut visited: std::collections::HashSet<PathBuf> =
+        std::collections::HashSet::from([canonical_key(root)]);
+    let mut queue: std::collections::VecDeque<(PathBuf, usize)> =
+        std::collections::VecDeque::from([(root.to_path_buf(), 0usize)]);
+    let mut included = Vec::new();
+    let mut unresolved = Vec::new();
+
+    while let Some((path, depth)) = queue.pop_front() {
+        let Some(source) = read_rust_source(&path) else {
+            continue;
+        };
+        let (targets, opaque) = scan_rust_includes(&source);
+        for raw in opaque {
+            unresolved.push(format!("{}: include!({raw})", path.display()));
+        }
+
+        for next in resolve_include_targets(&path, targets, &mut visited, &mut unresolved) {
+            if depth + 1 < MAX_INCLUDE_DEPTH {
+                queue.push_back((next.clone(), depth + 1));
+            } else {
+                unresolved.push(format!(
+                    "{} (include nesting deeper than {MAX_INCLUDE_DEPTH} was not followed)",
+                    next.display()
+                ));
+            }
+            included.push(next);
+        }
+    }
+
+    (included, unresolved)
+}
+
+/// Turn one file's `include!` string literals into paths on disk, skipping ones
+/// already seen and recording ones that do not exist.
+fn resolve_include_targets(
+    from: &Path,
+    targets: Vec<String>,
+    visited: &mut std::collections::HashSet<PathBuf>,
+    unresolved: &mut Vec<String>,
+) -> Vec<PathBuf> {
+    // `include!` resolves relative to the directory of the file it appears in.
+    let dir = from.parent().unwrap_or_else(|| Path::new("."));
+    let mut resolved_paths = Vec::new();
+
+    for target in targets {
+        let resolved = dir.join(&target);
+        if !resolved.exists() {
+            unresolved.push(format!(
+                "{}: include!(\"{target}\") -> {} (not found)",
+                from.display(),
+                resolved.display()
+            ));
+        } else if visited.insert(canonical_key(&resolved)) {
+            resolved_paths.push(resolved);
+        }
+    }
+
+    resolved_paths
+}
+
+/// Read a Rust file's text, or `None` when it is not Rust or cannot be read.
+fn read_rust_source(path: &Path) -> Option<String> {
+    if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+        return None;
+    }
+    std::fs::read_to_string(path).ok()
+}
+
+/// Tell the user which files the reported metrics actually cover.
+fn report_include_expansion(root: &Path, included: &[PathBuf], unresolved: &[String]) {
+    if !included.is_empty() {
+        eprintln!(
+            "📎 {} also analyzed via include!(): {}",
+            root.display(),
+            included
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+    if !unresolved.is_empty() {
+        eprintln!(
+            "⚠️  {} of {}'s include!() target(s) could not be analyzed, so its \
+             function count is INCOMPLETE: {}",
+            unresolved.len(),
+            root.display(),
+            unresolved.join("; ")
+        );
+    }
+}
+
+/// Identity of a path for cycle detection; falls back to the literal path when
+/// it cannot be canonicalized.
+fn canonical_key(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// Split a Rust source's `include!` invocations into resolvable string-literal
+/// targets and everything else.
+///
+/// The second vector holds arguments this scanner cannot resolve — typically
+/// `include!(concat!(env!("OUT_DIR"), "/x.rs"))` — and exists so those are
+/// REPORTED rather than quietly missing from the function list (#702).
+fn scan_rust_includes(source: &str) -> (Vec<String>, Vec<String>) {
+    let mut targets = Vec::new();
+    let mut opaque = Vec::new();
+    for line in source.lines() {
+        scan_include_line(line, &mut targets, &mut opaque);
+    }
+    (targets, opaque)
+}
+
+/// One `include!` argument as this scanner understands it.
+enum IncludeArg {
+    /// A plain string literal, resolvable against the includer's directory.
+    Literal(String),
+    /// Anything else (`concat!`, `env!`, a macro), reported rather than dropped.
+    Opaque(String),
+}
+
+fn scan_include_line(line: &str, targets: &mut Vec<String>, opaque: &mut Vec<String>) {
+    // Only the code part of the line; a commented-out include is not an include.
+    let code = line.split("//").next().unwrap_or("");
+    let bytes = code.as_bytes();
+    let mut from = 0usize;
+
+    while let Some(hit) = code[from..].find("include!") {
+        let at = from + hit;
+        from = at + "include!".len();
+        // `my_include!` / `nested_include!` are different macros.
+        if at > 0 && (bytes[at - 1].is_ascii_alphanumeric() || bytes[at - 1] == b'_') {
+            continue;
+        }
+        match include_argument(&code[from..]) {
+            Some(IncludeArg::Literal(path)) => targets.push(path),
+            Some(IncludeArg::Opaque(raw)) => opaque.push(raw),
+            None => {}
+        }
+    }
+}
+
+/// Classify the text following an `include!` token.
+fn include_argument(after_bang: &str) -> Option<IncludeArg> {
+    let args = after_bang.trim_start().strip_prefix('(')?.trim_start();
+
+    if let Some(rest) = args.strip_prefix('"') {
+        if let Some(end) = rest.find('"') {
+            if end > 0 {
+                return Some(IncludeArg::Literal(rest[..end].to_string()));
+            }
+        }
+    }
+
+    Some(IncludeArg::Opaque(
+        args.trim_end_matches([')', ';']).chars().take(80).collect(),
+    ))
 }
 
 /// Analyze multiple files and return aggregated complexity metrics
@@ -417,5 +621,143 @@ mod multi_language_tests {
             describe_thresholds(Some(20), Some(15)),
             "cyclomatic > 20, cognitive > 15"
         );
+    }
+}
+
+#[cfg(test)]
+mod include_expansion_tests {
+    //! Regression tests for #702 — `analyze complexity --file X.rs` reported a
+    //! function count that covered only X.rs's own body when X.rs pulls most of
+    //! its code in with `include!()`. Observed on this repo:
+    //! `--file src/cli/handlers/lint_hotspot_handlers/clippy.rs` returned
+    //! `"total_functions": 4` while a directory scan of the same code found 4 +
+    //! 15 + 16 across clippy.rs and its two included fragments.
+    use super::ComplexityConfig;
+    use super::{analyze_included_fragments, analyze_single_file, scan_rust_includes};
+
+    /// The defect as the user meets it: `--file parent.rs` must not report a
+    /// function count that stops at the includer's own body.
+    #[tokio::test]
+    async fn test_single_file_mode_counts_functions_pulled_in_by_include() {
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("frag.rs"),
+            "fn frag_one() -> u32 { 1 }\nfn frag_two(x: u32) -> u32 { if x > 0 { 1 } else { 0 } }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("parent.rs"),
+            "include!(\"frag.rs\");\nfn parent_one() -> u32 { 2 }\n",
+        )
+        .unwrap();
+
+        let config = ComplexityConfig::from_args(
+            dir.path().to_path_buf(),
+            None,
+            None,
+            None,
+            Vec::new(),
+            60,
+            0,
+        );
+        let metrics = analyze_single_file(std::path::Path::new("parent.rs"), &config)
+            .await
+            .unwrap();
+
+        let counted: usize = metrics.iter().map(|m| m.functions.len()).sum();
+        assert_eq!(
+            counted,
+            3,
+            "PRE-FIX this was 1: only parent.rs's own body was measured, and the \
+             two functions its include!() pulls in were reported to nobody. Got {:?}",
+            metrics
+                .iter()
+                .map(|m| (m.path.clone(), m.functions.len()))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_scan_finds_include_targets() {
+        let (targets, opaque) = scan_rust_includes(
+            "use std::io;\ninclude!(\"clippy_parsing.rs\");\ninclude!( \"sub/dir.rs\" );\n",
+        );
+        assert_eq!(targets, vec!["clippy_parsing.rs", "sub/dir.rs"]);
+        assert!(opaque.is_empty(), "{opaque:?}");
+    }
+
+    #[test]
+    fn test_scan_ignores_lookalikes_and_comments() {
+        let (targets, opaque) = scan_rust_includes(
+            "let s = include_str!(\"x.txt\");\n\
+             let b = include_bytes!(\"y.bin\");\n\
+             // include!(\"commented_out.rs\");\n\
+             my_include!(\"other.rs\");\n",
+        );
+        assert!(targets.is_empty(), "{targets:?}");
+        assert!(opaque.is_empty(), "{opaque:?}");
+    }
+
+    #[test]
+    fn test_scan_reports_an_unresolvable_include_instead_of_dropping_it() {
+        // A generated include cannot be resolved from source alone; it must be
+        // REPORTED, because a short function list otherwise reads as complete.
+        let (targets, opaque) =
+            scan_rust_includes("include!(concat!(env!(\"OUT_DIR\"), \"/gen.rs\"));\n");
+        assert!(targets.is_empty(), "{targets:?}");
+        assert_eq!(opaque.len(), 1, "{opaque:?}");
+        assert!(opaque[0].contains("concat!"), "{opaque:?}");
+    }
+
+    #[tokio::test]
+    async fn test_included_fragments_are_analyzed_not_skipped() {
+        // PRE-FIX this returned nothing: the includer's 1 function was the whole
+        // report and the fragment's 2 functions were invisible.
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("frag.rs"),
+            "fn frag_one() -> u32 { 1 }\nfn frag_two(x: u32) -> u32 { if x > 0 { 1 } else { 0 } }\n",
+        )
+        .unwrap();
+        let parent = dir.path().join("parent.rs");
+        std::fs::write(
+            &parent,
+            "include!(\"frag.rs\");\nfn parent_one() -> u32 { 2 }\n",
+        )
+        .unwrap();
+
+        let fragments = analyze_included_fragments(&parent).await.unwrap();
+        assert_eq!(fragments.len(), 1, "the included fragment must be analyzed");
+        assert!(
+            fragments[0].path.ends_with("frag.rs"),
+            "a fragment keeps its own path so its line numbers stay truthful: {:?}",
+            fragments[0].path
+        );
+        assert_eq!(
+            fragments[0].functions.len(),
+            2,
+            "both functions in the fragment must be counted: {:?}",
+            fragments[0].functions
+        );
+    }
+
+    #[tokio::test]
+    async fn test_include_cycle_terminates() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let a = dir.path().join("a.rs");
+        let b = dir.path().join("b.rs");
+        std::fs::write(&a, "include!(\"b.rs\");\nfn a_one() {}\n").unwrap();
+        std::fs::write(&b, "include!(\"a.rs\");\nfn b_one() {}\n").unwrap();
+
+        let fragments = analyze_included_fragments(&a).await.unwrap();
+        assert_eq!(fragments.len(), 1, "a.rs must not be analyzed twice");
+    }
+
+    #[tokio::test]
+    async fn test_a_file_without_includes_gains_nothing() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let solo = dir.path().join("solo.rs");
+        std::fs::write(&solo, "fn only() {}\n").unwrap();
+        assert!(analyze_included_fragments(&solo).await.unwrap().is_empty());
     }
 }
