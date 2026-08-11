@@ -109,7 +109,13 @@ async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result
     let collected = collect_project_metrics(path).await?;
     let status = convergence_status_with_gaps(&targets, &collected);
 
-    let formatted = format_status(&collected.metrics, &targets, &status, format)?;
+    let formatted = format_status(
+        &collected.metrics,
+        &targets,
+        &status,
+        &collected.unmeasured,
+        format,
+    )?;
     println!("{}", formatted);
 
     Ok(())

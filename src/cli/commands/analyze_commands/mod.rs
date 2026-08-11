@@ -390,15 +390,28 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "markdown")]
         format: DeepContextOutputFormat,
 
-        /// Enable full detailed report (default is terse)
+        /// NOT IMPLEMENTED: enable full detailed report (default is terse)
+        ///
+        /// Bound to a parameter nothing read, so every variant of the command
+        /// over one corpus produced the same report; the handler now refuses
+        /// it rather than relabelling that report as "full" (#915). Use
+        /// --top-files to size the report. The help text stays visible so the
+        /// refusal is discoverable, matching `analyze complexity --ml`.
         #[arg(long)]
         full: bool,
 
-        /// Comma-separated list of analyses to include
+        /// NOT IMPLEMENTED: comma-separated list of analyses to include
+        ///
+        /// deep-context always runs the same pipeline; this never selected a
+        /// stage. Refused by the handler (#915) — use --include-pattern to
+        /// select files.
         #[arg(long, value_delimiter = ',')]
         include: Vec<String>,
 
-        /// Comma-separated list of analyses to exclude
+        /// NOT IMPLEMENTED: comma-separated list of analyses to exclude
+        ///
+        /// Counterpart of --include and equally unread; refused by the handler
+        /// (#915) — use --exclude-pattern to drop files.
         #[arg(long, value_delimiter = ',')]
         exclude: Vec<String>,
 
@@ -410,7 +423,11 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "call-graph")]
         dag_type: DeepContextDagType,
 
-        /// Maximum directory traversal depth
+        /// NOT IMPLEMENTED: maximum directory traversal depth
+        ///
+        /// Traversal was never bounded by this value; refused by the handler
+        /// (#915) — use --include-pattern / --exclude-pattern to limit what is
+        /// walked.
         #[arg(long)]
         max_depth: Option<usize>,
 
@@ -426,7 +443,11 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "normal")]
         cache_strategy: DeepContextCacheStrategy,
 
-        /// Parallelism level for analysis
+        /// NOT IMPLEMENTED: parallelism level for analysis
+        ///
+        /// The number never reached a thread pool — `route_deep_context_analysis`
+        /// collapses it to `parallel.is_some()` and the handler refuses it
+        /// (#915).
         #[arg(long)]
         parallel: Option<usize>,
 

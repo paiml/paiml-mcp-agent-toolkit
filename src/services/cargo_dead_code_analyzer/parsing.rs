@@ -151,6 +151,7 @@ impl CargoDeadCodeAnalyzer {
     async fn calculate_metrics(&self, files: Vec<FileDeadCode>) -> Result<AccurateDeadCodeReport> {
         let mut total_lines = 0;
         let mut total_files = 0;
+        let mut project_files = 0;
         let mut dead_lines = 0;
         let mut dead_by_type = HashMap::new();
         let total_dead_items = files.iter().map(|f| f.dead_items.len()).sum();
@@ -176,6 +177,15 @@ impl CargoDeadCodeAnalyzer {
             }
 
             if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                project_files += 1;
+                // Layer 1 stopped scanning the excluded trees (#915), but this
+                // walk kept counting them, so the totals described a wider set
+                // than the dead items did: a default run printed "4273 files
+                // analyzed, 0 with dead code" over 1236 test files it never
+                // opened, and divided the dead lines by their lines too.
+                if self.is_excluded_source(path) {
+                    continue;
+                }
                 total_files += 1;
                 if let Ok(content) = std::fs::read_to_string(path) {
                     total_lines += content.lines().count();
@@ -208,6 +218,7 @@ impl CargoDeadCodeAnalyzer {
             dead_code_percentage,
             total_lines,
             total_files,
+            project_files,
             dead_lines,
             dead_by_type,
         })

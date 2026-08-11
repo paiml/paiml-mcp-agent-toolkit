@@ -47,9 +47,17 @@ pub struct AccurateDeadCodeReport {
     pub dead_code_percentage: f64,
     /// Total lines analyzed
     pub total_lines: usize,
-    /// Total source files analyzed (`.rs` files walked, excluding ignored/hidden dirs)
+    /// Source files actually scanned: `.rs` files walked, minus ignored/hidden
+    /// dirs and minus the trees this run was configured to skip.
     #[serde(default)]
     pub total_files: usize,
+    /// Every `.rs` file the walk saw, including the test/example/bench trees
+    /// `total_files` leaves out. The two differ exactly when the scan was
+    /// narrowed, and that difference is the only record of the narrowing a
+    /// consumer gets -- without it a default run reports all zeros over files
+    /// it never opened.
+    #[serde(default)]
+    pub project_files: usize,
     /// Dead lines count
     pub dead_lines: usize,
     /// Summary by type
@@ -124,8 +132,16 @@ impl CargoDeadCodeAnalyzer {
         Self {
             project_path: project_path.as_ref().to_path_buf(),
             exclude_tests: true,
-            exclude_examples: true,
-            exclude_benches: true,
+            // `--include-tests` is the only scope flag the CLI (and MCP) ever
+            // exposes, so defaulting these two to `true` did not narrow the
+            // default report — it made `examples/` and `benches/` unreachable
+            // from EVERY invocation, with no flag able to put them back and
+            // `--include 'examples/**'` returning an empty list because the
+            // glob ran over a set the tree had already been cut from. They are
+            // ordinary first-party source that ships with the crate, so they
+            // stay in scope; only the test tree is gated.
+            exclude_examples: false,
+            exclude_benches: false,
             max_depth: 8,
             use_cache: true,
             force_refresh: false,

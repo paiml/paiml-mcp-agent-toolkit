@@ -34,6 +34,14 @@ pub(super) fn emit_query_output(
         && git_data.as_ref().is_none_or(|(hits, _)| hits.is_empty())
     {
         eprintln!("No matching functions found for: {}", query);
+        let ctx_requested = context_lines
+            .or(after_context)
+            .or(before_context)
+            .unwrap_or(0)
+            > 0;
+        if let Some(empty) = empty_result_output(format, ctx_requested) {
+            println!("{}", empty);
+        }
         return Ok(());
     }
 
@@ -93,6 +101,28 @@ fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat
             );
         }
     }
+}
+
+/// The one document stdout still owes a zero-match run, or `None` when the
+/// format has nothing machine-readable to say.
+///
+/// `--docs` is on by default and its JSON payload was moved to stderr so that
+/// stdout carries exactly one parseable document. That left the zero-match
+/// branch emitting nothing at all on stdout: an exit-0 `pmat query --format
+/// json` handed `jq` an empty stream while the only payload sat on stderr,
+/// where a machine consumer never looks. The empty document has to keep the
+/// shape the same flags produce when they DO match, hence the `-A/-B/-C`
+/// envelope — every other JSON mode (plain, `--count`,
+/// `--files-with-matches`) renders an array.
+fn empty_result_output(format: &QueryOutputFormat, ctx_requested: bool) -> Option<String> {
+    if !matches!(format, QueryOutputFormat::Json) {
+        return None;
+    }
+    if ctx_requested {
+        let json = serde_json::json!({ "context_matches": [] });
+        return Some(serde_json::to_string_pretty(&json).unwrap_or_default());
+    }
+    Some("[]".to_string())
 }
 
 /// Colour code, or nothing when stdout is not a terminal.

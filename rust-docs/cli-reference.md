@@ -446,16 +446,14 @@ paiml-mcp-agent-toolkit analyze dag \
 - **-p, --project-path**: Project path to analyze (default: current directory)
 - **--format**: Output format (`markdown`, `json`, `sarif`)
 - **-o, --output**: Output file path
-- **--include**: Comma-separated list of analyses to include (`ast`, `complexity`, `churn`, `dag`, `dead-code`, `satd`, `defect-probability`)
-- **--exclude**: Comma-separated list of analyses to exclude
 - **--period-days**: Period for churn analysis (default: 30 days)
 - **--dag-type**: DAG type for dependency analysis (`call-graph`, `import-graph`, `inheritance`, `full-dependency`)
-- **--max-depth**: Maximum directory traversal depth
 - **--include-pattern**: Include file patterns (can be specified multiple times)
 - **--exclude-pattern**: Exclude file patterns (can be specified multiple times)
 - **--cache-strategy**: Cache usage strategy (`normal`, `force-refresh`, `offline`)
-- **--parallel**: Parallelism level for analysis
-- **--full**: Enable full detailed report (default is terse)
+- **--top-files**: Number of top files to show (0 = all, default: 10)
+
+**Rejected flags**: `--full`, `--include`, `--exclude`, `--max-depth` and `--parallel` are accepted by the parser but not implemented, and since #915 the command exits 1 rather than ignoring them. Use `--include-pattern` / `--exclude-pattern` to select files and `--top-files` to size the report.
 
 **Multi-Analysis Pipeline:**
 

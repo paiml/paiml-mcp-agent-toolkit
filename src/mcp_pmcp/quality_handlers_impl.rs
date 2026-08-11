@@ -15,6 +15,21 @@ impl ToolHandler for QualityGateTool {
         // If a specific file is requested, check only that file
         if let Some(file_path) = params.file {
             let file_path = PathBuf::from(file_path);
+            // A named file that is missing, or that does not parse, is a bad
+            // argument. `resolve_existing_paths` one line up already answers
+            // that class with -32602, and one tool must not report the same
+            // refusal as -32603 "Internal error", which tells an agent the
+            // server is at fault and the call is worth retrying.
+            if !file_path.exists() {
+                return Err(Error::validation(format!(
+                    "file not found: {}. Gating a nonexistent file would report zero \
+                     violations, which is indistinguishable from a clean result.",
+                    file_path.display()
+                )));
+            }
+            crate::tdg::ensure_parseable(&file_path)
+                .map_err(|e| Error::validation(e.to_string()))?;
+
             let result = tool_functions::check_quality_gate_file(file_path.as_ref(), params.strict)
                 .await
                 .map_err(|e| Error::internal(format!("Quality gate check failed: {e}")))?;

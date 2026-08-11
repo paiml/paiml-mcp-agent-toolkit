@@ -189,7 +189,7 @@ fn pmat_self() -> Command {
 /// `\x1b[…m` bytes inside a JSON string — unreadable for the autonomous agent
 /// the JSON format exists for — and `--color never` changed nothing, because
 /// the escapes came from the child, not from us.
-fn strip_ansi(s: &str) -> String {
+pub(crate) fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut chars = s.chars();
     while let Some(c) = chars.next() {

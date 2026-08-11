@@ -77,6 +77,35 @@ mod quality_checks_part3_tests {
         assert!(output.contains("</testcase>"));
     }
 
+    /// The sibling `ci-local` JUnit writer emitted unparseable XML because it
+    /// passed child output through unescaped; this writer had the same defect in
+    /// a worse form — violation fields went straight into XML *attributes* with
+    /// no escaping at all. The pre-existing tests here only asserted that
+    /// `<testcase` and `<failure` appear, which stays true no matter how badly
+    /// the attribute values corrupt the document.
+    #[test]
+    fn junit_attributes_are_escaped_so_the_document_stays_parseable() {
+        let violation = create_test_violation(
+            "complexity",
+            r#"Function "render<T>" exceeds 25 & needs work"#,
+        );
+        let mut output = String::new();
+        write_single_junit_testcase(&mut output, &violation).unwrap();
+
+        // The raw forms would each terminate or corrupt the attribute.
+        assert!(!output.contains("render<T>"), "{output}");
+        assert!(!output.contains(r#""render"#), "{output}");
+        assert!(output.contains("&lt;T&gt;"), "{output}");
+        assert!(output.contains("&quot;"), "{output}");
+        assert!(output.contains("&amp;"), "{output}");
+
+        // Every attribute value must be free of the delimiter that closes it.
+        for (_, rest) in output.match_indices("name=\"").map(|(i, _)| (i, &output[i + 6..])) {
+            let value = rest.split('"').next().expect("attribute value");
+            assert!(!value.contains('<'), "raw '<' inside attribute: {value:?}");
+        }
+    }
+
     #[test]
     fn test_format_qg_as_junit() {
         let violations = vec![

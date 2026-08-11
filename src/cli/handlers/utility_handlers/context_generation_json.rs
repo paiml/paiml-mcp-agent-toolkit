@@ -4,12 +4,14 @@ fn generate_json_context(
     project_path: &Path,
     context: &crate::services::deep_context::DeepContext,
 ) -> Result<String> {
-    let (total_files, total_functions) =
-        if let Some(report) = &context.analyses.complexity_report {
-            (report.files.len(), report.summary.total_functions)
-        } else {
-            (0, 0)
-        };
+    // Same rule as the markdown header: a header must count the document it
+    // heads. `files` below is built by iterating `analyses.ast_contexts`, but
+    // these totals were read from `complexity_report` — a separate pass with a
+    // different file set and a wider notion of "function" — so a 19-entry
+    // `files` array shipped under `total_files: 12`. #915 moved the markdown
+    // header onto `count_emitted_body` for exactly this reason and left this
+    // surface behind, which also made the two formats of one run disagree.
+    let (total_files, total_functions) = count_emitted_body(context);
 
     let project = ContextJsonProject {
         language: toolchain.to_string(),

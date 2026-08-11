@@ -123,8 +123,19 @@ fn write_dead_code_header(
         output,
         "  {} {}",
         c::label("Files analyzed:"),
-        c::number(&result.total_files.to_string())
+        c::number(&result.analyzed_files.to_string())
     )?;
+    // Name the narrowing. Without it, a repo whose only dead code lives in test
+    // code got an all-zero report headed by the project's whole file count -- a
+    // clean bill of health for files the scan never opened.
+    if result.total_files > result.analyzed_files {
+        writeln!(
+            output,
+            "  {} {} (tests, examples and benches; --include-tests scans test code)",
+            c::label("Files skipped (out of scope):"),
+            c::number(&(result.total_files - result.analyzed_files).to_string())
+        )?;
+    }
     writeln!(
         output,
         "  {} {}",
@@ -264,10 +275,12 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
          | Metric | Value |\n\
          |--------|-------|\n\
          | Files Analyzed | {} |\n\
+         | Files Skipped (out of scope) | {} |\n\
          | Files with Dead Code | {} |\n\
          | Total Dead Lines | {} |\n\
          | Dead Code Percentage | {:.2}% |\n",
-        result.total_files,
+        result.analyzed_files,
+        result.total_files.saturating_sub(result.analyzed_files),
         result.summary.files_with_dead_code,
         result.summary.total_dead_lines,
         result.summary.dead_percentage

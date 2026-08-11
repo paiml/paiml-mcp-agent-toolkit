@@ -195,10 +195,8 @@ mod integration_tests {
             assert_eq!(item.kind, DeadCodeKind::Suppressed);
             let relative = path.strip_prefix(&project_path).unwrap_or(path);
             assert!(
-                !relative
-                    .components()
-                    .any(|c| c.as_os_str() == "tests" || c.as_os_str() == "examples"),
-                "{} is out of scope without --include-tests/--include-examples",
+                !relative.components().any(|c| c.as_os_str() == "tests"),
+                "{} is out of scope without --include-tests",
                 relative.display()
             );
             assert!(

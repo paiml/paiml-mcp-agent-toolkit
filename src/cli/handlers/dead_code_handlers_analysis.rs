@@ -63,6 +63,13 @@ async fn run_dead_code_analysis_with_filters(
     // the pre-filter number — 26 files claimed above a 4-entry array.
     let files_with_dead_code_found = accurate_report.files_with_dead_code.len();
     let project_total_lines = accurate_report.total_lines;
+    // Every .rs file in the project, against the subset actually scanned. A
+    // cache entry written before `project_files` existed deserialises it as 0,
+    // so fall back to the scanned count rather than claim a project smaller
+    // than the scan.
+    let project_files = accurate_report
+        .project_files
+        .max(accurate_report.total_files);
     // Measured over every line the analyzer walked, before any filter. This is
     // the only figure `--fail-on-violation` may compare against; the summary's
     // is scoped to the list that survived `--top-files`/`--min-dead-lines`.
@@ -101,7 +108,11 @@ async fn run_dead_code_analysis_with_filters(
         report: crate::models::dead_code::DeadCodeResult {
             summary: analysis_result.summary.clone(),
             files: analysis_result.ranked_files,
-            total_files: analysis_result.summary.total_files_analyzed,
+            // `total_files` is the project; `analyzed_files` is what was read.
+            // They differ whenever a tree was excluded, which is what makes the
+            // narrowing visible to a reader -- and to a CI gate -- instead of
+            // the report reading as a clean bill of health over everything.
+            total_files: project_files,
             analyzed_files: analysis_result.summary.total_files_analyzed,
             files_with_dead_code_found,
             files_truncated,

@@ -162,18 +162,38 @@ fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -
     Ok(())
 }
 
+/// Escape a string for use inside an XML *attribute*.
+///
+/// Violation messages are free text assembled from source identifiers and
+/// thresholds, so they routinely contain `<`, `>` and `"` — a generic parameter
+/// like `Vec<T>` or a quoted function name was enough to make the whole report
+/// unparseable, because these fields were interpolated raw. Control characters
+/// go too: XML 1.0 allows none but TAB, LF and CR anywhere in a document.
+fn xml_attr_escape(text: &str) -> String {
+    text.chars()
+        .filter(|c| matches!(c, '\t' | '\n' | '\r') || !c.is_control())
+        .collect::<String>()
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
 /// Toyota Way: Extract Method - Write single `JUnit` testcase (complexity <=5)
 fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Result<()> {
     use std::fmt::Write;
     writeln!(
         output,
         r#"    <testcase name="{}" classname="{}">"#,
-        v.message, v.check_type
+        xml_attr_escape(&v.message),
+        xml_attr_escape(&v.check_type)
     )?;
     writeln!(
         output,
         r#"      <failure message="{}" type="{}"/>"#,
-        v.message, v.severity
+        xml_attr_escape(&v.message),
+        xml_attr_escape(&v.severity)
     )?;
     writeln!(output, r"    </testcase>")?;
     Ok(())

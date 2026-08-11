@@ -27,10 +27,7 @@ impl TdgAnalyzer {
     /// be graded at all, let alone graded perfect.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
-        if matches!(
-            language,
-            Language::Unknown | Language::Yaml | Language::Markdown
-        ) {
+        if !grades_source(path) {
             anyhow::bail!(
                 "{}: TDG grades source files; {language} is not one",
                 path.display()
@@ -93,8 +90,27 @@ impl TdgAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze project.
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
+        Ok(self.analyze_project_reporting_ungraded(dir)?.0)
+    }
+
+    /// Analyze project, returning the files that could NOT be graded alongside
+    /// the score, each with the reason it was refused.
+    ///
+    /// The skipped files used to exist only as an `eprintln!`, and stderr is not
+    /// part of an MCP response: the `quality_gate` tool answered
+    /// `{"passed":true,"grade":"A","not_measured":[],"files_analyzed":1}` for a
+    /// 9-file tree whose other 8 files this same build refuses one at a time
+    /// (`quality-gate --file` exits 4 on each). `total_files` counts the files
+    /// that SUCCEEDED, so a caller holding only a `ProjectScore` cannot tell
+    /// "9 files, all graded" from "9 files, 1 graded" — the skip has to come back
+    /// through the return value for a gate to be able to disclose it.
+    pub fn analyze_project_reporting_ungraded(
+        &self,
+        dir: &Path,
+    ) -> Result<(ProjectScore, Vec<(PathBuf, String)>)> {
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
+        let mut ungraded = Vec::new();
 
         // CB-1400: Resolve contract coverage for A-tier gating
         let contracted_paths = collect_contracted_file_paths(dir);
@@ -114,12 +130,19 @@ impl TdgAnalyzer {
                     // Suppress warnings for include!() fragment files (PMAT-507)
                     if !crate::cli::language_analyzer::is_include_fragment(file) {
                         eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
+                        ungraded.push((file.clone(), e.to_string()));
                     }
                 }
             }
         }
 
-        Ok(ProjectScore::aggregate(scores))
+        // `discover_files` walks in `read_dir` order, which is the filesystem's.
+        // This list is reported verbatim in a JSON payload, so it is sorted for
+        // the same reason `grade_distribution` is a `BTreeMap`: identical input
+        // must serialise identically.
+        ungraded.sort();
+
+        Ok((ProjectScore::aggregate(scores), ungraded))
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -167,6 +190,23 @@ pub fn ensure_parseable(path: &Path) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Is this file's language one TDG grades at all?
+///
+/// `analyze_file`'s refusal is about TDG's own scope, not about the file being
+/// bad input, so a caller that reports a *gate verdict* rather than a grade must
+/// not turn it into an error: `pmat quality-gate --file a.md` reports the
+/// `TODO:` on line 3 as a violation, while the MCP `quality_gate` tool answered
+/// `-32603 Internal error: ... Markdown is not one` for the same file in the
+/// same build — the surface contradiction `ensure_parseable` above was added to
+/// remove, reintroduced from the other side. Such callers leave score/grade
+/// unmeasured and let their language-agnostic checks give the verdict.
+pub fn grades_source(path: &Path) -> bool {
+    !matches!(
+        Language::from_extension(path),
+        Language::Unknown | Language::Yaml | Language::Markdown
+    )
 }
 
 /// Does `source` parse as `language`, in THIS build?

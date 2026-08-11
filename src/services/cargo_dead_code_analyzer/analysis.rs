@@ -128,9 +128,12 @@ impl CargoDeadCodeAnalyzer {
 
     /// Is this source file outside the scope the analyzer was configured with?
     ///
-    /// Mirrors what `--include-tests` / `--include-examples` /
-    /// `--include-benches` promise: with the flag absent, the corresponding
-    /// tree contributes nothing to the report.
+    /// Mirrors what `--include-tests` promises: with the flag absent, the test
+    /// tree contributes nothing to the report. `examples/` and `benches/` are
+    /// NOT excluded by default — this comment used to claim an
+    /// `--include-examples` / `--include-benches` pair that does not exist on
+    /// any surface, so those arms could only ever fire, and the two trees fell
+    /// out of the report entirely.
     fn is_excluded_source(&self, path: &Path) -> bool {
         let relative = path.strip_prefix(&self.project_path).unwrap_or(path);
         let under = |dir: &str| {
@@ -394,10 +397,18 @@ mod include_tests_flag_tests {
         let tmp = fixture();
         let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
         let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
+        // `--include-tests` gates the test tree and nothing else. This used to
+        // demand `["in_lib"]`, which pinned the defect: examples and benches
+        // have no flag of their own, so excluding them by default removed them
+        // from every possible invocation.
         assert_eq!(
             found,
-            vec!["in_lib".to_string()],
-            "only library code is in scope without --include-tests/examples/benches"
+            vec![
+                "in_bench".to_string(),
+                "in_demo".to_string(),
+                "in_lib".to_string()
+            ],
+            "only the test tree is out of scope without --include-tests"
         );
     }
 
@@ -409,20 +420,26 @@ mod include_tests_flag_tests {
         assert!(found.contains(&"in_it".to_string()), "{found:?}");
         assert!(found.contains(&"in_src_tests".to_string()), "{found:?}");
         assert!(found.contains(&"in_lib".to_string()), "{found:?}");
-        // Examples and benches stay out — their own flags were not passed.
-        assert!(!found.contains(&"in_demo".to_string()), "{found:?}");
-        assert!(!found.contains(&"in_bench".to_string()), "{found:?}");
+        // Examples and benches are in scope with or without the flag; the flag
+        // adds the test tree on top of them rather than swapping one for another.
+        assert!(found.contains(&"in_demo".to_string()), "{found:?}");
+        assert!(found.contains(&"in_bench".to_string()), "{found:?}");
     }
 
+    /// 3.30.0 reported `src/lib.rs` alone on a crate whose `examples/`,
+    /// `benches/` and `tests/` trees held identical suppressed items, and no
+    /// flag put the first two back — not `--include-tests`, not `-u`, and not
+    /// `--include 'examples/**'`, which came back EMPTY because the glob ran
+    /// over a set the tree had already been cut from. Constructing the
+    /// analyzer with no builder at all is the case that regressed.
     #[test]
-    fn test_include_examples_and_benches_add_their_trees() {
+    fn test_examples_and_benches_are_in_scope_without_any_flag() {
         let tmp = fixture();
-        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path())
-            .include_examples()
-            .include_benches();
+        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
         let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
         assert!(found.contains(&"in_demo".to_string()), "{found:?}");
         assert!(found.contains(&"in_bench".to_string()), "{found:?}");
+        // The test tree is still gated on --include-tests.
         assert!(!found.contains(&"in_it".to_string()), "{found:?}");
     }
 

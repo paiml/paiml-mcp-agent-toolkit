@@ -164,10 +164,15 @@ fn format_iteration_result(
     Ok(())
 }
 
+/// `unmeasured` names the targets nothing actually measured (see
+/// `CollectedMetrics`). It has to reach the renderers: `ProjectMetrics` stores
+/// every field as a plain number, so by the time the value arrives here a gap
+/// is indistinguishable from a real 0.
 fn format_status(
     metrics: &ProjectMetrics,
     targets: &ConvergenceTargets,
     status: &crate::services::oracle::ConvergenceStatus,
+    unmeasured: &[&str],
     format: OracleOutputFormat,
 ) -> Result<String> {
     match format {
@@ -221,27 +226,43 @@ fn format_status(
 
             Ok(output)
         }
-        OracleOutputFormat::Json => Ok(serde_json::to_string_pretty(&serde_json::json!({
-            "metrics": {
-                "test_coverage": metrics.test_coverage,
-                "mutation_score": metrics.mutation_score,
-                "compiler_errors": metrics.compiler_errors,
-                "clippy_warnings": metrics.clippy_warnings,
-                "test_failures": metrics.test_failures,
-                "tdg_score": metrics.tdg_score,
-                "rust_project_score": metrics.rust_project_score
-            },
-            "targets": {
-                "test_coverage": targets.test_coverage,
-                "mutation_score": targets.mutation_score,
-                "max_compiler_errors": targets.max_compiler_errors,
-                "max_clippy_warnings": targets.max_clippy_warnings,
-                "max_test_failures": targets.max_test_failures,
-                "min_tdg_score": targets.min_tdg_score,
-                "min_rust_project_score": targets.min_rust_project_score
-            },
-            "converged": matches!(status, crate::services::oracle::ConvergenceStatus::Converged)
-        }))?),
+        OracleOutputFormat::Json => {
+            // The Text arm lists every gap as "<name>: not measured" (it prints
+            // ConvergenceStatus::remaining), but this arm serialised
+            // `ProjectMetrics::default()`'s plausible 0 for the SAME run, so CI
+            // reading the JSON recorded a real 0% coverage / 0.0 TDG that
+            // nothing measured. A gap is `null` and is named in `not_measured`
+            // — the convention `analyze tdg` and `cache stats` already use.
+            let measured = |label: &str, value: serde_json::Value| {
+                if unmeasured.contains(&label) {
+                    serde_json::Value::Null
+                } else {
+                    value
+                }
+            };
+            Ok(serde_json::to_string_pretty(&serde_json::json!({
+                "metrics": {
+                    "test_coverage": measured("test coverage", metrics.test_coverage.into()),
+                    "mutation_score": measured("mutation score", metrics.mutation_score.into()),
+                    "compiler_errors": measured("compiler errors", metrics.compiler_errors.into()),
+                    "clippy_warnings": measured("clippy warnings", metrics.clippy_warnings.into()),
+                    "test_failures": measured("test failures", metrics.test_failures.into()),
+                    "tdg_score": measured("TDG score", metrics.tdg_score.into()),
+                    "rust_project_score": measured("rust project score", metrics.rust_project_score.into())
+                },
+                "targets": {
+                    "test_coverage": targets.test_coverage,
+                    "mutation_score": targets.mutation_score,
+                    "max_compiler_errors": targets.max_compiler_errors,
+                    "max_clippy_warnings": targets.max_clippy_warnings,
+                    "max_test_failures": targets.max_test_failures,
+                    "min_tdg_score": targets.min_tdg_score,
+                    "min_rust_project_score": targets.min_rust_project_score
+                },
+                "not_measured": unmeasured,
+                "converged": matches!(status, crate::services::oracle::ConvergenceStatus::Converged)
+            }))?)
+        }
         OracleOutputFormat::Markdown => {
             let mut output = String::new();
             output.push_str("# Project Quality Status\n\n");

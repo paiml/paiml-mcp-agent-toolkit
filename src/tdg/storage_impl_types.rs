@@ -80,6 +80,36 @@ impl HotCacheEntry {
     }
 }
 
+/// Serialise an unmeasured compression ratio as `null`, never as the sentinel.
+///
+/// The text renderers were taught to say "not measured" for a `0.0` ratio, but
+/// the derived `Serialize` kept emitting the sentinel verbatim — so `tdg
+/// storage stats` printed "Compression ratio: not measured (nothing stored)"
+/// while `tdg diagnostics --format json` reported `"compression_ratio": 0.0`
+/// for the very same store. 0.0 is not a ratio any store can have (it would
+/// mean zero compressed bytes), so the sentinel must not survive the
+/// serializer: delegating that to each renderer is what let the two surfaces
+/// disagree.
+fn serialize_measured_ratio<S>(ratio: &f32, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    if *ratio > 0.0 {
+        serializer.serialize_some(ratio)
+    } else {
+        serializer.serialize_none()
+    }
+}
+
+/// Read back a ratio written by `serialize_measured_ratio`, mapping `null` to
+/// the unmeasured sentinel so a serialize/deserialize round trip is lossless.
+fn deserialize_measured_ratio<'de, D>(deserializer: D) -> std::result::Result<f32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(<Option<f32> as serde::Deserialize>::deserialize(deserializer)?.unwrap_or(0.0))
+}
+
 /// Storage performance and usage statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageStatistics {
@@ -93,7 +123,12 @@ pub struct StorageStatistics {
     /// `0.0` means **not measured** — nothing is stored, or the tier is too
     /// large to read back cheaply. It was previously a hardcoded 0.33 that
     /// rendered as "Compression ratio: 33.0%" over empty stores; renderers must
-    /// say "not measured" for 0.0 rather than print "0.0%" as a measurement.
+    /// say "not measured" for 0.0 rather than print "0.0%" as a measurement,
+    /// and it serialises as `null` — see `serialize_measured_ratio`.
+    #[serde(
+        serialize_with = "serialize_measured_ratio",
+        deserialize_with = "deserialize_measured_ratio"
+    )]
     pub compression_ratio: f32,
     pub warm_backend: String,
     pub cold_backend: String,
@@ -114,6 +149,21 @@ impl StorageStatistics {
             "not measured (nothing stored)".to_string()
         } else {
             "not measured".to_string()
+        }
+    }
+
+    /// Names of the fields in this report that serialise as `null` because they
+    /// could not be measured.
+    ///
+    /// A `null` on its own is ambiguous — absent, unsupported, or unmeasured —
+    /// so the unmeasured fields travel with the payload by name, the convention
+    /// `analyze tdg` already uses for `average_score`/`average_grade`.
+    #[must_use]
+    pub fn not_measured(&self) -> Vec<&'static str> {
+        if self.compression_ratio > 0.0 {
+            Vec::new()
+        } else {
+            vec!["compression_ratio"]
         }
     }
 

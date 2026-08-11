@@ -12,13 +12,25 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // Analyze the first path (typically project root)
     let project_path = &paths[0];
 
-    let project_score = if project_path.is_file() {
+    // Same refusal as the single-file entry point below: `analyze_file` errors
+    // on anything outside TDG's language set, so `paths: ["a.sh"]` failed the
+    // whole call rather than reporting the verdict the CLI gate reports.
+    let ungraded_language = project_path.is_file() && !crate::tdg::grades_source(project_path);
+
+    let (project_score, ungraded) = if project_path.is_file() {
         // Analyze single file and wrap in ProjectScore
-        let file_score = analyzer.analyze_file(project_path)?;
-        crate::tdg::ProjectScore::aggregate(vec![file_score])
+        let file_scores = if ungraded_language {
+            Vec::new()
+        } else {
+            vec![analyzer.analyze_file(project_path)?]
+        };
+        (crate::tdg::ProjectScore::aggregate(file_scores), Vec::new())
     } else {
-        // Analyze entire project
-        analyzer.analyze_project(project_path)?
+        // Analyze entire project. The ungraded list is load-bearing: `files_analyzed`
+        // counts what was GRADED, so without it a shrinking denominator is invisible
+        // — this tool answered `passed:true, grade:"A", files_analyzed:1` for a
+        // 9-file tree whose other 8 files the same build refuses one at a time.
+        analyzer.analyze_project_reporting_ungraded(project_path)?
     };
 
     // Determine pass/fail threshold based on strict mode
@@ -77,15 +89,38 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
             })
             .collect()
     };
-    let mut passed = tdg_passed && satd.is_empty();
+    // A language TDG does not grade leaves `tdg_passed` false for want of a
+    // score, but SATD did measure the file, and the two entry points of one
+    // tool must not answer differently about the same `a.sh`. GH #704 is
+    // untouched: a path TDG *does* grade but could not still fails.
+    let mut passed = (tdg_passed || ungraded_language) && satd.is_empty();
     violations.extend(satd);
+
+    // Every source file the analyzer REFUSED is a hole in this verdict, and the
+    // hole belongs in the payload. `analyze_project` drops those files with a
+    // warning on stderr, which an MCP client never sees. One unparseable file is
+    // enough to refuse in `--file` mode, so one is enough here: this is the
+    // zero-graded rule below, extended to the partial case that actually occurs.
+    if !ungraded.is_empty() {
+        passed = false;
+        for (file, reason) in &ungraded {
+            violations.push(json!({
+                "check_type": "not_graded",
+                "severity": "error",
+                "file": file.display().to_string(),
+                "message": format!("{reason} — this file is not part of the score"),
+            }));
+        }
+    }
 
     // A path where nothing could be graded must SAY so. `analyze_project` skips
     // files it cannot read or parse, so a directory whose only source file is
     // `fn main( { let x = ;;;` came back with an empty score set — and before
     // the analyzer refused to grade unparseable Rust, with 90.0/A. Zero graded
     // files is not a measurement of quality.
-    if project_score.total_files == 0 {
+    // A language TDG does not grade is not a failure to grade: the file was
+    // measured by SATD, so it gets a verdict, not a `not_graded` violation.
+    if project_score.total_files == 0 && !ungraded_language {
         passed = false;
         violations.push(json!({
             "check_type": "not_graded",
@@ -100,6 +135,16 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // with nulls plus a `not_measured` list, and one server must not use two
     // conventions for the same fact.
     let graded = project_score.total_files > 0;
+    // `not_measured` is what a reader consults to learn what a verdict does NOT
+    // cover, so an empty list is a positive claim of full coverage. It answered
+    // `[]` for a run that graded 1 of 9 files — the field asserting the opposite
+    // of the fact it exists to disclose. Files that could not be graded are named
+    // here for the same reason `score`/`grade` are named when nothing graded at
+    // all: never make a reader infer "not measured" from a number that looks fine.
+    let ungraded_names: Vec<String> = ungraded
+        .iter()
+        .map(|(file, _)| file.display().to_string())
+        .collect();
     let (score, grade, not_measured) = if graded {
         (
             json!(project_score.average_score),
@@ -107,10 +152,12 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
             // where `pmat tdg --format json` answered "A-" for the same score.
             // One spelling on the wire: `Display`, which `Serialize` now matches.
             json!(project_score.average_grade.map(|g| g.to_string())),
-            json!([]),
+            json!(ungraded_names),
         )
     } else {
-        (Value::Null, Value::Null, json!(["score", "grade"]))
+        let mut unmeasured = vec!["score".to_string(), "grade".to_string()];
+        unmeasured.extend(ungraded_names);
+        (Value::Null, Value::Null, json!(unmeasured))
     };
 
     Ok(json!({
@@ -175,8 +222,18 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     // Create TDG analyzer
     let analyzer = TdgAnalyzer::new()?;
 
-    // Analyze the file
-    let file_score = analyzer.analyze_file(file_path)?;
+    // TDG grades only its own language set and `analyze_file` errors on
+    // anything else, which turned this tool into a hard error for the .sh /
+    // .md / .toml files `pmat quality-gate --file` reports a verdict on — the
+    // same CLI-vs-MCP contradiction the SATD wiring below exists to remove,
+    // reintroduced from the other side. A language TDG does not grade is not
+    // bad input: the SATD checks still measure the file, so score and grade are
+    // reported as not measured instead of as a refusal.
+    let file_score = if crate::tdg::grades_source(file_path) {
+        Some(analyzer.analyze_file(file_path)?)
+    } else {
+        None
+    };
 
     // Determine pass/fail threshold based on strict mode
     let threshold_score = if strict { 70.0 } else { 50.0 };
@@ -187,9 +244,14 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     };
 
     // Grade's derived Ord is inverted (better grades compare as smaller),
-    // so use the semantic helper instead of a raw `>=` comparison.
-    let tdg_passed =
-        file_score.total >= threshold_score && file_score.grade.meets_threshold(threshold_grade);
+    // so use the semantic helper instead of a raw `>=` comparison. With no
+    // grade at all there is no threshold to fail, and the verdict rests on the
+    // violations below — which is exactly what the CLI gate does for the same
+    // file. GH #704 is untouched: a file TDG *does* grade but scored badly
+    // still fails.
+    let tdg_passed = file_score.as_ref().is_none_or(|score| {
+        score.total >= threshold_score && score.grade.meets_threshold(threshold_grade)
+    });
 
     // TDG penalty attributions are NOT gate violations — they are the score's
     // breakdown. They used to be reported as `violations`, which is why this
@@ -198,8 +260,8 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     // returned {"passed":true,"grade":"A","violations":[]} for the same file in
     // the same session that `analyze_satd` flagged that very TODO.
     let tdg_penalties: Vec<Value> = file_score
-        .penalties_applied
         .iter()
+        .flat_map(|score| score.penalties_applied.iter())
         .map(|p| {
             json!({
                 "category": format!("{:?}", p.source_metric),
@@ -213,6 +275,31 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     let violations = satd_violations_for_file(file_path);
     let passed = tdg_passed && violations.is_empty();
 
+    // Same convention as `check_quality_gates` above and `analyze_deep_context`:
+    // what was not measured goes on the wire as null plus a `not_measured` list,
+    // never as a number a client would read as a measurement.
+    let (score, grade, metrics, not_measured) = match file_score.as_ref() {
+        Some(s) => (
+            json!(s.total),
+            json!(s.grade.to_string()),
+            json!({
+                "structural_complexity": s.structural_complexity,
+                "semantic_complexity": s.semantic_complexity,
+                "duplication_ratio": s.duplication_ratio,
+                "coupling_score": s.coupling_score,
+                "doc_coverage": s.doc_coverage,
+                "consistency_score": s.consistency_score,
+            }),
+            json!([]),
+        ),
+        None => (
+            Value::Null,
+            Value::Null,
+            Value::Null,
+            json!(["score", "grade", "metrics"]),
+        ),
+    };
+
     Ok(json!({
         "status": "completed",
         "message": format!(
@@ -221,19 +308,13 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         ),
         "file": file_path.display().to_string(),
         "passed": passed,
-        "score": file_score.total,
-        "grade": file_score.grade.to_string(),
+        "score": score,
+        "grade": grade,
+        "not_measured": not_measured,
         "threshold": threshold_score,
         "violations": violations,
         "tdg_penalties": tdg_penalties,
-        "metrics": {
-            "structural_complexity": file_score.structural_complexity,
-            "semantic_complexity": file_score.semantic_complexity,
-            "duplication_ratio": file_score.duplication_ratio,
-            "coupling_score": file_score.coupling_score,
-            "doc_coverage": file_score.doc_coverage,
-            "consistency_score": file_score.consistency_score,
-        }
+        "metrics": metrics
     }))
 }
 
