@@ -62,8 +62,21 @@ impl TdgExporter {
         if options.include_metadata {
             csv.push_str("\nSummary\n");
             csv.push_str(&format!("total_files,{}\n", project.total_files));
-            csv.push_str(&format!("average_score,{:.2}\n", project.average_score));
-            csv.push_str(&format!("average_grade,{}\n", project.average_grade));
+            // GH #704: a CSV cell cannot be blank-but-meaningful, so an
+            // unmeasured aggregate says so in words rather than printing the
+            // 0.00/F that 0 analysed files used to produce.
+            csv.push_str(&format!(
+                "average_score,{}\n",
+                project
+                    .average_score
+                    .map_or_else(|| "not measured".to_string(), |s| format!("{s:.2}"))
+            ));
+            csv.push_str(&format!(
+                "average_grade,{}\n",
+                project
+                    .average_grade
+                    .map_or_else(|| "not measured".to_string(), |g| g.to_string())
+            ));
         }
 
         Ok(csv)

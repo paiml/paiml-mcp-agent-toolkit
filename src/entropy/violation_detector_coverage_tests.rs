@@ -145,10 +145,46 @@ mod coverage_tests {
         let reduction = detector.estimate_loc_reduction(&pattern);
         // CONTRACT UPDATED: `estimated_loc` is the LOC covered by all `frequency`
         // instances together (10 lines over 5 instances = 2 lines each), so
-        // collapsing 4 of them saves 4 * 2 * 0.8 = 6 lines. The old expectation of
+        // collapsing 4 of them saves 4 * 2 = 8 lines. The old expectation of
         // 32 treated the whole-group figure as a per-instance size and so
         // "saved" three times more lines than the pattern occupies.
-        assert_eq!(reduction, 6);
+        //
+        // CONTRACT UPDATED AGAIN (GH #708): the expectation was 6, i.e.
+        // 4 * 2 * 0.8, and that 0.8 was an unmeasured "assume 80% can be
+        // eliminated" constant. The eliminable share now comes from the
+        // measured `variation_score`; these instances are structurally
+        // identical (0.0), so every duplicate is eliminable and the answer is 8.
+        assert_eq!(reduction, Some(8));
+    }
+
+    /// GH #708: the eliminable share must track the MEASURED variation, not a
+    /// constant. Same 5 instances over the same 10 lines, only the measured
+    /// similarity differs — so the estimate must differ too.
+    #[test]
+    fn test_estimate_loc_reduction_follows_measured_variation() {
+        let detector = ViolationDetector::new(EntropyConfig::default());
+        let pattern_at = |variation_score: f64| AstPattern {
+            pattern_type: PatternType::ControlFlow,
+            pattern_hash: "test".to_string(),
+            frequency: 5,
+            locations: vec![],
+            variation_score,
+            example_code: String::new(),
+            estimated_loc: 10,
+        };
+
+        // 4 duplicates * 2 lines each * (1 - variation).
+        assert_eq!(detector.estimate_loc_reduction(&pattern_at(0.0)), Some(8));
+        assert_eq!(detector.estimate_loc_reduction(&pattern_at(0.5)), Some(4));
+        assert_eq!(detector.estimate_loc_reduction(&pattern_at(1.0)), Some(0));
+
+        // Instances that share nothing measurable leave nothing to derive from.
+        assert_eq!(detector.estimate_loc_reduction(&pattern_at(1.5)), None);
+        assert_eq!(
+            detector.estimate_loc_reduction(&pattern_at(f64::NAN)),
+            None,
+            "an unusable variation score must withhold the estimate, not default it"
+        );
     }
 
     #[test]
@@ -165,7 +201,7 @@ mod coverage_tests {
         };
 
         let reduction = detector.estimate_loc_reduction(&pattern);
-        assert_eq!(reduction, 0);
+        assert_eq!(reduction, Some(0));
     }
 
     #[test]

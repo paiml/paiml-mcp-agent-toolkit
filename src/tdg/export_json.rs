@@ -30,8 +30,11 @@ impl TdgExporter {
         let output = json!({
             "project": {
                 "total_files": project.total_files,
+                // GH #704: null, not 0.0/"F", when no file was analysed —
+                // `not_measured` names the fields that are null for that reason.
                 "average_score": project.average_score,
-                "average_grade": project.average_grade.to_string(),
+                "average_grade": project.average_grade.map(|g| g.to_string()),
+                "not_measured": project.not_measured,
                 "language_distribution": project.language_distribution,
                 "files": if options.include_metrics { Some(&project.files) } else { None },
             },

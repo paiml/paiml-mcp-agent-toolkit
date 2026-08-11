@@ -59,10 +59,13 @@ impl TdgExporter {
 
         md.push_str("# Project TDG Analysis\n\n");
         md.push_str(&format!("**Total Files:** {}\n", project.total_files));
-        md.push_str(&format!(
-            "**Average Score:** {:.1}/100 ({})\n\n",
-            project.average_score, project.average_grade
-        ));
+        // GH #704: nothing analysed means nothing to report, not 0.0/100 (F).
+        md.push_str(&match (project.average_score, project.average_grade) {
+            (Some(score), Some(grade)) => {
+                format!("**Average Score:** {score:.1}/100 ({grade})\n\n")
+            }
+            _ => "**Average Score:** not measured (no files analysed)\n\n".to_string(),
+        });
 
         md.push_str("## Language Distribution\n\n");
         for (lang, count) in &project.language_distribution {

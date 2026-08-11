@@ -42,8 +42,11 @@ async fn analyze_single_tdg_path(analyzer: &crate::tdg::TdgAnalyzer, path: &Path
             "message": "TDG project analysis completed",
             "result_type": "project",
             "results": {
+                // GH #704: null (never 0.0/"F") when no file was analysed,
+                // with the unmeasured fields named in `not_measured`.
                 "average_score": project_score.average_score,
                 "average_grade": project_score.average_grade,
+                "not_measured": project_score.not_measured,
                 "total_files": project_score.total_files,
                 "language_distribution": project_score.language_distribution,
                 "files": project_score.files
@@ -110,8 +113,10 @@ async fn analyze_multiple_tdg_paths(
         "message": "TDG multi-path analysis completed",
         "result_type": "multi_path",
         "results": {
+            // GH #704: see `analyze_tdg_project` — unmeasured is null, not 0.0/"F".
             "average_score": aggregated.average_score,
             "average_grade": aggregated.average_grade,
+            "not_measured": aggregated.not_measured,
             "total_files": aggregated.total_files,
             "language_distribution": aggregated.language_distribution,
             "files": aggregated.files

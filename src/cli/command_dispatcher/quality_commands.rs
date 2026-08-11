@@ -85,6 +85,17 @@ impl CommandDispatcher {
     /// `pmat report --format csv -o out.csv` wrote a plain-text report ("CODE
     /// QUALITY REPORT …") into a .csv file. The declared format is now carried
     /// end to end and `handle_generate_report` decides what is renderable.
+    ///
+    /// Issue #706: both production dispatchers had been changed to call
+    /// `handle_generate_report` directly, leaving this wrapper reachable only
+    /// from its own tests — so #672's regression pin was pinning a function no
+    /// user could ever run, and the 12-argument call was duplicated in two
+    /// files. Both dispatchers now route through here; this is the single
+    /// `Commands::Report` entry point. The old `Vec<String>` / `Option<f64>`
+    /// parameters went with it: the CLI already parses `--analyses` into
+    /// `AnalysisType` and `--confidence-threshold` into a `u8`, and the
+    /// string re-parse it used to do silently dropped any variant missing from
+    /// its hand-written match arm.
     #[allow(clippy::too_many_arguments)]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_report_command(
@@ -93,33 +104,14 @@ impl CommandDispatcher {
         include_visualizations: bool,
         include_executive_summary: bool,
         include_recommendations: bool,
-        analyses: Vec<String>,
-        confidence_threshold: Option<f64>,
+        analyses: Vec<crate::cli::enums::AnalysisType>,
+        confidence_threshold: u8,
         output: Option<PathBuf>,
         perf: bool,
         text: bool,
         markdown: bool,
         csv: bool,
     ) -> anyhow::Result<()> {
-        use crate::cli::enums::AnalysisType;
-
-        // Convert analysis strings to AnalysisType
-        let analysis_types: Vec<AnalysisType> = analyses
-            .iter()
-            .filter_map(|s| match s.as_str() {
-                "complexity" => Some(AnalysisType::Complexity),
-                "dead_code" | "dead-code" => Some(AnalysisType::DeadCode),
-                "duplication" => Some(AnalysisType::Duplication),
-                "technical_debt" | "technical-debt" => Some(AnalysisType::TechnicalDebt),
-                "big_o" | "big-o" => Some(AnalysisType::BigO),
-                "all" => Some(AnalysisType::All),
-                _ => None,
-            })
-            .collect();
-
-        // Convert confidence threshold to u8 (percentage)
-        let confidence = (confidence_threshold.unwrap_or(0.8) * 100.0) as u8;
-
         handlers::enhanced_reporting_handlers::handle_generate_report(
             project_path.unwrap_or_else(|| PathBuf::from(".")),
             report_format,
@@ -129,8 +121,8 @@ impl CommandDispatcher {
             include_visualizations,
             include_executive_summary,
             include_recommendations,
-            analysis_types,
-            confidence,
+            analyses,
+            confidence_threshold,
             output,
             perf,
         )
@@ -142,7 +134,7 @@ impl CommandDispatcher {
 #[cfg(test)]
 mod report_format_passthrough_tests {
     use super::*;
-    use crate::cli::enums::ReportOutputFormat;
+    use crate::cli::enums::{AnalysisType, ReportOutputFormat};
 
     /// Issue #672 type-level pin. `execute_report_command` used to accept the
     /// generic `OutputFormat`, which cannot represent `csv`/`markdown`, so the
@@ -161,8 +153,8 @@ mod report_format_passthrough_tests {
                 bool,
                 bool,
                 bool,
-                Vec<String>,
-                Option<f64>,
+                Vec<AnalysisType>,
+                u8,
                 Option<PathBuf>,
                 bool,
                 bool,
@@ -172,6 +164,45 @@ mod report_format_passthrough_tests {
         {
         }
         accepts_declared_format(CommandDispatcher::execute_report_command);
+    }
+
+    /// Issue #706 regression: `execute_report_command` had become
+    /// production-dead. Both `Commands::Report` arms — the `CommandDispatcher`
+    /// one and the `CommandExecutor` one — called
+    /// `handle_generate_report` directly, so the only callers left were the
+    /// tests in this module and in `tests_report_format_fidelity.rs`, and
+    /// #672's pin guarded a code path no invocation of `pmat report` reached.
+    ///
+    /// This is a source-level pin because there is no observable difference at
+    /// the CLI between "routed through the wrapper" and "duplicated the call":
+    /// the defect is precisely that the tested function is not the one that
+    /// runs. Precedent for reading a sibling source file in a test:
+    /// `src/mcp_pmcp/tool_manifest.rs`.
+    #[test]
+    fn test_both_report_dispatchers_route_through_execute_report_command() {
+        for (name, src) in [
+            (
+                "command_dispatcher_scoring.rs",
+                include_str!("command_dispatcher_scoring.rs"),
+            ),
+            (
+                "dispatch_ext_scoring.rs",
+                include_str!("../command_structure/executor/dispatch_ext_scoring.rs"),
+            ),
+        ] {
+            assert!(
+                src.contains("execute_report_command"),
+                "{name} must route Commands::Report through \
+                 CommandDispatcher::execute_report_command, not re-implement the call"
+            );
+            // The trailing `(` matters: it matches the *call*, not the prose in
+            // the comments that explain why the call moved.
+            assert!(
+                !src.contains("handle_generate_report("),
+                "{name} still calls handle_generate_report directly, which makes \
+                 execute_report_command (and #672's format-fidelity pin) production-dead"
+            );
+        }
     }
 
     /// Every `ReportOutputFormat` variant must be representable end to end —

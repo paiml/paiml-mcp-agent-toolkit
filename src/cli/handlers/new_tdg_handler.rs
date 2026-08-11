@@ -20,9 +20,47 @@ pub struct TdgAnalysisConfig {
     pub verbose: bool,
 }
 
-/// Check for critical defects in the project (Known Defects v2.1)
-/// Auto-fails TDG analysis if critical defects are found
-async fn check_for_critical_defects(path: &Path) -> Result<()> {
+/// True when `path` is test/bench/example/fuzz source rather than production code.
+///
+/// The detector has its own exclusion list but it only recognises `_test.rs`,
+/// `_tests.rs` and `test_*` file names. This repo splits its test modules into
+/// files the detector therefore scans as production code — `hygiene_scorer/tests.rs`
+/// (a bare `tests.rs`) and `lang_analyzer_tests_part4.rs` (a `_tests_` infix) —
+/// and every `.unwrap()` in a test helper that is not itself inside a `#[test]`
+/// item was reported as a CRITICAL production defect. That is what made
+/// `analyze tdg -p src` exit 1 with 80 "critical defects" while printing
+/// `Average Score: 95.5/100 (B)` (issue #705).
+fn is_test_source(path: &Path) -> bool {
+    if path.parent().is_some_and(|parent| {
+        parent.components().any(|c| {
+            matches!(
+                c.as_os_str().to_str(),
+                Some("tests" | "benches" | "examples" | "fuzz")
+            )
+        })
+    }) {
+        return true;
+    }
+
+    let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+        return false;
+    };
+    let stem = name.strip_suffix(".rs").unwrap_or(name);
+    stem == "tests"
+        || stem == "test"
+        || stem.starts_with("test_")
+        || stem.starts_with("tests_")
+        || stem.ends_with("_test")
+        || stem.ends_with("_tests")
+        || stem.contains("_test_")
+        || stem.contains("_tests_")
+}
+
+/// Check for critical defects in the project (Known Defects v2.1).
+///
+/// Reports what it found; only the `analyze build-tdg` gate turns a finding into
+/// a non-zero exit (see `run_tdg_analysis`).
+async fn check_for_critical_defects(path: &Path, fail_on_critical: bool) -> Result<()> {
     use crate::services::defect_detector::{RustDefectDetector, Severity};
     use ignore::WalkBuilder;
 
@@ -55,6 +93,11 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
             continue;
         }
 
+        // Test code is not a production defect — see `is_test_source`.
+        if is_test_source(file_path) {
+            continue;
+        }
+
         // Read file content
         let content = match tokio::fs::read_to_string(file_path).await {
             Ok(c) => c,
@@ -83,6 +126,22 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
     }
 
     if critical_defects_found {
+        if !fail_on_critical {
+            // `analyze tdg` is a report. It used to bail here unconditionally, so
+            // the command printed `Average Score: 95.5/100 (B)` on stdout and
+            // then exited 1 on stderr — an exit code contradicting the analysis
+            // it had just produced (issue #705). The gate lives in
+            // `analyze build-tdg`, exactly as `--threshold` does.
+            eprintln!(
+                "\n⚠️  {critical_count} critical defect(s) found (advisory). `analyze tdg` \
+                 reports; `pmat analyze build-tdg` gates on them."
+            );
+            eprintln!(
+                "   Run: pmat analyze defects --path {} --format text",
+                path.display()
+            );
+            return Ok(());
+        }
         eprintln!(
             "\n⛔ TDG ANALYSIS FAILED: Found {} critical defect(s)",
             critical_count
@@ -173,8 +232,9 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
 
     write_or_print_result(&result, config.output).await?;
 
-    // KNOWN DEFECTS v2.1: Check for critical defects and auto-fail
-    check_for_critical_defects(&config.path).await?;
+    // KNOWN DEFECTS v2.1: Check for critical defects. Auto-fail is the gated
+    // (`analyze build-tdg`) command's job only — see #705.
+    check_for_critical_defects(&config.path, enforce_threshold).await?;
 
     eprintln!("✅ TDG analysis complete");
 
@@ -197,7 +257,17 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
 /// project; the threshold is enforced as a minimum score instead, and the
 /// comparison is printed in full so the gate is never silent about what it
 /// measured or which way round it read the number.
-fn enforce_tdg_threshold(measured: f32, threshold: f64) -> Result<()> {
+///
+/// GH #704: `measured` is an `Option` because a run that analysed no file has
+/// no score. A gate that could not measure must not report a pass, so `None`
+/// fails the gate instead of being compared as 0.0.
+fn enforce_tdg_threshold(measured: Option<f32>, threshold: f64) -> Result<()> {
+    let Some(measured) = measured else {
+        anyhow::bail!(
+            "TDG gate failed: no file under this path could be graded, so there is no score to \
+             compare against the required minimum of {threshold:.1} (--threshold)"
+        );
+    };
     eprintln!(
         "🚦 TDG gate: measured {measured:.1}/100 against required minimum {threshold:.1} \
          (--threshold, on the 0-100 scale where higher is better)"
@@ -217,7 +287,7 @@ async fn analyze_project_path(
     top_files: usize,
     critical_only: bool,
     include_components: bool,
-) -> Result<(String, f32)> {
+) -> Result<(String, Option<f32>)> {
     let mut project_score = analyzer.analyze_project(path).await?;
     // Honour --top-files for every renderer; aggregates stay whole-project and
     // the truncation is disclosed (files_reported / files_truncated).
@@ -258,9 +328,9 @@ async fn analyze_single_file(
     analyzer: &TdgAnalyzer,
     path: &Path,
     format: &TdgOutputFormat,
-) -> Result<(String, f32)> {
+) -> Result<(String, Option<f32>)> {
     let score = analyzer.analyze_file(path).await?;
-    let total = score.total;
+    let total = Some(score.total);
     Ok((format_file_result(&score, format)?, total))
 }
 
@@ -310,11 +380,14 @@ fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool
     let w = &mut out;
 
     let _ = writeln!(w, "# Project TDG Score Report\n");
-    let _ = writeln!(
-        w,
-        "**Average Score:** {:.1}/100 ({})",
-        project.average_score, project.average_grade
-    );
+    // GH #704: same rule as the table renderer — 0 analysed files has no score
+    // and no grade, so it must not print the 0.0/100 (F) default.
+    let _ = match (project.average_score, project.average_grade) {
+        (Some(score), Some(grade)) => {
+            writeln!(w, "**Average Score:** {score:.1}/100 ({grade})")
+        }
+        _ => writeln!(w, "**Average Score:** not measured (no files analysed)"),
+    };
     let _ = writeln!(w, "**Total Files:** {}", project.total_files);
     // A truncated list says so, exactly as the box-drawing renderer does.
     if project.files_truncated {
@@ -583,28 +656,32 @@ fn sarif_file_result(score: &crate::tdg::TdgScore) -> serde_json::Value {
 /// project score was 94.15/A- the SARIF document announced 72.5/100 (B-) — the
 /// worst file — and disagreed with every other renderer of the same command.
 fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serde_json::Value {
-    let text = if project.total_files == 0 {
-        format!(
-            "No analyzable files were found under {}; project TDG score {:.1}/100 ({}) is not based on any measured file.",
-            root.display(),
-            project.average_score,
-            project.average_grade
-        )
-    } else {
-        format!(
-            "Project TDG score {:.1}/100 ({}) over {} file(s).",
-            project.average_score, project.average_grade, project.total_files
-        )
+    // GH #704: with nothing analysed there is no score to quote at all — the
+    // message used to quote the 0.0/F default while explaining that it was not
+    // based on any measured file.
+    let text = match (project.average_score, project.average_grade) {
+        (Some(score), Some(grade)) => format!(
+            "Project TDG score {score:.1}/100 ({grade}) over {} file(s).",
+            project.total_files
+        ),
+        _ => format!(
+            "No analyzable files were found under {}; there is no project TDG score.",
+            root.display()
+        ),
     };
 
     serde_json::json!({
         "ruleId": "TDG000",
-        "level": if project.total_files == 0 { "error" } else { sarif_level(project.average_score) },
+        "level": match project.average_score {
+            Some(score) if project.total_files > 0 => sarif_level(score),
+            _ => "error",
+        },
         "message": { "text": text },
         "locations": sarif_location(root.display().to_string()),
         "properties": {
             "tdg_score": project.average_score,
-            "grade": project.average_grade.to_string(),
+            "grade": project.average_grade.map(|g| g.to_string()),
+            "not_measured": project.not_measured,
             "total_files": project.total_files,
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
@@ -677,8 +754,11 @@ pub(crate) fn create_sarif_output(
         results,
         serde_json::json!({
             "total_files": project.total_files,
+            // GH #704: null (and named in `not_measured`) when nothing was
+            // analysed, never the 0.0/"F" default.
             "average_score": project.average_score,
-            "average_grade": project.average_grade.to_string(),
+            "average_grade": project.average_grade.map(|g| g.to_string()),
+            "not_measured": project.not_measured,
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         }),
@@ -743,7 +823,7 @@ mod tests {
 
     #[test]
     fn threshold_gate_fails_when_the_measured_score_is_below_it() {
-        let err = enforce_tdg_threshold(85.0, 90.0)
+        let err = enforce_tdg_threshold(Some(85.0), 90.0)
             .expect_err("85.0/100 must not satisfy a required minimum of 90.0");
         let msg = err.to_string();
         assert!(
@@ -758,8 +838,21 @@ mod tests {
 
     #[test]
     fn threshold_gate_passes_when_the_measured_score_meets_it() {
-        assert!(enforce_tdg_threshold(85.0, 2.0).is_ok());
-        assert!(enforce_tdg_threshold(85.0, 85.0).is_ok());
+        assert!(enforce_tdg_threshold(Some(85.0), 2.0).is_ok());
+        assert!(enforce_tdg_threshold(Some(85.0), 85.0).is_ok());
+    }
+
+    /// GH #704: a gate with nothing to measure must FAIL, not pass on the 0.0
+    /// an unmeasured aggregate used to supply.
+    #[test]
+    fn threshold_gate_fails_when_nothing_was_measured() {
+        let err = enforce_tdg_threshold(None, 2.0)
+            .expect_err("a gate that measured nothing must not report a pass");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("no file") && msg.contains("no score"),
+            "gate must say it measured nothing: {msg}"
+        );
     }
 
     #[tokio::test]
@@ -789,6 +882,100 @@ mod tests {
         );
         // ...while the ungated `analyze tdg` path stays a report.
         assert!(handle_analyze_tdg(cfg(1000.0)).await.is_ok());
+        Ok(())
+    }
+
+    // ── critical-defect auto-fail no longer contradicts the report (#705) ───
+
+    /// Build a project whose ONLY `.unwrap()` calls live in test-module files
+    /// that the detector's own exclusion list does not recognise.
+    fn project_with_unwraps_only_in_test_files() -> Result<tempfile::TempDir> {
+        let dir = tempfile::tempdir()?;
+        let src = dir.path().join("src");
+        std::fs::create_dir_all(&src)?;
+        std::fs::write(
+            src.join("lib.rs"),
+            "/// Documented.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )?;
+        // Bare `tests.rs` — `should_exclude_file` only knows `*_test.rs` /
+        // `*_tests.rs` / `test_*`, so this scanned as production code.
+        std::fs::write(
+            src.join("tests.rs"),
+            "use super::*;\nfn helper() -> String {\n    std::env::var(\"HOME\").unwrap()\n}\n",
+        )?;
+        // `_tests_` infix — same blind spot, and this is the exact shape of
+        // `src/services/lang_analyzer_tests_part4.rs` from the issue.
+        std::fs::write(
+            src.join("lang_analyzer_tests_part4.rs"),
+            "fn helper() {\n    let v: Option<i32> = Some(1);\n    let _ = v.unwrap();\n}\n",
+        )?;
+        Ok(dir)
+    }
+
+    fn tdg_config(path: &Path, out: PathBuf) -> TdgAnalysisConfig {
+        TdgAnalysisConfig {
+            path: path.to_path_buf(),
+            threshold: None,
+            top_files: Some(10),
+            format: TdgOutputFormat::Json,
+            include_components: false,
+            output: Some(out),
+            critical_only: false,
+            verbose: false,
+        }
+    }
+
+    #[test]
+    fn test_module_files_are_not_production_defect_sources() {
+        // The two shapes the detector's own exclusion list misses.
+        assert!(is_test_source(Path::new(
+            "src/services/repo_score/scorers/hygiene_scorer/tests.rs"
+        )));
+        assert!(is_test_source(Path::new(
+            "src/services/lang_analyzer_tests_part4.rs"
+        )));
+        assert!(is_test_source(Path::new("tests/integration.rs")));
+        assert!(is_test_source(Path::new("src/foo_tests.rs")));
+        // ...and production code whose name merely contains the substring is
+        // still scanned: an over-broad skip would hide real defects.
+        assert!(!is_test_source(Path::new("src/cli/handlers/latest.rs")));
+        assert!(!is_test_source(Path::new("src/services/contest.rs")));
+        assert!(!is_test_source(Path::new("src/tdg/analyzer.rs")));
+    }
+
+    #[tokio::test]
+    async fn analyze_tdg_does_not_exit_nonzero_for_unwraps_in_test_files() -> Result<()> {
+        let dir = project_with_unwraps_only_in_test_files()?;
+        let out = dir.path().join("out.json");
+
+        // The defect: this exited 1 ("TDG auto-fail: Critical defects detected")
+        // while its own stdout reported a healthy A/B-grade project.
+        handle_analyze_tdg(tdg_config(dir.path(), out.clone())).await?;
+        // The gate command must agree: test-file unwraps are not defects at all.
+        handle_analyze_tdg_gated(tdg_config(dir.path(), out)).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn a_production_unwrap_fails_the_gate_but_only_the_gate() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let src = dir.path().join("src");
+        std::fs::create_dir_all(&src)?;
+        std::fs::write(
+            src.join("lib.rs"),
+            "pub fn first(v: &[i32]) -> i32 {\n    *v.first().unwrap()\n}\n",
+        )?;
+
+        // `analyze tdg` is a report: it says so and exits 0.
+        handle_analyze_tdg(tdg_config(dir.path(), dir.path().join("a.json"))).await?;
+        // `analyze build-tdg` is the gate: it still auto-fails.
+        let err = handle_analyze_tdg_gated(tdg_config(dir.path(), dir.path().join("b.json")))
+            .await
+            .expect_err("build-tdg must still auto-fail on a production .unwrap()");
+        assert!(
+            err.to_string().contains("Critical defects"),
+            "unexpected error: {err}"
+        );
         Ok(())
     }
 

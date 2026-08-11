@@ -25,14 +25,20 @@ type ProjectContext<'a> = Option<&'a crate::tdg::ProjectScore>;
 
 /// The disclosure of the F-grade cap, when it fired.
 fn cap_note(project: ProjectContext<'_>) -> Option<String> {
-    project.filter(|p| p.grade_capped).map(|p| {
-        format!(
-            "capped from {} by {} F-grade file{}",
-            format_grade(p.uncapped_grade()),
-            p.f_grade_count,
-            if p.f_grade_count == 1 { "" } else { "s" }
-        )
-    })
+    // GH #704: `uncapped_grade()` is an Option (nothing analysed ⇒ no grade).
+    // A cap can only fire on a measured project, so the None arm simply has no
+    // note to make rather than inventing one.
+    project
+        .filter(|p| p.grade_capped)
+        .and_then(|p| p.uncapped_grade().map(|g| (p, g)))
+        .map(|(p, uncapped)| {
+            format!(
+                "capped from {} by {} F-grade file{}",
+                format_grade(uncapped),
+                p.f_grade_count,
+                if p.f_grade_count == 1 { "" } else { "s" }
+            )
+        })
 }
 
 /// Grade text for the headline, disclosing the cap when it fired. Used where
@@ -273,7 +279,8 @@ fn format_tdg_score_json(
         "grade_capped": project.map(|p| p.grade_capped),
         "grade_uncapped": project
             .filter(|p| p.grade_capped)
-            .map(|p| format_grade(p.uncapped_grade())),
+            .and_then(crate::tdg::ProjectScore::uncapped_grade)
+            .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
         "score": {
             "total": score.total,

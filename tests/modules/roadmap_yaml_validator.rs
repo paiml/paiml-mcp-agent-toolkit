@@ -8,7 +8,12 @@ use std::fs;
 
 #[test]
 fn validate_roadmap_acceptance_criteria() {
-    let yaml_path = "../docs/roadmaps/roadmap.yaml";
+    // #709: the path used to start with `..`, stale since the workspace was
+    // flattened to a single crate. Relative to the package root that escapes
+    // the repo entirely, so the test read whatever happened to sit next to
+    // the checkout (or panicked in `expect` on a clean one) and never looked
+    // at the roadmap it is named for. Anchor on the manifest dir instead.
+    let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/roadmaps/roadmap.yaml");
     let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
     // Try to deserialize - this will show the exact error
@@ -20,6 +25,7 @@ fn validate_roadmap_acceptance_criteria() {
             println!("Total roadmap items: {}", roadmap.roadmap.len());
 
             // Manually check each item's acceptance_criteria
+            let mut checked = 0usize;
             for (idx, item) in roadmap.roadmap.iter().enumerate() {
                 println!("\nItem {}: {} ({})", idx, item.id, item.title);
                 println!(
@@ -29,8 +35,17 @@ fn validate_roadmap_acceptance_criteria() {
 
                 for (criteria_idx, criteria) in item.acceptance_criteria.iter().enumerate() {
                     println!("    [{}]: {}", criteria_idx, criteria);
+                    checked += 1;
                 }
             }
+
+            // #709: with the old `..` path this validator read a one-item file
+            // with `acceptance_criteria: []`, so the loop above ran zero times
+            // and the test passed without validating a single criterion.
+            assert!(
+                checked > 0,
+                "validated no acceptance_criteria at all - wrong roadmap file?"
+            );
         }
         Err(e) => {
             eprintln!("❌ YAML PARSE ERROR:");
@@ -44,7 +59,8 @@ fn validate_roadmap_acceptance_criteria() {
 #[test]
 fn validate_roadmap_with_raw_yaml() {
     // Parse as raw YAML first to inspect structure
-    let yaml_path = "../docs/roadmaps/roadmap.yaml";
+    // #709: manifest-anchored — see the note on the test above.
+    let yaml_path = concat!(env!("CARGO_MANIFEST_DIR"), "/docs/roadmaps/roadmap.yaml");
     let yaml_content = fs::read_to_string(yaml_path).expect("Failed to read roadmap.yaml");
 
     let raw_yaml: serde_yaml_ng::Value =
@@ -56,6 +72,7 @@ fn validate_roadmap_with_raw_yaml() {
             roadmap_items.len()
         );
 
+        let mut checked = 0usize;
         for (idx, item) in roadmap_items.iter().enumerate() {
             if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
                 if let Some(criteria) = item
@@ -72,6 +89,7 @@ fn validate_roadmap_with_raw_yaml() {
                             eprintln!("  Value: {:?}", criterion);
                             panic!("Found non-string acceptance_criteria entry");
                         } else {
+                            checked += 1;
                             println!(
                                 "✅ Item {}: {} - criteria[{}]: string",
                                 idx, id, criteria_idx
@@ -90,6 +108,14 @@ fn validate_roadmap_with_raw_yaml() {
                 }
             }
         }
+
+        // #709: same vacuity guard as the test above - the file this used to
+        // read had a single item with no acceptance_criteria, so "all entries
+        // are strings" was true of the empty set.
+        assert!(
+            checked > 0,
+            "scanned no acceptance_criteria at all - wrong roadmap file?"
+        );
 
         println!("\n✅ All acceptance_criteria entries are strings");
     } else {

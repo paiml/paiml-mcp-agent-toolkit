@@ -80,12 +80,92 @@ pub struct TdgCommandConfig {
 }
 
 /// Check if path should be skipped (test/bench files)
+///
+/// GH #716: this substring-matched the *user-supplied* path string
+/// (`path_str.contains("/tests/")`), so the verdict depended on nothing but how
+/// the caller spelled the path relative to their cwd. The identical bytes came
+/// back two ways from one binary:
+/// `pmat tdg <abs>/tcorp/tests/m00.rs` printed "Skipping test file" and no
+/// score, while `cd tcorp/tests && pmat tdg m00.rs` scored it 92.58/A — the
+/// relative spelling has no `/tests/` in it. Resolve the path first, then match
+/// whole path COMPONENTS, so the answer is a property of the file and not of
+/// the shell that asked.
 fn should_skip_path(config: &TdgCommandConfig) -> bool {
     if !config.path.is_file() {
         return false;
     }
-    let path_str = config.path.to_string_lossy();
-    path_str.contains("/tests/") || path_str.contains("/benches/")
+    is_test_or_bench_path(&config.path)
+}
+
+/// Whether `path` lives under a directory named `tests` or `benches`, decided
+/// on the RESOLVED path so `./m00.rs` and `/abs/tcorp/tests/m00.rs` agree.
+///
+/// `canonicalize` needs the file to exist; `std::path::absolute` is the
+/// lexical fallback so a nonexistent path still gets a cwd-independent answer
+/// instead of silently reverting to the substring behaviour.
+fn is_test_or_bench_path(path: &Path) -> bool {
+    use std::path::Component;
+
+    let resolved = fs::canonicalize(path)
+        .or_else(|_| std::path::absolute(path))
+        .unwrap_or_else(|_| path.to_path_buf());
+
+    // Only the DIRECTORIES above the file count — a file named `tests.rs` is
+    // source, exactly as the old `/tests/` substring required.
+    resolved
+        .parent()
+        .into_iter()
+        .flat_map(Path::components)
+        .any(|component| {
+            matches!(component, Component::Normal(name) if name == "tests" || name == "benches")
+        })
+}
+
+/// The output for a path pmat declines to score.
+///
+/// GH #716: the skip was announced with a bare `println!`, so
+/// `pmat tdg <test file> --format json` wrote `Skipping test file: …` — not
+/// JSON — and exited 0, leaving every machine consumer to parse a sentence. A
+/// declared machine format must produce that format, and "not scored" has to be
+/// said explicitly (`analyzed: false`, null score) rather than implied by a
+/// missing key or faked with a 0.0/F.
+fn skipped_output(config: &TdgCommandConfig) -> Result<String> {
+    let reason = "test-or-bench file: TDG does not grade test sources";
+    match config.format {
+        TdgOutputFormat::Json => Ok(serde_json::to_string_pretty(&serde_json::json!({
+            "file": config.path.display().to_string(),
+            "analyzed": false,
+            "skipped": true,
+            "skip_reason": reason,
+            "score": serde_json::Value::Null,
+            "grade": serde_json::Value::Null,
+            "not_measured": ["score", "grade"],
+        }))?),
+        // A SARIF consumer must get SARIF, not a sentence and not the JSON
+        // object above: an analysis that produced no finding is an empty run,
+        // and `properties` says why it is empty rather than leaving it to look
+        // like a clean bill of health.
+        TdgOutputFormat::Sarif => Ok(serde_json::to_string_pretty(&serde_json::json!({
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [{
+                "tool": { "driver": {
+                    "name": "pmat-tdg",
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                    "version": env!("CARGO_PKG_VERSION"),
+                }},
+                "properties": {
+                    "analyzed": false,
+                    "skip_reason": reason,
+                    "not_measured": ["score", "grade"],
+                },
+                "results": []
+            }]
+        }))?),
+        TdgOutputFormat::Table | TdgOutputFormat::Markdown => {
+            Ok(format!("Skipping test file: {}", config.path.display()))
+        }
+    }
 }
 
 /// Setup git context for analyzer if enabled
@@ -194,7 +274,10 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     if should_skip_path(&config) {
         if !config.quiet {
-            println!("Skipping test file: {}", config.path.display());
+            // GH #716: was a bare `println!`, which put a sentence on stdout
+            // under `--format json`/`--format sarif` and ignored `--output`.
+            let output_str = skipped_output(&config)?;
+            formatting::write_tdg_output(&output_str, &config)?;
         }
         return Ok(());
     }
@@ -233,3 +316,8 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
 #[cfg(test)]
 #[path = "../tdg_handlers_tests.rs"]
 mod tests;
+
+// GH #716 regression tests live in their own file (CB-040 file health).
+#[cfg(test)]
+#[path = "skip_path_tests.rs"]
+mod skip_path_tests;

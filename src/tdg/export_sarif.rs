@@ -44,8 +44,10 @@ impl TdgExporter {
                 "results": all_results,
                 "properties": {
                     "total_files": project.total_files,
+                    // GH #704: null when nothing was analysed, never 0.0/"F".
                     "average_score": project.average_score,
-                    "average_grade": project.average_grade.to_string(),
+                    "average_grade": project.average_grade.map(|g| g.to_string()),
+                    "not_measured": project.not_measured,
                 }
             }]
         });

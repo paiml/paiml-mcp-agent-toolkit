@@ -69,7 +69,11 @@ async fn analyze_paths_with_storage(
         match analysis_result {
             Ok(project_score) => {
                 total_files += project_score.total_files;
-                avg_score += project_score.average_score;
+                // GH #704: a path that graded nothing contributes nothing --
+                // it used to contribute the 0.0 default of an unmeasured score.
+                if let Some(score) = project_score.average_score {
+                    avg_score += score;
+                }
 
                 store_project_results(&project_score, storage).await;
 
@@ -200,8 +204,10 @@ fn create_success_result(path: &Path, project_score: &crate::tdg::ProjectScore) 
     json!({
         "path": path.display().to_string(),
         "total_files": project_score.total_files,
+        // GH #704: null, not 0.0/"F", when no file under this path was graded.
         "average_score": project_score.average_score,
-        "average_grade": format!("{}", project_score.average_grade),
+        "average_grade": project_score.average_grade.map(|g| g.to_string()),
+        "not_measured": project_score.not_measured,
         "language_distribution": project_score.language_distribution,
     })
 }

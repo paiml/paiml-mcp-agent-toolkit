@@ -384,17 +384,26 @@ fn test_penalty_attribution_serialization() {
 fn test_project_score_default() {
     let score = ProjectScore::default();
     assert!(score.files.is_empty());
-    assert_eq!(score.average_score, 0.0);
+    // GH #704: `Default` cannot claim a score either — it analysed nothing.
+    assert_eq!(score.average_score, None);
     assert_eq!(score.total_files, 0);
     assert!(score.language_distribution.is_empty());
 }
 
 #[test]
 fn test_project_score_aggregate_empty() {
+    // GH #704: this test used to assert the DEFECT — `average_score == 0.0`
+    // and `average_grade == Grade::F` for zero analysed files, which is what
+    // `analyze tdg` on an empty directory printed as a measurement. Rewritten
+    // to assert the corrected contract: nothing analysed, nothing claimed.
     let score = ProjectScore::aggregate(vec![]);
     assert_eq!(score.total_files, 0);
-    assert_eq!(score.average_score, 0.0);
-    assert_eq!(score.average_grade, Grade::F);
+    assert_eq!(score.average_score, None);
+    assert_eq!(score.average_grade, None);
+    assert_eq!(
+        score.not_measured,
+        vec!["average_score".to_string(), "average_grade".to_string()]
+    );
 }
 
 #[test]
@@ -406,8 +415,8 @@ fn test_project_score_aggregate_single() {
     };
     let project = ProjectScore::aggregate(vec![tdg_score]);
     assert_eq!(project.total_files, 1);
-    assert_eq!(project.average_score, 85.0);
-    assert_eq!(project.average_grade, Grade::AMinus);
+    assert_eq!(project.average_score, Some(85.0));
+    assert_eq!(project.average_grade, Some(Grade::AMinus));
     assert_eq!(
         *project.language_distribution.get(&Language::Rust).unwrap(),
         1
@@ -435,8 +444,8 @@ fn test_project_score_aggregate_multiple() {
     ];
     let project = ProjectScore::aggregate(scores);
     assert_eq!(project.total_files, 3);
-    assert_eq!(project.average_score, 80.0);
-    assert_eq!(project.average_grade, Grade::BPlus);
+    assert_eq!(project.average_score, Some(80.0));
+    assert_eq!(project.average_grade, Some(Grade::BPlus));
     assert_eq!(
         *project.language_distribution.get(&Language::Rust).unwrap(),
         2
@@ -584,7 +593,7 @@ fn test_project_score_f_grade_capping() {
     // With F-grade capping: Grade is capped to B
     assert_eq!(project.f_grade_count, 1);
     assert!(project.grade_capped);
-    assert_eq!(project.average_grade, Grade::B);
+    assert_eq!(project.average_grade, Some(Grade::B));
 }
 
 #[test]
@@ -616,7 +625,7 @@ fn test_project_score_no_f_grade_capping() {
     assert_eq!(project.f_grade_count, 0);
     assert!(!project.grade_capped);
     // Average: (95+90)/2 = 92.5 -> A (90-94 range)
-    assert_eq!(project.average_grade, Grade::A);
+    assert_eq!(project.average_grade, Some(Grade::A));
 }
 
 /// GH #680, second round. This test used to assert the two files WITHOUT
@@ -646,7 +655,7 @@ fn test_project_grade_ignores_unmeasured_contract_coverage() {
 
     // Same two files as test_project_score_no_f_grades_no_cap, which sets
     // has_contract_coverage: true — the answer must be identical.
-    assert_eq!(project.average_grade, Grade::A);
+    assert_eq!(project.average_grade, Some(Grade::A));
     assert_eq!(project.files[0].grade, Grade::APlus);
     assert_eq!(project.files[1].grade, Grade::A);
 }
@@ -771,7 +780,7 @@ fn test_project_score_f_grade_capping_from_a_plus() {
     // With capping: Grade should be B
     assert_eq!(project.f_grade_count, 1);
     assert!(project.grade_capped);
-    assert_eq!(project.average_grade, Grade::B);
+    assert_eq!(project.average_grade, Some(Grade::B));
 }
 
 // ============ Comparison Tests ============

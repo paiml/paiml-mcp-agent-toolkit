@@ -1,8 +1,4 @@
 
-        let tool = &runs[0]["tool"]["driver"];
-        assert_eq!(tool["name"], "pmat-lint-hotspot");
-    }
-
     #[test]
     fn test_format_sarif_with_violations() {
         let mut result = create_full_test_result();
@@ -24,16 +20,27 @@
         let output = format_sarif(&result).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
 
+        // #701: this used to assert `results.len() == 2`, i.e. that SARIF
+        // carried only the two quality-gate breaches. That is the behaviour
+        // format_sarif was fixed *away* from: building the document out of
+        // gate breaches alone made a passing gate emit `"results": []` while
+        // `-f detailed` listed the located clippy findings for the same run.
+        // The located findings come first, the gate breaches ride along after
+        // them. The fragment was never compiled, so it kept asserting the old
+        // shape unchallenged.
         let results = parsed["runs"][0]["results"].as_array().unwrap();
-        assert_eq!(results.len(), 2);
+        assert_eq!(results.len(), result.all_violations.len() + 2);
 
-        // First violation should be error level (blocking)
-        assert_eq!(results[0]["level"], "error");
-        assert_eq!(results[0]["ruleId"], "max_defect_density");
+        // Located findings first, each with a region.
+        assert_eq!(results[0]["ruleId"], "unused_variable");
+        assert!(results[0]["locations"][0]["physicalLocation"]["region"].is_object());
 
-        // Second violation should be warning level
-        assert_eq!(results[1]["level"], "warning");
-        assert_eq!(results[1]["ruleId"], "max_single_file_violations");
+        // Then the gate breaches: blocking maps to error, everything else to warning.
+        let gate = &results[result.all_violations.len()..];
+        assert_eq!(gate[0]["level"], "error");
+        assert_eq!(gate[0]["ruleId"], "max_defect_density");
+        assert_eq!(gate[1]["level"], "warning");
+        assert_eq!(gate[1]["ruleId"], "max_single_file_violations");
     }
 
     // LintHotspotResult Tests
@@ -365,9 +372,13 @@
             }
 
             #[test]
-            fn test_count_sloc_non_negative(content in ".*") {
+            // #701: this used to assert `sloc >= 0` on a `usize`, which is
+            // true for every possible value and so measured nothing (clippy
+            // flags it as a useless comparison). It now bounds sloc by the
+            // only thing it can be: the number of lines it was counted from.
+            fn test_count_sloc_bounded_by_line_count(content in ".*") {
                 let sloc = count_sloc(&content);
-                prop_assert!(sloc >= 0);
+                prop_assert!(sloc <= content.lines().count());
             }
 
             #[test]
@@ -394,4 +405,3 @@
             }
         }
     }
-}

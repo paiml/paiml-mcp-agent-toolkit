@@ -303,8 +303,9 @@ mod coverage_instrumented_tests {
         lang_dist.insert(Language::Python, 2);
 
         let project = ProjectScore {
-            average_score: 88.0,
-            average_grade: Grade::AMinus,
+            average_score: Some(88.0),
+            average_grade: Some(Grade::AMinus),
+            not_measured: Vec::new(),
             total_files: 10,
             files: vec![
                 TdgScore {
@@ -345,8 +346,9 @@ mod coverage_instrumented_tests {
         lang_dist.insert(Language::Go, 1);
 
         let project = ProjectScore {
-            average_score: 70.0,
-            average_grade: Grade::BMinus,
+            average_score: Some(70.0),
+            average_grade: Some(Grade::BMinus),
+            not_measured: Vec::new(),
             total_files: 1,
             files: vec![TdgScore {
                 total: 70.0,
