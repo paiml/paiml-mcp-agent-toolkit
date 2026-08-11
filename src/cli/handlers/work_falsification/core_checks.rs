@@ -71,8 +71,12 @@ pub(crate) async fn test_differential_coverage(
         .context("Failed to get git diff")?;
 
     if !output.status.success() {
-        return Ok(FalsificationResult::passed(
-            "No baseline commit found, skipping differential coverage".to_string(),
+        // An unresolvable baseline means the diff was never computed. Recording
+        // that as `passed()` marked the claim measured:true and counted it as
+        // corroborating evidence -- a claim that was never evaluated cannot
+        // corroborate anything.
+        return Ok(FalsificationResult::unmeasured(
+            "baseline commit could not be resolved, so no diff was computed".to_string(),
         ));
     }
 
@@ -174,15 +178,17 @@ pub(crate) async fn test_absolute_coverage(
 ) -> Result<FalsificationResult> {
     print!("Checking coverage threshold... ");
 
-    // Prefer the recorded trend, then whatever a coverage run left on disk. The
-    // trends file is written only by `make coverage` / `pmat record-metric`, so
-    // requiring it made this claim vacuous in every repo that had simply run
-    // coverage once.
-    let measured = read_trend_coverage(project_path).or_else(|| {
-        coverage_source::load(project_path)
-            .as_ref()
-            .and_then(coverage_source::total_percent)
-    });
+    // ORDER MATTERS. The real coverage artifact is consulted FIRST; the
+    // `.pmat-metrics/trends/test-coverage.json` history is only a fallback.
+    //
+    // Previously the trends file won, and it is an ordinary hand-writable JSON
+    // file in the working tree: appending {"value": 100.0} to it satisfied a
+    // 95% gate regardless of the lcov data sitting beside it. A gate whose
+    // evidence can be edited by the thing under test is not evidence.
+    let measured = coverage_source::load(project_path)
+        .as_ref()
+        .and_then(coverage_source::total_percent)
+        .or_else(|| read_trend_coverage(project_path));
 
     Ok(match measured {
         Some(pct) => judge_coverage(pct, threshold),
@@ -281,6 +287,23 @@ pub(crate) fn test_complexity_regression(
     print!("Analyzing function complexity... ");
 
     // Run pmat complexity check
+    // Push the CONTRACT threshold down into the analyzer instead of
+    // post-filtering its default output. Without these flags `violations[]`
+    // only ever contains functions above pmat's own internal floors
+    // (cyclomatic > 10, cognitive > 15), so every contract threshold from 0 to
+    // 10 behaved identically to 10: a function at cyclomatic 8 against a
+    // contract max of 5 was certified compliant, and at max 0 the gate still
+    // reported "All functions <= 0 complexity / PASSED".
+    //
+    // Deliberately NOT passing --fail-on-violation: it makes the process exit
+    // non-zero on a real violation, which lands in the `_ =>` arm below and
+    // would report "could not be run" instead of the violation itself.
+    //
+    // Deliberately NOT reading files[]: it is truncated to top_files_limit
+    // (default 10) and ordered by cyclomatic+cognitive sum, not by max, so on
+    // this repo it exposes 409 of 39900 functions and hides the worst offender.
+    // violations[] is not truncated.
+    let max_str = max_complexity.to_string();
     let output = Command::new("pmat")
         .args([
             "analyze",
@@ -289,6 +312,10 @@ pub(crate) fn test_complexity_regression(
             "json",
             "--path",
             &project_path.to_string_lossy(),
+            "--max-cyclomatic",
+            &max_str,
+            "--max-cognitive",
+            &max_str,
         ])
         .output();
 
@@ -322,44 +349,85 @@ pub(crate) fn test_complexity_regression(
 /// always returned None and the check fell through to an unconditional pass.
 /// A blocking gate that cannot fail is worse than no gate.
 fn evaluate_complexity_json(json: &serde_json::Value, max_complexity: u32) -> FalsificationResult {
-    let over: Vec<&serde_json::Value> = json
-        .get("violations")
-        .and_then(|v| v.as_array())
-        .map(|violations| {
-            violations
-                .iter()
-                .filter(|v| {
-                    v.get("value")
-                        .and_then(serde_json::Value::as_u64)
-                        .unwrap_or(0)
-                        > max_complexity as u64
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    // Absent `violations` means the shape changed. Fail closed: the file
+    // already does this for unparseable JSON, and `unwrap_or_default()` into an
+    // empty vec is exactly the silent pass this module keeps growing.
+    let Some(violations) = json.get("violations").and_then(|v| v.as_array()) else {
+        return FalsificationResult::failed(
+            "'pmat analyze complexity' JSON has no violations[]; complexity was not checked"
+                .to_string(),
+            EvidenceType::BooleanCheck(false),
+        );
+    };
 
-    if over.is_empty() {
+    // The analyzer emits ONE ROW PER RULE, so a single function over both
+    // limits appears twice ("2 function(s) exceed complexity 20: huge, huge").
+    // Dedupe by (file, function, line) and keep that function's worst value.
+    let mut worst: std::collections::BTreeMap<(String, String, u64), u64> =
+        std::collections::BTreeMap::new();
+    for v in violations {
+        let value = v.get("value").and_then(serde_json::Value::as_u64);
+        // A row whose value is missing or not a number is drift, not
+        // compliance. Previously `unwrap_or(0)` silently treated it as clean.
+        let Some(value) = value else {
+            return FalsificationResult::failed(
+                "'pmat analyze complexity' violation row has no numeric value; \
+                 complexity was not checked"
+                    .to_string(),
+                EvidenceType::BooleanCheck(false),
+            );
+        };
+        let file = v
+            .get("file")
+            .and_then(|f| f.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let func = v
+            .get("function")
+            .and_then(|f| f.as_str())
+            .unwrap_or("<unnamed>")
+            .to_string();
+        let line = v.get("line").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        worst
+            .entry((file, func, line))
+            .and_modify(|w| *w = (*w).max(value))
+            .or_insert(value);
+    }
+
+    if worst.is_empty() {
         return FalsificationResult::passed(format!(
-            "All functions <= {} complexity",
-            max_complexity
+            "no function exceeds cyclomatic or cognitive complexity {max_complexity}"
         ));
     }
 
-    let names: Vec<String> = over
+    let peak = worst.values().copied().max().unwrap_or(0);
+    let mut names: Vec<String> = worst
         .iter()
-        .filter_map(|v| v.get("function").and_then(|n| n.as_str()))
-        .map(String::from)
+        .map(|((_, func, _), v)| format!("{func} ({v})"))
         .collect();
+    names.sort();
+    let shown = names.len().min(10);
+    let suffix = if names.len() > shown {
+        format!(", +{} more", names.len() - shown)
+    } else {
+        String::new()
+    };
+
     FalsificationResult::failed(
         format!(
-            "{} function(s) exceed complexity {}: {}",
-            over.len(),
+            "{} function(s) exceed complexity {}: {}{}",
+            worst.len(),
             max_complexity,
-            names.join(", ")
+            names[..shown].join(", "),
+            suffix
         ),
         EvidenceType::NumericComparison {
-            actual: over.len() as f64,
-            threshold: 0.0,
+            // `actual` is the worst complexity observed and `threshold` is the
+            // limit. Previously this reported actual=<row count> against a
+            // hardcoded threshold=0.0, which is why the gate printed
+            // "actual=10.0, threshold=0.0" for a limit documented as 20.
+            actual: peak as f64,
+            threshold: f64::from(max_complexity),
         },
     )
 }
@@ -422,28 +490,36 @@ pub(crate) fn test_file_size_regression(
     }
 }
 
-/// Parse spec score from pmat output (format: "Score: XX/100")
-fn parse_spec_score(stdout: &str) -> Option<u32> {
+/// Parse spec score from pmat output (format: "Score: XX.X/100")
+///
+/// Returns f64. The previous implementation kept only ASCII digits, which
+/// DELETED THE DECIMAL POINT: the scorer formats with `{:.1}`
+/// (spec_handlers_scoring.rs), so "Score: 9.6/100" parsed as 96 — every score
+/// inflated 10x. Combined with the exit-code bug below, that made the blocking
+/// SpecQuality claim unfalsifiable for any threshold <= 950. Empirically, a
+/// spec scoring 9.6/100 passed a 95/100 gate.
+fn parse_spec_score(stdout: &str) -> Option<f64> {
     let score_line = stdout.lines().find(|l| l.contains("Score:"))?;
-    let score_str = score_line.split('/').next()?;
-    score_str
+    let after = score_line.split("Score:").nth(1)?;
+    let num: String = after
+        .trim_start()
         .chars()
-        .filter(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .parse::<u32>()
-        .ok()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    num.parse::<f64>().ok()
 }
 
 /// Evaluate parsed spec score against threshold
-fn evaluate_spec_score(score: u32, min_score: u32) -> FalsificationResult {
-    if score >= min_score {
-        FalsificationResult::passed(format!("{}/100 >= {}/100", score, min_score))
+fn evaluate_spec_score(score: f64, min_score: u32) -> FalsificationResult {
+    let min = f64::from(min_score);
+    if score >= min {
+        FalsificationResult::passed(format!("{score:.1}/100 >= {min_score}/100"))
     } else {
         FalsificationResult::failed(
-            format!("{}/100 < {}/100 threshold", score, min_score),
+            format!("{score:.1}/100 < {min_score}/100 threshold"),
             EvidenceType::NumericComparison {
-                actual: score as f64,
-                threshold: min_score as f64,
+                actual: score,
+                threshold: min,
             },
         )
     }
@@ -465,14 +541,13 @@ pub(crate) fn test_spec_quality(
     ));
 
     if !spec_path.exists() {
-        // Also check for numbered format
-        let spec_dir = project_path.join("docs/specifications");
-        if spec_dir.exists() {
-            // Spec not found - this is OK if not required
-            return Ok(FalsificationResult::passed(
-                "No spec file found (optional)".to_string(),
-            ));
-        }
+        // No spec to score. This is NOT evidence of quality, so it must not be
+        // recorded as a corroborated pass -- `passed()` sets measured:true and
+        // inflates the passed tally. `unmeasured()` reports the gap honestly.
+        return Ok(FalsificationResult::unmeasured(format!(
+            "No spec file at {}",
+            spec_path.display()
+        )));
     }
 
     // Run pmat spec score
@@ -481,19 +556,32 @@ pub(crate) fn test_spec_quality(
         .current_dir(project_path)
         .output();
 
+    // EXIT CODE 1 IS THE SCORER'S "SPEC FAILED" SIGNAL, NOT "SCORER MISSING".
+    // handle_spec_score exits 1 iff score < threshold, and it prints the score
+    // on stdout either way. The previous `_ =>` arm mapped that exit status to
+    // passed("Spec scorer not available"), so the one signal that means "this
+    // spec is bad" was read as "nothing to see here". Proven by an A/B where
+    // only the exit code varied: identical stdout, verdict flipped
+    // FAILED -> PASSED. This claim is blocking, and it had never been able to
+    // fire. Parse stdout on BOTH exit paths and let the score decide.
     match output {
-        Ok(output) if output.status.success() => {
+        Ok(output) => {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let result = parse_spec_score(&stdout)
-                .map(|score| evaluate_spec_score(score, min_score))
-                .unwrap_or_else(|| {
-                    FalsificationResult::passed("Spec score check completed".to_string())
-                });
-            Ok(result)
+            match parse_spec_score(&stdout) {
+                Some(score) => Ok(evaluate_spec_score(score, min_score)),
+                // Ran but produced no parseable score: a contract change or a
+                // crash. Unmeasured, never passed -- an unreadable scorer is
+                // not evidence that the spec is good.
+                None => Ok(FalsificationResult::unmeasured(format!(
+                    "spec scorer produced no parseable score for {}",
+                    spec_path.display()
+                ))),
+            }
         }
-        _ => Ok(FalsificationResult::passed(
-            "Spec scorer not available".to_string(),
-        )),
+        Err(e) => Ok(FalsificationResult::unmeasured(format!(
+            "could not run spec scorer for {}: {e}",
+            spec_path.display()
+        ))),
     }
 }
 
@@ -612,5 +700,91 @@ fn summarize_paths(paths: &[String]) -> String {
     match paths.len().checked_sub(SHOWN) {
         Some(rest) if rest > 0 => format!("{head}, +{rest} more"),
         _ => head,
+    }
+}
+
+#[cfg(test)]
+mod falsifiability_regression_tests {
+    use super::*;
+
+    /// The scorer prints one decimal; keeping only ASCII digits deleted the
+    /// point and multiplied every score by 10. A 9.6/100 spec then satisfied a
+    /// 95/100 gate ("96/100 >= 95/100").
+    #[test]
+    fn spec_score_keeps_the_decimal_point() {
+        assert_eq!(parse_spec_score("Score: 9.6/100"), Some(9.6));
+        assert_eq!(parse_spec_score("Score: 100.0/100"), Some(100.0));
+        assert_eq!(parse_spec_score("Score: 5.0/100\nStatus: FAIL"), Some(5.0));
+        assert_eq!(parse_spec_score("no score here"), None);
+    }
+
+    /// The whole point of the claim: a bad spec must be falsifiable.
+    #[test]
+    fn a_bad_spec_is_falsified() {
+        assert!(evaluate_spec_score(9.6, 95).falsified, "9.6 must fail 95");
+        assert!(evaluate_spec_score(94.9, 95).falsified);
+        assert!(!evaluate_spec_score(95.0, 95).falsified);
+    }
+
+    fn violation(rule: &str, func: &str, value: u64, line: u64) -> serde_json::Value {
+        serde_json::json!({
+            "rule": rule, "function": func, "value": value,
+            "file": "src/lib.rs", "line": line
+        })
+    }
+
+    /// One function over both limits emitted two rows and was reported twice
+    /// ("2 function(s) exceed complexity 20: huge, huge").
+    #[test]
+    fn one_function_counts_once_across_rules() {
+        let json = serde_json::json!({"violations": [
+            violation("cyclomatic-complexity", "huge", 81, 10),
+            violation("cognitive-complexity", "huge", 120, 10),
+        ]});
+        let r = evaluate_complexity_json(&json, 20);
+        assert!(r.falsified);
+        assert!(
+            r.explanation.starts_with("1 function(s)"),
+            "expected 1 function, got: {}",
+            r.explanation
+        );
+    }
+
+    /// Evidence used to report actual=<row count> against a hardcoded
+    /// threshold=0.0, so a limit of 20 printed "actual=10.0, threshold=0.0".
+    #[test]
+    fn evidence_reports_worst_value_against_the_real_threshold() {
+        let json = serde_json::json!({"violations": [
+            violation("cyclomatic-complexity", "a", 25, 1),
+            violation("cyclomatic-complexity", "b", 40, 2),
+        ]});
+        let r = evaluate_complexity_json(&json, 20);
+        match r.evidence {
+            Some(EvidenceType::NumericComparison { actual, threshold }) => {
+                assert!((actual - 40.0).abs() < f64::EPSILON, "worst value");
+                assert!((threshold - 20.0).abs() < f64::EPSILON, "real threshold");
+            }
+            other => panic!("expected NumericComparison, got {other:?}"),
+        }
+    }
+
+    /// Missing or malformed analyzer output must fail closed. Previously
+    /// `unwrap_or_default()` turned it into an empty violation list and passed.
+    #[test]
+    fn malformed_analyzer_output_fails_closed() {
+        let no_key = serde_json::json!({"summary": {}});
+        assert!(evaluate_complexity_json(&no_key, 20).falsified);
+
+        let bad_value = serde_json::json!({"violations": [
+            {"rule": "cyclomatic-complexity", "function": "x", "value": "not-a-number"}
+        ]});
+        assert!(evaluate_complexity_json(&bad_value, 20).falsified);
+    }
+
+    #[test]
+    fn clean_project_still_passes() {
+        let json = serde_json::json!({"violations": []});
+        let r = evaluate_complexity_json(&json, 20);
+        assert!(!r.falsified);
     }
 }

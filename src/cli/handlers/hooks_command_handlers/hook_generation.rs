@@ -94,7 +94,10 @@ export PMAT_PRECOMMIT_EXCLUDE_DIRS="${{PMAT_PRECOMMIT_EXCLUDE_DIRS:-.claude/work
 STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 2>/dev/null)
 if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; then
     echo -n "  Format check... "
-    FMT_OUTPUT=$(cargo fmt -- --check 2>&1)
+    # --all matches the pre-push gate. Without it only the current package is
+    # checked, so an unformatted file in a workspace MEMBER passes pre-commit
+    # and then fails pre-push -- two gates disagreeing about the same repo.
+    FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1)
     if [ $? -eq 0 ]; then
         echo "✅"
     else
@@ -180,8 +183,19 @@ if [ -n "$STAGED_SRC" ]; then
     COMPLEXITY_DETAILS=""
     for SRC_FILE in $STAGED_SRC; do
         if [ -f "$SRC_FILE" ]; then
-            FILE_OUTPUT=$(pmat analyze complexity --file "$SRC_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1)
-            if echo "$FILE_OUTPUT" | grep -q 'Errors.*: [1-9]'; then
+            # ANSI codes MUST be stripped before matching. `pmat analyze
+            # complexity` colourises its summary, so the violation line is
+            # literally  ESC[1;31mErrors:ESC[0m 2  -- there is no ": " sequence
+            # in it, and the previous pattern 'Errors.*: [1-9]' therefore NEVER
+            # matched. The gate silently passed every violation: a file
+            # measured at Cyclomatic 81 / Cognitive 120 against thresholds of
+            # 30/25 committed cleanly. Verified by hand:
+            #   raw      ^[[1;31mErrors:^[[0m 2   -> 'Errors.*: [1-9]'  NO MATCH
+            #   stripped Errors: 2                -> 'Errors: *[1-9]'   MATCH
+            # NO_COLOR is set as well so the sed is belt-and-braces rather than
+            # the only line of defence.
+            FILE_OUTPUT=$(NO_COLOR=1 pmat analyze complexity --file "$SRC_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1 | sed "s/$(printf '\\033')\[[0-9;]*m//g")
+            if echo "$FILE_OUTPUT" | grep -qE 'Errors: *[1-9]'; then
                 COMPLEXITY_FAILED=1
                 # Extract the offending file and functions
                 COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}  ${SRC_FILE}:"$'\n'
@@ -205,8 +219,15 @@ fi
 
 # 2. SATD (Self-Admitted Quality Issues) check - informational only
 echo -n "  SATD check... "
-SATD_OUTPUT=$(pmat analyze satd 2>&1)
-SATD_COUNT=$(echo "$SATD_OUTPUT" | grep -oP 'Total SATD comments found: \K[0-9]+' || echo "0")
+# `pmat analyze satd` prints "Total violations:  N". An older pattern looked
+# for a phrase pmat never emitted, so the grep matched nothing and the
+# `|| echo 0` fallback hardcoded the count to zero. Verified: a file with 3
+# SATD markers reported "(0 SATD comments)".
+# sed rather than a PCRE grep: PCRE support is GNU-only, and this hook also
+# runs on macOS (BSD grep) where it fails and would silently restore the zero.
+SATD_OUTPUT=$(pmat analyze satd 2>&1 | sed "s/$(printf '\033')\[[0-9;]*m//g")
+SATD_COUNT=$(printf '%s' "$SATD_OUTPUT" | sed -n 's/.*Total violations:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1)
+[ -n "$SATD_COUNT" ] || SATD_COUNT=0
 if [ "$SATD_COUNT" -le "$PMAT_MAX_SATD_COMMENTS" ] 2>/dev/null; then
     echo "✅ ($SATD_COUNT SATD comments)"
 else
@@ -242,5 +263,107 @@ echo ""
 exit 0
 "#);
         hook
+    }
+}
+
+#[cfg(test)]
+mod complexity_gate_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// The generated hook must strip ANSI before matching the violation line.
+    ///
+    /// Regression for a silent-pass bug: `pmat analyze complexity` colourises
+    /// its summary, so the violation line is literally
+    /// `ESC[1;31mErrors:ESC[0m 2`. The old pattern `Errors.*: [1-9]` requires a
+    /// literal ": " which that byte sequence does not contain, so the gate
+    /// matched nothing and passed EVERY violation -- verified live: a file
+    /// measuring Cyclomatic 81 / Cognitive 120 against 30/25 thresholds
+    /// committed cleanly through the hook.
+    #[test]
+    fn complexity_gate_strips_ansi_before_matching() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            hook.contains("[0-9;]*m//g"),
+            "generated hook must pipe output through sed to strip ANSI codes"
+        );
+        assert!(
+            hook.contains("grep -qE 'Errors: *[1-9]'"),
+            "generated hook must use the ANSI-stripped pattern"
+        );
+        assert!(
+            !hook.contains("grep -q 'Errors.*: [1-9]'"),
+            "the ANSI-blind pattern must not come back: it never matches \
+             colourised output and silently passes all violations"
+        );
+    }
+
+    /// SATD counting must use the phrase pmat ACTUALLY prints.
+    ///
+    /// Regression: the hook grepped for "Total SATD comments found: N", which
+    /// pmat has never emitted. The real line is "Total violations:  N". The
+    /// `|| echo 0` fallback then hardcoded the count to zero, so a file with 3
+    /// SATD markers reported "✅ (0 SATD comments)".
+    #[test]
+    fn satd_gate_matches_the_phrase_pmat_actually_prints() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            !hook.contains("Total SATD comments found:"),
+            "pmat never prints this phrase; matching it hardcodes SATD_COUNT to 0"
+        );
+        assert!(
+            hook.contains("Total violations:"),
+            "SATD gate must match pmat's real output line"
+        );
+        assert!(
+            !hook.contains("grep -oP"),
+            "grep -P is GNU-only; this hook also runs on macOS (BSD grep) where \
+             it fails and silently re-introduces a zero count"
+        );
+    }
+
+    /// Both gates must agree on formatting scope.
+    ///
+    /// pre-commit used `cargo fmt -- --check` (current package only) while
+    /// pre-push uses `cargo fmt --all -- --check`. An unformatted file in a
+    /// workspace member therefore passed pre-commit and failed pre-push.
+    #[test]
+    fn format_gate_uses_workspace_scope() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            hook.contains("cargo fmt --all -- --check"),
+            "pre-commit format scope must match pre-push (--all)"
+        );
+    }
+
+    /// Asserts the underlying reason directly, independent of the shell:
+    /// the raw colourised line contains no literal "Errors: ".
+    #[test]
+    fn colourised_errors_line_has_no_literal_colon_space() {
+        let colourised = "\u{1b}[1;31mErrors:\u{1b}[0m 2";
+        assert!(
+            !colourised.contains("Errors: "),
+            "colourised output has no literal 'Errors: ' -- this is exactly \
+             why the old grep never fired"
+        );
+
+        // Mirror the sed in the hook, then confirm the shipped pattern matches.
+        let mut stripped = String::new();
+        let mut chars = colourised.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '\u{1b}' {
+                for n in chars.by_ref() {
+                    if n == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                stripped.push(c);
+            }
+        }
+        assert_eq!(stripped, "Errors: 2");
     }
 }
