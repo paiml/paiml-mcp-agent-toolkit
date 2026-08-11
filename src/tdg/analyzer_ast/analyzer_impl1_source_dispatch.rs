@@ -76,13 +76,23 @@ impl TdgAnalyzerAst {
             score.critical_defects_count = critical_count + lean_sorry_count;
             score.has_critical_defects = score.critical_defects_count > 0;
 
-            // Issue #279: New files with no git history should not be auto-failed.
-            // This prevents a circular dependency where new files can't be committed
-            // because the quality gate blocks them, but they can't pass the gate
-            // because they have no git history. Score based on code quality only.
-            if score.has_critical_defects && !is_file_git_tracked(path) {
-                score.has_critical_defects = false;
-                // Keep critical_defects_count for informational reporting
+            // Issue #279: a file with no git history must not be auto-failed by a
+            // gate it cannot pass until it is committed. That exemption is real,
+            // but it used to be expressed by clearing `has_critical_defects` while
+            // leaving `critical_defects_count` set — so the record said "1 critical
+            // defect" and "no critical defects" at the same time, and the same
+            // bytes scored 0.0/F inside a repo and 99.5/A+ outside one, because
+            // `is_file_git_tracked` is also false when there is no repository at
+            // all. Worse, the pair is written into `.pmat/baseline.json`, so a
+            // baseline captured before `git add` recorded the clean answer
+            // permanently (#919).
+            //
+            // The exemption now names itself instead of contradicting the count.
+            if score.has_critical_defects && is_exempt_as_new_file(path) {
+                score.critical_defects_suppressed = Some(
+                    "file is not tracked by git; critical-defect auto-fail is not                      applied to code with no history (#279)"
+                        .to_string(),
+                );
             }
         }
 
@@ -229,8 +239,18 @@ impl TdgAnalyzerAst {
     }
 }
 
-/// Check if a file is tracked by git (has at least one commit).
-/// Returns false for new/untracked files, enabling graceful degradation (issue #279).
+/// Whether the #279 auto-fail exemption applies to this file.
+///
+/// #279 exempts a file that has no git history yet, because a gate that blocks
+/// the commit is a gate the file cannot pass. That reasoning presupposes a
+/// repository — the file is *about to* gain history. It says nothing about code
+/// that is simply not under version control at all (an unpacked tarball, a
+/// vendored tree, a scratch directory), where there is no commit to be blocked
+/// and so nothing to exempt.
+///
+/// The old predicate collapsed those two cases into one `false`, so analysing
+/// any code outside a repository silently waived the Known-Defects gate — the
+/// same bytes scoring 0.0/F inside a repo and 100.0/A+ outside it (#919).
 ///
 /// The git query MUST be rooted at the ANALYSED FILE, never at the process
 /// working directory. Before this was fixed the command was plain
@@ -242,35 +262,83 @@ impl TdgAnalyzerAst {
 /// while `cd /tmp && pmat analyze tdg -p <repo>` scored 100.0 / grade A+ — a
 /// 5-band grade swing produced by nothing but the caller's CWD, which also made
 /// the Known-Defects auto-fail unreachable from the normal CI invocation form.
-fn is_file_git_tracked(path: &Path) -> bool {
-    // Resolve to an absolute path so the query is independent of the CWD, and
-    // run git from the file's own directory so it discovers the file's repo.
-    let absolute = path
-        .canonicalize()
-        .unwrap_or_else(|_| std::env::current_dir().map_or_else(|_| path.to_path_buf(), |cwd| cwd.join(path)));
-    let repo_anchor = if absolute.is_dir() {
-        absolute.clone()
-    } else {
-        absolute.parent().map_or_else(
-            || absolute.clone(),
-            |parent| {
-                if parent.as_os_str().is_empty() {
-                    absolute.clone()
-                } else {
-                    parent.to_path_buf()
-                }
-            },
-        )
+pub(crate) fn is_exempt_as_new_file(path: &Path) -> bool {
+    matches!(git_tracking_status(path), GitTracking::UntrackedInRepo)
+}
+
+/// Where a file stands with git, keeping "no repository" distinct from
+/// "in a repository but not yet committed" — see [`is_exempt_as_new_file`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GitTracking {
+    /// Has at least one commit.
+    Tracked,
+    /// Inside a work tree, but with no history yet — the #279 case.
+    UntrackedInRepo,
+    /// Not under version control, or git is unavailable. Not a #279 case: the
+    /// gate applies exactly as it would to committed code.
+    NotVersioned,
+}
+
+pub(crate) fn git_tracking_status(path: &Path) -> GitTracking {
+    let Some(repo_anchor) = git_anchor_for(path) else {
+        return GitTracking::NotVersioned;
+    };
+    let absolute = absolute_path(path);
+
+    let run = |args: &[&str], file: Option<&Path>| {
+        let mut cmd = std::process::Command::new("git");
+        cmd.arg("-C").arg(&repo_anchor).args(args);
+        if let Some(f) = file {
+            cmd.arg("--").arg(f);
+        }
+        cmd.stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .output()
     };
 
-    std::process::Command::new("git")
-        .arg("-C")
-        .arg(&repo_anchor)
-        .args(["log", "--oneline", "-1", "--"])
-        .arg(&absolute)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .output()
+    // Is there a work tree at all? If git is missing or errors, treat the code
+    // as unversioned rather than exempt — an exemption must be established, not
+    // assumed, or a broken git install silently disables the gate.
+    let inside_work_tree = run(&["rev-parse", "--is-inside-work-tree"], None)
+        .map(|o| o.status.success() && String::from_utf8_lossy(&o.stdout).trim() == "true")
+        .unwrap_or(false);
+    if !inside_work_tree {
+        return GitTracking::NotVersioned;
+    }
+
+    let has_history = run(&["log", "--oneline", "-1"], Some(&absolute))
         .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(true) // If git unavailable, assume tracked (don't change behavior)
+        .unwrap_or(false);
+
+    if has_history {
+        GitTracking::Tracked
+    } else {
+        GitTracking::UntrackedInRepo
+    }
 }
+
+fn absolute_path(path: &Path) -> std::path::PathBuf {
+    path.canonicalize().unwrap_or_else(|_| {
+        std::env::current_dir().map_or_else(|_| path.to_path_buf(), |cwd| cwd.join(path))
+    })
+}
+
+/// The directory to run git from: the file's own directory, so the query finds
+/// the file's repository rather than the process working directory's.
+fn git_anchor_for(path: &Path) -> Option<std::path::PathBuf> {
+    let absolute = absolute_path(path);
+    if absolute.is_dir() {
+        return Some(absolute);
+    }
+    match absolute.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => Some(parent.to_path_buf()),
+        _ => Some(absolute),
+    }
+}
+
+/// Retained for the original call shape; see [`git_tracking_status`].
+#[cfg(test)]
+fn is_file_git_tracked(path: &Path) -> bool {
+    matches!(git_tracking_status(path), GitTracking::Tracked)
+}
+

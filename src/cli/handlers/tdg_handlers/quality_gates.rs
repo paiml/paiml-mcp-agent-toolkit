@@ -275,6 +275,7 @@ mod min_grade_flag_tests {
                 penalties_applied: Vec::new(),
                 critical_defects_count: 0,
                 has_critical_defects: false,
+                critical_defects_suppressed: None,
                 has_contract_coverage: false,
             },
             components: ComponentScores::default(),

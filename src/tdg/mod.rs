@@ -23,6 +23,10 @@ pub mod project_score;
 pub mod quality_gate;
 pub mod recommendation_engine;
 pub mod score;
+
+#[cfg(test)]
+#[path = "critical_defect_gating_tests.rs"]
+mod critical_defect_gating_tests;
 pub mod tdg_graph;
 // Temporarily disable export to fix circular dependency
 // pub mod export;

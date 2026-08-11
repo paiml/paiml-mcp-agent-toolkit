@@ -23,8 +23,24 @@ pub struct TdgScore {
     pub file_path: Option<PathBuf>,
     pub penalties_applied: Vec<PenaltyAttribution>,
     pub critical_defects_count: usize, // Known Defects v2.1: Count of critical defects
-    pub has_critical_defects: bool,    // Known Defects v2.1: Auto-fail flag
-    pub has_contract_coverage: bool,   // CB-1400: Provable-contract coverage (caps A→A- if false)
+    /// Whether critical defects EXIST. Always `critical_defects_count > 0`.
+    ///
+    /// This used to double as the auto-fail switch, so the #279 exemption for
+    /// untracked files cleared it while leaving the count set — a record saying
+    /// "1 critical defect" and "no critical defects" at once (#919). Whether the
+    /// gate FIRES is now `critical_defects_suppressed`; this field only reports
+    /// what was found.
+    pub has_critical_defects: bool,
+    /// Why the critical-defect auto-fail did not fire despite defects existing.
+    ///
+    /// `None` means it fired (or there was nothing to fire on). `Some(reason)`
+    /// records the #279 exemption — a file with no git history must not be
+    /// auto-failed by a gate it cannot pass until it is committed — and makes
+    /// that exemption visible to anyone reading the score or a persisted
+    /// baseline, instead of leaving them to infer it from a contradiction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub critical_defects_suppressed: Option<String>,
+    pub has_contract_coverage: bool, // CB-1400: Provable-contract coverage (caps A→A- if false)
 }
 
 impl Default for TdgScore {
@@ -45,6 +61,7 @@ impl Default for TdgScore {
             penalties_applied: Vec::new(),
             critical_defects_count: 0,
             has_critical_defects: false,
+            critical_defects_suppressed: None,
             has_contract_coverage: false,
         }
     }
@@ -89,8 +106,14 @@ impl TdgScore {
             self.total = (raw_total / THEORETICAL_MAX * 100.0).clamp(0.0, 100.0);
         }
 
-        // Known Defects v2.1: Auto-fail if critical defects detected
-        if self.has_critical_defects {
+        // Known Defects v2.1: Auto-fail if critical defects detected.
+        //
+        // Gated on `critical_defects_suppressed` rather than on
+        // `has_critical_defects`, so the #279 exemption for untracked files can
+        // switch the gate off without also denying that the defects exist. The
+        // two used to be one field, which is how the same bytes scored 0.0/F
+        // inside a repo and 99.5/A+ outside it (#919).
+        if self.has_critical_defects && self.critical_defects_suppressed.is_none() {
             self.total = 0.0;
             self.grade = Grade::F;
         } else {
