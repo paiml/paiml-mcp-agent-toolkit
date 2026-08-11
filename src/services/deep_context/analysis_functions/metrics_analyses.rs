@@ -339,7 +339,17 @@ pub async fn analyze_dag_with_context(
     };
 
     // Smart bounds: limit graph size to 200 nodes (was 400)
-    let graph = DagBuilder::build_from_project_with_limit(project_context, 200);
+    let mut graph = DagBuilder::build_from_project_with_limit(project_context, 200);
+
+    // #653 was only ever fixed on the CLI path. `DagBuilder` derives edges from
+    // `use`/`impl` items, so it emits no `EdgeType::Calls` edge at all and
+    // `filter_call_edges` below then deleted the entire graph: the MCP
+    // `analyze_dag` tool answered "DAG analysis completed (0 nodes, 0 edges)"
+    // for the very tree over which `pmat analyze dag --dag-type call-graph`
+    // drew 24 call edges. An empty graph reported as a completed analysis is a
+    // silent wrong answer, so the call-edge enrichment lives here, where both
+    // surfaces reach it.
+    crate::services::dag_call_edges::add_call_edges(&mut graph, path);
 
     // Apply filters based on DAG type
     let filtered_graph = match dag_type {
@@ -374,4 +384,40 @@ pub async fn analyze_big_o(
     };
 
     analyzer.analyze(config).await
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dag_service_tests {
+    use super::*;
+
+    /// The MCP `analyze_dag` tool goes through `analyze_dag_with_context`, not
+    /// through the CLI handler, and only the CLI handler added call edges — so
+    /// the tool reported "0 nodes, 0 edges" for a tree the CLI drew 24 edges
+    /// over. A call graph with no edges over real Rust sources is a wrong
+    /// answer, not an empty project.
+    #[tokio::test]
+    async fn call_graph_from_the_service_path_has_call_edges() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("main.rs"),
+            "mod helper;\nfn main() { helper_one(); }\nfn helper_one() { helper_two(); }\nfn helper_two() {}\n",
+        )
+        .expect("write main.rs");
+
+        let graph = analyze_dag(dir.path(), DagType::CallGraph)
+            .await
+            .expect("call-graph analysis must succeed");
+
+        assert!(
+            !graph.edges.is_empty(),
+            "call graph over Rust sources must contain Calls edges, got {} nodes / {} edges",
+            graph.nodes.len(),
+            graph.edges.len()
+        );
+        assert!(
+            !graph.nodes.is_empty(),
+            "edges without nodes would be a filtered-away graph again"
+        );
+    }
 }

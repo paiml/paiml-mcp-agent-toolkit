@@ -67,6 +67,12 @@ pub struct ComplexityBound {
     /// Property flags (1 byte)
     pub flags: ComplexityFlags,
     /// Padding for alignment (2 bytes)
+    ///
+    /// `#[serde(skip)]`: this is `#[repr(C)]` alignment filler, not data. It
+    /// was reaching MCP clients as `"_padding":[0,0]` beside real measurements
+    /// — a field a reader has to guess the meaning of, whose only possible
+    /// value is zero.
+    #[serde(skip)]
     _padding: [u8; 2],
 }
 

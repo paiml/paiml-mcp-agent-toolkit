@@ -103,7 +103,14 @@ pub struct DiagnosticSummary {
     pub degraded: usize,
     pub skipped: usize,
     pub all_passed: bool,
-    pub success_rate: f64,
+    /// Share of the checks that actually EXECUTED and passed.
+    ///
+    /// The denominator used to be `total`, which counts skipped checks, so
+    /// `--skip ast.rust` reported "success_rate: 87.5" next to `failed: 0`
+    /// and `all_passed: true` — a rate that fell as the user skipped more,
+    /// with nothing failing. `None` (null) when no check ran at all: there is
+    /// no rate to report, and `0.0` there read as "everything failed".
+    pub success_rate: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

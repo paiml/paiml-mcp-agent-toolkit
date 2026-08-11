@@ -10,7 +10,11 @@ use std::path::PathBuf;
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum OrgCommands {
-    /// Analyze GitHub organization for defect patterns
+    /// [REMOVED] Analyze GitHub organization for defect patterns — no longer available in any build.
+    ///
+    /// aprender-orchestrate 0.41 removed the organizational-analysis API this
+    /// wrapped, with no replacement, so every arm (feature on or off) bails. The
+    /// flags below are inert; they are kept only so the error names them.
     Analyze {
         /// GitHub organization name
         #[arg(long)]

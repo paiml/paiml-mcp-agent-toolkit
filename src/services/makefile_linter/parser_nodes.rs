@@ -87,13 +87,21 @@ impl<'src> MakefileParser<'src> {
             ));
         }
 
-        // Skip past operator
+        // Skip past operator. `Immediate` covers `:=`, `::=` (POSIX) and
+        // `:::=` (GNU Make 4.4) — the enum does not record which, so the width
+        // is measured from the source; a fixed 2 left the extra ':' and '=' in
+        // the value.
         let op_len = match op {
             AssignmentOp::Deferred => 1,
-            AssignmentOp::Immediate
-            | AssignmentOp::Conditional
-            | AssignmentOp::Append
-            | AssignmentOp::Shell => 2,
+            AssignmentOp::Immediate => {
+                let bytes = self.input.as_bytes();
+                let mut colons = 0;
+                while op_pos + colons < bytes.len() && bytes[op_pos + colons] == b':' {
+                    colons += 1;
+                }
+                colons + 1
+            }
+            AssignmentOp::Conditional | AssignmentOp::Append | AssignmentOp::Shell => 2,
         };
         self.cursor = (op_pos + op_len).min(self.input.len());
 

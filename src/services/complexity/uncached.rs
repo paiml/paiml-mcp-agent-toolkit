@@ -91,25 +91,86 @@ pub async fn analyze_file_complexity_uncached(
 ) -> anyhow::Result<FileComplexityMetrics> {
     use anyhow::Context;
 
-    // Read file content if not provided
-    let file_content;
-    let content_ref = if let Some(c) = content {
-        c
-    } else {
-        file_content = std::fs::read_to_string(path)
-            .with_context(|| format!("Failed to read file: {}", path.display()))?;
-        &file_content
-    };
+    // When the caller hands us the text to measure, measure THAT text: the
+    // AST path below reads the file from disk and would silently score
+    // something else (the Issue #67 extraction tests analyse content for paths
+    // that do not exist on disk at all).
+    if let Some(supplied) = content {
+        let language = crate::cli::language_analyzer::Language::from_path(path);
+        return crate::cli::language_analyzer::analyze_with_heuristics(path, supplied, language)
+            .with_context(|| format!("Failed to analyze file complexity: {}", path.display()));
+    }
 
-    // CRITICAL (Issue #67): Use heuristic analyzer for accurate line numbers
-    // The AST analyzer returns approximate line numbers (i * 50), which breaks
-    // extracted function scenarios. The heuristic analyzer provides EXACT line
-    // numbers by parsing the actual file content.
+    let file_content = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read file: {}", path.display()))?;
+
+    // Route through the SAME entry point the project scan uses
+    // (`analysis_utilities::analyze_project_files` -> `analyze_file_complexity`),
+    // which prefers the AST analyzer and falls back to heuristics only when a
+    // file cannot be parsed.
     //
-    // This ensures:
-    // - Functions extracted from old_file.rs:500 to new_file.rs:148
-    // - Report line 148 (CURRENT location), not line 500 (OLD cached location)
-    let language = crate::cli::language_analyzer::Language::from_path(path);
-    crate::cli::language_analyzer::analyze_with_heuristics(path, content_ref, language)
+    // This function used to call `analyze_with_heuristics` directly, so the MCP
+    // `analyze_complexity` tool (its only production caller besides `--file`)
+    // reported different numbers from `pmat analyze complexity` for the same
+    // function: on a 10-line `complex()` the heuristic counter said cyclomatic
+    // 10 / cognitive 18 and raised a threshold violation, where the AST
+    // analyzer — and the CLI — said 6 / 9 with no violation.
+    //
+    // The Issue #67 concern that motivated the heuristic detour (AST line
+    // numbers invented as `i * 50`) no longer applies: extents now come from
+    // measured source spans, so line numbers still reflect the CURRENT file.
+    crate::cli::language_analyzer::analyze_file_complexity(path, &file_content)
+        .await
         .with_context(|| format!("Failed to analyze file complexity: {}", path.display()))
+}
+
+#[cfg(test)]
+mod uncached_agreement_tests {
+    use super::*;
+
+    /// The MCP `analyze_complexity` tool and `pmat analyze complexity` must
+    /// report the same numbers for the same function. They did not: the MCP
+    /// side came through here and got heuristic counts.
+    #[tokio::test]
+    async fn test_uncached_agrees_with_project_scan_analyzer() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let file = dir.path().join("lib.rs");
+        let source = "pub fn add(a: i32, b: i32) -> i32 { a + b }\n\
+                      \n\
+                      pub fn complex(n: u32) -> u32 {\n\
+                      \x20   let mut acc = 0;\n\
+                      \x20   for i in 0..n {\n\
+                      \x20       if i % 2 == 0 { acc += i; }\n\
+                      \x20       else if i % 3 == 0 { acc += i * 2; }\n\
+                      \x20       else if i % 5 == 0 { acc += i * 3; }\n\
+                      \x20       else if i % 7 == 0 { acc += i * 4; }\n\
+                      \x20       else { acc += 1; }\n\
+                      \x20   }\n\
+                      \x20   acc\n\
+                      }\n";
+        std::fs::write(&file, source).unwrap();
+
+        let uncached = analyze_file_complexity_uncached(&file, None).await.unwrap();
+        let project_scan = crate::cli::language_analyzer::analyze_file_complexity(&file, source)
+            .await
+            .unwrap();
+
+        let pick = |m: &FileComplexityMetrics| {
+            m.functions
+                .iter()
+                .find(|f| f.name == "complex")
+                .map(|f| (f.metrics.cyclomatic, f.metrics.cognitive))
+        };
+
+        assert_eq!(
+            pick(&uncached),
+            pick(&project_scan),
+            "uncached analysis must not diverge from the project scan"
+        );
+        assert!(
+            pick(&uncached).is_some(),
+            "`complex` must be found: {:?}",
+            uncached.functions
+        );
+    }
 }

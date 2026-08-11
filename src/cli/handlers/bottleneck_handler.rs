@@ -86,10 +86,7 @@ pub async fn handle_bottleneck(
 
     let analysis = analyze_bottlenecks(path, period, threshold)?;
 
-    let formatted = match format {
-        crate::cli::enums::OutputFormat::Json => serde_json::to_string_pretty(&analysis)?,
-        _ => format_text(&analysis),
-    };
+    let formatted = format_analysis(&analysis, format)?;
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &formatted)?;
@@ -145,8 +142,12 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
         })
         .collect();
 
-    // Sort by touches descending
-    bottlenecks.sort_by_key(|b| std::cmp::Reverse(b.touches));
+    // Sort by touches descending. DETERMINISM: `touches` is not a total order
+    // (most files tie), the source is a `HashMap`, and `sort_by_key` is stable —
+    // so which of the tied files survived `truncate(20)` came out of the
+    // process's hash seed. Eight identical runs produced four distinct outputs.
+    // Path breaks the tie.
+    bottlenecks.sort_by(|a, b| b.touches.cmp(&a.touches).then_with(|| a.path.cmp(&b.path)));
     bottlenecks.truncate(20);
 
     // Detect co-change coupling
@@ -355,9 +356,234 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
         })
         .collect();
 
-    pairs.sort_by_key(|b| std::cmp::Reverse(b.co_changes));
+    // Same tie-break as `analyze_bottlenecks`: `co_changes` ties constantly and
+    // the pairs come out of a `HashMap`, so the surviving 15 were hash-seed
+    // dependent.
+    pairs.sort_by(|x, y| {
+        y.co_changes
+            .cmp(&x.co_changes)
+            .then_with(|| (&x.file_a, &x.file_b).cmp(&(&y.file_a, &y.file_b)))
+    });
     pairs.truncate(15);
     pairs
+}
+
+/// Render the analysis in the format the user asked for.
+///
+/// This used to be `match format { Json => .., _ => format_text() }`: eight of
+/// the nine formats `--help` advertises fell through the catch-all, so
+/// `-f csv`, `-f yaml` and `-f junit` all wrote the same ANSI-decorated table
+/// into files that were supposed to be CSV, YAML and JUnit XML — byte-identical
+/// output for every one of them.
+fn format_analysis(
+    analysis: &BottleneckAnalysis,
+    format: &crate::cli::enums::OutputFormat,
+) -> Result<String> {
+    use crate::cli::enums::OutputFormat as F;
+    Ok(match format {
+        F::Json => serde_json::to_string_pretty(analysis)?,
+        F::Yaml => serde_yaml_ng::to_string(analysis)?,
+        F::Markdown => format_markdown(analysis),
+        F::Csv => format_csv(analysis),
+        F::Junit => format_junit(analysis),
+        F::Summary => format_summary(analysis),
+        // The colour-free twins of the table: a redirected `-f text` had ANSI
+        // escapes in it.
+        F::Text | F::Plain => strip_ansi(&format_text(analysis)),
+        F::Table => format_text(analysis),
+    })
+}
+
+/// Drop SGR escape sequences — for the formats that promise plain text.
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' {
+            for esc in chars.by_ref() {
+                if esc.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+            continue;
+        }
+        out.push(ch);
+    }
+    out
+}
+
+/// One CSV field, quoted per RFC 4180 when it has to be.
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\n']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// CSV: the bottleneck rows, then the coupling rows as a second block with its
+/// own header (a spreadsheet reads the first block; `csvkit` reads both).
+fn format_csv(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "path,touches,authors,lines,churn_ratio,pattern,recommendation"
+    );
+    for b in &analysis.bottlenecks {
+        let _ = writeln!(
+            out,
+            "{},{},{},{},{:.1},{},{}",
+            csv_field(&b.path),
+            b.touches,
+            b.authors,
+            b.lines,
+            b.churn_ratio,
+            csv_field(&b.pattern),
+            csv_field(&b.recommendation)
+        );
+    }
+    if !analysis.couplings.is_empty() {
+        let _ = writeln!(out);
+        let _ = writeln!(out, "file_a,file_b,co_changes");
+        for pair in &analysis.couplings {
+            let _ = writeln!(
+                out,
+                "{},{},{}",
+                csv_field(&pair.file_a),
+                csv_field(&pair.file_b),
+                pair.co_changes
+            );
+        }
+    }
+    out
+}
+
+/// Markdown report.
+fn format_markdown(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(out, "# Architectural Bottleneck Analysis\n");
+    let _ = writeln!(out, "- **Period**: {} days", analysis.period_days);
+    let _ = writeln!(out, "- **Total commits**: {}", analysis.total_commits);
+    let _ = writeln!(
+        out,
+        "- **Files changed**: {}\n",
+        analysis.total_files_changed
+    );
+
+    if analysis.bottlenecks.is_empty() {
+        let _ = writeln!(out, "No bottleneck files detected.\n");
+    } else {
+        let _ = writeln!(out, "## Bottleneck Files\n");
+        let _ = writeln!(
+            out,
+            "| File | Touches | Authors | Lines | Churn ratio | Pattern | Recommendation |"
+        );
+        let _ = writeln!(out, "|---|---|---|---|---|---|---|");
+        for b in &analysis.bottlenecks {
+            let _ = writeln!(
+                out,
+                "| `{}` | {} | {} | {} | {:.1} | {} | {} |",
+                b.path, b.touches, b.authors, b.lines, b.churn_ratio, b.pattern, b.recommendation
+            );
+        }
+        let _ = writeln!(out);
+    }
+
+    if !analysis.couplings.is_empty() {
+        let _ = writeln!(out, "## Co-Change Coupling\n");
+        let _ = writeln!(out, "| File A | File B | Co-changes |");
+        let _ = writeln!(out, "|---|---|---|");
+        for pair in &analysis.couplings {
+            let _ = writeln!(
+                out,
+                "| `{}` | `{}` | {} |",
+                pair.file_a, pair.file_b, pair.co_changes
+            );
+        }
+    }
+    out
+}
+
+/// Three lines, no decoration.
+fn format_summary(analysis: &BottleneckAnalysis) -> String {
+    format!(
+        "period_days={}\ncommits={}\nfiles_changed={}\nbottlenecks={}\ncouplings={}\n",
+        analysis.period_days,
+        analysis.total_commits,
+        analysis.total_files_changed,
+        analysis.bottlenecks.len(),
+        analysis.couplings.len()
+    )
+}
+
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+/// JUnit XML: every detected bottleneck is a failing testcase, so CI can gate
+/// on it.
+fn format_junit(analysis: &BottleneckAnalysis) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let tests = analysis.bottlenecks.len() + analysis.couplings.len();
+    let _ = writeln!(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    let _ = writeln!(
+        out,
+        "<testsuites name=\"Architectural Bottlenecks\" tests=\"{tests}\" failures=\"{tests}\">"
+    );
+    let _ = writeln!(
+        out,
+        "  <testsuite name=\"Bottleneck Files\" tests=\"{}\" failures=\"{}\">",
+        analysis.bottlenecks.len(),
+        analysis.bottlenecks.len()
+    );
+    for b in &analysis.bottlenecks {
+        let _ = writeln!(
+            out,
+            "    <testcase name=\"{}\" classname=\"Bottleneck\">",
+            xml_escape(&b.path)
+        );
+        let _ = writeln!(
+            out,
+            "      <failure message=\"{} ({} touches, {} lines, churn ratio {:.1})\">{}</failure>",
+            xml_escape(&b.pattern),
+            b.touches,
+            b.lines,
+            b.churn_ratio,
+            xml_escape(&b.recommendation)
+        );
+        let _ = writeln!(out, "    </testcase>");
+    }
+    let _ = writeln!(out, "  </testsuite>");
+    let _ = writeln!(
+        out,
+        "  <testsuite name=\"Co-Change Coupling\" tests=\"{}\" failures=\"{}\">",
+        analysis.couplings.len(),
+        analysis.couplings.len()
+    );
+    for pair in &analysis.couplings {
+        let _ = writeln!(
+            out,
+            "    <testcase name=\"{} &lt;-&gt; {}\" classname=\"Coupling\">",
+            xml_escape(&pair.file_a),
+            xml_escape(&pair.file_b)
+        );
+        let _ = writeln!(
+            out,
+            "      <failure message=\"{} co-changes\" />",
+            pair.co_changes
+        );
+        let _ = writeln!(out, "    </testcase>");
+    }
+    let _ = writeln!(out, "  </testsuite>");
+    let _ = writeln!(out, "</testsuites>");
+    out
 }
 
 /// Format results as colorized text
@@ -563,6 +789,91 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    fn sample_analysis() -> BottleneckAnalysis {
+        BottleneckAnalysis {
+            period_days: 30,
+            total_commits: 13,
+            total_files_changed: 709,
+            bottlenecks: vec![BottleneckFile {
+                path: "src/cli/mod.rs".to_string(),
+                touches: 9,
+                authors: 2,
+                lines: 1200,
+                churn_ratio: 0.75,
+                pattern: "Registry/Dispatch".to_string(),
+                recommendation: "Consider proc-macro auto-discovery, e.g. inventory".to_string(),
+            }],
+            couplings: vec![CouplingPair {
+                file_a: "a.rs".to_string(),
+                file_b: "b.rs".to_string(),
+                co_changes: 4,
+            }],
+        }
+    }
+
+    /// `--help` advertises nine formats; eight of them fell through a catch-all
+    /// arm and emitted the SAME ANSI table (956 bytes each), so `-f csv` wrote
+    /// escape sequences into a .csv and `-f junit` was not XML.
+    #[test]
+    fn every_advertised_format_renders_itself() {
+        use crate::cli::enums::OutputFormat as F;
+        let analysis = sample_analysis();
+
+        let yaml = format_analysis(&analysis, &F::Yaml).unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).expect("valid yaml");
+        assert_eq!(parsed["total_commits"].as_u64(), Some(13));
+
+        let csv = format_analysis(&analysis, &F::Csv).unwrap();
+        assert!(csv.starts_with("path,touches,authors,lines,churn_ratio,pattern,recommendation\n"));
+        assert!(csv.contains("src/cli/mod.rs,9,2,1200,0.8,Registry/Dispatch,"));
+        assert!(csv.contains("file_a,file_b,co_changes\na.rs,b.rs,4"));
+
+        let junit = format_analysis(&analysis, &F::Junit).unwrap();
+        assert!(junit.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(junit.contains("<testsuites"));
+        assert!(junit.contains("src/cli/mod.rs"));
+
+        let md = format_analysis(&analysis, &F::Markdown).unwrap();
+        assert!(md.starts_with("# Architectural Bottleneck Analysis"));
+        assert!(md.contains("| `src/cli/mod.rs` | 9 |"));
+
+        let summary = format_analysis(&analysis, &F::Summary).unwrap();
+        assert!(summary.contains("bottlenecks=1"));
+
+        let json = format_analysis(&analysis, &F::Json).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        // No two formats may be byte-identical, and only the table may carry
+        // colour.
+        for (name, rendered) in [
+            ("yaml", &yaml),
+            ("csv", &csv),
+            ("junit", &junit),
+            ("markdown", &md),
+            ("summary", &summary),
+            ("json", &json),
+        ] {
+            assert!(
+                !rendered.contains('\u{1b}'),
+                "{name} carries ANSI escapes: {rendered:?}"
+            );
+        }
+    }
+
+    /// `-f text` / `-f plain` keep the table's shape but must not carry colour
+    /// into a redirected file.
+    #[test]
+    fn text_and_plain_are_the_table_without_escapes() {
+        use crate::cli::enums::OutputFormat as F;
+        let analysis = sample_analysis();
+        let text = format_analysis(&analysis, &F::Text).unwrap();
+        let plain = format_analysis(&analysis, &F::Plain).unwrap();
+        assert_eq!(text, plain);
+        assert!(!text.contains('\u{1b}'), "{text:?}");
+        assert!(text.contains("Architectural Bottleneck Analysis"));
+        assert!(text.contains("src/cli/mod.rs"));
+    }
+
     /// GH #665: a monotonically larger `--period` must never report fewer
     /// commits. `--since=99999999 days ago` overflowed git's approxidate into a
     /// future date, so the window matched nothing and the swallowed failure was
@@ -630,5 +941,119 @@ mod tests {
             huge, small,
             "a larger --period reported fewer commits (pre-fix: 0)"
         );
+    }
+
+    // ── determinism ─────────────────────────────────────────────────────────
+    //
+    // `analyze bottleneck` produced four distinct md5s over eight identical
+    // runs: both result lists are built from a `HashMap`, ranked by a key that
+    // ties constantly (`touches` / `co_changes`) with a *stable* sort, and then
+    // truncated — so which of the tied entries survived came out of the
+    // process's hash seed. `RandomState` reseeds per `HashMap` instance, so
+    // repeated calls inside one test process reproduce the run-to-run variance.
+
+    /// Enough tied pairs to overflow `truncate(15)`, so an unstable tie-break
+    /// changes the *contents*, not just the order.
+    fn tied_commits() -> Vec<Vec<String>> {
+        (0..30)
+            .map(|i| vec!["src/shared.rs".to_string(), format!("src/mod_{i:02}.rs")])
+            .collect()
+    }
+
+    #[test]
+    fn detect_coupling_is_deterministic_across_runs() {
+        let commits = tied_commits();
+        let first = detect_coupling(&commits, 1);
+        assert_eq!(first.len(), 15, "the fixture must exercise the truncation");
+        for run in 1..25 {
+            let again = detect_coupling(&commits, 1);
+            let as_tuples = |p: &[CouplingPair]| {
+                p.iter()
+                    .map(|c| (c.file_a.clone(), c.file_b.clone(), c.co_changes))
+                    .collect::<Vec<_>>()
+            };
+            assert_eq!(
+                as_tuples(&first),
+                as_tuples(&again),
+                "run {run} disagreed with run 0: coupling output depends on HashMap order"
+            );
+        }
+    }
+
+    #[test]
+    fn detect_coupling_breaks_ties_by_path() {
+        let pairs = detect_coupling(&tied_commits(), 1);
+        let mut expected: Vec<(String, String)> = pairs
+            .iter()
+            .map(|p| (p.file_a.clone(), p.file_b.clone()))
+            .collect();
+        expected.sort();
+        let actual: Vec<(String, String)> = pairs
+            .iter()
+            .map(|p| (p.file_a.clone(), p.file_b.clone()))
+            .collect();
+        assert_eq!(actual, expected, "tied pairs must be ordered by path");
+    }
+
+    #[test]
+    fn analyze_bottlenecks_is_deterministic_across_runs() {
+        use std::process::Command;
+        use tempfile::TempDir;
+
+        let temp = TempDir::new().unwrap();
+        let repo = temp.path();
+        let git = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(repo)
+                .output()
+                .expect("git must be available")
+        };
+        if !git(&["init"]).status.success() {
+            return;
+        }
+        let _ = git(&["config", "user.email", "t@example.com"]);
+        let _ = git(&["config", "user.name", "T"]);
+        std::fs::create_dir_all(repo.join("src")).unwrap();
+        // 30 files, each touched exactly once: every `touches` value ties, and
+        // the list is truncated to 20.
+        for i in 0..30 {
+            std::fs::write(
+                repo.join(format!("src/f{i:02}.rs")),
+                "pub fn f() {}\npub fn g() {}\n",
+            )
+            .unwrap();
+        }
+        let _ = git(&["add", "-A"]);
+        if !git(&["commit", "-m", "init", "--no-verify"])
+            .status
+            .success()
+        {
+            return;
+        }
+
+        let first = analyze_bottlenecks(repo, 99_999_999, 1).expect("analysis must run");
+        assert_eq!(
+            first.bottlenecks.len(),
+            20,
+            "the fixture must exercise the truncation"
+        );
+        let paths = |a: &BottleneckAnalysis| {
+            a.bottlenecks
+                .iter()
+                .map(|b| b.path.clone())
+                .collect::<Vec<_>>()
+        };
+        for run in 1..10 {
+            let again = analyze_bottlenecks(repo, 99_999_999, 1).expect("analysis must run");
+            assert_eq!(
+                paths(&first),
+                paths(&again),
+                "run {run} disagreed with run 0: bottleneck output depends on HashMap order"
+            );
+        }
+        let mut sorted = paths(&first);
+        sorted.sort();
+        assert_eq!(paths(&first), sorted, "tied files must be ordered by path");
     }
 }

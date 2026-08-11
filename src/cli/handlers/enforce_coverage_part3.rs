@@ -132,16 +132,44 @@
 
         #[test]
         fn test_initialize_enforcement_environment_default_profile() {
-            let result = initialize_enforcement_environment("default", None, &None, false).unwrap();
-            assert_eq!(result.coverage_min, 80.0);
+            // Used to assert that the name "default" resolved successfully to
+            // coverage_min == 80.0. That only held because every arm of
+            // `load_quality_profile` returned `QualityProfile::default()`, so any
+            // string produced the extreme thresholds. "default" is not one of the
+            // documented profiles; the *default* profile is the CLI default,
+            // `extreme`, and that is what must carry the default thresholds.
+            assert!(
+                initialize_enforcement_environment("default", None, &None, false).is_err(),
+                "\"default\" is not a documented profile name"
+            );
+
+            let extreme = initialize_enforcement_environment("extreme", None, &None, false).unwrap();
+            assert_eq!(extreme.coverage_min, QualityProfile::default().coverage_min);
+
+            // A named non-default profile must not come back with the default
+            // thresholds — that was the whole defect.
+            let standard =
+                initialize_enforcement_environment("standard", None, &None, false).unwrap();
+            assert!(standard.coverage_min < extreme.coverage_min);
         }
 
         #[test]
         fn test_initialize_enforcement_environment_unknown_profile() {
-            let result =
-                initialize_enforcement_environment("unknown-profile", None, &None, false).unwrap();
-            // Should return default profile
-            assert_eq!(result.coverage_min, 80.0);
+            // Used to assert an unknown name silently succeeded and yielded the
+            // extreme profile (coverage_min 80.0) — a typo'd `--profile` then
+            // enforced thresholds the user never asked for. It must now be a hard
+            // error that names the valid profiles.
+            let err = initialize_enforcement_environment("unknown-profile", None, &None, false)
+                .unwrap_err()
+                .to_string();
+            assert!(
+                err.contains("unknown-profile"),
+                "error must echo the bad name, got {err}"
+            );
+            assert!(
+                err.contains("standard") && err.contains("strict") && err.contains("extreme"),
+                "error must list the valid profiles, got {err}"
+            );
         }
     }
 

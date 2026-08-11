@@ -76,7 +76,11 @@ fn write_function_details(
     use crate::cli::colors as c;
     use crate::services::lightweight_provability_analyzer::PropertyType;
 
-    writeln!(output, "  {}Function:{} {}", c::BOLD, c::RESET, c::label(&func_id.function_name))?;
+    // `c::seq`, not the bare `pub const`s: the raw sequences are `const` and so
+    // cannot consult `colors_enabled()`, which is why `--color never` and a
+    // redirected stdout still received `^[[1mFunction:^[[0m` here long after
+    // the summary renderer was migrated (GH #684).
+    writeln!(output, "  {}Function:{} {}", c::seq(c::BOLD), c::seq(c::RESET), c::label(&func_id.function_name))?;
     writeln!(output, "    Line: {}", c::number(&func_id.line_number.to_string()))?;
     writeln!(
         output,
@@ -110,13 +114,111 @@ fn write_function_details(
         }
     }
     if !verified.is_empty() {
-        writeln!(output, "    {}Verified:{} {}{}{}", c::BOLD, c::RESET, c::GREEN, verified.join(", "), c::RESET)?;
+        writeln!(output, "    {}Verified:{} {}{}{}", c::seq(c::BOLD), c::seq(c::RESET), c::seq(c::GREEN), verified.join(", "), c::seq(c::RESET))?;
     }
     if !missing.is_empty() {
-        writeln!(output, "    {}Missing:{} {}{}{}", c::BOLD, c::RESET, c::RED, missing.join(", "), c::RESET)?;
+        writeln!(output, "    {}Missing:{} {}{}{}", c::seq(c::BOLD), c::seq(c::RESET), c::seq(c::RED), missing.join(", "), c::seq(c::RESET))?;
     }
 
     Ok(())
+}
+
+/// Format provability results as GitHub-flavoured Markdown.
+///
+/// `-f markdown` was an alias for `-f full`: the two produced byte-identical
+/// output, so the "markdown" format emitted the ANSI-decorated terminal
+/// rendering (`^[[1mFunction:^[[0m add`) with not one markdown construct in it.
+/// A format that names a syntax has to produce that syntax.
+pub fn format_provability_markdown(
+    function_ids: &[FunctionId],
+    summaries: &[ProofSummary],
+    include_evidence: bool,
+) -> Result<String> {
+    use crate::services::lightweight_provability_analyzer::PropertyType;
+
+    const ALL_PROPERTIES: [PropertyType; 6] = [
+        PropertyType::NullSafety,
+        PropertyType::BoundsCheck,
+        PropertyType::NoAliasing,
+        PropertyType::PureFunction,
+        PropertyType::MemorySafety,
+        PropertyType::ThreadSafety,
+    ];
+
+    let mut output = String::new();
+    writeln!(&mut output, "# Provability Analysis\n")?;
+    writeln!(
+        &mut output,
+        "Functions analyzed: {}\n",
+        function_ids.len()
+    )?;
+
+    for (file_path, functions) in group_functions_by_file(function_ids, summaries) {
+        writeln!(&mut output, "## `{file_path}`\n")?;
+        writeln!(
+            &mut output,
+            "| Function | Line | Provability | Verified | Missing |"
+        )?;
+        writeln!(&mut output, "| --- | ---: | ---: | --- | --- |")?;
+
+        for (func_id, summary) in &functions {
+            let verified_types: Vec<&PropertyType> = summary
+                .verified_properties
+                .iter()
+                .map(|p| &p.property_type)
+                .collect();
+            let (verified, missing): (Vec<String>, Vec<String>) = ALL_PROPERTIES
+                .iter()
+                .map(|pt| (format!("{pt:?}"), verified_types.contains(&pt)))
+                .fold((Vec::new(), Vec::new()), |(mut v, mut m), (name, ok)| {
+                    if ok {
+                        v.push(name);
+                    } else {
+                        m.push(name);
+                    }
+                    (v, m)
+                });
+            let or_dash = |items: Vec<String>| {
+                if items.is_empty() {
+                    "—".to_string()
+                } else {
+                    items.join(", ")
+                }
+            };
+
+            writeln!(
+                &mut output,
+                "| `{}` | {} | {:.1}% | {} | {} |",
+                func_id.function_name,
+                func_id.line_number,
+                summary.provability_score * 100.0,
+                or_dash(verified),
+                or_dash(missing),
+            )?;
+        }
+        writeln!(&mut output)?;
+
+        if include_evidence {
+            for (func_id, summary) in &functions {
+                if summary.verified_properties.is_empty() {
+                    continue;
+                }
+                writeln!(&mut output, "### `{}` — evidence\n", func_id.function_name)?;
+                for prop in &summary.verified_properties {
+                    writeln!(
+                        &mut output,
+                        "- **{:?}** ({:.1}% confidence): {}",
+                        prop.property_type,
+                        prop.confidence * 100.0,
+                        prop.evidence,
+                    )?;
+                }
+                writeln!(&mut output)?;
+            }
+        }
+    }
+
+    Ok(output)
 }
 
 fn write_verified_properties(
@@ -124,17 +226,118 @@ fn write_verified_properties(
     properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
 ) -> Result<()> {
     use crate::cli::colors as c;
-    writeln!(output, "\n    {}Verified Properties:{}", c::BOLD, c::RESET)?;
+    writeln!(output, "\n    {}Verified Properties:{}", c::seq(c::BOLD), c::seq(c::RESET))?;
 
     for prop in properties {
         writeln!(
             output,
             "      {}{:?}{} (confidence: {})",
-            c::GREEN, prop.property_type, c::RESET,
+            c::seq(c::GREEN), prop.property_type, c::seq(c::RESET),
             c::pct(prop.confidence * 100.0, 80.0, 50.0),
         )?;
-        writeln!(output, "        Evidence: {}{}{}", c::DIM, prop.evidence, c::RESET)?;
+        writeln!(output, "        Evidence: {}{}{}", c::seq(c::DIM), prop.evidence, c::seq(c::RESET))?;
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod markdown_and_plain_output_tests {
+    //! `-f markdown` was an alias for `-f full` (identical md5), and the
+    //! detailed renderer interpolated the raw `pub const` ANSI sequences, so a
+    //! redirected `-f markdown` file was ANSI-decorated terminal text.
+    use super::*;
+    use crate::services::lightweight_provability_analyzer::{
+        FunctionId, ProofSummary, PropertyType, VerifiedProperty,
+    };
+
+    fn fixture() -> (Vec<FunctionId>, Vec<ProofSummary>) {
+        let ids = vec![
+            FunctionId {
+                file_path: "src/lib.rs".to_string(),
+                function_name: "add".to_string(),
+                line_number: 2,
+            },
+            FunctionId {
+                file_path: "src/lib.rs".to_string(),
+                function_name: "complex".to_string(),
+                line_number: 4,
+            },
+        ];
+        let summaries = vec![
+            ProofSummary {
+                provability_score: 0.2,
+                analysis_time_us: 12,
+                verified_properties: vec![],
+                version: 1,
+            },
+            ProofSummary {
+                provability_score: 0.9,
+                analysis_time_us: 3,
+                verified_properties: vec![VerifiedProperty {
+                    property_type: PropertyType::PureFunction,
+                    confidence: 0.75,
+                    evidence: "no writes to globals".to_string(),
+                }],
+                version: 1,
+            },
+        ];
+        (ids, summaries)
+    }
+
+    #[test]
+    fn detailed_output_is_plain_text_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+
+        let (ids, summaries) = fixture();
+        let rendered = format_provability_detailed(&ids, &summaries, true).expect("render");
+
+        assert!(
+            !rendered.contains('\u{1b}'),
+            "no ANSI escape may reach a redirected stdout: {:?}",
+            rendered
+                .lines()
+                .filter(|l| l.contains('\u{1b}'))
+                .collect::<Vec<_>>()
+        );
+        // The payload must survive the de-colouring.
+        assert!(rendered.contains("Detailed Provability Analysis"));
+        assert!(rendered.contains("Function:"));
+        assert!(rendered.contains("Missing:"));
+        assert!(rendered.contains("no writes to globals"));
+    }
+
+    #[test]
+    fn markdown_is_markdown_and_not_the_terminal_rendering() {
+        let (ids, summaries) = fixture();
+        let markdown = format_provability_markdown(&ids, &summaries, true).expect("render");
+        let detailed = format_provability_detailed(&ids, &summaries, true).expect("render");
+
+        assert_ne!(
+            markdown, detailed,
+            "`-f markdown` must not be an alias for `-f full`"
+        );
+        assert!(!markdown.contains('\u{1b}'), "markdown must be plain text");
+
+        assert!(markdown.starts_with("# Provability Analysis"));
+        assert!(markdown.contains("## `src/lib.rs`"));
+        assert!(markdown.contains("| Function | Line | Provability | Verified | Missing |"));
+        assert!(markdown.contains("| `add` | 2 | 20.0% |"));
+        assert!(markdown.contains("| `complex` | 4 | 90.0% | PureFunction |"));
+        // Evidence is a section, not a colour-coded block.
+        assert!(markdown.contains("### `complex` — evidence"));
+        assert!(markdown.contains("- **PureFunction** (75.0% confidence): no writes to globals"));
+    }
+
+    #[test]
+    fn markdown_omits_the_evidence_sections_when_not_requested() {
+        let (ids, summaries) = fixture();
+        let markdown = format_provability_markdown(&ids, &summaries, false).expect("render");
+        assert!(!markdown.contains("evidence"));
+        // The table itself is unaffected.
+        assert!(markdown.contains("| `complex` | 4 | 90.0% | PureFunction |"));
+    }
 }

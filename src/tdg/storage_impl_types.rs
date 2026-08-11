@@ -88,6 +88,12 @@ pub struct StorageStatistics {
     pub cold_entries: usize,
     pub total_entries: usize,
     pub hot_memory_kb: usize,
+    /// Measured compressed:uncompressed ratio of the warm tier.
+    ///
+    /// `0.0` means **not measured** — nothing is stored, or the tier is too
+    /// large to read back cheaply. It was previously a hardcoded 0.33 that
+    /// rendered as "Compression ratio: 33.0%" over empty stores; renderers must
+    /// say "not measured" for 0.0 rather than print "0.0%" as a measurement.
     pub compression_ratio: f32,
     pub warm_backend: String,
     pub cold_backend: String,
@@ -95,6 +101,22 @@ pub struct StorageStatistics {
 }
 
 impl StorageStatistics {
+    /// The compression ratio as text, or why there is no ratio to show.
+    ///
+    /// A ratio cannot be derived from zero stored entries, yet this line read
+    /// "Compression ratio: 33.0%" for every store pmat has ever printed
+    /// diagnostics for — see the `compression_ratio` field.
+    #[must_use]
+    pub fn compression_ratio_display(&self) -> String {
+        if self.compression_ratio > 0.0 {
+            format!("{:.1}%", self.compression_ratio * 100.0)
+        } else if self.total_entries == 0 {
+            "not measured (nothing stored)".to_string()
+        } else {
+            "not measured".to_string()
+        }
+    }
+
     /// Format statistics for diagnostic display
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -105,7 +127,7 @@ impl StorageStatistics {
              - Warm ({} backend): {} entries\n\
              - Cold ({} backend): {} entries\n\
              - Total: {} entries\n\
-             - Compression ratio: {:.1}%",
+             - Compression ratio: {}",
             self.hot_entries,
             self.hot_memory_kb,
             self.warm_backend,
@@ -113,7 +135,7 @@ impl StorageStatistics {
             self.cold_backend,
             self.cold_entries,
             self.total_entries,
-            self.compression_ratio * 100.0
+            self.compression_ratio_display()
         )
     }
 }

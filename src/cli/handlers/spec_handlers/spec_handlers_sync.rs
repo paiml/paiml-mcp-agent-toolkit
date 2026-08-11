@@ -160,17 +160,38 @@ pub async fn handle_spec_drift(
     use regex::Regex;
     use std::collections::HashSet;
 
+    // A wrong -s used to satisfy the drift gate: find_specs returns an empty
+    // vec for a missing directory and the empty orphan list renders as
+    // "No drift detected. All specs are properly linked." with exit 0.
+    if !spec_path.exists() {
+        anyhow::bail!("spec path does not exist: {}", spec_path.display());
+    }
+
     let parser = SpecParser::new();
     let specs = parser.find_specs(spec_path)?;
+    if specs.is_empty() {
+        anyhow::bail!(
+            "no specs found under {}: nothing was examined, so drift cannot be cleared",
+            spec_path.display()
+        );
+    }
     let roadmap_service = RoadmapService::new(roadmap_path);
 
+    // A missing roadmap used to be swallowed here, leaving linked_specs empty
+    // so every spec was reported "not in roadmap" — a read failure rendered as
+    // a negative measurement. Report that we could not read it instead.
+    if !roadmap_service.exists() {
+        anyhow::bail!(
+            "roadmap not found at {}. Run 'pmat work init' first.",
+            roadmap_path.display()
+        );
+    }
+
     let mut linked_specs: HashSet<std::path::PathBuf> = HashSet::new();
-    if roadmap_service.exists() {
-        let roadmap = roadmap_service.load()?;
-        for item in &roadmap.roadmap {
-            if let Some(ref spec) = item.spec {
-                linked_specs.insert(spec.clone());
-            }
+    let roadmap = roadmap_service.load()?;
+    for item in &roadmap.roadmap {
+        if let Some(ref spec) = item.spec {
+            linked_specs.insert(spec.clone());
         }
     }
 
@@ -294,5 +315,52 @@ fn print_drift_text(orphans: &[DriftInfo]) {
             c::dim("Tip:"),
             c::label("pmat spec sync --dry-run")
         );
+    }
+}
+
+#[cfg(test)]
+mod drift_input_validation_tests {
+    //! Regression tests for the two ways `spec drift` used to pass without
+    //! measuring anything: a nonexistent -s printed the all-clear, and a
+    //! missing -r was swallowed so every spec was reported unlinked.
+    use super::*;
+    use crate::cli::commands::SpecOutputFormat;
+
+    fn write_spec(dir: &Path) -> std::path::PathBuf {
+        let spec = dir.join("example.md");
+        std::fs::write(&spec, "# Example\n\nTicket: PMAT-1\n").unwrap();
+        spec
+    }
+
+    #[tokio::test]
+    async fn test_drift_nonexistent_spec_path_is_an_error() {
+        let missing = Path::new("/does/not/exist/pmat-spec-drift");
+        let err = handle_spec_drift(missing, Path::new("roadmap.yaml"), SpecOutputFormat::Text)
+            .await
+            .expect_err("a wrong -s must not clear the drift gate");
+        assert!(
+            err.to_string().contains("spec path does not exist"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_drift_empty_spec_dir_does_not_report_all_clear() {
+        let dir = tempfile::tempdir().unwrap();
+        let err = handle_spec_drift(dir.path(), Path::new("roadmap.yaml"), SpecOutputFormat::Text)
+            .await
+            .expect_err("zero specs examined is not a clean drift report");
+        assert!(err.to_string().contains("no specs found"), "unexpected: {err}");
+    }
+
+    #[tokio::test]
+    async fn test_drift_missing_roadmap_is_an_error_not_a_measurement() {
+        let dir = tempfile::tempdir().unwrap();
+        write_spec(dir.path());
+        let roadmap = dir.path().join("no-such-roadmap.yaml");
+        let err = handle_spec_drift(dir.path(), &roadmap, SpecOutputFormat::Text)
+            .await
+            .expect_err("an unreadable roadmap must not be reported as 'not in roadmap'");
+        assert!(err.to_string().contains("roadmap not found"), "unexpected: {err}");
     }
 }

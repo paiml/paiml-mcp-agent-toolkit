@@ -9,9 +9,19 @@ impl RustBorrowChecker {
         rustc_version: &str,
         collection_state: &mut CollectionState,
     ) {
+        // Gitignore-aware: this walk used to be a bare `WalkDir` with
+        // `follow_links(true)`, so it descended into gitignored trees. On this
+        // repo the ephemeral `.claude/worktrees/` checkouts — full copies of the
+        // very files being scanned — supplied 90% of every proof-annotation
+        // total (177305 of 195846). `follow_links` stays off for the same
+        // reason: a symlinked copy is still a copy.
+        let ignore_matcher = Self::build_ignore_matcher(project_root);
         for entry in WalkDir::new(project_root)
-            .follow_links(true)
+            .follow_links(false)
             .into_iter()
+            .filter_entry(|e| {
+                !Self::is_ignored(ignore_matcher.as_ref(), e.path(), e.file_type().is_dir())
+            })
             .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
@@ -19,6 +29,32 @@ impl RustBorrowChecker {
                 Self::process_single_rust_file(path, cache, rustc_version, collection_state).await;
             }
         }
+    }
+
+    /// Build a `.gitignore` matcher rooted at the project being analysed.
+    ///
+    /// Returns `None` when the project has no readable `.gitignore`; in that
+    /// case nothing is filtered and the walk behaves as it always did.
+    fn build_ignore_matcher(project_root: &Path) -> Option<ignore::gitignore::Gitignore> {
+        let mut builder = ignore::gitignore::GitignoreBuilder::new(project_root);
+        // add() returns Some(err) on failure — a missing .gitignore is normal.
+        if builder.add(project_root.join(".gitignore")).is_some() {
+            return None;
+        }
+        builder.build().ok()
+    }
+
+    /// True when `path` is excluded from the analysis: the git metadata
+    /// directory, or anything the project's `.gitignore` excludes.
+    fn is_ignored(
+        matcher: Option<&ignore::gitignore::Gitignore>,
+        path: &Path,
+        is_dir: bool,
+    ) -> bool {
+        if is_dir && path.file_name().and_then(|n| n.to_str()) == Some(".git") {
+            return true;
+        }
+        matcher.is_some_and(|m| m.matched_path_or_any_parents(path, is_dir).is_ignore())
     }
 
     /// Check if a path represents a Rust source file
@@ -178,5 +214,56 @@ impl ProofSource for RustBorrowChecker {
 
             Self::finalize_collection(start, collection_state)
         })
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod gitignore_walk_tests {
+    use super::*;
+
+    /// The proof walk used to be a bare `WalkDir`, so it descended into
+    /// gitignored trees. On this repo the ephemeral `.claude/worktrees/`
+    /// checkouts — copies of the files being analysed — supplied 177305 of
+    /// 195846 reported proof annotations (90.5%).
+    #[test]
+    fn gitignored_trees_are_excluded_from_the_walk() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::write(root.join(".gitignore"), ".claude/worktrees\ntarget\n").unwrap();
+        std::fs::create_dir_all(root.join(".claude/worktrees/copy")).unwrap();
+        std::fs::create_dir_all(root.join("target/debug")).unwrap();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/lib.rs"), "fn a() {}").unwrap();
+        std::fs::write(root.join(".claude/worktrees/copy/lib.rs"), "fn a() {}").unwrap();
+
+        let matcher = RustBorrowChecker::build_ignore_matcher(root);
+        assert!(matcher.is_some(), "the fixture has a .gitignore");
+
+        assert!(RustBorrowChecker::is_ignored(
+            matcher.as_ref(),
+            &root.join(".claude/worktrees"),
+            true
+        ));
+        assert!(RustBorrowChecker::is_ignored(
+            matcher.as_ref(),
+            &root.join(".claude/worktrees/copy/lib.rs"),
+            false
+        ));
+        assert!(RustBorrowChecker::is_ignored(
+            matcher.as_ref(),
+            &root.join("target/debug"),
+            true
+        ));
+        assert!(RustBorrowChecker::is_ignored(
+            matcher.as_ref(),
+            &root.join(".git"),
+            true
+        ));
+        assert!(!RustBorrowChecker::is_ignored(
+            matcher.as_ref(),
+            &root.join("src/lib.rs"),
+            false
+        ));
     }
 }

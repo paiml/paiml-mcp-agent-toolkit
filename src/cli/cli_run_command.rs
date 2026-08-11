@@ -36,7 +36,21 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
     }
 
     // Use command dispatcher for improved modularity
-    CommandDispatcher::execute_command(cli.command, server).await
+    let result = CommandDispatcher::execute_command(cli.command, server).await;
+
+    // `maintain bug-report` reads a captured-error store that nothing in the
+    // product ever wrote — `capture_command_error*` had no caller outside its
+    // own unit tests — so it always answered "No captured error found. Run a
+    // pmat command that fails first" even immediately after one did. The
+    // failing command is what has to write it.
+    if let Err(e) = &result {
+        crate::cli::handlers::bug_report_handler::capture_cli_failure(
+            &std::env::args().collect::<Vec<_>>(),
+            e,
+        );
+    }
+
+    result
 }
 
 /// Apply UX settings from CLI flags (TICKET-PMAT-6006)

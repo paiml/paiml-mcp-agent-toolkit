@@ -1,6 +1,24 @@
 // Coverage baseline measurement and coverage gain tracking
 // Included into mod.rs via include!() -- no `use` imports or `#!` attributes allowed
 
+/// Why the improvement loop should stop after `report`, if it should.
+///
+/// "No progress" means the iteration generated no test AND coverage did not
+/// rise: the next iteration would run the same prioritisation over the same
+/// tree and produce the same report, so continuing only costs another full
+/// coverage build. Returns `None` while there is any reason to keep going.
+fn zero_progress_stop_reason(report: &IterationReport) -> Option<String> {
+    if report.tests_generated == 0 && report.coverage_gain <= 0.0 {
+        Some(format!(
+            "No progress in iteration {}: 0 tests generated and {:+.2}% coverage change; \
+             further iterations would repeat it",
+            report.iteration, report.coverage_gain
+        ))
+    } else {
+        None
+    }
+}
+
 impl CoverageImprovementService {
     /// Improve coverage to target percentage
     ///
@@ -47,7 +65,25 @@ impl CoverageImprovementService {
                     .map(|i: &IterationReport| i.coverage_gain)
                     .sum::<f64>()
                 + iteration_report.coverage_gain;
+            let stalled = zero_progress_stop_reason(&iteration_report);
             iterations.push(iteration_report);
+
+            // An iteration that generated no test and moved coverage nowhere is
+            // deterministic: repeating it produces byte-identical results. The
+            // loop had no stop condition other than the target, so
+            // `--max-iterations 10` on a project with no generatable targets
+            // printed ten identical zero-gain iterations (and re-ran the whole
+            // coverage build ten times) before stopping.
+            if let Some(stop_reason) = stalled {
+                return Ok(CoverageImprovementReport {
+                    baseline_coverage: baseline,
+                    target_coverage: self.config.target_coverage,
+                    final_coverage: current_coverage,
+                    iterations,
+                    success: current_coverage >= self.config.target_coverage,
+                    stop_reason,
+                });
+            }
         }
 
         // Max iterations reached

@@ -36,12 +36,22 @@ impl LocalSemanticEngine {
     ) -> Result<usize, String> {
         self.documents.clear();
 
-        for entry in WalkDir::new(path)
-            .max_depth(10)
-            .into_iter()
-            .filter_map(Result::ok)
-        {
-            if !entry.file_type().is_file() {
+        // A bare `WalkDir` ignored .gitignore and hidden directories, so
+        // `analyze cluster` on this repository indexed 223,683 documents —
+        // 209k of them .rs files under the git-ignored .claude/worktrees tree —
+        // against the 4,260 `analyze complexity` sees for the same path, and
+        // the clusters were dominated by files that are not part of the
+        // project. Same walker configuration as the function index
+        // (`agent_context/function_index/build.rs`).
+        let walker = ignore::WalkBuilder::new(path)
+            .max_depth(Some(10))
+            .hidden(true)
+            .git_ignore(true)
+            .git_global(true)
+            .build();
+
+        for entry in walker.filter_map(Result::ok) {
+            if !entry.file_type().is_some_and(|ft| ft.is_file()) {
                 continue;
             }
 
@@ -105,10 +115,18 @@ impl LocalSemanticEngine {
         // Prepare document texts
         let texts: Vec<&str> = self.documents.iter().map(|d| d.content.as_str()).collect();
 
+        // A single document can never contain a term with df >= 2, so a
+        // one-file crate produced an empty vocabulary and aprender's internal
+        // precondition — "Vocabulary is empty. Call fit() first" — was surfaced
+        // verbatim as the user-facing error for `analyze cluster`/`topics`.
+        // With one document, every term is kept and the caller then gets an
+        // actionable message from the clustering stage instead.
+        let min_df = if texts.len() < 2 { 1 } else { 2 };
+
         // Create TF-IDF vectorizer with code-friendly settings
         let mut vectorizer = TfidfVectorizer::new()
             .with_tokenizer(Box::new(WhitespaceTokenizer::new()))
-            .with_min_df(2) // Minimum document frequency
+            .with_min_df(min_df) // Minimum document frequency
             .with_max_df(0.95) // Maximum document frequency (exclude very common terms)
             .with_max_features(1000); // Limit vocabulary size (usize, not Option)
 
@@ -333,5 +351,72 @@ impl LocalSemanticEngine {
             method: method.to_string(),
             num_documents: self.documents.len(),
         })
+    }
+}
+
+#[cfg(test)]
+mod corpus_scope_tests {
+    //! Regression tests for two defects in the semantic corpus: the walk
+    //! ignored .gitignore and hidden directories (223,683 documents for a tree
+    //! `analyze complexity` reads as 4,260 files), and a single-document corpus
+    //! could not be vectorized at all — `with_min_df(2)` surfaced aprender's
+    //! internal "Vocabulary is empty. Call fit() first" as the user-facing
+    //! error for any one-file crate.
+    use super::LocalSemanticEngine;
+
+    const SAMPLE: &str =
+        "pub fn add(a: i32, b: i32) -> i32 { a + b }\npub fn sub(a: i32, b: i32) -> i32 { a - b }\n";
+
+    #[test]
+    fn test_single_document_corpus_indexes() {
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("lib.rs"), SAMPLE).unwrap();
+
+        let mut engine = LocalSemanticEngine::new();
+        let indexed = engine
+            .index_directory(temp.path(), None)
+            .expect("a one-file crate must index, not report an aprender precondition");
+        assert_eq!(indexed, 1);
+    }
+
+    #[test]
+    fn test_single_document_clustering_reports_an_actionable_error() {
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("lib.rs"), SAMPLE).unwrap();
+
+        let mut engine = LocalSemanticEngine::new();
+        engine.index_directory(temp.path(), None).unwrap();
+
+        let err = engine.cluster("kmeans", Some(2)).unwrap_err();
+        assert!(
+            err.contains("1 documents"),
+            "the message must say how many documents there are, got {err}"
+        );
+        assert!(
+            !err.contains("Call fit() first"),
+            "aprender's internal precondition must never be the user-facing error"
+        );
+    }
+
+    #[test]
+    fn test_hidden_and_gitignored_files_are_not_indexed() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path();
+        // `ignore` only honours .gitignore inside a repository.
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::write(root.join(".gitignore"), "vendored/\n").unwrap();
+
+        std::fs::write(root.join("lib.rs"), SAMPLE).unwrap();
+        std::fs::create_dir_all(root.join("vendored")).unwrap();
+        std::fs::write(root.join("vendored/dep.rs"), SAMPLE).unwrap();
+        std::fs::create_dir_all(root.join(".worktrees/copy")).unwrap();
+        std::fs::write(root.join(".worktrees/copy/dup.rs"), SAMPLE).unwrap();
+
+        let mut engine = LocalSemanticEngine::new();
+        let indexed = engine.index_directory(root, None).unwrap();
+        assert_eq!(
+            indexed, 1,
+            "only the project's own source file may be indexed, not the ignored or hidden trees"
+        );
     }
 }

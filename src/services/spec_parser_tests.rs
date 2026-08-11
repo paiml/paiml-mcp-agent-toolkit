@@ -294,4 +294,29 @@ The API SHALL be backwards compatible.
         let deserialized: ClaimCategory = serde_json::from_str(&json).unwrap();
         assert_eq!(cat, deserialized);
     }
+
+    #[test]
+    fn test_find_specs_errors_on_missing_path() {
+        // Regression: a typo'd path used to yield Ok(vec![]), so `spec list`
+        // over /does/not/exist printed "0 specs, 0 passing" and exited 0.
+        let parser = SpecParser::new();
+        let err = parser
+            .find_specs(Path::new("/does/not/exist/pmat-spec-dir"))
+            .expect_err("nonexistent spec path must be an error, not an empty spec set");
+        assert!(
+            err.to_string().contains("does not exist"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_find_specs_empty_dir_is_ok() {
+        // An existing-but-empty directory is still legitimately zero specs.
+        let dir = std::env::temp_dir().join("pmat_spec_parser_empty_dir_test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let parser = SpecParser::new();
+        let specs = parser.find_specs(&dir).expect("empty dir must be Ok");
+        assert!(specs.is_empty());
+        let _ = std::fs::remove_dir(&dir);
+    }
 }

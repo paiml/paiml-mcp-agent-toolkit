@@ -1,6 +1,44 @@
 // Property test generation from AST analysis
 // Included into mod.rs via include!() -- no `use` imports or `#!` attributes allowed
 
+/// What a generated `tests/` file may legally reference in the target project.
+pub(crate) struct GeneratedTestTargets {
+    /// The rust identifier of the crate under test (`-` replaced by `_`).
+    pub(crate) crate_ident: String,
+    /// Whether the project can compile `use proptest::prelude::*;` at all.
+    pub(crate) has_proptest: bool,
+}
+
+/// Read the target project's manifest for the facts a generated test depends on.
+///
+/// Generated files used to open with a fixed `use proptest::prelude::*;` and
+/// `use crate::<file_stem>::*;`. Both are wrong for a `tests/` integration
+/// target: `crate::` there is the *test* crate, not the crate under test, and
+/// proptest was never added as a dev-dependency. Writing that file turned a
+/// green `cargo test --no-run` in the user's project into E0433/E0432 — and
+/// pmat still counted the file as tests_generated. The manifest now decides
+/// what may be emitted, and a project without proptest gets nothing rather
+/// than a broken build.
+pub(crate) fn read_generated_test_targets(manifest: &str) -> Option<GeneratedTestTargets> {
+    let manifest: toml::Value = toml::from_str(manifest).ok()?;
+    let package_name = manifest.get("package")?.get("name")?.as_str()?;
+    let crate_ident = manifest
+        .get("lib")
+        .and_then(|lib| lib.get("name"))
+        .and_then(toml::Value::as_str)
+        .unwrap_or(package_name)
+        .replace('-', "_");
+    let has_proptest = manifest
+        .get("dev-dependencies")
+        .and_then(|deps| deps.get("proptest"))
+        .is_some();
+
+    Some(GeneratedTestTargets {
+        crate_ident,
+        has_proptest,
+    })
+}
+
 impl CoverageImprovementService {
     /// Generate property-based tests for target files
     ///
@@ -11,7 +49,33 @@ impl CoverageImprovementService {
     async fn generate_property_tests(&self, targets: &[PathBuf]) -> Result<usize> {
         eprintln!("🧪 Generating property-based tests...");
 
+        let manifest_path = self.config.project_path.join("Cargo.toml");
+        let manifest = tokio::fs::read_to_string(&manifest_path).await.ok();
+        let Some(test_targets) = manifest
+            .as_deref()
+            .and_then(read_generated_test_targets)
+        else {
+            eprintln!(
+                "⚠️  Not generating property tests: no readable [package] in {}",
+                manifest_path.display()
+            );
+            return Ok(0);
+        };
+
+        if !test_targets.has_proptest {
+            eprintln!(
+                "⚠️  Not generating property tests: {} has no `proptest` dev-dependency.",
+                manifest_path.display()
+            );
+            eprintln!(
+                "   Add `proptest = \"1\"` under [dev-dependencies] and re-run — emitting the\n\
+                 \x20  tests now would leave the project unable to compile its test targets."
+            );
+            return Ok(0);
+        }
+
         let mut tests_generated = 0;
+        let mut written: Vec<PathBuf> = Vec::new();
 
         for target in targets {
             // Only process .rs files
@@ -52,7 +116,8 @@ impl CoverageImprovementService {
             }
 
             // Generate proptest for each function
-            let test_content = self.generate_proptest_module(target, &functions)?;
+            let test_content =
+                self.generate_proptest_module(&test_targets.crate_ident, target, &functions)?;
 
             // Write to tests directory
             let test_filename = format!(
@@ -67,6 +132,7 @@ impl CoverageImprovementService {
             }
 
             tokio::fs::write(&test_path, test_content).await?;
+            written.push(test_path);
 
             tests_generated += functions.len();
             eprintln!(
@@ -77,9 +143,52 @@ impl CoverageImprovementService {
             );
         }
 
+        // Nothing previously compiled the files we just dropped into the user's
+        // tests/ directory, so a generated file that does not typecheck stayed
+        // there and broke `cargo test` for everything else — while still being
+        // reported as tests_generated. A file we cannot verify is rolled back.
+        if !written.is_empty() && !self.generated_tests_compile().await {
+            for path in &written {
+                let _ = tokio::fs::remove_file(path).await;
+            }
+            eprintln!(
+                "↩️  Reverted {} generated test file(s): they do not compile.",
+                written.len()
+            );
+            return Ok(0);
+        }
+
         eprintln!("✅ Generated {} property tests total", tests_generated);
 
         Ok(tests_generated)
+    }
+
+    /// Whether the target project's test targets still build.
+    ///
+    /// Returns false when cargo cannot be run at all: an unverifiable
+    /// generated file is treated exactly like a broken one.
+    async fn generated_tests_compile(&self) -> bool {
+        let output = Command::new("cargo")
+            .args(["test", "--no-run", "--tests"])
+            .current_dir(&self.config.project_path)
+            .output()
+            .await;
+
+        match output {
+            Ok(out) if out.status.success() => true,
+            Ok(out) => {
+                let stderr = String::from_utf8_lossy(&out.stderr);
+                eprintln!("⚠️  Generated tests do not compile:");
+                for line in stderr.lines().take(20) {
+                    eprintln!("   {line}");
+                }
+                false
+            }
+            Err(e) => {
+                eprintln!("⚠️  Could not verify generated tests compile: {e}");
+                false
+            }
+        }
     }
 
     /// Extract public functions from a syn::File
@@ -99,9 +208,14 @@ impl CoverageImprovementService {
     }
 
     /// Generate a proptest module for the given functions
+    ///
+    /// `crate_ident` is the crate under test as an integration test must name
+    /// it. This used to emit `use crate::<file_stem>::*;`, which in a `tests/`
+    /// target resolves against the test crate itself and never compiles.
     pub(crate) fn generate_proptest_module(
         &self,
-        target: &PathBuf,
+        crate_ident: &str,
+        _target: &PathBuf,
         functions: &[syn::ItemFn],
     ) -> Result<String> {
         let mut module = String::from(
@@ -113,12 +227,7 @@ use proptest::prelude::*;
 "#,
         );
 
-        // Add module import for the target file
-        let module_name = target
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("target");
-        module.push_str(&format!("use crate::{}::*;\n\n", module_name));
+        module.push_str(&format!("use {}::*;\n\n", crate_ident));
 
         for func in functions {
             let func_name = &func.sig.ident;

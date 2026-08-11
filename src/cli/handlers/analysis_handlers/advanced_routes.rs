@@ -179,7 +179,11 @@ pub(super) async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()>
         run_cargo_build(&path, release)?;
     }
 
-    println!("\u{1f4ca} Running TDG analysis...");
+    // This banner was the one progress line on stdout (every sibling line in
+    // new_tdg_handler uses eprintln!), so it landed ahead of the JSON/SARIF
+    // document and `analyze build-tdg -f json | jq` failed to parse for
+    // everyone. Progress belongs on stderr; stdout carries the document only.
+    eprintln!("\u{1f4ca} Running TDG analysis...");
     let config = TdgAnalysisConfig {
         path: path.clone(),
         threshold: Some(threshold),
@@ -191,7 +195,10 @@ pub(super) async fn route_build_tdg_analysis(cmd: AnalyzeCommands) -> Result<()>
         verbose: false,
     };
 
-    let result = crate::cli::handlers::new_tdg_handler::handle_analyze_tdg(config).await;
+    // `build-tdg` is the gated entry point: its --threshold used to be
+    // discarded, so the documented "fails fast if TDG score exceeds threshold"
+    // gate exited 0 for every threshold from 0.0 to 1000.
+    let result = crate::cli::handlers::new_tdg_handler::handle_analyze_tdg_gated(config).await;
 
     if fail_on_regression {
         check_quality_regression(&path)?;
@@ -436,19 +443,53 @@ pub(super) async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         )
         .await?;
 
+        let report = clippy_result_payload(&result);
+
         if let Some(output_path) = output {
             use std::fs;
-            let content = serde_json::to_string_pretty(&result)?;
-            fs::write(&output_path, content)?;
+            fs::write(&output_path, &report)?;
             eprintln!("\u{1f4c1} Results written to {}", output_path.display());
         } else {
-            eprintln!("{result:?}");
+            println!("{report}");
+        }
+
+        if result.is_error {
+            anyhow::bail!("Clippy analysis failed");
         }
 
         Ok(())
     } else {
         unreachable!("Expected Clippy command")
     }
+}
+
+/// The JSON payload an MCP tool result carries, as a CLI report.
+///
+/// `analyze clippy` used to `eprintln!("{result:?}")` — the Debug rendering of
+/// the MCP transport envelope — so stdout was empty and the only output was an
+/// unparseable `CallToolResult { content: [Text { text: "{\n \"action\"…" }],
+/// is_error: false, … }` on stderr. The envelope is an implementation detail of
+/// the MCP server; a CLI prints the payload, on stdout, so it can be piped.
+fn clippy_result_payload(result: &pmcp::ToolResult) -> String {
+    let texts: Vec<&str> = result
+        .content
+        .iter()
+        .filter_map(|c| match c {
+            pmcp::Content::Text { text } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+
+    if texts.is_empty() {
+        // Never invent a report: say the tool returned no text payload.
+        return serde_json::json!({
+            "error": "clippy analysis returned no text content",
+            "is_error": result.is_error,
+        })
+        .to_string();
+    }
+
+    texts.join("\n")
 }
 
 #[cfg(test)]
@@ -516,5 +557,36 @@ mod converter_tests {
             convert_cache_strategy(cli::DeepContextCacheStrategy::Offline),
             "offline"
         );
+    }
+
+    // ── clippy_result_payload ───────────────────────────────────────────────
+
+    #[test]
+    fn clippy_report_is_the_payload_not_the_mcp_envelope() {
+        let payload = "{\n  \"action\": \"analyzed\",\n  \"results\": {}\n}";
+        let result = pmcp::ToolResult::new(vec![pmcp::Content::Text {
+            text: payload.to_string(),
+        }]);
+
+        let report = clippy_result_payload(&result);
+
+        assert_eq!(report, payload);
+        assert!(
+            serde_json::from_str::<serde_json::Value>(&report).is_ok(),
+            "the CLI report must be parseable JSON"
+        );
+        // What the command used to print: the Debug rendering of the transport
+        // envelope, which no consumer can parse.
+        assert!(
+            serde_json::from_str::<serde_json::Value>(&format!("{result:?}")).is_err(),
+            "the MCP envelope Debug rendering is not a report"
+        );
+    }
+
+    #[test]
+    fn clippy_report_says_so_when_there_is_no_text_payload() {
+        let result = pmcp::ToolResult::new(vec![]);
+        let report = clippy_result_payload(&result);
+        assert!(report.contains("no text content"), "got: {report}");
     }
 }

@@ -190,9 +190,112 @@ pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
     }
 }
 
+/// PMAT's own changelog, embedded at build time.
+///
+/// `comply diff` reports what changed *in PMAT* between the version a project
+/// is pinned to and the version installed, so the only honest source is PMAT's
+/// CHANGELOG.md — not a list written into the source.
+const EMBEDDED_CHANGELOG: &str = include_str!("../../../../../CHANGELOG.md");
+
+/// One released version parsed out of CHANGELOG.md.
+struct ChangelogSection {
+    version: semver::Version,
+    description: String,
+    breaking: bool,
+}
+
+/// Parse `## [x.y.z] - date` sections out of a Keep-a-Changelog document.
+///
+/// `[Unreleased]` and any heading whose bracketed token is not a semver
+/// version are skipped: they name no release, so no range contains them.
+fn parse_changelog(text: &str) -> Vec<ChangelogSection> {
+    let mut sections: Vec<ChangelogSection> = Vec::new();
+    let mut current: Option<(semver::Version, Vec<&str>)> = None;
+
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("## [") {
+            if let Some((version, body)) = current.take() {
+                sections.push(finish_section(version, &body));
+            }
+            let token = rest.split(']').next().unwrap_or("");
+            if let Ok(version) = semver::Version::parse(token) {
+                current = Some((version, Vec::new()));
+            }
+        } else if let Some((_, body)) = current.as_mut() {
+            body.push(line);
+        }
+    }
+    if let Some((version, body)) = current.take() {
+        sections.push(finish_section(version, &body));
+    }
+
+    sections
+}
+
+fn finish_section(version: semver::Version, body: &[&str]) -> ChangelogSection {
+    ChangelogSection {
+        version,
+        description: summarize_section(body),
+        breaking: body
+            .iter()
+            .any(|l| l.contains("BREAKING") || l.trim_start().starts_with("### Removed")),
+    }
+}
+
+/// First substantive line of a section, used as its one-line description.
+fn summarize_section(body: &[&str]) -> String {
+    let raw = body
+        .iter()
+        .map(|l| l.trim())
+        .find(|l| !l.is_empty() && !l.starts_with('#'))
+        .unwrap_or("");
+    let cleaned = raw
+        .trim_start_matches(['-', '*'])
+        .trim()
+        .replace("**", "")
+        .replace('`', "");
+    let cleaned = cleaned.trim();
+    if cleaned.chars().count() > 160 {
+        let truncated: String = cleaned.chars().take(157).collect();
+        format!("{truncated}...")
+    } else {
+        cleaned.to_string()
+    }
+}
+
+/// Sections in the half-open range `(from, to]`.
+///
+/// An unparsable bound yields nothing: a range we cannot evaluate has no
+/// entries we can honestly claim fall inside it.
+fn sections_in_range(from: &str, to: &str) -> Vec<ChangelogSection> {
+    let (Ok(from), Ok(to)) = (
+        semver::Version::parse(from.trim_start_matches('v')),
+        semver::Version::parse(to.trim_start_matches('v')),
+    ) else {
+        return Vec::new();
+    };
+
+    parse_changelog(EMBEDDED_CHANGELOG)
+        .into_iter()
+        .filter(|s| s.version > from && s.version <= to)
+        .collect()
+}
+
+/// Breaking changes released after `from_version`.
+///
+/// This used to be `vec![]` for every input, so `comply check` could never
+/// report a breaking change no matter how far behind a project was.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
-    vec![]
+pub(crate) fn get_breaking_changes_since(from_version: &str) -> Vec<BreakingChange> {
+    sections_in_range(from_version, PMAT_VERSION)
+        .into_iter()
+        .filter(|s| s.breaking)
+        .map(|s| BreakingChange {
+            version: s.version.to_string(),
+            description: s.description,
+            migration_guide: None,
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -202,25 +305,22 @@ pub(crate) struct ChangelogEntry {
     pub breaking: bool,
 }
 
+/// Changelog entries released in `(from, to]`.
+///
+/// Both parameters used to be discarded (`_from`, `_to`) in favour of three
+/// hardcoded entries stamped with the *current* version, so every range —
+/// including v3.29.0 → v3.29.0 — rendered the same three lines, one of them
+/// advertising a `cleanup-resources` command that does not exist in the binary.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
-    vec![
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added qa-work command for Toyota Way validation".to_string(),
-            breaking: false,
-        },
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added cleanup-resources command".to_string(),
-            breaking: false,
-        },
-        ChangelogEntry {
-            version: PMAT_VERSION.to_string(),
-            description: "Added comply command for compliance checking".to_string(),
-            breaking: false,
-        },
-    ]
+pub(crate) fn get_changelog_entries(from: &str, to: &str) -> Vec<ChangelogEntry> {
+    sections_in_range(from, to)
+        .into_iter()
+        .map(|s| ChangelogEntry {
+            version: s.version.to_string(),
+            description: s.description,
+            breaking: s.breaking,
+        })
+        .collect()
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -436,4 +536,98 @@ pub(crate) async fn determine_hook_action(
         return Ok(HookAction::Refresh);
     }
     Ok(HookAction::UpToDate)
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod changelog_range_tests {
+    use super::*;
+
+    const SAMPLE: &str = "\
+# Changelog
+
+## [Unreleased]
+
+## [3.0.0] - 2026-01-01
+
+### Removed
+
+- Dropped the old API.
+
+## [2.1.0] - 2025-06-01
+
+- Added a widget.
+
+## [1.5.0] - 2024-01-01
+
+- First widget.
+";
+
+    /// A range must contain only the versions inside it. Both parameters used to
+    /// be discarded, so every range printed the same three canned entries.
+    #[test]
+    fn range_filters_by_version() {
+        let sections = parse_changelog(SAMPLE);
+        let versions: Vec<String> = sections.iter().map(|s| s.version.to_string()).collect();
+        assert_eq!(versions, vec!["3.0.0", "2.1.0", "1.5.0"]);
+
+        let in_range: Vec<String> = sections
+            .iter()
+            .filter(|s| {
+                s.version > semver::Version::parse("1.5.0").unwrap()
+                    && s.version <= semver::Version::parse("2.1.0").unwrap()
+            })
+            .map(|s| s.version.to_string())
+            .collect();
+        assert_eq!(in_range, vec!["2.1.0"]);
+    }
+
+    /// `### Removed` and `BREAKING` mark a release as breaking.
+    #[test]
+    fn breaking_sections_are_detected() {
+        let sections = parse_changelog(SAMPLE);
+        assert!(sections[0].breaking, "3.0.0 removes an API");
+        assert!(!sections[1].breaking);
+    }
+
+    /// An empty range must be empty. `--from X --to X` used to print three
+    /// entries stamped with the current version.
+    #[test]
+    fn identical_from_and_to_yields_nothing() {
+        assert!(get_changelog_entries(PMAT_VERSION, PMAT_VERSION).is_empty());
+    }
+
+    /// A range that ends before this project's first release must not report
+    /// entries from the current version.
+    #[test]
+    fn ancient_range_does_not_report_current_version() {
+        let entries = get_changelog_entries("1.0.0", "2.0.0");
+        assert!(
+            entries.iter().all(|e| e.version != PMAT_VERSION),
+            "entries outside the requested range leaked in: {:?}",
+            entries
+        );
+        assert!(
+            !entries
+                .iter()
+                .any(|e| e.description.contains("cleanup-resources")),
+            "the canned entry advertising a nonexistent command is still emitted"
+        );
+    }
+
+    /// Entries must come from the shipped changelog, so a wide range finds the
+    /// releases that are actually in it.
+    #[test]
+    fn wide_range_reads_the_embedded_changelog() {
+        let entries = get_changelog_entries("2.0.0", PMAT_VERSION);
+        assert!(
+            entries.len() > 3,
+            "expected the real changelog, got {} entries",
+            entries.len()
+        );
+        assert!(
+            entries.iter().any(|e| e.version == PMAT_VERSION),
+            "the current release must be inside (2.0.0, {PMAT_VERSION}]"
+        );
+    }
 }

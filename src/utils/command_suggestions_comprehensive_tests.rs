@@ -276,7 +276,12 @@ mod comprehensive_coverage_tests {
         assert!(examples.contains("Find dead code"));
         assert!(examples.contains("Generate project context"));
         assert!(examples.contains("Run quality gates"));
-        assert!(examples.contains("Start agent daemon"));
+        // Was `assert!(examples.contains("Start agent daemon"))` — the third
+        // test pinning an example that cannot run in the shipped build, where
+        // `pmat agent start` exits 1 with "Agent daemon feature not enabled"
+        // (#675). Assert the inverse so it cannot silently return.
+        assert!(examples.contains("Pre-flight the CI gate set"));
+        assert!(!examples.contains("pmat agent start"));
         assert!(examples.contains("--path"));
     }
 

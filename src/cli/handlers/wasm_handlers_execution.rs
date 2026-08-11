@@ -79,7 +79,19 @@ async fn analyze_single_wasm_file(
         Some("wasm") if include_binary => analyze_wasm_binary(file_path).await,
         Some("wat") if include_text => {
             analyze_wat_text(file_path, security, complexity).await;
-            None // WAT analysis doesn't return WasmMetrics currently
+            // A parsed .wat contributes no row, so a .wat-only directory
+            // reported "Found 1 WebAssembly files" on stderr and then
+            // "**Files analyzed**: 0" with no Results section and exit 0 — the
+            // file was silently dropped. It still is (the WAT front end
+            // produces no `WasmMetrics`; emitting a zero-filled row would
+            // report measurements nothing took), but say so instead of
+            // leaving the gap to be read as "nothing found".
+            eprintln!(
+                "⚠️  Not reported: {} — .wat text format is parsed for security/complexity \
+                 checks only; metrics come from binary .wasm files",
+                file_path.display()
+            );
+            None
         }
         _ => None,
     }

@@ -91,6 +91,15 @@ impl CargoDeadCodeAnalyzer {
                 continue;
             }
 
+            // Honour the include_tests/examples/benches flags. This layer used
+            // to walk EVERY .rs file regardless — only `run_cargo_check`
+            // consulted them — so `analyze dead-code` reported `tests/it.rs` by
+            // default on a crate never analysed before, and `--include-tests`
+            // could not add anything because nothing had been excluded.
+            if self.is_excluded_source(path) {
+                continue;
+            }
+
             // Read file content
             let content = match fs::read_to_string(path) {
                 Ok(c) => c,
@@ -115,6 +124,31 @@ impl CargoDeadCodeAnalyzer {
         );
 
         Ok(suppressed_items)
+    }
+
+    /// Is this source file outside the scope the analyzer was configured with?
+    ///
+    /// Mirrors what `--include-tests` / `--include-examples` /
+    /// `--include-benches` promise: with the flag absent, the corresponding
+    /// tree contributes nothing to the report.
+    fn is_excluded_source(&self, path: &Path) -> bool {
+        let relative = path.strip_prefix(&self.project_path).unwrap_or(path);
+        let under = |dir: &str| {
+            relative
+                .components()
+                .any(|c| c.as_os_str().to_string_lossy() == dir)
+        };
+
+        if self.exclude_tests && (under("tests") || is_test_file_name(relative)) {
+            return true;
+        }
+        if self.exclude_examples && under("examples") {
+            return true;
+        }
+        if self.exclude_benches && (under("benches") || under("benchmarks")) {
+            return true;
+        }
+        false
     }
 
     /// Scan a single file's lines for suppression attributes
@@ -221,6 +255,23 @@ impl CargoDeadCodeAnalyzer {
     }
 }
 
+/// Is this file name a test module by convention (`tests.rs`, `foo_test.rs`,
+/// `foo_tests.rs`, `test_foo.rs`)?
+///
+/// The repo's own `src/services/cargo_dead_code_analyzer/tests.rs` headed the
+/// dead-code list with `--include-tests` absent, which is what the flag exists
+/// to prevent.
+fn is_test_file_name(path: &std::path::Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    stem == "tests"
+        || stem == "test"
+        || stem.ends_with("_test")
+        || stem.ends_with("_tests")
+        || stem.starts_with("test_")
+}
+
 /// Return `true` when the project at `project_path` has a library target.
 ///
 /// A library is present when *either* the conventional `src/lib.rs` file
@@ -301,5 +352,87 @@ mod project_has_library_tests {
         )
         .unwrap();
         assert!(project_has_library(tmp.path()));
+    }
+}
+
+/// `--include-tests` used to be inert: Layer 1 walked every `.rs` file in the
+/// project whatever the flag said, so a brand-new crate reported `tests/it.rs`
+/// with the flag absent and the flag could add nothing.
+#[cfg(test)]
+mod include_tests_flag_tests {
+    use super::*;
+
+    fn fixture() -> tempfile::TempDir {
+        // Non-hidden prefix: the walk skips hidden directories, and tempfile's
+        // default prefix is `.tmp`.
+        let tmp = tempfile::Builder::new()
+            .prefix("dcx")
+            .tempdir()
+            .expect("tempdir");
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("src")).expect("mkdir src");
+        std::fs::create_dir_all(root.join("tests")).expect("mkdir tests");
+        std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
+        std::fs::create_dir_all(root.join("benches")).expect("mkdir benches");
+        let body = |name: &str| format!("#[allow(dead_code)]\nfn {name}() {{}}\n");
+        std::fs::write(root.join("src/lib.rs"), body("in_lib")).expect("write lib");
+        std::fs::write(root.join("src/helpers_tests.rs"), body("in_src_tests")).expect("write");
+        std::fs::write(root.join("tests/it.rs"), body("in_it")).expect("write it");
+        std::fs::write(root.join("examples/demo.rs"), body("in_demo")).expect("write demo");
+        std::fs::write(root.join("benches/bench.rs"), body("in_bench")).expect("write bench");
+        tmp
+    }
+
+    fn names(items: &[(PathBuf, DeadItem)]) -> Vec<String> {
+        let mut v: Vec<String> = items.iter().map(|(_, i)| i.name.clone()).collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn test_suppression_scan_excludes_tests_by_default() {
+        let tmp = fixture();
+        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
+        let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
+        assert_eq!(
+            found,
+            vec!["in_lib".to_string()],
+            "only library code is in scope without --include-tests/examples/benches"
+        );
+    }
+
+    #[test]
+    fn test_include_tests_adds_the_test_trees() {
+        let tmp = fixture();
+        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path()).include_tests();
+        let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
+        assert!(found.contains(&"in_it".to_string()), "{found:?}");
+        assert!(found.contains(&"in_src_tests".to_string()), "{found:?}");
+        assert!(found.contains(&"in_lib".to_string()), "{found:?}");
+        // Examples and benches stay out — their own flags were not passed.
+        assert!(!found.contains(&"in_demo".to_string()), "{found:?}");
+        assert!(!found.contains(&"in_bench".to_string()), "{found:?}");
+    }
+
+    #[test]
+    fn test_include_examples_and_benches_add_their_trees() {
+        let tmp = fixture();
+        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path())
+            .include_examples()
+            .include_benches();
+        let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
+        assert!(found.contains(&"in_demo".to_string()), "{found:?}");
+        assert!(found.contains(&"in_bench".to_string()), "{found:?}");
+        assert!(!found.contains(&"in_it".to_string()), "{found:?}");
+    }
+
+    #[test]
+    fn test_is_test_file_name_conventions() {
+        for name in ["tests.rs", "foo_tests.rs", "foo_test.rs", "test_foo.rs"] {
+            assert!(is_test_file_name(Path::new(name)), "{name}");
+        }
+        for name in ["lib.rs", "attestation.rs", "contest.rs"] {
+            assert!(!is_test_file_name(Path::new(name)), "{name}");
+        }
     }
 }

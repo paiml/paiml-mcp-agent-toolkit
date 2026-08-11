@@ -29,10 +29,37 @@ fn build_pool_stats_output(
     pool_stats_output
 }
 
+/// True when the in-process pool manager has recorded nothing at all.
+///
+/// `pmat memory` inspects `global_memory_manager()`, which is created fresh per
+/// process and is never exercised by the `memory` subcommand itself, so every
+/// counter is structurally zero on every invocation. Zeros from a manager that
+/// was never used are not a measurement of this machine's memory.
+fn nothing_was_recorded(stats: &crate::services::memory_manager::MemoryStats) -> bool {
+    stats.total_allocated == 0
+        && stats.peak_usage == 0
+        && stats
+            .pool_stats
+            .values()
+            .all(|p| p.allocation_count == 0 && p.reuse_count == 0)
+}
+
+/// The honest line to print instead of tuning advice derived from zeros.
+const NO_MEMORY_DATA_NOTE: &str =
+    "No allocations were recorded in this process: `pmat memory` reads the in-process pool \
+     manager, which starts empty, so these counters measure nothing.";
+
 /// Generate memory usage recommendations
 fn generate_memory_recommendations(
     stats: &crate::services::memory_manager::MemoryStats,
 ) -> Vec<String> {
+    // The zeros used to produce five "Pool X has low reuse efficiency (0.0%).
+    // Consider adjusting pool size." lines on every run — tuning advice
+    // synthesised from a pool that had never been asked for a buffer.
+    if nothing_was_recorded(stats) {
+        return vec![NO_MEMORY_DATA_NOTE.to_string()];
+    }
+
     let mut recommendations = Vec::new();
 
     add_pressure_recommendations(&mut recommendations, stats.allocation_pressure);
@@ -66,6 +93,11 @@ fn add_pool_efficiency_recommendations(
     >,
 ) {
     for (pool_type, pool_stats) in pool_stats {
+        // A pool that was never asked for a buffer has no reuse efficiency to
+        // be low: its 0.0% is the absence of a measurement, not a finding.
+        if pool_stats.allocation_count == 0 {
+            continue;
+        }
         if pool_stats.reuse_ratio < 0.3 {
             recommendations.push(format!(
                 "Pool {:?} has low reuse efficiency ({:.1}%). Consider adjusting pool size.",
@@ -209,4 +241,72 @@ fn calculate_pool_efficiency_rating(reuse_ratio: f64) -> &'static str {
 /// Format bytes in human-readable format (delegates to batuta-common)
 fn format_bytes(bytes: usize) -> String {
     batuta_common::fmt::format_bytes(bytes as u64)
+}
+
+#[cfg(test)]
+mod unrecorded_memory_tests {
+    //! Regression tests for `pmat memory stats`: the pool manager is fresh per
+    //! process and the subcommand never allocates through it, so every counter
+    //! was zero — and five "Pool X has low reuse efficiency (0.0%)" tuning
+    //! recommendations were synthesised from those zeros on every run.
+    use super::{generate_memory_recommendations, nothing_was_recorded};
+    use crate::services::memory_manager::{MemoryStats, PoolStats, PoolType};
+
+    fn stats_with(pool: PoolStats, total_allocated: usize) -> MemoryStats {
+        let mut pool_stats = rustc_hash::FxHashMap::default();
+        pool_stats.insert(PoolType::AstParsing, pool);
+        MemoryStats {
+            total_allocated,
+            pool_stats,
+            string_intern_size: 0,
+            peak_usage: total_allocated,
+            allocation_pressure: 0.0,
+        }
+    }
+
+    fn empty_pool() -> PoolStats {
+        PoolStats {
+            buffer_count: 0,
+            total_size: 0,
+            allocation_count: 0,
+            reuse_count: 0,
+            reuse_ratio: 0.0,
+        }
+    }
+
+    #[test]
+    fn test_untouched_pools_yield_a_not_measured_note_not_tuning_advice() {
+        let stats = stats_with(empty_pool(), 0);
+        assert!(nothing_was_recorded(&stats));
+
+        let recommendations = generate_memory_recommendations(&stats);
+        assert_eq!(recommendations.len(), 1);
+        assert!(
+            !recommendations[0].contains("low reuse efficiency"),
+            "a pool that was never used cannot have low reuse efficiency: {:?}",
+            recommendations[0]
+        );
+        assert!(recommendations[0].contains("measure nothing"));
+    }
+
+    #[test]
+    fn test_a_used_pool_with_poor_reuse_still_gets_advice() {
+        let used = PoolStats {
+            buffer_count: 4,
+            total_size: 4096,
+            allocation_count: 100,
+            reuse_count: 5,
+            reuse_ratio: 0.05,
+        };
+        let stats = stats_with(used, 4096);
+        assert!(!nothing_was_recorded(&stats));
+
+        let recommendations = generate_memory_recommendations(&stats);
+        assert!(
+            recommendations
+                .iter()
+                .any(|r| r.contains("low reuse efficiency")),
+            "measured poor reuse must still be reported: {recommendations:?}"
+        );
+    }
 }

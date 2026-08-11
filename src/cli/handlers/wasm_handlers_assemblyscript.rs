@@ -4,7 +4,11 @@
 pub async fn handle_analyze_assemblyscript(
     project_path: PathBuf,
     format: ComplexityOutputFormat,
-    wasm_complexity: bool,
+    // --wasm-complexity used to decide whether a parsed file appeared in the
+    // report at all, which is why the default run reported files_analyzed 0.
+    // Complexity is now measured for every parsed file and the flag has nothing
+    // left to gate; it is kept so existing invocations keep working.
+    _wasm_complexity: bool,
     _memory_analysis: bool,
     security: bool,
     output: Option<PathBuf>,
@@ -19,7 +23,7 @@ pub async fn handle_analyze_assemblyscript(
     eprintln!("🔍 Analyzing AssemblyScript code...");
     let start = std::time::Instant::now();
 
-    let results = process_assemblyscript_files(&project_path, wasm_complexity, security).await?;
+    let results = process_assemblyscript_files(&project_path, security).await?;
     let elapsed = start.elapsed();
 
     eprintln!("📊 Analysis complete in {:.2}s", elapsed.as_secs_f64());
@@ -32,7 +36,6 @@ pub async fn handle_analyze_assemblyscript(
 
 async fn process_assemblyscript_files(
     project_path: &Path,
-    wasm_complexity: bool,
     security: bool,
 ) -> Result<Vec<(PathBuf, WasmComplexity)>> {
     let detector = WasmLanguageDetector::new();
@@ -43,14 +46,8 @@ async fn process_assemblyscript_files(
     eprintln!("📁 Found {} AssemblyScript files", as_files.len());
 
     for file_path in as_files {
-        if let Some(analysis_result) = analyze_single_file(
-            &file_path,
-            &detector,
-            &mut parser,
-            wasm_complexity,
-            security,
-        )
-        .await?
+        if let Some(analysis_result) =
+            analyze_single_file(&file_path, &detector, &mut parser, security).await?
         {
             results.push(analysis_result);
         }
@@ -63,7 +60,6 @@ async fn analyze_single_file(
     file_path: &Path,
     detector: &WasmLanguageDetector,
     parser: &mut AssemblyScriptParser,
-    wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
     let content = match tokio::fs::read_to_string(file_path).await {
@@ -85,35 +81,72 @@ async fn analyze_single_file(
 
     eprintln!("✅ Parsed: {}", file_path.display());
 
-    let result = process_parsed_ast(&ast, file_path, wasm_complexity, security)?;
+    let result = process_parsed_ast(&ast, file_path, security)?;
     Ok(result)
 }
 
+/// Build the report row for one parsed file.
+///
+/// This used to return `None` unless `--wasm-complexity` was passed, and
+/// `files_analyzed` is `results.len()`, so the DEFAULT run printed
+/// "📁 Found 2 AssemblyScript files" and two "✅ Parsed:" lines and then
+/// reported `files_analyzed: 0, results: []` — a report contradicting its own
+/// progress output. Every file we successfully parsed gets a row; the
+/// complexity is measured from that same AST rather than left out or defaulted.
 fn process_parsed_ast(
     ast: &AstDag,
     file_path: &Path,
-    wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
-    let mut result = None;
-
-    if wasm_complexity {
-        let complexity_analyzer = WasmComplexityAnalyzer::new();
-        let complexity = complexity_analyzer.analyze_ast(ast)?;
-        result = Some((file_path.to_path_buf(), complexity));
-    }
+    let complexity_analyzer = WasmComplexityAnalyzer::new();
+    let complexity = complexity_analyzer.analyze_ast(ast)?;
 
     if security {
         validate_ast_security(ast, file_path);
     }
 
-    Ok(result)
+    Ok(Some((file_path.to_path_buf(), complexity)))
 }
 
 fn validate_ast_security(ast: &AstDag, file_path: &Path) {
     let security_validator = WasmSecurityValidator::new();
     if let Err(e) = security_validator.validate_ast(ast) {
         eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
+    }
+}
+
+#[cfg(test)]
+mod assemblyscript_default_run_tests {
+    //! The default run must report the files it says it parsed.
+    use super::*;
+
+    const FIXTURE: &str = "export function add(a: i32, b: i32): i32 {\n  return a + b;\n}\n";
+
+    /// Without `--wasm-complexity`, every parsed file was dropped, so
+    /// `files_analyzed` (= results.len()) was 0 while stderr had just printed
+    /// "Found 2 AssemblyScript files" and two "✅ Parsed:" lines.
+    #[tokio::test]
+    async fn test_default_run_yields_one_result_per_parsed_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("assembly")).expect("mkdir assembly");
+        std::fs::write(dir.path().join("assembly/index.ts"), FIXTURE).expect("write index.ts");
+        std::fs::write(dir.path().join("top.ts"), FIXTURE).expect("write top.ts");
+
+        let found = collect_assemblyscript_files(dir.path()).expect("collect");
+        assert_eq!(found.len(), 2, "fixture should present 2 AssemblyScript files");
+
+        // security=false, and no --wasm-complexity anywhere in the call.
+        let results = process_assemblyscript_files(dir.path(), false)
+            .await
+            .expect("analysis");
+
+        assert_eq!(
+            results.len(),
+            found.len(),
+            "reported {} results for {} parsed files",
+            results.len(),
+            found.len()
+        );
     }
 }
 

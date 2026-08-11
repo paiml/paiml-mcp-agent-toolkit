@@ -96,7 +96,7 @@ use tracing::info;
 ///     false, // not text format
 ///     false, // not markdown shortcut
 ///     false, // not csv shortcut
-///     true,  // include visualizations
+///     false, // include visualizations (rejected: not implemented for any format)
 ///     true,  // include executive summary
 ///     true,  // include recommendations
 ///     vec![AnalysisType::Complexity, AnalysisType::TechnicalDebt],
@@ -141,7 +141,7 @@ use tracing::info;
 /// ```bash
 /// # Comprehensive executive report
 /// pmat generate report /path/to/project --format markdown \
-///   --include-visualizations --include-executive-summary \
+///   --include-executive-summary \
 ///   --include-recommendations --output project-health.md
 ///
 /// # Quick CSV export for data analysis
@@ -155,7 +155,7 @@ use tracing::info;
 ///
 /// # Management dashboard (legacy HTML format)
 /// pmat generate report /path/to/project --format dashboard \
-///   --include-visualizations --include-executive-summary
+///   --include-executive-summary
 /// ```ignore
 ///
 /// # Integration Examples
@@ -183,7 +183,7 @@ pub async fn handle_generate_report(
     text: bool,
     markdown: bool,
     csv: bool,
-    _include_visualizations: bool,
+    include_visualizations: bool,
     _include_executive_summary: bool,
     _include_recommendations: bool,
     _analyses: Vec<AnalysisType>,
@@ -191,9 +191,16 @@ pub async fn handle_generate_report(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    // A nonexistent --project-path used to produce a green 0-defect report with
+    // exit 0, shape-identical to a real report on an empty project: nothing in
+    // the pipeline can tell "no defects" from "no such directory". Fail like
+    // deps-audit and five-whys already do.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     let start_time = Instant::now();
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);
+    reject_unimplemented_visualizations(include_visualizations)?;
     log_report_generation_start(&project_path, &actual_format);
 
     let service = DefectReportService::new();
@@ -256,6 +263,26 @@ fn convert_to_service_format(actual_format: ReportOutputFormat) -> Result<Report
             format!("{unsupported:?}").to_lowercase(),
         ),
     })
+}
+
+/// Refuse `--include-visualizations` rather than accepting it and doing nothing.
+///
+/// The flag was taken as `_include_visualizations` and dropped: `pmat report -f
+/// markdown` and `pmat report -f markdown --include-visualizations` produced
+/// byte-identical output, and the same held for json, csv and text. The three
+/// formats that could plausibly carry a chart (html, pdf, dashboard) are
+/// themselves rejected by `convert_to_service_format` (#672), so there is no
+/// format left for this flag to affect. Same rule as that rejection: a declared
+/// option must do what it says or be refused, never silently no-op.
+fn reject_unimplemented_visualizations(include_visualizations: bool) -> Result<()> {
+    if include_visualizations {
+        anyhow::bail!(
+            "--include-visualizations is not implemented for `pmat report`: it changed \
+             nothing in json, csv, markdown or text, and the formats that could embed \
+             charts (html, pdf, dashboard) are not implemented either. Re-run without it."
+        );
+    }
+    Ok(())
 }
 
 /// Format report using service (cognitive complexity ≤4)
@@ -395,6 +422,81 @@ mod tests {
             before.len(),
             after.len(),
             "report must not drop an artifact into the tree it measures (before={before:?}, after={after:?})"
+        );
+    }
+
+    /// `pmat report -p /does/not/exist -f json` used to print a clean
+    /// 0-defect document and exit 0 — shape-identical to a real report on an
+    /// empty project, with nothing on stderr. A path that is not there is an
+    /// error, not a clean bill of health.
+    #[tokio::test]
+    async fn test_generate_report_rejects_a_nonexistent_project_path() {
+        let missing = PathBuf::from("/does/not/exist-9f3a-pmat");
+        let result = handle_generate_report(
+            missing,
+            ReportOutputFormat::Json,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            vec![],
+            0,
+            None,
+            false,
+        )
+        .await;
+
+        let err = result.expect_err("a nonexistent project path must be an error");
+        assert!(
+            err.to_string().contains("not found"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// `--include-visualizations` was taken as `_include_visualizations` and
+    /// dropped, so `-f markdown` and `-f markdown --include-visualizations`
+    /// produced byte-identical output. A flag that cannot do anything must say
+    /// so, like `--format html` already does.
+    #[test]
+    fn test_include_visualizations_is_rejected_not_silently_ignored() {
+        assert!(reject_unimplemented_visualizations(false).is_ok());
+
+        let err = reject_unimplemented_visualizations(true)
+            .expect_err("--include-visualizations affects no format and must be refused");
+        assert!(
+            err.to_string().contains("--include-visualizations"),
+            "the error must name the flag: {err}"
+        );
+    }
+
+    /// End-to-end on the handler: the flag must never reach a successful run.
+    #[tokio::test]
+    async fn test_generate_report_refuses_the_visualizations_flag() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "fn main() {}").expect("write");
+
+        let result = handle_generate_report(
+            dir.path().to_path_buf(),
+            ReportOutputFormat::Markdown,
+            false,
+            false,
+            false,
+            true, // --include-visualizations
+            false,
+            false,
+            vec![],
+            50,
+            None,
+            false,
+        )
+        .await;
+
+        let err = result.expect_err("--include-visualizations must not succeed as a no-op");
+        assert!(
+            err.to_string().contains("not implemented"),
+            "unexpected error: {err}"
         );
     }
 

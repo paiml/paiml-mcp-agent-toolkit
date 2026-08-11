@@ -39,6 +39,10 @@ include!("churn.rs");
 include!("quality_gate_satd.rs");
 include!("quality_gate_entry.rs");
 include!("quality_gate_single_file.rs");
+
+#[cfg(test)]
+#[path = "quality_gate_parse_guard_tests.rs"]
+mod quality_gate_parse_guard_tests;
 include!("quality_gate_project.rs");
 include!("quality_gate_execute.rs");
 include!("quality_gate_config.rs");

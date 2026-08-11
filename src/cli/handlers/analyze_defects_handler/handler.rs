@@ -42,15 +42,10 @@ pub async fn handle_analyze_defects(
 
     // Scan all files for defects
     let mut all_defects = Vec::new();
-    let mut files_with_defects = 0;
 
     for file_path in &files_to_scan {
         if let Ok(content) = fs::read_to_string(file_path) {
-            let defects = detector.detect(&content, file_path);
-            if !defects.is_empty() {
-                files_with_defects += 1;
-                all_defects.extend(defects);
-            }
+            all_defects.extend(detector.detect(&content, file_path));
         }
     }
 
@@ -60,7 +55,7 @@ pub async fn handle_analyze_defects(
     }
 
     // Calculate summary
-    let summary = calculate_summary(&files_to_scan, files_with_defects, &all_defects);
+    let summary = calculate_summary(&files_to_scan, &all_defects);
     let has_critical = all_defects
         .iter()
         .any(|d| matches!(d.severity, Severity::Critical));
@@ -119,9 +114,19 @@ pub(crate) fn is_hidden(entry: &walkdir::DirEntry) -> bool {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn calculate_summary(
     files: &[std::path::PathBuf],
-    files_with_defects: usize,
     defects: &[DefectPattern],
 ) -> DefectSummary {
+    // `files_with_defects` used to be passed in, tallied while scanning — i.e.
+    // BEFORE the severity filter ran — so `--severity low` reported
+    // `files_with_defects: 22` above `total_defects: 0` and an empty `defects`
+    // array. Deriving it from the defects being summarized makes a count that
+    // disagrees with the list it heads impossible to construct.
+    let files_with_defects = defects
+        .iter()
+        .flat_map(|d| d.instances.iter().map(|i| i.file.as_str()))
+        .collect::<std::collections::BTreeSet<_>>()
+        .len();
+
     let mut critical = 0;
     let mut high = 0;
     let mut medium = 0;

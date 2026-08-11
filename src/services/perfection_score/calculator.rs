@@ -111,19 +111,26 @@ impl PerfectionScoreCalculator {
         ));
 
         // 6. Mutation Score (20 pts) - Skip in fast mode
-        let mutation_score = if self.fast_mode {
-            50.0 // Default credit in fast mode
+        //
+        // `--fast` cannot run mutation testing, but this used to hand the category
+        // a flat 50.0 ("default credit in fast mode") while its own details string
+        // admitted "Skipped (fast mode)". That put 10 unearned points inside a
+        // total presented as a grade, identically for a real repo, an empty
+        // directory and a path that does not exist. A measurement that never ran
+        // earns nothing and is removed from the denominator instead.
+        if self.fast_mode {
+            let mut skipped = CategoryScore::new("Mutation Testing", 0.0, 0)
+                .with_details("Not measured — --fast skips mutation testing (excluded from total)");
+            skipped.grade = "N/A".to_string();
+            categories.push(skipped);
         } else {
-            self.get_mutation_score(project_path).await
-        };
-        categories.push(
-            CategoryScore::new("Mutation Testing", mutation_score, self.weights.mutation)
-                .with_details(if self.fast_mode {
-                    "Skipped (fast mode)"
-                } else {
-                    ""
-                }),
-        );
+            let mutation_score = self.get_mutation_score(project_path).await;
+            categories.push(CategoryScore::new(
+                "Mutation Testing",
+                mutation_score,
+                self.weights.mutation,
+            ));
+        }
 
         // 7. Documentation (15 pts)
         let doc_score = self.get_documentation_score(project_path).await;
@@ -141,7 +148,22 @@ impl PerfectionScoreCalculator {
             self.weights.performance,
         ));
 
-        Ok(PerfectionScoreResult::new(categories))
+        let mut result = PerfectionScoreResult::new(categories);
+
+        // The denominator must match the categories that were actually measured,
+        // otherwise a skipped category silently costs the project its own weight
+        // (or, as before, lends it half of it for free).
+        let measured_max: u16 = result.categories.iter().map(|c| c.max_points).sum();
+        if measured_max > 0 && measured_max != result.max_score {
+            result.max_score = measured_max;
+            // calculate_overall_grade normalises against the full 200-point scale,
+            // so rescale the total to that scale before grading it.
+            let scaled = result.total_score * f64::from(super::types::MAX_PERFECTION_SCORE)
+                / f64::from(measured_max);
+            result.grade = PerfectionScoreResult::calculate_overall_grade(scaled);
+        }
+
+        Ok(result)
     }
 
     pub(super) async fn get_tdg_score(&self, project_path: &Path) -> f64 {

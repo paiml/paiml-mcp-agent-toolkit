@@ -458,4 +458,41 @@ mod context_tests {
         let cloned = ctx.clone();
         assert_eq!(cloned.project_type, ctx.project_type);
     }
+
+    // ========================================================================
+    // Gitignore directory-pattern regression (context/dag file discovery)
+    // ========================================================================
+
+    /// A file nested inside an ignored DIRECTORY was analyzed anyway: the walk
+    /// used the non-recursive `gitignore.matched()`, which a pattern like
+    /// `.claude/worktrees/` can never match against `.../worktrees/a/b.rs`.
+    /// That is how `analyze dag` on this repo blew the 10000-file cap and
+    /// emitted nodes rooted in `.claude/worktrees/`.
+    #[tokio::test]
+    async fn test_ignored_directory_contents_are_not_scanned() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let root = temp.path();
+
+        std::fs::write(root.join(".gitignore"), "ignored_dir/\n").unwrap();
+        std::fs::create_dir_all(root.join("ignored_dir/nested")).unwrap();
+        std::fs::write(root.join("ignored_dir/nested/hidden.rs"), "pub fn hidden() {}\n").unwrap();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/visible.rs"), "pub fn visible() {}\n").unwrap();
+
+        let gitignore = build_gitignore(root).unwrap();
+
+        assert!(
+            is_gitignored(&gitignore, root, &root.join("ignored_dir/nested/hidden.rs"), false),
+            "a file under an ignored directory must be ignored"
+        );
+        assert!(!is_gitignored(&gitignore, root, &root.join("src/visible.rs"), false));
+
+        let files = scan_and_analyze_files(root, "rust", None, &gitignore).await;
+        let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert!(
+            !paths.iter().any(|p| p.contains("ignored_dir")),
+            "scan returned gitignored paths: {paths:?}"
+        );
+        assert!(paths.iter().any(|p| p.contains("visible.rs")), "{paths:?}");
+    }
 }

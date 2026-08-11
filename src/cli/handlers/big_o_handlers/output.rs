@@ -110,63 +110,57 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
     } else {
         String::new()
     };
+    // COLOUR: these used to interpolate the raw `c::GREEN`/`c::RESET` consts,
+    // which are unconditional — so `--color never` and a redirected stdout
+    // still wrote `^[[32m0^[[0m` here (GH #684 class). `c::colored` consults
+    // `colors_enabled()` and yields the bare payload when colour is off.
     output.push_str(&format!(
-        "  {}: {}{}{}{}\n\n",
+        "  {}: {}{}\n\n",
         c::label("High Complexity Functions"),
-        high_color,
-        listed,
-        c::RESET,
+        c::colored(high_color, &listed.to_string()),
         high_suffix,
     ));
 
     output.push_str(&format!("{}\n", c::subheader("Complexity Distribution:")));
     let dist = &report.complexity_distribution;
     output.push_str(&format!(
-        "  {}O(1){}       : {} functions\n",
-        c::GREEN,
-        c::RESET,
+        "  {}       : {} functions\n",
+        c::colored(c::GREEN, "O(1)"),
         c::number(&format!("{:>4}", dist.constant))
     ));
     output.push_str(&format!(
-        "  {}O(log n){}   : {} functions\n",
-        c::GREEN,
-        c::RESET,
+        "  {}   : {} functions\n",
+        c::colored(c::GREEN, "O(log n)"),
         c::number(&format!("{:>4}", dist.logarithmic))
     ));
     output.push_str(&format!(
-        "  {}O(n){}       : {} functions\n",
-        c::YELLOW,
-        c::RESET,
+        "  {}       : {} functions\n",
+        c::colored(c::YELLOW, "O(n)"),
         c::number(&format!("{:>4}", dist.linear))
     ));
     output.push_str(&format!(
-        "  {}O(n log n){} : {} functions\n",
-        c::YELLOW,
-        c::RESET,
+        "  {} : {} functions\n",
+        c::colored(c::YELLOW, "O(n log n)"),
         c::number(&format!("{:>4}", dist.linearithmic))
     ));
     output.push_str(&format!(
-        "  {}O(n²){}      : {} functions\n",
-        c::RED,
-        c::RESET,
+        "  {}      : {} functions\n",
+        c::colored(c::RED, "O(n²)"),
         c::number(&format!("{:>4}", dist.quadratic))
     ));
     output.push_str(&format!(
-        "  {}O(n³){}      : {} functions\n",
-        c::RED,
-        c::RESET,
+        "  {}      : {} functions\n",
+        c::colored(c::RED, "O(n³)"),
         c::number(&format!("{:>4}", dist.cubic))
     ));
     output.push_str(&format!(
-        "  {}O(2^n){}     : {} functions\n",
-        c::BOLD_RED,
-        c::RESET,
+        "  {}     : {} functions\n",
+        c::colored(c::BOLD_RED, "O(2^n)"),
         c::number(&format!("{:>4}", dist.exponential))
     ));
     output.push_str(&format!(
-        "  {}Unknown{}    : {} functions\n",
-        c::DIM,
-        c::RESET,
+        "  {}    : {} functions\n",
+        c::colored(c::DIM, "Unknown"),
         c::number(&format!("{:>4}", dist.unknown))
     ));
 
@@ -228,12 +222,10 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
                 c::GREEN
             };
             output.push_str(&format!(
-                "  {}. {} - score: {}{:.1}{}, {} functions\n",
+                "  {}. {} - score: {}, {} functions\n",
                 c::number(&(i + 1).to_string()),
                 c::path(filename),
-                score_color,
-                score,
-                c::RESET,
+                c::colored(score_color, &format!("{score:.1}")),
                 c::number(&function_count.to_string()),
             ));
         }
@@ -251,12 +243,10 @@ pub(super) fn format_big_o_detailed(report: &BigOAnalysisReport) -> String {
 
         for func in &report.high_complexity_functions {
             output.push_str(&format!(
-                "\n{} ({}:{}{}{})\n",
+                "\n{} ({}:{})\n",
                 c::label(&func.function_name),
                 c::path(&func.file_path.display().to_string()),
-                c::DIM,
-                func.line_number,
-                c::RESET,
+                c::colored(c::DIM, &func.line_number.to_string()),
             ));
             output.push_str(&format!(
                 "  {}: {} ({})\n",
@@ -274,7 +264,7 @@ pub(super) fn format_big_o_detailed(report: &BigOAnalysisReport) -> String {
             if !func.notes.is_empty() {
                 output.push_str(&format!("  {}:\n", c::label("Notes")));
                 for note in &func.notes {
-                    output.push_str(&format!("    {}─{} {note}\n", c::DIM, c::RESET));
+                    output.push_str(&format!("    {} {note}\n", c::colored(c::DIM, "─")));
                 }
             }
         }
@@ -293,4 +283,81 @@ pub(super) fn format_big_o_detailed(report: &BigOAnalysisReport) -> String {
     }
 
     output
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod colour_gating_tests {
+    //! `analyze big-o --color never` (and a plain redirected stdout) still wrote
+    //! `^[[32m0^[[0m` for the high-complexity count and `^[[32mO(1)^[[0m` for
+    //! every distribution row, because those rows interpolated the raw
+    //! `c::GREEN` / `c::RESET` consts instead of a helper that consults
+    //! `colors_enabled()`.
+    use super::{format_big_o_detailed, format_big_o_summary};
+    use crate::models::complexity_bound::ComplexityBound;
+    use crate::services::big_o_analyzer::{
+        BigOAnalysisReport, ComplexityDistribution, FunctionComplexity,
+    };
+    use std::path::PathBuf;
+
+    fn report() -> BigOAnalysisReport {
+        BigOAnalysisReport {
+            analyzed_functions: 100,
+            high_complexity_functions: vec![FunctionComplexity {
+                function_name: "sort_data".to_string(),
+                file_path: PathBuf::from("src/utils.rs"),
+                line_number: 42,
+                time_complexity: ComplexityBound::quadratic().with_confidence(90),
+                space_complexity: ComplexityBound::linear().with_confidence(85),
+                confidence: 90,
+                notes: vec!["nested loop".to_string()],
+            }],
+            complexity_distribution: ComplexityDistribution {
+                constant: 20,
+                logarithmic: 10,
+                linear: 50,
+                linearithmic: 5,
+                quadratic: 10,
+                cubic: 2,
+                exponential: 1,
+                unknown: 2,
+            },
+            pattern_matches: vec![],
+            recommendations: vec!["Consider optimizing quadratic algorithms".to_string()],
+        }
+    }
+
+    #[test]
+    fn summary_emits_no_ansi_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        let out = format_big_o_summary(&report());
+        assert!(
+            !out.contains('\x1b'),
+            "big-o summary must be plain with colour off, got {out:?}"
+        );
+    }
+
+    #[test]
+    fn detailed_emits_no_ansi_when_colour_is_disabled() {
+        let out = format_big_o_detailed(&report());
+        assert!(
+            !out.contains('\x1b'),
+            "big-o detailed must be plain with colour off, got {out:?}"
+        );
+    }
+
+    #[test]
+    fn summary_keeps_its_payload_text() {
+        // The escapes must go, not the numbers they wrapped.
+        let out = format_big_o_summary(&report());
+        assert!(out.contains("O(1)"), "{out}");
+        assert!(out.contains("O(log n)"), "{out}");
+        assert!(out.contains("O(2^n)"), "{out}");
+        assert!(out.contains("Unknown"), "{out}");
+        assert!(out.contains("High Complexity Functions"), "{out}");
+        assert!(out.contains("utils.rs"), "{out}");
+    }
 }

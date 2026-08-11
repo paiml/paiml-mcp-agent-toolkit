@@ -82,7 +82,7 @@ mod tests {
             degraded: 1,
             skipped: 1,
             all_passed: false,
-            success_rate: 70.0,
+            success_rate: Some(70.0),
         };
 
         assert_eq!(summary.total, 10);
@@ -90,7 +90,7 @@ mod tests {
         assert_eq!(summary.failed, 1);
         assert_eq!(summary.degraded, 1);
         assert!(!summary.all_passed);
-        assert!((summary.success_rate - 70.0).abs() < f64::EPSILON);
+        assert!((summary.success_rate.unwrap() - 70.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -218,10 +218,10 @@ mod tests {
             degraded: 0,
             skipped: 0,
             all_passed: true,
-            success_rate: 100.0,
+            success_rate: Some(100.0),
         };
 
         assert!(summary.all_passed);
-        assert!((summary.success_rate - 100.0).abs() < f64::EPSILON);
+        assert!((summary.success_rate.unwrap() - 100.0).abs() < f64::EPSILON);
     }
 }

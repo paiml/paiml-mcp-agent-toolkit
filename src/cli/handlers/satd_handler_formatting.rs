@@ -1,16 +1,21 @@
 /// Format output based on format type
+///
+/// `evolution`/`days` are gone from this dispatcher: nothing measured debt over
+/// time. Summary and SARIF ignored the flag outright, JSON emitted the literal
+/// string "Evolution tracking would show SATD trends over time" and Markdown a
+/// "## Evolution (Last N Days)" heading over the same sentence, so `--days`
+/// only ever changed a heading. `handle_analyze_satd` now refuses `--evolution`
+/// instead of rendering a placeholder that looks like a measurement.
 fn format_output(
     result: &SatdAnalysisResult,
     format: SatdOutputFormat,
-    evolution: bool,
-    days: u32,
     metrics: bool,
 ) -> String {
     match format {
         SatdOutputFormat::Summary => format_summary(result),
-        SatdOutputFormat::Json => format_json(result, metrics, evolution),
+        SatdOutputFormat::Json => format_json(result, metrics),
         SatdOutputFormat::Sarif => format_sarif(result),
-        SatdOutputFormat::Markdown => format_markdown(result, evolution, days),
+        SatdOutputFormat::Markdown => format_markdown(result),
     }
 }
 
@@ -69,25 +74,37 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
         })
         .count();
 
+    // `--color never` / NO_COLOR reached these lines and changed nothing: the
+    // raw `c::BOLD`/`c::RED`/`c::RESET` consts are unconditional, so
+    // `analyze satd ... --color never > out.txt` still wrote five escape-bearing
+    // lines. `c::seq` is the same sequence gated on `colors_enabled()`.
     output.push_str(&format!("\n{}\n", c::subheader("Severity Distribution")));
     output.push_str(&format!(
         "  {}{}Critical:{} {}\n",
-        c::BOLD, c::RED, c::RESET,
+        c::seq(c::BOLD),
+        c::seq(c::RED),
+        c::seq(c::RESET),
         c::number(&critical_count.to_string())
     ));
     output.push_str(&format!(
         "  {}{}High:{} {}\n",
-        c::BOLD, c::RED, c::RESET,
+        c::seq(c::BOLD),
+        c::seq(c::RED),
+        c::seq(c::RESET),
         c::number(&high_count.to_string())
     ));
     output.push_str(&format!(
         "  {}{}Medium:{} {}\n",
-        c::BOLD, c::YELLOW, c::RESET,
+        c::seq(c::BOLD),
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
         c::number(&medium_count.to_string())
     ));
     output.push_str(&format!(
         "  {}{}Low:{} {}\n",
-        c::BOLD, c::GREEN, c::RESET,
+        c::seq(c::BOLD),
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
         c::number(&low_count.to_string())
     ));
 
@@ -106,9 +123,9 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
                 c::path(&violation.file_path),
                 c::dim(&violation.line_number.to_string()),
                 violation.violation_type,
-                sev_color,
+                c::seq(sev_color),
                 violation.severity,
-                c::RESET
+                c::seq(c::RESET)
             ));
         }
     }
@@ -117,7 +134,7 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
 }
 
 /// Format as JSON
-fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> String {
+fn format_json(result: &SatdAnalysisResult, metrics: bool) -> String {
     let mut json_data = serde_json::json!({
         "total_files": result.total_files,
         "total_violations": result.violations.len(),
@@ -147,12 +164,6 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> S
             "low_count": result.violations.iter()
                 .filter(|v| matches!(v.severity, crate::services::facades::satd_facade::SatdSeverity::Low))
                 .count(),
-        });
-    }
-
-    if evolution {
-        json_data["evolution"] = serde_json::json!({
-            "message": "Evolution tracking would show SATD trends over time"
         });
     }
 
@@ -221,7 +232,7 @@ fn format_sarif(result: &SatdAnalysisResult) -> String {
 }
 
 /// Format as Markdown
-fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> String {
+fn format_markdown(result: &SatdAnalysisResult) -> String {
     let mut output = String::new();
     output.push_str("# SATD Analysis Report\n\n");
     output.push_str(&format!("**Summary:** {}\n\n", result.summary));
@@ -258,11 +269,6 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
 
     output.push_str(&format!("| Critical Violations | {critical_count} |\n"));
     output.push_str(&format!("| High Violations | {high_count} |\n\n"));
-
-    if evolution {
-        output.push_str(&format!("## Evolution (Last {days} Days)\n\n"));
-        output.push_str("*Evolution tracking would show SATD trends over time*\n\n");
-    }
 
     if !result.violations.is_empty() {
         output.push_str("## Violations\n\n");
@@ -324,14 +330,17 @@ fn print_metrics(result: &SatdAnalysisResult) {
         })
         .count();
 
+    // Same unconditional-const defect as the severity block above.
     eprintln!(
         "  {}Critical violations:{} {}",
-        c::BOLD_RED, c::RESET,
+        c::seq(c::BOLD_RED),
+        c::seq(c::RESET),
         c::number(&critical_count.to_string())
     );
     eprintln!(
         "  {}High violations:{} {}",
-        c::BOLD_RED, c::RESET,
+        c::seq(c::BOLD_RED),
+        c::seq(c::RESET),
         c::number(&high_count.to_string())
     );
 

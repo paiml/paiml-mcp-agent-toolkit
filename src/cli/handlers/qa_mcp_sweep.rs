@@ -50,6 +50,13 @@ pub struct ToolSweepResult {
     /// Present when non-conformant: what went wrong.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anomaly: Option<String>,
+    /// Digest of the response payload with volatile fields normalised — the
+    /// only thing that can tell one pass's answer from another's. Without it
+    /// the advertised "replay determinism" check compared nothing but the
+    /// `conformant` boolean, so a server returning a fresh random nonce on
+    /// every call swept clean.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_digest: Option<String>,
 }
 
 /// A framing/concurrency anomaly not tied to a single tool.
@@ -203,13 +210,25 @@ pub fn is_conformant_response(frame: &serde_json::Value) -> bool {
     obj.contains_key("result") ^ obj.contains_key("error")
 }
 
-/// Locate the pmat binary to spawn (release preferred, then debug, then PATH).
+/// Locate the pmat binary to spawn (release preferred, then debug, then the
+/// running executable, then PATH).
+///
+/// The candidates used to be returned as the RELATIVE paths they were tested
+/// as (`target/release/pmat`), while `run_sweep_once` spawns with
+/// `.current_dir(<swept path>)` — so the existence check and the execution
+/// referred to different directories. Sweeping any directory from a built tree
+/// executed `<swept path>/target/release/pmat`, i.e. whatever binary happened
+/// to sit there, and a swept path with no `target/` failed to spawn even with
+/// pmat on PATH. Candidates are now absolutised against the caller's cwd
+/// before they are handed to `Command`.
 fn resolve_pmat_binary() -> PathBuf {
     for candidate in ["target/release/pmat", "target/debug/pmat"] {
-        let p = PathBuf::from(candidate);
-        if p.exists() {
-            return p;
+        if let Ok(abs) = std::fs::canonicalize(candidate) {
+            return abs;
         }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        return exe;
     }
     PathBuf::from("pmat")
 }
@@ -250,7 +269,13 @@ fn run_sweep_once(
         Ok(c) => c,
         Err(e) => {
             std::fs::remove_dir_all(&fixture).ok();
-            return Err(anyhow::Error::from(e).context("spawn MCP server (MCP_VERSION=1 pmat)"));
+            // Name the binary we actually tried: the message used to say
+            // "pmat" while spawning a relative path resolved against the
+            // swept directory.
+            return Err(anyhow::Error::from(e).context(format!(
+                "spawn MCP server (MCP_VERSION=1 {})",
+                binary.display()
+            )));
         }
     };
 
@@ -316,7 +341,7 @@ fn run_sweep_once(
     let _ = child.wait();
     std::fs::remove_dir_all(&fixture).ok();
 
-    let results = correlate_results(&expected_ids, &frames);
+    let results = correlate_results(&expected_ids, &frames, &arg_target);
     let (anomalies, framing_pure) = framing_anomalies(&raw_stdout, tools.is_empty());
     Ok((results, anomalies, framing_pure))
 }
@@ -426,6 +451,7 @@ fn drain_responses(
 fn correlate_results(
     expected_ids: &[(u64, String)],
     frames: &[serde_json::Value],
+    arg_target: &str,
 ) -> Vec<ToolSweepResult> {
     expected_ids
         .iter()
@@ -442,9 +468,73 @@ fn correlate_results(
                 name: name.clone(),
                 conformant: anomaly.is_none(),
                 anomaly,
+                response_digest: frame.map(|f| response_digest(f, arg_target)),
             }
         })
         .collect()
+}
+
+/// Digest of a tool response's payload, used for the cross-pass replay check.
+///
+/// Only the `result`/`error` payload is hashed (the JSON-RPC envelope's `id`
+/// is per-pass bookkeeping), and fields that legitimately differ between two
+/// identical requests — wall-clock, durations, pids, session ids, and the
+/// per-pass fixture path — are normalised away first, so a mismatch means the
+/// server really did answer the same question differently.
+fn response_digest(frame: &serde_json::Value, arg_target: &str) -> String {
+    let mut payload = frame
+        .get("result")
+        .or_else(|| frame.get("error"))
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    normalize_volatile(&mut payload, arg_target);
+    // serde_json serialises object keys in sorted order, so the canonical form
+    // is stable without any extra ordering pass.
+    let canonical = serde_json::to_string(&payload).unwrap_or_default();
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    std::hash::Hash::hash(&canonical, &mut hasher);
+    format!("{:016x}", std::hash::Hasher::finish(&hasher))
+}
+
+/// Key fragments whose values vary between two identical requests by design.
+const VOLATILE_KEY_FRAGMENTS: &[&str] = &[
+    "timestamp",
+    "time",
+    "duration",
+    "elapsed",
+    "started",
+    "finished",
+    "generated",
+    "session",
+    "pid",
+    "uuid",
+    "seed",
+    "_ms",
+];
+
+/// Null out volatile values and mask the per-pass fixture path in-place.
+fn normalize_volatile(value: &mut serde_json::Value, arg_target: &str) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, val) in map.iter_mut() {
+                let key_lc = key.to_lowercase();
+                if VOLATILE_KEY_FRAGMENTS.iter().any(|f| key_lc.contains(f)) {
+                    *val = serde_json::Value::Null;
+                } else {
+                    normalize_volatile(val, arg_target);
+                }
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                normalize_volatile(item, arg_target);
+            }
+        }
+        serde_json::Value::String(s) if !arg_target.is_empty() && s.contains(arg_target) => {
+            *s = s.replace(arg_target, "<TARGET>");
+        }
+        _ => {}
+    }
 }
 
 /// Build framing anomalies (stray non-JSON stdout lines) + purity flag.
@@ -499,6 +589,54 @@ fn scratch_snapshot(target: &std::path::Path) -> std::collections::BTreeSet<Stri
     names
 }
 
+/// Cross-pass invariants: every pass must agree on tool conformance (no
+/// lock-error-induced divergence) AND on the payload each tool returned.
+///
+/// The payload half is what `--help` calls "replay determinism", and it was
+/// missing: the only comparison built a `name -> conformant` map from pass 0,
+/// so a server answering every `tools/call` with a fresh random nonce swept
+/// clean with ok:true. `conformant` only means "a well-formed JSON-RPC frame
+/// came back" — eight passes can return eight different documents and still
+/// agree on that boolean.
+fn cross_pass_anomalies(pass_reports: &[Vec<ToolSweepResult>]) -> Vec<SweepAnomaly> {
+    let mut anomalies = Vec::new();
+    let Some(first) = pass_reports.first() else {
+        return anomalies;
+    };
+    let baseline: std::collections::BTreeMap<&str, &ToolSweepResult> =
+        first.iter().map(|t| (t.name.as_str(), t)).collect();
+
+    for (pass, report) in pass_reports.iter().enumerate().skip(1) {
+        for t in report {
+            let Some(base) = baseline.get(t.name.as_str()) else {
+                continue;
+            };
+            if base.conformant != t.conformant {
+                anomalies.push(SweepAnomaly {
+                    id: format!("concurrency-divergence-{}-pass{pass:02}", t.name),
+                    detail: format!(
+                        "tool {} conformance differs across passes (possible lock error)",
+                        t.name
+                    ),
+                });
+            }
+            if base.response_digest.is_some() && base.response_digest != t.response_digest {
+                anomalies.push(SweepAnomaly {
+                    id: format!("replay-nondeterminism-{}-pass{pass:02}", t.name),
+                    detail: format!(
+                        "tool {} answered the identical request with a different payload \
+                         (pass00 digest {}, pass{pass:02} digest {})",
+                        t.name,
+                        base.response_digest.as_deref().unwrap_or("none"),
+                        t.response_digest.as_deref().unwrap_or("none"),
+                    ),
+                });
+            }
+        }
+    }
+    anomalies
+}
+
 /// `pmat qa-work mcp-sweep` entry point (MACS-011).
 pub async fn handle_mcp_sweep(opts: SweepOpts) -> Result<()> {
     let binary = resolve_pmat_binary();
@@ -545,27 +683,7 @@ pub async fn handle_mcp_sweep(opts: SweepOpts) -> Result<()> {
         }
     }
 
-    // Concurrency invariant: every pass must agree on tool conformance
-    // (no lock-error-induced divergence across passes).
-    if let Some(first) = pass_reports.first() {
-        let baseline: std::collections::BTreeMap<&str, bool> = first
-            .iter()
-            .map(|t| (t.name.as_str(), t.conformant))
-            .collect();
-        for (pass, report) in pass_reports.iter().enumerate().skip(1) {
-            for t in report {
-                if baseline.get(t.name.as_str()) != Some(&t.conformant) {
-                    all_anomalies.push(SweepAnomaly {
-                        id: format!("concurrency-divergence-{}-pass{pass:02}", t.name),
-                        detail: format!(
-                            "tool {} conformance differs across passes (possible lock error)",
-                            t.name
-                        ),
-                    });
-                }
-            }
-        }
-    }
+    all_anomalies.extend(cross_pass_anomalies(&pass_reports));
 
     // Scratch-leftover invariant.
     let scratch_after = scratch_snapshot(&opts.path);
@@ -775,11 +893,13 @@ mod tests {
                         name: "b_tool".into(),
                         conformant: true,
                         anomaly: None,
+                        response_digest: None,
                     },
                     ToolSweepResult {
                         name: "a_tool".into(),
                         conformant: true,
                         anomaly: None,
+                        response_digest: None,
                     },
                 ],
                 vec![],
@@ -803,6 +923,7 @@ mod tests {
                 name: "t".into(),
                 conformant: true,
                 anomaly: None,
+                response_digest: None,
             }],
             vec![],
             false,
@@ -814,6 +935,7 @@ mod tests {
                 name: "t".into(),
                 conformant: true,
                 anomaly: None,
+                response_digest: None,
             }],
             vec![SweepAnomaly {
                 id: "x".into(),
@@ -828,6 +950,7 @@ mod tests {
                 name: "t".into(),
                 conformant: false,
                 anomaly: Some("bad".into()),
+                response_digest: None,
             }],
             vec![],
             true,
@@ -844,11 +967,13 @@ mod tests {
                     name: "good".into(),
                     conformant: true,
                     anomaly: None,
+                    response_digest: None,
                 },
                 ToolSweepResult {
                     name: "bad".into(),
                     conformant: false,
                     anomaly: Some("no response".into()),
+                    response_digest: None,
                 },
             ],
             vec![],
@@ -859,6 +984,61 @@ mod tests {
         assert!(xml.contains("<testcase name=\"good\"/>"));
         assert!(xml.contains("<testcase name=\"bad\"><failure>no response</failure>"));
         assert!(xml.contains("failures=\"1\""));
+    }
+
+    fn frame(id: u64, text: &str) -> serde_json::Value {
+        serde_json::json!({"jsonrpc":"2.0","id":id,
+            "result":{"content":[{"type":"text","text":text}]}})
+    }
+
+    #[test]
+    fn replay_nondeterminism_is_an_anomaly() {
+        // A server whose every tools/call answers with a fresh nonce used to
+        // sweep clean: only the `conformant` boolean was compared across
+        // passes, and eight different payloads all set it to true.
+        let expected = vec![(100u64, "alpha_tool".to_string())];
+        let pass0 = correlate_results(&expected, &[frame(100, "NONCE-1-111")], "/tmp/fixture");
+        let pass1 = correlate_results(&expected, &[frame(100, "NONCE-2-222")], "/tmp/fixture");
+        assert!(
+            pass0[0].conformant && pass1[0].conformant,
+            "both well-formed"
+        );
+
+        let anomalies = cross_pass_anomalies(&[pass0, pass1]);
+        assert_eq!(anomalies.len(), 1, "got: {anomalies:?}");
+        assert!(anomalies[0]
+            .id
+            .starts_with("replay-nondeterminism-alpha_tool"));
+    }
+
+    #[test]
+    fn identical_payloads_and_volatile_fields_are_not_anomalies() {
+        let expected = vec![(100u64, "alpha_tool".to_string())];
+        // Same answer, different wall-clock/duration and a different per-pass
+        // fixture path: neither is the server answering differently.
+        let a = serde_json::json!({"jsonrpc":"2.0","id":100,
+            "result":{"files":1,"timestamp":"2026-01-01T00:00:00Z","duration_ms":7,
+                      "root":"/tmp/pmat-mcp-sweep-1-0"}});
+        let b = serde_json::json!({"jsonrpc":"2.0","id":100,
+            "result":{"files":1,"timestamp":"2026-01-01T00:00:09Z","duration_ms":9,
+                      "root":"/tmp/pmat-mcp-sweep-2-1"}});
+        let pass0 = correlate_results(&expected, &[a], "/tmp/pmat-mcp-sweep-1-0");
+        let pass1 = correlate_results(&expected, &[b], "/tmp/pmat-mcp-sweep-2-1");
+        assert_eq!(pass0[0].response_digest, pass1[0].response_digest);
+        assert!(cross_pass_anomalies(&[pass0, pass1]).is_empty());
+    }
+
+    #[test]
+    fn resolved_binary_is_absolute_so_cwd_and_spawn_dir_agree() {
+        // `run_sweep_once` spawns with `.current_dir(<swept path>)`, so a
+        // relative "target/release/pmat" was re-resolved against the SWEPT
+        // directory and executed whatever binary sat there.
+        let binary = resolve_pmat_binary();
+        assert!(
+            binary.is_absolute() || binary == std::path::Path::new("pmat"),
+            "candidate must be absolute (or the bare PATH name), got {}",
+            binary.display()
+        );
     }
 
     #[test]

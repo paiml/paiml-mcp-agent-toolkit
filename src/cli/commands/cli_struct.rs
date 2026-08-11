@@ -51,8 +51,8 @@ pmat quality-gate
 # Calculate repository health score
 pmat repo-score
 
-# Start background agent daemon
-pmat agent start"
+# Pre-flight the CI gate set before committing
+pmat verify --format json"
 )]
 #[cfg_attr(test, derive(Debug))]
 /// Cli.

@@ -179,9 +179,11 @@ mod tests {
     }
 
     #[test]
-    fn test_load_quality_profile_default_is_extreme() {
-        let profile = load_quality_profile("default", None).unwrap();
-        assert_eq!(profile.coverage_min, 80.0);
+    fn test_load_quality_profile_rejects_unknown_name() {
+        // "default" is not one of the three profiles clap accepts. It used to
+        // return the extreme profile, which is how every name — including the
+        // ones `--help` documents as looser — enforced the extreme thresholds.
+        assert!(load_quality_profile("default", None).is_err());
     }
 
     #[test]

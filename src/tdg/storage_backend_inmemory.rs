@@ -1,3 +1,13 @@
+/// Key under which every backend's `get_stats()` reports its live row count.
+///
+/// `TieredStore::get_statistics` used to look this value up as `"entry_count"`,
+/// a key no backend has ever written, so the lookup fell through to
+/// `unwrap_or(0)` and warm/cold/total were structurally always zero -- the TDG
+/// dashboard served `"warm_entries":0` inside the same payload whose raw
+/// `backend_stats` read `"entries":"73448"`. Both the writers and the reader now
+/// name this const, so the two halves cannot drift apart again.
+pub const STAT_KEY_ENTRIES: &str = "entries";
+
 /// In-memory backend for testing and development
 pub struct InMemoryBackend {
     data: Arc<DashMap<Vec<u8>, Vec<u8>>>,
@@ -73,7 +83,7 @@ impl StorageBackend for InMemoryBackend {
 
     fn get_stats(&self) -> HashMap<String, String> {
         let mut stats = HashMap::new();
-        stats.insert("entries".to_string(), self.data.len().to_string());
+        stats.insert(STAT_KEY_ENTRIES.to_string(), self.data.len().to_string());
         let size: usize = self
             .data
             .iter()

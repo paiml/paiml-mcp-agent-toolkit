@@ -1,6 +1,5 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use std::collections::HashSet;
 use std::path::Path;
 
 use super::types::{DepAnalysis, DepCategory, ParetoEffort, ParetoEntry};
@@ -44,9 +43,22 @@ pub fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
     }
 }
 
-/// Run Pareto analysis using cargo tree for accurate transitive counts
+/// Run Pareto analysis over the transitive counts already on `deps`.
+///
+/// These counts used to be re-derived here by spawning `cargo tree -p <dep>`
+/// per candidate, which contradicted the same command's `-f json` output: that
+/// path reports [`DepAnalysis::transitive_count`], computed by BFS over the
+/// Cargo.lock graph. `cargo tree -p` fails for any name that is not a unique
+/// package spec in the workspace (ambiguous or renamed packages), and the
+/// failure arm returned **0** rather than an error — so `--pareto` printed
+/// "octocrab 0 transitive deps, ROI 0.0" while `-f json` printed 250 for the
+/// same dependency in the same run, and the ROI ranking that decides what to
+/// remove first was inverted. One graph, one count.
+///
+/// `_path` is retained so the call site does not change; nothing here shells
+/// out any more.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry> {
+pub fn run_pareto_analysis(deps: &[DepAnalysis], _path: &Path) -> Vec<ParetoEntry> {
     let mut entries = Vec::new();
 
     // Only analyze removable, heavy, and replaceable deps
@@ -61,8 +73,8 @@ pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry
         .collect();
 
     for dep in candidates {
-        // Get actual transitive count from cargo tree
-        let transitive = get_transitive_count(&dep.name, path);
+        // Same number the JSON report prints for this dependency.
+        let transitive = dep.transitive_count;
 
         let effort = estimate_effort(&dep.name, dep.category);
         let roi = transitive as f32 / effort.multiplier();
@@ -87,33 +99,27 @@ pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry
     entries
 }
 
-/// Get transitive dependency count using cargo tree
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub fn get_transitive_count(dep_name: &str, path: &Path) -> usize {
-    use std::process::Command;
-
-    let output = Command::new("cargo")
-        .args(["tree", "-p", dep_name, "--prefix", "none", "-e", "no-dev"])
-        .current_dir(path)
-        .output();
-
-    match output {
-        Ok(o) if o.status.success() => {
-            let stdout = String::from_utf8_lossy(&o.stdout);
-            // Count unique lines (each is a transitive dep)
-            let count: HashSet<_> = stdout.lines().collect();
-            count.len().saturating_sub(1) // Don't count self
-        }
-        _ => 0,
-    }
-}
+// `get_transitive_count` (a `cargo tree -p <dep>` spawn whose every failure mode
+// returned 0) is gone: it was the second, disagreeing source of transitive
+// counts. See [`run_pareto_analysis`].
 
 #[cfg(test)]
 mod pareto_tests {
     //! Covers estimate_effort + run_pareto_analysis filtering/sorting in
     //! deps_audit_handlers/pareto.rs (9 uncov on broad, 0% cov).
-    //! Skips get_transitive_count (spawns `cargo tree`).
     use super::*;
+
+    fn dep_with_transitive(
+        name: &str,
+        category: DepCategory,
+        reason: &str,
+        transitive_count: usize,
+    ) -> DepAnalysis {
+        DepAnalysis {
+            transitive_count,
+            ..dep(name, category, reason)
+        }
+    }
 
     fn dep(name: &str, category: DepCategory, reason: &str) -> DepAnalysis {
         DepAnalysis {
@@ -247,12 +253,35 @@ mod pareto_tests {
         assert!(entries.is_empty());
     }
 
-    // ── get_transitive_count: only the cargo-failure arm (no project at /tmp) ──
+    // ── transitive counts: one graph, one number ──
 
+    /// This replaces `test_get_transitive_count_cargo_failure_returns_zero`,
+    /// which pinned the defect: it asserted that a failed `cargo tree` spawn
+    /// silently yields 0 transitive deps. That zero reached the report, so
+    /// `--pareto` printed "octocrab 0 / ROI 0.0" against `-f json`'s 250 for the
+    /// same dependency in the same run. The Pareto table must report the counts
+    /// already computed from the Cargo.lock graph, never re-derive them.
     #[test]
-    fn test_get_transitive_count_cargo_failure_returns_zero() {
-        // /tmp has no Cargo project → cargo tree fails → unwrap_or(0).
-        let count = get_transitive_count("nonexistent_dep_xyz", std::path::Path::new("/tmp"));
-        assert_eq!(count, 0);
+    fn test_run_pareto_analysis_reports_the_analysed_transitive_counts() {
+        let deps = vec![
+            dep_with_transitive("octocrab", DepCategory::Heavy, "GitHub API", 250),
+            dep_with_transitive("reqwest", DepCategory::Heavy, "HTTP client", 192),
+            dep_with_transitive("sourcemap", DepCategory::Removable, "debug maps", 91),
+        ];
+        let entries = run_pareto_analysis(&deps, std::path::Path::new("/nonexistent-project"));
+
+        let by_name = |n: &str| {
+            entries
+                .iter()
+                .find(|e| e.name == n)
+                .unwrap_or_else(|| panic!("{n} missing from the Pareto table"))
+        };
+        assert_eq!(by_name("octocrab").transitive_deps, 250);
+        assert_eq!(by_name("reqwest").transitive_deps, 192);
+        assert_eq!(by_name("sourcemap").transitive_deps, 91);
+
+        // ROI = transitive / effort multiplier, so a real count must also
+        // produce a nonzero ranking signal.
+        assert!(by_name("octocrab").roi > 0.0);
     }
 }

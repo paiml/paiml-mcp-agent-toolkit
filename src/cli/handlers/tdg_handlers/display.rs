@@ -280,10 +280,16 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
         Grade::D,
         Grade::F,
     ];
+    // Bar length used to be `min(count, 30)`, so every bucket with 30+ files
+    // drew the same 30 blocks: A+ (1423), A (767), A- (65) and B+ (41) were
+    // rendered identical, hiding a 35x difference in the one part of the report
+    // whose entire job is showing proportion. Scale to the largest bucket
+    // instead, so the widest bar is 30 and the rest are relative to it.
+    let max_count = grade_counts.values().copied().max().unwrap_or(0);
     for grade in grade_order {
         let count = grade_counts.get(&grade).unwrap_or(&0);
         if *count > 0 {
-            let bar = "█".repeat((*count).min(30));
+            let bar = "█".repeat(scaled_bar_width(*count, max_count));
             println!(
                 "   {}: {} {}",
                 c::grade(&format!("{:>3}", grade)),
@@ -295,6 +301,22 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
 
     display_f_grade_warning(&f_grade_files);
 }
+
+/// Bar width for `count` when the biggest bucket in the histogram is `max`.
+///
+/// The widest bar is [`GRADE_HISTOGRAM_WIDTH`]; every other bar is that many
+/// blocks scaled by `count / max`, rounded up so a nonzero bucket is always
+/// at least one block wide.
+pub(in crate::cli::handlers::tdg_handlers) fn scaled_bar_width(count: usize, max: usize) -> usize {
+    if count == 0 || max == 0 {
+        return 0;
+    }
+    let scaled = (count * GRADE_HISTOGRAM_WIDTH).div_ceil(max);
+    scaled.clamp(1, GRADE_HISTOGRAM_WIDTH)
+}
+
+/// Blocks in the widest grade-distribution bar.
+const GRADE_HISTOGRAM_WIDTH: usize = 30;
 
 /// Display F-grade warning if any files have F grades
 fn display_f_grade_warning(f_grade_files: &[String]) {
@@ -354,4 +376,41 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_baseline_table(
         );
     }
     println!();
+}
+
+#[cfg(test)]
+mod grade_histogram_tests {
+    use super::*;
+
+    /// The bars used to be `min(count, 30)`, so `pmat tdg baseline` on this
+    /// repo drew A+ (1423), A (767), A- (65) and B+ (41) as four identical
+    /// 30-block bars. A histogram in which a 35x difference is invisible is
+    /// not reporting the distribution it claims to.
+    #[test]
+    fn bars_are_proportional_not_saturated() {
+        let counts = [1423usize, 767, 65, 41, 25, 9];
+        let max = 1423;
+        let widths: Vec<usize> = counts.iter().map(|&c| scaled_bar_width(c, max)).collect();
+
+        assert_eq!(widths[0], 30, "the largest bucket fills the width");
+        assert!(
+            widths[0] > widths[1] && widths[1] > widths[2],
+            "1423/767/65 must draw three different widths, got {widths:?}"
+        );
+        assert!(
+            widths.iter().all(|&w| w >= 1),
+            "no nonzero bucket may vanish: {widths:?}"
+        );
+        assert!(
+            widths.iter().all(|&w| w <= 30),
+            "no bar may exceed the histogram width: {widths:?}"
+        );
+    }
+
+    #[test]
+    fn a_single_bucket_and_empty_input_are_well_defined() {
+        assert_eq!(scaled_bar_width(7, 7), 30, "one bucket fills the width");
+        assert_eq!(scaled_bar_width(0, 100), 0, "an empty bucket draws nothing");
+        assert_eq!(scaled_bar_width(5, 0), 0, "no max means no histogram");
+    }
 }

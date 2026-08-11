@@ -136,16 +136,43 @@ impl ProjectScore {
         self.files_reported = self.files.len();
     }
 
+    /// The grade `average_score` maps to BEFORE the F-grade cap.
+    ///
+    /// `average_grade` alone is not enough to render an honest headline: when
+    /// `grade_capped` is true the printed grade is deliberately worse than the
+    /// printed score, and a reader needs to be told what it would otherwise
+    /// have been.
+    #[must_use]
+    pub fn uncapped_grade(&self) -> Grade {
+        Grade::from_score(self.average_score)
+    }
+
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Calculate the average.
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
-            // No files analyzed — return zero score, not perfect score
+            // No files analyzed — return zero score, not perfect score.
+            //
+            // The COMPONENTS have to be zeroed by hand: `..TdgScore::default()`
+            // seeds every component at its category maximum (25/20/20/15/10/10,
+            // which is exactly 100), so `pmat tdg <dir> --include-components`
+            // over a directory where every file failed to parse printed a
+            // full-marks breakdown summing to 100 beside a total of 0.0 — and
+            // an EMPTY directory printed the byte-identical breakdown, which is
+            // how you can tell it measured nothing. Nothing was measured here,
+            // so nothing is claimed.
             return TdgScore {
                 total: 0.0,
                 grade: crate::tdg::Grade::F,
                 confidence: 0.0,
+                structural_complexity: 0.0,
+                semantic_complexity: 0.0,
+                duplication_ratio: 0.0,
+                coupling_score: 0.0,
+                doc_coverage: 0.0,
+                consistency_score: 0.0,
+                entropy_score: 0.0,
                 ..TdgScore::default()
             };
         }
@@ -476,6 +503,69 @@ mod no_contradiction_tests {
                 .expect("known grade")
         });
         assert_eq!(order, expected, "grade keys must be in grade order");
+    }
+
+    /// `pmat tdg <dir> --include-components` over a directory where nothing
+    /// could be analysed printed the FULL-MARKS component defaults
+    /// (25/20/20/15/10/10, summing to 100) beside `"total": 0.0`, and an empty
+    /// directory printed the byte-identical breakdown — proof it was the struct
+    /// default and not a measurement.
+    #[test]
+    fn empty_project_claims_no_component_measurements() {
+        let empty = ProjectScore::aggregate(vec![]);
+        let avg = empty.average();
+
+        assert_eq!(avg.total, 0.0);
+        assert_eq!(avg.grade, Grade::F);
+        assert_eq!(avg.confidence, 0.0);
+        for (name, value) in [
+            ("structural", avg.structural_complexity),
+            ("semantic", avg.semantic_complexity),
+            ("duplication", avg.duplication_ratio),
+            ("coupling", avg.coupling_score),
+            ("documentation", avg.doc_coverage),
+            ("consistency", avg.consistency_score),
+            ("entropy", avg.entropy_score),
+        ] {
+            assert_eq!(
+                value, 0.0,
+                "{name} claims {value} points for a project where no file was analysed"
+            );
+        }
+        // The old defect in one line: the components must not sum to full marks
+        // under a total of zero.
+        let breakdown_sum = avg.structural_complexity
+            + avg.semantic_complexity
+            + avg.duplication_ratio
+            + avg.coupling_score
+            + avg.doc_coverage
+            + avg.consistency_score;
+        assert_eq!(breakdown_sum, 0.0, "breakdown sums to {breakdown_sum}");
+    }
+
+    /// The F-grade cap makes the grade non-monotone in the score on purpose, so
+    /// the aggregate has to be able to say what the grade would have been.
+    #[test]
+    fn capped_project_reports_the_grade_it_would_have_had() {
+        let mut files = vec![file_score(100.0, Language::Rust, false); 19];
+        files.push(file_score(10.0, Language::Rust, false));
+        let project = ProjectScore::aggregate(files);
+
+        assert_eq!(project.f_grade_count, 1);
+        assert!(
+            project.grade_capped,
+            "one F-grade file must cap the project"
+        );
+        assert_eq!(project.average_grade, Grade::B);
+        assert_eq!(
+            project.uncapped_grade(),
+            Grade::from_score(project.average_score),
+            "the uncapped grade is the score's own band"
+        );
+        assert!(
+            project.uncapped_grade() < Grade::B,
+            "the fixture must actually exercise the cap"
+        );
     }
 
     /// A clear majority still wins; the tiebreak only settles equal counts.

@@ -53,9 +53,16 @@ pub async fn get_changed_files_for_coverage(
         .await?;
 
     if !output.status.success() {
-        // If git command fails, return empty list instead of erroring
-        eprintln!("⚠️ Git command failed, returning empty changelist");
-        return Ok(vec![]);
+        // A mistyped or missing base ref used to be swallowed into an empty changelist,
+        // so `analyze incremental-coverage -b totally-bogus-branch` printed an all-zero
+        // "clean" gate report on stdout and exited 0. A coverage gate must never report a
+        // pass because the ref it was asked to diff against does not exist.
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "git diff {base_branch}...{target} failed in {}: {}",
+            project_path.display(),
+            stderr.trim()
+        );
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -441,5 +448,24 @@ mod tests {
     fn test_setup_coverage_analyzer_force_refresh() {
         let result = setup_coverage_analyzer(None, true);
         assert!(result.is_ok());
+    }
+
+    /// A base ref that does not exist must surface as an error, not as an empty
+    /// changelist that the incremental-coverage report renders as a clean 0/0 gate.
+    #[tokio::test]
+    async fn test_get_changed_files_errors_on_missing_base_ref() {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let result =
+            get_changed_files_for_coverage(repo, "totally-bogus-branch-xyz", Some("HEAD")).await;
+        assert!(
+            result.is_err(),
+            "missing base ref must error, got {:?}",
+            result.map(|v| v.len())
+        );
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("totally-bogus-branch-xyz"),
+            "error must name the failed ref: {msg}"
+        );
     }
 }

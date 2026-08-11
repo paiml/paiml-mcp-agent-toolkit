@@ -41,6 +41,13 @@ impl CommandDispatcher {
     }
 
     /// Create test configuration from CLI parameters (Toyota Way Extract Method)
+    ///
+    /// `TestSuite::Performance` — the CLI default — used to appear in none of
+    /// these arms, so `pmat test performance` produced a config with all three
+    /// `enable_*` flags false; `run_performance_test_suite` then skipped every
+    /// block and printed "✅ All performance tests passed!" without running a
+    /// single measurement, identically in an empty directory and in a
+    /// 4260-file repository. Performance means "everything performance-related".
     pub(crate) fn create_test_config(
         suite: &TestSuite,
         iterations: usize,
@@ -50,10 +57,20 @@ impl CommandDispatcher {
     ) -> crate::test_performance::PerformanceTestConfig {
         crate::test_performance::PerformanceTestConfig {
             enable_regression_tests: regression
-                || matches!(suite, TestSuite::Regression | TestSuite::All),
-            enable_memory_tests: memory || matches!(suite, TestSuite::Memory | TestSuite::All),
+                || matches!(
+                    suite,
+                    TestSuite::Regression | TestSuite::Performance | TestSuite::All
+                ),
+            enable_memory_tests: memory
+                || matches!(
+                    suite,
+                    TestSuite::Memory | TestSuite::Performance | TestSuite::All
+                ),
             enable_throughput_tests: throughput
-                || matches!(suite, TestSuite::Throughput | TestSuite::All),
+                || matches!(
+                    suite,
+                    TestSuite::Throughput | TestSuite::Performance | TestSuite::All
+                ),
             test_iterations: iterations,
         }
     }
@@ -238,5 +255,39 @@ impl CommandDispatcher {
             println!("Results written to: {}", output_path.display());
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test_config_selection_tests {
+    use super::*;
+
+    /// `pmat test performance` — the default suite — must actually select
+    /// something to measure. It used to select nothing and report a pass.
+    #[test]
+    fn test_performance_suite_enables_every_sub_suite() {
+        let config =
+            CommandDispatcher::create_test_config(&TestSuite::Performance, 3, false, false, false);
+        assert!(
+            config.enable_throughput_tests,
+            "Performance selected no throughput tests"
+        );
+        assert!(
+            config.enable_regression_tests,
+            "Performance selected no regression tests"
+        );
+        assert!(
+            config.enable_memory_tests,
+            "Performance selected no memory tests"
+        );
+    }
+
+    #[test]
+    fn test_named_sub_suites_stay_narrow() {
+        let memory =
+            CommandDispatcher::create_test_config(&TestSuite::Memory, 1, false, false, false);
+        assert!(memory.enable_memory_tests);
+        assert!(!memory.enable_throughput_tests);
+        assert!(!memory.enable_regression_tests);
     }
 }

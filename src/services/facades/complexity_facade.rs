@@ -130,7 +130,7 @@ impl ComplexityFacade {
             .collect();
 
         let max_complexity = violations.iter().map(|v| v.complexity).max().unwrap_or(0);
-        let average_complexity = f64::from(report.summary.median_cyclomatic);
+        let average_complexity = mean_cyclomatic(&report.files);
 
         Ok(ComplexityAnalysisResult {
             total_files,
@@ -224,6 +224,37 @@ impl ComplexityFacade {
     }
 }
 
+/// Mean cyclomatic complexity over every analysed function, including class
+/// methods — the same population `summary.total_functions` counts.
+///
+/// `average_complexity` used to be assigned `summary.median_cyclomatic`, so a
+/// crate of nine trivial functions plus one function of cyclomatic 81 published
+/// an "average" of 1.0 where the mean is 9.0. A median published under the name
+/// `average` is a mislabelled number, not an approximation of one.
+fn mean_cyclomatic(files: &[crate::services::complexity::FileComplexityMetrics]) -> f64 {
+    let mut sum: u64 = 0;
+    let mut count: u64 = 0;
+
+    for file in files {
+        for func in &file.functions {
+            sum += u64::from(func.metrics.cyclomatic);
+            count += 1;
+        }
+        for class in &file.classes {
+            for method in &class.methods {
+                sum += u64::from(method.metrics.cyclomatic);
+                count += 1;
+            }
+        }
+    }
+
+    if count == 0 {
+        0.0
+    } else {
+        sum as f64 / count as f64
+    }
+}
+
 /// Complexity thresholds for different severity levels
 #[derive(Debug, Clone)]
 pub struct ComplexityThresholds {
@@ -282,5 +313,94 @@ mod tests {
         assert!(!validation.passed);
         assert_eq!(validation.errors, 1);
         assert!(validation.threshold_exceeded);
+    }
+
+    #[test]
+    fn test_mean_cyclomatic_is_the_mean_not_the_median() {
+        use crate::services::complexity::{
+            ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
+        };
+
+        fn metrics(cyclomatic: u16) -> ComplexityMetrics {
+            ComplexityMetrics {
+                cyclomatic,
+                cognitive: 0,
+                nesting_max: 0,
+                lines: 1,
+                halstead: None,
+            }
+        }
+
+        // The cx2 repro: nine trivial functions plus one of cyclomatic 81.
+        // Median 1.0, mean 9.0 — `average_complexity` published the median.
+        let mut functions: Vec<FunctionComplexity> = (0..9)
+            .map(|i| FunctionComplexity {
+                name: format!("triv{i}"),
+                line_start: i,
+                line_end: i,
+                metrics: metrics(1),
+            })
+            .collect();
+        functions.push(FunctionComplexity {
+            name: "nasty".to_string(),
+            line_start: 10,
+            line_end: 90,
+            metrics: metrics(81),
+        });
+
+        let file = FileComplexityMetrics {
+            path: "src/lib.rs".to_string(),
+            total_complexity: metrics(90),
+            functions,
+            classes: vec![],
+        };
+
+        let mean = mean_cyclomatic(std::slice::from_ref(&file));
+        assert!(
+            (mean - 9.0).abs() < f64::EPSILON,
+            "expected the mean 9.0, got {mean}"
+        );
+    }
+
+    #[test]
+    fn test_mean_cyclomatic_counts_class_methods_and_handles_empty() {
+        use crate::services::complexity::{
+            ClassComplexity, ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
+        };
+
+        let m = |c: u16| ComplexityMetrics {
+            cyclomatic: c,
+            cognitive: 0,
+            nesting_max: 0,
+            lines: 1,
+            halstead: None,
+        };
+
+        assert_eq!(mean_cyclomatic(&[]), 0.0);
+
+        let file = FileComplexityMetrics {
+            path: "src/lib.rs".to_string(),
+            total_complexity: m(9),
+            functions: vec![FunctionComplexity {
+                name: "free".to_string(),
+                line_start: 1,
+                line_end: 2,
+                metrics: m(3),
+            }],
+            classes: vec![ClassComplexity {
+                name: "C".to_string(),
+                line_start: 3,
+                line_end: 9,
+                metrics: m(6),
+                methods: vec![FunctionComplexity {
+                    name: "method".to_string(),
+                    line_start: 4,
+                    line_end: 5,
+                    metrics: m(7),
+                }],
+            }],
+        };
+
+        assert_eq!(mean_cyclomatic(std::slice::from_ref(&file)), 5.0);
     }
 }

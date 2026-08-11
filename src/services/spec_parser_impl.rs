@@ -466,6 +466,14 @@ impl SpecParser {
     pub fn find_specs(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         let mut specs = Vec::new();
 
+        // A path that is neither a file nor a directory used to fall through to
+        // Ok(vec![]), which made a typo'd path indistinguishable from an empty
+        // spec directory - `spec list --failing-only /does/not/exit` reported
+        // "0 specs, 0 passing" and exited 0. Enforce the path_exists contract.
+        if !dir.exists() {
+            anyhow::bail!("Specification path does not exist: {}", dir.display());
+        }
+
         if dir.is_file() {
             if dir.extension().map(|e| e == "md").unwrap_or(false) {
                 specs.push(dir.to_path_buf());

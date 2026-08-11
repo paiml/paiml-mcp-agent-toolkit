@@ -39,9 +39,21 @@ pub(super) fn emit_docs_section(
 
     match format {
         QueryOutputFormat::Json => {
-            // For JSON, print a separate documents array
+            // Documents go to STDERR, not stdout.
+            //
+            // `--docs` is on by default, and this used to `println!` a second
+            // top-level JSON document after the code-results array. Two
+            // concatenated documents are not valid JSON, so the default output
+            // of `pmat query --format json` — the search command CLAUDE.md
+            // mandates over grep — could not be piped to `jq` at all; only
+            // `--no-docs` parsed. stdout now carries exactly one document.
+            //
+            // stderr is where the sibling `raw_matches` section already goes
+            // (`print_raw_results`), so this keeps the two supplementary
+            // sections consistent and loses no data. For documents as
+            // machine-readable stdout, use `--docs-only`.
             let json = serde_json::json!({ "documents": doc_results });
-            println!(
+            eprintln!(
                 "{}",
                 serde_json::to_string_pretty(&json)
                     .map_err(|e| anyhow::anyhow!("JSON serialize: {e}"))?

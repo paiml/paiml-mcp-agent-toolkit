@@ -31,6 +31,12 @@ impl CodeAnalyzer {
         1 + if_count + match_count + loop_count
     }
 
+    /// A stopping-condition heuristic, NOT a coverage measurement: it counts
+    /// `#[test]` attributes, multiplies by ten and divides by the line count.
+    /// No test is compiled or run here. It stays because the refactoring loop's
+    /// termination check (`meets_quality_standards`) is defined in terms of it,
+    /// but nothing may print it as a coverage figure — see
+    /// `display_refactor_results`, which reports coverage as not measured.
     fn estimate_coverage(&self, code: &str) -> f64 {
         let test_lines = code.matches("#[test]").count() * 10; // Rough estimate
         let total_lines = code.lines().count().max(1);

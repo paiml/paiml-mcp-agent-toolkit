@@ -94,15 +94,48 @@ async fn build_dependency_graph(
 
         if let Some(&from_idx) = node_indices.get(&file_name) {
             let deps = extract_dependencies(&content, file)?;
+            // One dependency edge per distinct neighbour. Every `use foo` line
+            // in a file used to push another copy of the same edge, so
+            // out_degree counted import STATEMENTS, not dependencies, and
+            // degree_centrality was inflated for files that import one module
+            // repeatedly.
+            let mut seen: std::collections::HashSet<usize> = std::collections::HashSet::new();
             for dep in deps {
                 if let Some(&to_idx) = node_indices.get(&dep) {
-                    graph.add_edge(from_idx, to_idx);
+                    if seen.insert(to_idx.index()) {
+                        graph.add_edge(from_idx, to_idx);
+                    }
                 }
             }
         }
     }
 
     Ok(graph)
+}
+
+/// Regression test for the duplicate-edge half of the graph-metrics defect:
+/// repeated imports of the same module used to push one edge each.
+#[cfg(test)]
+mod dependency_graph_edge_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn repeated_imports_of_one_module_produce_one_edge() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("a.rs"), "use b;\nuse b;\nuse b;\n").expect("write a");
+        std::fs::write(dir.path().join("b.rs"), "pub fn x() {}\n").expect("write b");
+
+        let graph = build_dependency_graph(dir.path(), &None, &None)
+            .await
+            .expect("graph");
+
+        assert_eq!(graph.node_count(), 2);
+        assert_eq!(
+            graph.edge_count(),
+            1,
+            "three `use b` lines are one dependency, not three edges"
+        );
+    }
 }
 
 // Collect files based on patterns

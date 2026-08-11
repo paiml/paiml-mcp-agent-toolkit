@@ -35,7 +35,9 @@ impl InfraScorer for ProvableContractsScorer {
     }
 
     fn max_score(&self) -> f64 {
-        12.0
+        // Single source of truth — the renderer and the --help text used to carry
+        // their own (smaller) copy of this number.
+        crate::services::infra_score::models::INFRA_SCORE_BONUS_MAX_POINTS
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {

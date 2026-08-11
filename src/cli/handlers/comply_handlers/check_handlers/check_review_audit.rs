@@ -200,6 +200,20 @@ struct AuditArtifact {
     golden_traces: String,
 }
 
+/// Whether `comply audit`'s decoration may share stdout with the artifact.
+///
+/// `-f json` is this subcommand's DEFAULT, and it used to print the
+/// "PMAT Comply Audit (Layer 3: Governance)" banner and a rule with `println!`
+/// ahead of the JSON document — with an empty stderr, so `2>/dev/null` did not
+/// help and `pmat comply audit | python3 -m json.tool` failed on the
+/// documented default invocation. Machine formats get the artifact alone.
+fn audit_banner_belongs_on_stdout(format: &ComplyOutputFormat) -> bool {
+    matches!(
+        format,
+        ComplyOutputFormat::Text | ComplyOutputFormat::Markdown
+    )
+}
+
 /// Handle `pmat comply audit` - generate governance audit artifact.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn handle_audit(
@@ -207,14 +221,19 @@ pub(crate) async fn handle_audit(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
-    println!("{}\n", c::rule());
+    if audit_banner_belongs_on_stdout(&format) {
+        println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
+        println!("{}\n", c::rule());
+    }
 
     let git_clean = check_git_clean(project_path);
     if !git_clean {
-        println!("{}", c::fail("ERROR: Audit requires clean git state."));
-        println!("Commit or stash all changes before generating an audit artifact.");
-        println!(
+        // Errors go to stderr: this used to be printed to stdout too, so
+        // `comply audit -f json 2>/dev/null` still produced an unparseable
+        // document on the failure path.
+        eprintln!("{}", c::fail("ERROR: Audit requires clean git state."));
+        eprintln!("Commit or stash all changes before generating an audit artifact.");
+        eprintln!(
             "\n{}",
             c::dim("Rationale: Audit artifacts must be reproducible from a specific commit.")
         );
@@ -361,6 +380,18 @@ fn format_audit_markdown(artifact: &AuditArtifact) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn machine_formats_get_stdout_to_themselves() {
+        // `comply audit` defaults to -f json; a banner printed with println!
+        // ahead of the document made that default invocation unparseable.
+        assert!(!audit_banner_belongs_on_stdout(&ComplyOutputFormat::Json));
+        assert!(!audit_banner_belongs_on_stdout(&ComplyOutputFormat::Sarif));
+        assert!(audit_banner_belongs_on_stdout(&ComplyOutputFormat::Text));
+        assert!(audit_banner_belongs_on_stdout(
+            &ComplyOutputFormat::Markdown
+        ));
+    }
 
     fn item(category: &str, status: &str) -> ReviewItem {
         ReviewItem {
@@ -532,5 +563,58 @@ mod tests {
         // Add an untracked file → status --porcelain emits `?? newfile`
         fs::write(tmp.path().join("newfile.txt"), "x").unwrap();
         assert!(!check_git_clean(tmp.path()));
+    }
+
+    // ── the help must not promise evidence the artifact does not carry ──────
+
+    /// `comply audit --help` promised "Produces signed compliance evidence"
+    /// while `AuditArtifact` has no signature, digest or attestation field —
+    /// the serialized document is plain JSON that anyone can edit undetectably.
+    #[test]
+    fn audit_help_does_not_claim_a_signature_the_artifact_lacks() {
+        use clap::Subcommand;
+        let help = crate::cli::commands::on_big_stack(|| {
+            let cmd = crate::cli::commands::ComplyCommands::augment_subcommands(
+                clap::Command::new("comply"),
+            );
+            let audit = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "audit")
+                .expect("comply audit subcommand must exist");
+            audit
+                .get_long_about()
+                .or_else(|| audit.get_about())
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default()
+        });
+
+        assert!(
+            !help.contains("signed compliance evidence"),
+            "audit help must not promise a signature: {help}"
+        );
+
+        // And the artifact still carries no such field, which is what makes the
+        // claim false — if one is ever added, this assertion is the reminder to
+        // restore the promise in the help text.
+        let artifact = AuditArtifact {
+            version: "0.0.0".to_string(),
+            timestamp: Utc::now(),
+            git_sha: "deadbeef".to_string(),
+            git_clean: true,
+            layer1_checks: vec![],
+            layer2_review: vec![],
+            reproducibility_level: "L0".to_string(),
+            muda_score: 0.0,
+            golden_traces: "not_configured".to_string(),
+        };
+        let doc: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&artifact).unwrap()).unwrap();
+        let keys: Vec<&String> = doc.as_object().unwrap().keys().collect();
+        assert!(
+            !keys
+                .iter()
+                .any(|k| k.contains("signature") || k.contains("digest") || k.contains("attest")),
+            "artifact keys changed: {keys:?}"
+        );
     }
 }

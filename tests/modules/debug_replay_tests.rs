@@ -3,129 +3,61 @@
 //
 // Tests for `pmat debug replay` command implementation
 // These tests drive the creation of replay handler and Timeline UI integration
+//
+// `handle_debug_replay` now exits the process with
+// DEBUG_UNIMPLEMENTED_EXIT_CODE (2) instead of returning `Err`, matching
+// `pmat serve`'s honest-failure policy. Calling it from a test would take the
+// whole test binary down with it, and the assertions here were
+// `result.is_ok() || result.is_err()` — true for every possible Result, so they
+// never checked anything. They now pin the signature and the diagnostic, which
+// is what "the handler exists and is callable with these parameters" was
+// trying to say.
 
 use std::path::PathBuf;
 use tempfile::NamedTempFile;
 
-// RED Test 1: Handler function exists and is callable
-#[tokio::test]
-async fn test_replay_handler_exists() {
-    // This test drives the creation of the handle_debug_replay function
-    // Expected: pmat::cli::handlers::debug_handlers::handle_debug_replay exists
-
+/// The handler exists with the documented signature.
+#[test]
+fn test_replay_handler_exists() {
+    // Building the future type-checks the signature without running it.
     let recording = PathBuf::from("test_recording.pmat");
-    let position = None;
-    let interactive = false;
-
-    // Try to call the handler (will fail until GREEN phase)
-    let result =
-        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, position, interactive)
-            .await;
-
-    // Handler should either succeed or return a meaningful error
-    // (not panic or fail to compile)
-    assert!(
-        result.is_ok() || result.is_err(),
-        "Handler should return a Result type"
-    );
+    let _future = pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, false);
 }
 
-// RED Test 2: Handler validates recording file exists
-#[tokio::test]
-#[ignore = "RED phase test - debug replay validation not yet implemented"]
-async fn test_replay_validates_file_exists() {
-    // This test ensures the handler checks if recording file exists
-    // before attempting to load it
-
-    let nonexistent = PathBuf::from("/nonexistent/recording.pmat");
-
-    let result =
-        pmat::cli::handlers::debug_handlers::handle_debug_replay(nonexistent.clone(), None, false)
-            .await;
-
-    // Should return an error for nonexistent file
-    assert!(result.is_err(), "Should fail for nonexistent file");
-
-    let error_msg = result.unwrap_err().to_string();
-    assert!(
-        error_msg.contains("not found")
-            || error_msg.contains("does not exist")
-            || error_msg.contains("No such file"),
-        "Error should indicate file not found: {}",
-        error_msg
-    );
-}
-
-// RED Test 3: Handler accepts position parameter
-#[tokio::test]
-async fn test_replay_accepts_position() {
-    // This test verifies the handler accepts --position parameter
-    // for jumping to a specific point in the recording
-
-    // Create a temporary file to simulate a recording
+/// The handler accepts a recording path, a `--position` and `--interactive`.
+#[test]
+fn test_replay_accepts_position_and_interactive() {
     let temp_file = NamedTempFile::new().expect("Failed to create temp file");
     let recording = temp_file.path().to_path_buf();
-
-    // Write minimal recording data
     std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
 
-    let position = Some(5);
-    let result =
-        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, position, false).await;
-
-    // Handler should accept the position parameter
-    // (may fail for invalid format, but shouldn't panic)
-    assert!(
-        result.is_ok() || result.is_err(),
-        "Handler should process position parameter"
-    );
+    // Building the future type-checks every parameter without running it — the
+    // handler exits the process, so it must not be awaited here.
+    let _future =
+        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording.clone(), Some(5), true);
+    let _future = pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, false);
 }
 
-// RED Test 4: Handler supports interactive mode
-#[tokio::test]
-async fn test_replay_interactive_mode() {
-    // This test verifies the handler supports --interactive flag
-    // for step-through debugging
-
-    // Create a temporary file to simulate a recording
-    let temp_file = NamedTempFile::new().expect("Failed to create temp file");
-    let recording = temp_file.path().to_path_buf();
-
-    // Write minimal recording data
-    std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
-
-    let interactive = true;
-    let result =
-        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, interactive)
-            .await;
-
-    // Handler should accept the interactive parameter
-    assert!(
-        result.is_ok() || result.is_err(),
-        "Handler should process interactive parameter"
-    );
-}
-
-// RED Test 5: Handler displays Timeline UI output
-#[tokio::test]
-async fn test_replay_displays_timeline() {
-    // This test verifies the handler integrates with Timeline UI
-    // Sprint 72-73: Terminal-based visualization
-
-    // Create a temporary file to simulate a recording
-    let temp_file = NamedTempFile::new().expect("Failed to create temp file");
-    let recording = temp_file.path().to_path_buf();
-
-    // Write minimal recording data (should be valid format)
-    std::fs::write(&recording, b"mock_recording_data").expect("Failed to write mock data");
-
-    let result =
-        pmat::cli::handlers::debug_handlers::handle_debug_replay(recording, None, false).await;
-
-    // Handler should attempt to display Timeline UI
-    // (may fail for invalid format, but function should exist)
-    assert!(
-        result.is_ok() || result.is_err(),
-        "Handler should attempt to display timeline"
+/// The diagnostic names DEBUG-003 and says plainly that nothing replays yet.
+///
+/// Replaces "Handler should attempt to display timeline", which asserted
+/// nothing: no timeline is displayed and none was checked for.
+#[test]
+fn test_replay_reports_it_is_not_implemented() {
+    let mut buf = Vec::new();
+    pmat::cli::handlers::debug_handlers::write_debug_unimplemented_message(
+        &mut buf,
+        "replay",
+        "DEBUG-003",
+        "recording=\"/tmp/recording.pmat\" position=Some(5) interactive=true",
+    )
+    .expect("write");
+    let s = String::from_utf8(buf).expect("utf8");
+    assert!(s.contains("DEBUG-003"), "got: {s}");
+    assert!(s.contains("not implemented"), "got: {s}");
+    assert_eq!(
+        pmat::cli::handlers::debug_handlers::DEBUG_UNIMPLEMENTED_EXIT_CODE,
+        2,
+        "unimplemented must exit 2 (misuse), not 1"
     );
 }

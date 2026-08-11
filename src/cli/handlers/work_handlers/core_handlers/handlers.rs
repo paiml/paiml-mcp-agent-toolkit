@@ -1268,8 +1268,20 @@ pub async fn handle_work_ledger_verify(
     path: Option<PathBuf>,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    // This is the tamper-detection command, so "nothing was verified" must never render
+    // as the strongest green attestation. A mistyped -p used to walk a nonexistent
+    // directory, find zero receipts and print "Ledger intact: all hashes verify" with
+    // exit 0 — a CI step with a typo received a clean integrity report.
+    if !project_path.exists() {
+        anyhow::bail!(
+            "ledger verify: path does not exist: {}",
+            project_path.display()
+        );
+    }
+    let ledger_dir = project_path.join(".pmat-work");
     let ledger = FalsificationLedger::new(&project_path);
     let verification = ledger.verify_all()?;
+    let nothing_to_verify = verification.total_receipts == 0;
 
     if matches!(format, crate::cli::commands::QaOutputFormat::Json) {
         println!(
@@ -1302,12 +1314,27 @@ pub async fn handle_work_ledger_verify(
                 println!("  {n:>4}  {k}");
             }
         }
-        if verification.ok() {
+        if nothing_to_verify {
+            println!(
+                "{}",
+                c::warn(&format!(
+                    "No ledger to verify: no receipts under {}",
+                    ledger_dir.display()
+                ))
+            );
+        } else if verification.ok() {
             println!(
                 "{}",
                 c::pass("Ledger intact: all hashes verify, R1 order holds")
             );
         }
+    }
+
+    if nothing_to_verify {
+        anyhow::bail!(
+            "ledger verify: no receipts found under {} — nothing verified",
+            ledger_dir.display()
+        )
     }
 
     if verification.ok() {
@@ -1319,5 +1346,40 @@ pub async fn handle_work_ledger_verify(
             verification.unreadable.len(),
             verification.r1_violations.len()
         )
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod ledger_verify_tests {
+    use super::*;
+    use crate::cli::commands::QaOutputFormat;
+
+    /// `work ledger verify` is the tamper-detection command: a path that does not
+    /// exist must be an error, never the "Ledger intact" attestation over 0/0.
+    #[tokio::test]
+    async fn test_ledger_verify_errors_on_missing_path() {
+        let result = handle_work_ledger_verify(
+            false,
+            QaOutputFormat::Text,
+            Some(PathBuf::from("/does/not/exist/pmat-ledger-test")),
+        )
+        .await;
+        assert!(result.is_err(), "missing path must not verify clean");
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("does not exist"), "got: {msg}");
+    }
+
+    /// An existing directory with no `.pmat-work` receipts is "nothing verified",
+    /// which must not render as a passing integrity check either.
+    #[tokio::test]
+    async fn test_ledger_verify_errors_on_empty_ledger() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let result =
+            handle_work_ledger_verify(false, QaOutputFormat::Text, Some(tmp.path().to_path_buf()))
+                .await;
+        assert!(result.is_err(), "0 receipts must not verify clean");
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("no receipts"), "got: {msg}");
     }
 }

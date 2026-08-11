@@ -110,6 +110,13 @@ async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<
 
     print_pool_statistics_header();
 
+    // Five pools of all-zero counters used to be printed as if they were a
+    // reading of this machine; say plainly that nothing was recorded.
+    if nothing_was_recorded(&stats) {
+        println!("{}", crate::cli::colors::dim(NO_MEMORY_DATA_NOTE));
+        println!();
+    }
+
     for (pool_type, pool_stats) in &stats.pool_stats {
         let pool_name = format!("{pool_type:?}");
 
@@ -225,6 +232,20 @@ async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<(
         }
     } else {
         let stats = manager.stats();
+
+        // "Current memory pressure: 0.0% / Threshold 80.0% / OK" was printed on
+        // every invocation: the pool manager is fresh per process and the
+        // `memory` subcommand allocates nothing through it, so the 0.0% is an
+        // unmeasured value and the OK is a pass on a check that never ran.
+        if nothing_was_recorded(&stats) {
+            println!(
+                "{}: {}",
+                c::label("Current memory pressure"),
+                c::dim("not measured")
+            );
+            println!("{}", c::dim(NO_MEMORY_DATA_NOTE));
+            return Ok(());
+        }
 
         println!(
             "{}: {}",

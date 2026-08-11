@@ -312,10 +312,50 @@ impl GitAnalysisService {
         if parts.len() >= 3 {
             let additions = parts[0].parse::<usize>().ok()?;
             let deletions = parts[1].parse::<usize>().ok()?;
-            let file_path = parts[2..].join(" ");
+            let file_path = Self::resolve_rename_path(&parts[2..].join(" "));
             Some((additions, deletions, file_path))
         } else {
             None
+        }
+    }
+
+    /// The path a `--numstat` entry refers to today.
+    ///
+    /// `git log --numstat` does not print a plain path for a rename; it prints
+    /// either `old/path.rs => new/path.rs` or, when the two share a prefix
+    /// and/or a suffix, `shared/{old => new}/tail.rs`. Both were stored
+    /// verbatim as the file path, so `analyze churn` reported churn for
+    /// `{server/src => src}/tdg/analyzer.rs` — a path that exists nowhere on
+    /// disk — in `stable_files` and `hotspots`, and split one file's history
+    /// across the rename instead of accumulating it under the current name.
+    fn resolve_rename_path(raw: &str) -> String {
+        if !raw.contains("=>") {
+            return raw.to_string();
+        }
+
+        // Braced form: keep the shared prefix and suffix, take the new middle.
+        if let Some(open) = raw.find('{') {
+            if let Some(close) = raw[open..].find('}').map(|offset| offset + open) {
+                if let Some((_old, new)) = raw[open + 1..close].split_once("=>") {
+                    let rebuilt = format!("{}{}{}", &raw[..open], new.trim(), &raw[close + 1..]);
+                    // An empty side (`{ => modules}` / `{src => }`) leaves a
+                    // doubled or leading separator behind.
+                    let mut collapsed = rebuilt;
+                    while collapsed.contains("//") {
+                        collapsed = collapsed.replace("//", "/");
+                    }
+                    if !raw.starts_with('/') {
+                        collapsed = collapsed.trim_start_matches('/').to_string();
+                    }
+                    return collapsed;
+                }
+            }
+        }
+
+        // Plain form: `old => new`.
+        match raw.split_once("=>") {
+            Some((_old, new)) => new.trim().to_string(),
+            None => raw.to_string(),
         }
     }
 
@@ -446,6 +486,45 @@ mod tests {
         assert_eq!(additions, 5);
         assert_eq!(deletions, 15);
         assert_eq!(path, "path/to file.rs");
+    }
+
+    /// `git log --numstat` prints a rename as `old => new` or
+    /// `shared/{old => new}/tail.rs`. Both were stored verbatim, so churn
+    /// reported paths like `{server/src => src}/tdg/analyzer.rs`, which exist
+    /// nowhere on disk.
+    #[test]
+    fn test_parse_numstat_line_resolves_renames_to_the_current_path() {
+        let cases = [
+            (
+                "3\t1\t{server/src => src}/tdg/analyzer.rs",
+                "src/tdg/analyzer.rs",
+            ),
+            (
+                "1\t0\tserver/tests/{ => modules}/unit_mcp_semantic_tools.rs",
+                "server/tests/modules/unit_mcp_semantic_tools.rs",
+            ),
+            ("4\t4\t{src => }/main.rs", "main.rs"),
+            ("2\t2\told/path.rs => new/path.rs", "new/path.rs"),
+            ("7\t0\tsrc/{a.rs => b.rs}", "src/b.rs"),
+        ];
+
+        for (line, expected) in cases {
+            let (_, _, path) =
+                GitAnalysisService::parse_numstat_line(line).expect("numstat line must parse");
+            assert_eq!(path, expected, "line {line:?}");
+            assert!(
+                !path.contains("=>") && !path.contains('{'),
+                "rename syntax survived into the path: {path:?}"
+            );
+        }
+    }
+
+    /// A path that merely contains a brace is not a rename.
+    #[test]
+    fn test_parse_numstat_line_leaves_ordinary_paths_alone() {
+        let (_, _, path) = GitAnalysisService::parse_numstat_line("1\t1\tsrc/{weird}/f.rs")
+            .expect("numstat line must parse");
+        assert_eq!(path, "src/{weird}/f.rs");
     }
 
     #[test]

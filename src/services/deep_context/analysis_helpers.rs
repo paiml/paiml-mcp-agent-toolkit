@@ -136,54 +136,80 @@ async fn analyze_source_files_for_contexts(
     let mut enhanced_contexts = Vec::new();
     let mut file_count = 0;
     let analysis_start = std::time::Instant::now();
+    let discovered = source_files.len();
+    let mut failures: Vec<(PathBuf, String)> = Vec::new();
 
     for file_path in source_files {
-        if let Some(enhanced_context) =
-            analyze_single_file_for_context(&file_path, &mut file_count).await
-        {
-            enhanced_contexts.push(enhanced_context);
+        match analyze_single_file_for_context(&file_path, &mut file_count).await {
+            Ok(enhanced_context) => enhanced_contexts.push(enhanced_context),
+            Err(e) => failures.push((file_path, e.to_string())),
         }
     }
+
+    report_parse_failures(discovered, &failures);
 
     log_analysis_completion(analysis_start, file_count);
     Ok(enhanced_contexts)
 }
 
+/// Report files whose AST parse failed.
+///
+/// A crate whose every file fails to parse used to render exactly like an empty
+/// directory — "Total Files: 0", no warning, exit 0 — because the parse error was
+/// dropped by an `if let Ok(..)` with no else branch. Warnings go to stderr because
+/// the tracing subscriber is off in several of the modes that generate context.
+fn report_parse_failures(discovered: usize, failures: &[(PathBuf, String)]) {
+    if failures.is_empty() {
+        return;
+    }
+    const MAX_LISTED: usize = 10;
+    for (path, err) in failures.iter().take(MAX_LISTED) {
+        eprintln!("⚠️  failed to parse {}: {}", path.display(), err);
+    }
+    if failures.len() > MAX_LISTED {
+        eprintln!("⚠️  … and {} more", failures.len() - MAX_LISTED);
+    }
+    eprintln!(
+        "⚠️  {} of {} discovered source file(s) failed to parse and are absent from this context",
+        failures.len(),
+        discovered
+    );
+}
+
 /// Analyze single file and create enhanced context if successful
+/// Returns the parse error instead of swallowing it: the caller counts and reports
+/// unparseable files so they cannot vanish from the context without a word.
 async fn analyze_single_file_for_context(
     file_path: &Path,
     file_count: &mut usize,
-) -> Option<EnhancedFileContext> {
+) -> anyhow::Result<EnhancedFileContext> {
     let file_start = std::time::Instant::now();
 
-    if let Ok(file_context) = analysis_functions::analyze_single_file(file_path).await {
-        let ast_time = file_start.elapsed();
+    let file_context = analysis_functions::analyze_single_file(file_path).await?;
+    let ast_time = file_start.elapsed();
 
-        if (*file_count).is_multiple_of(10) {
-            info!(
-                "Progress: {} files processed. Last file - AST: {:?}",
-                file_count, ast_time
-            );
-        }
-
-        let enhanced_context = EnhancedFileContext {
-            base: file_context,
-            complexity_metrics: None,
-            churn_metrics: None,
-            defects: DefectAnnotations {
-                dead_code: None,
-                technical_debt: Vec::new(),
-                complexity_violations: Vec::new(),
-                tdg_score: None, // Skip TDG calculation for context generation
-            },
-            symbol_id: uuid::Uuid::new_v4().to_string(),
-        };
-
-        *file_count += 1;
-        Some(enhanced_context)
-    } else {
-        None
+    if (*file_count).is_multiple_of(10) {
+        info!(
+            "Progress: {} files processed. Last file - AST: {:?}",
+            file_count, ast_time
+        );
     }
+
+    let enhanced_context = EnhancedFileContext {
+        base: file_context,
+        complexity_metrics: None,
+        churn_metrics: None,
+        defects: DefectAnnotations {
+            dead_code: None,
+            technical_debt: Vec::new(),
+            complexity_violations: Vec::new(),
+            tdg_score: None, // Skip TDG calculation for context generation
+        },
+        symbol_id: uuid::Uuid::new_v4().to_string(),
+    };
+
+    *file_count += 1;
+    Ok(enhanced_context)
 }
 
 /// Log analysis completion statistics
@@ -197,3 +223,39 @@ fn log_analysis_completion(analysis_start: std::time::Instant, file_count: usize
     );
 }
 
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod analysis_helpers_tests {
+    use super::*;
+
+    /// An unparseable source file must surface its parse error, not be silently
+    /// dropped: a crate where every file fails to parse used to render exactly like
+    /// an empty directory.
+    #[tokio::test]
+    async fn test_analyze_single_file_for_context_reports_parse_error() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let broken = tmp.path().join("main.rs");
+        std::fs::write(&broken, "fn main( { let x = ;;;\n").unwrap();
+
+        let mut count = 0usize;
+        let result = analyze_single_file_for_context(&broken, &mut count).await;
+        assert!(
+            result.is_err(),
+            "unparseable file must yield an error, not a silent skip"
+        );
+        assert_eq!(count, 0, "a failed file must not be counted as analyzed");
+    }
+
+    #[tokio::test]
+    async fn test_analyze_single_file_for_context_ok_on_valid_rust() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let good = tmp.path().join("main.rs");
+        std::fs::write(&good, "fn main() {}\n").unwrap();
+
+        let mut count = 0usize;
+        let result = analyze_single_file_for_context(&good, &mut count).await;
+        assert!(result.is_ok(), "valid rust must parse: {result:?}");
+        assert_eq!(count, 1);
+    }
+}

@@ -84,6 +84,30 @@ fn print_validation_markdown(result: &QaValidationResult) {
     }
 }
 
+/// Build the report artefact from the category results.
+///
+/// `handle_report` used to initialise `passed: true` in the struct literal and
+/// never recompute it, so the audit-trail report said PASSED for a run that
+/// `qa-work validate` failed at the identical score (20.0% scored PASSED in the
+/// report and FAILED in validate, back to back, on the same `.pmat-qa` state).
+/// Pass/fail now comes from the same `determine_pass` the validate path uses,
+/// so the two surfaces cannot disagree.
+fn build_report_result(
+    task_id: &str,
+    categories: HashMap<String, CategoryResult>,
+) -> QaValidationResult {
+    let overall_score = calculate_overall_score(&categories);
+    QaValidationResult {
+        task_id: task_id.to_string(),
+        timestamp: Utc::now(),
+        categories,
+        overall_score,
+        // `report` has no --strict flag, so it matches plain `qa-work validate`.
+        passed: determine_pass(overall_score, false),
+        manual_checks_required: vec![],
+    }
+}
+
 /// Generate QA report for audit trail
 async fn handle_report(
     task_id: &str,
@@ -93,44 +117,35 @@ async fn handle_report(
     format: QaOutputFormat,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    println!("{} {}", c::label("Generating QA report for task:"), task_id);
+    // Same defect as `qa-work validate`: this banner used to land on STDOUT
+    // ahead of the JSON/YAML document, so `-f json | jq` never parsed.
+    if qa_format_owns_stdout(&format) {
+        eprintln!("Generating QA report for task: {}", task_id);
+    } else {
+        println!("{} {}", c::label("Generating QA report for task:"), task_id);
+    }
 
     // First run validation
-    let mut result = QaValidationResult {
-        task_id: task_id.to_string(),
-        timestamp: Utc::now(),
-        categories: HashMap::new(),
-        overall_score: 0.0,
-        passed: true,
-        manual_checks_required: vec![],
-    };
+    let mut categories: HashMap<String, CategoryResult> = HashMap::new();
 
-    result.categories.insert(
+    // Report and validate must score the same checklist: Safety & Ethics is
+    // part of the 25-point checklist, so it belongs in the audit trail too.
+    categories.insert("safety_ethics".into(), run_safety_ethics_checks());
+    categories.insert(
         "code_quality".into(),
         run_code_quality_checks(project_path).await,
     );
-    result
-        .categories
-        .insert("testing".into(), run_testing_checks(project_path).await);
-    result.categories.insert(
+    categories.insert("testing".into(), run_testing_checks(project_path).await);
+    categories.insert(
         "documentation".into(),
         run_documentation_checks(project_path, task_id).await,
     );
-    result.categories.insert(
+    categories.insert(
         "process".into(),
         run_process_checks(project_path, task_id).await,
     );
 
-    // Calculate score
-    let (total_passed, total_items) = result
-        .categories
-        .values()
-        .fold((0, 0), |(p, t), cat| (p + cat.passed, t + cat.total));
-    result.overall_score = if total_items > 0 {
-        (total_passed as f64 / total_items as f64) * 100.0
-    } else {
-        0.0
-    };
+    let result = build_report_result(task_id, categories);
 
     // Generate report content
     let report = match format {
@@ -194,6 +209,12 @@ async fn handle_report(
         println!("{} Report saved to: {}", c::pass(""), c::path(&output_path.display().to_string()));
     } else {
         println!("{}", report);
+    }
+
+    // The report is still written/printed first, but a failing audit must not
+    // exit 0 while `qa-work validate` exits 1 on the very same score.
+    if !result.passed {
+        std::process::exit(1);
     }
 
     Ok(())
@@ -410,6 +431,63 @@ mod print_tests {
             ],
         };
         print_validation_markdown(&r);
+    }
+
+    // ── build_report_result ──
+    // Regression: `handle_report` hardcoded `passed: true`, so the audit report
+    // said PASSED for a task `qa-work validate` failed at the same score.
+
+    #[test]
+    fn test_build_report_result_low_score_is_not_passed() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "code_quality".to_string(),
+            category(
+                "Code Quality",
+                vec![
+                    item("C1", "ok", ValidationStatus::Passed),
+                    item("C2", "bad", ValidationStatus::Failed),
+                    item("C3", "bad", ValidationStatus::Failed),
+                    item("C4", "bad", ValidationStatus::Failed),
+                    item("C5", "bad", ValidationStatus::Failed),
+                ],
+            ),
+        );
+        let r = build_report_result("T-1", cats);
+        assert!((r.overall_score - 20.0).abs() < f64::EPSILON);
+        assert!(
+            !r.passed,
+            "20.0% must be a fail in the report exactly as it is in validate"
+        );
+    }
+
+    #[test]
+    fn test_build_report_result_high_score_passes() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "code_quality".to_string(),
+            category(
+                "Code Quality",
+                vec![
+                    item("C1", "ok", ValidationStatus::Passed),
+                    item("C2", "ok", ValidationStatus::Passed),
+                    item("C3", "ok", ValidationStatus::Passed),
+                    item("C4", "ok", ValidationStatus::Passed),
+                    item("C5", "bad", ValidationStatus::Failed),
+                ],
+            ),
+        );
+        let r = build_report_result("T-1", cats);
+        assert!((r.overall_score - 80.0).abs() < f64::EPSILON);
+        assert!(r.passed);
+    }
+
+    #[test]
+    fn test_build_report_result_empty_categories_is_not_passed() {
+        // No checks ran at all: nothing was measured, so nothing passed.
+        let r = build_report_result("T-1", HashMap::new());
+        assert!((r.overall_score - 0.0).abs() < f64::EPSILON);
+        assert!(!r.passed);
     }
 
     #[test]

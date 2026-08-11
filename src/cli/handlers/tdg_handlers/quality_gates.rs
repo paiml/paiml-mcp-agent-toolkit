@@ -170,7 +170,16 @@ fn run_primary_gate(
         let baseline = TdgBaseline::new(None);
         let mut config = GateConfig::default();
         if let Some(grade_str) = min_grade_str {
+            // `--min-grade` used to write only `default_min_grade`, which
+            // `MinimumGradeGate::get_min_grade_for_file` consults ONLY for
+            // extensions it does not recognise. Every .rs/.ts/.py/.js file was
+            // still judged against the built-in per-language table
+            // (rust=B+, typescript=B+, python=B, javascript=B), so
+            // `--min-grade F` — the loosest threshold that exists — still
+            // reported B/B-/C+/C files as "Below minimum grade" and exited 3.
+            // An explicitly requested threshold replaces that table outright.
             config.default_min_grade = parse_grade(grade_str)?;
+            config.min_grades.clear();
         }
         MinimumGradeGate::new(config).check(&baseline, current)
     }
@@ -236,4 +245,84 @@ pub(super) fn check_quality_json(
         "f_grade_gate": f_grade,
         "passed": primary.passed && f_grade.passed,
     }))?)
+}
+
+#[cfg(test)]
+mod min_grade_flag_tests {
+    //! `tdg check-quality --min-grade` must be the threshold every file is
+    //! judged against, including files whose language has a built-in default.
+    use super::*;
+    use crate::tdg::{BaselineEntry, ComponentScores, Grade, Language, TdgBaseline, TdgScore};
+
+    fn baseline_with(path: &str, total: f32, grade: Grade) -> TdgBaseline {
+        let mut baseline = TdgBaseline::new(None);
+        let path = PathBuf::from(path);
+        let entry = BaselineEntry {
+            content_hash: blake3::hash(b"min-grade-flag-test"),
+            score: TdgScore {
+                total,
+                grade,
+                structural_complexity: total,
+                semantic_complexity: total,
+                duplication_ratio: 0.0,
+                coupling_score: total,
+                doc_coverage: total,
+                consistency_score: total,
+                entropy_score: total,
+                confidence: 1.0,
+                language: Language::Rust,
+                file_path: Some(path.clone()),
+                penalties_applied: Vec::new(),
+                critical_defects_count: 0,
+                has_critical_defects: false,
+                has_contract_coverage: false,
+            },
+            components: ComponentScores::default(),
+            git_context: None,
+        };
+        baseline.add_entry(path, entry);
+        baseline
+    }
+
+    #[test]
+    fn min_grade_f_accepts_a_c_grade_rust_file() {
+        let current = baseline_with("src/bad.rs", 73.0, Grade::C);
+        let result = run_primary_gate(false, Some("F"), None, &current).unwrap();
+        assert!(
+            result.passed,
+            "--min-grade F is the loosest threshold there is; a C-grade .rs file must pass it, \
+             got violations: {:?}",
+            result.violations
+        );
+    }
+
+    #[test]
+    fn min_grade_a_still_rejects_a_c_grade_rust_file() {
+        let current = baseline_with("src/bad.rs", 73.0, Grade::C);
+        let result = run_primary_gate(false, Some("A"), None, &current).unwrap();
+        assert!(!result.passed, "--min-grade A must reject a C-grade file");
+    }
+
+    #[test]
+    fn min_grade_a_plus_counts_every_file_the_distribution_puts_below_a_plus() {
+        // The dogfood symptom ran the other way from `--min-grade F`: with
+        // `--min-grade A+` the printed grade distribution said 903 files were
+        // below A+ while the gate reported only 42 violations, because the
+        // built-in rust=B+ entry kept every A/A-/B+ .rs file out of the count.
+        let current = baseline_with("src/good.rs", 93.0, Grade::A);
+        let result = run_primary_gate(false, Some("A+"), None, &current).unwrap();
+        assert!(
+            !result.passed && result.violations.len() == 1,
+            "an A-grade .rs file is below A+ and must be counted, got: {:?}",
+            result.violations
+        );
+    }
+
+    #[test]
+    fn without_min_grade_the_per_language_defaults_still_apply() {
+        // Not passing --min-grade leaves the built-in rust=B+ table in place.
+        let current = baseline_with("src/bad.rs", 83.0, Grade::B);
+        let result = run_primary_gate(false, None, None, &current).unwrap();
+        assert!(!result.passed, "rust defaults to B+, so a B file fails");
+    }
 }

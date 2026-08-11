@@ -4,7 +4,8 @@
 
 use crate::cli::proof_annotation_helpers::{
     collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
-    format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
+    format_as_sarif, format_as_summary, incomplete_analysis_note, setup_proof_annotator,
+    ProofAnnotationFilter,
 };
 use crate::cli::{ProofAnnotationOutputFormat, PropertyTypeFilter, VerificationMethodFilter};
 use crate::models::unified_ast::{Location, ProofAnnotation};
@@ -64,6 +65,9 @@ pub async fn handle_analyze_proof_annotations(
         elapsed.as_millis(),
         chrono::Utc::now().to_rfc3339()
     );
+    if let Some(note) = incomplete_analysis_note(annotator.collection_errors()) {
+        eprint!("⚠️{note}");
+    }
 
     // Format output using helpers
     let content = format_proof_annotations(
@@ -95,17 +99,34 @@ fn format_proof_annotations(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
-    match format {
-        ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator),
-        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed),
+    let mut content = match format {
+        ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator)?,
+        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed)?,
         ProofAnnotationOutputFormat::Full => {
-            format_as_full(annotations, project_path, include_evidence)
+            format_as_full(annotations, project_path, include_evidence)?
         }
         ProofAnnotationOutputFormat::Markdown => {
-            format_as_markdown(annotations, project_path, include_evidence)
+            format_as_markdown(annotations, project_path, include_evidence)?
         }
-        ProofAnnotationOutputFormat::Sarif => format_as_sarif(annotations, project_path),
+        ProofAnnotationOutputFormat::Sarif => format_as_sarif(annotations, project_path)?,
+    };
+
+    // Files the collector could not parse contributed no annotations, and that
+    // fact stopped at one `warn!` line on stderr — the report said "Total
+    // proofs: 38050" as though it had seen the whole tree, while 31 files had
+    // been skipped. The human-readable renderers get the disclosure appended
+    // here; the JSON document already carries `summary.files_not_analyzed`, and
+    // SARIF has no free-text slot for it.
+    if !matches!(
+        format,
+        ProofAnnotationOutputFormat::Json | ProofAnnotationOutputFormat::Sarif
+    ) {
+        if let Some(note) = incomplete_analysis_note(annotator.collection_errors()) {
+            content.push_str(&note);
+        }
     }
+
+    Ok(content)
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -130,6 +151,98 @@ mod active_tests {
         )
         .await;
         assert!(result.is_ok());
+    }
+
+    /// A tree with one file the collector cannot parse. On the pmat repo 31
+    /// such files were skipped, their failure logged once at `warn!` and
+    /// dropped: the report still said "Total proofs: N" with nothing to say it
+    /// had been computed over a subset. Both renderings must disclose the gap.
+    #[tokio::test]
+    async fn test_unparseable_files_are_disclosed_in_the_report() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(
+            temp_dir.path().join("good.rs"),
+            "pub fn good(x: &str) -> usize { x.len() }\n",
+        )
+        .expect("write");
+        std::fs::write(temp_dir.path().join("broken.rs"), "fn ((( <<< not rust\n").expect("write");
+
+        // Summary (and every other human-readable format) gets a note.
+        let summary_out = temp_dir.path().join("summary.txt");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            None,
+            Some(summary_out.clone()),
+            false,
+            true,
+        )
+        .await
+        .expect("summary run");
+
+        let summary = std::fs::read_to_string(&summary_out).expect("read summary");
+        assert!(
+            summary.contains("INCOMPLETE"),
+            "the summary must disclose the file it could not parse, got:\n{summary}"
+        );
+
+        // The JSON document carries the same fact as a field, not prose.
+        let json_out = temp_dir.path().join("out.json");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Json,
+            false,
+            false,
+            None,
+            None,
+            Some(json_out.clone()),
+            false,
+            true,
+        )
+        .await
+        .expect("json run");
+
+        let doc: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&json_out).expect("read json"))
+                .expect("valid json");
+        assert_eq!(
+            doc["summary"]["files_not_analyzed"].as_u64(),
+            Some(1),
+            "the JSON summary must report the skipped file, got: {doc}"
+        );
+    }
+
+    /// A tree the collector reads completely must read exactly as before — the
+    /// disclosure is only for a partial analysis.
+    #[tokio::test]
+    async fn test_complete_analysis_carries_no_incomplete_note() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(
+            temp_dir.path().join("good.rs"),
+            "pub fn good(x: &str) -> usize { x.len() }\n",
+        )
+        .expect("write");
+
+        let out = temp_dir.path().join("summary.txt");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            None,
+            Some(out.clone()),
+            false,
+            true,
+        )
+        .await
+        .expect("summary run");
+
+        let summary = std::fs::read_to_string(&out).expect("read summary");
+        assert!(!summary.contains("INCOMPLETE"), "got:\n{summary}");
     }
 
     #[tokio::test]

@@ -13,8 +13,11 @@ mod tests {
 
     #[test]
     fn test_refactor_start_args_deserialize() {
+        // Real paths: `refactor.start` now refuses targets that are not on
+        // disk (it used to open a session on `/does/not/exist` and report a
+        // successful Complete), and `src/main.rs` does not exist in this crate.
         let json = json!({
-            "targets": ["src/main.rs", "src/lib.rs"],
+            "targets": ["src/lib.rs", "Cargo.toml"],
             "config": null
         });
 
@@ -26,7 +29,7 @@ mod tests {
     #[test]
     fn test_refactor_start_args_with_config() {
         let json = json!({
-            "targets": ["src/main.rs"],
+            "targets": ["src/lib.rs"],
             "config": {
                 "target_complexity": 10,
                 "remove_satd": true,

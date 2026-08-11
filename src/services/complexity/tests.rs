@@ -592,3 +592,53 @@ fn test_format_as_sarif_with_error() {
     assert!(sarif.contains("error"));
     assert!(sarif.contains("complex.rs"));
 }
+
+// ===================
+// technical_debt_hours sign (#719)
+// ===================
+
+/// A project with no complexity violations has *zero* debt, not negative debt.
+///
+/// `Iterator::sum::<f32>()` seeds with `-0.0`, so the previous implementation
+/// serialized `"technical_debt_hours": -0.0` for every clean project — including
+/// an empty directory. This asserts the sign, which is what the JSON consumer
+/// and the `{:.1} hours` renderer actually see.
+#[test]
+fn test_technical_debt_is_positive_zero_when_there_are_no_violations() {
+    let debt = analysis::calculate_technical_debt(&[]);
+
+    assert_eq!(debt, 0.0);
+    assert!(
+        !debt.is_sign_negative(),
+        "no violations must yield +0.0, got {debt:?} (renders as -0.0 in JSON)"
+    );
+    assert_eq!(format!("{:?}", f64::from(debt)), "0.0");
+}
+
+/// The seed change must not perturb a real, non-empty sum.
+#[test]
+fn test_technical_debt_still_sums_violations() {
+    let violations = vec![
+        Violation::Error {
+            rule: "cyclomatic-complexity".to_string(),
+            message: "too complex".to_string(),
+            value: 30,
+            threshold: 20,
+            file: "a.rs".to_string(),
+            line: 1,
+            function: None,
+        },
+        Violation::Warning {
+            rule: "cognitive-complexity".to_string(),
+            message: "getting complex".to_string(),
+            value: 14,
+            threshold: 10,
+            file: "b.rs".to_string(),
+            line: 2,
+            function: None,
+        },
+    ];
+
+    // (30-20)*30 + (14-10)*15 = 300 + 60 = 360 minutes = 6 hours
+    assert!((analysis::calculate_technical_debt(&violations) - 6.0).abs() < f32::EPSILON);
+}

@@ -22,6 +22,26 @@ fn has_coverage_off(content: &str) -> bool {
     })
 }
 
+/// One warning line per language whose files the chunker refused.
+///
+/// Files that fail to chunk used to vanish silently (`Err(_) => continue`): a
+/// tree holding `svc.go` and `util.py` indexed as `file_count: 1,
+/// languages: ["Python"]`, and `pmat_query_code language:"go"` answered
+/// `{"results":[],"total":0}` — indistinguishable from "your query matched
+/// nothing", when the real answer is that this build has no Go parser compiled
+/// in (`go-ast` is not in the default feature set). Naming the language, the
+/// count and the parser's own reason is what tells those two apart.
+fn format_skipped_summary(skipped: &HashMap<String, (usize, String)>) -> Vec<String> {
+    let mut by_language: Vec<(&String, &(usize, String))> = skipped.iter().collect();
+    by_language.sort_by(|a, b| a.0.cmp(b.0));
+    by_language
+        .into_iter()
+        .map(|(language, (count, reason))| {
+            format!("⚠️  Not indexed: {count} {language} file(s) could not be parsed ({reason})")
+        })
+        .collect()
+}
+
 /// Load cached coverage_off_files from SQLite metadata.
 fn load_coverage_off_files(conn: &rusqlite::Connection) -> HashSet<String> {
     let json: String = conn
@@ -53,6 +73,9 @@ impl AgentContextIndex {
         let mut languages_seen = HashMap::new();
         let mut file_checksums: HashMap<String, String> = HashMap::with_capacity(4_000);
         let mut coverage_off_files = HashSet::new();
+        // Language -> (how many files the chunker refused, the first reason it
+        // gave). Reported after the walk; see `format_skipped_summary`.
+        let mut skipped_by_language: HashMap<String, (usize, String)> = HashMap::new();
         // Reusable read buffer — avoids allocating a new String per file (~33 MB saved)
         let mut read_buf = String::with_capacity(32 * 1024);
 
@@ -104,10 +127,18 @@ impl AgentContextIndex {
                 coverage_off_files.insert(relative_path.clone());
             }
 
-            // Extract functions using AST chunker
+            // Extract functions using AST chunker. A refusal here is recorded,
+            // not swallowed — a language this build cannot parse must not look
+            // like a language that simply has no matches.
             let chunks = match chunk_code(content, language) {
                 Ok(c) => c,
-                Err(_) => continue, // Skip parse errors
+                Err(reason) => {
+                    let entry = skipped_by_language
+                        .entry(format!("{language:?}"))
+                        .or_insert((0, reason));
+                    entry.0 += 1;
+                    continue;
+                }
             };
 
             let lang_str = format!("{language:?}");
@@ -176,6 +207,9 @@ impl AgentContextIndex {
         }
         if file_count >= 500 {
             eprintln!("\r  Indexed {} files", file_count);
+        }
+        for line in format_skipped_summary(&skipped_by_language) {
+            eprintln!("{line}");
         }
 
         // Build indices and corpus
@@ -315,3 +349,59 @@ include!("build_persistence.rs");
 include!("build_incremental.rs");
 include!("build_accessors.rs");
 include!("build_helpers.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod skipped_file_reporting_tests {
+    use super::*;
+
+    /// The indexer used to drop every file its chunker refused with
+    /// `Err(_) => continue`, so a build without `go-ast` reported a Go+Python
+    /// tree as `file_count: 1, languages: ["Python"]` and said nothing at all
+    /// about the Go file it could not read.
+    #[test]
+    fn refused_files_are_counted_and_named_per_language() {
+        let mut skipped: HashMap<String, (usize, String)> = HashMap::new();
+        skipped.insert(
+            "Go".to_string(),
+            (2, "go-ast feature is disabled".to_string()),
+        );
+        skipped.insert("Lua".to_string(), (1, "parse error".to_string()));
+
+        let lines = format_skipped_summary(&skipped);
+
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        // Deterministic order — the map's iteration order is not.
+        assert!(lines[0].contains("Go"), "{lines:?}");
+        assert!(lines[0].contains('2'), "{lines:?}");
+        assert!(
+            lines[0].contains("go-ast feature is disabled"),
+            "the parser's own reason must survive: {lines:?}"
+        );
+        assert!(lines[1].contains("Lua"), "{lines:?}");
+    }
+
+    #[test]
+    fn nothing_is_reported_when_every_file_parsed() {
+        assert!(format_skipped_summary(&HashMap::new()).is_empty());
+    }
+
+    /// The condition the report exists for: in a build without `go-ast`, Go
+    /// source really is refused, so `.go` files really are missing from the
+    /// index — which is exactly what must not happen silently.
+    #[cfg(not(feature = "go-ast"))]
+    #[test]
+    fn go_source_is_refused_by_this_build_and_therefore_reportable() {
+        let reason = crate::services::semantic::chunk_code(
+            "package main\n\nfunc main() {}\n",
+            crate::services::semantic::Language::Go,
+        )
+        .expect_err("a build without go-ast cannot chunk Go");
+
+        let mut skipped: HashMap<String, (usize, String)> = HashMap::new();
+        skipped.insert("Go".to_string(), (1, reason));
+        let lines = format_skipped_summary(&skipped);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("Go"), "{lines:?}");
+    }
+}

@@ -15,6 +15,11 @@ pub async fn analyze_complexity(
     top_files: Option<usize>,
     threshold: Option<u64>,
 ) -> Result<Value> {
+    // `analyze_file_complexity_uncached` used to run the heuristic counter
+    // while `pmat analyze complexity` ran the AST one, so this tool reported
+    // cyclomatic 10 / cognitive 18 (plus a threshold violation) for the same
+    // function the CLI scored 6 / 9 with no violation. Both surfaces now share
+    // the analyzer; keep them on one entry point.
     use crate::services::complexity::analyze_file_complexity_uncached;
 
     // Validate input
@@ -161,7 +166,7 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Result<Value> {
+pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result<Value> {
     use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
     use std::collections::HashMap;
 
@@ -184,12 +189,23 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
         }
         match analyze_dead_code_multi_language(path) {
             Ok(result) => {
-                total_dead_code += result.dead_functions.len();
+                // `include_tests` used to be `_include_tests` — an inert
+                // parameter: passing include_tests:true returned a byte-identical
+                // response. The CLI's default (false) keeps test code out of the
+                // dead-code list, so honour the same default here instead of
+                // advertising a flag that does nothing.
+                let dead: Vec<_> = result
+                    .dead_functions
+                    .iter()
+                    .filter(|func| include_tests || !is_test_path(&func.file))
+                    .collect();
+
+                total_dead_code += dead.len();
                 total_functions += result.total_functions;
                 if !languages.contains(&result.language) {
                     languages.push(result.language.clone());
                 }
-                for func in &result.dead_functions {
+                for func in dead {
                     dead_by_file
                         .entry(func.file.clone())
                         .or_default()
@@ -222,8 +238,36 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
             "total_functions": total_functions,
             "languages": languages,
             "files": file_results,
+            // This tool and `pmat analyze dead-code` disagreed (2 vs 0 dead
+            // functions on the same path) with nothing in either payload saying
+            // why: this is the language-agnostic reachability heuristic, which
+            // calls an un-called item dead, while the CLI runs cargo's own
+            // dead-code pass on Rust projects. Name the producer so a client can
+            // reconcile the two numbers instead of guessing which is wrong.
+            "analyzer": "multi-language-reachability",
+            "analyzer_note": "Un-called items are reported dead. `pmat analyze dead-code` \
+                              uses the cargo/AST analyzer on Rust projects and may report fewer.",
+            "include_tests": include_tests,
         }
     }))
+}
+
+/// Does this path look like test code? Used to honour `include_tests` for the
+/// reachability analyzer, which has no test-awareness of its own.
+fn is_test_path(file: &str) -> bool {
+    let path = std::path::Path::new(file);
+    let in_test_dir = path.components().any(|component| {
+        matches!(
+            component.as_os_str().to_str(),
+            Some("tests") | Some("test") | Some("testing")
+        )
+    });
+    let name = path
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or_default();
+
+    in_test_dir || name.starts_with("test_") || name.ends_with("_test") || name.ends_with("_tests")
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -430,12 +474,29 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
                 "file_path": f.file_path,
                 "function_name": f.function_name,
                 "line_number": f.line_number,
-                "time_complexity": f.time_complexity,
-                "space_complexity": f.space_complexity,
+                // `time_complexity` / `space_complexity` used to be the raw
+                // `#[repr(C)]` ComplexityBound, so the payload carried the
+                // struct's alignment padding and its packed flag byte
+                // (`{"class":"Quadratic","coefficient":1,"input_var":"N",
+                // "confidence":75,"flags":2,"_padding":[0,0]}`) to a reader
+                // that cannot tell layout from measurement. The CLI's JSON
+                // emits the notation and the confidence; emit the same.
+                "time_complexity": f.time_complexity.notation(),
+                "time_complexity_confidence": f.time_complexity.confidence,
+                "space_complexity": f.space_complexity.notation(),
+                "space_complexity_confidence": f.space_complexity.confidence,
                 "confidence": f.confidence,
             })
         })
         .collect();
+
+    // A LIST THAT IS SECRETLY A CAP: `top_files` truncated this silently, so
+    // a caller asking for 2 saw 2 and had no way to learn there were 8. The
+    // CLI names both numbers (`high_complexity_count` / `_found` /
+    // `_truncated`); keep the two surfaces telling the same story.
+    let listed = high_complexity.len();
+    let dist = &report.complexity_distribution;
+    let found = (dist.quadratic + dist.cubic + dist.exponential).max(report.high_complexity_functions.len());
 
     Ok(json!({
         "status": "completed",
@@ -444,6 +505,9 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
             "analyzed_functions": report.analyzed_functions,
             "complexity_distribution": report.complexity_distribution,
             "high_complexity_functions": high_complexity,
+            "high_complexity_count": listed,
+            "high_complexity_found": found,
+            "high_complexity_truncated": listed < found,
             "recommendations": report.recommendations,
         }
     }))
@@ -628,4 +692,139 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
             }
         }
     }))
+}
+
+#[cfg(test)]
+mod big_o_payload_tests {
+    //! The tool serialised the raw `#[repr(C)]` ComplexityBound and truncated
+    //! its function list without saying so.
+    use super::*;
+
+    /// Three functions with a doubly-nested loop each: enough for `top_files`
+    /// to bite.
+    fn quadratic_fixture() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut src = String::new();
+        for i in 0..3 {
+            src.push_str(&format!(
+                "pub fn pairs{i}(xs: &[usize]) -> usize {{\n    let mut acc = 0;\n    for a in xs {{\n        for b in xs {{\n            acc += a * b;\n        }}\n    }}\n    acc\n}}\n\n"
+            ));
+        }
+        std::fs::write(dir.path().join("lib.rs"), src).expect("write lib.rs");
+        dir
+    }
+
+    #[tokio::test]
+    async fn test_big_o_payload_has_no_struct_layout_fields() {
+        let dir = quadratic_fixture();
+        let value = analyze_big_o(&[dir.path().to_path_buf()], Some(1))
+            .await
+            .expect("analysis");
+        let payload = serde_json::to_string(&value).expect("serialise");
+
+        assert!(
+            !payload.contains("_padding"),
+            "alignment filler leaked into the MCP payload: {payload}"
+        );
+        let functions = value["results"]["high_complexity_functions"]
+            .as_array()
+            .expect("array");
+        assert!(
+            !functions.is_empty(),
+            "the fixture must produce a high-complexity function, or this asserts nothing"
+        );
+        for func in functions {
+            // A notation string ("O(n²)"), not the packed bound struct.
+            let time = func["time_complexity"].as_str().unwrap_or_else(|| {
+                panic!("time_complexity must be a notation string: {func}")
+            });
+            assert!(time.starts_with("O("), "unexpected notation {time:?}");
+            assert!(func["time_complexity_confidence"].is_number());
+            assert!(func["space_complexity"].is_string());
+        }
+    }
+
+    /// `top_files` capped the list silently: asking for 1 of 3 returned 1,
+    /// with nothing in the payload naming the other two.
+    #[tokio::test]
+    async fn test_big_o_payload_discloses_truncation() {
+        let dir = quadratic_fixture();
+        let results = analyze_big_o(&[dir.path().to_path_buf()], Some(1))
+            .await
+            .expect("analysis");
+        let results = &results["results"];
+
+        let listed = results["high_complexity_functions"]
+            .as_array()
+            .expect("array")
+            .len();
+        let count = results["high_complexity_count"].as_u64().expect("count");
+        let found = results["high_complexity_found"].as_u64().expect("found");
+
+        assert_eq!(count as usize, listed, "count must be the listed length");
+        // The fixture holds three quadratic functions and asks for one, so the
+        // cap must be visible rather than inferred.
+        assert_eq!(count, 1, "top_files=1 must list exactly one");
+        assert!(
+            found > count,
+            "found ({found}) must exceed the listed count ({count}) for this fixture"
+        );
+        assert_eq!(
+            results["high_complexity_truncated"],
+            serde_json::Value::Bool(count < found),
+            "the truncation flag must follow the two counts"
+        );
+    }
+}
+
+#[cfg(test)]
+mod dead_code_include_tests_tests {
+    //! `include_tests` used to be an unused parameter (`_include_tests`).
+    use super::*;
+
+    #[test]
+    fn test_is_test_path_recognises_the_usual_layouts() {
+        assert!(is_test_path("tests/integration.rs"));
+        assert!(is_test_path("crate/tests/helpers/mod.rs"));
+        assert!(is_test_path("src/foo_tests.rs"));
+        assert!(is_test_path("src/test_foo.py"));
+        assert!(!is_test_path("src/lib.rs"));
+        assert!(!is_test_path("src/latest.rs"));
+    }
+
+    /// Passing include_tests:true returned a byte-identical response, because
+    /// the tool signature was `analyze_dead_code(paths, _include_tests: bool)`.
+    #[tokio::test]
+    async fn test_include_tests_changes_the_result() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir src");
+        std::fs::create_dir_all(dir.path().join("tests")).expect("mkdir tests");
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "pub fn used() {}\npub fn never_called() {}\nfn main() { used(); }\n",
+        )
+        .expect("write lib.rs");
+        std::fs::write(
+            dir.path().join("tests/helper.rs"),
+            "fn only_in_tests() {}\n",
+        )
+        .expect("write tests/helper.rs");
+
+        let paths = vec![dir.path().to_path_buf()];
+        let without = analyze_dead_code(&paths, false).await.expect("analysis");
+        let with = analyze_dead_code(&paths, true).await.expect("analysis");
+
+        let count = |v: &Value| v["results"]["total_dead_code"].as_u64().unwrap_or(0);
+        assert!(
+            count(&with) > count(&without),
+            "include_tests made no difference: {} vs {}",
+            count(&without),
+            count(&with)
+        );
+        assert_eq!(
+            without["results"]["analyzer"].as_str(),
+            Some("multi-language-reachability"),
+            "the payload must name which analyzer produced these numbers"
+        );
+    }
 }

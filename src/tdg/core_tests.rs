@@ -452,9 +452,23 @@ fn test_project_score_aggregate_multiple() {
 
 #[test]
 fn test_project_score_average_empty() {
+    // This used to assert `structural_complexity == 25.0` with the comment
+    // "Default values" — 25.0 is the STRUCT DEFAULT, i.e. full marks for that
+    // category, awarded to a project in which no file was analysed at all.
+    // That is what made `pmat tdg <dir> --include-components` print a
+    // 25/20/20/15/10/10 breakdown summing to 100 next to a total of 0.0, with
+    // an empty directory producing the byte-identical breakdown. Nothing was
+    // measured, so every component must claim zero.
     let project = ProjectScore::default();
     let avg = project.average();
-    assert_eq!(avg.structural_complexity, 25.0); // Default values
+    assert_eq!(avg.total, 0.0);
+    assert_eq!(avg.confidence, 0.0);
+    assert_eq!(avg.structural_complexity, 0.0);
+    assert_eq!(avg.semantic_complexity, 0.0);
+    assert_eq!(avg.duplication_ratio, 0.0);
+    assert_eq!(avg.coupling_score, 0.0);
+    assert_eq!(avg.doc_coverage, 0.0);
+    assert_eq!(avg.consistency_score, 0.0);
 }
 
 #[test]

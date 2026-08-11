@@ -27,9 +27,16 @@ pub async fn handle_telemetry(
         return handle_reset_command().await;
     }
 
-    // Handle test event command
+    // Handle test event command.
+    //
+    // This must NOT return: the telemetry store lives in this process only, so
+    // an early return meant the recorded event was thrown away before anything
+    // could show it. `pmat telemetry --test-event` reported success and the very
+    // next `pmat telemetry --system` reported "Total Operations: 0", and even
+    // `--test-event --system` in one process printed nothing but the success
+    // line. Falling through is what makes the recorded event observable at all.
     if test_event {
-        return handle_test_event_command().await;
+        handle_test_event_command().await?;
     }
 
     // Handle display commands
@@ -50,20 +57,26 @@ async fn handle_reset_command() -> Result<()> {
         Ok(())
     }
 
+    // `--reset` is advertised in `--help` on every published binary, but on a
+    // release build it printed a warning marker and exited 0 — a request that
+    // did nothing reported as success. It has to fail.
     #[cfg(not(test))]
     {
-        println!(
-            "{}",
-            c::warn("Telemetry reset is only available in test builds")
-        );
-        Ok(())
+        anyhow::bail!("Telemetry reset is only available in test builds; nothing was reset")
     }
 }
 
 /// Handle test event recording command
+///
+/// The success line has to say WHERE the event went. Telemetry is an in-memory,
+/// process-local store with no persistence, so "recorded successfully" read as a
+/// promise that a later `pmat telemetry --system` would count it — it never can.
 async fn handle_test_event_command() -> Result<()> {
     record_test_telemetry_event().await?;
-    println!("{}", c::pass("Test telemetry event recorded successfully"));
+    println!(
+        "{}",
+        c::pass("Test telemetry event recorded in this process (telemetry is in-memory and is not persisted between runs)")
+    );
     Ok(())
 }
 
@@ -253,20 +266,17 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
         println!();
         println!("{}", c::dim("Raw Data (JSON):"));
         println!("{}", serde_json::to_string_pretty(&service_data)?);
+        Ok(())
     } else {
-        println!(
-            "{}",
-            c::fail(&format!(
-                "No telemetry data found for service: {service_name}"
-            ))
-        );
-        println!(
-            "{}",
-            c::dim("Available services can be seen with: pmat telemetry --system")
-        );
+        // This printed a ✗ failure marker and then exited 0, so `--service`
+        // naming a service that does not exist was indistinguishable from a
+        // successful report to anything scripting pmat. A named service that
+        // cannot be found is an error.
+        Err(anyhow::anyhow!(
+            "No telemetry data found for service: {service_name}. \
+             Available services can be seen with: pmat telemetry --system"
+        ))
     }
-
-    Ok(())
 }
 
 /// Show system overview (default command)
@@ -300,9 +310,16 @@ async fn show_system_overview() -> Result<()> {
 
     if system_data.services.is_empty() {
         println!("{}", c::dim("No service telemetry data available yet"));
+        // The old hint — "Use --test-event to generate sample telemetry data" —
+        // pointed at something that cannot work across invocations: counters
+        // live in this process only, so a separate `--test-event` run always
+        // leaves this report at zero.
         println!(
             "{}",
-            c::dim("Use --test-event to generate sample telemetry data")
+            c::dim(
+                "Telemetry counts operations performed by THIS process and is not persisted; \
+                 use `pmat telemetry --test-event --system` to see a sample event in one run"
+            )
         );
     } else {
         println!(
@@ -390,6 +407,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_command_system() {
         // Reset telemetry for clean test
         telemetry().reset();
@@ -403,6 +421,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_command_service() {
         // Reset telemetry for clean test
         telemetry().reset();
@@ -414,12 +433,36 @@ mod tests {
         let result = show_service_telemetry("telemetry_test_service").await;
         assert!(result.is_ok());
 
-        // Test non-existent service
+        // Test non-existent service. This used to assert `is_ok()` — it was
+        // pinning the defect: the handler printed a ✗ marker and returned Ok,
+        // so `pmat telemetry --service nonexistent` exited 0.
         let result = show_service_telemetry("non_existent_service").await;
-        assert!(result.is_ok()); // Should handle gracefully
+        let err = result.expect_err("an unknown service must not report success");
+        assert!(
+            err.to_string().contains("non_existent_service"),
+            "the error must name the service asked for: {err}"
+        );
+    }
+
+    /// `--service <unknown>` and, on a release build, `--reset` both printed a
+    /// failure marker and then exited 0. A request that could not be carried
+    /// out has to surface as an error.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn unknown_service_makes_the_whole_command_fail() {
+        telemetry().reset();
+        record_test_telemetry_event().await.unwrap();
+
+        let result =
+            handle_telemetry(false, Some("no_such_service".to_string()), false, false).await;
+        assert!(
+            result.is_err(),
+            "pmat telemetry --service no_such_service must exit non-zero"
+        );
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_telemetry_reset() {
         // Add some data
         record_test_telemetry_event().await.unwrap();
@@ -432,6 +475,29 @@ mod tests {
         let _system_data = telemetry().get_system_telemetry().await.unwrap();
         // Note: Assertion disabled due to test flakiness in parallel test environment
         // assert_eq!(system_data.system_metrics.total_operations, 0);
+    }
+
+    /// `--test-event` used to return before the display path ran, so the event
+    /// it had just recorded was invisible even in the SAME process — and the
+    /// command execution that the display path records never happened either.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_test_event_falls_through_to_the_display_path() {
+        telemetry().reset();
+
+        handle_telemetry(true, None, false, true).await.unwrap();
+
+        let data = telemetry().get_system_telemetry().await.unwrap();
+        assert!(
+            data.services.contains_key("telemetry_test_service"),
+            "the test event itself must be recorded: {:?}",
+            data.services.keys().collect::<Vec<_>>()
+        );
+        assert!(
+            data.services.contains_key("cli_telemetry_handler"),
+            "--test-event returned before the display path ran: {:?}",
+            data.services.keys().collect::<Vec<_>>()
+        );
     }
 
     /// IGNORED: Flaky in parallel test environment - telemetry state races

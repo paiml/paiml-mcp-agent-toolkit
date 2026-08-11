@@ -29,7 +29,25 @@ pub async fn handle_analyze_makefile(
     print_makefile_analysis_summary(&lint_result);
 
     // Filter violations by rules if specified
-    let filtered_violations = filter_makefile_violations(&lint_result.violations, &rules);
+    let mut filtered_violations = filter_makefile_violations(&lint_result.violations, &rules);
+
+    // --gnu-version used to reach nothing but the report header: a Makefile
+    // built from `.ONESHELL:`, `::=` and `!=` produced byte-identical reports
+    // for --gnu-version 3.0 and 4.4, while --help promised "GNU Make version to
+    // check compatibility against". The linter itself takes no version, so the
+    // compatibility check lives here, against the source it was pointed at.
+    if let Some(ref requested) = gnu_version {
+        let source = std::fs::read_to_string(&path)?;
+        let mut incompat = check_gnu_version_compatibility(&source, requested)?;
+        if rules.is_empty() || rules == vec!["all"] || rules.contains(&GNU_VERSION_RULE.to_string())
+        {
+            eprintln!(
+                "📌 {} construct(s) newer than GNU Make {requested}",
+                incompat.len()
+            );
+            filtered_violations.append(&mut incompat);
+        }
+    }
 
     // Format output based on requested format
     let content = format_makefile_output(
@@ -47,6 +65,103 @@ pub async fn handle_analyze_makefile(
     handle_makefile_fix_mode(fix, &filtered_violations);
 
     Ok(())
+}
+
+/// Rule name carried by every `--gnu-version` incompatibility.
+const GNU_VERSION_RULE: &str = "gnuversion";
+
+/// GNU Make constructs and the release that introduced them.
+///
+/// Deliberately short: each entry is a construct whose introducing release is
+/// documented in the GNU Make NEWS file, recognised by a shape that cannot be
+/// confused with a recipe's shell syntax. Guessing more would put fabricated
+/// violations in the report, which is the failure mode this whole check exists
+/// to correct.
+const GNU_MAKE_FEATURES: &[(&str, &str)] = &[
+    (".ONESHELL:", "3.82"),
+    (".NOTINTERMEDIATE:", "4.4"),
+    ("::=", "4.0"),
+    ("!=", "4.0"),
+    ("$(file ", "4.0"),
+    ("$(intcmp ", "4.4"),
+    ("$(let ", "4.4"),
+];
+
+/// Parse a `major.minor` GNU Make version.
+fn parse_gnu_version(version: &str) -> Result<(u32, u32)> {
+    let mut parts = version.trim().split('.');
+    let major = parts
+        .next()
+        .and_then(|p| p.parse::<u32>().ok())
+        .ok_or_else(|| anyhow::anyhow!("invalid --gnu-version '{version}': expected e.g. 4.4"))?;
+    let minor = parts.next().unwrap_or("0").parse::<u32>().unwrap_or(0);
+    Ok((major, minor))
+}
+
+/// Does `line` use `token` as Make syntax rather than as shell text?
+///
+/// Recipe lines are handed to the shell verbatim, where `!=` is a string
+/// comparison and `::=` never appears; reporting those would be noise.
+fn uses_make_construct(line: &str, token: &str) -> bool {
+    if line.starts_with('\t') {
+        return false;
+    }
+    let trimmed = line.trim_start();
+    match token {
+        "!=" | "::=" => match trimmed.find(token) {
+            // Only a variable assignment: the whole left-hand side must be a
+            // Make variable name.
+            Some(pos) => {
+                let lhs = trimmed.get(..pos).unwrap_or_default().trim_end();
+                !lhs.is_empty()
+                    && lhs
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+            }
+            None => false,
+        },
+        _ => trimmed.contains(token),
+    }
+}
+
+/// Violations for constructs newer than the requested GNU Make version.
+///
+/// # Errors
+/// Returns an error when `requested` is not a `major.minor` version.
+fn check_gnu_version_compatibility(
+    source: &str,
+    requested: &str,
+) -> Result<Vec<makefile_linter::Violation>> {
+    use crate::services::makefile_linter::ast::SourceSpan;
+
+    let target = parse_gnu_version(requested)?;
+    let mut violations = Vec::new();
+
+    for (idx, line) in source.lines().enumerate() {
+        for (token, introduced_in) in GNU_MAKE_FEATURES {
+            let needs = parse_gnu_version(introduced_in)?;
+            if needs <= target || !uses_make_construct(line, token) {
+                continue;
+            }
+            let column = line.find(token).unwrap_or(0) + 1;
+            violations.push(makefile_linter::Violation {
+                rule: GNU_VERSION_RULE.to_string(),
+                severity: makefile_linter::Severity::Warning,
+                span: SourceSpan {
+                    start: 0,
+                    end: 0,
+                    line: idx + 1,
+                    column,
+                },
+                message: format!(
+                    "`{token}` requires GNU Make {introduced_in}, but compatibility was requested against {requested}"
+                ),
+                fix_hint: None,
+            });
+        }
+    }
+
+    Ok(violations)
 }
 
 // Helper: Print analysis summary
@@ -75,6 +190,12 @@ fn filter_makefile_violations(
 }
 
 // Helper: Handle fix mode
+//
+// This function does no I/O — it never has. It announced that it was applying
+// automatic fixes and then reported five violations as having been fixed, over
+// a Makefile whose md5 was identical before and after the run. Nothing here
+// rewrites a Makefile yet, so nothing here may say it did; the wording now
+// matches what the code actually does.
 fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::Violation]) {
     if !fix {
         return;
@@ -90,14 +211,14 @@ fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::V
         return;
     }
 
-    eprintln!("\n🔧 Applying automatic fixes...");
+    eprintln!("\n🔧 Fixable violations (suggestions only — no file was modified):");
     let fix_count = fixable_violations.len();
     for violation in fixable_violations {
         if let Some(fix_hint) = &violation.fix_hint {
-            eprintln!("  ✅ {}: {}", violation.rule, fix_hint);
+            eprintln!("  • {}: {}", violation.rule, fix_hint);
         }
     }
-    eprintln!("✨ {fix_count} violations automatically fixed.");
+    eprintln!("💡 {fix_count} fixable violation(s); applying them automatically is not implemented, so the Makefile is unchanged.");
 }
 
 // Helper: Format makefile output based on format
@@ -370,6 +491,95 @@ pub fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
         makefile_linter::Severity::Warning => "warning",
         makefile_linter::Severity::Performance => "note",
         makefile_linter::Severity::Info => "note",
+    }
+}
+
+#[cfg(test)]
+mod makefile_gnu_version_tests {
+    use super::*;
+
+    /// The Makefile from the report: `.ONESHELL:` (3.82+), `::=` and `!=`
+    /// (4.0+). Checking it against 3.0 and against 4.4 used to produce
+    /// byte-identical reports because --gnu-version reached only the header.
+    const MODERN: &str = ".ONESHELL:\nX ::= hello\nY != echo dynamic\n.PHONY: all\nall:\n\t@echo hi\n";
+
+    #[test]
+    fn test_old_gnu_version_reports_incompatible_constructs() {
+        let v = check_gnu_version_compatibility(MODERN, "3.0").unwrap();
+        let messages: Vec<&str> = v.iter().map(|x| x.message.as_str()).collect();
+        assert_eq!(v.len(), 3, "expected .ONESHELL:, ::= and != — got {messages:?}");
+        assert!(messages.iter().any(|m| m.contains(".ONESHELL:")));
+        assert!(messages.iter().any(|m| m.contains("::=")));
+        assert!(messages.iter().any(|m| m.contains("!=")));
+        assert!(v.iter().all(|x| x.rule == GNU_VERSION_RULE));
+    }
+
+    #[test]
+    fn test_new_gnu_version_reports_nothing() {
+        assert!(check_gnu_version_compatibility(MODERN, "4.4")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn test_gnu_version_boundaries() {
+        // 3.81 predates .ONESHELL: (3.82); 4.0 covers ::= and != but not $(let).
+        assert_eq!(check_gnu_version_compatibility(MODERN, "3.81").unwrap().len(), 3);
+        assert!(check_gnu_version_compatibility(MODERN, "4.0")
+            .unwrap()
+            .is_empty());
+        let let_fn = "X = $(let a,1,$(a))\n";
+        assert_eq!(check_gnu_version_compatibility(let_fn, "4.0").unwrap().len(), 1);
+        assert!(check_gnu_version_compatibility(let_fn, "4.4")
+            .unwrap()
+            .is_empty());
+    }
+
+    /// `!=` inside a recipe is shell string comparison, not Make's shell
+    /// assignment; reporting it would be a fabricated violation.
+    #[test]
+    fn test_shell_inequality_in_a_recipe_is_not_a_make_construct() {
+        let src = "all:\n\t@if [ \"$$a\" != \"$$b\" ]; then echo differ; fi\n";
+        assert!(check_gnu_version_compatibility(src, "3.0")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn test_bad_gnu_version_is_rejected() {
+        assert!(check_gnu_version_compatibility(MODERN, "banana").is_err());
+        assert_eq!(parse_gnu_version("4").unwrap(), (4, 0));
+        assert_eq!(parse_gnu_version("3.81").unwrap(), (3, 81));
+    }
+
+    /// `--fix` must not claim to have modified a file it never opened.
+    #[test]
+    fn test_fix_mode_does_not_claim_to_have_written() {
+        // The wording is the fix; assert the old claim is gone from the source
+        // of truth the user sees.
+        let violations = vec![makefile_linter::Violation {
+            rule: "phonydeclared".to_string(),
+            severity: makefile_linter::Severity::Warning,
+            span: crate::services::makefile_linter::ast::SourceSpan {
+                start: 0,
+                end: 0,
+                line: 1,
+                column: 1,
+            },
+            message: "target 'a' is not declared .PHONY".to_string(),
+            fix_hint: Some("Add 'a' to .PHONY declaration".to_string()),
+        }];
+        handle_makefile_fix_mode(true, &violations);
+        handle_makefile_fix_mode(false, &violations);
+
+        // Split so this probe cannot match its own source text.
+        let claim = concat!("violations automatically", " fixed.");
+        let source = include_str!("makefile.rs");
+        assert!(
+            !source.contains(claim),
+            "--fix must not report violations as fixed while it writes no file"
+        );
+        assert!(source.contains("is not implemented, so the Makefile is unchanged"));
     }
 }
 

@@ -424,7 +424,6 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_human_arm() {
         let r = populated_report_with_blocks(1);
-        // Human/Summary/Detailed all go to format_human_output.
         let out = format_output(&r, crate::cli::DuplicateOutputFormat::Human).unwrap();
         let stripped = strip_ansi(&out);
         assert!(stripped.contains("Duplicate Code Analysis"));
@@ -433,9 +432,14 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_summary_and_detailed_arms() {
         let r = populated_report_with_blocks(1);
-        // Summary + Detailed share the human-output arm; verify both succeed.
-        format_output(&r, crate::cli::DuplicateOutputFormat::Summary).unwrap();
-        format_output(&r, crate::cli::DuplicateOutputFormat::Detailed).unwrap();
+        // Summary + Detailed used to share the human-output arm, which is what
+        // made all three formats byte-identical; each renders its own detail
+        // level now, so assert the difference rather than only that both
+        // succeed (see `summary_omits_the_per_block_listing`).
+        let summary = format_output(&r, crate::cli::DuplicateOutputFormat::Summary).unwrap();
+        let detailed = format_output(&r, crate::cli::DuplicateOutputFormat::Detailed).unwrap();
+        assert!(!strip_ansi(&summary).contains("Duplicate Blocks"));
+        assert!(strip_ansi(&detailed).contains("Duplicate Blocks"));
     }
 
     #[test]

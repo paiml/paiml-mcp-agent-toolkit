@@ -66,8 +66,24 @@ impl ValidateDocsCmd {
             eprintln!("⚡ Max concurrent: {}", config.max_concurrent_requests);
         }
 
-        let validator = DocValidator::new(config);
+        // Only text/plain, json and junit are actually rendered. Every other
+        // clap value used to fall through a catch-all to coloured human text,
+        // so `validate-docs -o yaml | yq` was fed ANSI escapes. Refuse the
+        // formats we cannot produce instead of silently downgrading them.
+        check_output_format_supported(&self.output)?;
+
         let root = self.root.clone().unwrap_or_else(|| PathBuf::from("."));
+        // A nonexistent --root used to walk to zero files and print
+        // "All documentation links are valid!" with exit 0 even under
+        // --fail-on-error: a gate that passes because it measured nothing.
+        if !root.is_dir() {
+            anyhow::bail!(
+                "path does not exist or is not a directory: {}",
+                root.display()
+            );
+        }
+
+        let validator = DocValidator::new(config);
         let summary = validator.validate_directory(&root).await?;
 
         // Output results
@@ -75,7 +91,10 @@ impl ValidateDocsCmd {
             OutputFormat::Text | OutputFormat::Plain => self.print_text_summary(&summary),
             OutputFormat::Json => self.print_json_summary(&summary)?,
             OutputFormat::Junit => self.print_junit_summary(&summary)?,
-            _ => self.print_text_summary(&summary),
+            ref other => {
+                // Unreachable: check_output_format_supported rejects these above.
+                anyhow::bail!("unsupported output format for validate-docs: {other}")
+            }
         }
 
         // Exit with error code if broken links found and fail_on_error is true
@@ -319,6 +338,22 @@ impl ValidateDocsCmd {
     }
 }
 
+/// Reject the `--output` values `validate-docs` has no renderer for.
+///
+/// The shared `OutputFormat` enum advertises nine values; this command
+/// implements four. yaml/markdown/csv/summary/table used to be accepted and
+/// rendered as coloured text, so machine consumers silently got ANSI escapes.
+pub(crate) fn check_output_format_supported(format: &OutputFormat) -> Result<()> {
+    match format {
+        OutputFormat::Text | OutputFormat::Plain | OutputFormat::Json | OutputFormat::Junit => {
+            Ok(())
+        }
+        other => anyhow::bail!(
+            "validate-docs does not support --output {other}; supported: text, plain, json, junit"
+        ),
+    }
+}
+
 fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -371,6 +406,78 @@ mod tests {
             .exclude_patterns
             .contains(&"custom_exclude".to_string()));
         assert_eq!(config.exclude_patterns.len(), 5);
+    }
+
+    fn cmd_with(root: Option<PathBuf>, output: OutputFormat) -> ValidateDocsCmd {
+        ValidateDocsCmd {
+            root,
+            config: None,
+            fail_on_error: true,
+            output,
+            max_concurrent: 1,
+            timeout: 1,
+            max_retries: 0,
+            exclude: vec![],
+            verbose: false,
+        }
+    }
+
+    // Regression: a nonexistent --root walked zero files and printed
+    // "All documentation links are valid!" with exit 0.
+    #[tokio::test]
+    async fn test_execute_nonexistent_root_is_an_error() {
+        let cmd = cmd_with(
+            Some(PathBuf::from("/does/not/exist/pmat-doc-validate")),
+            OutputFormat::Text,
+        );
+        let err = cmd.execute().await.expect_err("missing root must not pass");
+        assert!(
+            err.to_string().contains("does not exist"),
+            "unexpected error: {err}"
+        );
+    }
+
+    // Regression: yaml/markdown/csv/summary/table were accepted and rendered
+    // as ANSI-coloured text by a catch-all match arm.
+    #[tokio::test]
+    async fn test_execute_rejects_unimplemented_output_format() {
+        let dir = tempfile::tempdir().unwrap();
+        let cmd = cmd_with(Some(dir.path().to_path_buf()), OutputFormat::Yaml);
+        let err = cmd
+            .execute()
+            .await
+            .expect_err("yaml has no renderer and must be rejected");
+        assert!(
+            err.to_string().contains("does not support --output yaml"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn test_check_output_format_supported_matrix() {
+        for ok in [
+            OutputFormat::Text,
+            OutputFormat::Plain,
+            OutputFormat::Json,
+            OutputFormat::Junit,
+        ] {
+            assert!(
+                check_output_format_supported(&ok).is_ok(),
+                "{ok} must render"
+            );
+        }
+        for bad in [
+            OutputFormat::Yaml,
+            OutputFormat::Markdown,
+            OutputFormat::Csv,
+            OutputFormat::Summary,
+            OutputFormat::Table,
+        ] {
+            assert!(
+                check_output_format_supported(&bad).is_err(),
+                "{bad} has no renderer and must be refused, not downgraded to text"
+            );
+        }
     }
 
     #[test]

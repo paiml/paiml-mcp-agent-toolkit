@@ -17,6 +17,35 @@ fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, Tem
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))
 }
 
+/// Whether `path` is excluded by the project's gitignore.
+///
+/// The context/dag walk used the non-recursive `gitignore.matched(path, false)`.
+/// A directory pattern like `.claude/worktrees/` never matches a file nested
+/// inside it, so every file under an ignored directory survived the filter:
+/// `analyze dag` on this repo scanned past 10000 files, hit the
+/// "Large project detected" cap, and rendered nodes rooted in
+/// `.claude/worktrees/...` — while `analyze defects` on the same tree saw 4260
+/// files. `matched_path_or_any_parents` consults the parent directories, which
+/// is what a `dir/` pattern actually means.
+///
+/// The path is made relative to the walk root first: `matched_path_or_any_parents`
+/// asserts its argument is under the matcher root, and a relative path can
+/// never trip that assert.
+fn is_gitignored(
+    gitignore: &ignore::gitignore::Gitignore,
+    root_path: &Path,
+    path: &Path,
+    is_dir: bool,
+) -> bool {
+    let relative = path.strip_prefix(root_path).unwrap_or(path);
+    if relative.as_os_str().is_empty() {
+        return false; // the walk root itself is never "ignored"
+    }
+    gitignore
+        .matched_path_or_any_parents(relative, is_dir)
+        .is_ignore()
+}
+
 /// Optimized file scanner for dead code - only scans Rust source files
 async fn scan_rust_files_only(
     root_path: &Path,
@@ -33,10 +62,20 @@ async fn scan_rust_files_only(
         .follow_links(false)
         .max_depth(MAX_DEPTH)
         .into_iter()
+        // Prune ignored directories instead of walking into them and
+        // discarding their files one by one.
+        .filter_entry(|entry| {
+            !is_gitignored(
+                gitignore,
+                root_path,
+                entry.path(),
+                entry.file_type().is_dir(),
+            )
+        })
         .filter_map(std::result::Result::ok)
         .filter(|entry| {
             let path = entry.path();
-            if path.is_dir() || gitignore.matched(path, false).is_ignore() {
+            if path.is_dir() {
                 return false;
             }
             // Only Rust files
@@ -111,11 +150,19 @@ async fn scan_and_analyze_files(
         .follow_links(false)
         .max_depth(MAX_DEPTH) // TDD Fix: Limit directory traversal depth
         .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| {
-            let path = entry.path();
-            !path.is_dir() && !gitignore.matched(path, false).is_ignore()
+        // Prune ignored directories at the directory level: descending into
+        // them is what pushed this walk past the MAX_FILES cap on repos with a
+        // large gitignored tree (e.g. `.claude/worktrees/`).
+        .filter_entry(|entry| {
+            !is_gitignored(
+                gitignore,
+                root_path,
+                entry.path(),
+                entry.file_type().is_dir(),
+            )
         })
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| !entry.path().is_dir())
         .take(MAX_FILES) // TDD Fix: Limit total files analyzed
         .map(|entry| {
             file_count += 1;

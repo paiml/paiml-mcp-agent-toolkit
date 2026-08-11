@@ -355,7 +355,12 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["qd"])]
     Qdd(QddCommands),
 
-    /// Run interactive demo of all capabilities
+    /// [NOT AVAILABLE in the default build] Interactive demo — needs --features demo.
+    ///
+    /// `cargo install pmat` produces a build in which every demo mode (including
+    /// `--cli`) exits 1 with "Demo feature not enabled", so all the flags below
+    /// are inert. Listed the same way `serve` is: an entry that cannot run must
+    /// say so in the command list rather than advertise itself as working.
     #[command(visible_aliases = &["d", "show"])]
     Demo {
         /// Repository path (defaults to current directory)
@@ -440,6 +445,20 @@ pub enum Commands {
     RedTeam(crate::cli::handlers::RedTeamCmd),
 
     /// Organizational intelligence analysis (GitHub org defect patterns)
+    ///
+    /// `cargo install pmat` produces a build in which every `org` subcommand
+    /// exits with an error: `org localize` is compiled out (its whole handler is
+    /// `#[cfg(feature = "org-intelligence")]`) and `org analyze` is gone for
+    /// good, its upstream API having been removed in aprender-orchestrate 0.41.
+    /// Labelled the way `serve` and `demo` are: an entry the shipped binary
+    /// cannot run must say so in the command list rather than advertise itself
+    /// as working.
+    #[cfg_attr(
+        not(feature = "org-intelligence"),
+        command(
+            about = "[NOT AVAILABLE in the default build] Organizational intelligence — needs --features org-intelligence"
+        )
+    )]
     #[command(subcommand, visible_aliases = &["organization"])]
     Org(OrgCommands),
 
@@ -759,7 +778,7 @@ pub enum Commands {
         hardware: Option<PathBuf>,
     },
 
-    /// Infrastructure Score (0-100 + 10 bonus) for CI/CD quality
+    /// Infrastructure Score (0-100 + 12 bonus) for CI/CD quality
     ///
     /// Evaluates GitHub Actions workflows across 5 dimensions:
     /// - Workflow Architecture (25 pts)
@@ -767,7 +786,7 @@ pub enum Commands {
     /// - Quality Pipeline (20 pts)
     /// - Deployment & Release (15 pts)
     /// - Supply Chain Security (15 pts)
-    /// - Provable Contracts (10 pts bonus)
+    /// - Provable Contracts (12 pts bonus: PV-01..PV-05 = 3+3+2+2+2)
     ///
     /// Hard cutoff: <90 = auto-fail.
     #[command(name = "infra-score", visible_aliases = &["infra", "ci-score"])]
@@ -1643,4 +1662,88 @@ pub enum Commands {
         #[command(subcommand)]
         command: StackCommands,
     },
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod command_availability_tests {
+    use super::Commands;
+    use clap::Subcommand;
+
+    fn about_of(name: &str) -> String {
+        let name = name.to_string();
+        crate::cli::commands::on_big_stack(move || {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let about = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == name)
+                .unwrap_or_else(|| panic!("{name} subcommand must exist"))
+                .get_about()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            about
+        })
+    }
+
+    /// The default (`cargo install pmat`) build cannot run any demo mode, yet
+    /// the command list advertised "Run interactive demo of all capabilities"
+    /// while the sibling `serve` entry was explicitly relabelled. A command list
+    /// that promises a working command the shipped binary cannot run is the
+    /// defect.
+    #[test]
+    fn demo_is_labelled_unavailable_like_serve() {
+        let demo = about_of("demo");
+        assert!(
+            demo.contains("NOT AVAILABLE") || demo.contains("NOT IMPLEMENTED"),
+            "demo must be labelled unavailable in the command list, got: {demo}"
+        );
+        assert!(
+            demo.contains("--features demo"),
+            "the label must name the feature that would enable it, got: {demo}"
+        );
+
+        let serve = about_of("serve");
+        assert!(serve.contains("NOT IMPLEMENTED"), "regression guard: {serve}");
+    }
+
+    /// Same defect as `demo`: in the default build every `org` subcommand exits
+    /// with an error (`localize` is compiled out, `analyze` was removed
+    /// upstream), yet the command list advertised it as a working feature.
+    #[cfg(not(feature = "org-intelligence"))]
+    #[test]
+    fn org_is_labelled_unavailable_in_the_default_build() {
+        let org = about_of("org");
+        assert!(
+            org.contains("NOT AVAILABLE") || org.contains("NOT IMPLEMENTED"),
+            "org must be labelled unavailable in the command list, got: {org}"
+        );
+        assert!(
+            org.contains("--features org-intelligence"),
+            "the label must name the feature that would enable it, got: {org}"
+        );
+    }
+
+    /// `org analyze` is dead with the feature ON as well — its upstream API was
+    /// deleted — so its own entry must say so in every build.
+    #[test]
+    fn org_analyze_is_labelled_removed_in_every_build() {
+        let analyze = crate::cli::commands::on_big_stack(|| {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let about = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "org")
+                .expect("org subcommand must exist")
+                .get_subcommands()
+                .find(|s| s.get_name() == "analyze")
+                .expect("org analyze subcommand must exist")
+                .get_about()
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default();
+            about
+        });
+        assert!(
+            analyze.contains("REMOVED"),
+            "org analyze must be labelled removed, got: {analyze}"
+        );
+    }
 }

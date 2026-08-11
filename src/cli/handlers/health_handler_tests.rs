@@ -536,4 +536,26 @@ mod r5_classifier_tests {
         assert_eq!(violations, 2);
         assert_eq!(max, 500);
     }
+
+    /// An all-skipped run measured nothing, but `healthy` was `failed == 0`,
+    /// so `pmat maintain health` in an empty directory printed
+    /// "✨ Project is healthy!" and exited 0 off a single skipped Build check.
+    #[tokio::test]
+    async fn an_all_skipped_run_is_not_reported_healthy() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        // quick => Build only, and with no Cargo.toml the Build check skips.
+        let config = HealthCheckConfig::new(true, false, false, false, false, false, false);
+
+        let report = run_health_checks_internal(&tmp.path().to_path_buf(), &config)
+            .await
+            .expect("health run");
+
+        assert_eq!(report.summary.total_checks, 1);
+        assert_eq!(report.summary.skipped, 1);
+        assert_eq!(report.summary.failed, 0);
+        assert!(
+            !report.healthy,
+            "a run in which every check was skipped measured nothing and must not pass"
+        );
+    }
 }

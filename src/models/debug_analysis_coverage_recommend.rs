@@ -332,6 +332,9 @@
     fn test_evidence_summary_serialization_roundtrip() {
         let summary = EvidenceSummary {
             complexity_violations: 3,
+            // Same reason as `tdg_measured`: a count of 0 must be readable as
+            // "measured none" or "measured nothing at all".
+            complexity_measured: true,
             satd_markers: 7,
             tdg_score: 65.5,
             // A score is only meaningful alongside the flag saying it was
@@ -339,6 +342,7 @@
             tdg_measured: true,
             git_churn_high: true,
             evoscore_trajectory: 0.0,
+            evoscore_measured: false,
             coverage_delta: 0.0,
         };
 

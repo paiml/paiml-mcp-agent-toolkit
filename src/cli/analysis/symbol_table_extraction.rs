@@ -231,8 +231,11 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
 
     // Function patterns for different languages
     let patterns = vec![
+        // `const fn` is a function declaration, not a constant. Without the
+        // optional `const\s+` here, `const fn answer()` matched no function
+        // pattern at all and `answer` was missing from the table entirely.
         (
-            Regex::new(r"(?m)^(?:pub\s+)?(?:async\s+)?fn\s+(\w+)")?,
+            Regex::new(r"(?m)^(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)")?,
             SymbolKind::Function,
         ),
         (Regex::new(r"(?m)^class\s+(\w+)")?, SymbolKind::Class),
@@ -250,12 +253,20 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
         // The old constant pattern was `^const\s+(\w+)\s*=`, which a Rust
         // `pub const KONST: u32 = 1;` fails twice over (the `pub`, and the type
         // annotation before `=`). This one covers both it and JS `const x = …`.
+        //
+        // Requiring the `:` (Rust type annotation) or `=` (JS initialiser) that
+        // must follow a real constant's name is what keeps `const fn answer()`
+        // out: the bare `const\s+(\w+)` form captured the `fn` *keyword* as a
+        // constant named "fn", which then out-ranked every real identifier in
+        // `most_referenced` (54 266 "references" on pmat itself).
         (
-            Regex::new(r"(?m)^(?:pub\s+)?const\s+(\w+)")?,
+            Regex::new(r"(?m)^(?:pub\s+)?const\s+(\w+)\s*[:=]")?,
             SymbolKind::Constant,
         ),
+        // Same keyword-capture trap as `const fn`: `static mut COUNTER` used to
+        // yield a symbol literally named "mut".
         (
-            Regex::new(r"(?m)^(?:pub\s+)?static\s+(\w+)")?,
+            Regex::new(r"(?m)^(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*[:=]")?,
             SymbolKind::Variable,
         ),
         (
@@ -374,4 +385,54 @@ fn find_most_referenced(symbols: &[Symbol], limit: usize) -> (Vec<(String, usize
         refs.truncate(limit);
     }
     (refs, total)
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod keyword_capture_tests {
+    use super::*;
+
+    /// `const fn answer()` used to produce a `Constant` named "fn" (the keyword
+    /// captured by the constant regex) and no `answer` at all, because the
+    /// function regex had no `const` alternative. Repo-wide that bogus "fn"
+    /// topped `most_referenced` with 54 266 textual "references".
+    #[test]
+    fn const_fn_is_a_function_named_after_the_fn_not_the_keyword() {
+        let content = "const fn answer() -> i32 { 42 }\npub fn other() -> i32 { answer() }\n";
+        let symbols = extract_symbols_simple(content, "lib.rs").unwrap();
+
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            !names.contains(&"fn"),
+            "the `fn` keyword must never become a symbol: {names:?}"
+        );
+        assert!(
+            symbols
+                .iter()
+                .any(|s| s.name == "answer" && matches!(s.kind, SymbolKind::Function)),
+            "`const fn answer` must be a Function named answer: {names:?}"
+        );
+    }
+
+    /// Same keyword-capture trap on the `static` pattern.
+    #[test]
+    fn static_mut_is_named_after_the_variable_not_the_mut_keyword() {
+        let content = "pub static mut COUNTER: u32 = 0;\n";
+        let symbols = extract_symbols_simple(content, "lib.rs").unwrap();
+
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(!names.contains(&"mut"), "captured the keyword: {names:?}");
+        assert!(names.contains(&"COUNTER"), "lost the variable: {names:?}");
+    }
+
+    /// The constant/variable patterns must still find the ordinary forms.
+    #[test]
+    fn plain_constants_and_statics_are_still_extracted() {
+        let content = "pub const KONST: u32 = 1;\npub static STAT: u32 = 2;\nconst js = 3;\n";
+        let symbols = extract_symbols_simple(content, "lib.rs").unwrap();
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.contains(&"KONST"), "{names:?}");
+        assert!(names.contains(&"STAT"), "{names:?}");
+        assert!(names.contains(&"js"), "{names:?}");
+    }
 }

@@ -95,6 +95,27 @@ impl SelfDiagnostic {
         }
     }
 
+    /// Reject `--only`/`--skip` values that name no check.
+    ///
+    /// A misspelled `--only` matched nothing, so the run silently executed ZERO
+    /// checks and still exited 0, reporting "Total: 0 / Success Rate: 0.0%" —
+    /// a diagnostic that verified nothing while looking like it had run. A
+    /// filter that selects nothing is a typo, not a result.
+    fn validate_filters(&self, args: &DiagnoseArgs) -> Result<()> {
+        let known: Vec<&str> = self.tests.iter().map(|t| t.name()).collect();
+        for (flag, requested) in [("--only", &args.only), ("--skip", &args.skip)] {
+            for name in requested {
+                if !known.contains(&name.as_str()) {
+                    anyhow::bail!(
+                        "unknown {flag} feature test '{name}'. Available: {}",
+                        known.join(", ")
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn compute_summary(&self, features: &BTreeMap<String, FeatureResult>) -> DiagnosticSummary {
         let total = features.len();
         let mut passed = 0;
@@ -118,10 +139,17 @@ impl SelfDiagnostic {
             degraded,
             skipped,
             all_passed: failed == 0 && degraded == 0,
-            success_rate: if total > 0 {
-                (passed as f64 / total as f64) * 100.0
-            } else {
-                0.0
+            // Rate over the checks that RAN. Dividing by `total` counted the
+            // skipped ones as failures, so `--skip ast.rust` printed
+            // "Success Rate: 87.5%" beside "Failed: 0" / all_passed: true.
+            success_rate: {
+                let executed = total - skipped;
+                if executed > 0 {
+                    #[allow(clippy::cast_precision_loss)]
+                    Some((passed as f64 / executed as f64) * 100.0)
+                } else {
+                    None
+                }
             },
         }
     }
@@ -209,6 +237,7 @@ impl SelfDiagnostic {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
     let diagnostic = SelfDiagnostic::new();
+    diagnostic.validate_filters(&args)?;
     let report = diagnostic.run_diagnostic(&args).await;
 
     match args.format {
@@ -298,7 +327,12 @@ fn print_pretty_report(report: &DiagnosticReport) {
     println!(
         "  {}: {}",
         c::label("Success Rate"),
-        c::pct(report.summary.success_rate, 100.0, 80.0)
+        match report.summary.success_rate {
+            Some(rate) => c::pct(rate, 100.0, 80.0),
+            // No check executed, so there is no rate; "0.0%" read as a total
+            // failure of checks that were never run.
+            None => c::dim("not measured (no check executed)"),
+        }
     );
 
     if let Some(ctx) = &report.error_context {

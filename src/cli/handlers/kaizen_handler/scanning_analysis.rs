@@ -26,41 +26,74 @@ fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
         Err(_) => return Ok(Vec::new()),
     };
 
+    Ok(comply_findings_from_json(&json))
+}
+
+/// Turn a `pmat comply check -f json` report into kaizen findings.
+///
+/// The report's checks carry `name`, `status` and `severity` — there is no `id`
+/// field, and the statuses are capitalised (`Pass`/`Warn`/`Fail`/`Skip`).
+/// Reading `id` and comparing the status against lowercase `"pass"`/`"skip"`
+/// meant every passing check came back as a HIGH finding called
+/// `comply::CB-???`: 154 of them on an empty directory, which kaizen (without
+/// `--dry-run`) would then commit and file as GitHub issues.
+fn comply_findings_from_json(json: &serde_json::Value) -> Vec<KaizenFinding> {
     let mut findings = Vec::new();
 
-    if let Some(checks) = json.get("checks").and_then(|c| c.as_array()) {
-        for check in checks {
-            let status = check.get("status").and_then(|s| s.as_str()).unwrap_or("");
-            if status == "pass" || status == "skip" {
-                continue;
-            }
+    let Some(checks) = json.get("checks").and_then(|c| c.as_array()) else {
+        return findings;
+    };
 
-            let id = check.get("id").and_then(|s| s.as_str()).unwrap_or("CB-???");
-            let msg = check
-                .get("message")
-                .and_then(|s| s.as_str())
-                .unwrap_or("Compliance violation");
-
-            findings.push(KaizenFinding {
-                source: FindingSource::Comply,
-                severity: FindingSeverity::High,
-                category: format!("comply::{id}"),
-                message: msg.to_string(),
-                file: None,
-                auto_fixable: false,
-                agent_fixable: true,
-                fix_applied: false,
-                agent_prompt: Some(format!(
-                    "Fix PMAT compliance violation {id}: {msg}. \
-                     Run `pmat comply check` after fixing to verify."
-                )),
-                suspiciousness_score: None,
-                crate_name: None,
-            });
+    for check in checks {
+        let status = check.get("status").and_then(|s| s.as_str()).unwrap_or("");
+        if status.eq_ignore_ascii_case("pass") || status.eq_ignore_ascii_case("skip") {
+            continue;
         }
+
+        // A check we cannot name is a check nobody can act on — skip it rather
+        // than emit a placeholder rule id.
+        let Some(id) = check.get("name").and_then(|s| s.as_str()) else {
+            continue;
+        };
+        let msg = check
+            .get("message")
+            .and_then(|s| s.as_str())
+            .unwrap_or("Compliance violation");
+
+        // Report the severity comply itself assigned instead of calling
+        // everything High.
+        let severity = match check
+            .get("severity")
+            .and_then(|s| s.as_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "critical" => FindingSeverity::Critical,
+            "error" => FindingSeverity::High,
+            "info" => FindingSeverity::Low,
+            _ => FindingSeverity::Medium,
+        };
+
+        findings.push(KaizenFinding {
+            source: FindingSource::Comply,
+            severity,
+            category: format!("comply::{id}"),
+            message: msg.to_string(),
+            file: None,
+            auto_fixable: false,
+            agent_fixable: true,
+            fix_applied: false,
+            agent_prompt: Some(format!(
+                "Fix PMAT compliance violation {id}: {msg}. \
+                 Run `pmat comply check` after fixing to verify."
+            )),
+            suspiciousness_score: None,
+            crate_name: None,
+        });
     }
 
-    Ok(findings)
+    findings
 }
 
 /// Scan for known defect patterns (batuta bug-hunt: unwrap, panic, unsafe, etc.)
@@ -319,4 +352,73 @@ fn scan_custom_scores(path: &Path) -> Vec<KaizenFinding> {
     }
 
     findings
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod comply_json_tests {
+    use super::*;
+
+    /// Shaped exactly like `pmat comply check -f json` output: capitalised
+    /// statuses, a `name` (never an `id`), and a per-check severity.
+    fn comply_report() -> serde_json::Value {
+        serde_json::json!({
+            "checks": [
+                {"name": "version-compliance", "status": "Pass",
+                 "message": "up to date", "severity": "Info"},
+                {"name": "hooks-installed", "status": "Skip",
+                 "message": "no .git dir", "severity": "Info"},
+                {"name": "CB-125-B binding scope", "status": "Warn",
+                 "message": "2 contracts unbound", "severity": "Warning"},
+                {"name": "quality-gate", "status": "Fail",
+                 "message": "complexity over budget", "severity": "Error"},
+            ]
+        })
+    }
+
+    #[test]
+    fn test_comply_findings_skip_passing_and_skipped_checks() {
+        // Regression: statuses are capitalised, so the lowercase comparison
+        // turned Pass/Skip checks into findings.
+        let findings = comply_findings_from_json(&comply_report());
+        assert_eq!(findings.len(), 2);
+        assert!(findings
+            .iter()
+            .all(|f| !f.category.contains("version-compliance")));
+        assert!(findings
+            .iter()
+            .all(|f| !f.category.contains("hooks-installed")));
+    }
+
+    #[test]
+    fn test_comply_findings_use_the_check_name_not_a_placeholder() {
+        let findings = comply_findings_from_json(&comply_report());
+        assert!(findings.iter().all(|f| !f.category.contains("CB-???")));
+        assert!(findings
+            .iter()
+            .any(|f| f.category == "comply::CB-125-B binding scope"));
+    }
+
+    #[test]
+    fn test_comply_findings_carry_the_reports_own_severity() {
+        let findings = comply_findings_from_json(&comply_report());
+        let warn = findings
+            .iter()
+            .find(|f| f.category.contains("binding scope"))
+            .expect("Warn check must produce a finding");
+        assert_eq!(warn.severity, FindingSeverity::Medium);
+        let fail = findings
+            .iter()
+            .find(|f| f.category.contains("quality-gate"))
+            .expect("Fail check must produce a finding");
+        assert_eq!(fail.severity, FindingSeverity::High);
+    }
+
+    #[test]
+    fn test_comply_findings_drop_unnamed_checks() {
+        let json = serde_json::json!({
+            "checks": [{"status": "Fail", "message": "boom", "severity": "Error"}]
+        });
+        assert!(comply_findings_from_json(&json).is_empty());
+    }
 }

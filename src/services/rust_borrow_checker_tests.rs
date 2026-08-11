@@ -148,7 +148,15 @@ mod tests {
 
         assert_eq!(annotation.property_proven, PropertyType::MemorySafety);
         assert_eq!(annotation.method, VerificationMethod::BorrowChecker);
-        assert_eq!(annotation.confidence_level, ConfidenceLevel::High);
+        // This used to require High -- "machine-checkable proof" per the enum's
+        // own docs -- for a claim produced by a syn walk that only looks at the
+        // signature and lists two unverified assumptions. Medium is "sound
+        // static analysis with assumptions", which is what this is.
+        assert_eq!(annotation.confidence_level, ConfidenceLevel::Medium);
+        assert!(
+            !annotation.assumptions.is_empty(),
+            "a claim that rests on assumptions cannot be a machine-checked proof"
+        );
 
         // This used to require tool_name == "rustc-stable", pinning a false
         // provenance claim: pmat never invokes rustc, it parses with syn and
@@ -170,7 +178,10 @@ mod tests {
 
         assert_eq!(annotation.property_proven, PropertyType::ThreadSafety);
         assert_eq!(annotation.method, VerificationMethod::BorrowChecker);
-        assert_eq!(annotation.confidence_level, ConfidenceLevel::High);
+        // Was High. The evidence is `type_likely_implements_send_sync`, which
+        // matches parameter type names against a hardcoded allowlist -- Low
+        // ("heuristic-based") by the enum's own definition.
+        assert_eq!(annotation.confidence_level, ConfidenceLevel::Low);
     }
 
     /// DETERMINISM regression (round-3 sweep): `annotation_id` was
@@ -214,5 +225,33 @@ mod tests {
             "a different property at the same site must not collide"
         );
     }
-}
 
+    /// Round-5 dogfood: `analyze proof-annotations` reported
+    /// "High confidence: N (100.0%)" over this repo and `--high-confidence-only`
+    /// removed nothing, because every production construction site wrote
+    /// `ConfidenceLevel::High`. Nothing pmat emits here is a machine-checked
+    /// proof, so no factory may claim the level reserved for one, and the level
+    /// must actually vary with the strength of the evidence.
+    #[test]
+    fn confidence_is_not_one_hardcoded_level_for_every_annotation() {
+        let checker = RustBorrowChecker::default();
+        let loc = seed_location();
+
+        let levels = [
+            checker.memory_safety_annotation(&loc).confidence_level,
+            checker.create_thread_safety_annotation(&loc).confidence_level,
+            checker.const_fn_termination(&loc).confidence_level,
+        ];
+
+        assert!(
+            !levels.contains(&ConfidenceLevel::High),
+            "pmat never runs a checker, so it cannot claim a machine-checkable proof: {levels:?}"
+        );
+        let distinct: std::collections::BTreeSet<_> =
+            levels.iter().map(|l| format!("{l:?}")).collect();
+        assert!(
+            distinct.len() > 1,
+            "confidence must follow the evidence, not be one constant: {levels:?}"
+        );
+    }
+}

@@ -71,12 +71,12 @@ fn write_summary_header(output: &mut String, total_functions: usize) -> Result<(
 fn write_scoring_model(output: &mut String) -> Result<()> {
     use crate::cli::colors as c;
     writeln!(output, "\n{}\n", c::subheader("Scoring Model (4 factors, equally weighted)"))?;
-    writeln!(output, "  {}{:<14}{} {:<14} {:<14} 0%", c::BOLD, "Factor", c::RESET, "100%", "50%")?;
+    writeln!(output, "  {}{:<14}{} {:<14} {:<14} 0%", c::seq(c::BOLD), "Factor", c::seq(c::RESET), "100%", "50%")?;
     writeln!(output, "  {}", c::separator())?;
-    writeln!(output, "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}", "Nullability", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
-    writeln!(output, "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}", "Bounds", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
-    writeln!(output, "  {:<14} {}NoAlias{}       {:<14} {}MayAlias/Unknown{}", "Aliasing", c::GREEN, c::RESET, "-", c::RED, c::RESET)?;
-    writeln!(output, "  {:<14} {}Pure{}          {}ReadOnly(70){} {}WriteGlobal{}", "Purity", c::GREEN, c::RESET, c::YELLOW, c::RESET, c::RED, c::RESET)?;
+    writeln!(output, "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}", "Nullability", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
+    writeln!(output, "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}", "Bounds", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
+    writeln!(output, "  {:<14} {}NoAlias{}       {:<14} {}MayAlias/Unknown{}", "Aliasing", c::seq(c::GREEN), c::seq(c::RESET), "-", c::seq(c::RED), c::seq(c::RESET))?;
+    writeln!(output, "  {:<14} {}Pure{}          {}ReadOnly(70){} {}WriteGlobal{}", "Purity", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
     Ok(())
 }
 
@@ -113,7 +113,7 @@ fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> R
     for (name, count) in &counts {
         let pct_val = (*count as f64 / total as f64) * 100.0;
         writeln!(output, "  {}{}{}: {}/{} ({})",
-            c::BOLD, name, c::RESET,
+            c::seq(c::BOLD), name, c::seq(c::RESET),
             c::number(&count.to_string()),
             c::number(&total.to_string()),
             c::pct(pct_val, 80.0, 50.0),
@@ -152,7 +152,7 @@ fn write_lowest_scoring_functions(
             .map(|p| format!("{:?}({:.0}%)", p.property_type, p.confidence * 100.0))
             .collect();
         let props_str = if props.is_empty() {
-            format!("{}none verified{}", c::DIM, c::RESET)
+            format!("{}none verified{}", c::seq(c::DIM), c::seq(c::RESET))
         } else {
             props.join(", ")
         };
@@ -173,9 +173,9 @@ fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> 
     let (high_count, medium_count, low_count) = categorize_scores(summaries);
 
     writeln!(output, "\n{}", c::subheader("Score Distribution:"))?;
-    writeln!(output, "  {}High{} ({}\u{2265}80%{}): {} functions", c::GREEN, c::RESET, c::GREEN, c::RESET, c::number(&high_count.to_string()))?;
-    writeln!(output, "  {}Medium{} ({}50-79%{}): {} functions", c::YELLOW, c::RESET, c::YELLOW, c::RESET, c::number(&medium_count.to_string()))?;
-    writeln!(output, "  {}Low{} ({}<50%{}): {} functions", c::RED, c::RESET, c::RED, c::RESET, c::number(&low_count.to_string()))?;
+    writeln!(output, "  {}High{} ({}\u{2265}80%{}): {} functions", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::GREEN), c::seq(c::RESET), c::number(&high_count.to_string()))?;
+    writeln!(output, "  {}Medium{} ({}50-79%{}): {} functions", c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::number(&medium_count.to_string()))?;
+    writeln!(output, "  {}Low{} ({}<50%{}): {} functions", c::seq(c::RED), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET), c::number(&low_count.to_string()))?;
 
     Ok(())
 }
@@ -249,7 +249,14 @@ fn write_top_files_list(
     top_files: usize,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    let files_to_show = if top_files == 0 { 10 } else { top_files };
+    // `--help` documents `--top-files <N>` as "0 = all", but 0 was remapped to
+    // the default 10 here, so asking for every file silently truncated the
+    // ranking at ten and the dropped files were never mentioned. 0 means all.
+    let files_to_show = if top_files == 0 {
+        file_avg_scores.len()
+    } else {
+        top_files
+    };
 
     for (i, (file_path, avg_score, function_count)) in
         file_avg_scores.iter().take(files_to_show).enumerate()
@@ -266,4 +273,105 @@ fn write_top_files_list(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod plain_output_tests {
+    //! `--color never`, `NO_COLOR=1` and a redirected stdout all left 17
+    //! escape-bearing lines in `analyze provability`'s summary: the renderer
+    //! interpolated the raw `pub const` sequences, which are `const` and so
+    //! cannot consult `colors_enabled()`. Only `--color always` differed —
+    //! i.e. the flag parsed and only its "always" branch did anything.
+    use super::*;
+    use crate::services::lightweight_provability_analyzer::{FunctionId, ProofSummary};
+
+    fn fixture() -> (Vec<FunctionId>, Vec<ProofSummary>) {
+        let ids = vec![
+            FunctionId {
+                file_path: "src/main.rs".to_string(),
+                function_name: "high".to_string(),
+                line_number: 10,
+            },
+            FunctionId {
+                file_path: "src/lib.rs".to_string(),
+                function_name: "low".to_string(),
+                line_number: 20,
+            },
+        ];
+        let summaries = vec![
+            ProofSummary {
+                provability_score: 0.9,
+                analysis_time_us: 1000,
+                verified_properties: vec![],
+                version: 1,
+            },
+            ProofSummary {
+                provability_score: 0.3,
+                analysis_time_us: 500,
+                verified_properties: vec![],
+                version: 1,
+            },
+        ];
+        (ids, summaries)
+    }
+
+    #[test]
+    fn summary_is_plain_text_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+
+        let (ids, summaries) = fixture();
+        let rendered = format_provability_summary(&ids, &summaries, 5).expect("render");
+
+        assert!(
+            !rendered.contains('\u{1b}'),
+            "no ANSI escape may reach a redirected stdout: {:?}",
+            rendered
+                .lines()
+                .filter(|l| l.contains('\u{1b}'))
+                .collect::<Vec<_>>()
+        );
+        // The payload must survive the de-colouring.
+        assert!(rendered.contains("Provability Analysis Summary"));
+        assert!(rendered.contains("Scoring Model"));
+        assert!(rendered.contains("Score Distribution"));
+        assert!(rendered.contains("Top Files by Provability"));
+    }
+
+    /// `--top-files` documents "0 = all", but 0 was remapped to the default 10,
+    /// so every file past the tenth vanished from the ranking with no notice.
+    #[test]
+    fn top_files_zero_lists_every_file_not_the_default_ten() {
+        let ids: Vec<FunctionId> = (0..12)
+            .map(|i| FunctionId {
+                file_path: format!("src/f{i:02}.rs"),
+                function_name: format!("f{i}"),
+                line_number: i + 1,
+            })
+            .collect();
+        let summaries: Vec<ProofSummary> = (0..12)
+            .map(|i| ProofSummary {
+                provability_score: f64::from(i) / 100.0,
+                analysis_time_us: 1,
+                verified_properties: vec![],
+                version: 1,
+            })
+            .collect();
+
+        let rendered = format_provability_summary(&ids, &summaries, 0).expect("render");
+        let listed = rendered
+            .lines()
+            .filter(|l| l.contains("avg score"))
+            .count();
+        assert_eq!(
+            listed, 12,
+            "--top-files 0 must list all 12 files, not truncate to the default: {rendered}"
+        );
+        assert!(
+            rendered.contains("f11.rs"),
+            "the eleventh-ranked file was dropped: {rendered}"
+        );
+    }
 }

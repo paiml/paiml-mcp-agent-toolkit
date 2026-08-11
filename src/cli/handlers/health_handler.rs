@@ -137,7 +137,12 @@ pub async fn run_health_checks_internal(
 
     let summary = calculate_summary(&checks);
     let report = HealthReport {
-        healthy: summary.failed == 0,
+        // `failed == 0` also holds when every check SKIPPED, so a run that
+        // measured nothing at all reported "✨ Project is healthy!" and exited
+        // 0 — `pmat maintain health` in an empty directory (Build: "No
+        // Cargo.toml found", 1 skipped, 0 of everything else) passed. Health
+        // has to be observed: at least one check must have reached a verdict.
+        healthy: summary.total_checks > summary.skipped && summary.failed == 0,
         checks,
         summary,
     };

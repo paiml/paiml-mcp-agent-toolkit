@@ -120,6 +120,17 @@ impl QualityProxyService {
         })
     }
 
+    /// Resolve the post-operation content the quality gates will judge.
+    ///
+    /// `request.file_path` used to be ignored entirely: with no inline `content`
+    /// an Edit fell through to the replacement fragment alone and an Append to
+    /// the appended text alone, so a three-line file came back with
+    /// `final_content` holding one line and was graded on that fragment. Worse,
+    /// nothing checked that `old_content` actually occurred anywhere, so an edit
+    /// anchored to a string absent from the file was reported "accepted". Fall
+    /// back to the file on disk, and refuse an anchor that occurs nowhere in it.
+    /// (An anchor that occurs several times still replaces every occurrence —
+    /// that is the semantic the proxy's property tests pin.)
     fn get_operation_content(&self, request: &ProxyRequest) -> Result<String> {
         match request.operation {
             ProxyOperation::Write => request
@@ -136,11 +147,23 @@ impl QualityProxyService {
                     .as_ref()
                     .context("Edit operation requires new_content")?;
 
-                if let Some(existing_content) = &request.content {
-                    Ok(existing_content.replace(old, new))
-                } else {
-                    Ok(new.clone())
+                let existing = match &request.content {
+                    Some(inline) => inline.clone(),
+                    None => read_proxy_target(&request.file_path)?.with_context(|| {
+                        format!(
+                            "Edit operation on {} requires the file to exist or inline content",
+                            request.file_path
+                        )
+                    })?,
+                };
+
+                if !existing.contains(old.as_str()) {
+                    anyhow::bail!(
+                        "Edit rejected: old_content does not occur in {}",
+                        request.file_path
+                    );
                 }
+                Ok(existing.replace(old, new))
             }
             ProxyOperation::Append => {
                 let append_content = request
@@ -148,12 +171,188 @@ impl QualityProxyService {
                     .as_ref()
                     .context("Append operation requires content")?;
 
-                if let Some(existing) = &request.old_content {
-                    Ok(format!("{existing}\n{append_content}"))
-                } else {
-                    Ok(append_content.clone())
+                match &request.old_content {
+                    // Caller-supplied preceding text keeps its historical join.
+                    Some(existing) => Ok(format!("{existing}\n{append_content}")),
+                    None => match read_proxy_target(&request.file_path)? {
+                        Some(existing) => Ok(join_appended(&existing, append_content)),
+                        // Appending to a file that does not exist yet creates
+                        // it — but only somewhere it could actually be created.
+                        // A path under a directory that does not exist was
+                        // silently treated as "an append to the empty file" and
+                        // came back accepted/passed:true, while `quality_gate`
+                        // rejected the very same path with "File does not
+                        // exist". Two tools in one session must not disagree
+                        // about whether a path is real.
+                        None => {
+                            ensure_appendable(&request.file_path)?;
+                            Ok(append_content.clone())
+                        }
+                    },
                 }
             }
         }
+    }
+}
+
+/// Read the file an operation targets; `None` when it does not exist yet.
+fn read_proxy_target(file_path: &str) -> Result<Option<String>> {
+    let path = Path::new(file_path);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    std::fs::read_to_string(path)
+        .map(Some)
+        .with_context(|| format!("Failed to read {file_path} for quality proxy"))
+}
+
+/// Refuse an append to a path that could not be created if it were performed.
+///
+/// The file itself may legitimately not exist yet; its directory may not.
+fn ensure_appendable(file_path: &str) -> Result<()> {
+    let path = Path::new(file_path);
+    match path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        Some(dir) if !dir.is_dir() => anyhow::bail!(
+            "Append rejected: {} does not exist and neither does its directory {}",
+            file_path,
+            dir.display()
+        ),
+        _ => Ok(()),
+    }
+}
+
+/// Concatenate appended text without inventing or losing a line break.
+fn join_appended(existing: &str, addition: &str) -> String {
+    if existing.is_empty() || existing.ends_with('\n') {
+        format!("{existing}{addition}")
+    } else {
+        format!("{existing}\n{addition}")
+    }
+}
+
+#[cfg(test)]
+mod proxy_file_path_tests {
+    use super::*;
+
+    const THREE_LINES: &str = "pub fn line_one() -> i32 { 1 }\n\
+                               pub fn line_two() -> i32 { 2 }\n\
+                               pub fn line_three() -> i32 { 3 }\n";
+
+    fn request(op: ProxyOperation, path: &std::path::Path) -> ProxyRequest {
+        ProxyRequest {
+            operation: op,
+            file_path: path.display().to_string(),
+            content: None,
+            old_content: None,
+            new_content: None,
+            mode: ProxyMode::Strict,
+            quality_config: QualityConfig::default(),
+        }
+    }
+
+    fn fixture() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("multi.rs");
+        std::fs::write(&path, THREE_LINES).expect("write fixture");
+        (dir, path)
+    }
+
+    /// An edit must be graded on the whole file, not on the replacement alone.
+    #[test]
+    fn test_edit_applies_to_the_file_on_disk() {
+        let (_dir, path) = fixture();
+        let service = QualityProxyService::new();
+        let mut req = request(ProxyOperation::Edit, &path);
+        req.old_content = Some("pub fn line_two() -> i32 { 2 }".to_string());
+        req.new_content = Some("pub fn line_two() -> i32 { 22 }".to_string());
+
+        let content = service.get_operation_content(&req).expect("edit resolves");
+        assert!(content.contains("line_one"), "{content}");
+        assert!(content.contains("line_three"), "{content}");
+        assert!(content.contains("{ 22 }"), "{content}");
+        assert!(!content.contains("{ 2 }"), "{content}");
+    }
+
+    /// An anchor that occurs nowhere in the file is not an edit — it is an error.
+    #[test]
+    fn test_edit_with_absent_old_content_is_rejected() {
+        let (_dir, path) = fixture();
+        let service = QualityProxyService::new();
+        let mut req = request(ProxyOperation::Edit, &path);
+        req.old_content = Some("THIS STRING IS NOT PRESENT".to_string());
+        req.new_content = Some("zzz".to_string());
+
+        let err = service
+            .get_operation_content(&req)
+            .expect_err("an impossible edit must not be accepted");
+        assert!(err.to_string().contains("does not occur"), "{err}");
+    }
+
+    /// A repeated anchor replaces every occurrence — in the file, not in a
+    /// fragment (the proxy's property tests pin the replace-all semantic).
+    #[test]
+    fn test_edit_replaces_every_occurrence_in_the_file() {
+        let (_dir, path) = fixture();
+        let service = QualityProxyService::new();
+        let mut req = request(ProxyOperation::Edit, &path);
+        req.old_content = Some("-> i32".to_string());
+        req.new_content = Some("-> u32".to_string());
+
+        let content = service.get_operation_content(&req).expect("edit resolves");
+        assert_eq!(content.matches("-> u32").count(), 3, "{content}");
+        assert!(!content.contains("-> i32"), "{content}");
+    }
+
+    /// Append must keep the file it appends to.
+    #[test]
+    fn test_append_keeps_the_existing_file() {
+        let (_dir, path) = fixture();
+        let service = QualityProxyService::new();
+        let mut req = request(ProxyOperation::Append, &path);
+        req.content = Some("pub fn line_four() -> i32 { 4 }\n".to_string());
+
+        let content = service.get_operation_content(&req).expect("append resolves");
+        assert!(content.starts_with(THREE_LINES), "{content}");
+        assert!(content.contains("line_four"), "{content}");
+    }
+
+    /// `quality_proxy` accepted edit/append on a path that cannot exist while
+    /// `quality_gate`, in the same session, rejected it with "File does not
+    /// exist". Both must refuse it.
+    #[test]
+    fn test_operations_on_an_impossible_path_are_rejected() {
+        let service = QualityProxyService::new();
+        let missing = std::path::Path::new("/does/not/exist/never_existed.rs");
+
+        let mut edit = request(ProxyOperation::Edit, missing);
+        edit.old_content = Some("x".to_string());
+        edit.new_content = Some("y".to_string());
+        let err = service
+            .get_operation_content(&edit)
+            .expect_err("editing a nonexistent file must fail loudly");
+        assert!(
+            err.to_string().contains("requires the file to exist"),
+            "{err}"
+        );
+
+        let mut append = request(ProxyOperation::Append, missing);
+        append.content = Some("pub fn added() {}\n".to_string());
+        let err = service
+            .get_operation_content(&append)
+            .expect_err("appending under a nonexistent directory must fail loudly");
+        assert!(err.to_string().contains("Append rejected"), "{err}");
+    }
+
+    /// Appending to a path that does not exist yet still creates it.
+    #[test]
+    fn test_append_to_missing_file_is_just_the_addition() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let service = QualityProxyService::new();
+        let mut req = request(ProxyOperation::Append, &dir.path().join("new.rs"));
+        req.content = Some("pub fn only() {}\n".to_string());
+        assert_eq!(
+            service.get_operation_content(&req).expect("append resolves"),
+            "pub fn only() {}\n"
+        );
     }
 }

@@ -26,10 +26,15 @@ impl QualityCodeGenerator {
     }
 
     /// Calculate quality score for generated code
+    ///
+    /// NOTE: `coverage` and `tdg` here are constants, not measurements — nothing
+    /// runs the generated tests and nothing computes a TDG for a body that is
+    /// `todo!()`. They exist only to feed `meets_thresholds`; the CLI reports them
+    /// as "not measured" rather than as the 100% they would otherwise claim.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_quality_score(&self, code: &str) -> Result<QualityScore> {
         let complexity = self.estimate_complexity(code);
-        let coverage = 100.0; // Generated code will have full coverage
+        let coverage = 100.0; // NOT a measurement — see the note above
         let tdg = if complexity <= 5 { 1 } else { complexity / 2 };
 
         Ok(QualityScore {
@@ -41,12 +46,15 @@ impl QualityCodeGenerator {
     }
 
     /// Calculate detailed metrics
+    ///
+    /// `coverage`/`tdg`/`dead_code_percentage` are constants feeding the threshold
+    /// check, not measurements; they must never be surfaced as a measured result.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_metrics(&self, code: &str, tests: &str) -> Result<QualityMetrics> {
         Ok(QualityMetrics {
             complexity: self.estimate_complexity(code),
             cognitive_complexity: self.estimate_complexity(code), // Same for now
-            coverage: 100, // Generated tests provide full coverage
+            coverage: 100, // NOT a measurement — no test run produced this
             tdg: 1,        // Generated code has minimal technical debt
             satd_count: code.matches("TODO").count() as u32,
             dead_code_percentage: 0, // Generated code has no dead code

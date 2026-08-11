@@ -111,3 +111,60 @@
         assert_eq!(summary.evoscore_trajectory, 0.0);
         assert_eq!(summary.coverage_delta, 0.0);
     }
+
+/// The producer/consumer key mismatch that made `complexity_violations`
+/// structurally 0: `gather_complexity_evidence` wrote
+/// `{total_lines, deep_nesting, threshold}` while this consumer reads `value`,
+/// so the comparison was always `0.0 > 20.0`.
+#[test]
+fn complexity_evidence_is_read_under_the_key_the_producer_writes() {
+    let mut why = WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string());
+    why.add_evidence(Evidence::new(
+        EvidenceSource::Complexity,
+        PathBuf::from("."),
+        "estimated_complexity".to_string(),
+        // Exactly what five_whys_analyzer::gather_complexity_evidence emits.
+        serde_json::json!({
+            "value": 37,
+            "threshold": 20,
+            "total_lines": 979_249,
+            "deep_nesting": 16_386,
+        }),
+        "979249 source lines, 16386 deeply-nested blocks".to_string(),
+    ));
+
+    let summary = EvidenceSummary::from_whys(&[why]);
+    assert_eq!(
+        summary.complexity_violations, 1,
+        "a density of 37 against a threshold of 20 is a violation"
+    );
+    assert!(summary.complexity_measured);
+}
+
+#[test]
+fn complexity_below_threshold_is_a_measured_zero_not_an_absent_one() {
+    let mut why = WhyIteration::new(1, "Why?".to_string(), "Hypothesis".to_string());
+    why.add_evidence(Evidence::new(
+        EvidenceSource::Complexity,
+        PathBuf::from("."),
+        "estimated_complexity".to_string(),
+        serde_json::json!({"value": 17, "threshold": 20}),
+        "est. complexity density: 17/1000 lines".to_string(),
+    ));
+
+    let summary = EvidenceSummary::from_whys(&[why]);
+    assert_eq!(summary.complexity_violations, 0);
+    assert!(
+        summary.complexity_measured,
+        "0 here means measured-and-under-threshold, not no-data"
+    );
+}
+
+#[test]
+fn absent_complexity_and_evoscore_evidence_is_flagged_unmeasured() {
+    let summary = EvidenceSummary::from_whys(&[]);
+    assert_eq!(summary.complexity_violations, 0);
+    assert!(!summary.complexity_measured);
+    assert_eq!(summary.evoscore_trajectory, 0.0);
+    assert!(!summary.evoscore_measured);
+}

@@ -41,8 +41,10 @@
             .await
             .expect("Scoring failed");
 
-        // Should get partial credit (2.0) for having error docs
-        assert_eq!(result.score, 2.0);
+        // No demo files were analysed, so G2 measured nothing and scores 0.0 —
+        // a README section is documentation, not demo error handling. This
+        // asserted 2.0 while the branch handed out credit for absence.
+        assert_eq!(result.score, 0.0);
     }
 
     #[tokio::test]
@@ -62,7 +64,8 @@
             .await
             .expect("Scoring failed");
 
-        assert_eq!(result.score, 2.0);
+        // Nothing analysed ⇒ nothing scored (see the no-demo-files branch).
+        assert_eq!(result.score, 0.0);
     }
 
     #[tokio::test]
@@ -82,7 +85,30 @@
             .await
             .expect("Scoring failed");
 
-        assert_eq!(result.score, 2.0);
+        // Nothing analysed ⇒ nothing scored (see the no-demo-files branch).
+        assert_eq!(result.score, 0.0);
+    }
+
+    /// An EMPTY directory used to score 1.5/3.0 on G2 ("No demo files found to
+    /// analyze for error handling") and therefore 15% overall, while the
+    /// sibling G1 scored 0.0 for the same absence. Absence of evidence is not
+    /// half credit.
+    #[tokio::test]
+    async fn test_error_gracefulness_empty_repo_scores_zero() {
+        let temp_dir = create_temp_repo();
+        let repo_path = temp_dir.path();
+
+        let scorer = DemoScorer::new();
+        let result = scorer
+            .score_error_gracefulness(repo_path, RepoArchetype::DemoApp)
+            .await
+            .expect("Scoring failed");
+
+        assert_eq!(
+            result.score, 0.0,
+            "an empty repo has no demo files to analyse, but G2 awarded {} points",
+            result.score
+        );
     }
 
     #[tokio::test]

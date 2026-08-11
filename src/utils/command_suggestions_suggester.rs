@@ -133,8 +133,13 @@ impl CommandSuggester {
             "# Run quality gates",
             "pmat quality-gate",
             "",
-            "# Start agent daemon",
-            "pmat agent start",
+            // Not `pmat agent start`: the agent daemon is compiled out unless
+            // `--features agent-daemon` is set, so in the shipped build that
+            // example exits 1 with "Agent daemon feature not enabled" (#675).
+            // These are advertised as *working* examples, so every line here
+            // must run in the default build.
+            "# Pre-flight the CI gate set before committing",
+            "pmat verify --format json",
         ];
 
         format!("\nEXAMPLES:\n{}", examples.join("\n"))

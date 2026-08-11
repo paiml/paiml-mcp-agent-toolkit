@@ -48,19 +48,14 @@ impl RustDefectDetector {
         false
     }
 
-    /// Check if content contains test-related markers
-    fn has_test_markers(&self, content: &str) -> bool {
-        // Check for test cfg attributes
-        let has_cfg_test = content.contains("#[cfg(test)]")
-            || content.contains("#[cfg(all(test,")
-            || content.contains("#[cfg(any(test,");
-
-        // Check for test function attributes
-        let has_test_attr = content.contains("#[test]")
-            || content.contains("#[tokio::test]")
-            || content.contains("#[async_test]");
-
-        has_cfg_test || has_test_attr
+    /// True if a single trimmed line is a test-function attribute (`#[test]`,
+    /// `#[tokio::test]`, …). The item it precedes is test code even when it is
+    /// not wrapped in a `#[cfg(test)]` module.
+    fn is_test_attr_line(trimmed: &str) -> bool {
+        trimmed.starts_with("#[test]")
+            || trimmed.starts_with("#[tokio::test")
+            || trimmed.starts_with("#[async_test")
+            || trimmed.starts_with("#[async_std::test")
     }
 
     /// Detect all defects in Rust source code
@@ -74,10 +69,21 @@ impl RustDefectDetector {
             return defects;
         }
 
-        // Exclude files with test markers
-        if self.has_test_markers(content) {
-            return defects;
-        }
+        // NOTE: there used to be a whole-file bail here —
+        // `if self.has_test_markers(content) { return defects; }` — where
+        // has_test_markers matched the bare substrings "#[cfg(test)]" / "#[test]"
+        // ANYWHERE in the file. Rust's idiomatic co-located unit-test module
+        // therefore blanked out every line of production code above it: a crate
+        // whose src/lib.rs was one `.unwrap()`-bearing function reported 1 defect,
+        // and reported 0 the moment an unrelated `#[cfg(test)] mod tests` was
+        // appended to the same file. Scanning this repo it left 44 defects in 5
+        // files against ~19,500 `.unwrap()` calls in ~1,300 files.
+        //
+        // Exclusion is now per-range, not per-file: detect_unwraps already skips
+        // the body of any `#[cfg(...)]` item by brace depth (which covers
+        // `#[cfg(test)] mod tests`), and additionally skips `#[test]`-attributed
+        // items, so test code is dropped while the production code around it is
+        // still reported.
 
         // Detect .unwrap() calls
         let unwrap_instances = self.detect_unwraps(content, file_path);
@@ -94,7 +100,13 @@ impl RustDefectDetector {
                     .to_string(),
                 evidence_description: "Cloudflare outage 2025-11-18 (3+ hour network outage)"
                     .to_string(),
-                evidence_url: Some("https://blog.cloudflare.com/2025-01-18-outage".to_string()),
+                // The slug used to say 2025-01-18 while the description said
+                // 2025-11-18: a citation for an outage that never happened, and
+                // the URL 404ed. The post about the November 18 outage — the one
+                // an `.unwrap()` on a bot-features file caused — is this one.
+                evidence_url: Some(
+                    "https://blog.cloudflare.com/18-november-2025-outage/".to_string(),
+                ),
                 instances: unwrap_instances,
             });
         }
@@ -149,9 +161,13 @@ impl RustDefectDetector {
 
             // Detect #[cfg(...)] attributes — marks the next braced item as cfg-gated.
             // Also honor item-level (outer) #[allow(clippy::unwrap_used)] / clippy::restriction.
+            // `#[test]`-attributed items are skipped the same way, so a test
+            // function that is not inside a `#[cfg(test)]` module is still
+            // excluded without discarding the rest of the file.
             if trimmed.starts_with("#[cfg(")
                 || trimmed.starts_with("#[cfg_attr(")
                 || attr_line_allows_unwrap(trimmed)
+                || Self::is_test_attr_line(trimmed)
             {
                 pending_suppress = true;
             }
@@ -303,4 +319,90 @@ fn strip_string_literals(line: &str) -> String {
     }
 
     String::from_utf8(out).unwrap_or_else(|_| line.to_string())
+}
+
+/// Regression tests for the whole-file test-marker bail.
+///
+/// `detect` used to return an empty vec for any file containing the substring
+/// "#[cfg(test)]" or "#[test]", so a co-located unit-test module — the Rust
+/// idiom — hid every defect in the production code above it.
+#[cfg(test)]
+mod colocated_test_module_regression_tests {
+    use super::*;
+
+    const PRODUCTION_THEN_TEST_MODULE: &str = "pub fn dangerous(v: &[i32]) -> i32 {\n    \
+         *v.first().unwrap()\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() {\n        \
+         assert_eq!(1, 1);\n    }\n}\n";
+
+    #[test]
+    fn production_unwrap_survives_a_colocated_test_module() {
+        let detector = RustDefectDetector::new();
+        let defects = detector.detect(PRODUCTION_THEN_TEST_MODULE, Path::new("src/lib.rs"));
+
+        assert_eq!(
+            defects.len(),
+            1,
+            "the production .unwrap() was discarded because the file also contains a test module"
+        );
+        assert_eq!(defects[0].instances.len(), 1);
+        assert_eq!(defects[0].instances[0].line, 2);
+    }
+
+    #[test]
+    fn unwrap_inside_the_colocated_test_module_is_still_excluded() {
+        let detector = RustDefectDetector::new();
+        let code = "pub fn safe(v: &[i32]) -> i32 {\n    v.len() as i32\n}\n\n#[cfg(test)]\n\
+                    mod tests {\n    #[test]\n    fn t() {\n        \
+                    let _ = Some(1).unwrap();\n    }\n}\n";
+        let defects = detector.detect(code, Path::new("src/lib.rs"));
+
+        assert!(
+            defects.is_empty(),
+            "test-module .unwrap() must stay excluded: {defects:?}"
+        );
+    }
+
+    /// The citation used to point at `/2025-01-18-outage` while claiming the
+    /// outage of 2025-11-18: two different dates in one piece of evidence, and
+    /// the URL 404ed. The date in the slug must match the date in the prose.
+    #[test]
+    fn unwrap_evidence_url_matches_its_own_description() {
+        let detector = RustDefectDetector::new();
+        let defects = detector.detect(PRODUCTION_THEN_TEST_MODULE, Path::new("src/lib.rs"));
+        let unwrap = defects
+            .iter()
+            .find(|d| d.id == "RUST-UNWRAP-001")
+            .expect("RUST-UNWRAP-001 must be reported");
+        let url = unwrap
+            .evidence_url
+            .as_deref()
+            .expect("RUST-UNWRAP-001 cites a URL");
+
+        assert!(
+            unwrap.evidence_description.contains("2025-11-18"),
+            "description names the November 2025 outage: {}",
+            unwrap.evidence_description
+        );
+        assert!(
+            url.contains("18-november-2025"),
+            "the cited URL must be the November 2025 outage post, not {url}"
+        );
+    }
+
+    #[test]
+    fn bare_test_function_is_excluded_without_hiding_the_file() {
+        let detector = RustDefectDetector::new();
+        let code = "pub fn dangerous(v: &[i32]) -> i32 {\n    *v.first().unwrap()\n}\n\n\
+                    #[test]\nfn stray() {\n    let _ = Some(2).unwrap();\n}\n";
+        let defects = detector.detect(code, Path::new("src/lib.rs"));
+
+        assert_eq!(defects.len(), 1);
+        assert_eq!(
+            defects[0].instances.len(),
+            1,
+            "only the production .unwrap() should be reported: {:?}",
+            defects[0].instances
+        );
+        assert_eq!(defects[0].instances[0].line, 2);
+    }
 }

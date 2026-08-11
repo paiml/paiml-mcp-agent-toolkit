@@ -34,11 +34,29 @@ impl ClippyDiagnostic {
     }
 
     /// Extract diagnostic from JSON value (complexity: 5)
+    ///
+    /// Cargo's `--message-format=json` stream interleaves compiler-artifact,
+    /// build-finished and "generated N warnings" summary lines with the real
+    /// diagnostics. This used to `unwrap_or` every field, so each of those
+    /// lines materialised as a fix with file:"" line:0 code:"unknown" and
+    /// inflated `total_fixes`. A line that carries neither a lint code nor a
+    /// source span is not a diagnostic we can fix, so reject it outright.
     fn parse_json_value(value: &serde_json::Value) -> Result<Self> {
+        if let Some(reason) = value.get("reason").and_then(serde_json::Value::as_str) {
+            if reason != "compiler-message" {
+                return Err(anyhow::anyhow!("not a compiler-message line: {reason}"));
+            }
+        }
+
         let message = &value["message"];
-        let code = message["code"]["code"].as_str().unwrap_or("unknown");
+        let code = message["code"]["code"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("diagnostic has no lint code"))?;
         let level = message["level"].as_str().unwrap_or("warning");
         let spans = &message["spans"][0];
+        if !spans["file_name"].is_string() {
+            return Err(anyhow::anyhow!("diagnostic has no primary source span"));
+        }
 
         Ok(Self {
             code: code.to_string(),

@@ -43,10 +43,19 @@ pub fn format_as_json(
         })
         .collect();
 
+    // COMPLETENESS: files the collector could not read or parse contribute no
+    // annotations, and their failure used to stop at one `warn!` line on
+    // stderr. The document then reported a total with nothing to say it was
+    // computed over a subset — 31 unparsed files on this repo, invisible to
+    // anything consuming the JSON. Reported here so a consumer can tell a
+    // complete analysis from a partial one.
+    let files_not_analyzed = annotator.collection_errors();
+
     let json_data = serde_json::json!({
         "proof_annotations": annotations_json,
         "summary": {
             "total_annotations": annotations.len(),
+            "files_not_analyzed": files_not_analyzed,
             "cache_stats": {
                 "size": cache_stats.size,
                 "files_tracked": cache_stats.files_tracked
@@ -135,6 +144,22 @@ pub async fn collect_and_filter_annotations(
     });
 
     collected
+}
+
+/// The disclosure appended to every human-readable report when the collector
+/// skipped files.
+///
+/// `None` when nothing was skipped, so a complete run reads exactly as before.
+/// The JSON document carries the same fact as `summary.files_not_analyzed`.
+#[must_use]
+pub fn incomplete_analysis_note(files_not_analyzed: usize) -> Option<String> {
+    if files_not_analyzed == 0 {
+        return None;
+    }
+    Some(format!(
+        "\nINCOMPLETE: {files_not_analyzed} file(s) could not be read or parsed and \
+         contributed no annotations. The totals above are computed over the rest.\n"
+    ))
 }
 
 /// Format annotations as table output
@@ -269,13 +294,80 @@ fn format_summary_top_files(
     let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
     sorted_files.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
 
+    // Print the whole path, not `file_name()`: a repo has many `build.rs` and
+    // `mod.rs` files, so a basename-only list rendered ten *distinct* files as
+    // two basenames repeated five times each, with no way to tell them apart.
     for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
-        let filename = file_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(file_path.to_str().unwrap_or("unknown"));
-        writeln!(output, "{}. `{}` - {} annotations", i + 1, filename, count)?;
+        writeln!(
+            output,
+            "{}. `{}` - {} annotations",
+            i + 1,
+            file_path.display(),
+            count
+        )?;
     }
 
     Ok(())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_files_path_tests {
+    use super::*;
+    use crate::models::unified_ast::{BytePos, EvidenceType, Span};
+    use chrono::Utc;
+    use std::path::PathBuf;
+    use uuid::Uuid;
+
+    fn entry(path: &str) -> (Location, ProofAnnotation) {
+        (
+            Location {
+                file_path: PathBuf::from(path),
+                span: Span {
+                    start: BytePos(0),
+                    end: BytePos(1),
+                },
+            },
+            ProofAnnotation {
+                annotation_id: Uuid::nil(),
+                property_proven: PropertyType::MemorySafety,
+                specification_id: None,
+                method: VerificationMethod::BorrowChecker,
+                tool_name: "test".to_string(),
+                tool_version: "1.0".to_string(),
+                confidence_level: ConfidenceLevel::High,
+                assumptions: vec![],
+                evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
+                evidence_location: None,
+                date_verified: Utc::now(),
+            },
+        )
+    }
+
+    /// Distinct files that share a basename must render as distinct lines. The
+    /// list used to print `file_name()` only, so a repo's many `build.rs` files
+    /// collapsed into the same label repeated over and over.
+    #[test]
+    fn top_files_distinguishes_same_basename_in_different_directories() {
+        let annotations = vec![
+            entry("/repo/a/build.rs"),
+            entry("/repo/a/build.rs"),
+            entry("/repo/b/build.rs"),
+        ];
+
+        let mut out = String::new();
+        format_summary_top_files(&mut out, &annotations).unwrap();
+
+        assert!(
+            out.contains("/repo/a/build.rs"),
+            "expected full path in top-files list, got:\n{out}"
+        );
+        assert!(
+            out.contains("/repo/b/build.rs"),
+            "expected full path in top-files list, got:\n{out}"
+        );
+        let lines: Vec<&str> = out.lines().filter(|l| l.contains("build.rs")).collect();
+        assert_eq!(lines.len(), 2, "two distinct files, two distinct lines");
+        assert_ne!(lines[0], lines[1], "lines must not be identical labels");
+    }
 }

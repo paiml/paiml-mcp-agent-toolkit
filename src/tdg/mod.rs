@@ -64,7 +64,7 @@ pub use adaptive::{
 };
 // Use AST analyzer by default (proper implementation)
 pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
-pub use analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
+pub use analyzer_simple::{ensure_parseable, TdgAnalyzer as TdgAnalyzerSimple};
 pub use baseline::{
     BaselineComparison, BaselineEntry, BaselineSummary, FileComparison, TdgBaseline,
 };

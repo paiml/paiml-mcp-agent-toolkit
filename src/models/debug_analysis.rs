@@ -173,6 +173,15 @@ pub enum Priority {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EvidenceSummary {
     pub complexity_violations: usize,
+    /// Was any complexity evidence actually gathered?
+    ///
+    /// `complexity_violations` was structurally always 0 — the producer wrote
+    /// `{total_lines, deep_nesting, threshold}` while this consumer read a
+    /// `value` key nobody wrote — so a measured "no violations" and "the path
+    /// has no `src/` to measure" were the same 0. They are now distinguishable,
+    /// as `tdg_measured` already distinguishes an unmeasured TDG score.
+    #[serde(default)]
+    pub complexity_measured: bool,
     pub satd_markers: usize,
     pub tdg_score: f64,
     /// Was `tdg_score` actually populated by TDG evidence?
@@ -189,6 +198,13 @@ pub struct EvidenceSummary {
     /// CB-142 EvoScore trajectory: positive = improving, negative = regressing
     #[serde(default)]
     pub evoscore_trajectory: f64,
+    /// Was `evoscore_trajectory` actually populated?
+    ///
+    /// `gather_evoscore_evidence` returns None when the repo has fewer than
+    /// three `.pmat-metrics/commit-*-tests.json` files, which is the usual case,
+    /// so a genuine "no data" was reported as a flat 0.0 trajectory.
+    #[serde(default)]
+    pub evoscore_measured: bool,
     /// Coverage delta: positive = coverage increased, negative = decreased
     #[serde(default)]
     pub coverage_delta: f64,
@@ -196,6 +212,7 @@ pub struct EvidenceSummary {
 
 impl EvidenceSummary {
     fn process_complexity_evidence(&mut self, evidence: &Evidence) {
+        self.complexity_measured = true;
         let value = evidence
             .value
             .get("value")
@@ -247,6 +264,7 @@ impl EvidenceSummary {
                     .get("evoscore")
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
+                self.evoscore_measured = true;
             }
             EvidenceSource::CoverageDelta => {
                 self.coverage_delta = evidence

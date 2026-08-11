@@ -139,8 +139,8 @@ impl FiveWhysAnalyzer {
             evidence.push(loc_ev);
         }
 
-        // Real SATD evidence: count TODO/FIXME/HACK/WORKAROUND in source
-        if let Some(satd_ev) = Self::gather_satd_evidence(path) {
+        // Real SATD evidence, from the SAME detector `pmat analyze satd` uses.
+        if let Some(satd_ev) = Self::gather_satd_evidence(path).await {
             evidence.push(satd_ev);
         }
 
@@ -167,11 +167,24 @@ impl FiveWhysAnalyzer {
         Ok(evidence)
     }
 
-    /// Count SATD markers (TODO, FIXME, HACK, WORKAROUND, XXX) in source files.
-    fn gather_satd_evidence(path: &Path) -> Option<Evidence> {
-        let src_dir = path.join("src");
-        let dir = if src_dir.is_dir() { &src_dir } else { path };
-        let count = Self::count_satd_markers(dir);
+    /// Count SATD markers using the detector `pmat analyze satd` uses.
+    ///
+    /// This used to be `count_satd_markers`, a raw recursive substring scan for
+    /// TODO/FIXME/HACK/WORKAROUND/XXX with no comment awareness and no
+    /// exclusions: it reported 808 markers for this repo while
+    /// `pmat analyze satd` reported 39 for the same path in the same session —
+    /// a 20x disagreement between two surfaces of one binary. It was counting
+    /// the detector's own pattern tables, test fixtures and doc prose, and then
+    /// presenting the total as measured technical-debt evidence for the
+    /// root-cause chain.
+    async fn gather_satd_evidence(path: &Path) -> Option<Evidence> {
+        use crate::services::satd_detector::SATDDetector;
+
+        let result = SATDDetector::new()
+            .analyze_project(path, false)
+            .await
+            .ok()?;
+        let count = result.summary.total_items;
         let description = if count == 0 {
             "No SATD markers found — codebase is clean of admitted technical debt".to_string()
         } else {
@@ -189,9 +202,9 @@ impl FiveWhysAnalyzer {
         ))
     }
 
+    /// Source extensions scanned when locating the reported issue.
     const SATD_EXTENSIONS: &'static [&'static str] =
         &["rs", "py", "ts", "js", "go", "lua", "c", "cpp", "java"];
-    const SATD_MARKERS: &'static [&'static str] = &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
 
     /// Words too common to identify anything, dropped from issue terms.
     const ISSUE_STOPWORDS: &'static [&'static str] = &[
@@ -343,34 +356,6 @@ impl FiveWhysAnalyzer {
         }
     }
 
-    fn count_satd_markers(dir: &Path) -> usize {
-        let entries = match std::fs::read_dir(dir) {
-            Ok(e) => e,
-            Err(_) => return 0,
-        };
-        entries
-            .flatten()
-            .map(|entry| entry.path())
-            .map(|p| {
-                if p.is_dir() {
-                    return Self::count_satd_markers(&p);
-                }
-                let is_source = p
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .is_some_and(|e| Self::SATD_EXTENSIONS.contains(&e));
-                if !is_source {
-                    return 0;
-                }
-                std::fs::read_to_string(&p)
-                    .unwrap_or_default()
-                    .lines()
-                    .filter(|line| Self::SATD_MARKERS.iter().any(|m| line.contains(m)))
-                    .count()
-            })
-            .sum()
-    }
-
     /// Count git commits in last 30 days.
     fn gather_git_churn_evidence(path: &Path) -> Option<Evidence> {
         let output = std::process::Command::new("git")
@@ -429,7 +414,19 @@ impl FiveWhysAnalyzer {
             EvidenceSource::Complexity,
             path.to_path_buf(),
             "estimated_complexity".to_string(),
-            json!({"total_lines": total_lines, "deep_nesting": deep_nesting_count, "threshold": 20}),
+            // `value` is the key `EvidenceSummary::process_complexity_evidence`
+            // reads. This payload used to carry only total_lines/deep_nesting/
+            // threshold, so the consumer's `value` lookup fell back to 0.0 and
+            // `0.0 > 20.0` could never fire: `complexity_violations` was
+            // structurally 0 for every path — an empty directory and this
+            // 979k-line repo reported the same 0 while the evidence text beside
+            // it quoted a density of 17/1000 lines.
+            json!({
+                "value": estimated_avg_complexity,
+                "threshold": 20,
+                "total_lines": total_lines,
+                "deep_nesting": deep_nesting_count,
+            }),
             description,
         ))
     }

@@ -40,6 +40,32 @@ fn print_task_status(task_id: &str, task_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Credit a claim earns for its validation status: `(proven, manual_unverified)`.
+///
+/// A MANUAL claim used to be added to the same counter as a PROVEN one, so a spec
+/// whose claims were all unverified scored 100% in every category and the
+/// Falsifiability gateway could never fail. Unverified is not verified: MANUAL is
+/// tallied and reported, but scores nothing.
+fn claim_credit(status: &crate::services::spec_parser::ValidationStatus) -> (u32, u32) {
+    use crate::services::spec_parser::ValidationStatus as S;
+    match status {
+        S::Proven => (1, 0),
+        S::ManualRequired => (0, 1),
+        _ => (0, 0),
+    }
+}
+
+/// The Falsifiability gateway: the category must clear the threshold *and* contain
+/// at least one claim we actually proved. A gateway satisfied by unverified claims
+/// is not a gateway.
+fn falsifiability_gateway_passed(
+    gateway_score: f64,
+    gateway_threshold: u32,
+    gateway_proven: u32,
+) -> bool {
+    gateway_score >= gateway_threshold as f64 && gateway_proven > 0
+}
+
 /// Handle spec validation command (Part D & E: pmat qa spec)
 ///
 /// Implements 100-point Popperian falsifiability scoring:
@@ -96,7 +122,11 @@ async fn handle_spec(
     println!("{}", c::header("Validation Results (Popperian: FALSE until PROVEN)"));
     println!();
 
-    let mut category_scores: HashMap<String, (u32, u32)> = HashMap::new();
+    // (proven, manual_unverified, total) per category. A MANUAL claim used to be
+    // added to the same counter as a PROVEN one ("Count as passed"), so every
+    // category with only unverified claims scored 100% and the Falsifiability
+    // gateway could never fail. Unverified is not verified: only PROVEN earns points.
+    let mut category_scores: HashMap<String, (u32, u32, u32)> = HashMap::new();
 
     // Initialize categories
     for cat in &[
@@ -107,14 +137,14 @@ async fn handle_spec(
         ClaimCategory::Integration,
     ] {
         let cat_name = format!("{:?}", cat);
-        category_scores.insert(cat_name, (0, 0));
+        category_scores.insert(cat_name, (0, 0, 0));
     }
 
     // Validate each claim
     for claim in &spec.claims {
         let cat_name = format!("{:?}", claim.category);
-        let entry = category_scores.entry(cat_name.clone()).or_insert((0, 0));
-        entry.1 += 1; // total
+        let entry = category_scores.entry(cat_name.clone()).or_insert((0, 0, 0));
+        entry.2 += 1; // total
 
         // Try to validate
         let (status, evidence) = if claim.automatable {
@@ -144,15 +174,12 @@ async fn handle_spec(
             (SpecValidationStatus::ManualRequired, None)
         };
 
-        // Update score
-        // Proven claims get full credit, Manual claims get partial credit (claim exists but unverified)
-        if status == SpecValidationStatus::Proven {
-            entry.0 += 1;
-        } else if status == SpecValidationStatus::ManualRequired {
-            // Give 50% credit for having a falsifiable claim (it CAN be tested)
-            // This rewards specs that have testable claims even if not auto-validated
-            entry.0 += 1; // Count as passed - having falsifiable claims is the goal
-        }
+        // Update score. Only a claim we actually verified scores; MANUAL claims are
+        // tallied separately and reported, but they earn nothing — counting them as
+        // passed is what let an all-unverified spec show 100% in every category.
+        let (proven_credit, manual_credit) = claim_credit(&status);
+        entry.0 += proven_credit;
+        entry.1 += manual_credit;
 
         // Print result
         let status_str = match status {
@@ -188,6 +215,7 @@ async fn handle_spec(
 
     let mut total_score: f64 = 0.0;
     let mut gateway_score: f64 = 0.0;
+    let mut gateway_proven: u32 = 0;
 
     for cat in &[
         ClaimCategory::Falsifiability,
@@ -197,36 +225,42 @@ async fn handle_spec(
         ClaimCategory::Integration,
     ] {
         let cat_name = format!("{:?}", cat);
-        let (passed, total) = category_scores.get(&cat_name).unwrap_or(&(0, 0));
+        let (proven, manual, total) = category_scores.get(&cat_name).unwrap_or(&(0, 0, 0));
         let max_pts = cat.max_points();
 
         let cat_score = if *total > 0 {
-            (*passed as f64 / *total as f64) * max_pts as f64
+            (*proven as f64 / *total as f64) * max_pts as f64
         } else {
             0.0
         };
 
         let pct = if *total > 0 {
-            (*passed as f64 / *total as f64) * 100.0
+            (*proven as f64 / *total as f64) * 100.0
         } else {
             0.0
         };
 
         if *cat == ClaimCategory::Falsifiability {
             gateway_score = cat_score;
+            gateway_proven = *proven;
             print!("  {} ", c::label("GATE"));
         } else {
             print!("     ");
         }
 
         println!(
-            "{:<15} {}/{} pts ({:.0}%) - {}/{} claims",
+            "{:<15} {}/{} pts ({:.0}%) - {}/{} claims proven{}",
             cat_name,
             c::number(&format!("{:.1}", cat_score)),
             max_pts,
             pct,
-            passed,
-            total
+            proven,
+            total,
+            if *manual > 0 {
+                format!(" ({} manual, unverified)", manual)
+            } else {
+                String::new()
+            }
         );
 
         total_score += cat_score;
@@ -235,13 +269,16 @@ async fn handle_spec(
     println!();
     println!("{}", c::rule());
 
-    // Gateway check (Falsifiability category must meet threshold)
-    let gateway_passed = gateway_score >= gateway_threshold as f64;
+    // Gateway check (Falsifiability category must meet threshold AND have at least
+    // one claim we actually proved — a gateway satisfied by unverified claims is no
+    // gateway at all).
+    let gateway_passed =
+        falsifiability_gateway_passed(gateway_score, gateway_threshold, gateway_proven);
     let final_score = if gateway_passed { total_score } else { 0.0 };
 
     if !gateway_passed {
         println!(
-            "{} GATEWAY FAILED: Falsifiability score {:.1} < {} (total score forced to 0)",
+            "{} GATEWAY FAILED: Falsifiability score {:.1} < {} or no claim proven (total score forced to 0)",
             c::fail(""),
             gateway_score,
             gateway_threshold
@@ -260,9 +297,12 @@ async fn handle_spec(
     }
 
     println!();
+    // Named "claim falsifiability score", not "total score": `pmat spec score`
+    // reports a different 100-point number for the same file (artefact completeness,
+    // ≥95 bar) and the two were indistinguishable in the output.
     println!(
         "{}: {}/100 (threshold: {})",
-        c::label("Total Score"),
+        c::label("Claim falsifiability score"),
         c::number(&format!("{:.1}", final_score)),
         threshold
     );
@@ -443,4 +483,56 @@ fn format_spec_result_markdown(result: &serde_json::Value) -> String {
             "✗"
         },
     )
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod impl_spec_scoring_tests {
+    use super::{claim_credit, falsifiability_gateway_passed};
+    use crate::services::spec_parser::ValidationStatus as S;
+
+    /// A MANUAL (unverified) claim must earn no points. It used to be counted as
+    /// passed, which is why every category read 100% on a spec with 9 MANUAL claims.
+    #[test]
+    fn test_manual_claims_earn_no_score() {
+        assert_eq!(claim_credit(&S::Proven), (1, 0));
+        assert_eq!(claim_credit(&S::ManualRequired), (0, 1));
+        assert_eq!(claim_credit(&S::Falsified), (0, 0));
+        assert_eq!(claim_credit(&S::Unfalsified), (0, 0));
+        assert_eq!(claim_credit(&S::Skipped), (0, 0));
+    }
+
+    /// 9 MANUAL + 1 PROVEN in Implementation scores 1/10 of the category, not 100%.
+    #[test]
+    fn test_category_score_uses_proven_only() {
+        let statuses = [
+            S::Proven,
+            S::ManualRequired,
+            S::ManualRequired,
+            S::ManualRequired,
+        ];
+        let (proven, manual) = statuses.iter().fold((0u32, 0u32), |(p, m), s| {
+            let (pc, mc) = claim_credit(s);
+            (p + pc, m + mc)
+        });
+        assert_eq!((proven, manual), (1, 3));
+        let score = proven as f64 / statuses.len() as f64 * 25.0;
+        assert!((score - 6.25).abs() < 1e-9, "got {score}");
+    }
+
+    /// The gateway must fail when its only falsifiability claim is unverified,
+    /// however many claims exist.
+    #[test]
+    fn test_gateway_fails_without_a_proven_claim() {
+        assert!(
+            !falsifiability_gateway_passed(0.0, 15, 0),
+            "no proven claim must not satisfy the gateway"
+        );
+        assert!(
+            !falsifiability_gateway_passed(25.0, 15, 0),
+            "a score without a proven claim must not satisfy the gateway"
+        );
+        assert!(falsifiability_gateway_passed(25.0, 15, 1));
+        assert!(!falsifiability_gateway_passed(10.0, 15, 1));
+    }
 }

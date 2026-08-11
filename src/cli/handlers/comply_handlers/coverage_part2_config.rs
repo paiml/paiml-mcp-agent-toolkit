@@ -1,38 +1,62 @@
     // get_breaking_changes_since Tests
 
+    // These four tests asserted the STUB: `get_breaking_changes_since` returned
+    // `[]` for every version and `get_changelog_entries` returned a canned
+    // 3-entry list regardless of the range asked for. Two of them even said so
+    // ("Current implementation always returns empty"). Both functions now read
+    // the real CHANGELOG.md, so the tests assert against it instead.
+
     #[test]
-    fn test_get_breaking_changes_since_returns_empty() {
+    fn test_get_breaking_changes_since_finds_real_major_releases() {
+        // pmat's changelog starts at 2.172.0, so everything in it is "since 1.0.0".
         let changes = get_breaking_changes_since("1.0.0");
-        assert!(changes.is_empty());
+        assert!(
+            !changes.is_empty(),
+            "the changelog contains major releases after 1.0.0; an empty result \
+             means the stub is back"
+        );
     }
 
     #[test]
-    fn test_get_breaking_changes_since_any_version() {
-        let changes = get_breaking_changes_since("0.0.1");
-        assert!(changes.is_empty());
+    fn test_get_breaking_changes_since_is_bounded_by_the_version_given() {
+        // Nothing was released after the version currently being built.
+        let changes = get_breaking_changes_since(PMAT_VERSION);
+        assert!(
+            changes.is_empty(),
+            "nothing can be breaking *since* the current version, got {changes:?}"
+        );
     }
 
     // get_changelog_entries Tests
 
     #[test]
-    fn test_get_changelog_entries_returns_entries() {
-        let entries = get_changelog_entries("1.0.0", "2.0.0");
-        assert!(!entries.is_empty());
+    fn test_get_changelog_entries_covers_a_real_range() {
+        let entries = get_changelog_entries("2.172.0", PMAT_VERSION);
+        assert!(
+            !entries.is_empty(),
+            "2.172.0..{PMAT_VERSION} spans the whole changelog"
+        );
     }
 
     #[test]
-    fn test_get_changelog_entries_contain_expected_features() {
-        let entries = get_changelog_entries("1.0.0", PMAT_VERSION);
-        let has_comply = entries.iter().any(|e| e.description.contains("comply"));
-        assert!(has_comply);
+    fn test_get_changelog_entries_is_empty_below_the_oldest_release() {
+        // The oldest section in CHANGELOG.md is 2.172.0, so this range holds
+        // nothing. The stub returned three canned entries for it.
+        let entries = get_changelog_entries("1.0.0", "2.0.0");
+        assert!(
+            entries.is_empty(),
+            "no release exists in 1.0.0..2.0.0, got {entries:?}"
+        );
     }
 
     #[test]
-    fn test_changelog_entry_breaking_flag() {
-        let entries = get_changelog_entries("1.0.0", "2.0.0");
-        // Current implementation has no breaking changes
-        let breaking_count = entries.iter().filter(|e| e.breaking).count();
-        assert_eq!(breaking_count, 0);
+    fn test_changelog_entries_report_the_version_they_came_from() {
+        let entries = get_changelog_entries("2.172.0", PMAT_VERSION);
+        assert!(entries.iter().all(|e| !e.version.is_empty()));
+        assert!(
+            entries.iter().any(|e| e.version != PMAT_VERSION),
+            "every entry carrying the current version is the stub's signature"
+        );
     }
 
     // load_or_create_project_config Tests

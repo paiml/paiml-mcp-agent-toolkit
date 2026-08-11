@@ -18,9 +18,36 @@ impl TdgAnalyzer {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze file.
+    ///
+    /// Refuses anything it cannot read as source. The metrics below are
+    /// regex heuristics that only ever *subtract* from each component's cap, so
+    /// input they recognise nothing in came back with the untouched
+    /// 25/20/20/15/10 vector — 90.0 and an A, byte-identical for `README.md` and
+    /// for `fn main( { let x = ;;;`. A file the analyzer cannot parse must not
+    /// be graded at all, let alone graded perfect.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
+        if matches!(
+            language,
+            Language::Unknown | Language::Yaml | Language::Markdown
+        ) {
+            anyhow::bail!(
+                "{}: TDG grades source files; {language} is not one",
+                path.display()
+            );
+        }
         let source = fs::read_to_string(path)?;
+        // The parse gate used to be Rust-only, so `def f(:` in a .py file still
+        // collected the untouched component caps from the line heuristics — the
+        // same fabricated grade the Rust gate was added to stop. Every language
+        // with a grammar in this build is now gated the same way; languages
+        // without one still fall through to the heuristics, unverified.
+        if let Some(parse_error) = source_parse_error(&source, language) {
+            anyhow::bail!(
+                "{}: {parse_error}; refusing to grade a file that did not parse",
+                path.display()
+            );
+        }
         self.analyze_source(&source, language, Some(path.to_path_buf()))
     }
 
@@ -111,6 +138,168 @@ impl TdgAnalyzer {
         };
 
         Ok(Comparison::new(score1, score2))
+    }
+}
+
+/// Refuse a file this build can *prove* does not parse.
+///
+/// The same gate `TdgAnalyzer::analyze_file` applies, minus its "TDG only
+/// grades source files" rule, so callers that legitimately scan Markdown or
+/// YAML (the SATD checks, for instance) are unaffected. Exposed because the
+/// guard was reachable only through the MCP `quality_gate` tool: the CLI's
+/// `quality-gate --file` ran its own checks and reported
+/// "✅ Quality Gate: PASSED / Total Violations: 0" for `def f(:` in a .py file —
+/// the two surfaces disagreeing about the same file, which is the contradiction
+/// class this sweep exists to remove.
+///
+/// `Ok(())` means "it parsed" OR "this build has no parser for that language",
+/// which are deliberately not distinguished: neither is grounds for refusal.
+pub fn ensure_parseable(path: &Path) -> Result<()> {
+    let language = Language::from_extension(path);
+    let Ok(source) = fs::read_to_string(path) else {
+        // Unreadable / non-UTF-8 is the caller's problem to report, not ours.
+        return Ok(());
+    };
+    if let Some(parse_error) = source_parse_error(&source, language) {
+        anyhow::bail!(
+            "{}: {parse_error}; refusing to report a quality verdict on a file that did not parse",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+/// Does `source` parse as `language`, in THIS build?
+///
+/// `None` means either "it parsed" or "this build has no parser for that
+/// language, so there is no verdict to give" — the two are deliberately not
+/// distinguished here, because both leave the heuristics as the only signal and
+/// neither is grounds for refusing the file. `Some(msg)` is a real syntax error.
+fn source_parse_error(source: &str, language: Language) -> Option<String> {
+    if language == Language::Rust {
+        return syn::parse_file(source)
+            .err()
+            .map(|e| format!("not parseable as Rust ({e})"));
+    }
+
+    #[cfg(feature = "tree-sitter")]
+    {
+        let grammar: Option<tree_sitter::Language> = match language {
+            #[cfg(feature = "python-ast")]
+            Language::Python => Some(tree_sitter_python::LANGUAGE.into()),
+            #[cfg(feature = "typescript-ast")]
+            Language::TypeScript => Some(tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()),
+            #[cfg(feature = "javascript-ast")]
+            Language::JavaScript => Some(tree_sitter_javascript::LANGUAGE.into()),
+            #[cfg(feature = "c-ast")]
+            Language::C => Some(tree_sitter_c::LANGUAGE.into()),
+            #[cfg(feature = "cpp-ast")]
+            Language::Cpp => Some(tree_sitter_cpp::LANGUAGE.into()),
+            #[cfg(feature = "lua-ast")]
+            Language::Lua => Some(tree_sitter_lua::LANGUAGE.into()),
+            #[cfg(feature = "go-ast")]
+            Language::Go => Some(tree_sitter_go::LANGUAGE.into()),
+            _ => None,
+        };
+        if let Some(grammar) = grammar {
+            let mut parser = tree_sitter::Parser::new();
+            if parser.set_language(&grammar).is_err() {
+                // No usable grammar ⇒ no verdict, not a failed one.
+                return None;
+            }
+            let Some(tree) = parser.parse(source, None) else {
+                return Some(format!("not parseable as {language}"));
+            };
+            if tree.root_node().has_error() {
+                return Some(format!("not parseable as {language} (syntax error)"));
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod unparseable_input_tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn write_temp(suffix: &str, body: &str) -> NamedTempFile {
+        let mut f = NamedTempFile::with_suffix(suffix).expect("temp file");
+        write!(f, "{body}").expect("write");
+        f.flush().expect("flush");
+        f
+    }
+
+    /// Rust that does not parse used to score 90.0/A — the untouched component
+    /// caps — because the heuristics simply matched nothing in it.
+    #[test]
+    fn test_unparseable_rust_is_not_graded() {
+        let f = write_temp(".rs", "fn main( { let x = ;;;\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("a file that does not parse must not get a score");
+        assert!(err.to_string().contains("not parseable as Rust"), "{err}");
+    }
+
+    /// Prose scored identically to source for the same reason.
+    #[test]
+    fn test_non_source_file_is_not_graded() {
+        let f = write_temp(".md", "# Readme\n\nSome prose about the project.\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("markdown is not source and must not get a score");
+        assert!(err.to_string().contains("not one"), "{err}");
+    }
+
+    /// The parse gate used to be Rust-only, so unparseable Python collected the
+    /// untouched component caps from the line heuristics — a graded verdict for
+    /// a file nothing had parsed.
+    #[cfg(feature = "python-ast")]
+    #[test]
+    fn test_unparseable_python_is_not_graded() {
+        let f = write_temp(".py", "def f(:\n  ???\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("Python that does not parse must not get a score");
+        assert!(err.to_string().contains("not parseable as Python"), "{err}");
+    }
+
+    #[cfg(feature = "python-ast")]
+    #[test]
+    fn test_valid_python_still_scores() {
+        let f = write_temp(".py", "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let score = analyzer.analyze_file(f.path()).expect("valid Python grades");
+        assert_eq!(score.language, Language::Python);
+        assert!(score.total > 0.0);
+    }
+
+    #[cfg(feature = "typescript-ast")]
+    #[test]
+    fn test_unparseable_typescript_is_not_graded() {
+        let f = write_temp(".ts", "function f( { return ;;; }\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let err = analyzer
+            .analyze_file(f.path())
+            .expect_err("TypeScript that does not parse must not get a score");
+        assert!(
+            err.to_string().contains("not parseable as TypeScript"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn test_valid_rust_still_scores() {
+        let f = write_temp(".rs", "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n");
+        let analyzer = TdgAnalyzer::new().expect("analyzer");
+        let score = analyzer.analyze_file(f.path()).expect("valid Rust grades");
+        assert_eq!(score.language, Language::Rust);
+        assert!(score.total > 0.0);
     }
 }
 

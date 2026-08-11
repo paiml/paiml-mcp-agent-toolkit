@@ -10,31 +10,39 @@ use pmat::services::dap::DapServer;
 use tokio::net::TcpListener;
 use tokio::time::{timeout, Duration};
 
-// RED Test 1: Handler function exists and is callable
-#[tokio::test]
-async fn test_debug_serve_handler_exists() {
-    // This test drives the creation of the debug_handlers module
-    // Expected: pmat::cli::handlers::debug_handlers::handle_debug_serve exists
+// RED Test 1: Handler function exists and reports itself unimplemented
+//
+// This used to spawn `handle_debug_serve` and comment "Server should be running
+// now" — it never was; the handler bailed immediately and the task's Err was
+// discarded, so the test passed on a handler that binds no socket at all. The
+// handler now exits the process with DEBUG_UNIMPLEMENTED_EXIT_CODE, so awaiting
+// it here would take the test binary down. Pin the signature and the honest
+// diagnostic instead.
+#[test]
+fn test_debug_serve_handler_exists() {
+    // Building the future type-checks the signature without running it.
+    let _future = pmat::cli::handlers::debug_handlers::handle_debug_serve(
+        15678,
+        "127.0.0.1".to_string(),
+        None,
+    );
 
-    let port = 15678; // Use non-standard port for tests
-    let host = "127.0.0.1".to_string();
-
-    // Spawn handler in background task (server runs indefinitely)
-    let handler_task = tokio::spawn(async move {
-        pmat::cli::handlers::debug_handlers::handle_debug_serve(port, host, None).await
-    });
-
-    // Give server time to start
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Server should be running now - abort the task
-    handler_task.abort();
-
-    // Wait for cleanup
-    tokio::time::sleep(Duration::from_millis(50)).await;
-
-    // Test passes if handler was callable and started successfully
-    // (The fact that we got here means the handler exists and didn't panic)
+    let mut buf = Vec::new();
+    pmat::cli::handlers::debug_handlers::write_debug_unimplemented_message(
+        &mut buf,
+        "serve",
+        "DEBUG-002",
+        "host=127.0.0.1 port=15678 record_dir=None",
+    )
+    .expect("write");
+    let s = String::from_utf8(buf).expect("utf8");
+    assert!(s.contains("DEBUG-002"), "got: {s}");
+    assert!(s.contains("not implemented"), "got: {s}");
+    assert_eq!(
+        pmat::cli::handlers::debug_handlers::DEBUG_UNIMPLEMENTED_EXIT_CODE,
+        2,
+        "unimplemented must exit 2 (misuse), not 1"
+    );
 }
 
 // RED Test 2: DAP server can start on specified port

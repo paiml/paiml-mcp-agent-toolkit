@@ -37,6 +37,55 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    /// The capture helpers had no production caller at all, so the store
+    /// `handle_bug_report` reads was never written and `maintain bug-report`
+    /// answered "No captured error found" after every failure. `cli::run` must
+    /// write it; `capture_cli_failure` is the one that does.
+    #[test]
+    #[serial(bug_report_error_file)]
+    fn a_failing_invocation_is_written_to_the_store_bug_report_reads() {
+        let _ = clear_error();
+
+        capture_cli_failure(
+            &[
+                "pmat".to_string(),
+                "tdg".to_string(),
+                "/does/not/exist".to_string(),
+            ],
+            &anyhow::anyhow!("path does not exist: /does/not/exist"),
+        );
+
+        let captured = load_error()
+            .expect("load")
+            .expect("a failing command must leave a captured error behind");
+        assert_eq!(captured.command, "pmat");
+        assert_eq!(captured.args, vec!["tdg", "/does/not/exist"]);
+        assert!(
+            captured.error_message.contains("/does/not/exist"),
+            "the captured message must be the real one: {}",
+            captured.error_message
+        );
+
+        let _ = clear_error();
+    }
+
+    /// …and the wiring itself: `cli::run` is the only place a CLI failure
+    /// surfaces, so if this call disappears the store goes back to being
+    /// written by nothing.
+    #[test]
+    fn cli_run_captures_dispatch_failures() {
+        let code = include_str!("../cli_run_command.rs")
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            code.contains("capture_cli_failure("),
+            "cli::run no longer captures failing commands, so \
+             `pmat maintain bug-report` has nothing to report"
+        );
+    }
+
     #[test]
     #[serial(bug_report_error_file)]
     fn test_capture_command_error() {

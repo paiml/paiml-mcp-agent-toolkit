@@ -11,6 +11,22 @@ use super::pareto::run_pareto_analysis;
 use super::parser::{parse_cargo_lock, parse_cargo_toml};
 use super::types::{DepCategory, DepsAuditReport, SortMode};
 
+/// Derive the (total, direct, transitive) headline counts from one population.
+///
+/// These three used to be computed from three different populations — the
+/// analyzed (de-duplicated) direct set, the raw `deps + dev_deps` sum which
+/// double-counts a dev-dependency that repeats a regular one, and the Cargo.lock
+/// package set — so the report could print a Total *smaller* than its own Direct
+/// (116 < 119 on this repo). The invariant `total == direct + transitive` now
+/// holds by construction.
+pub(super) fn summary_counts(
+    direct_analyzed: usize,
+    lock_packages: usize,
+) -> (usize, usize, usize) {
+    let total = lock_packages.max(direct_analyzed);
+    (total, direct_analyzed, total - direct_analyzed)
+}
+
 /// Handle the deps-audit command
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_deps_audit(
@@ -197,12 +213,13 @@ pub fn handle_deps_audit(
         return Ok(());
     }
 
+    let (total_count, direct_count, transitive_count) =
+        summary_counts(all_deps.len(), all_packages.len());
+
     let report = DepsAuditReport {
-        total_deps: all_deps.len(),
-        direct_deps: deps.len() + dev_deps.len(),
-        transitive_deps: all_packages
-            .len()
-            .saturating_sub(deps.len() + dev_deps.len()),
+        total_deps: total_count,
+        direct_deps: direct_count,
+        transitive_deps: transitive_count,
         sovereign_deps: sovereign_count,
         replaceable_deps: replaceable_count,
         removable_deps: removable_count,

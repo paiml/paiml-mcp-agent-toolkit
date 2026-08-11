@@ -133,9 +133,23 @@ mod property_tests {
         ) {
             let rt = tokio::runtime::Runtime::new().unwrap();
 
+            // The raw draws are NOT usable as identifiers: `[a-z_]+` happily
+            // produces a Rust keyword (`fn`, `match`, `in`) or a bare `_`, and
+            // the shrunk case proptest persisted for this test was exactly
+            // `param_name = "_"` — `pub fn a(_: i32) -> i32 { _ * 2 }` does not
+            // compile. The property claims "high-quality code is accepted", so
+            // it must not feed the gate content that is not even valid Rust:
+            // it used to pass only because strict mode filed rustc's
+            // "error: could not compile" as a *warning* and accepted it, i.e.
+            // the assertion was pinning the accept-anything defect rather than
+            // the property. Prefixing makes every draw a valid, non-keyword
+            // identifier while keeping the generated shapes varied.
+            let fn_name = format!("compute_{fn_name}");
+            let param_name = format!("value_{param_name}");
+
             let code = format!(
                 r#"/// A well-documented function
-/// 
+///
 /// This function performs a simple calculation.
 pub fn {}({}: i32) -> i32 {{
     {} * 2

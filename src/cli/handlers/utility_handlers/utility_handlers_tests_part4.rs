@@ -258,21 +258,10 @@ mod comprehensive_coverage_tests {
 
         add_complexity_annotation(&mut annotations, "test_function", &file, &analyses);
 
-        // Should add fallback annotations
-        assert!(annotations.contains("[complexity: 3]"));
-        assert!(annotations.contains("[cognitive: 2]"));
-        assert!(annotations.contains("[big-o: O(n)]"));
-    }
-
-    #[test]
-    fn test_add_provability_annotation_without_data() {
-        let analyses = create_test_analysis_results();
-        let mut annotations = String::new();
-
-        add_provability_annotation(&mut annotations, &analyses);
-
-        // Should use default 0.75
-        assert!(annotations.contains("[provability: 75%]"));
+        // This test used to assert the fabricated fallback
+        // "[complexity: 3] [cognitive: 2] [big-o: O(n)]". With nothing measured
+        // for the function, nothing may be printed.
+        assert!(annotations.is_empty(), "unmeasured: {annotations}");
     }
 
     #[test]

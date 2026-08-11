@@ -171,6 +171,12 @@ impl QddTool {
         let documentation = self.generator.generate_documentation(&enhanced_code)?;
 
         let metrics = QualityMetrics::default();
+        // NOT measurements: these four are constants that do not depend on
+        // `enhanced_code` at all — every enhancement, of every file, scored
+        // "complexity 5, coverage 90%, TDG 2". Nothing renders them today (no
+        // CLI subcommand or MCP tool reaches `enhance`), and `QualityScore` has
+        // no way to say "unmeasured", so any renderer added later must print
+        // them as not measured the way `display_refactor_results` does.
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
             complexity: 5,
@@ -214,6 +220,7 @@ impl QddTool {
         }
 
         let metrics = QualityMetrics::default();
+        // NOT measurements — same constants problem as `enhance_code` above.
         let quality_score = QualityScore {
             overall: metrics.calculate_score(),
             complexity: 8,

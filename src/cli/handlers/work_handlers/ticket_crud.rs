@@ -76,6 +76,22 @@ pub async fn handle_work_add(
     Ok(())
 }
 
+/// Resolve `--status` into the one status it names.
+///
+/// The whole alias vocabulary lives in `ItemStatus::from_string`, which is also
+/// what `work list-statuses` prints; going through it is what keeps the filter
+/// and the advertised aliases from drifting apart. An unparseable value is an
+/// error — returning "no items" for a status nobody can spell is the failure
+/// mode this replaced.
+fn parse_status_filter(status: Option<&str>) -> Result<Option<crate::models::roadmap::ItemStatus>> {
+    match status {
+        Some(s) => crate::models::roadmap::ItemStatus::from_string(s)
+            .map(Some)
+            .map_err(|e| anyhow::anyhow!("{e}")),
+        None => Ok(None),
+    }
+}
+
 /// Handle work list command (CRUD: Read - simple list)
 ///
 /// Lists all work tickets with optional filtering.
@@ -100,15 +116,24 @@ pub async fn handle_work_list(
 
     let roadmap = service.load()?;
 
+    // `--status` used to be matched with `format!("{:?}", item.status)
+    // .to_lowercase().contains(&s.to_lowercase())` — a Debug-string substring
+    // test. Every alias `work list-statuses` advertises (done/finished/closed,
+    // in-progress/wip, todo/open/pending) therefore matched nothing and
+    // returned an empty list, indistinguishable from "no work in that state".
+    // `ItemStatus::from_string` already implements the whole advertised alias
+    // vocabulary; parse once, compare exactly, and reject an unknown value
+    // instead of silently returning zero rows.
+    let status_filter = parse_status_filter(status.as_deref())?;
+
     // Filter items
     let items: Vec<_> = roadmap
         .roadmap
         .iter()
         .filter(|item| {
             // Filter by status if specified
-            if let Some(ref s) = status {
-                let item_status = format!("{:?}", item.status).to_lowercase();
-                if !item_status.contains(&s.to_lowercase()) {
+            if let Some(ref wanted) = status_filter {
+                if item.status != *wanted {
                     return false;
                 }
             }
@@ -279,4 +304,68 @@ pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) 
     println!("🗑️  Deleted ticket: {} - {}", c::path(&item.id), item.title);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod status_filter_tests {
+    use super::parse_status_filter;
+    use crate::models::roadmap::ItemStatus;
+
+    /// `work list --status done` returned 0 items while `--status completed`
+    /// returned 169: the filter was a Debug-string substring test, so none of
+    /// the aliases `work list-statuses` documents ever matched.
+    #[test]
+    fn every_documented_alias_resolves_to_its_canonical_status() {
+        let cases = [
+            ("completed", ItemStatus::Completed),
+            ("done", ItemStatus::Completed),
+            ("finished", ItemStatus::Completed),
+            ("closed", ItemStatus::Completed),
+            ("inprogress", ItemStatus::InProgress),
+            ("In-Progress", ItemStatus::InProgress),
+            ("in_progress", ItemStatus::InProgress),
+            ("InProgress", ItemStatus::InProgress),
+            ("wip", ItemStatus::InProgress),
+            ("planned", ItemStatus::Planned),
+            ("todo", ItemStatus::Planned),
+            ("open", ItemStatus::Planned),
+            ("pending", ItemStatus::Planned),
+        ];
+
+        for (input, expected) in cases {
+            assert_eq!(
+                parse_status_filter(Some(input)).expect("documented alias must parse"),
+                Some(expected),
+                "--status {input} must select {expected:?}"
+            );
+        }
+    }
+
+    /// The alias table itself is the contract; walk it rather than a copy.
+    #[test]
+    fn the_whole_status_table_is_filterable() {
+        for &(canonical, aliases, _) in ItemStatus::STATUS_TABLE {
+            let expected = ItemStatus::from_string(canonical).expect("canonical parses");
+            for alias in aliases.split(',').map(str::trim).filter(|a| !a.is_empty()) {
+                assert_eq!(
+                    parse_status_filter(Some(alias)).expect("table alias must parse"),
+                    Some(expected),
+                    "--status {alias} must select {canonical}"
+                );
+            }
+        }
+    }
+
+    /// A status nobody can spell must say so, not quietly return zero rows.
+    #[test]
+    fn an_unknown_status_is_an_error() {
+        let err = parse_status_filter(Some("definitely-not-a-status"))
+            .expect_err("an unknown --status must be rejected");
+        assert!(err.to_string().contains("unknown status"), "{err}");
+    }
+
+    #[test]
+    fn no_status_means_no_filter() {
+        assert_eq!(parse_status_filter(None).expect("no filter"), None);
+    }
 }

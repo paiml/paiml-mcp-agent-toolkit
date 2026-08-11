@@ -18,10 +18,15 @@ mod tests {
         assert_eq!(CleanupTarget::parse("Rust"), Some(CleanupTarget::Rust));
     }
 
+    /// `docker` parsed as a valid target but `scan_targets` has no arm for it,
+    /// so `--targets docker` reported "Items found: 0" and exited 0 without
+    /// looking at anything. This test used to pin that: it asserted the name
+    /// parsed and said nothing about a scan ever running.
     #[test]
-    fn test_cleanup_target_parse_docker() {
-        assert_eq!(CleanupTarget::parse("docker"), Some(CleanupTarget::Docker));
-        assert_eq!(CleanupTarget::parse("DOCKER"), Some(CleanupTarget::Docker));
+    fn test_cleanup_target_parse_docker_is_rejected_until_a_scanner_exists() {
+        assert_eq!(CleanupTarget::parse("docker"), None);
+        assert_eq!(CleanupTarget::parse("DOCKER"), None);
+        assert!(!SCANNABLE_TARGETS.contains(&"docker"));
     }
 
     #[test]
@@ -42,10 +47,31 @@ mod tests {
         assert_eq!(CleanupTarget::parse("LOGS"), Some(CleanupTarget::Logs));
     }
 
+    /// Same as `docker`: accepted by `parse`, dispatched by nothing.
     #[test]
-    fn test_cleanup_target_parse_caches() {
-        assert_eq!(CleanupTarget::parse("caches"), Some(CleanupTarget::Caches));
-        assert_eq!(CleanupTarget::parse("CACHES"), Some(CleanupTarget::Caches));
+    fn test_cleanup_target_parse_caches_is_rejected_until_a_scanner_exists() {
+        assert_eq!(CleanupTarget::parse("caches"), None);
+        assert_eq!(CleanupTarget::parse("CACHES"), None);
+        assert!(!SCANNABLE_TARGETS.contains(&"caches"));
+    }
+
+    /// Every advertised target must have a scanner behind it: `scan_targets`
+    /// dispatches exactly Rust/Node/Git/Logs, and `all` means those four.
+    #[test]
+    fn test_every_parseable_target_is_scannable() {
+        for name in SCANNABLE_TARGETS {
+            assert!(
+                CleanupTarget::parse(name).is_some(),
+                "{name} is advertised as valid but does not parse"
+            );
+        }
+        for name in ["docker", "caches", "bogus", ""] {
+            assert_eq!(
+                CleanupTarget::parse(name).is_some(),
+                SCANNABLE_TARGETS.contains(&name),
+                "{name}: parse and the advertised list disagree"
+            );
+        }
     }
 
     #[test]
@@ -277,6 +303,70 @@ mod tests {
         let target = CleanupTarget::All;
         let debug = format!("{:?}", target);
         assert!(debug.contains("All"));
+    }
+
+    // ============================================================================
+    // --project-dir must exist (a typo must not read as "nothing to clean")
+    // ============================================================================
+
+    /// A nonexistent --project-dir used to print a full 0-item report and exit
+    /// 0, so a typo looked exactly like a clean project — with the same flag
+    /// driving the destructive --execute mode.
+    #[tokio::test]
+    async fn test_nonexistent_project_dir_is_an_error() {
+        let missing = std::path::Path::new("/does/not/exist/pmat-cleanup-probe");
+        let err = handle_cleanup_resources(
+            missing,
+            &["rust".to_string()],
+            false,
+            &[],
+            0,
+            OutputFormat::Table,
+        )
+        .await
+        .expect_err("a nonexistent --project-dir must not report a clean scan");
+        assert!(
+            err.to_string().contains("does not exist"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// A regular file is not a project directory either.
+    #[tokio::test]
+    async fn test_file_as_project_dir_is_an_error() {
+        let dir = TempDir::new().expect("tempdir");
+        let file = dir.path().join("not-a-dir.txt");
+        std::fs::write(&file, "x").expect("write");
+        let err = handle_cleanup_resources(
+            &file,
+            &["rust".to_string()],
+            false,
+            &[],
+            0,
+            OutputFormat::Table,
+        )
+        .await
+        .expect_err("a file is not a directory to clean");
+        assert!(
+            err.to_string().contains("not a directory"),
+            "unexpected error: {err}"
+        );
+    }
+
+    /// An existing directory still scans and still succeeds.
+    #[tokio::test]
+    async fn test_existing_project_dir_still_scans() {
+        let dir = TempDir::new().expect("tempdir");
+        handle_cleanup_resources(
+            dir.path(),
+            &["rust".to_string()],
+            false,
+            &[],
+            0,
+            OutputFormat::Table,
+        )
+        .await
+        .expect("an existing directory must still be scannable");
     }
 
     include!("cleanup_tests_part2.rs");

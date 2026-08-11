@@ -327,9 +327,21 @@ fn foo() {
             .score_with_mode(temp_dir.path(), ScoringMode::Fast)
             .unwrap();
 
-        // Fast mode: complexity(3) + unsafe(9) + mutation(4, skipped) + build(2, skipped) + dead_code(2) = 20
-        assert!(result.earned >= 18.0);
-        assert_eq!(result.max, 26.0);
+        // Fast mode runs complexity(3) + unsafe(9) + dead_code(2) = 14 points.
+        //
+        // This used to assert `earned >= 18.0` and `max == 26.0` — the comment it
+        // replaced even named the reason ("mutation(4, skipped) + build(2,
+        // skipped)"): fast mode was awarding heuristic partial credit for two
+        // checks it never ran, and counting their points in the denominator. A
+        // check that did not run can contribute to neither side of the ratio, so
+        // both numbers drop by 12.
+        assert_eq!(result.max, 14.0, "skipped checks must leave the denominator");
+        assert!(
+            result.earned <= result.max,
+            "earned {} exceeds max {}",
+            result.earned,
+            result.max
+        );
     }
 
     #[test]
@@ -355,8 +367,26 @@ fn foo() {
             .score_with_cache(temp_dir.path(), ScoringMode::Fast, Some(&cache))
             .unwrap();
 
-        assert!(result.earned >= 18.0);
-        assert_eq!(result.max, 26.0);
+        // Same correction as test_score_with_mode_fast above: this used to
+        // assert `earned >= 18.0` and `max == 26.0`, which only held because
+        // fast mode invented partial credit for mutation testing (8pts) and
+        // build time (4pts) — two checks it never runs. Fast mode scores the
+        // three checks it can run: complexity(3) + unsafe(9) + dead_code(2).
+        assert_eq!(result.max, 14.0, "skipped checks must leave the denominator");
+        assert!(
+            result.earned <= result.max,
+            "earned {} exceeds max {}",
+            result.earned,
+            result.max
+        );
+
+        // The cache is a read path for the same source, not a scoring input:
+        // it must not change the result.
+        let uncached = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .unwrap();
+        assert_eq!(result.earned, uncached.earned);
+        assert_eq!(result.max, uncached.max);
     }
 
     #[test]

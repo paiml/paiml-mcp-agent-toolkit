@@ -77,10 +77,7 @@ pub async fn handle_score(
     persist_score(path, &score);
 
     // Format output
-    let output_text = match format {
-        RepoScoreOutputFormat::Json => serde_json::to_string_pretty(&score)?,
-        _ => format_text(&score),
-    };
+    let output_text = render_score(&score, format)?;
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &output_text)?;
@@ -135,6 +132,60 @@ pub async fn handle_score(
     }
 
     Ok(())
+}
+
+/// Render a computed score in the requested output format.
+///
+/// Every non-JSON variant used to fall through to the ANSI text renderer, so
+/// `-f yaml` and `-f markdown` emitted byte-identical banner text despite --help
+/// promising "YAML format" and "Markdown format with tables". Each advertised
+/// format now has its own arm, and the match is exhaustive so a new variant
+/// cannot silently inherit the text renderer again.
+fn render_score(score: &CompositeScore, format: &RepoScoreOutputFormat) -> Result<String> {
+    Ok(match format {
+        RepoScoreOutputFormat::Json => serde_json::to_string_pretty(score)?,
+        RepoScoreOutputFormat::Yaml => serde_yaml_ng::to_string(score)?,
+        RepoScoreOutputFormat::Markdown => format_markdown(score),
+        RepoScoreOutputFormat::Text => format_text(score),
+    })
+}
+
+/// Render the composite score as Markdown tables (`-f markdown`).
+fn format_markdown(score: &CompositeScore) -> String {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+    out.push_str("# PMAT Unified Score\n\n");
+    let _ = writeln!(out, "- **Composite**: {:.1}/100", score.composite);
+    let _ = writeln!(out, "- **Grade**: {}", score.grade);
+    let _ = writeln!(out, "- **Commit**: {}", score.sha);
+    let _ = writeln!(out, "- **Timestamp**: {}\n", score.timestamp);
+
+    out.push_str("## Sub-Scores\n\n");
+    out.push_str("| Sub-Score | Value |\n|---|---:|\n");
+    let s = &score.sub_scores;
+    let _ = writeln!(out, "| RPS | {:.1} |", s.rps);
+    let _ = writeln!(
+        out,
+        "| Comply | {:.1} ({} errors, {} warnings) |",
+        s.comply, score.comply_errors, score.comply_warnings
+    );
+    let _ = writeln!(out, "| Coverage | {:.1} |", s.coverage);
+    let _ = writeln!(out, "| Muda (inv) | {:.1} |", s.muda_inv);
+    let _ = writeln!(out, "| EvoScore | {:.1} |", s.evoscore);
+    let _ = writeln!(out, "| DBC | {:.1} |", s.dbc);
+    let _ = writeln!(out, "| File Health | {:.1} |", s.file_health);
+    let _ = writeln!(out, "| PV Lint | {:.1} |", s.pv_lint);
+
+    if !score.rps_categories.is_empty() {
+        out.push_str("\n## RPS Categories\n\n");
+        out.push_str("| Category | Percent |\n|---|---:|\n");
+        let mut cats: Vec<_> = score.rps_categories.iter().collect();
+        cats.sort_by(|a, b| a.0.cmp(b.0));
+        for (name, pct) in cats {
+            let _ = writeln!(out, "| {name} | {pct:.1} |");
+        }
+    }
+    out
 }
 
 /// Compute the geometric composite from all sub-scores.
@@ -759,5 +810,36 @@ mod tests {
         let _ = check_pv_lint_gates(tmp.path());
         // No assertion on return — the behavior depends on host. We only need to
         // hit the function for coverage.
+    }
+
+    // --- render_score: each advertised format must be its own format ---
+
+    #[test]
+    fn test_render_score_yaml_and_markdown_are_not_the_text_banner() {
+        let score = dummy_score(zero_subs(), 58.3, 2);
+
+        let text = render_score(&score, &RepoScoreOutputFormat::Text).unwrap();
+        let yaml = render_score(&score, &RepoScoreOutputFormat::Yaml).unwrap();
+        let markdown = render_score(&score, &RepoScoreOutputFormat::Markdown).unwrap();
+
+        assert_ne!(
+            yaml, text,
+            "-f yaml must not fall through to the text renderer"
+        );
+        assert_ne!(
+            markdown, text,
+            "-f markdown must not fall through to the text renderer"
+        );
+
+        // YAML must actually parse as YAML and carry the composite.
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).expect("valid YAML");
+        assert!(parsed.get("composite").is_some(), "yaml: {yaml}");
+
+        // Markdown must carry a table, as --help promises.
+        assert!(
+            markdown.starts_with("# PMAT Unified Score"),
+            "md: {markdown}"
+        );
+        assert!(markdown.contains("| RPS |"), "md: {markdown}");
     }
 }

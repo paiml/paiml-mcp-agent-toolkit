@@ -1,21 +1,122 @@
 
 struct RustVisitor {
     items: Vec<AstItem>,
-    
+
     source: String,
+    /// Byte offsets of the start of every line in `source`.
+    line_starts: Vec<usize>,
+    /// How far into `source` declaration lookup has already consumed. Items are
+    /// visited in source order, so the scan never has to restart.
+    scan_offset: usize,
 }
 
 impl RustVisitor {
     fn new(source: String) -> Self {
+        let mut line_starts = vec![0usize];
+        line_starts.extend(
+            source
+                .char_indices()
+                .filter(|(_, c)| *c == '\n')
+                .map(|(i, _)| i + 1),
+        );
         Self {
             items: Vec::new(),
             source,
+            line_starts,
+            scan_offset: 0,
         }
     }
 
-    fn get_line<T: syn::spanned::Spanned>(&self, _span: T) -> usize {
-        // For simplicity, return 1. In production, use a proper source map
-        1
+    /// Line on which `keyword name` is declared, e.g. `("fn", "collect_nodes")`.
+    ///
+    /// This used to be `get_line(_span) -> 1` ("for simplicity, return 1"), so
+    /// every item in a project-AST `FileContext` — and therefore every node of
+    /// the DAG built from it — reported line 1 regardless of the file. syn's
+    /// spans carry no location unless proc-macro2's `span-locations` feature is
+    /// on (it is not, and turning it on taxes every build), so resolve the line
+    /// from the source text the visitor already holds. Items arrive in source
+    /// order, so a forward scan is both cheap and unambiguous. A declaration we
+    /// cannot locate reports 0 ("unknown") rather than a plausible 1.
+    fn line_of_decl(&mut self, keyword: &str, name: &str) -> usize {
+        match self.find_decl_offset(keyword, Some(name)) {
+            Some(offset) => {
+                self.scan_offset = offset + keyword.len();
+                self.line_at(offset)
+            }
+            None => 0,
+        }
+    }
+
+    /// Line of the next bare `keyword` token (used for `impl` / `use`, which
+    /// have no single declared identifier).
+    fn line_of_keyword(&mut self, keyword: &str) -> usize {
+        match self.find_decl_offset(keyword, None) {
+            Some(offset) => {
+                self.scan_offset = offset + keyword.len();
+                self.line_at(offset)
+            }
+            None => 0,
+        }
+    }
+
+    fn line_at(&self, offset: usize) -> usize {
+        match self.line_starts.binary_search(&offset) {
+            Ok(index) => index + 1,
+            Err(index) => index, // index of the following line start == 1-based line
+        }
+    }
+
+    /// Byte offset of the next `keyword` token (optionally followed by `name`)
+    /// at or after the scan cursor, skipping matches inside `//` comments.
+    fn find_decl_offset(&self, keyword: &str, name: Option<&str>) -> Option<usize> {
+        let bytes = self.source.as_bytes();
+        let is_ident = |b: u8| b == b'_' || b.is_ascii_alphanumeric();
+        let mut from = self.scan_offset.min(self.source.len());
+
+        while let Some(rel) = self.source.get(from..)?.find(keyword) {
+            let start = from + rel;
+            from = start + keyword.len();
+
+            // `keyword` must stand alone, not end a longer identifier.
+            if start > 0 && is_ident(bytes[start - 1]) {
+                continue;
+            }
+            let after_keyword = start + keyword.len();
+            if after_keyword < bytes.len() && is_ident(bytes[after_keyword]) {
+                continue;
+            }
+
+            if let Some(name) = name {
+                let mut cursor = after_keyword;
+                while cursor < bytes.len() && (bytes[cursor] as char).is_whitespace() {
+                    cursor += 1;
+                }
+                if !self.source[cursor..].starts_with(name) {
+                    continue;
+                }
+                let after_name = cursor + name.len();
+                if after_name < bytes.len() && is_ident(bytes[after_name]) {
+                    continue;
+                }
+            }
+
+            if self.is_line_commented(start) {
+                continue;
+            }
+
+            return Some(start);
+        }
+
+        None
+    }
+
+    /// Is `offset` preceded by `//` on its own line? Keeps doc comments and
+    /// commented-out code from being read as declarations.
+    fn is_line_commented(&self, offset: usize) -> bool {
+        let line_start = self.source[..offset]
+            .rfind('\n')
+            .map_or(0, |newline| newline + 1);
+        self.source[line_start..offset].contains("//")
     }
 
     fn get_visibility(&self, vis: &syn::Visibility) -> String {
@@ -42,11 +143,13 @@ impl RustVisitor {
 
 impl<'ast> Visit<'ast> for RustVisitor {
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
+        let name = node.sig.ident.to_string();
+        let line = self.line_of_decl("fn", &name);
         self.items.push(AstItem::Function {
-            name: node.sig.ident.to_string(),
+            name,
             visibility: self.get_visibility(&node.vis),
             is_async: node.sig.asyncness.is_some(),
-            line: self.get_line(node.sig.ident.span()),
+            line,
         });
     }
 
@@ -57,29 +160,35 @@ impl<'ast> Visit<'ast> for RustVisitor {
             syn::Fields::Unit => 0,
         };
 
+        let name = node.ident.to_string();
+        let line = self.line_of_decl("struct", &name);
         self.items.push(AstItem::Struct {
-            name: node.ident.to_string(),
+            name,
             visibility: self.get_visibility(&node.vis),
             fields_count,
             derives: Self::get_derives(&node.attrs),
-            line: self.get_line(node.ident.span()),
+            line,
         });
     }
 
     fn visit_item_enum(&mut self, node: &'ast ItemEnum) {
+        let name = node.ident.to_string();
+        let line = self.line_of_decl("enum", &name);
         self.items.push(AstItem::Enum {
-            name: node.ident.to_string(),
+            name,
             visibility: self.get_visibility(&node.vis),
             variants_count: node.variants.len(),
-            line: self.get_line(node.ident.span()),
+            line,
         });
     }
 
     fn visit_item_trait(&mut self, node: &'ast ItemTrait) {
+        let name = node.ident.to_string();
+        let line = self.line_of_decl("trait", &name);
         self.items.push(AstItem::Trait {
-            name: node.ident.to_string(),
+            name,
             visibility: self.get_visibility(&node.vis),
-            line: self.get_line(node.ident.span()),
+            line,
         });
     }
 
@@ -100,18 +209,21 @@ impl<'ast> Visit<'ast> for RustVisitor {
                 .map_or_else(|| "Unknown".to_string(), |s| s.ident.to_string())
         });
 
+        let line = self.line_of_keyword("impl");
         self.items.push(AstItem::Impl {
             type_name,
             trait_name,
-            line: 1, // Default line number
+            line,
         });
     }
 
     fn visit_item_mod(&mut self, node: &'ast ItemMod) {
+        let name = node.ident.to_string();
+        let line = self.line_of_decl("mod", &name);
         self.items.push(AstItem::Module {
-            name: node.ident.to_string(),
+            name,
             visibility: self.get_visibility(&node.vis),
-            line: self.get_line(node.ident.span()),
+            line,
         });
     }
 
@@ -124,10 +236,8 @@ impl<'ast> Visit<'ast> for RustVisitor {
         let mut path = String::new();
         collect_use_path(&node.tree, &mut path);
 
-        self.items.push(AstItem::Use {
-            path,
-            line: 1, // Default line number
-        });
+        let line = self.line_of_keyword("use");
+        self.items.push(AstItem::Use { path, line });
     }
 }
 
@@ -153,6 +263,77 @@ fn collect_use_path(tree: &syn::UseTree, out: &mut String) {
         syn::UseTree::Rename(r) => push(out, &r.ident.to_string()),
         syn::UseTree::Glob(_) => push(out, "*"),
         syn::UseTree::Group(_) => {}
+    }
+}
+
+#[cfg(test)]
+mod visitor_line_number_tests {
+    //! Every item used to report line 1, whatever the file.
+    use super::*;
+
+    const SOURCE: &str = r"// a comment that mentions fn beta and struct Alpha
+use std::io;
+
+pub struct Alpha {
+    x: u32,
+}
+
+fn beta() -> u32 {
+    1
+}
+
+pub mod inner {}
+";
+
+    fn items_of(source: &str) -> Vec<AstItem> {
+        let parsed = syn::parse_file(source).expect("fixture must parse");
+        let mut visitor = RustVisitor::new(source.to_string());
+        visitor.visit_file(&parsed);
+        visitor.items
+    }
+
+    #[test]
+    fn test_items_report_their_real_declaration_line() {
+        let items = items_of(SOURCE);
+
+        let mut seen = Vec::new();
+        for item in &items {
+            match item {
+                AstItem::Use { path, line } => seen.push((path.clone(), *line)),
+                AstItem::Struct { name, line, .. }
+                | AstItem::Function { name, line, .. }
+                | AstItem::Module { name, line, .. } => seen.push((name.clone(), *line)),
+                _ => {}
+            }
+        }
+
+        assert_eq!(
+            seen,
+            vec![
+                ("std::io".to_string(), 2),
+                ("Alpha".to_string(), 4),
+                ("beta".to_string(), 8),
+                ("inner".to_string(), 12),
+            ],
+            "declaration lines were {seen:?}"
+        );
+    }
+
+    #[test]
+    fn test_line_numbers_are_not_all_one() {
+        // The stub returned a literal 1 for every item; any file with more than
+        // one declaration must produce more than one distinct line.
+        let lines: std::collections::BTreeSet<usize> = items_of(SOURCE)
+            .iter()
+            .map(|item| match item {
+                AstItem::Use { line, .. }
+                | AstItem::Struct { line, .. }
+                | AstItem::Function { line, .. }
+                | AstItem::Module { line, .. } => *line,
+                _ => 0,
+            })
+            .collect();
+        assert!(lines.len() > 1, "all items landed on the same line: {lines:?}");
     }
 }
 

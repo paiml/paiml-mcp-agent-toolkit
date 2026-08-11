@@ -115,6 +115,65 @@ mod tests {
         );
     }
 
+    /// A nonexistent path used to be reported as "not supported for language:
+    /// unknown" — a language verdict for a path that was never read.
+    #[test]
+    fn test_missing_path_is_a_path_error_not_a_language_verdict() {
+        let err = analyze_dead_code_multi_language(Path::new(
+            "/does/not/exist/pmat-dead-code-missing-path",
+        ))
+        .expect_err("a missing path must be an error");
+        let msg = err.to_string();
+        assert!(msg.contains("Path not found"), "{msg}");
+        assert!(
+            !msg.contains("unknown"),
+            "must not report a detected language for a path that does not exist: {msg}"
+        );
+    }
+
+    /// One unsupported dominant language used to abort the whole run, even when
+    /// every supported file under the path was analysable.
+    #[test]
+    fn test_unsupported_dominant_language_still_analyses_supported_files() {
+        let temp = TempDir::new().unwrap();
+        // Enough TypeScript to win language detection...
+        for i in 0..5 {
+            std::fs::write(
+                temp.path().join(format!("app{i}.ts")),
+                "export function f(): number { return 1; }\n",
+            )
+            .unwrap();
+        }
+        // ...plus one analysable Python file.
+        std::fs::write(
+            temp.path().join("main.py"),
+            "def main():\n    used()\n\ndef used():\n    pass\n\ndef dead_one():\n    pass\n",
+        )
+        .unwrap();
+
+        let result = analyze_dead_code_multi_language(temp.path())
+            .expect("supported files are present, so the run must not abort");
+        assert_eq!(result.language, "python");
+        assert!(
+            result.dead_functions.iter().any(|d| d.name == "dead_one"),
+            "the Python file must actually have been analysed: {result:?}"
+        );
+    }
+
+    /// ...but a tree with nothing analysable in it must still say so.
+    #[test]
+    fn test_no_supported_files_still_errors() {
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("app.ts"),
+            "export function f(): number { return 1; }\n",
+        )
+        .unwrap();
+        let err =
+            analyze_dead_code_multi_language(temp.path()).expect_err("nothing analysable here");
+        assert!(err.to_string().contains("no rust, c, cpp, python or lua"));
+    }
+
     fn create_test_c_project() -> TempDir {
         let temp = TempDir::new().unwrap();
         std::fs::write(

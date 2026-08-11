@@ -413,4 +413,29 @@ mod coverage_instrumented_tests {
         assert!(!deps[0].is_orphan);
         assert_eq!(deps[0].transitive_count, 10);
     }
+
+    // ── Summary count invariant (round-5 dogfood: Total 116 < Direct 119) ──
+
+    #[test]
+    fn test_summary_counts_total_is_direct_plus_transitive() {
+        use super::super::handler::summary_counts;
+        // 853 packages in Cargo.lock, 116 de-duplicated direct+dev deps.
+        let (total, direct, transitive) = summary_counts(116, 853);
+        assert_eq!(total, 853);
+        assert_eq!(direct, 116);
+        assert_eq!(transitive, 737);
+        assert_eq!(total, direct + transitive);
+        assert!(total >= direct, "Total must never be below Direct");
+    }
+
+    #[test]
+    fn test_summary_counts_never_reports_total_below_direct() {
+        use super::super::handler::summary_counts;
+        // Degenerate: no/short Cargo.lock. Total still cannot undercut Direct.
+        let (total, direct, transitive) = summary_counts(119, 0);
+        assert_eq!(total, 119);
+        assert_eq!(direct, 119);
+        assert_eq!(transitive, 0);
+        assert!(total >= direct);
+    }
 }

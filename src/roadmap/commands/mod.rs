@@ -139,6 +139,9 @@ include!("commands_tasks.rs");
 include!("commands_status.rs");
 include!("commands_validation.rs");
 
+// Regression tests for `roadmap status --format`
+include!("commands_status_tests.rs");
+
 // TEMPORARILY DISABLED: File splitting broke syntax
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]

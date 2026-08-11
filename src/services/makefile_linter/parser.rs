@@ -43,3 +43,6 @@ include!("parser_cursor.rs");
 
 // Unit tests and property tests
 include!("parser_tests.rs");
+
+// Regression tests for `::=` / `:::=` scanning
+include!("parser_scanner_tests.rs");

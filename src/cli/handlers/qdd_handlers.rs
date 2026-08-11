@@ -151,40 +151,56 @@ async fn execute_create_operation(
 }
 
 /// Display creation results
+///
+/// The four numbers here used to be printed as measurements: "Quality Score: 98.0,
+/// Complexity: 1, Coverage: 100.0%, TDG Score: 1" — identical for `add two numbers`
+/// and for `a distributed consensus engine with retries and backoff`, over a body
+/// that is `todo!("Implementation needed")`. Coverage is a literal 100 that no test
+/// run ever produced and TDG is a constant, so they are reported as not measured;
+/// the complexity/quality figures are labelled as the template estimates they are.
 fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
-    println!("{}", c::header("QDD Code Creation Successful!"));
+    println!("{}", c::header("QDD Template Generated"));
     println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
+
+    let is_stub = result.code.contains("todo!");
+    if is_stub {
+        println!(
+            "  {}",
+            c::warn("Template only: the generated body is `todo!()` — nothing is implemented yet")
+        );
+    }
+
     println!(
-        "  {} {}",
-        c::label("Quality Score:"),
-        c::number(&format!("{:.1}", result.quality_score.overall))
+        "  {} {} {}",
+        c::label("Template complexity (estimated):"),
+        c::number(&format!("{}", result.quality_score.complexity)),
+        c::dim("(keyword heuristic over the template)")
     );
     println!(
-        "  {} {}",
-        c::label("Complexity:"),
-        c::number(&format!("{}", result.quality_score.complexity))
+        "  {} {} {}",
+        c::label("Template quality score (estimated):"),
+        c::number(&format!("{:.1}", result.quality_score.overall)),
+        c::dim("(derived from the estimate above, not an analysis of your code)")
     );
     println!(
         "  {} {}",
         c::label("Coverage:"),
-        c::pct(result.quality_score.coverage, 80.0, 60.0)
+        c::dim("not measured (no tests were executed)")
     );
-    println!(
-        "  {} {}",
-        c::label("TDG Score:"),
-        c::number(&format!("{}", result.quality_score.tdg))
-    );
+    println!("  {} {}", c::label("TDG Score:"), c::dim("not measured"));
     println!();
 }
 
 /// Output generated code to file or stdout
 fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Result<()> {
     if let Some(output_path) = output_file {
-        let full_content = format!(
-            "{}\n\n{}\n\n{}",
-            result.code, result.tests, result.documentation
-        );
-        std::fs::write(&output_path, full_content)?;
+        // The documentation is Markdown. It used to be concatenated onto the end of
+        // the same file as the code and the tests, so `-o add.rs` produced a file
+        // that carried "# add_two", "## Returns" and a ```rust fence after
+        // `mod tests` — the emitted .rs could not parse. Rust goes in the source
+        // file; the prose goes in a sibling .md.
+        let source = format!("{}\n\n{}\n", result.code, result.tests);
+        std::fs::write(&output_path, source)?;
         println!(
             "{}",
             c::pass(&format!(
@@ -192,6 +208,21 @@ fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Re
                 c::path(&output_path.display().to_string())
             ))
         );
+
+        if !result.documentation.trim().is_empty() {
+            let mut doc_path = output_path.with_extension("md");
+            if doc_path == output_path {
+                doc_path = output_path.with_extension("doc.md");
+            }
+            std::fs::write(&doc_path, format!("{}\n", result.documentation))?;
+            println!(
+                "{}",
+                c::pass(&format!(
+                    "Generated documentation written to: {}",
+                    c::path(&doc_path.display().to_string())
+                ))
+            );
+        }
     } else {
         println!("{}", c::subheader("Generated Code:"));
         println!("{}", result.code);
@@ -319,43 +350,72 @@ async fn execute_refactoring(
 }
 
 /// Display refactoring results
+///
+/// Same defect as [`display_create_results`], one command over: "Coverage: 80.0%"
+/// came from `CodeAnalyzer::estimate_coverage`, which is `count("#[test]") * 10 /
+/// line_count` — no test was compiled, let alone run — and "TDG Score: 0" is a
+/// count of the literals `todo!` and `unwrap` in the text, not a TDG score. Both
+/// are reported as not measured; the two figures that ARE derived from the code
+/// (a keyword count of branching constructs, and the score computed from it) are
+/// labelled as the estimates they are. The estimates still drive the refactoring
+/// loop's stopping condition — they are just no longer printed as measurements.
 fn display_refactor_results(
     file: &Path,
     function: Option<String>,
     profile: QddQualityProfile,
     result: &QddResult,
 ) {
-    println!("{}", c::header("QDD Refactoring Successful!"));
-    println!(
-        "  {} {}",
+    print!(
+        "{}",
+        format_refactor_results(file, function, profile, result)
+    );
+}
+
+/// The text [`display_refactor_results`] prints, as a string so it can be
+/// asserted on.
+fn format_refactor_results(
+    file: &Path,
+    function: Option<String>,
+    profile: QddQualityProfile,
+    result: &QddResult,
+) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("{}\n", c::header("QDD Refactoring Successful!")));
+    out.push_str(&format!(
+        "  {} {}\n",
         c::label("File:"),
         c::path(&file.display().to_string())
-    );
+    ));
     if let Some(func) = function {
-        println!("  {} {}", c::label("Function:"), func);
+        out.push_str(&format!("  {} {}\n", c::label("Function:"), func));
     }
-    println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
-    println!(
-        "  {} {}",
-        c::label("Quality Score:"),
-        c::number(&format!("{:.1}", result.quality_score.overall))
-    );
-    println!(
-        "  {} {}",
-        c::label("Complexity:"),
-        c::number(&format!("{}", result.quality_score.complexity))
-    );
-    println!(
-        "  {} {}",
+    out.push_str(&format!(
+        "{}\n",
+        c::pass(&format!("Quality Profile: {profile:?}"))
+    ));
+    out.push_str(&format!(
+        "  {} {} {}\n",
+        c::label("Quality score (estimated):"),
+        c::number(&format!("{:.1}", result.quality_score.overall)),
+        c::dim("(derived from the estimates below, not an analysis run)")
+    ));
+    out.push_str(&format!(
+        "  {} {} {}\n",
+        c::label("Complexity (estimated):"),
+        c::number(&format!("{}", result.quality_score.complexity)),
+        c::dim("(keyword heuristic over the refactored text)")
+    ));
+    out.push_str(&format!(
+        "  {} {}\n",
         c::label("Coverage:"),
-        c::pct(result.quality_score.coverage, 80.0, 60.0)
-    );
-    println!(
-        "  {} {}",
+        c::dim("not measured (no tests were executed)")
+    ));
+    out.push_str(&format!(
+        "  {} {}\n\n",
         c::label("TDG Score:"),
-        c::number(&format!("{}", result.quality_score.tdg))
-    );
-    println!();
+        c::dim("not measured")
+    ));
+    out
 }
 
 /// Save refactored code to file
@@ -390,6 +450,9 @@ async fn handle_qdd_validate(
     output: Option<PathBuf>,
     strict: bool,
 ) -> Result<()> {
+    // `qdd validate -p /does/not/exist.rs` printed "✓ PASSED" and exited 0.
+    crate::cli::ensure_analysis_path_exists(&path)?;
+
     let quality_profile = match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),
@@ -402,59 +465,56 @@ async fn handle_qdd_validate(
         print_validation_header(&path, profile, &quality_profile);
     }
 
-    // Simple validation placeholder
-    let validation_passed = true; // Would implement actual validation
+    // This used to be `let validation_passed = true; // Would implement actual
+    // validation`, and the Detailed arm printed four hardcoded PASSED lines with
+    // no check behind any of them — so every input passed, including a path that
+    // did not exist and this repository, whose own printed thresholds
+    // ("Max Complexity: 10, Zero SATD: true") it violates. The verdict is now
+    // derived from checks that actually run, and the two thresholds this command
+    // cannot measure say so instead of passing.
+    let outcome = run_validation_checks(&path, &quality_profile).await;
+    let validation_passed = outcome.passed();
 
     match format {
         QddOutputFormat::Summary => {
             println!("\n{}", c::subheader("Validation Summary:"));
-            println!(
-                "{}",
-                if validation_passed {
-                    c::pass("PASSED")
-                } else {
-                    c::fail("FAILED")
-                }
-            );
+            println!("{}", render_status(&outcome));
+            for (name, check) in &outcome.checks {
+                println!("  {} {}", c::label(&format!("{name}:")), check.describe());
+            }
         }
         QddOutputFormat::Detailed => {
             println!("\n{}", c::subheader("Detailed Validation Results:"));
-            println!("{}", c::pass("Quality checks: PASSED"));
-            println!("{}", c::pass("Complexity check: PASSED"));
-            println!("{}", c::pass("Coverage check: PASSED"));
-            println!("{}", c::pass("Technical debt: PASSED"));
+            for (name, check) in &outcome.checks {
+                println!("{}", check.render(name));
+            }
+            println!("{}", render_status(&outcome));
         }
         QddOutputFormat::Json => {
-            let json_result = build_validation_json(validation_passed, profile, &path);
+            let json_result = build_validation_json(&outcome, profile, &path);
             println!("{}", serde_json::to_string_pretty(&json_result)?);
         }
         QddOutputFormat::Markdown => {
             println!("# QDD Validation Report");
             println!();
-            println!(
-                "**Status:** {}",
-                if validation_passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            );
+            println!("**Status:** {}", markdown_status(&outcome));
             println!("**Profile:** {profile:?}");
             println!("**Path:** {}", path.display());
             println!(
                 "**Date:** {}",
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
             );
+            println!();
+            for (name, check) in &outcome.checks {
+                println!("- **{name}:** {}", check.describe());
+            }
         }
     }
 
     if let Some(output_path) = output {
         // Write the report before claiming it was written
-        let report = serde_json::to_string_pretty(&build_validation_json(
-            validation_passed,
-            profile,
-            &path,
-        ))?;
+        let report =
+            serde_json::to_string_pretty(&build_validation_json(&outcome, profile, &path))?;
         std::fs::write(&output_path, report)
             .with_context(|| format!("Failed to write report: {}", output_path.display()))?;
         let message = c::pass(&format!(
@@ -469,10 +529,249 @@ async fn handle_qdd_validate(
     }
 
     if strict && !validation_passed {
-        return Err(anyhow::anyhow!("Quality validation failed (strict mode)"));
+        return Err(anyhow::anyhow!(
+            "Quality validation did not pass (strict mode): {}",
+            outcome.strict_reason()
+        ));
     }
 
     Ok(())
+}
+
+/// The result of one threshold this command claims to enforce.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CheckOutcome {
+    Passed(String),
+    Failed(String),
+    /// The threshold is printed by the header but nothing here measures it.
+    /// An unmeasured check is never a pass — see the `cuda-tdg` "not measured"
+    /// reports for the same rule.
+    NotMeasured(String),
+}
+
+impl CheckOutcome {
+    fn describe(&self) -> String {
+        match self {
+            Self::Passed(detail) | Self::Failed(detail) | Self::NotMeasured(detail) => {
+                detail.clone()
+            }
+        }
+    }
+
+    fn verdict(&self) -> &'static str {
+        match self {
+            Self::Passed(_) => "passed",
+            Self::Failed(_) => "failed",
+            Self::NotMeasured(_) => "not measured",
+        }
+    }
+
+    fn render(&self, name: &str) -> String {
+        let line = format!(
+            "{name}: {} ({})",
+            self.verdict().to_uppercase(),
+            self.describe()
+        );
+        match self {
+            Self::Passed(_) => c::pass(&line),
+            Self::Failed(_) => c::fail(&line),
+            Self::NotMeasured(_) => c::warn(&line),
+        }
+    }
+}
+
+/// Every check this run performed, in the order the header prints them.
+struct ValidationOutcome {
+    checks: Vec<(&'static str, CheckOutcome)>,
+}
+
+impl ValidationOutcome {
+    /// `failed` beats `incomplete` beats `passed`: a run that could not measure
+    /// a threshold it prints must not report a pass.
+    fn status(&self) -> &'static str {
+        if self.has(|c| matches!(c, CheckOutcome::Failed(_))) {
+            "failed"
+        } else if self.has(|c| matches!(c, CheckOutcome::NotMeasured(_))) {
+            "incomplete"
+        } else {
+            "passed"
+        }
+    }
+
+    fn has(&self, pred: impl Fn(&CheckOutcome) -> bool) -> bool {
+        self.checks.iter().any(|(_, c)| pred(c))
+    }
+
+    fn passed(&self) -> bool {
+        self.status() == "passed"
+    }
+
+    fn strict_reason(&self) -> String {
+        self.checks
+            .iter()
+            .filter(|(_, c)| !matches!(c, CheckOutcome::Passed(_)))
+            .map(|(name, c)| format!("{name} {}: {}", c.verdict(), c.describe()))
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+
+    fn violations(&self) -> Vec<serde_json::Value> {
+        self.checks
+            .iter()
+            .filter(|(_, c)| matches!(c, CheckOutcome::Failed(_)))
+            .map(|(name, c)| serde_json::json!({ "check": name, "detail": c.describe() }))
+            .collect()
+    }
+
+    fn unmeasured(&self) -> Vec<serde_json::Value> {
+        self.checks
+            .iter()
+            .filter(|(_, c)| matches!(c, CheckOutcome::NotMeasured(_)))
+            .map(|(name, c)| serde_json::json!({ "check": name, "reason": c.describe() }))
+            .collect()
+    }
+}
+
+fn render_status(outcome: &ValidationOutcome) -> String {
+    match outcome.status() {
+        "passed" => c::pass("PASSED"),
+        "failed" => c::fail("FAILED"),
+        other => c::warn(&other.to_uppercase()),
+    }
+}
+
+fn markdown_status(outcome: &ValidationOutcome) -> &'static str {
+    match outcome.status() {
+        "passed" => "✅ PASSED",
+        "failed" => "❌ FAILED",
+        _ => "⚠️ INCOMPLETE (some thresholds were not measured)",
+    }
+}
+
+/// Run the checks behind the thresholds the header prints.
+async fn run_validation_checks(path: &Path, profile: &QualityProfile) -> ValidationOutcome {
+    let thresholds = &profile.thresholds;
+    ValidationOutcome {
+        checks: vec![
+            ("complexity", check_complexity(path, thresholds.max_complexity).await),
+            ("technical debt", check_satd(path, thresholds.zero_satd).await),
+            (
+                "coverage",
+                CheckOutcome::NotMeasured(format!(
+                    "min {}% required; coverage needs an instrumented test run (cargo llvm-cov), which this command does not perform",
+                    thresholds.min_coverage
+                )),
+            ),
+            (
+                "tdg",
+                CheckOutcome::NotMeasured(format!(
+                    "max {} allowed; run `pmat tdg` — this command does not compute TDG",
+                    thresholds.max_tdg
+                )),
+            ),
+        ],
+    }
+}
+
+/// Source files this command can analyse under `path`.
+fn collect_analysable_files(path: &Path) -> Vec<PathBuf> {
+    use crate::cli::language_analyzer::Language;
+
+    let candidates = if path.is_file() {
+        vec![path.to_path_buf()]
+    } else {
+        crate::services::file_discovery::ProjectFileDiscovery::new(path.to_path_buf())
+            .discover_files()
+            .unwrap_or_default()
+    };
+
+    candidates
+        .into_iter()
+        .filter(|p| {
+            !matches!(
+                Language::from_path(p),
+                Language::Unknown | Language::Markdown | Language::Yaml
+            )
+        })
+        .collect()
+}
+
+/// Worst cyclomatic complexity under `path` against the profile threshold.
+async fn check_complexity(path: &Path, max_complexity: u32) -> CheckOutcome {
+    let files = collect_analysable_files(path);
+    let mut worst: Option<(String, u16)> = None;
+    let mut analyzed = 0usize;
+
+    for file in &files {
+        let Ok(metrics) =
+            crate::services::complexity::analyze_file_complexity_uncached(file, None).await
+        else {
+            continue;
+        };
+        analyzed += 1;
+        for func in &metrics.functions {
+            if worst
+                .as_ref()
+                .is_none_or(|(_, c)| func.metrics.cyclomatic > *c)
+            {
+                worst = Some((
+                    format!("{}::{}", metrics.path, func.name),
+                    func.metrics.cyclomatic,
+                ));
+            }
+        }
+    }
+
+    match worst {
+        // Nothing read means nothing measured; a clean pass over zero files is
+        // the fabrication this whole command was guilty of.
+        None => CheckOutcome::NotMeasured(format!(
+            "no functions were read under {} ({analyzed} file(s) analysed)",
+            path.display()
+        )),
+        Some((name, cyclomatic)) if u32::from(cyclomatic) > max_complexity => CheckOutcome::Failed(
+            format!("{name} has cyclomatic complexity {cyclomatic}, over the limit of {max_complexity} ({analyzed} file(s) analysed)"),
+        ),
+        Some((name, cyclomatic)) => CheckOutcome::Passed(format!(
+            "worst function {name} at cyclomatic {cyclomatic}, within {max_complexity} ({analyzed} file(s) analysed)"
+        )),
+    }
+}
+
+/// Self-admitted technical debt against the profile's `zero_satd` threshold.
+async fn check_satd(path: &Path, zero_satd: bool) -> CheckOutcome {
+    use crate::services::satd_detector::SATDDetector;
+
+    if !zero_satd {
+        return CheckOutcome::Passed("this profile does not require zero SATD".to_string());
+    }
+
+    let detector = SATDDetector::new();
+    let debts = if path.is_file() {
+        match std::fs::read_to_string(path) {
+            Ok(content) => detector.extract_from_content(&content, path).ok(),
+            Err(_) => None,
+        }
+    } else {
+        detector.analyze_directory(path).await.ok()
+    };
+
+    match debts {
+        None => CheckOutcome::NotMeasured(format!("could not scan {} for SATD", path.display())),
+        Some(debts) if debts.is_empty() => {
+            CheckOutcome::Passed("no self-admitted technical debt found".to_string())
+        }
+        Some(debts) => {
+            let first = debts
+                .first()
+                .map(|d| format!("{}:{}", d.file.display(), d.line))
+                .unwrap_or_default();
+            CheckOutcome::Failed(format!(
+                "{} self-admitted debt marker(s), first at {first}",
+                debts.len()
+            ))
+        }
+    }
 }
 
 /// Print the validation header and thresholds (human formats only)
@@ -512,18 +811,145 @@ fn print_validation_header(
 }
 
 /// Build the JSON payload for validation results (stdout in JSON mode is this payload only)
+///
+/// The payload used to be `{status, profile, path, validation_time}` with no
+/// field able to carry a violation — status was always "passed" and there was
+/// nowhere for a failure to appear even if one had been found. `checks`,
+/// `violations` and `not_measured` make the verdict auditable.
 fn build_validation_json(
-    validation_passed: bool,
+    outcome: &ValidationOutcome,
     profile: QddQualityProfile,
     path: &Path,
 ) -> serde_json::Value {
     serde_json::json!({
-        "status": if validation_passed { "passed" } else { "failed" },
+        "status": outcome.status(),
         "profile": format!("{profile:?}").to_lowercase(),
         "path": path.display().to_string(),
+        "checks": outcome.checks.iter().map(|(name, check)| serde_json::json!({
+            "check": name,
+            "result": check.verdict(),
+            "detail": check.describe(),
+        })).collect::<Vec<_>>(),
+        "violations": outcome.violations(),
+        "not_measured": outcome.unmeasured(),
         "validation_time": chrono::Utc::now().to_rfc3339()
     })
 }
 
 // Tests extracted to qdd_handlers_tests.rs for file health (CB-040).
 include!("qdd_handlers_tests.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod qdd_output_tests {
+    use super::*;
+    use crate::qdd::{QualityMetrics, QualityScore, RollbackPlan};
+
+    fn sample_result() -> QddResult {
+        QddResult {
+            code:
+                "pub fn add_two(a: i32, b: i32) -> i32 {\n    todo!(\"Implementation needed\")\n}\n"
+                    .to_string(),
+            tests: "#[cfg(test)]\nmod tests {\n    use super::*;\n}\n".to_string(),
+            documentation:
+                "# add_two\n\nadd two numbers\n\n## Returns\n\n```rust\nlet x = 1;\n```\n"
+                    .to_string(),
+            quality_score: QualityScore {
+                overall: 98.0,
+                complexity: 1,
+                coverage: 100.0,
+                tdg: 1,
+            },
+            metrics: QualityMetrics::default(),
+            rollback_plan: RollbackPlan {
+                original: String::new(),
+                checkpoints: vec![],
+            },
+        }
+    }
+
+    /// Strip ANSI SGR sequences so assertions see the words, not the colours.
+    fn plain(s: &str) -> String {
+        let mut out = String::new();
+        let mut chars = s.chars();
+        while let Some(ch) = chars.next() {
+            if ch == '\u{1b}' {
+                for c in chars.by_ref() {
+                    if c == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                out.push(ch);
+            }
+        }
+        out
+    }
+
+    /// `pmat qdd refactor` printed "Coverage: 80.0%" and "TDG Score: 0" for
+    /// every run: coverage came from `#[test]` occurrences x 10 / line count
+    /// (no test was ever executed) and "TDG" was a count of the literals
+    /// `todo!` and `unwrap`. Neither may be printed as a measurement.
+    #[test]
+    fn refactor_results_do_not_print_a_coverage_measurement() {
+        let mut result = sample_result();
+        result.quality_score.coverage = 80.0;
+        result.quality_score.tdg = 0;
+
+        let text = plain(&format_refactor_results(
+            Path::new("src/lib.rs"),
+            None,
+            QddQualityProfile::Standard,
+            &result,
+        ));
+
+        assert!(
+            text.contains("Coverage: not measured"),
+            "coverage must be reported as not measured, got:\n{text}"
+        );
+        assert!(
+            text.contains("TDG Score: not measured"),
+            "TDG must be reported as not measured, got:\n{text}"
+        );
+        assert!(
+            !text.contains("80.0%"),
+            "the coverage guess must not be printed as a percentage:\n{text}"
+        );
+        // The figures that ARE derived from the code stay, labelled as estimates.
+        assert!(
+            text.contains("Complexity (estimated):"),
+            "the complexity estimate must say it is an estimate:\n{text}"
+        );
+    }
+
+    /// The Markdown documentation used to be appended to the generated .rs, leaving
+    /// a source file that cannot parse. The .rs must contain Rust only.
+    #[test]
+    fn test_documentation_is_not_appended_to_the_rust_file() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let rs_path = tmp.path().join("add.rs");
+
+        output_generated_code(Some(rs_path.clone()), &sample_result()).unwrap();
+
+        let source = std::fs::read_to_string(&rs_path).unwrap();
+        assert!(source.contains("pub fn add_two"), "code missing: {source}");
+        assert!(source.contains("mod tests"), "tests missing: {source}");
+        assert!(
+            !source.contains("# add_two"),
+            "markdown heading leaked into the .rs: {source}"
+        );
+        assert!(
+            !source.contains("## Returns"),
+            "markdown heading leaked into the .rs: {source}"
+        );
+        assert!(
+            !source.contains("```"),
+            "markdown fence leaked into the .rs: {source}"
+        );
+        // The .rs must be parseable Rust.
+        syn::parse_file(&source).expect("generated .rs must parse as Rust");
+
+        let doc = std::fs::read_to_string(tmp.path().join("add.md")).unwrap();
+        assert!(doc.contains("## Returns"), "docs missing: {doc}");
+    }
+}

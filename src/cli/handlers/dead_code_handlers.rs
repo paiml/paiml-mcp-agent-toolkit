@@ -59,7 +59,7 @@ pub async fn handle_analyze_dead_code(
 
     // Run analysis with timeout
     let timeout_duration = tokio::time::Duration::from_secs(timeout);
-    let result = tokio::time::timeout(timeout_duration, async {
+    let outcome = tokio::time::timeout(timeout_duration, async {
         run_dead_code_analysis_with_filters(
             &path,
             DeadCodeAnalysisFilters {
@@ -77,6 +77,8 @@ pub async fn handle_analyze_dead_code(
     .await
     .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {timeout} seconds"))??;
 
+    let result = outcome.report;
+
     eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
         result.summary.total_files_analyzed, result.summary.files_with_dead_code
@@ -88,18 +90,61 @@ pub async fn handle_analyze_dead_code(
     // Write output
     write_dead_code_output(formatted_output, output).await?;
 
-    // Check for violations and exit with error code if requested
+    // Check for violations and exit with error code if requested.
+    //
+    // The gate used to read `result.summary.dead_percentage`, which is scoped to
+    // the REPORTED list — `--top-files 5` shrinks it, `--top-files 10000` grows
+    // it — so the same project passed or failed `--max-dead-code` depending on
+    // how many files the user asked to see. It compares the project-wide figure
+    // now, and refuses to render a verdict when there is no project-wide figure
+    // to compare: a threshold that cannot be evaluated must not report a pass.
     if fail_on_violation {
-        let dead_code_percentage = result.summary.dead_percentage;
-        if dead_code_percentage > max_percentage as f32 {
-            eprintln!(
-                "\n❌ Dead code violations found: {dead_code_percentage:.1}% exceeds threshold of {max_percentage:.1}%"
-            );
-            std::process::exit(1);
+        match dead_code_gate_verdict(outcome.project_dead_percentage, max_percentage) {
+            DeadCodeGateVerdict::Pass => {}
+            DeadCodeGateVerdict::Violation(dead_code_percentage) => {
+                eprintln!(
+                    "\n❌ Dead code violations found: {dead_code_percentage:.1}% exceeds threshold of {max_percentage:.1}%"
+                );
+                std::process::exit(1);
+            }
+            DeadCodeGateVerdict::Unmeasurable => anyhow::bail!(
+                "--fail-on-violation cannot be enforced here: no project-wide dead-code \
+                 percentage was measured for this project (the multi-language analyzer \
+                 does not count total project lines). Re-run without --fail-on-violation \
+                 to see the report."
+            ),
         }
     }
 
     Ok(())
+}
+
+/// What `--fail-on-violation` decides.
+#[derive(Debug, PartialEq)]
+enum DeadCodeGateVerdict {
+    Pass,
+    Violation(f32),
+    /// No project-wide percentage exists, so the threshold cannot be evaluated.
+    Unmeasurable,
+}
+
+/// Compare the PROJECT-wide dead-code percentage against `--max-dead-code`.
+///
+/// Takes `Option` deliberately: an analyzer that cannot produce a project-wide
+/// figure yields no verdict at all, rather than a pass.
+fn dead_code_gate_verdict(
+    project_dead_percentage: Option<f32>,
+    max_percentage: f64,
+) -> DeadCodeGateVerdict {
+    let Some(pct) = project_dead_percentage else {
+        return DeadCodeGateVerdict::Unmeasurable;
+    };
+    #[allow(clippy::cast_possible_truncation)]
+    if pct > max_percentage as f32 {
+        DeadCodeGateVerdict::Violation(pct)
+    } else {
+        DeadCodeGateVerdict::Pass
+    }
 }
 
 // --- Submodule includes ---
@@ -574,7 +619,9 @@ mod multi_language_percentage_tests {
         )
         .unwrap();
 
-        let result = run_multi_language_dead_code(temp.path(), &filters(), "python").unwrap();
+        let result = run_multi_language_dead_code(temp.path(), &filters(), "python")
+            .unwrap()
+            .report;
 
         for f in &result.files {
             assert!(
@@ -620,7 +667,9 @@ mod multi_language_percentage_tests {
         )
         .unwrap();
 
-        let result = run_multi_language_dead_code(temp.path(), &filters(), "python").unwrap();
+        let result = run_multi_language_dead_code(temp.path(), &filters(), "python")
+            .unwrap()
+            .report;
 
         // Two .py files on disk. This was 4 -- the function count.
         assert_eq!(result.total_files, 2, "total_files must be the file count");
@@ -628,6 +677,111 @@ mod multi_language_percentage_tests {
         assert_eq!(
             result.total_files, result.summary.total_files_analyzed,
             "the headline file count must agree with the summary beneath it"
+        );
+    }
+}
+
+/// `--fail-on-violation` used to compare `summary.dead_percentage`, which is
+/// scoped to the REPORTED list, so the verdict moved with `--top-files`.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod gate_scope_tests {
+    use super::*;
+    use crate::models::dead_code::{DeadCodeSummary, FileDeadCodeMetrics};
+
+    fn dead_file(path: &str, dead_lines: usize) -> FileDeadCodeMetrics {
+        let mut f = FileDeadCodeMetrics::new(path.to_string());
+        f.dead_lines = dead_lines;
+        f.total_lines = 1_000;
+        f.dead_functions = 1;
+        f
+    }
+
+    fn blank_summary() -> DeadCodeSummary {
+        DeadCodeSummary {
+            total_files_analyzed: 5,
+            files_with_dead_code: 0,
+            total_dead_lines: 0,
+            dead_percentage: 0.0,
+            dead_functions: 0,
+            dead_classes: 0,
+            dead_modules: 0,
+            unreachable_blocks: 0,
+        }
+    }
+
+    /// The number the gate used to read moves when `--top-files` truncates the
+    /// list — which is exactly why it must not be the number the gate reads.
+    #[test]
+    fn summary_percentage_shrinks_with_top_files_so_it_cannot_gate() {
+        let files: Vec<FileDeadCodeMetrics> = (0..5)
+            .map(|i| dead_file(&format!("f{i}.rs"), 200))
+            .collect();
+
+        let mut summary = blank_summary();
+        resummarize_from_listed_files(&mut summary, &files, 10_000);
+        let with_all_files = summary.dead_percentage;
+
+        // What `--top-files 1` leaves behind.
+        let mut summary = blank_summary();
+        resummarize_from_listed_files(&mut summary, &files[..1], 10_000);
+        let with_top_1 = summary.dead_percentage;
+
+        assert!(
+            with_top_1 < with_all_files,
+            "the summary percentage is list-scoped ({with_top_1} vs {with_all_files})"
+        );
+    }
+
+    /// The project-wide figure the gate now reads does not move with the cap,
+    /// so the same project gets the same verdict at any `--top-files`.
+    #[test]
+    fn the_gate_verdict_is_the_same_at_every_top_files_value() {
+        // 12% dead over the whole project, whatever the list was cut down to.
+        let measured = Some(12.0_f32);
+
+        assert_eq!(
+            dead_code_gate_verdict(measured, 10.0),
+            DeadCodeGateVerdict::Violation(12.0)
+        );
+        assert_eq!(
+            dead_code_gate_verdict(measured, 12.0),
+            DeadCodeGateVerdict::Pass
+        );
+    }
+
+    /// The gate must not be re-wired back to the list-scoped figure.
+    ///
+    /// The verdict function itself cannot see where its argument came from, and
+    /// `handle_analyze_dead_code` calls `std::process::exit` so it cannot be
+    /// driven from a unit test. The wiring is therefore pinned against this
+    /// module's own source, the same way `entropy_semantic.rs` pins its banners
+    /// to stderr.
+    #[test]
+    fn the_gate_is_not_wired_to_the_list_scoped_summary() {
+        let src = include_str!("dead_code_handlers.rs");
+        let call = src
+            .lines()
+            .find(|l| l.contains("dead_code_gate_verdict(") && !l.contains("fn "))
+            .expect("the gate must call dead_code_gate_verdict");
+        assert!(
+            !call.contains("summary.dead_percentage"),
+            "--fail-on-violation must not compare the list-scoped percentage: {call}"
+        );
+        assert!(
+            call.contains("project_dead_percentage"),
+            "--fail-on-violation must compare the project-wide percentage: {call}"
+        );
+    }
+
+    /// An analyzer that never measured a project-wide percentage must not have
+    /// its threshold silently reported as met.
+    #[test]
+    fn an_unmeasured_percentage_is_not_a_pass() {
+        assert_eq!(
+            dead_code_gate_verdict(None, 10.0),
+            DeadCodeGateVerdict::Unmeasurable,
+            "no measurement means no verdict, not a pass"
         );
     }
 }

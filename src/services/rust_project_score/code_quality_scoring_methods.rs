@@ -78,63 +78,10 @@ impl CodeQualityScorer {
         }
     }
 
-    /// Fast-mode mutation testing estimation
-    ///
-    /// Checks for mutation testing infrastructure (mutants.toml, cargo-mutants in Makefile)
-    /// and gives proportional credit without running the expensive tool.
-    fn estimate_mutation_fast(&self, project_path: &Path) -> f64 {
-        let has_config = project_path.join("mutants.toml").exists()
-            || project_path.join(".config/mutants.toml").exists();
-        let makefile_content =
-            std::fs::read_to_string(project_path.join("Makefile")).unwrap_or_default();
-        let has_makefile_target = makefile_content.contains("cargo mutants")
-            || makefile_content.contains("mutation");
-
-        if has_config && has_makefile_target {
-            5.0 // Infrastructure + build target = good credit
-        } else if has_config || has_makefile_target {
-            4.0 // Partial infrastructure
-        } else {
-            3.0 // Minimal credit (tests exist but no mutation setup)
-        }
-    }
-
-    /// Fast-mode build time estimation
-    ///
-    /// Checks build configuration quality (LTO, profiles, .cargo/config.toml)
-    /// and gives proportional credit without running a full build.
-    fn estimate_build_time_fast(
-        &self,
-        project_path: &Path,
-        cache: Option<&FileCache>,
-    ) -> f64 {
-        let cargo_content = cache
-            .and_then(|c| c.get(&project_path.join("Cargo.toml")))
-            .cloned()
-            .or_else(|| std::fs::read_to_string(project_path.join("Cargo.toml")).ok())
-            .unwrap_or_default();
-
-        let mut score: f64 = 1.0; // Base credit for having a Rust project
-
-        // Release profile optimization
-        if cargo_content.contains("[profile.release]") {
-            score += 0.5;
-        }
-        // LTO configured (build optimization)
-        if cargo_content.contains("lto = ") {
-            score += 0.5;
-        }
-        // .cargo/config.toml (build settings)
-        if project_path.join(".cargo/config.toml").exists() {
-            score += 0.5;
-        }
-        // Makefile or justfile (build automation)
-        if project_path.join("Makefile").exists() || project_path.join("justfile").exists() {
-            score += 0.5;
-        }
-
-        score.min(3.0) // Cap at 3.0 — reserve 4.0 for verified <30s builds
-    }
+    /// Points that only a `--full` run can measure: Mutation Testing (8) and
+    /// Build Time (4). In fast mode they are subtracted from the category
+    /// maximum rather than awarded a heuristic.
+    const UNMEASURED_IN_FAST_MODE: f64 = 12.0;
 
     /// Internal scoring logic that accepts optional cache
     fn score_internal(
@@ -161,29 +108,112 @@ impl CodeQualityScorer {
             Err(e) => return Err(e),
         }
 
-        if mode.is_full() {
+        // Mutation Testing (8pts) and Build Time (4pts) are only scored when
+        // they were actually run.
+        //
+        // Fast mode used to award `estimate_mutation_fast` (a flat 3/4/5 of 8
+        // decided by whether a mutants.toml or a Makefile mutation target
+        // exists) and `estimate_build_time_fast` (1.0 plus 0.5 per config
+        // heuristic, capped at 3 of 4). Neither measures anything about the
+        // code, and the invented partial credit put the two modes on the same
+        // 279-point scale while disagreeing about it: the same copy of the same
+        // fixture scored Code Quality 18.0/26.0 (69.2%) fast and 26.0/26.0
+        // (100.0%) under `--full`. A check that did not run is not a check that
+        // scored 3 out of 8 — it is N/A, exactly as GPU/SIMD Quality already
+        // reports when there is no GPU code to measure, so its points leave the
+        // denominator too.
+        let max_points = if mode.is_full() {
             match self.score_mutation(project_path) {
                 Ok(score) => total_earned += score,
                 Err(_) => total_earned += 4.0,
             }
-        } else {
-            total_earned += self.estimate_mutation_fast(project_path);
-        }
-
-        if mode.is_full() {
             match self.score_build_time(project_path) {
                 Ok(score) => total_earned += score,
                 Err(_) => total_earned += 2.0,
             }
+            self.max_points
         } else {
-            total_earned += self.estimate_build_time_fast(project_path, cache);
-        }
+            self.max_points - Self::UNMEASURED_IN_FAST_MODE
+        };
 
         match self.score_dead_code(project_path, cache) {
             Ok(score) => total_earned += score,
             Err(e) => return Err(e),
         }
 
-        Ok(CategoryScore::new(total_earned, self.max_points))
+        Ok(CategoryScore::new(total_earned, max_points))
+    }
+}
+
+#[cfg(test)]
+mod fast_mode_not_measured_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn trivial_project() -> TempDir {
+        let temp = TempDir::new().unwrap();
+        std::fs::create_dir_all(temp.path().join("src")).unwrap();
+        std::fs::write(
+            temp.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"\n",
+        )
+        .unwrap();
+        std::fs::write(temp.path().join("src/lib.rs"), "pub fn f() {}\n").unwrap();
+        temp
+    }
+
+    /// Fast mode scored two checks it never ran — Mutation Testing (8pts) and
+    /// Build Time (4pts) — with heuristics that measure no code at all, so the
+    /// same fixture reported Code Quality 69.2% fast and 100.0% under `--full`.
+    /// A check that did not run leaves the denominator.
+    #[test]
+    fn fast_mode_excludes_the_checks_it_never_ran() {
+        let temp = trivial_project();
+        let scorer = CodeQualityScorer::new();
+        let result = scorer
+            .score_internal(temp.path(), ScoringMode::Fast, None)
+            .expect("fast score");
+
+        assert_eq!(
+            result.max, 14.0,
+            "Mutation Testing (8) + Build Time (4) must leave the fast-mode maximum"
+        );
+        assert!(
+            result.earned <= result.max,
+            "earned {} exceeds the measured maximum {}",
+            result.earned,
+            result.max
+        );
+        // A project with nothing wrong in the three checks fast mode CAN run
+        // must read 100%, not the 69.2% the invented partial credit produced.
+        assert!(
+            (result.percentage() - 100.0).abs() < 0.01,
+            "expected 100% of the measured checks, got {}% ({} / {})",
+            result.percentage(),
+            result.earned,
+            result.max
+        );
+    }
+
+    /// The heuristics are gone, so no filesystem trinket can move the score:
+    /// a mutants.toml and a Makefile mutation target used to be worth 2 points
+    /// each way without a single mutant ever being run.
+    #[test]
+    fn mutation_infrastructure_files_do_not_move_the_fast_score() {
+        let bare = trivial_project();
+        let dressed = trivial_project();
+        std::fs::write(dressed.path().join("mutants.toml"), "exclude = []\n").unwrap();
+        std::fs::write(dressed.path().join("Makefile"), "mutation:\n\tcargo mutants\n").unwrap();
+
+        let scorer = CodeQualityScorer::new();
+        let bare_score = scorer
+            .score_internal(bare.path(), ScoringMode::Fast, None)
+            .expect("bare");
+        let dressed_score = scorer
+            .score_internal(dressed.path(), ScoringMode::Fast, None)
+            .expect("dressed");
+
+        assert_eq!(bare_score.earned, dressed_score.earned);
+        assert_eq!(bare_score.max, dressed_score.max);
     }
 }

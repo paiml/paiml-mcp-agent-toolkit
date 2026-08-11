@@ -12,6 +12,15 @@ use std::path::PathBuf;
 /// Maximum possible raw points for Infra Score (no bonuses — strict 100)
 pub const INFRA_SCORE_MAX_POINTS: f64 = 100.0;
 
+/// Maximum bonus points from the Provable Contracts category.
+///
+/// This MUST equal the sum of the PV-01..PV-05 check weights (3+3+2+2+2), which
+/// is what `ProvableContractsScorer` actually awards. Three places used to carry
+/// their own copy of this number — the scorer said 12, the model default said 10
+/// and the text renderer hardcoded a "/110.0" denominator — so a perfect run
+/// printed a bonus larger than the maximum the same output advertised.
+pub const INFRA_SCORE_BONUS_MAX_POINTS: f64 = 12.0;
+
 /// Overall infrastructure score result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfraScore {
@@ -44,7 +53,7 @@ pub struct InfraCategoryScores {
     pub quality_pipeline: InfraCategoryScore,      // 20 points
     pub deployment_release: InfraCategoryScore,    // 15 points
     pub supply_chain: InfraCategoryScore,          // 15 points
-    pub provable_contracts: InfraCategoryScore,    // 10 points (bonus)
+    pub provable_contracts: InfraCategoryScore,    // 12 points (bonus)
 }
 
 /// Individual category score (mirrors repo_score CategoryScore)
@@ -229,7 +238,8 @@ impl InfraCategoryScores {
             + self.supply_chain.score
     }
 
-    /// Total including provable contracts bonus (110 max)
+    /// Total including provable contracts bonus
+    /// (`INFRA_SCORE_MAX_POINTS` + `INFRA_SCORE_BONUS_MAX_POINTS` max)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_with_bonus(&self) -> f64 {
         self.total() + self.provable_contracts.score
@@ -244,7 +254,7 @@ impl Default for InfraCategoryScores {
             quality_pipeline: InfraCategoryScore::empty(20.0),
             deployment_release: InfraCategoryScore::empty(15.0),
             supply_chain: InfraCategoryScore::empty(15.0),
-            provable_contracts: InfraCategoryScore::empty(10.0),
+            provable_contracts: InfraCategoryScore::empty(INFRA_SCORE_BONUS_MAX_POINTS),
         }
     }
 }

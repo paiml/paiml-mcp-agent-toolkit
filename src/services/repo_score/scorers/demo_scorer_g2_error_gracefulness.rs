@@ -42,12 +42,15 @@ impl DemoScorer {
         max_score: f64,
     ) -> Result<SubcategoryScore> {
         let has_error_section = check_readme_error_section(repo_path).await;
-        let partial_score: f64 = if has_error_section { 2.0 } else { 1.5 };
-
+        // Absence of evidence used to be worth half credit: this branch handed
+        // out 1.5/3.0 (2.0 with a README error section) precisely when nothing
+        // had been analysed, so an EMPTY directory scored 15%. The sibling
+        // category G1 scores 0.0 for the same absence. Score only what was
+        // measured; documentation alone is not demo error handling.
         Ok(SubcategoryScore {
             id: "G2".to_string(),
             name: "Error Gracefulness".to_string(),
-            score: partial_score.min(max_score),
+            score: 0.0,
             max_score,
             findings: vec![Finding {
                 severity: Severity::Info,

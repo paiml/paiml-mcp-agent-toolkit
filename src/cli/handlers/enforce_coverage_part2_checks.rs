@@ -176,14 +176,23 @@
         #[tokio::test]
         async fn test_run_coverage_analysis() {
             let temp_dir = create_test_project();
+            // Was asserting a violation against a project with no coverage data
+            // at all, which only held while the handler returned the literal
+            // "simulated" 65.0. The percentage is measured now, so the report
+            // has to exist for there to be anything to compare.
+            std::fs::write(
+                temp_dir.path().join("lcov.info"),
+                "TN:\nSF:src/lib.rs\nLF:100\nLH:65\nend_of_record\n",
+            )
+            .expect("write lcov");
             let profile = make_test_profile();
 
             let violations = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
                 .unwrap();
 
-            // Should have at least one coverage violation (simulated at 65%)
             assert!(!violations.is_empty());
             assert_eq!(violations[0].violation_type, "coverage");
+            assert_eq!(violations[0].current, 65.0);
         }
     }

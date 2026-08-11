@@ -119,6 +119,24 @@ fn report_if_unmeasured(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfi
     Ok(true)
 }
 
+/// Resolve which path a subcommand analyses.
+///
+/// `pmat cuda-tdg [PATH] <SUBCOMMAND>` accepted the top-level positional and
+/// then threw it away: every subcommand carried its own
+/// `#[arg(default_value = ".")]`, so `pmat cuda-tdg /does/not/exist score`
+/// graded the CURRENT DIRECTORY and exited 0 — 81.0/100 "Gateway: PASSED" from
+/// the pmat repo, 56.5/100 from a small corpus, for the same nonexistent
+/// argument. A path the user typed must never be silently replaced by the cwd.
+///
+/// An explicit path after the subcommand still wins (`cuda-tdg score /path`);
+/// otherwise the top-level path is honoured, which itself defaults to `.`.
+fn resolve_subcommand_path<'a>(
+    path: Option<&'a PathBuf>,
+    config: &'a CudaTdgCommandConfig,
+) -> &'a PathBuf {
+    path.unwrap_or(&config.path)
+}
+
 /// Handle CUDA-TDG subcommands
 async fn handle_cuda_tdg_subcommand(
     cmd: &CudaTdgCommand,
@@ -126,12 +144,27 @@ async fn handle_cuda_tdg_subcommand(
 ) -> Result<()> {
     match cmd {
         CudaTdgCommand::Analyze { path } => handle_analyze(path, config).await,
-        CudaTdgCommand::Score { path, breakdown } => handle_score(path, *breakdown, config).await,
+        CudaTdgCommand::Score { path, breakdown } => {
+            handle_score(
+                resolve_subcommand_path(path.as_ref(), config),
+                *breakdown,
+                config,
+            )
+            .await
+        }
         CudaTdgCommand::Report {
             path,
             format,
             output,
-        } => handle_report(path, format, output.as_ref(), config).await,
+        } => {
+            handle_report(
+                resolve_subcommand_path(path.as_ref(), config),
+                format,
+                output.as_ref(),
+                config,
+            )
+            .await
+        }
         CudaTdgCommand::BarrierCheck { path } => handle_barrier_check(path, config).await,
         CudaTdgCommand::ValidateTiles {
             head_dim,
@@ -142,9 +175,22 @@ async fn handle_cuda_tdg_subcommand(
             path,
             min_score,
             fail_on_p0,
-        } => handle_gate(path, *min_score, *fail_on_p0, config).await,
+        } => {
+            handle_gate(
+                resolve_subcommand_path(path.as_ref(), config),
+                *min_score,
+                *fail_on_p0,
+                config,
+            )
+            .await
+        }
         CudaTdgCommand::Kaizen { path, since } => {
-            handle_kaizen(path, since.as_deref(), config).await
+            handle_kaizen(
+                resolve_subcommand_path(path.as_ref(), config),
+                since.as_deref(),
+                config,
+            )
+            .await
         }
         CudaTdgCommand::Taxonomy => handle_taxonomy(config).await,
     }

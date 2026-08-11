@@ -32,15 +32,34 @@ pub async fn handle_work_score(
         let contract_path = format!(".pmat-work/{}/contract.json", id);
         let sarif = wc::lint_report_to_sarif(&lint_report, &contract_path);
         println!("{}", serde_json::to_string_pretty(&sarif)?);
-        return Ok(());
+        return fail_if_gate_failed(&id, &lint_report, effective_min);
     }
 
     if format == "json" {
-        return print_score_json(&id, &score, &drift, &lint_report, &trend, &lint_config);
+        print_score_json(&id, &score, &drift, &lint_report, &trend, &lint_config)?;
+        return fail_if_gate_failed(&id, &lint_report, effective_min);
     }
 
     print_score_text(&id, &contract, &score, &drift, &lint_report, &trend, &lint_config);
-    Ok(())
+    fail_if_gate_failed(&id, &lint_report, effective_min)
+}
+
+/// A printed FAIL must also be a nonzero exit.
+///
+/// `pmat work score <ID> --min-score 0.99` printed
+/// "✗ Result: FAIL (1 error(s), 15 warning(s))" and then returned `Ok(())`
+/// unconditionally, so a CI step written as `pmat work score $ID --min-score 0.9`
+/// passed no matter what the score was. The sibling gates in this binary
+/// (`spec score`, `work ledger verify`) do exit nonzero.
+fn fail_if_gate_failed(id: &str, lint_report: &wc::LintReport, min_score: f64) -> Result<()> {
+    if lint_report.passed {
+        return Ok(());
+    }
+    anyhow::bail!(
+        "contract score gate failed for '{id}': {} error(s), {} warning(s) against min-score {min_score:.2}",
+        lint_report.error_count,
+        lint_report.warning_count
+    )
 }
 
 fn print_score_json(
@@ -189,7 +208,21 @@ fn print_trend_text(trend: &wc::QualityTrend) {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_codebase_score(path: Option<PathBuf>, format: String) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+
+    // `-p /does/not/exist` used to render a full report ending in
+    // "COMPOSITE: 0.00  Grade: F", exit 0 — a dashboard showed an F for a
+    // typo'd path. The `path_exists` contract annotation on this function had
+    // no runtime check behind it.
+    crate::cli::ensure_analysis_path_exists(&project_path)?;
+
     let score = wc::compute_codebase_score(&project_path);
+
+    // An F is a measurement over contracts that scored badly. With no contracts
+    // at all there is nothing to grade, so the grade is reported as
+    // not-measured (JSON null) rather than as the worst possible result.
+    if score.contract_count == 0 {
+        return report_ungraded_codebase(&project_path, &format);
+    }
 
     if format == "json" {
         println!("{}", serde_json::to_string_pretty(&score)?);
@@ -209,11 +242,83 @@ pub async fn handle_work_codebase_score(path: Option<PathBuf>, format: String) -
     println!("  ----------------------");
     println!("  COMPOSITE:         {:.2}  Grade: {}", score.composite, score.grade);
 
-    if score.contract_count == 0 {
-        println!();
-        println!("  No active work contracts found.");
-        println!("  Start a work item: pmat work start <ID>");
+    Ok(())
+}
+
+/// Report a codebase with no work contracts without inventing a grade.
+fn report_ungraded_codebase(project_path: &Path, format: &str) -> Result<()> {
+    if format == "json" {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "path": project_path.display().to_string(),
+                "contract_count": 0,
+                "measured": false,
+                "composite": serde_json::Value::Null,
+                "grade": serde_json::Value::Null,
+                "reason": "no active work contracts found, so there is nothing to score",
+            }))?
+        );
+        return Ok(());
     }
 
+    println!("Codebase Quality Score");
+    println!("======================");
+    println!();
+    println!("  Contracts:         0");
+    println!("  COMPOSITE:         not measured");
+    println!("  Grade:             not measured");
+    println!();
+    println!("  No active work contracts found, so there is nothing to score.");
+    println!("  Start a work item: pmat work start <ID>");
+
     Ok(())
+}
+
+#[cfg(test)]
+mod score_gate_tests {
+    //! Regression tests for two gates in this file that could never fail:
+    //! `work score --min-score` printed FAIL and exited 0, and
+    //! `work codebase-score -p /does/not/exist` graded a nonexistent path F.
+    use super::{fail_if_gate_failed, handle_work_codebase_score, wc};
+    use std::path::PathBuf;
+
+    fn report(passed: bool) -> wc::LintReport {
+        wc::LintReport {
+            findings: Vec::new(),
+            passed,
+            error_count: if passed { 0 } else { 1 },
+            warning_count: 15,
+            info_count: 0,
+        }
+    }
+
+    #[test]
+    fn test_failed_lint_report_is_an_error() {
+        let err = fail_if_gate_failed("MACS-002", &report(false), 0.99)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("MACS-002"),
+            "the failure must name the work item, got {err}"
+        );
+    }
+
+    #[test]
+    fn test_passing_lint_report_is_ok() {
+        assert!(fail_if_gate_failed("MACS-002", &report(true), 0.5).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_codebase_score_rejects_a_nonexistent_path() {
+        let missing = PathBuf::from("/pmat-does-not-exist-codebase-score");
+        let err = handle_work_codebase_score(Some(missing), "json".to_string())
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("not found"),
+            "a nonexistent path must be an error, not a Grade F report; got {err}"
+        );
+    }
 }

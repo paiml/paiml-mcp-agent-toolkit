@@ -17,6 +17,21 @@ use crate::services::deep_context::{
 };
 use crate::services::quality_gates::{QAVerification, QAVerificationResult};
 
+/// Mean of the scorecard components that were actually measured.
+///
+/// `None` when nothing was measured — "we did not look" must not be reported as
+/// a score. Every measured component participates; leaving one out is how
+/// `overall_health` came to be a restatement of `complexity_score`.
+fn average_measured(components: &[Option<f64>]) -> Option<f64> {
+    let measured: Vec<f64> = components.iter().copied().flatten().collect();
+    if measured.is_empty() {
+        None
+    } else {
+        #[allow(clippy::cast_precision_loss)]
+        Some(measured.iter().sum::<f64>() / measured.len() as f64)
+    }
+}
+
 impl DeepContextAnalyzer {
     // New helper methods for phases that didn't exist before
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
@@ -73,15 +88,18 @@ impl DeepContextAnalyzer {
 
         // Averaging over only what was measured. Averaging in a constant is how
         // the old value became a function of one real input and two literals.
-        let measured: Vec<f64> = [complexity_score, maintainability_index, modularity_score]
-            .into_iter()
-            .flatten()
-            .collect();
-        let overall_health = if measured.is_empty() {
-            None
-        } else {
-            Some(measured.iter().sum::<f64>() / measured.len() as f64)
-        };
+        //
+        // `test_coverage` used to be left out of this list. Since the other two
+        // entries are permanently `None`, that made `overall_health` identically
+        // `complexity_score` — a four-component scorecard whose headline number
+        // reported one component and discarded the coverage it had just
+        // measured off disk.
+        let overall_health = average_measured(&[
+            complexity_score,
+            maintainability_index,
+            modularity_score,
+            test_coverage,
+        ]);
 
         Ok(QualityScorecard {
             overall_health,
@@ -528,5 +546,74 @@ impl DeepContextAnalyzer {
             build_info: context.build_info.clone(),
             project_overview: context.project_overview.clone(),
         })
+    }
+}
+
+#[cfg(test)]
+mod scorecard_tests {
+    //! `overall_health` averaged `[complexity_score, maintainability_index,
+    //! modularity_score]`. The last two are permanently `None` (no Halstead
+    //! volume is ever produced, and modularity has no implementation), so the
+    //! headline number was identically `complexity_score` — and the
+    //! `test_coverage` it had just read off disk was thrown away.
+    use super::*;
+    use crate::services::complexity::{
+        ComplexityMetrics, ComplexityReport, ComplexitySummary, FileComplexityMetrics,
+    };
+    use crate::services::deep_context::{DeepContextConfig, DefectSummary};
+
+    fn one_clean_file() -> ComplexityReport {
+        ComplexityReport {
+            summary: ComplexitySummary::default(),
+            violations: vec![],
+            hotspots: vec![],
+            files: vec![FileComplexityMetrics {
+                path: "src/lib.rs".to_string(),
+                total_complexity: ComplexityMetrics::default(),
+                functions: vec![],
+                classes: vec![],
+            }],
+        }
+    }
+
+    #[tokio::test]
+    async fn overall_health_averages_in_the_coverage_it_measured() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(tmp.path().join("target/coverage")).expect("mkdir");
+        // Two instrumented lines, one hit => 50% line coverage.
+        std::fs::write(
+            tmp.path().join("target/coverage/lcov.info"),
+            "SF:src/lib.rs\nDA:1,1\nDA:2,0\nend_of_record\n",
+        )
+        .expect("write lcov");
+
+        let analyzer = DeepContextAnalyzer::new(DeepContextConfig::default());
+        let analyses = ParallelAnalysisResults {
+            complexity_report: Some(one_clean_file()),
+            ..Default::default()
+        };
+
+        let card = analyzer
+            .calculate_quality_scorecard(&analyses, &DefectSummary::default(), tmp.path())
+            .await
+            .expect("scorecard");
+
+        assert_eq!(card.complexity_score, Some(100.0));
+        assert_eq!(card.test_coverage, Some(50.0));
+        // mean(100, 50) — not 100, which is what dropping test_coverage gave.
+        let health = card.overall_health.expect("two components were measured");
+        assert!(
+            (health - 75.0).abs() < 1e-9,
+            "overall_health must average every measured component, got {health}"
+        );
+    }
+
+    #[test]
+    fn average_measured_reports_nothing_when_nothing_was_measured() {
+        assert_eq!(average_measured(&[None, None, None, None]), None);
+        assert_eq!(
+            average_measured(&[Some(40.0), None, None, Some(60.0)]),
+            Some(50.0)
+        );
     }
 }

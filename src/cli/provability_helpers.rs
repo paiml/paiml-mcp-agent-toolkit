@@ -29,6 +29,44 @@ pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId
     }
 }
 
+/// Functions among `discovered` that a `--functions` spec names.
+///
+/// `parse_function_spec` above manufactures a `FunctionId` out of whatever
+/// string it is handed — its "will search all files" comment described a search
+/// that was never performed. That is why `analyze provability -p <empty dir>
+/// --functions ghost` reported "✓ Analyzed 1 functions / Average provability
+/// score: 20.0%": a phantom id with an empty file path, scored at the lattice
+/// Top default because its source could never be read. Matching against the
+/// functions actually discovered in the tree is the only way an answer here can
+/// be about the code rather than about the argument.
+///
+/// A spec is either `function_name` or `path/to/file.rs:function_name`; the
+/// file part matches a discovered path exactly or as a trailing path suffix.
+#[must_use]
+pub fn match_function_spec(spec: &str, discovered: &[FunctionId]) -> Vec<FunctionId> {
+    let (file_part, func_part) = match spec.split_once(':') {
+        Some((file, func)) => (Some(file.trim_start_matches("./")), func),
+        None => (None, spec),
+    };
+
+    discovered
+        .iter()
+        .filter(|id| {
+            if id.function_name != func_part {
+                return false;
+            }
+            match file_part {
+                None => true,
+                Some(wanted) => {
+                    let have = id.file_path.trim_start_matches("./");
+                    have == wanted || have.ends_with(&format!("/{wanted}"))
+                }
+            }
+        })
+        .cloned()
+        .collect()
+}
+
 /// Extract function name from a line
 fn extract_function_name(line: &str) -> Option<String> {
     let line = line.trim();

@@ -51,3 +51,26 @@ pub use org_prompt::*;
 // Work commands
 pub mod work_commands;
 pub use work_commands::*;
+
+/// Run `f` on a thread with an 8MB stack, for tests that build or parse the
+/// clap command tree.
+///
+/// Clap's generated builder recurses deeply enough over this crate's command
+/// enums to overflow the default 2MB test stack: the test binary dies with
+/// `fatal runtime error: stack overflow` / SIGABRT, taking every other test
+/// with it. That is invisible under `RUST_MIN_STACK=8388608`, which is how
+/// `pmat verify` and the Makefile run the suite — but CI's coverage job runs a
+/// bare `cargo test --lib`, so a single unwrapped `augment_subcommands` or
+/// `try_parse_from` in a test turns `ci / coverage` red with an abort that
+/// names no test.
+///
+/// Several older tests spawn this thread by hand; new ones should call this.
+#[cfg(test)]
+pub(crate) fn on_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(f)
+        .expect("spawn 8MB-stack test thread")
+        .join()
+        .expect("8MB-stack test thread panicked")
+}

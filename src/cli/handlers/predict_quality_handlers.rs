@@ -84,38 +84,42 @@ pub async fn handle_predict_quality(
         }
     }
 
-    if predictions.is_empty() {
-        println!(
-            "\n{}",
-            c::pass("No metrics to predict (all metrics safe or insufficient data)")
-        );
-        return Ok(());
-    }
-
-    // Output results
-    match format {
-        OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&predictions)?);
-        }
-        OutputFormat::Yaml => {
-            println!("{}", serde_yaml_ng::to_string(&predictions)?);
-        }
-        _ => {
-            print_predictions_table(&predictions);
-        }
-    }
+    println!("{}", render_predictions(&predictions, format)?);
 
     Ok(())
 }
 
-/// Print predictions in table format
-fn print_predictions_table(predictions: &[PredictionResult]) {
-    println!("\n{}\n", c::header("Quality Metrics Predictions"));
+/// Render predictions in the DECLARED format.
+///
+/// The empty case used to `println!` a prose line and return before this match
+/// ever ran, so on any fresh checkout — where no metric has the 7 observations a
+/// prediction needs — `predict-quality --all --format json` wrote
+/// `✓ No metrics to predict …` to stdout and every `| jq` consumer failed. A
+/// declared machine format has to produce that format on every path, and the
+/// honest empty answer in JSON is `[]`.
+fn render_predictions(predictions: &[PredictionResult], format: OutputFormat) -> Result<String> {
+    Ok(match format {
+        OutputFormat::Json => serde_json::to_string_pretty(predictions)?,
+        OutputFormat::Yaml => serde_yaml_ng::to_string(predictions)?,
+        _ if predictions.is_empty() => format!(
+            "\n{}",
+            c::pass("No metrics to predict (all metrics safe or insufficient data)")
+        ),
+        _ => format_predictions_table(predictions),
+    })
+}
+
+/// Render predictions in table format
+fn format_predictions_table(predictions: &[PredictionResult]) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    let _ = writeln!(out, "\n{}\n", c::header("Quality Metrics Predictions"));
 
     for pred in predictions {
-        println!("{}", c::subheader(&pred.metric));
-        println!("  {}: {:.1}ms", c::dim("Current"), pred.current_value);
-        println!("  {}: {:.1}ms", c::dim("Threshold"), pred.threshold);
+        let _ = writeln!(out, "{}", c::subheader(&pred.metric));
+        let _ = writeln!(out, "  {}: {:.1}ms", c::dim("Current"), pred.current_value);
+        let _ = writeln!(out, "  {}: {:.1}ms", c::dim("Threshold"), pred.threshold);
 
         if let Some(days) = pred.breach_in_days {
             if let Some(value) = pred.predicted_value {
@@ -127,14 +131,16 @@ fn print_predictions_table(predictions: &[PredictionResult]) {
                     format!("{}INFO{}", c::BOLD_BLUE, c::RESET)
                 };
 
-                println!(
+                let _ = writeln!(
+                    out,
                     "  {}: {} in {} days (predicted: {:.1}ms)",
                     c::dim("Breach"),
                     urgency,
                     c::number(&days.to_string()),
                     value
                 );
-                println!(
+                let _ = writeln!(
+                    out,
                     "  {}: {} (R²={:.3})",
                     c::dim("Confidence"),
                     c::pct(pred.confidence * 100.0, 80.0, 50.0),
@@ -142,8 +148,14 @@ fn print_predictions_table(predictions: &[PredictionResult]) {
                 );
             }
         } else {
-            println!("  {}: {}", c::dim("Breach"), c::pass("No breach predicted"));
-            println!(
+            let _ = writeln!(
+                out,
+                "  {}: {}",
+                c::dim("Breach"),
+                c::pass("No breach predicted")
+            );
+            let _ = writeln!(
+                out,
                 "  {}: {} (R²={:.3})",
                 c::dim("Confidence"),
                 c::pct(pred.confidence * 100.0, 80.0, 50.0),
@@ -153,20 +165,40 @@ fn print_predictions_table(predictions: &[PredictionResult]) {
 
         // Print recommendations
         if !pred.recommendations.is_empty() {
-            println!("  {}:", c::dim("Recommendations"));
+            let _ = writeln!(out, "  {}:", c::dim("Recommendations"));
             for rec in &pred.recommendations {
-                println!("    {} {}", c::dim("•"), rec);
+                let _ = writeln!(out, "    {} {}", c::dim("•"), rec);
             }
         }
 
-        println!();
+        let _ = writeln!(out);
     }
+
+    out
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A fresh checkout has no metric with the 7 observations a prediction
+    /// needs, so this is the ordinary case, not an edge case: `--format json`
+    /// printed `✓ No metrics to predict …` on stdout and broke every `| jq`.
+    #[test]
+    fn empty_predictions_still_produce_the_declared_format() {
+        let json = render_predictions(&[], OutputFormat::Json).expect("json");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(parsed, serde_json::json!([]));
+
+        let yaml = render_predictions(&[], OutputFormat::Yaml).expect("yaml");
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).expect("valid yaml");
+        assert_eq!(parsed, serde_yaml_ng::Value::Sequence(vec![]));
+
+        // The human formats keep the prose.
+        let table = render_predictions(&[], OutputFormat::Table).expect("table");
+        assert!(table.contains("No metrics to predict"), "{table:?}");
+    }
 
     #[tokio::test]
     #[ignore] // Flaky - requires specific environment
@@ -181,7 +213,7 @@ mod tests {
 
 #[cfg(test)]
 mod predict_quality_print_tests {
-    //! Covers print_predictions_table in predict_quality_handlers.rs
+    //! Covers format_predictions_table in predict_quality_handlers.rs
     //! (46 uncov on broad, 0% cov). Drives all four urgency arms,
     //! the no-breach arm, and the recommendations arm.
     use super::*;
@@ -204,39 +236,39 @@ mod predict_quality_print_tests {
     fn test_print_predictions_table_no_breach_arm() {
         // breach_in_days=None → "No breach predicted" arm fires.
         let p = pred("lint_p99", None, vec![]);
-        print_predictions_table(&[p]);
+        format_predictions_table(&[p]);
     }
 
     #[test]
     fn test_print_predictions_table_urgent_arm() {
         // days <= 7 → URGENT.
         let p = pred("test_p99", Some(3), vec![]);
-        print_predictions_table(&[p]);
+        format_predictions_table(&[p]);
     }
 
     #[test]
     fn test_print_predictions_table_warning_arm() {
         // 7 < days <= 14 → WARNING.
         let p = pred("test_p99", Some(10), vec![]);
-        print_predictions_table(&[p]);
+        format_predictions_table(&[p]);
     }
 
     #[test]
     fn test_print_predictions_table_info_arm() {
         // days > 14 → INFO.
         let p = pred("test_p99", Some(30), vec![]);
-        print_predictions_table(&[p]);
+        format_predictions_table(&[p]);
     }
 
     #[test]
     fn test_print_predictions_table_with_recommendations() {
         let p = pred("complexity", Some(5), vec!["Refactor X", "Extract Y"]);
-        print_predictions_table(&[p]);
+        format_predictions_table(&[p]);
     }
 
     #[test]
     fn test_print_predictions_table_empty_input_no_panic() {
-        print_predictions_table(&[]);
+        format_predictions_table(&[]);
     }
 
     #[test]
@@ -246,6 +278,6 @@ mod predict_quality_print_tests {
             pred("b", Some(3), vec!["fix it"]),
             pred("c", Some(20), vec![]),
         ];
-        print_predictions_table(&preds);
+        format_predictions_table(&preds);
     }
 }

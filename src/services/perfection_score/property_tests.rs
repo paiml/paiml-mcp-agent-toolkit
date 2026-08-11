@@ -269,7 +269,16 @@ mod property_tests {
         let temp_dir = TempDir::new().unwrap();
         let calc = PerfectionScoreCalculator::new().fast_mode(true);
 
-        // In fast mode, mutation score should be 50.0 (default credit)
+        // In fast mode mutation testing is not run at all, so the category is
+        // reported as not measured and excluded from the denominator.
+        //
+        // This used to assert `raw_score == 50.0` with the comment "default
+        // credit in fast mode" — a flat half-credit handed to a measurement
+        // that never ran (and identical for a real repo, an empty directory and
+        // a nonexistent path), while the category's own details string admitted
+        // "Skipped (fast mode)". Unearned points inside a number presented as a
+        // grade are exactly the defect; the category now scores nothing and
+        // costs nothing.
         let result = calc.calculate(temp_dir.path()).await.unwrap();
 
         let mutation_cat = result
@@ -277,11 +286,24 @@ mod property_tests {
             .iter()
             .find(|c| c.name == "Mutation Testing")
             .unwrap();
-        assert_eq!(mutation_cat.raw_score, 50.0);
-        assert!(mutation_cat
+        assert_eq!(mutation_cat.raw_score, 0.0);
+        assert_eq!(
+            mutation_cat.earned_points, 0.0,
+            "a check that never ran cannot earn points"
+        );
+        assert_eq!(
+            mutation_cat.max_points, 0,
+            "a check that never ran must leave the denominator"
+        );
+        assert_eq!(mutation_cat.grade, "N/A");
+        let details = mutation_cat
             .details
             .as_ref()
-            .is_some_and(|d| d.contains("fast mode")));
+            .expect("skipped category must say why");
+        assert!(
+            details.contains("Not measured") && details.contains("--fast"),
+            "unexpected details: {details}"
+        );
     }
 
     #[test]

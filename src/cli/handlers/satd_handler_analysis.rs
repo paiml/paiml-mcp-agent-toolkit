@@ -9,6 +9,8 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     // from a genuinely debt-free repository.
     crate::cli::ensure_analysis_path_exists(&config.path)?;
 
+    reject_unimplemented_evolution(config.evolution)?;
+
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function
@@ -23,6 +25,53 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
     // Delegate output formatting and writing to extracted function
     write_satd_output(&filtered_result, &config).await?;
 
+    // `--fail-on-violation` is documented as "Exit with non-zero code if
+    // violations are found", but this handler never read the flag off the
+    // config: `analyze satd --strict --fail-on-violation` on a crate with three
+    // TODO/FIXME/HACK markers printed "Total violations: 3" and exited 0, the
+    // same exit code as without the flag, so no CI gate built on it could ever
+    // fail. (A working check existed in complexity_handlers/satd.rs, but on a
+    // route nothing dispatches to.)
+    enforce_fail_on_violation(&filtered_result, config.fail_on_violation)
+}
+
+/// Refuse `--evolution` rather than answering it with a placeholder sentence.
+///
+/// `--evolution` is documented as "Track debt evolution over time (requires git
+/// history)" and `--days` as the window. Nothing read git history: summary and
+/// SARIF ignored the flag entirely (`analyze satd -p .` and `analyze satd -p .
+/// --evolution --days 90` were byte-identical), JSON answered with
+/// `"evolution": {"message": "Evolution tracking would show SATD trends over
+/// time"}` and Markdown with a `## Evolution (Last N Days)` heading over that
+/// same sentence — so `--days` moved a number in a heading and nothing else.
+/// `DebtEvolution` exists as a type with no producer.
+///
+/// A flag that measures nothing must say so, not emit prose shaped like a
+/// result. Same rule `pmat report --format html` follows (#672).
+fn reject_unimplemented_evolution(evolution: bool) -> Result<()> {
+    if evolution {
+        anyhow::bail!(
+            "--evolution is not implemented for `analyze satd`: no debt history is \
+             computed, and --days selects nothing. Re-run without it."
+        );
+    }
+    Ok(())
+}
+
+/// Turn retained violations into a non-zero exit when the caller asked for one.
+///
+/// The message deliberately avoids the word "violation": `bin/pmat.rs`
+/// `categorize_error` maps any error text containing it to exit code 3, and the
+/// documented behaviour of this flag — and the behaviour of the sibling
+/// implementation it replaces — is exit 1.
+fn enforce_fail_on_violation(result: &SatdAnalysisResult, fail_on_violation: bool) -> Result<()> {
+    if fail_on_violation && !result.violations.is_empty() {
+        anyhow::bail!(
+            "SATD gate failed: {} self-admitted technical debt items found in {} files",
+            result.violations.len(),
+            result.total_files
+        );
+    }
     Ok(())
 }
 
@@ -121,13 +170,7 @@ async fn write_satd_output(
     config: &SatdAnalysisConfig,
 ) -> Result<()> {
     // Format output
-    let content = format_output(
-        filtered_result,
-        config.format.clone(),
-        config.evolution,
-        config.days,
-        config.metrics,
-    );
+    let content = format_output(filtered_result, config.format.clone(), config.metrics);
 
     // Write to file or stdout
     if let Some(output_path) = &config.output {
@@ -181,4 +224,89 @@ fn apply_filters(
     }
 
     result
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod fail_on_violation_tests {
+    use super::*;
+    use crate::services::facades::satd_facade::{SatdSeverity as FacadeSeverity, SatdViolation};
+
+    fn result_with(n: usize) -> SatdAnalysisResult {
+        SatdAnalysisResult {
+            total_files: usize::from(n > 0),
+            violations: (0..n)
+                .map(|i| SatdViolation {
+                    file_path: "src/lib.rs".to_string(),
+                    line_number: i + 1,
+                    violation_type: "TODO".to_string(),
+                    message: "TODO: finish".to_string(),
+                    severity: FacadeSeverity::Medium,
+                })
+                .collect(),
+            summary: format!("Found {n} SATD violations in 1 files"),
+        }
+    }
+
+    #[test]
+    fn violations_plus_flag_is_an_error() {
+        let err = enforce_fail_on_violation(&result_with(3), true)
+            .expect_err("--fail-on-violation with 3 items must not succeed");
+        let message = err.to_string();
+        assert!(message.contains('3'), "{message}");
+        // Exit-code contract: `categorize_error` in bin/pmat.rs routes anything
+        // mentioning "violation" to exit 3; this gate must exit 1.
+        assert!(
+            !message.to_lowercase().contains("violation"),
+            "message would be categorised as exit 3: {message}"
+        );
+    }
+
+    #[test]
+    fn no_violations_or_no_flag_is_success() {
+        assert!(enforce_fail_on_violation(&result_with(0), true).is_ok());
+        assert!(enforce_fail_on_violation(&result_with(3), false).is_ok());
+    }
+
+    /// End-to-end: the routed handler never consulted `config.fail_on_violation`
+    /// at all, so this returned `Ok` (exit 0) on a tree full of TODOs whether or
+    /// not the flag was set.
+    #[tokio::test]
+    async fn handler_fails_when_fail_on_violation_is_set() {
+        let project = tempfile::TempDir::new().unwrap();
+        let out = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            project.path().join("lib.rs"),
+            "// TODO: implement this\nfn f() {}\n// FIXME: broken\nfn g() {}\n",
+        )
+        .unwrap();
+
+        let config = |fail_on_violation: bool| SatdAnalysisConfig {
+            path: project.path().to_path_buf(),
+            format: SatdOutputFormat::Summary,
+            severity: None,
+            critical_only: false,
+            include_tests: false,
+            strict: false,
+            evolution: false,
+            days: 30,
+            metrics: false,
+            output: Some(out.path().join("satd.txt")),
+            top_files: 0,
+            fail_on_violation,
+            timeout: 60,
+            include: vec![],
+            exclude: vec![],
+            extended: false,
+        };
+
+        assert!(
+            handle_analyze_satd(config(false)).await.is_ok(),
+            "without the flag the command reports and succeeds"
+        );
+        assert!(
+            handle_analyze_satd(config(true)).await.is_err(),
+            "--fail-on-violation must make a tree with TODO/FIXME exit non-zero"
+        );
+    }
 }
