@@ -195,7 +195,7 @@ pub(super) async fn handle_check_quality(
     new_files_only: bool,
     baseline_path: Option<&PathBuf>,
 ) -> Result<()> {
-    use crate::tdg::{FGradeGate, QualityGate, TdgBaseline};
+    use crate::tdg::{CriticalDefectGate, FGradeGate, QualityGate, TdgBaseline};
 
     let quiet = json_exclusive_stdout(&format);
 
@@ -207,13 +207,27 @@ pub(super) async fn handle_check_quality(
     std::fs::remove_file(&temp_output).ok();
 
     let f_grade_result = FGradeGate::with_defaults().check(&TdgBaseline::new(None), &current)?;
+    // Critical defects are gated on their own flag, not inferred from an F
+    // grade. The score they produce is now a graduated penalty, so a defective
+    // file need not land in the F band — `FGradeGate` alone would miss it.
+    let critical_result =
+        CriticalDefectGate::with_defaults().check(&TdgBaseline::new(None), &current)?;
     let result = run_primary_gate(new_files_only, min_grade_str, baseline_path, &current)?;
 
     if quiet {
         // JSON mode: one combined document — two display_gate_result calls
         // would concatenate two JSON docs on stdout when F-grades exist
-        println!("{}", check_quality_json(&result, &f_grade_result)?);
+        println!(
+            "{}",
+            check_quality_json(&result, &f_grade_result, &critical_result)?
+        );
     } else {
+        if !critical_result.violations.is_empty() {
+            decor!(quiet, "\n⛔ Critical Defects: {}", critical_result.message);
+            display_gate_result(&critical_result, &format)?;
+            decor!(quiet);
+        }
+
         if !f_grade_result.violations.is_empty() {
             decor!(quiet, "\n⚠️  F-Grade Warning: {}", f_grade_result.message);
             decor!(
@@ -227,7 +241,7 @@ pub(super) async fn handle_check_quality(
         display_gate_result(&result, &format)?;
     }
 
-    if fail_on_violation && (!result.passed || !f_grade_result.passed) {
+    if fail_on_violation && (!result.passed || !f_grade_result.passed || !critical_result.passed) {
         return Err(anyhow::anyhow!("Quality violations detected"));
     }
 
@@ -239,11 +253,13 @@ pub(super) async fn handle_check_quality(
 pub(super) fn check_quality_json(
     primary: &crate::tdg::GateResult,
     f_grade: &crate::tdg::GateResult,
+    critical: &crate::tdg::GateResult,
 ) -> Result<String> {
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "gate": primary,
         "f_grade_gate": f_grade,
-        "passed": primary.passed && f_grade.passed,
+        "critical_defect_gate": critical,
+        "passed": primary.passed && f_grade.passed && critical.passed,
     }))?)
 }
 

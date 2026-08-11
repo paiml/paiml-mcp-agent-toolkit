@@ -37,14 +37,40 @@ fn the_existence_flag_always_agrees_with_the_count() {
     }
 }
 
+/// The penalty is graduated, monotone, and capped below B-, so an agent fixing
+/// defects sees the number move. It used to be a flat 0.0 at every count.
 #[test]
-fn unsuppressed_critical_defects_still_auto_fail() {
+fn unsuppressed_critical_defects_degrade_the_score_monotonically() {
+    let mut previous = f32::MAX;
+    for count in 1..=6 {
+        let mut s = with_defects(count);
+        s.calculate_total();
+
+        assert!(s.has_critical_defects);
+        assert!(s.critical_defects_suppressed.is_none());
+        assert!(
+            s.total < 70.0,
+            "count {count}: a critical defect must cap the score below B-, got {}",
+            s.total
+        );
+        assert!(
+            s.total < previous,
+            "count {count}: more defects must score strictly worse than fewer \
+             ({} is not below {previous})",
+            s.total
+        );
+        previous = s.total;
+    }
+}
+
+/// ...and one defect in an otherwise perfect file must still leave the other
+/// measurements legible, which a flat zero does not.
+#[test]
+fn a_single_defect_does_not_erase_every_other_signal() {
     let mut s = with_defects(1);
     s.calculate_total();
-    assert_eq!(s.total, 0.0);
-    assert_eq!(s.grade, Grade::F);
-    assert!(s.has_critical_defects);
-    assert!(s.critical_defects_suppressed.is_none());
+    assert!(s.total > 0.0, "got {}", s.total);
+    assert_eq!(s.grade, Grade::CPlus);
 }
 
 /// #279's intent survives: the gate does not fire for an untracked file.
@@ -197,6 +223,17 @@ mod through_the_analyzer {
     /// Detected as a critical defect by `RustDefectDetector`.
     const WITH_CRITICAL_DEFECT: &str = "pub fn f(v: Vec<i32>) -> i32 { *v.first().unwrap() }\n";
 
+    fn analyze_at_path(file: &std::path::Path) -> crate::tdg::score::TdgScore {
+        TdgAnalyzerAst::new()
+            .expect("analyzer")
+            .analyze_source(
+                WITH_CRITICAL_DEFECT,
+                Language::Rust,
+                Some(file.to_path_buf()),
+            )
+            .expect("analyze")
+    }
+
     fn analyze_at(dir: &std::path::Path) -> crate::tdg::score::TdgScore {
         let file = dir.join("lib.rs");
         std::fs::write(&file, WITH_CRITICAL_DEFECT).expect("write");
@@ -240,15 +277,42 @@ mod through_the_analyzer {
         }
     }
 
-    /// Code outside version control is gated exactly like committed code.
+    /// Code outside version control is treated exactly like committed code.
     #[test]
-    fn defects_outside_a_repository_still_auto_fail() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let score = analyze_at(dir.path());
+    fn defects_outside_a_repository_are_not_waived() {
+        let plain = tempfile::tempdir().expect("tempdir");
+        let repo = tempfile::tempdir().expect("tempdir");
+        init_repo(repo.path());
+        let committed = {
+            let f = repo.path().join("lib.rs");
+            std::fs::write(&f, WITH_CRITICAL_DEFECT).expect("write");
+            let ok = Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(["add", "-A"])
+                .output()
+                .expect("git")
+                .status
+                .success();
+            assert!(ok);
+            let ok = Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+                .args(["commit", "-qm", "init", "--no-verify"])
+                .output()
+                .expect("git")
+                .status
+                .success();
+            assert!(ok);
+            analyze_at_path(&f)
+        };
+        let unversioned = analyze_at(plain.path());
 
-        assert!(score.critical_defects_suppressed.is_none());
-        assert_eq!(score.grade, Grade::F);
-        assert_eq!(score.total, 0.0);
+        assert!(unversioned.critical_defects_suppressed.is_none());
+        // The point of the tri-state: same bytes, same verdict, same number.
+        assert_eq!(unversioned.total, committed.total);
+        assert_eq!(unversioned.grade, committed.grade);
     }
 
     /// #279 still holds for the case it was written for, and now says so.

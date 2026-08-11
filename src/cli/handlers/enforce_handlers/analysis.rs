@@ -182,42 +182,56 @@ pub async fn run_complexity_analysis(
 
 /// Run SATD analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// This used to call the *printing* `analyze satd` handler purely for its side
+/// effect, discard its `()`, and leave the branch that should have produced
+/// violations holding nothing but the comment "For now, we know project
+/// maintains zero SATD". `let violations = Vec::new()` was returned unmodified
+/// on every path, so SATD could not contribute a violation under any input:
+/// `pmat enforce extreme` printed "Found 40 SATD items" and then reported
+/// `State: Complete, Score: 1.00/1.00, Violations: 0` — an enforcer that had
+/// stopped enforcing while still looking like it worked.
+///
+/// It now calls the detector directly, the way `run_tdg_analysis` does, and
+/// turns what it finds into violations against `profile.satd_allowed`.
 pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    use crate::cli::handlers::complexity_handlers::handle_analyze_satd;
-    use crate::cli::SatdOutputFormat;
+    use crate::services::satd_detector::SATDDetector;
 
-    let violations = Vec::new();
+    let detector = SATDDetector::new();
+    // `include_tests: false` — SATD in test code is not production debt, which
+    // matches what the SATD gate in `pmat verify` counts.
+    let result = match detector.analyze_project(project_path, false).await {
+        Ok(result) => result,
+        // A path that cannot be analysed is not evidence of zero debt. Report
+        // the failure rather than returning an empty (i.e. clean) verdict.
+        Err(e) => anyhow::bail!("SATD analysis failed for {}: {e}", project_path.display()),
+    };
 
-    match handle_analyze_satd(
-        project_path.to_path_buf(),
-        SatdOutputFormat::Json,
-        None,  // severity filter
-        false, // critical_only
-        false, // include_tests
-        true,  // strict
-        false, // evolution
-        30,    // days
-        true,  // metrics
-        None,  // output
-        0,     // top_files (0 = all)
-        false, // fail_on_violation
-        60,    // timeout
-    )
-    .await
-    {
-        Ok(()) => {
-            if profile.satd_allowed == 0 {
-                // NOTE: Would parse JSON and check for SATD violations
-                // For now, we know project maintains zero SATD
-            }
-        }
-        Err(_) => {} // Ignore failures in analysis
+    let found = result.summary.total_items;
+    if found <= profile.satd_allowed {
+        return Ok(Vec::new());
     }
 
-    Ok(violations)
+    // One violation per item, each locatable, so `--format json` consumers can
+    // act on them instead of being told only that a count was exceeded.
+    Ok(result
+        .items
+        .iter()
+        .map(|item| QualityViolation {
+            violation_type: "satd".to_string(),
+            severity: format!("{:?}", item.severity).to_lowercase(),
+            location: format!("{}:{}:{}", item.file.display(), item.line, item.column),
+            current: found as f64,
+            target: profile.satd_allowed as f64,
+            suggestion: format!(
+                "Resolve the {:?} debt marker ({}) or track it outside the source",
+                item.category,
+                item.text.trim()
+            ),
+        })
+        .collect())
 }
 
 /// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)

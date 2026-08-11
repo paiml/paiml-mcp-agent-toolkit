@@ -106,33 +106,60 @@ impl TdgScore {
             self.total = (raw_total / THEORETICAL_MAX * 100.0).clamp(0.0, 100.0);
         }
 
-        // Known Defects v2.1: Auto-fail if critical defects detected.
+        // Known Defects v2.1: critical defects degrade the score steeply, but
+        // they no longer erase it.
         //
-        // Gated on `critical_defects_suppressed` rather than on
-        // `has_critical_defects`, so the #279 exemption for untracked files can
-        // switch the gate off without also denying that the defects exist. The
-        // two used to be one field, which is how the same bytes scored 0.0/F
-        // inside a repo and 99.5/A+ outside it (#919).
+        // This used to assign `total = 0.0, grade = F` outright. That reads as
+        // decisive and is in fact the least informative answer available: every
+        // file with one `.unwrap()` collapsed to EXACTLY 0.0 regardless of its
+        // documentation, complexity, size or test coverage, so a 61-function
+        // fully documented module and a one-line disaster were indistinguishable,
+        // and fixing nine of ten defects moved the number not at all. For the
+        // agents and CI jobs that consume this score as a control signal, a
+        // constant is not a signal — there is no gradient to climb.
+        //
+        // The penalty is now proportional and monotone in the defect count, and
+        // is additionally capped below B- so that a file carrying unsuppressed
+        // critical defects can never present as merely "good".
+        //
+        // Softening the SCORE must never soften the GATE. Whether a build fails
+        // is `CriticalDefectGate`, which keys on `has_critical_defects` directly
+        // and is unaffected by anything computed here — see
+        // `crate::tdg::quality_gate::critical_defect`. Expressing the gate as a
+        // magic score value is what coupled them in the first place.
         if self.has_critical_defects && self.critical_defects_suppressed.is_none() {
-            self.total = 0.0;
-            self.grade = Grade::F;
-        } else {
-            // GH #680, second round. Both the file path and the aggregate path
-            // now use `Grade::from_score` and nothing else, so the grade is a
-            // function of the score alone.
-            //
-            // What used to sit here was the CB-1400 override
-            // `if !has_contract_coverage && grade < AMinus { grade = AMinus }`.
-            // `has_contract_coverage` is false whenever contract coverage was
-            // never *measured* (no `contracts/binding.yaml` ⇒ the field keeps
-            // its `false` default), so the cap fired for essentially every
-            // project: a fixture totalling 100.0 was graded `AMinus`, and
-            // `pmat tdg` printed `Overall Score: 100.0/100 (A-)`. An unmeasured
-            // signal must never rewrite a measured one. Contract coverage is
-            // still recorded on `has_contract_coverage` and still gated by
-            // `pmat comply` (CB-1400).
-            self.grade = Grade::from_score(self.total);
+            /// Ceiling for any file still carrying critical defects: the top of
+            /// the C+ band, so such a file cannot grade B- or better whatever
+            /// else it does well. Applied BEFORE the decay, so one defect in a
+            /// perfect file and one in a mediocre one are still distinguishable.
+            const CEILING: f32 = 69.9;
+            /// Each additional defect retains this fraction of the score.
+            ///
+            /// Geometric rather than linear so the result is strictly
+            /// decreasing at every count and never reaches a floor where
+            /// further defects stop mattering. A flat region anywhere is the
+            /// same defect as the old constant 0.0, only further out.
+            const RETAINED_PER_DEFECT: f32 = 0.6;
+
+            let extra = self.critical_defects_count.saturating_sub(1).min(64) as i32;
+            self.total = self.total.min(CEILING) * RETAINED_PER_DEFECT.powi(extra);
         }
+
+        // GH #680, second round. Both the file path and the aggregate path now
+        // use `Grade::from_score` and nothing else, so the grade is a function
+        // of the score alone.
+        //
+        // What used to sit here was the CB-1400 override
+        // `if !has_contract_coverage && grade < AMinus { grade = AMinus }`.
+        // `has_contract_coverage` is false whenever contract coverage was never
+        // *measured* (no `contracts/binding.yaml` ⇒ the field keeps its `false`
+        // default), so the cap fired for essentially every project: a fixture
+        // totalling 100.0 was graded `AMinus`, and `pmat tdg` printed the
+        // self-contradicting `Overall Score: 100.0/100 (A-)`. An unmeasured
+        // signal must never rewrite a measured one. Contract coverage is still
+        // recorded on `has_contract_coverage` and still gated by `pmat comply`
+        // (CB-1400).
+        self.grade = Grade::from_score(self.total);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

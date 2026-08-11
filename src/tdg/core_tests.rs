@@ -170,7 +170,7 @@ fn test_tdg_score_calculate_total_zero() {
 }
 
 #[test]
-fn test_tdg_score_critical_defects_autofail() {
+fn test_tdg_score_critical_defects_are_penalised_not_annihilated() {
     let mut score = TdgScore {
         structural_complexity: 25.0,
         semantic_complexity: 20.0,
@@ -185,8 +185,22 @@ fn test_tdg_score_critical_defects_autofail() {
 
     score.calculate_total();
 
-    assert_eq!(score.total, 0.0);
-    assert_eq!(score.grade, Grade::F);
+    // Was `assert_eq!(score.total, 0.0)` / `Grade::F`. Expressing the auto-fail
+    // as an annihilated score made every offending file read EXACTLY 0.0 no
+    // matter what else was true of it, so a perfect module with one `.unwrap()`
+    // and a one-line disaster were indistinguishable, and fixing nine of ten
+    // defects moved the number not at all. Whether a build fails is now
+    // `CriticalDefectGate`, which reads `has_critical_defects` directly; this
+    // number is free to stay informative.
+    assert_eq!(score.grade, Grade::CPlus);
+    assert!(
+        score.total > 0.0 && score.total < 70.0,
+        "one defect must cap the score below B- without erasing it: got {}",
+        score.total
+    );
+    // The finding is still reported, and still un-waived — the gate will fail.
+    assert!(score.has_critical_defects);
+    assert!(score.critical_defects_suppressed.is_none());
 }
 
 /// GH #680, second round. Was `test_tdg_score_contract_coverage_caps_a_to_aminus`

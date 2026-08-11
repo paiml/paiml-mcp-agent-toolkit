@@ -96,8 +96,8 @@ pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use penalty_tracker::PenaltyTracker;
 pub use project_score::{Comparison, ProjectScore};
 pub use quality_gate::{
-    FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate,
-    Severity, Violation, ViolationType,
+    CriticalDefectGate, FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate,
+    QualityGate, RegressionGate, Severity, Violation, ViolationType,
 };
 pub use recommendation_engine::generate_recommendations;
 pub use resource_control::{

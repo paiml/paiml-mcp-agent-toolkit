@@ -44,3 +44,7 @@ pub use types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
     EnforcementState, QualityProfile, QualityViolation,
 };
+
+#[cfg(test)]
+#[path = "satd_enforcement_tests.rs"]
+mod satd_enforcement_tests;

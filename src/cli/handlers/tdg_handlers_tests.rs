@@ -990,8 +990,15 @@ mod unit_tests {
                 message: "1 F-grade file".to_string(),
             };
 
+            let critical = GateResult {
+                passed: true,
+                gate_name: "CriticalDefectGate".to_string(),
+                violations: vec![],
+                message: "No critical defects".to_string(),
+            };
+
             let doc = crate::cli::handlers::tdg_handlers::quality_gates::check_quality_json(
-                &primary, &f_grade,
+                &primary, &f_grade, &critical,
             )
             .unwrap();
 
@@ -1000,8 +1007,12 @@ mod unit_tests {
             assert_eq!(parsed["gate"]["gate_name"], "MinimumGradeGate");
             assert_eq!(parsed["f_grade_gate"]["gate_name"], "FGradeGate");
             assert_eq!(
+                parsed["critical_defect_gate"]["gate_name"],
+                "CriticalDefectGate"
+            );
+            assert_eq!(
                 parsed["passed"], false,
-                "combined verdict must AND both gates"
+                "combined verdict must AND every gate"
             );
         }
 
