@@ -111,6 +111,16 @@ pub(crate) fn count_dirty_files(status: &str) -> usize {
 /// true positive is indistinguishable from a pmat self-dirty bug — which is how
 /// #630 came to be filed against a filter that was working. Naming the files
 /// makes the verdict checkable by the person reading it.
+/// KNOWN GAP, deliberately left as-is: untracked `??` entries are excluded, so
+/// a brand-new file that has never been committed does not count as unpushed —
+/// and a new file is the most likely place for a whole feature to live.
+///
+/// This is NOT changed here because the exclusion is a documented decision tied
+/// to GH #224 ("untracked entries are not uncommitted *changes*"), and
+/// reversing it would re-open whatever that issue was about. It is a policy
+/// question for the GitHubSync claim's owner — "changes pushed" arguably means
+/// all work, not just work git already tracks — not a parsing bug like the
+/// others fixed in this pass. Raised rather than silently flipped.
 pub(crate) fn dirty_file_paths(status: &str) -> Vec<String> {
     status
         .lines()
