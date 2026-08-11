@@ -387,7 +387,10 @@ fn evaluate_complexity_json(json: &serde_json::Value, max_complexity: u32) -> Fa
             .and_then(|f| f.as_str())
             .unwrap_or("<unnamed>")
             .to_string();
-        let line = v.get("line").and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let line = v
+            .get("line")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0);
         worst
             .entry((file, func, line))
             .and_modify(|w| *w = (*w).max(value))

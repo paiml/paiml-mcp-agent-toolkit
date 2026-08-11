@@ -91,7 +91,30 @@ pub async fn run_falsification_tests(
         .filter(|r| r.result.falsified && !r.is_blocking)
         .count();
 
-    let all_passed = failed == 0;
+    // An UNMEASURED always-blocking claim corroborated nothing, so counting the
+    // run as passed overstates what was verified. Previously `all_passed` only
+    // considered `falsified && is_blocking`, which meant a blocking claim whose
+    // tool never ran (no coverage artifact, unreadable analyzer, missing spec)
+    // left the gate green. Gated behind a threshold that defaults to false:
+    // enabling it blocks every repo without a coverage artifact, which is a real
+    // workflow change rather than a bug fix. The count is reported either way.
+    let unmeasured_blocking = claim_results
+        .iter()
+        .filter(|r| !r.result.falsified && !r.result.measured && r.is_blocking)
+        .count();
+
+    let all_passed =
+        failed == 0 && !(contract.thresholds.block_on_unmeasured && unmeasured_blocking > 0);
+
+    // Make the gap loud even when enforcement is off, so nobody reads a green
+    // run as "everything was verified". This is the visibility half of
+    // block_on_unmeasured: the count is always shown, blocking is opt-in.
+    if unmeasured_blocking > 0 && !contract.thresholds.block_on_unmeasured {
+        println!(
+            "      ⚠ {unmeasured_blocking} BLOCKING claim(s) were NOT MEASURED and did not \
+             block this run. Set thresholds.block_on_unmeasured = true to enforce."
+        );
+    }
 
     Ok(FalsificationReport {
         total_claims,
@@ -291,5 +314,39 @@ fn print_evidence(evidence: &EvidenceType) {
         EvidenceType::CounterExample { details } => {
             println!("      Evidence: {}", details);
         }
+    }
+}
+
+#[cfg(test)]
+mod unmeasured_blocking_tests {
+    use crate::cli::handlers::work_contract::ContractThresholds;
+
+    /// Enforcement is ON by default: a blocking claim that measured nothing
+    /// has corroborated nothing, so it must not certify a completion.
+    #[test]
+    fn block_on_unmeasured_defaults_on() {
+        assert!(
+            ContractThresholds::default().block_on_unmeasured,
+            "an always-blocking claim that measured nothing must block by default"
+        );
+    }
+
+    /// The verdict rule itself, stated directly so it cannot drift back to
+    /// `failed == 0`: an unmeasured BLOCKING claim must be able to fail the run
+    /// once enforcement is enabled, and must not when it is not.
+    fn all_passed(failed: usize, unmeasured_blocking: usize, block: bool) -> bool {
+        failed == 0 && !(block && unmeasured_blocking > 0)
+    }
+
+    #[test]
+    fn unmeasured_blocking_claim_blocks_only_when_enabled() {
+        // Explicitly disabled per contract: unmeasured no longer blocks.
+        assert!(all_passed(0, 3, false), "opt-out must still be honoured");
+        // Opted in: a blocking claim that measured nothing stops the run.
+        assert!(!all_passed(0, 1, true), "enabled must block on unmeasured");
+        // Unmeasured NON-blocking claims never matter (they are not counted).
+        assert!(all_passed(0, 0, true));
+        // A real falsification still blocks regardless of the flag.
+        assert!(!all_passed(1, 0, false));
     }
 }
