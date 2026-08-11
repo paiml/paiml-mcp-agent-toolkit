@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality analysis functions for enforcement
 
-use super::types::{QualityProfile, QualityViolation};
+use super::types::{PhaseOutcome, QualityProfile, QualityViolation};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -103,10 +103,14 @@ fn take_captured_json(path: &Path) -> Option<serde_json::Value> {
     serde_json::from_str(&text?).ok()
 }
 
-/// Report that a signal could not be produced. A phase that measured nothing
-/// must say so; it must not fall through to a plausible-looking number.
-fn warn_not_measured(kind: &str, path: &Path, reason: &str) {
+/// Report that a signal could not be produced, and hand the reason back.
+///
+/// Printing was all this used to do, which is why the gap never reached the
+/// verdict: stderr is not a return value. The reason now travels with the
+/// `PhaseOutcome` so the score can exclude the phase and the report can name it.
+fn warn_not_measured(kind: &str, path: &Path, reason: &str) -> String {
     eprintln!("⚠️  {kind} not measured for {}: {reason}", path.display());
+    format!("{kind} not measured: {reason}")
 }
 
 /// Run complexity analysis - extracted from `list_all_violations` (complexity: ≤10)
@@ -115,7 +119,7 @@ pub async fn run_complexity_analysis(
     project_path: &Path,
     profile: &QualityProfile,
     specific_file: Option<&Path>,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     // The complexity service is called directly rather than through the
     // printing CLI handler: the handler returns `()`, so its result had to be
     // thrown away and a sample violation invented in its place.
@@ -124,8 +128,8 @@ pub async fn run_complexity_analysis(
             match crate::services::complexity::analyze_file_complexity_uncached(file, None).await {
                 Ok(m) => vec![m],
                 Err(e) => {
-                    warn_not_measured("complexity", file, &e.to_string());
-                    return Ok(Vec::new());
+                    let reason = warn_not_measured("complexity", file, &e.to_string());
+                    return Ok(PhaseOutcome::unmeasured(reason));
                 }
             }
         }
@@ -141,12 +145,23 @@ pub async fn run_complexity_analysis(
             {
                 Ok(m) => m,
                 Err(e) => {
-                    warn_not_measured("complexity", project_path, &e.to_string());
-                    return Ok(Vec::new());
+                    let reason = warn_not_measured("complexity", project_path, &e.to_string());
+                    return Ok(PhaseOutcome::unmeasured(reason));
                 }
             }
         }
     };
+
+    // Zero analysable files is not a clean result — it is the absence of one.
+    // The analyzers below return `Ok` for input they never read (a nonexistent
+    // path yields an empty metric set, not an error), so without this the phase
+    // reports "measured, no violations" for a tree it never opened.
+    if file_metrics.is_empty() {
+        return Ok(PhaseOutcome::unmeasured(format!(
+            "no analysable source files under {}",
+            project_path.display()
+        )));
+    }
 
     let severe = profile.complexity_max.saturating_mul(2);
     let mut violations = Vec::new();
@@ -177,7 +192,7 @@ pub async fn run_complexity_analysis(
             .then_with(|| a.location.cmp(&b.location))
     });
 
-    Ok(violations)
+    Ok(PhaseOutcome::measured(violations))
 }
 
 /// Run SATD analysis - extracted from `list_all_violations` (complexity: ≤10)
@@ -196,7 +211,7 @@ pub async fn run_complexity_analysis(
 pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     use crate::services::satd_detector::SATDDetector;
 
     let detector = SATDDetector::new();
@@ -204,34 +219,48 @@ pub async fn run_satd_analysis(
     // matches what the SATD gate in `pmat verify` counts.
     let result = match detector.analyze_project(project_path, false).await {
         Ok(result) => result,
-        // A path that cannot be analysed is not evidence of zero debt. Report
-        // the failure rather than returning an empty (i.e. clean) verdict.
-        Err(e) => anyhow::bail!("SATD analysis failed for {}: {e}", project_path.display()),
+        // A path that cannot be analysed is not evidence of zero debt. This
+        // used to `bail!`, which was the strongest thing the old
+        // `Result<Vec<_>>` signature could express; `unmeasured` says it exactly
+        // — the run continues, and the verdict discloses the gap.
+        Err(e) => {
+            let reason = warn_not_measured("satd", project_path, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
+        }
     };
+
+    if result.total_files_analyzed == 0 {
+        return Ok(PhaseOutcome::unmeasured(format!(
+            "no analysable source files under {}",
+            project_path.display()
+        )));
+    }
 
     let found = result.summary.total_items;
     if found <= profile.satd_allowed {
-        return Ok(Vec::new());
+        return Ok(PhaseOutcome::measured(Vec::new()));
     }
 
     // One violation per item, each locatable, so `--format json` consumers can
     // act on them instead of being told only that a count was exceeded.
-    Ok(result
-        .items
-        .iter()
-        .map(|item| QualityViolation {
-            violation_type: "satd".to_string(),
-            severity: format!("{:?}", item.severity).to_lowercase(),
-            location: format!("{}:{}:{}", item.file.display(), item.line, item.column),
-            current: found as f64,
-            target: profile.satd_allowed as f64,
-            suggestion: format!(
-                "Resolve the {:?} debt marker ({}) or track it outside the source",
-                item.category,
-                item.text.trim()
-            ),
-        })
-        .collect())
+    Ok(PhaseOutcome::measured(
+        result
+            .items
+            .iter()
+            .map(|item| QualityViolation {
+                violation_type: "satd".to_string(),
+                severity: format!("{:?}", item.severity).to_lowercase(),
+                location: format!("{}:{}:{}", item.file.display(), item.line, item.column),
+                current: found as f64,
+                target: profile.satd_allowed as f64,
+                suggestion: format!(
+                    "Resolve the {:?} debt marker ({}) or track it outside the source",
+                    item.category,
+                    item.text.trim()
+                ),
+            })
+            .collect(),
+    ))
 }
 
 /// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)
@@ -239,7 +268,7 @@ pub async fn run_satd_analysis(
 pub async fn run_tdg_analysis(
     project_path: &Path,
     profile: &QualityProfile,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     use crate::services::tdg_calculator::TDGCalculator;
 
     // `TDGCalculator` is the analyser whose scale `profile.tdg_max` is written
@@ -272,7 +301,10 @@ pub async fn run_tdg_analysis(
                     }
                 }
             }
-            Err(e) => warn_not_measured("tdg", project_path, &e.to_string()),
+            Err(e) => {
+                let reason = warn_not_measured("tdg", project_path, &e.to_string());
+                return Ok(PhaseOutcome::unmeasured(reason));
+            }
         }
     } else {
         match calculator.calculate_file(project_path).await {
@@ -293,11 +325,14 @@ pub async fn run_tdg_analysis(
                     });
                 }
             }
-            Err(e) => warn_not_measured("tdg", project_path, &e.to_string()),
+            Err(e) => {
+                let reason = warn_not_measured("tdg", project_path, &e.to_string());
+                return Ok(PhaseOutcome::unmeasured(reason));
+            }
         }
     }
 
-    Ok(violations)
+    Ok(PhaseOutcome::measured(violations))
 }
 
 /// Run dead code analysis - extracted from `list_all_violations` (complexity: ≤10)
@@ -305,7 +340,7 @@ pub async fn run_tdg_analysis(
 pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     use crate::cli::handlers::dead_code_handlers::handle_analyze_dead_code;
     use crate::cli::DeadCodeOutputFormat;
 
@@ -359,15 +394,20 @@ pub async fn run_dead_code_analysis(
                     });
                 }
             }
-            None => warn_not_measured("dead code", project_path, "no parsable JSON report"),
+            None => {
+                let reason =
+                    warn_not_measured("dead code", project_path, "no parsable JSON report");
+                return Ok(PhaseOutcome::unmeasured(reason));
+            }
         },
         Err(e) => {
             let _ = std::fs::remove_file(&capture);
-            warn_not_measured("dead code", project_path, &e.to_string());
+            let reason = warn_not_measured("dead code", project_path, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
         }
     }
 
-    Ok(violations)
+    Ok(PhaseOutcome::measured(violations))
 }
 
 /// Run duplication analysis - extracted from `list_all_violations` (complexity: ≤10)
@@ -375,7 +415,7 @@ pub async fn run_dead_code_analysis(
 pub async fn run_duplication_analysis(
     project_path: &Path,
     profile: &QualityProfile,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     use crate::cli::handlers::duplication_analysis::{
         handle_analyze_duplicates, DuplicateAnalysisConfig,
     };
@@ -423,15 +463,20 @@ pub async fn run_duplication_analysis(
                     });
                 }
             }
-            None => warn_not_measured("duplication", project_path, "no parsable JSON report"),
+            None => {
+                let reason =
+                    warn_not_measured("duplication", project_path, "no parsable JSON report");
+                return Ok(PhaseOutcome::unmeasured(reason));
+            }
         },
         Err(e) => {
             let _ = std::fs::remove_file(&capture);
-            warn_not_measured("duplication", project_path, &e.to_string());
+            let reason = warn_not_measured("duplication", project_path, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
         }
     }
 
-    Ok(violations)
+    Ok(PhaseOutcome::measured(violations))
 }
 
 /// Overall line coverage the project has already measured, if any.
@@ -474,19 +519,19 @@ fn read_measured_line_coverage(project_path: &Path) -> Option<f64> {
 pub async fn run_coverage_analysis(
     project_path: &Path,
     profile: &QualityProfile,
-) -> Result<Vec<QualityViolation>> {
+) -> Result<PhaseOutcome> {
     // This function used to read `let coverage = 65.0; // Simulated coverage`,
     // so every project on earth was reported 15 points short of the 80% floor —
     // including an empty directory with no tests and no source. A gate that
     // cannot measure a signal must say it did not measure it, not report a
     // failure it invented.
     let Some(coverage) = read_measured_line_coverage(project_path) else {
-        warn_not_measured(
+        let reason = warn_not_measured(
             "coverage",
             project_path,
             "no lcov report found (run `cargo llvm-cov --lcov --output-path lcov.info`)",
         );
-        return Ok(Vec::new());
+        return Ok(PhaseOutcome::unmeasured(reason));
     };
 
     let mut violations = Vec::new();
@@ -505,7 +550,7 @@ pub async fn run_coverage_analysis(
         });
     }
 
-    Ok(violations)
+    Ok(PhaseOutcome::measured(violations))
 }
 
 #[cfg(test)]
@@ -528,26 +573,35 @@ mod measured_violation_tests {
             run_complexity_analysis(root, &profile, None)
                 .await
                 .unwrap()
+                .violations
                 .is_empty(),
             "an empty directory has no functions, so it can have no complexity violations"
         );
         assert!(
-            run_tdg_analysis(root, &profile).await.unwrap().is_empty(),
+            run_tdg_analysis(root, &profile)
+                .await
+                .unwrap()
+                .violations
+                .is_empty(),
             "an empty directory has no files, so it can have no TDG hotspots"
         );
         assert!(
             run_duplication_analysis(root, &profile)
                 .await
                 .unwrap()
+                .violations
                 .is_empty(),
             "an empty directory has no duplicated lines"
         );
+
+        // Coverage is the case the old assertion blurred. There is no lcov
+        // report, so coverage was NOT measured — which is a different fact from
+        // "measured, and clean", and the one that must not be credited.
+        let coverage = run_coverage_analysis(root, &profile).await.unwrap();
+        assert!(coverage.violations.is_empty());
         assert!(
-            run_coverage_analysis(root, &profile)
-                .await
-                .unwrap()
-                .is_empty(),
-            "no coverage report exists, so coverage is not measured and cannot be a violation"
+            !coverage.is_measured(),
+            "absent coverage data must report as unmeasured, not as a clean phase"
         );
     }
 
@@ -563,9 +617,11 @@ mod measured_violation_tests {
         std::fs::write(&src, body).unwrap();
 
         let profile = QualityProfile::default();
-        let violations = run_complexity_analysis(temp.path(), &profile, Some(&src))
+        let outcome = run_complexity_analysis(temp.path(), &profile, Some(&src))
             .await
             .unwrap();
+        assert!(outcome.is_measured(), "the file parses, so this phase ran");
+        let violations = outcome.violations;
 
         assert!(
             !violations.is_empty(),
@@ -619,7 +675,12 @@ mod measured_violation_tests {
         .unwrap();
 
         let profile = QualityProfile::default();
-        let violations = run_coverage_analysis(temp.path(), &profile).await.unwrap();
+        let outcome = run_coverage_analysis(temp.path(), &profile).await.unwrap();
+        assert!(
+            outcome.is_measured(),
+            "an lcov report exists, so this phase measured"
+        );
+        let violations = outcome.violations;
 
         assert_eq!(violations.len(), 1);
         assert!(

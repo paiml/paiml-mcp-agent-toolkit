@@ -24,7 +24,10 @@
             let temp_dir = create_test_project();
             let profile = make_test_profile();
 
-            let violations = run_tdg_analysis(temp_dir.path(), &profile).await.unwrap();
+            let violations = run_tdg_analysis(temp_dir.path(), &profile)
+                .await
+                .unwrap()
+                .violations;
             // May or may not have violations
             let _ = &violations;
         }
@@ -36,7 +39,8 @@
 
             let violations = run_dead_code_analysis(temp_dir.path(), &profile)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
             // May or may not have violations
             let _ = &violations;
         }
@@ -48,7 +52,8 @@
 
             let violations = run_duplication_analysis(temp_dir.path(), &profile)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
             // May or may not have violations
             let _ = &violations;
         }
@@ -60,7 +65,8 @@
 
             let violations = run_duplication_analysis(temp_dir.path(), &profile)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
             // With relaxed profile allowing duplication, should have fewer violations
             let _ = &violations;
         }
@@ -409,7 +415,8 @@
 
             let violations = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
 
             assert!(!violations.is_empty());
             assert_eq!(violations[0].violation_type, "coverage");
@@ -424,11 +431,12 @@
             let mut profile = make_test_profile();
             profile.coverage_min = 50.0; // Lower threshold
 
-            let violations = run_coverage_analysis(temp_dir.path(), &profile)
+            let outcome = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
                 .unwrap();
 
-            assert!(violations.is_empty());
+            assert!(outcome.is_measured(), "an lcov report exists");
+            assert!(outcome.violations.is_empty());
         }
 
         /// No lcov report ⇒ nothing measured ⇒ no violation invented.
@@ -437,14 +445,21 @@
             let temp_dir = create_test_project();
             let profile = make_test_profile(); // 80% min coverage
 
-            let violations = run_coverage_analysis(temp_dir.path(), &profile)
+            let outcome = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
                 .unwrap();
 
             assert!(
-                violations.is_empty(),
+                outcome.violations.is_empty(),
                 "a project with no coverage report must not be reported as failing a \
-                 coverage floor; got {violations:?}"
+                 coverage floor; got {:?}",
+                outcome.violations
+            );
+            // ...and it must not read as a clean phase either, which is what let
+            // `enforce extreme` score an unmeasurable project a perfect 1.00.
+            assert!(
+                !outcome.is_measured(),
+                "absent coverage data is unmeasured, not clean"
             );
         }
     }

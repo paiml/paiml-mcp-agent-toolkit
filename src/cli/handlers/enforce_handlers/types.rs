@@ -19,6 +19,54 @@ pub enum EnforcementState {
     Complete,
 }
 
+/// What one analysis phase produced.
+///
+/// A phase used to return a bare `Vec<QualityViolation>`, in which `Vec::new()`
+/// already means "I measured, and found nothing". A phase that could not run had
+/// no value left to say so with, so it warned on stderr and returned the empty
+/// vec — indistinguishable from clean. `enforce extreme` therefore scored a
+/// nonexistent path, an empty directory, and a project whose sources do not
+/// parse at a perfect 1.00/1.00 "Complete", exit 0.
+///
+/// `states.rs` carried this as a documented caveat ("telling clean from not
+/// measured needs those functions to return that distinction") rather than a
+/// defect. This type is that distinction: a phase cannot report silence without
+/// saying which kind of silence it is.
+#[derive(Debug, Clone, Default)]
+pub struct PhaseOutcome {
+    /// What the phase found. Meaningful only when `unmeasured` is `None`.
+    pub violations: Vec<QualityViolation>,
+    /// Why the phase produced no measurement. `None` means it ran.
+    pub unmeasured: Option<String>,
+}
+
+impl PhaseOutcome {
+    /// The phase ran; these are its findings (possibly none).
+    #[must_use]
+    pub fn measured(violations: Vec<QualityViolation>) -> Self {
+        Self {
+            violations,
+            unmeasured: None,
+        }
+    }
+
+    /// The phase could not run. The reason travels with the result so the
+    /// verdict can disclose it instead of crediting the gap.
+    #[must_use]
+    pub fn unmeasured(reason: impl Into<String>) -> Self {
+        Self {
+            violations: Vec::new(),
+            unmeasured: Some(reason.into()),
+        }
+    }
+
+    /// Did this phase actually measure anything?
+    #[must_use]
+    pub fn is_measured(&self) -> bool {
+        self.unmeasured.is_none()
+    }
+}
+
 /// Quality violation types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityViolation {

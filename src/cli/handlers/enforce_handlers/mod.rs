@@ -48,3 +48,7 @@ pub use types::{
 #[cfg(test)]
 #[path = "satd_enforcement_tests.rs"]
 mod satd_enforcement_tests;
+
+#[cfg(test)]
+#[path = "unmeasured_cannot_pass_tests.rs"]
+mod unmeasured_cannot_pass_tests;

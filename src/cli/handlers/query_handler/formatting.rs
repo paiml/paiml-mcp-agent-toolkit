@@ -125,18 +125,25 @@ fn empty_result_output(format: &QueryOutputFormat, ctx_requested: bool) -> Optio
     Some("[]".to_string())
 }
 
-/// Colour code, or nothing when stdout is not a terminal.
+#[cfg(test)]
+#[path = "tint_honours_color_flag_tests.rs"]
+mod tint_honours_color_flag_tests;
+
+/// Colour code, or nothing when colour is off.
 ///
 /// `--files-with-matches`, `--count` and `-A/-B/-C` wrote raw CYAN/YELLOW
 /// escapes unconditionally, so redirecting them to a file produced a file full
 /// of `\e[36m`. Everything these three modes print goes through here.
+///
+/// This delegates rather than testing `is_terminal()` itself, which is what it
+/// used to do. That second, weaker rule ignored `--color` entirely: the flag is
+/// translated into `NO_COLOR` / `CLICOLOR_FORCE` before it reaches here, so
+/// `--color always` produced no colour at all the moment output was piped —
+/// fixing the raw-escape leak had quietly made the flag unreachable for these
+/// three modes. One implementation of "should this be coloured" for the whole
+/// binary is the only version of this that stays fixed.
 fn tint(code: &'static str) -> &'static str {
-    use std::io::IsTerminal;
-    if std::io::stdout().is_terminal() {
-        code
-    } else {
-        ""
-    }
+    crate::cli::colors::seq(code)
 }
 
 /// Returns Ok(true) if handled, Ok(false) for standard output.

@@ -157,7 +157,8 @@
 
             let violations = run_complexity_analysis(temp_dir.path(), &profile, None)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
 
             // May or may not have violations depending on the code
             let _ = &violations;
@@ -168,7 +169,10 @@
             let temp_dir = create_test_project();
             let profile = make_test_profile();
 
-            let violations = run_satd_analysis(temp_dir.path(), &profile).await.unwrap();
+            let violations = run_satd_analysis(temp_dir.path(), &profile)
+                .await
+                .unwrap()
+                .violations;
             // May or may not have violations
             let _ = &violations;
         }
@@ -189,7 +193,8 @@
 
             let violations = run_coverage_analysis(temp_dir.path(), &profile)
                 .await
-                .unwrap();
+                .unwrap()
+                .violations;
 
             assert!(!violations.is_empty());
             assert_eq!(violations[0].violation_type, "coverage");

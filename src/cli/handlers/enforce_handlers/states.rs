@@ -24,6 +24,18 @@ pub async fn handle_analyzing_state(
     dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
+    // A path that does not exist cannot be enforced against, and must not be
+    // answered with a verdict. `enforce extreme -p /nope` reported
+    // `Complete 1.00/1.00`, exit 0 — the analyzers return `Ok` for input they
+    // never read, so every phase came back clean. Refuse up front, as the other
+    // path-taking commands in this release do.
+    if !project_path.exists() {
+        anyhow::bail!(
+            "path not found: {} — enforce cannot report a verdict on a path it cannot read",
+            project_path.display()
+        );
+    }
+
     let scope = AnalysisScope::resolve(project_path, specific_file.map(PathBuf::as_path));
 
     // SATD walks a directory tree and cannot target a lone file; surface the
@@ -40,10 +52,10 @@ pub async fn handle_analyzing_state(
     let mut violations = Vec::new();
 
     // Run all analyses in sequence, each scoped per-phase when --file is given
-    let complexity_violations =
+    let complexity_outcome =
         run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    let satd_violations = run_satd_analysis(scope.walk_root(), profile).await?;
-    let tdg_violations = run_tdg_analysis(scope.file_or_root(), profile).await?;
+    let satd_outcome = run_satd_analysis(scope.walk_root(), profile).await?;
+    let tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
 
     // Composite score, derived from the analyses that were just run.
     //
@@ -61,24 +73,77 @@ pub async fn handle_analyzing_state(
     // absent: nothing in this state machine measures it, and the 0.65 stand-in
     // is exactly the kind of invented number this replaces.
     //
-    // Caveat worth keeping in view: a phase whose analysis FAILED also returns
-    // no violations and so scores 1.0 here — `run_*_analysis` swallows its own
-    // errors (it warns "not measured" and returns an empty vec) rather than
-    // reporting them upwards. Telling "clean" from "not measured" needs those
-    // functions to return that distinction.
-    let phase_scores = [
-        phase_score(&complexity_violations),
-        phase_score(&satd_violations),
-        phase_score(&tdg_violations),
+    // The caveat that used to sit here — "a phase whose analysis FAILED also
+    // returns no violations and so scores 1.0 ... telling clean from not
+    // measured needs those functions to return that distinction" — was a
+    // description of a live defect, and it was doing real damage: `enforce
+    // extreme` reported a perfect 1.00/1.00 `Complete` for a nonexistent path,
+    // an empty directory, and a project whose sources do not parse, because
+    // every phase failed and every failure read as clean. `PhaseOutcome` now
+    // carries that distinction, so this is the enforcement point for it.
+    //
+    // An unmeasured phase is excluded from the mean rather than scored: the
+    // score then honestly describes what WAS measured. It is the verdict that
+    // must not pass, which is handled below — averaging a 0.0 in would report a
+    // quality problem where the truth is an absence of evidence.
+    let phases = [
+        ("complexity", &complexity_outcome),
+        ("satd", &satd_outcome),
+        ("tdg", &tdg_outcome),
     ];
-    let total_score = phase_scores.iter().sum::<f64>() / phase_scores.len() as f64;
+    let measured: Vec<f64> = phases
+        .iter()
+        .filter(|(_, o)| o.is_measured())
+        .map(|(_, o)| phase_score(&o.violations))
+        .collect();
+    // The score answers "how close is this project to the profile, given what
+    // could be checked" — so it carries BOTH the quality of the measured
+    // dimensions and how many of them there were. The mean alone does not: an
+    // empty directory measures one dimension of three, finds nothing wrong in
+    // it, and would report a flat 1.00 next to a `Violating` verdict. Scaling by
+    // the fraction that could be measured keeps a partial assessment from
+    // presenting as a complete one, and leaves a fully measured clean project at
+    // exactly 1.0.
+    let total_score = if measured.is_empty() {
+        0.0
+    } else {
+        let mean = measured.iter().sum::<f64>() / measured.len() as f64;
+        let coverage = measured.len() as f64 / phases.len() as f64;
+        mean * coverage
+    };
 
-    violations.extend(complexity_violations);
-    violations.extend(satd_violations);
-    violations.extend(tdg_violations);
+    // Each gap becomes a visible finding. It is not a quality violation, so it
+    // is typed apart from one — but it does deny the run a clean bill of health,
+    // which is the whole point: a check that could not run has not passed.
+    let unmeasured: Vec<QualityViolation> = phases
+        .iter()
+        .filter_map(|(kind, o)| {
+            o.unmeasured.as_ref().map(|reason| QualityViolation {
+                violation_type: "not_measured".to_string(),
+                severity: "error".to_string(),
+                location: specific_file.map_or_else(
+                    || project_path.display().to_string(),
+                    |p| p.display().to_string(),
+                ),
+                current: 0.0,
+                target: 0.0,
+                suggestion: format!(
+                    "{kind} could not be measured ({reason}); this verdict does not cover it"
+                ),
+            })
+        })
+        .collect();
+    let any_unmeasured = !unmeasured.is_empty();
 
-    // Determine next state
-    let next_state = if violations.is_empty() {
+    violations.extend(unmeasured);
+    violations.extend(complexity_outcome.violations);
+    violations.extend(satd_outcome.violations);
+    violations.extend(tdg_outcome.violations);
+
+    // Determine next state. `Complete` asserts that the profile was met, so it
+    // requires evidence for every dimension, not merely the absence of findings
+    // among the dimensions that happened to run.
+    let next_state = if violations.is_empty() && !any_unmeasured {
         EnforcementState::Complete
     } else {
         EnforcementState::Violating
@@ -356,16 +421,35 @@ mod composite_score_regression_tests {
             .await
             .expect("analyze empty directory");
 
+        // An empty directory breaches no threshold...
         assert!(
-            empty_result.violations.is_empty(),
+            empty_result
+                .violations
+                .iter()
+                .all(|v| v.violation_type == "not_measured"),
             "an empty directory violates nothing: {:?}",
             empty_result.violations
         );
+        // ...but it does not demonstrate compliance either. This used to assert
+        // a flat 1.0, which credited an assessment that never happened: with no
+        // source files, complexity and SATD have nothing to measure, and only
+        // TDG returns a (vacuous) clean result. Full marks for one dimension of
+        // three is how `enforce extreme` came to report `Complete 1.00/1.00` on
+        // an empty tree.
         assert!(
-            (empty_result.score - 1.0).abs() < f64::EPSILON,
-            "empty directory scored {} — the score is not derived from the analysis",
+            empty_result
+                .violations
+                .iter()
+                .any(|v| v.violation_type == "not_measured"),
+            "the unmeasured dimensions must be visible: {:?}",
+            empty_result.violations
+        );
+        assert!(
+            empty_result.score < 1.0,
+            "an assessment covering one dimension of three cannot score full marks: got {}",
             empty_result.score
         );
+        assert_ne!(empty_result.state, EnforcementState::Complete);
 
         let violating = tempfile::tempdir().expect("tempdir");
         write_project(
@@ -392,14 +476,31 @@ mod composite_score_regression_tests {
                 .expect("analyze violating project");
 
         assert!(
-            !violating_result.violations.is_empty(),
-            "fixture must breach complexity_max = 1"
+            violating_result
+                .violations
+                .iter()
+                .any(|v| v.violation_type == "complexity"),
+            "fixture must breach complexity_max = 1: {:?}",
+            violating_result.violations
         );
+        // The defect this test was written for: both inputs scored a literal
+        // 0.79, so the number described neither. They must still be
+        // distinguishable — but no longer by which is *lower*, since the two are
+        // now penalised on different axes (missing evidence vs real violations),
+        // and ordering them on one scale would be its own false precision.
         assert!(
-            violating_result.score < empty_result.score,
+            (violating_result.score - empty_result.score).abs() > f64::EPSILON,
             "a violating project ({}) must not score the same as an empty directory ({})",
             violating_result.score,
             empty_result.score
+        );
+        assert!(
+            violating_result
+                .violations
+                .iter()
+                .all(|v| v.violation_type != "not_measured"),
+            "a parseable project measures every dimension: {:?}",
+            violating_result.violations
         );
     }
 

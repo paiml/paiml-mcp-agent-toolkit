@@ -307,29 +307,29 @@ async fn list_all_violations(
 
     // Run all analyses using extracted functions - COMPLEXITY REDUCED FROM 48 TO ≤10
     eprintln!("  {} Analyzing complexity...", c::dim(">>"));
-    let complexity_violations =
+    let complexity_outcome =
         run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    all_violations.extend(complexity_violations);
+    all_violations.extend(complexity_outcome.violations);
 
     eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
-    let satd_violations = run_satd_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(satd_violations);
+    let satd_outcome = run_satd_analysis(scope.walk_root(), profile).await?;
+    all_violations.extend(satd_outcome.violations);
 
     eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));
-    let tdg_violations = run_tdg_analysis(scope.file_or_root(), profile).await?;
-    all_violations.extend(tdg_violations);
+    let tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
+    all_violations.extend(tdg_outcome.violations);
 
     eprintln!("  {} Analyzing dead code...", c::dim(">>"));
-    let dead_code_violations = run_dead_code_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(dead_code_violations);
+    let dead_code_outcome = run_dead_code_analysis(scope.walk_root(), profile).await?;
+    all_violations.extend(dead_code_outcome.violations);
 
     eprintln!("  {} Analyzing code duplication...", c::dim(">>"));
-    let duplication_violations = run_duplication_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(duplication_violations);
+    let duplication_outcome = run_duplication_analysis(scope.walk_root(), profile).await?;
+    all_violations.extend(duplication_outcome.violations);
 
     eprintln!("  {} Checking test coverage...", c::dim(">>"));
-    let coverage_violations = run_coverage_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(coverage_violations);
+    let coverage_outcome = run_coverage_analysis(scope.walk_root(), profile).await?;
+    all_violations.extend(coverage_outcome.violations);
 
     eprintln!(
         "\n{} {} violations",

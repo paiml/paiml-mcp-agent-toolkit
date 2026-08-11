@@ -236,7 +236,8 @@ fn reject_unimplemented_deep_context_flags(
 
     anyhow::bail!(
         "analyze deep-context does not implement {}; the flag(s) would be accepted and ignored. \
-         Use --include-pattern / --exclude-pattern to select files and --top-files to size the report.",
+         Use --include-pattern / --exclude-pattern to select files; --top-files sizes \
+         the markdown and text reports (the JSON report is never truncated).",
         unsupported.join(", ")
     )
 }

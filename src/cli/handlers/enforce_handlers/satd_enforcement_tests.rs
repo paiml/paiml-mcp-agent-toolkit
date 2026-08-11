@@ -28,7 +28,8 @@ async fn satd_markers_become_violations() {
 
     let violations = run_satd_analysis(dir.path(), &QualityProfile::default())
         .await
-        .expect("analysis runs");
+        .expect("analysis runs")
+        .violations;
 
     assert!(
         !violations.is_empty(),
@@ -51,7 +52,8 @@ async fn clean_code_produces_no_violations() {
 
     let violations = run_satd_analysis(dir.path(), &QualityProfile::default())
         .await
-        .expect("analysis runs");
+        .expect("analysis runs")
+        .violations;
 
     assert!(violations.is_empty(), "got {violations:?}");
 }
@@ -60,10 +62,15 @@ async fn clean_code_produces_no_violations() {
 #[tokio::test]
 async fn an_unanalysable_path_errors_rather_than_reporting_zero_debt() {
     let missing = std::path::Path::new("/nonexistent/pmat/satd/probe");
-    let result = run_satd_analysis(missing, &QualityProfile::default()).await;
+    let outcome = run_satd_analysis(missing, &QualityProfile::default())
+        .await
+        .expect("the phase reports rather than aborting the run");
 
+    // The distinction that matters: no violations, but NOT measured — so the
+    // verdict cannot count this as a clean phase.
+    assert!(outcome.violations.is_empty());
     assert!(
-        result.is_err() || result.expect("checked").is_empty(),
-        "a path that cannot be analysed must not silently pass as clean"
+        !outcome.is_measured(),
+        "a path that cannot be analysed must report as unmeasured, not clean"
     );
 }
