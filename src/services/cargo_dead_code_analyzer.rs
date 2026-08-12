@@ -23,9 +23,25 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Shape of `AccurateDeadCodeReport` this build can read out of a cache entry.
+///
+/// The cache was keyed on (tree hash, pmat version) alone, so a cache written
+/// by an EARLIER BUILD OF THE SAME VERSION was accepted whole. When
+/// `FileDeadCode::unreachable_items` was added, those entries deserialised it as
+/// empty via `#[serde(default)]` and `--include-unreachable` reported nothing at
+/// all on any tree with a warm cache — the flag would have looked inert again,
+/// for a reason nothing in the report disclosed. Bump this whenever the cached
+/// report gains or changes a field.
+pub const DEAD_CODE_CACHE_SCHEMA: u32 = 2;
+
 /// Cached dead code result with metadata for O(1) invalidation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedDeadCodeResult {
+    /// Shape of the cached report; entries that do not match this build's
+    /// `DEAD_CODE_CACHE_SCHEMA` are a miss. `0` for entries written before the
+    /// field existed.
+    #[serde(default)]
+    pub report_schema: u32,
     /// Git tree hash when this cache was computed
     pub tree_hash: String,
     /// PMAT version that computed this cache
@@ -69,6 +85,22 @@ pub struct AccurateDeadCodeReport {
 pub struct FileDeadCode {
     pub file_path: PathBuf,
     pub dead_items: Vec<DeadItem>,
+    /// Statements rustc reported as `unreachable_code`, kept OUT of
+    /// `dead_items`.
+    ///
+    /// They are a different finding from "never used": unreachable code is
+    /// reachable-from-nowhere code inside a live item. Mixing them into
+    /// `dead_items` would move `total_dead_items`, `dead_by_type`,
+    /// `file_dead_percentage` and every estimated line count, so a default run
+    /// would change; they are carried alongside and surfaced only by
+    /// `analyze dead-code --include-unreachable`.
+    ///
+    /// The flag reached `DeadCodeAnalysisConfig` and stopped there, and the one
+    /// site that honours it (`analysis_ranking.rs`) is reachable only from the
+    /// MCP tool — so the CLI printed "Unreachable blocks: 0" for a file with
+    /// four statements after a `return` while the MCP equivalent was live.
+    #[serde(default)]
+    pub unreachable_items: Vec<DeadItem>,
     pub file_dead_percentage: f64,
     /// Physical lines in the file, counted while computing
     /// `file_dead_percentage`. `None` when the file could not be read.
@@ -109,6 +141,11 @@ pub enum DeadCodeKind {
     /// Layer 1: Code explicitly marked with
     /// This is an admission that the code is unused
     Suppressed,
+    /// rustc's `unreachable_code` lint: a statement that can never execute.
+    ///
+    /// Only ever stored in `FileDeadCode::unreachable_items`, never in
+    /// `dead_items`, so no existing counter can see it.
+    UnreachableCode,
     Other(String),
 }
 

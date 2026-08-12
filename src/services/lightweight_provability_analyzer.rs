@@ -163,6 +163,15 @@ pub struct AbstractInterpreter {
     analysis_depth: usize,
 }
 
+/// The depth `LightweightProvabilityAnalyzer::new` builds itself with.
+///
+/// It is a constant, not a setting: scoring reads each function's source once
+/// and `AbstractInterpreter::analyze_iteration` has no caller, so there is no
+/// loop for a depth to bound. `analyze provability --analysis-depth` used to
+/// accept any number and change nothing; it is refused now, and this const is
+/// the one place the number lives.
+pub const ANALYSIS_DEPTH: usize = 10;
+
 // Lattice join/meet/widen operations for PropertyDomain, NullabilityLattice,
 // IntervalLattice, AliasLattice, and PurityLattice
 include!("lightweight_provability_analyzer_lattice.rs");

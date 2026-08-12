@@ -91,7 +91,7 @@ fn score_via_pv_score(path: &Path) -> Option<f64> {
                 .filter_map(|s| s.get("lean_coverage").and_then(|v| v.as_f64()))
                 .sum::<f64>() / n;
             if avg_d3 > 0.0 || avg_d4 > 0.0 {
-                eprintln!(
+                crate::status_eprintln!(
                     "  PV Score: {:.1}% (Kani avg: {:.0}%, Lean avg: {:.0}%)",
                     mean_score * 100.0, avg_d3 * 100.0, avg_d4 * 100.0
                 );

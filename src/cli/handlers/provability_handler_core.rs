@@ -46,7 +46,7 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
     crate::cli::ensure_analysis_path_exists(&config.project_path)?;
 
     use crate::cli::colors as c;
-    eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
+    crate::status_eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
 
     let analyzer = LightweightProvabilityAnalyzer::new();
     let function_ids = resolve_function_targets(&config).await?;
@@ -97,7 +97,11 @@ async fn run_provability_analysis(
 ) -> Result<Vec<ProofSummary>> {
     let summaries = analyzer.analyze_incrementally(function_ids).await;
     use crate::cli::colors as c;
-    eprintln!("{} Analyzed {} functions", c::pass(""), c::number(&summaries.len().to_string()));
+    crate::status_eprintln!(
+        "{} Analyzed {} functions",
+        c::pass(""),
+        c::number(&summaries.len().to_string())
+    );
     Ok(summaries)
 }
 
@@ -147,12 +151,50 @@ async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) 
     if let Some(output_path) = output_path {
         tokio::fs::write(output_path, content).await?;
         use crate::cli::colors as c;
-        eprintln!(
+        crate::status_eprintln!(
             "{} Provability analysis written to: {}",
-            c::pass(""), c::path(&output_path.display().to_string())
+            c::pass(""),
+            c::path(&output_path.display().to_string())
         );
     } else {
         println!("{content}");
     }
     Ok(())
+}
+
+/// `analyze provability --quiet` was byte-identical to `analyze provability`.
+///
+/// On the flag-efficacy gate's ~120-file corpus it wrote 125 bytes of progress
+/// to stderr — "🔬 Analyzing function provability…", "📂 Discovering functions
+/// in project…", "📊 Found 124 source files", "✓ Analyzed 160 functions" —
+/// through unguarded stderr macros here and in the discovery helper. Note that
+/// `analysis_utilities/provability.rs`, a *second* copy of the same banners,
+/// was already routed; only this path was left, which is why the flag looked
+/// half-fixed. The report itself still goes to stdout unconditionally.
+#[cfg(test)]
+mod provability_quiet_chatter_tests {
+    use crate::cli::handlers::bottleneck_handler::quiet_chatter_tests::unguarded_stderr_lines;
+
+    #[test]
+    fn provability_progress_obeys_quiet() {
+        for (what, source) in [
+            ("handler", include_str!("provability_handler_core.rs")),
+            (
+                "discovery helper",
+                include_str!("../provability_helpers_discovery.rs"),
+            ),
+        ] {
+            assert!(
+                source.contains("Analyzing function provability")
+                    || source.contains("Discovering functions in project"),
+                "{what}: the banner this test pins must still exist"
+            );
+            let leaking = unguarded_stderr_lines(source);
+            assert!(
+                leaking.is_empty(),
+                "{what}: provability's stderr is progress chatter only, so every \
+                 line must be suppressible; unguarded: {leaking:?}"
+            );
+        }
+    }
 }

@@ -79,7 +79,7 @@ pub async fn handle_bottleneck(
 ) -> Result<()> {
     use crate::cli::colors as c;
 
-    eprintln!(
+    crate::status_eprintln!(
         "{}",
         c::dim(&format!("Analyzing git churn for last {} days...", period))
     );
@@ -90,7 +90,7 @@ pub async fn handle_bottleneck(
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &formatted)?;
-        eprintln!(
+        crate::status_eprintln!(
             "{} Written to: {}",
             c::pass(""),
             c::path(&output_path.display().to_string())
@@ -680,6 +680,55 @@ fn format_text(analysis: &BottleneckAnalysis) -> String {
     }
 
     out
+}
+
+/// `analyze bottleneck --quiet` was byte-identical to `analyze bottleneck`.
+///
+/// On the flag-efficacy gate's ~120-file corpus the command wrote 40 bytes of
+/// "Analyzing git churn for last 30 days..." to stderr through an unguarded
+/// stderr macro, so no suppression rule could reach it. Both status lines in
+/// this handler now go through `status_eprintln!`, i.e. through
+/// `cli::progress::quiet_mode_enabled` — the one predicate. The report itself
+/// keeps going to stdout unconditionally.
+#[cfg(test)]
+pub(crate) mod quiet_chatter_tests {
+    /// Lines carrying an *unguarded* stderr status macro.
+    ///
+    /// The needle is assembled at compile time so this probe cannot match its
+    /// own source. `status_eprintln!` ends in `_` immediately before the
+    /// needle, which is what distinguishes a guarded call from a bare one.
+    pub(crate) fn unguarded_stderr_lines(source: &str) -> Vec<&str> {
+        let needle = concat!("eprint", "ln!");
+        source
+            .lines()
+            .filter(|line| {
+                let mut from = 0;
+                while let Some(i) = line[from..].find(needle) {
+                    let at = from + i;
+                    if line[..at].chars().last() != Some('_') {
+                        return true;
+                    }
+                    from = at + needle.len();
+                }
+                false
+            })
+            .collect()
+    }
+
+    #[test]
+    fn churn_banner_obeys_quiet() {
+        let source = include_str!("bottleneck_handler.rs");
+        assert!(
+            source.contains("Analyzing git churn for last"),
+            "the banner this test pins must still exist"
+        );
+        let leaking = unguarded_stderr_lines(source);
+        assert!(
+            leaking.is_empty(),
+            "bottleneck's stderr is chatter only, so every line must be \
+             suppressible; unguarded: {leaking:?}"
+        );
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

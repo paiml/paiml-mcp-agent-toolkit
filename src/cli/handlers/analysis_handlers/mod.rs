@@ -13,6 +13,29 @@ mod platform_routes;
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
 
+/// Refuse an `--ml` flag whose scorer is not wired into the handler (GH-97).
+///
+/// ONE RULE, TWO COMMANDS. `analyze complexity --ml` and `analyze tdg --ml` both
+/// promised "trained ML models instead of heuristic weighted sums" and both
+/// destructured the flag into `_`, so each returned the heuristic numbers under
+/// an ML banner — a relabelling, not a different result. `complexity` was fixed
+/// with a bail! written inline and `tdg` was left behind; the refusal lives in
+/// one place now so the next `--ml` cannot drift from it.
+///
+/// # Errors
+/// Always, when `ml` is set. That is the point: an honest refusal beats a
+/// silent no-op.
+pub(super) fn reject_unimplemented_ml(ml: bool, command: &str, scores: &str) -> Result<()> {
+    if !ml {
+        return Ok(());
+    }
+    anyhow::bail!(
+        "--ml is not implemented: {scores} are still computed by the heuristic formulas, \
+         so this flag would relabel them without changing them. \
+         Re-run `{command}` without --ml (see GH-97)."
+    )
+}
+
 #[cfg(test)]
 pub(crate) use advanced_routes::{convert_cache_strategy, convert_deep_context_dag_type};
 #[cfg(test)]
@@ -358,3 +381,36 @@ async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
 #[cfg(test)]
 #[path = "../analysis_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod ml_refusal_tests {
+    //! `analyze complexity --ml` and `analyze tdg --ml` are the same defect:
+    //! both promised "trained ML models instead of heuristic weighted sums" and
+    //! both threw the flag away, so each printed the heuristic numbers under an
+    //! ML banner. The refusal is one function so the two cannot drift.
+    use super::reject_unimplemented_ml;
+
+    #[test]
+    fn an_unset_flag_is_not_refused() {
+        assert!(reject_unimplemented_ml(false, "analyze tdg", "TDG scores").is_ok());
+    }
+
+    #[test]
+    fn tdg_ml_is_refused_rather_than_relabelled() {
+        let err = reject_unimplemented_ml(true, "analyze tdg", "TDG scores")
+            .expect_err("--ml returned heuristic scores, so it must not be accepted");
+        let err = err.to_string();
+        assert!(err.contains("--ml is not implemented"), "{err}");
+        assert!(err.contains("TDG scores"), "{err}");
+        assert!(err.contains("analyze tdg"), "{err}");
+    }
+
+    #[test]
+    fn complexity_ml_keeps_its_own_wording() {
+        let err = reject_unimplemented_ml(true, "analyze complexity", "complexity scores")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("complexity scores"), "{err}");
+        assert!(err.contains("analyze complexity"), "{err}");
+    }
+}

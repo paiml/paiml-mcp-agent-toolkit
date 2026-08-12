@@ -38,11 +38,60 @@ impl CargoDeadCodeAnalyzer {
                         }
                         dead_items.push(item);
                     }
+                } else if code == "unreachable_code" {
+                    // rustc's OTHER dead-code lint. It was discarded here, so
+                    // nothing on the CLI path could ever produce an unreachable
+                    // block and `--include-unreachable` was inert on every
+                    // input — a fixture with four statements after a `return`
+                    // still printed "Unreachable blocks: 0". Tagged with
+                    // `DeadCodeKind::UnreachableCode` so `group_by_file` can
+                    // keep it out of `dead_items` and out of every count a
+                    // default run prints.
+                    if let Some(item) = self.extract_unreachable_item(message) {
+                        if self.is_excluded_source(&item.0) {
+                            continue;
+                        }
+                        dead_items.push(item);
+                    }
                 }
             }
         }
 
         Ok(dead_items)
+    }
+
+    /// Extract an `unreachable_code` finding from a compiler message.
+    ///
+    /// `parse_message` cannot be reused: its patterns all key off "` is never
+    /// used`", and rustc words this lint "unreachable statement" / "unreachable
+    /// expression" with no item name. The name is the source line, so the
+    /// report can point at something.
+    fn extract_unreachable_item(&self, message: &Value) -> Option<(PathBuf, DeadItem)> {
+        let spans = message["spans"].as_array()?;
+        let primary_span = spans
+            .iter()
+            .find(|s| s["is_primary"].as_bool() == Some(true))?;
+
+        let file_path = PathBuf::from(primary_span["file_name"].as_str()?);
+        let line = primary_span["line_start"].as_u64()? as usize;
+        let column = primary_span["column_start"].as_u64()? as usize;
+        let message_text = message["message"].as_str()?;
+        let name = primary_span["text"]
+            .as_array()
+            .and_then(|texts| texts.first())
+            .and_then(|t| t["text"].as_str())
+            .map_or_else(|| format!("line {line}"), |t| t.trim().to_string());
+
+        Some((
+            file_path,
+            DeadItem {
+                name,
+                kind: DeadCodeKind::UnreachableCode,
+                line,
+                column,
+                message: message_text.to_string(),
+            },
+        ))
     }
 
     /// Extract dead code item from compiler message
@@ -122,7 +171,15 @@ impl CargoDeadCodeAnalyzer {
 
         file_map
             .into_iter()
-            .map(|(file_path, dead_items)| {
+            .map(|(file_path, items)| {
+                // SPLIT, DO NOT MERGE: unreachable findings must not reach any
+                // counter a default run prints, so they leave `dead_items`
+                // here — before the percentage, the estimated line counts and
+                // `dead_by_type` are computed from it.
+                let (unreachable_items, dead_items): (Vec<DeadItem>, Vec<DeadItem>) = items
+                    .into_iter()
+                    .partition(|item| item.kind == DeadCodeKind::UnreachableCode);
+
                 // Measure the file once and carry BOTH numbers. The percentage
                 // used to be derived from a line count that was then thrown
                 // away, and the renderer substituted the constant 100.
@@ -132,6 +189,7 @@ impl CargoDeadCodeAnalyzer {
                 FileDeadCode {
                     file_path,
                     dead_items,
+                    unreachable_items,
                     file_dead_percentage,
                     total_lines,
                 }
@@ -310,6 +368,104 @@ fn dead_code_kind_to_str(kind: &DeadCodeKind) -> &str {
         DeadCodeKind::Trait => "trait",
         DeadCodeKind::TypeAlias => "type_alias",
         DeadCodeKind::Suppressed => "suppressed",
+        DeadCodeKind::UnreachableCode => "unreachable",
         DeadCodeKind::Other(s) => s,
+    }
+}
+
+#[cfg(test)]
+mod unreachable_lint_tests {
+    //! rustc reports UNUSED items and UNREACHABLE statements as two different
+    //! lints. `parse_cargo_warnings` matched only `dead_code`, so nothing on the
+    //! CLI path could ever produce an unreachable block and
+    //! `analyze dead-code --include-unreachable` was inert on every input.
+    use super::*;
+
+    fn diagnostic(code: &str, message: &str, file: &str) -> String {
+        serde_json::json!({
+            "reason": "compiler-message",
+            "message": {
+                "code": { "code": code },
+                "message": message,
+                "spans": [{
+                    "is_primary": true,
+                    "file_name": file,
+                    "line_start": 3,
+                    "column_start": 5,
+                    "text": [{ "text": "    let y = x * 2;" }],
+                }],
+            }
+        })
+        .to_string()
+    }
+
+    #[test]
+    fn unreachable_code_warnings_are_collected_and_tagged() {
+        let analyzer = CargoDeadCodeAnalyzer::new(std::path::Path::new("."));
+        let output = format!(
+            "{}\n{}\n",
+            diagnostic("unreachable_code", "unreachable statement", "src/lib.rs"),
+            diagnostic("dead_code", "function `helper` is never used", "src/lib.rs"),
+        );
+
+        let items = analyzer
+            .parse_cargo_warnings(&output)
+            .expect("parse cargo output");
+
+        let unreachable: Vec<_> = items
+            .iter()
+            .filter(|(_, i)| i.kind == DeadCodeKind::UnreachableCode)
+            .collect();
+        assert_eq!(
+            unreachable.len(),
+            1,
+            "the unreachable_code warning was dropped: {items:?}"
+        );
+        assert_eq!(unreachable[0].1.line, 3);
+        assert_eq!(
+            unreachable[0].1.name, "let y = x * 2;",
+            "the source line is the only name rustc gives this lint"
+        );
+    }
+
+    /// The split is what keeps a default run byte-identical: an unreachable
+    /// finding must never reach `dead_items`, which every count and every
+    /// estimated line total is computed from.
+    #[test]
+    fn grouping_keeps_unreachable_out_of_dead_items() {
+        let analyzer = CargoDeadCodeAnalyzer::new(std::path::Path::new("."));
+        let path = PathBuf::from("src/lib.rs");
+        let items = vec![
+            (
+                path.clone(),
+                DeadItem {
+                    name: "helper".to_string(),
+                    kind: DeadCodeKind::Function,
+                    line: 10,
+                    column: 1,
+                    message: "`helper` is never used".to_string(),
+                },
+            ),
+            (
+                path.clone(),
+                DeadItem {
+                    name: "let y = 1;".to_string(),
+                    kind: DeadCodeKind::UnreachableCode,
+                    line: 3,
+                    column: 5,
+                    message: "unreachable statement".to_string(),
+                },
+            ),
+        ];
+
+        let grouped = analyzer.group_by_file(items);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(grouped[0].dead_items.len(), 1);
+        assert_eq!(grouped[0].unreachable_items.len(), 1);
+        assert_eq!(
+            estimated_dead_lines(&grouped[0].dead_items),
+            5,
+            "an unreachable statement must not be charged as dead lines"
+        );
     }
 }

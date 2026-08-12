@@ -74,7 +74,7 @@ impl ProgressTracker {
         let pb = SimpleProgressBar::new_spinner();
         pb.set_message(message.to_string());
         // Print initial message since we don't have animated spinners
-        eprintln!("⏳ {}", message);
+        crate::status_eprintln!("⏳ {}", message);
         pb
     }
 
@@ -88,7 +88,7 @@ impl ProgressTracker {
 
         let pb = SimpleProgressBar::new(total_files);
         pb.set_message(message.to_string());
-        eprintln!("📁 {} (0/{})", message, total_files);
+        crate::status_eprintln!("📁 {} (0/{})", message, total_files);
         pb
     }
 
@@ -102,7 +102,7 @@ impl ProgressTracker {
 
         let pb = SimpleProgressBar::new(total_bytes);
         pb.set_message(message.to_string());
-        eprintln!("📦 {} (0/{} bytes)", message, total_bytes);
+        crate::status_eprintln!("📦 {} (0/{} bytes)", message, total_bytes);
         pb
     }
 
@@ -110,7 +110,7 @@ impl ProgressTracker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn log_skipped_file(&self, file_path: &std::path::Path, reason: &str) {
         if self.enable_progress {
-            eprintln!("⚠️  Skipped: {} ({})", file_path.display(), reason);
+            crate::status_eprintln!("⚠️  Skipped: {} ({})", file_path.display(), reason);
         }
     }
 

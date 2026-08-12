@@ -54,13 +54,8 @@ pub(super) async fn route_complexity_analysis(cmd: AnalyzeCommands) -> Result<()
         // --ml` returned byte-identical JSON to a plain run — the same
         // heuristic numbers, presented under a banner promising "trained ML
         // models instead of heuristic formulas". Refuse rather than relabel.
-        if ml {
-            anyhow::bail!(
-                "--ml is not implemented: complexity scores are still computed by the \
-                 heuristic formulas, so this flag would relabel them without changing them. \
-                 Re-run without --ml (see GH-97)."
-            );
-        }
+        // The refusal is shared with `analyze tdg --ml`, which had the same bug.
+        super::reject_unimplemented_ml(ml, "analyze complexity", "complexity scores")?;
 
         route_complexity_command(
             path,

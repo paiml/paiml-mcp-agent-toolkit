@@ -64,7 +64,7 @@ pub async fn handle_score(
         return Ok(());
     }
 
-    eprintln!("Computing unified quality score...");
+    crate::status_eprintln!("Computing unified quality score...");
 
     let score = compute_composite(path).await?;
     debug_assert!(
@@ -81,7 +81,7 @@ pub async fn handle_score(
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &output_text)?;
-        eprintln!("Score written to: {}", output_path.display());
+        crate::status_eprintln!("Score written to: {}", output_path.display());
     } else {
         println!("{}", output_text);
     }
@@ -422,6 +422,75 @@ include!("score_handler_compute.rs");
 
 // Display, trend, stack quality, and history functions extracted for CB-040
 include!("score_handler_display.rs");
+
+/// `pmat score --quiet` was byte-identical to `pmat score`.
+///
+/// The small fixture used during triage showed no stderr at all, so `score`
+/// was first filed as "emits only its report". On the flag-efficacy gate's
+/// ~120-file corpus it emits 55 bytes: "Computing unified quality score..."
+/// from this handler and "✅ Analysis complete" from the RPS orchestrator's
+/// progress bar. Both are chatter and are now suppressible.
+///
+/// The other direction matters more: the gate failure, the regression trip and
+/// the cross-validation violations are *results*, and this test pins that they
+/// keep using an unguarded stderr macro. `--quiet` is documented as "errors
+/// only"; a suppressed `FAIL: composite ... < gate ...` would be a far worse
+/// defect than a surviving banner.
+#[cfg(test)]
+mod score_quiet_chatter_tests {
+    use crate::cli::handlers::bottleneck_handler::quiet_chatter_tests::unguarded_stderr_lines;
+
+    const SOURCE: &str = include_str!("score_handler.rs");
+
+    /// The stderr call that emits `needle`.
+    ///
+    /// The message is often on a later line than the macro that prints it, so
+    /// looking only at the message's own line reads every multi-line call as
+    /// "no stderr macro here" and the test passes vacuously in both
+    /// directions.
+    fn call_line_for(needle: &str) -> &'static str {
+        let lines: Vec<&str> = SOURCE.lines().collect();
+        let at = lines
+            .iter()
+            .position(|l| l.contains(needle))
+            .unwrap_or_else(|| panic!("no line carries {needle:?}"));
+        let macro_needle = concat!("eprint", "ln!");
+        lines[..=at]
+            .iter()
+            .rev()
+            .take(4)
+            .find(|l| l.contains(macro_needle))
+            .unwrap_or_else(|| panic!("{needle:?} is not printed to stderr at all"))
+    }
+
+    #[test]
+    fn score_progress_is_suppressible() {
+        for chatter in ["Computing unified quality score", "Score written to:"] {
+            let line = call_line_for(chatter);
+            assert!(
+                unguarded_stderr_lines(line).is_empty(),
+                "{chatter:?} is progress chatter and must route through the \
+                 quiet rule, but its call is unguarded: {line:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn score_failures_stay_loud() {
+        for verdict in [
+            "FAIL: composite",
+            "REGRESSION: composite dropped",
+            "WARNING: 3+ invariants violated",
+        ] {
+            let line = call_line_for(verdict);
+            assert!(
+                !unguarded_stderr_lines(line).is_empty(),
+                "{verdict:?} is a result, not chatter: --quiet must not \
+                 suppress it, but its call is guarded: {line:?}"
+            );
+        }
+    }
+}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

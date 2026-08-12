@@ -1,31 +1,54 @@
 // GraphML export and output formatting
 
-// Sprint 89 GREEN Phase: Refactored export_to_graphml function
-// BEFORE: Complexity 14 (High entropy, mixed concerns)
-// AFTER: Complexity 6 (A+ standard, single responsibility)
-fn export_to_graphml(
-    graph: &SimpleGraph,
-    result: &GraphMetricsResult,
-    output: &Option<PathBuf>,
-) -> Result<()> {
+/// Render the dependency graph as a `GraphML` document.
+///
+/// `--export-graphml` (and its `-f graph-ml` spelling) used to be modelled as a
+/// *second* document written on the side, which left it with no destination of
+/// its own. Two defects fell straight out of that one modelling error:
+///
+/// * with no `-o` there was nowhere to put it, so the flag bailed — adding
+///   `--export-graphml` to a working invocation turned exit 0 into exit 1 with
+///   an empty stdout, which is a worse defect than a flag that does nothing;
+/// * with `-o out.graphml` — the exact spelling that bail told you to use —
+///   the XML was written to `<PATH>.graphml` and then immediately overwritten
+///   by the metrics summary going to `<PATH>`, under a green
+///   "✅ GraphML exported to:". The success message survived; the export did
+///   not.
+///
+/// `GraphML` is now simply *the document this run produces*, delivered through
+/// the command's one existing output channel: `-o` when given, stdout
+/// otherwise. One document per invocation, one writer, no sidecar.
+fn render_graphml(graph: &SimpleGraph) -> Result<String> {
     let mut graphml = String::new();
-
-    // Delegate XML generation to extracted functions
     write_graphml_header(&mut graphml)?;
-    write_graphml_nodes(&mut graphml, &result.nodes)?;
+    write_graphml_nodes(&mut graphml, graph)?;
     write_graphml_edges(&mut graphml, graph)?;
     write_graphml_footer(&mut graphml)?;
-
-    // Delegate file writing to extracted function
-    write_graphml_file(&graphml, output)?;
-
-    Ok(())
+    Ok(graphml)
 }
 
-// Sprint 89 GREEN Phase: NEW EXTRACTED FUNCTIONS (A+ ≤10 complexity each)
+/// Escape the XML predefined entities.
+///
+/// Node labels are file names, and a file name may legally contain `&` or `<`.
+/// Interpolating one raw into an attribute or element produced a document that
+/// is not even well-formed XML, which is the one thing an exporter must never
+/// emit.
+fn escape_xml(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
 
-/// Write `GraphML` XML header - EXTRACTED FUNCTION
-/// Complexity: 3 (A+ standard)
+/// Write `GraphML` XML header.
 fn write_graphml_header(graphml: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(graphml, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
@@ -33,65 +56,59 @@ fn write_graphml_header(graphml: &mut String) -> Result<()> {
         graphml,
         r#"<graphml xmlns="http://graphml.graphdrawing.org/xmlns">"#
     )?;
+    writeln!(
+        graphml,
+        r#"  <key id="d0" for="node" attr.name="label" attr.type="string"/>"#
+    )?;
     writeln!(graphml, r#"  <graph id="G" edgedefault="directed">"#)?;
     Ok(())
 }
 
-/// Write `GraphML` nodes section - EXTRACTED FUNCTION\
-/// Complexity: 4 (A+ standard)
-fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()> {
+/// Write every node in the graph.
+///
+/// This used to emit `result.nodes` — the list `--top-k` and `--min-centrality`
+/// had already truncated — while the edge section emitted the whole graph. On
+/// the 124-node corpus that meant 20 declared nodes against 119 edges pointing
+/// at 100 ids that were never declared: valid XML, but not a graph any
+/// `GraphML` reader can load. The graph is what `--help` promises to export, so
+/// the graph is what gets declared.
+///
+/// Identity is the node index, with the name carried as a `label`, because
+/// names are bare file names: any repository with two `mod.rs` files would
+/// otherwise emit duplicate `id`s and silently merge two distinct nodes.
+fn write_graphml_nodes(graphml: &mut String, graph: &SimpleGraph) -> Result<()> {
     use std::fmt::Write;
-    for node in nodes {
-        writeln!(graphml, r#"    <node id="{}" />"#, node.name)?;
-    }
-    Ok(())
-}
-
-/// Write `GraphML` edges section - EXTRACTED FUNCTION
-/// Complexity: 7 (A+ standard)
-fn write_graphml_edges(graphml: &mut String, graph: &SimpleGraph) -> Result<()> {
-    use std::fmt::Write;
-
-    // Write edges
-    for (source, target) in graph.edge_endpoints() {
-        let source_name = graph.get_node(source);
-        let target_name = graph.get_node(target);
+    for idx in graph.node_indices() {
         writeln!(
             graphml,
-            r#"    <edge source="{source_name}" target="{target_name}" />"#
+            r#"    <node id="n{}"><data key="d0">{}</data></node>"#,
+            idx.index(),
+            escape_xml(graph.get_node(idx))
         )?;
     }
     Ok(())
 }
 
-/// Write `GraphML` XML footer - EXTRACTED FUNCTION
-/// Complexity: 2 (A+ standard)
+/// Write `GraphML` edges section.
+fn write_graphml_edges(graphml: &mut String, graph: &SimpleGraph) -> Result<()> {
+    use std::fmt::Write;
+
+    for (source, target) in graph.edge_endpoints() {
+        writeln!(
+            graphml,
+            r#"    <edge source="n{}" target="n{}" />"#,
+            source.index(),
+            target.index()
+        )?;
+    }
+    Ok(())
+}
+
+/// Write `GraphML` XML footer.
 fn write_graphml_footer(graphml: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(graphml, "  </graph>")?;
     writeln!(graphml, "</graphml>")?;
-    Ok(())
-}
-
-/// Write `GraphML` to file - EXTRACTED FUNCTION
-/// Complexity: 4 (A+ standard)
-fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
-    // `--export-graphml` with no `-o` used to build the whole document and then
-    // drop it: exit 0, output byte-identical to a run without the flag, and no
-    // file anywhere on disk. An export that exports nothing must not report
-    // success. The wording matches the `-f graph-ml` refusal a few lines below,
-    // which already documents the contract.
-    let Some(path) = output else {
-        anyhow::bail!(
-            "--export-graphml needs a destination: pass `-o <PATH>` (GraphML is written to \
-             <PATH>.graphml). There is no stdout form — the metrics document is already on \
-             stdout."
-        );
-    };
-
-    let graphml_path = path.with_extension("graphml");
-    std::fs::write(&graphml_path, graphml)?;
-    crate::status_eprintln!("✅ GraphML exported to: {}", graphml_path.display());
     Ok(())
 }
 
@@ -100,6 +117,7 @@ fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
 fn format_output(
     result: GraphMetricsResult,
     format: crate::cli::GraphMetricsOutputFormat,
+    graph: &SimpleGraph,
 ) -> Result<String> {
     match format {
         crate::cli::GraphMetricsOutputFormat::Json => format_gm_as_json(result),
@@ -113,17 +131,13 @@ fn format_output(
         crate::cli::GraphMetricsOutputFormat::Human => format_gm_as_human(result),
         crate::cli::GraphMetricsOutputFormat::Detailed => format_gm_as_detailed(&result),
         crate::cli::GraphMetricsOutputFormat::Csv => format_gm_as_csv(result),
-        // `-f graph-ml` used to return this developer note as the *document*:
-        // `analyze graph-metrics -f graph-ml -o out.graphml` exited 0 having
-        // written 34 bytes of English prose where a caller expected XML. The
-        // real writer (`export_to_graphml`) needs the `SimpleGraph` to emit
-        // edges, and only `--export-graphml` has it; `format_output` is handed
-        // the metrics alone, so a document produced here could never contain an
-        // edge. Refusing is honest, a nodes-only "GraphML" would not be.
-        crate::cli::GraphMetricsOutputFormat::GraphML => Err(anyhow::anyhow!(
-            "graph-ml is not a rendering format: GraphML is written by `--export-graphml` \
-             together with `-o <PATH>` (which writes <PATH>.graphml)"
-        )),
+        // `-f graph-ml` first returned a 34-byte developer note ("GraphML
+        // export handled separately") as the *document*, and was then changed
+        // to refuse outright on the grounds that only `--export-graphml` held
+        // the `SimpleGraph` needed to emit edges. It holds it now: the graph is
+        // a parameter, so `-f graph-ml` and `--export-graphml` are one request
+        // spelled two ways and render the identical document.
+        crate::cli::GraphMetricsOutputFormat::GraphML => render_graphml(graph),
         crate::cli::GraphMetricsOutputFormat::Markdown => format_gm_as_markdown(result),
     }
 }

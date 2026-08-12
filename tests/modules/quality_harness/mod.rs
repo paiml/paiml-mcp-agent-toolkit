@@ -498,7 +498,25 @@ fn write_large_corpus(root: &Path) {
         }
         body.push_str("    out\n}\n\n");
         body.push_str(&format!(
-            "struct UnusedRecord{i:02} {{\n    _id: u64,\n    _label: String,\n    _tags: Vec<String>,\n}}\n\n/// The only reachable item here.\npub fn entry_{i:02}() -> &'static str {{\n    \"ok\"\n}}\n"
+            "struct UnusedRecord{i:02} {{\n    _id: u64,\n    _label: String,\n    _tags: Vec<String>,\n}}\n\n"
+        ));
+        // Unused and unreachable are different findings, and the corpus used to
+        // supply only the first: every dead item here was an item nothing
+        // *references*, so `--include-unreachable` had nothing to include and
+        // the sweep booked a working flag as a no-op. rustc emits exactly one
+        // `unreachable_code` diagnostic per function no matter how many
+        // statements trail the `return`, so three patched modules mean a stable
+        // "Unreachable blocks: 3" — and because the flag is the only thing that
+        // lets such a finding into the report, the default run is unchanged.
+        // Kept to three of fifteen so the family still exercises the plain
+        // never-referenced path that the default report measures.
+        let trailing = if i < 3 {
+            "    return \"ok\";\n    let ignored = 1 + 1;\n    let _ = ignored;\n    \"unreachable\"\n"
+        } else {
+            "    \"ok\"\n"
+        };
+        body.push_str(&format!(
+            "/// The only reachable item here.\npub fn entry_{i:02}() -> &'static str {{\n{trailing}}}\n"
         ));
         write_module(root, &name, &body, &mut modules);
     }
@@ -630,6 +648,24 @@ fn write_wasm_fixtures(root: &Path) {
         0x0a, 0x06, 0x01, 0x04, 0x00, 0x41, 0x2a, 0x0b,
     ];
     std::fs::write(root.join("mod.wasm"), MOD_WASM).expect("write mod.wasm");
+
+    // A SECOND reportable binary, because a ranking flag needs a ranking to cut.
+    // Of the four wasm files above, the two `.wat` are parsed but deliberately
+    // not reported and `broken.wasm` fails validation, so the report had exactly
+    // one row and `--top-files 1` compared equal to no limit at all — a fixture
+    // artifact the sweep read as an inert flag. Deliberately unlike `mod.wasm`
+    // (two functions, no import, one memory page against one/import/two pages)
+    // so the two rows are distinguishable in every field the report prints.
+    #[rustfmt::skip]
+    const SMALL_WASM: &[u8] = &[
+        0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+        0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
+        0x03, 0x03, 0x02, 0x00, 0x00,
+        0x05, 0x03, 0x01, 0x00, 0x01,
+        0x07, 0x05, 0x01, 0x01, b'a', 0x00, 0x00,
+        0x0a, 0x07, 0x02, 0x02, 0x00, 0x0b, 0x02, 0x00, 0x0b,
+    ];
+    std::fs::write(root.join("small.wasm"), SMALL_WASM).expect("write small.wasm");
 
     let mut broken = b"NOTWASM!".to_vec();
     broken.resize(40, 0);

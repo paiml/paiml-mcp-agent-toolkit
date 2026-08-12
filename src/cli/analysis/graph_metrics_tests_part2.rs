@@ -327,29 +327,12 @@ fn test_write_graphml_header() {
 
 #[test]
 fn test_write_graphml_nodes() {
-    let nodes = vec![
-        NodeMetrics {
-            name: "node1".to_string(),
-            degree_centrality: 0.5,
-            betweenness_centrality: 0.0,
-            closeness_centrality: 0.0,
-            pagerank: 0.0,
-            in_degree: 1,
-            out_degree: 1,
-        },
-        NodeMetrics {
-            name: "node2".to_string(),
-            degree_centrality: 0.3,
-            betweenness_centrality: 0.0,
-            closeness_centrality: 0.0,
-            pagerank: 0.0,
-            in_degree: 0,
-            out_degree: 1,
-        },
-    ];
+    let mut graph = SimpleGraph::new();
+    graph.add_node("node1".to_string());
+    graph.add_node("node2".to_string());
 
     let mut output = String::new();
-    write_graphml_nodes(&mut output, &nodes).unwrap();
+    write_graphml_nodes(&mut output, &graph).unwrap();
 
     assert!(output.contains("node1"));
     assert!(output.contains("node2"));
@@ -366,6 +349,22 @@ fn test_write_graphml_edges() {
     assert!(output.contains("target="));
 }
 
+/// A file name may contain `&` or `<`. Interpolated raw, the export was not
+/// even well-formed XML.
+#[test]
+fn test_graphml_escapes_xml_metacharacters_in_names() {
+    let mut graph = SimpleGraph::new();
+    graph.add_node("a&b<c>\"d\".rs".to_string());
+
+    let doc = render_graphml(&graph).expect("render");
+
+    assert!(doc.contains("a&amp;b&lt;c&gt;&quot;d&quot;.rs"), "{doc}");
+    assert!(
+        !doc.contains("a&b<c>"),
+        "raw metacharacters leaked into the document: {doc}"
+    );
+}
+
 #[test]
 fn test_write_graphml_footer() {
     let mut output = String::new();
@@ -375,69 +374,145 @@ fn test_write_graphml_footer() {
     assert!(output.contains("</graphml>"));
 }
 
-#[test]
-fn test_write_graphml_file_with_path() {
-    use tempfile::tempdir;
-
-    let dir = tempdir().unwrap();
-    let file_path = dir.path().join("test.graphml");
-    let graphml_content = "<graphml>test</graphml>";
-
-    write_graphml_file(graphml_content, &Some(file_path.clone())).unwrap();
-
-    let content = std::fs::read_to_string(file_path.with_extension("graphml")).unwrap();
-    assert!(content.contains("test"));
+/// Pull every `id=` / `source=` / `target=` value out of a `GraphML` document.
+fn graphml_ids(doc: &str) -> (Vec<String>, Vec<(String, String)>) {
+    let mut nodes = Vec::new();
+    let mut edges = Vec::new();
+    for line in doc.lines() {
+        let attr = |name: &str| -> Option<String> {
+            let key = format!("{name}=\"");
+            let start = line.find(&key)? + key.len();
+            let rest = &line[start..];
+            let end = rest.find('"')?;
+            Some(rest[..end].to_string())
+        };
+        if line.trim_start().starts_with("<node ") {
+            nodes.push(attr("id").expect("node needs an id"));
+        } else if line.trim_start().starts_with("<edge ") {
+            edges.push((
+                attr("source").expect("edge needs a source"),
+                attr("target").expect("edge needs a target"),
+            ));
+        }
+    }
+    (nodes, edges)
 }
 
-/// This test used to assert `is_ok()` — it pinned the defect: with no
-/// `-o`, `--export-graphml` built the document, threw it away and reported
-/// success, so the flag was indistinguishable from not passing it.
+/// The export used to declare only the `--top-k`-filtered nodes while emitting
+/// every edge in the graph: on the 124-node corpus, 20 `<node>` elements and
+/// 119 edges pointing at 100 ids that were never declared. No `GraphML` reader
+/// can load that.
+///
+/// RED on the old code: `write_graphml_nodes` took `&result.nodes`.
 #[test]
-fn test_write_graphml_file_without_path_refuses() {
-    let err = write_graphml_file("<graphml/>", &None)
-        .expect_err("an export with nowhere to write must not report success");
-    let msg = err.to_string();
-    assert!(msg.contains("--export-graphml"), "got: {msg}");
-    assert!(msg.contains("-o"), "got: {msg}");
+fn test_graphml_declares_every_edge_endpoint() {
+    let mut graph = SimpleGraph::new();
+    let ids: Vec<_> = (0..6).map(|i| graph.add_node(format!("f{i}.rs"))).collect();
+    for w in ids.windows(2) {
+        graph.add_edge(w[0], w[1]);
+    }
+
+    let doc = render_graphml(&graph).expect("render");
+    let (nodes, edges) = graphml_ids(&doc);
+
+    assert_eq!(nodes.len(), 6, "every graph node must be declared: {doc}");
+    assert_eq!(edges.len(), 5, "{doc}");
+    let declared: std::collections::HashSet<&String> = nodes.iter().collect();
+    for (s, t) in &edges {
+        assert!(declared.contains(s), "undeclared edge source {s}: {doc}");
+        assert!(declared.contains(t), "undeclared edge target {t}: {doc}");
+    }
 }
 
+/// Node names are bare file names, so any repository with two `mod.rs` files
+/// produced two `<node id="mod.rs">` elements — duplicate ids that silently
+/// merge two distinct nodes.
+///
+/// RED on the old code: the id was `node.name`.
 #[test]
-fn test_export_to_graphml_integration() {
-    use tempfile::tempdir;
+fn test_graphml_ids_are_unique_when_basenames_collide() {
+    let mut graph = SimpleGraph::new();
+    let a = graph.add_node("mod.rs".to_string());
+    let b = graph.add_node("mod.rs".to_string());
+    graph.add_edge(a, b);
 
-    let graph = create_simple_graph();
-    let result = GraphMetricsResult {
-        nodes: vec![
-            NodeMetrics {
-                name: "A".to_string(),
-                degree_centrality: 0.5,
-                betweenness_centrality: 0.0,
-                closeness_centrality: 0.0,
-                pagerank: 0.33,
-                in_degree: 1,
-                out_degree: 2,
-            },
-            NodeMetrics {
-                name: "B".to_string(),
-                degree_centrality: 0.5,
-                betweenness_centrality: 0.0,
-                closeness_centrality: 0.0,
-                pagerank: 0.33,
-                in_degree: 2,
-                out_degree: 1,
-            },
-        ],
-        total_nodes: 3,
-        total_edges: 3,
-        density: 0.5,
-        average_degree: 2.0,
-        max_degree: 3,
-        connected_components: 1,
-    };
+    let doc = render_graphml(&graph).expect("render");
+    let (nodes, _) = graphml_ids(&doc);
 
-    let dir = tempdir().unwrap();
-    let path = dir.path().join("output.graphml");
+    assert_eq!(nodes.len(), 2, "{doc}");
+    let unique: std::collections::HashSet<&String> = nodes.iter().collect();
+    assert_eq!(unique.len(), 2, "duplicate node ids in {doc}");
+    assert_eq!(doc.matches("mod.rs").count(), 2, "labels preserved: {doc}");
+}
 
-    let result_export = export_to_graphml(&graph, &result, &Some(path.clone()));
-    assert!(result_export.is_ok());
+/// `--export-graphml` with no `-o` used to bail: the flag turned a working
+/// command (exit 0) into a failing one with an empty stdout. The document has
+/// a destination now — stdout — so the command still works.
+///
+/// RED on the old code: `write_graphml_file` returned `Err` for `&None`.
+#[tokio::test]
+async fn test_export_graphml_without_output_path_still_succeeds() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("a.rs"), "use b;\n").expect("write a");
+    std::fs::write(dir.path().join("b.rs"), "pub fn x() {}\n").expect("write b");
+
+    handle_analyze_graph_metrics(
+        dir.path().to_path_buf(),
+        vec![crate::cli::GraphMetricType::All],
+        vec![],
+        0.85,
+        100,
+        0.001,
+        true,
+        crate::cli::GraphMetricsOutputFormat::Summary,
+        None,
+        None,
+        None,
+        false,
+        20,
+        0.0,
+    )
+    .await
+    .expect("--export-graphml with no -o must not fail the command");
+}
+
+/// `--export-graphml -o out.graphml` — the spelling the old error message told
+/// you to use — wrote the XML to `<PATH>.graphml` and then overwrote it with
+/// the metrics summary going to `<PATH>`, while printing
+/// "✅ GraphML exported to:" over the wreckage.
+///
+/// RED on the old code: `out.graphml` held "Graph Metrics Analysis…".
+#[tokio::test]
+async fn test_export_graphml_output_file_holds_graphml() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::write(dir.path().join("a.rs"), "use b;\n").expect("write a");
+    std::fs::write(dir.path().join("b.rs"), "pub fn x() {}\n").expect("write b");
+    let out = dir.path().join("out.graphml");
+
+    handle_analyze_graph_metrics(
+        dir.path().to_path_buf(),
+        vec![crate::cli::GraphMetricType::All],
+        vec![],
+        0.85,
+        100,
+        0.001,
+        true,
+        crate::cli::GraphMetricsOutputFormat::Summary,
+        None,
+        None,
+        Some(out.clone()),
+        false,
+        20,
+        0.0,
+    )
+    .await
+    .expect("export");
+
+    let content = std::fs::read_to_string(&out).expect("out.graphml must exist");
+    assert!(content.starts_with("<?xml version"), "got: {content}");
+    assert!(content.contains("</graphml>"), "got: {content}");
+    assert!(
+        !content.contains("Graph Metrics Analysis"),
+        "the metrics summary overwrote the export: {content}"
+    );
 }

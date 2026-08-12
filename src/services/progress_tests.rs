@@ -191,3 +191,34 @@ mod tests {
     }
 }
 
+/// `pmat context --quiet` was byte-identical to `pmat context`, and `pmat
+/// score --quiet` to `pmat score`.
+///
+/// Neither handler printed the surviving chatter itself: it came out of this
+/// module. `ProgressTracker::create_spinner` announced "⏳ Analyzing
+/// project..." and `SimpleProgressBar::finish_with_message` printed "Analyses
+/// complete" / "Analysis complete!" (context) and "✅ Analysis complete"
+/// (score, via the rust-project-score orchestrator) with an unguarded stderr
+/// macro. Every consumer of a progress bar inherited that, which is why fixing
+/// it per-handler would have been the wrong shape: the emitters now route
+/// through `status_eprintln!`, so the existing `hidden` rule and the `--quiet`
+/// rule are both honoured in the one place that prints.
+#[cfg(test)]
+mod progress_quiet_chatter_tests {
+    use crate::cli::handlers::bottleneck_handler::quiet_chatter_tests::unguarded_stderr_lines;
+
+    #[test]
+    fn progress_emitters_obey_quiet() {
+        for (what, source) in [
+            ("progress bar", include_str!("progress_bar.rs")),
+            ("progress tracker", include_str!("progress_tracking.rs")),
+        ] {
+            let leaking = unguarded_stderr_lines(source);
+            assert!(
+                leaking.is_empty(),
+                "{what}: a progress bar prints nothing but chatter, so every \
+                 line must be suppressible; unguarded: {leaking:?}"
+            );
+        }
+    }
+}

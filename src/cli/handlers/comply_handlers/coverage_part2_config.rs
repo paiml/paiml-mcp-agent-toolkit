@@ -251,6 +251,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         // This just tests it doesn't panic
         print_compliance_text(&report);
@@ -272,6 +273,7 @@
             breaking_changes: vec![],
             recommendations: vec!["Update PMAT".to_string()],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_text(&report);
     }

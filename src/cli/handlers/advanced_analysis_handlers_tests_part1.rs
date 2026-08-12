@@ -584,11 +584,17 @@ clean:
         assert!(output_file.exists());
     }
 
+    /// THIS TEST USED TO ENCODE THE BUG: it asserted `is_ok()` for a
+    /// `--dag-type` deep-context never honoured. All four values produced one
+    /// identical report (same sha256 after stripping the duration) because
+    /// `SimpleDeepContext` builds no DAG at all — it walks files for complexity
+    /// and SATD. Accepting the flag is the defect, so the assertion is inverted
+    /// rather than kept.
     #[tokio::test]
     async fn test_handle_analyze_deep_context_with_dag_type() {
         let temp_dir = create_test_project();
 
-        let result = handle_analyze_deep_context(
+        let err = handle_analyze_deep_context(
             temp_dir.path().to_path_buf(),
             None,
             DeepContextOutputFormat::Json,
@@ -605,9 +611,40 @@ clean:
             false,
             10,
         )
-        .await;
+        .await
+        .expect_err("--dag-type changes nothing, so it must be refused not accepted");
 
-        assert!(result.is_ok());
+        assert!(err.to_string().contains("--dag-type"), "{err}");
+    }
+
+    /// The counterpart for `--cache-strategy`: this path consults and writes no
+    /// cache (run all three values against an empty HOME and nothing is
+    /// created), so `force-refresh` had nothing to refresh.
+    #[tokio::test]
+    async fn test_handle_analyze_deep_context_with_cache_strategy() {
+        let temp_dir = create_test_project();
+
+        let err = handle_analyze_deep_context(
+            temp_dir.path().to_path_buf(),
+            None,
+            DeepContextOutputFormat::Json,
+            false,
+            vec![],
+            vec![],
+            30,
+            None,
+            None,
+            vec![],
+            vec![],
+            Some("force-refresh".to_string()),
+            false,
+            false,
+            10,
+        )
+        .await
+        .expect_err("--cache-strategy changes nothing, so it must be refused");
+
+        assert!(err.to_string().contains("--cache-strategy"), "{err}");
     }
 
     #[tokio::test]

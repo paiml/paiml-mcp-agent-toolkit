@@ -202,6 +202,74 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--color",
         "sets CLICOLOR_FORCE/NO_COLOR; colour is applied by format_history_output, which is only reached with stored TDG records (history.rs:33-39) — an empty result set has nothing to colour",
     ),
+    // --- --quiet on commands that emit no chatter -----------------------------
+    // The switch itself is live in the same binary and corpus: this round took
+    // `analyze bottleneck` from 40B of stderr to 0B, `analyze provability` from
+    // 125B, `context` from 60B and `score` from 55B, in every case with the
+    // stdout report byte-identical. --quiet suppresses NOISE and never RESULTS,
+    // so a command whose entire output is its report has nothing for it to take
+    // away — and each entry below was measured, not assumed: stderr is 0B on
+    // the swept invocation, or the only stderr is an error, which must survive.
+    (
+        "analyze big-o",
+        "--quiet",
+        "emits only its report on stdout (820B) and nothing on stderr; its header/summary go through tracing `info!`, which is below the default filter. The one stderr line it can produce is the `--analyze-space` no-op warning about the user's own flag, which is a diagnostic, not chatter, and does not fire on the swept invocation",
+    ),
+    (
+        "analyze defects",
+        "--quiet",
+        "emits only the Known Defects Report on stdout (3661B, exit 1) and nothing on stderr; src/cli/handlers/analyze_defects_handler/ contains no stderr macro at all",
+    ),
+    (
+        "analyze deep-context",
+        "--quiet",
+        "the swept default format uses SimpleDeepContext, which prints no progress — stdout report only, stderr 0B. The flag's effect is demonstrable one format over: `--format sarif` runs the full DeepContextAnalyzer and emitted 62B of spinner text, now 62B -> 0B under --quiet with this round's progress-primitive fix",
+    ),
+    (
+        "analyze entropy",
+        "--quiet",
+        "emits only the Entropy Analysis Summary on stdout (571B), stderr 0B. The four progress banners in its file (entropy_semantic.rs) belong to `analyze semantic`'s route, not to route_entropy_analysis",
+    ),
+    (
+        "analyze models",
+        "--quiet",
+        "emits only the Model Inventory table on stdout (700B), stderr 0B. Its single stderr line is the 'No model files found' refusal, which is an error and must survive --quiet",
+    ),
+    (
+        "deps-audit",
+        "--quiet",
+        "emits only the Dependency Audit Report on stdout (548B), stderr 0B; src/cli/handlers/deps_audit_handlers/ contains no stderr macro",
+    ),
+    (
+        "explain",
+        "--quiet",
+        "emits only the check/metric listing on stdout (986B), stderr 0B. Its one stderr line is the miss message for an unknown pattern, which exits 1 and is an error",
+    ),
+    (
+        "repo-score",
+        "--quiet",
+        "emits only the Repository Health Score report on stdout (889B), stderr 0B; repo_score_handlers*.rs contains no stderr macro",
+    ),
+    (
+        "comply audit",
+        "--quiet",
+        "on the sweep's corpus audit refuses with 'ERROR: Audit requires clean git state.' (179B stderr, exit 1) before reaching any output, and errors are not suppressible. On a clean-git copy of the same corpus the flag is live where the banner exists: `-f markdown` prints 'PMAT Comply Audit (Layer 3: Governance)' + rule via status_println!, and --quiet drops both; the swept default `-f json` deliberately emits the artifact alone so it stays parseable",
+    ),
+    (
+        "comply init",
+        "--quiet",
+        "on the corpus the command has already been initialised by an earlier sweep invocation and prints its 'Project already initialized at ./.pmat/project.toml' refusal on stdout, which is the result. On a fresh directory the banner and next-steps block are status_println! and --quiet takes stdout 378B -> 101B (measured), leaving only the created-artifact lines",
+    ),
+    (
+        "comply report",
+        "--quiet",
+        "the swept invocation writes the compliance report itself to stdout (511B), and a report is a result. The flag's effect is on the --output branch: `comply report --output F` prints '✓ Compliance report written to F' via status_println! (43B), and --quiet suppresses it (measured: 43B -> 0B, file still written)",
+    ),
+    (
+        "comply asset-validate",
+        "--quiet",
+        "emits only the CB-13xx contract findings and the '1 pass, 2 warn, 4 skip' tally on stdout (645B), stderr 0B",
+    ),
     // --- flags that modify another flag ---------------------------------------
     (
         "analyze lint-hotspot",

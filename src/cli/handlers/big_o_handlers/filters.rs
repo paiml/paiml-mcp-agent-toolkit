@@ -24,6 +24,16 @@ pub(super) fn apply_report_filters(
 }
 
 /// Filter to keep only high complexity functions
+///
+/// A FILTER THAT CANNOT REMOVE ANYTHING IS NOT A FILTER. `high_complexity_functions`
+/// is built by `BigOAnalyzer::build_report` with exactly the predicate below
+/// (`Quadratic | Cubic | Exponential | Factorial`), so this `retain` dropped
+/// nothing for any input: `analyze big-o --high-complexity-only` was
+/// byte-identical to `analyze big-o` in all four formats on a corpus with 13
+/// qualifying functions. The list was never where the flag had work to do — the
+/// DISTRIBUTION is, and that is scoped by
+/// `crate::cli::handlers::big_o_handlers::output::distribution_rows`, which the
+/// handler now hands the flag. The retain stays as a cheap invariant guard.
 pub(super) fn apply_high_complexity_filter(report: &mut BigOAnalysisReport, perf: bool) {
     let original_count = report.high_complexity_functions.len();
 

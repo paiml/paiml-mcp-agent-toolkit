@@ -347,6 +347,8 @@ fn build_compliance_report(
         breaking_changes,
         recommendations,
         timestamp: Utc::now(),
+        // `comply check` has no --include-history; only `comply report` does.
+        history: None,
     }
 }
 
@@ -596,6 +598,7 @@ mod build_compliance_report_tests {
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         // strict=false, no warnings → Ok
         assert!(apply_exit_policy(&report, false).is_ok());
@@ -612,6 +615,7 @@ mod build_compliance_report_tests {
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         // is_compliant=true, no warnings even with strict → Ok (no exit)
         assert!(apply_exit_policy(&report, true).is_ok());
@@ -647,6 +651,7 @@ mod build_compliance_report_tests {
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
 
         let sarif = build_sarif(&report, Path::new("."));

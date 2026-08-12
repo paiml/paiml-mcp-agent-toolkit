@@ -145,7 +145,14 @@ gate-flag-efficacy-full: ## Flag-efficacy across the entire command tree (releas
 
 gate-differential: ## Every metric must differ between an empty and a large project
 	@echo "🔬 Differential-corpus sweep..."
-	@cargo test --test all -- --ignored --nocapture metrics_must_respond_to_the_corpus
+	@env -u RUST_MIN_STACK cargo test --test all -- --ignored --nocapture metrics_must_respond_to_the_corpus \
+	  || (echo "" \
+	   && echo "❌ differential gate failed. Full report (every leaf, per corpus):" \
+	   && echo "   $${TMPDIR:-/tmp}/pmat-differential-corpus-report.txt" \
+	   && echo "   A constant leaf is a fixture claim as often as a defect —" \
+	   && echo "   reproduce it against a dumped corpus before filing either:" \
+	   && echo "   PMAT_CORPUS_OUT=/tmp/corpus PMAT_CORPUS_SIZE=large cargo test --test all -- --ignored dump_corpus --nocapture" \
+	   && exit 1)
 
 gate-artifact: gate-differential gate-flag-efficacy ## Both falsification gates
 	@echo "✅ artifact falsification gates passed"

@@ -63,7 +63,7 @@ pub async fn handle_analyze_big_o(
 
     apply_report_filters(&mut report, high_complexity_only, top_files, perf);
 
-    let output_content = format_analysis_output(&analyzer, &report, format)?;
+    let output_content = format_analysis_output(&analyzer, &report, format, high_complexity_only)?;
     write_analysis_output(&output_content, output).await?;
 
     print_analysis_summary(&report, start_time.elapsed(), perf);

@@ -100,6 +100,41 @@ impl BigOAnalyzer {
         (listed, found)
     }
 
+    /// The distribution rows, in report order, as `(label, count, is_high)`.
+    ///
+    /// ONE AUTHORITY FOR "HIGH": `--high-complexity-only` used to be applied by
+    /// `retain`ing `high_complexity_functions` on the same predicate
+    /// `build_report` had already used to build that list, so the flag could not
+    /// remove an element for any input and every format was byte-identical with
+    /// and without it. The list was already high-only; the DISTRIBUTION was not,
+    /// and it is what the flag narrows. `is_high` marks exactly the classes
+    /// `is_high_complexity_class` accepts (Quadratic | Cubic | Exponential |
+    /// Factorial — Factorial is folded into `exponential` by
+    /// `increment_distribution`), so no renderer can drift from the list.
+    /// Renderers keep their own display labels (`O(n^2)` in markdown, `O(n²)` on
+    /// the terminal, `O(?)` in JSON); the key here is the JSON one and the order
+    /// is fixed, so a renderer can `zip` its own label table against these rows.
+    #[must_use]
+    pub fn distribution_rows(report: &BigOAnalysisReport) -> [(&'static str, usize, bool); 8] {
+        let dist = &report.complexity_distribution;
+        [
+            ("O(1)", dist.constant, false),
+            ("O(log n)", dist.logarithmic, false),
+            ("O(n)", dist.linear, false),
+            ("O(n log n)", dist.linearithmic, false),
+            ("O(n^2)", dist.quadratic, true),
+            ("O(n^3)", dist.cubic, true),
+            ("O(2^n)", dist.exponential, true),
+            ("O(?)", dist.unknown, false),
+        ]
+    }
+
+    /// True when a distribution row survives `--high-complexity-only`.
+    #[must_use]
+    pub fn distribution_row_kept(is_high: bool, high_complexity_only: bool) -> bool {
+        is_high || !high_complexity_only
+    }
+
     /// Increment the appropriate distribution counter for a complexity class
     fn increment_distribution(distribution: &mut ComplexityDistribution, class: &BigOClass) {
         match class {
@@ -176,7 +211,32 @@ impl BigOAnalyzer {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_json(&self, report: &BigOAnalysisReport) -> Result<String> {
+        self.format_as_json_scoped(report, false)
+    }
+
+    /// `format_as_json`, with the `--high-complexity-only` scope applied.
+    ///
+    /// With the flag on, `distribution` carries only the O(n^2)-or-worse rows
+    /// and `high_complexity_only: true` says so, so a consumer can tell a
+    /// narrowed document from a full one instead of receiving the same bytes
+    /// either way.
+    ///
+    /// # Errors
+    /// Returns an error if the report cannot be serialised.
+    pub fn format_as_json_scoped(
+        &self,
+        report: &BigOAnalysisReport,
+        high_complexity_only: bool,
+    ) -> Result<String> {
         let (listed, found) = Self::high_complexity_listed_and_found(report);
+        let distribution: serde_json::Map<String, serde_json::Value> =
+            Self::distribution_rows(report)
+                .into_iter()
+                .filter(|(_, _, is_high)| {
+                    Self::distribution_row_kept(*is_high, high_complexity_only)
+                })
+                .map(|(key, count, _)| (key.to_string(), serde_json::json!(count)))
+                .collect();
         let json = serde_json::json!({
             "summary": {
                 "analyzed_functions": report.analyzed_functions,
@@ -189,17 +249,9 @@ impl BigOAnalyzer {
                 "high_complexity_count": listed,
                 "high_complexity_found": found,
                 "high_complexity_truncated": listed < found,
+                "high_complexity_only": high_complexity_only,
             },
-            "distribution": {
-                "O(1)": report.complexity_distribution.constant,
-                "O(log n)": report.complexity_distribution.logarithmic,
-                "O(n)": report.complexity_distribution.linear,
-                "O(n log n)": report.complexity_distribution.linearithmic,
-                "O(n^2)": report.complexity_distribution.quadratic,
-                "O(n^3)": report.complexity_distribution.cubic,
-                "O(2^n)": report.complexity_distribution.exponential,
-                "O(?)": report.complexity_distribution.unknown,
-            },
+            "distribution": distribution,
             "high_complexity_functions": report.high_complexity_functions.iter().map(|f| {
                 serde_json::json!({
                     "file": f.file_path.display().to_string(),
@@ -226,6 +278,16 @@ impl BigOAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_markdown(&self, report: &BigOAnalysisReport) -> String {
+        self.format_as_markdown_scoped(report, false)
+    }
+
+    /// `format_as_markdown`, with the `--high-complexity-only` scope applied.
+    #[must_use]
+    pub fn format_as_markdown_scoped(
+        &self,
+        report: &BigOAnalysisReport,
+        high_complexity_only: bool,
+    ) -> String {
         let mut md = String::with_capacity(1024);
 
         md.push_str("# Big-O Complexity Analysis Report\n\n");
@@ -246,7 +308,7 @@ impl BigOAnalyzer {
             md.push_str(&format!("- **High Complexity Functions**: {listed}\n\n"));
         }
 
-        Self::format_distribution_table(&mut md, report);
+        Self::format_distribution_table(&mut md, report, high_complexity_only);
 
         if !report.high_complexity_functions.is_empty() {
             Self::format_high_complexity_table(&mut md, report);
@@ -263,34 +325,50 @@ impl BigOAnalyzer {
     }
 
     /// Format the complexity distribution table in markdown
-    fn format_distribution_table(md: &mut String, report: &BigOAnalysisReport) {
-        md.push_str("## Complexity Distribution\n\n");
+    fn format_distribution_table(
+        md: &mut String,
+        report: &BigOAnalysisReport,
+        high_complexity_only: bool,
+    ) {
+        if high_complexity_only {
+            md.push_str("## Complexity Distribution (--high-complexity-only)\n\n");
+        } else {
+            md.push_str("## Complexity Distribution\n\n");
+        }
         md.push_str("| Complexity | Count | Percentage |\n");
         md.push_str("|------------|-------|------------|\n");
 
         let total = report.analyzed_functions as f64;
-        let dist = &report.complexity_distribution;
-
-        let rows: &[(&str, usize)] = &[
-            ("O(1)", dist.constant),
-            ("O(log n)", dist.logarithmic),
-            ("O(n)", dist.linear),
-            ("O(n log n)", dist.linearithmic),
-            ("O(n^2)", dist.quadratic),
-            ("O(n^3)", dist.cubic),
-            ("O(2^n)", dist.exponential),
-            ("Unknown", dist.unknown),
+        // Markdown spells the unknown row "Unknown" where JSON keys it "O(?)";
+        // the counts and the is-high predicate come from the shared rows so the
+        // two cannot disagree about WHICH rows `--high-complexity-only` keeps.
+        const LABELS: [&str; 8] = [
+            "O(1)",
+            "O(log n)",
+            "O(n)",
+            "O(n log n)",
+            "O(n^2)",
+            "O(n^3)",
+            "O(2^n)",
+            "Unknown",
         ];
 
-        for (label, count) in rows {
-            let suffix = if *label == "Unknown" { "\n" } else { "" };
+        for ((_, count, is_high), label) in Self::distribution_rows(report).into_iter().zip(LABELS)
+        {
+            if !Self::distribution_row_kept(is_high, high_complexity_only) {
+                continue;
+            }
+            let suffix = if label == "Unknown" { "\n" } else { "" };
             md.push_str(&format!(
                 "| {} | {} | {:.1}% |{}\n",
                 label,
                 count,
-                (*count as f64 / total) * 100.0,
+                (count as f64 / total) * 100.0,
                 suffix
             ));
+        }
+        if high_complexity_only {
+            md.push('\n');
         }
     }
 

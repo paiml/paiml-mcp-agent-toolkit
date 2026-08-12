@@ -105,6 +105,79 @@ async fn handle_enforce(
     Ok(())
 }
 
+/// Debt tickets under `.pmat-tickets/`, newest filename last.
+///
+/// `pmat comply upgrade` writes one flat YAML per ticket there (`ticket_id`,
+/// `category`, `created_at`, `status`). Only those four keys are read, and a key
+/// the file does not carry comes back `None` rather than as a guess — the
+/// listing is evidence from disk, not a reconstruction.
+///
+/// Returns an empty vec when the directory does not exist: "no tickets" is a
+/// result, and the renderers say so.
+fn collect_ticket_history(project_path: &Path) -> Vec<TicketHistoryEntry> {
+    let dir = project_path.join(".pmat-tickets");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+
+    let mut tickets: Vec<TicketHistoryEntry> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("yaml"))
+        .map(|path| {
+            let name = path
+                .file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+            let body = fs::read_to_string(&path).unwrap_or_default();
+            TicketHistoryEntry {
+                file: format!(".pmat-tickets/{name}"),
+                ticket_id: ticket_yaml_value(&body, "ticket_id"),
+                category: ticket_yaml_value(&body, "category"),
+                status: ticket_yaml_value(&body, "status"),
+                created_at: ticket_yaml_value(&body, "created_at"),
+            }
+        })
+        .collect();
+
+    // Filename order, so two runs over one directory produce one report.
+    tickets.sort_by(|a, b| a.file.cmp(&b.file));
+    tickets
+}
+
+/// Read one top-level scalar out of a debt ticket, or `None` if absent.
+fn ticket_yaml_value(body: &str, key: &str) -> Option<String> {
+    let prefix = format!("{key}:");
+    body.lines()
+        .find(|line| line.starts_with(&prefix))
+        .map(|line| {
+            line[prefix.len()..]
+                .trim()
+                .trim_matches('"')
+                .trim()
+                .to_string()
+        })
+        .filter(|v| !v.is_empty())
+}
+
+/// The report's history section: `Some` exactly when the user asked for it.
+///
+/// Split out so the WIRING is testable on its own. The bug was never in the
+/// listing — it was that `include_history` was consulted inside the `-f text`
+/// arm and nowhere else, so the default markdown report and the json/sarif
+/// report dropped it.
+fn report_history(include_history: bool, project_path: &Path) -> Option<Vec<TicketHistoryEntry>> {
+    include_history.then(|| collect_ticket_history(project_path))
+}
+
+/// One history line, in the words of the ticket file.
+fn ticket_history_line(entry: &TicketHistoryEntry) -> String {
+    let id = entry.ticket_id.as_deref().unwrap_or(&entry.file);
+    let status = entry.status.as_deref().unwrap_or("status not recorded");
+    let category = entry.category.as_deref().unwrap_or("category not recorded");
+    let created = entry.created_at.as_deref().unwrap_or("created_at not recorded");
+    format!("{id} [{status}] {category} — {created}")
+}
+
 /// Generate compliance report (W-009)
 async fn handle_report(
     project_path: &Path,
@@ -133,6 +206,14 @@ async fn handle_report(
         breaking_changes: get_breaking_changes_since(&config.pmat.version),
         recommendations: vec![],
         timestamp: Utc::now(),
+        // ONE FLAG, EVERY FORMAT. `--include-history` used to be read inside
+        // the Text arm alone — and there it only printed "(Work history not yet
+        // implemented)". The DEFAULT format is markdown, and json/sarif never
+        // mentioned the flag, so `comply report --include-history` was
+        // byte-identical to `comply report` for every user who did not pass
+        // `-f text`. The history is part of the report now, so all four formats
+        // carry it.
+        history: report_history(include_history, project_path),
     };
 
     // Format output
@@ -165,9 +246,15 @@ async fn handle_report(
                 out.push_str(&format!("  {}\n", formatted));
             }
 
-            if include_history {
-                out.push_str(&format!("\n{}:\n", c::label("Work History")));
-                out.push_str(&format!("  {}\n", c::dim("(Work history not yet implemented)")));
+            if let Some(history) = &report.history {
+                out.push_str(&format!("\n{}:\n", c::label("Ticket History")));
+                if history.is_empty() {
+                    out.push_str(&format!("  {}\n", c::dim("no tickets in .pmat-tickets/")));
+                } else {
+                    for entry in history {
+                        out.push_str(&format!("  {}\n", ticket_history_line(entry)));
+                    }
+                }
             }
 
             out
@@ -209,6 +296,17 @@ async fn handle_report(
                 ));
             }
 
+            if let Some(history) = &report.history {
+                out.push_str("\n## Ticket History\n\n");
+                if history.is_empty() {
+                    out.push_str("_No tickets in `.pmat-tickets/`._\n");
+                } else {
+                    for entry in history {
+                        out.push_str(&format!("- {}\n", ticket_history_line(entry)));
+                    }
+                }
+            }
+
             out
         }
     };
@@ -222,4 +320,75 @@ async fn handle_report(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod include_history_tests {
+    //! `--include-history` was read inside the `-f text` arm ALONE, and there it
+    //! only printed "(Work history not yet implemented)". The default format is
+    //! markdown, so `comply report --include-history` was byte-identical to
+    //! `comply report` for every user who did not pass `-f text`; `-f json` was
+    //! identical too.
+    use super::*;
+
+    const TICKET: &str = "# PMAT Legacy Debt Ticket\nticket_id: \"DEBT-001\"\ncategory: \"coverage\"\ncreated_at: \"2026-08-12T00:00:00Z\"\nstatus: \"open\"\n";
+
+    fn fixture() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".pmat-tickets")).expect("mkdir");
+        std::fs::write(dir.path().join(".pmat-tickets/DEBT-001.yaml"), TICKET).expect("write");
+        dir
+    }
+
+    #[test]
+    fn tickets_on_disk_are_read_not_invented() {
+        let dir = fixture();
+        let history = collect_ticket_history(dir.path());
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].ticket_id.as_deref(), Some("DEBT-001"));
+        assert_eq!(history[0].category.as_deref(), Some("coverage"));
+        assert_eq!(history[0].status.as_deref(), Some("open"));
+        assert_eq!(history[0].file, ".pmat-tickets/DEBT-001.yaml");
+    }
+
+    /// "No tickets" is a result, not an error and not silence.
+    #[test]
+    fn a_project_with_no_ticket_store_yields_an_empty_listing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        assert!(collect_ticket_history(dir.path()).is_empty());
+    }
+
+    /// THE WIRING, not the listing: `--include-history` must reach the report
+    /// itself, which every format renders from — it used to be read inside the
+    /// `-f text` arm alone.
+    #[test]
+    fn the_flag_reaches_the_report_every_format_renders() {
+        let dir = fixture();
+        assert!(
+            report_history(false, dir.path()).is_none(),
+            "no flag, no section"
+        );
+        let history = report_history(true, dir.path()).expect("--include-history must be honoured");
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].ticket_id.as_deref(), Some("DEBT-001"));
+    }
+
+    /// A key the file does not carry comes back `None` rather than a guess.
+    #[test]
+    fn a_missing_key_is_absent_rather_than_fabricated() {
+        assert_eq!(
+            ticket_yaml_value(TICKET, "ticket_id").as_deref(),
+            Some("DEBT-001")
+        );
+        assert_eq!(ticket_yaml_value(TICKET, "resolution"), None);
+        let line = ticket_history_line(&TicketHistoryEntry {
+            file: ".pmat-tickets/x.yaml".to_string(),
+            ticket_id: None,
+            category: None,
+            status: None,
+            created_at: None,
+        });
+        assert!(line.contains("status not recorded"), "{line}");
+        assert!(line.contains("category not recorded"), "{line}");
+    }
 }

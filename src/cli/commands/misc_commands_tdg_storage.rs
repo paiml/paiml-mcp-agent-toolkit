@@ -192,8 +192,24 @@ pub enum TdgCommand {
         #[arg(short, long, value_enum, default_value = "table")]
         format: TdgOutputFormat,
 
-        /// Fail with non-zero exit code if files below threshold
-        #[arg(long, default_value = "true")]
+        /// Fail with non-zero exit code if files below threshold [default: true]
+        ///
+        /// A BOOL WITH `default_value = "true"` AND clap's implicit `SetTrue`
+        /// action is unconditionally true: the gate fired whether or not the
+        /// flag was typed, `--fail-on-violation` was indistinguishable from
+        /// omitting it, and `--fail-on-violation=false` was REJECTED by clap
+        /// ("unexpected value 'false'") — so the opt-out the help implied did
+        /// not exist at all. Taking a value makes both directions reachable
+        /// (`--fail-on-violation=false` reports the violations and exits 0)
+        /// while a bare `--fail-on-violation` and an absent flag keep the
+        /// CI-safe default this command is for.
+        #[arg(
+            long,
+            num_args = 0..=1,
+            default_value_t = true,
+            default_missing_value = "true",
+            action = clap::ArgAction::Set,
+        )]
         fail_on_violation: bool,
 
         /// Check only new files (requires baseline)
@@ -273,4 +289,75 @@ pub enum BaselineCommand {
         #[arg(long)]
         with_git_context: bool,
     },
+}
+
+#[cfg(test)]
+mod fail_on_violation_arity_tests {
+    //! `--fail-on-violation` was `#[arg(long, default_value = "true")]` on a
+    //! bare `bool`. clap gives that the `SetTrue` action, so the value was
+    //! unconditionally `true`: typing the flag was indistinguishable from
+    //! omitting it (`tdg check-quality` and `tdg check-quality
+    //! --fail-on-violation` both exited 3 with byte-identical output on a corpus
+    //! with 30 files below grade), and `--fail-on-violation=false` was REJECTED
+    //! by clap with "unexpected value 'false'". The opt-out the help implied did
+    //! not exist.
+
+    fn fail_on_violation(args: &[&str]) -> bool {
+        // 8MB stack on its own thread: clap's generated parser recurses deeply
+        // enough over this command tree to overflow the default 2MB test stack.
+        let argv: Vec<String> = std::iter::once("pmat".to_string())
+            .chain(args.iter().map(|s| (*s).to_string()))
+            .collect();
+        std::thread::Builder::new()
+            .stack_size(8 * 1024 * 1024)
+            .spawn(move || {
+                use crate::cli::commands::TdgCommand;
+                use clap::Parser;
+                let cli = crate::cli::Cli::try_parse_from(&argv)
+                    .unwrap_or_else(|e| panic!("failed to parse {argv:?}: {e}"));
+                match cli.command {
+                    crate::cli::Commands::Tdg {
+                        command:
+                            Some(TdgCommand::CheckQuality {
+                                fail_on_violation, ..
+                            }),
+                        ..
+                    } => fail_on_violation,
+                    other => panic!("expected tdg check-quality, got {other:?}"),
+                }
+            })
+            .expect("spawn clap parse thread")
+            .join()
+            .expect("clap parse thread panicked")
+    }
+
+    #[test]
+    fn the_ci_safe_default_is_still_on() {
+        assert!(fail_on_violation(&["tdg", "check-quality"]));
+    }
+
+    #[test]
+    fn a_bare_flag_still_asks_for_the_default() {
+        assert!(fail_on_violation(&[
+            "tdg",
+            "check-quality",
+            "--fail-on-violation"
+        ]));
+    }
+
+    /// The direction that did not exist: clap used to exit 2 here.
+    #[test]
+    fn the_flag_can_be_turned_off() {
+        assert!(!fail_on_violation(&[
+            "tdg",
+            "check-quality",
+            "--fail-on-violation=false"
+        ]));
+        assert!(!fail_on_violation(&[
+            "tdg",
+            "check-quality",
+            "--fail-on-violation",
+            "false"
+        ]));
+    }
 }

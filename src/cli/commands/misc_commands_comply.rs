@@ -139,7 +139,12 @@ pub enum ComplyCommands {
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
 
-        /// Include ticket history
+        /// Include the debt tickets under .pmat-tickets/ in the report
+        ///
+        /// It used to be read inside the `-f text` arm alone, and there it only
+        /// printed "(Work history not yet implemented)" — so with the DEFAULT
+        /// markdown format, and with json/sarif, the flag changed nothing. Every
+        /// format carries the ticket listing now.
         #[arg(long)]
         include_history: bool,
 

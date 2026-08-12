@@ -275,23 +275,39 @@ lines are noise by any reading, and the fix is to route them through
 
 The middle twelve are a different claim and must not be quietly reclassified.
 Their commands print a result and nothing else, so a flag that suppresses noise
-correctly changes nothing — but that does **not** make them `ALLOWED_NOOPS`
-material, because the policy demands a *demonstrated real effect* and there is
-none to demonstrate. The honest resolutions are to stop offering `--quiet`
-where there is nothing for it to do, or to show that some other input (a tty, a
-warning path, a slow run with a progress indicator) gives it something to
-suppress. Allow-listing them on the strength of "legitimately inert" is the
-exact move this policy exists to forbid.
+correctly changes nothing — but "it prints only a result" is an assertion about
+the binary, not a licence, and it had never been measured when the twelve were
+first counted. Each was then measured, one command at a time, and only two
+answers were accepted: **stderr is empty on the swept invocation** (so the flag
+has nothing to take away, and the only stderr the command can produce is an
+error, which must survive `--quiet`), or **the flag's effect exists one format
+or one branch over** and was reproduced there. `comply report --output F` prints
+`✓ Compliance report written to F` (43 B) and `--quiet` takes it to 0 B with the
+file still written; `comply init` on an uninitialised directory goes 378 B → 101 B;
+`analyze deep-context --format sarif` goes 62 B → 0 B. Those four carry a
+demonstrated effect. The other eight carry a demonstrated *absence*, measured in
+bytes on the corpus and named in the entry.
 
-One of the twelve is weaker still and is called out so it is not mistaken for a
-finding: **`comply audit --quiet`'s baseline never ran.** `comply audit`
-refuses on the corpus with "Audit requires clean git state" and exits 1 before
-reading any flag, which is the same declined-precondition shape
-`baseline_unusable` already skips for `comply cross-crate` and `tdg history`.
-Its no-op verdict is unsound rather than wrong, and the correct repair is a
-harness skip — deliberately not made here, because turning a triaged defect
-into a skip on the closing pass is indistinguishable from making the gate green
-by hand.
+That refinement is the policy's boundary, and it is narrow on purpose: an entry
+may state an absence only where the absence itself was measured on the corpus
+the gate runs. "Legitimately inert" with nothing behind it remains the exact
+move this policy exists to forbid, and the four `--quiet` flags that really did
+suppress chatter — `analyze bottleneck` (40 B → 0 B), `analyze provability`
+(125 B → 0 B), `context` (60 B → 0 B), `score` (55 B → 0 B) — were fixed in the
+source, not allow-listed. `score` is the one to remember: it was first triaged
+as "no stderr at all" on a small fixture, and only the ~120-file corpus exposed
+its 55 B. **A fixture too small to make the noise is not evidence that there is
+none.**
+
+`comply audit --quiet` was the weakest of the twelve, and its entry says so
+rather than hiding it: `comply audit` refuses on the corpus with "Audit requires
+clean git state" and exits 1 (179 B of stderr) before reading any flag, which is
+the same declined-precondition shape `baseline_unusable` already skips for
+`comply cross-crate` and `tdg history`. Rather than convert the finding into a
+skip — indistinguishable, on a closing pass, from making the gate green by hand
+— the flag was exercised on a clean-git copy of the same corpus, where
+`-f markdown` prints its banner through `status_println!` and `--quiet` drops it.
+The entry records both the refusal the sweep sees and the effect it hides.
 
 `analyze graph-metrics --export-graphml` is the single `Errors` verdict: the
 flag makes a working command exit 1. It is a triaged defect too, and it does
@@ -301,6 +317,63 @@ flag that breaks its command is not better than one that does nothing.
 **The gate is red on purpose and stays red.** It cannot be turned on as a
 required check until those 29 land, and the way to turn it on is to fix them,
 not to widen the escape hatch.
+
+### Where the gate stands at the close of 3.30.0
+
+Same binary tree, same corpus, same core roots, after the closing wave of source
+fixes, twelve measured allow-list entries and two corpus corrections:
+
+```
+first full sweep: 401 effective, 3 refuses-honestly, 116 no-op, 1 error-out, 267 skipped
+after harness fix: 400 effective, 3 refuses-honestly,  52 no-op, 1 error-out, 237 skipped
+after source fix:  424 effective, 3 refuses-honestly,  29 no-op, 1 error-out, 237 skipped
+final:             436 effective, 4 refuses-honestly,   2 no-op, 0 error-out, 240 skipped
+```
+
+`ALLOWED_NOOPS` is 37 entries, of which 2 remain unexercised because their
+command is skipped rather than because they are stale (`comply cross-crate
+--color`, `tdg history --color`). The `Errors` verdict is gone: `analyze
+graph-metrics --export-graphml` no longer breaks its command and now scores
+Effective (stdout 164 B → 12 412 B of GraphML, exit 0 in both runs).
+
+Two of the closing round's verdicts were **the corpus's fault, not the
+binary's**, and were fixed in `build_corpus` rather than allow-listed — which is
+the difference between a gate that proves a flag works and a gate that files the
+proof away:
+
+| Flag | Why it read as inert | Corpus correction |
+|---|---|---|
+| `analyze dead-code --include-unreachable` | every dead item in the fixture was an item nothing *referenced*; unused and unreachable are different findings, and the corpus supplied only the first | three of the fifteen `dead_*` modules now trail their `return` with statements rustc reports as `unreachable_code`. `Unreachable blocks: 0 → 3` with the flag; the default run stays byte-identical, because the flag is the only thing that admits such a finding |
+| `analyze web-assembly --top-files` | of four wasm inputs, two `.wat` are deliberately not reported and `broken.wasm` fails validation, so the report had exactly one row and a ranking limit had no ranking to cut | a second hand-assembled `small.wasm` (two functions, no import, one memory page). `--top-files 1` now drops a row and prints "Showing the top 1 of 2 files" |
+
+The second one is the general lesson restated: **a limit flag needs a list
+longer than the limit**, and a fixture that yields one row makes every ranking
+flag in the tool look inert.
+
+The two remaining no-ops are the last two of the six "chatter survives
+`--quiet`" defects, and they are defects in the binary, not in the gate:
+`analyze defect-prediction` (144 B of stderr, unchanged) and `analyze
+comprehensive` (207 B, unchanged). Both write through bare `eprintln!`
+(`defect_prediction_handler.rs:73,89`;
+`comprehensive_analysis_handler/handler.rs:14`, `.../helpers.rs:114,147,154`)
+while the `analysis_utilities` copies of the same banners already route through
+`status_eprintln!` — the wave reached one surface and not its twin, which is the
+failure mode "fix the rule, then check every other caller of the rule" exists to
+catch. `make gate-artifact` is wired into `pre-release-checks` (step 7, hard
+failure) and stays red until they land.
+
+Gate A is red for reasons of its own, unchanged by any of the above and verified
+identical against the pre-change corpus generator:
+
+```
+summary: 2 inert command(s), 54 constant leaf/leaves, 19 skipped
+```
+
+`comply report` and `comply review` emit no leaf that responds to any corpus,
+and 54 numeric leaves are identical for an empty project and a defect-rich one.
+Each is either an unmeasured value or configuration, and none has been triaged
+yet; `ALLOWED_CONSTANTS` stands at 25 entries. Until that triage happens,
+`make gate-artifact` cannot go green on Gate A alone.
 
 ### One cause behind forty flags: `--quiet`
 

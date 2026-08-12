@@ -151,7 +151,9 @@ impl LightweightProvabilityAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
-            abstract_interpreter: AbstractInterpreter { analysis_depth: 10 },
+            abstract_interpreter: AbstractInterpreter {
+                analysis_depth: ANALYSIS_DEPTH,
+            },
             proof_cache: Arc::new(DashMap::new()),
             current_version: 1,
         }

@@ -84,7 +84,15 @@ async fn run_dead_code_analysis_with_filters(
     // count that heads the emitted list: `--min-dead-lines` (default 10) and
     // `--top-files` cut that list down, and the summary used to keep reporting
     // the pre-filter number — 26 files claimed above a 4-entry array.
-    let files_with_dead_code_found = accurate_report.files_with_dead_code.len();
+    // Files with at least one UNUSED item. Since `--include-unreachable` was
+    // wired up, `files_with_dead_code` can also hold files whose only finding is
+    // an unreachable statement; counting those here would change the default
+    // report's headline on any tree containing unreachable code.
+    let files_with_dead_code_found = accurate_report
+        .files_with_dead_code
+        .iter()
+        .filter(|f| !f.dead_items.is_empty())
+        .count();
     let project_total_lines = accurate_report.total_lines;
     // Every .rs file in the project, against the subset actually scanned. A
     // cache entry written before `project_files` existed deserialises it as 0,
@@ -372,6 +380,7 @@ fn create_dead_code_ranking_result(
         ranked_files: convert_cargo_files_to_metrics(
             accurate_report.files_with_dead_code.clone(),
             min_dead_lines,
+            config.include_unreachable,
         ),
         summary: create_dead_code_summary(&accurate_report),
         analysis_timestamp: Utc::now(),
@@ -380,9 +389,15 @@ fn create_dead_code_ranking_result(
 }
 
 /// Convert cargo dead code files to metrics format
+///
+/// `include_unreachable` is the ONLY thing that lets an unreachable finding into
+/// the report: with it off the rows are exactly what they were before the
+/// analyzer started collecting rustc's `unreachable_code` lint, down to the
+/// `unreachable_blocks: 0`.
 fn convert_cargo_files_to_metrics(
     cargo_files: Vec<crate::services::cargo_dead_code_analyzer::FileDeadCode>,
     min_dead_lines: usize,
+    include_unreachable: bool,
 ) -> Vec<crate::models::dead_code::FileDeadCodeMetrics> {
     use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
 
@@ -429,13 +444,48 @@ fn convert_cargo_files_to_metrics(
                 dead_functions: dead_functions_count,
                 dead_classes: dead_classes_count,
                 dead_modules: dead_modules_count,
-                unreachable_blocks: 0,
+                unreachable_blocks: if include_unreachable {
+                    file.unreachable_items.len()
+                } else {
+                    0
+                },
                 dead_score: file.file_dead_percentage as f32,
                 confidence: ConfidenceLevel::High, // Cargo-based detection is high confidence
-                items: dead_items_to_report_items(&file.dead_items),
+                items: {
+                    let mut items = dead_items_to_report_items(&file.dead_items);
+                    if include_unreachable {
+                        items.extend(unreachable_items_to_report_items(&file.unreachable_items));
+                    }
+                    items
+                },
             }
         })
-        .filter(|f| f.dead_lines >= min_dead_lines)
+        // `--min-dead-lines` gates on UNUSED lines, and an unreachable
+        // statement contributes none — so an unreachable-only file scored 0 and
+        // was cut here, which is one of the two reasons the flag showed nothing.
+        // With the flag on, a file that has unreachable blocks to report is
+        // reported.
+        .filter(|f| f.dead_lines >= min_dead_lines || f.unreachable_blocks > 0)
+        .collect()
+}
+
+/// Carry rustc's `unreachable_code` findings into the report.
+///
+/// `DeadCodeType::UnreachableCode` already existed and already had a summary
+/// counter (`unreachable_blocks`); nothing on the CLI path ever produced one.
+fn unreachable_items_to_report_items(
+    items: &[crate::services::cargo_dead_code_analyzer::DeadItem],
+) -> Vec<crate::models::dead_code::DeadCodeItem> {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+
+    items
+        .iter()
+        .map(|item| DeadCodeItem {
+            item_type: DeadCodeType::UnreachableCode,
+            name: item.name.clone(),
+            line: u32::try_from(item.line).unwrap_or(u32::MAX),
+            reason: item.message.clone(),
+        })
         .collect()
 }
 

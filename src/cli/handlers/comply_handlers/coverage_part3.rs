@@ -34,6 +34,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_text(&report);
     }
@@ -51,6 +52,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_markdown(&report);
     }
@@ -71,6 +73,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_markdown(&report);
     }
@@ -446,6 +449,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         let debug_str = format!("{:?}", report);
         assert!(debug_str.contains("ComplianceReport"));

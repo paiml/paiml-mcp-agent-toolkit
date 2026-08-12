@@ -419,9 +419,17 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value_t = 30)]
         period_days: u32,
 
-        /// DAG type for dependency analysis
-        #[arg(long, value_enum, default_value = "call-graph")]
-        dag_type: DeepContextDagType,
+        /// NOT IMPLEMENTED: DAG type for dependency analysis
+        ///
+        /// deep-context builds no DAG at all — `SimpleDeepContext` walks files
+        /// for complexity and SATD — so all four values produced one identical
+        /// report (same sha256 after stripping the duration). It carried a clap
+        /// default, which is why it could not be refused alongside --full:
+        /// there was no way to tell "user asked" from "clap filled it in". It is
+        /// an `Option` now and the handler refuses it (#915). Use `analyze dag
+        /// --dag-type`, which does read it.
+        #[arg(long, value_enum)]
+        dag_type: Option<DeepContextDagType>,
 
         /// NOT IMPLEMENTED: maximum directory traversal depth
         ///
@@ -439,9 +447,15 @@ pub enum AnalyzeCommands {
         #[arg(long = "exclude-pattern")]
         exclude_patterns: Vec<String>,
 
-        /// Cache usage strategy
-        #[arg(long, value_enum, default_value = "normal")]
-        cache_strategy: DeepContextCacheStrategy,
+        /// NOT IMPLEMENTED: cache usage strategy
+        ///
+        /// This path consults and writes no cache: run all three values against
+        /// an empty HOME and nothing is created, so `force-refresh` has nothing
+        /// to refresh and `offline` nothing to fall back to. Same clap-default
+        /// problem as --dag-type; an `Option` now, and refused by the handler
+        /// (#915).
+        #[arg(long, value_enum)]
+        cache_strategy: Option<DeepContextCacheStrategy>,
 
         /// NOT IMPLEMENTED: parallelism level for analysis
         ///
@@ -498,11 +512,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         verbose: bool,
 
-        /// Use ML-based scoring (aprender LinearRegression)
+        /// NOT IMPLEMENTED: ML-based scoring (aprender LinearRegression)
         ///
-        /// When enabled, TDG scores are calculated using trained ML models
-        /// instead of heuristic weighted sums. This provides more accurate,
-        /// data-driven scores that can learn from project history.
+        /// The route destructured this as `ml: _` and built the config without
+        /// it, so `--ml` returned exactly the heuristic weighted-sum scores
+        /// under a promise of "trained ML models instead of heuristic weighted
+        /// sums" — relabelling a number rather than changing it. It now errors,
+        /// the same refusal `analyze complexity --ml` already makes (GH-97).
         #[arg(long)]
         ml: bool,
     },
@@ -683,9 +699,17 @@ pub enum AnalyzeCommands {
         #[arg(long, value_delimiter = ',')]
         functions: Vec<String>,
 
-        /// Analysis depth (number of iterations)
-        #[arg(long, default_value_t = 10)]
-        analysis_depth: usize,
+        /// NOT IMPLEMENTED: analysis depth (number of iterations)
+        ///
+        /// There is no iteration to bound: `LightweightProvabilityAnalyzer`
+        /// scores each function once from source patterns, and its
+        /// `AbstractInterpreter::analyze_iteration` has no caller at all. Depth
+        /// 0, 1, 10, 50 and 1000 produced one identical report (same sha256 of
+        /// the JSON). It carried a clap default, so the value could not be
+        /// refused; it is an `Option` now and the route refuses it rather than
+        /// accept a knob wired to nothing.
+        #[arg(long)]
+        analysis_depth: Option<usize>,
 
         /// Output format
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
@@ -1153,7 +1177,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         changed_files_only: bool,
 
-        /// Show detailed per-file coverage
+        /// Show detailed per-file coverage (shorthand for --format detailed)
+        ///
+        /// It was copied into `IncrementalCoverageRequest.detailed` and read by
+        /// nothing — no analyzer and no renderer — so the flag was
+        /// byte-identical to no flag in every format. It now upgrades the
+        /// default `summary` report to the `detailed` one; an explicit
+        /// `--format` other than `summary` still wins.
         #[arg(long)]
         detailed: bool,
 
@@ -1311,7 +1341,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         exclude: Vec<String>,
 
-        /// Show only high complexity functions (O(n²) or worse)
+        /// Report only the O(n²)-or-worse rows of the distribution
+        ///
+        /// The listed functions are ALWAYS high-complexity — `build_report`
+        /// selects them with the same predicate — so this narrows the
+        /// distribution (the only part of the report that covers every class).
+        /// It used to `retain` the already-filtered list and could not change a
+        /// byte of any format.
         #[arg(long)]
         high_complexity_only: bool,
 
@@ -1345,7 +1381,15 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: ComplexityOutputFormat,
 
-        /// Include WASM complexity analysis
+        /// NO-OP: complexity is measured for every parsed file already
+        ///
+        /// It used to decide whether a parsed file appeared in the report at
+        /// all, which is why the default run printed "Found 3 AssemblyScript
+        /// files", three "Parsed:" lines, and then `files_analyzed: 0`. Fixing
+        /// that left the flag with nothing to gate — every row already carries
+        /// cyclomatic and cognitive — so it is accepted (existing invocations
+        /// keep working) and the help no longer promises an analysis it
+        /// switches on. Same disclosure as `analyze big-o --analyze-space`.
         #[arg(long)]
         wasm_complexity: bool,
 

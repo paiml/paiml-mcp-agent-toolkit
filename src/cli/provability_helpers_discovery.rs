@@ -1,7 +1,7 @@
 /// Discover all functions in project
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn discover_project_functions(project_path: &Path) -> Result<Vec<FunctionId>> {
-    eprintln!("\u{1f4c2} Discovering functions in project...");
+    crate::status_eprintln!("\u{1f4c2} Discovering functions in project...");
 
     let mut function_ids = Vec::new();
     let mut file_count = 0;
@@ -49,7 +49,7 @@ pub async fn discover_project_functions(project_path: &Path) -> Result<Vec<Funct
         }
     }
 
-    eprintln!("\u{1f4ca} Found {file_count} source files");
+    crate::status_eprintln!("\u{1f4ca} Found {file_count} source files");
     Ok(function_ids)
 }
 

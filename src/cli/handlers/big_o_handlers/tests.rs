@@ -769,7 +769,7 @@ mod tests {
     fn test_format_analysis_output_json() {
         let analyzer = BigOAnalyzer::new();
         let report = create_test_report_with_functions();
-        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Json);
+        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Json, false);
 
         assert!(result.is_ok());
         let output = result.unwrap();
@@ -781,7 +781,7 @@ mod tests {
     fn test_format_analysis_output_markdown() {
         let analyzer = BigOAnalyzer::new();
         let report = create_test_report_with_functions();
-        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Markdown);
+        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Markdown, false);
 
         assert!(result.is_ok());
         let output = result.unwrap();
@@ -793,7 +793,7 @@ mod tests {
     fn test_format_analysis_output_summary() {
         let analyzer = BigOAnalyzer::new();
         let report = create_test_report_with_functions();
-        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Summary);
+        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Summary, false);
 
         assert!(result.is_ok());
         let output = result.unwrap();
@@ -804,7 +804,7 @@ mod tests {
     fn test_format_analysis_output_detailed() {
         let analyzer = BigOAnalyzer::new();
         let report = create_test_report_with_functions();
-        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Detailed);
+        let result = format_analysis_output(&analyzer, &report, BigOOutputFormat::Detailed, false);
 
         assert!(result.is_ok());
         let output = result.unwrap();
@@ -1094,5 +1094,81 @@ mod tests {
             json["summary"]["high_complexity_truncated"],
             serde_json::json!(false)
         );
+    }
+
+    // ============================================
+    // --high-complexity-only must change the report
+    // ============================================
+
+    /// The flag was applied by `retain`ing `high_complexity_functions` on the
+    /// SAME predicate `build_report` had already used to build that list, so it
+    /// could not drop an element for any input: `analyze big-o` and
+    /// `analyze big-o --high-complexity-only` were byte-identical in summary,
+    /// detailed, markdown AND json on a corpus with 13 qualifying functions.
+    #[test]
+    fn high_complexity_only_narrows_every_format() {
+        let analyzer = BigOAnalyzer::new();
+        let report = create_test_report_with_functions();
+
+        for format in [
+            BigOOutputFormat::Summary,
+            BigOOutputFormat::Detailed,
+            BigOOutputFormat::Markdown,
+            BigOOutputFormat::Json,
+        ] {
+            let plain = format_analysis_output(&analyzer, &report, format.clone(), false).unwrap();
+            let scoped = format_analysis_output(&analyzer, &report, format.clone(), true).unwrap();
+            assert_ne!(
+                plain, scoped,
+                "--high-complexity-only produced identical {format:?} output"
+            );
+        }
+    }
+
+    /// What it narrows, precisely: the distribution keeps the O(n^2)-or-worse
+    /// rows and drops the rest. `analyzed_functions` is NOT narrowed — 50
+    /// functions were analysed either way, and saying otherwise would be a
+    /// fabricated total.
+    #[test]
+    fn high_complexity_only_keeps_the_high_rows_and_the_analysed_total() {
+        let analyzer = BigOAnalyzer::new();
+        let report = create_test_report_with_functions();
+
+        let json: serde_json::Value =
+            serde_json::from_str(&analyzer.format_as_json_scoped(&report, true).unwrap()).unwrap();
+        let dist = json["distribution"].as_object().expect("distribution");
+
+        for kept in ["O(n^2)", "O(n^3)", "O(2^n)"] {
+            assert!(dist.contains_key(kept), "{kept} must survive the filter");
+        }
+        for dropped in ["O(1)", "O(log n)", "O(n)", "O(n log n)", "O(?)"] {
+            assert!(
+                !dist.contains_key(dropped),
+                "{dropped} is not high complexity and must be filtered out"
+            );
+        }
+        assert_eq!(dist["O(n^2)"], serde_json::json!(7));
+        assert_eq!(
+            json["summary"]["analyzed_functions"],
+            serde_json::json!(50),
+            "the analysed total is not scoped by a display filter"
+        );
+        assert_eq!(
+            json["summary"]["high_complexity_only"],
+            serde_json::json!(true)
+        );
+    }
+
+    /// Without the flag every row is still present, byte for byte — the fix
+    /// must not change what a default run prints.
+    #[test]
+    fn default_run_still_carries_every_distribution_row() {
+        let analyzer = BigOAnalyzer::new();
+        let report = create_test_report_with_functions();
+        let json: serde_json::Value =
+            serde_json::from_str(&analyzer.format_as_json(&report).unwrap()).unwrap();
+        let dist = json["distribution"].as_object().expect("distribution");
+        assert_eq!(dist.len(), 8, "default distribution has all eight classes");
+        assert_eq!(dist["O(?)"], serde_json::json!(2));
     }
 }

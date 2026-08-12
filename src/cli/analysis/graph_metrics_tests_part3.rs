@@ -1,10 +1,16 @@
 
     // format_output tests
 
+    /// Every rendering except `graph-ml` is a function of the metrics alone,
+    /// so an empty graph is the right stand-in for them.
+    fn no_graph() -> SimpleGraph {
+        SimpleGraph::new()
+    }
+
     #[test]
     fn test_format_output_json() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Json).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Json, &no_graph()).unwrap();
 
         assert!(output.contains("total_nodes"));
         assert!(output.contains("\"nodes\""));
@@ -14,7 +20,7 @@
     #[test]
     fn test_format_output_human() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Human).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Human, &no_graph()).unwrap();
 
         assert!(output.contains("Graph Metrics Analysis"));
         assert!(output.contains("Total nodes"));
@@ -23,7 +29,7 @@
     #[test]
     fn test_format_output_summary() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Summary).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Summary, &no_graph()).unwrap();
 
         assert!(output.contains("Graph Metrics"));
         assert!(output.contains("Total"));
@@ -32,7 +38,7 @@
     #[test]
     fn test_format_output_detailed() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Detailed).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Detailed, &no_graph()).unwrap();
 
         assert!(output.contains("Graph Metrics"));
     }
@@ -40,34 +46,40 @@
     #[test]
     fn test_format_output_csv() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Csv).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Csv, &no_graph()).unwrap();
 
         assert!(output.contains("name,degree_centrality"));
         assert!(output.contains("high"));
         assert!(output.contains("medium"));
     }
 
-    /// This test used to pin the defect: it asserted that `-f graph-ml` returns
-    /// the developer note "GraphML export handled separately", which the command
-    /// then wrote out as the whole output file with exit 0.
+    /// `-f graph-ml` first rendered the developer note "GraphML export handled
+    /// separately" as the whole document, and was then changed to refuse. It is
+    /// a rendering format again, and it renders the same document
+    /// `--export-graphml` does — the graph, not prose about it.
     #[test]
     fn test_format_output_graphml() {
-        let result = create_mock_result();
-        let err = format_output(result, GraphMetricsOutputFormat::GraphML)
-            .expect_err("graph-ml must not render prose as a document");
+        let mut graph = SimpleGraph::new();
+        let a = graph.add_node("a.rs".to_string());
+        let b = graph.add_node("b.rs".to_string());
+        graph.add_edge(a, b);
 
-        let message = err.to_string();
+        let doc = format_output(create_mock_result(), GraphMetricsOutputFormat::GraphML, &graph)
+            .expect("graph-ml is a rendering format");
+
+        assert_eq!(doc, render_graphml(&graph).unwrap());
+        assert!(doc.starts_with("<?xml version"), "{doc}");
+        assert!(doc.contains("<edge "), "the graph's edges must survive: {doc}");
         assert!(
-            !message.contains("handled separately"),
-            "the error must tell the user what to run: {message}"
+            !doc.contains("handled separately"),
+            "prose is not a document: {doc}"
         );
-        assert!(message.contains("--export-graphml"), "{message}");
     }
 
     #[test]
     fn test_format_output_markdown() {
         let result = create_mock_result();
-        let output = format_output(result, GraphMetricsOutputFormat::Markdown).unwrap();
+        let output = format_output(result, GraphMetricsOutputFormat::Markdown, &no_graph()).unwrap();
 
         assert!(output.contains("# Graph Metrics Report"));
         assert!(output.contains("| Metric | Value |"));
@@ -446,16 +458,19 @@
         let summary = strip_ansi(&format_output(
             create_mock_result(),
             crate::cli::GraphMetricsOutputFormat::Summary,
+            &no_graph(),
         )
         .unwrap());
         let human = strip_ansi(&format_output(
             create_mock_result(),
             crate::cli::GraphMetricsOutputFormat::Human,
+            &no_graph(),
         )
         .unwrap());
         let detailed = strip_ansi(&format_output(
             create_mock_result(),
             crate::cli::GraphMetricsOutputFormat::Detailed,
+            &no_graph(),
         )
         .unwrap());
 
@@ -494,10 +509,10 @@
         reversed.nodes.reverse();
 
         let a = strip_ansi(
-            &format_output(forward, crate::cli::GraphMetricsOutputFormat::Detailed).unwrap(),
+            &format_output(forward, crate::cli::GraphMetricsOutputFormat::Detailed, &no_graph()).unwrap(),
         );
         let b = strip_ansi(
-            &format_output(reversed, crate::cli::GraphMetricsOutputFormat::Detailed).unwrap(),
+            &format_output(reversed, crate::cli::GraphMetricsOutputFormat::Detailed, &no_graph()).unwrap(),
         );
 
         let rankings = |s: &str| {

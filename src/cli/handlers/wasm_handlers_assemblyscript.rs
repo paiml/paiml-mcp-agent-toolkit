@@ -1,14 +1,22 @@
+/// Warning printed when `--wasm-complexity` is passed.
+///
+/// The flag used to decide whether a parsed file appeared in the report at all,
+/// which is why the default run announced three parsed files and then reported
+/// `files_analyzed: 0`. Complexity is measured for every parsed file now, so
+/// the flag has nothing left to gate — and it was accepted in SILENCE, which
+/// read as if it had switched an extra analysis on. Named as a const so the
+/// disclosure is covered by a test rather than only by eye, exactly like
+/// `big_o_handlers::ANALYZE_SPACE_NOOP_NOTE`.
+pub(crate) const WASM_COMPLEXITY_NOOP_NOTE: &str =
+    "note: --wasm-complexity is a no-op — cyclomatic and cognitive complexity are measured for every parsed file";
+
 /// Handle `AssemblyScript` analysis
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_assemblyscript(
     project_path: PathBuf,
     format: ComplexityOutputFormat,
-    // --wasm-complexity used to decide whether a parsed file appeared in the
-    // report at all, which is why the default run reported files_analyzed 0.
-    // Complexity is now measured for every parsed file and the flag has nothing
-    // left to gate; it is kept so existing invocations keep working.
-    _wasm_complexity: bool,
+    wasm_complexity: bool,
     memory_analysis: bool,
     security: bool,
     output: Option<PathBuf>,
@@ -20,6 +28,12 @@ pub async fn handle_analyze_assemblyscript(
     // "📁 Found 0 AssemblyScript files" and a complete report with
     // "**Files analyzed**: 0", exit 0.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
+
+    // Not `status_eprintln!`: this is a correction to what the USER typed, not
+    // progress noise, so `--quiet` must not swallow it.
+    if wasm_complexity {
+        eprintln!("{WASM_COMPLEXITY_NOOP_NOTE}");
+    }
 
     use crate::cli::colors as c;
     crate::status_eprintln!("🔍 {}", c::label("Analyzing AssemblyScript code..."));
@@ -241,4 +255,19 @@ async fn write_analysis_output(output_text: String, output_path: Option<PathBuf>
         println!("{output_text}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod wasm_complexity_noop_tests {
+    //! The note is the only thing that tells a user `--wasm-complexity` does
+    //! nothing; without it the flag was accepted in silence and read as if it
+    //! had switched an extra analysis on.
+    use super::*;
+
+    #[test]
+    fn the_noop_note_says_the_flag_is_a_no_op() {
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("--wasm-complexity"));
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("no-op"));
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("every parsed file"));
+    }
 }

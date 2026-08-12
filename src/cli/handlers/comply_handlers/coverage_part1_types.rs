@@ -64,6 +64,7 @@ auto_update = true
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         let json = serde_json::to_string(&report).expect("JSON serialization failed");
         assert!(json.contains("project_version"));
@@ -87,6 +88,7 @@ auto_update = true
             breaking_changes: vec![],
             recommendations: vec!["Upgrade soon".to_string()],
             timestamp: Utc::now(),
+            history: None,
         };
         assert_eq!(report.checks.len(), 1);
         assert_eq!(report.recommendations.len(), 1);

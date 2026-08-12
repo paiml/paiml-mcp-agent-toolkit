@@ -49,6 +49,28 @@ pub(crate) struct ComplianceReport {
     pub breaking_changes: Vec<BreakingChange>,
     pub recommendations: Vec<String>,
     pub timestamp: DateTime<Utc>,
+    /// Debt tickets found under `.pmat-tickets/`, or `None` when
+    /// `--include-history` was not passed.
+    ///
+    /// `Some(vec![])` is a result — "the flag ran and the store is empty" — and
+    /// is rendered as such rather than as silence. Skipped when absent so the
+    /// default JSON document is unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<Vec<TicketHistoryEntry>>,
+}
+
+/// One debt ticket, as written by `pmat comply upgrade` into `.pmat-tickets/`.
+///
+/// Every field is read from the file; nothing is inferred. `None` means the
+/// ticket did not carry that key.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct TicketHistoryEntry {
+    /// File the entry was read from, relative to the project root.
+    pub file: String,
+    pub ticket_id: Option<String>,
+    pub category: Option<String>,
+    pub status: Option<String>,
+    pub created_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

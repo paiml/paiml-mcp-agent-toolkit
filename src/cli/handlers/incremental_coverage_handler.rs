@@ -65,11 +65,41 @@ pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConf
     // Perform analysis using facade
     let result = facade.analyze_project(request).await?;
 
-    // Format and output results
-    output_results(result, config.format, config.output, config.top_files).await?;
+    // Format and output results.
+    //
+    // `--detailed` reached `IncrementalCoverageRequest.detailed` and stopped
+    // there: no analyzer and no renderer read it, so the flag was
+    // byte-identical to no flag in summary/json/detailed/markdown alike. It is
+    // a shorthand for the report it names — the `detailed` renderer, which
+    // already existed and was reachable only through `--format detailed`.
+    output_results(
+        result,
+        effective_format(config.format, config.detailed),
+        config.output,
+        config.top_files,
+    )
+    .await?;
 
     crate::status_eprintln!("✅ Incremental coverage analysis complete");
     Ok(())
+}
+
+/// The format actually rendered, once `--detailed` has had its say.
+///
+/// `--detailed` upgrades only the DEFAULT report: an explicit `--format json`
+/// (or markdown, lcov, delta, sarif) is a request for that document and must
+/// not be silently turned into a different one. `--format summary --detailed`
+/// upgrades, which is the only reading of the two together that leaves
+/// `--detailed` meaning anything.
+fn effective_format(
+    format: IncrementalCoverageOutputFormat,
+    detailed: bool,
+) -> IncrementalCoverageOutputFormat {
+    if detailed && matches!(format, IncrementalCoverageOutputFormat::Summary) {
+        IncrementalCoverageOutputFormat::Detailed
+    } else {
+        format
+    }
 }
 
 /// Print analysis header information
@@ -132,3 +162,67 @@ fn format_result(
 // --- Include submodules ---
 include!("incremental_coverage_handler_formatters.rs");
 include!("incremental_coverage_handler_tests.rs");
+
+#[cfg(test)]
+mod detailed_flag_tests {
+    //! `--detailed` was copied into `IncrementalCoverageRequest.detailed` and
+    //! read by nothing — no analyzer, no formatter — so
+    //! `analyze incremental-coverage --detailed` was `diff`-identical to the
+    //! plain run on a fixture with 12 changed files, in every format.
+    use super::*;
+
+    #[test]
+    fn detailed_upgrades_the_default_summary_report() {
+        assert!(matches!(
+            effective_format(IncrementalCoverageOutputFormat::Summary, true),
+            IncrementalCoverageOutputFormat::Detailed
+        ));
+    }
+
+    #[test]
+    fn without_the_flag_the_default_report_is_unchanged() {
+        assert!(matches!(
+            effective_format(IncrementalCoverageOutputFormat::Summary, false),
+            IncrementalCoverageOutputFormat::Summary
+        ));
+    }
+
+    /// An explicit `--format` is a request for THAT document; `--detailed` must
+    /// not silently swap a machine format for a human one.
+    #[test]
+    fn an_explicit_format_wins_over_detailed() {
+        for format in [
+            IncrementalCoverageOutputFormat::Json,
+            IncrementalCoverageOutputFormat::Markdown,
+            IncrementalCoverageOutputFormat::Lcov,
+            IncrementalCoverageOutputFormat::Sarif,
+            IncrementalCoverageOutputFormat::Delta,
+        ] {
+            assert_eq!(
+                format!("{:?}", effective_format(format.clone(), true)),
+                format!("{format:?}"),
+                "--detailed must not override an explicit --format"
+            );
+        }
+    }
+
+    /// The two renderers really do differ, so the upgrade above is observable.
+    #[test]
+    fn the_detailed_renderer_is_not_the_summary_renderer() {
+        let result = IncrementalCoverageResult {
+            total_files: 3,
+            covered_files: 1,
+            coverage_percentage: Some(50.0),
+            files_above_threshold: 0,
+            files_below_threshold: 1,
+            files_not_measured: 2,
+            changed_files: vec![],
+            summary: "3 changed files".to_string(),
+        };
+        assert_ne!(
+            format_summary(&result, 10),
+            format_detailed(&result, 10),
+            "if these agreed, --detailed would still change nothing"
+        );
+    }
+}
