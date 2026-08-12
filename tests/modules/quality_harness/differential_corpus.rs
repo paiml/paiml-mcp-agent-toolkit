@@ -134,6 +134,77 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "categories[].len",
         "5 categories by specification",
     ),
+    // The corpus cannot reach an F. `src/awful.rs` — 399 lines, ~300 branches,
+    // four levels of nesting, three SATD markers — grades 76.6/B. That TDG
+    // sensitivity is worth investigating on its own, but until an F-grade
+    // input exists these two leaves are truthfully constant rather than
+    // unmeasured. `tdg check-quality` still fails on this corpus, via
+    // MinimumGradeGate.
+    (
+        "analyze tdg",
+        "f_grade_count",
+        "corpus has no F-grade file; its worst (awful.rs, 399 lines) grades B",
+    ),
+    (
+        "analyze tdg",
+        "grade_capped",
+        "grade capping only triggers on an F, which the corpus cannot produce",
+    ),
+    (
+        "analyze build-tdg",
+        "f_grade_count",
+        "same corpus limitation as `analyze tdg`",
+    ),
+    (
+        "analyze build-tdg",
+        "grade_capped",
+        "same corpus limitation as `analyze tdg`",
+    ),
+    (
+        "tdg check-quality",
+        "f_grade_gate.passed",
+        "no F-grade input; the overall gate does fail here, via MinimumGradeGate",
+    ),
+    (
+        "tdg check-quality",
+        "f_grade_gate.violations[].len",
+        "no F-grade input to populate it",
+    ),
+    (
+        "analyze defects",
+        "summary.by_severity.high",
+        "every defect rule emits Critical; high/medium/low are unreachable by construction",
+    ),
+    (
+        "analyze defects",
+        "summary.by_severity.medium",
+        "every defect rule emits Critical",
+    ),
+    (
+        "analyze defects",
+        "summary.by_severity.low",
+        "every defect rule emits Critical",
+    ),
+    (
+        "analyze big-o",
+        "distribution.O(2^n)",
+        "corpus contains no exponential algorithms",
+    ),
+    (
+        "analyze big-o",
+        "distribution.O(log n)",
+        "corpus contains no logarithmic algorithms",
+    ),
+    (
+        "analyze big-o",
+        "distribution.O(n log n)",
+        "corpus contains no linearithmic algorithms",
+    ),
+    (
+        "analyze big-o",
+        "distribution.O(?)",
+        "the unclassifiable bucket stays empty because every fixture function is classifiable",
+    ),
 ];
 
 #[derive(Debug, Clone, PartialEq)]

@@ -122,8 +122,12 @@ fn numeric_probe_values(long: &str) -> Option<(&'static str, &'static str)> {
         "workers",
         "parallel",
     ];
+    // The two values must *straddle* the corpus, not merely differ. Probing
+    // `--min-dead-lines` with 1 and 5 reported a no-op because every dead
+    // region in the fixture is ~13 lines, so both values admitted everything
+    // and the output was identical.
     if COUNTS.iter().any(|k| n.contains(k)) {
-        return Some(("1", "5"));
+        return Some(("1", "50"));
     }
     None
 }
@@ -134,6 +138,15 @@ enum Verdict {
     Effective,
     /// The flag parsed and changed nothing. A defect.
     NoOp,
+    /// The flag is unimplemented and says so, refusing rather than pretending.
+    ///
+    /// This satisfies the invariant and is the *desired* outcome for a feature
+    /// that does not exist yet: the whole point of the gate is that a flag must
+    /// not silently do nothing, and exiting non-zero with "--ml is not
+    /// implemented ... this flag would relabel them without changing them" is
+    /// the honest alternative. Classifying it as a failure penalised precisely
+    /// the fix that earlier rounds landed.
+    Refuses,
     /// The flag turned a working command into a failing one.
     Errors { code: Option<i32> },
     /// Not checkable; the reason is reported.
@@ -186,8 +199,21 @@ fn baseline_unusable(o: &super::Observable) -> Option<String> {
     if all.contains("required arguments were not provided")
         || all.contains("requires a value")
         || all.contains("the following required")
+        // Hand-written argument checks that clap never sees. `pmat split`
+        // prints "FILE argument is required unless --auto is used" and exits 1;
+        // without this the baseline looks usable and every flag under it gets
+        // blamed for the pre-existing failure.
+        || all.contains("argument is required")
+        || all.contains("is required unless")
     {
         return Some("needs positional arguments".into());
+    }
+    // A panicking baseline emits the same panic text no matter which flag is
+    // added, so every flag under it compares equal and is booked as a no-op.
+    // `pmat query` with no search term panics at query_execution.rs:76 and
+    // took all 28 of its flags down with it.
+    if all.contains("panicked at") || o.code == Some(101) {
+        return Some("baseline panics; no usable control".into());
     }
     if all.contains("NOT AVAILABLE") || all.contains("NOT IMPLEMENTED") {
         return Some("not built in this configuration".into());
@@ -195,10 +221,17 @@ fn baseline_unusable(o: &super::Observable) -> Option<String> {
     None
 }
 
-fn check_flag(path: &[String], flag: &HelpFlag, baseline_key: &str, cwd: &Path) -> Verdict {
+fn check_flag(
+    path: &[String],
+    flag: &HelpFlag,
+    baseline: &super::Observable,
+    cwd: &Path,
+) -> Verdict {
     if DENY_FLAGS.contains(&flag.long.as_str()) {
         return Verdict::Skipped("mutating flag".into());
     }
+    let baseline_key = baseline.key();
+    let baseline_key = baseline_key.as_str();
     let refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
 
     // Enumerated values: two legal values must not agree.
@@ -265,13 +298,32 @@ fn check_flag(path: &[String], flag: &HelpFlag, baseline_key: &str, cwd: &Path) 
         return Verdict::NoOp;
     }
     // Output differs only because the flag broke the command.
-    if !o.succeeded()
+    //
+    // The baseline's own exit code is the control. Without it, a command that
+    // already fails for its own reasons (`pmat split` without a FILE) blames
+    // every flag it carries — twenty such false "errors out" verdicts in one
+    // sweep, all of them the command's pre-existing state.
+    if baseline.succeeded()
+        && !o.succeeded()
         && (o.stderr.contains("error:") || o.stderr.contains("Error:"))
         && o.stdout.trim().is_empty()
     {
-        return Verdict::Errors { code: o.code };
+        return if is_honest_refusal(&o.stderr) {
+            Verdict::Refuses
+        } else {
+            Verdict::Errors { code: o.code }
+        };
     }
     Verdict::Effective
+}
+
+/// Does the failure say the flag is deliberately unimplemented?
+fn is_honest_refusal(stderr: &str) -> bool {
+    let s = stderr.to_lowercase();
+    s.contains("not implemented")
+        || s.contains("does not implement")
+        || s.contains("would be accepted and ignored")
+        || s.contains("no longer supported")
 }
 
 #[test]
@@ -344,10 +396,8 @@ fn flag_efficacy_sweep() {
             });
             continue;
         }
-        let baseline_key = b1.key();
-
         for flag in &flags {
-            let verdict = check_flag(path, flag, &baseline_key, cwd);
+            let verdict = check_flag(path, flag, &b1, cwd);
             findings.push(Finding {
                 path: path_str.clone(),
                 flag: flag.long.clone(),
@@ -393,6 +443,10 @@ fn flag_efficacy_sweep() {
         .iter()
         .filter(|f| f.verdict == Verdict::Effective)
         .count();
+    let refuses: Vec<&Finding> = findings
+        .iter()
+        .filter(|f| f.verdict == Verdict::Refuses)
+        .collect();
     let skipped: Vec<&Finding> = findings
         .iter()
         .filter(|f| matches!(f.verdict, Verdict::Skipped(_)))
@@ -400,7 +454,8 @@ fn flag_efficacy_sweep() {
 
     let _ = writeln!(
         report,
-        "\nsummary: {effective} effective, {} no-op, {} error-out, {} skipped",
+        "\nsummary: {effective} effective, {} refuses-honestly, {} no-op, {} error-out, {} skipped",
+        refuses.len(),
         noops.len(),
         errors.len(),
         skipped.len()
@@ -408,6 +463,13 @@ fn flag_efficacy_sweep() {
 
     let _ = writeln!(report, "\n--- NO-OP (flag parses, changes nothing) ---");
     for f in &noops {
+        let _ = writeln!(report, "  pmat {} {}", f.path, f.flag);
+    }
+    let _ = writeln!(
+        report,
+        "\n--- REFUSES HONESTLY (unimplemented, and says so — this is a pass) ---"
+    );
+    for f in &refuses {
         let _ = writeln!(report, "  pmat {} {}", f.path, f.flag);
     }
     let _ = writeln!(
@@ -432,7 +494,7 @@ fn flag_efficacy_sweep() {
 
     // Skipping is legitimate per flag; skipping *everything* means the sweep
     // proved nothing, and must not be reported as a pass.
-    let actually_checked = effective + noops.len() + errors.len();
+    let actually_checked = effective + noops.len() + errors.len() + refuses.len();
     assert!(
         actually_checked >= 20,
         "only {actually_checked} flag(s) were actually exercised out of {} \
@@ -479,7 +541,7 @@ fn noop_detection_is_load_bearing() {
         values: None,
         takes_free_value: false,
     };
-    let verdict = check_flag(&path, &synthetic, &baseline.key(), cwd);
+    let verdict = check_flag(&path, &synthetic, &baseline, cwd);
     assert_eq!(
         verdict,
         Verdict::NoOp,
@@ -535,6 +597,75 @@ Options:
         pp.takes_free_value,
         "an unenumerated value option must be skipped, not guessed at"
     );
+}
+
+/// A baseline that cannot run is not a control, and every flag under it must
+/// be skipped rather than blamed.
+#[test]
+fn unusable_baselines_are_skipped_not_blamed() {
+    let panicking = super::Observable {
+        code: Some(101),
+        stdout: String::new(),
+        stderr:
+            "thread 'main' panicked at src/cli/handlers/query_handler/query_execution.rs:76:5:\n\
+                 query string required unless --coverage-gaps or --extract-candidates"
+                .into(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&panicking).is_some(),
+        "a panicking baseline emits identical text for every flag, so all 28 \
+         `pmat query` flags compared equal and were booked as no-ops"
+    );
+
+    let missing_arg = super::Observable {
+        code: Some(1),
+        stdout: String::new(),
+        stderr: "Error: FILE argument is required unless --auto is used.".into(),
+        timed_out: false,
+    };
+    assert!(baseline_unusable(&missing_arg).is_some());
+
+    let healthy = super::Observable {
+        code: Some(0),
+        stdout: "{\"score\": 1.0}".into(),
+        stderr: String::new(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&healthy).is_none(),
+        "a working command must remain a usable control"
+    );
+}
+
+/// A flag that refuses because it is unimplemented satisfies the invariant.
+///
+/// pmat exits non-zero with, e.g., "--ml is not implemented: complexity scores
+/// are still computed by the heuristic formulas, so this flag would relabel
+/// them without changing them". That is the fix an earlier round landed for
+/// exactly this defect class, and the gate must not report it as a failure.
+#[test]
+fn honest_refusal_is_a_pass_not_a_failure() {
+    for stderr in [
+        "Error: --ml is not implemented: complexity scores are still computed by the heuristic formulas",
+        "Error: analyze deep-context does not implement --full; the flag(s) would be accepted and ignored",
+        "Error: --evolution is not implemented for `analyze satd`",
+    ] {
+        assert!(
+            is_honest_refusal(stderr),
+            "a stated refusal must be recognised, not booked as a broken command: {stderr}"
+        );
+    }
+    for stderr in [
+        "Error: FILE argument is required unless --auto is used.",
+        "error: failed to parse manifest",
+        "Error: connection refused",
+    ] {
+        assert!(
+            !is_honest_refusal(stderr),
+            "a genuine failure must not be excused as a refusal: {stderr}"
+        );
+    }
 }
 
 /// Materialise a corpus on disk for manual reproduction of a sweep finding.
@@ -701,6 +832,24 @@ fn large_corpus_contains_every_defect_family() {
     assert!(
         files > 100,
         "large corpus should be large, got {files} files"
+    );
+
+    // A metric can only be checked across a range the corpus spans. Without
+    // nested loops `analyze big-o` truthfully reports an empty O(n^2) bucket;
+    // without a pathological file `f_grade_count` is truthfully zero and the
+    // F-grade gate truthfully passes. Both read as defects to a differential
+    // check that never supplied the input needed to tell them apart.
+    let sup = read("src/superlinear_00.rs");
+    assert!(
+        sup.matches("for ").count() >= 5,
+        "corpus must contain genuinely superlinear code, not the sequential \
+         loops the complex_* family emits"
+    );
+    let awful = read("src/awful.rs");
+    assert!(
+        awful.matches("if ").count() > 50 && awful.contains("TODO"),
+        "corpus must contain one pathological file to populate the bad tail of \
+         the grade distribution"
     );
 
     // Commits must fall inside the default analysis windows (churn: 30 days,

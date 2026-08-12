@@ -154,9 +154,13 @@ pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
     let mut cmd = Command::new(pmat_bin());
     cmd.args(args)
         .current_dir(cwd)
-        // Deterministic output: no colour unless a flag asks, no
-        // parallelism-dependent ordering, no user config bleeding in.
-        .env("NO_COLOR", "1")
+        // Deterministic output without suppressing anything a flag controls.
+        //
+        // `NO_COLOR=1` was set here originally and made every `--color` flag
+        // look like a no-op: ~40 false positives in one sweep, because
+        // `--color always` and `--color auto` both correctly produce no colour
+        // when NO_COLOR is in force. Determinism comes from stdout being a
+        // pipe rather than a tty, which is already true here.
         .env("PMAT_NO_UPDATE_CHECK", "1")
         .env("RAYON_NUM_THREADS", "2")
         .env_remove("PMAT_CONFIG")
@@ -450,6 +454,38 @@ fn write_large_corpus(root: &Path) {
         ));
         write_module(root, &name, &body, &mut modules);
     }
+
+    // Superlinear complexity, for algorithmic-complexity detectors.
+    //
+    // The `complex_*` family above has *sequential* loops inside separate
+    // branches, which is genuinely O(n) — `analyze big-o` classifying it that
+    // way is correct, and treating its empty O(n^2) bucket as a defect was a
+    // fixture gap. A metric can only be checked across a range the corpus
+    // actually spans.
+    for i in 0..6 {
+        let name = format!("superlinear_{i:02}");
+        let body = format!(
+            "/// Quadratic scan.\npub fn pairwise_{i:02}(items: &[i64]) -> i64 {{\n    let mut acc = 0i64;\n    for a in items {{\n        for b in items {{\n            acc += a * b;\n        }}\n    }}\n    acc\n}}\n\n/// Cubic scan.\npub fn triple_{i:02}(items: &[i64]) -> i64 {{\n    let mut acc = 0i64;\n    for a in items {{\n        for b in items {{\n            for c in items {{\n                acc += a + b + c;\n            }}\n        }}\n    }}\n    acc\n}}\n"
+        );
+        write_module(root, &name, &body, &mut modules);
+    }
+
+    // One genuinely awful file, so the grade-distribution tail is populated.
+    //
+    // Without it the worst file in the corpus grades C+, `f_grade_count` is
+    // truthfully zero, and the F-grade gate truthfully passes — both of which
+    // read as defects to a differential check that never supplied an F-grade
+    // input to distinguish them from.
+    let mut awful = String::from(
+        "// TODO: rewrite this entire module\n// FIXME: known to be wrong for negative input\n// HACK: retained only for backwards compatibility\n\n/// Pathological.\npub fn tangle(a: i64, b: i64, c: i64, d: i64, mode: u8) -> i64 {\n    let mut acc = 0i64;\n",
+    );
+    for i in 0..30 {
+        awful.push_str(&format!(
+            "    if a > {i} {{\n        if b < {i} {{\n            for x in 0..a {{\n                for y in 0..b {{\n                    match (x + y) % 3 {{\n                        0 if c > {i} => acc += x * y,\n                        1 if d < {i} => acc -= x,\n                        _ => acc ^= y,\n                    }}\n                }}\n            }}\n        }} else if mode == {i} {{\n            acc = acc.wrapping_mul(2);\n        }}\n    }}\n"
+        ));
+    }
+    awful.push_str("    acc\n}\n");
+    write_module(root, "awful", &awful, &mut modules);
 
     // A long function, for length-based checks.
     let mut long = String::from(

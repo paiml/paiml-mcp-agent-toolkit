@@ -50,8 +50,9 @@ defects were in the 3.29.0 sweep.
 Enumerated options are checked by pitting two legal values against each other
 (`--format json` vs `--format summary`) rather than by presence.
 
-Verdicts are `Effective`, `NoOp`, `Errors` (the flag breaks a working command),
-and `Skipped` with a reason. **Skips are printed, never counted as passes.**
+Verdicts are `Effective`, `Refuses` (unimplemented and says so — a pass),
+`NoOp`, `Errors` (the flag breaks a working command), and `Skipped` with a
+reason. **Skips are printed, never counted as passes.**
 
 ## Gate A — differential corpus
 
@@ -61,11 +62,12 @@ for every numeric leaf L in a command's JSON output:
 ```
 
 Three corpora are generated: an empty-but-valid project, a one-function
-project, and a 107-file project carrying every defect family pmat claims to
-detect (complexity, SATD, fault patterns, duplication, dead code, long
-functions). All three are real git repositories with pinned author and
-committer dates — several defects only appear outside a repository, and
-unpinned dates make churn metrics irreproducible.
+project, and a 114-file project carrying every defect family pmat claims to
+detect (complexity, SATD, fault patterns, duplication, dead code, superlinear
+algorithms, long functions, one deliberately pathological file), with repo
+hygiene graduated alongside the code. All three are real git repositories,
+committed with hooks disarmed and with dates computed *relative to now* so
+every commit falls inside the default analysis windows.
 
 Array *lengths* count as leaves. A `files[]` of identical length for an empty
 and a large project is the same defect wearing a different hat. Array
@@ -78,10 +80,15 @@ deliberately narrow — every fragment added to it shrinks what the gate proves.
 
 ## The escape hatches
 
-Each gate has exactly one: `ALLOWED_NOOPS` and `ALLOWED_CONSTANTS`. Both are
-empty at introduction. Every entry is a `(command, item, reason)` triple, and
-the reason is a claim someone must defend in review. Adding an entry is the
-only way for a violation to pass, and it is visible in the diff.
+Each gate has exactly one: `ALLOWED_NOOPS` and `ALLOWED_CONSTANTS`, plus
+`NON_MEASURING` for commands that do not measure the project at all. Every
+entry is a `(command, item, reason)` triple, and the reason is a claim someone
+must defend in review. Adding an entry is the only way for a violation to
+pass, and it is visible in the diff.
+
+`ALLOWED_NOOPS` is empty. `ALLOWED_CONSTANTS` holds only leaves the corpus
+provably cannot vary — a fixed checklist's length, buckets no fixture input
+belongs in — each naming the corpus limitation rather than excusing pmat.
 
 ## Running them
 
@@ -125,9 +132,9 @@ The countermeasures, all of which run in the normal (non-ignored) suite:
 ## Fixture artifacts: the failure mode to expect
 
 A differential gate reports "this number did not respond to the input". That
-conclusion is only as good as the input. During bring-up, **six of the first
-findings were faults in the fixture, not in pmat** — each looked exactly like a
-real defect until it was reproduced by hand.
+conclusion is only as good as the input. During bring-up, **eight of Gate A's
+first findings were faults in the fixture, not in pmat** — each looked exactly
+like a real defect until it was reproduced by hand.
 
 | Symptom | Actual cause |
 |---|---|
@@ -137,6 +144,29 @@ real defect until it was reproduced by hand.
 | `analyze dead-code` reports zero on *long* dead files | the harness ran under `cargo test`, so the nested `cargo check` that dead-code shells out to inherited the parent jobserver and produced no diagnostics |
 | `repo-score` constant across all corpora | all three corpora shipped an identical README and Cargo.toml, so repo-hygiene scoring had no axis to vary along |
 | `analyze defects` reports `high/medium/low = 0` | truthful — every defect rule emits `critical`, and `critical` did vary |
+| `analyze big-o` reports an empty `O(n^2)` bucket | truthful — the "branch-heavy" fixture functions have *sequential* loops in separate branches, which really is O(n) |
+| `analyze tdg` reports `f_grade_count: 0` and the F-grade gate passes | truthful — the worst file in the corpus graded C+, so there was no F to count. The overall gate did fail, via `MinimumGradeGate` |
+
+The last two share a root cause worth stating separately: **a differential
+check can only interrogate the range its corpus spans.** A bucket that is
+empty because nothing in the fixture belongs in it is not a defect. The corpus
+now carries nested-loop functions and one deliberately pathological file so
+those tails are populated.
+
+Gate B produced its own five:
+
+| Symptom | Actual cause |
+|---|---|
+| ~40 `--color` flags reported as no-ops | the harness set `NO_COLOR=1` for determinism, under which `--color always` and `--color auto` correctly produce identical output. Determinism already came from stdout being a pipe |
+| `--min-dead-lines`, `--top-files` reported as no-ops | the probe values (1 and 5) did not *straddle* the corpus — every dead region is ~13 lines, so both admitted everything. Probes are now 1 and 50 |
+| 20 flags reported as "breaks a working command" | the command was already broken. `pmat split` exits 1 with "FILE argument is required" before any flag is added; the verdict never consulted the baseline's exit code, so every flag inherited the blame |
+| all 28 `pmat query --*` flags reported as no-ops | the baseline panics without a search term, emitting identical text whichever flag is added. With a real query, `--faults` plainly works (7396B vs 6996B) |
+| 3 flags reported as "breaks a working command" | they *refuse honestly* — `--ml is not implemented: ... this flag would relabel them without changing them`. That is the desired behaviour for an unimplemented feature and now scores as a pass |
+
+The general rule behind all three: **a differential verdict is only as good as
+its control.** Suppressing the thing under test in the environment, probing
+with values that cannot discriminate, and omitting the baseline from the
+comparison each produce confident, wrong findings.
 
 The countermeasures are in the harness: hooks disarmed via `core.hooksPath`
 plus `--no-verify`, commit dates computed relative to now, dead regions sized
@@ -156,6 +186,49 @@ Two structural guards make a recurrence visible rather than silent:
 **Triage rule: reproduce every finding by hand against a dumped corpus before
 filing it.** Use `PMAT_CORPUS_OUT=/tmp/corpus PMAT_CORPUS_SIZE=large cargo test
 --test all -- --ignored dump_corpus --nocapture`.
+
+## Verified findings at introduction
+
+Reproduced by hand against a dumped corpus. Everything else the sweeps
+reported is untriaged and is not claimed as a defect.
+
+1. **`comply report` output is byte-identical** for an empty project and a
+   114-file defect-rich one — only the timestamp differs. It also reports
+   `project_version: 3.30.0` (pmat's version) for a project whose Cargo.toml
+   says `0.1.0`, and returns `is_compliant: true` with three checks in `Warn`.
+2. **`analyze entropy` extracts zero patterns** from 107 files including 20
+   byte-identical pairs, so every entropy metric is permanently `null`. Note
+   the #650 fix is working correctly here: it reports "not measured" rather
+   than claiming zero diversity. The defect is upstream, in the extractor.
+3. **`analyze duplicates.structural_similarities` is always 0**, while the
+   hash-based detector in the same invocation finds 162 clones and 85%
+   duplication.
+4. **`score sub_scores.{coverage,dbc,evoscore,pv_lint} = 50`** — hardcoded
+   fallbacks at `score_handler_compute.rs:18,37,54` for dimensions that were
+   never measured, folded into a composite as if they had been. This is the
+   same class as the 51 fabricated values in 3.29.0.
+5. **`--quiet` is inert** on `analyze complexity` — 1644 bytes with and
+   without.
+6. **TDG sensitivity**: `src/awful.rs` in the corpus — 399 lines, ~300
+   branches, four levels of nesting, three SATD markers — grades **76.6/B**.
+   For a technical-debt grader that is worth investigating; it is also why the
+   corpus cannot produce an F-grade input.
+7. **`pmat query` with no search term panics** rather than reporting a usage
+   error: `thread 'main' panicked at query_handler/query_execution.rs:76` with
+   exit 101. A missing required argument should be a clean clap error.
+
+Three things pmat does *right* that the gate initially mistook for defects,
+recorded because they are the behaviour to preserve:
+
+- `analyze complexity --ml`, `analyze satd --evolution` and
+  `analyze deep-context --full` **refuse and say why** ("this flag would
+  relabel them without changing them", "the flag(s) would be accepted and
+  ignored"). That is the fix for this exact defect class, and the gate now
+  scores it as a pass via the `Refuses` verdict.
+- `analyze entropy` reports `null` for unmeasurable metrics instead of
+  claiming zero diversity (#650).
+- `tdg check-quality` fails correctly on the defect-rich corpus, via
+  `MinimumGradeGate`.
 
 ## What these gates do not cover
 
