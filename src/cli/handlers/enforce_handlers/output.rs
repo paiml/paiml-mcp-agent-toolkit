@@ -108,56 +108,66 @@ pub fn output_result(
             ));
         }
         EnforceOutputFormat::Sarif => {
-            // Generate SARIF output
-            let sarif = serde_json::json!({
-                "version": "2.1.0",
-                "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-                "runs": [{
-                    "tool": {
-                        "driver": {
-                            "name": "pmat-enforce-extreme",
-                            "version": env!("CARGO_PKG_VERSION"),
-                            "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
-                        }
-                    },
-                    "results": result.violations.iter().map(|v| {
-                        serde_json::json!({
-                            "ruleId": format!("quality.{}", v.violation_type),
-                            // A `not_measured` disclosure carries severity
-                            // "error" and used to fall into the `_` arm, so the
-                            // gap a run could not measure was published to a
-                            // SARIF consumer as a "note" — the quietest level
-                            // there is. An unknown severity is not evidence of
-                            // harmlessness either, so it no longer decays to
-                            // "note" on the way out.
-                            "level": match v.severity.as_str() {
-                                "error" | "high" => "error",
-                                "warning" | "medium" => "warning",
-                                "note" | "low" => "note",
-                                _ => "warning"
-                            },
-                            "message": {
-                                "text": format!("{} (current: {:.1}, target: {:.1})",
-                                    v.suggestion, v.current, v.target)
-                            },
-                            "locations": [{
-                                "physicalLocation": {
-                                    "artifactLocation": {
-                                        "uri": v.location.split(':').next().unwrap_or(&v.location)
-                                    },
-                                    "region": {
-                                        "startLine": parse_line_num(&v.location)
-                                    }
-                                }
-                            }]
-                        })
-                    }).collect::<Vec<_>>()
-                }]
-            });
-            text.push_str(&serde_json::to_string_pretty(&sarif)?);
+            text.push_str(&serde_json::to_string_pretty(&sarif_document(
+                &result.violations,
+            ))?);
         }
     }
     emit_report(&text, output)
+}
+
+/// The SARIF 2.1.0 document for one run's violations.
+///
+/// There is one builder because there is one document: `--format sarif` emitted
+/// real SARIF from the state machine while `--list-violations --format sarif`
+/// fell through to the plain-text listing, so the same flag on the same run
+/// produced a report a SARIF consumer could read on one surface and could not
+/// parse at all on the other.
+fn sarif_document(violations: &[QualityViolation]) -> serde_json::Value {
+    serde_json::json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "pmat-enforce-extreme",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit"
+                }
+            },
+            "results": violations.iter().map(|v| {
+                serde_json::json!({
+                    "ruleId": format!("quality.{}", v.violation_type),
+                    // A `not_measured` disclosure carries severity "error" and
+                    // used to fall into the `_` arm, so the gap a run could not
+                    // measure was published to a SARIF consumer as a "note" —
+                    // the quietest level there is. An unknown severity is not
+                    // evidence of harmlessness either, so it no longer decays
+                    // to "note" on the way out.
+                    "level": match v.severity.as_str() {
+                        "error" | "high" => "error",
+                        "warning" | "medium" => "warning",
+                        "note" | "low" => "note",
+                        _ => "warning"
+                    },
+                    "message": {
+                        "text": format!("{} (current: {:.1}, target: {:.1})",
+                            v.suggestion, v.current, v.target)
+                    },
+                    "locations": [{
+                        "physicalLocation": {
+                            "artifactLocation": {
+                                "uri": v.location.split(':').next().unwrap_or(&v.location)
+                            },
+                            "region": {
+                                "startLine": parse_line_num(&v.location)
+                            }
+                        }
+                    }]
+                })
+            }).collect::<Vec<_>>()
+        }]
+    })
 }
 
 /// Render the visual progress bar.
@@ -263,6 +273,15 @@ pub fn format_violations_output(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<String> {
+    // `--format sarif` used to reach this function and fall out of the `else`
+    // into the human-readable listing, so `--list-violations --format sarif`
+    // handed a SARIF consumer a block of ANSI-coloured prose and exit 0 while
+    // `--format sarif` on the same run produced a real document. One format
+    // flag, one document.
+    if format == EnforceOutputFormat::Sarif {
+        return Ok(serde_json::to_string_pretty(&sarif_document(violations))?);
+    }
+
     if format == EnforceOutputFormat::Json {
         // `by_severity` and `by_type` used to be hardcoded three-key maps
         // (high/medium/low, complexity/satd/tdg), so a `not_measured` disclosure

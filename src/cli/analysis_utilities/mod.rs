@@ -35,6 +35,14 @@ include!("proof_coverage.rs");
 // Churn handlers - extracted for file health (CB-040)
 include!("churn.rs");
 
+// THE pass/fail rule, one implementation, called by every gate surface.
+include!("quality_gate_verdict.rs");
+
+// CLI-vs-MCP verdict parity + the single SATD severity scale.
+#[cfg(test)]
+#[path = "quality_gate_verdict_parity_tests.rs"]
+mod quality_gate_verdict_parity_tests;
+
 // Quality gate handlers - split for file health (CB-040)
 include!("quality_gate_satd.rs");
 include!("quality_gate_entry.rs");

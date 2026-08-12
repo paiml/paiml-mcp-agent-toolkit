@@ -333,7 +333,7 @@
         writeln!(file, "fn helper_function() {{ println!(\"Helper\"); }}").unwrap();
 
         // Test individual check functions
-        let satd_violations = check_single_file_satd(project_path, &test_file)
+        let satd_violations = check_satd_file(project_path, &test_file)
             .await
             .unwrap();
         assert!(!satd_violations.is_empty(), "Expected SATD violations");

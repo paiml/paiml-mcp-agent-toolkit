@@ -16,6 +16,14 @@ fn format_qg_as_summary(
         "Total violations: {}",
         results.total_violations
     )?;
+    // The count that decided PASSED/FAILED above. Advisory (`info`) findings are
+    // listed below but are not verdict-bearing, so "PASSED" over
+    // "Total violations: 1" needs this line to be readable.
+    writeln!(
+        &mut output,
+        "Blocking violations: {}",
+        results.blocking_violations
+    )?;
 
     // Show violation summary by type
     if !violations.is_empty() {
@@ -86,7 +94,13 @@ fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -
             "\u{274c} FAILED"
         }
     )?;
-    writeln!(output, "Total violations: {}\n", results.total_violations)?;
+    writeln!(output, "Total violations: {}", results.total_violations)?;
+    // The subset that decided the status above; `info` findings are advisory.
+    writeln!(
+        output,
+        "Blocking violations: {}\n",
+        results.blocking_violations
+    )?;
     Ok(())
 }
 

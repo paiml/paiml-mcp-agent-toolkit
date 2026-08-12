@@ -4,6 +4,13 @@
 pub struct QualityGateResults {
     pub passed: bool,
     pub total_violations: usize,
+    /// How many of `total_violations` actually decided `passed`.
+    ///
+    /// Advisory (`severity:"info"`) findings are reported but never
+    /// verdict-bearing, so `passed:true` can sit beside a non-empty list. The
+    /// count that DID decide is stated here rather than left to be inferred —
+    /// the same field, with the same meaning, the MCP `quality_gate` tool emits.
+    pub blocking_violations: usize,
     pub complexity_violations: usize,
     pub dead_code_violations: usize,
     pub satd_violations: usize,
@@ -51,6 +58,7 @@ impl QualityGateResults {
         self.section_violations = violations.iter().filter(|v| v.check_type == "sections").count();
         self.provability_violations = violations.iter().filter(|v| v.check_type == "provability").count();
         self.total_violations = violations.len();
+        self.blocking_violations = blocking_violation_count(violations);
         self.set_violation_lines(violations);
     }
 }
@@ -60,6 +68,7 @@ impl Default for QualityGateResults {
         Self {
             passed: true, // Default to passed when no violations
             total_violations: 0,
+            blocking_violations: 0,
             complexity_violations: 0,
             dead_code_violations: 0,
             satd_violations: 0,

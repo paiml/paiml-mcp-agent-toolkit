@@ -8,6 +8,7 @@ mod quality_checks_part3_tests {
         QualityGateResults {
             passed,
             total_violations: total,
+            blocking_violations: total,
             complexity_violations: 2,
             dead_code_violations: 1,
             satd_violations: 3,

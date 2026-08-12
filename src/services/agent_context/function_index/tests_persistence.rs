@@ -170,6 +170,93 @@ fn test_load_rejects_index_written_under_old_tdg_scale() {
     );
 }
 
+/// R30 (residual): rejecting a stale-scale index must DISCARD it, not merely
+/// report it — otherwise recovery depends on which caller you are.
+///
+/// The SQLite branch used to delete only its own `.db` and leave `manifest.json`
+/// behind. `pmat query` catches the error and rebuilds, so it self-healed; MCP's
+/// `IndexManager` propagates the error, so `pmat_query_code` / `pmat_index_stats`
+/// answered `-32603 … rebuild required` on every default call, forever. With the
+/// whole stale index gone, `index_path.exists()` is false and every caller takes
+/// its ordinary "no index yet" build path.
+#[test]
+fn test_stale_scale_rejection_discards_the_whole_index() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(project_path.join("src/lib.rs"), "fn zeta() {}\n").unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+    let db_path = index_path.with_extension("db");
+
+    // Downgrade both artifacts exactly as a pre-v3.30.0 build left them.
+    {
+        let conn = super::sqlite_backend::open_db(&db_path).unwrap();
+        conn.execute("DELETE FROM metadata WHERE key = 'tdg_scale'", [])
+            .unwrap();
+        conn.execute("UPDATE functions SET tdg_score = 0.12, tdg_grade = 'A'", [])
+            .unwrap();
+    }
+    let manifest_path = index_path.join("manifest.json");
+    let raw = std::fs::read_to_string(&manifest_path).unwrap();
+    let mut manifest: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    manifest.as_object_mut().unwrap().remove("tdg_scale");
+    std::fs::write(&manifest_path, manifest.to_string()).unwrap();
+
+    let first = AgentContextIndex::load(&index_path);
+    assert!(first.is_err(), "a stale-scale index must be rejected");
+    assert!(!db_path.exists(), "stale .db must be discarded");
+    assert!(
+        !index_path.exists(),
+        "stale index directory must be discarded so the next load rebuilds; \
+         leaving manifest.json behind is what made MCP fail forever"
+    );
+
+    // The second load must NOT repeat "rebuild required": there is nothing left
+    // to reject, so callers that only check `exists()` now build from scratch.
+    let err = match AgentContextIndex::load(&index_path) {
+        Err(e) => e,
+        Ok(idx) => panic!(
+            "no index on disk, yet load returned {} functions",
+            idx.functions.len()
+        ),
+    };
+    assert!(
+        !err.contains("rebuild required"),
+        "stale-scale error must not survive the discard, got: {err}"
+    );
+}
+
+/// R30 (residual): the blob branch discards too. A pre-v3.30.0 index whose
+/// `.db` was already removed left `manifest.json` in place forever.
+#[test]
+fn test_stale_manifest_rejection_discards_index_dir() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let index_path = temp_dir.path().join("idx");
+    std::fs::create_dir_all(&index_path).unwrap();
+    std::fs::write(
+        index_path.join("manifest.json"),
+        r#"{"version":"1.4.0","built_at":"x","project_root":".","function_count":0,
+            "file_count":0,"languages":[],"avg_tdg_score":0.12}"#,
+    )
+    .unwrap();
+
+    let err = match AgentContextIndex::load(&index_path) {
+        Err(e) => e,
+        Ok(idx) => panic!(
+            "unmarked manifest must be rejected, loaded {} functions",
+            idx.functions.len()
+        ),
+    };
+    assert!(err.contains("rebuild required"), "got: {err}");
+    assert!(
+        !index_path.exists(),
+        "stale index directory must be discarded"
+    );
+}
+
 /// R30: a blob manifest with no `tdg_scale` key is stale by definition.
 #[test]
 fn test_load_from_blob_rejects_unmarked_manifest() {

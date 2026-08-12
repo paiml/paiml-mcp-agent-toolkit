@@ -65,8 +65,8 @@ pub(crate) use function_index::sqlite_backend::persist_entropy_violations;
 pub(crate) use function_index::sqlite_backend::persist_provability_scores;
 pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use function_index::{
-    AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
-    TDG_SCALE,
+    verify_db_scale, AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats,
+    QualityMetrics, TDG_SCALE,
 };
 pub use query::coverage_exclusion::{classify_exclusions, CoverageExclusion, ExclusionSummary};
 pub use query::ptx_diagnostics::{

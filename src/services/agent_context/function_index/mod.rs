@@ -5,9 +5,11 @@
 
 mod build;
 pub(crate) mod helpers;
+pub(crate) mod scale_guard;
 pub(crate) mod sqlite_backend;
 mod types;
 
+pub use scale_guard::verify_db_scale;
 pub(crate) use types::DefinitionType;
 pub use types::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,

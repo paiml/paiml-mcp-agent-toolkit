@@ -26,6 +26,10 @@ fn main() {
     let results = QualityGateResults {
         passed: false,
         total_violations: 5,
+        // Of the 5 findings, 4 are verdict-bearing (warning/error) and one is
+        // advisory (info). `passed` follows this count, not total_violations —
+        // an informational finding must not decide a gate verdict.
+        blocking_violations: 4,
         complexity_violations: 2,
         dead_code_violations: 1,
         satd_violations: 1,

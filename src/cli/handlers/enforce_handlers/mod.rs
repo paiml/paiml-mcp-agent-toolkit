@@ -38,10 +38,14 @@ pub use output::{
 };
 pub use states::{
     handle_analyzing_enforcement_state, handle_analyzing_state, handle_complete_enforcement_state,
-    handle_complete_state, handle_refactoring_enforcement_state, handle_refactoring_state,
-    handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
-    handle_violating_state,
+    handle_complete_state, handle_refactoring_pass, handle_validating_enforcement_state,
+    handle_violating_enforcement_state_proxy, handle_violating_state,
 };
+
+// The fabricating refactoring handlers no longer exist outside the test build:
+// nothing the binary can run reaches them. See `states::handle_refactoring_pass`.
+#[cfg(test)]
+pub use states::{handle_refactoring_enforcement_state, handle_refactoring_state};
 pub use types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
     EnforcementState, QualityProfile, QualityViolation,

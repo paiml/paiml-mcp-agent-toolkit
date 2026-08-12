@@ -8,6 +8,7 @@ use super::assessment::assess_project;
 use super::types::{
     EnforcementProgress, EnforcementResult, EnforcementState, QualityProfile, QualityViolation,
 };
+use crate::cli::colors as c;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -122,7 +123,66 @@ pub fn handle_violating_state(
     }
 }
 
-/// Handle refactoring state - extracted from `run_enforcement_step` (complexity: ≤10)
+/// The refactoring pass — a view of [`assess_project`], like every other state.
+///
+/// Nothing here edits the tree: `--apply-suggestions` has never had an
+/// implementation behind it. The state used to answer for one anyway, with
+/// `score: total_score + 0.1  // Assume some improvement` and
+/// `violations: vec![]  // Clear after refactoring`, which made it the third
+/// hardcoded violation list in this command. The last JSON document a
+/// `pmat enforce extreme --apply-suggestions --format json` consumer parsed
+/// therefore read `"state":"VALIDATING", "score":0.8, "violations":[]` for a
+/// directory that `--validate-only`, `--list-violations` and `--ci-mode` all
+/// reported as 0.8333 with two violations.
+///
+/// A step that changed nothing must report the measurement unchanged, and say
+/// out loud that it changed nothing.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_refactoring_pass(
+    project_path: &Path,
+    profile: &QualityProfile,
+    single_file_mode: bool,
+    dry_run: bool,
+    specific_file: Option<&PathBuf>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
+) -> Result<EnforcementResult> {
+    eprintln!(
+        "{}",
+        c::warn(
+            "--apply-suggestions: no automated refactoring is implemented, so nothing was changed"
+        )
+    );
+
+    let mut measured = handle_analyzing_state(
+        project_path,
+        profile,
+        single_file_mode,
+        dry_run,
+        specific_file,
+        include_pattern,
+        exclude_pattern,
+    )
+    .await?;
+
+    // The state field names the machine's next step; the numbers belong to the
+    // run. A pass that found the project clean does not get relabelled — the
+    // verdict is `QualityAssessment::verdict_state`'s to give, here as anywhere.
+    if measured.state != EnforcementState::Complete {
+        measured.state = EnforcementState::Validating;
+        measured.next_action = "validate_changes".to_string();
+    }
+    Ok(measured)
+}
+
+/// The fabricating refactoring handler, kept alive ONLY because five tests in
+/// three files outside this module still pin its arithmetic
+/// (`enforce_coverage_part2.rs`, `enforce_coverage_part4.rs`,
+/// `enforce_coverage_part3_state_tests.rs`). It is `#[cfg(test)]` so that no
+/// surface of the binary can reach it: the enforcement path now runs
+/// [`handle_refactoring_pass`], which reports the measurement instead of
+/// inventing one. Delete this together with those tests.
+#[cfg(test)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_refactoring_state(
     total_score: f64,
@@ -197,7 +257,9 @@ pub async fn handle_violating_enforcement_state_proxy(
     )
 }
 
-/// Handle refactoring state for enforcement - extracted from `run_enforcement_step` (complexity: ≤10)
+/// Test-only alias of the fabricating handler above; see its doc comment. The
+/// enforcement path calls [`handle_refactoring_pass`].
+#[cfg(test)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_refactoring_enforcement_state(
     base_score: f64,

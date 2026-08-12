@@ -24,7 +24,7 @@ mod schema;
 // --- Public re-exports (preserving original visibility) ---
 
 // From schema (used by build.rs and external callers)
-pub(crate) use schema::{has_valid_schema, open_db, stored_scale_is_current};
+pub(crate) use schema::{has_valid_schema, open_db};
 // Read by tests that assert what version the code under test writes, instead of
 // hard-coding the literal (which turns a deliberate bump into a red test).
 #[cfg(test)]

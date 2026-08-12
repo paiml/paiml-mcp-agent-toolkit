@@ -73,9 +73,14 @@ async fn handle_project_quality_gate(
         }
     }
 
-    // Calculate overall pass/fail
-    results.passed = violations.is_empty();
+    // Calculate overall pass/fail — THE rule, from the one place that owns it.
+    // This was `violations.is_empty()`, i.e. any finding of any severity failed
+    // the gate, while the MCP `quality_gate` tool over the SAME producer
+    // (`check_satd`) ignored `severity:"info"`. One `// TODO` in one file was
+    // `passed:false` here and `passed:true` there, with byte-identical findings.
+    results.passed = violations_pass(&violations);
     results.total_violations = violations.len();
+    results.blocking_violations = blocking_violation_count(&violations);
     // `results.violations` shipped as a permanently-empty array while
     // `results.total_violations` beside it said 3.
     results.set_violation_lines(&violations);

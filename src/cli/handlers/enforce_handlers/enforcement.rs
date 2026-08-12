@@ -8,7 +8,7 @@ use super::output::{
     print_enforcement_summary,
 };
 use super::states::{
-    handle_analyzing_state, handle_complete_state, handle_refactoring_enforcement_state,
+    handle_analyzing_state, handle_complete_state, handle_refactoring_pass,
     handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
 };
 use super::types::{
@@ -221,7 +221,13 @@ pub async fn execute_main_loop(
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
-    let mut previous: Option<(EnforcementState, f64)> = None;
+    // Every verdict this run has already produced. Comparing against the
+    // immediately preceding iteration alone was not enough: the state machine
+    // cycles Violating -> Refactoring -> Validating -> Violating, so three
+    // identical measurements wearing three different labels looked like
+    // progress and `--apply-suggestions` spun the full 100 iterations (15.8s)
+    // over a five-line crate.
+    let mut seen: Vec<(EnforcementState, f64)> = Vec::new();
 
     while should_continue_enforcement(current_state, iteration, config, start_time) {
         let loop_result = handle_enforcement_iteration(
@@ -247,25 +253,26 @@ pub async fn execute_main_loop(
             break;
         }
 
-        // Nothing in this loop edits the tree unless --apply-suggestions is on,
-        // so a project that cannot converge re-measured the same unchanged tree
-        // 100 times: `pmat enforce extreme` with no flags printed the identical
-        // three-line summary a hundred times over 11 seconds for a 13-line
-        // crate. An iteration that reproduces the previous verdict exactly has
-        // demonstrated that iterating changes nothing; say so and stop.
-        if previous.is_some_and(|(state, score)| {
-            state == loop_result.state && (score - loop_result.score).abs() < f64::EPSILON
+        // Nothing in this loop edits the tree — `--apply-suggestions` included,
+        // since no automated rewrite exists behind it — so a project that
+        // cannot converge re-measured the same unchanged tree 100 times:
+        // `pmat enforce extreme` printed the identical three-line summary a
+        // hundred times over 11 seconds for a 13-line crate. An iteration that
+        // reproduces a verdict this run has ALREADY reported has demonstrated
+        // that iterating changes nothing; say so and stop.
+        if seen.iter().any(|(state, score)| {
+            *state == loop_result.state && (score - loop_result.score).abs() < f64::EPSILON
         }) {
             eprintln!(
                 "{}",
                 c::warn(&format!(
-                    "no progress after {iteration} iterations (score unchanged at {:.2}); stopping",
-                    loop_result.score
+                    "no progress after {iteration} iterations ({:?} at {:.2} has already been reported); stopping",
+                    loop_result.state, loop_result.score
                 ))
             );
             break;
         }
-        previous = Some((loop_result.state, loop_result.score));
+        seen.push((loop_result.state, loop_result.score));
 
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
@@ -320,7 +327,21 @@ pub async fn run_enforcement_step(
             .await
         }
 
-        EnforcementState::Refactoring => handle_refactoring_enforcement_state(0.7, specific_file),
+        // The score this arm reported was the literal `0.7`, passed to a handler
+        // that added 0.1 to it and emptied the violation list. Both are gone:
+        // the refactoring pass reads the same assessment as every other state.
+        EnforcementState::Refactoring => {
+            handle_refactoring_pass(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await
+        }
 
         EnforcementState::Validating => {
             handle_validating_enforcement_state(

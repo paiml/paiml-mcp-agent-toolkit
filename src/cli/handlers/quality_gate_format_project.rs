@@ -80,9 +80,12 @@ fn format_project_summary(results: &QualityGateResults, violations: &[QualityVio
         output.push_str("## ❌ FAILED\n\n");
     }
 
+    output.push_str(&format!("Total violations: {}\n", results.total_violations));
+    // Advisory (`info`) findings are reported but do not decide the verdict, so
+    // "PASSED" above a non-empty list needs the count that DID decide next to it.
     output.push_str(&format!(
-        "Total violations: {}\n\n",
-        results.total_violations
+        "Blocking violations: {}\n\n",
+        results.blocking_violations
     ));
 
     if violations.is_empty() {

@@ -73,25 +73,67 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     // Convert SATD items to quality violations
     let violations: Vec<QualityViolation> = satd_result
         .items
-        .into_iter()
-        .map(|debt| QualityViolation {
-            check_type: "satd".to_string(),
-            severity: match debt.severity {
-                crate::services::satd_detector::Severity::Critical => "error",
-                crate::services::satd_detector::Severity::High => "error",
-                crate::services::satd_detector::Severity::Medium => "warning",
-                crate::services::satd_detector::Severity::Low => "info",
-            }
-            .to_string(),
-            file: debt.file.display().to_string(),
-            line: Some(debt.line as usize),
-            message: format!(
-                "{}: {} (at column {})",
-                debt.category, debt.text, debt.column
-            ),
-            details: None,
-        })
+        .iter()
+        .map(satd_violation_from_debt)
         .collect();
 
     Ok(violations)
+}
+
+/// SATD findings for ONE file, from the same detector and the same severity
+/// scale `check_satd` uses.
+///
+/// `pmat quality-gate --file` used to run its own hardcoded regex
+/// (`check_single_file_satd`) that stamped `severity:"warning"` on every marker
+/// it matched, so the same `// TODO` was `info` from the project gate and
+/// `warning` from the file gate — a second severity scale silently deciding
+/// pass/fail once the verdict began reading severity. That regex is deleted;
+/// this is the only single-file SATD check.
+pub async fn check_satd_file(
+    project_path: &Path,
+    file_path: &Path,
+) -> Result<Vec<QualityViolation>> {
+    use crate::services::satd_detector::SATDDetector;
+
+    let abs_file_path = if file_path.is_absolute() {
+        file_path.to_path_buf()
+    } else {
+        project_path.join(file_path)
+    };
+
+    if !abs_file_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = tokio::fs::read_to_string(&abs_file_path).await?;
+    let debts = SATDDetector::new().extract_from_content(&content, &abs_file_path)?;
+
+    Ok(debts.iter().map(satd_violation_from_debt).collect())
+}
+
+/// The ONE mapping from detector severity to gate severity.
+///
+/// Every SATD row every quality-gate surface reports comes through here, so
+/// "which severities are verdict-bearing" (`is_verdict_bearing`) is asked of one
+/// scale rather than of two that disagree.
+fn satd_violation_from_debt(
+    debt: &crate::services::satd_detector::TechnicalDebt,
+) -> QualityViolation {
+    use crate::services::satd_detector::Severity;
+    QualityViolation {
+        check_type: "satd".to_string(),
+        severity: match debt.severity {
+            Severity::Critical | Severity::High => "error",
+            Severity::Medium => "warning",
+            Severity::Low => ADVISORY_SEVERITY,
+        }
+        .to_string(),
+        file: debt.file.display().to_string(),
+        line: Some(debt.line as usize),
+        message: format!(
+            "{}: {} (at column {})",
+            debt.category, debt.text, debt.column
+        ),
+        details: None,
+    }
 }

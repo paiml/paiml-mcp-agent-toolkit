@@ -27,11 +27,11 @@ impl TdgAnalyzer {
     /// be graded at all, let alone graded perfect.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
-        if !grades_source(path) {
-            anyhow::bail!(
-                "{}: TDG grades source files; {language} is not one",
-                path.display()
-            );
+        // ONE refusal rule, and it says WHY: this used to be a language-only
+        // check with a language-only sentence, so a caller that refused a test
+        // file had nothing truthful to report about it.
+        if let Some(reason) = not_gradable_reason(path) {
+            anyhow::bail!("{}: {reason}", path.display());
         }
         let source = fs::read_to_string(path)?;
         // The parse gate used to be Rust-only, so `def f(:` in a .py file still
@@ -209,7 +209,15 @@ pub fn ensure_parseable(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Is this file's language one TDG grades at all?
+/// Will TDG grade this path at all?
+///
+/// One question, one answer: this delegates to
+/// [`crate::tdg::file_discovery::refusal`], the module that also decides what a
+/// project walk covers. It used to test the extension alone, which is why the
+/// MCP `quality_gate` tool — whose only gradability check is this function —
+/// graded `<repo>/tests/bad.rs` 90.0/A while `pmat tdg` on the same path
+/// answered `{"analyzed":false,"skipped":true,"score":null}`. Test and bench
+/// source is refused here for the same reason it is refused there.
 ///
 /// `analyze_file`'s refusal is about TDG's own scope, not about the file being
 /// bad input, so a caller that reports a *gate verdict* rather than a grade must
@@ -220,10 +228,17 @@ pub fn ensure_parseable(path: &Path) -> Result<()> {
 /// remove, reintroduced from the other side. Such callers leave score/grade
 /// unmeasured and let their language-agnostic checks give the verdict.
 pub fn grades_source(path: &Path) -> bool {
-    !matches!(
-        Language::from_extension(path),
-        Language::Unknown | Language::Yaml | Language::Markdown
-    )
+    not_gradable_reason(path).is_none()
+}
+
+/// Why TDG will not grade `path`, in the words every surface uses.
+///
+/// Exported so a gate can DISCLOSE the refusal instead of inventing a sentence
+/// of its own — a caller that says "TDG does not grade .rs" about a test file
+/// is describing the wrong rule.
+#[must_use]
+pub fn not_gradable_reason(path: &Path) -> Option<String> {
+    crate::tdg::file_discovery::refusal(path, crate::tdg::file_discovery::Policy::heuristic())
 }
 
 /// Does `source` parse as `language`, in THIS build?
@@ -329,9 +344,14 @@ mod unparseable_input_tests {
     #[cfg(feature = "python-ast")]
     #[test]
     fn test_valid_python_still_scores() {
-        let f = write_temp(".py", "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n");
+        let f = write_temp(
+            ".py",
+            "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n",
+        );
         let analyzer = TdgAnalyzer::new().expect("analyzer");
-        let score = analyzer.analyze_file(f.path()).expect("valid Python grades");
+        let score = analyzer
+            .analyze_file(f.path())
+            .expect("valid Python grades");
         assert_eq!(score.language, Language::Python);
         assert!(score.total > 0.0);
     }
@@ -352,7 +372,10 @@ mod unparseable_input_tests {
 
     #[test]
     fn test_valid_rust_still_scores() {
-        let f = write_temp(".rs", "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n");
+        let f = write_temp(
+            ".rs",
+            "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n",
+        );
         let analyzer = TdgAnalyzer::new().expect("analyzer");
         let score = analyzer.analyze_file(f.path()).expect("valid Rust grades");
         assert_eq!(score.language, Language::Rust);

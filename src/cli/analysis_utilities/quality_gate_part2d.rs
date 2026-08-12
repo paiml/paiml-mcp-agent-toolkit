@@ -36,6 +36,12 @@ fn format_results_summary(output: &mut String, results: &QualityGateResults) {
         "- Total Violations: {}\n",
         results.total_violations
     ));
+    // The count that decided PASSED/FAILED above; advisory `info` findings are
+    // listed below but never verdict-bearing.
+    output.push_str(&format!(
+        "- Blocking Violations: {}\n",
+        results.blocking_violations
+    ));
     output.push_str(&format!(
         "- Complexity Issues: {}\n",
         results.complexity_violations

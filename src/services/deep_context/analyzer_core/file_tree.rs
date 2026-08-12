@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use rustc_hash::FxHashMap;
 
 use crate::models::dag::DependencyGraph;
+use crate::services::deep_context::scope::FileScope;
 use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::deep_context::{AnnotatedFileTree, AnnotatedNode, NodeAnnotations, NodeType};
 
@@ -42,43 +43,13 @@ impl DeepContextAnalyzer {
             .to_string();
 
         if metadata.is_dir() {
-            let mut children = Vec::new();
-
-            if let Ok(entries) = std::fs::read_dir(path) {
-                for entry in entries.flatten() {
-                    let child_path = entry.path();
-
-                    // Apply exclude patterns
-                    if self.should_exclude_path(&child_path) {
-                        continue;
-                    }
-
-                    if let Ok(child_node) =
-                        self.build_file_tree_recursive(&child_path, total_files, total_size)
-                    {
-                        children.push(child_node);
-                    }
-                }
-            }
-
+            let children = self.build_child_nodes(path, total_files, total_size);
             Ok(AnnotatedNode {
                 name,
                 path: path.clone(),
                 node_type: NodeType::Directory,
                 children,
-                annotations: NodeAnnotations {
-                    defect_score: None,
-                    complexity_score: None,
-                    cognitive_complexity: None,
-                    churn_score: None,
-                    dead_code_items: 0,
-                    satd_items: 0,
-                    centrality: None,
-                    test_coverage: None,
-                    big_o_complexity: None,
-                    memory_complexity: None,
-                    duplication_score: None,
-                },
+                annotations: NodeAnnotations::default(),
             })
         } else {
             *total_files += 1;
@@ -89,34 +60,80 @@ impl DeepContextAnalyzer {
                 path: path.clone(),
                 node_type: NodeType::File,
                 children: Vec::new(),
-                annotations: NodeAnnotations {
-                    defect_score: None,
-                    complexity_score: None,
-                    cognitive_complexity: None,
-                    churn_score: None,
-                    dead_code_items: 0,
-                    satd_items: 0,
-                    centrality: None,
-                    test_coverage: None,
-                    big_o_complexity: None,
-                    memory_complexity: None,
-                    duplication_score: None,
-                },
+                annotations: NodeAnnotations::default(),
             })
         }
     }
 
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub(crate) fn should_exclude_path(&self, path: &std::path::Path) -> bool {
-        let path_str = path.to_string_lossy();
+    /// Build the in-scope children of a directory.
+    fn build_child_nodes(
+        &self,
+        path: &PathBuf,
+        total_files: &mut usize,
+        total_size: &mut u64,
+    ) -> Vec<AnnotatedNode> {
+        let scope = self.file_scope();
+        let mut children = Vec::new();
 
-        for pattern in &self.config.exclude_patterns {
-            if path_str.contains(pattern.trim_matches('*')) {
-                return true;
+        let Ok(entries) = std::fs::read_dir(path) else {
+            return children;
+        };
+
+        for entry in entries.flatten() {
+            let child_path = entry.path();
+            if !Self::child_is_in_scope(&scope, &entry, &child_path) {
+                continue;
             }
+            let Ok(child_node) =
+                self.build_file_tree_recursive(&child_path, total_files, total_size)
+            else {
+                continue;
+            };
+            // A directory that the include filter emptied is not part of the
+            // reported tree.
+            if scope.has_include_filter()
+                && child_node.node_type == NodeType::Directory
+                && child_node.children.is_empty()
+            {
+                continue;
+            }
+            children.push(child_node);
         }
 
-        false
+        children
+    }
+
+    /// One scope predicate for both halves of the rule: exclude patterns prune
+    /// directories and files alike, include patterns select files.
+    ///
+    /// Before R18 only the exclude half was applied here, which is why
+    /// `--include-pattern` changed nothing about the report.
+    fn child_is_in_scope(
+        scope: &FileScope,
+        entry: &std::fs::DirEntry,
+        child_path: &std::path::Path,
+    ) -> bool {
+        let is_dir = entry
+            .file_type()
+            .map_or_else(|_| child_path.is_dir(), |t| t.is_dir());
+        if is_dir {
+            scope.may_contain_files(child_path)
+        } else {
+            scope.contains_file(child_path)
+        }
+    }
+
+    /// The one membership rule this analyzer applies to files (R18).
+    ///
+    /// Both halves of the rule live in `deep_context::scope::FileScope`; nothing
+    /// in `analyzer_core` decides scope for itself.
+    pub(crate) fn file_scope(&self) -> FileScope {
+        FileScope::from_config(&self.config)
+    }
+
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub(crate) fn should_exclude_path(&self, path: &std::path::Path) -> bool {
+        self.file_scope().is_excluded(path)
     }
 
     /// Enrich the file tree with centrality scores from the dependency graph

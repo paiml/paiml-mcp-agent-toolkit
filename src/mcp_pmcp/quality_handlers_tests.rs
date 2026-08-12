@@ -491,4 +491,32 @@ mod tests {
             .expect_err("the `file` argument already refused this");
         assert!(matches!(via_file, Error::Validation(_)), "{via_file:?}");
     }
+
+    /// …and it must refuse it wherever in the list it appears. The guard read
+    /// `paths.first().filter(|p| p.is_file())`, so the answer for one SET of
+    /// paths depended on their ORDER: `[bad.rs, ok.rs]` was -32602 and
+    /// `[ok.rs, bad.rs]` was a structured verdict, for the same two files on
+    /// disk. One rule applied to one of N elements is the same defect as one
+    /// rule with two implementations.
+    #[tokio::test]
+    async fn an_unparseable_file_is_refused_wherever_it_sits_in_paths() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let bad = dir.path().join("bad.rs");
+        std::fs::write(&bad, "fn main( { let x = ;;;\n").expect("write fixture");
+        let ok = dir.path().join("ok.rs");
+        std::fs::write(&ok, "/// Doc.\npub fn a() -> i32 { 1 }\n").expect("write fixture");
+
+        let tool = QualityGateTool::new();
+        for order in [[&bad, &ok], [&ok, &bad]] {
+            let paths: Vec<String> = order.iter().map(|p| p.display().to_string()).collect();
+            let err = tool
+                .handle(json!({ "paths": paths }), test_extra())
+                .await
+                .expect_err("an unparseable file must be refused in either order");
+            assert!(
+                matches!(err, Error::Validation(_)),
+                "order {paths:?}: the refusal must not depend on position; got {err:?}"
+            );
+        }
+    }
 }

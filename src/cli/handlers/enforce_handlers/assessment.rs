@@ -83,18 +83,54 @@ impl QualityAssessment {
 pub(super) fn phase_score(violations: &[QualityViolation]) -> f64 {
     violations
         .iter()
-        .map(|v| {
-            if v.current <= v.target {
-                1.0
-            } else if v.target > 0.0 {
-                (v.target / v.current).clamp(0.0, 1.0)
-            } else {
-                // A zero-tolerance dimension (e.g. satd_allowed = 0) that was
-                // nevertheless violated.
-                0.0
-            }
-        })
+        .map(violation_score)
         .fold(1.0_f64, f64::min)
+}
+
+/// Is this dimension's threshold a floor (higher is better) rather than a
+/// ceiling?
+///
+/// Five of the six phases measure something you want less of — complexity, SATD
+/// markers, TDG, dead lines, duplicated lines — and breach their threshold from
+/// above. Coverage is the one that breaches from below. Nothing else may be
+/// added to this list without a threshold that works the same way.
+fn is_floor_dimension(violation_type: &str) -> bool {
+    violation_type == "coverage"
+}
+
+/// How close one violation sits to the limit it breached, in `[0.0, 1.0]`.
+///
+/// This used to open with `if v.current <= v.target { 1.0 }` — a second, weaker
+/// copy of the question "is this a violation?", living downstream of the
+/// analyzer that had already answered it. For the five ceiling dimensions the
+/// two copies agreed; for coverage, whose threshold is a floor, the copy
+/// contradicted the analyzer and scored a real breach a full 1.0. A crate with
+/// 0% coverage against the extreme profile's 80% printed
+/// `State: Violating / Score: 1.00/1.00 / Violations: 1`.
+///
+/// A violation is a breach by construction — the phase that emitted it decided
+/// that. This function only asks how bad it is, which is the ratio of the
+/// measurement to the limit, oriented by which side of the limit the dimension
+/// is breached from.
+fn violation_score(v: &QualityViolation) -> f64 {
+    let ratio = if is_floor_dimension(&v.violation_type) {
+        // 40% coverage against an 80% floor scores 0.5.
+        if v.target > 0.0 {
+            v.current / v.target
+        } else {
+            // A floor of zero cannot be breached; if a phase claims otherwise,
+            // its own judgement stands and the breach is total.
+            0.0
+        }
+    } else if v.current > 0.0 {
+        // Complexity 40 against a ceiling of 10 scores 0.25.
+        v.target / v.current
+    } else {
+        // A zero-tolerance dimension (e.g. satd_allowed = 0) that was
+        // nevertheless violated.
+        0.0
+    };
+    ratio.clamp(0.0, 1.0)
 }
 
 /// Announce a phase on stderr and run it.

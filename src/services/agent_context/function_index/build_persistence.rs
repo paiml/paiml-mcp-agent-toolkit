@@ -59,28 +59,43 @@ impl AgentContextIndex {
     /// LZ4+bincode blob `context.idx/functions.lz4` (v1.x).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(index_path: &Path) -> Result<Self, String> {
+        // R30: ONE scale check, ahead of both backends, with ONE remediation.
+        //
+        // A pre-v3.30.0 index has every required table and every required
+        // column, so the structural check below passes it happily — while its
+        // `tdg_score` column holds 0-10 lower-is-better debt numbers that
+        // today's readers report as 0-100 quality scores, turning a stored 0.12
+        // (the BEST legacy score) into an F. Structure valid does not mean
+        // contents readable.
+        //
+        // The remediation is to DISCARD both artifacts, not merely to report.
+        // This used to be split: the SQLite branch deleted its own stale `.db`
+        // and let the blob path produce the error, so `pmat query` self-healed
+        // while MCP's `IndexManager` — which propagates the error — answered
+        // `-32603 … rebuild required` on every default call, forever. With the
+        // whole stale index removed, the next `load()` sees no index at all and
+        // every caller (CLI, MCP, comply) takes its ordinary build path.
+        if let Err(reason) = super::scale_guard::verify_index_scale(index_path) {
+            eprintln!(
+                "  Index at {} is stale: {reason} (scores are now 0-100, higher is better).",
+                index_path.display()
+            );
+            super::scale_guard::discard_stale_index(index_path);
+            return Err(reason);
+        }
+
         // Try SQLite path first (v2.0)
         let db_candidate = index_path.with_extension("db");
         if db_candidate.exists() {
             // Validate schema before attempting full load — stale DBs from older
             // versions may lack required tables, producing confusing warnings.
-            //
-            // R30: also validate the TDG SCALE. A pre-v3.30.0 database has every
-            // required table and every required column, so the structural check
-            // passes it happily — while its `tdg_score` column holds 0-10
-            // lower-is-better debt numbers that today's readers would report as
-            // 0-100 quality scores, turning a stored 0.12 (the best legacy
-            // score) into an F. Structure valid does not mean contents readable.
             let conn = super::sqlite_backend::open_db(&db_candidate).ok();
             let schema_ok = conn
                 .as_ref()
                 .is_some_and(super::sqlite_backend::has_valid_schema);
-            let scale_ok = conn
-                .as_ref()
-                .is_some_and(super::sqlite_backend::stored_scale_is_current);
             drop(conn);
 
-            if schema_ok && scale_ok {
+            if schema_ok {
                 match Self::load_from_sqlite(&db_candidate) {
                     Ok(index) => return Ok(index),
                     Err(e) => {
@@ -88,14 +103,7 @@ impl AgentContextIndex {
                     }
                 }
             } else {
-                if schema_ok {
-                    eprintln!(
-                        "  Index at {} was written under a different TDG scale; rebuilding \
-                         (scores are now 0-100, higher is better).",
-                        db_candidate.display()
-                    );
-                }
-                // Delete broken/stale DB so next save() regenerates it
+                // Delete broken DB so next save() regenerates it
                 let _ = std::fs::remove_file(&db_candidate);
             }
         }
@@ -157,20 +165,10 @@ impl AgentContextIndex {
         let manifest: IndexManifest = serde_json::from_str(&manifest_str)
             .map_err(|e| format!("Failed to parse manifest: {e}"))?;
 
-        // R30: same guard as the SQLite path. Pre-v3.30.0 manifests have no
-        // `tdg_scale` key and deserialise to "", which must fail rather than be
-        // read on today's scale. The caller rebuilds on Err.
-        if manifest.tdg_scale != crate::services::agent_context::TDG_SCALE {
-            let found = if manifest.tdg_scale.is_empty() {
-                "unmarked (pre-v3.30.0, 0-10 lower-is-better)"
-            } else {
-                manifest.tdg_scale.as_str()
-            };
-            return Err(format!(
-                "index was written under TDG scale {found}, this build reads {}; rebuild required",
-                crate::services::agent_context::TDG_SCALE
-            ));
-        }
+        // R30: the manifest's scale marker is checked by `load()` via
+        // `scale_guard::verify_index_scale`, which also discards the stale
+        // index. A second comparison here would be a second decision point —
+        // exactly the duplication that let `pmat sql` drift.
 
         // Load and decompress blob
         let compressed = fs::read(index_path.join("functions.lz4"))

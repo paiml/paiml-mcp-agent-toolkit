@@ -37,17 +37,23 @@ impl ToolHandler for QualityGateTool {
             return Ok(result);
         }
 
-        // A single FILE named in `paths` takes the same refusal path as `file`
-        // above — `check_quality_gates` calls `analyze_file` directly and
-        // propagates the "did not parse" bail — but it reached the wire as
-        // `-32603 Internal error` instead of the `-32602` the `file` argument
-        // one line up already answers with, for the identical mistake. One tool
-        // must not report the same refusal under two JSON-RPC codes depending
-        // on which of its two arguments carried the path. (A DIRECTORY is
-        // untouched: an unparseable file inside one is disclosed as a
-        // `not_graded` violation, and that structured answer is the better one.)
-        if let Some(first) = paths.first().filter(|p| p.is_file()) {
-            crate::tdg::ensure_parseable(first).map_err(|e| Error::validation(e.to_string()))?;
+        // A FILE named in `paths` takes the same refusal path as `file` above —
+        // `check_quality_gates` calls `analyze_file` directly and propagates the
+        // "did not parse" bail — but it reached the wire as `-32603 Internal
+        // error` instead of the `-32602` the `file` argument one line up already
+        // answers with, for the identical mistake. One tool must not report the
+        // same refusal under two JSON-RPC codes depending on which of its two
+        // arguments carried the path. (A DIRECTORY is untouched: an unparseable
+        // file inside one is disclosed as a `not_graded` violation, and that
+        // structured answer is the better one.)
+        //
+        // EVERY file in the list, not `paths.first()`. Checking only the head
+        // made the answer depend on the ORDER of a set: `[broken.rs, ok.rs]`
+        // was -32602 and `[ok.rs, broken.rs]` was a structured verdict, for the
+        // same two files. One rule applied to one of N elements is the same
+        // defect as one rule with two implementations.
+        for file in paths.iter().filter(|p| p.is_file()) {
+            crate::tdg::ensure_parseable(file).map_err(|e| Error::validation(e.to_string()))?;
         }
 
         // Otherwise check all paths

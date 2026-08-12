@@ -1,3 +1,105 @@
+/// Everything a `quality_gate` call measured, and every hole in that
+/// measurement.
+///
+/// ONE implementation of "turn a `paths` list into a score", shared by every
+/// entry point of this tool family. There used to be two. `check_quality_gates`
+/// looped over every path while `quality_gate_summary` read
+/// `let project_path = &paths[0];` and never looked at the rest — the literal
+/// R13 defect, still live in the second copy after the first was fixed — and the
+/// summary's file branch called `analyze_file` directly, so a `.sh` path HARD
+/// ERRORED out of one tool while the other reported it as `not_measured`. One
+/// tool family, two answers. Two implementations of one rule agree only by
+/// coincidence, and these two had already stopped agreeing, so one of them stops
+/// existing here.
+struct GateScope {
+    /// Files that produced a real TDG score. Deduplicated by path: two entries
+    /// in `paths` may name the same file (`[dir, dir/a.rs]`, or the same path
+    /// twice), and counting it twice moved the average and inflated
+    /// `files_analyzed` for a population that never changed on disk.
+    graded: Vec<crate::tdg::TdgScore>,
+    /// Every path this gate has NO score for, with the reason. An empty list is
+    /// a positive claim of full coverage, so nothing may be absorbed into it
+    /// silently — see `measure`.
+    ungraded: Vec<(PathBuf, String)>,
+}
+
+impl GateScope {
+    /// Grade every path the caller named, and name every path that produced no
+    /// measurement.
+    ///
+    /// The second half is the rule that kept getting lost: a path that yields
+    /// neither a score nor a named refusal — an empty directory, a directory of
+    /// non-source files — used to vanish, and `paths: ["ok.rs", "emptydir"]`
+    /// answered `{"passed":true,"score":95.0,"not_measured":[],"files_analyzed":1}`
+    /// while `paths: ["emptydir"]` alone answered `passed:false`. Unmeasured is
+    /// a distinct state from clean, and the difference cannot depend on whether
+    /// some *other* path in the same call happened to grade.
+    fn measure(
+        analyzer: &crate::tdg::analyzer_simple::TdgAnalyzer,
+        paths: &[PathBuf],
+    ) -> Result<Self> {
+        let mut graded: Vec<crate::tdg::TdgScore> = Vec::new();
+        let mut ungraded: Vec<(PathBuf, String)> = Vec::new();
+
+        for path in paths {
+            let graded_before = graded.len();
+            let ungraded_before = ungraded.len();
+
+            if path.is_file() {
+                // `analyze_file` errors on anything outside TDG's language set,
+                // so `paths: ["a.sh"]` failed the whole call rather than
+                // reporting the verdict the CLI gate reports. A file that
+                // *should* grade but does not (unparseable, unreadable) is
+                // disclosed exactly like one inside a directory is, rather than
+                // aborting the whole call for the other paths.
+                match crate::tdg::analyzer_simple::not_gradable_reason(path) {
+                    None => match analyzer.analyze_file(path) {
+                        Ok(score) => graded.push(score),
+                        Err(e) => ungraded.push((path.clone(), e.to_string())),
+                    },
+                    Some(reason) => ungraded.push((path.clone(), reason)),
+                }
+            } else {
+                // `files_analyzed` counts what was GRADED, so without the
+                // refusal list a shrinking denominator is invisible — this tool
+                // answered `passed:true, grade:"A", files_analyzed:1` for a
+                // 9-file tree whose other 8 files the same build refuses one at
+                // a time.
+                let (project, refused) = analyzer.analyze_project_reporting_ungraded(path)?;
+                graded.extend(project.files);
+                ungraded.extend(refused);
+            }
+
+            // A path that contributed neither a score nor a named hole IS the
+            // hole. Nothing gets absorbed just because a sibling path measured.
+            if graded.len() == graded_before && ungraded.len() == ungraded_before {
+                ungraded.push((path.clone(), NOTHING_GRADABLE_HERE.to_string()));
+            }
+        }
+
+        // Two paths can name the same file, and the lists are serialised
+        // verbatim in a JSON payload: identical input must serialise
+        // identically, and the same file on disk must weigh once.
+        let mut seen = std::collections::HashSet::new();
+        graded.retain(|score| match score.file_path.as_ref() {
+            Some(path) => seen.insert(path.clone()),
+            None => true,
+        });
+        ungraded.sort();
+        ungraded.dedup();
+
+        Ok(Self { graded, ungraded })
+    }
+
+    /// The paths with no score, in the spelling both tools put on the wire.
+    fn ungraded_names(&self) -> Vec<String> {
+        self.ungraded
+            .iter()
+            .map(|(file, _)| file.display().to_string())
+            .collect()
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Value> {
     use crate::tdg::analyzer_simple::TdgAnalyzer;
@@ -9,69 +111,21 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // Create TDG analyzer
     let analyzer = TdgAnalyzer::new()?;
 
-    // EVERY path the caller handed in, not `paths[0]`. `quality_gate` used to
-    // read `let project_path = &paths[0]` and drop the rest on the floor:
-    // `{"paths": ["ok.rs", "a.sh"]}` answered
-    // `{"passed":true,"score":90.0,"grade":"A","not_measured":[],"files_analyzed":1}`
-    // — half the input measured, and `not_measured: []` claiming full coverage
-    // of the run. A path this gate cannot grade is a HOLE, and every hole is
-    // named below with the reason it exists.
-    let mut graded = Vec::new();
-    let mut ungraded: Vec<(PathBuf, String)> = Vec::new();
-    let mut satd: Vec<Value> = Vec::new();
+    // EVERY path the caller handed in, not `paths[0]`, and every path that
+    // produced no measurement named rather than absorbed — from the ONE
+    // implementation `quality_gate_summary` also uses.
+    let scope = GateScope::measure(&analyzer, paths)?;
+    let ungraded = &scope.ungraded;
 
+    // SATD comes from the same detector `pmat quality-gate` runs: this tool and
+    // the CLI gate carry one name and must not be two different checks. A
+    // TDG-only verdict let a `TODO:` the CLI fails on pass over MCP.
+    let mut satd: Vec<Value> = Vec::new();
     for path in paths {
-        if path.is_file() {
-            // Same refusal as the single-file entry point below: `analyze_file`
-            // errors on anything outside TDG's language set, so `paths: ["a.sh"]`
-            // failed the whole call rather than reporting the verdict the CLI
-            // gate reports. A file that *should* grade but does not (unparseable,
-            // unreadable) is disclosed exactly like one inside a directory is,
-            // rather than aborting the whole call for the other paths.
-            if crate::tdg::grades_source(path) {
-                match analyzer.analyze_file(path) {
-                    Ok(score) => graded.push(score),
-                    Err(e) => ungraded.push((path.clone(), e.to_string())),
-                }
-            } else {
-                ungraded.push((path.clone(), not_graded_reason(path, true)));
-            }
-            // SATD comes from the same detector `pmat quality-gate` runs: this
-            // tool and the CLI gate carry one name and must not be two different
-            // checks. A TDG-only verdict let a `TODO:` the CLI fails on pass
-            // over MCP.
-            satd.extend(satd_violations_for_file(path));
-        } else {
-            // Analyze entire project. The ungraded list is load-bearing: `files_analyzed`
-            // counts what was GRADED, so without it a shrinking denominator is invisible
-            // — this tool answered `passed:true, grade:"A", files_analyzed:1` for a
-            // 9-file tree whose other 8 files the same build refuses one at a time.
-            let (project, refused) = analyzer.analyze_project_reporting_ungraded(path)?;
-            graded.extend(project.files);
-            ungraded.extend(refused);
-            satd.extend(
-                crate::cli::analysis_utilities::check_satd(path)
-                    .await
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|v| {
-                        json!({
-                            "check_type": v.check_type,
-                            "severity": v.severity,
-                            "file": v.file,
-                            "line": v.line,
-                            "message": v.message,
-                        })
-                    }),
-            );
-        }
+        satd.extend(satd_findings(path).await);
     }
 
-    // Two paths can name the same file, and the lists are serialised verbatim in
-    // a JSON payload: identical input must serialise identically.
-    ungraded.sort();
-    ungraded.dedup();
-    let project_score = crate::tdg::ProjectScore::aggregate(graded);
+    let project_score = crate::tdg::ProjectScore::aggregate(scope.graded.clone());
 
     // Determine pass/fail threshold based on strict mode
     let threshold_score = if strict { 70.0 } else { 50.0 };
@@ -127,34 +181,29 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // warning on stderr, which an MCP client never sees. One unparseable file is
     // enough to refuse in `--file` mode, so one is enough here: this is the
     // zero-graded rule below, extended to the partial case that actually occurs.
-    for (file, reason) in &ungraded {
+    // A path where nothing could be graded must SAY so, and `GateScope::measure`
+    // guarantees it is in this list — including the partial case, where a
+    // sibling path DID grade. That guard used to be
+    // `total_files == 0 && ungraded.is_empty()`, i.e. it only fired when the
+    // WHOLE call measured nothing, so `["ok.rs", "emptydir"]` came back
+    // `passed:true, not_measured: []` while `["emptydir"]` alone came back
+    // `passed:false`: one question, two answers, decided by what else was in the
+    // list. `analyze_project` skips files it cannot read or parse, so a
+    // directory whose only source file is `fn main( { let x = ;;;` came back
+    // with an empty score set — and before the analyzer refused to grade
+    // unparseable Rust, with 90.0/A. Zero graded files is not a measurement of
+    // quality, and saying "not measured" in one field and "passed" in another is
+    // the contradiction this whole file exists to remove.
+    for (file, reason) in ungraded {
         violations.push(json!({
             "check_type": "not_graded",
             "severity": "error",
             "file": file.display().to_string(),
-            "message": format!("{reason} — this file is not part of the score"),
+            // The reason is reported VERBATIM. It used to be suffixed with
+            // " — this file is not part of the score", which the shared refusals
+            // already end with, so the payload said it twice.
+            "message": reason,
         }));
-    }
-
-    // A path where nothing could be graded must SAY so. `analyze_project` skips
-    // files it cannot read or parse, so a directory whose only source file is
-    // `fn main( { let x = ;;;` came back with an empty score set — and before
-    // the analyzer refused to grade unparseable Rust, with 90.0/A. Zero graded
-    // files is not a measurement of quality.
-    // A language TDG does not grade is not a *failure* to grade, so it gets its
-    // own reason string — but it is still a path this gate has no score for, and
-    // it is disclosed and refused exactly like the others. Saying "not measured"
-    // in one field and "passed" in another is the contradiction this whole file
-    // exists to remove.
-    if project_score.total_files == 0 && ungraded.is_empty() {
-        for path in paths {
-            violations.push(json!({
-                "check_type": "not_graded",
-                "severity": "error",
-                "file": path.display().to_string(),
-                "message": not_graded_reason(path, path.is_file() && !crate::tdg::grades_source(path)),
-            }));
-        }
     }
 
     // THE verdict rule, in one place and applied to every finding this gate
@@ -165,7 +214,10 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // "// TODO" inside a sentence *describing* a requirement, and classified it
     // `severity:"info"`. Advisory findings are still reported in `violations`;
     // they no longer flip a verdict.
-    let blocking = violations.iter().filter(|v| is_verdict_bearing(v)).count();
+    let blocking = violations
+        .iter()
+        .filter(|v| crate::cli::analysis_utilities::json_is_verdict_bearing(v))
+        .count();
     let passed = tdg_passed && blocking == 0;
 
     // With nothing graded there is no score to report. Reporting 0.0/"F" reads as
@@ -179,10 +231,7 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // of the fact it exists to disclose. Files that could not be graded are named
     // here for the same reason `score`/`grade` are named when nothing graded at
     // all: never make a reader infer "not measured" from a number that looks fine.
-    let ungraded_names: Vec<String> = ungraded
-        .iter()
-        .map(|(file, _)| file.display().to_string())
-        .collect();
+    let ungraded_names: Vec<String> = scope.ungraded_names();
     let (score, grade, not_measured) = if graded {
         (
             json!(project_score.average_score),
@@ -218,71 +267,43 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     }))
 }
 
-/// The severity a finding must NOT have to decide a verdict.
-const ADVISORY_SEVERITY: &str = "info";
+/// Said of a path that produced no measurement AND no per-file refusal — an
+/// empty directory, or a directory holding nothing this build calls source.
+///
+/// This is the only sentence this file still writes for itself, because it is
+/// the only one about a PATH rather than about a file: every per-file refusal
+/// comes from `crate::tdg::analyzer_simple::not_gradable_reason`.
+const NOTHING_GRADABLE_HERE: &str =
+    "no file under this path could be graded (unreadable, unparseable, or not source) — the score is not a measurement";
 
-/// Does this finding decide the pass/fail verdict?
+/// The SATD findings for one path, file or directory, as gate violations.
 ///
-/// ONE rule, both `quality_gate` entry points, every check type. `error` and
-/// `warning` are actionable and fail the gate; `info` is advisory — reported,
-/// never verdict-bearing. Nine unchanged Rust files were failed by a single
-/// `severity:"info"` SATD row whose "finding" was the literal text "// TODO"
-/// quoted inside a sentence describing a CLI requirement.
-///
-/// A finding with no severity at all is verdict-bearing: fail closed, because an
-/// unclassified finding must not be silently demoted to advice.
-fn is_verdict_bearing(violation: &Value) -> bool {
-    violation.get("severity").and_then(Value::as_str) != Some(ADVISORY_SEVERITY)
-}
-
-/// Why this gate has no grade for `path`, in the reader's terms.
-///
-/// One sentence, one place: both entry points of `quality_gate` report the same
-/// `not_graded` violation, so a client cannot get "unmeasured" from one and
-/// "passed" from the other for the same file.
-fn not_graded_reason(path: &Path, ungraded_language: bool) -> String {
-    if ungraded_language {
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map_or_else(|| "this file".to_string(), |e| format!(".{e}"));
-        format!(
-            "TDG does not grade {ext} — score and grade are not measured here, so this gate has no verdict to give (the language-agnostic checks below still apply)"
+/// ONE implementation, and it owns the file/directory split so no caller has to
+/// repeat it. Both halves come from `crate::cli::analysis_utilities` — the
+/// detector, the severity scale and the message wording `pmat quality-gate`
+/// publishes — and the rows are serialised from `QualityViolation` itself
+/// rather than re-typed field by field. This file used to carry
+/// `satd_violations_for_file`, a THIRD copy of the detector-severity mapping
+/// (`Critical|High => "error"`, …) alongside the CLI's two, plus a second
+/// message format (`"{category}: {text}"` against the CLI's
+/// `"{category}: {text} (at column {column})"`), so one tool family described
+/// one finding two ways depending on whether the caller named a file or the
+/// directory containing it.
+async fn satd_findings(path: &Path) -> Vec<Value> {
+    let violations = if path.is_file() {
+        crate::cli::analysis_utilities::check_satd_file(
+            path.parent().unwrap_or_else(|| Path::new(".")),
+            path,
         )
+        .await
     } else {
-        "no file under this path could be graded (unreadable, unparseable, or not source) — the score is not a measurement".to_string()
-    }
-}
-
-/// SATD violations for one file, from the detector `pmat quality-gate` uses.
-///
-/// Shape matches the CLI gate's `violations` entries (check_type/severity/
-/// file/line/message) so an agent reading either gate sees the same rows.
-fn satd_violations_for_file(file_path: &Path) -> Vec<Value> {
-    use crate::services::satd_detector::{SATDDetector, Severity};
-
-    let Ok(source) = std::fs::read_to_string(file_path) else {
-        return Vec::new();
-    };
-    let Ok(debts) = SATDDetector::new().extract_from_content(&source, file_path) else {
-        return Vec::new();
+        crate::cli::analysis_utilities::check_satd(path).await
     };
 
-    debts
+    violations
+        .unwrap_or_default()
         .iter()
-        .map(|debt| {
-            json!({
-                "check_type": "satd",
-                "severity": match debt.severity {
-                    Severity::Critical | Severity::High => "error",
-                    Severity::Medium => "warning",
-                    Severity::Low => "info",
-                },
-                "file": debt.file.display().to_string(),
-                "line": debt.line,
-                "message": format!("{}: {}", debt.category, debt.text),
-            })
-        })
+        .filter_map(|v| serde_json::to_value(v).ok())
         .collect()
 }
 
@@ -307,10 +328,15 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     // reintroduced from the other side. A language TDG does not grade is not
     // bad input: the SATD checks still measure the file, so score and grade are
     // reported as not measured instead of as a refusal.
-    let file_score = if crate::tdg::grades_source(file_path) {
-        Some(analyzer.analyze_file(file_path)?)
-    } else {
-        None
+    // THE skip-or-grade rule, asked of the one function that owns it, and its
+    // refusal sentence reported verbatim below. This branch used to invent its
+    // own wording ("TDG does not grade .sh"), which is the wrong rule for a
+    // `tests/bad.rs` — perfectly gradable Rust, still not graded — and left the
+    // MCP gate describing a refusal `pmat tdg` describes differently.
+    let not_gradable = crate::tdg::analyzer_simple::not_gradable_reason(file_path);
+    let file_score = match &not_gradable {
+        None => Some(analyzer.analyze_file(file_path)?),
+        Some(_) => None,
     };
 
     // Determine pass/fail threshold based on strict mode
@@ -351,16 +377,17 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         })
         .collect();
 
-    // The gate's violations come from the same SATD detector the CLI gate runs.
-    let mut violations = satd_violations_for_file(file_path);
+    // The gate's violations come from the same SATD detector the CLI gate runs,
+    // through the same function `check_quality_gates` uses.
+    let mut violations = satd_findings(file_path).await;
     // Same rule, same wording, same shape as `check_quality_gates`: a hole in
     // the verdict is a row in `violations`, never an unexplained `passed:true`.
-    if file_score.is_none() {
+    if let Some(reason) = not_gradable {
         violations.push(json!({
             "check_type": "not_graded",
             "severity": "error",
             "file": file_path.display().to_string(),
-            "message": not_graded_reason(file_path, true),
+            "message": reason,
         }));
     }
     // The SAME rule `check_quality_gates` applies, from the same function: this
@@ -368,7 +395,10 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     // about whether an advisory finding is a failure the moment either was
     // changed. `not_graded` is `severity:"error"`, so a file with no grade still
     // cannot pass.
-    let blocking = violations.iter().filter(|v| is_verdict_bearing(v)).count();
+    let blocking = violations
+        .iter()
+        .filter(|v| crate::cli::analysis_utilities::json_is_verdict_bearing(v))
+        .count();
     let passed = tdg_passed && blocking == 0;
 
     // Same convention as `check_quality_gates` above and `analyze_deep_context`:
@@ -426,28 +456,23 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
     // Create TDG analyzer
     let analyzer = TdgAnalyzer::new()?;
 
-    // Analyze the first path (typically project root)
-    let project_path = &paths[0];
-
-    // Same rule as `check_quality_gates`: a file the analyzer refused is a hole
-    // in the summary and is named. `analyze_project` throws the refusals away,
-    // so `not_measured` here was `ProjectScore::not_measured` — which is only
-    // ever non-empty when NOTHING graded. Over a tree of twelve source files
-    // with seven graded it read `[]`, i.e. full coverage of a run that covered
-    // seven twelfths.
-    let (project_score, ungraded) = if project_path.is_file() {
-        // Analyze single file and wrap in ProjectScore
-        let file_score = analyzer.analyze_file(project_path)?;
-        (
-            crate::tdg::ProjectScore::aggregate(vec![file_score]),
-            Vec::new(),
-        )
-    } else {
-        // Analyze entire project
-        analyzer.analyze_project_reporting_ungraded(project_path)?
-    };
+    // THE SAME implementation `check_quality_gates` uses — not a second copy of
+    // the same rule. This function read `let project_path = &paths[0];` and
+    // never looked at `paths[1..]`, so `{"paths":["ok.rs","dirty.rs"]}` summarised
+    // exactly one of them; and its file branch called `analyze_file` directly,
+    // so a `.sh` path was a hard error here and a disclosed `not_measured` row
+    // over in `quality_gate`. One tool family cannot hold two answers, and the
+    // way to stop it holding two is for there to be only one implementation.
+    let scope = GateScope::measure(&analyzer, paths)?;
+    let project_score = crate::tdg::ProjectScore::aggregate(scope.graded.clone());
+    let ungraded = &scope.ungraded;
+    // A file the analyzer refused is a hole in the summary and is named.
+    // `analyze_project` throws the refusals away, so `not_measured` here was
+    // `ProjectScore::not_measured` — which is only ever non-empty when NOTHING
+    // graded. Over a tree of twelve source files with seven graded it read `[]`,
+    // i.e. full coverage of a run that covered seven twelfths.
     let mut not_measured = project_score.not_measured.clone();
-    not_measured.extend(ungraded.iter().map(|(file, _)| file.display().to_string()));
+    not_measured.extend(scope.ungraded_names());
 
     // Standard threshold for summary (not strict)
     let threshold_score = 50.0;
@@ -505,10 +530,11 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
-    let project_path = &paths[0];
-
-    // Try to get git context (optional)
-    let git_context = GitContext::from_current_dir(project_path).ok();
+    // `paths[0]` is used ONLY as the repository hint for the baseline's own git
+    // context — a baseline is stamped with one commit, and the first path is as
+    // good a place as any to look for it. It is NOT the analysed population: see
+    // below.
+    let git_context = GitContext::from_current_dir(&paths[0]).ok();
 
     // Create new baseline
     let mut baseline = TdgBaseline::new(git_context);
@@ -516,49 +542,25 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
     // Analyze all files in the project
     let analyzer = TdgAnalyzer::new()?;
 
-    // If it's a directory, analyze the project
-    if project_path.is_dir() {
-        let project_score = analyzer.analyze_project(project_path)?;
-
-        // Add each file to baseline
-        for file_score in &project_score.files {
-            if let Some(file_path) = &file_score.file_path {
-                // Create baseline entry
-                let mut complexity_breakdown = HashMap::new();
-                complexity_breakdown
-                    .insert("structural".to_string(), file_score.structural_complexity);
-                complexity_breakdown.insert("semantic".to_string(), file_score.semantic_complexity);
-                complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
-
-                let entry = BaselineEntry {
-                    content_hash: blake3::hash(
-                        std::fs::read(file_path).unwrap_or_default().as_slice(),
-                    ),
-                    score: file_score.clone(),
-                    components: ComponentScores {
-                        complexity_breakdown,
-                        duplication_sources: Vec::new(),
-                        coupling_dependencies: Vec::new(),
-                        doc_missing_items: Vec::new(),
-                        consistency_violations: Vec::new(),
-                    },
-                    git_context: GitContext::from_current_dir(file_path).ok(),
-                };
-
-                baseline.add_entry(file_path.clone(), entry);
-            }
-        }
-    } else if project_path.is_file() {
-        // Analyze single file
-        let file_score = analyzer.analyze_file(project_path)?;
-
+    // THE SAME implementation the other two entry points use. This was a THIRD
+    // copy of the rule — `let project_path = &paths[0];` plus its own is_dir /
+    // is_file split — so a baseline taken over `["src", "benches"]` recorded
+    // `src` and silently omitted `benches`, and `quality_gate.compare` then
+    // reported every file under `benches` as `unchanged` because neither side
+    // had ever measured one. A file missing from a baseline is indistinguishable
+    // from a file that did not move.
+    let scope = GateScope::measure(&analyzer, paths)?;
+    for file_score in &scope.graded {
+        let Some(file_path) = file_score.file_path.as_ref() else {
+            continue;
+        };
         let mut complexity_breakdown = HashMap::new();
         complexity_breakdown.insert("structural".to_string(), file_score.structural_complexity);
         complexity_breakdown.insert("semantic".to_string(), file_score.semantic_complexity);
         complexity_breakdown.insert("entropy".to_string(), file_score.entropy_score);
 
         let entry = BaselineEntry {
-            content_hash: blake3::hash(std::fs::read(project_path).unwrap_or_default().as_slice()),
+            content_hash: blake3::hash(std::fs::read(file_path).unwrap_or_default().as_slice()),
             score: file_score.clone(),
             components: ComponentScores {
                 complexity_breakdown,
@@ -567,10 +569,10 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
                 doc_missing_items: Vec::new(),
                 consistency_violations: Vec::new(),
             },
-            git_context: GitContext::from_current_dir(project_path).ok(),
+            git_context: GitContext::from_current_dir(file_path).ok(),
         };
 
-        baseline.add_entry(project_path.clone(), entry);
+        baseline.add_entry(file_path.clone(), entry);
     }
 
     // Save baseline to file if output path provided
@@ -590,6 +592,11 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
         "baseline": {
             "file_path": file_path,
             "timestamp": baseline.created_at.to_rfc3339(),
+            // A baseline is the population a later comparison calls "unchanged",
+            // so the paths it has NO entry for have to be named here for the
+            // same reason `quality_gate` names them: a file absent from both
+            // sides of a diff looks exactly like a file that did not move.
+            "not_measured": scope.ungraded_names(),
             "summary": {
                 "total_files": baseline.summary.total_files,
                 "avg_score": baseline.summary.avg_score,
@@ -737,7 +744,11 @@ mod mcp_quality_gate_parity_tests {
     async fn test_unparseable_source_is_not_an_a_grade_pass() {
         let tmp = TempDir::new().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join("src")).expect("mkdir");
-        write(&tmp.path().join("src"), "main.rs", "fn main( { let x = ;;;\n");
+        write(
+            &tmp.path().join("src"),
+            "main.rs",
+            "fn main( { let x = ;;;\n",
+        );
 
         let result = check_quality_gates(&[tmp.path().to_path_buf()], true)
             .await

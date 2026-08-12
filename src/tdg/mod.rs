@@ -70,6 +70,10 @@ mod top_files_determinism_tests;
 #[cfg(test)]
 mod ungraded_disclosure_tests;
 
+/// R14: one skip-or-grade rule, asserted on every surface a verdict travels.
+#[cfg(test)]
+mod gradability_unification_tests;
+
 pub use adaptive::{
     AdaptiveConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, CurrentThresholds,
     PerformanceSample, PerformanceStatistics, PerformanceTrend, ThresholdAdjustment,

@@ -38,10 +38,9 @@ mod enforce_tests_external;
 #[cfg(test)]
 mod tests {
     use crate::cli::handlers::enforce_handlers::{
-        clear_enforcement_cache, handle_complete_state, handle_refactoring_state,
-        handle_violating_state, load_quality_profile, output_result, should_continue_enforcement,
-        EnforcementConfig, EnforcementProgress, EnforcementResult, EnforcementState,
-        QualityProfile, QualityViolation,
+        clear_enforcement_cache, handle_complete_state, handle_violating_state,
+        load_quality_profile, output_result, should_continue_enforcement, EnforcementConfig,
+        EnforcementProgress, EnforcementResult, EnforcementState, QualityProfile, QualityViolation,
     };
     use crate::cli::EnforceOutputFormat;
 
@@ -193,20 +192,15 @@ mod tests {
         assert!(result.violations.is_empty());
     }
 
-    #[test]
-    fn test_handle_refactoring_state_no_file() {
-        let result = handle_refactoring_state(85.0, None).unwrap();
-        assert!(matches!(result.state, EnforcementState::Validating));
-        assert!(result.score > 85.0); // adds 0.1
-    }
-
-    #[test]
-    fn test_handle_refactoring_state_with_file() {
-        let path = std::path::PathBuf::from("src/main.rs");
-        let result = handle_refactoring_state(90.0, Some(&path)).unwrap();
-        assert!(matches!(result.state, EnforcementState::Validating));
-        assert!(result.score > 90.0);
-    }
+    // `test_handle_refactoring_state_no_file` / `_with_file` used to live here.
+    // Both asserted `result.score > <input>` — that the refactoring state adds
+    // 0.1 to a score after refactoring nothing — which is the defect, not the
+    // contract. The enforcement path runs `handle_refactoring_pass`, whose
+    // numbers come from the one assessment; see
+    // `surface_agreement_tests::the_refactoring_state_reports_the_run_it_did_not_change`.
+    // Five more tests pinning the same arithmetic remain in
+    // `../enforce_coverage_part2.rs`, `../enforce_coverage_part4.rs` and
+    // `../enforce_coverage_part3_state_tests.rs`.
 
     #[test]
     fn test_handle_violating_state_empty_violations() {

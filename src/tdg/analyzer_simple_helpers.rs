@@ -68,7 +68,7 @@ impl TdgAnalyzer {
 
     #[cfg(test)]
     fn should_skip_directory(&self, path: &Path) -> bool {
-        crate::tdg::file_discovery::is_skipped_directory(path, false)
+        crate::tdg::file_discovery::is_skipped_directory(path)
     }
 
     #[cfg(test)]

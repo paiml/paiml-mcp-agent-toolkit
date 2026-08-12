@@ -19,7 +19,8 @@
 //! advertised the argument as "accepted but not yet applied as a filter".
 
 use crate::mcp_pmcp::tool_functions::{
-    analyze_deep_context, check_quality_gate_file, check_quality_gates, quality_gate_summary,
+    analyze_deep_context, check_quality_gate_file, check_quality_gates, quality_gate_baseline,
+    quality_gate_summary,
 };
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -175,6 +176,213 @@ async fn the_summary_names_the_files_its_average_left_out() {
             .iter()
             .any(|row| row["reason"].as_str().is_some_and(|r| r.contains(".sh"))),
         "…with the reason it was left out: {json}"
+    );
+}
+
+/// R13 residual: the summary was fixed to NAME the files its average left out,
+/// but it was still reading `let project_path = &paths[0];` and never looking at
+/// `paths[1..]` — the very sentence the R13 fix claimed to have removed. The
+/// test above could not see it because it passes a SINGLE path, so the drop had
+/// nothing to drop. Multi-path is the case that has to be written down.
+#[tokio::test]
+async fn the_summary_measures_every_path_not_just_the_first() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let first = write(
+        dir.path(),
+        "first.rs",
+        "/// Doc.\npub fn a() -> i32 { 1 }\n",
+    );
+    let second = write(
+        dir.path(),
+        "second.rs",
+        "/// Doc.\npub fn b() -> i32 { 2 }\n",
+    );
+
+    let json = quality_gate_summary(&[first, second])
+        .await
+        .expect("summary");
+    let summary = &json["summary"];
+
+    assert_eq!(
+        summary["total_files"], 2,
+        "two gradable paths in, two summarised out — paths[1..] was dropped: {json}"
+    );
+    assert_eq!(
+        summary["passed_files"].as_u64().expect("passed_files"),
+        2,
+        "both clean files must be counted: {json}"
+    );
+}
+
+/// R13 residual: the summary's file branch hardcoded `analyze_file(paths[0])?`,
+/// so a path TDG has no grade for was a HARD ERROR out of `quality_gate.summary`
+/// while `quality_gate` reported the same path as a disclosed `not_measured`
+/// row. One tool family, two answers to one question.
+#[tokio::test]
+async fn an_ungradable_file_is_disclosed_by_the_summary_not_an_error() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let script = write(dir.path(), "a.sh", "#!/bin/sh\na() { echo 1; }\n");
+
+    let json = quality_gate_summary(std::slice::from_ref(&script))
+        .await
+        .expect("a language TDG does not grade is a hole to disclose, not bad input");
+    let summary = &json["summary"];
+
+    assert!(
+        not_measured(summary)
+            .iter()
+            .any(|entry| entry == &script.display().to_string()),
+        "the file with no grade must be named: {json}"
+    );
+
+    // …and the other entry point of the same tool family must say the same
+    // thing about the same path.
+    let gate = check_quality_gates(std::slice::from_ref(&script), false)
+        .await
+        .expect("quality_gate reports");
+    assert!(
+        not_measured(&gate).contains(&script.display().to_string()),
+        "quality_gate must disclose it too: {gate}"
+    );
+}
+
+/// R13 residual, the load-bearing one: a path that produced NO measurement was
+/// absorbed whenever some *other* path in the same call did measure. The
+/// disclosure guard read `total_files == 0 && ungraded.is_empty()`, so it only
+/// ever fired when the whole call measured nothing.
+///
+/// `["ok.rs", "emptydir"]` answered
+/// `{"passed":true,"score":95.0,"not_measured":[],"files_analyzed":1}` while
+/// `["emptydir"]` alone answered `passed:false` — the empty directory graded
+/// clean by the company it kept.
+#[tokio::test]
+async fn a_path_that_measured_nothing_is_disclosed_even_when_a_sibling_measured() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graded = write(dir.path(), "ok.rs", "/// Doc.\npub fn a() -> i32 { 1 }\n");
+    let empty = dir.path().join("emptydir");
+    std::fs::create_dir(&empty).expect("mkdir");
+
+    let alone = check_quality_gates(std::slice::from_ref(&empty), false)
+        .await
+        .expect("quality_gate reports");
+    assert_eq!(
+        alone["passed"],
+        Value::Bool(false),
+        "baseline: an unmeasured path alone must not pass: {alone}"
+    );
+
+    let together = check_quality_gates(&[graded, empty.clone()], false)
+        .await
+        .expect("quality_gate reports");
+    assert!(
+        not_measured(&together).contains(&empty.display().to_string()),
+        "a path that measured nothing must be named even when a sibling did: {together}"
+    );
+    assert_eq!(
+        together["passed"],
+        Value::Bool(false),
+        "the verdict for an unmeasured path cannot depend on what else was in \
+         the list — alone={alone} together={together}"
+    );
+}
+
+/// The same rule at the other entry point: the summary must not average away a
+/// path it measured nothing for either.
+#[tokio::test]
+async fn the_summary_names_a_path_it_measured_nothing_for() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graded = write(dir.path(), "ok.rs", "/// Doc.\npub fn a() -> i32 { 1 }\n");
+    let empty = dir.path().join("emptydir");
+    std::fs::create_dir(&empty).expect("mkdir");
+
+    let json = quality_gate_summary(&[graded, empty.clone()])
+        .await
+        .expect("summary");
+    let summary = &json["summary"];
+
+    assert!(
+        not_measured(summary).contains(&empty.display().to_string()),
+        "the summary must name the path its average covers nothing of: {json}"
+    );
+}
+
+/// The THIRD copy of the rule in the same file. `quality_gate_baseline` had its
+/// own `let project_path = &paths[0];` and its own is_dir/is_file split, so a
+/// baseline taken over two paths recorded the first and silently omitted the
+/// second — and `quality_gate.compare` then calls every omitted file
+/// "unchanged", because neither side ever measured one.
+#[tokio::test]
+async fn the_baseline_records_every_path_not_just_the_first() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let first = write(
+        dir.path(),
+        "first.rs",
+        "/// Doc.\npub fn a() -> i32 { 1 }\n",
+    );
+    let second = write(
+        dir.path(),
+        "second.rs",
+        "/// Doc.\npub fn b() -> i32 { 2 }\n",
+    );
+    let out = dir.path().join("baseline.json");
+
+    let json = quality_gate_baseline(&[first, second], Some(&out))
+        .await
+        .expect("baseline");
+
+    assert_eq!(
+        json["baseline"]["summary"]["total_files"], 2,
+        "two gradable paths in, two recorded — paths[1..] was dropped: {json}"
+    );
+}
+
+/// …and a path it could not record must be named, for the same reason: a file
+/// absent from a baseline is indistinguishable from one that did not move.
+#[tokio::test]
+async fn the_baseline_names_the_paths_it_could_not_record() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graded = write(dir.path(), "ok.rs", "/// Doc.\npub fn a() -> i32 { 1 }\n");
+    let script = write(dir.path(), "a.sh", "#!/bin/sh\na() { echo 1; }\n");
+    let out = dir.path().join("baseline.json");
+
+    let json = quality_gate_baseline(&[graded, script.clone()], Some(&out))
+        .await
+        .expect("baseline");
+
+    let names: Vec<String> = json["baseline"]["not_measured"]
+        .as_array()
+        .expect("not_measured is an array")
+        .iter()
+        .map(|v| v.as_str().unwrap_or_default().to_string())
+        .collect();
+    assert!(
+        names.contains(&script.display().to_string()),
+        "the path with no entry must be named: {json}"
+    );
+}
+
+/// Naming the same file twice must not change the measurement: `ungraded` was
+/// sorted and deduped while `graded` was not, so `[a.rs, a.rs]` reported one
+/// more file than exists on disk and moved the average with it.
+#[tokio::test]
+async fn naming_the_same_file_twice_does_not_change_the_score() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let file = write(dir.path(), "ok.rs", "/// Doc.\npub fn a() -> i32 { 1 }\n");
+
+    let once = check_quality_gates(std::slice::from_ref(&file), false)
+        .await
+        .expect("quality_gate reports");
+    let twice = check_quality_gates(&[file.clone(), file.clone()], false)
+        .await
+        .expect("quality_gate reports");
+
+    assert_eq!(
+        once["files_analyzed"], twice["files_analyzed"],
+        "the same file on disk weighs once: once={once} twice={twice}"
+    );
+    assert_eq!(
+        once["score"], twice["score"],
+        "naming a file twice must not move the average: once={once} twice={twice}"
     );
 }
 

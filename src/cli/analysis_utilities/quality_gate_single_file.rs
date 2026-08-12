@@ -53,9 +53,14 @@ async fn handle_single_file_quality_gate(
         }
     }
 
-    // Calculate overall status
-    results.passed = violations.is_empty();
+    // Calculate overall status — THE rule, shared with the project gate and the
+    // MCP tool (see `violations_pass`). Was `violations.is_empty()`.
+    results.passed = violations_pass(&violations);
     results.total_violations = violations.len();
+    results.blocking_violations = blocking_violation_count(&violations);
+    // `results.violations` shipped as a permanently-empty array beside
+    // `total_violations: 1`, exactly as the project gate did before #196.
+    results.set_violation_lines(&violations);
 
     // Format and output results
     output_single_file_results(&single_file, &results, &violations, format, output).await?;
@@ -202,7 +207,7 @@ async fn run_single_file_satd_check(
     results: &mut QualityGateResults,
 ) -> Result<()> {
     eprint!("  🔍 Checking SATD...");
-    let violations_found = check_single_file_satd(project_path, single_file).await?;
+    let violations_found = check_satd_file(project_path, single_file).await?;
     results.satd_violations = violations_found.len();
     eprintln!(" {} violations found", results.satd_violations);
     violations.extend(violations_found);

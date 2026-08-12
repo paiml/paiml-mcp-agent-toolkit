@@ -172,25 +172,11 @@ pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-/// Whether the stored `tdg_score` values were written on the CURRENT TDG scale.
-///
-/// R30: `pmat query`/`pmat sql` used to persist a 0-10 lower-is-better debt
-/// number while `pmat tdg` reported 0-100 higher-is-better. Both scales fit the
-/// same `REAL` column, so a stale database loads without complaint and every
-/// stored `0.12` — the BEST possible legacy score — reads as 0.12/100, an F.
-///
-/// A missing marker is NOT treated as current. Pre-v3.30.0 builds wrote no
-/// marker at all, so "absent" is precisely the stale case; an unmeasured signal
-/// must never pass as a clean one.
-pub(crate) fn stored_scale_is_current(conn: &Connection) -> bool {
-    conn.query_row(
-        "SELECT value FROM metadata WHERE key = 'tdg_scale'",
-        [],
-        |r| r.get::<_, String>(0),
-    )
-    .map(|v| v == crate::services::agent_context::TDG_SCALE)
-    .unwrap_or(false)
-}
+// R30: the "was this written on the current TDG scale?" predicate used to live
+// here as `stored_scale_is_current`, a second decision point beside the blob
+// path's inline manifest comparison — and `pmat sql` had no third. It now lives
+// once, in `super::super::scale_guard`, which owns both the reader
+// (`db_scale`) and the verdict (`stale_scale_reason`).
 
 /// Check if the database has a valid v2.0 schema (all required tables exist).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

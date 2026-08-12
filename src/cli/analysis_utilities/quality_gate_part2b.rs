@@ -23,9 +23,20 @@ async fn output_project_results(
 /// Prints the final quality gate status
 fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[QualityViolation]) {
     if results.passed {
-        eprintln!("\n✅ Quality gate PASSED");
+        // "PASSED" beside a non-empty list is only honest if the advisory rows
+        // that did NOT decide the verdict are named as advisory.
+        let advisory = violations.len() - blocking_violation_count(violations);
+        if advisory > 0 {
+            eprintln!("\n✅ Quality gate PASSED ({advisory} advisory finding(s), not blocking)");
+        } else {
+            eprintln!("\n✅ Quality gate PASSED");
+        }
     } else {
-        eprintln!("\n⚠️ Quality gate found {} violations", violations.len());
+        eprintln!(
+            "\n⚠️ Quality gate found {} blocking violations ({} total findings)",
+            blocking_violation_count(violations),
+            violations.len()
+        );
     }
 }
 

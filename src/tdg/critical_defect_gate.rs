@@ -40,7 +40,7 @@ pub(crate) const NEW_FILE_WAIVER: &str =
 /// depends on the source, not on where it sits, which is the invariant #919 was
 /// filed for.
 pub(crate) fn apply(score: &mut TdgScore, source: &str, language: Language) {
-    let count = count_critical_defects(source, language, score.file_path.as_deref());
+    let count = count_critical_defects(source, language);
 
     score.critical_defects_count = count;
     score.has_critical_defects = count > 0;
@@ -61,16 +61,22 @@ pub(crate) fn apply(score: &mut TdgScore, source: &str, language: Language) {
 /// not an absence of defects. An analyzer handed a source string with no file
 /// behind it still sees the `unwrap()`s, and reporting zero for it would be the
 /// "empty collection means clean" answer this gate exists to refuse.
-pub(crate) fn count_critical_defects(
-    source: &str,
-    language: Language,
-    path: Option<&Path>,
-) -> usize {
-    let label: PathBuf = path.map_or_else(|| PathBuf::from("<source>"), Path::to_path_buf);
+///
+/// The label is deliberately NOT the analysed path. `RustDefectDetector::detect`
+/// opens with `if self.should_exclude_file(file_path) { return defects; }` — a
+/// fifth private copy of the test-source rule — so handing it the real path made
+/// the count a property of WHERE the bytes sit: `repo/widget.rs` reported 3
+/// defects and F while a byte-identical `repo/examples/bad.rs` reported 0 and
+/// A+, which falsifies this module's own invariant one line above. Whether a
+/// path is graded at all is decided ONCE, in `crate::tdg::file_discovery`, before
+/// anything gets here; by the time a source string reaches this counter the only
+/// question left is what is in it.
+pub(crate) fn count_critical_defects(source: &str, language: Language) -> usize {
+    let label = Path::new("<source>");
 
     let detected: usize = match language {
-        Language::Rust => critical_instances(&RustDefectDetector::new().detect(source, &label)),
-        Language::Lua => critical_instances(&LuaDefectDetector::new().detect(source, &label)),
+        Language::Rust => critical_instances(&RustDefectDetector::new().detect(source, label)),
+        Language::Lua => critical_instances(&LuaDefectDetector::new().detect(source, label)),
         _ => 0,
     };
 

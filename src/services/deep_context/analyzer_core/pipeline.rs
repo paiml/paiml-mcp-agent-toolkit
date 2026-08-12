@@ -112,9 +112,14 @@ impl DeepContextAnalyzer {
     ) -> anyhow::Result<ParallelAnalysisResults> {
         progress.set_message("Running parallel analyses...");
         let analysis_start = std::time::Instant::now();
-        let analyses = self
+        let mut analyses = self
             .execute_parallel_analyses_with_progress(project_path, tracker)
             .await?;
+        // R18: the individual analyzers walk the whole project, so the
+        // configured include/exclude patterns are applied to their output here
+        // — through the same `FileScope` the file-tree walk uses, so the
+        // reported findings and `file_count` cover the same files.
+        self.retain_analyses_in_scope(&mut analyses);
         info!("Analysis phase completed in {:?}", analysis_start.elapsed());
         debug!("Analysis phase completed");
         Ok(analyses)
