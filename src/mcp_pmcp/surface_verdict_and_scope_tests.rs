@@ -386,6 +386,156 @@ async fn naming_the_same_file_twice_does_not_change_the_score() {
     );
 }
 
+/// R13 residual, the duplicate underneath it: `quality_tools.rs` carried its own
+/// `satd_violations_for_file` — a THIRD copy of the detector-severity mapping
+/// (`Critical|High => "error"`, `Medium => "warning"`, `Low => "info"`) beside
+/// the CLI's, with its own message format. So the SAME `FIXME` on the SAME line
+/// of the SAME file was described one way when the caller named the file and
+/// another way when the caller named the directory holding it — the file branch
+/// said `"{category}: {text}"` and the directory branch (which already went
+/// through `check_satd`) said `"{category}: {text} (at column {column})"`.
+///
+/// Both branches now call `crate::cli::analysis_utilities`, so there is no
+/// second mapping left to drift.
+#[tokio::test]
+async fn one_finding_is_described_the_same_way_whether_the_file_or_its_directory_is_named() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let file = write(dir.path(), "lib.rs", BLOCKING_FIXME);
+
+    let by_file = check_quality_gates(std::slice::from_ref(&file), false)
+        .await
+        .expect("quality_gate reports");
+    let by_dir = check_quality_gates(&[dir.path().to_path_buf()], false)
+        .await
+        .expect("quality_gate reports");
+
+    let satd_rows = |json: &Value| -> Vec<(String, String)> {
+        json["violations"]
+            .as_array()
+            .expect("violations is an array")
+            .iter()
+            .filter(|v| v["check_type"] == "satd")
+            .map(|v| {
+                (
+                    v["severity"].as_str().unwrap_or_default().to_string(),
+                    v["message"].as_str().unwrap_or_default().to_string(),
+                )
+            })
+            .collect()
+    };
+
+    let named = satd_rows(&by_file);
+    let walked = satd_rows(&by_dir);
+    assert!(
+        !named.is_empty(),
+        "the FIXME must be reported when the file is named: {by_file}"
+    );
+    assert_eq!(
+        named, walked,
+        "one detector, one severity scale, one wording — naming the file and \
+         naming its directory must describe the same finding identically: \
+         by_file={by_file} by_dir={by_dir}"
+    );
+}
+
+/// R13 residual, the other duplicate: this file wrote its own refusal sentence
+/// (`"TDG does not grade .{ext}"`), which is the WRONG rule for a `tests/*.rs` —
+/// perfectly gradable Rust that TDG deliberately leaves out of the population.
+/// `pmat tdg` publishes "test-or-bench file: TDG does not grade test sources"
+/// for it, so one build described one refusal two ways.
+///
+/// Multi-path on purpose: the single-path shape is what let the last residual
+/// survive.
+#[tokio::test]
+async fn the_reason_a_path_is_not_graded_is_the_one_the_rest_of_the_build_gives() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let graded = write(dir.path(), "ok.rs", "/// Doc.\npub fn a() -> i32 { 1 }\n");
+    std::fs::create_dir(dir.path().join("tests")).expect("mkdir");
+    let test_source = write(
+        &dir.path().join("tests"),
+        "it.rs",
+        "/// Doc.\npub fn t() -> i32 { 1 }\n",
+    );
+    let script = write(dir.path(), "a.sh", "#!/bin/sh\na() { echo 1; }\n");
+
+    let json = check_quality_gates(&[graded, test_source.clone(), script.clone()], false)
+        .await
+        .expect("quality_gate reports");
+
+    let message_for = |path: &Path| -> String {
+        json["violations"]
+            .as_array()
+            .expect("violations is an array")
+            .iter()
+            .find(|v| v["check_type"] == "not_graded" && v["file"] == path.display().to_string())
+            .and_then(|v| v["message"].as_str())
+            .unwrap_or_else(|| panic!("no not_graded row for {}: {json}", path.display()))
+            .to_string()
+    };
+
+    // The authority, asked directly. Every surface must quote it verbatim.
+    for path in [&test_source, &script] {
+        let authority = crate::tdg::analyzer_simple::not_gradable_reason(path)
+            .unwrap_or_else(|| panic!("{} must be refused by the shared rule", path.display()));
+        assert_eq!(
+            message_for(path),
+            authority,
+            "the gate must report the build's own refusal, not a sentence of its \
+             own: {json}"
+        );
+    }
+
+    // And the specific contradiction: a test source is not "a language TDG does
+    // not grade" — it is Rust, deliberately out of the population.
+    assert!(
+        message_for(&test_source).contains("test"),
+        "a tests/ file must be refused as test source, not as an ungraded \
+         language: {json}"
+    );
+
+    // The reason is quoted once, not once plus a suffix repeating it.
+    assert_eq!(
+        message_for(&script)
+            .matches("not part of the score")
+            .count(),
+        1,
+        "the reason must not be stated twice in one message: {json}"
+    );
+}
+
+/// The single-file entry point quotes the same authority, so `quality_gate`
+/// with `file:` and `quality_gate` with `paths:` cannot describe one refusal
+/// two ways.
+#[tokio::test]
+async fn both_gate_entry_points_quote_the_same_refusal() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let script = write(dir.path(), "a.sh", "#!/bin/sh\na() { echo 1; }\n");
+
+    let single = check_quality_gate_file(&script, false)
+        .await
+        .expect("file gate reports");
+    let listed = check_quality_gates(std::slice::from_ref(&script), false)
+        .await
+        .expect("quality_gate reports");
+
+    let reason = |json: &Value| -> String {
+        json["violations"]
+            .as_array()
+            .expect("violations is an array")
+            .iter()
+            .find(|v| v["check_type"] == "not_graded")
+            .and_then(|v| v["message"].as_str())
+            .unwrap_or_else(|| panic!("no not_graded row: {json}"))
+            .to_string()
+    };
+
+    assert_eq!(
+        reason(&single),
+        reason(&listed),
+        "one refusal, one sentence: single={single} listed={listed}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // R17 — one severity rule, one place, both entry points
 // ---------------------------------------------------------------------------

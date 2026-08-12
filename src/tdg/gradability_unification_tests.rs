@@ -161,10 +161,12 @@ async fn mcp_quality_gate_reports_a_skipped_file_as_unmeasured_not_as_an_a() {
     let dir = tempfile::tempdir().expect("tempdir");
 
     for path in test_source_paths(dir.path()) {
-        let verdict =
-            crate::mcp_pmcp::tool_functions::check_quality_gates(std::slice::from_ref(&path), false)
-            .await
-            .expect("gate reports");
+        let verdict = crate::mcp_pmcp::tool_functions::check_quality_gates(
+            std::slice::from_ref(&path),
+            false,
+        )
+        .await
+        .expect("gate reports");
 
         assert_eq!(
             verdict["passed"],
