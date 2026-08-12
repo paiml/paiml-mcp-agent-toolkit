@@ -43,11 +43,41 @@ pub fn format_project(project: &ProjectScore) -> String {
         },
     ));
     line(box_row(&format!("Total Files: {}", project.total_files)));
+    // A file that was walked but refused must be disclosed HERE, next to the
+    // average it is missing from: the warning went to stderr only, so
+    // `analyze tdg` on a crate whose only Rust file fails to parse printed
+    // "Average Score: 100.0/100 (A+)" over the one file that survived.
+    if !project.ungraded_files.is_empty() {
+        line(box_row(&format!(
+            "Not Graded: {} file(s) walked, not measured",
+            project.ungraded_files.len()
+        )));
+    }
+    // The #279 waiver used to be disclosed only by `check-quality --format
+    // json`; a reader of the default table had no way to learn that a file with
+    // critical defects was exempted from the auto-fail.
+    let waived = project
+        .files
+        .iter()
+        .filter(|f| f.critical_defects_suppressed.is_some())
+        .count();
+    if waived > 0 {
+        line(box_row(&format!(
+            "Waived (#279): {waived} file(s) with critical defects"
+        )));
+    }
     // A truncated list must say so next to the total it sits under, so the
     // header count and the list below it can never contradict each other.
     if project.files_truncated {
+        // The flag was hardcoded as `(--top-files)`, so a `--critical-only` run
+        // blamed a flag the user never passed. Name the one that applied.
+        let via = project
+            .list_filter
+            .as_deref()
+            .map(|f| format!(" ({f})"))
+            .unwrap_or_default();
         line(box_row(&format!(
-            "Files Listed: {} of {} (--top-files)",
+            "Files Listed: {} of {}{via}",
             project.files_reported, project.total_files
         )));
     }

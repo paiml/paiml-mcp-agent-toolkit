@@ -68,18 +68,18 @@ fn format_text(
 
     for (name, category) in categories {
         if !category.applicable {
-            output.push_str(&format!("  {}  {}: N/A{}\n", c::DIM, name, c::RESET));
+            output.push_str(&format!("  {}  {}: N/A{}\n", c::seq(c::DIM), name, c::seq(c::RESET)));
             continue;
         }
 
         let percentage = category.percentage();
 
         let icon = if percentage >= 90.0 {
-            format!("{}✓{}", c::GREEN, c::RESET)
+            format!("{}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
         } else if percentage >= 70.0 {
-            format!("{}⚠{}", c::YELLOW, c::RESET)
+            format!("{}⚠{}", c::seq(c::YELLOW), c::seq(c::RESET))
         } else {
-            format!("{}✗{}", c::RED, c::RESET)
+            format!("{}✗{}", c::seq(c::RED), c::seq(c::RESET))
         };
 
         output.push_str(&format!(
@@ -96,7 +96,7 @@ fn format_text(
     if !recommendations.is_empty() {
         output.push_str(&format!("{}\n", c::label("Recommendations")));
         for rec in recommendations {
-            output.push_str(&format!("  {}{}{}\n", c::DIM_WHITE, rec, c::RESET));
+            output.push_str(&format!("  {}{}{}\n", c::seq(c::DIM_WHITE), rec, c::seq(c::RESET)));
         }
         output.push('\n');
     }

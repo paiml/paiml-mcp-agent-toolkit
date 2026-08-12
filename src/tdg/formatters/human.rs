@@ -76,6 +76,26 @@ pub fn format_human(score: &TdgScore) -> String {
         )));
     }
 
+    // A waiver that changes the verdict must be disclosed on every surface that
+    // reports the verdict. The #279 exemption used to be visible ONLY in
+    // `tdg check-quality --format json` (`"… (1 waived under #279)"`); every
+    // human renderer applied it in silence, so a reader of the default output
+    // had no way to learn that a file with critical defects had been let
+    // through.
+    if score.has_critical_defects {
+        line(box_blank());
+        line(box_row(&format!(
+            "⛔ Critical Defects: {}",
+            score.critical_defects_count
+        )));
+        if let Some(reason) = &score.critical_defects_suppressed {
+            line(box_row(&ellipsize(
+                &format!("  auto-fail waived: {reason}"),
+                BODY_WIDTH,
+            )));
+        }
+    }
+
     if !score.penalties_applied.is_empty() {
         line(box_blank());
         line(box_row("🔍 Issues Found:"));

@@ -58,13 +58,60 @@ struct Violation {
     message: String,
 }
 
+/// What one stage produced.
+///
+/// `verify` used to have only two answers — pass or fail — and so had nowhere to
+/// put "I could not run here". Both directions were wrong at once: in an empty
+/// directory it printed `✓ pass complexity / ✓ pass satd / ✓ verify passed —
+/// safe to commit` and exited 0, a green pre-commit verdict over zero files;
+/// and in the same directory (and in any non-Cargo project) the format stage
+/// reported `ok:false` whose evidence was **rustfmt's usage screen**, i.e. a
+/// tool-invocation error surfaced as a code-quality violation.
+///
+/// `NotApplicable` is the third answer `enforce` and `cuda-tdg` already have. It
+/// is not a pass: it does not fail the run either, but a run in which NOTHING
+/// was measured cannot report "safe to commit".
+#[derive(Debug)]
+enum StageResult {
+    Ran {
+        ok: bool,
+        violations: Vec<Violation>,
+        detail: Option<String>,
+    },
+    /// The stage's tool had nothing here to check, and said so.
+    NotApplicable(String),
+}
+
+impl StageResult {
+    fn pass() -> Self {
+        Self::Ran {
+            ok: true,
+            violations: Vec::new(),
+            detail: None,
+        }
+    }
+    fn ran(ok: bool, violations: Vec<Violation>, detail: Option<String>) -> Self {
+        Self::Ran {
+            ok,
+            violations,
+            detail,
+        }
+    }
+    fn not_applicable(reason: impl Into<String>) -> Self {
+        Self::NotApplicable(reason.into())
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct StageReport {
     name: &'static str,
-    /// `Some(true/false)` ran and passed/failed; `None` skipped.
+    /// `Some(true/false)` ran and passed/failed; `None` skipped or not applicable.
     ok: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     skipped: Option<&'static str>,
+    /// Why this stage measured nothing. Never a pass, never a failure.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    not_applicable: Option<String>,
     duration_ms: u64,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     violations: Vec<Violation>,
@@ -76,6 +123,11 @@ struct StageReport {
 #[derive(Debug, Serialize)]
 struct VerifyReport {
     ok: bool,
+    /// How many selected stages actually produced a measurement.
+    stages_measured: usize,
+    /// Set when `stages_measured == 0`: there is no verdict to give.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    not_measured: Option<String>,
     duration_ms: u64,
     stages: Vec<StageReport>,
 }
@@ -87,6 +139,7 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
 
     let mut stages = Vec::new();
     let mut failed = false;
+    let mut measured = 0usize;
     for &name in STAGES {
         if !selected.contains(&name) {
             stages.push(skipped(name, "not-selected"));
@@ -97,20 +150,49 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
             continue;
         }
         let start = Instant::now();
-        let (ok, violations, detail) = run_stage(name, &args);
-        failed |= !ok;
-        stages.push(StageReport {
-            name,
-            ok: Some(ok),
-            skipped: None,
-            duration_ms: start.elapsed().as_millis() as u64,
-            violations,
-            detail: if ok { None } else { detail },
-        });
+        let duration_ms = |start: Instant| start.elapsed().as_millis() as u64;
+        match run_stage(name, &args) {
+            StageResult::Ran {
+                ok,
+                violations,
+                detail,
+            } => {
+                measured += 1;
+                failed |= !ok;
+                stages.push(StageReport {
+                    name,
+                    ok: Some(ok),
+                    skipped: None,
+                    not_applicable: None,
+                    duration_ms: duration_ms(start),
+                    violations,
+                    detail: if ok { None } else { detail },
+                });
+            }
+            StageResult::NotApplicable(reason) => stages.push(StageReport {
+                name,
+                ok: None,
+                skipped: None,
+                not_applicable: Some(reason),
+                duration_ms: duration_ms(start),
+                violations: Vec::new(),
+                detail: None,
+            }),
+        }
     }
 
+    // A run that measured nothing has not passed. This is the half of the
+    // contract `enforce` already had and `verify` did not: the two gave opposite
+    // verdicts on an empty directory ("safe to commit" vs "Violating,
+    // complexity/satd not measured").
+    let not_measured = (measured == 0).then(|| {
+        "no selected stage could measure anything here, so verify has no verdict to give"
+            .to_string()
+    });
     let report = VerifyReport {
-        ok: !failed,
+        ok: !failed && measured > 0,
+        stages_measured: measured,
+        not_measured,
         duration_ms: overall.elapsed().as_millis() as u64,
         stages,
     };
@@ -118,7 +200,7 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
         VerifyFormat::Json => println!("{}", serde_json::to_string_pretty(&report)?),
         VerifyFormat::Text => print_text(&report),
     }
-    if failed {
+    if !report.ok {
         std::process::exit(1);
     }
     Ok(())
@@ -150,13 +232,14 @@ fn skipped(name: &'static str, why: &'static str) -> StageReport {
         name,
         ok: None,
         skipped: Some(why),
+        not_applicable: None,
         duration_ms: 0,
         violations: Vec::new(),
         detail: None,
     }
 }
 
-fn run_stage(name: &str, args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
+fn run_stage(name: &str, args: &VerifyArgs) -> StageResult {
     match name {
         "format" => stage_format(args),
         "complexity" => stage_complexity(),
@@ -166,12 +249,50 @@ fn run_stage(name: &str, args: &VerifyArgs) -> (bool, Vec<Violation>, Option<Str
         // A name that is not a stage must never read as a pass. `select_stages`
         // rejects unknown names up front, so getting here means this match and
         // `STAGES` have drifted apart — report that, don't return green.
-        other => (
+        other => StageResult::ran(
             false,
             Vec::new(),
             Some(format!("no such verify stage: `{other}`")),
         ),
     }
+}
+
+/// Is the working directory inside a Cargo project?
+///
+/// `cargo fmt`, `cargo clippy` and `cargo test` all refuse outside one, and
+/// rustfmt answers with "could not find Cargo.toml" followed by its whole usage
+/// screen. `verify` recorded that screen as the failure detail, telling an agent
+/// the code was misformatted when the real fact is that the directory is not a
+/// Cargo project — a fact about applicability, not about quality.
+fn in_cargo_project(dir: &Path) -> bool {
+    dir.canonicalize()
+        .as_deref()
+        .unwrap_or(dir)
+        .ancestors()
+        .any(|a| a.join("Cargo.toml").is_file())
+}
+
+/// Extensions the pmat-native stages (complexity, satd) can read.
+const SOURCE_EXTENSIONS: &[&str] = &[
+    "rs", "py", "ts", "tsx", "js", "jsx", "go", "c", "h", "cc", "cpp", "hpp", "java", "kt", "rb",
+    "php", "swift", "sh", "bash", "lua", "sql", "scala",
+];
+
+/// Does `dir` contain any file matching `wanted`, honouring `.gitignore`?
+fn any_source_file(dir: &Path, wanted: &[&str]) -> bool {
+    ignore::WalkBuilder::new(dir)
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .build()
+        .filter_map(std::result::Result::ok)
+        .any(|e| {
+            e.path()
+                .extension()
+                .and_then(|x| x.to_str())
+                .is_some_and(|x| wanted.contains(&x))
+        })
 }
 
 fn cargo() -> Command {
@@ -254,13 +375,18 @@ fn tail(output: &str, n: usize) -> Option<String> {
     Some(lines[start..].join("\n"))
 }
 
-fn stage_format(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
+fn stage_format(args: &VerifyArgs) -> StageResult {
+    if !in_cargo_project(Path::new(".")) {
+        return StageResult::not_applicable(
+            "cargo fmt needs a Cargo project; no Cargo.toml in this directory or any parent",
+        );
+    }
     if args.fix {
         let _ = run(cargo().args(["fmt", "--all"]));
-        return (true, Vec::new(), None);
+        return StageResult::pass();
     }
     let (ok, out) = run(cargo().args(["fmt", "--all", "--", "--check"]));
-    (ok, Vec::new(), format_detail(&out))
+    StageResult::ran(ok, Vec::new(), format_detail(&out))
 }
 
 /// Failure detail for the format stage.
@@ -275,14 +401,21 @@ fn format_detail(output: &str) -> Option<String> {
     first_error(output).or_else(|| tail(output, 20))
 }
 
-fn stage_complexity() -> (bool, Vec<Violation>, Option<String>) {
+fn stage_complexity() -> StageResult {
     // The complexity gate is incremental — the pre-commit hook checks staged
     // files. So scope to files changed vs HEAD: a whole-project scan would flag
-    // pre-existing high-complexity test files that the gate never gates. No
-    // changes ⇒ nothing new to gate ⇒ pass.
+    // pre-existing high-complexity test files that the gate never gates.
+    //
+    // "No changes" used to return a PASS. It is not one: nothing was measured,
+    // and in an empty directory that green tick was the whole of verify's
+    // verdict.
     let files = changed_rust_files();
     if files.is_empty() {
-        return (true, Vec::new(), None);
+        return if any_source_file(Path::new("."), &["rs"]) {
+            StageResult::not_applicable("no Rust files changed vs HEAD, so nothing was measured")
+        } else {
+            StageResult::not_applicable("no Rust source files here, so nothing was measured")
+        };
     }
     let mut cmd = pmat_self();
     cmd.args([
@@ -297,10 +430,16 @@ fn stage_complexity() -> (bool, Vec<Violation>, Option<String>) {
     ]);
     cmd.arg(files.join(","));
     let (ok, out) = run(&mut cmd);
-    (ok, Vec::new(), tail(&out, 25))
+    StageResult::ran(ok, Vec::new(), tail(&out, 25))
 }
 
-fn stage_satd() -> (bool, Vec<Violation>, Option<String>) {
+fn stage_satd() -> StageResult {
+    // A tree with no source files gives the detector nothing to read, and
+    // "0 SATD violations over 0 files" is the absence of a measurement, not a
+    // clean one.
+    if !any_source_file(Path::new("."), SOURCE_EXTENSIONS) {
+        return StageResult::not_applicable("no source files here, so nothing was measured");
+    }
     // This stage used to shell out to `analyze satd --strict` with no
     // `--fail-on-violation` and take the child's exit status as its verdict, so
     // it was green on a tree whose `src/lib.rs` had just gained a FIXME and a
@@ -316,7 +455,7 @@ fn stage_satd() -> (bool, Vec<Violation>, Option<String>) {
         "--fail-on-violation",
     ]));
     let (ok, detail) = satd_verdict(&out);
-    (ok, Vec::new(), detail)
+    StageResult::ran(ok, Vec::new(), detail)
 }
 
 /// Decide the satd stage from `analyze satd --format json` output.
@@ -354,12 +493,17 @@ fn parse_satd_violation_count(output: &str) -> Option<u64> {
     digits.parse().ok()
 }
 
-fn stage_tests() -> (bool, Vec<Violation>, Option<String>) {
+fn stage_tests() -> StageResult {
+    if !in_cargo_project(Path::new(".")) {
+        return StageResult::not_applicable(
+            "cargo test needs a Cargo project; no Cargo.toml in this directory or any parent",
+        );
+    }
     // Lib tests; clap tests need an 8MB stack or they SIGABRT.
     let (ok, out) = run(cargo()
         .args(["test", "--lib"])
         .env("RUST_MIN_STACK", "8388608"));
-    (ok, Vec::new(), tail(&out, 30))
+    StageResult::ran(ok, Vec::new(), tail(&out, 30))
 }
 
 /// Selector and lint flags for the clippy stage, matching `ci / lint` exactly.
@@ -381,7 +525,12 @@ fn stage_tests() -> (bool, Vec<Violation>, Option<String>) {
 const CLIPPY_TARGETS: &str = "--all-targets";
 const CLIPPY_LINTS: &[&str] = &["-D", "warnings", "-A", "unused-variables"];
 
-fn stage_clippy(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
+fn stage_clippy(args: &VerifyArgs) -> StageResult {
+    if !in_cargo_project(Path::new(".")) {
+        return StageResult::not_applicable(
+            "cargo clippy needs a Cargo project; no Cargo.toml in this directory or any parent",
+        );
+    }
     if args.fix {
         let mut fix = cargo();
         fix.args([
@@ -406,7 +555,7 @@ fn stage_clippy(args: &VerifyArgs) -> (bool, Vec<Violation>, Option<String>) {
     } else {
         None
     };
-    (ok, violations, detail)
+    StageResult::ran(ok, violations, detail)
 }
 
 /// First error-shaped line of a failed command's output.
@@ -552,19 +701,25 @@ fn changed_rust_files_in(dir: &Path) -> Vec<String> {
 /// family).
 fn print_text(report: &VerifyReport) {
     use crate::cli::colors as c;
-    let (green, red, dim, reset) = (
-        c::seq(c::GREEN),
-        c::seq(c::RED),
-        c::seq(c::DIM),
-        c::seq(c::RESET),
-    );
+    // Gate explicitly and take the bytes with `Sgr::raw`, which is documented
+    // as ungated: `c::seq` is now an identity on `Sgr`, so interpolating its
+    // result emits the escape whatever `--color` says.
+    let on = c::colors_enabled();
+    let sgr = |s: c::Sgr| if on { s.raw() } else { "" };
+    let (green, red, dim, reset) = (sgr(c::GREEN), sgr(c::RED), sgr(c::DIM), sgr(c::RESET));
     for s in &report.stages {
-        let status = match s.ok {
-            Some(true) => format!("{green}✓ pass{reset}"),
-            Some(false) => format!("{red}✗ FAIL{reset}"),
-            None => format!("{dim}- skip{reset}"),
+        let status = match (s.ok, s.not_applicable.is_some()) {
+            (Some(true), _) => format!("{green}✓ pass{reset}"),
+            (Some(false), _) => format!("{red}✗ FAIL{reset}"),
+            // A stage that could not measure is neither a pass nor a skip the
+            // user asked for; it gets its own mark and its reason.
+            (None, true) => format!("{dim}~ n/a {reset}"),
+            (None, false) => format!("{dim}- skip{reset}"),
         };
         println!("  {status}  {:<11} {}ms", s.name, s.duration_ms);
+        if let Some(reason) = &s.not_applicable {
+            println!("       {dim}{reason}{reset}");
+        }
         for v in &s.violations {
             println!(
                 "       {red}{}{reset} {}:{}  {}",
@@ -577,7 +732,14 @@ fn print_text(report: &VerifyReport) {
             }
         }
     }
-    if report.ok {
+    if let Some(reason) = &report.not_measured {
+        // "safe to commit" over zero measured stages was the defect: an empty
+        // directory got a green pre-commit verdict.
+        println!(
+            "\n{red}✗ verify measured nothing{reset} ({}ms) — {reason}",
+            report.duration_ms
+        );
+    } else if report.ok {
         println!(
             "\n{green}✓ verify passed{reset} ({}ms) — safe to commit",
             report.duration_ms
@@ -736,9 +898,13 @@ mod tests {
             skip: Vec::new(),
             stage: None,
         };
-        let (ok, _, detail) = run_stage("nonexistent", &args);
-        assert!(!ok);
-        assert!(detail.unwrap_or_default().contains("nonexistent"));
+        match run_stage("nonexistent", &args) {
+            StageResult::Ran { ok, detail, .. } => {
+                assert!(!ok);
+                assert!(detail.unwrap_or_default().contains("nonexistent"));
+            }
+            other => panic!("a name that is not a stage must not be not-applicable: {other:?}"),
+        }
     }
 
     /// The satd stage must fail on debt the subcommand reports while exiting 0.
@@ -850,5 +1016,92 @@ mod ansi_tests {
             Some("error: something broke")
         );
         assert!(!tail(&cleaned, 5).unwrap().contains('\u{1b}'));
+    }
+
+    // ── R06: verify needs a measured/unmeasured contract ────────────────────
+
+    /// The stage a Cargo tool cannot run in must report not-applicable, not a
+    /// failure whose evidence is rustfmt's usage screen.
+    #[test]
+    fn cargo_stages_are_not_applicable_outside_a_cargo_project() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        assert!(
+            !in_cargo_project(dir.path()),
+            "a bare tempdir has no Cargo.toml in any ancestor"
+        );
+        std::fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"\n").expect("write");
+        assert!(in_cargo_project(dir.path()));
+        assert!(
+            in_cargo_project(&dir.path().join("src")),
+            "a subdirectory of a Cargo project is still in it"
+        );
+    }
+
+    /// The "nothing to measure" detector: an empty tree has no source at all.
+    #[test]
+    fn source_file_detection_distinguishes_empty_from_populated() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        assert!(!any_source_file(dir.path(), SOURCE_EXTENSIONS));
+        assert!(!any_source_file(dir.path(), &["rs"]));
+
+        std::fs::write(dir.path().join("main.go"), "package main\n").expect("write");
+        assert!(
+            any_source_file(dir.path(), SOURCE_EXTENSIONS),
+            "a Go file is source the pmat-native stages can read"
+        );
+        assert!(
+            !any_source_file(dir.path(), &["rs"]),
+            "...but it is not Rust, so the complexity stage still has nothing"
+        );
+
+        std::fs::write(dir.path().join("lib.rs"), "pub fn a() {}\n").expect("write");
+        assert!(any_source_file(dir.path(), &["rs"]));
+    }
+
+    /// The report verdict: measuring nothing is not passing.
+    ///
+    /// `pmat verify --skip format,clippy,tests` in an empty directory printed
+    /// "\u{2713} pass complexity / \u{2713} pass satd / \u{2713} verify passed \u{2014} safe to commit"
+    /// and exited 0 — a green pre-commit verdict over zero files.
+    #[test]
+    fn a_run_that_measured_nothing_is_not_a_pass() {
+        let stage = |name: &'static str, ok: Option<bool>, na: Option<&str>| StageReport {
+            name,
+            ok,
+            skipped: None,
+            not_applicable: na.map(str::to_string),
+            duration_ms: 0,
+            violations: Vec::new(),
+            detail: None,
+        };
+
+        let measured = |stages: Vec<StageReport>| -> (bool, usize) {
+            let n = stages.iter().filter(|s| s.ok.is_some()).count();
+            let failed = stages.iter().any(|s| s.ok == Some(false));
+            (!failed && n > 0, n)
+        };
+
+        let (ok, n) = measured(vec![
+            stage("complexity", None, Some("no Rust source files here")),
+            stage("satd", None, Some("no source files here")),
+        ]);
+        assert_eq!(n, 0);
+        assert!(!ok, "zero measured stages must not report a pass");
+
+        let (ok, n) = measured(vec![
+            stage("format", Some(true), None),
+            stage("complexity", None, Some("no Rust files changed vs HEAD")),
+        ]);
+        assert_eq!(n, 1);
+        assert!(
+            ok,
+            "one real pass alongside a not-applicable stage is green"
+        );
+
+        let (ok, _) = measured(vec![
+            stage("format", Some(false), None),
+            stage("complexity", None, Some("no Rust files changed vs HEAD")),
+        ]);
+        assert!(!ok);
     }
 }

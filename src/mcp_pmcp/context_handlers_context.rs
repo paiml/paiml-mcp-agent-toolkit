@@ -161,6 +161,15 @@ impl ToolHandler for ContextSummaryTool {
 
         let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
+        // A value outside the `level` enum this tool's own schema advertises is
+        // a bad ARGUMENT. Dispatching first and wrapping the refusal in
+        // `Error::internal` reported it as `-32603 Internal error`, so
+        // `level:"deep"` was indistinguishable from a server crash. Same rule,
+        // same source of truth as `context_summary` itself — only the JSON-RPC
+        // code changes.
+        tool_functions::resolve_summary_level(params.level.as_deref())
+            .map_err(|e| Error::validation(e.to_string()))?;
+
         let summary = tool_functions::context_summary(&paths, params.level.as_deref())
             .await
             .map_err(|e| Error::internal(format!("Context summary failed: {e}")))?;

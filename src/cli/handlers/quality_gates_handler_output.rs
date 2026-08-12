@@ -35,16 +35,17 @@ fn output_summary(report: &QualityReport) -> Result<()> {
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
     for gate in &report.gates {
+        // These were raw `"\x1b[32m"` literals, so `quality-gates --color never`
+        // wrote the same 8 escape sequences as `--color always` — the flag was
+        // inert on this printer. `colors::colored` consults the one enablement
+        // rule (`--color`, `NO_COLOR`, TTY) that the rest of the CLI is on.
+        use crate::cli::colors as c;
         let icon = if gate.passed { "✓" } else { "✗" };
-        let color = if gate.passed { "\x1b[32m" } else { "\x1b[31m" };
-        let reset = "\x1b[0m";
+        let color = if gate.passed { c::GREEN } else { c::RED };
 
         println!(
-            "{}{} {}{} ({:.2}s)",
-            color,
-            icon,
-            gate.name,
-            reset,
+            "{} ({:.2}s)",
+            c::colored(color, &format!("{icon} {}", gate.name)),
             gate.duration.as_secs_f64()
         );
 

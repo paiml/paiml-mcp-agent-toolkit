@@ -141,11 +141,11 @@ mod progress_reporting_tests;
 mod prompt_integration_tests;
 mod provability_handler_refactor_test;
 mod quality_gate_complexity_test;
-mod quality_harness;
 #[cfg(feature = "cli-integration")]
 mod quality_gate_integration;
 mod quality_gate_integration_test;
 mod quality_gate_tests;
+mod quality_harness;
 mod quality_proxy_integration;
 mod recording_format_tests;
 mod recording_workflow_e2e_tests;

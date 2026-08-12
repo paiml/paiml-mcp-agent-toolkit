@@ -231,7 +231,10 @@ fn write_file_stats_list(
     };
 
     for (i, (file_path, stats)) in sorted_files.iter().take(limit).enumerate() {
-        let filename = extract_filename(file_path);
+        // Was `extract_filename`, which printed only the basename: this repo has
+        // two `core_tests_properties.rs`, so slots 1 and 4 of the top-ten were
+        // the same text with the same numbers and no way to tell them apart.
+        let filename = crate::cli::report_paths::report_path(file_path);
         writeln!(
             output,
             "  {}. {} - {} duplication ({} / {} lines)",
@@ -244,14 +247,6 @@ fn write_file_stats_list(
     }
     writeln!(output)?;
     Ok(())
-}
-
-/// Extract filename from full path
-fn extract_filename(file_path: &str) -> &str {
-    std::path::Path::new(file_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(file_path)
 }
 
 /// Write the duplicate blocks section

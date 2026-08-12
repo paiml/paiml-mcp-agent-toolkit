@@ -51,6 +51,7 @@ pub(crate) fn format_metric_name(metric: &crate::tdg::MetricCategory) -> &'stati
         crate::tdg::MetricCategory::Coupling => "Coupling",
         crate::tdg::MetricCategory::Documentation => "Documentation",
         crate::tdg::MetricCategory::Consistency => "Consistency",
+        crate::tdg::MetricCategory::CriticalDefect => "Critical Defects",
     }
 }
 

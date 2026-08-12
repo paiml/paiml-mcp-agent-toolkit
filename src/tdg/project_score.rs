@@ -7,6 +7,25 @@ use super::grade::Grade;
 use super::language_simple::Language;
 use super::score::TdgScore;
 
+/// A file that was walked but could NOT be graded, and why.
+///
+/// The skip used to exist ONLY as an `eprintln!` on stderr, which is not part of
+/// a `--format json` payload and not part of an MCP response. `analyze tdg` on a
+/// crate whose only Rust file fails to parse therefore reported
+/// `{total_files: 1, average_score: 100.0, not_measured: []}` over the one
+/// Python file that survived, and `pmat tdg . --min-grade A` printed
+/// `Overall Score: 100.0/100 (A+)`: the average and the grade were computed over
+/// the SURVIVORS and presented as the project's. A file that was refused has to
+/// come back through the return value or every consumer silently averages a
+/// subset it cannot see.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct UngradedFile {
+    /// Path as walked.
+    pub path: String,
+    /// Why it could not be graded (parse failure, unsupported language, …).
+    pub reason: String,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 /// Project score.
 pub struct ProjectScore {
@@ -67,6 +86,21 @@ pub struct ProjectScore {
     /// list is never presented as the whole population.
     #[serde(default)]
     pub files_truncated: bool,
+    /// Which flag reduced `files` to the reported subset, when one did.
+    ///
+    /// The renderers hardcoded `(--top-files)` in the "Files Listed: 2 of 4"
+    /// disclosure, so a run filtered by `--critical-only` — with `--top-files`
+    /// never passed — blamed a flag the user had not used. The disclosure names
+    /// the flag that actually applied, or says nothing when the list is whole.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub list_filter: Option<String>,
+    /// Files that were walked but NOT graded — see [`UngradedFile`].
+    ///
+    /// `total_files`, `average_score` and `average_grade` describe the GRADED
+    /// files only, so this list is what tells a reader the population those
+    /// numbers were computed over is not the population that was walked.
+    #[serde(default)]
+    pub ungraded_files: Vec<UngradedFile>,
 }
 
 impl ProjectScore {
@@ -131,6 +165,8 @@ impl ProjectScore {
             grade_capped,
             files_reported: total_files,
             files_truncated: false,
+            list_filter: None,
+            ungraded_files: Vec::new(),
         }
     }
 
@@ -158,6 +194,7 @@ impl ProjectScore {
         if limit > 0 && limit < self.files.len() {
             self.files.truncate(limit);
             self.files_truncated = true;
+            self.list_filter = Some("--top-files".to_string());
         } else {
             self.files_truncated = false;
         }
@@ -677,5 +714,45 @@ mod no_contradiction_tests {
         ];
         let project = ProjectScore::aggregate(files);
         assert_eq!(project.average().language, Language::Markdown);
+    }
+
+    /// A file that was walked but refused must reach the payload.
+    ///
+    /// `analyze tdg --format json` on the broken fixture answered
+    /// `{total_files: 1, average_score: 100.0, not_measured: []}` over the one
+    /// Python file that parsed, with `src/main.rs` — the crate's only Rust file
+    /// — gone without trace: the refusal was an `eprintln!` and stderr is not
+    /// part of a JSON payload.
+    #[test]
+    fn ungraded_files_are_serialised_so_a_json_consumer_sees_the_skip() {
+        let mut project = ProjectScore::aggregate(vec![file_score(100.0, Language::Python, true)]);
+        project.ungraded_files.push(UngradedFile {
+            path: "./src/main.rs".to_string(),
+            reason: "cannot parse string into token stream".to_string(),
+        });
+
+        let json = serde_json::to_value(&project).expect("ProjectScore serialises");
+        let listed = json["ungraded_files"]
+            .as_array()
+            .expect("ungraded_files must be an array on the wire");
+        assert_eq!(listed.len(), 1, "{json}");
+        assert_eq!(listed[0]["path"], "./src/main.rs");
+        assert!(
+            listed[0]["reason"].as_str().is_some_and(|r| !r.is_empty()),
+            "a skip must carry its reason: {json}"
+        );
+    }
+
+    /// A whole analysis with nothing refused says so with an empty list, never
+    /// by omitting the key.
+    #[test]
+    fn a_complete_analysis_reports_an_empty_ungraded_list() {
+        let project = ProjectScore::aggregate(vec![file_score(85.0, Language::Rust, false)]);
+        let json = serde_json::to_value(&project).expect("ProjectScore serialises");
+        assert_eq!(
+            json["ungraded_files"].as_array().map(Vec::len),
+            Some(0),
+            "the key must always be present: {json}"
+        );
     }
 }

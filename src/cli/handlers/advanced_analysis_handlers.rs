@@ -562,14 +562,10 @@ fn format_deep_context_text(
         });
         let files_to_show = if top_files == 0 { 10 } else { top_files };
         for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
-            let filename = file_detail
-                .file_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map_or_else(
-                    || file_detail.file_path.to_string_lossy().to_string(),
-                    std::string::ToString::to_string,
-                );
+            // Was `file_name()`: a "Top Files" list of bare basenames cannot be
+            // resolved back to a file in a tree that holds many `mod.rs`.
+            let path_str = file_detail.file_path.to_string_lossy();
+            let filename = crate::cli::report_paths::report_path(&path_str).to_string();
             let _ = writeln!(
                 &mut out,
                 "  {}. {} - {} avg complexity ({} functions, {} high complexity)",

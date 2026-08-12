@@ -138,6 +138,12 @@ impl TdgScore {
         // does not change when you `git add` it: the penalty is a property of the
         // code, the waiver is a property of the gate, and they must not share a
         // condition.
+        // `calculate_total` is called more than once on some paths, so any
+        // attribution this function owns is rebuilt from scratch rather than
+        // appended to — otherwise a second call would double-report the penalty.
+        self.penalties_applied
+            .retain(|p| p.source_metric != MetricCategory::CriticalDefect);
+
         if self.has_critical_defects {
             /// Ceiling for any file still carrying critical defects: the top of
             /// the C+ band, so such a file cannot grade B- or better whatever
@@ -152,8 +158,25 @@ impl TdgScore {
             /// same defect as the old constant 0.0, only further out.
             const RETAINED_PER_DEFECT: f32 = 0.6;
 
+            let before = self.total;
             let extra = self.critical_defects_count.saturating_sub(1).min(64) as i32;
             self.total = self.total.min(CEILING) * RETAINED_PER_DEFECT.powi(extra);
+
+            // DISCLOSURE: this is by far the largest term in the score — up to
+            // ~91 points — and it used to appear in `penalties_applied` nowhere,
+            // so a consumer summing that list to explain a grade concluded
+            // nothing had been penalised. It is attributed like every other
+            // penalty, with the amount actually deducted.
+            let count = self.critical_defects_count;
+            self.penalties_applied.push(PenaltyAttribution {
+                source_metric: MetricCategory::CriticalDefect,
+                amount: before - self.total,
+                applied_to: std::collections::HashSet::new(),
+                issue: format!(
+                    "{count} critical defect(s): score capped at {CEILING:.1} and \
+                     multiplied by {RETAINED_PER_DEFECT} per additional defect"
+                ),
+            });
         }
 
         // GH #680, second round. Both the file path and the aggregate path now
@@ -183,6 +206,106 @@ impl TdgScore {
             MetricCategory::Coupling => self.coupling_score = value,
             MetricCategory::Documentation => self.doc_coverage = value,
             MetricCategory::Consistency => self.consistency_score = value,
+            // Not a component: it exists only to attribute the penalty
+            // `calculate_total` applies, and no scorer produces it. There is no
+            // field to write, and inventing one would put the penalty into the
+            // component sum it is subtracted FROM.
+            MetricCategory::CriticalDefect => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod critical_defect_attribution_tests {
+    use super::*;
+
+    fn with_defects(count: usize) -> TdgScore {
+        let mut score = TdgScore {
+            has_critical_defects: count > 0,
+            critical_defects_count: count,
+            ..Default::default()
+        };
+        score.calculate_total();
+        score
+    }
+
+    fn critical_penalty(score: &TdgScore) -> Option<&PenaltyAttribution> {
+        score
+            .penalties_applied
+            .iter()
+            .find(|p| p.source_metric == MetricCategory::CriticalDefect)
+    }
+
+    /// The dominant term in the score was undisclosed: `penalties_applied` was
+    /// `[]` (or listed only the small component penalties) on a file whose score
+    /// the critical-defect rule had just cut by up to 91 points.
+    #[test]
+    fn the_critical_defect_penalty_is_attributed() {
+        let score = with_defects(5);
+        let penalty = critical_penalty(&score).unwrap_or_else(|| {
+            panic!(
+                "no CriticalDefect attribution: {:?}",
+                score.penalties_applied
+            )
+        });
+        assert!(
+            penalty.amount > 0.0,
+            "the attribution must carry the amount actually deducted, got {}",
+            penalty.amount
+        );
+        assert!(
+            penalty.issue.contains('5'),
+            "issue must name the count: {}",
+            penalty.issue
+        );
+    }
+
+    /// The attributed amount must be the drop the rule actually caused, so a
+    /// consumer can reconstruct the total from the pre-penalty score minus the
+    /// attributions. Off by the entire penalty before this existed.
+    #[test]
+    fn the_attributed_amount_equals_the_score_drop() {
+        let score = with_defects(3);
+        let pre_penalty = score.structural_complexity
+            + score.semantic_complexity
+            + score.duplication_ratio
+            + score.coupling_score
+            + score.doc_coverage
+            + score.consistency_score
+            + score.entropy_score;
+        let penalty = critical_penalty(&score).expect("attribution").amount;
+        assert!(
+            (pre_penalty - penalty - score.total).abs() < 0.05,
+            "pre-penalty {pre_penalty} - attributed {penalty} != total {}",
+            score.total
+        );
+    }
+
+    /// A clean file must not grow a phantom penalty.
+    #[test]
+    fn a_file_without_critical_defects_gets_no_attribution() {
+        assert!(critical_penalty(&with_defects(0)).is_none());
+    }
+
+    /// `calculate_total` is called more than once on some paths; the
+    /// attribution must not accumulate.
+    #[test]
+    fn recalculating_does_not_duplicate_the_attribution() {
+        let mut score = with_defects(2);
+        let first = score.total;
+        score.calculate_total();
+        assert_eq!(
+            score
+                .penalties_applied
+                .iter()
+                .filter(|p| p.source_metric == MetricCategory::CriticalDefect)
+                .count(),
+            1
+        );
+        assert!(
+            (score.total - first).abs() < f32::EPSILON,
+            "recalculation must be idempotent: {first} then {}",
+            score.total
+        );
     }
 }

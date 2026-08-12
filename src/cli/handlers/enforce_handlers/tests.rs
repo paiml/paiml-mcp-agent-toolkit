@@ -244,7 +244,7 @@ mod tests {
                 estimated_iterations: 0,
             },
         };
-        let out = output_result(&result, EnforceOutputFormat::Json, false);
+        let out = output_result(&result, EnforceOutputFormat::Json, false, None);
         assert!(out.is_ok());
     }
 
@@ -270,7 +270,7 @@ mod tests {
                 estimated_iterations: 1,
             },
         };
-        let out = output_result(&result, EnforceOutputFormat::Summary, false);
+        let out = output_result(&result, EnforceOutputFormat::Summary, false, None);
         assert!(out.is_ok());
     }
 

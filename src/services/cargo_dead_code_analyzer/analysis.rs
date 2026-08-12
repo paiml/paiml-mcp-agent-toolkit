@@ -233,16 +233,38 @@ impl CargoDeadCodeAnalyzer {
         // cargo metadata: --lib only when a lib exists; otherwise --bins.
         let has_lib = project_has_library(&self.project_path);
 
-        if self.exclude_tests {
-            if has_lib {
-                cmd.arg("--lib").arg("--bins");
-            } else {
-                cmd.arg("--bins");
-            }
-        } else if has_lib {
+        // The cargo target set MUST be the same scope `is_excluded_source`
+        // walks, or the report's numerator and denominator describe different
+        // file sets. `examples/` and `benches/` are in scope by default (see
+        // `CargoDeadCodeAnalyzer::new`) and were entering the totals walk, but
+        // this builder only ever asked cargo for `--lib`/`--bins`: rustc never
+        // compiled them, so their unused items could not be reported and a
+        // crate whose only dead code lived in `examples/` read `0 dead lines`
+        // over `3 files analyzed`. `--include-tests` had the mirror-image bug —
+        // it dropped `--bins` and never added `--tests`, so turning it on
+        // narrowed the compile instead of widening it.
+        if has_lib {
             cmd.arg("--lib");
-        } else {
-            cmd.arg("--bins");
+        }
+        cmd.arg("--bins");
+        if !self.exclude_tests {
+            cmd.arg("--tests");
+        }
+        // Named targets, not the blanket `--examples`/`--benches`: a library
+        // carries IMPLICIT test and bench targets, so `--benches` compiles the
+        // lib a second time with `cfg(test)` on and drags every `#[cfg(test)]`
+        // item into the report even when `--include-tests` is off. Selecting
+        // each real target by name keeps the compile scope equal to the walk
+        // scope in both directions.
+        if !self.exclude_examples {
+            for name in named_targets(&self.project_path, "example") {
+                cmd.arg("--example").arg(name);
+            }
+        }
+        if !self.exclude_benches {
+            for name in named_targets(&self.project_path, "bench") {
+                cmd.arg("--bench").arg(name);
+            }
         }
 
         let output = cmd.output().context("Failed to run cargo check")?;
@@ -299,6 +321,64 @@ fn project_has_library(project_path: &std::path::Path) -> bool {
         }
     }
     false
+}
+
+/// Cargo targets of `kind` ("example" / "bench") belonging to the package at
+/// `project_path`, excluding any that need features this check does not enable.
+///
+/// Named targets rather than the blanket `--examples`/`--benches` flags,
+/// because a library carries IMPLICIT test and bench targets: `--benches`
+/// compiles the lib a second time with `cfg(test)` on and drags every
+/// `#[cfg(test)]` item into the report even when `--include-tests` is off.
+///
+/// Targets with `required-features` are skipped: naming one whose features are
+/// off is a hard cargo error ("target `x` requires the features: `demo`"),
+/// which would abort the whole analysis. Returned sorted so the argument list —
+/// and therefore the cargo invocation — is deterministic.
+fn named_targets(project_path: &std::path::Path, kind: &str) -> Vec<String> {
+    let Ok(output) = Command::new("cargo")
+        .current_dir(project_path)
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .output()
+    else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    let Ok(meta) = serde_json::from_slice::<Value>(&output.stdout) else {
+        return Vec::new();
+    };
+    let manifest = project_path.join("Cargo.toml");
+    let mut names: Vec<String> = Vec::new();
+    for package in meta["packages"].as_array().into_iter().flatten() {
+        // Workspace roots list every member; only the package being analysed
+        // can satisfy a bare `--example NAME` / `--bench NAME`.
+        if package["manifest_path"].as_str().map(std::path::Path::new) != Some(manifest.as_path()) {
+            continue;
+        }
+        for target in package["targets"].as_array().into_iter().flatten() {
+            let is_kind = target["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|k| k.as_str() == Some(kind));
+            if !is_kind {
+                continue;
+            }
+            let needs_features = target["required-features"]
+                .as_array()
+                .is_some_and(|f| !f.is_empty());
+            if needs_features {
+                continue;
+            }
+            if let Some(name) = target["name"].as_str() {
+                names.push(name.to_string());
+            }
+        }
+    }
+    names.sort();
+    names
 }
 
 #[cfg(test)]

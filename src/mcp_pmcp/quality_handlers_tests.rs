@@ -428,4 +428,67 @@ mod tests {
             serde_json::from_value(json);
         assert!(result.is_err());
     }
+
+    // === JSON-RPC error CLASS for caller mistakes (round-4 R16) ===
+    //
+    // `-32603 Internal error` says the SERVER faulted and the call is worth
+    // retrying. Every case below is the caller's input, and the same server
+    // already answers this class with `-32602 Invalid params` elsewhere
+    // (`generate_context` with a bad `format`, any nonexistent path). The tests
+    // assert the discriminant rather than the wire code because that is what
+    // the transport maps: `Error::Validation` ⇒ -32602, `Error::Internal` ⇒
+    // -32603.
+
+    /// `{"paths": []}` is a schema violation, not a server fault.
+    ///
+    /// It reached `check_quality_gates`, which bailed "At least one path must
+    /// be provided", and the handler's blanket `Error::internal` reported that
+    /// as -32603. The guard now lives in `resolve_existing_paths`, so every
+    /// `paths`-shaped tool answers the same way.
+    #[tokio::test]
+    async fn empty_paths_is_invalid_params_not_an_internal_error() {
+        let tool = QualityGateTool::new();
+        let err = tool
+            .handle(json!({"paths": []}), test_extra())
+            .await
+            .expect_err("an empty paths list must be refused");
+        assert!(
+            matches!(err, Error::Validation(_)),
+            "empty `paths` is the caller's mistake, so -32602; got {err:?}"
+        );
+    }
+
+    /// A single unparseable FILE in `paths` is refused the same way the `file`
+    /// argument already refuses it.
+    ///
+    /// `check_quality_gates` calls `analyze_file` directly for a file path and
+    /// propagates its "did not parse" bail, which the handler wrapped as
+    /// -32603 — one tool reporting one refusal under two codes depending on
+    /// which of its two arguments carried the path.
+    #[tokio::test]
+    async fn an_unparseable_file_in_paths_is_invalid_params_not_an_internal_error() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let bad = dir.path().join("bad.rs");
+        std::fs::write(&bad, "fn main( { let x = ;;;\n").expect("write fixture");
+
+        let tool = QualityGateTool::new();
+        let err = tool
+            .handle(json!({"paths": [bad.display().to_string()]}), test_extra())
+            .await
+            .expect_err("an unparseable file must be refused");
+        assert!(
+            matches!(err, Error::Validation(_)),
+            "a file that does not parse is bad input, so -32602; got {err:?}"
+        );
+
+        // And the two arguments must agree, which is the point of the fix.
+        let via_file = tool
+            .handle(
+                json!({"paths": [dir.path().display().to_string()], "file": bad.display().to_string()}),
+                test_extra(),
+            )
+            .await
+            .expect_err("the `file` argument already refused this");
+        assert!(matches!(via_file, Error::Validation(_)), "{via_file:?}");
+    }
 }

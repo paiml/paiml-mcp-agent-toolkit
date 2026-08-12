@@ -94,7 +94,7 @@ pub use language_simple::{Language, LanguageRules};
 pub use olap_analytics::TruenoOlapAnalytics;
 pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use penalty_tracker::PenaltyTracker;
-pub use project_score::{Comparison, ProjectScore};
+pub use project_score::{Comparison, ProjectScore, UngradedFile};
 pub use quality_gate::{
     CriticalDefectGate, FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate,
     QualityGate, RegressionGate, Severity, Violation, ViolationType,

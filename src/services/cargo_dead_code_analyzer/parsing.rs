@@ -27,6 +27,15 @@ impl CargoDeadCodeAnalyzer {
             if let Some(code) = message["code"]["code"].as_str() {
                 if code == "dead_code" {
                     if let Some(item) = self.extract_dead_item(message) {
+                        // One scope predicate for both layers. The suppression
+                        // walk already consults `is_excluded_source`; the
+                        // compiler layer did not, so any target cargo happened
+                        // to build (a lib's implicit `cfg(test)` bench target,
+                        // say) could put files into the report that the walk
+                        // that produced the denominator never opened.
+                        if self.is_excluded_source(&item.0) {
+                            continue;
+                        }
                         dead_items.push(item);
                     }
                 }

@@ -13,14 +13,14 @@ fn format_text_category(
     use crate::cli::colors as c;
 
     if category.is_not_applicable {
-        output.push_str(&format!("  {}  {}: N/A{}\n", c::DIM, name, c::RESET));
+        output.push_str(&format!("  {}  {}: N/A{}\n", c::seq(c::DIM), name, c::seq(c::RESET)));
         return;
     }
 
     let percentage = category.percentage();
     let icon = percentage_icon(percentage);
     let gateway_marker = if is_gateway {
-        format!(" {}[GATEWAY]{}", c::BOLD_YELLOW, c::RESET)
+        format!(" {}[GATEWAY]{}", c::seq(c::BOLD_YELLOW), c::seq(c::RESET))
     } else {
         String::new()
     };
@@ -37,11 +37,11 @@ fn format_text_category(
     if verbose && !failures_only {
         for sub in &category.sub_scores {
             let sub_icon = if sub.earned >= sub.max * 0.8 {
-                format!("  {}✓{}", c::GREEN, c::RESET)
+                format!("  {}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
             } else if sub.earned >= sub.max * 0.5 {
-                format!("  {}~{}", c::YELLOW, c::RESET)
+                format!("  {}~{}", c::seq(c::YELLOW), c::seq(c::RESET))
             } else {
-                format!("  {}✗{}", c::RED, c::RESET)
+                format!("  {}✗{}", c::seq(c::RED), c::seq(c::RESET))
             };
             output.push_str(&format!(
                 "    {} {}: {} - {}\n",
@@ -69,7 +69,12 @@ fn format_text_recommendations(output: &mut String, score: &PopperScore, failure
             icon, rec.category, rec.description
         ));
         if let Some(cmd) = &rec.command {
-            output.push_str(&format!("     {}$ {}{}\n", c::DIM_CYAN, cmd, c::RESET));
+            output.push_str(&format!(
+                "     {}$ {}{}\n",
+                c::seq(c::DIM_CYAN),
+                cmd,
+                c::seq(c::RESET)
+            ));
         }
     }
     output.push('\n');
@@ -106,7 +111,7 @@ fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> Strin
         ));
         output.push_str(&format!(
             "    {}Without falsifiable claims, score is 0.{}\n",
-            c::DIM, c::RESET
+            c::seq(c::DIM), c::seq(c::RESET)
         ));
     }
     output.push('\n');

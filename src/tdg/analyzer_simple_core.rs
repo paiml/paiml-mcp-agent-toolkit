@@ -142,7 +142,20 @@ impl TdgAnalyzer {
         // must serialise identically.
         ungraded.sort();
 
-        Ok((ProjectScore::aggregate(scores), ungraded))
+        // The skip list also travels ON the score, not only beside it: every
+        // consumer that holds a bare `ProjectScore` (`analyze tdg --format
+        // json`, the table renderer, SARIF) used to have no way to learn that
+        // `average_score` was computed over a subset. See `UngradedFile`.
+        let mut project = ProjectScore::aggregate(scores);
+        project.ungraded_files = ungraded
+            .iter()
+            .map(|(path, reason)| crate::tdg::UngradedFile {
+                path: path.display().to_string(),
+                reason: reason.clone(),
+            })
+            .collect();
+
+        Ok((project, ungraded))
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

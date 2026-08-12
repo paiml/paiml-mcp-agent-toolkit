@@ -90,7 +90,8 @@ impl TdgAnalyzerAst {
             // The exemption now names itself instead of contradicting the count.
             if score.has_critical_defects && is_exempt_as_new_file(path) {
                 score.critical_defects_suppressed = Some(
-                    "file is not tracked by git; critical-defect auto-fail is not                      applied to code with no history (#279)"
+                    "file is not tracked by git; critical-defect auto-fail is not applied \
+                     to code with no history (#279)"
                         .to_string(),
                 );
             }

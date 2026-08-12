@@ -92,9 +92,15 @@ fn format_output(
 ) -> Result<String> {
     match format {
         crate::cli::GraphMetricsOutputFormat::Json => format_gm_as_json(result),
-        crate::cli::GraphMetricsOutputFormat::Human
-        | crate::cli::GraphMetricsOutputFormat::Summary
-        | crate::cli::GraphMetricsOutputFormat::Detailed => format_gm_as_human(result),
+        // These three used to be one arm, so `--format summary`,
+        // `--format detailed` and `--format human` produced byte-identical
+        // output — `-f detailed` was documented as "Detailed metrics with
+        // rankings" and `-f summary` as "Summary statistics only", and both
+        // printed the same middle rendering. They now differ by what they
+        // contain, not just by name.
+        crate::cli::GraphMetricsOutputFormat::Summary => format_gm_as_summary(&result),
+        crate::cli::GraphMetricsOutputFormat::Human => format_gm_as_human(result),
+        crate::cli::GraphMetricsOutputFormat::Detailed => format_gm_as_detailed(&result),
         crate::cli::GraphMetricsOutputFormat::Csv => format_gm_as_csv(result),
         // `-f graph-ml` used to return this developer note as the *document*:
         // `analyze graph-metrics -f graph-ml -o out.graphml` exited 0 having
@@ -125,6 +131,76 @@ fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
     write_gm_top_nodes(&mut output, &result)?;
 
     Ok(output)
+}
+
+/// `-f summary`: the graph-level statistics and nothing else, which is what
+/// "Summary statistics only" in `--help` promises.
+fn format_gm_as_summary(result: &GraphMetricsResult) -> Result<String> {
+    let mut output = String::new();
+
+    write_gm_human_header(&mut output)?;
+    write_gm_statistics(&mut output, result)?;
+
+    Ok(output)
+}
+
+/// `-f detailed`: everything `human` shows, plus the per-measure rankings
+/// `--help` promises. The node set is the same one `--top-k` already selected;
+/// what this adds is the order each centrality measure puts it in, which the
+/// single combined listing cannot show.
+fn format_gm_as_detailed(result: &GraphMetricsResult) -> Result<String> {
+    let mut output = String::new();
+
+    write_gm_human_header(&mut output)?;
+    write_gm_statistics(&mut output, result)?;
+    write_gm_top_nodes(&mut output, result)?;
+    write_gm_rankings(&mut output, result)?;
+
+    Ok(output)
+}
+
+/// A centrality measure: its heading and how to read it off a node.
+type CentralityMeasure = (&'static str, fn(&NodeMetrics) -> f64);
+
+/// One ranked list per centrality measure.
+fn write_gm_rankings(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
+    let measures: [CentralityMeasure; 4] = [
+        ("PageRank", |n| n.pagerank),
+        ("Betweenness", |n| n.betweenness_centrality),
+        ("Closeness", |n| n.closeness_centrality),
+        ("Degree", |n| n.degree_centrality),
+    ];
+
+    for (label, key) in measures {
+        writeln!(output, "\n{}Ranked by {}{}\n", c::BOLD, label, c::RESET)?;
+        let mut ranked: Vec<&NodeMetrics> = result.nodes.iter().collect();
+        // DETERMINISM: name breaks ties, so nodes with equal scores (which is
+        // most of them on a sparse graph) rank in a fixed order across runs.
+        ranked.sort_by(|a, b| {
+            key(b)
+                .partial_cmp(&key(a))
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        for (i, node) in ranked.iter().enumerate() {
+            writeln!(
+                output,
+                "  {}. {}{}{} {}{:.3}{}",
+                i + 1,
+                c::CYAN,
+                node.name,
+                c::RESET,
+                c::BOLD_WHITE,
+                key(node),
+                c::RESET
+            )?;
+        }
+    }
+
+    Ok(())
 }
 
 // Helper: Write human header

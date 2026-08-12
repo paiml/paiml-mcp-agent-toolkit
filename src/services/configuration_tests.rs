@@ -294,4 +294,60 @@ mod getter_tests {
         assert_eq!(config.quality.max_complexity, 30);
         assert!(!config.semantic.enabled);
     }
+
+    /// The embeddings store default is keyed to the workspace, never machine-global.
+    ///
+    /// This is the fallback `pmat embed status` / `pmat semantic search`
+    /// actually consult. It used to return `~/.pmat/embeddings.db` for every
+    /// directory on the machine while chunk paths are stored
+    /// workspace-relative, so an empty directory reported the same "5 chunks
+    /// indexed" as a 4,000-file repo and served that repo's `./src/main.rs`
+    /// rows. A caller-side workspace default existed but could never fire —
+    /// this ran first and always returned `Some`.
+    #[test]
+    #[serial_test::serial]
+    fn test_vector_db_default_is_scoped_to_the_workspace() {
+        let alpha = tempfile::tempdir().unwrap();
+        let beta = tempfile::tempdir().unwrap();
+
+        let prev_db = std::env::var("PMAT_VECTOR_DB_PATH").ok();
+        let prev_ws = std::env::var("PMAT_WORKSPACE").ok();
+        std::env::remove_var("PMAT_VECTOR_DB_PATH");
+
+        let resolve = |ws: &std::path::Path| {
+            std::env::set_var("PMAT_WORKSPACE", ws);
+            ConfigurationService::new(Some(ws.join("pmat.toml")))
+                .get_semantic_config_with_env_fallback()
+                .unwrap()
+                .vector_db_path
+                .expect("a db path must be resolved")
+        };
+
+        let a = resolve(alpha.path());
+        let b = resolve(beta.path());
+
+        // Restore before asserting so a failure cannot leak env state.
+        std::env::remove_var("PMAT_WORKSPACE");
+        if let Some(v) = prev_db {
+            std::env::set_var("PMAT_VECTOR_DB_PATH", v);
+        }
+        if let Some(v) = prev_ws {
+            std::env::set_var("PMAT_WORKSPACE", v);
+        }
+
+        assert_ne!(a, b, "two workspaces resolved to ONE shared store: {a}");
+        assert!(
+            a.starts_with(alpha.path().to_str().unwrap()),
+            "store must live under its own workspace, got {a}"
+        );
+        assert!(
+            b.starts_with(beta.path().to_str().unwrap()),
+            "store must live under its own workspace, got {b}"
+        );
+        let home = dirs::home_dir().unwrap_or_default().join(".pmat");
+        assert!(
+            !a.starts_with(home.to_str().unwrap_or("\u{0}")),
+            "store fell back to the machine-global path: {a}"
+        );
+    }
 }

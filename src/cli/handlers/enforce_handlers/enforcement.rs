@@ -7,11 +7,13 @@ use super::analysis::{
 };
 use super::config::EnforcementConfig;
 use super::output::{
-    format_violations_output, handle_ci_mode_exit, output_result, print_enforcement_summary,
+    emit_report, format_violations_output, handle_ci_mode_exit, output_result,
+    print_enforcement_summary,
 };
 use super::states::{
     handle_analyzing_state, handle_complete_state, handle_refactoring_enforcement_state,
     handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
+    violation_is_included,
 };
 use super::types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
@@ -33,16 +35,38 @@ pub async fn handle_special_modes(
     format: EnforceOutputFormat,
     ci_mode: bool,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<Option<Result<()>>> {
     if list_violations {
         return Ok(Some(
-            list_all_violations(project_path, profile, format, specific_file).await,
+            list_all_violations(
+                project_path,
+                profile,
+                format,
+                specific_file,
+                output,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await,
         ));
     }
 
     if validate_only {
         return Ok(Some(
-            validate_current_state(project_path, profile, format, ci_mode, specific_file).await,
+            validate_current_state(
+                project_path,
+                profile,
+                format,
+                ci_mode,
+                specific_file,
+                output,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await,
         ));
     }
 
@@ -55,11 +79,12 @@ pub async fn run_main_enforcement_loop(
     project_path: &PathBuf,
     profile: &QualityProfile,
     config: EnforcementConfig,
+    output: Option<&Path>,
 ) -> Result<()> {
     let start_time = Instant::now();
 
     // Delegate entire loop logic to extracted function - COMPLEXITY NOW ≤10
-    let loop_result = execute_main_loop(project_path, profile, &config, start_time).await?;
+    let loop_result = execute_main_loop(project_path, profile, &config, start_time, output).await?;
 
     finalize_enforcement_run(
         loop_result.final_score,
@@ -167,6 +192,7 @@ pub async fn handle_enforcement_iteration(
     current_state: EnforcementState,
     config: &EnforcementConfig,
     iteration: u32,
+    output: Option<&Path>,
 ) -> Result<EnforcementIterationResult> {
     eprintln!(
         "\n{} {}",
@@ -177,7 +203,7 @@ pub async fn handle_enforcement_iteration(
     let result =
         execute_enforcement_iteration(project_path, profile, current_state, config).await?;
 
-    output_result(&result, config.format, config.show_progress)?;
+    output_result(&result, config.format, config.show_progress, output)?;
 
     Ok(EnforcementIterationResult {
         iteration,
@@ -193,10 +219,12 @@ pub async fn execute_main_loop(
     profile: &QualityProfile,
     config: &EnforcementConfig,
     start_time: Instant,
+    output: Option<&Path>,
 ) -> Result<EnforcementLoopResult> {
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
+    let mut previous: Option<(EnforcementState, f64)> = None;
 
     while should_continue_enforcement(current_state, iteration, config, start_time) {
         let loop_result = handle_enforcement_iteration(
@@ -205,16 +233,42 @@ pub async fn execute_main_loop(
             current_state,
             config,
             iteration + 1,
+            output,
         )
         .await?;
 
         iteration = loop_result.iteration;
+        // The improvement check compared the new score against `current_score`
+        // AFTER `current_score` had already been overwritten with it, i.e. the
+        // score against itself, so `--target-improvement` could only ever fire
+        // for a non-positive delta. Compare against the score we came in with.
+        let score_before = current_score;
         current_state = loop_result.state;
         current_score = loop_result.score;
 
-        if check_improvement_targets(config, loop_result.score, current_score) {
+        if check_improvement_targets(config, loop_result.score, score_before) {
             break;
         }
+
+        // Nothing in this loop edits the tree unless --apply-suggestions is on,
+        // so a project that cannot converge re-measured the same unchanged tree
+        // 100 times: `pmat enforce extreme` with no flags printed the identical
+        // three-line summary a hundred times over 11 seconds for a 13-line
+        // crate. An iteration that reproduces the previous verdict exactly has
+        // demonstrated that iterating changes nothing; say so and stop.
+        if previous.is_some_and(|(state, score)| {
+            state == loop_result.state && (score - loop_result.score).abs() < f64::EPSILON
+        }) {
+            eprintln!(
+                "{}",
+                c::warn(&format!(
+                    "no progress after {iteration} iterations (score unchanged at {:.2}); stopping",
+                    loop_result.score
+                ))
+            );
+            break;
+        }
+        previous = Some((loop_result.state, loop_result.score));
 
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
@@ -249,6 +303,8 @@ pub async fn run_enforcement_step(
                 single_file_mode,
                 dry_run,
                 specific_file,
+                include_pattern,
+                exclude_pattern,
             )
             .await
         }
@@ -261,6 +317,8 @@ pub async fn run_enforcement_step(
                 dry_run,
                 specific_file,
                 apply_suggestions,
+                include_pattern,
+                exclude_pattern,
             )
             .await
         }
@@ -290,6 +348,9 @@ async fn list_all_violations(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<()> {
     eprintln!("{}", c::header("Listing all quality violations..."));
 
@@ -331,17 +392,27 @@ async fn list_all_violations(
     let coverage_outcome = run_coverage_analysis(scope.walk_root(), profile).await?;
     all_violations.extend(coverage_outcome.violations);
 
+    // Same filter, same helper as the state machine's: `--list-violations
+    // --exclude 'src/*'` listed the excluded files too, because these six phases
+    // never saw the patterns either.
+    if include_pattern.is_some() || exclude_pattern.is_some() {
+        let filter = crate::utils::file_filter::FileFilter::from_optional(
+            &include_pattern.cloned(),
+            &exclude_pattern.cloned(),
+        )?;
+        all_violations.retain(|v| violation_is_included(&filter, project_path, v));
+    }
+
     eprintln!(
         "\n{} {} violations",
         c::label("Found"),
         c::number(&all_violations.len().to_string())
     );
 
-    // Use extracted formatting function
+    // Use extracted formatting function. `-o` is honoured here for the same
+    // reason it is honoured for the iteration report: one flag, one meaning.
     let formatted_output = format_violations_output(&all_violations, profile, format)?;
-    println!("{formatted_output}");
-
-    Ok(())
+    emit_report(&formatted_output, output)
 }
 
 /// Validate current state without making changes
@@ -351,6 +422,9 @@ async fn validate_current_state(
     format: EnforceOutputFormat,
     ci_mode: bool,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<()> {
     eprintln!("{}", c::label("Validating current quality state..."));
 
@@ -363,8 +437,8 @@ async fn validate_current_state(
         true,                    // dry_run
         false,                   // apply_suggestions
         specific_file,
-        None, // include_pattern
-        None, // exclude_pattern
+        include_pattern,
+        exclude_pattern,
     )
     .await?;
 
@@ -398,7 +472,7 @@ async fn validate_current_state(
         },
     };
 
-    output_result(&validation_result, format, false)?;
+    output_result(&validation_result, format, false, output)?;
 
     if ci_mode && !passes {
         eprintln!("\n{}", c::fail("Quality validation failed!"));

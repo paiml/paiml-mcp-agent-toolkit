@@ -24,6 +24,8 @@ async fn a_nonexistent_path_is_refused_not_scored() {
         false,
         true,
         None,
+        None,
+        None,
     )
     .await
     .expect_err("a nonexistent path must not produce a verdict");
@@ -37,9 +39,17 @@ async fn a_nonexistent_path_is_refused_not_scored() {
 #[tokio::test]
 async fn an_empty_directory_is_not_complete() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let result = handle_analyzing_state(dir.path(), &QualityProfile::default(), false, true, None)
-        .await
-        .expect("the run reports");
+    let result = handle_analyzing_state(
+        dir.path(),
+        &QualityProfile::default(),
+        false,
+        true,
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("the run reports");
 
     // An empty directory has nothing to measure, so it cannot demonstrate that
     // the profile is met. 3.29.0 said Violating here; 3.30.0 said Complete 1.00.
@@ -64,9 +74,17 @@ async fn a_clean_project_can_still_reach_complete() {
     )
     .expect("source");
 
-    let result = handle_analyzing_state(dir.path(), &QualityProfile::default(), false, true, None)
-        .await
-        .expect("the run reports");
+    let result = handle_analyzing_state(
+        dir.path(),
+        &QualityProfile::default(),
+        false,
+        true,
+        None,
+        None,
+        None,
+    )
+    .await
+    .expect("the run reports");
 
     assert!(
         result

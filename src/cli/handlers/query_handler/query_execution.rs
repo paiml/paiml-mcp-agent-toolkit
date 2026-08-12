@@ -259,7 +259,15 @@ pub async fn handle_query(
     profile.phase("output");
 
     // -- Append document results (default on for semantic mode) --
-    if docs && !is_regex_or_literal {
+    //
+    // `--files-with-matches` and `--count` are whole-output contracts, not
+    // section styles: `rg -l` prints one path per line and `rg -c` prints
+    // `path:n`, and nothing else. The code printer honoured them while the
+    // document printer kept dumping numbered markdown snippets after the
+    // paths, so `pmat query h --files-with-matches | while read f` fed 1.6KB of
+    // prose to a loop expecting filenames. Suppressed here, at the one place
+    // the section is emitted, rather than taught to each printer.
+    if should_emit_docs_section(docs, is_regex_or_literal, files_with_matches, count) {
         emit_docs_section(&query, limit, &project_path, &format, quiet)?;
         profile.phase("docs");
     }
@@ -390,4 +398,22 @@ async fn dispatch_special_modes(
         return Some(Ok(()));
     }
     None
+}
+
+/// May the supplementary `-- Document Results --` section be printed?
+///
+/// `--files-with-matches` and `--count` are contracts over the WHOLE of
+/// stdout, matching `rg -l` / `rg -c`: one path per line, or one `path:count`
+/// per line, and nothing else. The code printer honoured them while this
+/// section printed unconditionally, so `pmat query h --files-with-matches`
+/// emitted two paths followed by 1.6KB of numbered markdown snippets. THE one
+/// place that decision is made — a new supplementary section consults this
+/// rather than re-deriving it.
+fn should_emit_docs_section(
+    docs: bool,
+    is_regex_or_literal: bool,
+    files_with_matches: bool,
+    count: bool,
+) -> bool {
+    docs && !is_regex_or_literal && !files_with_matches && !count
 }

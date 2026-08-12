@@ -47,35 +47,32 @@ pub async fn handle_infra_score(
 }
 
 /// Score color: green ≥90, yellow ≥80, red otherwise.
-fn infra_score_color(score: f64) -> &'static str {
-    if score >= 90.0 {
-        "\x1b[32m"
-    } else if score >= 80.0 {
-        "\x1b[33m"
-    } else {
-        "\x1b[31m"
-    }
+///
+/// This whole renderer used to interpolate raw `"\x1b[32m"` literals, so
+/// `infra-score --color never` was BYTE-IDENTICAL to `--color always` (173
+/// escape sequences either way) and a redirected `infra-score` report was not
+/// diffable. Colour SELECTION is delegated to `colors::threshold_color`, which
+/// is the same higher-is-better rule this file re-implemented; colour EMISSION
+/// goes through `colors::seq`/`colors::colored`, which honour `--color never`,
+/// `NO_COLOR` and a non-TTY stdout.
+fn infra_score_color(score: f64) -> crate::cli::colors::Sgr {
+    crate::cli::colors::threshold_color(score, 90.0, 80.0)
 }
 
 /// Category percentage color: green ≥90, yellow ≥70, red otherwise.
-fn infra_pct_color(pct: f64) -> &'static str {
-    if pct >= 90.0 {
-        "\x1b[32m"
-    } else if pct >= 70.0 {
-        "\x1b[33m"
-    } else {
-        "\x1b[31m"
-    }
+fn infra_pct_color(pct: f64) -> crate::cli::colors::Sgr {
+    crate::cli::colors::threshold_color(pct, 90.0, 70.0)
 }
 
 /// Category status icon: ✓ ≥90, ⚠ ≥70, ✗ otherwise.
-fn infra_pct_icon(pct: f64) -> &'static str {
+fn infra_pct_icon(pct: f64) -> String {
+    use crate::cli::colors as c;
     if pct >= 90.0 {
-        "\x1b[32m✓\x1b[0m"
+        c::colored(c::GREEN, "✓")
     } else if pct >= 70.0 {
-        "\x1b[33m⚠\x1b[0m"
+        c::colored(c::YELLOW, "⚠")
     } else {
-        "\x1b[31m✗\x1b[0m"
+        c::colored(c::RED, "✗")
     }
 }
 
@@ -96,41 +93,48 @@ fn write_infra_check(out: &mut String, check: &InfraCheck, verbose: bool, show_e
 }
 
 fn write_infra_summary(out: &mut String, result: &InfraScore) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    let _ = writeln!(out, "\n\x1b[1mSummary\x1b[0m");
+    let _ = writeln!(out, "\n{}", c::subheader("Summary"));
     let score_color = infra_score_color(result.total_score);
     let _ = writeln!(
         out,
-        "  Score: {}{:.1}\x1b[0m/\x1b[2m100.0\x1b[0m",
-        score_color, result.total_score
+        "  Score: {}/{}",
+        c::colored(score_color, &format!("{:.1}", result.total_score)),
+        c::dim("100.0")
     );
     let _ = writeln!(
         out,
-        "  Grade: {}{}\x1b[0m",
-        score_color,
-        result.grade.as_str()
+        "  Grade: {}",
+        c::colored(score_color, result.grade.as_str())
     );
     if result.auto_fail {
-        let _ = writeln!(out, "  Status: \x1b[31mAUTO-FAIL\x1b[0m (< 90 required)");
+        let _ = writeln!(
+            out,
+            "  Status: {} (< 90 required)",
+            c::colored(c::RED, "AUTO-FAIL")
+        );
     } else {
-        let _ = writeln!(out, "  Status: \x1b[32mPASS\x1b[0m");
+        let _ = writeln!(out, "  Status: {}", c::colored(c::GREEN, "PASS"));
     }
 
     let bonus = result.categories.provable_contracts.score;
     if bonus > 0.0 {
         let _ = writeln!(
             out,
-            "  Bonus: \x1b[36m+{:.1}\x1b[0m (provable contracts)",
-            bonus
+            "  Bonus: {} (provable contracts)",
+            c::colored(c::CYAN, &format!("+{bonus:.1}"))
         );
         // Denominator is derived, not hardcoded: the bonus category is worth 12
         // (PV-01..PV-05), so a hardcoded "/110.0" could print a total above its
         // own maximum.
         let _ = writeln!(
             out,
-            "  Total with bonus: {}{:.1}\x1b[0m/{:.1}",
-            score_color,
-            result.categories.total_with_bonus(),
+            "  Total with bonus: {}/{:.1}",
+            c::colored(
+                score_color,
+                &format!("{:.1}", result.categories.total_with_bonus())
+            ),
             crate::services::infra_score::models::INFRA_SCORE_MAX_POINTS
                 + result.categories.provable_contracts.max_score
         );
@@ -143,8 +147,9 @@ fn write_infra_categories(
     verbose: bool,
     failures_only: bool,
 ) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    let _ = writeln!(out, "\n\x1b[1mCategories\x1b[0m");
+    let _ = writeln!(out, "\n{}", c::subheader("Categories"));
     let categories = [
         (
             "Workflow Architecture",
@@ -163,14 +168,12 @@ fn write_infra_categories(
         let pct_color = infra_pct_color(cat.percentage);
         let _ = writeln!(
             out,
-            "  {} {}: {}{:.1}\x1b[0m/\x1b[2m{:.1}\x1b[0m ({}{:.1}%\x1b[0m)",
+            "  {} {}: {}/{} ({})",
             infra_pct_icon(cat.percentage),
             name,
-            pct_color,
-            cat.score,
-            cat.max_score,
-            pct_color,
-            cat.percentage
+            c::colored(pct_color, &format!("{:.1}", cat.score)),
+            c::dim(&format!("{:.1}", cat.max_score)),
+            c::colored(pct_color, &format!("{:.1}%", cat.percentage))
         );
 
         if verbose && !cat.checks.is_empty() {
@@ -190,22 +193,26 @@ fn write_infra_provable_contracts(
     verbose: bool,
     failures_only: bool,
 ) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let pv = &result.categories.provable_contracts;
     if !(pv.score > 0.0 || verbose) {
         return;
     }
     let icon = if pv.percentage >= 80.0 {
-        "\x1b[36m★\x1b[0m"
+        c::colored(c::CYAN, "★")
     } else if pv.score > 0.0 {
-        "\x1b[36m◆\x1b[0m"
+        c::colored(c::CYAN, "◆")
     } else {
-        "\x1b[2m-\x1b[0m"
+        c::dim("-")
     };
     let _ = writeln!(
         out,
-        "  {} Provable Contracts (bonus): \x1b[36m{:.1}\x1b[0m/\x1b[2m{:.1}\x1b[0m ({:.1}%)",
-        icon, pv.score, pv.max_score, pv.percentage
+        "  {} Provable Contracts (bonus): {}/{} ({:.1}%)",
+        icon,
+        c::colored(c::CYAN, &format!("{:.1}", pv.score)),
+        c::dim(&format!("{:.1}", pv.max_score)),
+        pv.percentage
     );
 
     if verbose {
@@ -219,6 +226,7 @@ fn write_infra_provable_contracts(
 }
 
 fn write_infra_findings(out: &mut String, result: &InfraScore, verbose: bool, failures_only: bool) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let all_findings: Vec<_> = [
         &result.categories.workflow_architecture.findings,
@@ -235,13 +243,13 @@ fn write_infra_findings(out: &mut String, result: &InfraScore, verbose: bool, fa
     if all_findings.is_empty() || (!verbose && failures_only) {
         return;
     }
-    let _ = writeln!(out, "\n\x1b[1mFindings\x1b[0m");
+    let _ = writeln!(out, "\n{}", c::subheader("Findings"));
     for finding in &all_findings {
         let icon = match finding.severity {
-            InfraSeverity::Fail => "\x1b[31m✗\x1b[0m",
-            InfraSeverity::Warning => "\x1b[33m⚠\x1b[0m",
-            InfraSeverity::Info => "\x1b[36mℹ\x1b[0m",
-            InfraSeverity::Pass => "\x1b[32m✓\x1b[0m",
+            InfraSeverity::Fail => c::colored(c::RED, "✗"),
+            InfraSeverity::Warning => c::colored(c::YELLOW, "⚠"),
+            InfraSeverity::Info => c::colored(c::CYAN, "ℹ"),
+            InfraSeverity::Pass => c::colored(c::GREEN, "✓"),
         };
         let loc = finding
             .location
@@ -257,27 +265,35 @@ fn write_infra_findings(out: &mut String, result: &InfraScore, verbose: bool, fa
 }
 
 fn write_infra_recommendations(out: &mut String, result: &InfraScore) {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     if result.recommendations.is_empty() {
         return;
     }
-    let _ = writeln!(out, "\n\x1b[1mRecommendations\x1b[0m");
+    let _ = writeln!(out, "\n{}", c::subheader("Recommendations"));
     for rec in &result.recommendations {
         let _ = writeln!(
             out,
-            "  \x1b[2;37m{}: {} (+{:.0} pts, ~{})\x1b[0m",
-            rec.check_id, rec.description, rec.impact_points, rec.estimated_effort
+            "  {}",
+            c::colored(
+                c::DIM_WHITE,
+                &format!(
+                    "{}: {} (+{:.0} pts, ~{})",
+                    rec.check_id, rec.description, rec.impact_points, rec.estimated_effort
+                )
+            )
         );
     }
 }
 
 fn format_text_output(result: &InfraScore, verbose: bool, failures_only: bool) -> String {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let mut out = String::new();
 
-    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
-    let _ = writeln!(out, "\x1b[1m\x1b[4mInfra Score v1.0\x1b[0m");
-    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
+    let _ = writeln!(out, "{}", c::dim(&"━".repeat(48)));
+    let _ = writeln!(out, "{}", c::header("Infra Score v1.0"));
+    let _ = writeln!(out, "{}", c::dim(&"━".repeat(48)));
 
     write_infra_summary(&mut out, result);
     write_infra_categories(&mut out, result, verbose, failures_only);
@@ -286,11 +302,14 @@ fn format_text_output(result: &InfraScore, verbose: bool, failures_only: bool) -
     write_infra_recommendations(&mut out, result);
 
     // Metadata
-    let _ = writeln!(out, "\n\x1b[2m{}\x1b[0m", "━".repeat(48));
+    let _ = writeln!(out, "\n{}", c::dim(&"━".repeat(48)));
     let _ = writeln!(
         out,
-        "\x1b[2mExecuted in {}ms | pmat v{}\x1b[0m",
-        result.metadata.execution_time_ms, result.metadata.pmat_version
+        "{}",
+        c::dim(&format!(
+            "Executed in {}ms | pmat v{}",
+            result.metadata.execution_time_ms, result.metadata.pmat_version
+        ))
     );
 
     out
@@ -345,13 +364,21 @@ mod format_text_tests {
     }
 
     // ── Score-color tier arms ──
+    //
+    // These three used to assert `out.contains("\x1b[32m")` — i.e. they PINNED
+    // the defect: the renderer emitted ANSI unconditionally, so `infra-score
+    // --color never` wrote the same 173 escape sequences as `--color always`.
+    // Colour SELECTION (which colour a score maps to) is now asserted on the
+    // pure selector, and EMISSION (whether any escape is written) is asserted on
+    // the rendered text, which must be plain here because a test binary's stdout
+    // is not a terminal.
 
     #[test]
     fn test_format_text_output_high_score_uses_green() {
         let r = make_score(95.0, InfraGrade::APlus, false);
         let out = format_text_output(&r, false, false);
-        // Score >= 90 → green ANSI \x1b[32m.
-        assert!(out.contains("\x1b[32m"));
+        // Score >= 90 → green.
+        assert_eq!(infra_score_color(95.0), crate::cli::colors::GREEN);
         assert!(out.contains("PASS"));
     }
 
@@ -360,7 +387,7 @@ mod format_text_tests {
         let r = make_score(85.0, InfraGrade::B, true);
         let out = format_text_output(&r, false, false);
         // Score 80-89 → yellow.
-        assert!(out.contains("\x1b[33m"));
+        assert_eq!(infra_score_color(85.0), crate::cli::colors::YELLOW);
         assert!(out.contains("AUTO-FAIL"));
     }
 
@@ -369,8 +396,40 @@ mod format_text_tests {
         let r = make_score(50.0, InfraGrade::D, true);
         let out = format_text_output(&r, false, false);
         // Score < 80 → red.
-        assert!(out.contains("\x1b[31m"));
+        assert_eq!(infra_score_color(50.0), crate::cli::colors::RED);
         assert!(out.contains("AUTO-FAIL"));
+    }
+
+    /// GH round-4: `infra-score --color never` was byte-identical to
+    /// `--color always`. Nothing this renderer writes may carry an escape when
+    /// colour is off.
+    #[test]
+    fn infra_text_output_is_plain_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        let mut r = make_score(50.0, InfraGrade::D, true);
+        r.categories.provable_contracts.score = 5.0;
+        r.categories.provable_contracts.percentage = 50.0;
+        r.recommendations.push(InfraRecommendation {
+            priority: crate::services::infra_score::models::InfraPriority::High,
+            check_id: "CI-01".to_string(),
+            title: "Add a workflow".to_string(),
+            description: "add a workflow".to_string(),
+            impact_points: 5.0,
+            estimated_effort: "1h".to_string(),
+        });
+        r.categories.workflow_architecture.findings.push(finding(
+            InfraSeverity::Fail,
+            "CI-01",
+            "no workflow",
+        ));
+        let out = format_text_output(&r, true, false);
+        assert!(
+            !out.contains('\x1b'),
+            "infra-score text output must be plain with colour off: {out:?}"
+        );
     }
 
     // ── Bonus block ──
@@ -464,8 +523,11 @@ mod format_text_tests {
         let r = make_score(95.0, InfraGrade::APlus, false);
         // No findings populated.
         let out = format_text_output(&r, false, false);
-        // Section header not emitted when findings empty.
-        assert!(!out.contains("\x1b[1mFindings\x1b[0m"));
+        // Section header not emitted when findings empty. Asserted on the TEXT,
+        // not on an ANSI-wrapped spelling of it: once the renderer honours
+        // `--color never` the escape-bearing form never appears at all, so the
+        // old assertion passed for a reason unrelated to what it claimed.
+        assert!(!out.contains("Findings"));
     }
 
     // ── Recommendations ──
@@ -491,7 +553,7 @@ mod format_text_tests {
     fn test_format_text_output_no_recommendations_skips_section() {
         let r = make_score(95.0, InfraGrade::APlus, false);
         let out = format_text_output(&r, false, false);
-        assert!(!out.contains("\x1b[1mRecommendations\x1b[0m"));
+        assert!(!out.contains("Recommendations"));
     }
 
     // ── Bonus denominator ──

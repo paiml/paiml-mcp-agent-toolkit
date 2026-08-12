@@ -386,6 +386,42 @@ pub async fn analyze_churn(
     }
 }
 
+/// The `dag_type` values `analyze_dag` accepts, in the spelling the tool's
+/// `inputSchema` advertises.
+pub const DAG_TYPES: [&str; 4] = [
+    "call-graph",
+    "import-graph",
+    "inheritance",
+    "full-dependency",
+];
+
+/// Resolve the `dag_type` argument, REJECTING anything not in [`DAG_TYPES`].
+///
+/// The match used to end in `_ => DagType::FullDependency`, so `"BOGUS"`, `""`
+/// and `"12345"` all came back `status: "completed"` with
+/// `results.dag_type: "FullDependency"` and no warning: a client that typo'd the
+/// mode got a successful-looking result for a DIFFERENT analysis than the one it
+/// asked for, and no way to tell. `generate_context` already rejects an
+/// unsupported `format` and `scaffold_project` an unsupported `level`; silently
+/// coercing an enum is the one behaviour a schema-declared `enum` promises will
+/// not happen.
+///
+/// The underscore spellings stay accepted — they were accepted before, and
+/// removing them would break callers for no gain.
+pub fn parse_dag_type(dag_type: Option<&str>) -> Result<crate::services::deep_context::DagType> {
+    use crate::services::deep_context::DagType;
+    match dag_type.unwrap_or("full-dependency") {
+        "call-graph" | "call_graph" => Ok(DagType::CallGraph),
+        "import-graph" | "import_graph" => Ok(DagType::ImportGraph),
+        "inheritance" => Ok(DagType::Inheritance),
+        "full-dependency" | "full_dependency" => Ok(DagType::FullDependency),
+        other => Err(anyhow::anyhow!(
+            "Unsupported dag_type: {other:?} (expected one of {})",
+            DAG_TYPES.join(", ")
+        )),
+    }
+}
+
 // --- DAG analysis (R17-1) ---
 //
 // Dispatches to `services::deep_context::analysis_functions::analyze_dag`,
@@ -394,18 +430,12 @@ pub async fn analyze_churn(
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dag(paths: &[PathBuf], dag_type: Option<String>) -> Result<Value> {
     use crate::services::deep_context::analysis_functions::analyze_dag as svc_analyze_dag;
-    use crate::services::deep_context::DagType;
 
     if paths.is_empty() {
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
-    let dag_type_parsed = match dag_type.as_deref().unwrap_or("full-dependency") {
-        "call-graph" | "call_graph" => DagType::CallGraph,
-        "import-graph" | "import_graph" => DagType::ImportGraph,
-        "inheritance" => DagType::Inheritance,
-        _ => DagType::FullDependency,
-    };
+    let dag_type_parsed = parse_dag_type(dag_type.as_deref())?;
     let dag_type_label = format!("{:?}", dag_type_parsed);
 
     let project_path = &paths[0];

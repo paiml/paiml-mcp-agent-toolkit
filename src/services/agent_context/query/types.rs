@@ -52,6 +52,30 @@ impl std::str::FromStr for RankBy {
     }
 }
 
+/// Canonical `definition_type` for a user-supplied `--type` value, or `None`
+/// when the value names nothing the index stores.
+///
+/// THE one mapping, shared by the CLI's `--type` validator and the result
+/// filter. It used to live only in the filter and pass unknown values straight
+/// through (`other => other`), so `--type bogus` matched zero rows and exited
+/// 0 — indistinguishable from a legitimate empty result.
+#[must_use]
+pub fn normalize_definition_type(def_type: &str) -> Option<String> {
+    let canonical = match def_type.to_lowercase().as_str() {
+        "fn" | "func" | "function" => "function",
+        "struct" | "structs" => "struct",
+        "enum" | "enums" => "enum",
+        "trait" | "traits" => "trait",
+        "type" | "types" | "typealias" => "typealias",
+        _ => return None,
+    };
+    Some(canonical.to_string())
+}
+
+/// Every value `--type` accepts, in help order. Kept beside the mapping so the
+/// error message cannot drift from what the mapping actually takes.
+pub const DEFINITION_TYPE_VALUES: &[&str] = &["fn", "struct", "enum", "trait", "type"];
+
 /// Search mode for query
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum SearchMode {

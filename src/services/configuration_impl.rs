@@ -224,25 +224,30 @@ impl ConfigurationService {
     pub fn get_semantic_config_with_env_fallback(&self) -> Result<SemanticConfig> {
         let mut config = self.get_semantic_config()?;
 
-        // Vector DB path fallback: config file > env var > default
-        if config.vector_db_path.is_none() {
-            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
-                // Default: ~/.pmat/embeddings.db
-                dirs::home_dir().map(|home| {
-                    home.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-            });
-        }
-
-        // Workspace path fallback: config file > env var > current directory
+        // Workspace path fallback: config file > env var > current directory.
+        // Resolved BEFORE the DB path, which is derived from it.
         if config.workspace_path.is_none() {
             config.workspace_path = std::env::var("PMAT_WORKSPACE")
                 .ok()
                 .map(PathBuf::from)
                 .or_else(|| std::env::current_dir().ok());
+        }
+
+        // Vector DB path fallback: config file > env var > per-workspace default.
+        //
+        // This used to fall back to a single machine-global
+        // `~/.pmat/embeddings.db` shared by every project, while chunk paths
+        // are stored workspace-relative (`./src/main.rs`). One crate's leftover
+        // index was therefore served to every OTHER directory, at paths that do
+        // not resolve there: `pmat embed status` reported the same "5 chunks
+        // indexed" in an empty directory as in a 4,000-file repo, and
+        // `semantic search` in the empty directory returned another crate's
+        // `./src/main.rs`. A caller-side workspace default already existed but
+        // could never fire, because this ran first and always returned `Some`.
+        if config.vector_db_path.is_none() {
+            config.vector_db_path = std::env::var("PMAT_VECTOR_DB_PATH")
+                .ok()
+                .or_else(|| config.workspace_path.as_deref().map(default_vector_db_path));
         }
 
         Ok(config)
@@ -337,6 +342,24 @@ impl ConfigurationService {
         // Check if we can read the configuration
         self.get_config().map(|_| true)
     }
+}
+
+/// Where a workspace's embeddings live when neither config nor
+/// `PMAT_VECTOR_DB_PATH` names a path.
+///
+/// THE one definition. Embedding chunk paths are stored workspace-relative, so
+/// a store shared between workspaces returns rows whose paths mean nothing to
+/// the caller; keying the store to the workspace is what makes a relative chunk
+/// path resolvable again. Three separate copies of a machine-global
+/// `~/.pmat/embeddings.db` default used to exist (config service, CLI
+/// dispatcher, MCP server config) — they all call this now.
+#[must_use]
+pub fn default_vector_db_path(workspace: &std::path::Path) -> String {
+    workspace
+        .join(".pmat")
+        .join("embeddings.db")
+        .to_string_lossy()
+        .to_string()
 }
 
 #[cfg(test)]

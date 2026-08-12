@@ -132,6 +132,11 @@ pub async fn handle_context(
         language,
         languages,
     };
+    // An override the user typed, as opposed to a detection result. Only the
+    // former may narrow the file set — auto-detection picks ONE language for a
+    // polyglot tree and must not silently delete the rest of it.
+    let language_override_requested =
+        override_opts.language.is_some() || override_opts.languages.is_some();
     let effective_languages = get_effective_languages(&override_opts, &project_path)?;
 
     // Use the first effective language as the toolchain (single language support)
@@ -186,7 +191,17 @@ pub async fn handle_context(
 
     // Run the deep context analysis
     let analyzer = DeepContextAnalyzer::new(config);
-    let context = analyzer.analyze_project(&project_path).await?;
+    let mut context = analyzer.analyze_project(&project_path).await?;
+
+    // `--language`/`--languages` used to change one header line and nothing
+    // else: `pmat context --language python` over a Go+Python+TypeScript tree
+    // relabelled the document `python` while still reporting every Go and
+    // TypeScript file underneath it — a header that contradicted its own body.
+    // An explicit override now selects the file set the body is rendered from,
+    // which is the only reading of "override" that makes the header true.
+    if language_override_requested {
+        retain_languages(&mut context, &effective_languages);
+    }
 
     // Generate enhanced annotated AST output
     let output_content = generate_enhanced_ast_context(
@@ -204,6 +219,34 @@ pub async fn handle_context(
     Ok(())
 }
 
+/// Drop every analysed file whose language is not in `wanted`.
+///
+/// Comparison is on the canonical lowercase name plus the handful of aliases
+/// the CLI accepts (`ts`, `js`, `c++`, `py`), so `--language typescript` and
+/// `--language ts` select the same files.
+fn retain_languages(context: &mut crate::services::deep_context::DeepContext, wanted: &[String]) {
+    let wanted: Vec<String> = wanted.iter().map(|l| canonical_language(l)).collect();
+    context
+        .analyses
+        .ast_contexts
+        .retain(|f| wanted.contains(&canonical_language(&f.base.language)));
+}
+
+/// One spelling per language, so alias and canonical name compare equal.
+fn canonical_language(name: &str) -> String {
+    match name.to_lowercase().as_str() {
+        "ts" | "tsx" | "typescript" => "typescript",
+        "js" | "jsx" | "javascript" => "javascript",
+        "py" | "python" => "python",
+        "rs" | "rust" => "rust",
+        "golang" | "go" => "go",
+        "c++" | "cxx" | "cpp" => "cpp",
+        "sh" | "bash" => "bash",
+        other => return other.to_string(),
+    }
+    .to_string()
+}
+
 include!("context_generation.rs");
 include!("project_analysis.rs");
 include!("context_output.rs");
@@ -217,6 +260,10 @@ pub async fn handle_diagnose(args: crate::cli::diagnose::DiagnoseArgs) -> Result
 }
 
 // Tests extracted to utility_handlers_tests.rs for file health compliance (CB-040)
+#[cfg(test)]
+#[path = "context_language_override_tests.rs"]
+mod context_language_override_tests;
+
 #[cfg(test)]
 #[path = "utility_handlers_tests.rs"]
 mod tests;

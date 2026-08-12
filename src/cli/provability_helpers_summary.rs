@@ -145,7 +145,9 @@ fn write_lowest_scoring_functions(
     for (idx, score_val) in indexed.iter().take(limit) {
         let func = &function_ids[*idx];
         let summary = &summaries[*idx];
-        let filename = extract_filename(&func.file_path);
+        // Basename only ("mod.rs") does not identify a file in a tree with
+        // hundreds of them; print the path the analyzer keyed the score by.
+        let filename = crate::cli::report_paths::report_path(&func.file_path);
         let props: Vec<String> = summary
             .verified_properties
             .iter()
@@ -261,7 +263,7 @@ fn write_top_files_list(
     for (i, (file_path, avg_score, function_count)) in
         file_avg_scores.iter().take(files_to_show).enumerate()
     {
-        let filename = extract_filename(file_path);
+        let filename = crate::cli::report_paths::report_path(file_path);
         writeln!(
             output,
             "  {}. {} - {} avg score ({} functions)",

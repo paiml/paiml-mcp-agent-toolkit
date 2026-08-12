@@ -278,7 +278,14 @@ fn write_reference_sites(output: &mut String, sym: &Symbol) -> Result<()> {
         .iter()
         .filter(|r| !matches!(r.kind, ReferenceKind::Definition))
         .take(REFERENCE_SITES_SHOWN)
-        .map(|r| format!("{}:{}", extract_filename(&r.file), r.line))
+        // `mod.rs:13` is not a location a reader can open; the path is.
+        .map(|r| {
+            format!(
+                "{}:{}",
+                crate::cli::report_paths::report_path(&r.file),
+                r.line
+            )
+        })
         .collect();
 
     if sites.is_empty() {
@@ -395,7 +402,10 @@ fn write_top_files_by_count(
     )?;
 
     for (i, (file_path, count)) in sorted_files.iter().take(shown).enumerate() {
-        let filename = extract_filename(file_path);
+        // Basenames do not identify a file in this tree — three of the ten rows
+        // used to read `mod.rs`, `tests.rs`, `types.rs`. Print the path the
+        // symbol table is keyed by, which is what `--format json` reports.
+        let filename = crate::cli::report_paths::report_path(file_path);
         writeln!(
             output,
             "{}. {} - {} symbols",
@@ -425,13 +435,6 @@ fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
     sorted_files
 }
 
-/// Extract filename from path (cognitive complexity ≤3)
-fn extract_filename(file_path: &str) -> &str {
-    Path::new(file_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(file_path)
-}
 
 /// Format CSV output (cognitive complexity ≤5)
 fn format_csv_output(table: SymbolTable) -> Result<String> {

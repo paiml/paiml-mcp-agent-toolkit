@@ -43,6 +43,11 @@ include!("quality_gate_single_file.rs");
 #[cfg(test)]
 #[path = "quality_gate_parse_guard_tests.rs"]
 mod quality_gate_parse_guard_tests;
+
+// `--color never` reaching the printers that interpolate raw ANSI constants.
+#[cfg(test)]
+#[path = "color_never_printer_tests.rs"]
+mod color_never_printer_tests;
 include!("quality_gate_project.rs");
 include!("quality_gate_execute.rs");
 include!("quality_gate_config.rs");

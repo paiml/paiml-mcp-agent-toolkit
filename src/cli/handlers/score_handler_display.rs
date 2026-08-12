@@ -128,24 +128,54 @@ fn print_trend(path: &Path) {
     );
 }
 
+/// `--format text` is documented as "Text format with colored output
+/// (default)", but this renderer emitted no escape at all: `pmat score --color
+/// always` was byte-identical to `--color never`, so the flag named a
+/// behaviour the printer did not have. Colour now comes from the shared
+/// helpers, which means `always` forces it through a pipe and `never` (and a
+/// redirected stdout) still produce plain, diffable text.
 fn format_text(score: &CompositeScore) -> String {
+    use crate::cli::colors as c;
+
     let mut out = String::new();
-    out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    out.push_str("PMAT Unified Score\n");
-    out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    out.push_str(&format!("{}\n", c::rule()));
+    out.push_str(&format!("{}\n", c::subheader("PMAT Unified Score")));
+    out.push_str(&format!("{}\n\n", c::rule()));
     out.push_str(&format!(
-        "  Composite: {:.1}/100  Grade: {}\n\n",
-        score.composite, score.grade
+        "  {} {}/100  {} {}\n\n",
+        c::label("Composite:"),
+        tinted_score(score.composite),
+        c::label("Grade:"),
+        c::grade(&score.grade)
     ));
-    out.push_str("Sub-Scores\n");
-    out.push_str(&format!("  RPS:         {:.1}\n", score.sub_scores.rps));
-    out.push_str(&format!("  Comply:      {:.1}  ({} errors, {} warnings)\n",
-        score.sub_scores.comply, score.comply_errors, score.comply_warnings));
-    out.push_str(&format!("  Coverage:    {:.1}\n", score.sub_scores.coverage));
-    out.push_str(&format!("  Muda (inv):  {:.1}\n", score.sub_scores.muda_inv));
-    out.push_str(&format!("  EvoScore:    {:.1}\n", score.sub_scores.evoscore));
-    out.push_str(&format!("  DBC:         {:.1}\n", score.sub_scores.dbc));
-    out.push_str(&format!("  File Health: {:.1}\n", score.sub_scores.file_health));
-    out.push_str(&format!("  PV Lint:     {:.1}\n", score.sub_scores.pv_lint));
+    out.push_str(&format!("{}\n", c::subheader("Sub-Scores")));
+    out.push_str(&sub_score_line("RPS:", score.sub_scores.rps));
+    out.push_str(&format!(
+        "  {:<12} {}  ({} errors, {} warnings)\n",
+        "Comply:",
+        tinted_score(score.sub_scores.comply),
+        score.comply_errors,
+        score.comply_warnings
+    ));
+    out.push_str(&sub_score_line("Coverage:", score.sub_scores.coverage));
+    out.push_str(&sub_score_line("Muda (inv):", score.sub_scores.muda_inv));
+    out.push_str(&sub_score_line("EvoScore:", score.sub_scores.evoscore));
+    out.push_str(&sub_score_line("DBC:", score.sub_scores.dbc));
+    out.push_str(&sub_score_line("File Health:", score.sub_scores.file_health));
+    out.push_str(&sub_score_line("PV Lint:", score.sub_scores.pv_lint));
     out
+}
+
+/// A 0-100 score, green ≥90 / yellow ≥70 / red below — plain text when colour
+/// is off.
+fn tinted_score(value: f64) -> String {
+    use crate::cli::colors as c;
+    c::colored(
+        c::threshold_color(value, 90.0, 70.0),
+        &format!("{value:.1}"),
+    )
+}
+
+fn sub_score_line(label: &str, value: f64) -> String {
+    format!("  {:<12} {}\n", label, tinted_score(value))
 }

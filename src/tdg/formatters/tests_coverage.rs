@@ -330,6 +330,8 @@ mod coverage_instrumented_tests {
             grade_capped: false,
             files_reported: 3,
             files_truncated: false,
+            list_filter: None,
+            ungraded_files: Vec::new(),
         };
         let output = format_project(&project);
         assert!(output.contains("Project TDG Score Report"));
@@ -361,6 +363,8 @@ mod coverage_instrumented_tests {
             grade_capped: false,
             files_reported: 1,
             files_truncated: false,
+            list_filter: None,
+            ungraded_files: Vec::new(),
         };
         let output = format_project(&project);
         assert!(output.contains("70.0/100"));

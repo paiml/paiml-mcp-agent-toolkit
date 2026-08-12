@@ -159,6 +159,9 @@
                 EnforceOutputFormat::Summary,
                 false, // ci_mode
                 None,  // specific_file
+                None,  // output
+                None,  // include_pattern
+                None,  // exclude_pattern
             )
             .await
             .unwrap();
@@ -182,6 +185,7 @@
                 EnforcementState::Analyzing,
                 &config,
                 1,
+                None,
             )
             .await
             .unwrap();
@@ -297,7 +301,7 @@
             };
 
             // Capture stdout by calling output_result
-            let output = output_result(&result, EnforceOutputFormat::Sarif, false);
+            let output = output_result(&result, EnforceOutputFormat::Sarif, false, None);
             assert!(output.is_ok());
         }
 

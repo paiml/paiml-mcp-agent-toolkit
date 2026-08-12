@@ -90,10 +90,18 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
             .collect()
     };
     // A language TDG does not grade leaves `tdg_passed` false for want of a
-    // score, but SATD did measure the file, and the two entry points of one
-    // tool must not answer differently about the same `a.sh`. GH #704 is
-    // untouched: a path TDG *does* grade but could not still fails.
-    let mut passed = (tdg_passed || ungraded_language) && satd.is_empty();
+    // score — and that is where it must stay. This used to read
+    // `(tdg_passed || ungraded_language)`, which credited the missing score to
+    // the file: `quality_gate` over one `a.sh` answered
+    // `{"passed":true,"score":null,"grade":null,"not_measured":["score","grade"],
+    // "files_analyzed":0}` — a green verdict over input the same payload
+    // declares unmeasured, from a gate whose own invariant is spelled out in
+    // `unmeasured_cannot_pass_tests.rs`. The identical "nothing was graded"
+    // state already returned `passed:false` for a DIRECTORY, so one tool was
+    // giving two answers to one question. GH #704 is untouched: a path TDG
+    // *does* grade but scored badly still fails, and the SATD findings below
+    // are still reported either way.
+    let mut passed = tdg_passed && satd.is_empty();
     violations.extend(satd);
 
     // Every source file the analyzer REFUSED is a hole in this verdict, and the
@@ -118,15 +126,18 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // `fn main( { let x = ;;;` came back with an empty score set — and before
     // the analyzer refused to grade unparseable Rust, with 90.0/A. Zero graded
     // files is not a measurement of quality.
-    // A language TDG does not grade is not a failure to grade: the file was
-    // measured by SATD, so it gets a verdict, not a `not_graded` violation.
-    if project_score.total_files == 0 && !ungraded_language {
+    // A language TDG does not grade is not a *failure* to grade, so it gets its
+    // own reason string — but it is still a path this gate has no score for, and
+    // it is disclosed and refused exactly like the others. Saying "not measured"
+    // in one field and "passed" in another is the contradiction this whole file
+    // exists to remove.
+    if project_score.total_files == 0 {
         passed = false;
         violations.push(json!({
             "check_type": "not_graded",
             "severity": "error",
             "file": project_path.display().to_string(),
-            "message": "no file under this path could be graded (unreadable, unparseable, or not source) — the score is not a measurement",
+            "message": not_graded_reason(project_path, ungraded_language),
         }));
     }
 
@@ -174,6 +185,25 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         "files_analyzed": project_score.total_files,
         "violations": violations
     }))
+}
+
+/// Why this gate has no grade for `path`, in the reader's terms.
+///
+/// One sentence, one place: both entry points of `quality_gate` report the same
+/// `not_graded` violation, so a client cannot get "unmeasured" from one and
+/// "passed" from the other for the same file.
+fn not_graded_reason(path: &Path, ungraded_language: bool) -> String {
+    if ungraded_language {
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map_or_else(|| "this file".to_string(), |e| format!(".{e}"));
+        format!(
+            "TDG does not grade {ext} — score and grade are not measured here, so this gate has no verdict to give (the language-agnostic checks below still apply)"
+        )
+    } else {
+        "no file under this path could be graded (unreadable, unparseable, or not source) — the score is not a measurement".to_string()
+    }
 }
 
 /// SATD violations for one file, from the detector `pmat quality-gate` uses.
@@ -244,12 +274,14 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     };
 
     // Grade's derived Ord is inverted (better grades compare as smaller),
-    // so use the semantic helper instead of a raw `>=` comparison. With no
-    // grade at all there is no threshold to fail, and the verdict rests on the
-    // violations below — which is exactly what the CLI gate does for the same
-    // file. GH #704 is untouched: a file TDG *does* grade but scored badly
-    // still fails.
-    let tdg_passed = file_score.as_ref().is_none_or(|score| {
+    // so use the semantic helper instead of a raw `>=` comparison. This was
+    // `is_none_or`, which turned "there is no grade" into "there is no threshold
+    // to fail" — the same credit-for-a-missing-measurement that let
+    // `check_quality_gates` above answer `passed:true, score:null` for one
+    // `a.sh`. No grade is no verdict, and it is reported as a `not_graded`
+    // violation below rather than silently passed. GH #704 is untouched: a file
+    // TDG *does* grade but scored badly still fails.
+    let tdg_passed = file_score.as_ref().is_some_and(|score| {
         score.total >= threshold_score && score.grade.meets_threshold(threshold_grade)
     });
 
@@ -272,7 +304,17 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         .collect();
 
     // The gate's violations come from the same SATD detector the CLI gate runs.
-    let violations = satd_violations_for_file(file_path);
+    let mut violations = satd_violations_for_file(file_path);
+    // Same rule, same wording, same shape as `check_quality_gates`: a hole in
+    // the verdict is a row in `violations`, never an unexplained `passed:true`.
+    if file_score.is_none() {
+        violations.push(json!({
+            "check_type": "not_graded",
+            "severity": "error",
+            "file": file_path.display().to_string(),
+            "message": not_graded_reason(file_path, true),
+        }));
+    }
     let passed = tdg_passed && violations.is_empty();
 
     // Same convention as `check_quality_gates` above and `analyze_deep_context`:

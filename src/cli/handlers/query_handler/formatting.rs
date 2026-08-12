@@ -142,7 +142,7 @@ mod tint_honours_color_flag_tests;
 /// fixing the raw-escape leak had quietly made the flag unreachable for these
 /// three modes. One implementation of "should this be coloured" for the whole
 /// binary is the only version of this that stays fixed.
-fn tint(code: &'static str) -> &'static str {
+fn tint(code: crate::cli::colors::Sgr) -> crate::cli::colors::Sgr {
     crate::cli::colors::seq(code)
 }
 

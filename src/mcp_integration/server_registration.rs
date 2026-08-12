@@ -256,7 +256,7 @@ impl McpServer {
     ///
     /// Configuration is loaded from environment variables:
     /// - PMAT_SEMANTIC_ENABLED: Enable semantic search (default: false)
-    /// - PMAT_VECTOR_DB_PATH: Path to vector database (default: ~/.pmat/embeddings.db)
+    /// - PMAT_VECTOR_DB_PATH: Path to vector database (default: `<workspace>/.pmat/embeddings.db`)
     /// - PMAT_WORKSPACE: Workspace path for code indexing (default: current directory)
     ///
     /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
@@ -274,22 +274,17 @@ impl McpServer {
         use crate::mcp_integration::tools::*;
         use crate::services::semantic::HybridSearchEngine;
 
-        let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| {
-                    h.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-                .unwrap_or_else(|| "embeddings.db".to_string())
-        });
-
         let workspace = self
             .config
             .semantic_workspace
             .clone()
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Scoped to the workspace being served, never a machine-global store —
+        // see `configuration_service::default_vector_db_path`.
+        let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
+            crate::services::configuration_service::default_vector_db_path(&workspace)
+        });
 
         // Initialize hybrid search engine (no API key required - uses local embeddings)
         tracing::info!(

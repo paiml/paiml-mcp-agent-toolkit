@@ -293,11 +293,9 @@ async fn analyze_project_path(
     // the truncation is disclosed (files_reported / files_truncated).
     project_score.limit_to_worst_files(top_files);
     // `--critical-only` had no reader at all: on a tree whose worst file graded
-    // A it still listed all 9 files and called them critical. A "critical" file
-    // is an F-grade file — the same definition `f_grade_count` documents — so
-    // filter to those and let the count fall to zero when there are none.
-    // Applied after the --top-files cap so the reported/truncated bookkeeping
-    // reflects the list actually printed.
+    // A it still listed all 9 files and called them critical. Applied after the
+    // --top-files cap so the reported/truncated bookkeeping reflects the list
+    // actually printed.
     if critical_only {
         retain_critical_files(&mut project_score);
     }
@@ -310,18 +308,26 @@ async fn analyze_project_path(
     ))
 }
 
-/// Keep only the critical (F-grade) files in the reported list.
+/// Keep only the files that CARRY CRITICAL DEFECTS in the reported list.
+///
+/// The predicate was `grade == F`, an INFERENCE about critical defects rather
+/// than the fact itself. While one critical defect zeroed the score to 0.0/F the
+/// two sets coincided and the difference was invisible; once the penalty became
+/// graduated (one defect leaves a file at 69.9/C+) they diverged, and
+/// `--critical-only` started dropping exactly the files with a single critical
+/// defect — records whose own `has_critical_defects` is `true` and whose
+/// `critical_defects_count` is 1. A filter named after a fact must read that
+/// fact.
 ///
 /// Whole-project aggregates (`total_files`, `average_score`, `grade_distribution`,
 /// `f_grade_count`) are deliberately left untouched, exactly as `--top-files`
 /// truncation leaves them, so the reported subset can never be mistaken for the
 /// analysed population.
 fn retain_critical_files(project_score: &mut crate::tdg::ProjectScore) {
-    project_score
-        .files
-        .retain(|file| file.grade == crate::tdg::Grade::F);
+    project_score.files.retain(|file| file.has_critical_defects);
     project_score.files_reported = project_score.files.len();
     project_score.files_truncated = project_score.files_reported < project_score.total_files;
+    project_score.list_filter = Some("--critical-only".to_string());
 }
 
 async fn analyze_single_file(
@@ -389,11 +395,23 @@ fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool
         _ => writeln!(w, "**Average Score:** not measured (no files analysed)"),
     };
     let _ = writeln!(w, "**Total Files:** {}", project.total_files);
-    // A truncated list says so, exactly as the box-drawing renderer does.
-    if project.files_truncated {
+    if !project.ungraded_files.is_empty() {
         let _ = writeln!(
             w,
-            "**Files Listed:** {} of {} (--top-files)",
+            "**Not Graded:** {} file(s) walked but not measured",
+            project.ungraded_files.len()
+        );
+    }
+    // A truncated list says so, exactly as the box-drawing renderer does.
+    if project.files_truncated {
+        let via = project
+            .list_filter
+            .as_deref()
+            .map(|f| format!(" ({f})"))
+            .unwrap_or_default();
+        let _ = writeln!(
+            w,
+            "**Files Listed:** {} of {}{via}",
             project.files_reported, project.total_files
         );
     }
@@ -990,6 +1008,19 @@ mod tests {
         }
     }
 
+    /// A file carrying `defects` critical defects, scored the way the graduated
+    /// penalty scores it (one defect ⇒ 69.9/C+, which is NOT an F).
+    fn with_critical_defects(path: &str, defects: usize) -> crate::tdg::TdgScore {
+        let mut score = crate::tdg::TdgScore {
+            file_path: Some(PathBuf::from(path)),
+            has_critical_defects: defects > 0,
+            critical_defects_count: defects,
+            ..Default::default()
+        };
+        score.calculate_total();
+        score
+    }
+
     #[test]
     fn critical_only_keeps_nothing_when_no_file_is_critical() {
         // The reported defect: `analyze tdg --critical-only` on a tree whose
@@ -1012,10 +1043,10 @@ mod tests {
     }
 
     #[test]
-    fn critical_only_keeps_exactly_the_f_grade_files() {
+    fn critical_only_keeps_exactly_the_files_with_critical_defects() {
         let mut project = crate::tdg::ProjectScore::aggregate(vec![
             graded("src/a.rs", 98.0, crate::tdg::Grade::APlus),
-            graded("src/bad.rs", 12.0, crate::tdg::Grade::F),
+            with_critical_defects("src/bad.rs", 5),
             graded("src/b.rs", 91.0, crate::tdg::Grade::A),
         ]);
 
@@ -1028,6 +1059,64 @@ mod tests {
         );
         assert_eq!(project.files_reported, 1);
         assert_eq!(project.total_files, 3);
+    }
+
+    /// The filter read `grade == F`, an inference about critical defects rather
+    /// than the fact. Under the graduated penalty a file with ONE critical
+    /// defect scores 69.9/C+, so `--critical-only` silently dropped it — while
+    /// that same record reports `has_critical_defects: true` and
+    /// `critical_defects_count: 1`.
+    #[test]
+    fn critical_only_keeps_a_single_defect_file_that_does_not_grade_f() {
+        let one = with_critical_defects("src/u1.rs", 1);
+        assert!(
+            one.grade != crate::tdg::Grade::F,
+            "fixture precondition: one defect must NOT grade F, else this test \
+             cannot distinguish the two predicates (got {})",
+            one.grade
+        );
+
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![
+            graded("src/clean.rs", 98.0, crate::tdg::Grade::APlus),
+            one,
+            with_critical_defects("src/u5.rs", 5),
+        ]);
+
+        retain_critical_files(&mut project);
+
+        let kept: Vec<_> = project
+            .files
+            .iter()
+            .map(|f| f.file_path.clone().unwrap())
+            .collect();
+        assert!(
+            kept.contains(&PathBuf::from("src/u1.rs")),
+            "a file whose own record says has_critical_defects must survive \
+             --critical-only; kept {kept:?}"
+        );
+        assert_eq!(kept.len(), 2, "the clean file must not survive: {kept:?}");
+    }
+
+    /// The truncation disclosure hardcoded `(--top-files)`, so a run filtered by
+    /// `--critical-only` blamed a flag that was never passed.
+    #[test]
+    fn critical_only_disclosure_names_critical_only_not_top_files() {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![
+            graded("src/clean.rs", 98.0, crate::tdg::Grade::APlus),
+            with_critical_defects("src/u1.rs", 1),
+        ]);
+        retain_critical_files(&mut project);
+
+        assert_eq!(project.list_filter.as_deref(), Some("--critical-only"));
+        let rendered = crate::tdg::formatters::format_project(&project);
+        assert!(
+            rendered.contains("(--critical-only)"),
+            "the disclosure must name the filter that applied: {rendered}"
+        );
+        assert!(
+            !rendered.contains("(--top-files)"),
+            "--top-files was not passed: {rendered}"
+        );
     }
 
     // ── -f markdown is markdown, and --include-components is read ───────────

@@ -23,6 +23,8 @@ pub async fn handle_analyzing_state(
     single_file_mode: bool,
     dry_run: bool,
     specific_file: Option<&PathBuf>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
     // A path that does not exist cannot be enforced against, and must not be
     // answered with a verdict. `enforce extreme -p /nope` reported
@@ -52,10 +54,31 @@ pub async fn handle_analyzing_state(
     let mut violations = Vec::new();
 
     // Run all analyses in sequence, each scoped per-phase when --file is given
-    let complexity_outcome =
+    let mut complexity_outcome =
         run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    let satd_outcome = run_satd_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    let tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
+    let mut satd_outcome =
+        run_satd_analysis(scope.walk_root(), profile, scope.single_file()).await?;
+    let mut tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
+
+    // `--include` and `--exclude` parsed and then vanished: they reached
+    // `handle_validating_enforcement_state` as `_include_pattern` /
+    // `_exclude_pattern` and were never read, so `--exclude 'src/*'` still
+    // reported the violation in `src/lib.rs` and `--include '*.py'` still
+    // reported a Rust one. Applying the filter HERE, before the score is
+    // computed, is what keeps the score and the violation list describing the
+    // same set of files: filtering the printed list alone would leave the score
+    // measuring files the report denies looking at.
+    let filter = crate::utils::file_filter::FileFilter::from_optional(
+        &include_pattern.cloned(),
+        &exclude_pattern.cloned(),
+    )?;
+    if include_pattern.is_some() || exclude_pattern.is_some() {
+        for outcome in [&mut complexity_outcome, &mut satd_outcome, &mut tdg_outcome] {
+            outcome
+                .violations
+                .retain(|v| violation_is_included(&filter, project_path, v));
+        }
+    }
 
     // Composite score, derived from the analyses that were just run.
     //
@@ -174,6 +197,27 @@ pub async fn handle_analyzing_state(
             estimated_iterations: ((1.0 - total_score) * 10.0) as u32,
         },
     })
+}
+
+/// Does `--include`/`--exclude` admit the file this violation names?
+///
+/// Locations are `path:line:name` or a bare path, and the path is usually
+/// absolute while the patterns a user writes (`src/*`) are relative to the
+/// project, so the path is matched in project-relative form. Matching both
+/// forms and OR-ing them would defeat `--exclude`, whose answer must be "no"
+/// if EITHER form matches.
+pub(super) fn violation_is_included(
+    filter: &crate::utils::file_filter::FileFilter,
+    project_path: &Path,
+    violation: &QualityViolation,
+) -> bool {
+    let raw = violation
+        .location
+        .split(':')
+        .next()
+        .unwrap_or(&violation.location);
+    let path = Path::new(raw);
+    filter.should_include(path.strip_prefix(project_path).unwrap_or(path))
 }
 
 /// Score one analysis phase in `[0.0, 1.0]`: 1.0 when the phase found nothing
@@ -298,6 +342,8 @@ pub async fn handle_violating_enforcement_state_proxy(
     dry_run: bool,
     specific_file: Option<&PathBuf>,
     apply_suggestions: bool,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
     // Get violations from previous analyzing state
     let analyzing_result = handle_analyzing_state(
@@ -306,6 +352,8 @@ pub async fn handle_violating_enforcement_state_proxy(
         single_file_mode,
         dry_run,
         specific_file,
+        include_pattern,
+        exclude_pattern,
     )
     .await?;
     handle_violating_state(
@@ -334,16 +382,20 @@ pub async fn handle_validating_enforcement_state(
     single_file_mode: bool,
     dry_run: bool,
     specific_file: Option<&PathBuf>,
-    _include_pattern: Option<&String>,
-    _exclude_pattern: Option<&String>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
-    // Re-run analysis to validate improvements
+    // Re-run analysis to validate improvements. The two patterns arrived here as
+    // `_include_pattern` / `_exclude_pattern` — carried the whole way down the
+    // call chain and then dropped on the floor.
     let mut result = handle_analyzing_state(
         project_path,
         profile,
         single_file_mode,
         dry_run,
         specific_file,
+        include_pattern,
+        exclude_pattern,
     )
     .await?;
 
@@ -372,6 +424,8 @@ pub async fn handle_analyzing_enforcement_state(
         single_file_mode,
         dry_run,
         specific_file,
+        None,
+        None,
     )
     .await
 }
@@ -417,9 +471,10 @@ mod composite_score_regression_tests {
         let empty = tempfile::tempdir().expect("tempdir");
         let profile = strict_profile();
 
-        let empty_result = handle_analyzing_state(empty.path(), &profile, false, true, None)
-            .await
-            .expect("analyze empty directory");
+        let empty_result =
+            handle_analyzing_state(empty.path(), &profile, false, true, None, None, None)
+                .await
+                .expect("analyze empty directory");
 
         // An empty directory breaches no threshold...
         assert!(
@@ -471,7 +526,7 @@ mod composite_score_regression_tests {
         );
 
         let violating_result =
-            handle_analyzing_state(violating.path(), &profile, false, true, None)
+            handle_analyzing_state(violating.path(), &profile, false, true, None, None, None)
                 .await
                 .expect("analyze violating project");
 

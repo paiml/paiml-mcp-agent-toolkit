@@ -1227,3 +1227,86 @@ async fn known_filters_are_accepted() {
 
     assert!(diagnostic.validate_filters(&args).is_ok());
 }
+
+// ── GH #684 (round 4): `--color never` / NO_COLOR must reach every printer ──
+
+/// The pretty report used to interpolate the raw `c::DIM` / `c::RESET` /
+/// `c::GREEN` / `c::RED` consts. Those are `const`, so they cannot consult
+/// `colors_enabled`, and `pmat diagnose --color never > out.txt` wrote ten
+/// escape-bearing lines — byte-identical to `--color auto`. NO_COLOR=1 was
+/// ignored for the same reason.
+#[test]
+fn pretty_report_emits_no_escapes_when_colour_is_disabled() {
+    use std::collections::BTreeMap;
+
+    assert!(
+        !crate::cli::colors::colors_enabled(),
+        "cargo test captures stdout, so colour must resolve to off here"
+    );
+
+    let mut features = BTreeMap::new();
+    features.insert(
+        "analysis.complexity".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Ok,
+            duration_us: 164,
+            error: None,
+            metrics: None,
+        },
+    );
+    features.insert(
+        "analysis.deep_context".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Failed,
+            duration_us: 8533,
+            error: Some("boom".to_string()),
+            metrics: None,
+        },
+    );
+    features.insert(
+        "ast.rust".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Degraded("slow".to_string()),
+            duration_us: 12,
+            error: None,
+            metrics: None,
+        },
+    );
+    features.insert(
+        "cache.persistent".to_string(),
+        FeatureResult {
+            status: FeatureStatus::Skipped("filtered".to_string()),
+            duration_us: 0,
+            error: None,
+            metrics: None,
+        },
+    );
+
+    let report = DiagnosticReport {
+        version: "3.30.0".to_string(),
+        build_info: BuildInfo::current(),
+        timestamp: chrono::Utc::now(),
+        duration_ms: 42,
+        features,
+        summary: DiagnosticSummary {
+            total: 4,
+            passed: 1,
+            failed: 1,
+            degraded: 1,
+            skipped: 1,
+            all_passed: false,
+            success_rate: Some(33.3),
+        },
+        error_context: None,
+    };
+
+    let rendered = format_pretty_report(&report);
+    assert!(
+        !rendered.contains('\u{1b}'),
+        "expected plain text with colour off, got {rendered:?}"
+    );
+    // The payload must survive the de-colouring, not be dropped with it.
+    assert!(rendered.contains("analysis.complexity"));
+    assert!(rendered.contains("164"));
+    assert!(rendered.contains("boom"));
+}

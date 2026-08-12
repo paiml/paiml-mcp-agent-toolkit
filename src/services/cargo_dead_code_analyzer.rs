@@ -213,3 +213,7 @@ include!("cargo_dead_code_analyzer/tests.rs");
 #[cfg(test)]
 #[path = "cargo_dead_code_analyzer/dead_line_bound_tests.rs"]
 mod dead_line_bound_tests;
+
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/cargo_target_scope_tests.rs"]
+mod cargo_target_scope_tests;

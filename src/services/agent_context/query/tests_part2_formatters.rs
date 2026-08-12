@@ -247,8 +247,16 @@ fn test_format_text_with_code_syntect_source() {
         text.contains("src_fn"),
         "missing source content with syntect"
     );
-    // syntect adds ANSI escape codes
-    assert!(text.contains("\x1b["), "missing ANSI codes from syntect");
+    // This used to assert `text.contains("\x1b[")` and called it "ANSI codes
+    // from syntect". `syntax-highlighting` is not a default feature, so what it
+    // really pinned was the plain fallback's UNCONDITIONAL `\x1b[2m` line
+    // number — the very leak that made `pmat query --color never` print
+    // escapes. `cargo test` captures stdout, so colour is off and the printer
+    // must be plain either way.
+    assert!(
+        !text.contains('\x1b'),
+        "the code printer must be plain with colour off: {text:?}"
+    );
 }
 
 // ── High churn in rich metrics (>0.7 branch) ────────────────────────────

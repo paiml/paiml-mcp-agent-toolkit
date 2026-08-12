@@ -222,6 +222,12 @@ impl ToolHandler for AnalyzeDagTool {
         let params: AnalyzeDagArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
+        // Checked before any analysis runs, and reported as an ARGUMENT error
+        // (-32602) rather than an internal one: an unsupported `dag_type` used
+        // to be coerced to FullDependency and returned as `status: "completed"`.
+        tool_functions::parse_dag_type(params.dag_type.as_deref())
+            .map_err(|e| Error::validation(e.to_string()))?;
+
         let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_dag(&paths, params.dag_type)

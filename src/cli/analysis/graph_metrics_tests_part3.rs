@@ -432,3 +432,79 @@
 
         assert_eq!(graph.connected_components(), 2);
     }
+
+    // ── -f summary / -f human / -f detailed are three renderings (R45) ──────
+
+    /// Regression: `Summary`, `Detailed` and `Human` shared one match arm, so
+    /// `analyze graph-metrics --format summary|detailed|human` produced
+    /// byte-identical output — 2634 identical bytes on this repo's
+    /// `src/cli/analysis`. `--help` documents `summary` as "Summary statistics
+    /// only" and `detailed` as "Detailed metrics with rankings"; neither was
+    /// true of a renderer that also served `human`.
+    #[test]
+    fn test_summary_human_detailed_are_not_the_same_document() {
+        let summary = strip_ansi(&format_output(
+            create_mock_result(),
+            crate::cli::GraphMetricsOutputFormat::Summary,
+        )
+        .unwrap());
+        let human = strip_ansi(&format_output(
+            create_mock_result(),
+            crate::cli::GraphMetricsOutputFormat::Human,
+        )
+        .unwrap());
+        let detailed = strip_ansi(&format_output(
+            create_mock_result(),
+            crate::cli::GraphMetricsOutputFormat::Detailed,
+        )
+        .unwrap());
+
+        assert_ne!(summary, human, "summary must not equal human");
+        assert_ne!(human, detailed, "human must not equal detailed");
+        assert_ne!(summary, detailed, "summary must not equal detailed");
+
+        // summary: statistics only, no per-node listing.
+        assert!(summary.contains("Total nodes:"));
+        assert!(
+            !summary.contains("Top Nodes by Centrality"),
+            "summary is statistics only:\n{summary}"
+        );
+
+        // human: statistics + the node listing.
+        assert!(human.contains("Top Nodes by Centrality"));
+        assert!(!human.contains("Ranked by PageRank"));
+
+        // detailed: human, plus the rankings --help promises.
+        assert!(detailed.contains("Top Nodes by Centrality"));
+        for measure in ["PageRank", "Betweenness", "Closeness", "Degree"] {
+            assert!(
+                detailed.contains(&format!("Ranked by {measure}")),
+                "detailed is missing the {measure} ranking:\n{detailed}"
+            );
+        }
+        assert!(detailed.len() > human.len());
+    }
+
+    /// Ties in a ranking break on the node name, so `-f detailed` is a function
+    /// of the graph rather than of the order the nodes happened to arrive in.
+    #[test]
+    fn test_detailed_rankings_are_order_independent() {
+        let forward = create_mock_result();
+        let mut reversed = create_mock_result();
+        reversed.nodes.reverse();
+
+        let a = strip_ansi(
+            &format_output(forward, crate::cli::GraphMetricsOutputFormat::Detailed).unwrap(),
+        );
+        let b = strip_ansi(
+            &format_output(reversed, crate::cli::GraphMetricsOutputFormat::Detailed).unwrap(),
+        );
+
+        let rankings = |s: &str| {
+            s.lines()
+                .skip_while(|l| !l.contains("Ranked by"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        assert_eq!(rankings(&a), rankings(&b));
+    }

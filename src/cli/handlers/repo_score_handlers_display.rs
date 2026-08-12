@@ -62,10 +62,10 @@ fn format_text(score: &RepoScore, verbose: bool) -> String {
         for rec in &score.recommendations {
             use crate::services::repo_score::Priority;
             let priority_text = match rec.priority {
-                Priority::Critical => format!("{}P0{}", c::RED, c::RESET),
-                Priority::High => format!("{}P1{}", c::RED, c::RESET),
-                Priority::Medium => format!("{}P2{}", c::YELLOW, c::RESET),
-                Priority::Low => format!("{}P3{}", c::GREEN, c::RESET),
+                Priority::Critical => format!("{}P0{}", c::seq(c::RED), c::seq(c::RESET)),
+                Priority::High => format!("{}P1{}", c::seq(c::RED), c::seq(c::RESET)),
+                Priority::Medium => format!("{}P2{}", c::seq(c::YELLOW), c::seq(c::RESET)),
+                Priority::Low => format!("{}P3{}", c::seq(c::GREEN), c::seq(c::RESET)),
             };
             output.push_str(&format!(
                 "  {} {}: {}\n",
@@ -92,13 +92,13 @@ fn format_category(
     let mut output = String::new();
     let status_icon = match category.status {
         crate::services::repo_score::ScoreStatus::Pass => {
-            format!("{}✓{}", c::GREEN, c::RESET)
+            format!("{}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
         }
         crate::services::repo_score::ScoreStatus::Warning => {
-            format!("{}⚠{}", c::YELLOW, c::RESET)
+            format!("{}⚠{}", c::seq(c::YELLOW), c::seq(c::RESET))
         }
         crate::services::repo_score::ScoreStatus::Fail => {
-            format!("{}✗{}", c::RED, c::RESET)
+            format!("{}✗{}", c::seq(c::RED), c::seq(c::RESET))
         }
     };
 
@@ -112,7 +112,12 @@ fn format_category(
 
     if verbose && !category.findings.is_empty() {
         for finding in &category.findings {
-            output.push_str(&format!("     {}{}{}\n", c::DIM, finding.message, c::RESET));
+            output.push_str(&format!(
+                "     {}{}{}\n",
+                c::seq(c::DIM),
+                finding.message,
+                c::seq(c::RESET)
+            ));
         }
     }
 

@@ -342,28 +342,46 @@ impl SimpleDeepContext {
                 .unwrap_or_default(),
         };
 
-        // Adjust counts based on actual function names found
-        let actual_function_count = function_names.len();
-        let adjusted_function_count = if actual_function_count > 0 {
-            actual_function_count
-        } else {
+        // The per-language analyzers above return a MEASURED triple: how many
+        // functions they parsed, how many of those exceed the cyclomatic
+        // threshold, and the mean cyclomatic over them. Those three agree with
+        // each other by construction.
+        //
+        // This block used to throw two of them away whenever function-name
+        // extraction found anything, substituting `names.len() / 4` for the
+        // high-complexity count and `2.5` for a zero average. Both are
+        // constants wearing a measurement's clothes, and the ratio was visible
+        // in the report: `analyze deep-context` on this repo listed
+        //
+        //   1. comprehensive_assert_cmd_coverage.rs - 1.0 avg complexity
+        //      (134 functions, 33 high complexity)
+        //
+        // — 134/4 = 33 "functions above complexity 10" in a file whose measured
+        // mean complexity is 1.0, which is arithmetically impossible. Repo-wide
+        // it fabricated 4352 high-complexity functions where the AST had found
+        // a small fraction of that.
+        //
+        // A measurement is now reported only when it was taken. The fix is
+        // scoped to the two values that were being invented: name extraction
+        // can say nothing about complexity, so it no longer sets
+        // `high_complexity_functions` or `avg_complexity`.
+        //
+        // It remains the better source for the *count*. For languages whose
+        // AST complexity pass is a stub in this build — Java, Ruby — the pass
+        // reports one function for a file that plainly declares two, while
+        // name extraction finds both. Preferring the pass's count there traded
+        // a fabrication for an undercount; both are wrong answers, and only
+        // the fabrication was the defect being fixed.
+        let function_count = if function_names.is_empty() {
             function_count
-        };
-        let adjusted_high_complexity = if actual_function_count > 0 {
-            actual_function_count / 4
         } else {
-            high_complexity_functions
-        };
-        let adjusted_avg_complexity = if actual_function_count > 0 && avg_complexity == 0.0 {
-            2.5
-        } else {
-            avg_complexity
+            function_names.len()
         };
 
         Ok(FileComplexityMetrics {
-            function_count: adjusted_function_count,
-            high_complexity_functions: adjusted_high_complexity,
-            avg_complexity: adjusted_avg_complexity,
+            function_count,
+            high_complexity_functions,
+            avg_complexity,
             function_names,
         })
     }

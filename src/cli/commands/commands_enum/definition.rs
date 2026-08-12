@@ -170,8 +170,8 @@ pub enum Commands {
         #[arg(long)]
         exclude_tests: bool,
 
-        /// Ranking strategy: relevance, pagerank, centrality, indegree
-        #[arg(long, value_name = "STRATEGY")]
+        /// Ranking strategy: relevance, pagerank, centrality, indegree, impact, cross-project, priority
+        #[arg(long, value_name = "STRATEGY", value_parser = parse_rank_by_value)]
         rank_by: Option<String>,
 
         /// Minimum PageRank score filter (0.0-1.0)
@@ -223,7 +223,7 @@ pub enum Commands {
         include_excluded: bool,
 
         /// Filter by definition type (fn, struct, enum, trait, type)
-        #[arg(long = "type", value_name = "TYPE")]
+        #[arg(long = "type", value_name = "TYPE", value_parser = parse_definition_type_value)]
         definition_type: Option<String>,
 
         /// Show compact results without source code (source is shown by default)
@@ -1505,7 +1505,7 @@ pub enum Commands {
         failed_count: usize,
 
         /// SBFL formula: tarantula, ochiai, dstar2, dstar3
-        #[arg(long, default_value = "tarantula")]
+        #[arg(long, default_value = "tarantula", value_parser = parse_sbfl_formula_value)]
         formula: String,
 
         /// Top N suspicious statements to report
@@ -1662,6 +1662,145 @@ pub enum Commands {
         #[command(subcommand)]
         command: StackCommands,
     },
+}
+
+// ── Enum-valued options that are typed as String ────────────────────────────
+//
+// `--min-grade`, `--format`, `--color` and `--search-mode` are clap-validated
+// and reject a bad value with exit 2. These three were plain `String`s parsed
+// later with `unwrap_or_default()` / `unwrap_or(..)`, so a typo silently
+// selected the default: `--rank-by bogus` produced output byte-identical to
+// `--rank-by relevance`, `--type bogus` matched nothing (indistinguishable
+// from an honest empty result), and `--formula bogus` printed
+// `Formula: bogus` above a report the banner labelled `Tarantula`. Each parser
+// below defers to the SAME `FromStr`/mapping the consumer uses, so the accepted
+// set cannot drift from the implemented set.
+
+/// clap value_parser for `query --rank-by`.
+fn parse_rank_by_value(s: &str) -> Result<String, String> {
+    s.parse::<crate::services::agent_context::RankBy>()?;
+    Ok(s.to_string())
+}
+
+/// clap value_parser for `query --type`.
+fn parse_definition_type_value(s: &str) -> Result<String, String> {
+    if crate::services::agent_context::normalize_definition_type(s).is_some() {
+        return Ok(s.to_string());
+    }
+    Err(format!(
+        "unknown definition type '{s}'. Valid: {}",
+        crate::services::agent_context::DEFINITION_TYPE_VALUES.join(", ")
+    ))
+}
+
+/// clap value_parser for `localize --formula`.
+fn parse_sbfl_formula_value(s: &str) -> Result<String, String> {
+    s.parse::<crate::services::fault_localization::SbflFormula>()
+        .map_err(|e| e.to_string())?;
+    Ok(s.to_string())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod enum_valued_option_tests {
+    use super::{
+        parse_definition_type_value, parse_rank_by_value, parse_sbfl_formula_value,
+    };
+
+    /// `--rank-by bogus` used to exit 0 with output byte-identical to
+    /// `--rank-by relevance` (`unwrap_or_default()` on the parse).
+    #[test]
+    fn rank_by_rejects_an_unknown_strategy() {
+        assert!(parse_rank_by_value("bogus").is_err());
+        assert!(parse_rank_by_value("pagerank").is_ok());
+        assert!(parse_rank_by_value("relevance").is_ok());
+        // Aliases the consumer accepts must not be rejected at the edge.
+        assert!(parse_rank_by_value("pr").is_ok());
+        assert!(parse_rank_by_value("cross-project").is_ok());
+        assert!(parse_rank_by_value("priority").is_ok());
+    }
+
+    /// `--type bogus` used to exit 0 having matched zero definitions, which is
+    /// indistinguishable from an honest empty result.
+    #[test]
+    fn definition_type_rejects_an_unknown_type() {
+        assert!(parse_definition_type_value("bogus").is_err());
+        for ok in ["fn", "func", "function", "struct", "enum", "trait", "type"] {
+            assert!(parse_definition_type_value(ok).is_ok(), "{ok}");
+        }
+    }
+
+    /// `--formula bogus` used to exit 0 and print `Formula: bogus` above a
+    /// report the banner labelled `Tarantula`, scored with Tarantula.
+    #[test]
+    fn sbfl_formula_rejects_an_unknown_formula() {
+        assert!(parse_sbfl_formula_value("bogus").is_err());
+        for ok in ["tarantula", "ochiai", "dstar2", "dstar3"] {
+            assert!(parse_sbfl_formula_value(ok).is_ok(), "{ok}");
+        }
+    }
+
+    /// The clap tree itself must reject the value — that is the surface the
+    /// defect was observed on: `pmat query 'dispatch' --rank-by bogus` exited
+    /// 0 with output byte-identical to `--rank-by relevance`.
+    ///
+    /// `on_big_stack` because building the subcommand tree overflows the 2MB
+    /// test stack.
+    #[test]
+    fn clap_rejects_the_bad_values_and_accepts_the_good_ones() {
+        use clap::Subcommand;
+
+        fn parses(args: &[&str]) -> bool {
+            let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+            crate::cli::commands::on_big_stack(move || {
+                let cmd = super::Commands::augment_subcommands(clap::Command::new("pmat"));
+                cmd.try_get_matches_from(args).is_ok()
+            })
+        }
+
+        assert!(
+            !parses(&["pmat", "query", "dispatch", "--rank-by", "bogus"]),
+            "--rank-by bogus must be rejected, not silently treated as relevance"
+        );
+        assert!(parses(&["pmat", "query", "dispatch", "--rank-by", "pagerank"]));
+
+        assert!(
+            !parses(&["pmat", "query", "cache", "--type", "bogus"]),
+            "--type bogus must be rejected, not silently match zero definitions"
+        );
+        assert!(parses(&["pmat", "query", "cache", "--type", "struct"]));
+
+        let localize = |formula: &str| {
+            parses(&[
+                "pmat",
+                "localize",
+                "--passed-coverage",
+                "p.info",
+                "--failed-coverage",
+                "f.info",
+                "--passed-count",
+                "5",
+                "--failed-count",
+                "3",
+                "--formula",
+                formula,
+            ])
+        };
+        assert!(
+            !localize("bogus"),
+            "--formula bogus must be rejected, not relabelled onto Tarantula"
+        );
+        assert!(localize("ochiai"));
+    }
+
+    /// The error names the alternatives rather than just failing.
+    #[test]
+    fn rejection_messages_list_the_valid_values() {
+        let e = parse_rank_by_value("bogus").unwrap_err();
+        assert!(e.contains("pagerank"), "{e}");
+        let e = parse_definition_type_value("bogus").unwrap_err();
+        assert!(e.contains("struct"), "{e}");
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

@@ -509,4 +509,48 @@ mod tests {
         assert!(r.contains("WarnCat"));
         assert!(r.contains("PassCat"));
     }
+
+    // ── GH #684 (round 4): --color never / NO_COLOR must reach project-diag ──
+
+    /// `format_summary` and `format_andon` interpolated the raw `pub const`
+    /// sequences, which are `const` and so cannot consult `colors_enabled`:
+    /// `pmat project-diag --color never > out.txt` still wrote
+    /// `Overall: ^[[1;31mRED^[[0m`, and 30 escape-bearing lines in the andon
+    /// format. NO_COLOR=1 was ignored for the same reason.
+    #[test]
+    fn formatters_emit_no_escapes_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        for status in [
+            HealthStatus::Green,
+            HealthStatus::Yellow,
+            HealthStatus::Red,
+            HealthStatus::Skip,
+        ] {
+            let report = make_report(
+                vec![
+                    make_check("G", HealthStatus::Green),
+                    make_check("R", HealthStatus::Red),
+                ],
+                status,
+            );
+            for rendered in [
+                format_summary(&report, false),
+                format_summary(&report, true),
+                format_andon(&report),
+            ] {
+                assert!(
+                    !rendered.contains('\u{1b}'),
+                    "expected plain text with colour off, got {rendered:?}"
+                );
+            }
+        }
+        // The payload must survive the de-colouring, not be dropped with it.
+        let plain = format_summary(&report_with_all_4_status_arms(), false);
+        assert!(plain.contains("Overall:") && plain.contains("YELLOW"));
+        let andon = format_andon(&report_with_all_4_status_arms());
+        assert!(andon.contains("ANDON CORD TRIGGERED"));
+    }
 }

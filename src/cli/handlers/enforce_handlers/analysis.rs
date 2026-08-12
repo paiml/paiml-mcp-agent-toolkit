@@ -113,6 +113,82 @@ fn warn_not_measured(kind: &str, path: &Path, reason: &str) -> String {
     format!("{kind} not measured: {reason}")
 }
 
+/// Refuse a `--file` argument that cannot be read as a file.
+///
+/// `handle_analyzing_state` refuses a nonexistent `--project-path` ("enforce
+/// cannot report a verdict on a path it cannot read"), but the sibling entry
+/// point `--file` had no such guard: `enforce extreme --file nope/zzz.rs` span
+/// 100 iterations and printed `State: Violating / Score: 0.00 / Violations: 3`,
+/// exit 0 — and exit **1** under `--ci-mode`, so CI failed and blamed code
+/// quality for a path that does not exist. A directory was accepted too
+/// (`--file tiny` scored 0.33).
+///
+/// The guard lives here because every entry point that can be given a `--file`
+/// — the analysing state, `--validate-only` and `--list-violations` — runs the
+/// complexity phase first, and it must be an **error**, not a quality-gate
+/// failure: an unreadable path is bad input, not bad code.
+fn ensure_file_target_readable(file: &Path) -> Result<()> {
+    if !file.exists() {
+        anyhow::bail!(
+            "path not found: {} — enforce cannot report a verdict on a path it cannot read",
+            file.display()
+        );
+    }
+    if !file.is_file() {
+        anyhow::bail!(
+            "--file expects a regular file, but {} is not one — enforce cannot report a file verdict on it",
+            file.display()
+        );
+    }
+    Ok(())
+}
+
+/// Files under analysis whose source does not parse, as `path: reason`.
+///
+/// A file whose AST could not be built is not evidence of quality. The
+/// complexity path falls back to a regex heuristic and prints "Warning: AST
+/// analysis failed for …, using heuristic fallback" on stderr — and stderr is
+/// not a return value, so `enforce extreme -p broken` (whose only source file is
+/// `fn main( { let x = ;;;`) reported `state COMPLETE, score 1.0, 0 violations`,
+/// exit 0. An EMPTY directory was correctly disclosed as unmeasured, because the
+/// "nothing analysable" detector counted candidate files rather than successful
+/// analyses; a project where every file failed to parse graded perfect.
+fn unparseable_files(paths: impl Iterator<Item = PathBuf>) -> Vec<String> {
+    let mut failures: Vec<String> = paths
+        .filter_map(|p| {
+            crate::tdg::ensure_parseable(&p)
+                .err()
+                .map(|e| format!("{}: {e}", p.display()))
+        })
+        .collect();
+    failures.sort();
+    failures
+}
+
+/// Disclosure text for a partially- or wholly-unparseable analysis set.
+fn unparseable_reason(failures: &[String]) -> String {
+    const SHOWN: usize = 3;
+    let listed: Vec<&str> = failures
+        .iter()
+        .take(SHOWN)
+        .map(std::string::String::as_str)
+        .collect();
+    let more = failures.len().saturating_sub(listed.len());
+    if more > 0 {
+        format!(
+            "{} file(s) did not parse, so no AST could be built for them: {} (+{more} more)",
+            failures.len(),
+            listed.join("; ")
+        )
+    } else {
+        format!(
+            "{} file(s) did not parse, so no AST could be built for them: {}",
+            failures.len(),
+            listed.join("; ")
+        )
+    }
+}
+
 /// Run complexity analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_complexity_analysis(
@@ -120,6 +196,10 @@ pub async fn run_complexity_analysis(
     profile: &QualityProfile,
     specific_file: Option<&Path>,
 ) -> Result<PhaseOutcome> {
+    if let Some(file) = specific_file {
+        ensure_file_target_readable(file)?;
+    }
+
     // The complexity service is called directly rather than through the
     // printing CLI handler: the handler returns `()`, so its result had to be
     // thrown away and a sample violation invented in its place.
@@ -163,6 +243,21 @@ pub async fn run_complexity_analysis(
         )));
     }
 
+    // Files exist, but did their ASTs? The heuristic fallback produces metrics
+    // for input the parser rejected, and those metrics are indistinguishable
+    // from a real measurement once they reach the score. Disclose the gap the
+    // same way an empty tree is disclosed — the phase keeps whatever it did
+    // measure, and the verdict stops claiming to cover what it could not read.
+    let failures = unparseable_files(file_metrics.iter().map(|m| PathBuf::from(&m.path)));
+    if failures.len() == file_metrics.len() {
+        let reason = warn_not_measured(
+            "complexity",
+            project_path,
+            &format!("no source file parsed; {}", unparseable_reason(&failures)),
+        );
+        return Ok(PhaseOutcome::unmeasured(reason));
+    }
+
     let severe = profile.complexity_max.saturating_mul(2);
     let mut violations = Vec::new();
     for file in &file_metrics {
@@ -192,7 +287,17 @@ pub async fn run_complexity_analysis(
             .then_with(|| a.location.cmp(&b.location))
     });
 
-    Ok(PhaseOutcome::measured(violations))
+    if failures.is_empty() {
+        return Ok(PhaseOutcome::measured(violations));
+    }
+
+    // Partly measured: keep the findings from the files that DID parse, and
+    // still deny the run a clean bill of health for the ones that did not.
+    let reason = warn_not_measured("complexity", project_path, &unparseable_reason(&failures));
+    Ok(PhaseOutcome {
+        violations,
+        unmeasured: Some(reason),
+    })
 }
 
 /// SATD for exactly one file, for `--file` scope.
@@ -321,74 +426,134 @@ fn satd_violation(
     }
 }
 
+/// The 0-100 TDG floor a profile demands, derived from its `tdg_max` knob.
+///
+/// `QualityProfile::tdg_max` is written on the legacy 0.0-5.0 debt-gradient
+/// (lower is better) that `TDGCalculator` produced. `pmat tdg` reports on a
+/// 0-100 higher-is-better scale with critical-defect gating, and the two never
+/// met: a file `pmat tdg` graded **9.06/F with 5 critical defects** produced no
+/// tdg violation at all under `--profile extreme`, so `enforce extreme
+/// --ci-mode` returned `COMPLETE, score 1.0, 0 violations`, exit 0 — a clean
+/// bill of health for code the same binary grades F.
+///
+/// The gradient analyser is gone; this maps the existing profile knob onto the
+/// scale the rest of the tool speaks, keeping the three profiles ordered:
+/// extreme (1.0) → 90 (A-), strict (1.5) → 85, standard (2.5) → 75.
+#[must_use]
+fn tdg_score_floor(profile: &QualityProfile) -> f64 {
+    (100.0 - profile.tdg_max * 10.0).clamp(0.0, 100.0)
+}
+
+/// One tdg violation for a file scored by the analyser behind `pmat tdg`.
+///
+/// `current`/`target` are the shortfall from a perfect 100 rather than the score
+/// itself, because every other violation in this system is lower-is-better and
+/// the composite score's `phase_score` reads them that way — a higher-is-better
+/// `current` would have scored a 9/100 file as a clean 1.0 phase, i.e. reported
+/// `Score: 1.00/1.00` alongside `State: Violating`. The score `pmat tdg` prints,
+/// its grade, and any critical-defect count are named verbatim in `suggestion`.
+fn tdg_violation(
+    score: &crate::tdg::TdgScore,
+    floor: f64,
+    fallback_path: &Path,
+) -> QualityViolation {
+    let total = f64::from(score.total);
+    let location = score.file_path.as_ref().map_or_else(
+        || fallback_path.display().to_string(),
+        |p| p.display().to_string(),
+    );
+    let defects = if score.critical_defects_count > 0 && score.critical_defects_suppressed.is_none()
+    {
+        format!(", {} critical defect(s)", score.critical_defects_count)
+    } else {
+        String::new()
+    };
+    QualityViolation {
+        violation_type: "tdg".to_string(),
+        severity: if score.grade == crate::tdg::Grade::F || !defects.is_empty() {
+            "high".to_string()
+        } else {
+            "medium".to_string()
+        },
+        location,
+        current: 100.0 - total,
+        target: 100.0 - floor,
+        suggestion: format!(
+            "TDG {total:.1}/100 (grade {:?}{defects}) is below the {floor:.0}/100 floor this profile requires — the same score `pmat tdg` reports for this file",
+            score.grade
+        ),
+    }
+}
+
+/// Does this score fail the profile?
+///
+/// Below the floor, or carrying critical defects whose auto-fail was not
+/// suppressed by the #279 no-git-history exemption.
+fn tdg_score_fails(score: &crate::tdg::TdgScore, floor: f64) -> bool {
+    if f64::from(score.total) < floor {
+        return true;
+    }
+    score.has_critical_defects && score.critical_defects_suppressed.is_none()
+}
+
 /// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_tdg_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<PhaseOutcome> {
-    use crate::services::tdg_calculator::TDGCalculator;
+    // The analyser is the one `pmat tdg` uses, not the legacy
+    // `services::tdg_calculator::TDGCalculator`. Two TDG implementations on two
+    // incompatible scales is what let `enforce` and `tdg` contradict each other
+    // on the same file; the duplicate is deleted rather than taught the missing
+    // case.
+    let analyzer = match crate::tdg::TdgAnalyzer::new() {
+        Ok(a) => a,
+        Err(e) => {
+            let reason = warn_not_measured("tdg", project_path, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
+        }
+    };
 
-    // `TDGCalculator` is the analyser whose scale `profile.tdg_max` is written
-    // against (0.0-5.0, lower is better). The previous code called the
-    // printing `analyze tdg` handler, dropped its `()` result and pushed a
-    // literal `2.3` for a file that does not exist in any checkout.
-    let calculator = TDGCalculator::new();
-    let mut violations = Vec::new();
-
-    if project_path.is_dir() {
-        match calculator.analyze_directory(project_path).await {
-            Ok(summary) => {
-                for hotspot in &summary.hotspots {
-                    if hotspot.tdg_score > profile.tdg_max {
-                        violations.push(QualityViolation {
-                            violation_type: "tdg".to_string(),
-                            severity: if hotspot.tdg_score > profile.tdg_max * 2.0 {
-                                "high".to_string()
-                            } else {
-                                "medium".to_string()
-                            },
-                            location: hotspot.path.clone(),
-                            current: hotspot.tdg_score,
-                            target: profile.tdg_max,
-                            suggestion: format!(
-                                "Reduce technical debt - primary factor: {}",
-                                hotspot.primary_factor
-                            ),
-                        });
-                    }
-                }
-            }
+    let scores = if project_path.is_dir() {
+        match analyzer.analyze_project(project_path).await {
+            Ok(project) => project.files,
             Err(e) => {
                 let reason = warn_not_measured("tdg", project_path, &e.to_string());
                 return Ok(PhaseOutcome::unmeasured(reason));
             }
         }
     } else {
-        match calculator.calculate_file(project_path).await {
-            Ok(score) => {
-                if score.value > profile.tdg_max {
-                    violations.push(QualityViolation {
-                        violation_type: "tdg".to_string(),
-                        severity: if score.value > profile.tdg_max * 2.0 {
-                            "high".to_string()
-                        } else {
-                            "medium".to_string()
-                        },
-                        location: project_path.display().to_string(),
-                        current: score.value,
-                        target: profile.tdg_max,
-                        suggestion: "Refactor high-complexity functions to reduce technical debt"
-                            .to_string(),
-                    });
-                }
-            }
+        match analyzer.analyze_file(project_path).await {
+            Ok(score) => vec![score],
             Err(e) => {
                 let reason = warn_not_measured("tdg", project_path, &e.to_string());
                 return Ok(PhaseOutcome::unmeasured(reason));
             }
         }
+    };
+
+    // No file was graded — the absence of a measurement, not a clean one.
+    if scores.is_empty() {
+        return Ok(PhaseOutcome::unmeasured(format!(
+            "no file could be graded under {}",
+            project_path.display()
+        )));
     }
+
+    let floor = tdg_score_floor(profile);
+    let mut violations: Vec<QualityViolation> = scores
+        .iter()
+        .filter(|s| tdg_score_fails(s, floor))
+        .map(|s| tdg_violation(s, floor, project_path))
+        .collect();
+
+    // Deterministic order: worst first, then by location.
+    violations.sort_by(|a, b| {
+        b.current
+            .total_cmp(&a.current)
+            .then_with(|| a.location.cmp(&b.location))
+    });
 
     Ok(PhaseOutcome::measured(violations))
 }
@@ -804,5 +969,214 @@ mod scope_tests {
         let scope = AnalysisScope::resolve(Path::new(""), Some(Path::new("scratch.rs")));
         assert_eq!(scope.walk_root(), Path::new(""));
         assert_eq!(scope.single_file(), Some(Path::new("scratch.rs")));
+    }
+}
+
+#[cfg(test)]
+mod round4_measurement_contract_tests {
+    //! Round-4 regressions for three ways `enforce` reported a verdict it had
+    //! not measured.
+    use super::{
+        ensure_file_target_readable, run_complexity_analysis, run_tdg_analysis, tdg_score_floor,
+        unparseable_files, QualityProfile,
+    };
+    use std::path::PathBuf;
+
+    fn write_crate(dir: &std::path::Path, files: &[(&str, &str)]) {
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write Cargo.toml");
+        std::fs::create_dir_all(dir.join("src")).expect("create src");
+        for (name, body) in files {
+            std::fs::write(dir.join("src").join(name), body).expect("write source");
+        }
+    }
+
+    // ── R03: --file must be refused like --project-path is ──────────────────
+
+    #[test]
+    fn a_missing_file_target_is_an_error_not_a_verdict() {
+        let err = ensure_file_target_readable(&PathBuf::from("nope/zzz.rs"))
+            .expect_err("a path that does not exist cannot be enforced against");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("path not found") && msg.contains("cannot read"),
+            "must reuse the --project-path refusal wording, got {msg}"
+        );
+    }
+
+    #[test]
+    fn a_directory_is_not_a_file_target() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = ensure_file_target_readable(dir.path())
+            .expect_err("--file names a file, not a directory");
+        assert!(err.to_string().contains("regular file"), "got {}", err);
+    }
+
+    #[tokio::test]
+    async fn complexity_phase_refuses_a_nonexistent_file_target() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let missing = dir.path().join("zzz.rs");
+        let err = run_complexity_analysis(dir.path(), &QualityProfile::default(), Some(&missing))
+            .await
+            .expect_err("an unreadable --file is bad input, not a quality failure");
+        assert!(err.to_string().contains("path not found"), "got {err}");
+    }
+
+    // ── R05: a file whose AST could not be built is not a measurement ───────
+
+    #[test]
+    fn unparseable_files_names_only_the_files_that_failed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let good = dir.path().join("good.rs");
+        let bad = dir.path().join("bad.rs");
+        std::fs::write(&good, "pub fn a() -> i32 { 1 }\n").expect("write");
+        std::fs::write(&bad, "fn main( { let x = ;;;\n").expect("write");
+
+        let failures = unparseable_files(vec![good, bad].into_iter());
+        assert_eq!(failures.len(), 1, "only bad.rs fails: {failures:?}");
+        assert!(failures[0].contains("bad.rs"), "got {failures:?}");
+    }
+
+    #[tokio::test]
+    async fn a_project_whose_every_source_fails_to_parse_is_unmeasured() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_crate(dir.path(), &[("main.rs", "fn main( { let x = ;;;\n")]);
+
+        let outcome = run_complexity_analysis(dir.path(), &QualityProfile::default(), None)
+            .await
+            .expect("phase runs");
+        assert!(
+            !outcome.is_measured(),
+            "the heuristic fallback produced metrics for input the parser rejected; \
+             that must not read as a clean measurement"
+        );
+        let reason = outcome.unmeasured.unwrap_or_default();
+        assert!(reason.contains("did not parse"), "got {reason}");
+    }
+
+    #[tokio::test]
+    async fn a_project_with_one_unparseable_file_still_discloses_the_gap() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_crate(
+            dir.path(),
+            &[
+                ("lib.rs", "pub fn ok(a: i32) -> i32 { a * 2 }\n"),
+                ("bad.rs", "fn main( { let x = ;;;\n"),
+            ],
+        );
+
+        let outcome = run_complexity_analysis(dir.path(), &QualityProfile::default(), None)
+            .await
+            .expect("phase runs");
+        assert!(
+            !outcome.is_measured(),
+            "one valid file plus one garbage file must not report as fully measured"
+        );
+        assert!(
+            outcome
+                .unmeasured
+                .as_deref()
+                .is_some_and(|r| r.contains("bad.rs")),
+            "the disclosure must name the file that failed: {:?}",
+            outcome.unmeasured
+        );
+    }
+
+    // ── R01: enforce's TDG must be the TDG `pmat tdg` reports ───────────────
+
+    #[test]
+    fn the_tdg_floor_tracks_the_profile_and_stays_ordered() {
+        let extreme = QualityProfile::default();
+        let strict = QualityProfile {
+            tdg_max: 1.5,
+            ..QualityProfile::default()
+        };
+        let standard = QualityProfile {
+            tdg_max: 2.5,
+            ..QualityProfile::default()
+        };
+        assert!((tdg_score_floor(&extreme) - 90.0).abs() < 1e-9);
+        assert!(tdg_score_floor(&extreme) > tdg_score_floor(&strict));
+        assert!(tdg_score_floor(&strict) > tdg_score_floor(&standard));
+        // A profile that gives TDG unreachable headroom must clamp, not go
+        // negative and start failing everything.
+        let lax = QualityProfile {
+            tdg_max: 1000.0,
+            ..QualityProfile::default()
+        };
+        assert!((tdg_score_floor(&lax) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn critical_defects_produce_a_tdg_violation_under_extreme() {
+        // Five `.unwrap()` calls: `pmat tdg` grades this file 9.06/F with five
+        // critical defects, while `enforce extreme --ci-mode` reported
+        // COMPLETE 1.0 / 0 violations / exit 0, because its tdg phase ran a
+        // different analyser on a different scale.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("lib.rs");
+        let mut body = String::new();
+        for name in ["a", "b", "c", "d", "e"] {
+            body.push_str(&format!(
+                "pub fn {name}(s: &str) -> i32 {{\n    s.parse::<i32>().unwrap()\n}}\n"
+            ));
+        }
+        std::fs::write(&file, body).expect("write");
+
+        let outcome = run_tdg_analysis(&file, &QualityProfile::default())
+            .await
+            .expect("phase runs");
+        assert!(outcome.is_measured(), "the file parses, so tdg measured it");
+        assert_eq!(
+            outcome.violations.len(),
+            1,
+            "a file graded F must produce a tdg violation: {:?}",
+            outcome.violations
+        );
+        let v = &outcome.violations[0];
+        assert_eq!(v.violation_type, "tdg");
+        assert_eq!(v.severity, "high");
+        assert!(
+            v.suggestion.contains("/100"),
+            "the suggestion must quote the 0-100 score `pmat tdg` reports, got {}",
+            v.suggestion
+        );
+        // The legacy 0.0-5.0 debt gradient is gone: `target` is the shortfall
+        // from 100 that the extreme profile allows, i.e. 10.
+        assert!(
+            (v.target - 10.0).abs() < 1e-9,
+            "expected the extreme profile's 10-point allowance, got {}",
+            v.target
+        );
+        assert!(
+            v.current > v.target,
+            "a violating file must overshoot its allowance: {} vs {}",
+            v.current,
+            v.target
+        );
+    }
+
+    #[tokio::test]
+    async fn a_clean_file_produces_no_tdg_violation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = dir.path().join("clean.rs");
+        std::fs::write(
+            &file,
+            "//! A tidy module.\n\n/// Adds two numbers.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .expect("write");
+
+        let outcome = run_tdg_analysis(&file, &QualityProfile::default())
+            .await
+            .expect("phase runs");
+        assert!(outcome.is_measured());
+        assert!(
+            outcome.violations.is_empty(),
+            "a clean file must not be flagged: {:?}",
+            outcome.violations
+        );
     }
 }

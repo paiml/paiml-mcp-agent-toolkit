@@ -75,10 +75,26 @@ pub fn paths_object_schema(extra_properties: Value, required: Vec<&str>) -> Valu
 ///
 /// # Errors
 ///
-/// Returns a validation error naming every missing path. An empty `paths` list
-/// is allowed through — tools interpret that as "use the default scope", which
-/// is a separate contract.
+/// Returns a validation error naming every missing path, and one for an empty
+/// `paths` list.
+///
+/// The empty list used to be waved through on the theory that "tools interpret
+/// that as use-the-default-scope". No tool does: every `tool_functions` entry
+/// point opens with `if paths.is_empty() { bail!("At least one path must be
+/// provided") }`, and each handler wraps that in `Error::internal`, so
+/// `{"paths": []}` — a schema violation the caller can fix — came back as
+/// `-32603 Internal error`, which tells a client the SERVER is broken and the
+/// call is worth retrying. Rejecting it here fixes the whole class at once
+/// rather than in each of the 22 call sites.
 pub fn resolve_existing_paths(paths: Vec<String>) -> pmcp::Result<Vec<std::path::PathBuf>> {
+    if paths.is_empty() {
+        return Err(pmcp::Error::validation(
+            "`paths` must name at least one file or directory; an empty list \
+             selects nothing, and a report over nothing is indistinguishable \
+             from a clean result.",
+        ));
+    }
+
     let resolved: Vec<std::path::PathBuf> =
         paths.into_iter().map(std::path::PathBuf::from).collect();
 

@@ -56,4 +56,5 @@ mod tests {
     include!("baseline_tests_serialization.rs");
     include!("baseline_tests_comparison_api.rs");
     include!("baseline_tests_edge_cases.rs");
+    include!("baseline_tests_grade_spelling.rs");
 }

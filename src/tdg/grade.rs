@@ -209,6 +209,17 @@ pub enum MetricCategory {
     Coupling,
     Documentation,
     Consistency,
+    /// Not a scored component — the source of the critical-defect penalty
+    /// `TdgScore::calculate_total` applies on top of the components.
+    ///
+    /// The penalty was the single largest term in the score (up to ~91 points)
+    /// and appeared in `penalties_applied` nowhere at all: a file could read
+    /// `total: 25.16, grade: F, critical_defects_count: 3` with
+    /// `penalties_applied: ["Duplication"]` worth 9 points, so any consumer
+    /// reconstructing the grade from components-minus-penalties was wrong by the
+    /// whole difference and concluded the defects had cost nothing. A penalty
+    /// that moves the score must be attributable like every other penalty.
+    CriticalDefect,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

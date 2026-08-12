@@ -78,6 +78,7 @@ pub async fn handle_analyze_dead_code(
     .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {timeout} seconds"))??;
 
     let result = outcome.report;
+    let scope = outcome.scope;
 
     eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
@@ -85,7 +86,7 @@ pub async fn handle_analyze_dead_code(
     );
 
     // Format output
-    let formatted_output = format_dead_code_result(&result, &format)?;
+    let formatted_output = format_dead_code_result(&result, &format, scope)?;
 
     // Write output
     write_dead_code_output(formatted_output, output).await?;
@@ -152,6 +153,12 @@ fn dead_code_gate_verdict(
 
 include!("dead_code_handlers_analysis.rs");
 include!("dead_code_handlers_output.rs");
+
+// The report's own account of what it did and did not measure.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_handlers_scope_tests.rs"]
+mod scope_tests;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -266,29 +273,47 @@ mod output_tests {
 
     #[test]
     fn test_format_dispatcher_json_arm() {
-        let r = format_dead_code_result(&empty_result(), &DeadCodeOutputFormat::Json).unwrap();
+        let r = format_dead_code_result(
+            &empty_result(),
+            &DeadCodeOutputFormat::Json,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         // serde_json output is non-empty even for empty data.
         assert!(r.contains("summary") || r.contains("files"));
     }
 
     #[test]
     fn test_format_dispatcher_sarif_arm() {
-        let r = format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Sarif).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Sarif,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(r.contains("\"version\": \"2.1.0\""));
         assert!(r.contains("dead-code"));
     }
 
     #[test]
     fn test_format_dispatcher_summary_arm() {
-        let r =
-            format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Summary).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Summary,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(!r.is_empty());
     }
 
     #[test]
     fn test_format_dispatcher_markdown_arm() {
-        let r =
-            format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Markdown).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Markdown,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(r.contains("# Dead Code Analysis Report"));
     }
 

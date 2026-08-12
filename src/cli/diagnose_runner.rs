@@ -261,70 +261,85 @@ pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
 }
 
 fn print_pretty_report(report: &DiagnosticReport) {
+    print!("{}", format_pretty_report(report));
+}
+
+/// Render the pretty report to a string.
+///
+/// Split out from the printer so the colour contract is assertable: with colour
+/// off this must contain no ESC byte at all. It used to be one long chain of
+/// `println!`s interpolating the raw `c::DIM`/`c::RESET`/`c::GREEN` consts,
+/// which no test could reach and which `--color never` could not switch off.
+pub(crate) fn format_pretty_report(report: &DiagnosticReport) -> String {
     use crate::cli::colors as c;
-    println!("{}", c::header("PMAT Self-Diagnostic Report"));
-    println!(
+    use std::fmt::Write as _;
+
+    let mut out = String::new();
+    let _ = writeln!(out, "{}", c::header("PMAT Self-Diagnostic Report"));
+    let _ = writeln!(
+        out,
         "  {}: {}    {}: {}ms",
         c::label("Version"),
         c::number(&report.version),
         c::label("Duration"),
         c::number(&report.duration_ms.to_string()),
     );
-    println!();
+    let _ = writeln!(out);
 
     for (feature, result) in &report.features {
+        // GH #684: the timing suffix used to interpolate the raw `c::DIM` /
+        // `c::RESET` consts, which are `const` and so cannot consult
+        // `colors_enabled`. `pmat diagnose --color never > out.txt` wrote ten
+        // escape-bearing lines, byte-identical to `--color auto`, and NO_COLOR=1
+        // was ignored for the same reason. `c::dim` is the helper that honours
+        // the rule, and the timing is now built once instead of four times.
+        let timing = c::dim(&format!("({}\u{3bc}s)", result.duration_us));
         let line = match result.status {
-            FeatureStatus::Ok => c::pass(&format!(
-                "{} {}({}μs){}",
-                c::path(feature),
-                c::DIM,
-                result.duration_us,
-                c::RESET
-            )),
-            FeatureStatus::Degraded(_) => c::warn(&format!(
-                "{} {}({}μs){}",
-                c::path(feature),
-                c::DIM,
-                result.duration_us,
-                c::RESET
-            )),
-            FeatureStatus::Failed => c::fail(&format!(
-                "{} {}({}μs){}",
-                c::path(feature),
-                c::DIM,
-                result.duration_us,
-                c::RESET
-            )),
-            FeatureStatus::Skipped(_) => c::skip(&format!(
-                "{} {}({}μs){}",
-                feature, c::DIM, result.duration_us, c::RESET
-            )),
+            FeatureStatus::Ok => c::pass(&format!("{} {timing}", c::path(feature))),
+            FeatureStatus::Degraded(_) => c::warn(&format!("{} {timing}", c::path(feature))),
+            FeatureStatus::Failed => c::fail(&format!("{} {timing}", c::path(feature))),
+            FeatureStatus::Skipped(_) => c::skip(&format!("{feature} {timing}")),
         };
-        println!("{line}");
+        let _ = writeln!(out, "{line}");
 
         if let Some(error) = &result.error {
-            println!("  {}└─ {error}{}", c::RED, c::RESET);
+            let _ = writeln!(
+                out,
+                "  {}",
+                c::colored(c::RED, &format!("\u{2514}\u{2500} {error}"))
+            );
         }
     }
 
-    println!();
-    println!("{}", c::subheader("Summary:"));
-    println!("  {}: {}", c::label("Total"), c::number(&report.summary.total.to_string()));
-    println!(
-        "  {}: {}{}{}",
+    let _ = writeln!(out);
+    let _ = writeln!(out, "{}", c::subheader("Summary:"));
+    let _ = writeln!(
+        out,
+        "  {}: {}",
+        c::label("Total"),
+        c::number(&report.summary.total.to_string())
+    );
+    let _ = writeln!(
+        out,
+        "  {}: {}",
         c::label("Passed"),
-        c::GREEN,
-        report.summary.passed,
-        c::RESET
+        c::colored(c::GREEN, &report.summary.passed.to_string())
     );
-    println!(
-        "  {}: {}{}{}",
+    let _ = writeln!(
+        out,
+        "  {}: {}",
         c::label("Failed"),
-        if report.summary.failed > 0 { c::RED } else { c::GREEN },
-        report.summary.failed,
-        c::RESET
+        c::colored(
+            if report.summary.failed > 0 {
+                c::RED
+            } else {
+                c::GREEN
+            },
+            &report.summary.failed.to_string()
+        )
     );
-    println!(
+    let _ = writeln!(
+        out,
         "  {}: {}",
         c::label("Success Rate"),
         match report.summary.success_rate {
@@ -336,10 +351,11 @@ fn print_pretty_report(report: &DiagnosticReport) {
     );
 
     if let Some(ctx) = &report.error_context {
-        println!();
-        println!("{}", c::subheader("Suggested Fixes:"));
+        let _ = writeln!(out);
+        let _ = writeln!(out, "{}", c::subheader("Suggested Fixes:"));
         for fix in &ctx.suggested_fixes {
-            println!(
+            let _ = writeln!(
+                out,
                 "  {} {}: {}",
                 c::warn(""),
                 c::label(&fix.feature),
@@ -351,4 +367,5 @@ fn print_pretty_report(report: &DiagnosticReport) {
             );
         }
     }
+    out
 }

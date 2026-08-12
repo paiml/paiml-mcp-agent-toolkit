@@ -24,11 +24,16 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
         let model_files =
             crate::cli::handlers::comply_cb_detect::walkdir_model_files(&project_path);
 
+        // Reject a format this command cannot render BEFORE walking the tree,
+        // so `--format junit` fails the same way on a populated project and an
+        // empty one.
+        ensure_model_format_supported(format)?;
+
         if model_files.is_empty() {
             let stdout = no_models_stdout(&project_path, &format)?;
             println!("{stdout}");
-            if matches!(format, cli::OutputFormat::Json) {
-                // The human sentence still exists, just not on the JSON stream.
+            if !is_human_format(format) {
+                // The human sentence still exists, just not on the machine stream.
                 eprintln!("{}", no_models_sentence(&project_path));
             }
             return Ok(());
@@ -73,14 +78,7 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
             });
         }
 
-        match format {
-            cli::OutputFormat::Json => {
-                print_model_inventory_json(&entries, total_size)?;
-            }
-            _ => {
-                print_model_inventory_table(&entries, total_size);
-            }
-        }
+        println!("{}", render_model_inventory(&entries, total_size, format)?);
 
         // Optionally run compliance checks
         if check {
@@ -129,7 +127,117 @@ fn format_size(bytes: u64) -> String {
     batuta_common::fmt::format_bytes(bytes)
 }
 
-fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
+/// Which `--format` values `analyze models` actually has a writer for.
+///
+/// `OutputFormat` is ONE enum shared by the whole CLI (CB-1300) and commands
+/// match it with a `_ =>` arm, so every command accepts all nine variants.
+/// `analyze models` had writers for exactly two of them and a `_ =>` that fell
+/// through to the box-drawn human table: `--format csv`, `--format junit` and
+/// `--format yaml` each printed that table and exited 0, handing a CI job
+/// prose where it had asked for a parseable document. Three of those now have
+/// real writers; the rest are refused rather than silently mis-served.
+fn ensure_model_format_supported(format: cli::OutputFormat) -> Result<()> {
+    match format {
+        cli::OutputFormat::Json
+        | cli::OutputFormat::Csv
+        | cli::OutputFormat::Markdown
+        | cli::OutputFormat::Table
+        | cli::OutputFormat::Text
+        | cli::OutputFormat::Plain
+        | cli::OutputFormat::Summary => Ok(()),
+        // A model inventory is not a test run, and there is no YAML writer
+        // here. Saying so is honest; printing a table under these flags is not.
+        cli::OutputFormat::Yaml | cli::OutputFormat::Junit => Err(anyhow::anyhow!(
+            "analyze models cannot render `{format}`; supported formats are \
+             table, text, plain, summary (human), json, csv, markdown"
+        )),
+    }
+}
+
+/// True for the formats whose document is meant for a human to read.
+fn is_human_format(format: cli::OutputFormat) -> bool {
+    matches!(
+        format,
+        cli::OutputFormat::Table
+            | cli::OutputFormat::Text
+            | cli::OutputFormat::Plain
+            | cli::OutputFormat::Summary
+    )
+}
+
+/// Render the inventory in `format`. Errors for the formats this command has
+/// no writer for — see [`ensure_model_format_supported`].
+fn render_model_inventory(
+    entries: &[ModelInventoryEntry],
+    total_size: u64,
+    format: cli::OutputFormat,
+) -> Result<String> {
+    ensure_model_format_supported(format)?;
+    match format {
+        cli::OutputFormat::Json => render_model_inventory_json(entries, total_size),
+        cli::OutputFormat::Csv => Ok(render_model_inventory_csv(entries)),
+        cli::OutputFormat::Markdown => Ok(render_model_inventory_markdown(entries, total_size)),
+        _ => Ok(render_model_inventory_table(entries, total_size)),
+    }
+}
+
+/// One header row plus one row per model. Every column the JSON document
+/// carries is here, including `header_valid` — the only field that read bytes.
+fn render_model_inventory_csv(entries: &[ModelInventoryEntry]) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    out.push_str("file,format,size_bytes,size_human,lfs_tracked,header_valid\n");
+    for e in entries {
+        let _ = writeln!(
+            out,
+            "{},{},{},{},{},{}",
+            csv_field(&e.file),
+            csv_field(&e.format),
+            e.size_bytes,
+            csv_field(&format_size(e.size_bytes)),
+            e.lfs_tracked,
+            e.header_valid
+        );
+    }
+    out
+}
+
+/// Quote a CSV field when it contains a comma, quote or newline (RFC 4180).
+fn csv_field(value: &str) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+fn render_model_inventory_markdown(entries: &[ModelInventoryEntry], total_size: u64) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(out, "# Model Inventory\n");
+    let _ = writeln!(out, "- **Files**: {}", entries.len());
+    let _ = writeln!(out, "- **Total size**: {}", format_size(total_size));
+    let invalid = entries.iter().filter(|e| !e.header_valid).count();
+    let _ = writeln!(out, "- **Unreadable headers**: {invalid}\n");
+    let _ = writeln!(out, "| File | Format | Size | LFS | Header valid |");
+    let _ = writeln!(out, "|------|--------|-----:|-----|--------------|");
+    for e in entries {
+        let _ = writeln!(
+            out,
+            "| `{}` | {} | {} | {} | {} |",
+            e.file,
+            e.format,
+            format_size(e.size_bytes),
+            if e.lfs_tracked { "yes" } else { "no" },
+            if e.header_valid { "yes" } else { "no" }
+        );
+    }
+    out
+}
+
+fn render_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
     let has_lfs = entries.iter().any(|e| e.lfs_tracked);
     let width = if has_lfs { 78 } else { 72 };
     let invalid: Vec<&str> = entries
@@ -138,21 +246,23 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
         .map(|e| e.file.as_str())
         .collect();
 
-    println!(
+    let _ = writeln!(
+        out,
         "Model Inventory ({} files, {} total)",
         entries.len(),
         format_size(total_size)
     );
-    println!("{}", "\u{2500}".repeat(width));
+    let _ = writeln!(out, "{}", "\u{2500}".repeat(width));
     if has_lfs {
-        println!(
+        let _ = writeln!(
+            out,
             "{:<40} {:<12} {:>12} {:>6}",
             "File", "Format", "Size", "LFS"
         );
     } else {
-        println!("{:<40} {:<12} {:>12}", "File", "Format", "Size");
+        let _ = writeln!(out, "{:<40} {:<12} {:>12}", "File", "Format", "Size");
     }
-    println!("{}", "\u{2500}".repeat(width));
+    let _ = writeln!(out, "{}", "\u{2500}".repeat(width));
     for entry in entries {
         let display_file = if entry.file.len() > 38 {
             format!("...{}", &entry.file[entry.file.len() - 35..])
@@ -167,7 +277,8 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
             format!("{} (?)", entry.format)
         };
         if has_lfs {
-            println!(
+            let _ = writeln!(
+                out,
                 "{:<40} {:<12} {:>12} {:>6}",
                 display_file,
                 format_cell,
@@ -175,7 +286,8 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
                 if entry.lfs_tracked { "Yes" } else { "-" }
             );
         } else {
-            println!(
+            let _ = writeln!(
+                out,
                 "{:<40} {:<12} {:>12}",
                 display_file,
                 format_cell,
@@ -183,16 +295,18 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
             );
         }
     }
-    println!("{}", "\u{2500}".repeat(width));
+    let _ = write!(out, "{}", "\u{2500}".repeat(width));
     if !invalid.is_empty() {
-        println!(
-            "\u{26a0}\u{fe0f}  {} of {} file(s) marked (?) are NOT readable as the format their \
+        let _ = write!(
+            out,
+            "\n\u{26a0}\u{fe0f}  {} of {} file(s) marked (?) are NOT readable as the format their \
              extension declares: {}",
             invalid.len(),
             entries.len(),
             invalid.join(", ")
         );
     }
+    out
 }
 
 /// The human sentence emitted when a project contains no model files.
@@ -208,19 +322,16 @@ fn no_models_sentence(project_path: &std::path::Path) -> String {
 /// Issue #678: this used to be the prose sentence for every format, so
 /// `analyze models --format json` exited 0 having printed
 /// "No model files found (*.gguf, *.apr, *.safetensors) in <path>" — which
-/// does not parse as JSON. Under `--format json` stdout now carries the empty
-/// inventory document; the sentence moves to stderr.
+/// does not parse as JSON. Every machine format now gets the empty inventory
+/// document on stdout (an empty CSV is still a CSV); the sentence moves to
+/// stderr. Only the human formats keep it on stdout.
 fn no_models_stdout(project_path: &std::path::Path, format: &cli::OutputFormat) -> Result<String> {
-    if matches!(format, cli::OutputFormat::Json) {
-        render_model_inventory_json(&[], 0)
-    } else {
+    if is_human_format(*format) {
+        ensure_model_format_supported(*format)?;
         Ok(no_models_sentence(project_path))
+    } else {
+        render_model_inventory(&[], 0, *format)
     }
-}
-
-fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
-    println!("{}", render_model_inventory_json(entries, total_size)?);
-    Ok(())
 }
 
 fn render_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<String> {
@@ -381,6 +492,100 @@ mod model_helper_tests {
         let out = no_models_stdout(path, &cli::OutputFormat::Table).unwrap();
         assert!(out.starts_with("No model files found"));
         assert!(out.contains("/tmp/some-fixture"));
+    }
+
+    // ── --format is honoured, or refused (R44) ─────────────────────────────
+
+    fn model_entries() -> Vec<ModelInventoryEntry> {
+        vec![
+            ModelInventoryEntry {
+                file: "models/small.gguf".to_string(),
+                format: "GGUF".to_string(),
+                size_bytes: 200,
+                lfs_tracked: false,
+                header_valid: false,
+            },
+            ModelInventoryEntry {
+                file: "models/big, v2.safetensors".to_string(),
+                format: "SafeTensors".to_string(),
+                size_bytes: 4096,
+                lfs_tracked: true,
+                header_valid: true,
+            },
+        ]
+    }
+
+    /// Regression: `analyze models` had writers for `json` and the human table
+    /// only, and a `_ =>` arm sent everything else to the table. `--format csv`
+    /// therefore emitted the box-drawn human inventory and exited 0 — a CI job
+    /// asking for CSV got prose it could not parse and no error to notice.
+    #[test]
+    fn test_csv_format_emits_csv_not_the_human_table() {
+        let out =
+            render_model_inventory(&model_entries(), 4296, cli::OutputFormat::Csv).unwrap();
+
+        assert!(
+            !out.contains('\u{2500}'),
+            "csv must not be the box-drawn table: {out}"
+        );
+        let mut lines = out.lines();
+        assert_eq!(
+            lines.next().unwrap(),
+            "file,format,size_bytes,size_human,lfs_tracked,header_valid"
+        );
+        let rows: Vec<&str> = lines.collect();
+        assert_eq!(rows.len(), 2, "one row per model: {out}");
+        assert!(rows[0].starts_with("models/small.gguf,GGUF,200,"));
+        // A comma inside a field is quoted, not left to split the row.
+        assert!(
+            rows[1].starts_with("\"models/big, v2.safetensors\","),
+            "{}",
+            rows[1]
+        );
+    }
+
+    #[test]
+    fn test_markdown_format_emits_a_markdown_table() {
+        let out =
+            render_model_inventory(&model_entries(), 4296, cli::OutputFormat::Markdown).unwrap();
+        assert!(out.starts_with("# Model Inventory"), "{out}");
+        assert!(out.contains("| File | Format | Size | LFS | Header valid |"), "{out}");
+        assert!(out.contains("`models/small.gguf`"), "{out}");
+        assert!(!out.contains('\u{2500}'), "{out}");
+    }
+
+    /// There is no YAML or JUnit writer here. Printing the human table under
+    /// those flags and exiting 0 is the defect; refusing is the fix.
+    #[test]
+    fn test_unrenderable_formats_are_refused_not_silently_tabled() {
+        for format in [cli::OutputFormat::Yaml, cli::OutputFormat::Junit] {
+            let err = render_model_inventory(&model_entries(), 4296, format)
+                .expect_err(&format!("--format {format} must be refused"));
+            let msg = err.to_string();
+            assert!(msg.contains(&format.to_string()), "{msg}");
+            assert!(msg.contains("json"), "the error names what does work: {msg}");
+        }
+    }
+
+    /// The refusal must not depend on whether the tree happens to contain
+    /// models: an empty project asked for JUnit must fail the same way.
+    #[test]
+    fn test_unrenderable_formats_are_refused_on_an_empty_project_too() {
+        let path = std::path::Path::new("/tmp/some-fixture");
+        assert!(no_models_stdout(path, &cli::OutputFormat::Junit).is_err());
+        assert!(no_models_stdout(path, &cli::OutputFormat::Yaml).is_err());
+    }
+
+    /// An empty inventory in a machine format is still that format — a bare
+    /// CSV header, not the English sentence (the JSON half of this is #678).
+    #[test]
+    fn test_no_models_csv_stdout_is_a_csv_header() {
+        let path = std::path::Path::new("/tmp/some-fixture");
+        let out = no_models_stdout(path, &cli::OutputFormat::Csv).unwrap();
+        assert_eq!(
+            out,
+            "file,format,size_bytes,size_human,lfs_tracked,header_valid\n"
+        );
     }
 
     // ── header validation (extension is a claim, not a measurement) ────────

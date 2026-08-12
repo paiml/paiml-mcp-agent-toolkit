@@ -33,6 +33,7 @@ pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
 pub mod registry;
+pub mod report_paths;
 pub mod semantic_commands;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;

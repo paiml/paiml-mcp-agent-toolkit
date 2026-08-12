@@ -226,27 +226,6 @@ pub(crate) fn display_gate_result_table(result: &crate::tdg::GateResult) {
     }
 }
 
-/// Display gate result in the requested format
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub(crate) fn display_gate_result(
-    result: &crate::tdg::GateResult,
-    format: &crate::cli::TdgOutputFormat,
-) -> Result<()> {
-    match format {
-        crate::cli::TdgOutputFormat::Table => display_gate_result_table(result),
-        crate::cli::TdgOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(result)?);
-        }
-        crate::cli::TdgOutputFormat::Sarif => {
-            println!("SARIF format not yet implemented for quality gates");
-        }
-        crate::cli::TdgOutputFormat::Markdown => {
-            println!("Markdown format not yet implemented for quality gates");
-        }
-    }
-    Ok(())
-}
-
 /// Display grade distribution histogram
 pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
     baseline: &crate::tdg::TdgBaseline,

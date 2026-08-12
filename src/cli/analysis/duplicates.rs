@@ -535,14 +535,48 @@ mod tests {
         assert!(!out.contains("more blocks"));
     }
 
+    /// Regression: "Top Files by Duplication" printed `Path::file_name()`, so
+    /// this repo's two `core_tests_properties.rs` files rendered as the SAME
+    /// row twice — identical name, identical counts, identical percentage —
+    /// occupying two of the ten slots with no way to tell them apart.
     #[test]
-    fn test_extract_filename_handles_paths_and_bare_names() {
-        // Bare name → returned unchanged.
-        assert_eq!(extract_filename("foo.rs"), "foo.rs");
-        // Full path → only basename returned.
-        assert_eq!(extract_filename("src/cli/foo.rs"), "foo.rs");
-        // No extension → still returns basename.
-        assert_eq!(extract_filename("src/cli/Makefile"), "Makefile");
+    fn test_top_files_distinguishes_files_sharing_a_basename() {
+        let mut r = populated_report_with_blocks(0);
+        r.file_statistics.clear();
+        r.file_statistics.insert(
+            "./src/ast/core_tests_properties.rs".to_string(),
+            FileStats {
+                duplicate_lines: 292,
+                total_lines: 292,
+                duplication_percentage: 100.0,
+            },
+        );
+        r.file_statistics.insert(
+            "./src/ast/core/core_tests_properties.rs".to_string(),
+            FileStats {
+                duplicate_lines: 292,
+                total_lines: 292,
+                duplication_percentage: 100.0,
+            },
+        );
+
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        let rows: Vec<&str> = out
+            .lines()
+            .filter(|l| l.contains("core_tests_properties.rs"))
+            .collect();
+        assert_eq!(rows.len(), 2, "both files listed:\n{out}");
+        assert_ne!(
+            rows[0].trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ' '),
+            rows[1].trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ' '),
+            "two different files must not render as the same row:\n{out}"
+        );
+        assert!(
+            out.contains("src/ast/core/core_tests_properties.rs"),
+            "{out}"
+        );
+        // The leading "./" of the analyzer's key is trimmed, nothing else.
+        assert!(!out.contains("./src/ast"), "{out}");
     }
 
     #[test]

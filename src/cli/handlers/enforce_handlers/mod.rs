@@ -52,3 +52,7 @@ mod satd_enforcement_tests;
 #[cfg(test)]
 #[path = "unmeasured_cannot_pass_tests.rs"]
 mod unmeasured_cannot_pass_tests;
+
+#[cfg(test)]
+#[path = "flag_fidelity_tests.rs"]
+mod flag_fidelity_tests;

@@ -28,6 +28,14 @@ pub struct SplitConfig {
 /// Handle the `pmat split` command.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_split(config: SplitConfig) -> Result<()> {
+    // Stat the target BEFORE indexing. A missing path used to fall all the way
+    // through to the "no functions found … (file may not be indexed)" branch —
+    // byte-for-byte the message a real-but-unindexed file gets — after ~40s
+    // spent indexing thousands of files for a question already answerable by
+    // one `stat`. `pmat extract --list` and `pmat context -p` both report the
+    // OS error; this now matches them.
+    ensure_target_readable(&config.file)?;
+
     let project_path = config
         .project_path
         .canonicalize()
@@ -89,6 +97,19 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
             }
         }
         None => {
+            // `-f json` promised a JSON document on stdout and wrote zero bytes
+            // on this path, so a scripted consumer got an unparseable empty
+            // document instead of a machine-readable failure.
+            if config.format == SplitOutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "error": "no_functions_found",
+                        "file": file_path,
+                        "message": format!("No functions found in {file_path} (file may not be indexed)"),
+                    })
+                );
+            }
             eprintln!(
                 "{} No functions found in {} {}",
                 c::fail(""),
@@ -100,6 +121,26 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Fail with the OS error when `file` cannot be read.
+///
+/// Resolves relative paths against the cwd exactly as `normalize_file_path`
+/// does, so the two agree on which file is meant.
+fn ensure_target_readable(file: &Path) -> Result<()> {
+    let abs_file = if file.is_absolute() {
+        file.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(file)
+    };
+    match std::fs::metadata(&abs_file) {
+        Ok(meta) if meta.is_dir() => Err(anyhow::anyhow!(
+            "Cannot read {}: Is a directory",
+            abs_file.display()
+        )),
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!("Cannot read {}: {e}", abs_file.display())),
+    }
 }
 
 fn normalize_file_path(file: &Path, project_root: &Path) -> Result<String> {
@@ -214,5 +255,49 @@ fn output_text(plan: &SplitPlan) {
         for f in &plan.impact.importing_files {
             println!("  {}", c::path(f));
         }
+    }
+}
+
+#[cfg(test)]
+mod missing_target_tests {
+    use super::ensure_target_readable;
+    use std::path::Path;
+
+    /// A path that does not exist must report the OS error, not be handed to
+    /// the indexer. `pmat split /nope.rs` used to spend ~40s indexing 4,333
+    /// files and then print "No functions found in /nope.rs (file may not be
+    /// indexed)" — byte-for-byte what a real-but-unindexed file gets, so the
+    /// two failures were indistinguishable.
+    #[test]
+    fn missing_file_reports_the_os_error() {
+        let err = ensure_target_readable(Path::new("/path/that/does/not/exist.rs"))
+            .expect_err("a missing file must be an error");
+        let msg = err.to_string();
+        assert!(msg.contains("Cannot read"), "{msg}");
+        assert!(
+            msg.contains("No such file or directory"),
+            "message must carry the OS error, got: {msg}"
+        );
+        assert!(
+            !msg.contains("may not be indexed"),
+            "a missing file is not an indexing problem: {msg}"
+        );
+    }
+
+    /// A directory is not a file to split, and says so.
+    #[test]
+    fn directory_target_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let err = ensure_target_readable(dir.path()).expect_err("a directory must be an error");
+        assert!(err.to_string().contains("Is a directory"), "{err}");
+    }
+
+    /// An existing file passes straight through.
+    #[test]
+    fn existing_file_is_accepted() {
+        let dir = tempfile::tempdir().unwrap();
+        let f = dir.path().join("lib.rs");
+        std::fs::write(&f, "pub fn x() {}").unwrap();
+        assert!(ensure_target_readable(&f).is_ok());
     }
 }

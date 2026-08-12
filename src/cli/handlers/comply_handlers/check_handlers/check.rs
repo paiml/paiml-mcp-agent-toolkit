@@ -55,6 +55,22 @@ pub(crate) async fn handle_check(
         anyhow::bail!("Path not found: {}", project_path.display());
     }
 
+    // A path that exists is not yet a project. An EMPTY directory came back
+    // "Project Version: 3.30.0 / Versions Behind: 0 / Status: COMPLIANT",
+    // "154 checks (0 fail)", exit 0 — the same headline check count this
+    // repository reports, and a better verdict than this repository gets. Every
+    // one of those 154 checks had skipped for want of anything to look at, and
+    // `load_or_create_project_config` had meanwhile WRITTEN a `.pmat/` directory
+    // into the empty tree to invent the version it then reported as current.
+    // `project-diag` already refuses this input by name; comply must not answer
+    // a compliance question about a path with nothing in it to comply.
+    if let Some(reason) = no_project_here(project_path) {
+        anyhow::bail!(
+            "No project found at {}: {reason} — comply has nothing to check here, and an unmeasured project is not a compliant one",
+            project_path.display()
+        );
+    }
+
     eprintln!("Checking PMAT compliance for {}", project_path.display());
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
@@ -71,6 +87,59 @@ pub(crate) async fn handle_check(
     let _ = update_last_check_timestamp(project_path);
 
     apply_exit_policy(&report, strict)
+}
+
+/// Why this path holds no project, or `None` if it plausibly does.
+///
+/// Deliberately permissive — one manifest, one VCS directory or one source file
+/// anywhere in the tree is enough. The case being refused is the one where a
+/// verdict is pure fabrication: nothing to read, so nothing measured.
+fn no_project_here(project_path: &Path) -> Option<String> {
+    if project_path.is_file() {
+        return None;
+    }
+
+    const MANIFESTS: [&str; 12] = [
+        "Cargo.toml",
+        "package.json",
+        "pyproject.toml",
+        "setup.py",
+        "go.mod",
+        "build.sbt",
+        "pom.xml",
+        "build.gradle",
+        "Makefile",
+        "lakefile.lean",
+        ".pmat.yaml",
+        ".git",
+    ];
+    if MANIFESTS.iter().any(|m| project_path.join(m).exists()) {
+        return None;
+    }
+
+    // No manifest is not decisive on its own: comply checks Markdown, shell and
+    // SQL too. Any file the tool could read counts, `.pmat/` excepted — comply
+    // writes that itself, so accepting it would let the command manufacture its
+    // own evidence of a project on the second run.
+    let mut saw_file = false;
+    if let Ok(entries) = std::fs::read_dir(project_path) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name == ".pmat" {
+                continue;
+            }
+            saw_file = true;
+            break;
+        }
+    }
+    if saw_file {
+        return None;
+    }
+
+    Some(
+        "no manifest (Cargo.toml, package.json, pyproject.toml, go.mod, …), no .git, and no files"
+            .to_string(),
+    )
 }
 
 /// One-shot log summarizing the active `.pmat.yaml` configuration.
@@ -655,3 +724,4 @@ include!("check_handlers_tests_inline.rs");
 include!("check_pv_enforcement_helpers_tests.rs");
 
 include!("check_path_guard_tests.rs");
+include!("check_empty_project_guard_tests.rs");

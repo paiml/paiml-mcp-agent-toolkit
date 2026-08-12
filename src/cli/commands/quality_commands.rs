@@ -159,7 +159,12 @@ pub enum EnforceCommands {
         profile: QualityProfile,
 
         /// Show progress during enforcement
-        #[arg(long, default_value_t = true)]
+        ///
+        /// This was `default_value_t = true` with no `--no-` counterpart, so
+        /// passing `--show-progress` set a flag that was already set and the
+        /// output was byte-identical either way. A flag that cannot be off is
+        /// not a flag.
+        #[arg(long)]
         show_progress: bool,
 
         /// Output format

@@ -12,7 +12,28 @@ fn parse_line_num(location: &str) -> i32 {
         .unwrap_or(1)
 }
 use crate::cli::EnforceOutputFormat;
-use anyhow::Result;
+use anyhow::{Context, Result};
+use std::path::Path;
+
+/// Send a finished report to `-o FILE`, or to stdout when no path was given.
+///
+/// `--output` was accepted, bound to `_output` in the handler and never read:
+/// `pmat enforce extreme -o report.json` created no file, printed the payload to
+/// stdout and exited 0, so a CI step that reads the file it asked for got
+/// nothing and a success code. Every report this module produces goes through
+/// here, so the flag cannot be honoured on one format and dropped on another.
+pub(crate) fn emit_report(text: &str, output: Option<&Path>) -> Result<()> {
+    match output {
+        // A path we cannot write is an error, not a silent fall back to stdout:
+        // falling back is how the flag came to mean nothing in the first place.
+        Some(path) => std::fs::write(path, text)
+            .with_context(|| format!("failed to write report to {}", path.display())),
+        None => {
+            println!("{text}");
+            Ok(())
+        }
+    }
+}
 
 /// Output enforcement result in requested format
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -20,15 +41,38 @@ pub fn output_result(
     result: &EnforcementResult,
     format: EnforceOutputFormat,
     show_progress: bool,
+    output: Option<&Path>,
 ) -> Result<()> {
+    // `--show-progress` was honoured by exactly one of the four formats, and the
+    // default format is not that one, so the flag produced byte-identical output
+    // to a run without it. The bar belongs to the run, not to the report: with a
+    // machine-readable format it goes to stderr so `| jq` still parses stdout,
+    // and with `-o` it never contaminates the file.
+    if show_progress
+        && matches!(
+            format,
+            EnforceOutputFormat::Json | EnforceOutputFormat::Sarif
+        )
+    {
+        eprint!("{}", render_progress_bar(result));
+    }
+    let mut text = String::new();
+    if show_progress
+        && matches!(
+            format,
+            EnforceOutputFormat::Summary | EnforceOutputFormat::Progress
+        )
+    {
+        text.push_str(&render_progress_bar(result));
+    }
     match format {
         EnforceOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(result)?);
+            text.push_str(&serde_json::to_string_pretty(result)?);
         }
         EnforceOutputFormat::Summary => {
-            println!("{} {:?}", c::label("State:"), result.state);
-            println!(
-                "{} {}{:.2}{}/{}{:.2}{}",
+            text.push_str(&format!("{} {:?}\n", c::label("State:"), result.state));
+            text.push_str(&format!(
+                "{} {}{:.2}{}/{}{:.2}{}\n",
                 c::label("Score:"),
                 c::BOLD_WHITE,
                 result.score,
@@ -36,22 +80,23 @@ pub fn output_result(
                 c::DIM,
                 result.target,
                 c::RESET
-            );
+            ));
             if let Some(file) = &result.current_file {
-                println!("{} {}", c::label("Current File:"), c::path(file));
+                text.push_str(&format!(
+                    "{} {}\n",
+                    c::label("Current File:"),
+                    c::path(file)
+                ));
             }
-            println!(
+            text.push_str(&format!(
                 "{} {}",
                 c::label("Violations:"),
                 c::number(&result.violations.len().to_string())
-            );
+            ));
         }
         EnforceOutputFormat::Progress => {
-            if show_progress {
-                print_progress_bar(result);
-            }
-            println!("{} {:?}", c::label("State:"), result.state);
-            println!(
+            text.push_str(&format!("{} {:?}\n", c::label("State:"), result.state));
+            text.push_str(&format!(
                 "{} {}{:.2}{}/{}{:.2}{}",
                 c::label("Score:"),
                 c::BOLD_WHITE,
@@ -60,7 +105,7 @@ pub fn output_result(
                 c::DIM,
                 result.target,
                 c::RESET
-            );
+            ));
         }
         EnforceOutputFormat::Sarif => {
             // Generate SARIF output
@@ -101,28 +146,22 @@ pub fn output_result(
                     }).collect::<Vec<_>>()
                 }]
             });
-            println!("{}", serde_json::to_string_pretty(&sarif)?);
+            text.push_str(&serde_json::to_string_pretty(&sarif)?);
         }
     }
-    Ok(())
+    emit_report(&text, output)
 }
 
-/// Print visual progress bar
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub fn print_progress_bar(result: &EnforcementResult) {
+/// Render the visual progress bar.
+///
+/// One renderer, so the bar is identical whether it goes to stdout, to stderr
+/// beside a JSON payload, or into an `-o` file.
+#[must_use]
+pub fn render_progress_bar(result: &EnforcementResult) -> String {
     let percentage = (result.score * 100.0) as u32;
     let filled = (percentage as f32 / 5.0) as usize;
-    let empty = 20 - filled;
+    let empty = 20usize.saturating_sub(filled);
 
-    println!("\n{}", c::header("Extreme Quality Enforcement Progress"));
-    println!("{}", c::rule());
-    print!(
-        "{} {}{:.2}{}/1.00 ",
-        c::label("Overall Score:"),
-        c::BOLD_WHITE,
-        result.score,
-        c::RESET
-    );
     let bar_color = if percentage >= 80 {
         c::GREEN
     } else if percentage >= 50 {
@@ -130,10 +169,29 @@ pub fn print_progress_bar(result: &EnforcementResult) {
     } else {
         c::RED
     };
-    print!("{}{}{}", bar_color, "\u{2588}".repeat(filled), c::RESET);
-    print!("{}{}{}", c::DIM, "\u{2591}".repeat(empty), c::RESET);
-    println!(" {}", c::pct(f64::from(percentage), 80.0, 50.0));
-    println!();
+
+    format!(
+        "\n{}\n{}\n{} {}{:.2}{}/1.00 {}{}{}{}{}{} {}\n\n",
+        c::header("Extreme Quality Enforcement Progress"),
+        c::rule(),
+        c::label("Overall Score:"),
+        c::BOLD_WHITE,
+        result.score,
+        c::RESET,
+        bar_color,
+        "\u{2588}".repeat(filled),
+        c::RESET,
+        c::DIM,
+        "\u{2591}".repeat(empty),
+        c::RESET,
+        c::pct(f64::from(percentage), 80.0, 50.0)
+    )
+}
+
+/// Print visual progress bar
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub fn print_progress_bar(result: &EnforcementResult) {
+    print!("{}", render_progress_bar(result));
 }
 
 /// Print enforcement header

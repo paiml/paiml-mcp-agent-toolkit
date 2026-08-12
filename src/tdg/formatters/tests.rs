@@ -96,6 +96,8 @@ mod tests {
                 grade_capped: false,
                 files_reported: 0,
                 files_truncated: count > 0,
+                list_filter: None,
+                ungraded_files: Vec::new(),
             };
             assert_box_is_rectangular(
                 &format_project(&project),
@@ -431,6 +433,8 @@ mod tests {
             grade_capped: false,
             files_reported: 2,
             files_truncated: true,
+            list_filter: None,
+            ungraded_files: Vec::new(),
         };
 
         let output = format_project(&project);
@@ -443,5 +447,61 @@ mod tests {
         // Distributions describe the analysed population, not the short list.
         assert!(output.contains("A:  10 files"));
         assert!(output.contains("B:   5 files"));
+    }
+
+    /// R22: a file the walker refused must be disclosed in the human report,
+    /// next to the average it is missing from. The refusal was an `eprintln!`
+    /// only, so the box printed `Average Score: 100.0/100 (A+)` over the single
+    /// survivor of a crate whose only Rust file failed to parse.
+    #[test]
+    fn the_project_box_discloses_files_that_were_not_graded() {
+        let mut project = ProjectScore::aggregate(vec![TdgScore {
+            total: 100.0,
+            grade: Grade::APlus,
+            language: Language::Python,
+            file_path: Some(PathBuf::from("./src/bad.py")),
+            ..TdgScore::default()
+        }]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "./src/main.rs".to_string(),
+            reason: "cannot parse string into token stream".to_string(),
+        });
+
+        let output = format_project(&project);
+        assert!(
+            output.contains("Not Graded: 1 file(s)"),
+            "a walked-but-unmeasured file must be disclosed: {output}"
+        );
+    }
+
+    /// R23: the #279 waiver was disclosed only by `check-quality --format json`.
+    /// Every surface that reports the verdict has to report the waiver.
+    #[test]
+    fn the_project_box_discloses_critical_defect_waivers() {
+        let mut waived = TdgScore {
+            file_path: Some(PathBuf::from("./src/new.rs")),
+            has_critical_defects: true,
+            critical_defects_count: 3,
+            critical_defects_suppressed: Some("file is not tracked by git (#279)".to_string()),
+            ..TdgScore::default()
+        };
+        waived.calculate_total();
+        let project = ProjectScore::aggregate(vec![waived.clone()]);
+
+        let output = format_project(&project);
+        assert!(
+            output.contains("Waived (#279): 1 file(s)"),
+            "the project box must disclose the waiver: {output}"
+        );
+
+        let file_report = format_human(&waived);
+        assert!(
+            file_report.contains("Critical Defects: 3"),
+            "the per-file box must report the defects: {file_report}"
+        );
+        assert!(
+            file_report.contains("waived"),
+            "the per-file box must disclose the waiver: {file_report}"
+        );
     }
 }

@@ -155,6 +155,7 @@ impl TdgAnalyzerAst {
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
+        let mut ungraded = Vec::new();
 
         for file in &files {
             // Skip include!() fragment files — they aren't standalone Rust modules
@@ -165,11 +166,25 @@ impl TdgAnalyzerAst {
                 Ok(score) => scores.push(score),
                 Err(e) => {
                     eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
+                    // A refused file used to leave NO trace in the return value:
+                    // stderr is not part of a `--format json` payload, so
+                    // `analyze tdg` reported `average_score: 100.0` over the
+                    // survivors of a tree whose only Rust file did not parse.
+                    ungraded.push(crate::tdg::UngradedFile {
+                        path: file.display().to_string(),
+                        reason: e.to_string(),
+                    });
                 }
             }
         }
 
-        Ok(ProjectScore::aggregate(scores))
+        // `discover_files` walks in filesystem order; this list is serialised
+        // verbatim, so identical input must serialise identically.
+        ungraded.sort_by(|a, b| a.path.cmp(&b.path));
+
+        let mut project = ProjectScore::aggregate(scores);
+        project.ungraded_files = ungraded;
+        Ok(project)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

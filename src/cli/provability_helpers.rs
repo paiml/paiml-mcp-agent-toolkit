@@ -118,13 +118,6 @@ fn calculate_average_score(summaries: &[ProofSummary]) -> f64 {
     }
 }
 
-fn extract_filename(file_path: &str) -> &str {
-    std::path::Path::new(file_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(file_path)
-}
-
 // --- Include split-out implementation files ---
 
 include!("provability_helpers_discovery.rs");

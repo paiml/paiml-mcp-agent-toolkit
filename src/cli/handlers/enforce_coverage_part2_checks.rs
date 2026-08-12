@@ -78,28 +78,28 @@
         #[test]
         fn test_output_result_json() {
             let result = make_test_result();
-            let output = output_result(&result, EnforceOutputFormat::Json, false);
+            let output = output_result(&result, EnforceOutputFormat::Json, false, None);
             assert!(output.is_ok());
         }
 
         #[test]
         fn test_output_result_summary() {
             let result = make_test_result();
-            let output = output_result(&result, EnforceOutputFormat::Summary, false);
+            let output = output_result(&result, EnforceOutputFormat::Summary, false, None);
             assert!(output.is_ok());
         }
 
         #[test]
         fn test_output_result_progress() {
             let result = make_test_result();
-            let output = output_result(&result, EnforceOutputFormat::Progress, true);
+            let output = output_result(&result, EnforceOutputFormat::Progress, true, None);
             assert!(output.is_ok());
         }
 
         #[test]
         fn test_output_result_sarif() {
             let result = make_test_result();
-            let output = output_result(&result, EnforceOutputFormat::Sarif, false);
+            let output = output_result(&result, EnforceOutputFormat::Sarif, false, None);
             assert!(output.is_ok());
         }
     }
@@ -120,6 +120,8 @@
                 false, // single_file_mode
                 true,  // dry_run
                 None,  // specific_file
+                None,  // include_pattern
+                None,  // exclude_pattern
             )
             .await
             .unwrap();
@@ -143,6 +145,8 @@
                 true,        // single_file_mode
                 true,        // dry_run
                 Some(&file), // specific_file
+                None,        // include_pattern
+                None,        // exclude_pattern
             )
             .await
             .unwrap();

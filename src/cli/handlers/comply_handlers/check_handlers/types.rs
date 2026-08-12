@@ -352,6 +352,25 @@ pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result
     Ok(())
 }
 
+/// The COMPLIANT / NON-COMPLIANT word, coloured only when colour is enabled.
+pub(crate) fn compliance_status_text(is_compliant: bool) -> String {
+    if is_compliant {
+        c::colored(c::GREEN, "COMPLIANT")
+    } else {
+        c::colored(c::RED, "NON-COMPLIANT")
+    }
+}
+
+/// The per-check status glyph, coloured only when colour is enabled.
+pub(crate) fn check_status_icon(status: CheckStatus) -> String {
+    match status {
+        CheckStatus::Pass => c::colored(c::GREEN, "\u{2713}"),
+        CheckStatus::Warn => c::colored(c::YELLOW, "\u{26a0}"),
+        CheckStatus::Fail => c::colored(c::RED, "\u{2717}"),
+        CheckStatus::Skip => c::colored(c::DIM, "-"),
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", c::rule());
@@ -363,21 +382,24 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
         "Versions Behind: {}",
         c::number(&report.versions_behind.to_string())
     );
-    let status = if report.is_compliant {
-        format!("{}COMPLIANT{}", c::GREEN, c::RESET)
-    } else {
-        format!("{}NON-COMPLIANT{}", c::RED, c::RESET)
-    };
-    println!("Status:          {}\n", status);
+    // GH #684: the status word and every check icon used to interpolate the raw
+    // `pub const` sequences. Those are `const`, so they cannot consult
+    // `colors_enabled`, and `pmat comply check --color never > out.txt` wrote
+    // **155** escape-bearing lines — byte-identical to `--color auto`. NO_COLOR=1
+    // was ignored for the same reason. `c::colored` keeps the colour SELECTION
+    // here while honouring the rule.
+    println!(
+        "Status:          {}\n",
+        compliance_status_text(report.is_compliant)
+    );
     println!("{}:", c::label("Checks"));
     for check in &report.checks {
-        let icon = match check.status {
-            CheckStatus::Pass => format!("{}\u{2713}{}", c::GREEN, c::RESET),
-            CheckStatus::Warn => format!("{}\u{26a0}{}", c::YELLOW, c::RESET),
-            CheckStatus::Fail => format!("{}\u{2717}{}", c::RED, c::RESET),
-            CheckStatus::Skip => format!("{}-{}", c::DIM, c::RESET),
-        };
-        println!("  {} {}: {}", icon, check.name, check.message);
+        println!(
+            "  {} {}: {}",
+            check_status_icon(check.status),
+            check.name,
+            check.message
+        );
     }
     if !report.recommendations.is_empty() {
         println!("\n{}:", c::label("Recommendations"));
@@ -629,5 +651,39 @@ mod changelog_range_tests {
             entries.iter().any(|e| e.version == PMAT_VERSION),
             "the current release must be inside (2.0.0, {PMAT_VERSION}]"
         );
+    }
+}
+
+// ── GH #684 (round 4): --color never / NO_COLOR must reach comply check ──
+
+#[cfg(test)]
+mod colour_contract_tests {
+    use super::{check_status_icon, compliance_status_text, CheckStatus};
+
+    /// `pmat comply check --color never > out.txt` wrote **155**
+    /// escape-bearing lines — byte-identical to `--color auto` — because the
+    /// status word and every check icon interpolated the raw `pub const`
+    /// sequences, which are `const` and so cannot consult `colors_enabled`.
+    #[test]
+    fn status_text_and_icons_are_plain_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        assert_eq!(compliance_status_text(true), "COMPLIANT");
+        assert_eq!(compliance_status_text(false), "NON-COMPLIANT");
+        for status in [
+            CheckStatus::Pass,
+            CheckStatus::Warn,
+            CheckStatus::Fail,
+            CheckStatus::Skip,
+        ] {
+            let icon = check_status_icon(status);
+            assert!(
+                !icon.contains('\u{1b}'),
+                "expected a plain glyph with colour off, got {icon:?}"
+            );
+            assert!(!icon.is_empty(), "the glyph itself must survive");
+        }
     }
 }

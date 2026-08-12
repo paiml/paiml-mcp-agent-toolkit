@@ -13,6 +13,29 @@
 struct DeadCodeAnalysisOutcome {
     report: crate::models::dead_code::DeadCodeResult,
     project_dead_percentage: Option<f32>,
+    scope: DeadCodeReportScope,
+}
+
+/// What the summary renderer needs in order to describe its own scope, and
+/// which `DeadCodeResult` itself does not carry.
+///
+/// Every field exists because the report made a claim it could not stand
+/// behind: the skipped-file line named "tests, examples and benches" on a scan
+/// that skips only tests, the omission line blamed `--min-dead-lines` for files
+/// `--exclude` had removed, and the percentage was printed unqualified next to a
+/// gate that then refused to measure one.
+#[derive(Clone, Copy, Default)]
+struct DeadCodeReportScope {
+    /// Dead-code percentage over every line the analyzer walked, `None` when it
+    /// cannot measure one. The summary's own percentage covers only the files it
+    /// LISTS, so unqualified it read as a project figure.
+    project_dead_percentage: Option<f32>,
+    /// What the `total_files - analyzed_files` difference is, in the analyzer's
+    /// own terms. `None` when the analyzer did not say.
+    skipped_kind: Option<&'static str>,
+    /// True when `--include`/`--exclude` removed files from the reported list.
+    /// They filter the REPORT, not the scan.
+    list_filtered: bool,
 }
 
 /// Run dead code analysis with include/exclude filters
@@ -78,8 +101,14 @@ async fn run_dead_code_analysis_with_filters(
     let mut analysis_result =
         create_dead_code_ranking_result(accurate_report, filters.min_dead_lines, config);
 
-    // Apply file filter to results if filters are active
-    if filter.has_filters() {
+    // Apply file filter to results if filters are active.
+    //
+    // This filters the REPORTED LIST, not the scan: `analyzed_files` and the
+    // project-wide percentage still cover every file cargo walked. The report
+    // says so rather than letting `--include 'examples/**'` on a two-file crate
+    // print "Files analyzed: 2" as though the filter had narrowed the scan.
+    let list_filtered = filter.has_filters();
+    if list_filtered {
         analysis_result.ranked_files.retain(|file| {
             let path = std::path::Path::new(&file.path);
             filter.should_include(path)
@@ -118,6 +147,15 @@ async fn run_dead_code_analysis_with_filters(
             files_truncated,
         },
         project_dead_percentage,
+        scope: DeadCodeReportScope {
+            project_dead_percentage,
+            // Only the test tree is out of scope: `examples/` and `benches/`
+            // are scanned with or without `--include-tests` (see
+            // `CargoDeadCodeAnalyzer::should_analyze`). The line used to name
+            // all three, directly above a Top Files list made of `examples/`.
+            skipped_kind: Some("test code; --include-tests scans it too"),
+            list_filtered,
+        },
     })
 }
 
@@ -230,7 +268,21 @@ fn run_multi_language_dead_code(
 
     // from_files() derives every figure from the files it is given, so the
     // summary always agrees with the list that follows it.
-    let summary = DeadCodeSummary::from_files(&files);
+    let mut summary = DeadCodeSummary::from_files(&files);
+    // ...but `total_files_analyzed` is not a figure about the LISTED files: it
+    // is how many files were read. `from_files` had it counting the files with
+    // dead code, so one run of `analyze dead-code` reported three different
+    // numbers for it -- stdout "Files analyzed: 2" (from `analyzed_files`),
+    // stderr "0 files analyzed" and JSON `summary.total_files_analyzed: 0`
+    // (both from here).
+    summary.total_files_analyzed = ml_result.total_files;
+
+    // Source files under `path` in a language this run did not read. The
+    // multi-language analyzer picks ONE language per project, so on a 19-file /
+    // 12-language tree it silently dropped 17 files and still headed the report
+    // "Files analyzed: 2" with no skip line at all.
+    let source_files = count_source_files(path);
+    let total_files = source_files.max(ml_result.total_files);
 
     Ok(DeadCodeAnalysisOutcome {
         report: crate::models::dead_code::DeadCodeResult {
@@ -240,7 +292,7 @@ fn run_multi_language_dead_code(
             // fixture with 4 functions print "Files Analyzed | 4" directly above
             // a summary that correctly said 2, and `.max(1)` invented one file
             // for an empty project.
-            total_files: ml_result.total_files,
+            total_files,
             analyzed_files: ml_result.total_files,
             files,
             files_with_dead_code_found,
@@ -251,7 +303,43 @@ fn run_multi_language_dead_code(
         // ratio to report. `--fail-on-violation` refuses rather than comparing
         // the list-scoped figure and calling the result a pass.
         project_dead_percentage: None,
+        scope: DeadCodeReportScope {
+            project_dead_percentage: None,
+            skipped_kind: Some(
+                "source in languages this run did not read; the multi-language \
+                 analyzer reads one language per project",
+            ),
+            // `--include`/`--exclude` are not wired into this path at all, so
+            // nothing here was list-filtered.
+            list_filtered: false,
+        },
     })
+}
+
+/// Source files under `root`, by extension.
+///
+/// The multi-language analyzer reports only the files of the ONE language it
+/// chose, so its count cannot say how much of the tree went unread. This is the
+/// denominator that makes the gap visible.
+fn count_source_files(root: &Path) -> usize {
+    const SOURCE_EXTENSIONS: &[&str] = &[
+        "rs", "ruchy", "rh", "c", "h", "cpp", "cc", "cxx", "hpp", "hxx", "py", "pyi", "lua", "go",
+        "java", "kt", "kts", "scala", "swift", "cs", "rb", "php", "js", "jsx", "mjs", "cjs", "ts",
+        "tsx", "sh", "bash", "zig", "zsh", "pl", "pm", "ex", "exs", "erl", "hs", "ml", "dart",
+        "vim", "r", "jl",
+    ];
+
+    walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| SOURCE_EXTENSIONS.contains(&ext))
+        })
+        .count()
 }
 
 /// Physical line count for a file discovered by the multi-language analyzer.
