@@ -15,17 +15,17 @@ async fn handle_migrate(
     use crate::cli::colors as c;
 
     let target = target_version.unwrap_or(PMAT_VERSION);
-    println!("{}", c::header(&format!("Migrating project to PMAT v{}", target)));
+    crate::status_println!("{}", c::header(&format!("Migrating project to PMAT v{}", target)));
 
     if dry_run {
-        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
+        crate::status_println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     let config = load_or_create_project_config(project_path)?;
     let current_version = &config.pmat.version;
 
-    println!("{} {}", c::label("Current version:"), current_version);
-    println!("{} {}\n", c::label("Target version: "), target);
+    crate::status_println!("{} {}", c::label("Current version:"), current_version);
+    crate::status_println!("{} {}\n", c::label("Target version: "), target);
 
     let breaking_changes = get_breaking_changes_since(current_version);
     if !breaking_changes.is_empty() && !force {
@@ -45,7 +45,7 @@ async fn handle_migrate(
     if !no_backup && !dry_run {
         let backup_path = project_path.join(".pmat").join("backup");
         fs::create_dir_all(&backup_path)?;
-        println!("{} {}", c::pass("Created backup at:"), c::path(&backup_path.display().to_string()));
+        crate::status_println!("{} {}", c::pass("Created backup at:"), c::path(&backup_path.display().to_string()));
     }
 
     let migrations = vec![
@@ -56,26 +56,26 @@ async fn handle_migrate(
         ("Update gitignore", migrate_gitignore(project_path, dry_run)),
     ];
 
-    println!("\n{}", c::label("Migration steps:"));
+    crate::status_println!("\n{}", c::label("Migration steps:"));
     for (name, result) in migrations {
         match result {
-            Ok(true) => println!("  {}", c::pass(name)),
-            Ok(false) => println!("  {}", c::skip(&format!("{} (no changes needed)", name))),
+            Ok(true) => crate::status_println!("  {}", c::pass(name)),
+            Ok(false) => crate::status_println!("  {}", c::skip(&format!("{} (no changes needed)", name))),
             Err(e) => println!("  {}", c::fail(&format!("{} - {}", name, e))),
         }
     }
 
     // Update hooks (async operation)
     match update_project_hooks(project_path, dry_run).await {
-        Ok(true) => println!("  {}", c::pass("Update git hooks")),
-        Ok(false) => println!("  {}", c::skip("Update git hooks (no changes needed)")),
+        Ok(true) => crate::status_println!("  {}", c::pass("Update git hooks")),
+        Ok(false) => crate::status_println!("  {}", c::skip("Update git hooks (no changes needed)")),
         Err(e) => println!("  {}", c::fail(&format!("Update git hooks - {}", e))),
     }
 
     if dry_run {
-        println!("\n{}", c::dim("(dry-run complete - no changes were made)"));
+        crate::status_println!("\n{}", c::dim("(dry-run complete - no changes were made)"));
     } else {
-        println!("\n{}", c::pass("Migration complete!"));
+        crate::status_println!("\n{}", c::pass("Migration complete!"));
     }
 
     Ok(())
@@ -94,7 +94,7 @@ async fn handle_diff(
     let from = from_version.unwrap_or(&config.pmat.version);
     let to = to_version.unwrap_or(PMAT_VERSION);
 
-    println!("{}\n", c::header(&format!("PMAT Changelog: v{} \u{2192} v{}", from, to)));
+    crate::status_println!("{}\n", c::header(&format!("PMAT Changelog: v{} \u{2192} v{}", from, to)));
 
     let changes = get_changelog_entries(from, to);
 
@@ -145,23 +145,23 @@ async fn handle_update(
     let update_both = !update_hooks && !update_config;
 
     if dry_run {
-        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
+        crate::status_println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     if update_hooks || update_both {
-        println!("{}", c::label("Updating hooks..."));
+        crate::status_println!("{}", c::label("Updating hooks..."));
         match update_project_hooks(project_path, dry_run).await {
-            Ok(true) => println!("  {}", c::pass("Hooks updated to latest templates")),
-            Ok(false) => println!("  {}", c::skip("Hooks already up to date")),
+            Ok(true) => crate::status_println!("  {}", c::pass("Hooks updated to latest templates")),
+            Ok(false) => crate::status_println!("  {}", c::skip("Hooks already up to date")),
             Err(e) => println!("  {}", c::fail(&format!("Failed: {}", e))),
         }
     }
 
     if update_config || update_both {
-        println!("{}", c::label("Updating config..."));
+        crate::status_println!("{}", c::label("Updating config..."));
         match update_project_config(project_path, dry_run) {
-            Ok(true) => println!("  {}", c::pass(&format!("Config updated to v{}", PMAT_VERSION))),
-            Ok(false) => println!("  {}", c::skip("Config already up to date")),
+            Ok(true) => crate::status_println!("  {}", c::pass(&format!("Config updated to v{}", PMAT_VERSION))),
+            Ok(false) => crate::status_println!("  {}", c::skip("Config already up to date")),
             Err(e) => println!("  {}", c::fail(&format!("Failed: {}", e))),
         }
     }

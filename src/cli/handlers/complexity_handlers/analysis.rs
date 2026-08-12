@@ -19,7 +19,7 @@ pub(crate) async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
+    crate::status_eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
     // Ensure file exists and resolve absolute path
     let full_path = if file_path.is_absolute() {
@@ -163,7 +163,7 @@ fn read_rust_source(path: &Path) -> Option<String> {
 /// Tell the user which files the reported metrics actually cover.
 fn report_include_expansion(root: &Path, included: &[PathBuf], unresolved: &[String]) {
     if !included.is_empty() {
-        eprintln!(
+        crate::status_eprintln!(
             "📎 {} also analyzed via include!(): {}",
             root.display(),
             included
@@ -260,7 +260,7 @@ pub(crate) async fn analyze_multiple_files(
     files: &[PathBuf],
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("🔍 Analyzing complexity of {} files...", files.len());
+    crate::status_eprintln!("🔍 Analyzing complexity of {} files...", files.len());
 
     let mut all_metrics = Vec::new();
     for file_path in files {
@@ -305,7 +305,7 @@ pub(super) async fn analyze_project(
     let explicit_toolchain = config.toolchain.as_deref();
 
     if let Some(toolchain) = explicit_toolchain {
-        eprintln!("🔍 Analyzing {toolchain} files only (--toolchain {toolchain})...");
+        crate::status_eprintln!("🔍 Analyzing {toolchain} files only (--toolchain {toolchain})...");
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
             Some(toolchain),
@@ -317,9 +317,11 @@ pub(super) async fn analyze_project(
     } else {
         match detected_toolchain {
             Some(toolchain) => {
-                eprintln!("🔍 Analyzing {toolchain} project complexity (all languages)...");
+                crate::status_eprintln!(
+                    "🔍 Analyzing {toolchain} project complexity (all languages)..."
+                );
             }
-            None => eprintln!("🔍 Analyzing project complexity (multi-language)..."),
+            None => crate::status_eprintln!("🔍 Analyzing project complexity (multi-language)..."),
         }
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
@@ -362,7 +364,7 @@ pub(super) fn apply_complexity_filters(
     let filtered_count = original_count - file_metrics.len();
 
     if filtered_count > 0 {
-        eprintln!(
+        crate::status_eprintln!(
             "ℹ️  Filtered {} file(s) with no functions exceeding thresholds ({})",
             filtered_count,
             describe_thresholds(max_cyclomatic, max_cognitive)
@@ -451,7 +453,7 @@ pub(super) async fn analyze_files_by_mode(
     files: Vec<PathBuf>,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
+    crate::status_eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
 
     let result = if let Some(single_file) = file {
         analyze_single_file(&single_file, config).await
@@ -476,7 +478,7 @@ pub(super) async fn analyze_files_by_mode(
             eprintln!();
         }
         Ok(metrics) => {
-            eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
+            crate::status_eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
         }
         Err(_) => {
             // Error will be returned and handled by caller

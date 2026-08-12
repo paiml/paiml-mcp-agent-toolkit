@@ -7,7 +7,12 @@ impl HelpGenerator {
     pub fn new(registry: CommandRegistry) -> Self {
         Self {
             registry,
-            color: std::io::stdout().is_terminal(),
+            // `std::io::stdout().is_terminal()` was a SECOND colour policy: it
+            // is the `--color auto` half only, so `--color never` (NO_COLOR) and
+            // `--color always` (CLICOLOR_FORCE) moved nothing here.
+            // `colors_enabled()` is the one rule, and it already contains the
+            // is_terminal fallback.
+            color: crate::cli::colors::colors_enabled(),
             width: 80, // Default width, could use terminal_size crate if needed
         }
     }
@@ -364,13 +369,11 @@ impl HelpGenerator {
 
     /// Print with ANSI colors
     fn print_colored(&self, text: &str) -> std::io::Result<()> {
-        // ANSI escape codes
-        const RESET: &str = "\x1b[0m";
-        const BOLD: &str = "\x1b[1m";
-        const YELLOW: &str = "\x1b[33m";
-        const RED: &str = "\x1b[31m";
-        const CYAN: &str = "\x1b[36m";
-        const GREEN: &str = "\x1b[32m";
+        // A private copy of the palette used to live here as `const &str`, which
+        // is precisely the shape that cannot consult `colors_enabled()`. These
+        // are the shared `Sgr` values: with colour off each renders to the empty
+        // string, so this branch degrades to plain text instead of leaking.
+        use crate::cli::colors::{BOLD, CYAN, GREEN, RED, RESET, YELLOW};
 
         for line in text.lines() {
             if line.starts_with("USAGE:")

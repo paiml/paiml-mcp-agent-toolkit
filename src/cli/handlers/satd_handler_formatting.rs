@@ -10,17 +10,21 @@ fn format_output(
     result: &SatdAnalysisResult,
     format: SatdOutputFormat,
     metrics: bool,
+    top_files: usize,
 ) -> String {
     match format {
-        SatdOutputFormat::Summary => format_summary(result),
-        SatdOutputFormat::Json => format_json(result, metrics),
+        SatdOutputFormat::Summary => format_summary(result, top_files),
+        SatdOutputFormat::Json => format_json(result, metrics, top_files),
+        // SARIF alone lists every violation regardless of `--top-files`: it is
+        // the format an IDE/code-scanner ingests, and a row limit there hides
+        // real findings from the tool that is supposed to surface them.
         SatdOutputFormat::Sarif => format_sarif(result),
-        SatdOutputFormat::Markdown => format_markdown(result),
+        SatdOutputFormat::Markdown => format_markdown(result, top_files),
     }
 }
 
 /// Format as summary
-fn format_summary(result: &SatdAnalysisResult) -> String {
+fn format_summary(result: &SatdAnalysisResult, top_files: usize) -> String {
     use crate::cli::colors as c;
 
     let mut output = String::new();
@@ -109,8 +113,11 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
     ));
 
     if !result.violations.is_empty() {
+        // `.take(10)` was hardcoded here: over a corpus of 63 violations,
+        // `--top-files 1` and `--top-files 50` both printed ten rows.
+        let shown = crate::cli::top_files_slice(&result.violations, top_files);
         output.push_str(&format!("\n{}\n", c::subheader("Top Violations")));
-        for (i, violation) in result.violations.iter().take(10).enumerate() {
+        for (i, violation) in shown.iter().enumerate() {
             let sev_color = match violation.severity {
                 crate::services::facades::satd_facade::SatdSeverity::Critical
                 | crate::services::facades::satd_facade::SatdSeverity::High => c::RED,
@@ -128,18 +135,33 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
                 c::seq(c::RESET)
             ));
         }
+        // A list that is secretly a cap tells the reader nothing about what it
+        // hid; name both numbers, the way the big-O surfaces already do.
+        if shown.len() < result.violations.len() {
+            output.push_str(&format!(
+                "  {}\n",
+                c::dim(&format!(
+                    "… {} more not shown (--top-files {}, 0 = all)",
+                    result.violations.len() - shown.len(),
+                    top_files
+                ))
+            ));
+        }
     }
 
     output
 }
 
 /// Format as JSON
-fn format_json(result: &SatdAnalysisResult, metrics: bool) -> String {
+fn format_json(result: &SatdAnalysisResult, metrics: bool, top_files: usize) -> String {
+    let listed = crate::cli::top_files_slice(&result.violations, top_files);
     let mut json_data = serde_json::json!({
         "total_files": result.total_files,
         "total_violations": result.violations.len(),
+        "violations_listed": listed.len(),
+        "violations_truncated": listed.len() < result.violations.len(),
         "summary": result.summary,
-        "violations": result.violations.iter().map(|v| {
+        "violations": listed.iter().map(|v| {
             serde_json::json!({
                 "file": v.file_path,
                 "line": v.line_number,
@@ -232,7 +254,7 @@ fn format_sarif(result: &SatdAnalysisResult) -> String {
 }
 
 /// Format as Markdown
-fn format_markdown(result: &SatdAnalysisResult) -> String {
+fn format_markdown(result: &SatdAnalysisResult, top_files: usize) -> String {
     let mut output = String::new();
     output.push_str("# SATD Analysis Report\n\n");
     output.push_str(&format!("**Summary:** {}\n\n", result.summary));
@@ -275,7 +297,8 @@ fn format_markdown(result: &SatdAnalysisResult) -> String {
         output.push_str("| File | Line | Type | Severity | Message |\n");
         output.push_str("|------|------|------|----------|----------|\n");
 
-        for violation in &result.violations {
+        let shown = crate::cli::top_files_slice(&result.violations, top_files);
+        for violation in shown {
             output.push_str(&format!(
                 "| {} | {} | {} | {:?} | {} |\n",
                 violation.file_path,
@@ -283,6 +306,14 @@ fn format_markdown(result: &SatdAnalysisResult) -> String {
                 violation.violation_type,
                 violation.severity,
                 violation.message
+            ));
+        }
+        if shown.len() < result.violations.len() {
+            output.push_str(&format!(
+                "\n_{} of {} violations shown (`--top-files {}`, 0 = all)._\n",
+                shown.len(),
+                result.violations.len(),
+                top_files
             ));
         }
     }
@@ -294,10 +325,7 @@ fn format_markdown(result: &SatdAnalysisResult) -> String {
 fn print_metrics(result: &SatdAnalysisResult) {
     use crate::cli::colors as c;
 
-    eprintln!(
-        "\n{} SATD Metrics:",
-        c::subheader("📊")
-    );
+    eprintln!("\n{} SATD Metrics:", c::subheader("📊"));
     eprintln!(
         "  {} {}",
         c::label("Total files analyzed:"),

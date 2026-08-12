@@ -39,11 +39,11 @@ pub(crate) async fn output_results(
         eprintln!("⏱️  Analysis completed in {elapsed:.2?}");
     }
 
-    eprintln!("✅ Defect prediction complete");
+    crate::status_eprintln!("✅ Defect prediction complete");
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📝 Written to {}", output_path.display());
+        crate::status_eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{content}");
     }

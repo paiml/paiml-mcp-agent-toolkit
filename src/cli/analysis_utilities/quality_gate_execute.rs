@@ -11,7 +11,6 @@ pub async fn run_single_project_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
-    quiet: bool,
 ) -> Result<()> {
     match check {
         QualityCheckType::All => {
@@ -23,7 +22,6 @@ pub async fn run_single_project_check(
                 violations,
                 results,
                 perf,
-                quiet,
             )
             .await
         }
@@ -143,7 +141,7 @@ async fn execute_entropy_check(
 ) -> Result<()> {
     let gate_config = load_entropy_gate_config(project_path);
     if !gate_config.enabled {
-        eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
+        crate::status_eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
         return Ok(());
     }
     let threshold = load_entropy_threshold(project_path, min_entropy);
@@ -222,4 +220,3 @@ async fn execute_sections_check(
     )
     .await
 }
-

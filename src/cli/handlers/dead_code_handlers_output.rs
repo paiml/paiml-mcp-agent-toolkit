@@ -354,9 +354,7 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
 /// under a row heading no producer fills. Fields, constants and statics are
 /// counted from the items themselves, exactly as the text renderer does, so
 /// every reported dead item lands in one row.
-fn format_dead_code_breakdown_section(
-    result: &crate::models::dead_code::DeadCodeResult,
-) -> String {
+fn format_dead_code_breakdown_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
     use crate::models::dead_code::DeadCodeType;
 
     let summary = &result.summary;
@@ -421,7 +419,7 @@ async fn write_dead_code_output(content: String, output: Option<PathBuf>) -> Res
     match output {
         Some(path) => {
             tokio::fs::write(&path, content).await?;
-            eprintln!("📝 Results written to: {}", path.display());
+            crate::status_eprintln!("📝 Results written to: {}", path.display());
         }
         None => {
             println!("{content}");

@@ -153,19 +153,40 @@ pub fn initialize_enforcement_environment(
     let profile = load_quality_profile(profile_name, config_path)?;
 
     if clear_cache {
-        clear_enforcement_cache(cache_dir);
+        clear_enforcement_cache(cache_dir)?;
     }
 
     Ok(profile)
 }
 
-/// Clear enforcement cache
+/// Clear the enforcement cache directory named by `--cache-dir`.
+///
+/// This used to be a stub: with `--cache-dir DIR` it printed
+/// "🧹 Clearing cache at: DIR" above `// In real implementation, would clear
+/// cache` (the entries were still there afterwards), and with no `--cache-dir`
+/// — the default — it printed nothing and returned, so `enforce extreme
+/// --clear-cache` was byte-identical to `enforce extreme`.
+///
+/// Now it really empties the directory via the one shared implementation
+/// ([`crate::cli::cache_clearing::clear_cache_directory`]) and says so in every
+/// branch, including the branch where there is nothing to clear.
+///
+/// # Errors
+///
+/// Returns an error when the cache directory exists but cannot be cleared;
+/// `--clear-cache` that fails must not be reported as a clear.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) {
-    if let Some(cache_path) = cache_dir {
-        eprintln!("🧹 Clearing cache at: {}", cache_path.display());
-        // In real implementation, would clear cache
-    }
+pub fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) -> Result<()> {
+    let Some(cache_path) = cache_dir else {
+        eprintln!(
+            "🧹 --clear-cache: no --cache-dir given and enforce keeps no cache of its own — \
+             nothing to clear (every phase is recomputed on each run)"
+        );
+        return Ok(());
+    };
+
+    crate::cli::cache_clearing::clear_cache_directory_reporting(cache_path, "--clear-cache")?;
+    Ok(())
 }
 
 #[cfg(test)]

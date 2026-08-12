@@ -289,10 +289,10 @@ impl RedTeamCmd {
                 deep,
             } => {
                 if *verbose {
-                    eprintln!("🔴 Red Team Mode: Analyzing commit message");
-                    eprintln!("📝 Message: {}", message);
-                    eprintln!("📁 Repository: {}", path.display());
-                    eprintln!(
+                    crate::status_eprintln!("🔴 Red Team Mode: Analyzing commit message");
+                    crate::status_eprintln!("📝 Message: {}", message);
+                    crate::status_eprintln!("📁 Repository: {}", path.display());
+                    crate::status_eprintln!(
                         "🔍 Scan mode: {}",
                         if *deep {
                             "Deep (entire git history)"
@@ -326,7 +326,7 @@ impl RedTeamCmd {
                     .context("Failed to build repository context")?;
 
                 if *verbose {
-                    eprintln!(
+                    crate::status_eprintln!(
                         "📊 Git history: {}",
                         if context.has_git_history() {
                             "✅ Found"
@@ -334,8 +334,11 @@ impl RedTeamCmd {
                             "⚠️  None"
                         }
                     );
-                    eprintln!("🧪 Test files: {} found", context.get_test_files().len());
-                    eprintln!(
+                    crate::status_eprintln!(
+                        "🧪 Test files: {} found",
+                        context.get_test_files().len()
+                    );
+                    crate::status_eprintln!(
                         "📈 Coverage report: {}",
                         if context.has_coverage_report() {
                             "✅ Found"

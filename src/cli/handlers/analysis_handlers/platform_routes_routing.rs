@@ -95,10 +95,13 @@ pub(super) async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Re
         output,
         perf,
         clear_cache,
-        top_files: _top_files,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
+        // `--top-files` was bound to `_top_files` and dropped here, and the
+        // summary renderer hardcoded `.take(10)`, so `--top-files 1` and
+        // `--top-files 50` both printed ten rows over an 84-file corpus.
         crate::cli::handlers::proof_annotations_handler::handle_analyze_proof_annotations(
             path,
             format,
@@ -109,6 +112,7 @@ pub(super) async fn route_proof_annotations_analysis(cmd: AnalyzeCommands) -> Re
             output,
             perf,
             clear_cache,
+            top_files,
         )
         .await
     } else {
@@ -248,10 +252,12 @@ pub(super) async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Resul
         output,
         timeout,
         perf,
-        top_files: _top_files,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
+        // Same one-line omission as the web-assembly route below, already fixed
+        // for symbol-table above: `top_files: _top_files` threw the flag away.
         crate::cli::handlers::wasm_handlers::handle_analyze_assemblyscript(
             path,
             format,
@@ -261,6 +267,7 @@ pub(super) async fn route_assemblyscript_analysis(cmd: AnalyzeCommands) -> Resul
             output,
             timeout,
             perf,
+            top_files,
         )
         .await
     } else {
@@ -281,7 +288,7 @@ pub(super) async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<(
         complexity,
         output,
         perf,
-        top_files: _top_files,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
@@ -295,6 +302,7 @@ pub(super) async fn route_webassembly_analysis(cmd: AnalyzeCommands) -> Result<(
             complexity,
             output,
             perf,
+            top_files,
         )
         .await
     } else {

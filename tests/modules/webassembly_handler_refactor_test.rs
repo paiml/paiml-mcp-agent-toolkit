@@ -29,6 +29,7 @@ async fn test_webassembly_handler_structure() -> Result<()> {
         false, // complexity
         None,  // output
         false, // perf
+        10,    // top_files
     )
     .await;
 
@@ -55,6 +56,7 @@ async fn test_security_and_complexity_flags() -> Result<()> {
         true,  // complexity enabled
         None,
         true, // perf enabled
+        10,   // top_files
     )
     .await;
 
@@ -78,6 +80,7 @@ async fn test_output_file_handling() -> Result<()> {
         false,
         Some(output_file),
         false,
+        10, // top_files
     )
     .await;
 

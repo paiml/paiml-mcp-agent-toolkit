@@ -212,14 +212,17 @@ mod tests {
             i.severity == Severity::High && i.category == SecurityCategory::ResourceExhaustion
         }));
 
-        // Test AST validation
-        let ast = crate::models::unified_ast::AstDag::new();
-        let result = validator.validate_ast(&ast);
-        assert!(result.is_ok());
+        // Text validation: `validate_ast` is gone — it was `Ok(())` for every
+        // input and its callers only ever handed it the empty `AstDag` the WAT
+        // and AssemblyScript parsers return.
+        let result = validator.validate_text("(module)").unwrap();
+        assert!(result.passed);
 
-        // Test text validation
-        let result = validator.validate_text("(module)");
-        assert!(result.is_ok());
+        let result = validator.validate_text("(module (memory 1))").unwrap();
+        assert!(
+            !result.passed,
+            "memory with no maximum is an unbounded-growth finding"
+        );
 
         // Test SecurityIssue
         let issue = SecurityIssue {

@@ -17,7 +17,7 @@ pub async fn handle_analyze_provability(
 ) -> Result<()> {
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
-    eprintln!("🔬 Analyzing function provability...");
+    crate::status_eprintln!("🔬 Analyzing function provability...");
 
     // Create the analyzer
     let analyzer = LightweightProvabilityAnalyzer::new();
@@ -27,7 +27,7 @@ pub async fn handle_analyze_provability(
 
     // Analyze the functions
     let summaries = analyzer.analyze_incrementally(&function_ids).await;
-    eprintln!("✅ Analyzed {} functions", summaries.len());
+    crate::status_eprintln!("✅ Analyzed {} functions", summaries.len());
 
     // Filter and format the summaries
     let filtered_summaries_owned = prepare_summaries(&summaries, high_confidence_only);
@@ -128,7 +128,7 @@ fn format_provability_output(
 async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
-        eprintln!(
+        crate::status_eprintln!(
             "✅ Provability analysis written to: {}",
             output_path.display()
         );
@@ -191,11 +191,11 @@ fn print_defect_analysis_header(
     include_low_confidence: bool,
     format: &DefectPredictionOutputFormat,
 ) {
-    eprintln!("🔮 Analyzing defect probability...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 High risk only: {high_risk_only}");
-    eprintln!("📊 Include low confidence: {include_low_confidence}");
-    eprintln!("📄 Format: {format:?}");
+    crate::status_eprintln!("🔮 Analyzing defect probability...");
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("🎯 High risk only: {high_risk_only}");
+    crate::status_eprintln!("📊 Include low confidence: {include_low_confidence}");
+    crate::status_eprintln!("📄 Format: {format:?}");
 }
 
 fn create_defect_config(
@@ -311,11 +311,11 @@ fn format_defect_report(
 }
 
 async fn output_defect_result(content: String, output: Option<PathBuf>) -> Result<()> {
-    eprintln!("✅ Defect prediction complete");
+    crate::status_eprintln!("✅ Defect prediction complete");
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📝 Written to {}", output_path.display());
+        crate::status_eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{content}");
     }

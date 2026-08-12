@@ -284,7 +284,31 @@ mod tests {
 
     #[test]
     fn test_clear_enforcement_cache_none() {
-        clear_enforcement_cache(&None);
-        // Should not panic
+        // No --cache-dir: enforce keeps no cache of its own, so there is
+        // nothing to clear and that is reported, not an error.
+        clear_enforcement_cache(&None).expect("no cache dir is not a failure");
+    }
+
+    /// The stub version returned `()` after printing "🧹 Clearing cache at: DIR"
+    /// and running `// In real implementation, would clear cache`, so the
+    /// directory it named still held every entry when the run finished.
+    #[test]
+    fn test_clear_enforcement_cache_deletes_entries() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("entry.bin"), b"stale").expect("write entry");
+        std::fs::create_dir(dir.path().join("sub")).expect("mkdir");
+        std::fs::write(dir.path().join("sub/nested.bin"), b"stale").expect("write nested");
+
+        clear_enforcement_cache(&Some(dir.path().to_path_buf())).expect("clear");
+
+        assert!(
+            !dir.path().join("entry.bin").exists(),
+            "--clear-cache must delete cache files"
+        );
+        assert!(
+            !dir.path().join("sub").exists(),
+            "--clear-cache must delete cache subdirectories"
+        );
+        assert!(dir.path().is_dir(), "the cache directory itself is kept");
     }
 }

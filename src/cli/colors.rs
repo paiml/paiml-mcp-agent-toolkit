@@ -129,6 +129,17 @@ pub fn colors_enabled() -> bool {
     use std::io::IsTerminal;
     use std::sync::OnceLock;
 
+    // A test may force the answer for its own thread — see [`ForcedColor`].
+    // Without this seam a unit test can only ever observe the *off* half of the
+    // rule (`cargo test` captures stdout, and the decision below is a
+    // process-wide `OnceLock`), which is precisely how five printers shipped
+    // that emitted nothing under `--color always`: "no escapes here" passed as
+    // green.
+    #[cfg(test)]
+    if let Some(forced) = forced_color::get() {
+        return forced;
+    }
+
     static ENABLED: OnceLock<bool> = OnceLock::new();
     *ENABLED.get_or_init(|| {
         let is_set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty());
@@ -138,6 +149,102 @@ pub fn colors_enabled() -> bool {
             std::io::stdout().is_terminal(),
         )
     })
+}
+
+#[cfg(test)]
+mod forced_color {
+    use std::cell::Cell;
+
+    thread_local! {
+        static FORCED: Cell<Option<bool>> = const { Cell::new(None) };
+    }
+
+    pub(super) fn get() -> Option<bool> {
+        FORCED.with(Cell::get)
+    }
+
+    pub(super) fn set(value: Option<bool>) {
+        FORCED.with(|slot| slot.set(value));
+    }
+}
+
+/// Force [`colors_enabled`] for the current thread, restoring the previous
+/// answer on drop. Test-only.
+///
+/// Thread-local rather than a global, so tests that force colour on cannot make
+/// a concurrently running test see escapes it does not expect — the trap that
+/// env-var-mutating colour tests kept falling into.
+///
+/// This exists so a test can assert **both halves** of the `--color` contract on
+/// the same renderer: escapes present when colour is on, absent when it is off.
+/// A one-sided "is plain" assertion is satisfied by a printer that has no colour
+/// at all, which is exactly the defect shape this module keeps having to fix.
+#[cfg(test)]
+pub(crate) struct ForcedColor(Option<bool>);
+
+#[cfg(test)]
+impl ForcedColor {
+    /// Force colour on (`true`) or off (`false`) until the guard drops.
+    pub(crate) fn new(enabled: bool) -> Self {
+        let previous = forced_color::get();
+        forced_color::set(Some(enabled));
+        Self(previous)
+    }
+
+    /// Force colour on — the state `--color always` produces.
+    pub(crate) fn on() -> Self {
+        Self::new(true)
+    }
+
+    /// Force colour off — the state `--color never` (or a redirected stdout)
+    /// produces.
+    pub(crate) fn off() -> Self {
+        Self::new(false)
+    }
+}
+
+#[cfg(test)]
+impl Drop for ForcedColor {
+    fn drop(&mut self) {
+        forced_color::set(self.0);
+    }
+}
+
+/// The escape byte no renderer may emit while colour is off.
+#[cfg(test)]
+pub(crate) const ESC: char = '\u{1b}';
+
+/// Assert that `render` honours `--color` in **both** directions.
+///
+/// `render` is called twice: once with colour forced on, where its output must
+/// carry at least one ANSI escape, and once with colour forced off, where it
+/// must carry none. `what` names the surface in the failure message.
+///
+/// The "on" half is the one that catches an inert `--color`: a printer that
+/// simply never colours anything passes every plain-output assertion.
+#[cfg(test)]
+pub(crate) fn assert_honours_color(what: &str, mut render: impl FnMut() -> String) {
+    let colored = {
+        let _guard = ForcedColor::on();
+        render()
+    };
+    assert!(
+        colored.contains(ESC),
+        "{what}: `--color always` produced no ANSI escape, so the flag changes \
+         nothing observable. Output was: {colored:?}"
+    );
+
+    let plain = {
+        let _guard = ForcedColor::off();
+        render()
+    };
+    let leaking: Vec<&str> = plain.lines().filter(|l| l.contains(ESC)).collect();
+    assert!(
+        leaking.is_empty(),
+        "{what}: {} line(s) carry ANSI with colour off; first: {:?}",
+        leaking.len(),
+        leaking.first()
+    );
 }
 
 /// Identity on an [`Sgr`], kept because ~50 call sites spell the gating
@@ -386,6 +493,61 @@ mod tests {
 
     /// Escape byte that must not appear in plain output.
     const ESC: char = '\x1b';
+
+    // ── the seam that makes an inert `--color` fail ─────────────────────────
+
+    /// `ForcedColor` must move `colors_enabled` in both directions and restore
+    /// the previous answer on drop; everything asserted through
+    /// [`assert_honours_color`] rests on this.
+    #[test]
+    fn forced_color_moves_the_decision_and_restores_it() {
+        let baseline = colors_enabled();
+        {
+            let _on = ForcedColor::on();
+            assert!(colors_enabled());
+            assert!(format!("{BOLD}x{RESET}").contains(ESC));
+            {
+                let _off = ForcedColor::off();
+                assert!(!colors_enabled());
+                assert_eq!(format!("{BOLD}x{RESET}"), "x");
+            }
+            assert!(colors_enabled(), "inner guard must restore the outer one");
+        }
+        assert_eq!(
+            colors_enabled(),
+            baseline,
+            "guard must restore the process answer"
+        );
+    }
+
+    /// The point of the helper: a printer that emits no colour at all FAILS it.
+    ///
+    /// Every previous `--color` test in this crate asserted only "output is
+    /// plain when colour is off", which such a printer passes — which is how
+    /// five commands shipped with a `--color` flag that changed nothing.
+    #[test]
+    fn assert_honours_color_rejects_a_printer_that_never_colours() {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let outcome = std::panic::catch_unwind(|| {
+            assert_honours_color("a printer with no colour", || {
+                "Average Score: 90.9/100 (A)".to_string()
+            });
+        });
+        std::panic::set_hook(previous);
+        assert!(
+            outcome.is_err(),
+            "assert_honours_color must reject a renderer that emits no ANSI under --color always"
+        );
+    }
+
+    /// …and accepts one that does.
+    #[test]
+    fn assert_honours_color_accepts_a_printer_that_does() {
+        assert_honours_color("a printer that colours", || {
+            format!("Average Score: {}/100 ({})", number("90.9"), grade("A"))
+        });
+    }
 
     fn is_plain(s: &str) -> bool {
         !s.contains(ESC)

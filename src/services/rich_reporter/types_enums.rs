@@ -23,14 +23,24 @@ impl Severity {
         }
     }
 
-    /// Get the ANSI color code for this severity
+    /// Get the ANSI color code for this severity.
+    ///
+    /// Returns an [`Sgr`](crate::cli::colors::Sgr), not a `&'static str`: a
+    /// `const &str` cannot consult
+    /// [`colors_enabled`](crate::cli::colors::colors_enabled), which is why
+    /// every printer that interpolated one of these wrote escapes under
+    /// `--color never` and into redirected files. Interpolating the returned
+    /// value renders nothing when colour is off; use
+    /// [`Sgr::raw`](crate::cli::colors::Sgr::raw) where the bytes themselves are
+    /// the subject.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub fn color_code(&self) -> &'static str {
+    pub fn color_code(&self) -> crate::cli::colors::Sgr {
+        use crate::cli::colors as c;
         match self {
-            Severity::Critical => "\x1b[31m", // Red
-            Severity::High => "\x1b[33m",     // Yellow
-            Severity::Medium => "\x1b[36m",   // Cyan
-            Severity::Low => "\x1b[2m",       // Dim
+            Severity::Critical => c::RED,
+            Severity::High => c::YELLOW,
+            Severity::Medium => c::CYAN,
+            Severity::Low => c::DIM,
         }
     }
 }

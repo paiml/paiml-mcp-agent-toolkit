@@ -3,11 +3,14 @@
 //! All handlers provide complete functionality with proper AST-based analysis.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+// `ProofAnnotationOutputFormat`, `PropertyTypeFilter` and `VerificationMethodFilter`
+// were imported for a second `handle_analyze_proof_annotations` that lived in
+// `proof_coverage.rs` and that nothing dispatched to; it is gone (see the
+// re-export there), and so are its imports.
 use crate::cli::{
     ComprehensiveOutputFormat, DagType, DeadCodeOutputFormat, DefectPredictionOutputFormat,
-    IncrementalCoverageOutputFormat, MakefileOutputFormat, ProofAnnotationOutputFormat,
-    PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
-    SatdOutputFormat, SatdSeverity, TdgOutputFormat, VerificationMethodFilter,
+    IncrementalCoverageOutputFormat, MakefileOutputFormat, ProvabilityOutputFormat,
+    QualityCheckType, QualityGateOutputFormat, SatdOutputFormat, SatdSeverity, TdgOutputFormat,
 };
 use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;

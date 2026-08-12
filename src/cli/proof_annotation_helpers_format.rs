@@ -26,9 +26,9 @@ pub fn format_as_json(
     let annotations_json: Vec<serde_json::Value> = annotations
         .iter()
         .map(|(location, annotation)| {
-            let mut rendered = serde_json::to_value(annotation).unwrap_or_else(|_| {
-                serde_json::json!({ "error": "annotation could not be serialized" })
-            });
+            let mut rendered = serde_json::to_value(annotation).unwrap_or_else(
+                |_| serde_json::json!({ "error": "annotation could not be serialized" }),
+            );
             if let Some(obj) = rendered.as_object_mut() {
                 obj.remove("dateVerified");
             }
@@ -83,6 +83,19 @@ pub fn format_as_json(
 /// the whole time with zero callers.
 ///
 /// See contracts/pmat-no-fabrication-v1.yaml, `output_derived_from_input`.
+///
+/// # `--clear-cache`
+///
+/// `ProofAnnotator`'s cache is a `HashMap` inside `ProofAnnotator` with no load
+/// and no save path (`src/services/proof_annotator_cache.rs` touches the
+/// filesystem only for `metadata()`), so it starts empty in every process. The
+/// old body called `annotator.clear_cache()` on an annotator constructed one
+/// line earlier — clearing an always-empty map before any work — which is why
+/// `--clear-cache` produced byte-identical output under every format including
+/// the JSON one that prints `cache_stats`.
+///
+/// There is nothing persistent to delete, so the flag says so instead of
+/// pantomiming a clear: a no-op that looks like an action is the defect.
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
@@ -92,7 +105,11 @@ pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
     let mut annotator = ProofAnnotator::new(symbol_table);
 
     if clear_cache {
-        annotator.clear_cache();
+        eprintln!(
+            "🧹 --clear-cache: pmat keeps no proof-annotation cache between runs — the cache \
+             lives in this process only and starts empty, so every annotation below was \
+             re-derived from source regardless of this flag"
+        );
     }
 
     annotator.add_source(RustBorrowChecker::default());
@@ -137,7 +154,9 @@ pub async fn collect_and_filter_annotations(
             .cmp(&lb.file_path)
             .then_with(|| la.span.start.0.cmp(&lb.span.start.0))
             .then_with(|| la.span.end.0.cmp(&lb.span.end.0))
-            .then_with(|| format!("{:?}", aa.property_proven).cmp(&format!("{:?}", ab.property_proven)))
+            .then_with(|| {
+                format!("{:?}", aa.property_proven).cmp(&format!("{:?}", ab.property_proven))
+            })
             .then_with(|| format!("{:?}", aa.method).cmp(&format!("{:?}", ab.method)))
             .then_with(|| aa.specification_id.cmp(&ab.specification_id))
             .then_with(|| aa.annotation_id.cmp(&ab.annotation_id))
@@ -205,12 +224,13 @@ pub fn format_as_table(
 pub fn format_as_summary(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
+    top_files: usize,
 ) -> Result<String> {
     let mut output = String::new();
 
     format_summary_header(&mut output, annotations, elapsed)?;
     format_summary_property_counts(&mut output, annotations)?;
-    format_summary_top_files(&mut output, annotations)?;
+    format_summary_top_files(&mut output, annotations, top_files)?;
 
     Ok(output)
 }
@@ -273,6 +293,7 @@ fn format_summary_property_counts(
 fn format_summary_top_files(
     output: &mut String,
     annotations: &[(Location, ProofAnnotation)],
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
 
@@ -297,7 +318,14 @@ fn format_summary_top_files(
     // Print the whole path, not `file_name()`: a repo has many `build.rs` and
     // `mod.rs` files, so a basename-only list rendered ten *distinct* files as
     // two basenames repeated five times each, with no way to tell them apart.
-    for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
+    //
+    // The row count is `--top-files`, not a hardcoded 10: over an 84-file
+    // corpus `--top-files 1` and `--top-files 50` both printed exactly ten
+    // rows, because the flag never reached this loop.
+    for (i, (file_path, count)) in crate::cli::top_files_slice(&sorted_files, top_files)
+        .iter()
+        .enumerate()
+    {
         writeln!(
             output,
             "{}. `{}` - {} annotations",
@@ -356,7 +384,7 @@ mod top_files_path_tests {
         ];
 
         let mut out = String::new();
-        format_summary_top_files(&mut out, &annotations).unwrap();
+        format_summary_top_files(&mut out, &annotations, 10).unwrap();
 
         assert!(
             out.contains("/repo/a/build.rs"),
@@ -369,5 +397,27 @@ mod top_files_path_tests {
         let lines: Vec<&str> = out.lines().filter(|l| l.contains("build.rs")).collect();
         assert_eq!(lines.len(), 2, "two distinct files, two distinct lines");
         assert_ne!(lines[0], lines[1], "lines must not be identical labels");
+    }
+
+    /// The row count is `--top-files`, not the literal 10 this loop used to
+    /// carry. Over an 84-file corpus `analyze proof-annotations --top-files 1`
+    /// and `--top-files 50` both printed exactly ten rows, because the route
+    /// bound the flag to `_top_files` and dropped it.
+    #[test]
+    fn top_files_sets_the_row_count() {
+        let annotations: Vec<_> = (0..24)
+            .map(|i| entry(&format!("/repo/f{i:02}.rs")))
+            .collect();
+
+        let rows = |top_files: usize| {
+            let mut out = String::new();
+            format_summary_top_files(&mut out, &annotations, top_files).expect("render");
+            out.lines().filter(|l| l.contains("annotations")).count()
+        };
+
+        assert_eq!(rows(1), 1, "--top-files 1 must list one file");
+        assert_eq!(rows(10), 10, "--top-files 10 must list ten files");
+        assert_eq!(rows(50), 24, "a limit above the total lists every file");
+        assert_eq!(rows(0), 24, "--top-files 0 means all");
     }
 }

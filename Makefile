@@ -132,7 +132,13 @@ test-lib: ## Run all lib tests (8MB stack for Clap tests)
 
 gate-flag-efficacy: ## Every CLI flag must change observable output (49 no-ops shipped in 3.29.0)
 	@echo "🔬 Flag-efficacy sweep..."
-	@cargo test --test all -- --ignored --nocapture flag_efficacy_sweep
+	@env -u RUST_MIN_STACK cargo test --test all -- --ignored --nocapture flag_efficacy_sweep \
+	  || (echo "" \
+	   && echo "❌ flag-efficacy gate failed. Full report (verdict per flag, plus every" \
+	   && echo "   skip and its reason): $${TMPDIR:-/tmp}/pmat-flag-efficacy-report.txt" \
+	   && echo "   Reproduce a finding by hand before filing it:" \
+	   && echo "   PMAT_CORPUS_OUT=/tmp/corpus PMAT_CORPUS_SIZE=large cargo test --test all -- --ignored dump_corpus --nocapture" \
+	   && exit 1)
 
 gate-flag-efficacy-full: ## Flag-efficacy across the entire command tree (release gate)
 	@PMAT_FLAG_SWEEP=all $(MAKE) gate-flag-efficacy

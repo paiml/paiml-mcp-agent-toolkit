@@ -77,6 +77,72 @@ use crate::services::progress::{ProgressBar, ProgressStyle};
 use std::io::IsTerminal;
 use std::time::{Duration, Instant};
 
+/// The name of the process-wide quiet-mode channel.
+///
+/// `--quiet` is parsed by clap in `cli::run`, but the code that prints progress
+/// banners lives in ~60 handler modules that never see the parsed `Cli`. The env
+/// var is how the flag reaches them. It is written in exactly one place
+/// ([`set_quiet_mode`], called from `apply_ux_settings`) and read in exactly one
+/// place ([`quiet_mode_enabled`]) so there is one rule with one implementation.
+const QUIET_ENV: &str = "PMAT_QUIET";
+
+/// Record `--quiet` for the rest of the process.
+///
+/// Also *clears* the variable when quiet is off. It used only ever to be set,
+/// never unset, so a second `cli::run` in the same process (embedders, and the
+/// integration tests that call it directly) inherited quiet mode from the first.
+///
+/// # Safety / threading
+///
+/// Called once from `cli::run` before any command dispatch, i.e. before the
+/// process spawns worker threads that read it.
+pub fn set_quiet_mode(quiet: bool) {
+    if quiet {
+        std::env::set_var(QUIET_ENV, "1");
+    } else {
+        std::env::remove_var(QUIET_ENV);
+    }
+}
+
+/// Whether `--quiet` is in effect.
+///
+/// **This is the one suppression check.** Anything that prints progress,
+/// spinners, banners, "Analyzing …" / "✓ … complete" status chatter, or any
+/// other output that is not the report itself and not an error must be guarded
+/// by this (directly, or via [`status_eprintln!`](crate::status_eprintln) /
+/// [`status_println!`](crate::status_println)) rather than by a new per-handler
+/// flag.
+#[must_use]
+pub fn quiet_mode_enabled() -> bool {
+    std::env::var_os(QUIET_ENV).is_some_and(|v| !v.is_empty())
+}
+
+/// `eprintln!` for status/progress chatter: silent under `--quiet`.
+///
+/// Errors must keep using plain `eprintln!` — `--quiet` is documented as
+/// "errors only", not "silent".
+#[macro_export]
+macro_rules! status_eprintln {
+    ($($arg:tt)*) => {
+        if !$crate::cli::progress::quiet_mode_enabled() {
+            eprintln!($($arg)*);
+        }
+    };
+}
+
+/// `println!` for status/progress chatter: silent under `--quiet`.
+///
+/// Only for chatter. Report content on stdout is what the user asked for and
+/// must print regardless — `--quiet` suppresses noise, not results.
+#[macro_export]
+macro_rules! status_println {
+    ($($arg:tt)*) => {
+        if !$crate::cli::progress::quiet_mode_enabled() {
+            println!($($arg)*);
+        }
+    };
+}
+
 /// Progress indicator for long-running operations
 pub struct ProgressIndicator {
     progress_bar: Option<ProgressBar>,
@@ -121,7 +187,7 @@ impl ProgressIndicator {
         }
 
         // Don't show in quiet mode (TICKET-PMAT-6006)
-        if std::env::var("PMAT_QUIET").is_ok() {
+        if quiet_mode_enabled() {
             return false;
         }
 

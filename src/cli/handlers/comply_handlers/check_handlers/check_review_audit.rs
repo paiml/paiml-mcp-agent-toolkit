@@ -26,11 +26,11 @@ pub(crate) async fn handle_review(
     use crate::cli::handlers::comply_handlers::muda_handlers;
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
-    println!(
+    crate::status_println!(
         "{}",
         c::header("PMAT Comply Review (Layer 2: Genchi Genbutsu)")
     );
-    println!("{}\n", c::rule());
+    crate::status_println!("{}\n", c::rule());
 
     let repro = reproducibility_handlers::check_reproducibility(project_path);
     let golden = reproducibility_handlers::check_golden_trace_drift(project_path);
@@ -49,7 +49,7 @@ pub(crate) async fn handle_review(
 
     if let Some(out_path) = output {
         fs::write(out_path, &content)?;
-        println!(
+        crate::status_println!(
             "{}",
             c::pass(&format!(
                 "Review checklist written to {}",
@@ -222,8 +222,8 @@ pub(crate) async fn handle_audit(
     output: Option<&Path>,
 ) -> Result<()> {
     if audit_banner_belongs_on_stdout(&format) {
-        println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
-        println!("{}\n", c::rule());
+        crate::status_println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
+        crate::status_println!("{}\n", c::rule());
     }
 
     let git_clean = check_git_clean(project_path);
@@ -289,7 +289,7 @@ pub(crate) async fn handle_audit(
 
     if let Some(out_path) = output {
         fs::write(out_path, &content)?;
-        println!(
+        crate::status_println!(
             "{}",
             c::pass(&format!(
                 "Audit artifact written to {}",

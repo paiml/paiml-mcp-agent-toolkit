@@ -1,28 +1,61 @@
+/// The verdict word, coloured by what it means. Plain text when colour is off.
+///
+/// `pmat quality-gate` (aliases `check`/`c`/`gate`) used to be byte-identical
+/// under `--color always`, `--color never` and `--color auto` on a pty — zero
+/// escapes in any of the three. The flag parsed and changed nothing, because
+/// none of these formatters ever asked [`crate::cli::colors`] anything. That is
+/// the same defect shape as `analyze churn`, `query`, `analyze tdg` and the
+/// wasm printers; the cure is the same one, not a fourth colour authority.
+fn qg_verdict_word(passed: bool) -> String {
+    use crate::cli::colors as c;
+    if passed {
+        c::colored(c::GREEN, "PASSED")
+    } else {
+        c::colored(c::RED, "FAILED")
+    }
+}
+
+/// A severity label coloured by the verdict rule that governs it: the two
+/// verdict-bearing severities are loud, the advisory one ([`ADVISORY_SEVERITY`])
+/// is dim. Plain text when colour is off, so the word itself is unchanged.
+fn qg_severity_word(severity: &str) -> String {
+    use crate::cli::colors as c;
+    match severity {
+        "error" => c::colored(c::RED, severity),
+        "warning" => c::colored(c::YELLOW, severity),
+        ADVISORY_SEVERITY => c::dim(severity),
+        other => c::colored(c::RED, other),
+    }
+}
 
 // Helper: Format as summary
 fn format_qg_as_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let mut output = String::new();
     writeln!(
         &mut output,
-        "Quality Gate: {}",
-        if results.passed { "PASSED" } else { "FAILED" }
+        "{} {}",
+        c::label("Quality Gate:"),
+        qg_verdict_word(results.passed)
     )?;
     writeln!(
         &mut output,
-        "Total violations: {}",
-        results.total_violations
+        "{} {}",
+        c::label("Total violations:"),
+        c::number(&results.total_violations.to_string())
     )?;
     // The count that decided PASSED/FAILED above. Advisory (`info`) findings are
     // listed below but are not verdict-bearing, so "PASSED" over
     // "Total violations: 1" needs this line to be readable.
     writeln!(
         &mut output,
-        "Blocking violations: {}",
-        results.blocking_violations
+        "{} {}",
+        c::label("Blocking violations:"),
+        c::number(&results.blocking_violations.to_string())
     )?;
 
     // Show violation summary by type
@@ -35,10 +68,8 @@ fn format_qg_as_summary(
 }
 
 // Helper: Write violation summary grouped by type
-fn write_qg_violations_summary(
-    output: &mut String,
-    violations: &[QualityViolation],
-) -> Result<()> {
+fn write_qg_violations_summary(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
@@ -49,13 +80,21 @@ fn write_qg_violations_summary(
     }
 
     for (check_type, type_violations) in by_type {
-        writeln!(output, "## {} ({} violations)", check_type, type_violations.len())?;
+        writeln!(
+            output,
+            "{}",
+            c::subheader(&format!(
+                "## {} ({} violations)",
+                check_type,
+                type_violations.len()
+            ))
+        )?;
         // Show all violations (no truncation) so users can see the full list
         for v in type_violations.iter() {
             if let Some(line) = v.line {
-                writeln!(output, "  - {}:{} - {}", v.file, line, v.message)?;
+                writeln!(output, "  - {}:{} - {}", c::path(&v.file), line, v.message)?;
             } else {
-                writeln!(output, "  - {} - {}", v.file, v.message)?;
+                writeln!(output, "  - {} - {}", c::path(&v.file), v.message)?;
             }
             // Show explainability details for entropy/provability violations (#226, #229)
             write_violation_details(output, v)?;
@@ -83,23 +122,32 @@ fn format_qg_as_detailed(
 
 // Helper: Write detailed header
 fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "# Quality Gate Detailed Report\n")?;
+    writeln!(output, "{}\n", c::header("# Quality Gate Detailed Report"))?;
     writeln!(
         output,
-        "Status: {}",
+        "{} {} {}",
+        c::label("Status:"),
         if results.passed {
-            "\u{2705} PASSED"
+            "\u{2705}"
         } else {
-            "\u{274c} FAILED"
-        }
+            "\u{274c}"
+        },
+        qg_verdict_word(results.passed)
     )?;
-    writeln!(output, "Total violations: {}", results.total_violations)?;
+    writeln!(
+        output,
+        "{} {}",
+        c::label("Total violations:"),
+        c::number(&results.total_violations.to_string())
+    )?;
     // The subset that decided the status above; `info` findings are advisory.
     writeln!(
         output,
-        "Blocking violations: {}\n",
-        results.blocking_violations
+        "{} {}\n",
+        c::label("Blocking violations:"),
+        c::number(&results.blocking_violations.to_string())
     )?;
     Ok(())
 }
@@ -131,21 +179,22 @@ fn write_qg_detailed_violations(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "\n## All Violations\n")?;
+    writeln!(output, "\n{}\n", c::subheader("## All Violations"))?;
     for (i, v) in violations.iter().enumerate() {
         writeln!(
             output,
             "{}. [{}] {}: {}",
             i + 1,
-            v.severity,
+            qg_severity_word(&v.severity),
             v.check_type,
             v.message
         )?;
         if let Some(line) = v.line {
-            writeln!(output, "   File: {}:{}", v.file, line)?;
+            writeln!(output, "   File: {}:{}", c::path(&v.file), line)?;
         } else {
-            writeln!(output, "   File: {}", v.file)?;
+            writeln!(output, "   File: {}", c::path(&v.file))?;
         }
     }
     Ok(())
@@ -187,7 +236,12 @@ fn write_qg_markdown_violations(
     }
 
     for (check_type, type_violations) in by_type {
-        writeln!(output, "### {} ({} issues)\n", check_type, type_violations.len())?;
+        writeln!(
+            output,
+            "### {} ({} issues)\n",
+            check_type,
+            type_violations.len()
+        )?;
         writeln!(output, "| Severity | File | Line | Message |")?;
         writeln!(output, "|----------|------|------|---------|")?;
 

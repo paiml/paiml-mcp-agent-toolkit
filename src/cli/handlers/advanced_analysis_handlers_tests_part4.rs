@@ -206,6 +206,7 @@ mod edge_case_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
 

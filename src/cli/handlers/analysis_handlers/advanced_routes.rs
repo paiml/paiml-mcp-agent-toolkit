@@ -270,10 +270,13 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
         output,
         perf,
         executive_summary,
-        top_files: _,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
+        // `top_files: _` here plus a hardcoded `top_files: 20` in the wrapper
+        // below made `--top-files` unobservable twice over: the flag was
+        // dropped at the route, and the value the config carried was a literal.
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_comprehensive(
             path,
             file,
@@ -291,6 +294,7 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
             output,
             perf,
             executive_summary,
+            top_files,
         )
         .await
     } else {

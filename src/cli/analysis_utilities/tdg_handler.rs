@@ -39,7 +39,7 @@ pub async fn handle_analyze_tdg(
         }
     }
 
-    eprintln!("🔍 Analyzing Technical Debt Gradient...");
+    crate::status_eprintln!("🔍 Analyzing Technical Debt Gradient...");
 
     // Create TDG calculator
     let calculator = TDGCalculator::new();
@@ -63,7 +63,7 @@ pub async fn handle_analyze_tdg(
     // Output results
     write_tdg_output(output, &output_content).await?;
 
-    eprintln!("✅ TDG analysis complete");
+    crate::status_eprintln!("✅ TDG analysis complete");
     Ok(())
 }
 
@@ -130,7 +130,7 @@ async fn run_tdg_analysis(
 async fn write_tdg_output(output: Option<PathBuf>, content: &str) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
-        eprintln!("📝 Results written to {}", output_path.display());
+        crate::status_eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{content}");
     }

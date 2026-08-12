@@ -245,9 +245,14 @@ impl TimelineUI {
         output
     }
 
-    /// Render timeline with ANSI colors (legacy)
+    /// Render timeline with ANSI colors (legacy).
+    ///
+    /// "With ANSI colors" is conditional on [`crate::cli::colors`]: these were
+    /// raw `"\x1b[36;1m"` literals, so the timeline wrote escapes into a
+    /// redirected file and under `--color never` alike (the GH #684 class).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_colored(&self) -> String {
+        use crate::cli::colors as c;
         let total_frames = if !self.snapshots_legacy.is_empty() {
             self.snapshots_legacy.len()
         } else {
@@ -261,7 +266,7 @@ impl TimelineUI {
         };
 
         if total_frames == 0 {
-            return "\x1b[31mEmpty recording\x1b[0m".to_string();
+            return c::colored(c::RED, "Empty recording");
         }
 
         let mut output = String::new();
@@ -270,12 +275,12 @@ impl TimelineUI {
         if total_frames <= 10 {
             for i in 0..total_frames {
                 if i > 0 {
-                    output.push_str("\x1b[90m─────\x1b[0m"); // Dark gray separators
+                    output.push_str(&c::dim("─────")); // Dim separators
                 }
 
                 if i == current_pos {
                     // Highlight current position in cyan
-                    output.push_str(&format!("\x1b[36;1m{}\x1b[0m", i));
+                    output.push_str(&c::colored(c::BOLD_CYAN, &i.to_string()));
                 } else {
                     // Other positions in white
                     output.push_str(&i.to_string());
@@ -286,17 +291,20 @@ impl TimelineUI {
             // Add green position indicator
             let indicator_pos = current_pos * 6;
             output.push_str(&" ".repeat(indicator_pos));
-            output.push_str("\x1b[32;1m▼\x1b[0m"); // Green indicator
+            output.push_str(&c::colored(c::BOLD_GREEN, "▼")); // Green indicator
         } else {
             output.push_str(&format!(
-                "\x1b[90mTimeline:\x1b[0m 0 \x1b[90m────────\x1b[0m {} \x1b[90m(Total: {} snapshots)\x1b[0m",
+                "{} 0 {} {} {}",
+                c::dim("Timeline:"),
+                c::dim("────────"),
                 total_frames - 1,
-                total_frames
+                c::dim(&format!("(Total: {total_frames} snapshots)"))
             ));
             output.push('\n');
             output.push_str(&format!(
-                "\x1b[36;1mPosition: {}\x1b[0m \x1b[32;1m▼\x1b[0m",
-                current_pos
+                "{} {}",
+                c::colored(c::BOLD_CYAN, &format!("Position: {current_pos}")),
+                c::colored(c::BOLD_GREEN, "▼")
             ));
         }
 

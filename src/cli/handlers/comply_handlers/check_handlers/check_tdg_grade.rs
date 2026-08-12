@@ -152,11 +152,11 @@ fn rebuild_index(project_path: &Path) -> bool {
     // scan costs. Fall back to a full build only when no prior index loads.
     let rebuilt = match AgentContextIndex::load(&index_path) {
         Ok(prev) => {
-            eprintln!("  \u{1f504} CB-200: context index stale \u{2014} updating changed files (incremental)\u{2026}");
+            crate::status_eprintln!("  \u{1f504} CB-200: context index stale \u{2014} updating changed files (incremental)\u{2026}");
             AgentContextIndex::build_incremental(project_path, &prev)
         }
         Err(_) => {
-            eprintln!("  \u{1f504} CB-200: no prior index \u{2014} building context index (one-time)\u{2026}");
+            crate::status_eprintln!("  \u{1f504} CB-200: no prior index \u{2014} building context index (one-time)\u{2026}");
             AgentContextIndex::build(project_path)
         }
     };
@@ -170,7 +170,7 @@ fn rebuild_index(project_path: &Path) -> bool {
     };
     match index.save(&index_path) {
         Ok(()) => {
-            eprintln!(
+            crate::status_eprintln!(
                 "  \u{2705} CB-200: index ready ({} functions, {:.1}s)",
                 index.stats().total_functions,
                 start.elapsed().as_secs_f64()

@@ -106,12 +106,12 @@ pub async fn handle_cleanup_resources(
 
     let has_all = parsed_targets.contains(&CleanupTarget::All);
 
-    println!("🧹 PMAT Resource Cleanup");
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("📁 Scanning: {}", project_dir.display());
-    println!("🎯 Targets: {:?}", targets);
-    println!("⚡ Mode: {}", if execute { "EXECUTE" } else { "DRY-RUN" });
-    println!();
+    crate::status_println!("🧹 PMAT Resource Cleanup");
+    crate::status_println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    crate::status_println!("📁 Scanning: {}", project_dir.display());
+    crate::status_println!("🎯 Targets: {:?}", targets);
+    crate::status_println!("⚡ Mode: {}", if execute { "EXECUTE" } else { "DRY-RUN" });
+    crate::status_println!();
 
     let mut result = CleanupResult::default();
 
@@ -152,8 +152,8 @@ fn scan_targets(
 
 fn finalize_cleanup(execute: bool, result: &mut CleanupResult) -> Result<()> {
     if execute && !result.candidates.is_empty() {
-        println!();
-        println!("🔥 Executing cleanup...");
+        crate::status_println!();
+        crate::status_println!("🔥 Executing cleanup...");
         execute_cleanup(result)?;
         println!();
         println!(

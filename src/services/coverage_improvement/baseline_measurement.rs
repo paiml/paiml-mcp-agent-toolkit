@@ -99,11 +99,11 @@ impl CoverageImprovementService {
 
     /// Measure baseline coverage using cargo-llvm-cov
     async fn measure_baseline_coverage(&self) -> Result<f64> {
-        eprintln!("📊 Running coverage analysis...");
+        crate::status_eprintln!("📊 Running coverage analysis...");
 
         // Find directory containing Makefile (search current and parent directories)
         let makefile_dir = self.find_makefile_directory()?;
-        eprintln!("  📁 Running from: {}", makefile_dir.display());
+        crate::status_eprintln!("  📁 Running from: {}", makefile_dir.display());
 
         // Run make coverage
         let output = Command::new("make")
@@ -183,7 +183,7 @@ impl CoverageImprovementService {
                         .parse::<f64>()
                         .context(format!("Failed to parse percentage: {}", pct_str))?;
 
-                    eprintln!("✅ Baseline coverage: {:.2}%", coverage);
+                    crate::status_eprintln!("✅ Baseline coverage: {:.2}%", coverage);
                     return Ok(coverage);
                 }
             }
@@ -197,7 +197,7 @@ impl CoverageImprovementService {
     /// Re-runs coverage analysis and calculates the delta from the previous coverage.
     /// Handles edge cases like coverage decrease (negative gain) and no change (zero gain).
     async fn measure_coverage_gain(&self, previous_coverage: f64) -> Result<f64> {
-        eprintln!("📊 Measuring coverage gain...");
+        crate::status_eprintln!("📊 Measuring coverage gain...");
 
         // Measure current coverage after test generation
         let new_coverage = self.measure_baseline_coverage().await?;
@@ -207,11 +207,11 @@ impl CoverageImprovementService {
 
         // Log the gain
         if gain > 0.0 {
-            eprintln!("✅ Coverage increased by {:.2}%", gain);
+            crate::status_eprintln!("✅ Coverage increased by {:.2}%", gain);
         } else if gain < 0.0 {
             eprintln!("⚠️  Coverage decreased by {:.2}% (regression)", gain.abs());
         } else {
-            eprintln!("ℹ️  No coverage change");
+            crate::status_eprintln!("ℹ️  No coverage change");
         }
 
         Ok(gain)

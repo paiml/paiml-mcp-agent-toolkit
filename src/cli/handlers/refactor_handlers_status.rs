@@ -9,7 +9,7 @@ pub async fn handle_refactor_status(
     checkpoint: PathBuf,
     format: RefactorOutputFormat,
 ) -> anyhow::Result<()> {
-    println!("📊 Reading refactor status from: {}", checkpoint.display());
+    crate::status_println!("📊 Reading refactor status from: {}", checkpoint.display());
 
     // Delegate file validation to extracted function
     validate_checkpoint_file(checkpoint.as_path())?;

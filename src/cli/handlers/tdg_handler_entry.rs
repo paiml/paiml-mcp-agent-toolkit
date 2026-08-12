@@ -71,12 +71,12 @@ pub async fn handle_analyze_tdg(
     watch: bool,
 ) -> Result<()> {
     if watch {
-        eprintln!("⏱️  Watch mode: Monitoring for file changes...");
-        eprintln!("Press Ctrl+C to stop watching");
+        crate::status_eprintln!("⏱️  Watch mode: Monitoring for file changes...");
+        crate::status_eprintln!("Press Ctrl+C to stop watching");
         // Watch mode continues with regular analysis
     }
 
-    eprintln!("🔍 Analyzing Technical Debt Gradient...");
+    crate::status_eprintln!("🔍 Analyzing Technical Debt Gradient...");
 
     // Create TDG calculator
     let calculator = TDGCalculator::new();
@@ -93,7 +93,8 @@ pub async fn handle_analyze_tdg(
             include_components,
             critical_only,
             verbose,
-        ).await?
+        )
+        .await?
     } else if !files.is_empty() {
         // Multiple files mode (MCP tool composition)
         analyze_multiple_files(
@@ -106,7 +107,8 @@ pub async fn handle_analyze_tdg(
             include_components,
             critical_only,
             verbose,
-        ).await?
+        )
+        .await?
     } else {
         // Project mode
         analyze_project(
@@ -119,17 +121,18 @@ pub async fn handle_analyze_tdg(
             include_components,
             critical_only,
             verbose,
-        ).await?
+        )
+        .await?
     };
 
     // Output results
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_content).await?;
-        eprintln!("📝 Results written to {}", output_path.display());
+        crate::status_eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{}", output_content);
     }
 
-    eprintln!("✅ TDG analysis complete");
+    crate::status_eprintln!("✅ TDG analysis complete");
     Ok(())
 }

@@ -196,7 +196,7 @@ fn run_multi_language_dead_code(
     };
     use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
 
-    eprintln!("🌐 Using multi-language analyzer for {language}");
+    crate::status_eprintln!("🌐 Using multi-language analyzer for {language}");
 
     let ml_result = analyze_dead_code_multi_language(path)?;
 
@@ -414,11 +414,10 @@ fn convert_cargo_files_to_metrics(
                 // Same estimator as the project total (5 lines per fn/method,
                 // 3 per struct/enum, 2 otherwise). It used to be
                 // `dead_items.len() * 4`, which disagreed with the summary.
-                dead_lines:
-                    crate::services::cargo_dead_code_analyzer::estimated_dead_lines_bounded(
-                        &file.dead_items,
-                        file.total_lines,
-                    ),
+                dead_lines: crate::services::cargo_dead_code_analyzer::estimated_dead_lines_bounded(
+                    &file.dead_items,
+                    file.total_lines,
+                ),
                 // MEASURED (was the literal `100` for every file, which
                 // contradicted the dead_percentage printed beside it: a
                 // 370-line file reported dead_lines 24 / total_lines 100 and

@@ -76,11 +76,22 @@ fn write_graphml_footer(graphml: &mut String) -> Result<()> {
 /// Write `GraphML` to file - EXTRACTED FUNCTION
 /// Complexity: 4 (A+ standard)
 fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
-    if let Some(path) = output {
-        let graphml_path = path.with_extension("graphml");
-        std::fs::write(&graphml_path, graphml)?;
-        eprintln!("✅ GraphML exported to: {}", graphml_path.display());
-    }
+    // `--export-graphml` with no `-o` used to build the whole document and then
+    // drop it: exit 0, output byte-identical to a run without the flag, and no
+    // file anywhere on disk. An export that exports nothing must not report
+    // success. The wording matches the `-f graph-ml` refusal a few lines below,
+    // which already documents the contract.
+    let Some(path) = output else {
+        anyhow::bail!(
+            "--export-graphml needs a destination: pass `-o <PATH>` (GraphML is written to \
+             <PATH>.graphml). There is no stdout form — the metrics document is already on \
+             stdout."
+        );
+    };
+
+    let graphml_path = path.with_extension("graphml");
+    std::fs::write(&graphml_path, graphml)?;
+    crate::status_eprintln!("✅ GraphML exported to: {}", graphml_path.display());
     Ok(())
 }
 
@@ -207,7 +218,13 @@ fn write_gm_rankings(output: &mut String, result: &GraphMetricsResult) -> Result
 fn write_gm_human_header(output: &mut String) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "{}{}Graph Metrics Analysis{}\n", c::BOLD, c::UNDERLINE, c::RESET)?;
+    writeln!(
+        output,
+        "{}{}Graph Metrics Analysis{}\n",
+        c::BOLD,
+        c::UNDERLINE,
+        c::RESET
+    )?;
     writeln!(output, "{}Graph Statistics{}", c::BOLD, c::RESET)?;
     Ok(())
 }
@@ -216,15 +233,59 @@ fn write_gm_human_header(output: &mut String) -> Result<()> {
 fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "  {}Total nodes:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.total_nodes, c::RESET)?;
-    writeln!(output, "  {}Total edges:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.total_edges, c::RESET)?;
-    writeln!(output, "  {}Density:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.density, c::RESET)?;
-    writeln!(output, "  {}Average degree:{} {}{:.2}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.average_degree, c::RESET)?;
-    writeln!(output, "  {}Max degree:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.max_degree, c::RESET)?;
+    writeln!(
+        output,
+        "  {}Total nodes:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.total_nodes,
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "  {}Total edges:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.total_edges,
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "  {}Density:{} {}{:.3}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.density,
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "  {}Average degree:{} {}{:.2}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.average_degree,
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "  {}Max degree:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.max_degree,
+        c::RESET
+    )?;
     writeln!(
         output,
         "  {}Connected components:{} {}{}{}",
-        c::BOLD, c::RESET, c::BOLD_WHITE, result.connected_components, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        result.connected_components,
+        c::RESET
     )?;
     Ok(())
 }
@@ -250,15 +311,41 @@ fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) 
     writeln!(
         output,
         "     {}Degree:{} {}{:.3}{} (in: {}, out: {})",
-        c::BOLD, c::RESET, c::BOLD_WHITE, node.degree_centrality, c::RESET, node.in_degree, node.out_degree
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        node.degree_centrality,
+        c::RESET,
+        node.in_degree,
+        node.out_degree
     )?;
     writeln!(
         output,
         "     {}Betweenness:{} {}{:.3}{}",
-        c::BOLD, c::RESET, c::BOLD_WHITE, node.betweenness_centrality, c::RESET
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        node.betweenness_centrality,
+        c::RESET
     )?;
-    writeln!(output, "     {}Closeness:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, node.closeness_centrality, c::RESET)?;
-    writeln!(output, "     {}PageRank:{} {}{:.3}{}", c::BOLD, c::RESET, c::BOLD_WHITE, node.pagerank, c::RESET)?;
+    writeln!(
+        output,
+        "     {}Closeness:{} {}{:.3}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        node.closeness_centrality,
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "     {}PageRank:{} {}{:.3}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        node.pagerank,
+        c::RESET
+    )?;
     writeln!(output)?;
     Ok(())
 }

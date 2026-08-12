@@ -4,7 +4,6 @@
 //! This module provides security validation for WebAssembly modules.
 
 use super::types::Severity;
-use crate::models::unified_ast::AstDag;
 use anyhow::Result;
 
 /// Security validation result
@@ -88,20 +87,146 @@ impl WasmSecurityValidator {
         })
     }
 
-    /// Validate AST for security issues
+    /// Validate WebAssembly *text* (`.wat`) or `AssemblyScript` source.
+    ///
+    /// # Why this replaced `validate_ast`
+    ///
+    /// `--security` used to reach exactly one function,
+    /// `validate_ast(&self, _ast: &AstDag) -> Result<()> { Ok(()) }`: a
+    /// constant that ignored its argument and could never return `Err`, so the
+    /// `if let Err(e) = …` in both WASM handlers was dead for every possible
+    /// input and `--security` was byte-identical to no flag. The argument was
+    /// empty anyway — `WatParser::parse` and `AssemblyScriptParser::parse_file`
+    /// both `Ok(AstDag::new())` and add no nodes — so no implementation over
+    /// that DAG could ever have seen anything. The check now runs over the text
+    /// the parsers were handed.
+    ///
+    /// # What it reports
+    ///
+    /// Every issue names a construct present in `content`, with the 1-based
+    /// line it appears on. Nothing is inferred or estimated:
+    ///
+    /// * `(memory N)` with no maximum — linear memory that can grow without
+    ///   bound (`ResourceExhaustion`).
+    /// * `(memory N …)` with `N` above [`MAX_SAFE_INITIAL_PAGES`] — a module
+    ///   reserving more than 64 MiB before it runs (`ResourceExhaustion`).
+    /// * `changetype<` — `AssemblyScript`'s unchecked pointer reinterpretation
+    ///   (`MemorySafety`).
+    /// * `load<`/`store<` — raw linear-memory access that bypasses
+    ///   `AssemblyScript`'s bounds checks (`MemorySafety`).
+    /// * `memory.grow` — runtime growth of linear memory
+    ///   (`ResourceExhaustion`).
+    ///
+    /// `passed == true` means these rules found nothing, which is not the same
+    /// claim as "this module is safe"; callers must not report it as one.
+    ///
+    /// # Errors
+    ///
+    /// Never returns `Err`; the `Result` matches [`Self::validate`] so callers
+    /// treat both inputs the same way.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub fn validate_ast(&self, _ast: &AstDag) -> Result<()> {
-        // Basic security validation
-        Ok(())
+    pub fn validate_text(&self, content: &str) -> Result<SecurityValidation> {
+        let mut issues = Vec::new();
+
+        for (index, line) in content.lines().enumerate() {
+            let line_no = index + 1;
+            Self::check_memory_declaration(line, line_no, &mut issues);
+            Self::check_unsafe_constructs(line, line_no, &mut issues);
+        }
+
+        Ok(SecurityValidation {
+            passed: issues.is_empty(),
+            issues,
+        })
     }
 
-    /// Validate text content for security issues
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub fn validate_text(&self, _content: &str) -> Result<()> {
-        // Basic security validation
-        Ok(())
+    /// `(memory …)` limits on one line: unbounded growth and oversized reservations.
+    fn check_memory_declaration(line: &str, line_no: usize, issues: &mut Vec<SecurityIssue>) {
+        let Some(start) = line.find("(memory") else {
+            return;
+        };
+
+        // Numeric tokens inside the declaration are its limits: `min [max]`.
+        let rest = &line[start + "(memory".len()..];
+        let decl = rest.split(')').next().unwrap_or(rest);
+        let limits: Vec<u64> = decl
+            .split_whitespace()
+            .filter_map(|token| {
+                token
+                    .trim_matches(|c: char| !c.is_ascii_digit())
+                    .parse()
+                    .ok()
+            })
+            .collect();
+
+        let Some(&min) = limits.first() else {
+            return;
+        };
+
+        if limits.len() == 1 {
+            issues.push(SecurityIssue {
+                severity: Severity::Medium,
+                description: format!(
+                    "line {line_no}: linear memory declared with initial {min} page(s) and no \
+                     maximum — the module can grow memory without bound"
+                ),
+                category: SecurityCategory::ResourceExhaustion,
+            });
+        }
+
+        if min > MAX_SAFE_INITIAL_PAGES {
+            issues.push(SecurityIssue {
+                severity: Severity::High,
+                description: format!(
+                    "line {line_no}: linear memory reserves {min} pages \
+                     ({} MiB) before the module runs",
+                    min / 16
+                ),
+                category: SecurityCategory::ResourceExhaustion,
+            });
+        }
+    }
+
+    /// `AssemblyScript` escape hatches out of the checked memory model.
+    fn check_unsafe_constructs(line: &str, line_no: usize, issues: &mut Vec<SecurityIssue>) {
+        const MEMORY_SAFETY: &[(&str, &str)] = &[
+            (
+                "changetype<",
+                "changetype<> reinterprets a value as another type without a check",
+            ),
+            (
+                "load<",
+                "load<T>() reads linear memory directly, bypassing bounds checks",
+            ),
+            (
+                "store<",
+                "store<T>() writes linear memory directly, bypassing bounds checks",
+            ),
+        ];
+
+        for (needle, why) in MEMORY_SAFETY {
+            if line.contains(needle) {
+                issues.push(SecurityIssue {
+                    severity: Severity::Medium,
+                    description: format!("line {line_no}: {why}"),
+                    category: SecurityCategory::MemorySafety,
+                });
+            }
+        }
+
+        if line.contains("memory.grow") {
+            issues.push(SecurityIssue {
+                severity: Severity::Low,
+                description: format!("line {line_no}: memory.grow grows linear memory at runtime"),
+                category: SecurityCategory::ResourceExhaustion,
+            });
+        }
     }
 }
+
+/// Initial linear-memory pages a module may reserve before it is called
+/// oversized: 1024 pages x 64 KiB = 64 MiB.
+pub const MAX_SAFE_INITIAL_PAGES: u64 = 1024;
 
 impl Default for WasmSecurityValidator {
     fn default() -> Self {
@@ -160,19 +285,70 @@ mod tests {
         assert!(result.issues[0].description.contains("magic number"));
     }
 
+    /// A module with no memory and no unsafe construct has nothing to report.
     #[test]
-    fn test_validate_ast() {
+    fn test_validate_text_clean_module() {
         let validator = WasmSecurityValidator::new();
-        let dag = AstDag::new();
-        let result = validator.validate_ast(&dag);
-        assert!(result.is_ok());
+        let result = validator.validate_text("(module)").unwrap();
+        assert!(result.passed);
+        assert!(result.issues.is_empty());
+    }
+
+    /// The old `validate_ast`/`validate_text` pair returned `Ok(())` for every
+    /// input, so `--security` could not report anything at all. These inputs
+    /// are exactly the ones a WASM security check exists for.
+    #[test]
+    fn test_validate_text_flags_unbounded_memory() {
+        let validator = WasmSecurityValidator::new();
+        let result = validator.validate_text("(module\n  (memory 1))").unwrap();
+
+        assert!(!result.passed, "unbounded memory must be reported");
+        assert_eq!(result.issues.len(), 1);
+        assert_eq!(
+            result.issues[0].category,
+            SecurityCategory::ResourceExhaustion
+        );
+        assert!(
+            result.issues[0].description.contains("line 2"),
+            "issues name the line they were found on: {}",
+            result.issues[0].description
+        );
     }
 
     #[test]
-    fn test_validate_text() {
+    fn test_validate_text_bounded_memory_is_clean() {
         let validator = WasmSecurityValidator::new();
-        let result = validator.validate_text("(module)");
-        assert!(result.is_ok());
+        let result = validator.validate_text("(module (memory 1 4))").unwrap();
+        assert!(
+            result.passed,
+            "a maximum bounds the growth: {:?}",
+            result.issues
+        );
+    }
+
+    #[test]
+    fn test_validate_text_flags_oversized_initial_memory() {
+        let validator = WasmSecurityValidator::new();
+        let result = validator
+            .validate_text("(module (memory 4096 8192))")
+            .unwrap();
+
+        assert!(!result.passed);
+        assert!(result
+            .issues
+            .iter()
+            .any(|issue| issue.severity == Severity::High
+                && issue.category == SecurityCategory::ResourceExhaustion));
+    }
+
+    #[test]
+    fn test_validate_text_flags_assemblyscript_escape_hatches() {
+        let validator = WasmSecurityValidator::new();
+        let source = "export function f(p: usize): i32 {\n  return load<i32>(p);\n}\n";
+        let result = validator.validate_text(source).unwrap();
+
+        assert!(!result.passed, "raw load<T>() must be reported");
+        assert_eq!(result.issues[0].category, SecurityCategory::MemorySafety);
     }
 
     #[test]

@@ -1,8 +1,19 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
+//! The project-level TDG table.
+//!
+//! Colour comes from [`crate::cli::colors`] and nowhere else. This renderer
+//! used to build every row as a plain `String`, so `analyze tdg --format table
+//! --color always` was byte-identical to `--color never` while its twin
+//! (`pmat tdg <path> --format table`, `cli/handlers/tdg_handlers/formatting.rs`)
+//! painted the same score and grade through `c::number` / `c::grade`. Two
+//! renderers of one report disagreeing about whether `--color` exists is the
+//! same defect as two renderers disagreeing about the number: the flag is not
+//! the authority, `cli::colors` is.
 use std::fmt::Write;
 
 use super::super::ProjectScore;
 use super::boxdraw::{box_blank, box_bottom, box_row, box_separator, box_top};
+use crate::cli::colors as c;
 
 /// Format project-level TDG score.
 ///
@@ -31,26 +42,39 @@ pub fn format_project(project: &ProjectScore) -> String {
     };
 
     line(box_top());
-    line(box_row("Project TDG Score Report"));
+    line(box_row(&c::header("Project TDG Score Report")));
     line(box_separator());
     // GH #704: 0 analysed files used to print "Average Score: 0.0/100 (F)"
     // right above "Total Files: 0" — a struct default rendered as a
     // measurement. Nothing analysed, nothing claimed.
     line(box_row(
         &match (project.average_score, project.average_grade) {
-            (Some(score), Some(grade)) => format!("Average Score: {score:.1}/100 ({grade})"),
-            _ => "Average Score: not measured (no files analysed)".to_string(),
+            (Some(score), Some(grade)) => {
+                let grade = grade.to_string();
+                format!(
+                    "Average Score: {}/100 ({})",
+                    c::number(&format!("{score:.1}")),
+                    c::grade(&grade)
+                )
+            }
+            _ => c::dim("Average Score: not measured (no files analysed)"),
         },
     ));
-    line(box_row(&format!("Total Files: {}", project.total_files)));
+    line(box_row(&format!(
+        "Total Files: {}",
+        c::number(&project.total_files.to_string())
+    )));
     // A file that was walked but refused must be disclosed HERE, next to the
     // average it is missing from: the warning went to stderr only, so
     // `analyze tdg` on a crate whose only Rust file fails to parse printed
     // "Average Score: 100.0/100 (A+)" over the one file that survived.
     if !project.ungraded_files.is_empty() {
-        line(box_row(&format!(
-            "Not Graded: {} file(s) walked, not measured",
-            project.ungraded_files.len()
+        line(box_row(&c::colored(
+            c::YELLOW,
+            &format!(
+                "Not Graded: {} file(s) walked, not measured",
+                project.ungraded_files.len()
+            ),
         )));
     }
     // The #279 waiver used to be disclosed only by `check-quality --format
@@ -62,8 +86,9 @@ pub fn format_project(project: &ProjectScore) -> String {
         .filter(|f| f.critical_defects_suppressed.is_some())
         .count();
     if waived > 0 {
-        line(box_row(&format!(
-            "Waived (#279): {waived} file(s) with critical defects"
+        line(box_row(&c::colored(
+            c::YELLOW,
+            &format!("Waived (#279): {waived} file(s) with critical defects"),
         )));
     }
     // A truncated list must say so next to the total it sits under, so the
@@ -78,31 +103,38 @@ pub fn format_project(project: &ProjectScore) -> String {
             .unwrap_or_default();
         line(box_row(&format!(
             "Files Listed: {} of {}{via}",
-            project.files_reported, project.total_files
+            c::number(&project.files_reported.to_string()),
+            c::number(&project.total_files.to_string())
         )));
     }
     line(box_blank());
 
-    line(box_row("Language Distribution:"));
+    line(box_row(&c::label("Language Distribution:")));
     // Distributions come from the whole analysed set, never from the possibly
     // truncated `files` vector.
     for (language, count) in &project.language_distribution {
         let percentage = percent_of(*count, project.total_files);
+        // Pad before colouring — see the note on the grade rows below.
         line(box_row(&format!(
-            "├─ {:12}: {:3} files ({:4.1}%)",
+            "├─ {:12}: {} files ({percentage:4.1}%)",
             language.to_string(),
-            count,
-            percentage
+            c::number(&format!("{count:3}")),
         )));
     }
 
     line(box_blank());
 
-    line(box_row("Grade Distribution:"));
+    line(box_row(&c::label("Grade Distribution:")));
     for (grade, count) in &project.grade_distribution {
         let percentage = percent_of(*count, project.total_files);
+        // Pad BEFORE colouring: `{:3}` counts bytes, and an escape sequence is
+        // zero columns wide but many bytes long, so colouring first silently
+        // eats the column alignment.
+        let grade_text = grade.to_string();
         line(box_row(&format!(
-            "├─ {grade}: {count:3} files ({percentage:4.1}%)"
+            "├─ {}: {} files ({percentage:4.1}%)",
+            c::grade(&grade_text),
+            c::number(&format!("{count:3}"))
         )));
     }
 
@@ -117,5 +149,111 @@ fn percent_of(count: usize, total: usize) -> f32 {
         0.0
     } else {
         (count as f32 / total as f32) * 100.0
+    }
+}
+
+#[cfg(test)]
+mod color_census_tests {
+    //! `--color` must move something on every human TDG renderer.
+    //!
+    //! The `--color` rule has been "fixed" four times in this release and kept
+    //! coming back, because every test written for it asserted only that output
+    //! is PLAIN when colour is off. A renderer that has no colour at all passes
+    //! that assertion, which is exactly how `analyze tdg --format table` shipped
+    //! with `--color always` byte-identical to `--color never` while its twin
+    //! (`pmat tdg <path> --format table`) painted the same score and grade.
+    //!
+    //! [`crate::cli::colors::assert_honours_color`] asserts BOTH halves: at
+    //! least one escape when colour is on, none when it is off. The first half
+    //! is the one that fails on an inert flag.
+    use super::*;
+    use crate::cli::colors::assert_honours_color;
+    use crate::tdg::language_simple::Language;
+    use crate::tdg::{Grade, ProjectScore, TdgScore};
+    use std::collections::BTreeMap;
+
+    fn project() -> ProjectScore {
+        ProjectScore {
+            average_score: Some(90.9),
+            average_grade: Some(Grade::A),
+            not_measured: Vec::new(),
+            total_files: 7,
+            files: Vec::new(),
+            language_distribution: BTreeMap::from([(Language::Rust, 7)]),
+            grade_distribution: BTreeMap::from([(Grade::A, 5), (Grade::F, 2)]),
+            ..ProjectScore::aggregate(Vec::new())
+        }
+    }
+
+    /// `analyze tdg --format table` — the reported defect.
+    #[test]
+    fn project_table_honours_color() {
+        assert_honours_color("tdg::formatters::format_project", || {
+            format_project(&project())
+        });
+    }
+
+    /// The same renderer with nothing measured still has a frame and a sentence
+    /// to paint, and must not start emitting escapes with colour off.
+    #[test]
+    fn empty_project_table_honours_color() {
+        assert_honours_color("tdg::formatters::format_project (empty)", || {
+            format_project(&ProjectScore::aggregate(Vec::new()))
+        });
+    }
+
+    /// `analyze tdg <file>` goes to `format_human`, the twin renderer in this
+    /// module. Fixing one surface of a contradiction and not the other is how
+    /// this defect keeps reappearing.
+    #[test]
+    fn file_report_honours_color() {
+        assert_honours_color("tdg::formatters::format_human", || {
+            super::super::format_human(&TdgScore {
+                total: 85.5,
+                grade: Grade::AMinus,
+                language: Language::Rust,
+                confidence: 1.0,
+                file_path: Some(std::path::PathBuf::from("src/test.rs")),
+                ..TdgScore::default()
+            })
+        });
+    }
+
+    /// Colour must be invisible to a reader of the numbers: with colour off the
+    /// table is byte-identical to what it printed before any of this, so the
+    /// existing assertions in `formatters/tests.rs` still describe it.
+    #[test]
+    fn plain_table_still_reads_as_before() {
+        let _guard = crate::cli::colors::ForcedColor::off();
+        let rendered = format_project(&project());
+        assert!(
+            rendered.contains("Average Score: 90.9/100 (A)"),
+            "plain table must be unchanged, got:\n{rendered}"
+        );
+        assert!(rendered.contains("Total Files: 7"), "got:\n{rendered}");
+    }
+
+    /// An escape is zero columns wide but many bytes long, so a renderer that
+    /// pads after colouring loses its alignment only when colour is ON — the
+    /// state no test could reach before `ForcedColor` existed.
+    #[test]
+    fn colored_table_stays_rectangular() {
+        let _guard = crate::cli::colors::ForcedColor::on();
+        let rendered = format_project(&project());
+        let widths: Vec<usize> = rendered
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(crate::tdg::formatters::boxdraw::visible_width)
+            .collect();
+        assert!(!widths.is_empty(), "nothing rendered");
+        for (i, w) in widths.iter().enumerate() {
+            assert_eq!(
+                *w,
+                widths[0],
+                "coloured line {i} is {w} cols wide, frame is {} — {:?}",
+                widths[0],
+                rendered.lines().nth(i)
+            );
+        }
     }
 }

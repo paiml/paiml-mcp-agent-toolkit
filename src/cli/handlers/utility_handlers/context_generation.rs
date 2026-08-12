@@ -121,23 +121,27 @@ fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Re
     if let Some(t) = toolchain {
         Ok(t)
     } else {
-        // Print without newline for in-place update
-        eprint!("🔍 Auto-detecting project language...");
-        io::stderr().flush().ok();
+        // Print without newline for in-place update. `eprint!` has no status
+        // macro (a partial line is not a statement), so it takes the same one
+        // quiet check the macros use rather than growing a second mechanism.
+        if !crate::cli::progress::quiet_mode_enabled() {
+            eprint!("🔍 Auto-detecting project language...");
+            io::stderr().flush().ok();
+        }
 
         // First try with confidence
         if let Some((lang, confidence)) =
             super::super::detect_primary_language_with_confidence(project_path)
         {
             // Clear line and print result (\r = carriage return, \x1b[K = clear to end of line)
-            eprintln!("\r\x1b[K✅ Detected: {lang} (confidence: {confidence:.1}%)");
+            crate::status_eprintln!("\r\x1b[K✅ Detected: {lang} (confidence: {confidence:.1}%)");
             return Ok(lang);
         }
 
         // Fall back to simple detection
         if let Some(lang) = super::super::detect_primary_language(project_path) {
             // Clear line and print result
-            eprintln!("\r\x1b[K✅ Detected: {lang}");
+            crate::status_eprintln!("\r\x1b[K✅ Detected: {lang}");
             return Ok(lang);
         }
 

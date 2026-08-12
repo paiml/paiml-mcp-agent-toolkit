@@ -68,7 +68,7 @@ async fn check_for_critical_defects(path: &Path, fail_on_critical: bool) -> Resu
     let mut critical_defects_found = false;
     let mut critical_count = 0;
 
-    eprintln!("🔍 Checking for critical defects...");
+    crate::status_eprintln!("🔍 Checking for critical defects...");
 
     // Scan Rust files in the project. Gitignore-aware: the bare `WalkDir`
     // this replaces also descended into gitignored trees — on this repo the
@@ -154,7 +154,7 @@ async fn check_for_critical_defects(path: &Path, fail_on_critical: bool) -> Resu
         anyhow::bail!("TDG auto-fail: Critical defects detected")
     }
 
-    eprintln!("✅ No critical defects found");
+    crate::status_eprintln!("✅ No critical defects found");
     Ok(())
 }
 
@@ -173,7 +173,7 @@ pub async fn handle_analyze_tdg_gated(config: TdgAnalysisConfig) -> Result<()> {
 }
 
 async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) -> Result<()> {
-    eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
+    crate::status_eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
     let analyzer = TdgAnalyzer::new()?;
     let threshold = config.threshold;
@@ -236,7 +236,7 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
     // (`analyze build-tdg`) command's job only — see #705.
     check_for_critical_defects(&config.path, enforce_threshold).await?;
 
-    eprintln!("✅ TDG analysis complete");
+    crate::status_eprintln!("✅ TDG analysis complete");
 
     if enforce_threshold {
         enforce_tdg_threshold(measured_score, threshold.unwrap_or(2.0))?;
@@ -542,7 +542,7 @@ fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) ->
 async fn write_or_print_result(result: &str, output_path: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, result).await?;
-        eprintln!("📝 Results written to {}", output_path.display());
+        crate::status_eprintln!("📝 Results written to {}", output_path.display());
     } else {
         println!("{result}");
     }
@@ -556,14 +556,14 @@ pub async fn handle_tdg_compare(
     format: TdgOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    eprintln!("🔍 Starting TDG comparison...");
+    crate::status_eprintln!("🔍 Starting TDG comparison...");
 
     let analyzer = TdgAnalyzer::new()?;
     let comparison = analyzer.compare(&path1, &path2).await?;
     let result = format_comparison_result(&comparison, &format)?;
 
     write_or_print_result(&result, output).await?;
-    eprintln!("✅ TDG comparison complete");
+    crate::status_eprintln!("✅ TDG comparison complete");
     Ok(())
 }
 

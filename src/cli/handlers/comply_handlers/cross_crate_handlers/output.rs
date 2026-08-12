@@ -5,17 +5,30 @@
 use super::types::{CcSeverity, CrossCrateFinding, CrossCrateReport};
 use std::collections::HashMap;
 
+/// Text report for `pmat comply cross-crate`.
+///
+/// Every escape here used to be a raw `"\x1b[1m"` literal, so the report wrote
+/// ANSI into a redirected file and under `--color never` alike. The helpers in
+/// [`crate::cli::colors`] consult `colors_enabled()`, which is what `--color`
+/// actually moves.
 pub(super) fn format_text(report: &CrossCrateReport) -> String {
+    use crate::cli::colors as c;
     let mut out = String::new();
 
-    out.push_str("\n\x1b[1mCross-Crate Duplication Report\x1b[0m\n");
+    out.push_str(&format!(
+        "\n{}\n",
+        c::subheader("Cross-Crate Duplication Report")
+    ));
     out.push_str(&format!(
         "Crates analyzed: {}\n\n",
         report.crates_analyzed.join(", ")
     ));
 
     if report.findings.is_empty() {
-        out.push_str("\x1b[32mNo cross-crate duplication findings.\x1b[0m\n");
+        out.push_str(&format!(
+            "{}\n",
+            c::colored(c::GREEN, "No cross-crate duplication findings.")
+        ));
         return out;
     }
 
@@ -30,12 +43,12 @@ pub(super) fn format_text(report: &CrossCrateReport) -> String {
     for rule in &rule_order {
         if let Some(rule_findings) = by_rule.get(rule) {
             let icon = match *rule {
-                "CC-001" => "\x1b[31m[CC-001 Clone]\x1b[0m",
-                "CC-002" => "\x1b[33m[CC-002 Diverge]\x1b[0m",
-                "CC-003" => "\x1b[33m[CC-003 Upstream]\x1b[0m",
-                "CC-004" => "\x1b[36m[CC-004 Churn]\x1b[0m",
-                "CC-005" => "\x1b[36m[CC-005 Example]\x1b[0m",
-                _ => rule,
+                "CC-001" => c::colored(c::RED, "[CC-001 Clone]"),
+                "CC-002" => c::colored(c::YELLOW, "[CC-002 Diverge]"),
+                "CC-003" => c::colored(c::YELLOW, "[CC-003 Upstream]"),
+                "CC-004" => c::colored(c::CYAN, "[CC-004 Churn]"),
+                "CC-005" => c::colored(c::CYAN, "[CC-005 Example]"),
+                other => (*other).to_string(),
             };
 
             out.push_str(&format!("{} ({} findings)\n", icon, rule_findings.len()));
@@ -46,9 +59,9 @@ pub(super) fn format_text(report: &CrossCrateReport) -> String {
                     .map(|s| format!(" ({:.0}%)", s * 100.0))
                     .unwrap_or_default();
                 let severity_icon = match f.severity {
-                    CcSeverity::Error => "\x1b[31m✗\x1b[0m",
-                    CcSeverity::Warning => "\x1b[33m⚠\x1b[0m",
-                    CcSeverity::Advisory => "\x1b[36mℹ\x1b[0m",
+                    CcSeverity::Error => c::colored(c::RED, "✗"),
+                    CcSeverity::Warning => c::colored(c::YELLOW, "⚠"),
+                    CcSeverity::Advisory => c::colored(c::CYAN, "ℹ"),
                 };
                 out.push_str(&format!(
                     "  {} {}/{}::{} ↔ {}/{}::{}{}\n",
@@ -73,7 +86,8 @@ pub(super) fn format_text(report: &CrossCrateReport) -> String {
 
     // Summary
     out.push_str(&format!(
-        "\x1b[1mSummary:\x1b[0m {} findings ({} errors, {} warnings, {} advisories)\n",
+        "{} {} findings ({} errors, {} warnings, {} advisories)\n",
+        c::label("Summary:"),
         report.summary.total_findings,
         report.summary.errors,
         report.summary.warnings,
@@ -253,6 +267,43 @@ mod cross_crate_output_tests {
         let out = format_markdown(&r);
         // None similarity → "—" placeholder.
         assert!(out.contains("—"));
+    }
+
+    /// `comply cross-crate --format text` built its report from raw
+    /// `"\x1b[1m"` literals, so a redirected file and `--color never` both
+    /// received them. Both directions are asserted: a printer that never
+    /// colours passes a plain-output check just as happily as a correct one.
+    #[test]
+    fn text_report_honours_color_in_both_directions() {
+        let mut r = empty_report(vec!["pmat", "trueno"]);
+        r.findings.push(finding(
+            "CC-001",
+            CcSeverity::Error,
+            "pmat",
+            "trueno",
+            Some(0.98),
+        ));
+        r.findings.push(finding(
+            "CC-004",
+            CcSeverity::Advisory,
+            "pmat",
+            "trueno",
+            None,
+        ));
+        r.summary.total_findings = 2;
+        r.summary.errors = 1;
+        r.summary.advisories = 1;
+
+        crate::cli::colors::assert_honours_color("comply cross-crate --format text", || {
+            format_text(&r)
+        });
+
+        // Not vacuous: the report body survives with colour off.
+        let _off = crate::cli::colors::ForcedColor::off();
+        let plain = format_text(&r);
+        assert!(plain.contains("Cross-Crate Duplication Report"), "{plain}");
+        assert!(plain.contains("[CC-001 Clone]"), "{plain}");
+        assert!(plain.contains("Summary: 2 findings"), "{plain}");
     }
 
     #[test]

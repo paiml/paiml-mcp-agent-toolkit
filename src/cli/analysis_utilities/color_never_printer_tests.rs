@@ -187,6 +187,140 @@ fn complexity_summary_is_plain_with_colour_off() {
     assert_plain("format_complexity_summary", &rendered);
 }
 
+// ── the other half: printers that honoured `--color` in NEITHER direction ───
+//
+// `assert_plain` above is one-sided. A printer with no colour at all satisfies
+// it, which is how `pmat quality-gate` (aliases `check`/`c`/`gate`) shipped
+// producing byte-identical output for `--color always`, `--color never` and
+// `--color auto` on a pty — 0 escape bytes in all three, the flag inert. The
+// assertions below use `assert_honours_color`, which fails BOTH a printer that
+// leaks with colour off and a printer that emits nothing with colour on.
+
+fn qg_results(passed: bool) -> super::QualityGateResults {
+    super::QualityGateResults {
+        passed,
+        total_violations: 2,
+        blocking_violations: if passed { 0 } else { 1 },
+        satd_violations: 1,
+        provability_violations: 1,
+        ..Default::default()
+    }
+}
+
+fn qg_violations() -> Vec<super::QualityViolation> {
+    vec![
+        super::QualityViolation {
+            check_type: "satd".to_string(),
+            severity: "error".to_string(),
+            file: "./src/lib.rs".to_string(),
+            line: Some(1),
+            message: "Requirement: TODO: this is technical debt".to_string(),
+            details: None,
+        },
+        super::QualityViolation {
+            check_type: "provability".to_string(),
+            severity: "info".to_string(),
+            file: ".".to_string(),
+            line: None,
+            message: "Provability score 0.60 is below minimum 0.70".to_string(),
+            details: None,
+        },
+    ]
+}
+
+/// `pmat quality-gate` with no `--format` — the shape every dogfood run hits.
+#[test]
+fn quality_gate_summary_honours_color() {
+    let results = qg_results(false);
+    let violations = qg_violations();
+    c::assert_honours_color("quality-gate --format summary", || {
+        super::format_quality_gate_output(
+            &results,
+            &violations,
+            crate::cli::QualityGateOutputFormat::Summary,
+        )
+        .expect("summary")
+    });
+
+    // Guard against a vacuous pass: with colour off the report is unchanged,
+    // byte for byte, from what it printed before it learned about `--color`.
+    let _off = c::ForcedColor::off();
+    let plain = super::format_quality_gate_output(
+        &results,
+        &violations,
+        crate::cli::QualityGateOutputFormat::Summary,
+    )
+    .expect("summary");
+    assert!(plain.contains("Quality Gate: FAILED"), "{plain}");
+    assert!(plain.contains("Total violations: 2"), "{plain}");
+    assert!(plain.contains("Blocking violations: 1"), "{plain}");
+    assert!(plain.contains("## satd (1 violations)"), "{plain}");
+    assert!(plain.contains("  - ./src/lib.rs:1 - "), "{plain}");
+}
+
+/// The PASSED half: the verdict word is the thing colour is carrying, so a
+/// green PASSED must be as reachable as a red FAILED.
+#[test]
+fn quality_gate_summary_colours_a_passing_verdict_too() {
+    let results = qg_results(true);
+    c::assert_honours_color("quality-gate --format summary (passing)", || {
+        super::format_quality_gate_output(
+            &results,
+            &[],
+            crate::cli::QualityGateOutputFormat::Summary,
+        )
+        .expect("summary")
+    });
+}
+
+#[test]
+fn quality_gate_human_honours_color() {
+    let results = qg_results(false);
+    let violations = qg_violations();
+    c::assert_honours_color("quality-gate --format human", || {
+        super::format_quality_gate_output(
+            &results,
+            &violations,
+            crate::cli::QualityGateOutputFormat::Human,
+        )
+        .expect("human")
+    });
+}
+
+#[test]
+fn quality_gate_detailed_honours_color() {
+    let results = qg_results(false);
+    let violations = qg_violations();
+    c::assert_honours_color("quality-gate --format detailed", || {
+        super::format_quality_gate_output(
+            &results,
+            &violations,
+            crate::cli::QualityGateOutputFormat::Detailed,
+        )
+        .expect("detailed")
+    });
+}
+
+/// The machine formats must NOT learn about colour: an escape inside a JSON
+/// string or a JUnit attribute is a parse failure, not a decoration. `markdown`
+/// is a document format for the same reason.
+#[test]
+fn quality_gate_machine_formats_stay_plain_even_with_color_on() {
+    use crate::cli::QualityGateOutputFormat as F;
+    let results = qg_results(false);
+    let violations = qg_violations();
+    let _on = c::ForcedColor::on();
+    for format in [F::Json, F::Junit, F::Markdown] {
+        let name = format!("{format:?}");
+        let rendered = super::format_quality_gate_output(&results, &violations, format)
+            .expect("machine format");
+        assert!(
+            !rendered.contains(ESC),
+            "{name} must never carry ANSI, even under --color always: {rendered:?}"
+        );
+    }
+}
+
 /// The gate itself, stated once: with colour off, no `Sgr` renders bytes. This
 /// is what makes the per-printer assertions above hold for printers nobody has
 /// written a test for yet.

@@ -140,7 +140,7 @@ fn violation_score(v: &QualityViolation) -> f64 {
 /// like different operations in the first place.
 macro_rules! phase {
     ($label:expr, $call:expr) => {{
-        eprintln!("  {} {}...", c::dim(">>"), $label);
+        $crate::status_eprintln!("  {} {}...", c::dim(">>"), $label);
         $call.await?
     }};
 }

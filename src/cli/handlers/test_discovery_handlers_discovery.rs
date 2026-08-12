@@ -5,8 +5,8 @@ async fn handle_discovery_run(
     use_nextest: bool,
     timeout: u64,
 ) -> Result<()> {
-    println!("🔍 Discovering test failures in {}", project_path.display());
-    println!(
+    crate::status_println!("🔍 Discovering test failures in {}", project_path.display());
+    crate::status_println!(
         "   Using: {}",
         if use_nextest {
             "cargo nextest"
@@ -14,8 +14,8 @@ async fn handle_discovery_run(
             "cargo test"
         }
     );
-    println!("   Timeout: {}s", timeout);
-    println!();
+    crate::status_println!("   Timeout: {}s", timeout);
+    crate::status_println!();
 
     // Build the command
     // cargo test --format json requires nightly; nextest uses --message-format libtest-json (experimental).
@@ -38,7 +38,7 @@ async fn handle_discovery_run(
     };
 
     // Run the command and capture output
-    println!("📊 Running tests (this may take a while)...");
+    crate::status_println!("📊 Running tests (this may take a while)...");
     let output = cmd
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -49,7 +49,7 @@ async fn handle_discovery_run(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    println!("\n📈 Parsing test results...");
+    crate::status_println!("\n📈 Parsing test results...");
     let failures = parse_test_output(&stdout, &stderr)?;
 
     // Create discovery report (check both stdout and stderr for summary lines)
@@ -399,7 +399,11 @@ fn extract_number_before(s: &str, suffix: &str) -> Option<usize> {
     let idx = s.find(suffix)?;
     let before = &s[..idx];
     // Walk backwards to find the start of the number
-    let num_str: String = before.chars().rev().take_while(|c| c.is_ascii_digit()).collect();
+    let num_str: String = before
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
     let num_str: String = num_str.chars().rev().collect();
     num_str.parse().ok()
 }
@@ -448,7 +452,9 @@ mod runner_status_tests {
     fn has_test_summary_line_needs_a_real_summary() {
         assert!(!has_test_summary_line(""));
         assert!(!has_test_summary_line("error: could not compile `foo`"));
-        assert!(has_test_summary_line("   test result: ok. 3 passed; 0 failed"));
+        assert!(has_test_summary_line(
+            "   test result: ok. 3 passed; 0 failed"
+        ));
         assert!(has_test_summary_line(
             "Summary [   0.1s] 3 tests run: 3 passed, 0 failed, 0 skipped"
         ));

@@ -202,7 +202,11 @@ pub(super) fn load_all_crate_functions(
                     Ok(mut index) => {
                         index.load_all_source();
                         let functions: Vec<FunctionEntry> = index.all_functions().to_vec();
-                        eprintln!("  {} — {} functions loaded", ci.name, functions.len());
+                        crate::status_eprintln!(
+                            "  {} — {} functions loaded",
+                            ci.name,
+                            functions.len()
+                        );
                         Some((ci, functions))
                     }
                     Err(e) => {

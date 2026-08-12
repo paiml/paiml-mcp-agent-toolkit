@@ -11,7 +11,7 @@ async fn analyze_single_file(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📄 Analyzing TDG for file: {}", file.display());
+    crate::status_eprintln!("📄 Analyzing TDG for file: {}", file.display());
 
     // Resolve path
     let full_path = if file.is_absolute() {
@@ -51,11 +51,19 @@ async fn analyze_multiple_files(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📄 Analyzing TDG for {} files...", files.len());
+    crate::status_eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let mut results = Vec::new();
     for file_path in files {
-        if let Some(result) = analyze_single_file(calculator, project_path, file_path, threshold, critical_only).await {
+        if let Some(result) = analyze_single_file(
+            calculator,
+            project_path,
+            file_path,
+            threshold,
+            critical_only,
+        )
+        .await
+        {
             results.push(result);
         }
     }
@@ -99,7 +107,11 @@ async fn analyze_single_file(
     }
 }
 
-fn should_include_score(score: &crate::models::tdg::TDGScore, threshold: f64, critical_only: bool) -> bool {
+fn should_include_score(
+    score: &crate::models::tdg::TDGScore,
+    threshold: f64,
+    critical_only: bool,
+) -> bool {
     if critical_only && score.value <= 2.5 {
         return false;
     }
@@ -118,13 +130,14 @@ async fn analyze_project(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
 
     // Analyze directory
     let mut summary = calculator.analyze_directory(project_path).await?;
 
     // Filter hotspots based on criteria
-    summary.hotspots = summary.hotspots
+    summary.hotspots = summary
+        .hotspots
         .into_iter()
         .filter(|h| {
             if critical_only {
@@ -143,8 +156,14 @@ async fn analyze_project(
 /// Create a summary from individual file results
 fn create_summary_from_file_results(results: &[(TDGScore, PathBuf)]) -> TDGSummary {
     let total_files = results.len();
-    let critical_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Critical)).count();
-    let warning_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Warning)).count();
+    let critical_files = results
+        .iter()
+        .filter(|(s, _)| matches!(s.severity, TDGSeverity::Critical))
+        .count();
+    let warning_files = results
+        .iter()
+        .filter(|(s, _)| matches!(s.severity, TDGSeverity::Warning))
+        .count();
 
     let tdg_values: Vec<f64> = results.iter().map(|(s, _)| s.value).collect();
     let average_tdg = if tdg_values.is_empty() {

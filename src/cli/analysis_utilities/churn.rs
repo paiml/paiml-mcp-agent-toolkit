@@ -10,13 +10,13 @@ pub async fn handle_analyze_churn(
 ) -> Result<()> {
     use crate::services::git_analysis::GitAnalysisService;
 
-    eprintln!("📊 Analyzing code churn for the last {days} days...");
+    crate::status_eprintln!("📊 Analyzing code churn for the last {days} days...");
 
     // Analyze code churn
     let mut analysis = GitAnalysisService::analyze_code_churn(&project_path, days)
         .map_err(|e| anyhow::anyhow!("Churn analysis failed: {e}"))?;
 
-    eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
+    crate::status_eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
 
     // Apply filtering and sorting to analysis results
     apply_churn_file_filtering(&mut analysis, top_files);
@@ -454,7 +454,7 @@ pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -
 pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Churn analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Churn analysis written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

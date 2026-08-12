@@ -12,7 +12,7 @@ impl CoverageImprovementService {
     ///
     /// Returns top N files sorted by score (highest priority first).
     async fn prioritize_targets(&self) -> Result<Vec<PathBuf>> {
-        eprintln!("🎯 Prioritizing files for test generation...");
+        crate::status_eprintln!("🎯 Prioritizing files for test generation...");
 
         // Run PMAT analyze commands in parallel
         let complexity_fut = self.run_pmat_analyze("complexity");
@@ -82,12 +82,12 @@ impl CoverageImprovementService {
             .into_iter()
             .take(top_n)
             .map(|(path, score)| {
-                eprintln!("  📄 {} (score: {:.2})", path.display(), score);
+                crate::status_eprintln!("  📄 {} (score: {:.2})", path.display(), score);
                 path
             })
             .collect();
 
-        eprintln!("✅ Prioritized {} files", targets.len());
+        crate::status_eprintln!("✅ Prioritized {} files", targets.len());
 
         Ok(targets)
     }

@@ -66,10 +66,10 @@ pub async fn handle_analyze_defect_prediction(
 /// Format predictions as summary
 /// Toyota Way: Extract Method - Print analysis header information
 fn print_analysis_header(project_path: &Path, confidence_threshold: f32, high_risk_only: bool) {
-    eprintln!("🔮 Analyzing defect probability using ML-based analysis...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🎯 Confidence threshold: {confidence_threshold}");
-    eprintln!("📊 High risk only: {high_risk_only}");
+    crate::status_eprintln!("🔮 Analyzing defect probability using ML-based analysis...");
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("🎯 Confidence threshold: {confidence_threshold}");
+    crate::status_eprintln!("📊 High risk only: {high_risk_only}");
 }
 
 /// Toyota Way: Extract Method - Create configuration object
@@ -100,7 +100,7 @@ async fn discover_and_validate_files(
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(std::path::PathBuf, String, usize)>> {
     let files = discover_files_for_defect_analysis(project_path, config).await?;
-    eprintln!("📂 Found {} files matching criteria", files.len());
+    crate::status_eprintln!("📂 Found {} files matching criteria", files.len());
 
     if files.is_empty() {
         eprintln!("⚠️  No files found matching the criteria");

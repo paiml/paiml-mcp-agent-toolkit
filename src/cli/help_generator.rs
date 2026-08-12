@@ -24,10 +24,12 @@
 //! - Specification: docs/specifications/unified-cli-mcp-help-integration.md
 //! - GitHub Issue: #118
 
+// `std::io::IsTerminal` was imported for a private `--color auto` that ignored
+// `--color never`/`--color always`; `crate::cli::colors::colors_enabled()` owns
+// that decision now, is_terminal fallback included.
 use crate::cli::registry::{
     ArgumentMetadata, CommandMetadata, CommandRegistry, ExecutionTime, ValueType,
 };
-use std::io::IsTerminal;
 
 /// Generates formatted help text from CommandRegistry.
 pub struct HelpGenerator {

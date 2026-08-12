@@ -1,5 +1,6 @@
 /// Route MLOps model analysis (PMAT-500)
 pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
+    use crate::cli::colors as c;
     use cli::AnalyzeCommands;
 
     if let AnalyzeCommands::Models {
@@ -90,17 +91,13 @@ pub(super) async fn route_model_analysis(cmd: AnalyzeCommands) -> Result<()> {
             // success on it.
             violations.splice(0..0, unreadable_model_violations(&entries));
             if violations.is_empty() {
-                println!("\u{2705} All model files pass quality checks");
+                println!(
+                    "\u{2705} {}",
+                    c::colored(c::GREEN, "All model files pass quality checks")
+                );
             } else {
                 for v in &violations {
-                    let icon = match v.severity {
-                        crate::cli::handlers::comply_cb_detect::Severity::Error => "\u{274c}",
-                        crate::cli::handlers::comply_cb_detect::Severity::Warning => {
-                            "\u{26a0}\u{fe0f}"
-                        }
-                        _ => "\u{2139}\u{fe0f}",
-                    };
-                    println!("{} {}: {} ({})", icon, v.pattern_id, v.description, v.file);
+                    println!("{}", format_model_violation_line(v));
                 }
             }
         }
@@ -236,6 +233,7 @@ fn render_model_inventory_markdown(entries: &[ModelInventoryEntry], total_size: 
 }
 
 fn render_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) -> String {
+    use crate::cli::colors as c;
     use std::fmt::Write;
     let mut out = String::new();
     let has_lfs = entries.iter().any(|e| e.lfs_tracked);
@@ -246,23 +244,38 @@ fn render_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64
         .map(|e| e.file.as_str())
         .collect();
 
+    let rule = c::dim(&"\u{2500}".repeat(width));
+
     let _ = writeln!(
         out,
-        "Model Inventory ({} files, {} total)",
-        entries.len(),
-        format_size(total_size)
+        "{}",
+        c::header(&format!(
+            "Model Inventory ({} files, {} total)",
+            entries.len(),
+            format_size(total_size)
+        ))
     );
-    let _ = writeln!(out, "{}", "\u{2500}".repeat(width));
+    let _ = writeln!(out, "{rule}");
+    // Every cell is padded BEFORE it is coloured. `{:<40}` counts bytes, and an
+    // ANSI sequence is zero columns wide but many bytes long, so colouring
+    // first would silently collapse the column alignment.
     if has_lfs {
         let _ = writeln!(
             out,
-            "{:<40} {:<12} {:>12} {:>6}",
-            "File", "Format", "Size", "LFS"
+            "{}",
+            c::label(&format!(
+                "{:<40} {:<12} {:>12} {:>6}",
+                "File", "Format", "Size", "LFS"
+            ))
         );
     } else {
-        let _ = writeln!(out, "{:<40} {:<12} {:>12}", "File", "Format", "Size");
+        let _ = writeln!(
+            out,
+            "{}",
+            c::label(&format!("{:<40} {:<12} {:>12}", "File", "Format", "Size"))
+        );
     }
-    let _ = writeln!(out, "{}", "\u{2500}".repeat(width));
+    let _ = writeln!(out, "{rule}");
     for entry in entries {
         let display_file = if entry.file.len() > 38 {
             format!("...{}", &entry.file[entry.file.len() - 35..])
@@ -276,37 +289,65 @@ fn render_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64
         } else {
             format!("{} (?)", entry.format)
         };
-        if has_lfs {
-            let _ = writeln!(
-                out,
-                "{:<40} {:<12} {:>12} {:>6}",
-                display_file,
-                format_cell,
-                format_size(entry.size_bytes),
-                if entry.lfs_tracked { "Yes" } else { "-" }
-            );
+        let file_cell = c::path(&format!("{display_file:<40}"));
+        // The `(?)` marker is the one cell that reports a MISMATCH; it is red
+        // for the same reason it exists at all.
+        let format_cell = if entry.header_valid {
+            format!("{format_cell:<12}")
         } else {
-            let _ = writeln!(
-                out,
-                "{:<40} {:<12} {:>12}",
-                display_file,
-                format_cell,
-                format_size(entry.size_bytes)
-            );
+            c::colored(c::RED, &format!("{format_cell:<12}"))
+        };
+        let size_cell = c::number(&format!("{:>12}", format_size(entry.size_bytes)));
+        if has_lfs {
+            let lfs = if entry.lfs_tracked { "Yes" } else { "-" };
+            let _ = writeln!(out, "{file_cell} {format_cell} {size_cell} {lfs:>6}");
+        } else {
+            let _ = writeln!(out, "{file_cell} {format_cell} {size_cell}");
         }
     }
-    let _ = write!(out, "{}", "\u{2500}".repeat(width));
+    let _ = write!(out, "{rule}");
     if !invalid.is_empty() {
         let _ = write!(
             out,
-            "\n\u{26a0}\u{fe0f}  {} of {} file(s) marked (?) are NOT readable as the format their \
-             extension declares: {}",
-            invalid.len(),
-            entries.len(),
-            invalid.join(", ")
+            "\n{}",
+            c::colored(
+                c::YELLOW,
+                &format!(
+                    "\u{26a0}\u{fe0f}  {} of {} file(s) marked (?) are NOT readable as the \
+                     format their extension declares: {}",
+                    invalid.len(),
+                    entries.len(),
+                    invalid.join(", ")
+                )
+            )
         );
     }
     out
+}
+
+/// One `<icon> <pattern>: <description> (<file>)` line for a model violation.
+///
+/// The icon is chosen from the severity that was already computed and then
+/// painted in that severity's colour; before this the severity picked an emoji
+/// and nothing else, so `analyze models --check --color always` was
+/// byte-identical to `--color never`.
+fn format_model_violation_line(
+    violation: &crate::cli::handlers::comply_cb_detect::CbPatternViolation,
+) -> String {
+    use crate::cli::colors as c;
+    use crate::cli::handlers::comply_cb_detect::Severity;
+    let (icon, colour) = match violation.severity {
+        Severity::Critical | Severity::Error => ("\u{274c}", c::RED),
+        Severity::Warning => ("\u{26a0}\u{fe0f}", c::YELLOW),
+        Severity::Info => ("\u{2139}\u{fe0f}", c::CYAN),
+    };
+    format!(
+        "{} {}: {} ({})",
+        c::colored(colour, icon),
+        c::label(&violation.pattern_id),
+        violation.description,
+        c::path(&violation.file)
+    )
 }
 
 /// The human sentence emitted when a project contains no model files.
@@ -412,17 +453,19 @@ fn unreadable_model_violations(
     entries
         .iter()
         .filter(|e| !e.header_valid)
-        .map(|e| crate::cli::handlers::comply_cb_detect::CbPatternViolation {
-            pattern_id: "CB-1003".to_string(),
-            file: e.file.clone(),
-            line: 0,
-            description: format!(
+        .map(
+            |e| crate::cli::handlers::comply_cb_detect::CbPatternViolation {
+                pattern_id: "CB-1003".to_string(),
+                file: e.file.clone(),
+                line: 0,
+                description: format!(
                 "File is not readable as {}: its extension declares that format but the header \
                  does not parse (truncated, empty or wrong format)",
                 e.format
             ),
-            severity: crate::cli::handlers::comply_cb_detect::Severity::Error,
-        })
+                severity: crate::cli::handlers::comply_cb_detect::Severity::Error,
+            },
+        )
         .collect()
 }
 
@@ -521,8 +564,7 @@ mod model_helper_tests {
     /// asking for CSV got prose it could not parse and no error to notice.
     #[test]
     fn test_csv_format_emits_csv_not_the_human_table() {
-        let out =
-            render_model_inventory(&model_entries(), 4296, cli::OutputFormat::Csv).unwrap();
+        let out = render_model_inventory(&model_entries(), 4296, cli::OutputFormat::Csv).unwrap();
 
         assert!(
             !out.contains('\u{2500}'),
@@ -549,7 +591,10 @@ mod model_helper_tests {
         let out =
             render_model_inventory(&model_entries(), 4296, cli::OutputFormat::Markdown).unwrap();
         assert!(out.starts_with("# Model Inventory"), "{out}");
-        assert!(out.contains("| File | Format | Size | LFS | Header valid |"), "{out}");
+        assert!(
+            out.contains("| File | Format | Size | LFS | Header valid |"),
+            "{out}"
+        );
         assert!(out.contains("`models/small.gguf`"), "{out}");
         assert!(!out.contains('\u{2500}'), "{out}");
     }
@@ -563,7 +608,10 @@ mod model_helper_tests {
                 .expect_err(&format!("--format {format} must be refused"));
             let msg = err.to_string();
             assert!(msg.contains(&format.to_string()), "{msg}");
-            assert!(msg.contains("json"), "the error names what does work: {msg}");
+            assert!(
+                msg.contains("json"),
+                "the error names what does work: {msg}"
+            );
         }
     }
 
@@ -795,5 +843,130 @@ mod model_helper_tests {
         let patterns = detect_lfs_patterns(tmp.path());
         assert_eq!(patterns.len(), 1);
         assert_eq!(patterns[0], "models/*.safetensors");
+    }
+}
+
+#[cfg(test)]
+mod model_color_tests {
+    // `analyze models --color` must move something.
+    //
+    // The inventory table, the `(?)` invalid-header marker, the "NOT readable"
+    // warning and the three severity tiers under `--check` were all assembled
+    // as plain strings, so `--color always` and `--color never` produced the
+    // same md5 (a8c4b0db59da). The severity was already computed — it picked an
+    // emoji and nothing else.
+    use super::*;
+    use crate::cli::colors::{assert_honours_color, ForcedColor};
+    use crate::cli::handlers::comply_cb_detect::{CbPatternViolation, Severity};
+
+    fn entries() -> Vec<ModelInventoryEntry> {
+        vec![
+            ModelInventoryEntry {
+                file: "models/small.gguf".to_string(),
+                format: "GGUF".to_string(),
+                size_bytes: 200,
+                lfs_tracked: false,
+                header_valid: false,
+            },
+            ModelInventoryEntry {
+                file: "models/big.safetensors".to_string(),
+                format: "SafeTensors".to_string(),
+                size_bytes: 4096,
+                lfs_tracked: true,
+                header_valid: true,
+            },
+        ]
+    }
+
+    #[test]
+    fn inventory_table_honours_color() {
+        assert_honours_color("render_model_inventory_table", || {
+            render_model_inventory_table(&entries(), 4296)
+        });
+    }
+
+    /// Every severity tier, not just the one the fixture happened to produce.
+    #[test]
+    fn violation_lines_honour_color() {
+        for severity in [
+            Severity::Info,
+            Severity::Warning,
+            Severity::Error,
+            Severity::Critical,
+        ] {
+            assert_honours_color(
+                &format!("format_model_violation_line({severity:?})"),
+                || {
+                    format_model_violation_line(&CbPatternViolation {
+                        pattern_id: "CB-1001".to_string(),
+                        file: "models/small.gguf".to_string(),
+                        line: 0,
+                        description: "header does not match extension".to_string(),
+                        severity,
+                    })
+                },
+            );
+        }
+    }
+
+    /// The machine documents are not terminal surfaces: an escape inside them
+    /// would not parse. They must stay plain even with colour forced on.
+    #[test]
+    fn machine_formats_stay_plain_even_with_color_on() {
+        let _guard = ForcedColor::on();
+        for format in [
+            cli::OutputFormat::Json,
+            cli::OutputFormat::Csv,
+            cli::OutputFormat::Markdown,
+        ] {
+            let rendered = render_model_inventory(&entries(), 4296, format).unwrap();
+            assert!(
+                !rendered.contains('\u{1b}'),
+                "--format {format} must never carry ANSI, got: {rendered:?}"
+            );
+        }
+        // And the JSON one still parses.
+        let json = render_model_inventory(&entries(), 4296, cli::OutputFormat::Json).unwrap();
+        serde_json::from_str::<serde_json::Value>(&json).expect("json must parse");
+    }
+
+    /// Colour is zero columns wide but many bytes long. The table's columns are
+    /// padded before they are painted, so every row keeps its width with colour
+    /// ON — the state no test could reach before `ForcedColor` existed.
+    #[test]
+    fn colored_table_keeps_its_columns() {
+        let plain = {
+            let _guard = ForcedColor::off();
+            render_model_inventory_table(&entries(), 4296)
+        };
+        let colored = {
+            let _guard = ForcedColor::on();
+            render_model_inventory_table(&entries(), 4296)
+        };
+        let visible = |s: &str| -> Vec<usize> {
+            s.lines()
+                .map(|l| {
+                    let mut w = 0usize;
+                    let mut chars = l.chars();
+                    while let Some(ch) = chars.next() {
+                        if ch == '\u{1b}' {
+                            for e in chars.by_ref() {
+                                if e.is_ascii_alphabetic() {
+                                    break;
+                                }
+                            }
+                            continue;
+                        }
+                        w += 1;
+                    }
+                    w
+                })
+                .collect()
+        };
+        assert_eq!(
+            visible(&plain),
+            visible(&colored),
+            "colour changed the visible column widths:\nplain:\n{plain}\ncoloured:\n{colored}"
+        );
     }
 }

@@ -87,8 +87,6 @@ pub(crate) fn normalize(s: &str) -> String {
             // Temp dirs, which carry a fresh random component per corpus build
             (r(r"/tmp/[A-Za-z0-9._\-]+"), "<TMP>"),
             (r(r"\.tmp[A-Za-z0-9]+"), "<TMP>"),
-            // Git object ids
-            (r(r"\b[0-9a-f]{7,40}\b"), "<SHA>"),
             // Progress spinners / carriage-return redraws
             (r(r"[\r\u{8}]+"), "\n"),
             // Memory and throughput readouts
@@ -102,7 +100,38 @@ pub(crate) fn normalize(s: &str) -> String {
     for (re, rep) in rules {
         out = re.replace_all(&out, *rep).into_owned();
     }
-    out.trim_end().to_string()
+    normalize_object_ids(&out)
+}
+
+/// Replace git object ids, and *only* git object ids.
+///
+/// The plain rule `\b[0-9a-f]{7,40}\b` also matches the fractional digits of a
+/// decimal number: `"pagerank": 0.008631379960390049` normalised to
+/// `"pagerank": 0.<SHA>`, which erased the only observable difference
+/// `analyze graph-metrics --convergence-threshold` produces. The flag *did*
+/// change the numbers and the sweep still booked it a no-op — a normalisation
+/// rule that eats the measurement is the harness lying to itself.
+///
+/// Requiring at least one `a`-`f` character keeps every realistic object id
+/// (all-decimal short ids are ~4% of 7-char prefixes and are, in any case,
+/// stable within one corpus, so both sides of a comparison carry the same
+/// text) while no decimal fraction can ever match.
+fn normalize_object_ids(s: &str) -> String {
+    use std::sync::OnceLock;
+    static SHA: OnceLock<regex::Regex> = OnceLock::new();
+    let re = SHA.get_or_init(|| {
+        regex::Regex::new(r"\b[0-9a-f]{7,40}\b").expect("harness regex must compile")
+    });
+    re.replace_all(s, |c: &regex::Captures<'_>| {
+        let m = &c[0];
+        if m.bytes().any(|b| b.is_ascii_alphabetic()) {
+            "<SHA>".to_string()
+        } else {
+            m.to_string()
+        }
+    })
+    .trim_end()
+    .to_string()
 }
 
 /// Strip the ambient `cargo test` environment from a child process.
@@ -290,6 +319,9 @@ pub(crate) fn build_corpus(size: CorpusSize) -> tempfile::TempDir {
 
     write_repo_hygiene(root, size);
     git_init(root, size);
+    if size == CorpusSize::Large {
+        write_critical_risk_file(root);
+    }
     dir
 }
 
@@ -338,14 +370,20 @@ fn write_repo_hygiene(root: &Path, size: CorpusSize) {
         "edition = \"2021\"\nmax_width = 100\n",
     )
     .expect("write rustfmt.toml");
+    // `coverage` is not decoration: `analyze coverage-improve` shells out to
+    // `make coverage` and parses an llvm-cov `TOTAL` line out of it. Without
+    // the target it died with "No rule to make target 'coverage'" before any
+    // of its own flags were read, and all of them were booked as no-ops
+    // against a baseline that had already failed in an external tool.
     std::fs::write(
         root.join("Makefile"),
         "\
-.PHONY: build test lint
+.PHONY: build test lint coverage
 
 build:\n\tcargo build\n
 test:\n\tcargo test\n
-lint:\n\tcargo clippy -- -D warnings\n",
+lint:\n\tcargo clippy -- -D warnings\n
+coverage:\n\t@echo \"TOTAL                        1200    240    80.00%    300    60    80.00%\"\n",
     )
     .expect("write Makefile");
     std::fs::create_dir_all(root.join(".github/workflows")).expect("mkdir workflows");
@@ -397,10 +435,16 @@ fn write_large_corpus(root: &Path) {
     }
 
     // Self-admitted technical debt, in every marker dialect.
+    //
+    // Half of each file's debt is deliberately *not* a canonical marker.
+    // `analyze satd --strict` narrows the pattern set to the canonical markers,
+    // so a fixture carrying only TODO/FIXME/HACK/XXX gives strict mode nothing
+    // to narrow: strict and non-strict returned the identical 63 violations and
+    // the sweep booked the mode as a no-op.
     for i in 0..15 {
         let name = format!("satd_{i:02}");
         let body = format!(
-            "// TODO: replace the placeholder below with a real implementation\n// FIXME: this ignores the error path entirely\n// HACK: works only because callers pre-validate\n// XXX: revisit before release\n\n/// Returns a hardcoded answer.\npub fn lookup_{i:02}(_key: &str) -> u32 {{\n    // For now, we know the answer is always this.\n    {}\n}}\n",
+            "// TODO: replace the placeholder below with a real implementation\n// FIXME: this ignores the error path entirely\n// HACK: works only because callers pre-validate\n// XXX: revisit before release\n// this is a temporary workaround we should optimize later\n// technical debt lives here and nobody has paid it down\n// code smell in this module, kept only to avoid a rewrite\n\n/// Returns a hardcoded answer.\npub fn lookup_{i:02}(_key: &str) -> u32 {{\n    // For now, we know the answer is always this.\n    {}\n}}\n",
             i * 7
         );
         write_module(root, &name, &body, &mut modules);
@@ -433,7 +477,12 @@ fn write_large_corpus(root: &Path) {
         let name = format!("dead_{i:02}");
         let mut body =
             format!("fn never_called_{i:02}(x: usize) -> usize {{\n    let mut total = 0usize;\n");
-        for k in 0..14 {
+        // `i * 0` trips clippy's deny-by-default `erasing_op`, which made the
+        // whole corpus fail `cargo clippy` — so every pmat command that shells
+        // out to clippy returned Err before reading any of its own flags, and
+        // the sweep blamed the flags. Fixtures must be dirty in the ways the
+        // tool measures and clean in the ways its toolchain refuses to run.
+        for k in 1..15 {
             body.push_str(&format!(
                 "    for i in 0..x {{\n        total = total.wrapping_add(i * {k});\n    }}\n"
             ));
@@ -486,6 +535,27 @@ fn write_large_corpus(root: &Path) {
     awful.push_str("    acc\n}\n");
     write_module(root, "awful", &awful, &mut modules);
 
+    // A real dependency chain, for anything that walks edges.
+    //
+    // Every other family here is mutually independent, so the corpus graph was
+    // a pure star: `analyze dag --max-depth 1` and `--max-depth 50` rendered
+    // byte-identical output because there was no second hop to cut, and
+    // betweenness centrality was truthfully 0.0 for every node. A depth limit
+    // can only be falsified on a graph that has depth.
+    const CHAIN_LEN: usize = 6;
+    for i in 0..CHAIN_LEN {
+        let name = format!("chain_{i:02}");
+        let body = if i + 1 < CHAIN_LEN {
+            format!(
+                "use crate::chain_{next:02};\n\n/// Hop {i} of the dependency chain.\npub fn step_{i:02}(n: i64) -> i64 {{\n    chain_{next:02}::step_{next:02}(n) + 1\n}}\n",
+                next = i + 1
+            )
+        } else {
+            format!("/// Last hop of the dependency chain.\npub fn step_{i:02}(n: i64) -> i64 {{\n    n\n}}\n")
+        };
+        write_module(root, &name, &body, &mut modules);
+    }
+
     // A long function, for length-based checks.
     let mut long = String::from(
         "/// Deliberately long.\npub fn long_body() -> i64 {\n    let mut acc = 0i64;\n",
@@ -507,13 +577,188 @@ fn write_large_corpus(root: &Path) {
     )
     .expect("write lib.rs");
 
-    // A test file, so test-aware analyses have something to find.
+    // A test file, so test-aware analyses have something to find — carrying
+    // debt of its own, because a flag whose job is to *include test files*
+    // ("--include-tests") can only be observed when the test files contain
+    // something to include. With a clean test file it changed nothing, which
+    // reads exactly like a flag that is never read.
     std::fs::create_dir_all(root.join("tests")).expect("mkdir tests");
     std::fs::write(
         root.join("tests/basic.rs"),
-        "#[test]\nfn entry_is_ok() {\n    assert_eq!(corpus::dead_00::entry_00(), \"ok\");\n}\n",
+        "// TODO: this test only covers the happy path\n// FIXME: assert on the error branch too\n\n#[test]\nfn entry_is_ok() {\n    assert_eq!(corpus::dead_00::entry_00(), \"ok\");\n}\n",
     )
     .expect("write test");
+
+    write_wasm_fixtures(root);
+    write_assemblyscript_fixtures(root);
+    write_model_fixtures(root);
+}
+
+/// WebAssembly inputs, so `analyze web-assembly` has something to analyse.
+///
+/// Without these the command reports "Found 0 WebAssembly files" and every one
+/// of its eight flags compares equal for the only reason a fixture can produce:
+/// there was nothing on disk for any of them to act on. A no-op verdict drawn
+/// from an empty room says nothing about the flag.
+///
+/// `mod.wasm` is a hand-assembled module (type / import / function / memory /
+/// export / code sections) so the binary reader has real sections to report;
+/// `broken.wasm` carries deliberately wrong magic, which is the input the
+/// format validator exists to reject.
+fn write_wasm_fixtures(root: &Path) {
+    std::fs::write(
+        root.join("mod.wat"),
+        "(module\n  (func $t (result i32)\n    (local $i i32)\n    i32.const 42))\n",
+    )
+    .expect("write mod.wat");
+    std::fs::write(
+        root.join("two.wat"),
+        "(module (func $a) (func $b) (memory 1) (export \"a\" (func $a)))\n",
+    )
+    .expect("write two.wat");
+
+    // \0asm + version 1, then: type(1), import(2), function(3), memory(5),
+    // export(7), code(10) — one function returning i32 const 42.
+    #[rustfmt::skip]
+    const MOD_WASM: &[u8] = &[
+        0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+        0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+        0x02, 0x09, 0x01, 0x03, b'e', b'n', b'v', 0x01, b'f', 0x00, 0x00,
+        0x03, 0x02, 0x01, 0x00,
+        0x05, 0x03, 0x01, 0x00, 0x02,
+        0x07, 0x05, 0x01, 0x01, b'e', 0x00, 0x01,
+        0x0a, 0x06, 0x01, 0x04, 0x00, 0x41, 0x2a, 0x0b,
+    ];
+    std::fs::write(root.join("mod.wasm"), MOD_WASM).expect("write mod.wasm");
+
+    let mut broken = b"NOTWASM!".to_vec();
+    broken.resize(40, 0);
+    std::fs::write(root.join("broken.wasm"), &broken).expect("write broken.wasm");
+}
+
+/// AssemblyScript sources, so `analyze assembly-script` finds three files.
+///
+/// `assembly/mem.ts` uses `memory.grow`, which is the construct the
+/// memory-analysis flag claims to report on — the fixture must contain the
+/// thing a flag is documented to find, or its silence is the fixture's.
+fn write_assemblyscript_fixtures(root: &Path) {
+    let add = "export function add(a: i32, b: i32): i32 {\n  let s: i32 = 0;\n  for (let i: i32 = 0; i < a; i++) { s += b; }\n  return s;\n}\n";
+    std::fs::create_dir_all(root.join("assembly")).expect("mkdir assembly");
+    std::fs::write(root.join("assembly/index.ts"), add).expect("write index.ts");
+    std::fs::write(
+        root.join("assembly/mem.ts"),
+        "@inline\nexport function g(): f64 { memory.grow(1); return 1.0; }\n",
+    )
+    .expect("write mem.ts");
+    std::fs::write(root.join("extra.as"), add).expect("write extra.as");
+}
+
+/// Model files, so `analyze models` has an inventory to report.
+///
+/// On a corpus with none, the handler returns at "No model files found" before
+/// it ever reaches `--check`, so the flag was unreachable rather than inert.
+/// The set is chosen to trip three distinct validations: `garbage.gguf`
+/// declares GGUF in its extension and does not parse (unreadable header), the
+/// directory has model files and no model card, and it holds a GGUF with no
+/// tokenizer beside it.
+fn write_model_fixtures(root: &Path) {
+    let models = root.join("models");
+    std::fs::create_dir_all(&models).expect("mkdir models");
+
+    // GGUF: magic, u32 version, u64 tensor count, u64 metadata count.
+    let mut gguf = b"GGUF".to_vec();
+    gguf.extend_from_slice(&3u32.to_le_bytes());
+    gguf.extend_from_slice(&7u64.to_le_bytes());
+    gguf.extend_from_slice(&2u64.to_le_bytes());
+    gguf.resize(88, 0);
+    std::fs::write(models.join("tiny.gguf"), &gguf).expect("write tiny.gguf");
+
+    // APR: magic, u32 metadata length, then that many bytes of JSON.
+    let apr_meta = br#"{"tensors":[{"name":"w1"},{"name":"w2"}]}"#;
+    let mut apr = b"APR2".to_vec();
+    apr.extend_from_slice(&(apr_meta.len() as u32).to_le_bytes());
+    apr.extend_from_slice(apr_meta);
+    apr.resize(65, 0);
+    apr.extend_from_slice(&[0xde, 0xad, 0xbe, 0xef]);
+    std::fs::write(models.join("tiny.apr"), &apr).expect("write tiny.apr");
+
+    // safetensors: u64 header length, then that many bytes of JSON header.
+    let st_header = br#"{"w":{"dtype":"F32","shape":[2,2],"data_offsets":[0,16]}}"#;
+    let mut st = (st_header.len() as u64).to_le_bytes().to_vec();
+    st.extend_from_slice(st_header);
+    st.resize(st.len() + 16, 0);
+    std::fs::write(models.join("tiny.safetensors"), &st).expect("write tiny.safetensors");
+
+    let mut garbage = b"NOTAGGUFHEADER!!".to_vec();
+    garbage.resize(32, 0);
+    std::fs::write(models.join("garbage.gguf"), &garbage).expect("write garbage.gguf");
+}
+
+/// One file the defect predictor must rank Critical, left uncommitted.
+///
+/// `analyze comprehensive` only emits its "Focus on N high-risk files"
+/// recommendation when defect-prediction produces a High/Critical file, and
+/// that recommendation is the sole output `--confidence-threshold` and
+/// `--min-lines` filter. Without such a file both flags filtered an empty set
+/// at every value and the sweep called them decoration.
+///
+/// It is written *after* `git_init` on purpose: an uncommitted file has no
+/// churn history, which keeps the prediction's confidence below the top of the
+/// range so a confidence threshold has a boundary to move across. Its length is
+/// held just under 1000 lines for the same reason — `--min-lines` needs a value
+/// that admits it and one that does not.
+fn write_critical_risk_file(root: &Path) {
+    const IMPORTS: &[&str] = &[
+        "std::collections::HashMap",
+        "std::collections::HashSet",
+        "std::collections::BTreeMap",
+        "std::collections::BTreeSet",
+        "std::collections::VecDeque",
+        "std::collections::BinaryHeap",
+        "std::cell::RefCell",
+        "std::cmp::Ordering",
+        "std::env",
+        "std::ffi::OsString",
+        "std::fmt::Debug",
+        "std::fs::File",
+        "std::io::Read",
+        "std::io::Write",
+        "std::num::NonZeroUsize",
+        "std::ops::Range",
+        "std::path::Path",
+        "std::path::PathBuf",
+        "std::process::Command",
+        "std::rc::Rc",
+        "std::sync::Arc",
+        "std::sync::Mutex",
+        "std::sync::RwLock",
+        "std::time::Duration",
+        "std::time::Instant",
+    ];
+    let mut body =
+        String::from("//! Critical-risk fixture: long, branch-heavy and import-heavy.\n");
+    for i in IMPORTS {
+        body.push_str(&format!("#[allow(unused_imports)]\nuse {i};\n"));
+    }
+    body.push_str(
+        "\n// TODO: this module is the deliberate worst case\n// FIXME: nothing here is validated\n\n/// Pathological decision tree.\npub fn triage(a: i64, b: i64, c: i64, d: i64, mode: u8) -> i64 {\n    let mut acc = 0i64;\n",
+    );
+    for i in 0..100 {
+        body.push_str(&format!(
+            "    if a > {i} && mode != {i} {{\n        if b < {i} {{\n            acc += a * {i};\n        }} else if c > {i} {{\n            acc -= b;\n        }} else {{\n            acc ^= d;\n        }}\n    }}\n"
+        ));
+    }
+    body.push_str("    acc\n}\n");
+    // Pad to just under the 1000-line mark the --min-lines probe straddles.
+    let mut n = body.lines().count();
+    body.push_str("\n/// Padding so the file sits just under 1000 lines.\npub fn ballast() -> i64 {\n    let mut acc = 0i64;\n");
+    n += 4;
+    while n < 985 {
+        body.push_str(&format!("    acc += {n};\n"));
+        n += 1;
+    }
+    body.push_str("    acc\n}\n");
+    std::fs::write(root.join("src/critical.rs"), body).expect("write critical.rs");
 }
 
 fn write_module(root: &Path, name: &str, body: &str, modules: &mut Vec<String>) {
@@ -589,6 +834,13 @@ fn git_init(root: &Path, size: CorpusSize) {
     // `--template=` with an empty value stops the user's hook templates from
     // being copied in at all.
     git(&["init", "--quiet", "--template=", "--initial-branch", "main"]);
+    // ...and it also stops git creating `.git/hooks`, which several commands
+    // treat as the definition of "is this a git repository": `comply enforce`
+    // aborted with "Error: Not a git repository (no .git/hooks directory)" on
+    // every invocation, so its flags were compared against a command that
+    // never started. The empty template is right; the missing directory is a
+    // side effect to undo.
+    std::fs::create_dir_all(root.join(".git/hooks")).expect("mkdir .git/hooks");
     // git's date environment variables reject approxidate ("10 days ago" is a
     // `fatal: invalid date format`); the raw `@<epoch> <tz>` form is accepted.
     let now = std::time::SystemTime::now()
@@ -604,6 +856,14 @@ fn git_init(root: &Path, size: CorpusSize) {
     );
 
     if size == CorpusSize::Large {
+        // The second commit lands on a branch, leaving `main` behind it.
+        //
+        // Committing both revisions onto `main` left `main` == `HEAD`, so
+        // `analyze incremental-coverage` — which defaults to `--base-branch
+        // main` — analysed 0 changed files and every flag under it was
+        // compared against an empty result set. A limit cannot truncate a list
+        // that does not exist.
+        git(&["checkout", "--quiet", "-b", "feature"]);
         // A second, more recent commit touching a subset of files, so churn
         // has a distribution rather than a single flat point.
         for i in 0..8 {

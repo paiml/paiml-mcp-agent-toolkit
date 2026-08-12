@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn test_format_as_markdown_with_executive_summary() {
         let result = create_basic_result();
-        let markdown = format_as_markdown(&result, true).unwrap();
+        let markdown = format_as_markdown(&result, true, 10).unwrap();
         assert!(markdown.contains("# Comprehensive Code Analysis Report"));
         assert!(markdown.contains("## Executive Summary"));
         assert!(markdown.contains("**Quality Score**: 85.0%"));
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn test_format_as_markdown_without_executive_summary() {
         let result = create_basic_result();
-        let markdown = format_as_markdown(&result, false).unwrap();
+        let markdown = format_as_markdown(&result, false, 10).unwrap();
         assert!(markdown.contains("# Comprehensive Code Analysis Report"));
         assert!(!markdown.contains("## Executive Summary"));
     }
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn test_format_as_markdown_with_complexity() {
         let result = create_full_result();
-        let markdown = format_as_markdown(&result, false).unwrap();
+        let markdown = format_as_markdown(&result, false, 10).unwrap();
         assert!(markdown.contains("## Complexity Analysis"));
         assert!(markdown.contains("**Files Analyzed**: 5"));
         assert!(markdown.contains("**Max Complexity**: 35"));
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_format_as_markdown_with_dead_code() {
         let result = create_full_result();
-        let markdown = format_as_markdown(&result, false).unwrap();
+        let markdown = format_as_markdown(&result, false, 10).unwrap();
         assert!(markdown.contains("## Dead Code Analysis"));
         assert!(markdown.contains("**Dead Items**: 1"));
         assert!(markdown.contains("unused_function"));
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_format_as_markdown_with_satd() {
         let result = create_full_result();
-        let markdown = format_as_markdown(&result, false).unwrap();
+        let markdown = format_as_markdown(&result, false, 10).unwrap();
         assert!(markdown.contains("## Technical Debt (SATD) Analysis"));
         assert!(markdown.contains("**Violations**: 1"));
         assert!(markdown.contains("TODO"));
@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn test_format_result_json() {
         let result = create_basic_result();
-        let formatted = format_result(result, ComprehensiveOutputFormat::Json, false).unwrap();
+        let formatted = format_result(result, ComprehensiveOutputFormat::Json, false, 10).unwrap();
         assert!(formatted.contains("\"total_files\""));
         assert!(formatted.contains("\"quality_score\""));
     }
@@ -375,7 +375,8 @@ mod tests {
     #[test]
     fn test_format_result_markdown() {
         let result = create_basic_result();
-        let formatted = format_result(result, ComprehensiveOutputFormat::Markdown, true).unwrap();
+        let formatted =
+            format_result(result, ComprehensiveOutputFormat::Markdown, true, 10).unwrap();
         assert!(formatted.contains("# Comprehensive Code Analysis Report"));
         assert!(formatted.contains("## Executive Summary"));
     }
@@ -383,7 +384,7 @@ mod tests {
     #[test]
     fn test_format_result_sarif() {
         let result = create_basic_result();
-        let formatted = format_result(result, ComprehensiveOutputFormat::Sarif, false).unwrap();
+        let formatted = format_result(result, ComprehensiveOutputFormat::Sarif, false, 10).unwrap();
         assert!(formatted.contains("\"$schema\""));
         assert!(formatted.contains("sarif-2.1.0.json"));
     }
@@ -391,15 +392,17 @@ mod tests {
     #[test]
     fn test_format_result_summary() {
         let result = create_basic_result();
-        let formatted =
-            strip_ansi(&format_result(result, ComprehensiveOutputFormat::Summary, false).unwrap());
+        let formatted = strip_ansi(
+            &format_result(result, ComprehensiveOutputFormat::Summary, false, 10).unwrap(),
+        );
         assert!(formatted.contains("Executive Summary"));
     }
 
     #[test]
     fn test_format_result_detailed() {
         let result = create_basic_result();
-        let formatted = format_result(result, ComprehensiveOutputFormat::Detailed, true).unwrap();
+        let formatted =
+            format_result(result, ComprehensiveOutputFormat::Detailed, true, 10).unwrap();
         assert!(!formatted.contains("## Executive Summary"));
     }
 
@@ -471,6 +474,7 @@ mod tests {
             create_basic_result(),
             ComprehensiveOutputFormat::Json,
             false,
+            10,
         );
         assert!(json.is_ok());
 
@@ -478,6 +482,7 @@ mod tests {
             create_basic_result(),
             ComprehensiveOutputFormat::Markdown,
             true,
+            10,
         );
         assert!(md.is_ok());
 
@@ -485,6 +490,7 @@ mod tests {
             create_basic_result(),
             ComprehensiveOutputFormat::Sarif,
             false,
+            10,
         );
         assert!(sarif.is_ok());
 
@@ -492,6 +498,7 @@ mod tests {
             create_basic_result(),
             ComprehensiveOutputFormat::Summary,
             false,
+            10,
         );
         assert!(summary.is_ok());
 
@@ -499,6 +506,7 @@ mod tests {
             create_basic_result(),
             ComprehensiveOutputFormat::Detailed,
             true,
+            10,
         );
         assert!(detailed.is_ok());
     }

@@ -39,7 +39,7 @@ pub async fn handle_analyze_satd(
     // Apply filters
     apply_satd_filters(&mut result, severity, critical_only, top_files);
 
-    eprintln!(
+    crate::status_eprintln!(
         "📊 Found {} SATD items in {} files",
         result.items.len(),
         result.files_with_debt
@@ -57,10 +57,10 @@ pub async fn handle_analyze_satd(
 
 /// Toyota Way Helper: Print SATD analysis info
 fn print_satd_analysis_info(strict: bool, timeout: u64) {
-    eprintln!("🔍 Analyzing self-admitted technical debt...");
-    eprintln!("⏰ Analysis timeout set to {timeout} seconds");
+    crate::status_eprintln!("🔍 Analyzing self-admitted technical debt...");
+    crate::status_eprintln!("⏰ Analysis timeout set to {timeout} seconds");
     if strict {
-        eprintln!("📝 Using strict mode (only explicit SATD markers)");
+        crate::status_eprintln!("📝 Using strict mode (only explicit SATD markers)");
     }
 }
 

@@ -60,7 +60,7 @@ pub async fn handle_analyze_duplicates(
 
     {
         use crate::cli::colors as c;
-        eprintln!("{}", c::dim("Analyzing code similarity..."));
+        crate::status_eprintln!("{}", c::dim("Analyzing code similarity..."));
     }
 
     let start_time = std::time::Instant::now();
@@ -89,14 +89,35 @@ pub async fn handle_analyze_duplicates(
         use crate::cli::colors as c;
         let duration = start_time.elapsed();
         eprintln!("\n{}Performance Metrics:{}", c::BOLD, c::RESET);
-        eprintln!("   {}Analysis time:{} {}{:.2}ms{}", c::BOLD, c::RESET, c::BOLD_WHITE, duration.as_millis(), c::RESET);
-        eprintln!("   {}Files processed:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, report.file_statistics.len(), c::RESET);
-        eprintln!("   {}Blocks analyzed:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, report.duplicate_blocks.len(), c::RESET);
+        eprintln!(
+            "   {}Analysis time:{} {}{:.2}ms{}",
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            duration.as_millis(),
+            c::RESET
+        );
+        eprintln!(
+            "   {}Files processed:{} {}{}{}",
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            report.file_statistics.len(),
+            c::RESET
+        );
+        eprintln!(
+            "   {}Blocks analyzed:{} {}{}{}",
+            c::BOLD,
+            c::RESET,
+            c::BOLD_WHITE,
+            report.duplicate_blocks.len(),
+            c::RESET
+        );
     }
 
     {
         use crate::cli::colors as c;
-        eprintln!("\n{}", c::pass("Analysis Complete"));
+        crate::status_eprintln!("\n{}", c::pass("Analysis Complete"));
     }
 
     write_duplicate_output(&report, format, output, top_files).await
@@ -201,14 +222,15 @@ async fn run_duplicate_detection(
 /// Print duplicate analysis summary
 fn print_duplicate_summary(report: &DuplicateReport) {
     use crate::cli::colors as c;
-    eprintln!(
+    crate::status_eprintln!(
         "{} Found {} duplicate blocks",
         c::pass(""),
         c::number(&report.total_duplicates.to_string())
     );
-    eprintln!(
+    crate::status_eprintln!(
         "  {}Duplication:{} {} ({} / {} lines)",
-        c::BOLD, c::RESET,
+        c::BOLD,
+        c::RESET,
         c::pct(report.duplication_percentage as f64, 5.0, 15.0),
         c::number(&report.duplicate_lines.to_string()),
         c::number(&report.total_lines.to_string()),
@@ -243,7 +265,7 @@ async fn write_duplicate_output(
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📄 Report written to: {}", output_path.display());
+        crate::status_eprintln!("📄 Report written to: {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -383,7 +405,9 @@ fn calculate_duplicate_statistics(
         let counted = duplicated.get(path.as_str()).map_or(0, |set| {
             // A block may name a line past the end of the file if extraction
             // over-ran; clamp so no part can exceed its whole.
-            set.iter().filter(|line| **line <= stats.total_lines).count()
+            set.iter()
+                .filter(|line| **line <= stats.total_lines)
+                .count()
         });
         stats.duplicate_lines = counted;
         stats.duplication_percentage = if stats.total_lines > 0 {

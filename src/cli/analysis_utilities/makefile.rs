@@ -10,11 +10,11 @@ pub async fn handle_analyze_makefile(
     format: MakefileOutputFormat,
     fix: bool,
     gnu_version: Option<String>,
-    _top_files: usize,
+    top_files: usize,
 ) -> Result<()> {
     use crate::services::makefile_linter;
 
-    eprintln!("🔧 Analyzing Makefile...");
+    crate::status_eprintln!("🔧 Analyzing Makefile...");
 
     // Check if the file exists
     if !path.exists() {
@@ -41,7 +41,7 @@ pub async fn handle_analyze_makefile(
         let mut incompat = check_gnu_version_compatibility(&source, requested)?;
         if rules.is_empty() || rules == vec!["all"] || rules.contains(&GNU_VERSION_RULE.to_string())
         {
-            eprintln!(
+            crate::status_eprintln!(
                 "📌 {} construct(s) newer than GNU Make {requested}",
                 incompat.len()
             );
@@ -56,6 +56,7 @@ pub async fn handle_analyze_makefile(
         &lint_result,
         gnu_version.as_ref(),
         format,
+        top_files,
     )?;
 
     // Print output
@@ -166,8 +167,8 @@ fn check_gnu_version_compatibility(
 
 // Helper: Print analysis summary
 fn print_makefile_analysis_summary(lint_result: &makefile_linter::LintResult) {
-    eprintln!("📊 Found {} violations", lint_result.violations.len());
-    eprintln!(
+    crate::status_eprintln!("📊 Found {} violations", lint_result.violations.len());
+    crate::status_eprintln!(
         "✨ Quality score: {:.1}%",
         lint_result.quality_score * 100.0
     );
@@ -222,35 +223,51 @@ fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::V
 }
 
 // Helper: Format makefile output based on format
+//
+// `--top-files` reached this function as `_top_files` and was dropped: every
+// renderer below printed the whole violation list, so `--top-files 1` and
+// `--top-files 50` produced byte-identical reports over a Makefile with 62
+// violations. The limit is applied once, here, with the same authority the
+// other listing surfaces use (`crate::cli::top_files_slice`, 0 = all), so no
+// renderer can disagree with another about how many rows a limit permits.
+// Aggregates (quality score, the "Found N violations" summary) stay whole:
+// the flag bounds what is listed, never what is measured.
 fn format_makefile_output(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
     format: MakefileOutputFormat,
+    top_files: usize,
 ) -> Result<String> {
+    let listed = crate::cli::top_files_slice(filtered_violations, top_files);
+    let total = filtered_violations.len();
     match format {
         MakefileOutputFormat::Json => {
-            format_makefile_as_json(path, filtered_violations, lint_result, gnu_version)
+            format_makefile_as_json(path, listed, total, lint_result, gnu_version)
         }
         MakefileOutputFormat::Human => {
-            format_makefile_as_human(path, filtered_violations, lint_result, gnu_version)
+            format_makefile_as_human(path, listed, total, top_files, lint_result, gnu_version)
         }
-        MakefileOutputFormat::Sarif => format_makefile_as_sarif(path, filtered_violations),
-        MakefileOutputFormat::Gcc => format_makefile_as_gcc(path, filtered_violations),
+        MakefileOutputFormat::Sarif => format_makefile_as_sarif(path, listed),
+        MakefileOutputFormat::Gcc => format_makefile_as_gcc(path, listed),
     }
 }
 
 // Helper: Format as JSON
 fn format_makefile_as_json(
     path: &Path,
-    filtered_violations: &[makefile_linter::Violation],
+    listed: &[makefile_linter::Violation],
+    total: usize,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "path": path.display().to_string(),
-        "violations": filtered_violations,
+        "violations": listed,
+        "violations_total": total,
+        "violations_listed": listed.len(),
+        "violations_truncated": listed.len() < total,
         "quality_score": lint_result.quality_score,
         "gnu_version": gnu_version,
     }))?)
@@ -259,15 +276,17 @@ fn format_makefile_as_json(
 // Helper: Format as human-readable
 fn format_makefile_as_human(
     path: &Path,
-    filtered_violations: &[makefile_linter::Violation],
+    listed: &[makefile_linter::Violation],
+    total: usize,
+    top_files: usize,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
     let mut output = String::new();
 
     write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
-    write_makefile_violations_table(&mut output, filtered_violations)?;
-    write_makefile_fix_suggestions(&mut output, filtered_violations)?;
+    write_makefile_violations_table(&mut output, listed, total, top_files)?;
+    write_makefile_fix_suggestions(&mut output, listed)?;
 
     Ok(output)
 }
@@ -297,18 +316,20 @@ fn write_makefile_human_header(
 // Helper: Write violations table
 fn write_makefile_violations_table(
     output: &mut String,
-    filtered_violations: &[makefile_linter::Violation],
+    listed: &[makefile_linter::Violation],
+    total: usize,
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
 
-    if filtered_violations.is_empty() {
+    if listed.is_empty() {
         writeln!(output, "✅ No violations found!")?;
     } else {
         writeln!(output, "## Violations\n")?;
         writeln!(output, "| Line | Rule | Severity | Message |")?;
         writeln!(output, "|------|------|----------|---------|")?;
 
-        for violation in filtered_violations {
+        for violation in listed {
             let severity = get_severity_display(&violation.severity);
             writeln!(
                 output,
@@ -317,6 +338,17 @@ fn write_makefile_violations_table(
                 violation.rule,
                 severity,
                 violation.message.replace('|', "\\|")
+            )?;
+        }
+
+        // A truncated table that does not say so reads as a clean bill of
+        // health for the rows it hid; name both numbers, as the SATD and
+        // proof-annotation surfaces do.
+        if listed.len() < total {
+            writeln!(
+                output,
+                "\n… {} more not shown (--top-files {top_files}, 0 = all)",
+                total - listed.len()
             )?;
         }
     }
@@ -391,10 +423,14 @@ fn format_makefile_as_sarif(
 
 // Helper: Build SARIF rules
 fn build_sarif_rules(filtered_violations: &[makefile_linter::Violation]) -> Vec<serde_json::Value> {
+    // BTreeSet, not HashSet: with a HashSet the `rules` array came out in a
+    // different order on every run, so two identical invocations produced
+    // different SARIF bytes — enough to make a diff-based check read a change
+    // where there was none.
     filtered_violations
         .iter()
         .map(|v| &v.rule)
-        .collect::<std::collections::HashSet<_>>()
+        .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .map(|rule| {
             serde_json::json!({
@@ -501,13 +537,18 @@ mod makefile_gnu_version_tests {
     /// The Makefile from the report: `.ONESHELL:` (3.82+), `::=` and `!=`
     /// (4.0+). Checking it against 3.0 and against 4.4 used to produce
     /// byte-identical reports because --gnu-version reached only the header.
-    const MODERN: &str = ".ONESHELL:\nX ::= hello\nY != echo dynamic\n.PHONY: all\nall:\n\t@echo hi\n";
+    const MODERN: &str =
+        ".ONESHELL:\nX ::= hello\nY != echo dynamic\n.PHONY: all\nall:\n\t@echo hi\n";
 
     #[test]
     fn test_old_gnu_version_reports_incompatible_constructs() {
         let v = check_gnu_version_compatibility(MODERN, "3.0").unwrap();
         let messages: Vec<&str> = v.iter().map(|x| x.message.as_str()).collect();
-        assert_eq!(v.len(), 3, "expected .ONESHELL:, ::= and != — got {messages:?}");
+        assert_eq!(
+            v.len(),
+            3,
+            "expected .ONESHELL:, ::= and != — got {messages:?}"
+        );
         assert!(messages.iter().any(|m| m.contains(".ONESHELL:")));
         assert!(messages.iter().any(|m| m.contains("::=")));
         assert!(messages.iter().any(|m| m.contains("!=")));
@@ -524,12 +565,22 @@ mod makefile_gnu_version_tests {
     #[test]
     fn test_gnu_version_boundaries() {
         // 3.81 predates .ONESHELL: (3.82); 4.0 covers ::= and != but not $(let).
-        assert_eq!(check_gnu_version_compatibility(MODERN, "3.81").unwrap().len(), 3);
+        assert_eq!(
+            check_gnu_version_compatibility(MODERN, "3.81")
+                .unwrap()
+                .len(),
+            3
+        );
         assert!(check_gnu_version_compatibility(MODERN, "4.0")
             .unwrap()
             .is_empty());
         let let_fn = "X = $(let a,1,$(a))\n";
-        assert_eq!(check_gnu_version_compatibility(let_fn, "4.0").unwrap().len(), 1);
+        assert_eq!(
+            check_gnu_version_compatibility(let_fn, "4.0")
+                .unwrap()
+                .len(),
+            1
+        );
         assert!(check_gnu_version_compatibility(let_fn, "4.4")
             .unwrap()
             .is_empty());
@@ -583,3 +634,114 @@ mod makefile_gnu_version_tests {
     }
 }
 
+/// `analyze makefile --top-files N` reached `_top_files` and was dropped: over a
+/// Makefile with 62 violations, `--top-files 1` and `--top-files 50` produced
+/// byte-identical reports in every format. These tests fail on that code.
+#[cfg(test)]
+mod makefile_top_files_tests {
+    use super::*;
+
+    fn violations(n: usize) -> Vec<makefile_linter::Violation> {
+        (0..n)
+            .map(|i| makefile_linter::Violation {
+                rule: format!("rule{i}"),
+                severity: makefile_linter::Severity::Warning,
+                span: crate::services::makefile_linter::ast::SourceSpan {
+                    start: 0,
+                    end: 0,
+                    line: i + 1,
+                    column: 1,
+                },
+                message: format!("violation number {i}"),
+                fix_hint: Some(format!("fix number {i}")),
+            })
+            .collect()
+    }
+
+    fn lint_result() -> makefile_linter::LintResult {
+        makefile_linter::LintResult {
+            path: PathBuf::from("Makefile"),
+            violations: Vec::new(),
+            quality_score: 0.5,
+        }
+    }
+
+    fn render(
+        v: &[makefile_linter::Violation],
+        format: MakefileOutputFormat,
+        top: usize,
+    ) -> String {
+        format_makefile_output(Path::new("Makefile"), v, &lint_result(), None, format, top)
+            .expect("render")
+    }
+
+    #[test]
+    fn the_limit_bites_in_every_format() {
+        let v = violations(12);
+        for format in [
+            MakefileOutputFormat::Human,
+            MakefileOutputFormat::Json,
+            MakefileOutputFormat::Gcc,
+            MakefileOutputFormat::Sarif,
+        ] {
+            let one = render(&v, format.clone(), 1);
+            let fifty = render(&v, format.clone(), 50);
+            assert_ne!(
+                one, fifty,
+                "--top-files 1 and 50 rendered identically for {format:?}"
+            );
+            assert!(
+                one.contains("violation number 0") || one.contains("fix number 0"),
+                "the one row kept must be the first: {one}"
+            );
+            assert!(
+                !one.contains("violation number 11") && !one.contains("fix number 11"),
+                "--top-files 1 still printed row 12 for {format:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn zero_means_every_row_not_none() {
+        let v = violations(12);
+        // `.take(0)` would render an empty list here; 0 is documented as "all".
+        assert_eq!(render(&v, MakefileOutputFormat::Gcc, 0).lines().count(), 12);
+        assert_eq!(
+            render(&v, MakefileOutputFormat::Gcc, 0),
+            render(&v, MakefileOutputFormat::Gcc, 50)
+        );
+    }
+
+    #[test]
+    fn a_truncated_table_says_what_it_hid() {
+        let v = violations(12);
+        let one = render(&v, MakefileOutputFormat::Human, 1);
+        assert!(
+            one.contains("11 more not shown (--top-files 1, 0 = all)"),
+            "a capped table must name the rows it hid: {one}"
+        );
+        assert!(!render(&v, MakefileOutputFormat::Human, 50).contains("more not shown"));
+    }
+
+    #[test]
+    fn json_reports_the_total_it_measured_not_only_the_rows_it_listed() {
+        let v = violations(12);
+        let parsed: serde_json::Value =
+            serde_json::from_str(&render(&v, MakefileOutputFormat::Json, 3)).expect("json");
+        assert_eq!(parsed["violations_total"], 12);
+        assert_eq!(parsed["violations_listed"], 3);
+        assert_eq!(parsed["violations_truncated"], true);
+        assert_eq!(parsed["violations"].as_array().expect("array").len(), 3);
+    }
+
+    /// A SARIF document that reorders itself between two identical runs makes
+    /// any diff-based check unreliable.
+    #[test]
+    fn sarif_rules_are_ordered_deterministically() {
+        let v = violations(12);
+        let first = render(&v, MakefileOutputFormat::Sarif, 0);
+        for _ in 0..8 {
+            assert_eq!(first, render(&v, MakefileOutputFormat::Sarif, 0));
+        }
+    }
+}

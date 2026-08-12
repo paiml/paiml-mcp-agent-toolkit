@@ -10,11 +10,11 @@ pub async fn handle_refactor_interactive(
     steps: Option<u32>,
     config: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    println!("🤖 Starting interactive refactor mode...");
-    println!("📁 Project path: {}", project_path.display());
-    println!("💾 Checkpoint: {}", checkpoint.display());
-    println!("🎯 Target complexity: {target_complexity}");
-    println!("📝 Explanation level: {explain:?}");
+    crate::status_println!("🤖 Starting interactive refactor mode...");
+    crate::status_println!("📁 Project path: {}", project_path.display());
+    crate::status_println!("💾 Checkpoint: {}", checkpoint.display());
+    crate::status_println!("🎯 Target complexity: {target_complexity}");
+    crate::status_println!("📝 Explanation level: {explain:?}");
 
     // Load configuration
     let refactor_config = if let Some(config_path) = config {
@@ -39,13 +39,13 @@ pub async fn handle_refactor_interactive(
 
     // Discover targets
     let targets = discover_refactor_targets(&project_path).await?;
-    println!("🎯 Found {} refactoring targets", targets.len());
+    crate::status_println!("🎯 Found {} refactoring targets", targets.len());
 
     // Create and run engine
     let mut engine = UnifiedEngine::new(ast_engine, cache, mode, refactor_config, targets);
 
     if let Some(max_steps) = steps {
-        println!("⏱️  Maximum steps: {max_steps}");
+        crate::status_println!("⏱️  Maximum steps: {max_steps}");
     }
 
     let summary = engine.run().await?;
@@ -63,8 +63,8 @@ pub async fn handle_refactor_resume(
     steps: u32,
     explain: Option<ExplainLevel>,
 ) -> anyhow::Result<()> {
-    println!("🔄 Resuming refactor from: {}", checkpoint.display());
-    println!("⏱️  Maximum steps: {steps}");
+    crate::status_println!("🔄 Resuming refactor from: {}", checkpoint.display());
+    crate::status_println!("⏱️  Maximum steps: {steps}");
 
     if !checkpoint.exists() {
         return Err(anyhow::anyhow!(
@@ -78,10 +78,10 @@ pub async fn handle_refactor_resume(
     let _state: serde_json::Value = serde_json::from_str(&checkpoint_data)?;
 
     // This would resume with the loaded state
-    println!("📝 State loaded successfully");
+    crate::status_println!("📝 State loaded successfully");
 
     if let Some(explain_level) = explain {
-        println!("📖 Explanation level override: {explain_level:?}");
+        crate::status_println!("📖 Explanation level override: {explain_level:?}");
     }
 
     // Placeholder implementation

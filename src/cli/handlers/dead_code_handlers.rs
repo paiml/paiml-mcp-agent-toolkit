@@ -43,17 +43,17 @@ pub async fn handle_analyze_dead_code(
     exclude: Vec<String>,
     max_depth: usize,
 ) -> Result<()> {
-    eprintln!("☠️ Analyzing dead code in project...");
-    eprintln!("⏰ Analysis timeout set to {timeout} seconds");
+    crate::status_eprintln!("☠️ Analyzing dead code in project...");
+    crate::status_eprintln!("⏰ Analysis timeout set to {timeout} seconds");
 
     // Apply include/exclude filters if specified
     if !include.is_empty() || !exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {include:?}");
+            crate::status_eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {exclude:?}");
+            crate::status_eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -80,9 +80,10 @@ pub async fn handle_analyze_dead_code(
     let result = outcome.report;
     let scope = outcome.scope;
 
-    eprintln!(
+    crate::status_eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
-        result.summary.total_files_analyzed, result.summary.files_with_dead_code
+        result.summary.total_files_analyzed,
+        result.summary.files_with_dead_code
     );
 
     // Format output

@@ -17,7 +17,7 @@ pub async fn handle_analyze_churn(
 ) -> Result<()> {
     use crate::services::git_analysis::GitAnalysisService;
 
-    eprintln!("📊 Analyzing code churn for the last {days} days...");
+    crate::status_eprintln!("📊 Analyzing code churn for the last {days} days...");
 
     // Create and apply file filters
     let filter = create_and_report_file_filter(include, exclude)?;
@@ -29,7 +29,7 @@ pub async fn handle_analyze_churn(
     // Apply filtering and limits
     apply_churn_filters(&mut analysis, &filter, top_files);
 
-    eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
+    crate::status_eprintln!("✅ Analyzed {} files with changes", analysis.files.len());
 
     // Format and write output
     format_and_write_churn_output(analysis, format, output).await
@@ -41,12 +41,12 @@ fn create_and_report_file_filter(
     exclude: Vec<String>,
 ) -> Result<crate::utils::file_filter::FileFilter> {
     if !include.is_empty() || !exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {include:?}");
+            crate::status_eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {exclude:?}");
+            crate::status_eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 

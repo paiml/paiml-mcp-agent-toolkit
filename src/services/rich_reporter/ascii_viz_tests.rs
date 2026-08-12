@@ -136,17 +136,40 @@ mod comprehensive_coverage_tests {
         assert!(result.contains('░'));
     }
 
+    /// `.with_color()` is a request, not an override.
+    ///
+    /// This test used to assert `result.contains("\x1b[0m")` with nothing
+    /// forcing colour on, which passed only because the bar interpolated raw
+    /// escapes unconditionally — so `--color never` and a redirected file got
+    /// them too. `.with_color()` now means "colour this if colour is on at all",
+    /// and both halves of that are asserted.
     #[test]
     fn test_progress_bar_render_segmented_with_color() {
+        use crate::cli::colors::ForcedColor;
         let bar = ProgressBar::new(10).with_color();
         let thresholds = vec![
             (0.3, Severity::Low),
             (0.6, Severity::Medium),
             (1.0, Severity::Critical),
         ];
-        let result = bar.render_segmented(0.5, &thresholds);
-        // With color, should contain ANSI codes
-        assert!(result.contains("\x1b[0m"));
+
+        {
+            let _on = ForcedColor::on();
+            let result = bar.render_segmented(0.5, &thresholds);
+            assert!(
+                result.contains("\x1b[0m"),
+                "--color always must colour the filled segments: {result:?}"
+            );
+        }
+
+        let _off = ForcedColor::off();
+        let plain = bar.render_segmented(0.5, &thresholds);
+        assert!(
+            !plain.contains('\x1b'),
+            "--color never must leave the bar plain: {plain:?}"
+        );
+        // Not vacuous: the bar itself is still drawn.
+        assert!(plain.contains('█'), "{plain:?}");
     }
 
     #[test]

@@ -215,8 +215,8 @@ pub fn print_progress_bar(result: &EnforcementResult) {
 /// Print enforcement header
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn print_enforcement_header(project_path: &std::path::Path) {
-    eprintln!("{}", c::header("Starting Extreme Quality Enforcement"));
-    eprintln!(
+    crate::status_eprintln!("{}", c::header("Starting Extreme Quality Enforcement"));
+    crate::status_eprintln!(
         "{} {}",
         c::label("Project:"),
         c::path(&project_path.display().to_string())
@@ -230,19 +230,19 @@ pub fn print_enforcement_summary(
     iteration: u32,
     duration: std::time::Duration,
 ) {
-    eprintln!("\n{}", c::header("Enforcement Complete"));
-    eprintln!(
+    crate::status_eprintln!("\n{}", c::header("Enforcement Complete"));
+    crate::status_eprintln!(
         "{} {}{current_score:.2}{}/1.00",
         c::label("Final Score:"),
         c::BOLD_WHITE,
         c::RESET
     );
-    eprintln!(
+    crate::status_eprintln!(
         "{} {}",
         c::label("Iterations:"),
         c::number(&iteration.to_string())
     );
-    eprintln!("{} {duration:?}", c::label("Duration:"));
+    crate::status_eprintln!("{} {duration:?}", c::label("Duration:"));
 }
 
 /// Handle CI mode exit

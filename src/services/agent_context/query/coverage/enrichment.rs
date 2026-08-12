@@ -1,6 +1,9 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::super::types::QueryResult;
+// The colour authority. This module used to interpolate raw `"\x1b[1;31m"`
+// literals, which a `--color never` (or a redirected stdout) cannot switch off.
+use crate::cli::colors as c;
 use std::collections::HashMap;
 
 // ── Pure Enrichment Function ────────────────────────────────────────────────
@@ -207,8 +210,14 @@ pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
     if let Some(top) = top_impact {
         if top.impact_score > 0.0 {
             summary.push_str(&format!(
-                " | \x1b[1;33mTop impact: {} ({:.1})\x1b[0m",
-                top.function_name, top.impact_score
+                " | {}",
+                c::colored(
+                    c::BOLD_YELLOW,
+                    &format!(
+                        "Top impact: {} ({:.1})",
+                        top.function_name, top.impact_score
+                    )
+                )
             ));
         }
     }
@@ -223,19 +232,15 @@ fn format_coverage_header(
     total_pct: f64,
     with_data: &[&QueryResult],
 ) -> String {
-    let pct_color = if total_pct >= 80.0 {
-        "\x1b[32m"
-    } else if total_pct >= 50.0 {
-        "\x1b[33m"
-    } else {
-        "\x1b[1;31m"
-    };
+    // `c::threshold_color` is the same higher-is-better rule the rest of the
+    // CLI uses, and an `Sgr` renders nothing when colour is off — these were raw
+    // literals, so `query --coverage --color never` wrote them into a pipe.
+    let pct_color = c::threshold_color(total_pct, 80.0, 50.0);
     format!(
-        "Coverage: {}/{} lines ({}{:.1}%\x1b[0m) across {} functions",
+        "Coverage: {}/{} lines ({}) across {} functions",
         total_covered,
         total_lines,
-        pct_color,
-        total_pct,
+        c::colored(pct_color, &format!("{total_pct:.1}%")),
         with_data.len()
     )
 }
@@ -244,12 +249,15 @@ fn format_coverage_header(
 fn append_coverage_counters(summary: &mut String, uncovered_count: usize, partial_count: usize) {
     if uncovered_count > 0 {
         summary.push_str(&format!(
-            " | \x1b[1;31m{} uncovered\x1b[0m",
-            uncovered_count
+            " | {}",
+            c::colored(c::BOLD_RED, &format!("{uncovered_count} uncovered"))
         ));
     }
     if partial_count > 0 {
-        summary.push_str(&format!(" | \x1b[33m{} partial\x1b[0m", partial_count));
+        summary.push_str(&format!(
+            " | {}",
+            c::colored(c::YELLOW, &format!("{partial_count} partial"))
+        ));
     }
 }
 

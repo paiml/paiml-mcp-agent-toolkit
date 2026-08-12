@@ -29,6 +29,7 @@ pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -
         config.format,
         config.executive_summary,
         config.output,
+        config.top_files,
     )
     .await?;
 

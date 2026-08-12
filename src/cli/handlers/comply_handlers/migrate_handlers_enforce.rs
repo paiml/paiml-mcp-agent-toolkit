@@ -14,7 +14,7 @@ fn remove_pmat_hook(hook_path: &Path, markers: &[&str], hook_name: &str) -> Resu
     let content = fs::read_to_string(hook_path)?;
     if markers.iter().any(|m| content.contains(m)) {
         fs::remove_file(hook_path)?;
-        println!("{}", c::pass(&format!("Removed PMAT {hook_name} hook")));
+        crate::status_println!("{}", c::pass(&format!("Removed PMAT {hook_name} hook")));
     } else {
         println!("{}", c::warn(&format!("{hook_name} hook exists but is not PMAT - not removed")));
     }
@@ -82,11 +82,11 @@ async fn handle_enforce(
 
     if !yes {
         use crate::cli::colors as c;
-        println!("{}", c::label("This will install PMAT enforcement hooks:"));
-        println!("  - {}: Block commits without active work ticket", c::label("pre-commit"));
-        println!("  - {}: Validate spec compliance before push", c::label("pre-push"));
-        println!("\nProceed? [y/N] ");
-        println!("{}", c::dim("(Auto-proceeding due to non-interactive mode)"));
+        crate::status_println!("{}", c::label("This will install PMAT enforcement hooks:"));
+        crate::status_println!("  - {}: Block commits without active work ticket", c::label("pre-commit"));
+        crate::status_println!("  - {}: Validate spec compliance before push", c::label("pre-push"));
+        crate::status_println!("\nProceed? [y/N] ");
+        crate::status_println!("{}", c::dim("(Auto-proceeding due to non-interactive mode)"));
     }
 
     let pre_commit_content = include_str!("../../templates/pre_commit_hook.sh");
@@ -216,7 +216,7 @@ async fn handle_report(
     if let Some(output_path) = output {
         use crate::cli::colors as c;
         fs::write(output_path, &output_text)?;
-        println!("{}", c::pass(&format!("Compliance report written to {}", c::path(&output_path.display().to_string()))));
+        crate::status_println!("{}", c::pass(&format!("Compliance report written to {}", c::path(&output_path.display().to_string()))));
     } else {
         println!("{}", output_text);
     }

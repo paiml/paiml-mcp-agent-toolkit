@@ -191,7 +191,7 @@ pub async fn handle_enforcement_iteration(
     iteration: u32,
     output: Option<&Path>,
 ) -> Result<EnforcementIterationResult> {
-    eprintln!(
+    crate::status_eprintln!(
         "\n{} {}",
         c::label("Iteration"),
         c::number(&iteration.to_string())
@@ -383,7 +383,7 @@ async fn list_all_violations(
     include_pattern: Option<&String>,
     exclude_pattern: Option<&String>,
 ) -> Result<()> {
-    eprintln!("{}", c::header("Listing all quality violations..."));
+    crate::status_eprintln!("{}", c::header("Listing all quality violations..."));
 
     let assessment = assess_project(
         project_path,
@@ -394,7 +394,7 @@ async fn list_all_violations(
     )
     .await?;
 
-    eprintln!(
+    crate::status_eprintln!(
         "\n{} {} violations ({}{}/{} dimensions measured)",
         c::label("Found"),
         c::number(&assessment.violations.len().to_string()),
@@ -402,7 +402,11 @@ async fn list_all_violations(
         assessment.measured_phases,
         assessment.total_phases
     );
-    eprint!("{}", c::RESET);
+    // Paired with the line above: the reset must not be emitted on its own when
+    // the banner it closes is suppressed. Same rule, same check.
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("{}", c::RESET);
+    }
 
     // Use extracted formatting function. `-o` is honoured here for the same
     // reason it is honoured for the iteration report: one flag, one meaning.
@@ -427,7 +431,7 @@ async fn validate_current_state(
     include_pattern: Option<&String>,
     exclude_pattern: Option<&String>,
 ) -> Result<()> {
-    eprintln!("{}", c::label("Validating current quality state..."));
+    crate::status_eprintln!("{}", c::label("Validating current quality state..."));
 
     // Run the analysis step to get current state
     let result = run_enforcement_step(

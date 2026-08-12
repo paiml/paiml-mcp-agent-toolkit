@@ -17,7 +17,7 @@ async fn handle_single_file_refactor(
     dry_run: bool,
     _max_iterations: u32,
 ) -> Result<()> {
-    eprintln!("🎯 Analyzing single file: {}", file_path.display());
+    crate::status_eprintln!("🎯 Analyzing single file: {}", file_path.display());
 
     if is_markdown_file(&file_path) {
         return handle_markdown_analysis(&file_path, format).await;
@@ -35,13 +35,13 @@ async fn handle_regular_file_analysis(
     dry_run: bool,
 ) -> Result<()> {
     let lint_violations = get_single_file_lint_violations(file_path).await?;
-    eprintln!("📊 Found {} lint violations", lint_violations.len());
+    crate::status_eprintln!("📊 Found {} lint violations", lint_violations.len());
 
     let complexity_metrics = analyze_file_complexity(file_path).await?;
-    eprintln!("🔢 Max complexity: {}", complexity_metrics.max_complexity);
+    crate::status_eprintln!("🔢 Max complexity: {}", complexity_metrics.max_complexity);
 
     let satd_count = count_file_satd(file_path).await?;
-    eprintln!("💭 SATD comments: {satd_count}");
+    crate::status_eprintln!("💭 SATD comments: {satd_count}");
 
     let refactor_request = generate_single_file_refactor_request(
         file_path,
@@ -53,7 +53,7 @@ async fn handle_regular_file_analysis(
     output_regular_file_results(&refactor_request, format);
 
     if !dry_run {
-        eprintln!("💡 To apply fixes, use the generated refactoring request with an AI assistant.");
+        crate::status_eprintln!("💡 To apply fixes, use the generated refactoring request with an AI assistant.");
     }
 
     Ok(())
@@ -132,8 +132,8 @@ pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
 
 /// Print refactoring header information
 fn print_refactoring_header(config: &RefactorAutoConfig) {
-    eprintln!("🚀 Starting automated refactoring...");
-    eprintln!("📁 Project: {}", config.project_path.display());
+    crate::status_eprintln!("🚀 Starting automated refactoring...");
+    crate::status_eprintln!("📁 Project: {}", config.project_path.display());
 }
 
 /// Initialize the refactoring context from configuration
@@ -173,7 +173,7 @@ async fn prepare_source_files(context: &mut RefactorContext) -> Result<()> {
     )
     .await?;
 
-    eprintln!(
+    crate::status_eprintln!(
         "📁 Discovered {} source files for analysis",
         context.source_files.len()
     );
@@ -240,7 +240,7 @@ async fn execute_single_iteration(
     results.push(iteration_result);
 
     if validation_result.quality_improved {
-        eprintln!("✅ Iteration {iteration} completed successfully");
+        crate::status_eprintln!("✅ Iteration {iteration} completed successfully");
     }
 
     Ok(IterationContinuation {

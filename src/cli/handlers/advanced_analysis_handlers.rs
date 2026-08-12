@@ -401,6 +401,7 @@ pub async fn handle_analyze_comprehensive(
     output: Option<PathBuf>,
     perf: bool,
     executive_summary: bool,
+    top_files: usize,
 ) -> Result<()> {
     use super::comprehensive_analysis_handler::ComprehensiveAnalysisConfig;
 
@@ -422,7 +423,9 @@ pub async fn handle_analyze_comprehensive(
         output,
         perf,
         executive_summary,
-        top_files: 20, // default value
+        // Was `top_files: 20, // default value`: a literal standing in for the
+        // parsed flag, so no `--top-files` value could reach the report.
+        top_files,
     };
 
     // Use the new orchestrator-based comprehensive handler implementation
@@ -560,7 +563,10 @@ fn format_deep_context_text(
                 .partial_cmp(&a.complexity_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let files_to_show = if top_files == 0 { 10 } else { top_files };
+        // `if top_files == 0 { 10 }` read the documented "0 = all" as "0 = ten",
+        // so `--top-files 0` silently listed FEWER files than `--top-files 50`.
+        // One authority decides what a limit permits: crate::cli::top_files_count.
+        let files_to_show = crate::cli::top_files_count(sorted_files.len(), top_files);
         for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
             // Was `file_name()`: a "Top Files" list of bare basenames cannot be
             // resolved back to a file in a tree that holds many `mod.rs`.

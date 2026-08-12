@@ -27,6 +27,7 @@ pub async fn handle_analyze_proof_annotations(
     output: Option<PathBuf>,
     _perf: bool,
     clear_cache: bool,
+    top_files: usize,
 ) -> Result<()> {
     // A path that does not exist must fail, not produce a proof report. This
     // command used to exit 0 and emit ten annotations for `/no/such/dir`,
@@ -38,7 +39,7 @@ pub async fn handle_analyze_proof_annotations(
     // do not exist anywhere on disk.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
-    eprintln!("🔍 Collecting proof annotations from project...");
+    crate::status_eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 
     // Setup annotator
@@ -59,7 +60,7 @@ pub async fn handle_analyze_proof_annotations(
     // document: `dateVerified` used to be stamped onto every one of 1298
     // annotations and `analysis_time_ms` into the summary, which made two
     // byte-identical analyses of the same tree diff on every invocation.
-    eprintln!(
+    crate::status_eprintln!(
         "✅ Found {} matching proof annotations in {} ms (verified at {})",
         annotations.len(),
         elapsed.as_millis(),
@@ -77,12 +78,13 @@ pub async fn handle_analyze_proof_annotations(
         &annotator,
         &project_path,
         include_evidence,
+        top_files,
     )?;
 
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Proof annotations written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Proof annotations written to: {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -91,6 +93,7 @@ pub async fn handle_analyze_proof_annotations(
 }
 
 /// Format proof annotations based on output format (complexity: 6)
+#[allow(clippy::too_many_arguments)]
 fn format_proof_annotations(
     format: ProofAnnotationOutputFormat,
     annotations: &[(Location, ProofAnnotation)],
@@ -98,10 +101,11 @@ fn format_proof_annotations(
     annotator: &ProofAnnotator,
     project_path: &Path,
     include_evidence: bool,
+    top_files: usize,
 ) -> Result<String> {
     let mut content = match format {
         ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator)?,
-        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed)?,
+        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed, top_files)?,
         ProofAnnotationOutputFormat::Full => {
             format_as_full(annotations, project_path, include_evidence)?
         }
@@ -148,6 +152,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -179,6 +184,7 @@ mod active_tests {
             Some(summary_out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("summary run");
@@ -201,6 +207,7 @@ mod active_tests {
             Some(json_out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("json run");
@@ -237,6 +244,7 @@ mod active_tests {
             Some(out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("summary run");
@@ -259,6 +267,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -278,6 +287,7 @@ mod active_tests {
             None,
             false,
             true, // clear_cache
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -298,6 +308,7 @@ mod active_tests {
             Some(output_path.clone()),
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -318,6 +329,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -337,6 +349,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -356,6 +369,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -375,6 +389,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -418,6 +433,7 @@ mod active_tests {
                 Some(out.clone()),
                 false,
                 true,
+                10,
             )
             .await
             .expect("json render succeeds");

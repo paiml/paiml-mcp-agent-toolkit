@@ -62,12 +62,17 @@ for every numeric leaf L in a command's JSON output:
 ```
 
 Three corpora are generated: an empty-but-valid project, a one-function
-project, and a 114-file project carrying every defect family pmat claims to
-detect (complexity, SATD, fault patterns, duplication, dead code, superlinear
-algorithms, long functions, one deliberately pathological file), with repo
-hygiene graduated alongside the code. All three are real git repositories,
-committed with hooks disarmed and with dates computed *relative to now* so
-every commit falls inside the default analysis windows.
+project, and a ~120-file project carrying every defect family pmat claims to
+detect (complexity, SATD in canonical *and* non-canonical phrasing, fault
+patterns, duplication, dead code, superlinear algorithms, a multi-hop
+`use crate::` dependency chain, long functions, one deliberately pathological
+file, and one uncommitted Critical-risk file), plus the non-Rust inputs several
+commands exist to read: WebAssembly binaries and WAT sources, AssemblyScript
+files, and GGUF/APR/safetensors models including one deliberately unreadable
+header. Repo hygiene is graduated alongside the code. All three are real git
+repositories, committed with hooks disarmed and with dates computed *relative
+to now* so every commit falls inside the default analysis windows; the large
+corpus's second commit lands on a branch so `main..HEAD` is non-empty.
 
 Array *lengths* count as leaves. A `files[]` of identical length for an empty
 and a large project is the same defect wearing a different hat. Array
@@ -86,9 +91,40 @@ entry is a `(command, item, reason)` triple, and the reason is a claim someone
 must defend in review. Adding an entry is the only way for a violation to
 pass, and it is visible in the diff.
 
-`ALLOWED_NOOPS` is empty. `ALLOWED_CONSTANTS` holds only leaves the corpus
-provably cannot vary — a fixed checklist's length, buckets no fixture input
-belongs in — each naming the corpus limitation rather than excusing pmat.
+`ALLOWED_CONSTANTS` holds only leaves the corpus provably cannot vary — a fixed
+checklist's length, buckets no fixture input belongs in — each naming the corpus
+limitation rather than excusing pmat.
+
+### The `ALLOWED_NOOPS` policy
+
+**Every entry must name a demonstrated real effect**: the code path that reads
+the flag, and the input or `--format` under which the flag was observed
+changing something. "Legitimately inert" is not a reason. These are:
+
+> `("analyze provability", "--include-evidence", "gates the per-property
+> evidence blocks (provability_helpers_json.rs:32,
+> provability_helpers_detailed.rs:61,201): `-f json --include-evidence` adds a
+> \"properties\": [...] array to each function; the summary renderer has no
+> per-function section")`
+
+> `("score", "--stack", "appends the 'Stack Quality (CB-150)' block listing
+> sovereign dependencies found in Cargo.toml
+> (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's
+> Cargo.toml makes it appear. The corpus has an empty [dependencies] section,
+> and the function early-returns when none are found")`
+
+An entry that cannot name an effect is a defect being *documented* rather than
+fixed — which is precisely how 49 no-op flags shipped in 3.29.0. The gate
+enforces the shape of the claim (`allowed_noops_name_a_real_effect`); only
+review can enforce its truth, which is why the reason is long enough to check.
+
+Two rules follow from it:
+
+- A flag on a `DENY_PATHS` command may not be allow-listed. Allow-listing a
+  flag the sweep never runs hides it twice over.
+- Preferring a harness fix to an allow-list entry is the default. Of the 51
+  no-op verdicts that were not defects, 25 were corrected in the harness and
+  only 26 became entries.
 
 ## Running them
 
@@ -128,6 +164,15 @@ The countermeasures, all of which run in the normal (non-ignored) suite:
   contain what the verdicts are drawn from.
 - `constant_detection_catches_a_fabricated_score` reproduces the shipped
   four-literal 0.79 score and asserts the detector flags it.
+- `normalisation_keeps_decimal_digits_and_still_erases_object_ids` pins the
+  rule that used to turn two different PageRank values into the same
+  `0.<SHA>`. A normaliser that erases the measurement passes everything.
+- `agreeing_failed_probes_are_skipped_not_booked_as_noop` pins both halves of
+  the skip condition, including that a failing command which still printed a
+  report remains a control.
+- `allowed_noops_name_a_real_effect` enforces the shape of every escape-hatch
+  entry, and the report lists allow-list entries that suppressed nothing —
+  a stale exception is how an exception outlives its reason.
 
 ## Fixture artifacts: the failure mode to expect
 
@@ -167,6 +212,158 @@ The general rule behind all three: **a differential verdict is only as good as
 its control.** Suppressing the thing under test in the environment, probing
 with values that cannot discriminate, and omitting the baseline from the
 comparison each produce confident, wrong findings.
+
+## Triage of the first full sweep (3.30.0)
+
+The sweep's first complete run against the 3.30.0 artifact returned **140 no-op
+verdicts**. Every one was reproduced by hand against a dumped corpus before
+being classified. Nothing was left unexamined:
+
+| Verdict | Count | Disposition |
+|---|---|---|
+| Real defect | 89 | fixed in the source; the gate must keep failing until they are |
+| Harness artifact | 25 | corrected in the corpus or the probe — the flag was never given a chance |
+| Legitimately inert | 26 | `ALLOWED_NOOPS`, each naming a demonstrated real effect |
+| Not reached | 0 | — |
+
+Against one and the same binary, before and after the twenty-five harness
+corrections and the twenty-six allow-list entries:
+
+```
+before: 401 effective, 3 refuses-honestly, 116 no-op, 1 error-out, 267 skipped
+after:  400 effective, 3 refuses-honestly,  52 no-op, 1 error-out, 237 skipped
+```
+
+Every one of those 52 is a triaged defect awaiting its source fix — none is an
+artifact and none is unexplained. The gate stays red until they land, which is
+the point: an `ALLOWED_NOOPS` entry for a real defect converts a caught defect
+into a documented one, and that is exactly how the 49 shipped.
+
+### Where the gate stands after the source fixes
+
+The fixes for those 52 landed in the same release. Re-run against a binary
+built from the fixed tree, on the same corpus and the same core roots:
+
+```
+after fixes: 424 effective, 3 refuses-honestly, 29 no-op, 1 error-out, 237 skipped
+```
+
+**23 of the 52 are fixed; 29 remain, and every one of the 29 is a triaged
+defect.** None was allow-listed to get there — the allow-list *shrank* by one,
+because `quality-gate --color` became effective and its entry was deleted
+rather than left to rot (the reason it stated, "all fifteen `quality_gate_*.rs`
+printers reference `crate::cli::colors` zero times", is now false: `--color
+always` emits 189 ANSI-carrying lines against 0 for `--color never`). The
+allow-list is therefore 25 entries, of which 2 are unexercised because their
+command is skipped, not because they are stale (`comply cross-crate --color`,
+`tdg history --color`).
+
+The 29 split into two shapes, and the difference decides what "fixed" means for
+each:
+
+| Shape | Count | Flags |
+|---|---|---|
+| Chatter still survives `--quiet` | 6 | `analyze bottleneck`, `analyze comprehensive`, `analyze defect-prediction`, `analyze provability`, `context`, `score` |
+| `--quiet` offered on a command that emits no chatter at all | 12 | `analyze big-o`, `analyze defects`, `analyze deep-context`, `analyze entropy`, `analyze models`, `comply asset-validate`, `comply audit`, `comply init`, `comply report`, `deps-audit`, `explain`, `repo-score` |
+| Flag unrelated to `--quiet`, never wired to anything | 11 | `analyze dead-code --include-unreachable`, `analyze deep-context --dag-type`, `analyze deep-context --cache-strategy`, `analyze tdg --ml`, `analyze provability --analysis-depth`, `analyze incremental-coverage --detailed`, `analyze big-o --high-complexity-only`, `analyze assembly-script --wasm-complexity`, `analyze web-assembly --top-files`, `tdg check-quality --fail-on-violation`, `comply report --include-history` |
+
+The first six are unambiguous: `analyze provability --quiet` still prints
+`🔬 Analyzing function provability... / 📂 Discovering functions in project... /
+📊 Found 124 source files`, byte-identical to the run without the flag. Those
+lines are noise by any reading, and the fix is to route them through
+`status_eprintln!`.
+
+The middle twelve are a different claim and must not be quietly reclassified.
+Their commands print a result and nothing else, so a flag that suppresses noise
+correctly changes nothing — but that does **not** make them `ALLOWED_NOOPS`
+material, because the policy demands a *demonstrated real effect* and there is
+none to demonstrate. The honest resolutions are to stop offering `--quiet`
+where there is nothing for it to do, or to show that some other input (a tty, a
+warning path, a slow run with a progress indicator) gives it something to
+suppress. Allow-listing them on the strength of "legitimately inert" is the
+exact move this policy exists to forbid.
+
+One of the twelve is weaker still and is called out so it is not mistaken for a
+finding: **`comply audit --quiet`'s baseline never ran.** `comply audit`
+refuses on the corpus with "Audit requires clean git state" and exits 1 before
+reading any flag, which is the same declined-precondition shape
+`baseline_unusable` already skips for `comply cross-crate` and `tdg history`.
+Its no-op verdict is unsound rather than wrong, and the correct repair is a
+harness skip — deliberately not made here, because turning a triaged defect
+into a skip on the closing pass is indistinguishable from making the gate green
+by hand.
+
+`analyze graph-metrics --export-graphml` is the single `Errors` verdict: the
+flag makes a working command exit 1. It is a triaged defect too, and it does
+not block the gate — only no-ops do — which is itself worth fixing, since a
+flag that breaks its command is not better than one that does nothing.
+
+**The gate is red on purpose and stays red.** It cannot be turned on as a
+required check until those 29 land, and the way to turn it on is to fix them,
+not to widen the escape hatch.
+
+### One cause behind forty flags: `--quiet`
+
+**40 of the 89 defects are the same defect.** `--quiet` was reported inert on
+`analyze big-o`, `bottleneck`, `churn`, `clippy`, `complexity`,
+`comprehensive`, `coverage-improve`, `dag`, `dead-code`, `deep-context`,
+`defect-prediction`, `defects`, `duplicates`, `entropy`, `graph-metrics`,
+`incremental-coverage`, `lint-hotspot`, `proof-annotations`, `provability`,
+`satd`, `symbol-table`, `tdg`, on all eleven `comply` leaves, and on `context`,
+`deps-audit`, `enforce extreme`, `explain`, `quality-gate`, `repo-score` and
+`score`.
+
+There are not forty bugs. `apply_ux_settings` sets `PMAT_QUIET=1`
+(`src/cli/cli_run_command.rs:61`) and exactly one place in the tree reads it:
+`should_show_progress()` (`src/cli/progress.rs:124`). Every handler that writes
+its chatter with a bare `eprintln!` rather than through `ProgressIndicator` is
+therefore unaffected by the flag, and nearly all of them do. One unread
+environment variable, forty flags that parse and change nothing.
+
+This is the shape to look for first in any batch of no-op verdicts, and the
+reason the triage groups verdicts by cause before counting them: forty
+individually-filed tickets would have produced forty local patches around a
+single missing consumer. **Fix the rule, then check every other caller of the
+rule** — a contradiction fixed on one surface is a contradiction recreated.
+
+### The 25 harness artifacts, by class
+
+| Class | Flags | Correction |
+|---|---|---|
+| The corpus lacks the input the flag acts on | `analyze models --check`; every `web-assembly` / `assembly-script` flag | `build_corpus` now writes `mod.wasm`/`broken.wasm`/two `.wat` sources, three AssemblyScript files, and four model files (valid GGUF/APR/safetensors plus one unparseable `.gguf`, with no model card or tokenizer so all three `--check` findings fire) |
+| The corpus lacks the *structure* the flag measures | `analyze dag --max-depth`, `analyze satd --strict`, `analyze comprehensive --confidence-threshold` / `--min-lines`, `analyze incremental-coverage --top-files` | a six-module `use crate::` chain (the corpus graph was a star, so there was no second hop for a depth limit to cut); non-canonical debt phrasing (strict mode had nothing to narrow); one uncommitted ~985-line Critical-risk file (no High/Critical file meant no "Focus on N high-risk files" line to filter); the second commit now lands on a branch so `main..HEAD` is non-empty |
+| The probe values do not straddle the corpus | `analyze dead-code --max-percentage`, `analyze graph-metrics --convergence-threshold`, `analyze comprehensive --min-lines` | `PROBE_VALUES` names the pair per flag (1.0 vs 50 against a 3.8% density; 1e-12 vs 0.5 for a tolerance defaulting to 0.001); line counts probe 1 vs 1000 |
+| The flag only exists alongside another flag | `analyze dead-code --fail-on-violation`, `project-diag --quiet`, `comply report --color` | `PROBE_CONTEXT` carries the companion (`--max-percentage 1.0`, `--output FILE`, `--format text`) into **both** the probe and its control |
+| The baseline was already broken | `analyze coverage-improve --color` / `--fast` / `--format`, `comply enforce --color` / `--disable` / `--format`, `comply cross-crate` ×4, `tdg dashboard --color` / `--open`, `tdg history --format`, `analyze clippy --dry-run` | the fixture Makefile gained a `coverage` target and `git init --template=` no longer leaves `.git/hooks` missing; `baseline_unusable` now recognises feature-gated subcommands, declined preconditions that exit 0, and failures inside an external tool |
+| The harness's own normalisation ate the effect | `analyze graph-metrics --convergence-threshold` | `\b[0-9a-f]{7,40}\b` matched the fractional digits of a float, so two different PageRank values both normalised to `0.<SHA>`. Object-id replacement now requires an `a`-`f` character |
+| The sweep would have mutated its own fixture | `analyze clippy`, `comply enforce` | `DENY_PATHS`: `analyze clippy` runs `clippy --fix` and rewrites source; `comply enforce` installs hooks and auto-proceeds when stdin is not a tty, so `--yes` being denied does not stop it |
+
+A twenty-sixth was found by the corrected sweep itself: `analyze satd
+--include-tests` changed nothing because the corpus's only test file was
+clean — a flag whose job is to *include test files* cannot be observed until
+they contain something to include. The test file now carries its own debt.
+
+Two of these deserve restating, because they are the two ways a gate lies:
+
+- **An already-broken baseline blames the flags.** Eleven of the twenty-five
+  were a command that died in `make`, in git, or in a missing cargo feature
+  before it read any flag of its own. A control that never ran is not a
+  control, and the correct verdict is `Skipped` — printed, never a pass.
+- **A fixture that cannot express the flag's domain manufactures no-ops.** A
+  depth limit on a graph with no depth, a strict mode over a corpus with only
+  canonical markers, and a limit over an empty result set all produce
+  byte-identical output for the same reason: the fixture, not the flag.
+
+And one correction that had to be *narrowed* immediately after it was made: the
+new "both probe values failed, so this proves nothing" skip originally keyed on
+exit code alone. A non-zero exit is the normal outcome for the commands this
+gate cares most about — `analyze lint-hotspot`, `quality-gate` and `enforce
+extreme` all exit 1 on the defect-rich corpus while printing a full report — so
+that rule silently excused every no-op flag on every gate that was doing its
+job, and `analyze lint-hotspot --color` went from a reported no-op to a skip in
+one run. The skip now also requires that both runs rendered **no stdout at
+all**. Every widening of a skip condition is a narrowing of what the gate
+proves.
 
 The countermeasures are in the harness: hooks disarmed via `core.hooksPath`
 plus `--no-verify`, commit dates computed relative to now, dead regions sized
@@ -208,7 +405,9 @@ reported is untriaged and is not claimed as a defect.
    never measured, folded into a composite as if they had been. This is the
    same class as the 51 fabricated values in 3.29.0.
 5. **`--quiet` is inert** on `analyze complexity` — 1644 bytes with and
-   without.
+   without. *Fixed*: `analyze complexity --quiet` now scores `Effective`, along
+   with 22 of the other 39 commands that carried the same defect. The 18 that
+   remain are itemised above.
 6. **TDG sensitivity**: `src/awful.rs` in the corpus — 399 lines, ~300
    branches, four levels of nesting, three SATD markers — grades **76.6/B**.
    For a technical-debt grader that is worth investigating; it is also why the
@@ -239,9 +438,11 @@ reads as full coverage:
   Not covered here; the durable fix is deriving the MCP tool registry from the
   CLI command enum so drift is impossible by construction.
 - **Mutating and interactive commands** — `oracle`, `kaizen`, `refactor`,
-  `hooks`, `agent`, `serve` and others are denied by name in `DENY_ROOTS`,
+  `hooks`, `agent`, `serve` and others are denied by name in `DENY_ROOTS`, and
+  two individual leaves (`analyze clippy`, `comply enforce`) in `DENY_PATHS`,
   each with a stated reason. They are excluded because the harness must be
-  safe to run anywhere, not because they are exempt from the invariant.
+  safe to run anywhere and must not edit the fixture the rest of the sweep
+  reads, not because they are exempt from the invariant.
 - **Options taking unenumerated values** (paths, integers) — skipped, and
   reported as skipped.
 - **Correctness of any value.** These gates prove a number responds to its

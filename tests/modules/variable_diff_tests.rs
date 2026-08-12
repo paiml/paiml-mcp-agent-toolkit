@@ -133,10 +133,19 @@ fn test_render_diff_colored() {
     let diff = pmat::services::dap::VariableDiff::compute(&snapshot1, &snapshot2);
     let output = diff.render_colored();
 
-    // Should contain ANSI color codes
+    // This used to assert `output.contains("\x1b[")` unconditionally, which
+    // PINNED a defect: the renderer interpolated raw escapes with nothing
+    // consulted, so it wrote them under `--color never` and into redirected
+    // files too. Colour resolves to OFF here (a test harness captures stdout),
+    // so the correct expectation is plain text.
+    //
+    // The "escapes appear when colour is on" half needs `ForcedColor`, which is
+    // a `#[cfg(test)]` seam inside the crate and unreachable from an
+    // integration test; it is asserted in
+    // `src/services/dap/variable_diff.rs::render_colored_honours_color`.
     assert!(
-        output.contains("\x1b["),
-        "Colored output should contain ANSI escape codes"
+        !output.contains('\u{1b}'),
+        "captured stdout means colour is off; output must be plain: {output:?}"
     );
 
     // Should show changed variables

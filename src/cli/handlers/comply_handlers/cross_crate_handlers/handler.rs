@@ -37,20 +37,20 @@ pub async fn handle_cross_crate(
     let yaml_config = PmatYamlConfig::load(workspace_path).unwrap_or_default();
     let det_config = DetectionConfig::from_yaml(&yaml_config.cross_crate);
 
-    eprintln!("Discovering workspace crates...");
+    crate::status_eprintln!("Discovering workspace crates...");
     let crates = discover_workspace_crates(workspace_path, explicit_crates);
     if crates.len() < 2 {
         print_discovery_help();
         return Ok(());
     }
 
-    eprintln!("Loading functions from {} crates...", crates.len());
+    crate::status_eprintln!("Loading functions from {} crates...", crates.len());
     let crate_functions = load_all_crate_functions(&crates);
     let crate_names: Vec<String> = crate_functions
         .iter()
         .map(|(c, _)| c.name.clone())
         .collect();
-    eprintln!(
+    crate::status_eprintln!(
         "Analyzing {} crates: {}",
         crate_names.len(),
         crate_names.join(", ")
@@ -153,7 +153,7 @@ fn emit_report(
 
     if let Some(path) = output {
         std::fs::write(path, &output_text)?;
-        eprintln!("Report written to {}", path.display());
+        crate::status_eprintln!("Report written to {}", path.display());
     } else {
         println!("{output_text}");
     }
@@ -169,7 +169,7 @@ fn enforce_strict(report: &CrossCrateReport, strict: bool, workspace_path: &Path
         Some(baseline) => {
             let violations = baseline.check_ratchet(report);
             if violations.is_empty() {
-                eprintln!("Ratchet check passed (no rule count increased)");
+                crate::status_eprintln!("Ratchet check passed (no rule count increased)");
                 return;
             }
             eprintln!("\nRatchet violations (finding count increased):");

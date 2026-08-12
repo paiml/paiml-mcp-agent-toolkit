@@ -30,7 +30,7 @@ async fn perform_tdg_analysis(
 
     if let Some(output_path) = output {
         std::fs::write(output_path, output_content)?;
-        eprintln!("✅ TDG analysis saved to {}", output_path.display());
+        crate::status_eprintln!("✅ TDG analysis saved to {}", output_path.display());
     } else {
         print!("{output_content}");
     }
@@ -55,7 +55,7 @@ async fn run_tdg_watch_mode(
     use std::sync::mpsc;
     use tokio::time::Duration;
 
-    eprintln!("👁️  Watching for changes in TDG analysis...");
+    crate::status_eprintln!("👁️  Watching for changes in TDG analysis...");
     let (tx, rx) = mpsc::channel();
 
     let mut watcher = RecommendedWatcher::new(
@@ -82,7 +82,7 @@ async fn run_tdg_watch_mode(
     loop {
         match rx.recv() {
             Ok(_event) => {
-                eprintln!("🔄 Change detected, re-analyzing...");
+                crate::status_eprintln!("🔄 Change detected, re-analyzing...");
                 perform_tdg_analysis(
                     &calculator,
                     &path,

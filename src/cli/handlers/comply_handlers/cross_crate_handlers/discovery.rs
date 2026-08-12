@@ -22,7 +22,7 @@ pub fn discover_workspace_crates(
     // Priority 1: Explicit --crates flag
     if let Some(paths) = explicit_crates {
         if !paths.is_empty() {
-            eprintln!("  Discovery: using explicit --crates paths");
+            crate::status_eprintln!("  Discovery: using explicit --crates paths");
             return discover_from_explicit(workspace_path, paths);
         }
     }
@@ -30,7 +30,7 @@ pub fn discover_workspace_crates(
     // Priority 2: Cargo.toml [workspace] section
     let workspace_crates = discover_from_cargo_workspace(workspace_path);
     if workspace_crates.len() >= 2 {
-        eprintln!(
+        crate::status_eprintln!(
             "  Discovery: found Cargo workspace with {} members",
             workspace_crates.len()
         );
@@ -40,7 +40,7 @@ pub fn discover_workspace_crates(
     // Priority 3: batuta oracle --local (batuta stack auto-discovery)
     let oracle_crates = discover_from_batuta_oracle(workspace_path);
     if oracle_crates.len() >= 2 {
-        eprintln!(
+        crate::status_eprintln!(
             "  Discovery: batuta oracle found {} stack crates",
             oracle_crates.len()
         );
@@ -50,7 +50,7 @@ pub fn discover_workspace_crates(
     // Priority 4: .pmat/workspace.toml siblings (legacy, backward-compatible)
     let sibling_crates = discover_from_pmat_siblings(workspace_path);
     if sibling_crates.len() >= 2 {
-        eprintln!(
+        crate::status_eprintln!(
             "  Discovery: .pmat/workspace.toml has {} siblings",
             sibling_crates.len()
         );

@@ -201,9 +201,11 @@ pub fn trace_ptx_dataflow(index: &AgentContextIndex) -> PtxFlowResult {
 /// Format PTX flow result as a human-readable table
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
+    use crate::cli::colors as c;
     let mut out = String::new();
     out.push_str(&format!(
-        "\x1b[1;4mPTX Dataflow\x1b[0m ({} nodes, {} edges)\n\n",
+        "{} ({} nodes, {} edges)\n\n",
+        c::header("PTX Dataflow"),
         result.nodes.len(),
         result.edges.len()
     ));
@@ -225,21 +227,22 @@ pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
             continue;
         }
         let role_color = match role {
-            PtxRole::Emitter => "\x1b[1;31m",
-            PtxRole::Loader => "\x1b[1;33m",
-            PtxRole::Analyzer => "\x1b[1;36m",
-            PtxRole::Consumer => "\x1b[1;32m",
+            PtxRole::Emitter => c::BOLD_RED,
+            PtxRole::Loader => c::BOLD_YELLOW,
+            PtxRole::Analyzer => c::BOLD_CYAN,
+            PtxRole::Consumer => c::BOLD_GREEN,
         };
         out.push_str(&format!(
-            "  {role_color}{role}\x1b[0m ({}):\n",
+            "  {} ({}):\n",
+            c::colored(role_color, &role.to_string()),
             role_nodes.len()
         ));
         for node in &role_nodes {
             out.push_str(&format!(
-                "    [{project}] {name}  \x1b[2m{path}\x1b[0m\n",
+                "    [{project}] {name}  {path}\n",
                 project = node.project,
                 name = node.function_name,
-                path = node.file_path
+                path = c::dim(&node.file_path)
             ));
         }
         out.push('\n');
@@ -247,13 +250,19 @@ pub fn format_ptx_flow_text(result: &PtxFlowResult) -> String {
 
     // Show edges
     if !result.edges.is_empty() {
-        out.push_str("  \x1b[1mDataflow chains:\x1b[0m\n");
+        out.push_str(&format!("  {}\n", c::subheader("Dataflow chains:")));
         for edge in &result.edges {
             let from = &result.nodes[edge.from_idx];
             let to = &result.nodes[edge.to_idx];
-            out.push_str(&format!("    [{src}] {src_fn} \x1b[2m({src_role})\x1b[0m → [{dst}] {dst_fn} \x1b[2m({dst_role})\x1b[0m\n",
-                src = from.project, src_fn = from.function_name, src_role = from.role,
-                dst = to.project, dst_fn = to.function_name, dst_role = to.role));
+            out.push_str(&format!(
+                "    [{src}] {src_fn} {src_role} → [{dst}] {dst_fn} {dst_role}\n",
+                src = from.project,
+                src_fn = from.function_name,
+                src_role = c::dim(&format!("({})", from.role)),
+                dst = to.project,
+                dst_fn = to.function_name,
+                dst_role = c::dim(&format!("({})", to.role))
+            ));
         }
         out.push('\n');
     }

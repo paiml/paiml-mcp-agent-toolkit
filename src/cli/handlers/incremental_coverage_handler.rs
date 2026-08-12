@@ -68,7 +68,7 @@ pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConf
     // Format and output results
     output_results(result, config.format, config.output, config.top_files).await?;
 
-    eprintln!("✅ Incremental coverage analysis complete");
+    crate::status_eprintln!("✅ Incremental coverage analysis complete");
     Ok(())
 }
 
@@ -79,16 +79,16 @@ fn print_analysis_header(
     target_branch: &Option<String>,
     coverage_threshold: f64,
 ) {
-    eprintln!("📊 Analyzing incremental coverage...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🌿 Base branch: {base_branch}");
-    eprintln!(
+    crate::status_eprintln!("📊 Analyzing incremental coverage...");
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("🌿 Base branch: {base_branch}");
+    crate::status_eprintln!(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
     );
     // `coverage_threshold` is already a percentage (`--help`: default 80.0).
     // Multiplying by 100 here announced "8000.0%" (GH #658).
-    eprintln!("📈 Coverage threshold: {coverage_threshold:.1}%");
+    crate::status_eprintln!("📈 Coverage threshold: {coverage_threshold:.1}%");
 }
 
 /// Output results in the requested format
@@ -102,7 +102,7 @@ async fn output_results(
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📝 Written to {}", output_path.display());
+        crate::status_eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{content}");
     }

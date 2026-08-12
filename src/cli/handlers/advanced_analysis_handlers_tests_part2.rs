@@ -434,6 +434,7 @@ clean:
             None,
             false,
             false,
+            10,
         )
         .await;
 
@@ -462,6 +463,7 @@ clean:
             None,
             false,
             false,
+            10,
         )
         .await;
 
@@ -489,6 +491,7 @@ clean:
             None,
             false,
             true, // executive_summary
+            10,
         )
         .await;
 
@@ -517,6 +520,7 @@ clean:
             None,
             false,
             false,
+            10,
         )
         .await;
 

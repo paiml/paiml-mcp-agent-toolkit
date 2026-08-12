@@ -63,7 +63,7 @@ mod property_tests {
                 },
                 duration_ms: 1000,
             };
-            let md_result = format_as_markdown(&result, executive_summary);
+            let md_result = format_as_markdown(&result, executive_summary, 10);
             prop_assert!(md_result.is_ok());
         }
 

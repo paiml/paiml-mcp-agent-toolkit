@@ -79,12 +79,12 @@ pub async fn handle_analyze_lint_hotspot(
 ) -> Result<()> {
     // Apply include/exclude filters if specified
     if !include.is_empty() || !exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {include:?}");
+            crate::status_eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {exclude:?}");
+            crate::status_eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -165,7 +165,7 @@ async fn write_output(content: &str, params: &LintHotspotParams) -> Result<()> {
 /// stderr should not differ from `json`'s for the same run.
 fn log_analysis_start(format: &LintHotspotOutputFormat) {
     if !is_machine_format(format) {
-        eprintln!("🔍 Running Clippy analysis...");
+        crate::status_eprintln!("🔍 Running Clippy analysis...");
     }
 }
 
@@ -212,7 +212,7 @@ async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
     } else {
         println!("{content}");
     }
-    eprintln!(
+    crate::status_eprintln!(
         "{}",
         c::pass("cargo clippy completed and reported no lint violations")
     );
@@ -222,7 +222,7 @@ async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
 /// Log single file analysis mode
 fn log_single_file_mode(file_path: &Path, format: &LintHotspotOutputFormat) {
     if !is_machine_format(format) {
-        eprintln!("📄 Analyzing single file: {}", file_path.display());
+        crate::status_eprintln!("📄 Analyzing single file: {}", file_path.display());
     }
 }
 

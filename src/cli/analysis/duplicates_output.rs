@@ -118,7 +118,10 @@ const DEFAULT_TOP_FILES: usize = 10;
 /// The limit reaches the renderer instead of the report: `--top-files` is a
 /// display control, and the row list was independently hardcoded to ten rows,
 /// so `--top-files 3` printed ten.
-pub fn format_human_output_with_limit(report: &DuplicateReport, top_files: usize) -> Result<String> {
+pub fn format_human_output_with_limit(
+    report: &DuplicateReport,
+    top_files: usize,
+) -> Result<String> {
     format_text_output(report, top_files, TextDetail::Human)
 }
 
@@ -223,14 +226,12 @@ fn write_file_stats_list(
 
     // Was `.take(10)` regardless of `--top-files`, so the flag documented as
     // "Number of top files to show by duplication (0 = all)" printed ten rows
-    // for `--top-files 3` and ten rows for `--top-files 0`.
-    let limit = if top_files == 0 {
-        usize::MAX
-    } else {
-        top_files
-    };
-
-    for (i, (file_path, stats)) in sorted_files.iter().take(limit).enumerate() {
+    // for `--top-files 3` and ten rows for `--top-files 0`. The "0 = all" rule
+    // now lives in exactly one place, `crate::cli::top_files_slice`.
+    for (i, (file_path, stats)) in crate::cli::top_files_slice(sorted_files, top_files)
+        .iter()
+        .enumerate()
+    {
         // Was `extract_filename`, which printed only the basename: this repo has
         // two `core_tests_properties.rs`, so slots 1 and 4 of the top-ten were
         // the same text with the same numbers and no way to tell them apart.
@@ -316,9 +317,15 @@ fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<
         writeln!(
             output,
             "    {}{}{}:{}{}{}-{}{}{}",
-            c::seq(c::CYAN), loc.file, c::seq(c::RESET),
-            c::seq(c::BOLD_WHITE), loc.start_line, c::seq(c::RESET),
-            c::seq(c::BOLD_WHITE), loc.end_line, c::seq(c::RESET),
+            c::seq(c::CYAN),
+            loc.file,
+            c::seq(c::RESET),
+            c::seq(c::BOLD_WHITE),
+            loc.start_line,
+            c::seq(c::RESET),
+            c::seq(c::BOLD_WHITE),
+            loc.end_line,
+            c::seq(c::RESET),
         )?;
     }
     Ok(())
@@ -329,7 +336,13 @@ fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "    {}Preview:{}", c::seq(c::DIM), c::seq(c::RESET))?;
-    writeln!(output, "    {}{}{}", c::seq(c::DIM), block.locations[0].content_preview, c::seq(c::RESET))?;
+    writeln!(
+        output,
+        "    {}{}{}",
+        c::seq(c::DIM),
+        block.locations[0].content_preview,
+        c::seq(c::RESET)
+    )?;
     writeln!(output)?;
     Ok(())
 }
@@ -482,7 +495,10 @@ mod top_files_is_a_row_limit_tests {
     }
 
     fn block_count(rendered: &str) -> usize {
-        rendered.lines().filter(|l| l.contains(" locations)")).count()
+        rendered
+            .lines()
+            .filter(|l| l.contains(" locations)"))
+            .count()
     }
 
     /// `summary`, `detailed` and `human` all routed to `format_human_output`,
@@ -491,8 +507,7 @@ mod top_files_is_a_row_limit_tests {
     #[test]
     fn summary_omits_the_per_block_listing() {
         let report = report_with_blocks(3);
-        let summary =
-            format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
+        let summary = format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
 
         assert!(!summary.contains("Duplicate Blocks"), "{summary}");
         assert_eq!(block_count(&summary), 0);
@@ -507,8 +522,7 @@ mod top_files_is_a_row_limit_tests {
     #[test]
     fn the_three_text_formats_differ() {
         let report = report_with_blocks(25);
-        let summary =
-            format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
+        let summary = format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Summary).unwrap();
         let human = format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Human).unwrap();
         let detailed =
             format_text_output(&report, DEFAULT_TOP_FILES, TextDetail::Detailed).unwrap();
@@ -572,7 +586,11 @@ mod top_files_is_a_row_limit_tests {
         };
         let baseline = summary_of(1);
         for limit in [2usize, 3, 10, 0] {
-            assert_eq!(baseline, summary_of(limit), "limit {limit} changed the summary");
+            assert_eq!(
+                baseline,
+                summary_of(limit),
+                "limit {limit} changed the summary"
+            );
         }
     }
 }

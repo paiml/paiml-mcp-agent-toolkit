@@ -76,9 +76,9 @@ pub(super) fn handle_watch_mode(
 #[cfg(feature = "watch")]
 /// Print watch mode introduction messages
 fn print_watch_mode_intro(path: &Path) {
-    eprintln!("👁️  Starting watch mode for complexity analysis...");
-    eprintln!("📁 Watching: {}", path.display());
-    eprintln!("🔄 Press Ctrl+C to stop watching\n");
+    crate::status_eprintln!("👁️  Starting watch mode for complexity analysis...");
+    crate::status_eprintln!("📁 Watching: {}", path.display());
+    crate::status_eprintln!("🔄 Press Ctrl+C to stop watching\n");
 }
 
 #[cfg(feature = "watch")]
@@ -133,7 +133,7 @@ fn create_sync_config<'a>(
 #[cfg(feature = "watch")]
 /// Run initial complexity analysis
 fn run_initial_analysis(config: &SyncAnalysisConfig) -> Result<()> {
-    eprintln!("📊 Running initial complexity analysis...\n");
+    crate::status_eprintln!("📊 Running initial complexity analysis...\n");
     run_complexity_analysis_sync(config.clone())
 }
 
@@ -164,14 +164,14 @@ fn watch_for_file_changes(
 #[cfg(feature = "watch")]
 /// Handle a file change event by reanalyzing
 fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
-    eprintln!("\n🔄 File change detected, reanalyzing...");
+    crate::status_eprintln!("\n🔄 File change detected, reanalyzing...");
 
     if let Some(paths) = get_changed_paths(event) {
         for changed_path in paths {
-            eprintln!("  📝 Changed: {}", changed_path.display());
+            crate::status_eprintln!("  📝 Changed: {}", changed_path.display());
         }
     }
-    eprintln!();
+    crate::status_eprintln!();
 
     if let Err(e) = run_complexity_analysis_sync(config.clone()) {
         eprintln!("⚠️  Analysis error: {e}");
@@ -273,7 +273,7 @@ async fn format_and_output_watch_results(
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(output_path, &content).await?;
-        eprintln!("✅ Analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Analysis written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

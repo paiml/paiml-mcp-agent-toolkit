@@ -576,7 +576,10 @@ impl SimpleDeepContext {
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            let files_to_show = if top_files == 0 { 10 } else { top_files };
+            // `if top_files == 0 { 10 }` contradicted the flag's own help text
+            // ("0 = all"): `--top-files 0` listed ten files while `--top-files
+            // 50` listed fifty. One authority: crate::cli::top_files_count.
+            let files_to_show = crate::cli::top_files_count(sorted_files.len(), top_files);
             for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
                 let filename = file_detail
                     .file_path
@@ -604,6 +607,54 @@ impl SimpleDeepContext {
         }
 
         markdown
+    }
+}
+
+#[cfg(test)]
+mod top_files_zero_regression_tests {
+    //! `--top-files 0` is documented as "0 = all". This renderer read it as
+    //! "0 = ten", so `--top-files 0` listed FEWER files than `--top-files 50`.
+    use super::*;
+
+    fn report(files: usize) -> SimpleAnalysisReport {
+        SimpleAnalysisReport {
+            file_count: files,
+            analysis_duration: std::time::Duration::from_millis(1),
+            complexity_metrics: crate::services::simple_deep_context::types::ComplexityMetrics {
+                total_functions: files,
+                high_complexity_count: 0,
+                avg_complexity: 1.0,
+            },
+            recommendations: vec![],
+            file_complexity_details: (0..files)
+                .map(
+                    |i| crate::services::simple_deep_context::types::FileComplexityDetail {
+                        file_path: PathBuf::from(format!("src/f{i}.rs")),
+                        function_count: 1,
+                        high_complexity_functions: 0,
+                        avg_complexity: 1.0,
+                        complexity_score: (files - i) as f64,
+                        function_names: vec![],
+                    },
+                )
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn zero_lists_every_file_not_ten() {
+        let report = report(25);
+        let analyzer = SimpleDeepContext::new();
+        let zero = analyzer.format_as_markdown(&report, 0);
+        let fifty = analyzer.format_as_markdown(&report, 50);
+        assert_eq!(zero, fifty, "0 must mean all, exactly as --help says");
+        assert!(
+            zero.contains("src/f24.rs") || zero.contains("f24.rs"),
+            "--top-files 0 stopped at ten files: {zero}"
+        );
+        // And a real limit still bites.
+        let three = analyzer.format_as_markdown(&report, 3);
+        assert!(!three.contains("f3.rs"), "--top-files 3 listed a 4th file");
     }
 }
 

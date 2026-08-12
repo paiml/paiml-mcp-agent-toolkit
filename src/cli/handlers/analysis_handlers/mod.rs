@@ -7,6 +7,7 @@
 mod advanced_routes;
 mod core_routes;
 mod entropy_semantic;
+pub mod perf_report;
 mod platform_routes;
 
 use crate::cli::{self, AnalyzeCommands};
@@ -146,6 +147,26 @@ pub(crate) use entropy_semantic::{
 /// - Concurrency: Handlers may implement parallel processing internally
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
+    // `--perf` has exactly one implementation, and it lives here. Nine of the
+    // thirteen subcommands that advertise the flag used to drop it on the floor
+    // (see `perf_report` for the roll-call), so `--perf` produced byte-identical
+    // output. Timing the dispatch is the only way to make that impossible: a
+    // subcommand cannot forget to honour a flag it never sees.
+    let perf_label = perf_report::perf_command_label(&cmd);
+    let started = std::time::Instant::now();
+
+    let result = dispatch_analyze_command(cmd).await;
+
+    if let Some(label) = perf_label {
+        perf_report::emit(label, started.elapsed());
+    }
+
+    result
+}
+
+/// Dispatch to the per-family routers. Split out of [`route_analyze_command`]
+/// so the `--perf` measurement wraps every analyze subcommand exactly once.
+async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::AnalyzeCommands;
 
     match cmd {

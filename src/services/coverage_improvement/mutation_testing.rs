@@ -58,7 +58,7 @@ impl CoverageImprovementService {
     ///
     /// Only runs on files that have changed (--in-diff flag) for performance.
     async fn run_mutation_testing(&self, _targets: &[PathBuf]) -> Result<f64> {
-        eprintln!("🧬 Running mutation testing...");
+        crate::status_eprintln!("🧬 Running mutation testing...");
 
         // Check if cargo-mutants is installed
         let check_output = Command::new("cargo")
@@ -127,9 +127,11 @@ impl CoverageImprovementService {
             85.0 // Assume reasonable score
         };
 
-        eprintln!(
+        crate::status_eprintln!(
             "✅ Mutation testing complete: {:.1}% ({:.0} caught, {:.0} missed)",
-            mutation_score, caught, missed
+            mutation_score,
+            caught,
+            missed
         );
 
         // Clean up ephemeral file

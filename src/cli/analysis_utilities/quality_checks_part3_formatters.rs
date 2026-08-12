@@ -1,4 +1,3 @@
-
 // Helper: Format as JSON
 fn format_qg_as_json(
     results: &QualityGateResults,
@@ -34,18 +33,26 @@ fn format_qg_as_human(
 
 // Helper: Write human header
 fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "# Quality Gate Report\n")?;
+    writeln!(output, "{}\n", c::header("# Quality Gate Report"))?;
     writeln!(
         output,
-        "Status: {}",
+        "{} {} {}",
+        c::label("Status:"),
         if results.passed {
-            "\u{2705} PASSED"
+            "\u{2705}"
         } else {
-            "\u{274c} FAILED"
-        }
+            "\u{274c}"
+        },
+        qg_verdict_word(results.passed)
     )?;
-    writeln!(output, "Total violations: {}\n", results.total_violations)?;
+    writeln!(
+        output,
+        "{} {}\n",
+        c::label("Total violations:"),
+        c::number(&results.total_violations.to_string())
+    )?;
     Ok(())
 }
 
@@ -71,18 +78,21 @@ fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) 
 
 // Helper: Write violations list
 fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
+    use crate::cli::colors as c;
     use std::fmt::Write;
-    writeln!(output, "\n## Violations:\n")?;
+    writeln!(output, "\n{}\n", c::subheader("## Violations:"))?;
     for v in violations {
         writeln!(
             output,
             "- [{}] {} - {}",
-            v.severity, v.check_type, v.message
+            qg_severity_word(&v.severity),
+            v.check_type,
+            v.message
         )?;
         if let Some(line) = v.line {
-            writeln!(output, "  File: {}:{}", v.file, line)?;
+            writeln!(output, "  File: {}:{}", c::path(&v.file), line)?;
         } else {
-            writeln!(output, "  File: {}", v.file)?;
+            writeln!(output, "  File: {}", c::path(&v.file))?;
         }
         // Show explainability details for entropy/provability violations (#226, #229)
         write_violation_details(output, v)?;

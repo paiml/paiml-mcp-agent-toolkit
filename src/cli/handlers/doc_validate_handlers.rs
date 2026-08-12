@@ -59,11 +59,11 @@ impl ValidateDocsCmd {
         };
 
         if self.verbose {
-            eprintln!("🔍 Validating documentation links...");
-            eprintln!("📁 Root: {}", config.root_dir.display());
-            eprintln!("⏱️  Timeout: {}ms", config.http_timeout_ms);
-            eprintln!("🔄 Max retries: {}", config.max_retries);
-            eprintln!("⚡ Max concurrent: {}", config.max_concurrent_requests);
+            crate::status_eprintln!("🔍 Validating documentation links...");
+            crate::status_eprintln!("📁 Root: {}", config.root_dir.display());
+            crate::status_eprintln!("⏱️  Timeout: {}ms", config.http_timeout_ms);
+            crate::status_eprintln!("🔄 Max retries: {}", config.max_retries);
+            crate::status_eprintln!("⚡ Max concurrent: {}", config.max_concurrent_requests);
         }
 
         // Only text/plain, json and junit are actually rendered. Every other

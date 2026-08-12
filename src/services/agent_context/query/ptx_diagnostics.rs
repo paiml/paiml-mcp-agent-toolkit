@@ -339,9 +339,11 @@ pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
 /// Format PTX diagnostics as human-readable text
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
+    use crate::cli::colors as c;
     let mut out = String::new();
     out.push_str(&format!(
-        "\x1b[1;4mPTX Diagnostics\x1b[0m ({} functions, {} critical, {} warning, {} info)\n\n",
+        "{} ({} functions, {} critical, {} warning, {} info)\n\n",
+        c::header("PTX Diagnostics"),
         result.functions.len(),
         result.total_critical,
         result.total_warning,
@@ -355,8 +357,10 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
 
     for func in &result.functions {
         out.push_str(&format!(
-            "  \x1b[1;36m{}\x1b[0m \x1b[2m{}\x1b[0m [{}]\n",
-            func.function_name, func.file_path, func.project
+            "  {} {} [{}]\n",
+            c::colored(c::BOLD_CYAN, &func.function_name),
+            c::dim(&func.file_path),
+            func.project
         ));
         out.push_str(&format!(
             "    regs:{} branch:{:.0}% shmem:{}B barriers:{}\n",
@@ -367,13 +371,18 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
         ));
         for d in &func.diagnostics {
             let color = match d.severity {
-                PtxSeverity::Critical => "\x1b[1;31m",
-                PtxSeverity::Warning => "\x1b[1;33m",
-                PtxSeverity::Info => "\x1b[2m",
+                PtxSeverity::Critical => c::BOLD_RED,
+                PtxSeverity::Warning => c::BOLD_YELLOW,
+                PtxSeverity::Info => c::DIM,
             };
+            // Width is applied to the word, not to the escape-bearing string:
+            // padding a coloured string pads the escapes too, which is how
+            // aligned columns drift apart the moment colour is on.
             out.push_str(&format!(
-                "    {color}{:>8}\x1b[0m [{}] {}\n",
-                d.severity, d.category, d.message
+                "    {} [{}] {}\n",
+                c::colored(color, &format!("{:>8}", d.severity)),
+                d.category,
+                d.message
             ));
         }
         out.push('\n');
@@ -835,9 +844,17 @@ mod tests {
         assert!(s.contains("critical"));
     }
 
+    /// All three severity arms select a different colour — and the escapes
+    /// appear only when colour is on.
+    ///
+    /// This test used to assert `s.contains("\x1b[1;31m")` unconditionally,
+    /// which PINNED the defect: the renderer interpolated raw literals, so it
+    /// wrote those bytes into a redirected file and under `--color never` too.
+    /// Both halves are asserted now, because a printer that always colours and
+    /// a printer that never colours each satisfy exactly one of them.
     #[test]
     fn test_format_text_severity_color_arms() {
-        // All three severity arms hit different ANSI color codes
+        use crate::cli::colors::ForcedColor;
         let r = PtxDiagnosticResult {
             functions: vec![
                 func_diag("a", PtxSeverity::Critical),
@@ -848,10 +865,23 @@ mod tests {
             total_warning: 1,
             total_info: 1,
         };
-        let s = format_ptx_diagnostics_text(&r);
-        assert!(s.contains("\x1b[1;31m")); // critical
-        assert!(s.contains("\x1b[1;33m")); // warning
-        assert!(s.contains("\x1b[2m")); // info
+
+        {
+            let _on = ForcedColor::on();
+            let s = format_ptx_diagnostics_text(&r);
+            assert!(s.contains("\x1b[1;31m"), "critical arm: {s:?}");
+            assert!(s.contains("\x1b[1;33m"), "warning arm: {s:?}");
+            assert!(s.contains("\x1b[2m"), "info arm: {s:?}");
+        }
+
+        let _off = ForcedColor::off();
+        let plain = format_ptx_diagnostics_text(&r);
+        assert!(
+            !plain.contains('\u{1b}'),
+            "--color never must leave no escape: {plain:?}"
+        );
+        // Guard against a vacuous pass: the severity words themselves survive.
+        assert!(plain.contains("critical"), "{plain:?}");
     }
 
     // ── format_ptx_diagnostics_json ─────────────────────────────────────────

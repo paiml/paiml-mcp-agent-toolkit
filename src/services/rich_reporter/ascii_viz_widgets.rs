@@ -86,9 +86,9 @@ impl ProgressBar {
                     .next()
                     .unwrap_or(&Severity::Low);
 
-                result.push_str(severity.color_code());
+                result.push_str(&severity.color_code().to_string());
                 result.push(char_to_use);
-                result.push_str("\x1b[0m");
+                result.push_str(&crate::cli::colors::RESET.to_string());
             } else {
                 result.push(char_to_use);
             }

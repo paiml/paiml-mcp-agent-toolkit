@@ -82,18 +82,20 @@ pub async fn handle_quality_gate(
     use std::time::Instant;
 
     if !project_path.exists() {
-        return Err(anyhow::anyhow!("Path not found: {}", project_path.display()));
+        return Err(anyhow::anyhow!(
+            "Path not found: {}",
+            project_path.display()
+        ));
     }
 
     let start_time = if perf { Some(Instant::now()) } else { None };
 
-    // Suppress progress output for machine-readable formats (#230)
-    let quiet = matches!(format, QualityGateOutputFormat::Json | QualityGateOutputFormat::Junit);
-
-    // Print initial status message
-    if !quiet {
-        print_quality_gate_start_message(&file);
-    }
+    // Progress chatter is suppressed by the one rule — `--quiet`
+    // (`crate::status_eprintln!`). This used to derive a second, private `quiet`
+    // from the output format (#230) and thread it through six modules, so the
+    // documented `--quiet` flag reached none of it. One rule, one implementation:
+    // `--format json --quiet` is now the silent-progress recipe.
+    print_quality_gate_start_message(&file);
 
     // Show which checks will be run
     let checks_to_run = if checks.is_empty() {
@@ -101,9 +103,7 @@ pub async fn handle_quality_gate(
     } else {
         checks.clone()
     };
-    if !quiet {
-        print_checks_to_run(&checks_to_run);
-    }
+    print_checks_to_run(&checks_to_run);
 
     // Handle single file or project-wide quality gate
     let result = if let Some(single_file) = file {
@@ -116,7 +116,6 @@ pub async fn handle_quality_gate(
             max_complexity_p99,
             output,
             perf,
-            quiet,
         )
         .await
     } else {
@@ -131,23 +130,20 @@ pub async fn handle_quality_gate(
             include_provability,
             output,
             perf,
-            quiet,
         )
         .await
     };
 
-    // Show performance metrics if requested (suppress in quiet/JSON mode)
-    if !quiet {
-        if let Some(start) = start_time {
-            let duration = start.elapsed();
-            eprintln!("\n⏱️  Performance Metrics:");
-            eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
-            eprintln!("  Checks performed: {}", checks_to_run.len());
-            eprintln!(
-                "  Average time per check: {:.2}s",
-                duration.as_secs_f64() / checks_to_run.len() as f64
-            );
-        }
+    // Show performance metrics if requested (chatter: silent under --quiet)
+    if let Some(start) = start_time {
+        let duration = start.elapsed();
+        crate::status_eprintln!("\n⏱️  Performance Metrics:");
+        crate::status_eprintln!("  Total execution time: {:.2}s", duration.as_secs_f64());
+        crate::status_eprintln!("  Checks performed: {}", checks_to_run.len());
+        crate::status_eprintln!(
+            "  Average time per check: {:.2}s",
+            duration.as_secs_f64() / checks_to_run.len() as f64
+        );
     }
 
     result
@@ -156,37 +152,37 @@ pub async fn handle_quality_gate(
 /// Prints the initial quality gate status message
 fn print_quality_gate_start_message(file: &Option<PathBuf>) {
     if let Some(single_file) = file {
-        eprintln!(
+        crate::status_eprintln!(
             "🔍 Running quality gate checks on file: {}...",
             single_file.display()
         );
     } else {
-        eprintln!("🔍 Running quality gate checks...");
+        crate::status_eprintln!("🔍 Running quality gate checks...");
     }
 }
 
 /// Prints which checks will be run
 /// Toyota Way: Extract Method - Print checks to run (complexity ≤8)
 fn print_checks_to_run(checks: &[QualityCheckType]) {
-    eprintln!("\n📋 Checks to run:");
+    crate::status_eprintln!("\n📋 Checks to run:");
 
     if checks.contains(&QualityCheckType::All) {
         print_all_checks();
     } else {
         print_selected_checks(checks);
     }
-    eprintln!();
+    crate::status_eprintln!();
 }
 
 /// Toyota Way: Extract Method - Print all quality checks (complexity ≤5)
 fn print_all_checks() {
-    eprintln!("  ✓ Complexity analysis");
-    eprintln!("  ✓ Dead code detection");
-    eprintln!("  ✓ Self-admitted technical debt (SATD)");
-    eprintln!("  ✓ Security vulnerabilities");
-    eprintln!("  ✓ Code entropy");
-    eprintln!("  ✓ Duplicate code");
-    eprintln!("  ✓ Test coverage");
+    crate::status_eprintln!("  ✓ Complexity analysis");
+    crate::status_eprintln!("  ✓ Dead code detection");
+    crate::status_eprintln!("  ✓ Self-admitted technical debt (SATD)");
+    crate::status_eprintln!("  ✓ Security vulnerabilities");
+    crate::status_eprintln!("  ✓ Code entropy");
+    crate::status_eprintln!("  ✓ Duplicate code");
+    crate::status_eprintln!("  ✓ Test coverage");
 }
 
 /// Toyota Way: Extract Method - Print selected checks (complexity ≤8)
@@ -219,5 +215,5 @@ fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
 
 /// Print a check success message with consistent formatting
 fn print_check_success(message: &str) {
-    eprintln!("  ✓ {message}");
+    crate::status_eprintln!("  ✓ {message}");
 }

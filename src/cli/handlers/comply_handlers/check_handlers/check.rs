@@ -71,7 +71,7 @@ pub(crate) async fn handle_check(
         );
     }
 
-    eprintln!("Checking PMAT compliance for {}", project_path.display());
+    crate::status_eprintln!("Checking PMAT compliance for {}", project_path.display());
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
@@ -151,9 +151,9 @@ fn announce_suppressions(
     if !config_path.exists() {
         return;
     }
-    eprintln!("  Using configuration from .pmat.yaml");
+    crate::status_eprintln!("  Using configuration from .pmat.yaml");
     if !comply_config.suppressions.is_empty() {
-        eprintln!(
+        crate::status_eprintln!(
             "  {} suppression rule(s) loaded",
             comply_config.suppressions.len()
         );
@@ -282,7 +282,7 @@ fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
                 .filter(|c| c.status == CheckStatus::Warn)
                 .count();
             let n = done.fetch_add(1, Ordering::Relaxed) + 1;
-            eprintln!(
+            crate::status_eprintln!(
                 "  [{n:>2}/{total}] {name:<19} {:>3} checks · {fails} fail · {warns} warn · {:.1}s",
                 checks.len(),
                 start.elapsed().as_secs_f64()
@@ -296,7 +296,7 @@ fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
     let all: Vec<ComplianceCheck> = grouped.into_iter().flat_map(|(_, c)| c).collect();
 
     let fails = all.iter().filter(|c| c.status == CheckStatus::Fail).count();
-    eprintln!(
+    crate::status_eprintln!(
         "  ── comply: {} checks in {:.1}s ({fails} fail) ──",
         all.len(),
         overall.elapsed().as_secs_f64()

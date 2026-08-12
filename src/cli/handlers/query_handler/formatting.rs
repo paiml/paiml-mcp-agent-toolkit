@@ -442,7 +442,9 @@ fn print_query_output(
 
     if coverage && !matches!(format, QueryOutputFormat::Json) {
         if let Some(summary) = format_coverage_summary(results) {
-            eprintln!("\x1b[2m{}\x1b[0m", summary);
+            // The last raw escape on the query path: `--color never` reached the
+            // result body but not this one-line coverage footer.
+            eprintln!("{}", crate::cli::colors::dim(&summary));
         }
     }
 

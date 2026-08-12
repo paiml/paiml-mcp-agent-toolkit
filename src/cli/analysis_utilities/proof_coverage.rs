@@ -77,6 +77,7 @@
 ///     None,  // stdout output
 ///     false, // normal performance
 ///     false, // keep cache
+///     10,    // top_files
 /// ).await;
 ///
 /// assert!(result.is_ok());
@@ -92,6 +93,7 @@
 ///     Some(dir.path().join("safety-proofs.json")),
 ///     true,  // performance mode
 ///     true,  // clear cache
+///     10,    // top_files
 /// ).await;
 ///
 /// assert!(safety_result.is_ok());
@@ -115,67 +117,17 @@
 ///   --include-evidence --verification-method theorem-proving \
 ///   --clear-cache --output formal-specs.md
 /// ```ignore
-#[allow(clippy::too_many_arguments)]
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_analyze_proof_annotations(
-    project_path: PathBuf,
-    format: ProofAnnotationOutputFormat,
-    high_confidence_only: bool,
-    include_evidence: bool,
-    property_type: Option<PropertyTypeFilter>,
-    verification_method: Option<VerificationMethodFilter>,
-    output: Option<PathBuf>,
-    _perf: bool,
-    clear_cache: bool,
-) -> Result<()> {
-    use crate::cli::proof_annotation_helpers::{
-        collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
-        format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
-    };
-    use std::time::Instant;
+/// This is the one implementation, re-exported.
+///
+/// There used to be a SECOND `handle_analyze_proof_annotations` here: a
+/// copy-paste of the wired handler that nothing dispatched to, kept alive by
+/// its own unit test. It had drifted into a strictly worse copy — no
+/// `ensure_analysis_path_exists` guard (so it produced a full report for a
+/// path that does not exist), no disclosure of files the collector could not
+/// parse, and no `--top-files` limit. Syncing three fixes into a duplicate is
+/// how the next divergence starts; the duplicate is gone instead.
+pub use crate::cli::handlers::proof_annotations_handler::handle_analyze_proof_annotations;
 
-    eprintln!("🔍 Collecting proof annotations from project...");
-    let start = Instant::now();
-
-    // Setup annotator
-    let annotator = setup_proof_annotator(clear_cache);
-
-    // Create filter
-    let filter = ProofAnnotationFilter {
-        high_confidence_only,
-        property_type,
-        verification_method,
-    };
-
-    // Collect and filter annotations
-    let annotations = collect_and_filter_annotations(&annotator, &project_path, &filter).await;
-    let elapsed = start.elapsed();
-
-    eprintln!("✅ Found {} matching proof annotations", annotations.len());
-
-    // Format output using helpers
-    let content = match format {
-        ProofAnnotationOutputFormat::Json => format_as_json(&annotations, elapsed, &annotator)?,
-        ProofAnnotationOutputFormat::Summary => format_as_summary(&annotations, elapsed)?,
-        ProofAnnotationOutputFormat::Full => {
-            format_as_full(&annotations, &project_path, include_evidence)?
-        }
-        ProofAnnotationOutputFormat::Markdown => {
-            format_as_markdown(&annotations, &project_path, include_evidence)?
-        }
-        ProofAnnotationOutputFormat::Sarif => format_as_sarif(&annotations, &project_path)?,
-    };
-
-    // Write output
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Proof annotations written to: {}", output_path.display());
-    } else {
-        println!("{content}");
-    }
-
-    Ok(())
-}
 /// Analyzes incremental test coverage between Git branches.
 ///
 /// This command performs differential coverage analysis, comparing test coverage
@@ -353,15 +305,15 @@ fn print_coverage_analysis_header(
     coverage_threshold: f64,
     format: &IncrementalCoverageOutputFormat,
 ) {
-    eprintln!("📊 Analyzing incremental coverage...");
-    eprintln!("📁 Project path: {}", project_path.display());
-    eprintln!("🌿 Base branch: {base_branch}");
-    eprintln!(
+    crate::status_eprintln!("📊 Analyzing incremental coverage...");
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("🌿 Base branch: {base_branch}");
+    crate::status_eprintln!(
         "🎯 Target branch: {}",
         target_branch.as_deref().unwrap_or("HEAD")
     );
-    eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
-    eprintln!("📄 Format: {format:?}");
+    crate::status_eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
+    crate::status_eprintln!("📄 Format: {format:?}");
 }
 
 fn create_file_ids_from_changes(
@@ -407,11 +359,11 @@ fn format_coverage_report(
 }
 
 async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Result<()> {
-    eprintln!("✅ Incremental coverage analysis complete");
+    crate::status_eprintln!("✅ Incremental coverage analysis complete");
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📝 Written to {}", output_path.display());
+        crate::status_eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -553,15 +505,13 @@ mod proof_coverage_tests {
     fn test_format_coverage_report_markdown_variant_returns_string() {
         let report = empty_report();
         let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Markdown, 10)
-                .unwrap();
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Markdown, 10).unwrap();
     }
 
     #[test]
     fn test_format_coverage_report_detailed_variant_returns_string() {
         let report = empty_report();
         let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Detailed, 10)
-                .unwrap();
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Detailed, 10).unwrap();
     }
 }

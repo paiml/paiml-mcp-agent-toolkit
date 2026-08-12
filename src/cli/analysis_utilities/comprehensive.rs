@@ -167,7 +167,7 @@ pub async fn handle_analyze_comprehensive(
 ) -> Result<()> {
     use std::time::Instant;
 
-    eprintln!("🔍 Running comprehensive analysis...");
+    crate::status_eprintln!("🔍 Running comprehensive analysis...");
     let start = Instant::now();
 
     let mut report = ComprehensiveReport::default();
@@ -187,7 +187,7 @@ pub async fn handle_analyze_comprehensive(
     run_comprehensive_analyses(&mut report, &project_path, &config).await?;
 
     let elapsed = start.elapsed();
-    eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
+    crate::status_eprintln!("✅ Comprehensive analysis completed in {elapsed:?}");
 
     // Format and write output
     write_comprehensive_output(&report, format, executive_summary, output).await?;
@@ -256,7 +256,7 @@ async fn run_comprehensive_analyses_with_config(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     // Run SATD analysis (always run)
-    eprintln!("🔍 Analyzing technical debt...");
+    crate::status_eprintln!("🔍 Analyzing technical debt...");
     report.satd = Some(
         run_satd_analysis(
             project_path,
@@ -292,7 +292,7 @@ async fn run_complexity_if_requested(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     if config.include_complexity {
-        eprintln!("📊 Analyzing complexity...");
+        crate::status_eprintln!("📊 Analyzing complexity...");
         report.complexity = Some(
             run_complexity_analysis(
                 project_path,
@@ -312,7 +312,7 @@ async fn run_tdg_if_requested(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     if config.include_tdg {
-        eprintln!("📈 Analyzing technical debt gradient...");
+        crate::status_eprintln!("📈 Analyzing technical debt gradient...");
         report.tdg = Some(create_tdg_report(project_path).await?);
     }
     Ok(())
@@ -325,7 +325,7 @@ async fn run_dead_code_if_requested(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     if config.include_dead_code {
-        eprintln!("💀 Analyzing dead code...");
+        crate::status_eprintln!("💀 Analyzing dead code...");
         report.dead_code = Some(
             run_dead_code_analysis(
                 project_path,
@@ -345,7 +345,7 @@ async fn run_defects_if_requested(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     if config.include_defects {
-        eprintln!("🐛 Predicting defects...");
+        crate::status_eprintln!("🐛 Predicting defects...");
         report.defects = Some(
             run_defect_prediction(project_path, config.confidence_threshold, config.min_lines)
                 .await?,
@@ -361,7 +361,7 @@ async fn run_duplicates_if_requested(
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
     if config.include_duplicates {
-        eprintln!("👥 Detecting duplicates...");
+        crate::status_eprintln!("👥 Detecting duplicates...");
         report.duplicates = Some(
             run_duplicate_detection(
                 project_path,
@@ -388,7 +388,7 @@ async fn write_comprehensive_output(
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📄 Report written to: {}", output_path.display());
+        crate::status_eprintln!("📄 Report written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

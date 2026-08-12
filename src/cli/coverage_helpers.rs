@@ -9,6 +9,19 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 /// Setup coverage analyzer
+///
+/// `--force-refresh` used to print "🧹 Clearing coverage cache..." above
+/// `// In real implementation, would clear the cache`, so the cache directory
+/// it named came out of the run byte-for-byte unchanged. It now clears that
+/// directory through the one shared implementation
+/// ([`crate::cli::cache_clearing::clear_cache_directory`]), the same one
+/// `enforce extreme --clear-cache` uses.
+///
+/// # Errors
+///
+/// Returns an error when the analyzer cannot be created, or when
+/// `--force-refresh` was asked for and the cache could not be cleared: a
+/// refresh that failed must not be reported as a refresh.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn setup_coverage_analyzer(
     cache_dir: Option<PathBuf>,
@@ -16,12 +29,14 @@ pub fn setup_coverage_analyzer(
 ) -> Result<IncrementalCoverageAnalyzer> {
     let cache_path = cache_dir.unwrap_or_else(|| std::env::temp_dir().join("pmat_coverage_cache"));
 
-    let analyzer = IncrementalCoverageAnalyzer::new(&cache_path)?;
-
     if force_refresh {
-        eprintln!("🧹 Clearing coverage cache...");
-        // In real implementation, would clear the cache
+        crate::cli::cache_clearing::clear_cache_directory_reporting(
+            &cache_path,
+            "--force-refresh",
+        )?;
     }
+
+    let analyzer = IncrementalCoverageAnalyzer::new(&cache_path)?;
 
     Ok(analyzer)
 }
@@ -33,11 +48,11 @@ pub async fn get_changed_files_for_coverage(
     base_branch: &str,
     target_branch: Option<&str>,
 ) -> Result<Vec<(PathBuf, String)>> {
-    eprintln!("🔍 Getting changed files...");
-    eprintln!("📍 Project: {}", project_path.display());
-    eprintln!("🔄 Base branch: {base_branch}");
+    crate::status_eprintln!("🔍 Getting changed files...");
+    crate::status_eprintln!("📍 Project: {}", project_path.display());
+    crate::status_eprintln!("🔄 Base branch: {base_branch}");
     if let Some(target) = target_branch {
-        eprintln!("🎯 Target branch: {target}");
+        crate::status_eprintln!("🎯 Target branch: {target}");
     }
 
     // Use git to get actual changed files
@@ -78,7 +93,7 @@ pub async fn get_changed_files_for_coverage(
         }
     }
 
-    eprintln!("📝 Found {} changed files", changed_files.len());
+    crate::status_eprintln!("📝 Found {} changed files", changed_files.len());
     Ok(changed_files)
 }
 
@@ -132,7 +147,7 @@ pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) 
         eprintln!("❌ Coverage threshold not met: {coverage:.1}% < {threshold:.1}%");
         anyhow::bail!("Coverage threshold not met");
     }
-    eprintln!("✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%");
+    crate::status_eprintln!("✅ Coverage threshold met: {coverage:.1}% >= {threshold:.1}%");
 
     Ok(())
 }
@@ -444,10 +459,37 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    /// `--force-refresh` printed "🧹 Clearing coverage cache..." above
+    /// `// In real implementation, would clear the cache`, so the cache
+    /// directory it named still held every entry afterwards. It must now be
+    /// empty.
     #[test]
-    fn test_setup_coverage_analyzer_force_refresh() {
-        let result = setup_coverage_analyzer(None, true);
-        assert!(result.is_ok());
+    fn test_setup_coverage_analyzer_force_refresh_empties_the_cache_dir() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cache = dir.path().join("coverage-cache");
+        std::fs::create_dir(&cache).expect("mkdir cache");
+        std::fs::write(cache.join("stale.json"), b"{}").expect("write stale entry");
+
+        setup_coverage_analyzer(Some(cache.clone()), true).expect("analyzer");
+
+        assert!(
+            !cache.join("stale.json").exists(),
+            "--force-refresh must delete the cached entry it says it refreshed"
+        );
+    }
+
+    /// Without the flag the cache is left alone — otherwise every run would be
+    /// a forced refresh and the flag would again mean nothing.
+    #[test]
+    fn test_setup_coverage_analyzer_without_force_refresh_keeps_the_cache() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cache = dir.path().join("coverage-cache");
+        std::fs::create_dir(&cache).expect("mkdir cache");
+        std::fs::write(cache.join("stale.json"), b"{}").expect("write stale entry");
+
+        setup_coverage_analyzer(Some(cache.clone()), false).expect("analyzer");
+
+        assert!(cache.join("stale.json").exists());
     }
 
     /// A base ref that does not exist must surface as an error, not as an empty

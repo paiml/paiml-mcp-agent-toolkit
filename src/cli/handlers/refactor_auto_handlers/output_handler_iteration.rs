@@ -10,14 +10,14 @@ async fn execute_refactoring_iteration(
     context: &RefactorContext,
     iteration_number: u32,
 ) -> Result<IterationResult> {
-    eprintln!("🔄 Executing refactoring iteration #{iteration_number}");
+    crate::status_eprintln!("🔄 Executing refactoring iteration #{iteration_number}");
 
     let mut successful_requests = Vec::new();
     let mut failed_requests = Vec::new();
     let iteration_start = std::time::Instant::now();
 
     for (index, request) in requests.iter().enumerate() {
-        eprintln!(
+        crate::status_eprintln!(
             "📝 Processing request {}/{}: {}",
             index + 1,
             requests.len(),
@@ -27,7 +27,7 @@ async fn execute_refactoring_iteration(
         // Apply the refactoring request
         match apply_refactoring_request(request, context).await {
             Ok(result) => {
-                eprintln!("✅ Successfully applied: {}", request.description);
+                crate::status_eprintln!("✅ Successfully applied: {}", request.description);
                 successful_requests.push(result);
             }
             Err(error) => {
@@ -45,7 +45,7 @@ async fn execute_refactoring_iteration(
     }
 
     let iteration_duration = iteration_start.elapsed();
-    eprintln!("⏱️  Iteration completed in {iteration_duration:?}");
+    crate::status_eprintln!("⏱️  Iteration completed in {iteration_duration:?}");
 
     let quality_improvement = calculate_quality_improvement(&successful_requests).await?;
 
@@ -66,7 +66,7 @@ async fn validate_refactoring_results(
     iteration_result: &IterationResult,
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
-    eprintln!(
+    crate::status_eprintln!(
         "🔍 Validating refactoring results for iteration #{}",
         iteration_result.iteration_number
     );
@@ -103,8 +103,8 @@ async fn validate_refactoring_results(
 
     let overall_success = compilation_result.success && test_result.success && quality_improved;
 
-    eprintln!("📊 Validation Summary:");
-    eprintln!(
+    crate::status_eprintln!("📊 Validation Summary:");
+    crate::status_eprintln!(
         "  ✅ Compilation: {}",
         if compilation_result.success {
             "PASSED"
@@ -112,11 +112,11 @@ async fn validate_refactoring_results(
             "FAILED"
         }
     );
-    eprintln!(
+    crate::status_eprintln!(
         "  ✅ Tests: {} passed, {} failed",
         test_result.passed_count, test_result.failed_count
     );
-    eprintln!(
+    crate::status_eprintln!(
         "  ✅ Quality: {}",
         if quality_improved {
             "IMPROVED"

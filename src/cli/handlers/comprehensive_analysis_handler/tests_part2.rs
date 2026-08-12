@@ -54,7 +54,7 @@ mod tests_part2 {
             summary: "Test summary".to_string(),
         };
         let mut output = String::new();
-        format_complexity_section(&mut output, &complexity).unwrap();
+        format_complexity_section(&mut output, &complexity, 5).unwrap();
         assert!(output.contains("## Complexity Analysis"));
         assert!(output.contains("**Files Analyzed**: 25"));
         assert!(output.contains("**Average Complexity**: 12.5"));
@@ -74,7 +74,7 @@ mod tests_part2 {
             summary: "Clean".to_string(),
         };
         let mut output = String::new();
-        format_complexity_section(&mut output, &complexity).unwrap();
+        format_complexity_section(&mut output, &complexity, 5).unwrap();
         assert!(output.contains("**Violations**: 0"));
         assert!(!output.contains("### Top Complexity Violations"));
     }
@@ -94,7 +94,7 @@ mod tests_part2 {
             summary: "Found dead code".to_string(),
         };
         let mut output = String::new();
-        format_dead_code_section(&mut output, &dead_code).unwrap();
+        format_dead_code_section(&mut output, &dead_code, 5).unwrap();
         assert!(output.contains("## Dead Code Analysis"));
         assert!(output.contains("**Files Analyzed**: 15"));
         assert!(output.contains("**Dead Items**: 1"));
@@ -111,7 +111,7 @@ mod tests_part2 {
             summary: "No dead code".to_string(),
         };
         let mut output = String::new();
-        format_dead_code_section(&mut output, &dead_code).unwrap();
+        format_dead_code_section(&mut output, &dead_code, 5).unwrap();
         assert!(output.contains("**Dead Items**: 0"));
         assert!(!output.contains("### Dead Code Items"));
     }
@@ -130,7 +130,7 @@ mod tests_part2 {
             summary: "Found SATD".to_string(),
         };
         let mut output = String::new();
-        format_satd_section(&mut output, &satd).unwrap();
+        format_satd_section(&mut output, &satd, 5).unwrap();
         assert!(output.contains("## Technical Debt (SATD) Analysis"));
         assert!(output.contains("**Files Analyzed**: 8"));
         assert!(output.contains("**Violations**: 1"));
@@ -146,7 +146,7 @@ mod tests_part2 {
             summary: "No SATD".to_string(),
         };
         let mut output = String::new();
-        format_satd_section(&mut output, &satd).unwrap();
+        format_satd_section(&mut output, &satd, 5).unwrap();
         assert!(output.contains("**Violations**: 0"));
         assert!(!output.contains("### SATD Violations"));
     }
@@ -170,7 +170,7 @@ mod tests_part2 {
             summary: "Many violations".to_string(),
         };
         let mut output = String::new();
-        format_complexity_section(&mut output, &complexity).unwrap();
+        format_complexity_section(&mut output, &complexity, 5).unwrap();
         assert!(output.contains("5. "));
         assert!(!output.contains("6. "));
     }
@@ -193,7 +193,7 @@ mod tests_part2 {
             summary: "Many dead items".to_string(),
         };
         let mut output = String::new();
-        format_dead_code_section(&mut output, &dead_code).unwrap();
+        format_dead_code_section(&mut output, &dead_code, 5).unwrap();
         assert!(output.contains("5. "));
         assert!(!output.contains("6. "));
     }
@@ -215,9 +215,93 @@ mod tests_part2 {
             summary: "Many SATD items".to_string(),
         };
         let mut output = String::new();
-        format_satd_section(&mut output, &satd).unwrap();
+        format_satd_section(&mut output, &satd, 5).unwrap();
         assert!(output.contains("5. "));
         assert!(!output.contains("6. "));
+    }
+
+    /// The three sections above were `.iter().take(5)` with the 5 written into
+    /// the source, so `analyze comprehensive --top-files 1` and
+    /// `--top-files 50` produced byte-identical reports (md5
+    /// c1b7cf8d353b4a8f…) over a corpus with 87 complexity violations, 45 dead
+    /// items and 63 SATD violations. The row count is the flag.
+    #[test]
+    fn every_section_row_count_follows_top_files() {
+        let complexity = ComplexityAnalysisResult {
+            total_files: 10,
+            violations: (0..10)
+                .map(|i| ComplexityViolation {
+                    file_path: format!("src/file{i}.rs"),
+                    function_name: format!("function{i}"),
+                    line_number: i,
+                    complexity: 25 + i as u32,
+                    complexity_type: "cyclomatic".to_string(),
+                })
+                .collect(),
+            average_complexity: 30.0,
+            max_complexity: 34,
+            summary: "Many violations".to_string(),
+        };
+        let dead_code = DeadCodeAnalysisResult {
+            total_files: 10,
+            dead_items: (0..10)
+                .map(|i| DeadCodeItem {
+                    file_path: format!("src/file{i}.rs"),
+                    item_name: format!("item{i}"),
+                    item_type: DeadCodeType::Function,
+                    line_number: i,
+                    reason: "Unused".to_string(),
+                })
+                .collect(),
+            dead_percentage: 10.0,
+            summary: "Many dead items".to_string(),
+        };
+        let satd = SatdAnalysisResult {
+            total_files: 10,
+            violations: (0..10)
+                .map(|i| SatdViolation {
+                    file_path: format!("src/file{i}.rs"),
+                    line_number: i,
+                    violation_type: "TODO".to_string(),
+                    message: format!("Message {i}"),
+                    severity: SatdSeverity::Low,
+                })
+                .collect(),
+            summary: "Many SATD items".to_string(),
+        };
+
+        let numbered = |s: &str| {
+            s.lines()
+                .filter(|l| {
+                    l.trim_start()
+                        .split('.')
+                        .next()
+                        .is_some_and(|h| !h.is_empty() && h.chars().all(|c| c.is_ascii_digit()))
+                })
+                .count()
+        };
+
+        for (limit, expected) in [(1usize, 1usize), (3, 3), (50, 10), (0, 10)] {
+            let mut c = String::new();
+            format_complexity_section(&mut c, &complexity, limit).unwrap();
+            assert_eq!(
+                numbered(&c),
+                expected,
+                "complexity --top-files {limit}:\n{c}"
+            );
+
+            let mut d = String::new();
+            format_dead_code_section(&mut d, &dead_code, limit).unwrap();
+            assert_eq!(
+                numbered(&d),
+                expected,
+                "dead code --top-files {limit}:\n{d}"
+            );
+
+            let mut s = String::new();
+            format_satd_section(&mut s, &satd, limit).unwrap();
+            assert_eq!(numbered(&s), expected, "satd --top-files {limit}:\n{s}");
+        }
     }
 
     #[test]
@@ -266,7 +350,7 @@ mod tests_part2 {
             summary: "Test".to_string(),
         };
         let mut output = String::new();
-        format_dead_code_section(&mut output, &dead_code).unwrap();
+        format_dead_code_section(&mut output, &dead_code, 5).unwrap();
         assert!(output.contains("Function"));
         assert!(output.contains("Class"));
         assert!(output.contains("Variable"));
@@ -312,7 +396,7 @@ mod tests_part2 {
             summary: "Test".to_string(),
         };
         let mut output = String::new();
-        format_satd_section(&mut output, &satd).unwrap();
+        format_satd_section(&mut output, &satd, 5).unwrap();
         assert!(output.contains("Critical"));
         assert!(output.contains("High"));
         assert!(output.contains("Medium"));

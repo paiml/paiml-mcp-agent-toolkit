@@ -32,10 +32,10 @@ pub async fn handle_debug(
     let analyzer = FiveWhysAnalyzer::new();
 
     // Run Five Whys analysis (status to stderr to keep stdout clean for --format json)
-    eprintln!("🔍 Analyzing: {}", issue);
-    eprintln!("   Depth: {} iterations", depth);
-    eprintln!("   Path: {}", path.display());
-    eprintln!();
+    crate::status_eprintln!("🔍 Analyzing: {}", issue);
+    crate::status_eprintln!("   Depth: {} iterations", depth);
+    crate::status_eprintln!("   Path: {}", path.display());
+    crate::status_eprintln!();
 
     let analysis = analyzer.analyze(issue, path, depth).await?;
 
@@ -49,7 +49,7 @@ pub async fn handle_debug(
     // Write to file or stdout
     if let Some(output_path) = output {
         std::fs::write(output_path, &formatted)?;
-        println!("✅ Analysis written to: {}", output_path.display());
+        crate::status_println!("✅ Analysis written to: {}", output_path.display());
     } else {
         println!("{}", formatted);
     }

@@ -53,6 +53,27 @@ const DENY_ROOTS: &[(&str, &str)] = &[
     ("org", "not available in the default build"),
 ];
 
+/// Whole command paths that mutate the fixture they are pointed at.
+///
+/// `DENY_ROOTS` cannot express these: `comply` and `analyze` are swept, but two
+/// of their leaves rewrite the corpus underneath the rest of the sweep.
+/// `comply enforce` installs pre-commit/pre-push hooks (and auto-proceeds when
+/// stdin is not a tty, so `--yes` being in `DENY_FLAGS` does not stop it), and
+/// `analyze clippy` runs `clippy --fix` and rewrites source in place —
+/// verified: on a fixture that compiles it reports `"action": "applied"`,
+/// `"fixed_files": ["src/lib.rs"]`. A sweep that edits its own corpus makes
+/// every later verdict unreproducible.
+const DENY_PATHS: &[(&str, &str)] = &[
+    (
+        "comply enforce",
+        "installs git hooks into the fixture; auto-proceeds when non-interactive",
+    ),
+    (
+        "analyze clippy",
+        "runs clippy --fix and rewrites the fixture's source in place",
+    ),
+];
+
 /// Flags that mutate or block regardless of which command carries them.
 const DENY_FLAGS: &[&str] = &[
     "--fix",
@@ -97,10 +118,242 @@ const CORE_ROOTS: &[&str] = &[
 /// Flags proven to be legitimately observable-free, each with a reason.
 ///
 /// This list is the only way a no-op flag passes, and every entry is a claim
-/// someone has to defend in review. It starts empty on purpose.
+/// someone has to defend in review.
+///
+/// **The policy the entries must satisfy: every reason names a demonstrated
+/// real effect** — the code path that reads the flag and the input or format
+/// under which it was observed changing something. "Legitimately inert" is not
+/// a reason; "gates the per-proof evidence section of the markdown renderer,
+/// which the default `summary` renderer does not emit" is. An entry that
+/// cannot name an effect is a defect being documented rather than fixed, which
+/// is exactly how 49 no-op flags shipped in 3.29.0.
+///
+/// Each entry below was triaged against the 3.30.0 artifact by reproducing the
+/// flag's effect on an input the sweep's corpus does not provide, or on a
+/// `--format` the sweep does not carry.
 const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
     // (command path, flag, why it legitimately changes nothing)
+    // --- --color on commands that emit no colour ------------------------------
+    // The switch itself is live in the same binary and corpus: `pmat score
+    // --color always` emits ANSI on 13 lines against 0 under `--color auto`.
+    // It sets CLICOLOR_FORCE/NO_COLOR in apply_ux_settings
+    // (src/cli/cli_run_command.rs:65-75), which colors_enabled()
+    // (src/cli/colors.rs:126-140) resolves once per process. These commands
+    // produce nothing colourable for it to switch.
+    (
+        "analyze dag",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR for colors_enabled(); this command's whole output is a machine-readable mermaid graph with no colourable element",
+    ),
+    (
+        "analyze incremental-coverage",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; incremental_coverage_handler*.rs reference crate::cli::colors zero times and emit plain status lines",
+    ),
+    (
+        "analyze lint-hotspot",
+        "--color",
+        "colours the clean-result confirmation (lint_hotspot_handlers/mod.rs:206-220 report_measured_clean -> c::pass); on a clean crate `--color always` emits an ANSI-green tick and `--color auto` does not — the corpus is dirty by construction so that branch is unreachable",
+    ),
+    (
+        "analyze proof-annotations",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; proof_annotation_helpers_format.rs emits no colour in any of its five formats (summary/full/json/markdown/sarif all verified at 0 escape bytes)",
+    ),
+    (
+        "comply cross-crate",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; nothing under cross_crate_handlers/ references crate::cli::colors, and the reachable output here is the plain single-crate discovery notice (handler.rs:81)",
+    ),
+    (
+        "context",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; context emits a markdown/JSON document users redirect to a file, and colouring it would corrupt the artifact",
+    ),
+    (
+        "explain",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; explain prints a static id/name catalogue (command_routing.rs:428-438) with no status or score element to colour",
+    ),
+    // `quality-gate --color` was here and has been deleted: the colour-adoption
+    // work landed, and the entry's stated reason ("all fifteen
+    // quality_gate_*.rs printers ... reference crate::cli::colors zero times")
+    // is no longer true. Verified by hand on the large corpus: `--color always`
+    // emits 189 ANSI-carrying lines, `--color never` emits 0. The sweep now
+    // scores it Effective, and an allow-list entry that suppresses nothing is
+    // how an exception outlives its reason.
+    (
+        "tdg config show",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; the output is a pretty-printed JSON config dump, which must not carry escapes",
+    ),
+    (
+        "tdg config sources",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; the entire output is three plain println!s (config_command_handlers.rs:335-338)",
+    ),
+    (
+        "tdg config validate",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; the entire output is one emoji literal line (config_command_handlers.rs:322)",
+    ),
+    (
+        "tdg history",
+        "--color",
+        "sets CLICOLOR_FORCE/NO_COLOR; colour is applied by format_history_output, which is only reached with stored TDG records (history.rs:33-39) — an empty result set has nothing to colour",
+    ),
+    // --- flags that modify another flag ---------------------------------------
+    (
+        "analyze lint-hotspot",
+        "--dry-run",
+        "modifies --enforce only: `--enforce` prints '🚨 Quality gate is blocking' and `--enforce --dry-run` suppresses it (lint_hotspot_handlers/mod.rs:362 `enforce && !dry_run && blocking`); nothing is written to disk in either mode",
+    ),
+    (
+        "enforce extreme",
+        "--dry-run",
+        "modifies --apply-suggestions only: `--apply-suggestions` walks Refactoring/Validating/Iteration-3 states, `--apply-suggestions --dry-run` stops at Violating (enforce_handlers/states.rs:92-95)",
+    ),
+    (
+        "tdg diagnostics",
+        "--storage",
+        "selects the storage section, which is also the default when no section is chosen (tdg_diagnostic_handler.rs:86-88); with a sibling selected it is observable — `--scheduler` vs `--scheduler --storage` adds the whole 12-line Storage Diagnostics block",
+    ),
+    // --- flags the default renderer has no place to show ----------------------
+    (
+        "analyze proof-annotations",
+        "--include-evidence",
+        "gates write_detailed_proofs in the markdown and full renderers (proof_annotation_helpers_report.rs:158-175): `-f markdown --include-evidence` adds 1381 lines of '## Detailed Proofs'; the default `-f summary` emits only totals, so there is no per-proof section to attach evidence to",
+    ),
+    (
+        "analyze provability",
+        "--include-evidence",
+        "gates the per-property evidence blocks (provability_helpers_json.rs:32, provability_helpers_detailed.rs:61,201): `-f json --include-evidence` adds a \"properties\": [...] array to each function; the summary renderer has no per-function section",
+    ),
+    (
+        "enforce extreme",
+        "--single-file-mode",
+        "changes files_remaining from distinct_violation_files() to 0/1 (enforce_handlers/states.rs:51-56): `-f json` shows \"files_remaining\": 73 -> 1; the summary renderer does not print the progress block",
+    ),
+    (
+        "quality-gate",
+        "--include-provability",
+        "populates results.provability_score via calculate_provability_score (quality_gate_project.rs:51-56): `-f json` shows \"provability_score\": null -> 0.919; the summary renderer never prints that field",
+    ),
+    (
+        "analyze comprehensive",
+        "--executive-summary",
+        "prepends the Executive Summary block in format_as_markdown (comprehensive_analysis_handler/output.rs:46-60): `--format markdown --executive-summary` adds 15 lines; under the default `summary` format format_as_text already prints that section unconditionally, so the flag would ask for what is already on screen",
+    ),
+    (
+        "analyze graph-metrics",
+        "--top-k",
+        "truncates the per-node ranking via filter_results (analysis/graph_metrics_handler.rs:41): 1 vs 50 changes detailed 38->528, json 22->463, csv 6->55 lines; the default `summary` format is documented as 'Summary statistics only' and emits no node list to cut",
+    ),
+    // --- filters the corpus cannot straddle -----------------------------------
+    (
+        "analyze entropy",
+        "--min-severity",
+        "filters the violation list by severity floor in every format; on this corpus `medium` vs `high` drops the Medium diversity violation (2 -> 1 violations). The sweep pits values[0]=low against values[1]=medium and the corpus contains no Low-severity violation, so both admit the same set",
+    ),
+    (
+        "analyze graph-metrics",
+        "--metrics",
+        "gates which centrality algorithms run (graph_metrics_algorithms.rs:28 Brandes, :64 closeness, :78 PageRank); `--metrics closeness --format json` gives close_max 0.99 against 0.0, and centrality vs betweenness differ on a graph with 2-hop paths. The sweep pits centrality against betweenness under the default `summary` format, which prints no per-node metric",
+    ),
+    (
+        "analyze proof-annotations",
+        "--verification-method",
+        "filters annotations by VerificationMethod: borrow-checker and all select the corpus's 259 annotations, formal-proof/model-checking/static-analysis/abstract-interpretation each select 0. The sweep pits values[0]=formal-proof against values[1]=model-checking, and pmat's syn-based analyser only ever emits BorrowChecker, so both correctly select the empty set",
+    ),
+    // --- effects the sweep's observable cannot reach --------------------------
+    (
+        "score",
+        "--regression-check",
+        "calls check_regression (score_handler.rs:111-121), which needs a persisted .pmat-metrics score from a different sha and a delta worse than -5.0; with two such scores present it exits 1 with 'REGRESSION: composite dropped -32.1 pts'. A freshly built corpus has no prior score history at any sha",
+    ),
+    (
+        "score",
+        "--stack",
+        "appends the 'Stack Quality (CB-150)' block listing sovereign dependencies found in Cargo.toml (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's Cargo.toml makes it appear. The corpus has an empty [dependencies] section, and the function early-returns when none are found",
+    ),
 ];
+
+/// Where a probe writes when a flag's only observable is "a file was written".
+///
+/// Deliberately outside the corpus: writing into the fixture mid-sweep would
+/// change the input every later command sees.
+const PROBE_OUTPUT_FILE: &str = "/tmp/pmat-flag-efficacy-probe-output.txt";
+
+/// Extra arguments a flag needs before its effect exists at all.
+///
+/// Some flags modify another flag, and some only speak through a non-default
+/// renderer. Probing those bare compares two runs in which the flag has nothing
+/// to do, and reports the fixture's shape as the flag's defect. The control run
+/// carries the same extra arguments, so the comparison still isolates the flag.
+///
+/// Each entry is a claim that this context is where the flag lives, and is as
+/// reviewable as an `ALLOWED_NOOPS` entry — with the difference that the flag
+/// still has to prove itself.
+const PROBE_CONTEXT: &[(&str, &str, &[&str])] = &[
+    // `--quiet` suppresses the "Diagnostic report written to: ..." notice, which
+    // only exists on the --output branch (project_diag_handlers.rs:123).
+    ("project-diag", "--quiet", &["--output", PROBE_OUTPUT_FILE]),
+    // comply report's default format is markdown, which has no colour by
+    // design; the coloured renderer is ComplyOutputFormat::Text
+    // (migrate_handlers_enforce.rs:140-176).
+    ("comply report", "--color", &["--format", "text"]),
+    // The threshold's only consumer is the gate, and the gate's only consumer
+    // is the threshold: `analyze dead-code` reports 3.8% dead against a default
+    // limit of 15%, so neither is observable without the other.
+    (
+        "analyze dead-code",
+        "--fail-on-violation",
+        &["--max-percentage", "1.0"],
+    ),
+    (
+        "analyze dead-code",
+        "--max-percentage",
+        &["--fail-on-violation"],
+    ),
+    // A PageRank convergence tolerance changes the ranking, not the six
+    // aggregate numbers the summary format prints.
+    (
+        "analyze graph-metrics",
+        "--convergence-threshold",
+        &["--format", "json"],
+    ),
+];
+
+/// Probe values that must straddle the fixture for a specific option.
+///
+/// `numeric_probe_values` guesses from the option's name; where the corpus's
+/// own measured statistic is known, name the pair instead of guessing around
+/// it. A pair that sits entirely on one side of the fixture cannot falsify a
+/// filter: `--max-percentage 0.1` and `0.9` are both below the corpus's 3.8%
+/// dead-code density, so both fail the gate identically.
+const PROBE_VALUES: &[(&str, &str, &str, &str)] = &[
+    ("analyze dead-code", "--max-percentage", "1.0", "50"),
+    (
+        "analyze graph-metrics",
+        "--convergence-threshold",
+        "0.000000000001",
+        "0.5",
+    ),
+];
+
+fn probe_context(path: &str, flag: &str) -> &'static [&'static str] {
+    PROBE_CONTEXT
+        .iter()
+        .find(|(p, f, _)| *p == path && *f == flag)
+        .map_or(&[][..], |(_, _, extra)| *extra)
+}
+
+fn probe_values(path: &str, flag: &str) -> Option<(&'static str, &'static str)> {
+    PROBE_VALUES
+        .iter()
+        .find(|(p, f, _, _)| *p == path && *f == flag)
+        .map(|(_, _, lo, hi)| (*lo, *hi))
+}
 
 /// Two probe values for an option clap did not enumerate, chosen from the
 /// option's name. Returns `None` when the domain is unguessable (paths,
@@ -109,6 +362,13 @@ fn numeric_probe_values(long: &str) -> Option<(&'static str, &'static str)> {
     let n = long.trim_start_matches('-').to_lowercase();
     if n.contains("threshold") || n.contains("ratio") || n.contains("percentage") {
         return Some(("0.1", "0.9"));
+    }
+    // Line counts are compared against whole files, not against a handful of
+    // items: the corpus's critical-risk file is ~985 lines, so `1` and `50`
+    // both admit it and `analyze comprehensive --min-lines` looked inert. The
+    // pair has to span the file-length distribution, not sit under it.
+    if n.contains("lines") {
+        return Some(("1", "1000"));
     }
     const COUNTS: &[&str] = &[
         "top",
@@ -218,6 +478,55 @@ fn baseline_unusable(o: &super::Observable) -> Option<String> {
     if all.contains("NOT AVAILABLE") || all.contains("NOT IMPLEMENTED") {
         return Some("not built in this configuration".into());
     }
+    // A subcommand compiled out of this build refuses identically for every
+    // flag: `tdg dashboard` bails with "Dashboard requires the 'http-server'
+    // feature", and its --color and --open verdicts were the refusal compared
+    // against itself, not the flags.
+    if all.contains("requires the") && all.contains("' feature") {
+        return Some("feature-gated out of this build".into());
+    }
+    // Commands that decline their own precondition and then exit 0. These read
+    // as healthy baselines — stdout is non-empty and the exit code is clean —
+    // but the handler returned before it reached anything a flag controls, so
+    // every flag under it compares equal.
+    for (needle, why) in [
+        (
+            "requires at least 2 crates",
+            "single-crate corpus: the command declined before any flag was read",
+        ),
+        (
+            "No TDG history found",
+            "no stored TDG history: the empty-set early return precedes the formatter",
+        ),
+        (
+            "No model files found",
+            "corpus has no model files: the handler returns before --check",
+        ),
+        (
+            "No WebAssembly files found",
+            "corpus has no WebAssembly files",
+        ),
+    ] {
+        if all.contains(needle) {
+            return Some(why.into());
+        }
+    }
+    // A baseline that died inside an external tool is not a control: the
+    // fixture, not pmat, decided the outcome.
+    for (needle, why) in [
+        (
+            "No rule to make target",
+            "fixture Makefile lacks the target this command shells out to",
+        ),
+        (
+            "could not compile",
+            "fixture does not compile; the command failed before reading its flags",
+        ),
+    ] {
+        if all.contains(needle) {
+            return Some(why.into());
+        }
+    }
     None
 }
 
@@ -230,9 +539,25 @@ fn check_flag(
     if DENY_FLAGS.contains(&flag.long.as_str()) {
         return Verdict::Skipped("mutating flag".into());
     }
+    let path_str = path.join(" ");
+    let extra = probe_context(&path_str, &flag.long);
+    let mut refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
+    refs.extend_from_slice(extra);
+
+    // With a probe context the control must carry it too, or the comparison
+    // measures the context rather than the flag.
+    let contextual_baseline;
+    let baseline = if extra.is_empty() {
+        baseline
+    } else {
+        contextual_baseline = run(&refs, cwd, DEFAULT_TIMEOUT);
+        if let Some(why) = baseline_unusable(&contextual_baseline) {
+            return Verdict::Skipped(format!("probe context {extra:?}: {why}"));
+        }
+        &contextual_baseline
+    };
     let baseline_key = baseline.key();
     let baseline_key = baseline_key.as_str();
-    let refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
 
     // Enumerated values: two legal values must not agree.
     if let Some(values) = &flag.values {
@@ -247,14 +572,7 @@ fn check_flag(
         b.push(&values[1]);
         let oa = run(&a, cwd, DEFAULT_TIMEOUT);
         let ob = run(&b, cwd, DEFAULT_TIMEOUT);
-        if oa.timed_out || ob.timed_out {
-            return Verdict::Skipped("timed out".into());
-        }
-        return if oa.key() == ob.key() {
-            Verdict::NoOp
-        } else {
-            Verdict::Effective
-        };
+        return compare_probes(&oa, &ob);
     }
 
     // Numeric options can be probed without knowing the domain: two different
@@ -262,7 +580,9 @@ fn check_flag(
     // among the 49 no-op flags in 3.29.0 and would otherwise be skipped here
     // purely because clap does not enumerate integers.
     if flag.takes_free_value {
-        let Some((lo, hi)) = numeric_probe_values(&flag.long) else {
+        let Some((lo, hi)) =
+            probe_values(&path_str, &flag.long).or_else(|| numeric_probe_values(&flag.long))
+        else {
             return Verdict::Skipped("needs a value the harness cannot synthesise".into());
         };
         let mut a = refs.clone();
@@ -273,18 +593,7 @@ fn check_flag(
         b.push(hi);
         let oa = run(&a, cwd, DEFAULT_TIMEOUT);
         let ob = run(&b, cwd, DEFAULT_TIMEOUT);
-        if oa.timed_out || ob.timed_out {
-            return Verdict::Skipped("timed out".into());
-        }
-        // If neither value is accepted the probe proves nothing about the flag.
-        if !oa.succeeded() && !ob.succeeded() {
-            return Verdict::Skipped("synthesised values rejected".into());
-        }
-        return if oa.key() == ob.key() {
-            Verdict::NoOp
-        } else {
-            Verdict::Effective
-        };
+        return compare_probes(&oa, &ob);
     }
 
     // Boolean switch: presence must change the observable.
@@ -315,6 +624,36 @@ fn check_flag(
         };
     }
     Verdict::Effective
+}
+
+/// Compare two probes of the same option at different values.
+///
+/// Difference is decided first, and only then is failure considered: a command
+/// that exits non-zero for both values can still be honouring the option (a
+/// gate that fails differently is doing its job). Two runs that *agree*, both
+/// failed, **and rendered nothing** prove nothing about the option — the enum
+/// branch lacked this guard, so `analyze coverage-improve --format text|json`,
+/// which died identically inside `make` before any formatter ran, was booked
+/// as a no-op.
+///
+/// "Rendered nothing" is load-bearing and deliberately narrow. A non-zero exit
+/// is the *normal* outcome for the commands this gate cares most about:
+/// `analyze lint-hotspot`, `quality-gate` and `enforce extreme` all exit 1 on
+/// the defect-rich corpus while printing a full report. Skipping on exit code
+/// alone would have excused every no-op flag on every failing quality gate —
+/// swapping one silent pass for another.
+fn compare_probes(a: &super::Observable, b: &super::Observable) -> Verdict {
+    if a.timed_out || b.timed_out {
+        return Verdict::Skipped("timed out".into());
+    }
+    if a.key() != b.key() {
+        return Verdict::Effective;
+    }
+    let rendered_nothing = a.stdout.trim().is_empty() && b.stdout.trim().is_empty();
+    if !a.succeeded() && !b.succeeded() && rendered_nothing {
+        return Verdict::Skipped("both probe values rejected; no usable control".into());
+    }
+    Verdict::NoOp
 }
 
 /// Does the failure say the flag is deliberately unimplemented?
@@ -363,6 +702,15 @@ fn flag_efficacy_sweep() {
         let refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
         let path_str = path.join(" ");
 
+        if let Some((_, why)) = DENY_PATHS.iter().find(|(p, _)| *p == path_str) {
+            findings.push(Finding {
+                path: path_str,
+                flag: "*".into(),
+                verdict: Verdict::Skipped(format!("denied: {why}")),
+            });
+            continue;
+        }
+
         let Some(help) = help_for(&refs, cwd) else {
             findings.push(Finding {
                 path: path_str,
@@ -410,9 +758,10 @@ fn flag_efficacy_sweep() {
     let mut report = String::new();
     let _ = writeln!(
         report,
-        "flag-efficacy sweep — binary: {}\nmode: {}\ncommands walked: {}\n",
+        "flag-efficacy sweep — binary: {}\nmode: {}\ncorpus: {}\ncommands walked: {}\n",
         super::pmat_bin().display(),
         if full { "all roots" } else { "core roots" },
+        super::corpus_fingerprint(cwd),
         commands.len()
     );
     if !full {
@@ -424,6 +773,18 @@ fn flag_efficacy_sweep() {
     let _ = writeln!(report, "DENIED ROOTS (never swept, by design):");
     for (r, why) in DENY_ROOTS {
         let _ = writeln!(report, "  {r:<18} {why}");
+    }
+    let _ = writeln!(report, "DENIED PATHS (never swept, by design):");
+    for (p, why) in DENY_PATHS {
+        let _ = writeln!(report, "  {p:<18} {why}");
+    }
+    let _ = writeln!(
+        report,
+        "ALLOWED NO-OPS ({} entries; each names a demonstrated real effect):",
+        ALLOWED_NOOPS.len()
+    );
+    for (p, f, why) in ALLOWED_NOOPS {
+        let _ = writeln!(report, "  pmat {p} {f}\n      {why}");
     }
 
     let noops: Vec<&Finding> = findings
@@ -460,6 +821,30 @@ fn flag_efficacy_sweep() {
         errors.len(),
         skipped.len()
     );
+
+    // An allow-list entry that no longer suppresses anything is stale: the
+    // flag has either become effective or stopped being checked. Reported
+    // rather than enforced — a command the sweep skips legitimately produces
+    // no verdict for its entries to suppress — but a stale entry is how an
+    // exception outlives the reason for it.
+    let unexercised: Vec<&(&str, &str, &str)> = ALLOWED_NOOPS
+        .iter()
+        .filter(|(p, fl, _)| {
+            !findings
+                .iter()
+                .any(|f| f.path == *p && f.flag == *fl && f.verdict == Verdict::NoOp)
+        })
+        .collect();
+    let _ = writeln!(
+        report,
+        "\n--- ALLOW-LIST ENTRIES NOT EXERCISED ({} of {}; the flag is now effective, or its \
+         command was skipped — re-verify and delete the entry) ---",
+        unexercised.len(),
+        ALLOWED_NOOPS.len()
+    );
+    for (p, fl, _) in &unexercised {
+        let _ = writeln!(report, "  pmat {p} {fl}");
+    }
 
     let _ = writeln!(report, "\n--- NO-OP (flag parses, changes nothing) ---");
     for f in &noops {
@@ -777,6 +1162,178 @@ Options:
     assert!(by("--help").is_none(), "--help is never swept");
 }
 
+/// Normalisation must not erase the measurement it is normalising.
+///
+/// The git-object-id rule `\b[0-9a-f]{7,40}\b` also matched the fractional
+/// digits of a float, so `"pagerank": 0.008631379960390049` and
+/// `"pagerank": 0.008631851530375838` both became `0.<SHA>` and compared equal.
+/// `analyze graph-metrics --convergence-threshold` changed those numbers and
+/// the sweep still called it a no-op — the harness deleted the evidence.
+#[test]
+fn normalisation_keeps_decimal_digits_and_still_erases_object_ids() {
+    let a = super::normalize("\"pagerank\": 0.008631379960390049");
+    let b = super::normalize("\"pagerank\": 0.008631851530375838");
+    assert_ne!(
+        a, b,
+        "two different pagerank values must stay different after normalisation"
+    );
+    assert!(
+        a.contains("0.008631379960390049"),
+        "float digits must survive normalisation, got {a:?}"
+    );
+    assert_eq!(
+        super::normalize("commit 4dea27ed4f00 landed"),
+        "commit <SHA> landed",
+        "git object ids must still be erased, or every sha-bearing baseline is nondeterministic"
+    );
+}
+
+/// A flag whose effect only exists alongside another flag must be probed with
+/// it, and against a control carrying the same context.
+#[test]
+fn probe_context_is_declared_for_flags_that_modify_another_flag() {
+    assert_eq!(
+        probe_context("analyze dead-code", "--fail-on-violation"),
+        ["--max-percentage", "1.0"],
+        "the gate is only observable against a threshold the corpus exceeds"
+    );
+    assert_eq!(
+        probe_context("analyze dead-code", "--max-percentage"),
+        ["--fail-on-violation"],
+        "the threshold's only consumer is the gate"
+    );
+    assert_eq!(
+        probe_values("analyze dead-code", "--max-percentage"),
+        Some(("1.0", "50")),
+        "0.1 vs 0.9 sit entirely below the corpus's 3.8% dead-code density"
+    );
+    assert!(
+        probe_context("analyze complexity", "--top-files").is_empty(),
+        "flags with no declared context must be probed bare"
+    );
+    assert_eq!(
+        numeric_probe_values("--min-lines"),
+        Some(("1", "1000")),
+        "a line-count probe must span whole files, not a handful of items"
+    );
+}
+
+/// Two probes that agree *and* both failed prove nothing about the option.
+#[test]
+fn agreeing_failed_probes_are_skipped_not_booked_as_noop() {
+    let died = || super::Observable {
+        code: Some(1),
+        stdout: String::new(),
+        stderr: "Error: make coverage failed with exit code Some(2)".into(),
+        timed_out: false,
+    };
+    assert!(
+        matches!(compare_probes(&died(), &died()), Verdict::Skipped(_)),
+        "identical failures before the formatter ran are a fixture verdict, not a flag verdict"
+    );
+
+    // A gate that fails differently at two values is honouring the option.
+    let fail_a = super::Observable {
+        code: Some(1),
+        stdout: "dead code 3.8% exceeds threshold of 1.0%".into(),
+        stderr: String::new(),
+        timed_out: false,
+    };
+    let ok_b = super::Observable {
+        code: Some(0),
+        stdout: "dead code 3.8% within threshold of 50%".into(),
+        stderr: String::new(),
+        timed_out: false,
+    };
+    assert_eq!(compare_probes(&fail_a, &ok_b), Verdict::Effective);
+    // Two runs that agree and *worked* are the real no-op: the option was
+    // honoured by a command that had every chance to act on it.
+    assert_eq!(compare_probes(&ok_b, &ok_b), Verdict::NoOp);
+    // And a failing command that still printed its report is a usable control.
+    // `analyze lint-hotspot`, `quality-gate` and `enforce extreme` all exit 1
+    // on the defect-rich corpus; skipping on exit code alone would excuse
+    // every no-op flag on every quality gate that is doing its job.
+    assert_eq!(
+        compare_probes(&fail_a, &fail_a),
+        Verdict::NoOp,
+        "a non-zero exit with a rendered report is still a control"
+    );
+}
+
+/// A command that declines its own precondition, or that this build compiled
+/// out, is not a control — every flag under it compares equal for a reason
+/// that has nothing to do with the flags.
+#[test]
+fn declined_preconditions_are_skipped_not_blamed() {
+    let obs = |out: &str, err: &str, code: i32| super::Observable {
+        code: Some(code),
+        stdout: out.into(),
+        stderr: err.into(),
+        timed_out: false,
+    };
+    for (o, e, code, what) in [
+        (
+            "",
+            "Error: Dashboard requires the 'http-server' feature. Rebuild with: cargo build --features http-server",
+            1,
+            "feature-gated subcommand",
+        ),
+        (
+            "Cross-crate analysis requires at least 2 crates.\nDiscovery priority: ...",
+            "",
+            0,
+            "single-crate corpus, exits 0 so it looks healthy",
+        ),
+        ("No TDG history found matching criteria.", "", 0, "empty result set"),
+        (
+            "",
+            "Error: make coverage failed\nmake: *** No rule to make target 'coverage'.  Stop.",
+            1,
+            "missing Makefile target",
+        ),
+        (
+            "",
+            "Error: Clippy failed: error: could not compile `corpus` (lib)",
+            1,
+            "fixture does not compile",
+        ),
+    ] {
+        assert!(
+            baseline_unusable(&obs(o, e, code)).is_some(),
+            "must be skipped, not blamed on its flags: {what}"
+        );
+    }
+}
+
+/// Every allow-listed no-op must name a demonstrated effect, and none may
+/// shadow a command the sweep never reaches.
+#[test]
+fn allowed_noops_name_a_real_effect() {
+    for (path, flag, why) in ALLOWED_NOOPS {
+        assert!(
+            flag.starts_with("--"),
+            "{path} {flag}: the flag must be the long form"
+        );
+        assert!(
+            why.len() > 60,
+            "{path} {flag}: the reason must name the code path and the input or \
+             format under which the flag was observed working, not assert inertness: {why:?}"
+        );
+        assert!(
+            !DENY_PATHS.iter().any(|(p, _)| p == path),
+            "{path} {flag}: allow-listing a flag on a command the sweep never runs \
+             hides it instead of documenting it"
+        );
+    }
+    let mut seen = BTreeSet::new();
+    for (path, flag, _) in ALLOWED_NOOPS {
+        assert!(
+            seen.insert((*path, *flag)),
+            "{path} {flag} is allow-listed twice"
+        );
+    }
+}
+
 /// The corpus must actually contain the defects it claims to, or every
 /// downstream verdict is drawn from an empty room.
 #[test]
@@ -866,5 +1423,151 @@ fn large_corpus_contains_every_defect_family() {
         age_days.contains("day") || age_days.contains("hour") || age_days.contains("minute"),
         "newest corpus commit is {age_days:?} old — it must sit inside the \
          30-day churn window or churn metrics read as broken"
+    );
+
+    // Debt that is *not* a canonical marker, so `analyze satd --strict` has
+    // something to narrow. With only TODO/FIXME/HACK/XXX present, strict and
+    // non-strict returned the identical 63 violations.
+    let satd = read("src/satd_00.rs");
+    assert!(
+        satd.contains("temporary workaround") && satd.contains("code smell"),
+        "corpus must carry non-canonical debt phrasing, or --strict cannot be \
+         distinguished from the default"
+    );
+
+    // Debt inside the test file, so `--include-tests` has something to
+    // include: with a clean tests/basic.rs the flag changed nothing and was
+    // indistinguishable from a flag that is never read.
+    assert!(
+        read("tests/basic.rs").contains("TODO"),
+        "the corpus test file must carry its own debt"
+    );
+
+    // A dependency chain, so anything that walks edges has depth to walk.
+    // Without it the corpus graph is a star: `analyze dag --max-depth 1` and
+    // `--max-depth 50` rendered byte-identical output.
+    assert!(
+        read("src/chain_00.rs").contains("use crate::chain_01;")
+            && read("src/chain_04.rs").contains("use crate::chain_05;"),
+        "corpus must contain a multi-hop `use crate::` chain"
+    );
+
+    // `i * 0` is clippy's deny-by-default erasing_op; with it the fixture did
+    // not compile under clippy and every command that shells out to clippy
+    // returned Err before reading a flag.
+    assert!(
+        !dead.contains("* 0)"),
+        "corpus must not trip deny-by-default clippy lints, or clippy-backed \
+         commands fail before they read their own flags"
+    );
+
+    // WebAssembly, AssemblyScript and model inputs: without them those
+    // commands report "Found 0 files" and every flag under them compares equal
+    // because there was nothing on disk to act on.
+    let wasm = std::fs::read(root.join("mod.wasm")).unwrap_or_default();
+    assert_eq!(
+        &wasm[..4],
+        b"\0asm",
+        "mod.wasm must carry valid wasm magic, or the binary reader rejects it"
+    );
+    assert!(wasm.len() > 40 && wasm.windows(3).any(|w| w == b"env"));
+    assert!(
+        std::fs::read(root.join("broken.wasm"))
+            .unwrap_or_default()
+            .starts_with(b"NOTWASM!"),
+        "the corpus must also contain the malformed input the format validator exists to reject"
+    );
+    assert!(
+        read("mod.wat").contains("(module") && read("two.wat").contains("(memory 1)"),
+        "WAT sources must parse and one must declare memory"
+    );
+    assert!(
+        read("assembly/mem.ts").contains("memory.grow"),
+        "AssemblyScript fixture must contain the construct --memory-analysis claims to report"
+    );
+    assert!(
+        read("assembly/index.ts").contains("i32") && read("extra.as").contains("i32"),
+        "three AssemblyScript sources must be present (.ts and .as)"
+    );
+    let gguf = std::fs::read(root.join("models/tiny.gguf")).unwrap_or_default();
+    assert!(
+        gguf.starts_with(b"GGUF") && gguf.len() >= 24,
+        "a readable GGUF header (magic + version + counts) must exist"
+    );
+    assert!(
+        std::fs::read(root.join("models/tiny.apr"))
+            .unwrap_or_default()
+            .starts_with(b"APR2"),
+        "a readable APR model must exist"
+    );
+    assert!(
+        std::fs::read(root.join("models/tiny.safetensors"))
+            .unwrap_or_default()
+            .len()
+            > 8,
+        "a readable safetensors model must exist"
+    );
+    assert!(
+        std::fs::read(root.join("models/garbage.gguf"))
+            .unwrap_or_default()
+            .starts_with(b"NOTAGGUF"),
+        "a .gguf whose header does not parse must exist, or --check's unreadable-header \
+         path is never taken"
+    );
+    assert!(
+        !root.join("models/README.md").exists() && !root.join("models/tokenizer.json").exists(),
+        "the model directory must lack a model card and tokenizer, or two of the three \
+         --check findings never fire"
+    );
+
+    // `comply enforce` and every other hook-aware command define "is this a
+    // git repository" as `.git/hooks` existing; `git init --template=` does
+    // not create it.
+    assert!(
+        root.join(".git/hooks").is_dir(),
+        "corpus .git must have a hooks directory, or hook-aware commands abort \
+         before reading any flag"
+    );
+
+    // `main` must lag `HEAD`, or `analyze incremental-coverage` (which defaults
+    // to `--base-branch main`) analyses 0 changed files and every flag under it
+    // is compared against an empty result set.
+    let changed = std::process::Command::new("git")
+        .args(["diff", "--name-only", "main...HEAD"])
+        .current_dir(root)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().count())
+        .unwrap_or(0);
+    assert!(
+        changed >= 8,
+        "main..HEAD must contain changed files (got {changed}) — the second commit \
+         has to land on a branch"
+    );
+
+    // One Critical-risk file, left uncommitted: `analyze comprehensive` only
+    // emits the "Focus on N high-risk files" recommendation that
+    // --confidence-threshold and --min-lines filter when defect-prediction
+    // ranks a file High or Critical.
+    let critical = read("src/critical.rs");
+    let lines = critical.lines().count();
+    assert!(
+        (900..1000).contains(&lines),
+        "critical.rs is {lines} lines; it must sit under the 1000-line probe so \
+         --min-lines has a value that admits it and one that does not"
+    );
+    assert!(
+        critical.matches("use std::").count() >= 20 && critical.matches("if ").count() >= 100,
+        "critical.rs must be import-heavy and branch-heavy enough to be ranked Critical"
+    );
+    let tracked = std::process::Command::new("git")
+        .args(["ls-files", "src/critical.rs"])
+        .current_dir(root)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+    assert!(
+        tracked.is_empty(),
+        "critical.rs must stay uncommitted: with churn history its prediction \
+         confidence saturates and a confidence threshold has no boundary to cross"
     );
 }

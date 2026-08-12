@@ -42,11 +42,11 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<()> {
-    eprintln!("🔍 Searching for names similar to '{query}'...");
+    crate::status_eprintln!("🔍 Searching for names similar to '{query}'...");
 
     // Collect all names from the project
     let names = collect_names(&project_path, &include, &exclude, scope).await?;
-    eprintln!("✅ Found {} names to analyze", names.len());
+    crate::status_eprintln!("✅ Found {} names to analyze", names.len());
 
     // Find similar names
     let matches = find_similar_names(&query, names, threshold, phonetic, fuzzy, case_sensitive)?;
@@ -73,7 +73,7 @@ pub async fn handle_analyze_name_similarity(
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Results written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Results written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

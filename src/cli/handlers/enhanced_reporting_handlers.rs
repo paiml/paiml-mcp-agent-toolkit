@@ -344,10 +344,36 @@ fn print_report_summary(report: &DefectReport, elapsed: std::time::Duration, per
 
     print_severity_summary(report);
 
-    if perf {
-        let files_per_sec = report.metadata.total_files_analyzed as f64 / elapsed.as_secs_f64();
-        info!("⚡ Performance: {:.0} files/second", files_per_sec);
+    for line in report_perf_lines(report, elapsed, perf) {
+        eprintln!("{line}");
     }
+}
+
+/// The lines `pmat report --perf` adds, in emission order; empty without the flag.
+///
+/// This used to be a single `info!("⚡ Performance: {:.0} files/second", …)`,
+/// which the default `warn`-level EnvFilter discards, so `pmat report --perf`
+/// was byte-identical to `pmat report` at json, text, markdown and csv alike —
+/// the same defect `analyze big-o --perf` had, and the reason the analyze fix's
+/// verifier came back. The wording and the stderr sink now come from the one
+/// `--perf` implementation (`perf_report`), so this command cannot drift from
+/// the thirteen `analyze` ones. Returning the lines rather than printing them
+/// keeps the flag's effect assertable in a unit test.
+pub(crate) fn report_perf_lines(
+    report: &DefectReport,
+    elapsed: std::time::Duration,
+    perf: bool,
+) -> Vec<String> {
+    if !perf {
+        return Vec::new();
+    }
+    let files_per_sec = report.metadata.total_files_analyzed as f64 / elapsed.as_secs_f64();
+    crate::cli::handlers::analysis_handlers::perf_report::readout_lines(
+        "report",
+        elapsed,
+        perf,
+        &[("throughput", format!("{files_per_sec:.0} files/second"))],
+    )
 }
 
 /// Print severity-specific summary (cognitive complexity ≤4)
@@ -380,6 +406,69 @@ mod tests {
     /// It used to auto-write `defect-report-<ts>.md` into the working
     /// directory — usually the tree being measured — which TDG then graded as
     /// project source (74.78 B- -> 90.87 A over four runs on one fixture).
+    fn report_with_files(total_files_analyzed: usize) -> DefectReport {
+        use crate::models::defect_report::{DefectSummary, ReportMetadata};
+        use std::collections::BTreeMap;
+        DefectReport {
+            metadata: ReportMetadata {
+                tool: "pmat".to_string(),
+                version: "test".to_string(),
+                generated_at: chrono::Utc::now(),
+                project_root: PathBuf::from("."),
+                total_files_analyzed,
+                analysis_duration_ms: 0,
+            },
+            defects: vec![],
+            summary: DefectSummary {
+                total_defects: 0,
+                by_severity: BTreeMap::new(),
+                by_category: BTreeMap::new(),
+                hotspot_files: vec![],
+            },
+            file_index: BTreeMap::new(),
+        }
+    }
+
+    /// Regression: `pmat report --perf` was byte-identical to `pmat report` at
+    /// json, text, markdown and csv, because its only perf line was an `info!`
+    /// the default `warn` EnvFilter discards. The flag must add a readout that
+    /// reaches the user, and add nothing when it is absent.
+    #[test]
+    fn test_perf_adds_a_readout_the_default_log_filter_cannot_swallow() {
+        let report = report_with_files(20);
+        let elapsed = std::time::Duration::from_millis(100);
+
+        assert!(
+            report_perf_lines(&report, elapsed, false).is_empty(),
+            "`pmat report` without --perf must stay byte-identical"
+        );
+
+        let lines = report_perf_lines(&report, elapsed, true);
+        assert!(
+            !lines.is_empty(),
+            "--perf produced no readout at all, which is the defect: the flag \
+             parsed and changed nothing"
+        );
+        let joined = lines.join("\n");
+        assert!(joined.contains("perf: report"), "got: {joined}");
+        assert!(
+            joined.contains("200 files/second"),
+            "the throughput measurement must survive: 20 files / 0.1s, got: {joined}"
+        );
+    }
+
+    /// The readout must be the shared one, not a fourth wording. Same shape as
+    /// the `analyze` router's line, so a caller can grep one prefix.
+    #[test]
+    fn test_perf_readout_matches_the_shared_implementation() {
+        let elapsed = std::time::Duration::from_millis(100);
+        let lines = report_perf_lines(&report_with_files(1), elapsed, true);
+        assert_eq!(
+            lines[0],
+            crate::cli::handlers::analysis_handlers::perf_report::format_line("report", elapsed),
+        );
+    }
+
     #[test]
     fn test_report_sink_defaults_to_stdout_not_a_generated_file() {
         assert_eq!(report_sink(None), ReportSink::Stdout);
