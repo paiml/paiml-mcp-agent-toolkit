@@ -54,7 +54,7 @@ pub async fn handle_analyzing_state(
     // Run all analyses in sequence, each scoped per-phase when --file is given
     let complexity_outcome =
         run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    let satd_outcome = run_satd_analysis(scope.walk_root(), profile).await?;
+    let satd_outcome = run_satd_analysis(scope.walk_root(), profile, scope.single_file()).await?;
     let tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
 
     // Composite score, derived from the analyses that were just run.

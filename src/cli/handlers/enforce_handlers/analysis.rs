@@ -195,6 +195,41 @@ pub async fn run_complexity_analysis(
     Ok(PhaseOutcome::measured(violations))
 }
 
+/// SATD for exactly one file, for `--file` scope.
+///
+/// Shares `satd_violation` with the project path so the two cannot drift in what
+/// they report; only the set of files differs.
+fn single_file_satd(
+    detector: &crate::services::satd_detector::SATDDetector,
+    file: &Path,
+    profile: &QualityProfile,
+) -> Result<PhaseOutcome> {
+    let content = match std::fs::read_to_string(file) {
+        Ok(c) => c,
+        Err(e) => {
+            let reason = warn_not_measured("satd", file, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
+        }
+    };
+    let debts = match detector.extract_from_content(&content, file) {
+        Ok(d) => d,
+        Err(e) => {
+            let reason = warn_not_measured("satd", file, &e.to_string());
+            return Ok(PhaseOutcome::unmeasured(reason));
+        }
+    };
+
+    if debts.len() <= profile.satd_allowed {
+        return Ok(PhaseOutcome::measured(Vec::new()));
+    }
+    Ok(PhaseOutcome::measured(
+        debts
+            .iter()
+            .map(|item| satd_violation(item, debts.len(), profile))
+            .collect(),
+    ))
+}
+
 /// Run SATD analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 /// This used to call the *printing* `analyze satd` handler purely for its side
@@ -211,10 +246,23 @@ pub async fn run_complexity_analysis(
 pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
+    specific_file: Option<&Path>,
 ) -> Result<PhaseOutcome> {
     use crate::services::satd_detector::SATDDetector;
 
     let detector = SATDDetector::new();
+
+    // `--file` means THIS file. `AnalysisScope::walk_root` hands directory
+    // phases the file's parent module dir, on the assumption that SATD "must
+    // walk a directory" — but the detector reads content, so a single file is
+    // exactly what it can take. The parent-dir fallback attributed a sibling's
+    // `// TODO` to the named file: `enforce extreme --file good.rs --ci-mode`
+    // exited 1 reporting one violation whose own location was `bad.rs`, so a
+    // clean file failed CI on code it does not contain.
+    if let Some(file) = specific_file {
+        return single_file_satd(&detector, file, profile);
+    }
+
     // `include_tests: false` — SATD in test code is not production debt, which
     // matches what the SATD gate in `pmat verify` counts.
     let result = match detector.analyze_project(project_path, false).await {
@@ -247,20 +295,30 @@ pub async fn run_satd_analysis(
         result
             .items
             .iter()
-            .map(|item| QualityViolation {
-                violation_type: "satd".to_string(),
-                severity: format!("{:?}", item.severity).to_lowercase(),
-                location: format!("{}:{}:{}", item.file.display(), item.line, item.column),
-                current: found as f64,
-                target: profile.satd_allowed as f64,
-                suggestion: format!(
-                    "Resolve the {:?} debt marker ({}) or track it outside the source",
-                    item.category,
-                    item.text.trim()
-                ),
-            })
+            .map(|item| satd_violation(item, found, profile))
             .collect(),
     ))
+}
+
+/// One SATD violation. Shared by the project and `--file` paths so the two
+/// cannot drift in what they report; only the file set differs.
+fn satd_violation(
+    item: &crate::services::satd_detector::TechnicalDebt,
+    found: usize,
+    profile: &QualityProfile,
+) -> QualityViolation {
+    QualityViolation {
+        violation_type: "satd".to_string(),
+        severity: format!("{:?}", item.severity).to_lowercase(),
+        location: format!("{}:{}:{}", item.file.display(), item.line, item.column),
+        current: found as f64,
+        target: profile.satd_allowed as f64,
+        suggestion: format!(
+            "Resolve the {:?} debt marker ({}) or track it outside the source",
+            item.category,
+            item.text.trim()
+        ),
+    }
 }
 
 /// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)

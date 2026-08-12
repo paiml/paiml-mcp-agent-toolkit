@@ -312,7 +312,7 @@ async fn list_all_violations(
     all_violations.extend(complexity_outcome.violations);
 
     eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
-    let satd_outcome = run_satd_analysis(scope.walk_root(), profile).await?;
+    let satd_outcome = run_satd_analysis(scope.walk_root(), profile, scope.single_file()).await?;
     all_violations.extend(satd_outcome.violations);
 
     eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));

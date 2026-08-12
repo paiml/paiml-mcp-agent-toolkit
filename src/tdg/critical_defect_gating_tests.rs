@@ -341,3 +341,55 @@ mod through_the_analyzer {
         );
     }
 }
+
+/// The score must not depend on git status — the invariant #919 was filed for,
+/// and which the #279 waiver briefly broke again from the other direction.
+///
+/// The waiver skipped the PENALTY rather than the gate, so an uncommitted file
+/// with five `.unwrap()` calls scored 100.0/A+ while the byte-identical
+/// committed file scored 9.1/F, and `check-quality --min-grade A` exited 0 on
+/// the first and 3 on the second.
+mod the_waiver_touches_the_gate_not_the_score {
+    use super::*;
+
+    fn scored(count: usize, suppressed: Option<&str>) -> TdgScore {
+        let mut s = TdgScore {
+            critical_defects_count: count,
+            has_critical_defects: count > 0,
+            critical_defects_suppressed: suppressed.map(str::to_string),
+            ..Default::default()
+        };
+        s.calculate_total();
+        s
+    }
+
+    #[test]
+    fn a_waived_file_carries_the_same_score_as_an_unwaived_one() {
+        for count in 1..=5 {
+            let waived = scored(count, Some("no commits yet (#279)"));
+            let plain = scored(count, None);
+
+            assert!(
+                (waived.total - plain.total).abs() < f32::EPSILON,
+                "count {count}: waiving the gate must not change the score \
+                 ({} waived vs {} unwaived)",
+                waived.total,
+                plain.total
+            );
+            assert_eq!(waived.grade, plain.grade, "count {count}");
+        }
+    }
+
+    /// ...and specifically, a waiver never restores full marks.
+    #[test]
+    fn a_waived_file_with_defects_is_never_a_plus() {
+        let waived = scored(5, Some("no commits yet (#279)"));
+        assert!(
+            waived.total < 70.0,
+            "five critical defects cannot score {} merely because the file is \
+             uncommitted",
+            waived.total
+        );
+        assert_ne!(waived.grade, Grade::APlus);
+    }
+}

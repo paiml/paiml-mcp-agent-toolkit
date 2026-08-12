@@ -127,7 +127,18 @@ impl TdgScore {
         // and is unaffected by anything computed here — see
         // `crate::tdg::quality_gate::critical_defect`. Expressing the gate as a
         // magic score value is what coupled them in the first place.
-        if self.has_critical_defects && self.critical_defects_suppressed.is_none() {
+        //
+        // Note what this condition does NOT consult: `critical_defects_suppressed`.
+        // It did, briefly, and that inverted the whole design — the #279 waiver
+        // skipped the penalty instead of the gate, so an uncommitted file with
+        // five `.unwrap()` calls scored 100.0/A+ and `check-quality --min-grade A`
+        // exited 0 on it, while the byte-identical committed file scored 9.1/F.
+        // That is the very defect #919 was filed for (a score that changes with
+        // git status), recreated one release after fixing it. A file's quality
+        // does not change when you `git add` it: the penalty is a property of the
+        // code, the waiver is a property of the gate, and they must not share a
+        // condition.
+        if self.has_critical_defects {
             /// Ceiling for any file still carrying critical defects: the top of
             /// the C+ band, so such a file cannot grade B- or better whatever
             /// else it does well. Applied BEFORE the decay, so one defect in a

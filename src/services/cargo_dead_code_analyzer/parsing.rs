@@ -203,11 +203,26 @@ impl CargoDeadCodeAnalyzer {
                 let kind_str = dead_code_kind_to_str(&item.kind);
                 *dead_by_type.entry(kind_str.to_string()).or_insert(0) += 1;
             }
-            dead_lines += estimated_dead_lines(&file.dead_items);
+            // Bounded by the file's own length. `estimated_dead_lines` charges
+            // 5 lines per dead function, which is an estimate from an item
+            // count, not a measured span — four dead one-line functions in a
+            // five-line file estimated 20 dead lines. Unbounded, that summed
+            // into a project figure of 400%, which `--fail-on-violation`
+            // compared against its threshold and printed as a percentage. A
+            // file cannot contain more dead lines than lines, so the bound goes
+            // here, at the accumulation, rather than as a clamp on the ratio:
+            // clamping the output would still leave `dead_lines` itself larger
+            // than the code it describes.
+            dead_lines += estimated_dead_lines_bounded(&file.dead_items, file.total_lines);
         }
 
         let dead_code_percentage = if total_lines > 0 {
-            (dead_lines as f64 / total_lines as f64) * 100.0
+            #[allow(clippy::cast_precision_loss)]
+            let pct = (dead_lines as f64 / total_lines as f64) * 100.0;
+            // The same ceiling `file_percentage` already applies. It was missing
+            // here, so the project figure was the one surface that could report
+            // an impossible percentage.
+            pct.min(100.0)
         } else {
             0.0
         };
@@ -240,6 +255,20 @@ pub(crate) fn estimated_dead_lines(items: &[DeadItem]) -> usize {
             _ => 2,
         })
         .sum()
+}
+
+/// Estimated dead lines for one file, bounded by that file's own length.
+///
+/// The bound lives here rather than at the call sites because it is part of what
+/// the estimate MEANS: `estimated_dead_lines` charges 5 lines per dead function
+/// from an item count, not a measured span, so four dead one-line functions in a
+/// five-line file estimate 20. Bounding at one call site and not the other is
+/// how the summary came to print "Total dead lines: 20" for a 5-line file while
+/// the project percentage had already been capped. `None` means the length is
+/// unknown, and the raw estimate is the best available answer.
+pub(crate) fn estimated_dead_lines_bounded(items: &[DeadItem], total_lines: Option<usize>) -> usize {
+    let estimate = estimated_dead_lines(items);
+    total_lines.map_or(estimate, |lines| estimate.min(lines))
 }
 
 /// Dead-code percentage for one file: estimated dead lines over the file's

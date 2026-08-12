@@ -103,7 +103,8 @@ pub async fn handle_analyze_dead_code(
             DeadCodeGateVerdict::Pass => {}
             DeadCodeGateVerdict::Violation(dead_code_percentage) => {
                 eprintln!(
-                    "\n❌ Dead code violations found: {dead_code_percentage:.1}% exceeds threshold of {max_percentage:.1}%"
+                    "\n❌ Dead code violations found: {dead_code_percentage:.1}% of all lines \
+                     walked exceeds threshold of {max_percentage:.1}%"
                 );
                 std::process::exit(1);
             }

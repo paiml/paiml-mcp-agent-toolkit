@@ -209,3 +209,7 @@ include!("cargo_dead_code_analyzer/cache_operations.rs");
 include!("cargo_dead_code_analyzer/analysis.rs");
 include!("cargo_dead_code_analyzer/parsing.rs");
 include!("cargo_dead_code_analyzer/tests.rs");
+
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/dead_line_bound_tests.rs"]
+mod dead_line_bound_tests;

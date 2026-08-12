@@ -165,15 +165,23 @@ fn write_dead_code_header(
         c::label("Total dead lines:"),
         c::number(&result.summary.total_dead_lines.to_string())
     )?;
+    // Named for its scope. Both this and the figure `--fail-on-violation`
+    // compares are real, but they measure different sets — this one covers the
+    // files actually LISTED (which `--min-dead-lines` and `--top-files` shrink),
+    // the gate's covers every line walked. Printing this one as plain "Dead code
+    // percentage" made them look like one number disagreeing with itself: a run
+    // could report 0.0% here while the gate failed the same run at 100%.
+    let scope_note = if result.files_omitted() > 0 {
+        " (listed files only — see the gate's project-wide figure)"
+    } else {
+        ""
+    };
     writeln!(
         output,
-        "  {} {}\n",
+        "  {}{} {}\n",
         c::label("Dead code percentage:"),
-        c::pct(
-            f64::from(result.summary.dead_percentage),
-            5.0,
-            15.0,
-        )
+        c::dim(scope_note),
+        c::pct(f64::from(result.summary.dead_percentage), 5.0, 15.0)
     )?;
 
     Ok(())
