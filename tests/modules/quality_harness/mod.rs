@@ -417,9 +417,8 @@ fn write_large_corpus(root: &Path) {
 
     // Duplication: ten identical pairs, for clone detection.
     for i in 0..10 {
-        let shared = format!(
-            "/// Normalises a record.\npub fn normalise(record: &str) -> String {{\n    let trimmed = record.trim();\n    let lowered = trimmed.to_lowercase();\n    let collapsed = lowered.split_whitespace().collect::<Vec<_>>().join(\" \");\n    let stripped = collapsed.replace(['\\'', '\"'], \"\");\n    if stripped.is_empty() {{\n        return String::from(\"<blank>\");\n    }}\n    format!(\"{{}}:{{}}\", stripped.len(), stripped)\n}}\n"
-        );
+        let shared = "/// Normalises a record.\npub fn normalise(record: &str) -> String {\n    let trimmed = record.trim();\n    let lowered = trimmed.to_lowercase();\n    let collapsed = lowered.split_whitespace().collect::<Vec<_>>().join(\" \");\n    let stripped = collapsed.replace(['\\'', '\"'], \"\");\n    if stripped.is_empty() {\n        return String::from(\"<blank>\");\n    }\n    format!(\"{}:{}\", stripped.len(), stripped)\n}\n"
+            .to_string();
         write_module(root, &format!("dup_a_{i:02}"), &shared, &mut modules);
         write_module(root, &format!("dup_b_{i:02}"), &shared, &mut modules);
     }
@@ -817,10 +816,8 @@ impl OptionsReader {
             return;
         }
         // `[default: .]` only appears on options that take a value.
-        if t.starts_with("[default:") {
-            if flag.values.is_none() {
-                flag.takes_free_value = true;
-            }
+        if t.starts_with("[default:") && flag.values.is_none() {
+            flag.takes_free_value = true;
         }
     }
 

@@ -6,6 +6,8 @@ pub mod analyzer_simple;
 pub mod baseline;
 pub mod baseline_analyzer;
 pub mod config;
+/// The single Known-Defects gate both `analyze_source` implementations apply.
+pub(crate) mod critical_defect_gate;
 #[allow(clippy::all)]
 pub mod cuda_simd;
 pub mod cuda_simd_defects; // Defect taxonomy extracted for file health (CB-040)
@@ -14,6 +16,9 @@ pub mod cuda_simd_scores; // Score types extracted for file health (CB-040)
 pub mod diagnostics;
 pub mod explain;
 pub mod explain_formatters;
+/// The single project walk both analyzers use, which also reports what it
+/// refused instead of dropping it.
+pub(crate) mod file_discovery;
 #[cfg(feature = "rust-ast")]
 pub mod function_analyzer;
 pub mod grade;
@@ -61,6 +66,9 @@ mod core_property_tests;
 
 #[cfg(test)]
 mod top_files_determinism_tests;
+
+#[cfg(test)]
+mod ungraded_disclosure_tests;
 
 pub use adaptive::{
     AdaptiveConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, CurrentThresholds,

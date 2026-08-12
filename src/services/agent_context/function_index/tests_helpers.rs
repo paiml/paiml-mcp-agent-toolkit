@@ -41,10 +41,12 @@ fn test_estimate_big_o() {
 
 #[test]
 fn test_score_to_grade() {
-    assert_eq!(score_to_grade(0.5), "A");
-    assert_eq!(score_to_grade(2.5), "B");
-    assert_eq!(score_to_grade(5.0), "C");
-    assert_eq!(score_to_grade(7.0), "D");
+    // 0-100, higher is better -- crate::tdg::Grade's bands.
+    assert_eq!(score_to_grade(96.0), "A+");
+    assert_eq!(score_to_grade(92.0), "A");
+    assert_eq!(score_to_grade(77.0), "B");
+    assert_eq!(score_to_grade(61.0), "C");
+    assert_eq!(score_to_grade(51.0), "D");
     assert_eq!(score_to_grade(9.0), "F");
 }
 
@@ -99,13 +101,13 @@ fn test_extract_doc_comment_none() {
 
 #[test]
 fn test_calculate_simple_tdg() {
-    // Low complexity, no SATD, small LOC = low score
+    // Low complexity, no SATD, small LOC = HIGH score (higher is better)
     let score = calculate_simple_tdg(1, 0, 10);
-    assert!(score < 2.0);
+    assert!(score > 90.0, "trivial fn scored {score}");
 
-    // High complexity, SATD, large LOC = higher score
-    let high_score = calculate_simple_tdg(20, 3, 200);
-    assert!(high_score > score);
+    // High complexity, SATD, large LOC = LOWER score
+    let hairy = calculate_simple_tdg(20, 3, 200);
+    assert!(hairy < score, "hairy {hairy} must score below trivial {score}");
 }
 
 #[test]
@@ -232,30 +234,28 @@ fn test_estimate_big_o_n4() {
 
 #[test]
 fn test_calculate_simple_tdg_boundaries() {
-    // Zero everything (complexity<=1 floor ensures A grade)
+    // Nothing to penalise -> top of the 0-100 scale.
     let score = calculate_simple_tdg(0, 0, 0);
-    assert!((score - 0.0).abs() < 0.01);
+    assert!((score - 100.0).abs() < 0.01, "got {score}");
 
-    // Max complexity capped at 4.0
+    // Complexity penalty budget is 50 points.
     let max_complexity = calculate_simple_tdg(100, 0, 0);
-    assert!((max_complexity - 4.0).abs() < 0.01);
+    assert!((max_complexity - 50.0).abs() < 0.01, "got {max_complexity}");
 
-    // SATD penalty only (with complexity > 1 to bypass GH-272 floor): capped at 2.0
+    // SATD penalty budget is 20 points; complexity 25 costs 36.
     let max_satd = calculate_simple_tdg(25, 10, 0);
-    // complexity penalty = 1.0, SATD cap = 2.0 → total = 3.0
-    assert!((max_satd - 3.0).abs() < 0.01);
+    assert!((max_satd - 44.0).abs() < 0.01, "got {max_satd}");
 
-    // LOC penalty kicks in above 200
-    let no_loc_penalty = calculate_simple_tdg(25, 0, 200);
-    // complexity 25 -> 1.0, no loc penalty
-    assert!((no_loc_penalty - 1.0).abs() < 0.01);
+    // LOC penalty starts above 50 lines.
+    let no_loc_penalty = calculate_simple_tdg(25, 0, 50);
+    assert!((no_loc_penalty - 64.0).abs() < 0.01, "got {no_loc_penalty}");
 
     let large_loc = calculate_simple_tdg(25, 0, 400);
-    assert!(large_loc > 1.0);
+    assert!(large_loc < no_loc_penalty, "a 400-line fn must score worse");
 
-    // Max possible: complexity=4 + satd=2 + loc=2 = 8.0
+    // Every budget exhausted: 100 - 50 - 20 - 30 = 0, the bottom of the scale.
     let max_all = calculate_simple_tdg(100, 10, 1000);
-    assert!((max_all - 8.0).abs() < 0.01);
+    assert!((max_all - 0.0).abs() < 0.01, "got {max_all}");
 }
 
 // GH-272: cyclomatic complexity 1 means no branches (simplest possible
@@ -263,45 +263,54 @@ fn test_calculate_simple_tdg_boundaries() {
 // of SATD or LOC penalties (long data-table initializers, trivial constructors).
 #[test]
 fn test_gh272_complexity_1_always_grades_a() {
-    // High LOC with complexity 1 (e.g. 1000-line data-table initializer)
+    // High LOC with complexity 1 (e.g. 1000-line data-table initializer).
+    // On the 0-100 higher-is-better scale the GH-272 rule is a FLOOR at the
+    // A band (90), not a ceiling.
     let long_trivial = calculate_simple_tdg(1, 0, 1000);
     assert!(
-        long_trivial < 2.0,
+        long_trivial >= 90.0,
         "complexity=1 with 1000 LOC should stay A-grade (got {long_trivial})"
     );
     assert_eq!(score_to_grade(long_trivial), "A");
 
-    // High SATD with complexity 1 — should also stay A
+    // High SATD with complexity 1 -- should also stay A
     let satd_trivial = calculate_simple_tdg(1, 20, 0);
     assert!(
-        satd_trivial < 2.0,
+        satd_trivial >= 90.0,
         "complexity=1 with 20 SATD should stay A-grade (got {satd_trivial})"
     );
     assert_eq!(score_to_grade(satd_trivial), "A");
 
-    // Combined: giant + SATD + complexity 1 — still A
+    // Combined: giant + SATD + complexity 1 -- still A
     let worst = calculate_simple_tdg(1, 50, 2000);
-    assert!(worst < 2.0, "complexity=1 always caps < 2.0 (got {worst})");
+    assert!(worst >= 90.0, "complexity=1 always floors at 90.0 (got {worst})");
     assert_eq!(score_to_grade(worst), "A");
 
     // Complexity 2 (one branch) does NOT get the floor
     let complexity_2_large = calculate_simple_tdg(2, 0, 1000);
-    // 2/25 + (1000-200)/200.min(2.0) = 0.08 + 2.0 = 2.08 -> B
-    assert!(complexity_2_large >= 2.0, "complexity=2 keeps normal scoring");
+    assert!(
+        complexity_2_large < 90.0,
+        "complexity=2 keeps normal scoring (got {complexity_2_large})"
+    );
 }
 
 #[test]
 fn test_score_to_grade_boundaries() {
-    assert_eq!(score_to_grade(0.0), "A");
-    assert_eq!(score_to_grade(1.99), "A");
-    assert_eq!(score_to_grade(2.0), "B");
-    assert_eq!(score_to_grade(3.99), "B");
-    assert_eq!(score_to_grade(4.0), "C");
-    assert_eq!(score_to_grade(5.99), "C");
-    assert_eq!(score_to_grade(6.0), "D");
-    assert_eq!(score_to_grade(7.99), "D");
-    assert_eq!(score_to_grade(8.0), "F");
-    assert_eq!(score_to_grade(10.0), "F");
+    // Band floors come from crate::tdg::Grade -- one table, not a copy.
+    assert_eq!(score_to_grade(100.0), "A+");
+    assert_eq!(score_to_grade(95.0), "A+");
+    assert_eq!(score_to_grade(94.99), "A");
+    assert_eq!(score_to_grade(90.0), "A");
+    assert_eq!(score_to_grade(85.0), "A-");
+    assert_eq!(score_to_grade(80.0), "B+");
+    assert_eq!(score_to_grade(75.0), "B");
+    assert_eq!(score_to_grade(70.0), "B-");
+    assert_eq!(score_to_grade(65.0), "C+");
+    assert_eq!(score_to_grade(60.0), "C");
+    assert_eq!(score_to_grade(55.0), "C-");
+    assert_eq!(score_to_grade(50.0), "D");
+    assert_eq!(score_to_grade(49.99), "F");
+    assert_eq!(score_to_grade(0.0), "F");
 }
 
 #[test]

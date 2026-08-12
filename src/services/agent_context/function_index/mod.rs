@@ -11,6 +11,7 @@ mod types;
 pub(crate) use types::DefinitionType;
 pub use types::{
     AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
+    TDG_SCALE,
 };
 
 // Re-export items used by sibling test modules (query/tests.rs)

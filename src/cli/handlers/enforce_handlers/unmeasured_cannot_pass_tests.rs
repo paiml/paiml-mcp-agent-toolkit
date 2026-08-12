@@ -59,6 +59,13 @@ async fn an_empty_directory_is_not_complete() {
 
 /// A project that DOES parse must still be able to reach a clean verdict —
 /// otherwise the fix has simply made the gate impossible to pass.
+///
+/// The verdict now covers every dimension the profile sets a threshold for,
+/// coverage included, so the fixture carries the lcov report a real project
+/// produces with `cargo llvm-cov`. Without it, coverage is disclosed as
+/// unmeasured and the run is `Violating` — which is the point: the extreme
+/// profile demands 80% coverage, and pmat will not certify a number nobody
+/// measured.
 #[tokio::test]
 async fn a_clean_project_can_still_reach_complete() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -73,6 +80,11 @@ async fn a_clean_project_can_still_reach_complete() {
         "//! Clean.\n\n/// Adds.\npub fn add(a: i32, b: i32) -> i32 { a + b }\n",
     )
     .expect("source");
+    std::fs::write(
+        dir.path().join("lcov.info"),
+        "SF:src/lib.rs\nDA:4,1\nLF:1\nLH:1\nend_of_record\n",
+    )
+    .expect("lcov");
 
     let result = handle_analyzing_state(
         dir.path(),
@@ -91,8 +103,14 @@ async fn a_clean_project_can_still_reach_complete() {
             .violations
             .iter()
             .all(|v| v.violation_type != "not_measured"),
-        "a parseable project should measure cleanly: {:?}",
+        "a parseable project with a coverage report should measure cleanly: {:?}",
         result.violations
     );
     assert!(result.score > 0.0, "got {}", result.score);
+    assert_eq!(
+        result.state,
+        EnforcementState::Complete,
+        "a fully measured, clean project must still be able to pass: {:?}",
+        result.violations
+    );
 }

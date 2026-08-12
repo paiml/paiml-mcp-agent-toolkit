@@ -15,8 +15,9 @@ pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, b
             .as_deref()
             .map(|l| format!(" │ PV:{YELLOW}{l}{RESET}"))
             .unwrap_or_default();
+        let grade_color = tdg_grade_color(&r.tdg_grade);
         output.push_str(&format!(
-            "{CYAN}{}{RESET}:{YELLOW}{}-{}{RESET} │ {BOLD_WHITE}{}{RESET} │ TDG: {GREEN}{}{RESET} │ {MAGENTA}{}{RESET}{pv}\n",
+            "{CYAN}{}{RESET}:{YELLOW}{}-{}{RESET} │ {BOLD_WHITE}{}{RESET} │ TDG: {grade_color}{}{RESET} │ {MAGENTA}{}{RESET}{pv}\n",
             r.file_path, r.start_line, r.end_line, r.function_name, r.tdg_grade, r.big_o
         ));
 
@@ -55,14 +56,24 @@ pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, b
     output
 }
 
-fn build_text_metrics(r: &QueryResult) -> String {
-    let grade_color = match r.tdg_grade.as_str() {
-        "A" | "B" => GREEN,
-        "C" => YELLOW,
-        "D" => RED,
-        "F" => BOLD_RED,
+/// Colour for a TDG grade letter.
+///
+/// Matches on the LETTER, not the whole string: grades are
+/// `crate::tdg::Grade`'s eleven (`A+`, `A-`, `B+`, …), and an exact
+/// five-letter match sent every modifier grade to `DIM` — an `F-`-adjacent
+/// `C-` rendered the same neutral grey as an unknown value.
+fn tdg_grade_color(grade: &str) -> Sgr {
+    match grade.trim().chars().next() {
+        Some('A') | Some('B') => GREEN,
+        Some('C') => YELLOW,
+        Some('D') => RED,
+        Some('F') => BOLD_RED,
         _ => DIM,
-    };
+    }
+}
+
+fn build_text_metrics(r: &QueryResult) -> String {
+    let grade_color = tdg_grade_color(&r.tdg_grade);
     let mut m = format!(
         "   TDG: {}{} ({:.1}){RESET} | Complexity: {} | Big-O: {MAGENTA}{}{RESET}",
         grade_color, r.tdg_grade, r.tdg_score, r.complexity, r.big_o

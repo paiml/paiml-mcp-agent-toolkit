@@ -356,13 +356,17 @@ impl ToolHandler for AnalyzeDeepContextTool {
     }
 
     fn metadata(&self) -> Option<ToolInfo> {
-        let extra = json!({
-            "include_patterns": {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "Optional file glob patterns (accepted but not yet applied as a filter)"
-            }
-        });
+        // `include_patterns` USED to be advertised here, described as "accepted
+        // but not yet applied as a filter" — a schema that told clients about a
+        // knob wired to nothing: `{"paths":[dir]}` and
+        // `{"paths":[dir],"include_patterns":["*.py"]}` both answered
+        // `file_count: 3` over `a.go app.ts main.py`. The deep-context pipeline
+        // has no include filter to wire it to (see
+        // `reject_unsupported_include_patterns`), so it is off the schema AND
+        // refused with an error if a client sends it anyway. It is still parsed
+        // by `AnalyzeDeepContextArgs` for exactly that reason: dropping the
+        // field from the struct would make serde ignore it in silence again.
+        let extra = json!({});
         Some(build_tool_info(
             "analyze_deep_context",
             "Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.",

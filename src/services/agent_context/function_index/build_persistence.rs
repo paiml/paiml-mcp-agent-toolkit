@@ -29,7 +29,6 @@ impl AgentContextIndex {
     /// Save index to directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, index_path: &Path) -> Result<(), String> {
-
         fs::create_dir_all(index_path)
             .map_err(|e| format!("Failed to create index directory: {e}"))?;
 
@@ -65,11 +64,23 @@ impl AgentContextIndex {
         if db_candidate.exists() {
             // Validate schema before attempting full load — stale DBs from older
             // versions may lack required tables, producing confusing warnings.
-            let schema_ok = super::sqlite_backend::open_db(&db_candidate)
-                .map(|conn| super::sqlite_backend::has_valid_schema(&conn))
-                .unwrap_or(false);
+            //
+            // R30: also validate the TDG SCALE. A pre-v3.30.0 database has every
+            // required table and every required column, so the structural check
+            // passes it happily — while its `tdg_score` column holds 0-10
+            // lower-is-better debt numbers that today's readers would report as
+            // 0-100 quality scores, turning a stored 0.12 (the best legacy
+            // score) into an F. Structure valid does not mean contents readable.
+            let conn = super::sqlite_backend::open_db(&db_candidate).ok();
+            let schema_ok = conn
+                .as_ref()
+                .is_some_and(super::sqlite_backend::has_valid_schema);
+            let scale_ok = conn
+                .as_ref()
+                .is_some_and(super::sqlite_backend::stored_scale_is_current);
+            drop(conn);
 
-            if schema_ok {
+            if schema_ok && scale_ok {
                 match Self::load_from_sqlite(&db_candidate) {
                     Ok(index) => return Ok(index),
                     Err(e) => {
@@ -77,6 +88,13 @@ impl AgentContextIndex {
                     }
                 }
             } else {
+                if schema_ok {
+                    eprintln!(
+                        "  Index at {} was written under a different TDG scale; rebuilding \
+                         (scores are now 0-100, higher is better).",
+                        db_candidate.display()
+                    );
+                }
                 // Delete broken/stale DB so next save() regenerates it
                 let _ = std::fs::remove_file(&db_candidate);
             }
@@ -138,6 +156,21 @@ impl AgentContextIndex {
             .map_err(|e| format!("Failed to read manifest: {e}"))?;
         let manifest: IndexManifest = serde_json::from_str(&manifest_str)
             .map_err(|e| format!("Failed to parse manifest: {e}"))?;
+
+        // R30: same guard as the SQLite path. Pre-v3.30.0 manifests have no
+        // `tdg_scale` key and deserialise to "", which must fail rather than be
+        // read on today's scale. The caller rebuilds on Err.
+        if manifest.tdg_scale != crate::services::agent_context::TDG_SCALE {
+            let found = if manifest.tdg_scale.is_empty() {
+                "unmarked (pre-v3.30.0, 0-10 lower-is-better)"
+            } else {
+                manifest.tdg_scale.as_str()
+            };
+            return Err(format!(
+                "index was written under TDG scale {found}, this build reads {}; rebuild required",
+                crate::services::agent_context::TDG_SCALE
+            ));
+        }
 
         // Load and decompress blob
         let compressed = fs::read(index_path.join("functions.lz4"))

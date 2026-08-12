@@ -106,9 +106,15 @@ fn test_query_grade_filter() {
             },
         )
         .unwrap();
-    // Only grade A results
+    // `--min-grade A` means "A or better", so A+ qualifies too. Asserting
+    // `== "A"` pinned the old five-letter scale, where A+ did not exist.
+    assert!(!results.is_empty(), "fixture must yield at least one A-or-better");
     for r in &results {
-        assert_eq!(r.tdg_grade, "A", "expected A grade, got {}", r.tdg_grade);
+        assert!(
+            crate::services::agent_context::query::grades::grade_meets_threshold(&r.tdg_grade, "A"),
+            "grade {} should not have passed --min-grade A",
+            r.tdg_grade
+        );
     }
 }
 
@@ -339,7 +345,7 @@ fn test_dedup_ordered_empty() {
 
 #[test]
 fn test_is_test_function() {
-    let mut entry = create_test_entry("test_something", 1, 0.5);
+    let mut entry = create_test_entry("test_something", 1, 96.0);
     assert!(is_test_function(&entry));
 
     entry.function_name = "handle_request".to_string();
@@ -401,4 +407,48 @@ fn test_query_path_pattern_accepts_globs() {
         )
         .unwrap();
     assert!(!substring_hits.is_empty());
+}
+
+/// R30 regression: `--min-grade` must not admit a grade it cannot order.
+///
+/// The old filter compared positions in a private `["A","B","C","D","F"]`
+/// table and skipped the check entirely when either side was absent, so every
+/// modifier grade — `A-`, `B+`, `C-` — passed `--min-grade A` unexamined. The
+/// eleven-grade unification would have made that the common case.
+#[test]
+fn test_query_min_grade_rejects_modifier_grades_below_threshold() {
+    let mut index = build_test_index();
+    // Grade the two "handle" functions A- and B+: both are worse than A, and
+    // neither appears in the old five-letter table.
+    for f in index.functions.iter_mut() {
+        if f.function_name == "handle_error" {
+            f.quality.tdg_score = 86.0;
+            f.quality.tdg_grade = "A-".to_string();
+        } else if f.function_name == "handle_request" {
+            f.quality.tdg_score = 81.0;
+            f.quality.tdg_grade = "B+".to_string();
+        }
+    }
+
+    let results = index
+        .query(
+            "handle",
+            QueryOptions {
+                limit: 10,
+                min_grade: Some("A".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    for r in &results {
+        assert!(
+            r.tdg_grade != "A-" && r.tdg_grade != "B+",
+            "grade {} passed --min-grade A ({} at {}:{})",
+            r.tdg_grade,
+            r.function_name,
+            r.file_path,
+            r.start_line
+        );
+    }
 }

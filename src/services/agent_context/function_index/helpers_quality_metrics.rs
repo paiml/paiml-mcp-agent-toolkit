@@ -132,9 +132,8 @@ pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) ->
     let tdg_grade = score_to_grade(tdg_score);
 
     // Extract contract annotation from the lines preceding the function in full file content
-    let (contract_level, contract_equation) = extract_contract_metadata_from_context(
-        _full_content, chunk.start_line
-    );
+    let (contract_level, contract_equation) =
+        extract_contract_metadata_from_context(_full_content, chunk.start_line);
 
     QualityMetrics {
         tdg_score,
@@ -215,7 +214,10 @@ pub(super) fn cpp_complexity_penalty(source: &str) -> u32 {
         let trimmed = line.trim();
 
         // Preprocessor conditional nesting
-        if trimmed.starts_with("#if") || trimmed.starts_with("#ifdef") || trimmed.starts_with("#ifndef") {
+        if trimmed.starts_with("#if")
+            || trimmed.starts_with("#ifdef")
+            || trimmed.starts_with("#ifndef")
+        {
             ifdef_depth += 1;
             penalty += ifdef_depth; // +1 per nesting level
         } else if trimmed.starts_with("#endif") {
@@ -223,8 +225,12 @@ pub(super) fn cpp_complexity_penalty(source: &str) -> u32 {
         }
 
         // Count macro calls (UPPER_CASE identifiers with parens, common C/C++ convention)
-        if trimmed.contains("GGML_") || trimmed.contains("TORCH_") || trimmed.contains("AT_")
-            || trimmed.contains("CUDA_") || trimmed.contains("CHECK_") {
+        if trimmed.contains("GGML_")
+            || trimmed.contains("TORCH_")
+            || trimmed.contains("AT_")
+            || trimmed.contains("CUDA_")
+            || trimmed.contains("CHECK_")
+        {
             macro_call_count += 1;
         }
     }
@@ -262,8 +268,11 @@ pub(super) fn cpp_complexity_penalty(source: &str) -> u32 {
     }
 
     // Warp primitives: +2
-    if source.contains("__shfl_") || source.contains("__ballot_") || source.contains("__any_sync")
-        || source.contains("__all_sync") {
+    if source.contains("__shfl_")
+        || source.contains("__ballot_")
+        || source.contains("__any_sync")
+        || source.contains("__all_sync")
+    {
         penalty += 2;
     }
 
@@ -392,49 +401,84 @@ pub(super) fn estimate_big_o(source: &str) -> String {
     }
 }
 
-/// Calculate simplified TDG score
+/// Maximum points the cyclomatic-complexity penalty can remove.
+const COMPLEXITY_PENALTY_CAP: f32 = 50.0;
+/// Points removed per unit of cyclomatic complexity above 1 (no branches).
+const COMPLEXITY_PENALTY_PER_BRANCH: f32 = 1.5;
+/// Maximum points the SATD penalty can remove.
+const SATD_PENALTY_CAP: f32 = 20.0;
+/// Points removed per SATD marker past the first two.
+const SATD_PENALTY_PER_MARKER: f32 = 5.0;
+/// Number of SATD markers that cost nothing (see `calculate_simple_tdg`).
+const SATD_FREE_MARKERS: u32 = 2;
+/// Maximum points the function-length penalty can remove.
+const LOC_PENALTY_CAP: f32 = 30.0;
+/// Function length at which the length penalty starts.
+const LOC_PENALTY_THRESHOLD: u32 = 50;
+/// Lines per point of length penalty past the threshold.
+const LOC_LINES_PER_POINT: f32 = 15.0;
+
+/// Per-function TDG score, on the SAME scale `pmat tdg` reports:
+/// **0-100, higher is better**.
+///
+/// Before v3.30.0 this returned a 0-10 LOWER-is-better *debt* number and had a
+/// private five-letter `score_to_grade` beside it, so `pmat query` / `pmat sql`
+/// and `pmat tdg` disagreed about the direction of the axis AND about what the
+/// grade letters meant: `pmat sql grade-dist` reported `A=21748, B=5` over the
+/// whole repository (99.98% A, i.e. no resolution at all) while `pmat tdg` on
+/// the same tree reported `99.77 / A+`. A number that is "good" when small in
+/// one command and "good" when large in another is not a measurement.
+///
+/// The score is now `100 - penalties`, with the penalty budget mirroring the
+/// weighting `pmat tdg` uses (structure dominates, then size, then
+/// self-admitted debt), and grading goes through `crate::tdg::Grade` — the one
+/// score→grade mapping in the codebase.
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -> f32 {
-    let mut score = 0.0f32;
+    let mut score = 100.0f32;
 
-    // Complexity penalty (0-4 points)
-    // Divisor of 25: CC=50 -> 2.0 (B boundary). Functions at the pre-commit
-    // CC<=30 gate get score=1.2 (safe A). Dispatchers (CC~45) score 1.8 (A).
-    // CC=75 -> 3.0, CC=100 -> 4.0 (cap).
-    score += (complexity as f32 / 25.0).min(4.0);
+    // Structural complexity (0-50 points). 1.5 points per branch past the
+    // first, so the pre-commit CC<=30 gate lands at 56.5 (C-) and CC>=35
+    // exhausts the budget. CC=1 (no branches) costs nothing.
+    score -= (complexity.saturating_sub(1) as f32 * COMPLEXITY_PENALTY_PER_BRANCH)
+        .min(COMPLEXITY_PENALTY_CAP);
 
-    // SATD penalty (0-2 points, first 2 markers free to reduce false positives)
-    // Many functions reference SATD markers descriptively (detector code, enums).
-    // 3 SATD -> 0.5, 4 -> 1.0, 5 -> 1.5, 6+ -> 2.0.
-    score += (satd_count.saturating_sub(2) as f32 * 0.5).min(2.0);
+    // Self-admitted technical debt (0-20 points). The first two markers are
+    // free: many functions reference TODO/FIXME descriptively (detector code,
+    // marker enums) and would otherwise be penalised for naming the thing.
+    score -= (satd_count.saturating_sub(SATD_FREE_MARKERS) as f32 * SATD_PENALTY_PER_MARKER)
+        .min(SATD_PENALTY_CAP);
 
-    // LOC penalty (0-2 points for > 200 lines)
-    // Threshold at 200: functions under 200 LOC are rarely problematic.
-    // Divisor of 200: LOC=400 -> 1.0 penalty, LOC=600 -> 2.0 (capped).
-    if loc > 200 {
-        score += ((loc - 200) as f32 / 200.0).min(2.0);
+    // Size (0-30 points), starting at 50 lines: one point per 15 lines, so a
+    // 200-line function loses 10 and a 500-line one exhausts the budget.
+    if loc > LOC_PENALTY_THRESHOLD {
+        score -= ((loc - LOC_PENALTY_THRESHOLD) as f32 / LOC_LINES_PER_POINT).min(LOC_PENALTY_CAP);
     }
 
     // GH-272: cyclomatic complexity 1 means no branches — the simplest
-    // possible control flow. Cap such functions at grade A regardless of
-    // LOC/SATD penalties (large data tables, long trivial constructors).
-    // Score 1.99 is just below the B threshold (< 2.0).
+    // possible control flow. Such functions (large data tables, long trivial
+    // constructors) are floored at grade A regardless of the size/SATD
+    // penalties. On the old lower-is-better scale this read `score.min(1.99)`;
+    // the polarity flip makes it a floor, not a ceiling.
     if complexity <= 1 {
-        score = score.min(1.99);
+        score = score.max(GH272_TRIVIAL_FLOOR);
     }
 
-    score.min(10.0)
+    score.clamp(0.0, 100.0)
 }
 
-/// Convert TDG score to letter grade
+/// Score floor for zero-branch definitions (GH-272). Equal to the `A` band
+/// floor in `crate::tdg::Grade`, so the rule reads "at least an A".
+const GH272_TRIVIAL_FLOOR: f32 = 90.0;
+
+/// Convert a 0-100 TDG score to a letter grade.
+///
+/// Delegates to `crate::tdg::Grade::from_score` — the ONE score→grade mapping.
+/// This used to be a second, private five-band table on a different scale,
+/// which is why `pmat query` could call a function "A" that `pmat tdg` graded
+/// `C+`.
 pub(super) fn score_to_grade(score: f32) -> String {
-    match score {
-        s if s < 2.0 => "A".to_string(),
-        s if s < 4.0 => "B".to_string(),
-        s if s < 6.0 => "C".to_string(),
-        s if s < 8.0 => "D".to_string(),
-        _ => "F".to_string(),
-    }
+    crate::tdg::Grade::from_score(score).to_string()
 }
 
 /// Extract doc comment from source
@@ -494,7 +538,7 @@ pub(super) fn extract_doc_comment(content: &str, start_line: usize) -> Option<St
     // Scan backward line-by-line from (start_line - 1) without allocating a line-offset Vec
     let mut doc_lines = Vec::new();
     let mut end = def_line_start; // exclusive end of current line (before its \n)
-    // Skip trailing \n before def line
+                                  // Skip trailing \n before def line
     if end > 0 && bytes[end.saturating_sub(1)] == b'\n' {
         end = end.saturating_sub(1);
     }
@@ -700,10 +744,7 @@ mod quality_metrics_tests {
 
     #[test]
     fn test_classify_header_language_visibility_modifiers_are_cpp() {
-        assert!(matches!(
-            classify_header_language("public:"),
-            Language::Cpp
-        ));
+        assert!(matches!(classify_header_language("public:"), Language::Cpp));
         assert!(matches!(
             classify_header_language("private:"),
             Language::Cpp
@@ -992,81 +1033,112 @@ mod quality_metrics_tests {
     // ── calculate_simple_tdg ────────────────────────────────────────────────
 
     #[test]
-    fn test_calculate_simple_tdg_complexity_under_25_low_score() {
-        // CC=1 with 0 SATD, low LOC → score capped at 1.99 (special case)
+    fn test_calculate_simple_tdg_trivial_function_is_top_of_scale() {
+        // CC=1, no SATD, 50 lines → nothing penalised → 100/100.
         let s = calculate_simple_tdg(1, 0, 50);
-        assert!(s <= 1.99 + 1e-3);
+        assert!((s - 100.0).abs() < 1e-3, "expected 100.0, got {s}");
     }
 
     #[test]
-    fn test_calculate_simple_tdg_high_complexity_increases_score() {
-        // CC=50 → 2.0 from complexity
-        let s = calculate_simple_tdg(50, 0, 0);
-        assert!((s - 2.0).abs() < 1e-3);
+    fn test_calculate_simple_tdg_high_complexity_lowers_score() {
+        // Higher is better now: more branches must SUBTRACT.
+        let simple = calculate_simple_tdg(5, 0, 0);
+        let hairy = calculate_simple_tdg(40, 0, 0);
+        assert!(
+            hairy < simple,
+            "CC=40 ({hairy}) must score worse than CC=5 ({simple})"
+        );
     }
 
     #[test]
-    fn test_calculate_simple_tdg_complexity_capped_at_4() {
-        // CC=200 would give 8.0, but cap is 4.0
+    fn test_calculate_simple_tdg_complexity_penalty_capped_at_50() {
+        // CC=200 would remove 298.5 points unclamped; the budget is 50.
         let s = calculate_simple_tdg(200, 0, 0);
-        assert!(s >= 4.0);
-        // Other penalties may push higher; complexity component caps at 4.0
-        assert!(s <= 4.0 + 1e-3);
+        assert!((s - 50.0).abs() < 1e-3, "expected 50.0, got {s}");
     }
 
     #[test]
     fn test_calculate_simple_tdg_satd_penalty_starts_at_3() {
-        // SATD < 3 free; SATD=3 → 0.5 penalty over CC=2 (0.08) = ~0.58
         let s_no_satd = calculate_simple_tdg(2, 0, 0);
         let s_with_satd = calculate_simple_tdg(2, 3, 0);
-        assert!(s_with_satd > s_no_satd);
+        assert!(s_with_satd < s_no_satd);
+        assert!((s_no_satd - s_with_satd - 5.0).abs() < 1e-3);
     }
 
     #[test]
-    fn test_calculate_simple_tdg_loc_penalty_above_200() {
-        // LOC <= 200: no penalty; LOC=400 → +1.0
-        let s_low = calculate_simple_tdg(2, 0, 200);
+    fn test_calculate_simple_tdg_loc_penalty_above_threshold() {
+        let s_low = calculate_simple_tdg(2, 0, 50);
         let s_high = calculate_simple_tdg(2, 0, 400);
-        assert!(s_high > s_low);
+        assert!(s_high < s_low, "a 400-line function must score worse");
     }
 
     #[test]
-    fn test_calculate_simple_tdg_cc_one_capped_at_b_threshold() {
-        // CC=1 with massive LOC + SATD still capped at < 2.0 (A grade)
+    fn test_calculate_simple_tdg_never_leaves_0_100() {
+        // Every penalty maxed out at once must stay inside the scale.
+        let s = calculate_simple_tdg(500, 100, 5000);
+        assert!((0.0..=100.0).contains(&s), "score {s} escaped 0-100");
+    }
+
+    #[test]
+    fn test_calculate_simple_tdg_cc_one_floored_at_grade_a() {
+        // GH-272: CC=1 with massive LOC + SATD is still at least an A.
         let s = calculate_simple_tdg(1, 100, 1000);
-        assert!(s < 2.0);
+        assert!(s >= 90.0, "expected >= 90.0 (A floor), got {s}");
+        assert_eq!(score_to_grade(s), "A");
+    }
+
+    /// R30: the index scale and polarity must be the ones `pmat tdg` uses.
+    /// A known-bad function grades poorly, a known-good one well, and BOTH
+    /// grades come out of `crate::tdg::Grade::from_score`.
+    #[test]
+    fn test_calculate_simple_tdg_agrees_with_pmat_tdg_scale() {
+        // Known-good: a 12-line, 3-branch helper.
+        let good = calculate_simple_tdg(3, 0, 12);
+        // Known-bad: a 420-line, CC=45 god function with 8 SATD markers.
+        let bad = calculate_simple_tdg(45, 8, 420);
+
+        assert!(good > bad, "good {good} must outrank bad {bad}");
+        assert!(good >= 90.0, "known-good scored {good}, expected >= 90");
+        assert!(bad < 50.0, "known-bad scored {bad}, expected < 50 (F)");
+
+        // Same mapping `pmat tdg` uses — not a private second table.
+        assert_eq!(
+            score_to_grade(good),
+            crate::tdg::Grade::from_score(good).to_string()
+        );
+        assert_eq!(score_to_grade(bad), "F");
     }
 
     // ── score_to_grade ──────────────────────────────────────────────────────
 
     #[test]
-    fn test_score_to_grade_a() {
-        assert_eq!(score_to_grade(0.0), "A");
-        assert_eq!(score_to_grade(1.99), "A");
+    fn test_score_to_grade_matches_tdg_grade_bands() {
+        // The band edges are crate::tdg::Grade's, not a local copy.
+        for (score, expected) in [
+            (100.0f32, "A+"),
+            (95.0, "A+"),
+            (94.9, "A"),
+            (90.0, "A"),
+            (85.0, "A-"),
+            (80.0, "B+"),
+            (75.0, "B"),
+            (70.0, "B-"),
+            (65.0, "C+"),
+            (60.0, "C"),
+            (55.0, "C-"),
+            (50.0, "D"),
+            (49.9, "F"),
+            (0.0, "F"),
+        ] {
+            assert_eq!(score_to_grade(score), expected, "score {score}");
+        }
     }
 
     #[test]
-    fn test_score_to_grade_b() {
-        assert_eq!(score_to_grade(2.0), "B");
-        assert_eq!(score_to_grade(3.99), "B");
-    }
-
-    #[test]
-    fn test_score_to_grade_c() {
-        assert_eq!(score_to_grade(4.0), "C");
-        assert_eq!(score_to_grade(5.99), "C");
-    }
-
-    #[test]
-    fn test_score_to_grade_d() {
-        assert_eq!(score_to_grade(6.0), "D");
-        assert_eq!(score_to_grade(7.99), "D");
-    }
-
-    #[test]
-    fn test_score_to_grade_f() {
-        assert_eq!(score_to_grade(8.0), "F");
-        assert_eq!(score_to_grade(10.0), "F");
+    fn test_score_to_grade_low_score_is_not_an_a() {
+        // The inversion in one line: 0.12 used to be an A (best possible on
+        // the old 0-10 debt scale). On the 0-100 scale it is an F.
+        assert_eq!(score_to_grade(0.12), "F");
     }
 
     // ── extract_contract_metadata_from_context ──────────────────────────────

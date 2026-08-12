@@ -13,11 +13,10 @@ fn create_test_entry(name: &str, complexity: u32, tdg_score: f32) -> FunctionEnt
         language: "Rust".to_string(),
         quality: QualityMetrics {
             tdg_score,
-            tdg_grade: if tdg_score < 2.0 {
-                "A".to_string()
-            } else {
-                "B".to_string()
-            },
+            // The ONE score -> grade mapping, on the 0-100 higher-is-better
+            // scale. Was a local `if tdg_score < 2.0 { A } else { B }`, which
+            // pinned the old inverted scale into every fixture.
+            tdg_grade: crate::tdg::Grade::from_score(tdg_score).to_string(),
             complexity,
             cognitive_complexity: complexity,
             big_o: "O(1)".to_string(),
@@ -50,7 +49,7 @@ fn build_test_index() -> AgentContextIndex {
             end_line: 15,
             language: "Rust".to_string(),
             quality: QualityMetrics {
-                tdg_score: 1.0,
+                tdg_score: 92.0,
                 tdg_grade: "A".to_string(),
                 complexity: 3,
                 cognitive_complexity: 3,
@@ -81,7 +80,7 @@ fn build_test_index() -> AgentContextIndex {
             end_line: 30,
             language: "Rust".to_string(),
             quality: QualityMetrics {
-                tdg_score: 2.0,
+                tdg_score: 77.0,
                 tdg_grade: "B".to_string(),
                 complexity: 5,
                 cognitive_complexity: 5,
@@ -111,8 +110,8 @@ fn build_test_index() -> AgentContextIndex {
             end_line: 3,
             language: "Rust".to_string(),
             quality: QualityMetrics {
-                tdg_score: 0.5,
-                tdg_grade: "A".to_string(),
+                tdg_score: 96.0,
+                tdg_grade: "A+".to_string(),
                 complexity: 1,
                 cognitive_complexity: 1,
                 big_o: "O(1)".to_string(),
@@ -141,7 +140,7 @@ fn build_test_index() -> AgentContextIndex {
             end_line: 5,
             language: "Rust".to_string(),
             quality: QualityMetrics {
-                tdg_score: 1.0,
+                tdg_score: 92.0,
                 tdg_grade: "A".to_string(),
                 complexity: 1,
                 cognitive_complexity: 1,
@@ -171,8 +170,8 @@ fn build_test_index() -> AgentContextIndex {
             end_line: 12,
             language: "Rust".to_string(),
             quality: QualityMetrics {
-                tdg_score: 0.5,
-                tdg_grade: "A".to_string(),
+                tdg_score: 96.0,
+                tdg_grade: "A+".to_string(),
                 complexity: 1,
                 cognitive_complexity: 1,
                 big_o: "O(1)".to_string(),
@@ -228,6 +227,7 @@ fn build_test_index() -> AgentContextIndex {
             file_count: 3,
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 1.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },

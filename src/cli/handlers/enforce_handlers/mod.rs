@@ -5,6 +5,7 @@
 //! that iteratively improves code quality until extreme standards are met.
 
 pub mod analysis;
+pub mod assessment;
 pub mod config;
 pub mod enforcement;
 pub mod handler;
@@ -20,6 +21,7 @@ pub use analysis::{
     run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
     run_duplication_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
 };
+pub use assessment::{assess_project, QualityAssessment};
 pub use config::{
     clear_enforcement_cache, initialize_enforcement_environment, load_quality_profile,
     EnforcementConfig,
@@ -56,3 +58,7 @@ mod unmeasured_cannot_pass_tests;
 #[cfg(test)]
 #[path = "flag_fidelity_tests.rs"]
 mod flag_fidelity_tests;
+
+#[cfg(test)]
+#[path = "surface_agreement_tests.rs"]
+mod surface_agreement_tests;

@@ -8,8 +8,15 @@
 use rusqlite::{Connection, OpenFlags};
 use std::path::Path;
 
-/// Database schema version for migration tracking
-pub(crate) const SCHEMA_VERSION: &str = "2.0.0";
+/// Database schema version for migration tracking.
+///
+/// Bumped 2.0.0 → 3.0.0 in v3.30.0: the `functions.tdg_score` column changed
+/// meaning (0-10 lower-is-better debt → 0-100 higher-is-better quality, the
+/// scale `pmat tdg` reports) and `tdg_grade` widened from five letters to
+/// `crate::tdg::Grade`'s eleven. The column layout is unchanged, so the version
+/// alone would not stop a stale database from loading; the authoritative guard
+/// is the `tdg_scale` metadata key checked by `stored_scale_is_current`.
+pub(crate) const SCHEMA_VERSION: &str = "3.0.0";
 
 /// Open or create a SQLite index database at the given path.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -163,6 +170,26 @@ pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
     crate::services::agent_context::document_index::create_documents_schema(conn)?;
 
     Ok(())
+}
+
+/// Whether the stored `tdg_score` values were written on the CURRENT TDG scale.
+///
+/// R30: `pmat query`/`pmat sql` used to persist a 0-10 lower-is-better debt
+/// number while `pmat tdg` reported 0-100 higher-is-better. Both scales fit the
+/// same `REAL` column, so a stale database loads without complaint and every
+/// stored `0.12` — the BEST possible legacy score — reads as 0.12/100, an F.
+///
+/// A missing marker is NOT treated as current. Pre-v3.30.0 builds wrote no
+/// marker at all, so "absent" is precisely the stale case; an unmeasured signal
+/// must never pass as a clean one.
+pub(crate) fn stored_scale_is_current(conn: &Connection) -> bool {
+    conn.query_row(
+        "SELECT value FROM metadata WHERE key = 'tdg_scale'",
+        [],
+        |r| r.get::<_, String>(0),
+    )
+    .map(|v| v == crate::services::agent_context::TDG_SCALE)
+    .unwrap_or(false)
 }
 
 /// Check if the database has a valid v2.0 schema (all required tables exist).

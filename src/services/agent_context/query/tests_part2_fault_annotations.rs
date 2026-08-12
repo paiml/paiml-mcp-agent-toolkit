@@ -208,12 +208,12 @@ fn test_fault_finding_no_json_in_output() {
 
 #[test]
 fn test_fault_enrichment_full_flow_simulation() {
-    let mut entry_a = create_test_entry("handler", 5, 2.0);
+    let mut entry_a = create_test_entry("handler", 5, 77.0);
     entry_a.file_path = "src/handler.rs".to_string();
     entry_a.start_line = 10;
     entry_a.quality.loc = 20;
 
-    let mut entry_b = create_test_entry("validate", 3, 1.0);
+    let mut entry_b = create_test_entry("validate", 3, 92.0);
     entry_b.file_path = "src/utils.rs".to_string();
     entry_b.start_line = 50;
     entry_b.quality.loc = 10;
@@ -285,7 +285,7 @@ fn test_fault_enrichment_full_flow_simulation() {
 
 #[test]
 fn test_fault_enrichment_no_faults_for_file() {
-    let mut entry = create_test_entry("orphan_func", 3, 1.0);
+    let mut entry = create_test_entry("orphan_func", 3, 92.0);
     entry.file_path = "src/orphan.rs".to_string();
     entry.start_line = 1;
     entry.quality.loc = 50;
@@ -320,7 +320,7 @@ fn test_fault_enrichment_no_faults_for_file() {
 
 #[test]
 fn test_fault_enrichment_all_faults_out_of_range() {
-    let mut entry = create_test_entry("narrow_func", 3, 1.0);
+    let mut entry = create_test_entry("narrow_func", 3, 92.0);
     entry.file_path = "src/narrow.rs".to_string();
     entry.start_line = 100;
     entry.quality.loc = 5;

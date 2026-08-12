@@ -9,29 +9,69 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // Create TDG analyzer
     let analyzer = TdgAnalyzer::new()?;
 
-    // Analyze the first path (typically project root)
-    let project_path = &paths[0];
+    // EVERY path the caller handed in, not `paths[0]`. `quality_gate` used to
+    // read `let project_path = &paths[0]` and drop the rest on the floor:
+    // `{"paths": ["ok.rs", "a.sh"]}` answered
+    // `{"passed":true,"score":90.0,"grade":"A","not_measured":[],"files_analyzed":1}`
+    // — half the input measured, and `not_measured: []` claiming full coverage
+    // of the run. A path this gate cannot grade is a HOLE, and every hole is
+    // named below with the reason it exists.
+    let mut graded = Vec::new();
+    let mut ungraded: Vec<(PathBuf, String)> = Vec::new();
+    let mut satd: Vec<Value> = Vec::new();
 
-    // Same refusal as the single-file entry point below: `analyze_file` errors
-    // on anything outside TDG's language set, so `paths: ["a.sh"]` failed the
-    // whole call rather than reporting the verdict the CLI gate reports.
-    let ungraded_language = project_path.is_file() && !crate::tdg::grades_source(project_path);
-
-    let (project_score, ungraded) = if project_path.is_file() {
-        // Analyze single file and wrap in ProjectScore
-        let file_scores = if ungraded_language {
-            Vec::new()
+    for path in paths {
+        if path.is_file() {
+            // Same refusal as the single-file entry point below: `analyze_file`
+            // errors on anything outside TDG's language set, so `paths: ["a.sh"]`
+            // failed the whole call rather than reporting the verdict the CLI
+            // gate reports. A file that *should* grade but does not (unparseable,
+            // unreadable) is disclosed exactly like one inside a directory is,
+            // rather than aborting the whole call for the other paths.
+            if crate::tdg::grades_source(path) {
+                match analyzer.analyze_file(path) {
+                    Ok(score) => graded.push(score),
+                    Err(e) => ungraded.push((path.clone(), e.to_string())),
+                }
+            } else {
+                ungraded.push((path.clone(), not_graded_reason(path, true)));
+            }
+            // SATD comes from the same detector `pmat quality-gate` runs: this
+            // tool and the CLI gate carry one name and must not be two different
+            // checks. A TDG-only verdict let a `TODO:` the CLI fails on pass
+            // over MCP.
+            satd.extend(satd_violations_for_file(path));
         } else {
-            vec![analyzer.analyze_file(project_path)?]
-        };
-        (crate::tdg::ProjectScore::aggregate(file_scores), Vec::new())
-    } else {
-        // Analyze entire project. The ungraded list is load-bearing: `files_analyzed`
-        // counts what was GRADED, so without it a shrinking denominator is invisible
-        // — this tool answered `passed:true, grade:"A", files_analyzed:1` for a
-        // 9-file tree whose other 8 files the same build refuses one at a time.
-        analyzer.analyze_project_reporting_ungraded(project_path)?
-    };
+            // Analyze entire project. The ungraded list is load-bearing: `files_analyzed`
+            // counts what was GRADED, so without it a shrinking denominator is invisible
+            // — this tool answered `passed:true, grade:"A", files_analyzed:1` for a
+            // 9-file tree whose other 8 files the same build refuses one at a time.
+            let (project, refused) = analyzer.analyze_project_reporting_ungraded(path)?;
+            graded.extend(project.files);
+            ungraded.extend(refused);
+            satd.extend(
+                crate::cli::analysis_utilities::check_satd(path)
+                    .await
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|v| {
+                        json!({
+                            "check_type": v.check_type,
+                            "severity": v.severity,
+                            "file": v.file,
+                            "line": v.line,
+                            "message": v.message,
+                        })
+                    }),
+            );
+        }
+    }
+
+    // Two paths can name the same file, and the lists are serialised verbatim in
+    // a JSON payload: identical input must serialise identically.
+    ungraded.sort();
+    ungraded.dedup();
+    let project_score = crate::tdg::ProjectScore::aggregate(graded);
 
     // Determine pass/fail threshold based on strict mode
     let threshold_score = if strict { 70.0 } else { 50.0 };
@@ -68,27 +108,6 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         })
         .collect();
 
-    // SATD comes from the same detector `pmat quality-gate` runs: this tool and
-    // the CLI gate carry one name and must not be two different checks. A
-    // TDG-only verdict let a `TODO:` the CLI fails on pass over MCP.
-    let satd: Vec<Value> = if project_path.is_file() {
-        satd_violations_for_file(project_path)
-    } else {
-        crate::cli::analysis_utilities::check_satd(project_path)
-            .await
-            .unwrap_or_default()
-            .iter()
-            .map(|v| {
-                json!({
-                    "check_type": v.check_type,
-                    "severity": v.severity,
-                    "file": v.file,
-                    "line": v.line,
-                    "message": v.message,
-                })
-            })
-            .collect()
-    };
     // A language TDG does not grade leaves `tdg_passed` false for want of a
     // score — and that is where it must stay. This used to read
     // `(tdg_passed || ungraded_language)`, which credited the missing score to
@@ -101,7 +120,6 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // giving two answers to one question. GH #704 is untouched: a path TDG
     // *does* grade but scored badly still fails, and the SATD findings below
     // are still reported either way.
-    let mut passed = tdg_passed && satd.is_empty();
     violations.extend(satd);
 
     // Every source file the analyzer REFUSED is a hole in this verdict, and the
@@ -109,16 +127,13 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // warning on stderr, which an MCP client never sees. One unparseable file is
     // enough to refuse in `--file` mode, so one is enough here: this is the
     // zero-graded rule below, extended to the partial case that actually occurs.
-    if !ungraded.is_empty() {
-        passed = false;
-        for (file, reason) in &ungraded {
-            violations.push(json!({
-                "check_type": "not_graded",
-                "severity": "error",
-                "file": file.display().to_string(),
-                "message": format!("{reason} — this file is not part of the score"),
-            }));
-        }
+    for (file, reason) in &ungraded {
+        violations.push(json!({
+            "check_type": "not_graded",
+            "severity": "error",
+            "file": file.display().to_string(),
+            "message": format!("{reason} — this file is not part of the score"),
+        }));
     }
 
     // A path where nothing could be graded must SAY so. `analyze_project` skips
@@ -131,15 +146,27 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // it is disclosed and refused exactly like the others. Saying "not measured"
     // in one field and "passed" in another is the contradiction this whole file
     // exists to remove.
-    if project_score.total_files == 0 {
-        passed = false;
-        violations.push(json!({
-            "check_type": "not_graded",
-            "severity": "error",
-            "file": project_path.display().to_string(),
-            "message": not_graded_reason(project_path, ungraded_language),
-        }));
+    if project_score.total_files == 0 && ungraded.is_empty() {
+        for path in paths {
+            violations.push(json!({
+                "check_type": "not_graded",
+                "severity": "error",
+                "file": path.display().to_string(),
+                "message": not_graded_reason(path, path.is_file() && !crate::tdg::grades_source(path)),
+            }));
+        }
     }
+
+    // THE verdict rule, in one place and applied to every finding this gate
+    // produces (see `is_verdict_bearing`). This used to be
+    // `tdg_passed && satd.is_empty()`, i.e. any finding of any severity decided
+    // the verdict: nine unchanged Rust files scored 81.67/B+ and came back
+    // `passed:false` because the SATD detector matched the literal text
+    // "// TODO" inside a sentence *describing* a requirement, and classified it
+    // `severity:"info"`. Advisory findings are still reported in `violations`;
+    // they no longer flip a verdict.
+    let blocking = violations.iter().filter(|v| is_verdict_bearing(v)).count();
+    let passed = tdg_passed && blocking == 0;
 
     // With nothing graded there is no score to report. Reporting 0.0/"F" reads as
     // "measured, and terrible"; `analyze_deep_context` already answers this case
@@ -183,8 +210,29 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         "not_measured": not_measured,
         "threshold": threshold_score,
         "files_analyzed": project_score.total_files,
+        // `violations` now legitimately contains rows that did NOT decide the
+        // verdict, so the count that DID is stated rather than left to be
+        // inferred from `passed:true` next to a non-empty list.
+        "blocking_violations": blocking,
         "violations": violations
     }))
+}
+
+/// The severity a finding must NOT have to decide a verdict.
+const ADVISORY_SEVERITY: &str = "info";
+
+/// Does this finding decide the pass/fail verdict?
+///
+/// ONE rule, both `quality_gate` entry points, every check type. `error` and
+/// `warning` are actionable and fail the gate; `info` is advisory — reported,
+/// never verdict-bearing. Nine unchanged Rust files were failed by a single
+/// `severity:"info"` SATD row whose "finding" was the literal text "// TODO"
+/// quoted inside a sentence describing a CLI requirement.
+///
+/// A finding with no severity at all is verdict-bearing: fail closed, because an
+/// unclassified finding must not be silently demoted to advice.
+fn is_verdict_bearing(violation: &Value) -> bool {
+    violation.get("severity").and_then(Value::as_str) != Some(ADVISORY_SEVERITY)
 }
 
 /// Why this gate has no grade for `path`, in the reader's terms.
@@ -315,7 +363,13 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
             "message": not_graded_reason(file_path, true),
         }));
     }
-    let passed = tdg_passed && violations.is_empty();
+    // The SAME rule `check_quality_gates` applies, from the same function: this
+    // was `violations.is_empty()`, so the two entry points of one tool disagreed
+    // about whether an advisory finding is a failure the moment either was
+    // changed. `not_graded` is `severity:"error"`, so a file with no grade still
+    // cannot pass.
+    let blocking = violations.iter().filter(|v| is_verdict_bearing(v)).count();
+    let passed = tdg_passed && blocking == 0;
 
     // Same convention as `check_quality_gates` above and `analyze_deep_context`:
     // what was not measured goes on the wire as null plus a `not_measured` list,
@@ -354,6 +408,7 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         "grade": grade,
         "not_measured": not_measured,
         "threshold": threshold_score,
+        "blocking_violations": blocking,
         "violations": violations,
         "tdg_penalties": tdg_penalties,
         "metrics": metrics
@@ -374,14 +429,25 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
     // Analyze the first path (typically project root)
     let project_path = &paths[0];
 
-    let project_score = if project_path.is_file() {
+    // Same rule as `check_quality_gates`: a file the analyzer refused is a hole
+    // in the summary and is named. `analyze_project` throws the refusals away,
+    // so `not_measured` here was `ProjectScore::not_measured` — which is only
+    // ever non-empty when NOTHING graded. Over a tree of twelve source files
+    // with seven graded it read `[]`, i.e. full coverage of a run that covered
+    // seven twelfths.
+    let (project_score, ungraded) = if project_path.is_file() {
         // Analyze single file and wrap in ProjectScore
         let file_score = analyzer.analyze_file(project_path)?;
-        crate::tdg::ProjectScore::aggregate(vec![file_score])
+        (
+            crate::tdg::ProjectScore::aggregate(vec![file_score]),
+            Vec::new(),
+        )
     } else {
         // Analyze entire project
-        analyzer.analyze_project(project_path)?
+        analyzer.analyze_project_reporting_ungraded(project_path)?
     };
+    let mut not_measured = project_score.not_measured.clone();
+    not_measured.extend(ungraded.iter().map(|(file, _)| file.display().to_string()));
 
     // Standard threshold for summary (not strict)
     let threshold_score = 50.0;
@@ -414,7 +480,11 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
             // the same convention `quality_gate` above already uses.
             "average_score": project_score.average_score,
             "average_grade": project_score.average_grade.map(|g| g.to_string()),
-            "not_measured": project_score.not_measured,
+            "not_measured": not_measured,
+            "ungraded_files": ungraded.iter().map(|(file, reason)| json!({
+                "file": file.display().to_string(),
+                "reason": reason,
+            })).collect::<Vec<_>>(),
             "threshold_score": threshold_score,
             "grade_distribution": grade_distribution,
             "language_distribution": project_score.language_distribution.iter()
@@ -605,13 +675,29 @@ mod mcp_quality_gate_parity_tests {
 
     /// The CLI gate fails this file on SATD; MCP used to return
     /// `{"passed":true,"grade":"A","violations":[]}` for it.
+    ///
+    /// The marker is `FIXME` — `severity:"error"` — and NOT the `TODO` this
+    /// fixture used to carry. `TODO` is classified `severity:"info"`, and an
+    /// informational finding no longer decides an MCP verdict (see
+    /// `is_verdict_bearing`): nine unchanged Rust files were failed by one
+    /// `info` row that had matched the literal text "// TODO" quoted inside a
+    /// sentence describing a CLI requirement. The parity this test exists to
+    /// pin is "a real SATD finding fails both surfaces", which an
+    /// error-severity marker states without depending on the classification of
+    /// the weakest one.
+    ///
+    /// KNOWN REMAINING SPLIT, not fixed here because it is not this crate's MCP
+    /// surface: `pmat quality-gate` fails on ANY violation regardless of
+    /// severity, so an `info` SATD row still fails the CLI while passing MCP.
+    /// The severity rule belongs in one place for both; the CLI half lives in
+    /// `src/cli/handlers/quality_gates_handler*.rs`.
     #[tokio::test]
     async fn test_mcp_file_gate_fails_on_the_satd_the_cli_gate_fails_on() {
         let tmp = TempDir::new().expect("tempdir");
         let file = write(
             tmp.path(),
             "lib.rs",
-            "/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    // TODO: handle overflow\n    a + b\n}\n",
+            "/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    // FIXME: handle overflow\n    a + b\n}\n",
         );
 
         let result = check_quality_gate_file(&file, false).await.expect("gate");
@@ -619,7 +705,7 @@ mod mcp_quality_gate_parity_tests {
         let violations = result["violations"].as_array().expect("violations array");
         assert!(
             violations.iter().any(|v| v["check_type"] == "satd"),
-            "the TODO must surface as a violation: {result}"
+            "the FIXME must surface as a violation: {result}"
         );
         assert_eq!(
             result["passed"], false,

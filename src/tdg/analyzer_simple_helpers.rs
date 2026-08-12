@@ -55,167 +55,35 @@ impl TdgAnalyzer {
         duplicates as f32 / lines.len() as f32
     }
 
-    fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        let mut files = Vec::new();
-        self.discover_files_recursive(dir, &mut files)?;
-        Ok(files)
+    /// Walk `dir`, keeping a record of the files this build cannot grade.
+    ///
+    /// This used to be a hand-rolled `read_dir` recursion over a hardcoded
+    /// extension whitelist that dropped everything else without a trace — the
+    /// walk behind `quality_gate`'s `not_measured: []` for a tree it graded half
+    /// of. The walk, the skip list and the classification are now
+    /// `crate::tdg::file_discovery`, shared with the AST analyzer.
+    fn discover_files(&self, dir: &Path) -> Result<crate::tdg::file_discovery::Discovery> {
+        crate::tdg::file_discovery::discover(dir, crate::tdg::file_discovery::Policy::heuristic())
     }
 
-    fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-        if !dir.is_dir() {
-            return Ok(());
-        }
-
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                if !self.should_skip_directory(&path) {
-                    self.discover_files_recursive(&path, files)?;
-                }
-            } else if self.should_analyze_file(&path) {
-                files.push(path);
-            }
-        }
-
-        Ok(())
-    }
-
+    #[cfg(test)]
     fn should_skip_directory(&self, path: &Path) -> bool {
-        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            matches!(
-                name,
-                "node_modules"
-                    | "target"
-                    | "build"
-                    | "dist"
-                    | ".git"
-                    | "__pycache__"
-                    | ".pytest_cache"
-                    | "venv"
-                    | ".venv"
-                    | "vendor"
-                    | ".idea"
-                    | ".vscode"
-                    | ".lake"
-            )
-        } else {
-            false
-        }
+        crate::tdg::file_discovery::is_skipped_directory(path, false)
     }
 
+    #[cfg(test)]
     fn should_analyze_file(&self, path: &Path) -> bool {
-        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            matches!(
-                ext,
-                "rs" | "py"
-                    | "js"
-                    | "ts"
-                    | "jsx"
-                    | "tsx"
-                    | "go"
-                    | "java"
-                    | "c"
-                    | "h"
-                    | "cpp"
-                    | "cc"
-                    | "cxx"
-                    | "hpp"
-                    | "rb"
-                    | "swift"
-                    | "kt"
-                    | "kts"
-                    | "lean"
-            )
-        } else {
-            false
-        }
+        crate::tdg::file_discovery::is_gradable_path(
+            path,
+            crate::tdg::file_discovery::Policy::heuristic(),
+        )
     }
 }
 
-/// Count `sorry` occurrences in Lean source (proof incompleteness).
-/// Skips line comments (`--`) and nested block comments (`/- ... -/`).
-/// Uses word-boundary checking to avoid false positives from identifiers.
-fn count_lean_sorry(source: &str) -> usize {
-    let mut count = 0;
-    let mut in_block_comment: i32 = 0;
-
-    for line in source.lines() {
-        let trimmed = line.trim();
-
-        // Skip line comments
-        if trimmed.starts_with("--") {
-            continue;
-        }
-
-        // Strip block comments
-        let cleaned = strip_lean_block_comments(trimmed, &mut in_block_comment);
-
-        // If still inside a block comment, skip
-        if in_block_comment > 0 {
-            continue;
-        }
-
-        // Word-boundary check: sorry must be a standalone word
-        if contains_lean_sorry_word(&cleaned) {
-            count += 1;
-        }
-    }
-
-    count
-}
-
-/// Strips Lean block comment content (`/- ... -/`) from a line.
-fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
-    let bytes = line.as_bytes();
-    let mut result = String::with_capacity(line.len());
-    let mut i = 0;
-
-    while i < bytes.len() {
-        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'-' {
-            *depth += 1;
-            i += 2;
-            continue;
-        }
-        if i + 1 < bytes.len() && bytes[i] == b'-' && bytes[i + 1] == b'/' && *depth > 0 {
-            *depth -= 1;
-            i += 2;
-            continue;
-        }
-        if *depth == 0 {
-            result.push(bytes[i] as char);
-        }
-        i += 1;
-    }
-
-    result
-}
-
-/// Checks if a line contains "sorry" as a standalone word.
-fn contains_lean_sorry_word(line: &str) -> bool {
-    let bytes = line.as_bytes();
-    let sorry = b"sorry";
-
-    let mut pos = 0;
-    while pos + sorry.len() <= bytes.len() {
-        if let Some(idx) = line[pos..].find("sorry") {
-            let abs_idx = pos + idx;
-            let before_ok =
-                abs_idx == 0 || !bytes[abs_idx - 1].is_ascii_alphanumeric() && bytes[abs_idx - 1] != b'_';
-            let after_ok = abs_idx + sorry.len() >= bytes.len()
-                || !bytes[abs_idx + sorry.len()].is_ascii_alphanumeric()
-                    && bytes[abs_idx + sorry.len()] != b'_';
-            if before_ok && after_ok {
-                return true;
-            }
-            pos = abs_idx + 1;
-        } else {
-            break;
-        }
-    }
-    false
-}
+// The Lean `sorry` counter that lived here was a byte-for-byte copy of the one
+// in `analyzer_ast/analyzer_impl2_heuristics_lean.rs`. Both are gone: the rule
+// is `crate::tdg::critical_defect_gate::count_lean_sorry`, applied to BOTH
+// analyzers by the shared gate.
 
 /// Count control flow keywords in a single trimmed line.
 fn count_control_flow_keywords(trimmed: &str) -> u32 {

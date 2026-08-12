@@ -24,7 +24,11 @@ mod schema;
 // --- Public re-exports (preserving original visibility) ---
 
 // From schema (used by build.rs and external callers)
-pub(crate) use schema::{has_valid_schema, open_db};
+pub(crate) use schema::{has_valid_schema, open_db, stored_scale_is_current};
+// Read by tests that assert what version the code under test writes, instead of
+// hard-coding the literal (which turns a deliberate bump into a red test).
+#[cfg(test)]
+pub(crate) use schema::SCHEMA_VERSION;
 
 // From save (used by build.rs)
 pub(crate) use save::save_to_sqlite;
@@ -248,6 +252,7 @@ mod tests {
             file_count: 10,
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 1.5,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         };
@@ -260,7 +265,18 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(version, "2.0.0");
+        // insert_metadata writes the CURRENT SCHEMA_VERSION, not whatever the
+        // caller's manifest happened to carry.
+        assert_eq!(version, SCHEMA_VERSION);
+
+        let scale: String = conn
+            .query_row(
+                "SELECT value FROM metadata WHERE key = 'tdg_scale'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("R30: every saved index must record the TDG scale it used");
+        assert_eq!(scale, crate::services::agent_context::TDG_SCALE);
     }
 
     #[test]
@@ -307,6 +323,7 @@ mod tests {
             file_count: 2,
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         };

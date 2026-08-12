@@ -123,10 +123,18 @@ pub fn output_result(
                     "results": result.violations.iter().map(|v| {
                         serde_json::json!({
                             "ruleId": format!("quality.{}", v.violation_type),
+                            // A `not_measured` disclosure carries severity
+                            // "error" and used to fall into the `_` arm, so the
+                            // gap a run could not measure was published to a
+                            // SARIF consumer as a "note" — the quietest level
+                            // there is. An unknown severity is not evidence of
+                            // harmlessness either, so it no longer decays to
+                            // "note" on the way out.
                             "level": match v.severity.as_str() {
-                                "high" => "error",
-                                "medium" => "warning",
-                                _ => "note"
+                                "error" | "high" => "error",
+                                "warning" | "medium" => "warning",
+                                "note" | "low" => "note",
+                                _ => "warning"
                             },
                             "message": {
                                 "text": format!("{} (current: {:.1}, target: {:.1})",
@@ -235,6 +243,19 @@ pub fn handle_ci_mode_exit(ci_mode: bool, current_state: EnforcementState) {
     }
 }
 
+/// Count violations by a key they carry, so the summary is derived from the
+/// list rather than from a fixed set of keys someone remembered to update.
+fn tally(
+    violations: &[QualityViolation],
+    key: impl Fn(&QualityViolation) -> &String,
+) -> std::collections::BTreeMap<String, usize> {
+    let mut counts = std::collections::BTreeMap::new();
+    for v in violations {
+        *counts.entry(key(v).clone()).or_insert(0) += 1;
+    }
+    counts
+}
+
 /// Format violations output - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_violations_output(
@@ -243,24 +264,21 @@ pub fn format_violations_output(
     format: EnforceOutputFormat,
 ) -> Result<String> {
     if format == EnforceOutputFormat::Json {
-        let json_output = serde_json::json!({
+        // `by_severity` and `by_type` used to be hardcoded three-key maps
+        // (high/medium/low, complexity/satd/tdg), so a `not_measured` disclosure
+        // (severity "error") and every dead-code, duplication and coverage
+        // finding was counted in `total` and in nothing else: the breakdown did
+        // not add up to the list it summarised. Tallying what is actually there
+        // keeps the summary from being a second, staler answer.
+        Ok(serde_json::to_string_pretty(&serde_json::json!({
             "profile": profile.clone(),
             "violations": violations,
             "summary": {
                 "total": violations.len(),
-                "by_severity": {
-                    "high": violations.iter().filter(|v| v.severity == "high").count(),
-                    "medium": violations.iter().filter(|v| v.severity == "medium").count(),
-                    "low": violations.iter().filter(|v| v.severity == "low").count(),
-                },
-                "by_type": {
-                    "complexity": violations.iter().filter(|v| v.violation_type == "complexity").count(),
-                    "satd": violations.iter().filter(|v| v.violation_type == "satd").count(),
-                    "tdg": violations.iter().filter(|v| v.violation_type == "tdg").count(),
-                }
+                "by_severity": tally(violations, |v| &v.severity),
+                "by_type": tally(violations, |v| &v.violation_type),
             }
-        });
-        Ok(serde_json::to_string_pretty(&json_output)?)
+        }))?)
     } else {
         // Simple text format
         let mut output = String::new();

@@ -160,13 +160,17 @@ fn format_annotated_file(out: &mut String, file_path: &str, hotspot: &FileHotspo
     }
 }
 
-/// Map TDG grade letter to ANSI color code
+/// Map TDG grade letter to ANSI color code.
+///
+/// Matches on the LETTER: grades are `crate::tdg::Grade`'s eleven, so exact
+/// matching on `"A".."F"` painted `A+`, `A-`, `B+`, `B-`, `C+`, `C-` the same
+/// neutral `DIM` as "no grade recorded".
 fn grade_to_color(grade: &str) -> Sgr {
-    match grade {
-        "A" | "B" => GREEN,
-        "C" => YELLOW,
-        "D" => RED,
-        "F" => BRIGHT_RED,
+    match grade.trim().chars().next() {
+        Some('A') | Some('B') => GREEN,
+        Some('C') => YELLOW,
+        Some('D') => RED,
+        Some('F') => BRIGHT_RED,
         _ => DIM,
     }
 }

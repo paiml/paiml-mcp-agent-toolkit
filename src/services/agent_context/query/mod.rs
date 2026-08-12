@@ -9,6 +9,7 @@ mod engine;
 mod enrichment;
 pub(crate) mod extract_candidates;
 mod formatters;
+pub(crate) mod grades;
 pub(crate) mod ptx_diagnostics;
 pub(crate) mod ptx_flow;
 pub(crate) mod raw_search;

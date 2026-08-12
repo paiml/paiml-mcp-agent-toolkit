@@ -96,6 +96,7 @@ fn finalize_incremental_index(
         file_count,
         languages: languages_seen.keys().cloned().collect(),
         avg_tdg_score: avg_tdg,
+        tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
         file_checksums,
         last_incremental_changes: files_reparsed,
     };

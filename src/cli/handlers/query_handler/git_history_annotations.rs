@@ -72,13 +72,17 @@ fn annotate_file_functions(
 ) -> FileAnnotation {
     let mut annot = FileAnnotation::default();
     annot.function_count = funcs.len();
-    let mut worst_tdg_score: f32 = 0.0;
-    let mut worst_grade = String::from("A");
+    // tdg_score is 0-100 HIGHER-is-better, so the WORST function in a file is
+    // the one with the LOWEST score. This used to take the maximum (correct on
+    // the old 0-10 debt scale), which after the flip would have reported each
+    // file's BEST function as its grade.
+    let mut worst_tdg_score = f32::INFINITY;
+    let mut worst_grade = String::new();
     let mut total_complexity: f32 = 0.0;
     let mut max_pr: f32 = 0.0;
     let mut total_faults = 0usize;
     for (i, func) in funcs.iter().enumerate() {
-        if func.quality.tdg_score > worst_tdg_score {
+        if func.quality.tdg_score < worst_tdg_score {
             worst_tdg_score = func.quality.tdg_score;
             worst_grade = func.quality.tdg_grade.clone();
         }
@@ -91,7 +95,9 @@ fn annotate_file_functions(
             }
         }
     }
-    annot.tdg_grade = Some(worst_grade);
+    // No functions means no grade. Reporting "A" for a file nothing was
+    // measured in is the "empty means clean" failure, not an annotation.
+    annot.tdg_grade = if worst_grade.is_empty() { None } else { Some(worst_grade) };
     annot.avg_complexity = Some(total_complexity / funcs.len() as f32);
     annot.max_pagerank = Some(max_pr);
     annot.fault_count = total_faults;
@@ -268,6 +274,29 @@ fn load_commit_quality(
     serde_json::from_str(&data).ok()
 }
 
+/// Risk weight used when a file carries no TDG grade at all.
+///
+/// Kept at the neutral midpoint deliberately: an unknown grade must not be
+/// ranked as if it were measured and clean (0.0) nor as if it were measured
+/// and terrible (1.0).
+const UNKNOWN_GRADE_RISK: f32 = 0.5;
+
+/// Map a TDG grade letter to a 0-1 risk weight, derived from the SAME band
+/// table `crate::tdg::Grade` grades with.
+///
+/// The old body was a five-arm `match` on `"A".."F"`, which after the
+/// eleven-grade unification would have collapsed `A+`, `A-`, `B+`, `B-`, `C+`,
+/// `C-` into the "unknown" fallback -- six of eleven grades scoring identically
+/// to a file that was never measured.
+fn grade_risk(grade: &str) -> f32 {
+    match crate::services::agent_context::query::grades::parse_grade(grade) {
+        // `score_band().0` is the score floor of the grade's band, so risk
+        // falls monotonically as the grade improves: A+ -> 0.05, F -> 1.0.
+        Some(g) => 1.0 - (g.score_band().0 / 100.0),
+        None => UNKNOWN_GRADE_RISK,
+    }
+}
+
 /// Compute code decay score for a file
 /// decay = (1 - TDG_normalized) x churn_ratio x fix_ratio x (1 + dead_code_fraction)
 #[allow(clippy::cast_possible_truncation)]
@@ -275,16 +304,8 @@ pub(super) fn compute_decay_score(hotspot: &FileHotspot, total_commits: usize) -
     let tdg_score = hotspot
         .annotation
         .tdg_grade
-        .as_ref()
-        .map(|g| match g.as_str() {
-            "A" => 0.0,
-            "B" => 0.25,
-            "C" => 0.5,
-            "D" => 0.75,
-            "F" => 1.0,
-            _ => 0.5,
-        })
-        .unwrap_or(0.5);
+        .as_deref()
+        .map_or(UNKNOWN_GRADE_RISK, grade_risk);
 
     let churn_ratio = if total_commits > 0 {
         (hotspot.commit_count as f32 / total_commits as f32).min(1.0)

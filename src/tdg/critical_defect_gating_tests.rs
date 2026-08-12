@@ -129,9 +129,11 @@ fn suppression_round_trips_through_json_and_old_baselines_still_load() {
 /// version control at all, where no commit can be blocked. Collapsing those two
 /// into one `false` is what waived the gate for everything outside a repo.
 mod git_tracking {
-    // `analyzer_impl1_source_dispatch.rs` is `include!`d into `analyzer_ast`,
-    // so its items live directly on that module rather than a submodule.
-    use crate::tdg::analyzer_ast::{git_tracking_status, is_exempt_as_new_file, GitTracking};
+    // The tri-state now lives in the shared gate both analyzers call, rather
+    // than inside one of them.
+    use crate::tdg::critical_defect_gate::{
+        git_tracking_status, is_exempt_as_new_file, GitTracking,
+    };
     use std::process::Command;
 
     fn git(dir: &std::path::Path, args: &[&str]) {
@@ -391,5 +393,163 @@ mod the_waiver_touches_the_gate_not_the_score {
             waived.total
         );
         assert_ne!(waived.grade, Grade::APlus);
+    }
+}
+
+/// R14: pmat had TWO `analyze_source` implementations and only one of them ran
+/// the Known-Defects gate.
+///
+/// `pmat tdg` (the AST analyzer) graded a committed `.rs` file with three
+/// `Option::unwrap()` calls F / 25.16, while the MCP `quality_gate` tool — which
+/// goes through `analyzer_simple::TdgAnalyzer` — answered
+/// `{"passed":true,"score":90.0,"grade":"A"}` for the same bytes in the same
+/// build. The gate is a property of the source, not of whichever analyzer the
+/// caller happened to reach, so it is now one shared function that both call.
+mod both_analyzers_apply_one_gate {
+    use crate::tdg::analyzer_ast::TdgAnalyzerAst;
+    use crate::tdg::analyzer_simple::TdgAnalyzer as TdgAnalyzerSimple;
+    use crate::tdg::grade::Grade;
+    use crate::tdg::language_simple::Language;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    /// The exact repro: three `Option::unwrap()` calls.
+    const THREE_UNWRAPS: &str = "pub fn one(x: Option<i32>) -> i32 { x.unwrap() }\n\
+                                 pub fn two(x: Option<i32>) -> i32 { x.unwrap() }\n\
+                                 pub fn three(x: Option<i32>) -> i32 { x.unwrap() }\n";
+
+    fn git(dir: &Path, args: &[&str]) {
+        let ok = Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .output()
+            .expect("git must be available for this test")
+            .status
+            .success();
+        assert!(ok, "git {args:?} failed");
+    }
+
+    /// A file with history, so the #279 waiver cannot mask the gate.
+    fn committed_fixture(dir: &Path) -> PathBuf {
+        git(dir, &["init", "-q"]);
+        let file = dir.join("a.rs");
+        std::fs::write(&file, THREE_UNWRAPS).expect("write");
+        git(dir, &["add", "-A"]);
+        git(dir, &["commit", "-qm", "init", "--no-verify"]);
+        file
+    }
+
+    #[test]
+    fn the_heuristic_analyzer_sees_the_same_critical_defects_as_the_ast_one() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = committed_fixture(dir.path());
+
+        let ast = TdgAnalyzerAst::new()
+            .expect("ast analyzer")
+            .analyze_source(THREE_UNWRAPS, Language::Rust, Some(file.clone()))
+            .expect("ast analyze");
+        let simple = TdgAnalyzerSimple::new()
+            .expect("simple analyzer")
+            .analyze_source(THREE_UNWRAPS, Language::Rust, Some(file))
+            .expect("simple analyze");
+
+        assert_eq!(
+            ast.critical_defects_count, 3,
+            "fixture must carry three critical defects"
+        );
+        assert_eq!(
+            simple.critical_defects_count, ast.critical_defects_count,
+            "one build, one defect count: the heuristic analyzer counted {} where \
+             the AST analyzer counted {}",
+            simple.critical_defects_count, ast.critical_defects_count
+        );
+        assert!(
+            simple.has_critical_defects,
+            "the analyzer behind MCP quality_gate must not report a clean file"
+        );
+        assert_eq!(
+            simple.critical_defects_suppressed, ast.critical_defects_suppressed,
+            "the #279 waiver must fire identically on both paths"
+        );
+    }
+
+    /// The verdict, not just the count: `quality_gate`'s pass/fail is driven by
+    /// score and grade, and those answered A / 90.0 while `pmat tdg` said F.
+    #[test]
+    fn a_committed_file_with_three_unwraps_is_not_an_a_on_either_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = committed_fixture(dir.path());
+
+        let simple = TdgAnalyzerSimple::new()
+            .expect("simple analyzer")
+            .analyze_file(&file)
+            .expect("simple analyze");
+
+        assert!(
+            simple.total < 70.0,
+            "three unwraps in a committed file scored {} — the MCP quality_gate \
+             threshold is 50.0, so this is the 'passed: true, grade: A' defect",
+            simple.total
+        );
+        assert_ne!(simple.grade, Grade::A);
+        assert_ne!(simple.grade, Grade::APlus);
+    }
+
+    /// Lua had the same hole from the other side: the heuristic analyzer knew
+    /// only about Lean `sorry`, so a Lua critical defect never registered.
+    #[test]
+    fn lua_critical_defects_reach_the_heuristic_analyzer_too() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        git(dir.path(), &["init", "-q"]);
+        let file = dir.path().join("a.lua");
+        // `LuaDefectDetector` rates implicit globals Critical past ten of them.
+        let src: String = (0..12).map(|i| format!("g{i} = {i}\n")).collect();
+        std::fs::write(&file, &src).expect("write");
+        git(dir.path(), &["add", "-A"]);
+        git(dir.path(), &["commit", "-qm", "init", "--no-verify"]);
+
+        let ast = TdgAnalyzerAst::new()
+            .expect("ast analyzer")
+            .analyze_source(&src, Language::Lua, Some(file.clone()))
+            .expect("ast analyze");
+        let simple = TdgAnalyzerSimple::new()
+            .expect("simple analyzer")
+            .analyze_source(&src, Language::Lua, Some(file))
+            .expect("simple analyze");
+
+        assert!(
+            ast.critical_defects_count >= 12,
+            "fixture must trip the Lua critical rule, got {}",
+            ast.critical_defects_count
+        );
+        assert_eq!(
+            simple.critical_defects_count, ast.critical_defects_count,
+            "one build, one Lua defect count"
+        );
+    }
+
+    /// The Lean `sorry` counter existed twice, byte for byte, once per
+    /// analyzer. There is now one, and it is reached from both.
+    #[test]
+    fn lean_sorry_counts_the_same_on_both_paths() {
+        let src = "theorem t1 : 1 = 1 := sorry\ntheorem t2 : 2 = 2 := sorry\n";
+        let path = PathBuf::from("/nonexistent/x.lean");
+
+        let ast = TdgAnalyzerAst::new()
+            .expect("ast analyzer")
+            .analyze_source(src, Language::Lean, Some(path.clone()))
+            .expect("ast analyze");
+        let simple = TdgAnalyzerSimple::new()
+            .expect("simple analyzer")
+            .analyze_source(src, Language::Lean, Some(path))
+            .expect("simple analyze");
+
+        assert_eq!(ast.critical_defects_count, 2);
+        assert_eq!(simple.critical_defects_count, ast.critical_defects_count);
     }
 }

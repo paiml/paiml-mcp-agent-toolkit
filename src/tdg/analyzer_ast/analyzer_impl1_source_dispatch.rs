@@ -46,56 +46,13 @@ impl TdgAnalyzerAst {
 
         score.penalties_applied = tracker.get_attributions();
 
-        // Known Defects v2.1: Detect critical defects for auto-fail
-        if let Some(ref path) = score.file_path {
-            let defects = match language {
-                Language::Rust => {
-                    let detector = RustDefectDetector::new();
-                    detector.detect(source, path)
-                }
-                Language::Lua => {
-                    let detector = LuaDefectDetector::new();
-                    detector.detect(source, path)
-                }
-                _ => Vec::new(),
-            };
-
-            let critical_count: usize = defects
-                .iter()
-                .filter(|d| d.severity == DefectSeverity::Critical)
-                .map(|d| d.instances.len())
-                .sum();
-
-            // Lean-specific: sorry = critical defect (proof incompleteness)
-            let lean_sorry_count = if language == Language::Lean {
-                count_lean_sorry_ast(source)
-            } else {
-                0
-            };
-
-            score.critical_defects_count = critical_count + lean_sorry_count;
-            score.has_critical_defects = score.critical_defects_count > 0;
-
-            // Issue #279: a file with no git history must not be auto-failed by a
-            // gate it cannot pass until it is committed. That exemption is real,
-            // but it used to be expressed by clearing `has_critical_defects` while
-            // leaving `critical_defects_count` set — so the record said "1 critical
-            // defect" and "no critical defects" at the same time, and the same
-            // bytes scored 0.0/F inside a repo and 99.5/A+ outside one, because
-            // `is_file_git_tracked` is also false when there is no repository at
-            // all. Worse, the pair is written into `.pmat/baseline.json`, so a
-            // baseline captured before `git add` recorded the clean answer
-            // permanently (#919).
-            //
-            // The exemption now names itself instead of contradicting the count.
-            if score.has_critical_defects && is_exempt_as_new_file(path) {
-                score.critical_defects_suppressed = Some(
-                    "file is not tracked by git; critical-defect auto-fail is not applied \
-                     to code with no history (#279)"
-                        .to_string(),
-                );
-            }
-        }
+        // Known Defects v2.1: critical defects auto-fail. The rule lives in
+        // `crate::tdg::critical_defect_gate` because the OTHER `analyze_source`
+        // (the heuristic `analyzer_simple::TdgAnalyzer` behind the MCP
+        // `quality_gate` tool) has to apply the identical rule: while this block
+        // was inline here, one build answered F/25.2 from `pmat tdg` and A/90.0
+        // from `quality_gate` for the same committed file.
+        crate::tdg::critical_defect_gate::apply(&mut score, source, language);
 
         score.calculate_total();
 
@@ -240,106 +197,8 @@ impl TdgAnalyzerAst {
     }
 }
 
-/// Whether the #279 auto-fail exemption applies to this file.
-///
-/// #279 exempts a file that has no git history yet, because a gate that blocks
-/// the commit is a gate the file cannot pass. That reasoning presupposes a
-/// repository — the file is *about to* gain history. It says nothing about code
-/// that is simply not under version control at all (an unpacked tarball, a
-/// vendored tree, a scratch directory), where there is no commit to be blocked
-/// and so nothing to exempt.
-///
-/// The old predicate collapsed those two cases into one `false`, so analysing
-/// any code outside a repository silently waived the Known-Defects gate — the
-/// same bytes scoring 0.0/F inside a repo and 100.0/A+ outside it (#919).
-///
-/// The git query MUST be rooted at the ANALYSED FILE, never at the process
-/// working directory. Before this was fixed the command was plain
-/// `git log --oneline -1 -- <path>`, which git resolves against the CWD: run
-/// from anywhere outside the analysed repository git exits 128 ("not a git
-/// repository"), the committed file was read as untracked, and
-/// `has_critical_defects` was silently cleared. Observed on one unchanged
-/// fixture (round 3): `cd <repo> && pmat analyze tdg -p .` scored 0.0 / grade F
-/// while `cd /tmp && pmat analyze tdg -p <repo>` scored 100.0 / grade A+ — a
-/// 5-band grade swing produced by nothing but the caller's CWD, which also made
-/// the Known-Defects auto-fail unreachable from the normal CI invocation form.
-pub(crate) fn is_exempt_as_new_file(path: &Path) -> bool {
-    matches!(git_tracking_status(path), GitTracking::UntrackedInRepo)
-}
-
-/// Where a file stands with git, keeping "no repository" distinct from
-/// "in a repository but not yet committed" — see [`is_exempt_as_new_file`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GitTracking {
-    /// Has at least one commit.
-    Tracked,
-    /// Inside a work tree, but with no history yet — the #279 case.
-    UntrackedInRepo,
-    /// Not under version control, or git is unavailable. Not a #279 case: the
-    /// gate applies exactly as it would to committed code.
-    NotVersioned,
-}
-
-pub(crate) fn git_tracking_status(path: &Path) -> GitTracking {
-    let Some(repo_anchor) = git_anchor_for(path) else {
-        return GitTracking::NotVersioned;
-    };
-    let absolute = absolute_path(path);
-
-    let run = |args: &[&str], file: Option<&Path>| {
-        let mut cmd = std::process::Command::new("git");
-        cmd.arg("-C").arg(&repo_anchor).args(args);
-        if let Some(f) = file {
-            cmd.arg("--").arg(f);
-        }
-        cmd.stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null())
-            .output()
-    };
-
-    // Is there a work tree at all? If git is missing or errors, treat the code
-    // as unversioned rather than exempt — an exemption must be established, not
-    // assumed, or a broken git install silently disables the gate.
-    let inside_work_tree = run(&["rev-parse", "--is-inside-work-tree"], None)
-        .map(|o| o.status.success() && String::from_utf8_lossy(&o.stdout).trim() == "true")
-        .unwrap_or(false);
-    if !inside_work_tree {
-        return GitTracking::NotVersioned;
-    }
-
-    let has_history = run(&["log", "--oneline", "-1"], Some(&absolute))
-        .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(false);
-
-    if has_history {
-        GitTracking::Tracked
-    } else {
-        GitTracking::UntrackedInRepo
-    }
-}
-
-fn absolute_path(path: &Path) -> std::path::PathBuf {
-    path.canonicalize().unwrap_or_else(|_| {
-        std::env::current_dir().map_or_else(|_| path.to_path_buf(), |cwd| cwd.join(path))
-    })
-}
-
-/// The directory to run git from: the file's own directory, so the query finds
-/// the file's repository rather than the process working directory's.
-fn git_anchor_for(path: &Path) -> Option<std::path::PathBuf> {
-    let absolute = absolute_path(path);
-    if absolute.is_dir() {
-        return Some(absolute);
-    }
-    match absolute.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => Some(parent.to_path_buf()),
-        _ => Some(absolute),
-    }
-}
-
-/// Retained for the original call shape; see [`git_tracking_status`].
-#[cfg(test)]
-fn is_file_git_tracked(path: &Path) -> bool {
-    matches!(git_tracking_status(path), GitTracking::Tracked)
-}
-
+// The #279 waiver, the git tri-state and the Lean `sorry` counter used to live
+// here as this analyzer's private copies — which is precisely why the OTHER
+// analyzer never applied them. They are now the shared rule in
+// `crate::tdg::critical_defect_gate`, called above by both `analyze_source`
+// implementations. There is deliberately no re-export: one rule, one home.

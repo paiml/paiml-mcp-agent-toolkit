@@ -8,6 +8,9 @@
 //! 0.0 / grade F from inside the repo vs 100.0 / grade A+ from `/tmp`.
 
 use super::*;
+// The git tri-state moved to the shared Known-Defects gate, which is now the
+// single place both analyzers consult; the behaviour pinned here is unchanged.
+use crate::tdg::critical_defect_gate::is_file_git_tracked;
 use std::process::Command;
 
 /// Returns true when a usable `git` binary is present.

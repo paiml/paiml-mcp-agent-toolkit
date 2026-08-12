@@ -229,9 +229,28 @@ mod annotations_tests {
     }
 
     #[test]
-    fn test_compute_decay_score_grade_a_is_zero() {
-        let h = hotspot_with(Some("A"), 10, 5, 0.0);
-        assert_eq!(compute_decay_score(&h, 100), 0.0);
+    fn test_compute_decay_score_grade_a_plus_is_near_zero() {
+        // Risk is derived from crate::tdg::Grade's band floors, so only the
+        // top band (A+, floor 95) is essentially risk-free. The old five-arm
+        // table hard-coded A -> 0.0, which made a plain A indistinguishable
+        // from a perfect score.
+        let h = hotspot_with(Some("A+"), 10, 5, 0.0);
+        assert!(compute_decay_score(&h, 100) < 0.01);
+    }
+
+    #[test]
+    fn test_compute_decay_score_better_grade_decays_less() {
+        // The property that matters: monotone in grade, over all eleven.
+        let mut prev = -1.0f32;
+        for g in ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"] {
+            let h = hotspot_with(Some(g), 10, 0, 0.0);
+            let decay = compute_decay_score(&h, 10);
+            assert!(
+                decay > prev,
+                "grade {g} decayed {decay}, not more than the better grade before it ({prev})"
+            );
+            prev = decay;
+        }
     }
 
     #[test]
@@ -248,11 +267,12 @@ mod annotations_tests {
 
     #[test]
     fn test_compute_decay_score_grades_mapping() {
+        // 1 - band_floor/100, straight from crate::tdg::Grade::score_band.
         for (g, expected_tdg) in [
-            ("A", 0.0f32),
+            ("A", 0.10f32),
             ("B", 0.25),
-            ("C", 0.5),
-            ("D", 0.75),
+            ("C", 0.40),
+            ("D", 0.50),
             ("F", 1.0),
         ] {
             let h = hotspot_with(Some(g), 10, 0, 0.0);

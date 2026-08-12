@@ -5,9 +5,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use crate::services::defect_detector::{
-    LuaDefectDetector, RustDefectDetector, Severity as DefectSeverity,
-};
 use crate::tdg::{
     config::TdgConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, AnalysisMetadata,
     ComponentScores, FileIdentity, FullTdgRecord, Grade, Language, MetricCategory,

@@ -432,9 +432,13 @@ fn foo() {
     #[test]
     fn test_discover_files_nonexistent() {
         let analyzer = TdgAnalyzer::new().unwrap();
-        let result = analyzer.discover_files(Path::new("/nonexistent/path"));
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_empty());
+        let found = analyzer
+            .discover_files(Path::new("/nonexistent/path"))
+            .expect("a missing directory is empty, not an error");
+        assert!(found.gradable.is_empty());
+        // ...and nothing may be reported as ungraded either: a path that does
+        // not exist is not a file this build refused.
+        assert!(found.ungraded.is_empty());
     }
 
     #[test]

@@ -19,7 +19,11 @@ fn test_query_combined_filters() {
         )
         .unwrap();
     for r in &results {
-        assert_eq!(r.tdg_grade, "A");
+        assert!(
+            crate::services::agent_context::query::grades::grade_meets_threshold(&r.tdg_grade, "A"),
+            "grade {} should not have passed --min-grade A",
+            r.tdg_grade
+        );
         assert!(r.complexity <= 3);
         assert_eq!(r.language, "Rust");
         assert!(r.file_path.contains("src/"));
@@ -68,7 +72,7 @@ fn test_from_entry_with_context_basic() {
     };
     use std::path::PathBuf;
 
-    let entry = create_test_entry("my_func", 5, 1.5);
+    let entry = create_test_entry("my_func", 5, 88.0);
     let index = AgentContextIndex {
         functions: vec![entry.clone()],
         name_index: HashMap::new(),
@@ -93,6 +97,7 @@ fn test_from_entry_with_context_basic() {
             file_count: 0,
             languages: vec![],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
@@ -111,7 +116,7 @@ fn test_from_entry_with_context_out_of_bounds() {
     use crate::services::agent_context::function_index::{AgentContextIndex, IndexManifest};
     use std::path::PathBuf;
 
-    let entry = create_test_entry("my_func", 5, 1.5);
+    let entry = create_test_entry("my_func", 5, 88.0);
     let index = AgentContextIndex {
         functions: vec![entry.clone()],
         name_index: HashMap::new(),
@@ -131,6 +136,7 @@ fn test_from_entry_with_context_out_of_bounds() {
             file_count: 0,
             languages: vec![],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },
@@ -150,17 +156,17 @@ fn test_from_entry_with_context_callers_capping() {
     };
     use std::path::PathBuf;
 
-    let entry = create_test_entry("target", 5, 1.5);
+    let entry = create_test_entry("target", 5, 88.0);
     // Create 15 caller functions + 3 test callers
     let mut functions = vec![entry.clone()];
     let mut called_by_map = HashMap::new();
     let mut callers = vec![];
     for i in 0..15 {
-        functions.push(create_test_entry(&format!("caller_{}", i), 1, 0.5));
+        functions.push(create_test_entry(&format!("caller_{}", i), 1, 96.0));
         callers.push(i + 1); // indices 1..=15
     }
     for i in 0..3 {
-        functions.push(create_test_entry(&format!("test_caller_{}", i), 1, 0.5));
+        functions.push(create_test_entry(&format!("test_caller_{}", i), 1, 96.0));
         callers.push(16 + i); // indices 16..=18
     }
     called_by_map.insert(0usize, callers);
@@ -189,6 +195,7 @@ fn test_from_entry_with_context_callers_capping() {
             file_count: 0,
             languages: vec![],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },

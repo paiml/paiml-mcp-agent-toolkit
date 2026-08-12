@@ -72,14 +72,13 @@ impl TdgAnalyzer {
         score.doc_coverage = self.analyze_documentation(source, language, &mut tracker);
         score.consistency_score = self.analyze_consistency(source, language, &mut tracker);
 
-        // Lean-specific: detect `sorry` (proof incompleteness = critical defect)
-        if language == Language::Lean {
-            let sorry_count = count_lean_sorry(source);
-            if sorry_count > 0 {
-                score.has_critical_defects = true;
-                score.critical_defects_count = sorry_count;
-            }
-        }
+        // The SAME Known-Defects gate the AST analyzer runs. This used to be a
+        // Lean-only `sorry` count, so this analyzer — the one behind the MCP
+        // `quality_gate` tool and `mcp_integration::tdg_tools` — never saw a
+        // Rust or Lua critical defect at all: a committed `.rs` file with three
+        // `Option::unwrap()` calls came back A/90.0 here while `pmat tdg` graded
+        // the same bytes F/25.2. One rule, one implementation, both callers.
+        crate::tdg::critical_defect_gate::apply(&mut score, source, language);
 
         score.penalties_applied = tracker.get_attributions();
         score.calculate_total();
@@ -108,14 +107,19 @@ impl TdgAnalyzer {
         &self,
         dir: &Path,
     ) -> Result<(ProjectScore, Vec<(PathBuf, String)>)> {
-        let files = self.discover_files(dir)?;
+        let found = self.discover_files(dir)?;
         let mut scores = Vec::new();
-        let mut ungraded = Vec::new();
+        // Seeded with the files the WALK refused, not only the ones the analyzer
+        // refused. A file dropped by the extension filter never reached
+        // `analyze_file`, so it produced no error to report and vanished from
+        // both the numerator and the denominator: twelve source files in, six
+        // graded, `not_measured: []` out. See `crate::tdg::file_discovery`.
+        let mut ungraded = found.ungraded;
 
         // CB-1400: Resolve contract coverage for A-tier gating
         let contracted_paths = collect_contracted_file_paths(dir);
 
-        for file in &files {
+        for file in &found.gradable {
             // Skip include!() fragment files — they aren't standalone Rust modules
             // and tree-sitter can't parse them, resulting in false 0.0 (F-grade) scores
             if crate::cli::language_analyzer::is_include_fragment(file) {

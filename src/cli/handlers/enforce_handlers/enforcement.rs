@@ -1,10 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core enforcement loop orchestration and routing logic
 
-use super::analysis::{
-    run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
-    run_duplication_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
-};
+use super::assessment::assess_project;
 use super::config::EnforcementConfig;
 use super::output::{
     emit_report, format_violations_output, handle_ci_mode_exit, output_result,
@@ -13,11 +10,10 @@ use super::output::{
 use super::states::{
     handle_analyzing_state, handle_complete_state, handle_refactoring_enforcement_state,
     handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
-    violation_is_included,
 };
 use super::types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
-    EnforcementState, QualityProfile, QualityViolation,
+    EnforcementState, QualityProfile,
 };
 use crate::cli::colors as c;
 use crate::cli::EnforceOutputFormat;
@@ -45,6 +41,7 @@ pub async fn handle_special_modes(
                 project_path,
                 profile,
                 format,
+                ci_mode,
                 specific_file,
                 output,
                 include_pattern,
@@ -342,11 +339,24 @@ pub async fn run_enforcement_step(
     }
 }
 
-/// List all violations in the project - REFACTORED (complexity: ≤10)
+/// List all violations in the project — a rendering of the one assessment.
+///
+/// This function used to run its own six-phase analysis and keep only
+/// `PhaseOutcome::violations`, discarding every `unmeasured` disclosure. So
+/// `pmat enforce extreme -p empty --list-violations` printed `Found 0
+/// violations` and exited 0 while `--ci-mode` on the same directory printed
+/// `Violations: 2` and exited 1, and `--format json` printed both of them; and
+/// `--list-violations -p /nonexistent` printed `Found 0 violations`, exit 0, for
+/// a path the state machine refuses to grade at all.
+///
+/// The second analysis path is gone. Everything here comes from
+/// [`assess_project`], which is what the state machine reads too, so the three
+/// surfaces can no longer describe different runs.
 async fn list_all_violations(
     project_path: &Path,
     profile: &QualityProfile,
     format: EnforceOutputFormat,
+    ci_mode: bool,
     specific_file: Option<&PathBuf>,
     output: Option<&Path>,
     include_pattern: Option<&String>,
@@ -354,65 +364,35 @@ async fn list_all_violations(
 ) -> Result<()> {
     eprintln!("{}", c::header("Listing all quality violations..."));
 
-    let scope = AnalysisScope::resolve(project_path, specific_file.map(PathBuf::as_path));
-    if let AnalysisScope::SingleFile { module_dir, .. } = &scope {
-        // Directory-walk phases cannot target a lone file
-        eprintln!(
-            "  {} Single-file mode: SATD/dead-code/duplication scoped to parent module {}",
-            c::dim(">>"),
-            module_dir.display()
-        );
-    }
-
-    let mut all_violations: Vec<QualityViolation> = Vec::new();
-
-    // Run all analyses using extracted functions - COMPLEXITY REDUCED FROM 48 TO ≤10
-    eprintln!("  {} Analyzing complexity...", c::dim(">>"));
-    let complexity_outcome =
-        run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    all_violations.extend(complexity_outcome.violations);
-
-    eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
-    let satd_outcome = run_satd_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    all_violations.extend(satd_outcome.violations);
-
-    eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));
-    let tdg_outcome = run_tdg_analysis(scope.file_or_root(), profile).await?;
-    all_violations.extend(tdg_outcome.violations);
-
-    eprintln!("  {} Analyzing dead code...", c::dim(">>"));
-    let dead_code_outcome = run_dead_code_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(dead_code_outcome.violations);
-
-    eprintln!("  {} Analyzing code duplication...", c::dim(">>"));
-    let duplication_outcome = run_duplication_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(duplication_outcome.violations);
-
-    eprintln!("  {} Checking test coverage...", c::dim(">>"));
-    let coverage_outcome = run_coverage_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(coverage_outcome.violations);
-
-    // Same filter, same helper as the state machine's: `--list-violations
-    // --exclude 'src/*'` listed the excluded files too, because these six phases
-    // never saw the patterns either.
-    if include_pattern.is_some() || exclude_pattern.is_some() {
-        let filter = crate::utils::file_filter::FileFilter::from_optional(
-            &include_pattern.cloned(),
-            &exclude_pattern.cloned(),
-        )?;
-        all_violations.retain(|v| violation_is_included(&filter, project_path, v));
-    }
+    let assessment = assess_project(
+        project_path,
+        profile,
+        specific_file.map(PathBuf::as_path),
+        include_pattern,
+        exclude_pattern,
+    )
+    .await?;
 
     eprintln!(
-        "\n{} {} violations",
+        "\n{} {} violations ({}{}/{} dimensions measured)",
         c::label("Found"),
-        c::number(&all_violations.len().to_string())
+        c::number(&assessment.violations.len().to_string()),
+        c::DIM,
+        assessment.measured_phases,
+        assessment.total_phases
     );
+    eprint!("{}", c::RESET);
 
     // Use extracted formatting function. `-o` is honoured here for the same
     // reason it is honoured for the iteration report: one flag, one meaning.
-    let formatted_output = format_violations_output(&all_violations, profile, format)?;
-    emit_report(&formatted_output, output)
+    let formatted_output = format_violations_output(&assessment.violations, profile, format)?;
+    emit_report(&formatted_output, output)?;
+
+    // The same verdict, and therefore the same exit code, as every other
+    // surface: a listing that reports unmeasured dimensions must not exit 0
+    // under --ci-mode while `--ci-mode` alone exits 1 for the same run.
+    handle_ci_mode_exit(ci_mode, assessment.verdict_state());
+    Ok(())
 }
 
 /// Validate current state without making changes
@@ -442,7 +422,11 @@ async fn validate_current_state(
     )
     .await?;
 
-    let passes = result.score >= result.target;
+    // `passes` used to be `score >= target`, a third copy of the verdict rule
+    // sitting beside the state machine's and `--list-violations`'. The verdict
+    // is decided once, in `QualityAssessment::verdict_state`, and arrives here
+    // as the analysing state's own state.
+    let passes = result.state == EnforcementState::Complete;
     let violations_count = result.violations.len();
 
     // Create summary result

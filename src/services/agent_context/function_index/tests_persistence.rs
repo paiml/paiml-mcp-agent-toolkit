@@ -1,6 +1,15 @@
 // Persistence tests: save/load roundtrip, SQLite, incremental builds,
 // workspace siblings, checksums, corpus_lower lazy loading
 
+/// The SQLite schema version the code under test writes.
+///
+/// Read from the constant rather than hard-coded: these assertions used to
+/// pin the literal "2.0.0", so a deliberate schema bump (v3.30.0, when
+/// `tdg_score` changed scale) failed them for the wrong reason.
+fn sqlite_schema_version() -> &'static str {
+    super::sqlite_backend::SCHEMA_VERSION
+}
+
 #[test]
 fn test_save_load_roundtrip_v1_1() {
     let temp_dir = tempfile::TempDir::new().unwrap();
@@ -19,15 +28,17 @@ fn test_save_load_roundtrip_v1_1() {
     index.save(&index_path).unwrap();
 
     let loaded = AgentContextIndex::load(&index_path).unwrap();
-    // load() prefers SQLite (v2.0.0) over blob (v1.4.0) when both exist
+    // load() prefers SQLite (SCHEMA_VERSION) over blob (v1.4.0) when both exist
     assert!(
-        loaded.manifest.version == "2.0.0" || loaded.manifest.version == "1.4.0",
-        "expected v2.0.0 or v1.4.0, got {}",
+        loaded.manifest.version == sqlite_schema_version()
+            || loaded.manifest.version == "1.4.0",
+        "expected {} or v1.4.0, got {}",
+        sqlite_schema_version(),
         loaded.manifest.version,
     );
     assert_eq!(loaded.functions.len(), index.functions.len());
     // SQLite path skips corpus (FTS5 handles search); blob path has corpus
-    if loaded.manifest.version == "2.0.0" {
+    if loaded.manifest.version == sqlite_schema_version() {
         assert!(loaded.corpus.is_empty(), "SQLite load should skip corpus");
     } else {
         assert_eq!(loaded.corpus.len(), index.corpus.len());
@@ -64,7 +75,7 @@ fn test_load_prefers_sqlite_over_blob() {
 
     // load() prefers SQLite
     let loaded = AgentContextIndex::load(&index_path).unwrap();
-    assert_eq!(loaded.manifest.version, "2.0.0");
+    assert_eq!(loaded.manifest.version, sqlite_schema_version());
     assert!(loaded.db_path.is_some());
     assert_eq!(loaded.functions.len(), index.functions.len());
 
@@ -97,6 +108,94 @@ fn test_load_fails_without_sqlite_or_blob() {
     // Should fail: no SQLite, no blob
     let result = AgentContextIndex::load(&index_path);
     assert!(result.is_err());
+}
+
+/// R30: an index written under the OLD TDG scale must be rejected and rebuilt,
+/// never reinterpreted.
+///
+/// The scales share a column type, so a pre-v3.30.0 database passes every
+/// structural check while holding 0-10 lower-is-better debt numbers. Reading
+/// those on today's 0-100 higher-is-better scale silently turns the BEST legacy
+/// score (0.04) into an F.
+#[test]
+fn test_load_rejects_index_written_under_old_tdg_scale() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(project_path.join("src/lib.rs"), "fn omega() {}\n").unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+    let db_path = index_path.with_extension("db");
+
+    // Sanity: as saved, it loads.
+    assert!(AgentContextIndex::load(&index_path).is_ok());
+
+    // Rewrite the database exactly as a pre-v3.30.0 build left it: legacy
+    // 0-10 debt scores, five-letter grades, and NO tdg_scale marker.
+    {
+        let conn = super::sqlite_backend::open_db(&db_path).unwrap();
+        conn.execute("DELETE FROM metadata WHERE key = 'tdg_scale'", [])
+            .unwrap();
+        conn.execute(
+            "UPDATE functions SET tdg_score = 0.12, tdg_grade = 'A'",
+            [],
+        )
+        .unwrap();
+    }
+
+    // Blob path must reject it too, so remove nothing and assert the whole
+    // load() fails rather than quietly returning 0.12-as-percent scores.
+    let reloaded = AgentContextIndex::load(&index_path);
+    assert!(
+        reloaded.is_err(),
+        "a stale-scale index must be rejected, got {} functions with scores {:?}",
+        reloaded.as_ref().map(|i| i.functions.len()).unwrap_or(0),
+        reloaded
+            .as_ref()
+            .map(|i| i
+                .functions
+                .iter()
+                .map(|f| f.quality.tdg_score)
+                .collect::<Vec<_>>())
+            .unwrap_or_default()
+    );
+
+    // And it must have removed the stale database so the next build regenerates
+    // it, rather than leaving a file that fails forever.
+    assert!(
+        !db_path.exists(),
+        "stale-scale database should have been discarded"
+    );
+}
+
+/// R30: a blob manifest with no `tdg_scale` key is stale by definition.
+#[test]
+fn test_load_from_blob_rejects_unmarked_manifest() {
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let index_path = temp_dir.path().join("idx");
+    std::fs::create_dir_all(&index_path).unwrap();
+    // A pre-v3.30.0 manifest: every key the old format had, no scale marker.
+    std::fs::write(
+        index_path.join("manifest.json"),
+        r#"{"version":"1.4.0","built_at":"x","project_root":".","function_count":0,
+            "file_count":0,"languages":[],"avg_tdg_score":0.12}"#,
+    )
+    .unwrap();
+    std::fs::write(index_path.join("functions.lz4"), b"unused").unwrap();
+
+    let err = match AgentContextIndex::load(&index_path) {
+        Err(e) => e,
+        Ok(idx) => panic!(
+            "unmarked manifest must be rejected, loaded {} functions",
+            idx.functions.len()
+        ),
+    };
+    assert!(
+        err.contains("TDG scale"),
+        "error should name the scale mismatch, got: {err}"
+    );
 }
 
 #[test]

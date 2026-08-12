@@ -31,7 +31,8 @@ pub enum RankBy {
     Impact,
     /// Rank by cross-project importance (PageRank boosted by cross-project callers)
     CrossProject,
-    /// Rank by TDG churn-weighted priority (tdg_score * (1 + churn_score))
+    /// Rank by TDG churn-weighted priority: worst first,
+    /// `(100 - tdg_score) * (1 + churn_score)`.
     Priority,
 }
 
@@ -154,9 +155,9 @@ pub struct QueryResult {
     pub end_line: usize,
     /// Programming language
     pub language: String,
-    /// TDG score
+    /// TDG score, 0-100 HIGHER is better (the scale `pmat tdg` reports)
     pub tdg_score: f32,
-    /// TDG grade
+    /// TDG grade, one of `crate::tdg::Grade` (`A+` .. `F`)
     pub tdg_grade: String,
     /// Cyclomatic complexity
     pub complexity: u32,
