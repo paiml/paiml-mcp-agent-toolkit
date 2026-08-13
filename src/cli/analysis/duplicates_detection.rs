@@ -515,9 +515,13 @@ fn near_miss_block(
     let mut sites: Vec<(String, usize, usize, String)> = group
         .fragments
         .iter()
-        .filter(|f| f.end_line >= f.start_line + min_lines.saturating_sub(1))
+        // The length test is on SUBSTANTIVE lines, inside `fragment_text`.
+        // Testing the raw span (`end_line - start_line + 1 >= min_lines`) let a
+        // fragment that is `min_lines` lines of comment through, and comments
+        // normalise away to the empty string — the same nothing-is-a-duplicate
+        // hole the exact pass had.
         .filter_map(|f| {
-            let content = fragment_text(contents, &f.file, f.start_line, f.end_line)?;
+            let content = fragment_text(contents, &f.file, f.start_line, f.end_line, min_lines)?;
             Some((
                 f.file.to_string_lossy().to_string(),
                 f.start_line,
@@ -566,18 +570,28 @@ fn near_miss_block(
 }
 
 /// The source text of one fragment, normalised the same way the exact pass
-/// normalises a block so that `tokens` means the same thing in both.
+/// normalises a block so that `tokens` means the same thing in both — or `None`
+/// when the fragment does not carry `min_lines` lines of actual code.
+///
+/// Both passes apply the SAME floor, from the same predicate
+/// (`is_substantive_line`): a fragment made only of comments and blank lines
+/// normalises to the empty string, and empty strings are all equal to each
+/// other.
 fn fragment_text(
     contents: &BTreeMap<&Path, &str>,
     file: &Path,
     start_line: usize,
     end_line: usize,
+    min_lines: usize,
 ) -> Option<String> {
     let content = contents.get(file)?;
     let lines: Vec<&str> = content.lines().collect();
     let start = start_line.checked_sub(1)?;
     let end = end_line.min(lines.len());
     if start >= end {
+        return None;
+    }
+    if substantive_lines(&lines[start..end]).len() < min_lines.max(1) {
         return None;
     }
     Some(normalize_block(&lines[start..end]))

@@ -49,10 +49,17 @@ impl FalsificationEngine {
         };
 
         let status = self.determine_verdict(&claim, &evidence);
-        let contradiction_score = if evidence.is_empty() {
+        // Average over *measured* evidence only — unmeasured checks contribute
+        // no information and must not dilute a real contradiction toward zero.
+        let measured: Vec<f64> = evidence
+            .iter()
+            .filter(|e| e.measured)
+            .map(|e| e.contradiction_score)
+            .collect();
+        let contradiction_score = if measured.is_empty() {
             0.0
         } else {
-            evidence.iter().map(|e| e.contradiction_score).sum::<f64>() / evidence.len() as f64
+            measured.iter().sum::<f64>() / measured.len() as f64
         };
 
         SpecVerdict {
@@ -74,19 +81,12 @@ impl FalsificationEngine {
 
     fn check_single_path(&self, path_str: &str) -> SpecEvidence {
         let full_path = self.project_path.join(path_str);
+        let check = format!("File exists: {}", path_str);
         if full_path.exists() {
-            return SpecEvidence {
-                check: format!("File exists: {}", path_str),
-                finding: "File found at expected location".to_string(),
-                contradiction_score: 0.0,
-            };
+            return SpecEvidence::supports(check, "File found at expected location");
         }
         let suggestion = Self::find_similar_file(&full_path, &self.project_path);
-        SpecEvidence {
-            check: format!("File exists: {}", path_str),
-            finding: format!("File NOT found{}", suggestion),
-            contradiction_score: 1.0,
-        }
+        SpecEvidence::contradicts_with(check, format!("File NOT found{}", suggestion))
     }
 
     fn find_similar_file(full_path: &Path, project_path: &Path) -> String {
@@ -152,27 +152,27 @@ impl FalsificationEngine {
                             })
                             .collect();
 
+                        let check = format!("Entity exists: `{}`", entity);
                         if !file_matches.is_empty() {
                             let first_file = file_matches[0].trim();
                             let count = file_matches.len();
-                            SpecEvidence {
-                                check: format!("Entity exists: `{}`", entity),
-                                finding: format!("Found in {} file(s), e.g. {}", count, first_file),
-                                contradiction_score: 0.0,
-                            }
+                            SpecEvidence::supports(
+                                check,
+                                format!("Found in {} file(s), e.g. {}", count, first_file),
+                            )
                         } else {
-                            SpecEvidence {
-                                check: format!("Entity exists: `{}`", entity),
-                                finding: "NOT found in codebase".to_string(),
-                                contradiction_score: 0.8,
-                            }
+                            SpecEvidence::measured(
+                                check,
+                                "NOT found in codebase",
+                                SpecEvidence::FALSIFYING,
+                            )
                         }
                     }
-                    Err(_) => SpecEvidence {
-                        check: format!("Entity exists: `{}`", entity),
-                        finding: "Could not run pmat query (pmat not available)".to_string(),
-                        contradiction_score: 0.0,
-                    },
+                    // The search never ran — that is not evidence the entity exists.
+                    Err(_) => SpecEvidence::unmeasured(
+                        format!("Entity exists: `{}`", entity),
+                        "NOT MEASURED: could not run `pmat query` (pmat not on PATH)",
+                    ),
                 }
             })
             .collect()
@@ -191,11 +191,10 @@ impl FalsificationEngine {
         } else if text_lower.contains("todo") || text_lower.contains("fixme") {
             vec!["TODO", "FIXME"]
         } else {
-            return vec![SpecEvidence {
-                check: "Absence claim".to_string(),
-                finding: "Cannot determine what to search for".to_string(),
-                contradiction_score: 0.0,
-            }];
+            return vec![SpecEvidence::unmeasured(
+                "Absence claim",
+                "NOT MEASURED: cannot determine what to search for",
+            )];
         };
 
         search_terms
@@ -228,25 +227,21 @@ impl FalsificationEngine {
                             })
                             .sum();
 
+                        let check = format!("Absence: no `{}`", term);
                         if total_count > 0 {
-                            SpecEvidence {
-                                check: format!("Absence: no `{}`", term),
-                                finding: format!("Found {} occurrences in codebase", total_count),
-                                contradiction_score: 1.0,
-                            }
+                            SpecEvidence::contradicts_with(
+                                check,
+                                format!("Found {} occurrences in codebase", total_count),
+                            )
                         } else {
-                            SpecEvidence {
-                                check: format!("Absence: no `{}`", term),
-                                finding: "No occurrences found — claim holds".to_string(),
-                                contradiction_score: 0.0,
-                            }
+                            SpecEvidence::supports(check, "No occurrences found — claim holds")
                         }
                     }
-                    Err(_) => SpecEvidence {
-                        check: format!("Absence: no `{}`", term),
-                        finding: "Could not search codebase".to_string(),
-                        contradiction_score: 0.0,
-                    },
+                    // The search never ran — absence was not demonstrated.
+                    Err(_) => SpecEvidence::unmeasured(
+                        format!("Absence: no `{}`", term),
+                        "NOT MEASURED: could not search the codebase",
+                    ),
                 }
             })
             .collect()
@@ -272,42 +267,53 @@ impl FalsificationEngine {
                         .current_dir(&self.project_path)
                         .output();
 
+                    let check = format!("Command exists: `{}`", cmd);
                     match output {
-                        Ok(out) if out.status.success() => SpecEvidence {
-                            check: format!("Command exists: `{}`", cmd),
-                            finding: "Command is available".to_string(),
-                            contradiction_score: 0.0,
-                        },
-                        _ => SpecEvidence {
-                            check: format!("Command exists: `{}`", cmd),
-                            finding: "Command NOT recognized".to_string(),
-                            contradiction_score: 1.0,
-                        },
+                        Ok(out) if out.status.success() => {
+                            SpecEvidence::supports(check, "Command is available")
+                        }
+                        Ok(_) => SpecEvidence::contradicts_with(check, "Command NOT recognized"),
+                        // pmat itself could not be spawned — nothing was tested.
+                        Err(_) => SpecEvidence::unmeasured(
+                            check,
+                            "NOT MEASURED: could not run `pmat` (not on PATH)",
+                        ),
                     }
                 } else {
-                    SpecEvidence {
-                        check: format!("Command: `{}`", cmd),
-                        finding: "Could not parse command".to_string(),
-                        contradiction_score: 0.0,
-                    }
+                    SpecEvidence::unmeasured(
+                        format!("Command: `{}`", cmd),
+                        "NOT MEASURED: could not parse command",
+                    )
                 }
             })
             .collect()
     }
 
-    /// Check numeric/metric claims
-    fn check_metric_claim(&self, _claim: &SpecClaim) -> Vec<SpecEvidence> {
-        // Metric claims require running actual measurements (coverage, complexity, etc.)
-        // For MVP, mark these as inconclusive since we can't cheaply verify them
-        vec![SpecEvidence {
-            check: "Metric claim".to_string(),
-            finding: "Metric verification requires measurement — marked for manual review"
-                .to_string(),
-            contradiction_score: 0.0,
-        }]
+    /// Check numeric/metric claims.
+    ///
+    /// pmat does not measure the metric a spec line names — a coverage bound, a
+    /// complexity ceiling and a latency budget need three different measurement
+    /// harnesses, and guessing which one a sentence means is not measurement.
+    /// So this refuses explicitly rather than returning a passing score: the
+    /// evidence is flagged unmeasured, which [`Self::determine_verdict`] can
+    /// only render as INCONCLUSIVE. An unrun check must never read as a pass.
+    fn check_metric_claim(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
+        let target = match (&claim.numeric_comparator, claim.numeric_value) {
+            (Some(cmp), Some(val)) => format!("Metric claim ({} {})", cmp, val),
+            _ => "Metric claim".to_string(),
+        };
+        vec![SpecEvidence::unmeasured(
+            target,
+            "NOT MEASURED: pmat does not measure spec metrics (coverage, complexity, \
+             latency); this claim was never tested and is NOT a pass",
+        )]
     }
 
-    /// Determine the verdict status from evidence
+    /// Determine the verdict status from evidence.
+    ///
+    /// A claim SURVIVES only when every check against it actually ran and none
+    /// contradicted it. Evidence that was never measured yields INCONCLUSIVE —
+    /// "we did not look" is not "we looked and it was fine".
     fn determine_verdict(&self, claim: &SpecClaim, evidence: &[SpecEvidence]) -> VerdictStatus {
         if matches!(
             claim.category,
@@ -320,18 +326,16 @@ impl FalsificationEngine {
             return VerdictStatus::Inconclusive;
         }
 
-        let max_contradiction = evidence
-            .iter()
-            .map(|e| e.contradiction_score)
-            .fold(0.0f64, f64::max);
-
-        if max_contradiction >= 0.8 {
-            VerdictStatus::Falsified
-        } else if max_contradiction >= 0.4 {
-            VerdictStatus::Inconclusive
-        } else {
-            VerdictStatus::Survived
+        // A measured contradiction falsifies even if a sibling check was skipped.
+        if evidence.iter().any(SpecEvidence::contradicts) {
+            return VerdictStatus::Falsified;
         }
+
+        if evidence.iter().any(|e| !e.measured) || evidence.iter().any(SpecEvidence::is_ambiguous) {
+            return VerdictStatus::Inconclusive;
+        }
+
+        VerdictStatus::Survived
     }
 
     fn compute_summary(verdicts: &[SpecVerdict]) -> SpecFalsificationSummary {
@@ -353,12 +357,7 @@ impl FalsificationEngine {
             .filter(|v| v.status == VerdictStatus::Inconclusive)
             .count();
 
-        let testable = total_claims.saturating_sub(unfalsifiable);
-        let health_score = if testable > 0 {
-            survived as f64 / testable as f64
-        } else {
-            1.0
-        };
+        let health_score = SpecFalsificationSummary::health(survived, total_claims, unfalsifiable);
 
         SpecFalsificationSummary {
             total_claims,

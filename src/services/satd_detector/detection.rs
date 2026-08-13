@@ -10,6 +10,10 @@ use blake3::Hasher;
 use std::path::{Path, PathBuf};
 
 use crate::models::error::TemplateError;
+// #923: one implementation of "is this path inside its project's tests/,
+// examples/, fuzz/, vendor/ ...?", shared with the Rust defect detector so the
+// two gates cannot drift apart again.
+use crate::services::defect_detector::source_scope;
 
 use super::types::{
     AstContext, AstNodeType, DebtClassifier, ProjectAnalysisStats, SATDAnalysisResult,
@@ -193,6 +197,147 @@ mod extraction_pure_tests {
     #[test]
     fn test_satd_detector_new_strict_constructs() {
         let _ = SATDDetector::new_strict();
+    }
+}
+
+/// #923 — the blocker: SATD's exclusions matched substrings of the ABSOLUTE
+/// path, so where a checkout happened to sit decided whether the gate measured
+/// anything at all.
+#[cfg(test)]
+mod checkout_location_regression_tests {
+    use super::*;
+
+    const LIB_RS: &str = "// TODO: handle the empty slice instead of panicking\n\
+                          pub fn f(v: &[i32]) -> i32 { v[0] }\n";
+    const MANIFEST: &str =
+        "[package]\nname = \"myproject\"\nversion = \"0.1.0\"\nedition = \"2021\"\n";
+
+    fn crate_at(root: &Path) -> PathBuf {
+        std::fs::create_dir_all(root.join("src")).expect("src dir");
+        std::fs::write(root.join("Cargo.toml"), MANIFEST).expect("manifest");
+        let lib = root.join("src/lib.rs");
+        std::fs::write(&lib, LIB_RS).expect("lib.rs");
+        lib
+    }
+
+    /// One crate, one md5. Only the name of a directory ABOVE the crate
+    /// differs — `<tmp>/examples/myproject` reported "0 violations in 0 files"
+    /// and exit 0 while `<tmp>/normal` reported 1.
+    #[tokio::test]
+    async fn debt_is_found_wherever_the_checkout_sits() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let detector = SATDDetector::new();
+        let mut verdicts = Vec::new();
+
+        for parent in [
+            "normal",
+            "tests/myproject",
+            "examples/myproject",
+            "demo/myproject",
+            "fuzz/myproject",
+            "vendor/myproject",
+            "book/myproject",
+            "target/myproject",
+        ] {
+            let root = tmp.path().join(parent);
+            let lib = crate_at(&root);
+
+            assert!(
+                !detector.should_exclude_file(&lib),
+                "an ancestor named {parent:?} excluded the crate's own src/lib.rs"
+            );
+            let found = detector
+                .analyze_directory(&root)
+                .await
+                .expect("the crate has one analyzable file");
+            verdicts.push((parent, found.len()));
+        }
+
+        assert!(
+            verdicts.iter().all(|(_, n)| *n == 1),
+            "the parent directory's name changed how much debt exists: {verdicts:?}"
+        );
+    }
+
+    /// Guard rail: the package's OWN examples/ and tests/ trees are still
+    /// support code. The rule became project-relative; it did not go away.
+    #[test]
+    fn a_packages_own_support_directories_are_still_excluded() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().join("myproject");
+        crate_at(&root);
+        let detector = SATDDetector::new();
+
+        for support in [
+            "examples",
+            "demo",
+            "fuzz",
+            "vendor",
+            "node_modules",
+            "target",
+        ] {
+            let file = root.join(support).join("thing.rs");
+            std::fs::create_dir_all(file.parent().expect("parent")).expect("dir");
+            std::fs::write(&file, LIB_RS).expect("file");
+            assert!(
+                detector.should_exclude_file(&file),
+                "{support}/ inside the package must stay excluded"
+            );
+        }
+
+        let in_tests = root.join("tests/it.rs");
+        std::fs::create_dir_all(in_tests.parent().expect("parent")).expect("dir");
+        std::fs::write(&in_tests, LIB_RS).expect("file");
+        assert!(
+            detector.is_test_file(&in_tests),
+            "the package's own tests/ tree is still test code"
+        );
+    }
+
+    /// #923, second half: "every candidate was excluded" and "the code is
+    /// clean" both arrived as an empty `Vec<TechnicalDebt>`, which the CLI
+    /// rendered as `Found 0 SATD violations in 0 files` with exit 0 — a clean
+    /// bill of health for a measurement that was never taken.
+    #[tokio::test]
+    async fn a_walk_that_measures_nothing_is_not_a_clean_result() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().join("myproject");
+        crate_at(&root);
+
+        let examples = root.join("examples");
+        std::fs::create_dir_all(&examples).expect("examples dir");
+        for name in ["a.rs", "b.rs"] {
+            std::fs::write(examples.join(name), LIB_RS).expect("example file");
+        }
+
+        let detector = SATDDetector::new();
+        let err = detector
+            .analyze_directory(&examples)
+            .await
+            .expect_err("every candidate under examples/ is excluded — nothing was measured");
+        let message = err.to_string();
+        assert!(
+            message.contains("path"),
+            "the refusal must name the parameter at fault: {message}"
+        );
+
+        // And the empty directory case, which is the same claim: no measurement.
+        let empty = root.join("empty");
+        std::fs::create_dir_all(&empty).expect("empty dir");
+        assert!(
+            detector.analyze_directory(&empty).await.is_err(),
+            "a walk over zero source files reported a clean verdict"
+        );
+
+        // Control: the crate's own src/ IS measured, and measures 1.
+        assert_eq!(
+            detector
+                .analyze_directory(&root)
+                .await
+                .expect("src/lib.rs is analyzable")
+                .len(),
+            1
+        );
     }
 }
 

@@ -19,8 +19,11 @@ pub async fn handle_analyze_provability(
 
     crate::status_eprintln!("🔬 Analyzing function provability...");
 
-    // Create the analyzer
-    let analyzer = LightweightProvabilityAnalyzer::new();
+    // Create the analyzer. `get_function_ids` yields paths relative to
+    // `project_path` (the report prints them that way), so the analyzer must be
+    // told the root they hang off; otherwise the source is read relative to the
+    // process cwd and every score collapses to the 20% no-evidence baseline.
+    let analyzer = LightweightProvabilityAnalyzer::new().with_project_root(&project_path);
 
     // Get function IDs based on input
     let function_ids = get_function_ids(&project_path, &functions).await?;

@@ -69,7 +69,26 @@ Use --detection-type all, exact, renamed, fuzzy or gapped."
     });
 }
 
-/// Extract exact match blocks using sliding window
+/// Extract exact match blocks using a window over SUBSTANTIVE lines.
+///
+/// The window slides over code, not over the file. It used to slide over raw
+/// lines and hash whatever `normalize_block` left behind — and
+/// `normalize_block` DELETES comments and blank lines, so a window covering
+/// nothing but comments normalised to the empty string. Every such window in
+/// every file of the project hashed to `30406ea523c53def`, the hash of `""`,
+/// and landed in one bucket: two files whose sorted lines shared not a single
+/// line (`comm -12` empty) were reported as `exact_duplicates: 1`, `similarity:
+/// 1.0`, `tokens: 0`, "Duplication percentage: 62.5%". A detector that calls
+/// two unrelated files two-thirds duplicated points the wrong way, and
+/// `--duplicates` is what this project uses to hunt its own copy-paste.
+///
+/// The floor is not new policy: the MinHash engine
+/// (`services::duplicate_detector`) has always required
+/// `tokens.len() >= config.min_tokens` before it will build a fragment. This
+/// pass was the one clone finder with an upper bound on tokens (`--max-tokens`)
+/// and no lower bound at all. Windowing over substantive lines gives it one and
+/// makes `--min-lines` mean what its help text says: every block carries
+/// `min_lines` lines of actual code as evidence.
 fn extract_exact_blocks(
     blocks: &mut Vec<(String, String, usize, usize, String)>,
     lines: &[&str],
@@ -80,17 +99,26 @@ fn extract_exact_blocks(
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
-    // Sliding window for exact matches
-    for i in 0..lines.len().saturating_sub(min_lines) {
-        let block_lines = &lines[i..i + min_lines];
-        let content = normalize_block(block_lines);
+    // A block of zero lines is not a block. `windows(0)` panics, and the old
+    // code answered `--min-lines 0` with a stream of empty-content blocks.
+    let min_lines = min_lines.max(1);
+
+    let substantive = substantive_lines(lines);
+    for window in substantive.windows(min_lines) {
+        let content = window
+            .iter()
+            .map(|(_, line)| *line)
+            .collect::<Vec<_>>()
+            .join("\n");
 
         if count_tokens(&content) <= max_tokens {
             let mut hasher = DefaultHasher::new();
             content.hash(&mut hasher);
             let hash = format!("{:x}", hasher.finish());
 
-            blocks.push((hash, file_str.to_string(), i + 1, i + min_lines, content));
+            let start = window[0].0;
+            let end = window[window.len() - 1].0;
+            blocks.push((hash, file_str.to_string(), start, end, content));
         }
     }
 }
@@ -124,7 +152,16 @@ fn extract_fuzzy_blocks(
                 let block_lines = &lines[i..end];
                 let content = normalize_block(block_lines);
 
-                if count_tokens(&content) <= max_tokens {
+                // Same floor as the exact pass: the block must carry
+                // `min_lines` lines of real code. `is_block_start` is textual
+                // (`contains("fn ")`, "ends with `{`"), so a run of comments
+                // such as `// build the fn {` opens a "block" whose normalised
+                // content is empty — and every empty block in the project
+                // hashes alike. Reporting the block's SUBSTANTIVE span rather
+                // than its raw span also stops leading and trailing comment
+                // lines from being counted as duplicated code.
+                let substantive = substantive_lines(block_lines);
+                if substantive.len() >= min_lines && count_tokens(&content) <= max_tokens {
                     // Hash the identifier-normalised token stream, not the
                     // source text. Hashing the text made this extractor a
                     // second, slower exact matcher: three structurally
@@ -135,7 +172,9 @@ fn extract_fuzzy_blocks(
                     normalize_identifiers(&content).hash(&mut hasher);
                     let hash = format!("f{:x}", hasher.finish());
 
-                    blocks.push((hash, file_str.to_string(), i + 1, end, content));
+                    let start_line = substantive[0].0 + i;
+                    let end_line = substantive[substantive.len() - 1].0 + i;
+                    blocks.push((hash, file_str.to_string(), start_line, end_line, content));
                 }
             }
             i = end;
@@ -194,12 +233,34 @@ fn normalize_identifiers(content: &str) -> String {
     out
 }
 
-/// Normalize code block (remove whitespace variations)
-fn normalize_block(lines: &[&str]) -> String {
+/// Does this (already trimmed) line carry code?
+///
+/// THE rule for what this analysis treats as content. `normalize_block` deletes
+/// everything else, so anything built out of non-substantive lines alone is
+/// built out of nothing — which is how comment-only windows all came to hash to
+/// the empty string and cluster into a single bogus "exact duplicate".
+/// Every caller that decides whether something is a block asks this one
+/// function; a second copy of the predicate is a second chance to disagree.
+fn is_substantive_line(trimmed: &str) -> bool {
+    !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#')
+}
+
+/// The substantive lines of `lines`, each paired with its 1-based index WITHIN
+/// `lines`, so a block can report the span of the code it actually contains.
+fn substantive_lines<'a>(lines: &[&'a str]) -> Vec<(usize, &'a str)> {
     lines
         .iter()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with('#'))
+        .enumerate()
+        .map(|(i, line)| (i + 1, line.trim()))
+        .filter(|(_, line)| is_substantive_line(line))
+        .collect()
+}
+
+/// Normalize code block (remove whitespace variations)
+fn normalize_block(lines: &[&str]) -> String {
+    substantive_lines(lines)
+        .into_iter()
+        .map(|(_, line)| line)
         .collect::<Vec<_>>()
         .join("\n")
 }

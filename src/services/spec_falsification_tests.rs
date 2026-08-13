@@ -204,22 +204,14 @@ This line SHOULD be extracted.
         };
 
         // Surviving evidence
-        let survived_ev = vec![SpecEvidence {
-            check: "test".to_string(),
-            finding: "ok".to_string(),
-            contradiction_score: 0.0,
-        }];
+        let survived_ev = vec![SpecEvidence::supports("test", "ok")];
         assert_eq!(
             engine.determine_verdict(&claim, &survived_ev),
             VerdictStatus::Survived
         );
 
         // Falsified evidence
-        let falsified_ev = vec![SpecEvidence {
-            check: "test".to_string(),
-            finding: "bad".to_string(),
-            contradiction_score: 1.0,
-        }];
+        let falsified_ev = vec![SpecEvidence::contradicts_with("test", "bad")];
         assert_eq!(
             engine.determine_verdict(&claim, &falsified_ev),
             VerdictStatus::Falsified
@@ -290,10 +282,10 @@ This line SHOULD be extracted.
         }
     }
 
-    // ── check_metric_claim: canned inconclusive evidence ──
+    // ── check_metric_claim: refuses explicitly, never certifies ──
 
     #[test]
-    fn check_metric_claim_returns_single_inconclusive_evidence() {
+    fn check_metric_claim_returns_unmeasured_evidence() {
         let engine = FalsificationEngine::new(Path::new("."));
         let claim = make_claim("m1", "coverage >= 95%", SpecClaimCategory::MetricClaim);
         let evidence = engine.check_metric_claim(&claim);
@@ -302,10 +294,106 @@ This line SHOULD be extracted.
             1,
             "metric claims always return one evidence entry"
         );
-        assert_eq!(evidence[0].check, "Metric claim");
+        // PIN: pmat does not measure spec metrics. The evidence must say so
+        // out loud rather than scoring 0.0 as if the check had passed.
+        assert!(
+            !evidence[0].measured,
+            "an unrun metric check must be flagged unmeasured"
+        );
+        assert!(
+            evidence[0].finding.contains("NOT MEASURED"),
+            "refusal must be explicit, got: {}",
+            evidence[0].finding
+        );
+        assert!(
+            !evidence[0].contradicts(),
+            "unmeasured evidence is not a contradiction either"
+        );
+    }
+
+    /// REGRESSION (blocker: `pmat falsify` certified impossible metric claims).
+    ///
+    /// `check_metric_claim` was a stub returning contradiction_score 0.0, which
+    /// `determine_verdict` mapped to SURVIVED — so every MetricClaim in every
+    /// spec, including deliberately impossible ones, reported a green verdict.
+    #[test]
+    fn metric_claim_can_never_report_survived() {
+        let engine = FalsificationEngine::new(Path::new("."));
+        for text in [
+            "The system MUST maintain test coverage >= 99.9% at all times.",
+            "Every function MUST have cyclomatic complexity <= 1.",
+            "The binary MUST start in < 0 ms.",
+        ] {
+            let claim = make_claim("m", text, SpecClaimCategory::MetricClaim);
+            let evidence = engine.check_metric_claim(&claim);
+            let verdict = engine.determine_verdict(&claim, &evidence);
+            assert_eq!(
+                verdict,
+                VerdictStatus::Inconclusive,
+                "unmeasured metric claim must not survive: {text}"
+            );
+            assert_ne!(verdict, VerdictStatus::Survived);
+        }
+    }
+
+    /// A check that could not run (pmat missing, unparseable command) used to
+    /// score 0.0 and therefore SURVIVE. Unmeasured must never certify.
+    #[test]
+    fn unmeasured_evidence_never_yields_survived() {
+        let engine = FalsificationEngine::new(Path::new("."));
+        let claim = make_claim("u", "t", SpecClaimCategory::CodeEntity);
+
+        let unmeasured = vec![SpecEvidence::unmeasured("x", "NOT MEASURED: tool missing")];
         assert_eq!(
-            evidence[0].contradiction_score, 0.0,
-            "metric claim is neither supported nor refuted by the MVP"
+            engine.determine_verdict(&claim, &unmeasured),
+            VerdictStatus::Inconclusive
+        );
+
+        // Even mixed with a real pass, one skipped check blocks SURVIVED.
+        let mixed = vec![
+            SpecEvidence::supports("a", "found"),
+            SpecEvidence::unmeasured("b", "NOT MEASURED: tool missing"),
+        ];
+        assert_eq!(
+            engine.determine_verdict(&claim, &mixed),
+            VerdictStatus::Inconclusive
+        );
+
+        // A measured contradiction still wins over a skipped sibling check.
+        let contradicted = vec![
+            SpecEvidence::contradicts_with("a", "missing"),
+            SpecEvidence::unmeasured("b", "NOT MEASURED: tool missing"),
+        ];
+        assert_eq!(
+            engine.determine_verdict(&claim, &contradicted),
+            VerdictStatus::Falsified
+        );
+    }
+
+    /// The whole-spec report for a metric-only spec must not read as healthy.
+    #[test]
+    fn impossible_metric_spec_reports_zero_health() {
+        let dir = tempfile::tempdir().unwrap();
+        let spec = dir.path().join("impossible.md");
+        std::fs::write(
+            &spec,
+            "# Impossible\n\nThe system MUST maintain test coverage >= 99.9% at all times.\n\
+             The project MUST contain >= 100000000 lines of Rust.\n",
+        )
+        .unwrap();
+
+        let engine = FalsificationEngine::new(dir.path());
+        let report = engine.falsify_spec(&spec).unwrap();
+
+        assert!(report.summary.total_claims >= 2, "claims must be extracted");
+        assert_eq!(
+            report.summary.survived, 0,
+            "no impossible metric claim may survive"
+        );
+        assert_eq!(report.summary.inconclusive, report.summary.total_claims);
+        assert_eq!(
+            report.summary.health_score, 0.0,
+            "an entirely unmeasured spec is not 100% healthy"
         );
     }
 
@@ -316,11 +404,7 @@ This line SHOULD be extracted.
         let engine = FalsificationEngine::new(Path::new("."));
         let claim = make_claim("u1", "t", SpecClaimCategory::Unfalsifiable);
         // Even a falsified-looking evidence vector is ignored for this category.
-        let strong_ev = vec![SpecEvidence {
-            check: "x".to_string(),
-            finding: "y".to_string(),
-            contradiction_score: 1.0,
-        }];
+        let strong_ev = vec![SpecEvidence::contradicts_with("x", "y")];
         assert_eq!(
             engine.determine_verdict(&claim, &strong_ev),
             VerdictStatus::Unfalsifiable
@@ -351,11 +435,7 @@ This line SHOULD be extracted.
     fn determine_verdict_contradiction_between_0_4_and_0_8_is_inconclusive() {
         let engine = FalsificationEngine::new(Path::new("."));
         let claim = make_claim("m1", "t", SpecClaimCategory::PathReference);
-        let ev = vec![SpecEvidence {
-            check: "x".to_string(),
-            finding: "y".to_string(),
-            contradiction_score: 0.5,
-        }];
+        let ev = vec![SpecEvidence::measured("x", "y", 0.5)];
         assert_eq!(
             engine.determine_verdict(&claim, &ev),
             VerdictStatus::Inconclusive

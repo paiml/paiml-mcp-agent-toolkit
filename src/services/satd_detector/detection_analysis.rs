@@ -99,6 +99,15 @@ impl SATDDetector {
             return true;
         }
 
+        // Files whose every line is suppressed by `should_exclude_file` were
+        // read, scanned and thrown away one line at a time, so they still
+        // counted towards `total_files_analyzed`. A file nothing can be
+        // reported from was not analysed; saying otherwise is what makes
+        // "excluded everything" look like "measured clean" (#923).
+        if self.should_exclude_file(file_path) {
+            return true;
+        }
+
         // Skip minified/vendor files
         if self.is_minified_or_vendor_file(file_path) {
             return true;
@@ -228,6 +237,8 @@ impl SATDDetector {
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut all_debts = Vec::new();
         let files = self.discover_files(root, include_tests).await?;
+        let discovered = files.len();
+        let mut analyzed = 0usize;
 
         for file_path in files {
             if self
@@ -237,16 +248,59 @@ impl SATDDetector {
                 continue;
             }
 
+            analyzed += 1;
             let debts = self.process_file_for_debts(&file_path).await;
             all_debts.extend(debts);
+        }
+
+        if analyzed == 0 {
+            return Err(Self::nothing_measured(root, discovered));
         }
 
         Ok(all_debts)
     }
 
+    /// The refusal returned when a walk analysed nothing.
+    ///
+    /// #923, second half: this entry point returns `Vec<TechnicalDebt>`, and an
+    /// empty vec from it is the *only* thing the CLI sees — so "every candidate
+    /// was excluded" and "the code is clean" arrived as the same value and were
+    /// rendered as the same sentence, `Found 0 SATD violations in 0 files`,
+    /// with exit 0. On the real tree `analyze satd -p <repo>/examples` printed
+    /// exactly that over 113 `.rs` files holding 10 marker-leading TODO/FIXME
+    /// comments. A gate cannot pass on a measurement that was never taken, so
+    /// the absence of a measurement is reported as such, the same way a
+    /// nonexistent path already is (`ensure_analysis_path_exists`).
+    fn nothing_measured(root: &Path, discovered: usize) -> TemplateError {
+        let reason = if discovered == 0 {
+            format!(
+                "no source files were found under {}, so no SATD measurement was taken. \
+                 This is not a clean result.",
+                root.display()
+            )
+        } else {
+            format!(
+                "all {discovered} source file(s) under {} were skipped — test, example, \
+                 fuzz, vendored, generated, minified or oversized — so no SATD \
+                 measurement was taken. This is not a clean result: point the analysis \
+                 at the project root, or pass --include-tests to measure test code.",
+                root.display()
+            )
+        };
+        TemplateError::ValidationError {
+            parameter: "path".to_string(),
+            reason,
+        }
+    }
+
     async fn should_skip_file_for_analysis(&self, file_path: &Path, include_tests: bool) -> bool {
         // Skip test files unless explicitly requested
         if !include_tests && self.is_test_file(file_path) {
+            return true;
+        }
+
+        // See `should_skip_file`: an excluded file is not an analysed file.
+        if self.should_exclude_file(file_path) {
             return true;
         }
 

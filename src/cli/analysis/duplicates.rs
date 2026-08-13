@@ -336,6 +336,79 @@ mod tests {
         assert!(blocks.iter().all(|(_, file, _, _, _)| file == "test.rs"));
     }
 
+    /// A run of comments is not a code block, so it cannot be half of a
+    /// duplicate pair.
+    ///
+    /// `normalize_block` DELETES comments and blank lines, and the exact pass
+    /// hashed whatever it left behind with only an upper bound on tokens
+    /// (`--max-tokens`) and no lower bound. A window covering nothing but
+    /// comments therefore normalised to `""` and hashed to `30406ea523c53def`
+    /// — the hash of the empty string — in EVERY file of the project, so all of
+    /// them landed in one bucket and were reported as one exact duplicate at
+    /// similarity 1.0 with `tokens: 0`.
+    #[test]
+    fn comment_only_windows_are_not_blocks() {
+        let lines = vec![
+            "// alpha one",
+            "// alpha two",
+            "// alpha three",
+            "// alpha four",
+            "// alpha five",
+            "",
+            "   ",
+        ];
+
+        let mut blocks = Vec::new();
+        extract_exact_blocks(&mut blocks, &lines, "a.rs", 5, 100);
+
+        assert!(
+            blocks.is_empty(),
+            "comments and blank lines carry no code, so no block can be cut \
+             from them; got {blocks:?}"
+        );
+    }
+
+    /// Every block the exact pass emits must carry `min_lines` lines of real
+    /// code, and must report the span of that code rather than the span of the
+    /// comments around it.
+    #[test]
+    fn exact_blocks_span_only_substantive_lines() {
+        let lines = vec![
+            "// leading comment",
+            "",
+            "let a = 1;",
+            "let b = 2;",
+            "// interleaved note",
+            "let c = 3;",
+            "let d = 4;",
+            "let e = 5;",
+            "",
+            "// trailing comment",
+        ];
+
+        let mut blocks = Vec::new();
+        extract_exact_blocks(&mut blocks, &lines, "a.rs", 5, 100);
+
+        assert_eq!(
+            blocks.len(),
+            1,
+            "five substantive lines admit exactly one 5-line window"
+        );
+        let (_, _, start, end, content) = &blocks[0];
+        // Lines 3..=8 in 1-based terms, i.e. `let a` through `let e`, skipping
+        // the note on line 5.
+        assert_eq!((*start, *end), (3, 8), "block must span the code it holds");
+        assert!(
+            !content.contains("//"),
+            "normalised content must hold no comments: {content:?}"
+        );
+        assert_eq!(
+            content.lines().count(),
+            5,
+            "a 5-line block must have 5 lines of evidence: {content:?}"
+        );
+    }
+
     #[test]
     fn test_find_duplicate_blocks_no_duplicates() {
         let blocks = vec![
@@ -842,6 +915,121 @@ mod tests {
         }
     }
 
+    /// Two files that share ZERO lines share zero duplication.
+    ///
+    /// BLOCKER (round-5 sweep). The fixture below is the minimal one: `comm -12`
+    /// over the two files sorted is EMPTY, and `analyze duplicates` reported
+    ///
+    /// ```text
+    ///   Total duplicate blocks: 1
+    ///   Duplication percentage: 62.5%
+    ///   exact_duplicates: 1
+    ///   hash 30406ea523c53def, tokens: 0, similarity: 1.0, content_preview: ""
+    /// ```
+    ///
+    /// The block was lines 1-5 of both files: their comment headers, which
+    /// `normalize_block` deletes, leaving the empty string, whose hash is
+    /// `30406ea523c53def`. A detector that calls two unrelated files two-thirds
+    /// duplicated is worse than one that finds nothing — it points the wrong
+    /// way, and `--duplicates` is how this project hunts its own copy-paste.
+    ///
+    /// Every detection type is checked: `exact` hashes normalised source and
+    /// `fuzzy`/`renamed` hash a structural signature, but both were fed by
+    /// extractors with no lower bound on content.
+    #[tokio::test]
+    async fn files_sharing_no_lines_report_no_duplication() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("a.rs"),
+            "// alpha one\n// alpha two\n// alpha three\n// alpha four\n// alpha five\n\
+             \n// alpha six\n// alpha seven\n\
+             fn alpha_unique_function_name() { let alpha_value = 111; \
+             println!(\"alpha {}\", alpha_value); }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("b.rs"),
+            "// beta one\n// beta two\n// beta three\n// beta four\n// beta five\n\
+             \n// beta six\n// beta seven\n\
+             struct BetaThing { beta_field: u64 }\n",
+        )
+        .unwrap();
+
+        for detection in [
+            crate::cli::DuplicateType::Exact,
+            crate::cli::DuplicateType::Fuzzy,
+            crate::cli::DuplicateType::Renamed,
+            crate::cli::DuplicateType::All,
+        ] {
+            let report =
+                detect_duplicates(temp.path(), detection.clone(), 0.85, 5, 100, &None, &None)
+                    .await
+                    .expect("detection must not fail");
+
+            assert_eq!(
+                report.total_duplicates, 0,
+                "--detection-type {detection}: two files with no line in common \
+                 have no duplicate block, got {:#?}",
+                report.duplicate_blocks
+            );
+            assert_eq!(
+                report.duplicate_lines, 0,
+                "--detection-type {detection}: no line is duplicated"
+            );
+            assert_eq!(
+                report.duplication_percentage, 0.0,
+                "--detection-type {detection}: 62.5% was reported here"
+            );
+        }
+    }
+
+    /// No block may ever be built out of nothing, whatever the input.
+    ///
+    /// The empty normalised block is the failure mode, and it is invisible in
+    /// the summary output: it prints as a block with an empty
+    /// `content_preview`. This asserts the invariant directly over a file that
+    /// is mostly comments.
+    #[tokio::test]
+    async fn no_reported_block_is_empty() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        for (name, word) in [("a.rs", "alpha"), ("b.rs", "beta")] {
+            let mut body = String::new();
+            for i in 0..9 {
+                body.push_str(&format!("// {word} comment {i}\n\n"));
+            }
+            body.push_str(&format!("fn {word}_fn() {{ let {word} = 1; }}\n"));
+            std::fs::write(temp.path().join(name), body).unwrap();
+        }
+
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::All,
+            0.85,
+            5,
+            100,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+
+        for block in &report.duplicate_blocks {
+            assert!(
+                block.tokens > 0,
+                "a block with zero tokens is a block built out of deleted \
+                 comments: {block:#?}"
+            );
+            for loc in &block.locations {
+                assert!(
+                    !loc.content_preview.trim().is_empty(),
+                    "a duplicate with nothing to show is not a duplicate: {block:#?}"
+                );
+            }
+        }
+    }
+
     /// Two identical files are 100% duplicated — not 447%, and not 50%.
     #[tokio::test]
     async fn test_two_identical_files_are_fully_duplicated() {
@@ -866,22 +1054,24 @@ mod tests {
         .unwrap();
 
         assert_eq!(report.total_lines, 24);
-        // The sliding window does not always reach the final line of a file,
-        // so this is "nearly all of both files" rather than exactly all of it —
-        // what matters is that it is BELOW 100%, where 447.06% was reported.
-        assert!(
-            (80.0..=100.0).contains(&report.duplication_percentage),
-            "two identical files must read as almost fully duplicated, got {}%",
+        // Exactly all of both files. This used to read "nearly all", because
+        // `for i in 0..lines.len().saturating_sub(min_lines)` stops one window
+        // early and never covered the last line — 11 of 12 lines, 91.7%.
+        // Windowing over substantive lines with `.windows(min_lines)` has no
+        // such off-by-one, so the honest answer for two identical files is
+        // available and this asserts it rather than a range that would also
+        // accept the old undercount.
+        assert_eq!(
+            report.duplication_percentage, 100.0,
+            "two identical files are entirely duplicated, got {}%",
             report.duplication_percentage
         );
         for (path, stats) in &report.file_statistics {
             assert_eq!(stats.total_lines, 12, "{path}");
-            assert!(
-                stats.duplicate_lines <= 12,
-                "{path}: {} of 12 lines",
-                stats.duplicate_lines
+            assert_eq!(
+                stats.duplicate_lines, 12,
+                "{path}: every line of an identical pair is duplicated"
             );
-            assert!(stats.duplicate_lines >= 10, "{path}");
         }
     }
 

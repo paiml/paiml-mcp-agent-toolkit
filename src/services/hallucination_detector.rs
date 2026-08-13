@@ -119,6 +119,10 @@ pub struct ClaimExtractor {
     capability_patterns: Vec<Regex>,
     /// Known programming languages
     known_languages: Vec<String>,
+    /// Repository-relative file paths cited by the documentation
+    file_pattern: Regex,
+    /// Function/method names cited by the documentation (`foo()`)
+    function_pattern: Regex,
 }
 
 /// Database of code facts extracted from deep context analysis

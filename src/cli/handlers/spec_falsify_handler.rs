@@ -85,6 +85,8 @@ async fn handle_spec_falsification(
 
     let mut total_claims = 0usize;
     let mut total_falsified = 0usize;
+    let mut total_survived = 0usize;
+    let mut total_unfalsifiable = 0usize;
     let mut all_reports = Vec::new();
     let mut dry_run_claims = Vec::new();
 
@@ -97,6 +99,8 @@ async fn handle_spec_falsification(
         let report = engine.falsify_spec(spec_file)?;
         total_claims += report.summary.total_claims;
         total_falsified += report.summary.falsified;
+        total_survived += report.summary.survived;
+        total_unfalsifiable += report.summary.unfalsifiable;
 
         if !json_output {
             if failures_only {
@@ -119,7 +123,13 @@ async fn handle_spec_falsification(
         println!("{doc}");
     } else {
         if spec_files.len() > 1 && !dry_run {
-            print_multi_spec_summary(spec_files.len(), total_claims, total_falsified);
+            print_multi_spec_summary(
+                spec_files.len(),
+                total_claims,
+                total_falsified,
+                total_survived,
+                total_unfalsifiable,
+            );
         }
         if dry_run {
             print_dry_run_footer(total_claims, spec_files.len());
@@ -177,7 +187,14 @@ fn process_dry_run_spec(
 }
 
 /// Human-format summary block for multi-spec full runs
-fn print_multi_spec_summary(spec_count: usize, total_claims: usize, total_falsified: usize) {
+fn print_multi_spec_summary(
+    spec_count: usize,
+    total_claims: usize,
+    total_falsified: usize,
+    total_survived: usize,
+    total_unfalsifiable: usize,
+) {
+    use crate::services::spec_falsification::SpecFalsificationSummary;
     println!();
     println!("{}", c::header("Multi-Spec Summary"));
     println!(
@@ -192,14 +209,18 @@ fn print_multi_spec_summary(spec_count: usize, total_claims: usize, total_falsif
     );
     println!(
         "  {} {}",
+        c::label("Survived:      "),
+        c::number(&total_survived.to_string())
+    );
+    println!(
+        "  {} {}",
         c::label("Falsified:     "),
         c::number(&total_falsified.to_string())
     );
-    let health = if total_claims > 0 {
-        (total_claims - total_falsified) as f64 / total_claims as f64
-    } else {
-        1.0
-    };
+    // Same definition as the per-spec health score: not-falsified is not the
+    // same as verified, so unmeasured claims drag this down instead of up.
+    let health =
+        SpecFalsificationSummary::health(total_survived, total_claims, total_unfalsifiable);
     println!(
         "  {} {}",
         c::label("Health:        "),
@@ -248,14 +269,32 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
         .collect();
 
     if falsified.is_empty() {
-        println!(
-            "{}: {}",
-            c::path(&report.target_file.display().to_string()),
-            c::pass(&format!(
-                "All {} claims survived",
-                report.summary.total_claims
-            ))
-        );
+        // "Nothing was falsified" is not "everything was verified": claims that
+        // were never measured land in inconclusive/unfalsifiable and must be
+        // reported, or an unchecked spec reads as a clean one.
+        let unverified = report.summary.inconclusive + report.summary.unfalsifiable;
+        if unverified == 0 {
+            println!(
+                "{}: {}",
+                c::path(&report.target_file.display().to_string()),
+                c::pass(&format!(
+                    "All {} claims survived",
+                    report.summary.total_claims
+                ))
+            );
+        } else {
+            println!(
+                "{}: {}",
+                c::path(&report.target_file.display().to_string()),
+                c::warn(&format!(
+                    "0 falsified, but only {} of {} claims were verified ({} inconclusive, {} unfalsifiable)",
+                    report.summary.survived,
+                    report.summary.total_claims,
+                    report.summary.inconclusive,
+                    report.summary.unfalsifiable,
+                ))
+            );
+        }
         return;
     }
 
@@ -272,7 +311,7 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
             truncate(&verdict.claim.original_text, 80),
         );
         for ev in &verdict.evidence {
-            if ev.contradiction_score >= 0.8 {
+            if ev.contradicts() {
                 println!("    {} {} -> {}", c::fail(&ev.check), c::DIM, ev.finding);
             }
         }

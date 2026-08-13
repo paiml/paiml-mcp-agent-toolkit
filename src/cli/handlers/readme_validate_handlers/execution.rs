@@ -91,6 +91,24 @@ impl ValidateReadmeCmd {
             ),
         }
 
+        // Nothing extracted means nothing was checked. Reporting that as a pass
+        // is how fabricated documentation earned a green tick; refuse instead.
+        let total_claims: usize = all_results.iter().map(|(_, r)| r.len()).sum();
+        if total_claims == 0 {
+            eprintln!(
+                "NOT CHECKED: no verifiable claims were extracted from {} file(s). \
+                 pmat verifies file references, function references and capability \
+                 claims; this documentation contained none, so nothing was validated. \
+                 This is NOT a pass.",
+                self.targets.len()
+            );
+            return Ok(if self.fail_on_contradiction {
+                ExitCode::FAILURE
+            } else {
+                ExitCode::SUCCESS
+            });
+        }
+
         // Determine exit code
         if self.fail_on_contradiction && contradiction_count > 0 {
             if self.verbose {

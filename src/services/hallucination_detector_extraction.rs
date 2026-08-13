@@ -39,17 +39,42 @@ impl ClaimExtractor {
         .map(|s| s.to_string())
         .collect();
 
+        // Repository-relative paths: a recognised top-level directory, then a
+        // filename with an extension. Anchoring on the directory keeps prose
+        // like "and/or" or "24/7" out of the claim set.
+        let file_pattern = Regex::new(
+            r#"(?:^|[\s`"(\[,])((?:\./)?(?:src|docs|tests|benches|examples|crates|server|scripts|assets|\.github)/[A-Za-z0-9_+./-]+\.[A-Za-z0-9]{1,10})"#,
+        )
+        .expect("internal error");
+
+        // Function references written the way documentation writes them: an
+        // identifier immediately followed by ().
+        let function_pattern =
+            Regex::new(r#"\b([a-z_][a-z0-9_]{2,})\(\)"#).expect("internal error");
+
         Self {
             capability_patterns,
             known_languages,
+            file_pattern,
+            function_pattern,
         }
     }
 
     /// Extract all claims from documentation text
+    ///
+    /// Three families of claim are recognised, all of them checkable against
+    /// the repository: capability claims ("PMAT can …"), file references
+    /// (`src/foo.rs`) and function references (`do_thing()`). Prose that
+    /// asserts nothing checkable yields no claim — but see
+    /// `ValidateReadmeCmd::execute`, which treats an empty claim set as "this
+    /// document was not checked", never as a pass.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_claims(&self, documentation: &str) -> Vec<Claim> {
         let mut claims = Vec::new();
         let mut in_code_block = false;
+        // Documents repeat the same path or function on many lines; one
+        // verdict per distinct reference keeps the report readable.
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for (line_number, line) in documentation.lines().enumerate() {
             let trimmed = line.trim();
@@ -70,10 +95,93 @@ impl ClaimExtractor {
                 continue;
             }
 
+            let line_number = line_number + 1;
+
             // Try to extract capability claims
-            if let Some(claim) = self.extract_capability_claim(line, line_number + 1) {
+            if let Some(claim) = self.extract_capability_claim(line, line_number) {
                 claims.push(claim);
             }
+
+            claims.extend(self.extract_reference_claims(line, line_number, &mut seen));
+        }
+
+        claims
+    }
+
+    /// Standard-library and universal method names. Documentation mentioning
+    /// `unwrap()` or `len()` is not claiming the project defines them, and the
+    /// fact database (which indexes project functions) would always report
+    /// them missing — a guaranteed false finding.
+    fn is_ubiquitous_method(name: &str) -> bool {
+        const UBIQUITOUS: &[&str] = &[
+            "unwrap",
+            "expect",
+            "clone",
+            "len",
+            "new",
+            "default",
+            "to_string",
+            "into",
+            "from",
+            "is_empty",
+            "iter",
+            "collect",
+            "push",
+            "insert",
+            "get",
+            "as_str",
+            "to_owned",
+            "to_vec",
+            "next",
+            "main",
+        ];
+        UBIQUITOUS.contains(&name)
+    }
+
+    /// Extract file-path and function references from a single line.
+    fn extract_reference_claims(
+        &self,
+        line: &str,
+        line_number: usize,
+        seen: &mut std::collections::HashSet<String>,
+    ) -> Vec<Claim> {
+        let mut claims = Vec::new();
+
+        for caps in self.file_pattern.captures_iter(line) {
+            let Some(path) = caps.get(1).map(|m| m.as_str()) else {
+                continue;
+            };
+            if !seen.insert(format!("file:{path}")) {
+                continue;
+            }
+            claims.push(Claim {
+                source_file: PathBuf::from(""),
+                line_number,
+                text: format!("references file {path}"),
+                claim_type: ClaimType::Structure,
+                entities: vec![Entity::File(path.to_string())],
+                is_negative: false,
+            });
+        }
+
+        for caps in self.function_pattern.captures_iter(line) {
+            let Some(name) = caps.get(1).map(|m| m.as_str()) else {
+                continue;
+            };
+            if Self::is_ubiquitous_method(name) {
+                continue;
+            }
+            if !seen.insert(format!("fn:{name}")) {
+                continue;
+            }
+            claims.push(Claim {
+                source_file: PathBuf::from(""),
+                line_number,
+                text: format!("references function {name}()"),
+                claim_type: ClaimType::Api,
+                entities: vec![Entity::Function(name.to_string())],
+                is_negative: false,
+            });
         }
 
         claims

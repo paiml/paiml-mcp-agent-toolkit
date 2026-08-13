@@ -73,6 +73,19 @@ pub struct LightweightProvabilityAnalyzer {
     abstract_interpreter: AbstractInterpreter,
     proof_cache: Arc<DashMap<FunctionId, ProofSummary>>,
     current_version: u64,
+    /// Directory that a relative [`FunctionId::file_path`] is resolved against.
+    ///
+    /// `FunctionId::file_path` is a *display* path — `discover_project_functions`
+    /// strips the project prefix so reports read `src/lib.rs`, not
+    /// `/home/u/proj/src/lib.rs`. Reading that string back with
+    /// `std::fs::read_to_string` therefore resolved it against the **process
+    /// working directory**, so `analyze provability -p /some/proj` scored every
+    /// function 20% (the no-evidence baseline for an empty source snippet)
+    /// whenever the shell was not already sitting in `/some/proj` — a 4.5x
+    /// swing in the reported mean decided by the caller's cwd alone. Set this
+    /// to the analyzed project root and the analyzer reads the same bytes from
+    /// anywhere. `None` means "paths are already resolvable as given".
+    project_root: Option<std::path::PathBuf>,
 }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]

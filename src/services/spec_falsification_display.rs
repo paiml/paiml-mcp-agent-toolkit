@@ -42,9 +42,9 @@ impl SpecFalsificationReport {
             println!("       Category: {}", c::label(&verdict.claim.category.to_string()));
 
             for ev in &verdict.evidence {
-                let icon = if ev.contradiction_score >= 0.8 {
+                let icon = if ev.contradicts() {
                     format!("{}✗{}", c::RED, c::RESET)
-                } else if ev.contradiction_score >= 0.4 {
+                } else if ev.is_ambiguous() || !ev.measured {
                     format!("{}?{}", c::YELLOW, c::RESET)
                 } else {
                     format!("{}✓{}", c::GREEN, c::RESET)

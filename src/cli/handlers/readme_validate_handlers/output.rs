@@ -101,8 +101,24 @@ impl ValidateReadmeCmd {
             println!();
         }
 
-        if contradictions == 0 && unverified == 0 {
-            println!("{}", c::pass("All documentation claims are verified!"));
+        let total_claims: usize = results.iter().map(|(_, r)| r.len()).sum();
+        if total_claims == 0 {
+            // Zero claims is zero evidence. A checkmark here certifies anything.
+            println!(
+                "{}",
+                c::warn(
+                    "NOT CHECKED: no verifiable claims extracted — nothing was validated. \
+                     This is NOT a pass."
+                )
+            );
+        } else if verified > 0 && contradictions == 0 && unverified == 0 {
+            println!(
+                "{}",
+                c::pass(&format!(
+                    "All {} documentation claims are verified!",
+                    verified
+                ))
+            );
         } else if contradictions > 0 {
             println!(
                 "{}",
@@ -115,6 +131,15 @@ impl ValidateReadmeCmd {
             println!(
                 "{}",
                 c::warn(&format!("Found {} unverified claim(s)", unverified))
+            );
+        } else {
+            // Claims exist but none reached a verdict — still not a pass.
+            println!(
+                "{}",
+                c::warn(&format!(
+                    "NOT CHECKED: {} claim(s) extracted, none could be verified",
+                    total_claims
+                ))
             );
         }
     }
@@ -177,8 +202,13 @@ impl ValidateReadmeCmd {
             })
             .count();
 
+        let total_claims: usize = results.iter().map(|(_, r)| r.len()).sum();
         let output = json!({
             "files_validated": results.len(),
+            "total_claims": total_claims,
+            // False when no claim was extracted: nothing was validated, so the
+            // zero contradictions below are the absence of a check, not a pass.
+            "checked": total_claims > 0,
             "verified_claims": verified,
             "contradictions": contradictions,
             "unverified_claims": unverified,

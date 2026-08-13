@@ -1,3 +1,108 @@
+/// Where a source path sits *inside its own project* — the one implementation
+/// of the "is this support code rather than production code?" rule, shared by
+/// [`RustDefectDetector::should_exclude_file`] and the SATD detector's
+/// `should_exclude_file` / `is_test_file` / `is_minified_or_vendor_file`.
+///
+/// #923: the rule used to be written twice, and both copies matched substrings
+/// (`"/tests/"`, `"/benches/"`, `"/examples/"`, `"/fuzz/"`, `"/demo/"`,
+/// `"_demo"`, `"/vendor/"`, `"/book/"`) against the **absolute** path. So the
+/// verdict was a property of where the checkout happened to sit: one
+/// byte-identical crate, one md5, only the parent directory name differing —
+///
+/// ```text
+/// <tmp>/normal            -> analyze defects: 1 critical, exit 1 | satd: 1 violation
+/// <tmp>/tests/myproject   -> 0 critical,      exit 0             | 0 violations
+/// <tmp>/examples/myproject-> 0 critical,      exit 0             | 0 violations
+/// ```
+///
+/// Any CI runner, container image or monorepo whose checkout lives under a
+/// segment with one of those names turned **both** gates permanently green.
+///
+/// The exclusions describe a package's own layout (`tests/`, `benches/`,
+/// `examples/`, `fuzz/` are siblings of `src/`), so they are only meaningful
+/// *below the project root*. Everything above it is the caller's filesystem and
+/// says nothing about the code.
+pub(crate) mod source_scope {
+    use std::path::{Path, PathBuf};
+
+    /// A checkout boundary. Checked first, because #923 is exactly a bug about
+    /// directories ABOVE a checkout.
+    const VCS_MARKERS: [&str; 3] = [".git", ".hg", ".svn"];
+
+    /// Package manifests, for source trees that are not a repository — an
+    /// unpacked tarball, a vendored copy, a scratch directory.
+    const MANIFEST_MARKERS: [&str; 6] = [
+        "Cargo.toml",
+        "package.json",
+        "pyproject.toml",
+        "go.mod",
+        "pom.xml",
+        "build.gradle",
+    ];
+
+    /// The directory `path`'s layout is measured against: the nearest ancestor
+    /// that is a checkout root, else the nearest ancestor holding a package
+    /// manifest.
+    ///
+    /// `None` for a relative path — it is already project-relative by
+    /// construction at every call site, and probing the filesystem for one
+    /// would make the answer depend on the process working directory, which is
+    /// the same class of bug (#919).
+    pub(crate) fn project_root_of(path: &Path) -> Option<PathBuf> {
+        if !path.is_absolute() {
+            return None;
+        }
+
+        let mut nearest_manifest: Option<PathBuf> = None;
+        let mut cursor = path.parent();
+
+        while let Some(dir) = cursor {
+            if VCS_MARKERS.iter().any(|marker| dir.join(marker).exists()) {
+                return Some(dir.to_path_buf());
+            }
+            if nearest_manifest.is_none()
+                && MANIFEST_MARKERS
+                    .iter()
+                    .any(|marker| dir.join(marker).is_file())
+            {
+                nearest_manifest = Some(dir.to_path_buf());
+            }
+            cursor = dir.parent();
+        }
+
+        nearest_manifest
+    }
+
+    /// `path` with its project root stripped, as a `/`-separated string that
+    /// always starts with `/`, so a caller can test a leading directory with
+    /// the same `"/name/"` shape it uses for an interior one.
+    pub(crate) fn project_relative_str(path: &Path) -> String {
+        let relative = match project_root_of(path) {
+            Some(root) => path.strip_prefix(&root).unwrap_or(path),
+            None => path,
+        };
+        let text = relative.to_string_lossy().replace('\\', "/");
+        let text = text.trim_start_matches("./").trim_start_matches('/');
+        format!("/{text}")
+    }
+
+    /// True when the project-relative string produced by
+    /// [`project_relative_str`] has one of `names` as a **directory**
+    /// component. The final segment is the file name and is never a directory,
+    /// so `examples.rs` is not `examples/`.
+    pub(crate) fn has_dir_component(relative_str: &str, names: &[&str]) -> bool {
+        let mut components = relative_str.split('/').collect::<Vec<_>>();
+        components.pop(); // file name
+        components.iter().any(|component| names.contains(component))
+    }
+
+    /// The directories a package uses for code that is not shipped: test
+    /// harnesses, benchmarks, examples and fuzz targets. Shared so the rule is
+    /// read in one place; the SATD detector names its own (wider) set beside
+    /// this one in `detection_file_discovery.rs`.
+    pub(crate) const NON_PRODUCTION_DIRS: [&str; 4] = ["tests", "benches", "examples", "fuzz"];
+}
+
 impl RustDefectDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
@@ -7,33 +112,21 @@ impl RustDefectDetector {
         }
     }
 
-    /// Check if a file should be excluded from defect detection
-    fn should_exclude_file(&self, file_path: &Path) -> bool {
-        let path_str = file_path.to_string_lossy();
+    /// Check if a file should be excluded from defect detection.
+    ///
+    /// The directory test runs against the path RELATIVE TO ITS OWN PROJECT
+    /// ROOT (see [`source_scope`]). It used to run against the absolute path,
+    /// which made the verdict a property of where the checkout sat: a crate
+    /// under `<tmp>/tests/myproject` reported 0 critical defects and exit 0
+    /// while the byte-identical crate under `<tmp>/normal` reported 1 and
+    /// exit 1 (#923).
+    pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
+        let path_str = source_scope::project_relative_str(file_path);
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-        // Exclude test directories
-        if path_str.contains("/tests/")
-            || path_str.starts_with("tests/")
-            || path_str.contains("/benches/")
-            || path_str.starts_with("benches/")
-        {
-            return true;
-        }
-
-        // Exclude examples directory (demos and samples often use .expect("internal error") for brevity)
-        if path_str.contains("/examples/")
-            || path_str.starts_with("examples/")
-            || path_str.starts_with("./examples/")
-        {
-            return true;
-        }
-
-        // Exclude fuzz targets (fuzz tests typically use .expect("internal error") for simplicity)
-        if path_str.contains("/fuzz/")
-            || path_str.starts_with("fuzz/")
-            || path_str.starts_with("./fuzz/")
-        {
+        // Exclude a package's own tests/, benches/, examples/ and fuzz/ trees.
+        // (Examples and fuzz targets legitimately use .unwrap() for brevity.)
+        if source_scope::has_dir_component(&path_str, &source_scope::NON_PRODUCTION_DIRS) {
             return true;
         }
 
@@ -386,6 +479,91 @@ mod colocated_test_module_regression_tests {
         assert!(
             url.contains("18-november-2025"),
             "the cited URL must be the November 2025 outage post, not {url}"
+        );
+    }
+
+    /// #923: the exclusion rule matched `"/tests/"`, `"/benches/"`,
+    /// `"/examples/"` and `"/fuzz/"` against the ABSOLUTE path, so a crate that
+    /// merely SAT under a directory with one of those names — any CI runner,
+    /// container image or monorepo checkout — excluded every one of its files
+    /// and reported 0 critical defects with exit 0.
+    ///
+    /// Byte-identical crates; only the name of a directory ABOVE the crate
+    /// differs. The verdict must not.
+    #[test]
+    fn a_crate_is_graded_the_same_wherever_the_checkout_sits() {
+        const SRC: &str = "pub fn dangerous(v: &[i32]) -> i32 {\n    *v.first().unwrap()\n}\n";
+
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let detector = RustDefectDetector::new();
+        let mut verdicts = Vec::new();
+
+        for parent in [
+            "normal",
+            "tests/myproject",
+            "benches/myproject",
+            "examples/myproject",
+            "fuzz/myproject",
+        ] {
+            let crate_root = tmp.path().join(parent);
+            std::fs::create_dir_all(crate_root.join("src")).expect("src dir");
+            std::fs::write(
+                crate_root.join("Cargo.toml"),
+                "[package]\nname = \"myproject\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+            )
+            .expect("manifest");
+            let lib = crate_root.join("src/lib.rs");
+            std::fs::write(&lib, SRC).expect("lib.rs");
+
+            let critical: usize = detector
+                .detect(SRC, &lib)
+                .iter()
+                .filter(|d| d.severity == Severity::Critical)
+                .map(|d| d.instances.len())
+                .sum();
+            verdicts.push((parent, critical));
+        }
+
+        assert!(
+            verdicts.iter().all(|(_, count)| *count == 1),
+            "one crate, one md5 — the parent directory's name changed the verdict: {verdicts:?}"
+        );
+    }
+
+    /// The guard rail for the fix above: a package's OWN `tests/` tree is still
+    /// test code. The rule moved from the absolute path to the project-relative
+    /// one; it did not go away.
+    #[test]
+    fn a_packages_own_support_directories_are_still_excluded() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let crate_root = tmp.path().join("myproject");
+        std::fs::create_dir_all(&crate_root).expect("crate dir");
+        std::fs::write(
+            crate_root.join("Cargo.toml"),
+            "[package]\nname = \"myproject\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("manifest");
+
+        let detector = RustDefectDetector::new();
+        for support in ["tests", "benches", "examples", "fuzz"] {
+            let dir = crate_root.join(support);
+            std::fs::create_dir_all(&dir).expect("support dir");
+            let file = dir.join("it.rs");
+            std::fs::write(&file, "fn f() { let _ = Some(1).unwrap(); }\n").expect("file");
+            assert!(
+                detector.should_exclude_file(&file),
+                "{support}/ inside the package is support code: {}",
+                file.display()
+            );
+        }
+
+        let src = crate_root.join("src");
+        std::fs::create_dir_all(&src).expect("src dir");
+        let lib = src.join("lib.rs");
+        std::fs::write(&lib, "fn f() { let _ = Some(1).unwrap(); }\n").expect("file");
+        assert!(
+            !detector.should_exclude_file(&lib),
+            "src/lib.rs is production code"
         );
     }
 

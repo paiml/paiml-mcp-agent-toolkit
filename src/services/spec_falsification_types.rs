@@ -104,6 +104,14 @@ impl std::fmt::Display for VerdictStatus {
     }
 }
 
+/// Default for [`SpecEvidence::measured`] when absent from serialized input.
+///
+/// Historic reports predate the field; they only ever contained measured
+/// evidence, so `true` is the faithful reading.
+pub(crate) fn evidence_measured_default() -> bool {
+    true
+}
+
 /// Evidence collected during falsification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpecEvidence {
@@ -111,8 +119,66 @@ pub struct SpecEvidence {
     pub check: String,
     /// What was found
     pub finding: String,
-    /// How strongly this contradicts the claim (0.0 = supports, 1.0 = contradicts)
+    /// How strongly this contradicts the claim (0.0 = supports, 1.0 = contradicts).
+    /// Meaningless unless `measured` is true.
     pub contradiction_score: f64,
+    /// Whether a measurement actually ran.
+    ///
+    /// False means the check was *skipped* — the tool could not run, or the
+    /// metric is not implemented. Unmeasured evidence can never support a
+    /// claim, because "we did not look" is not "we looked and it was fine".
+    #[serde(default = "crate::services::spec_falsification::evidence_measured_default")]
+    pub measured: bool,
+}
+
+impl SpecEvidence {
+    /// At or above this score, measured evidence falsifies the claim.
+    pub const FALSIFYING: f64 = 0.8;
+    /// At or above this score (and below [`Self::FALSIFYING`]), evidence is ambiguous.
+    pub const AMBIGUOUS: f64 = 0.4;
+
+    /// Evidence from a check that ran and produced a score.
+    pub fn measured(check: impl Into<String>, finding: impl Into<String>, score: f64) -> Self {
+        Self {
+            check: check.into(),
+            finding: finding.into(),
+            contradiction_score: score,
+            measured: true,
+        }
+    }
+
+    /// Evidence from a check that ran and found nothing contradicting the claim.
+    pub fn supports(check: impl Into<String>, finding: impl Into<String>) -> Self {
+        Self::measured(check, finding, 0.0)
+    }
+
+    /// Evidence from a check that ran and contradicted the claim.
+    pub fn contradicts_with(check: impl Into<String>, finding: impl Into<String>) -> Self {
+        Self::measured(check, finding, 1.0)
+    }
+
+    /// A check that did NOT run. Scores 0.0 but is flagged unmeasured so it
+    /// cannot be mistaken for support.
+    pub fn unmeasured(check: impl Into<String>, finding: impl Into<String>) -> Self {
+        Self {
+            check: check.into(),
+            finding: finding.into(),
+            contradiction_score: 0.0,
+            measured: false,
+        }
+    }
+
+    /// True when this evidence actively falsifies the claim.
+    pub fn contradicts(&self) -> bool {
+        self.measured && self.contradiction_score >= Self::FALSIFYING
+    }
+
+    /// True when this evidence was measured but is too weak to decide.
+    pub fn is_ambiguous(&self) -> bool {
+        self.measured
+            && self.contradiction_score >= Self::AMBIGUOUS
+            && self.contradiction_score < Self::FALSIFYING
+    }
 }
 
 /// Per-claim verdict
@@ -135,6 +201,20 @@ pub struct SpecFalsificationSummary {
     pub inconclusive: usize,
     /// Health score: survived / (total - unfalsifiable)
     pub health_score: f64,
+}
+
+impl SpecFalsificationSummary {
+    /// The one definition of spec health: the share of *testable* claims that
+    /// actually survived a measurement. Claims that were never measured are
+    /// in the denominator and not the numerator, so an unchecked spec scores
+    /// low rather than perfect.
+    pub fn health(survived: usize, total_claims: usize, unfalsifiable: usize) -> f64 {
+        let testable = total_claims.saturating_sub(unfalsifiable);
+        if testable == 0 {
+            return 1.0;
+        }
+        survived as f64 / testable as f64
+    }
 }
 
 /// Complete falsification report for a spec

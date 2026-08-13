@@ -149,15 +149,17 @@ impl SATDDetector {
     }
 
     /// Check if a file is a test file
+    ///
+    /// The directory test runs against the project-relative path (#923): it
+    /// used to run against the absolute one, so a checkout that merely sat
+    /// under a directory named `tests/` — any CI runner or monorepo with such
+    /// a segment — classified every file in the project as test code and
+    /// reported the whole tree clean.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_test_file(&self, path: &Path) -> bool {
         // Check if path contains test directories
-        let path_str = path.to_string_lossy();
-        if path_str.contains("/tests/")
-            || path_str.contains("/test/")
-            || path_str.contains("\\tests\\")
-            || path_str.contains("\\test\\")
-        {
+        let path_str = source_scope::project_relative_str(path);
+        if source_scope::has_dir_component(&path_str, &["tests", "test"]) {
             return true;
         }
 
@@ -180,9 +182,15 @@ impl SATDDetector {
 
     /// Check if file is minified or in vendor directory
     /// Check if file should be excluded from SATD analysis
+    ///
+    /// Every predicate below reads the path RELATIVE TO ITS OWN PROJECT ROOT
+    /// (see [`source_scope`]). They used to read the absolute path, so an
+    /// ancestor directory named `examples`, `demo`, `fuzz`, `vendor`, `book`
+    /// or `target` — none of which the analysed project chose — excluded the
+    /// entire tree and reported "0 violations in 0 files" with exit 0 (#923).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
-        let path_str = file_path.to_string_lossy();
+        let path_str = source_scope::project_relative_str(file_path);
 
         self.is_satd_analysis_tool(&path_str)
             || self.is_build_or_config_file(&path_str)
@@ -206,25 +214,24 @@ impl SATDDetector {
     }
 
     fn is_example_or_demo(&self, path_str: &str) -> bool {
-        path_str.contains("/examples/") || path_str.contains("/demo/") || path_str.contains("_demo")
+        source_scope::has_dir_component(path_str, &["examples", "demo"])
+            || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {
-        path_str.contains("/fuzz/") || path_str.contains("fuzz_targets")
+        source_scope::has_dir_component(path_str, &["fuzz", "fuzz_targets"])
     }
 
     fn is_generated_or_vendor(&self, path_str: &str) -> bool {
-        path_str.contains("/target/")
-            || path_str.contains("/vendor/")
-            || path_str.contains("/node_modules/")
-            || path_str.contains("/book/")
+        source_scope::has_dir_component(path_str, &["target", "vendor", "node_modules", "book"])
             || path_str.contains(".generated")
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
-        // Check if path contains vendor directory
-        if path.components().any(|c| c.as_os_str() == "vendor") {
+        // Check if path contains vendor directory — project-relative, so a
+        // checkout under someone's `vendor/` is not itself vendored (#923).
+        if source_scope::has_dir_component(&source_scope::project_relative_str(path), &["vendor"]) {
             return true;
         }
 
