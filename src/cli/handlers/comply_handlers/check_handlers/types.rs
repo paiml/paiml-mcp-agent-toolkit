@@ -38,13 +38,64 @@ impl Default for ProjectConfig {
     }
 }
 
+/// Where a report's `project_version` came from.
+///
+/// `project_version` is NOT the version of the project under analysis — it is
+/// the PMAT version that project pins in `.pmat/project.toml`. When the file is
+/// absent, [`load_or_create_project_config`] stamps a fresh one with
+/// [`PMAT_VERSION`], so an unpinned project reports the *installed pmat's* own
+/// version as its "project version", and everything derived from it
+/// (`versions_behind`, `breaking_changes`, the Version Currency check, the
+/// migrate/diff recommendations) then describes pmat rather than the project.
+///
+/// A reader cannot tell those two cases apart from the version string alone —
+/// `3.30.0` looks measured either way — so the report says which it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum VersionSource {
+    /// Read from the project's own `.pmat/project.toml`.
+    #[serde(rename = "pinned in .pmat/project.toml")]
+    PinnedByProject,
+    /// The project pinned nothing; this is the installed pmat's own version,
+    /// and the version-derived fields below describe pmat, not this project.
+    #[serde(rename = "not pinned by this project - defaulted to the installed pmat's own version")]
+    InstalledPmatDefault,
+}
+
+impl VersionSource {
+    /// The sentence the text/markdown reports print next to the version.
+    pub(crate) fn note(self) -> Option<&'static str> {
+        match self {
+            VersionSource::PinnedByProject => None,
+            VersionSource::InstalledPmatDefault => Some(
+                "this project pins no pmat version, so the version shown is the installed pmat's own; \
+                 versions-behind, breaking changes and Version Currency describe pmat, not this project",
+            ),
+        }
+    }
+}
+
 /// Compliance check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ComplianceReport {
     pub project_version: String,
+    /// What `project_version` actually is — see [`VersionSource`].
+    pub project_version_source: VersionSource,
     pub current_version: String,
     pub is_compliant: bool,
     pub versions_behind: u32,
+    /// Outcome tally over every check that RAN.
+    ///
+    /// `checks` is a fixed-length roster whose length says nothing (154 for an
+    /// empty directory and 154 for a defect-ridden one), and the outcomes
+    /// themselves are strings, so the only numbers the report published —
+    /// `versions_behind`, the two list lengths, `is_compliant` — were all
+    /// derived from the pinned version string and none of them from the project.
+    /// This is the measured part: it moved 28/11/2 → 27/14/3 between the two
+    /// corpora that produced otherwise byte-identical reports.
+    ///
+    /// Counted before `--failures-only` filters `checks`, so the denominator
+    /// survives that flag.
+    pub summary: CheckSummary,
     pub checks: Vec<ComplianceCheck>,
     pub breaking_changes: Vec<BreakingChange>,
     pub recommendations: Vec<String>,
@@ -71,6 +122,29 @@ pub(crate) struct TicketHistoryEntry {
     pub category: Option<String>,
     pub status: Option<String>,
     pub created_at: Option<String>,
+}
+
+/// How many checks landed in each outcome. Derived from the checks, never set.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CheckSummary {
+    pub total: usize,
+    pub pass: usize,
+    pub warn: usize,
+    pub fail: usize,
+    pub skip: usize,
+}
+
+impl CheckSummary {
+    pub(crate) fn tally(checks: &[ComplianceCheck]) -> Self {
+        let count = |s: CheckStatus| checks.iter().filter(|c| c.status == s).count();
+        Self {
+            total: checks.len(),
+            pass: count(CheckStatus::Pass),
+            warn: count(CheckStatus::Warn),
+            fail: count(CheckStatus::Fail),
+            skip: count(CheckStatus::Skip),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -363,6 +437,26 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
     }
 }
 
+/// The pinned pmat version AND whether the project actually pinned it.
+///
+/// Same load as [`load_or_create_project_config`] — including the write of a
+/// default `.pmat/project.toml` when none exists — but it records whether the
+/// file was there BEFORE the call. Without that, the auto-created default is
+/// indistinguishable from a real pin one line later, which is exactly how
+/// `comply report` came to present pmat's own version as a project verdict.
+pub(crate) fn load_project_config_with_source(
+    project_path: &Path,
+) -> anyhow::Result<(ProjectConfig, VersionSource)> {
+    let existed = project_path.join(".pmat").join("project.toml").exists();
+    let config = load_or_create_project_config(project_path)?;
+    let source = if existed {
+        VersionSource::PinnedByProject
+    } else {
+        VersionSource::InstalledPmatDefault
+    };
+    Ok((config, source))
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
     let config_path = project_path.join(".pmat").join("project.toml");
@@ -399,6 +493,9 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("{}", c::header("PMAT Compliance Report"));
     println!("{}", c::rule());
     println!("\nProject Version: {}", c::number(&report.project_version));
+    if let Some(note) = report.project_version_source.note() {
+        println!("                 {}", c::dim(&format!("({note})")));
+    }
     println!("Current PMAT:    {}", c::number(&report.current_version));
     println!(
         "Versions Behind: {}",
@@ -413,6 +510,14 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!(
         "Status:          {}\n",
         compliance_status_text(report.is_compliant)
+    );
+    println!(
+        "Checks:          {} total \u{b7} {} pass \u{b7} {} warn \u{b7} {} fail \u{b7} {} skip\n",
+        c::number(&report.summary.total.to_string()),
+        c::number(&report.summary.pass.to_string()),
+        c::number(&report.summary.warn.to_string()),
+        c::number(&report.summary.fail.to_string()),
+        c::number(&report.summary.skip.to_string()),
     );
     println!("{}:", c::label("Checks"));
     for check in &report.checks {
@@ -438,6 +543,9 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("| Property | Value |");
     println!("|----------|-------|");
     println!("| Project Version | {} |", report.project_version);
+    if let Some(note) = report.project_version_source.note() {
+        println!("| Project Version caveat | {} |", note);
+    }
     println!("| Current PMAT | {} |", report.current_version);
     println!(
         "| Status | {} |",
@@ -446,6 +554,14 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
         } else {
             "NON-COMPLIANT"
         }
+    );
+    println!(
+        "| Checks | {} total, {} pass, {} warn, {} fail, {} skip |",
+        report.summary.total,
+        report.summary.pass,
+        report.summary.warn,
+        report.summary.fail,
+        report.summary.skip
     );
     println!("\n## Checks\n");
     for check in &report.checks {

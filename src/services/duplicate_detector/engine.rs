@@ -96,15 +96,82 @@ impl DuplicateDetectionEngine {
         lines: &[&str],
         lang: Language,
     ) -> Result<Vec<CodeFragment>> {
+        if matches!(lang, Language::Python) {
+            return self.extract_indented_fragments(path, lines, lang);
+        }
+        self.extract_braced_fragments(path, lines, lang)
+    }
+
+    /// Fragments for brace languages, delimited by BRACE DEPTH.
+    ///
+    /// This used to end a function at the first line whose trimmed text was
+    /// `"}"` — which is every nested block close, at any indentation. A function
+    /// containing an `if` therefore produced a "fragment" that stopped at the
+    /// end of that `if`, so the engine compared prefixes of functions rather
+    /// than functions: two 20-line functions differing only in their last ten
+    /// lines were byte-identical to the detector.
+    fn extract_braced_fragments(
+        &self,
+        path: &Path,
+        lines: &[&str],
+        lang: Language,
+    ) -> Result<Vec<CodeFragment>> {
+        let mut fragments = Vec::new();
+        let mut start: Option<usize> = None;
+        let mut depth: i32 = 0;
+        let mut opened = false;
+
+        for (line_idx, line) in lines.iter().enumerate() {
+            if start.is_none() {
+                if !self.is_function_start(line.trim(), lang) {
+                    continue;
+                }
+                start = Some(line_idx);
+                depth = 0;
+                opened = false;
+            }
+
+            for ch in line.chars() {
+                match ch {
+                    '{' => {
+                        depth += 1;
+                        opened = true;
+                    }
+                    '}' => depth -= 1,
+                    _ => {}
+                }
+            }
+
+            if let Some(start_line) = start {
+                if opened && depth <= 0 && line_idx > start_line {
+                    self.try_add_fragment(path, lines, start_line, line_idx, lang, &mut fragments)?;
+                    start = None;
+                }
+            }
+        }
+        Ok(fragments)
+    }
+
+    /// Fragments for indentation-delimited languages (Python), where the end of
+    /// a function is the next top-level statement.
+    fn extract_indented_fragments(
+        &self,
+        path: &Path,
+        lines: &[&str],
+        lang: Language,
+    ) -> Result<Vec<CodeFragment>> {
         let mut fragments = Vec::new();
         let mut current_function_start = None;
 
         for (line_idx, line) in lines.iter().enumerate() {
-            let line = line.trim();
-            if self.is_function_start(line, lang) {
+            if self.is_function_start(line.trim(), lang) {
                 current_function_start = Some(line_idx);
             }
             if let Some(start_line) = current_function_start {
+                // The RAW line, not the trimmed one: `is_function_end` for
+                // Python asks whether the line is indented, and every line looks
+                // unindented once it has been trimmed — so a Python function
+                // ended on its own first body line.
                 if self.is_function_end(line, lang) && line_idx > start_line {
                     self.try_add_fragment(path, lines, start_line, line_idx, lang, &mut fragments)?;
                     current_function_start = None;
@@ -298,6 +365,33 @@ impl DuplicateDetectionEngine {
         candidate_pairs
     }
 
+    /// Measured similarity between two fragments, in `0.0..=1.0`.
+    ///
+    /// The MinHash signatures ARE the measurement: `jaccard_similarity` over two
+    /// 200-value signatures is the same number `find_clone_pairs` thresholds on.
+    /// `pair_similarity` is a fallback for callers that hand `group_clones`
+    /// synthetic pairs whose fragments carry no signature (unit tests); an empty
+    /// signature would otherwise divide by zero and produce NaN.
+    fn measured_similarity(
+        &self,
+        a: FragmentId,
+        b: FragmentId,
+        pair_similarity: &HashMap<(FragmentId, FragmentId), f64>,
+    ) -> f64 {
+        if a == b {
+            return 1.0;
+        }
+
+        if let (Some(fa), Some(fb)) = (self.fragments.get(&a), self.fragments.get(&b)) {
+            if !fa.signature.values.is_empty() && !fb.signature.values.is_empty() {
+                return fa.signature.jaccard_similarity(&fb.signature);
+            }
+        }
+
+        let key = if a < b { (a, b) } else { (b, a) };
+        pair_similarity.get(&key).copied().unwrap_or(0.0)
+    }
+
     /// Group similar fragments into clone groups
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn group_clones(
@@ -307,6 +401,14 @@ impl DuplicateDetectionEngine {
         // Use Union-Find for grouping
         let mut groups: HashMap<FragmentId, Vec<FragmentId>> = HashMap::new();
         let mut representative: HashMap<FragmentId, FragmentId> = HashMap::new();
+
+        // The similarity each pair was accepted with, kept so that the reported
+        // numbers are the ones detection actually computed.
+        let mut pair_similarity: HashMap<(FragmentId, FragmentId), f64> = HashMap::new();
+        for &(id1, id2, similarity) in &clone_pairs {
+            let key = if id1 < id2 { (id1, id2) } else { (id2, id1) };
+            pair_similarity.insert(key, similarity);
+        }
 
         // Initialize each fragment as its own group
         for fragment in &self.fragments {
@@ -331,57 +433,130 @@ impl DuplicateDetectionEngine {
             }
         }
 
-        // Convert to CloneGroup format
+        // Convert to CloneGroup format.
+        //
+        // DETERMINISM: `groups` is a `HashMap` and the union order comes from a
+        // `HashSet` of candidate pairs, so both the iteration order AND which
+        // member ended up as the union-find root varied per process. The root is
+        // the fragment every `similarity_to_representative` is measured against,
+        // so an unstable root moved the reported numbers, not just their order.
+        // The lowest fragment id in the group is a property of the input
+        // (fragments are numbered in file order), so it is used instead.
+        let mut ordered_groups: Vec<Vec<FragmentId>> = groups
+            .into_values()
+            .filter(|ids| ids.len() >= self.config.min_group_size)
+            .map(|mut ids| {
+                ids.sort_unstable();
+                ids
+            })
+            .collect();
+        ordered_groups.sort();
+
         let mut clone_groups = Vec::new();
-        let mut group_id = 1;
-
-        for (rep_id, fragment_ids) in groups {
-            if fragment_ids.len() >= self.config.min_group_size {
-                let instances: Vec<CloneInstance> = fragment_ids
-                    .iter()
-                    .filter_map(|&id| self.fragments.get(&id))
-                    .map(|frag| CloneInstance {
-                        file: frag.file_path.clone(),
-                        start_line: frag.start_line,
-                        end_line: frag.end_line,
-                        start_column: frag.start_column,
-                        end_column: frag.end_column,
-                        similarity_to_representative: 1.0, // Simplified
-                        normalized_hash: frag.hash,
-                    })
-                    .collect();
-
-                if !instances.is_empty() {
-                    let total_lines = instances
-                        .iter()
-                        .map(|i| i.end_line - i.start_line + 1)
-                        .sum();
-
-                    let total_tokens = fragment_ids
-                        .iter()
-                        .filter_map(|&id| self.fragments.get(&id))
-                        .map(|f| f.normalized_tokens.len())
-                        .sum();
-
-                    clone_groups.push(CloneGroup {
-                        id: group_id,
-                        clone_type: CloneType::Type2 {
-                            similarity: self.config.similarity_threshold,
-                            normalized: true,
-                        },
-                        fragments: instances,
-                        total_lines,
-                        total_tokens,
-                        average_similarity: self.config.similarity_threshold,
-                        representative: rep_id,
-                    });
-
-                    group_id += 1;
-                }
+        for fragment_ids in ordered_groups {
+            let group_id = clone_groups.len() as u64 + 1;
+            if let Some(group) = self.build_clone_group(&fragment_ids, group_id, &pair_similarity) {
+                clone_groups.push(group);
             }
         }
 
         Ok(clone_groups)
+    }
+
+    /// Build one `CloneGroup` from the fragment ids the union-find put together.
+    ///
+    /// `fragment_ids` is sorted, so its first element is the representative and
+    /// the instance order is fixed.
+    fn build_clone_group(
+        &self,
+        fragment_ids: &[FragmentId],
+        group_id: u64,
+        pair_similarity: &HashMap<(FragmentId, FragmentId), f64>,
+    ) -> Option<CloneGroup> {
+        let rep_id = *fragment_ids.first()?;
+
+        // MEASURED, not "Simplified": this was the literal 1.0 for every
+        // instance of every group, so a Type-3 near-miss clone and a
+        // byte-identical copy reported the same perfect similarity, and
+        // `DuplicationDefectAnalyzer` printed "100% similar" for both.
+        let instances: Vec<CloneInstance> = fragment_ids
+            .iter()
+            .filter_map(|&id| self.fragments.get(&id))
+            .map(|frag| CloneInstance {
+                file: frag.file_path.clone(),
+                start_line: frag.start_line,
+                end_line: frag.end_line,
+                start_column: frag.start_column,
+                end_column: frag.end_column,
+                similarity_to_representative: self.measured_similarity(
+                    frag.id,
+                    rep_id,
+                    pair_similarity,
+                ),
+                normalized_hash: frag.hash,
+            })
+            .collect();
+
+        if instances.is_empty() {
+            return None;
+        }
+
+        let total_lines = instances
+            .iter()
+            .map(|i| i.end_line - i.start_line + 1)
+            .sum();
+
+        let total_tokens = fragment_ids
+            .iter()
+            .filter_map(|&id| self.fragments.get(&id))
+            .map(|f| f.normalized_tokens.len())
+            .sum();
+
+        // `average_similarity` and `clone_type`'s similarity used to be
+        // `self.config.similarity_threshold` — the CUT-OFF the search used,
+        // echoed back as if it were the answer. Every group in every report
+        // therefore carried the same similarity (0.70 by default) whatever the
+        // code looked like, and raising the threshold RAISED the reported
+        // similarity of the surviving groups.
+        // The representative's own 1.0 is excluded: it is a comparison of a
+        // fragment with itself, and including it makes every pair look closer
+        // than it is (a 0.90 pair would report 0.95).
+        let copies: Vec<f64> = fragment_ids
+            .iter()
+            .filter(|&&id| id != rep_id)
+            .map(|&id| self.measured_similarity(id, rep_id, pair_similarity))
+            .collect();
+        #[allow(clippy::cast_precision_loss)]
+        let average_similarity = if copies.is_empty() {
+            1.0
+        } else {
+            copies.iter().sum::<f64>() / copies.len() as f64
+        };
+
+        // An exact group (every member identical to the representative) is not a
+        // near-miss; anything below 1.0 has statements added or removed, which
+        // is a Type-3 clone.
+        let clone_type = if average_similarity >= 1.0 {
+            CloneType::Type2 {
+                similarity: average_similarity,
+                normalized: true,
+            }
+        } else {
+            CloneType::Type3 {
+                similarity: average_similarity,
+                ast_distance: 1.0 - average_similarity,
+            }
+        };
+
+        Some(CloneGroup {
+            id: group_id,
+            clone_type,
+            fragments: instances,
+            total_lines,
+            total_tokens,
+            average_similarity,
+            representative: rep_id,
+        })
     }
 
     /// Find representative in Union-Find structure

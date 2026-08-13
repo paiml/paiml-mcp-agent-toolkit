@@ -38,6 +38,15 @@ pub struct PhaseOutcome {
     pub violations: Vec<QualityViolation>,
     /// Why the phase produced no measurement. `None` means it ran.
     pub unmeasured: Option<String>,
+    /// How many source files this phase actually read.
+    ///
+    /// `0` for phases that do not enumerate files (they report on the project as
+    /// a whole), so a fold over the phases takes the maximum rather than a sum.
+    /// This exists because `EnforcementProgress::files_completed` had no
+    /// measurement to be computed from and was therefore a literal: a run that
+    /// analysed 121 files reported `files_completed: 0` exactly like a run over
+    /// an empty directory.
+    pub files_examined: usize,
 }
 
 impl PhaseOutcome {
@@ -47,6 +56,7 @@ impl PhaseOutcome {
         Self {
             violations,
             unmeasured: None,
+            files_examined: 0,
         }
     }
 
@@ -57,7 +67,15 @@ impl PhaseOutcome {
         Self {
             violations: Vec::new(),
             unmeasured: Some(reason.into()),
+            files_examined: 0,
         }
+    }
+
+    /// Record how many source files the phase read.
+    #[must_use]
+    pub fn over_files(mut self, files_examined: usize) -> Self {
+        self.files_examined = files_examined;
+        self
     }
 
     /// Did this phase actually measure anything?

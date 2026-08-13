@@ -49,10 +49,20 @@ pub async fn handle_analyzing_state(
     // `100` used to be reported here for every project, empty directories
     // included; count the files that actually carry a violation instead.
     let files_remaining = if single_file_mode {
-        usize::from(!assessment.violations.is_empty())
+        usize::from(assessment.violations.iter().any(is_finding))
     } else {
         distinct_violation_files(&assessment.violations)
     };
+
+    // ...and `files_completed` was the literal `0` for every project, so a run
+    // over 124 analysable files reported the same progress as a run over an
+    // empty directory. The files the run READ are counted by the phase that
+    // enumerates them — one file in `--file` scope, none when nothing could be
+    // parsed — and the ones that came back clean are those minus the ones
+    // carrying a finding. `saturating_sub` because a finding may name a file
+    // outside the analysable source set (SATD reads more file types than the
+    // AST phases do), which can only ever understate what was completed.
+    let files_completed = assessment.files_examined.saturating_sub(files_remaining);
 
     Ok(EnforcementResult {
         state: next_state,
@@ -66,18 +76,30 @@ pub async fn handle_analyzing_state(
             "review_violations".to_string()
         },
         progress: EnforcementProgress {
-            files_completed: 0,
+            files_completed,
             files_remaining,
             estimated_iterations: ((1.0 - assessment.score) * 10.0) as u32,
         },
     })
 }
 
-/// Number of distinct files named by the violations, used for progress
+/// Does this row name a file, or the run?
+///
+/// A `not_measured` disclosure is about a dimension of the whole assessment, so
+/// its location is the scope (the project directory), not a source file. Counting
+/// it as a file made an empty crate report "1 file remaining" for a directory in
+/// which no file carried anything, and would have credited the same phantom file
+/// against `files_completed`. Both counts read this one rule.
+fn is_finding(violation: &QualityViolation) -> bool {
+    violation.violation_type != "not_measured"
+}
+
+/// Number of distinct files named by the findings, used for progress
 /// reporting. Locations are `path:line:name` or a bare path.
 fn distinct_violation_files(violations: &[QualityViolation]) -> usize {
     violations
         .iter()
+        .filter(|v| is_finding(v))
         .map(|v| v.location.split(':').next().unwrap_or(&v.location))
         .collect::<std::collections::BTreeSet<_>>()
         .len()
@@ -205,7 +227,18 @@ pub fn handle_refactoring_state(
     })
 }
 
-/// Handle complete state - extracted from `run_enforcement_step` (complexity: ≤10)
+/// The other handler that answers without looking, kept alive ONLY because
+/// tests in three files outside this module still pin its literals
+/// (`src/tests/coverage_boost_enforce.rs`, `enforce_coverage_part2.rs`,
+/// `enforce_coverage_part3_state_tests.rs`).
+///
+/// It takes no arguments, so there is nothing it could have measured:
+/// `score: 1.0` asserts a project it never opened meets the profile, and
+/// `files_completed: 100` carried its own confession — `// Would count actual`.
+/// It is `#[cfg(test)]` so no surface of the binary can reach it; the Complete
+/// arm of `run_enforcement_step` reads the assessment, as the Validating arm
+/// already did. Delete this together with those tests.
+#[cfg(test)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_complete_state() -> Result<EnforcementResult> {
     Ok(EnforcementResult {
@@ -248,13 +281,23 @@ pub async fn handle_violating_enforcement_state_proxy(
         exclude_pattern,
     )
     .await?;
-    handle_violating_state(
+    let measured = analyzing_result.progress.clone();
+    let mut result = handle_violating_state(
         analyzing_result.violations,
         analyzing_result.score,
         apply_suggestions,
         dry_run,
         specific_file,
-    )
+    )?;
+    // `handle_violating_state` cannot measure — it is handed a violation list and
+    // nothing else — so both of its branches state progress as literals
+    // (`files_completed: 0` in each; `files_remaining: 0` in one, a count of
+    // VIOLATIONS rather than files in the other). The same run has just been
+    // measured one line above, and that is what the step reports. Its signature
+    // is pinned by tests in three files outside this module, so the composition
+    // is corrected here rather than there.
+    result.progress = measured;
+    Ok(result)
 }
 
 /// Test-only alias of the fabricating handler above; see its doc comment. The
@@ -322,7 +365,8 @@ pub async fn handle_analyzing_enforcement_state(
     .await
 }
 
-/// Handle complete state for enforcement - alias for clarity (complexity: ≤10)
+/// Test-only alias of the non-measuring handler above; see its doc comment.
+#[cfg(test)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_complete_enforcement_state() -> Result<EnforcementResult> {
     handle_complete_state()
@@ -458,6 +502,161 @@ mod composite_score_regression_tests {
                 .all(|v| v.violation_type != "not_measured"),
             "a parseable project measures every dimension: {:?}",
             violating_result.violations
+        );
+    }
+
+    /// `progress.files_completed` was the literal `0` on every path a CLI
+    /// invocation could reach (`states.rs` had five writers, four of them `0`
+    /// and one `100, // Would count actual`). It reported 0 for an empty
+    /// directory, for a one-file crate and for a 121-file corpus with 60
+    /// complexity violations alike, which is the same number a run that
+    /// examined nothing would report.
+    ///
+    /// The count is now the files the run READ minus the files carrying a
+    /// finding, so it has to move when the tree does.
+    #[tokio::test]
+    async fn files_completed_counts_the_clean_files_the_run_actually_read() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write Cargo.toml");
+        std::fs::create_dir_all(dir.path().join("src")).expect("create src");
+        // Two files that meet the profile...
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "pub mod clean;\npub mod branchy;\n",
+        )
+        .expect("write lib.rs");
+        std::fs::write(
+            dir.path().join("src/clean.rs"),
+            "pub fn double(a: i32) -> i32 {\n    a * 2\n}\n",
+        )
+        .expect("write clean.rs");
+        // ...and one that does not.
+        std::fs::write(
+            dir.path().join("src/branchy.rs"),
+            "pub fn branchy(a: i32, b: i32) -> i32 {\n\
+             \x20   if a > 0 {\n\
+             \x20       if b > 0 {\n\
+             \x20           return 1;\n\
+             \x20       }\n\
+             \x20       return 2;\n\
+             \x20   }\n\
+             \x20   match a {\n\
+             \x20       1 => 3,\n\
+             \x20       2 => 4,\n\
+             \x20       3 => 5,\n\
+             \x20       _ => 6,\n\
+             \x20   }\n\
+             }\n",
+        )
+        .expect("write branchy.rs");
+
+        let profile = QualityProfile {
+            complexity_max: 2,
+            complexity_target: 2,
+            tdg_max: 1000.0,
+            ..QualityProfile::default()
+        };
+
+        let result = handle_analyzing_state(dir.path(), &profile, false, true, None, None, None)
+            .await
+            .expect("analyze fixture");
+
+        assert_eq!(
+            result.progress.files_remaining, 1,
+            "exactly one file breaches the profile: {:?}",
+            result.violations
+        );
+        assert_eq!(
+            result.progress.files_completed, 2,
+            "three source files were read and one carries a finding, so two are \
+             done — this was the literal 0: {:?}",
+            result.progress
+        );
+
+        // The unmeasured-coverage disclosure names the run, not a file, so it
+        // must not be counted against either side of the progress.
+        assert!(
+            result
+                .violations
+                .iter()
+                .any(|v| v.violation_type == "not_measured"),
+            "the fixture carries no lcov report, so coverage is disclosed: {:?}",
+            result.violations
+        );
+
+        let empty = tempfile::tempdir().expect("tempdir");
+        let empty_result =
+            handle_analyzing_state(empty.path(), &profile, false, true, None, None, None)
+                .await
+                .expect("analyze empty directory");
+        assert_eq!(
+            empty_result.progress.files_completed, 0,
+            "a directory with no source file completes none of them: {:?}",
+            empty_result.progress
+        );
+        assert_eq!(
+            empty_result.progress.files_remaining, 0,
+            "and no file carries a finding there either: {:?}",
+            empty_result.progress
+        );
+    }
+
+    /// `--validate-only` held a measured run and re-stated its progress as
+    /// `0 / 0`; the state machine's Violating step overwrote it with literals
+    /// too. Both now report what `handle_analyzing_state` measured.
+    #[tokio::test]
+    async fn every_state_reports_the_progress_that_was_measured() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_project(
+            dir.path(),
+            "pub fn branchy(a: i32, b: i32) -> i32 {\n\
+             \x20   if a > 0 {\n\
+             \x20       if b > 0 {\n\
+             \x20           return 1;\n\
+             \x20       }\n\
+             \x20       return 2;\n\
+             \x20   }\n\
+             \x20   a\n\
+             }\n",
+        );
+        let profile = QualityProfile {
+            complexity_max: 1,
+            complexity_target: 1,
+            tdg_max: 1000.0,
+            ..QualityProfile::default()
+        };
+
+        let analyzing = handle_analyzing_state(dir.path(), &profile, false, true, None, None, None)
+            .await
+            .expect("analyze");
+        assert_eq!(analyzing.progress.files_remaining, 1);
+
+        let violating = handle_violating_enforcement_state_proxy(
+            &dir.path().to_path_buf(),
+            &profile,
+            false,
+            true,
+            None,
+            false,
+            None,
+            None,
+        )
+        .await
+        .expect("violating step");
+
+        assert_eq!(
+            violating.progress.files_remaining, analyzing.progress.files_remaining,
+            "the violating step describes the same run: {:?} vs {:?}",
+            violating.progress, analyzing.progress
+        );
+        assert_eq!(
+            violating.progress.files_completed, analyzing.progress.files_completed,
+            "the violating step describes the same run: {:?} vs {:?}",
+            violating.progress, analyzing.progress
         );
     }
 

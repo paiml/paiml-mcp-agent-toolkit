@@ -8,14 +8,21 @@
 ///   D5: Binding Coverage (20%)
 ///
 /// Falls back to pipeline-depth heuristic if pv CLI is unavailable.
-fn compute_pv_lint(path: &Path) -> f64 {
+///
+/// A project with no `contracts/` directory has no provable contracts to score,
+/// so this returns `Err` (not measured) rather than a mid-range number. That is
+/// the same conclusion `compute_composite` used to reach with `if pv_lint !=
+/// 50.0`, expressed in the type instead of by comparing a float to a sentinel.
+fn compute_pv_lint(path: &Path) -> Dimension {
     let contracts_dir = path.join("contracts");
     if !contracts_dir.exists() {
         let pmat_yaml = path.join(".pmat.yaml");
         if pmat_yaml.exists() {
             if let Ok(content) = std::fs::read_to_string(&pmat_yaml) {
                 if content.contains("cb-1202") && content.contains("enabled: false") {
-                    return 50.0;
+                    return Err(
+                        "PV lint is switched off: .pmat.yaml disables check cb-1202".to_string()
+                    );
                 }
             }
         }
@@ -31,10 +38,15 @@ fn compute_pv_lint(path: &Path) -> f64 {
                         .unwrap_or(false))
             });
             if has_critical {
-                return 0.0;
+                // Measured, and deliberately harsh: safety-critical kernels
+                // with no contracts at all score zero.
+                return Ok(0.0);
             }
         }
-        return 50.0;
+        return Err(format!(
+            "no provable contracts: {} does not exist",
+            contracts_dir.display()
+        ));
     }
 
     // Strategy 1: Use `pv score` for D1-D5 dimensions (pv-compatibility spec §2.1)
@@ -43,15 +55,15 @@ fn compute_pv_lint(path: &Path) -> f64 {
         // Gate check: pv lint must also pass
         let lint_ok = check_pv_lint_gates(path);
         if !lint_ok {
-            return score * 0.5; // Halve score if lint gates fail
+            return Ok(score * 0.5); // Halve score if lint gates fail
         }
-        return score;
+        return Ok(score);
     }
 
     // Strategy 2: Fallback to pipeline depth heuristic (pv CLI unavailable)
     let pipeline = compute_pipeline_depth(path);
     // Scale pipeline (0-30) to (50-95) range
-    (50.0 + pipeline * 1.5).clamp(50.0, 95.0)
+    Ok((50.0 + pipeline * 1.5).clamp(50.0, 95.0))
 }
 
 /// Call `pv score <contracts_dir> --format json` and parse D1-D5 dimensions.
@@ -328,11 +340,18 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
     (stale, total, drift)
 }
 
-fn compute_file_health(path: &Path) -> f64 {
+/// Share of `src/**/*.rs` files at or under 1000 lines.
+///
+/// A project with no Rust sources has no file health: it used to report a
+/// perfect 100.0, which is a score for a codebase that does not exist.
+fn compute_file_health(path: &Path) -> Dimension {
     // Count files by size category for a density-based score
     let src_dir = path.join("src");
     if !src_dir.exists() {
-        return 100.0;
+        return Err(format!(
+            "no Rust sources to size: {} does not exist",
+            src_dir.display()
+        ));
     }
     let mut total = 0usize;
     let mut over_1000 = 0usize;
@@ -350,12 +369,15 @@ fn compute_file_health(path: &Path) -> f64 {
     }
 
     if total == 0 {
-        return 100.0;
+        return Err(format!(
+            "no Rust sources to size: {} holds no .rs files",
+            src_dir.display()
+        ));
     }
 
     // Score based on percentage of files under 1000 lines
     let pct_healthy = (1.0 - (over_1000 as f64 / total as f64)) * 100.0;
-    pct_healthy.clamp(0.0, 100.0)
+    Ok(pct_healthy.clamp(0.0, 100.0))
 }
 
 fn geometric_mean(values: &[f64]) -> f64 {
@@ -452,6 +474,11 @@ struct Violation {
     message: String,
 }
 
+/// How many invariants `cross_validate` can report, for the "n/N violated"
+/// line. It used to print a hard-coded 10 while implementing seven
+/// (XV-001/003/007/008/009/010), which named four checks that do not exist.
+const CROSS_VALIDATION_INVARIANTS: usize = 7;
+
 /// CB-146: Cross-validation invariants. Detect contradictions between sub-scores.
 fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
     let s = &score.sub_scores;
@@ -470,57 +497,79 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
         }
     }
 
+    // Every invariant below reads sub-scores. An unmeasured dimension has no
+    // value, so it can neither satisfy nor violate an invariant — `let Some`
+    // is what keeps "we never measured it" from reading as a good number.
+    let composite = score.composite;
+
     // XV-003: High coverage should mean decent testing score
-    if s.coverage >= 90.0 {
-        if let Some(ts) = score.rps_categories.get("Testing Excellence") {
+    if s.coverage.is_some_and(|c| c >= 90.0) {
+        if let (Some(cov), Some(ts)) = (s.coverage, score.rps_categories.get("Testing Excellence")) {
             if *ts < 60.0 {
                 v.push(Violation {
                     id: "XV-003",
-                    message: format!("Coverage {:.0}% but RPS Testing {ts:.0}% < 60%", s.coverage),
+                    message: format!("Coverage {cov:.0}% but RPS Testing {ts:.0}% < 60%"),
                 });
             }
         }
     }
 
     // XV-007: RPS Grade A should mean composite >= 75
-    if s.rps >= 90.0 && score.composite < 75.0 {
-        v.push(Violation {
-            id: "XV-007",
-            message: format!(
-                "RPS {:.0} (A-level) but composite {:.1} < 75",
-                s.rps, score.composite
-            ),
-        });
+    if let (Some(rps), Some(composite)) = (s.rps, composite) {
+        if rps >= 90.0 && composite < 75.0 {
+            v.push(Violation {
+                id: "XV-007",
+                message: format!("RPS {rps:.0} (A-level) but composite {composite:.1} < 75"),
+            });
+        }
     }
 
     // XV-008: Clean comply should correlate with decent RPS
-    if score.comply_errors == 0 && s.rps < 60.0 {
-        v.push(Violation {
-            id: "XV-008",
-            message: format!("Comply 0 errors but RPS {:.0} < 60", s.rps),
-        });
+    if let Some(rps) = s.rps {
+        if score.comply_errors == 0 && rps < 60.0 {
+            v.push(Violation {
+                id: "XV-008",
+                message: format!("Comply 0 errors but RPS {rps:.0} < 60"),
+            });
+        }
     }
 
     // XV-009: Good file health should mean low muda over-processing
-    if s.file_health >= 90.0 && s.muda_inv < 70.0 {
-        v.push(Violation {
-            id: "XV-009",
-            message: format!(
-                "File health {:.0} (A) but Muda inv {:.0} < 70",
-                s.file_health, s.muda_inv
-            ),
-        });
+    if let (Some(file_health), Some(muda_inv)) = (s.file_health, s.muda_inv) {
+        if file_health >= 90.0 && muda_inv < 70.0 {
+            v.push(Violation {
+                id: "XV-009",
+                message: format!("File health {file_health:.0} (A) but Muda inv {muda_inv:.0} < 70"),
+            });
+        }
     }
 
     // XV-010: Low coverage must cap composite
-    if s.coverage < 50.0 && score.composite >= 80.0 {
-        v.push(Violation {
-            id: "XV-010",
-            message: format!(
-                "Coverage {:.0}% < 50 but composite {:.1} >= 80",
-                s.coverage, score.composite
-            ),
-        });
+    if let (Some(coverage), Some(composite)) = (s.coverage, composite) {
+        if coverage < 50.0 && composite >= 80.0 {
+            v.push(Violation {
+                id: "XV-010",
+                message: format!("Coverage {coverage:.0}% < 50 but composite {composite:.1} >= 80"),
+            });
+        }
+    }
+
+    // XV-011: a high composite must not rest on dimensions nobody measured.
+    // Excluding an unmeasured dimension can only raise the geometric mean, so
+    // without this a project earns a B by never recording coverage.
+    if let Some(composite) = composite {
+        if composite >= 80.0 && !score.not_measured.is_empty() {
+            v.push(Violation {
+                id: "XV-011",
+                message: format!(
+                    "composite {composite:.1} >= 80 but only {}/{} dimensions were measured ({} not measured)",
+                    score.dimensions_measured,
+                    score.dimensions_total,
+                    score.not_measured.iter().map(|n| n.dimension.as_str())
+                        .collect::<Vec<_>>().join(", ")
+                ),
+            });
+        }
     }
 
     v

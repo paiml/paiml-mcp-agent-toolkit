@@ -276,20 +276,30 @@ fn find_block_end(lines: &[&str]) -> Option<usize> {
 /// user, and the user is owed an answer about what it did.
 const DOCUMENTED_THRESHOLD_DEFAULT: f32 = 0.85;
 
-/// Say once, on stderr, that `--threshold` cannot move any block in or out.
+/// Say once, on stderr, that `--threshold` cannot move any block in or out
+/// UNDER THIS DETECTION TYPE.
 ///
-/// Detection here is hash bucketing: two blocks are duplicates iff they hash
-/// identically under the detection type's normalisation, so every group this
-/// function returns has similarity 1.0 by construction and no cut-off in
-/// 0.0..=1.0 can change the result. The parameter was literally bound as
-/// `_threshold` and dropped, so `--threshold 0.01`, `0.5` and `0.99` printed
-/// the same "Duplication percentage" over the same tree with no indication
-/// that the number had been ignored. A real cut-off needs near-miss (Type-3)
-/// matching between blocks that do NOT hash alike, which this extractor does
-/// not do; until it does, the flag must say so rather than look effective.
+/// Hash bucketing (this file) is all-or-nothing: two blocks are duplicates iff
+/// they hash identically under the detection type's normalisation, so every
+/// group it returns has similarity 1.0 by construction and no cut-off in
+/// 0.0..=1.0 can change it. `--threshold` was therefore bound as `_threshold`
+/// and dropped: 0.01, 0.5 and 0.99 printed the same "Duplication percentage"
+/// over the same tree with no indication that the number had been ignored.
+///
+/// `gapped`, `fuzzy` and `all` now also run the near-miss (Type-3) pass in
+/// `find_structural_similarities`, where the threshold IS the similarity
+/// cut-off, so under those types the value acts and nothing is warned about.
+/// Under `exact` (Type-1), `renamed` (Type-2) and `semantic` (unimplemented)
+/// there is still no similarity comparison for a cut-off to control.
 ///
 /// Returns whether the value is inert, so the behaviour is testable.
-fn warn_threshold_has_no_effect(threshold: f32) -> bool {
+fn warn_threshold_has_no_effect(
+    threshold: f32,
+    detection_type: &crate::cli::DuplicateType,
+) -> bool {
+    if near_miss_enabled(detection_type) {
+        return false;
+    }
     if (threshold - DOCUMENTED_THRESHOLD_DEFAULT).abs() < 1e-6 {
         return false;
     }
@@ -297,22 +307,22 @@ fn warn_threshold_has_no_effect(threshold: f32) -> bool {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         eprintln!(
-            "warning: --threshold {threshold} was ignored: duplicate detection matches blocks by \
-hash under the selected --detection-type, so every reported clone is an exact match (similarity \
-1.0) and no similarity cut-off changes the result. Use --detection-type to widen or narrow \
-matching instead."
+            "warning: --threshold {threshold} was ignored: --detection-type {detection_type} \
+matches blocks by hash, so every reported clone is an exact match (similarity 1.0) and no \
+similarity cut-off changes the result. Use --detection-type gapped, fuzzy or all, where the \
+threshold is the near-miss similarity cut-off."
         );
     });
     true
 }
 
-/// Find duplicate blocks from all blocks
+/// Find duplicate blocks from all blocks.
+///
+/// Takes no threshold: hash bucketing has no similarity cut-off to apply. The
+/// near-miss pass (`find_structural_similarities`) is where `--threshold` acts.
 fn find_duplicate_blocks(
     all_blocks: Vec<(String, String, usize, usize, String)>,
-    threshold: f32,
 ) -> Vec<DuplicateBlock> {
-    warn_threshold_has_no_effect(threshold);
-
     let mut hash_groups: HashMap<String, Vec<(String, usize, usize, String)>> = HashMap::new();
 
     // Group by hash
@@ -385,16 +395,25 @@ fn find_duplicate_blocks(
         }
     }
 
-    // Sort by lines descending.
-    //
-    // DETERMINISM (round-3 sweep): `hash_groups` is a `HashMap`, so the vector
-    // above was built in a per-process random order, and `sort_by_key` is
-    // stable — every block of the same `lines` therefore kept that random
-    // order. `analyze duplicates --format json` on a fixed two-file fixture
-    // produced 5 DIFFERENT md5 sums over 5 runs, with the same 14 block hashes
-    // merely reordered. The (file, start_line, hash) suffix is a total order
-    // over blocks: `locations` is already sorted by (file, start) above, and no
-    // two surviving blocks share a hash.
+    sort_duplicate_blocks(&mut duplicates);
+
+    duplicates
+}
+
+/// Put duplicate blocks in a total order.
+///
+/// DETERMINISM (round-3 sweep): `find_duplicate_blocks` groups in a `HashMap`,
+/// so the vector is built in a per-process random order, and `sort_by_key` is
+/// stable — every block of the same `lines` therefore kept that random order.
+/// `analyze duplicates --format json` on a fixed two-file fixture produced 5
+/// DIFFERENT md5 sums over 5 runs, with the same 14 block hashes merely
+/// reordered. The (file, start_line, hash) suffix is a total order over blocks:
+/// `locations` is sorted by (file, start) before this runs, and no two blocks
+/// share a hash.
+///
+/// Shared with the near-miss pass, whose blocks are appended to the same vector
+/// and must be interleaved in the same fixed order.
+fn sort_duplicate_blocks(duplicates: &mut [DuplicateBlock]) {
     duplicates.sort_by(|a, b| {
         b.lines
             .cmp(&a.lines)
@@ -410,8 +429,6 @@ fn find_duplicate_blocks(
             })
             .then_with(|| a.hash.cmp(&b.hash))
     });
-
-    duplicates
 }
 
 /// Check if file should be processed.
@@ -563,7 +580,7 @@ fn gamma(arg: usize) -> usize {
         let blocks = blocks_for(DuplicateType::Renamed);
         assert!(!blocks.is_empty(), "renamed mode must extract blocks");
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert!(
             duplicates.iter().any(|d| d.locations.len() >= 3),
             "three renamed copies of one body are one duplicate group, got {duplicates:?}"
@@ -575,7 +592,7 @@ fn gamma(arg: usize) -> usize {
     #[test]
     fn gapped_and_fuzzy_find_the_renamed_copies_too() {
         for kind in [DuplicateType::Gapped, DuplicateType::Fuzzy] {
-            let duplicates = find_duplicate_blocks(blocks_for(kind.clone()), 0.8);
+            let duplicates = find_duplicate_blocks(blocks_for(kind.clone()));
             assert!(
                 duplicates.iter().any(|d| d.locations.len() >= 3),
                 "{kind:?} must report the renamed clones"
@@ -587,7 +604,7 @@ fn gamma(arg: usize) -> usize {
     /// duplicates, and that zero IS a measurement.
     #[test]
     fn exact_mode_does_not_claim_renamed_copies() {
-        let duplicates = find_duplicate_blocks(blocks_for(DuplicateType::Exact), 0.8);
+        let duplicates = find_duplicate_blocks(blocks_for(DuplicateType::Exact));
         assert!(duplicates.iter().all(|d| d.locations.len() < 3));
     }
 
@@ -607,17 +624,44 @@ fn gamma(arg: usize) -> usize {
 mod threshold_tests {
     use super::*;
 
+    use crate::cli::DuplicateType;
+
     /// `--threshold` was bound as `_threshold` and dropped: 0.01, 0.5 and 0.99
     /// printed the same duplication percentage with nothing said about the
     /// number being ignored. Hash bucketing cannot honour a similarity cut-off,
-    /// so a value that cannot act must be reported as inert.
+    /// so under the detection types that only bucket, a value that cannot act
+    /// must still be reported as inert.
     #[test]
     fn a_threshold_that_cannot_act_is_disclosed() {
-        for typed in [0.0_f32, 0.01, 0.5, 0.99, 1.0] {
-            assert!(
-                warn_threshold_has_no_effect(typed),
-                "--threshold {typed} changes nothing and must say so"
-            );
+        for kind in [
+            DuplicateType::Exact,
+            DuplicateType::Renamed,
+            DuplicateType::Semantic,
+        ] {
+            for typed in [0.0_f32, 0.01, 0.5, 0.99, 1.0] {
+                assert!(
+                    warn_threshold_has_no_effect(typed, &kind),
+                    "--threshold {typed} changes nothing under {kind:?} and must say so"
+                );
+            }
+        }
+    }
+
+    /// Under the near-miss types the threshold IS the similarity cut-off the
+    /// Type-3 search uses, so warning that it was ignored would be false.
+    #[test]
+    fn a_threshold_that_acts_is_not_disclaimed() {
+        for kind in [
+            DuplicateType::Gapped,
+            DuplicateType::Fuzzy,
+            DuplicateType::All,
+        ] {
+            for typed in [0.0_f32, 0.5, 0.99] {
+                assert!(
+                    !warn_threshold_has_no_effect(typed, &kind),
+                    "--threshold {typed} controls the near-miss cut-off under {kind:?}"
+                );
+            }
         }
     }
 
@@ -625,6 +669,9 @@ mod threshold_tests {
     /// every ordinary run.
     #[test]
     fn the_default_threshold_is_quiet() {
-        assert!(!warn_threshold_has_no_effect(DOCUMENTED_THRESHOLD_DEFAULT));
+        assert!(!warn_threshold_has_no_effect(
+            DOCUMENTED_THRESHOLD_DEFAULT,
+            &DuplicateType::Exact
+        ));
     }
 }

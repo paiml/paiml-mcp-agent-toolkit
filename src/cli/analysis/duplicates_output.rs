@@ -48,7 +48,18 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
         "duplicate_blocks": report.duplicate_blocks,
         "file_statistics": report.file_statistics,
         "exact_duplicates": report.duplicate_blocks.iter().filter(|b| b.similarity >= 1.0).count(),
-        "structural_similarities": report.duplicate_blocks.iter().filter(|b| b.similarity >= 0.8 && b.similarity < 1.0).count(),
+        // Near-miss (Type-3) groups: blocks whose members are similar but NOT
+        // identical. The predicate used to be `0.8 <= s < 1.0`, and the only
+        // producer of a block set `similarity: 1.0` as a literal, so this was
+        // unsatisfiable for every possible input — a hard 0 printed beside a
+        // real `exact_duplicates` count, which is what made it look measured.
+        // The lower bound is `--threshold` now: the near-miss search admits a
+        // pair only at or above it. It is not repeated here because a block's
+        // `similarity` is the group's MEAN similarity to its representative, and
+        // a group chained through several accepted pairs can average slightly
+        // below the cut-off any single pair had to clear. Re-applying the
+        // cut-off to the mean would silently drop groups the search accepted.
+        "structural_similarities": report.duplicate_blocks.iter().filter(|b| b.similarity < 1.0).count(),
         // `entropy_analysis` and `analysis_time_ms` used to be emitted here as
         // the constants 0.5 / 0 / 100 in EVERY run, regardless of input. This
         // command runs no entropy analysis and did not time itself, so those

@@ -14,6 +14,177 @@ include!("duplicates_output.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
+mod near_miss_tests {
+    //! `structural_similarities` counted duplicate blocks with
+    //! `0.8 <= similarity < 1.0`, but the only production constructor of a
+    //! block set `similarity: 1.0` as a literal — detection was pure hash
+    //! bucketing — so the predicate was unsatisfiable for EVERY input. The JSON
+    //! printed a hard 0 beside `exact_duplicates: 176` and
+    //! `duplication_percentage: 72.46` on a corpus of 121 files, and 0 on an
+    //! empty directory: the same number for "no near-misses here" and "we never
+    //! looked".
+    use super::*;
+
+    /// Two functions that do the same work in nearly the same way: `beta` adds
+    /// one more guarded branch. Structurally similar, not identical, and not
+    /// reachable by any hash-equality test.
+    const ALPHA: &str = "\
+pub fn tally_alpha(values: &[i64], limit: i64) -> i64 {
+    let mut total = 0i64;
+    let mut seen = 0usize;
+    for value in values {
+        if *value > limit {
+            total = total.wrapping_add(value * 3);
+            seen += 1;
+        } else if *value < 0 {
+            total = total.wrapping_sub(value / 2);
+        } else {
+            total = total.wrapping_add(1);
+        }
+        if seen > 100 {
+            break;
+        }
+    }
+    total
+}
+";
+
+    const BETA: &str = "\
+pub fn tally_beta(items: &[i64], bound: i64) -> i64 {
+    let mut sum = 0i64;
+    let mut counted = 0usize;
+    for item in items {
+        if *item > bound {
+            sum = sum.wrapping_add(item * 3);
+            counted += 1;
+        } else if *item < 0 {
+            sum = sum.wrapping_sub(item / 2);
+        } else {
+            sum = sum.wrapping_add(1);
+        }
+        if counted % 7 == 0 {
+            sum = sum.wrapping_mul(2);
+        }
+        if counted > 100 {
+            break;
+        }
+    }
+    sum
+}
+";
+
+    async fn report_for(detection: crate::cli::DuplicateType, threshold: f32) -> DuplicateReport {
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("alpha.rs"), ALPHA).unwrap();
+        std::fs::write(temp.path().join("beta.rs"), BETA).unwrap();
+
+        detect_duplicates(temp.path(), detection, threshold, 5, 1000, &None, &None)
+            .await
+            .expect("detection must succeed")
+    }
+
+    fn structural_similarities(report: &DuplicateReport) -> usize {
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json_output(report).unwrap()).unwrap();
+        json["structural_similarities"].as_u64().unwrap() as usize
+    }
+
+    /// The leaf itself: a near-miss clone pair must move `structural_similarities`
+    /// off zero, under the DEFAULT detection type.
+    #[tokio::test]
+    async fn a_near_miss_clone_pair_is_counted_as_a_structural_similarity() {
+        let report = report_for(crate::cli::DuplicateType::All, 0.7).await;
+        assert!(
+            structural_similarities(&report) > 0,
+            "two near-miss clones must be reported as a structural similarity, got blocks {:?}",
+            report
+                .duplicate_blocks
+                .iter()
+                .map(|b| (b.hash.clone(), b.similarity))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    /// And the similarity carried is a MEASUREMENT, not the cut-off echoed back
+    /// and not the literal 1.0: it sits strictly between the threshold and 1.0,
+    /// and does not move when the threshold does.
+    #[tokio::test]
+    async fn the_reported_similarity_is_measured_not_the_threshold() {
+        let loose = report_for(crate::cli::DuplicateType::All, 0.5).await;
+        let tighter = report_for(crate::cli::DuplicateType::All, 0.6).await;
+
+        let near_miss = |r: &DuplicateReport| -> Vec<f32> {
+            let mut sims: Vec<f32> = r
+                .duplicate_blocks
+                .iter()
+                .filter(|b| b.similarity < 1.0)
+                .map(|b| b.similarity)
+                .collect();
+            sims.sort_by(f32::total_cmp);
+            sims
+        };
+
+        let loose_sims = near_miss(&loose);
+        assert!(!loose_sims.is_empty(), "no near-miss block was reported");
+        for sim in &loose_sims {
+            assert!(
+                *sim > 0.6 && *sim < 1.0,
+                "similarity {sim} is neither the 0.5 cut-off nor an exact match"
+            );
+        }
+        assert_eq!(
+            loose_sims,
+            near_miss(&tighter),
+            "the measured similarity must not move with --threshold"
+        );
+    }
+
+    /// `--threshold` now decides what is close enough, so raising it past the
+    /// measured similarity must drop the pair. A flag that changes the answer is
+    /// the only proof it is not inert.
+    #[tokio::test]
+    async fn the_threshold_selects_which_near_misses_survive() {
+        let loose = report_for(crate::cli::DuplicateType::All, 0.5).await;
+        let impossible = report_for(crate::cli::DuplicateType::All, 0.999).await;
+
+        assert!(structural_similarities(&loose) > 0);
+        assert_eq!(
+            structural_similarities(&impossible),
+            0,
+            "nothing is 99.9% similar here, so the count must fall to zero"
+        );
+    }
+
+    /// `exact` is Type-1 by definition: a zero there is a measurement of what
+    /// was looked for, not a missing detector.
+    #[tokio::test]
+    async fn exact_mode_reports_no_structural_similarities() {
+        let report = report_for(crate::cli::DuplicateType::Exact, 0.5).await;
+        assert_eq!(structural_similarities(&report), 0);
+    }
+
+    /// An empty project still reports zero — and now that zero means something,
+    /// because the same command reports non-zero on the fixture above.
+    #[tokio::test]
+    async fn an_empty_project_still_reports_zero() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::All,
+            0.7,
+            5,
+            1000,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(structural_similarities(&report), 0);
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::path::Path;
@@ -184,7 +355,7 @@ mod tests {
             ),
         ];
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert!(duplicates.is_empty());
     }
 
@@ -215,7 +386,7 @@ mod tests {
                     ));
                 }
             }
-            find_duplicate_blocks(blocks, 0.8)
+            find_duplicate_blocks(blocks)
                 .into_iter()
                 .map(|b| b.hash)
                 .collect()
@@ -263,7 +434,7 @@ mod tests {
             ),
         ];
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert_eq!(duplicates.len(), 1);
         assert_eq!(duplicates[0].hash, "hash1");
         assert_eq!(duplicates[0].locations.len(), 2);

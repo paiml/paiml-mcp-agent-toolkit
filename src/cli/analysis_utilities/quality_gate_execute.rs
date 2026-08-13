@@ -199,12 +199,86 @@ async fn execute_coverage_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    // `--checks coverage` and `--checks all` run the same composition, so the
+    // one surface cannot report a gap the other silently counts as zero.
     execute_quality_check_template(
-        check_coverage(project_path, 80.0),
+        run_coverage_check(project_path),
         |count| results.coverage_violations = count,
         violations,
     )
     .await
+}
+
+/// `results.coverage_violations` had two meanings and one value.
+///
+/// These run the surface a user runs — `pmat quality-gate --checks coverage` is
+/// exactly [`execute_coverage_check`] — rather than the helper underneath it, so
+/// they fail if the composition is ever unwired again.
+#[cfg(test)]
+mod coverage_is_measured_or_disclosed_tests {
+    use super::*;
+
+    async fn coverage_violations_for(project_path: &Path) -> (usize, Vec<QualityViolation>) {
+        let mut violations = Vec::new();
+        let mut results = QualityGateResults::default();
+        execute_coverage_check(project_path, &mut violations, &mut results)
+            .await
+            .expect("the coverage check reports");
+        (results.coverage_violations, violations)
+    }
+
+    fn write_metrics(dir: &Path, body: &str) {
+        std::fs::create_dir_all(dir.join(".pmat-metrics")).expect("mkdir .pmat-metrics");
+        std::fs::write(dir.join(".pmat-metrics/coverage.json"), body).expect("write coverage.json");
+    }
+
+    #[tokio::test]
+    async fn an_absent_coverage_report_is_disclosed_not_counted_as_zero() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (count, violations) = coverage_violations_for(dir.path()).await;
+
+        // It used to be 0 here — the same 0 a project measured at 100% gets.
+        assert_eq!(
+            count, 1,
+            "an unmeasured check has not passed: {violations:?}"
+        );
+        let disclosure = &violations[0];
+        assert_eq!(disclosure.check_type, "coverage");
+        assert_eq!(disclosure.severity, "error", "an unmeasured check blocks");
+        assert!(
+            disclosure.message.contains("NOT measured"),
+            "the row must say which of the two zeros this is: {}",
+            disclosure.message
+        );
+    }
+
+    #[tokio::test]
+    async fn a_measured_project_above_the_floor_reports_no_violation() {
+        // The disclosure must not become a second constant: a project that DID
+        // measure, and passed, still reports 0.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_metrics(dir.path(), "{\"coverage\": 95.0}");
+        let (count, violations) = coverage_violations_for(dir.path()).await;
+        assert_eq!(count, 0, "95% clears the 80% floor: {violations:?}");
+    }
+
+    #[tokio::test]
+    async fn a_measured_project_below_the_floor_reports_the_measurement() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_metrics(dir.path(), "{\"coverage\": 42.5}");
+        let (count, violations) = coverage_violations_for(dir.path()).await;
+        assert_eq!(count, 1);
+        assert!(
+            violations[0].message.contains("42.5"),
+            "a real breach names the measured value, not the gap: {}",
+            violations[0].message
+        );
+        assert!(
+            !violations[0].message.contains("NOT measured"),
+            "and is not the disclosure: {}",
+            violations[0].message
+        );
+    }
 }
 
 /// Helper for sections check execution

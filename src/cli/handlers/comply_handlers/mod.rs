@@ -3,6 +3,10 @@
 
 use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
 use anyhow::Result;
+// `handle_report` no longer stamps its own timestamp — it renders the report
+// `compute_compliance_report` built — so `Utc` is reached only by the tests
+// that construct `ComplianceReport` literals.
+#[cfg(test)]
 use chrono::Utc;
 use std::fs;
 use std::path::Path;

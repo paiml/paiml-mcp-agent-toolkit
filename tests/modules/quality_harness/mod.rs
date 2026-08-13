@@ -296,11 +296,47 @@ pub(crate) fn build_corpus(size: CorpusSize) -> tempfile::TempDir {
     let root = dir.path();
     std::fs::create_dir_all(root.join("src")).expect("mkdir src");
 
-    std::fs::write(
-        root.join("Cargo.toml"),
-        "[package]\nname = \"corpus\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
-    )
-    .expect("write Cargo.toml");
+    // The large corpus declares feature flags and a benchmark target, which
+    // `repo-score`'s parent — the Rust Project Score embedded in `pmat score` —
+    // reads straight out of the manifest: `rps_categories."Dependency Health"`
+    // scores feature flags in tiers (dependency_scorer_scoring_methods.rs:235-241)
+    // and `rps_categories."Performance & Benchmarking"` gives 5 of its 10 points
+    // for a `[[bench]]` section and 2 more for `harness = false`
+    // (performance_scorer_scoring.rs:44-46). Both categories were identical for
+    // an empty crate and a 200-file one because no corpus carried a manifest
+    // with anything in it.
+    let manifest = match size {
+        CorpusSize::Large => "\
+[package]
+name = \"corpus\"
+version = \"0.1.0\"
+edition = \"2021\"
+
+[dependencies]
+
+[features]
+default = [\"std\"]
+std = []
+simd = []
+tracing = []
+
+[[bench]]
+name = \"throughput\"
+harness = false
+",
+        _ => "[package]\nname = \"corpus\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+    };
+    std::fs::write(root.join("Cargo.toml"), manifest).expect("write Cargo.toml");
+    if size == CorpusSize::Large {
+        // A declared `[[bench]]` whose file is missing makes cargo refuse the
+        // manifest outright, which would take every cargo-backed command down.
+        std::fs::create_dir_all(root.join("benches")).expect("mkdir benches");
+        std::fs::write(
+            root.join("benches/throughput.rs"),
+            "//! Custom-harness benchmark (harness = false), so it is a plain main().\n\nfn main() {\n    let start = std::time::Instant::now();\n    let mut acc = 0u64;\n    for i in 0..10_000u64 {\n        acc = acc.wrapping_add(i);\n    }\n    println!(\"throughput: {acc} in {:?}\", start.elapsed());\n}\n",
+        )
+        .expect("write benches/throughput.rs");
+    }
 
     match size {
         CorpusSize::Empty => {
@@ -320,6 +356,7 @@ pub(crate) fn build_corpus(size: CorpusSize) -> tempfile::TempDir {
     write_repo_hygiene(root, size);
     git_init(root, size);
     if size == CorpusSize::Large {
+        write_precommit_hook(root);
         write_critical_risk_file(root);
     }
     dir
@@ -334,6 +371,19 @@ pub(crate) fn build_corpus(size: CorpusSize) -> tempfile::TempDir {
 /// README/CI/licence files is still a measurement; it just needs an axis to
 /// measure along.
 fn write_repo_hygiene(root: &Path, size: CorpusSize) {
+    // The three coverage branches, one per corpus. `check_coverage` reads a
+    // report someone else produced and has three outcomes — a report above the
+    // 80% floor, a report below it, and no report at all — and with no corpus
+    // carrying a report only the third was ever taken, so `coverage_violations`
+    // was the same number for a project with no tests and one with full
+    // coverage. Empty gets the passing report because it is the only corpus
+    // that can honestly hold one (one file, one line, covered), and because
+    // `results.passed` needs a project that passes: an empty crate is it.
+    // Tiny stays reportless, so "nobody measured" is still exercised.
+    if size == CorpusSize::Empty {
+        write_coverage_report(root, CoverageReport::Aggregate("{\"coverage\": 100.0}\n"));
+    }
+
     if size == CorpusSize::Empty {
         // Deliberately bare: no README, no licence, no CI, no gitignore.
         return;
@@ -400,6 +450,13 @@ jobs:
       - run: cargo test --all
       - run: cargo clippy -- -D warnings
       - run: cargo fmt --check
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 3 of the 10 Performance & Benchmarking points are for a workflow that
+      # runs benchmarks in CI (performance_scorer_scoring.rs:10-21).
+      - run: cargo bench --bench throughput
 ",
     )
     .expect("write ci.yml");
@@ -409,6 +466,218 @@ jobs:
         "# Architecture\n\nOne crate, many generated modules.\n",
     )
     .expect("write docs");
+
+    write_hygiene_debt(root);
+}
+
+/// The *repository-level* defects, as distinct from the source-level ones.
+///
+/// Everything here exists because a `repo-score` or `quality-gate` counter was
+/// constant across all three corpora while being genuinely computed: the corpus
+/// simply contained none of the inputs those checks look for. Each block names
+/// the leaf it unsticks.
+fn write_hygiene_debt(root: &Path) {
+    // repo-score C1 (cruft) and C2 (team-specific files): the hygiene category
+    // scored a full 15.0/15.0 on every corpus because there was no cruft and no
+    // editor directory anywhere in the tree.
+    for (name, body) in [
+        (".DS_Store", "\u{0}\u{0}cruft\n"),
+        ("backup.bak", "old copy of the Makefile\n"),
+        ("old.orig", "<<<<<<< HEAD merge leftover\n"),
+        ("scratch.tmp", "scratch\n"),
+    ] {
+        std::fs::write(root.join(name), body).expect("write cruft file");
+    }
+    std::fs::create_dir_all(root.join(".idea")).expect("mkdir .idea");
+    std::fs::write(
+        root.join(".idea/workspace.xml"),
+        "<?xml version=\"1.0\"?>\n<project version=\"4\" />\n",
+    )
+    .expect("write .idea/workspace.xml");
+    std::fs::create_dir_all(root.join(".vscode")).expect("mkdir .vscode");
+    std::fs::write(
+        root.join(".vscode/settings.json"),
+        "{ \"rust-analyzer.checkOnSave.command\": \"clippy\" }\n",
+    )
+    .expect("write .vscode/settings.json");
+
+    // repo-score C3: a blob over 1MB that is still in the tree. Written before
+    // `git_init` on purpose — the check pipes `git rev-list --objects HEAD`, so
+    // an uncommitted file is invisible to it.
+    let mut blob = Vec::with_capacity(2_100_000);
+    while blob.len() < 2_100_000 {
+        blob.extend_from_slice(b"corpus-large-object-payload\n");
+    }
+    std::fs::write(root.join("bigblob.dat"), &blob).expect("write bigblob.dat");
+
+    // repo-score F1/F2: both key off `.pmat-gates.toml`, which no corpus had,
+    // so `pmat_compliance` sat at a constant 2.5/5.0 (F1 zero for the missing
+    // file, F2 full marks under its can't-violate-what-doesn't-exist branch).
+    std::fs::write(
+        root.join(".pmat-gates.toml"),
+        "[complexity]\nmax = 10\n\n[satd]\nmax = 0\n",
+    )
+    .expect("write .pmat-gates.toml");
+
+    // `comply`: every corpus was an unpinned project, so `versions_behind` was
+    // 0, `breaking_changes[]` empty and `is_compliant` true — all three
+    // truthfully, and all three constant. A pin two major versions back is the
+    // input the whole comply surface is built to react to.
+    std::fs::create_dir_all(root.join(".pmat")).expect("mkdir .pmat");
+    std::fs::write(
+        root.join(".pmat/project.toml"),
+        "[pmat]\nversion = \"2.0.0\"\n",
+    )
+    .expect("write .pmat/project.toml");
+
+    // `quality-gate`'s coverage check does not measure coverage: it reads
+    // `.pmat/coverage-cache.json`, else `.pmat-metrics/coverage.json`. See
+    // `write_coverage_report` for why each corpus carries a different one.
+    //
+    // The hit map — not a pre-computed percentage — is deliberate: the check
+    // has to do the 1-of-4 arithmetic itself, so the resulting 25% proves the
+    // computation rather than echoing a number the fixture chose.
+    write_coverage_report(
+        root,
+        CoverageReport::HitMap("{\"files\":{\"src/lib.rs\":{\"1\":1,\"2\":0,\"3\":0,\"4\":0}}}\n"),
+    );
+
+    // A THIRD coverage location, because `pmat score` reads a different file
+    // from `quality-gate`: `.pmat-metrics/coverage.result` with a `coverage_pct`
+    // key (score_handler.rs:532-545). Without it score's coverage dimension is
+    // "not measured" on every corpus, so `dimensions_measured` and
+    // `not_measured[]` are the same 4 for a project with coverage and one
+    // without. 25.0 matches the hit map above rather than contradicting it.
+    std::fs::create_dir_all(root.join(".pmat-metrics")).expect("mkdir .pmat-metrics");
+    std::fs::write(
+        root.join(".pmat-metrics/coverage.result"),
+        "{\"coverage_pct\": 25.0}\n",
+    )
+    .expect("write coverage.result");
+
+    // An lcov artifact where a coverage run would leave one, for the commands
+    // that read a report rather than the `.pmat` caches:
+    // `discover_line_coverage` looks in `target/coverage/lcov.info` first
+    // (services/agent_context/query/coverage/parsing.rs:184-190).
+    //
+    // Written the way cargo-llvm-cov writes it — absolute `SF:` paths — which
+    // matters: `analyze incremental-coverage` still reports every changed file
+    // NotMeasured with this artifact present, because the parser normalises
+    // `SF:` to `src/x.rs` while the changed-file list is keyed `./src/x.rs`.
+    // Handing it a `./`-prefixed artifact would make the leaf move and hide
+    // that; the corpus carries the realistic input instead.
+    let mut lcov = String::new();
+    for (name, covered, total) in [
+        ("src/chain_00.rs", 9, 10),
+        ("src/chain_01.rs", 2, 10),
+        ("src/complex_00.rs", 9, 10),
+        ("src/complex_01.rs", 1, 10),
+        ("src/lib.rs", 40, 200),
+    ] {
+        lcov.push_str(&format!("SF:{}\n", root.join(name).display()));
+        for line in 1..=total {
+            lcov.push_str(&format!("DA:{line},{}\n", u8::from(line <= covered)));
+        }
+        lcov.push_str(&format!("LF:{total}\nLH:{covered}\nend_of_record\n"));
+    }
+    std::fs::create_dir_all(root.join("target/coverage")).expect("mkdir target/coverage");
+    std::fs::write(root.join("target/coverage/lcov.info"), lcov).expect("write lcov.info");
+
+    // GPU code, at the repository ROOT — `has_gpu_simd_code` decides whether the
+    // category applies at all by `std::fs::read_dir(project_path)` over the top
+    // level (gpu_simd_scorer.rs:103-110), with no recursion, so the same file in
+    // `cuda/` leaves the category N/A. With no GPU code anywhere the category
+    // reported 0.0 for every corpus; this kernel takes it to 50.0, and it earns
+    // less than full marks honestly: `divergent` calls __syncthreads() inside a
+    // divergent branch, which is the barrier-safety defect the analyser hunts.
+    std::fs::write(
+        root.join("kernel.cu"),
+        "\
+__global__ void reduce(const float* in, float* out, int n) {
+    extern __shared__ float buf[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    buf[tid] = (i < n) ? in[i] : 0.0f;
+    __syncthreads();
+    for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            buf[tid] += buf[tid + s];
+        }
+        __syncthreads();
+    }
+    if (tid == 0) out[blockIdx.x] = buf[0];
+}
+
+__global__ void divergent(const float* in, float* out, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i % 2 == 0) {
+        __syncthreads();
+        out[i] = in[i] * 2.0f;
+    }
+}
+",
+    )
+    .expect("write kernel.cu");
+
+    // `quality-gate`'s security check walks only the project's top level
+    // (`fs::read_dir`, no recursion), so with every source file under `src/` it
+    // never opened one and reported zero honestly. A root-level file is the
+    // only input that reaches it — worth knowing in itself, since no
+    // conventional Rust layout puts sources there.
+    std::fs::write(
+        root.join("leak.rs"),
+        "// Not part of the crate: no `mod leak;` anywhere, so rustc never sees it.\npub fn connect() -> &'static str {\n    let password = \"hunter2\";\n    let api_key = \"AKIAIOSFODNN7EXAMPLE\";\n    let _ = (password, api_key);\n    \"connected\"\n}\n",
+    )
+    .expect("write leak.rs");
+}
+
+/// The two shapes of coverage report pmat knows how to read.
+///
+/// Both are consumed by `read_coverage_from_cache`
+/// (src/cli/analysis_utilities/quality_checks_part2_coverage_sections.rs), in
+/// this priority order. Using both across the corpora keeps the fallback path
+/// covered as well as the primary one.
+enum CoverageReport {
+    /// `.pmat/coverage-cache.json` — per-file hit maps, percentage computed.
+    HitMap(&'static str),
+    /// `.pmat-metrics/coverage.json` — a pre-aggregated percentage.
+    Aggregate(&'static str),
+}
+
+fn write_coverage_report(root: &Path, report: CoverageReport) {
+    match report {
+        CoverageReport::HitMap(body) => {
+            std::fs::create_dir_all(root.join(".pmat")).expect("mkdir .pmat");
+            std::fs::write(root.join(".pmat/coverage-cache.json"), body)
+                .expect("write coverage-cache.json");
+        }
+        CoverageReport::Aggregate(body) => {
+            std::fs::create_dir_all(root.join(".pmat-metrics")).expect("mkdir .pmat-metrics");
+            std::fs::write(root.join(".pmat-metrics/coverage.json"), body)
+                .expect("write coverage.json");
+        }
+    }
+}
+
+/// A pre-commit hook, so `repo-score`'s B1/B2 have one to grade.
+///
+/// Written after `git_init`, and harmless: every corpus commit is made with
+/// `-c core.hooksPath=<corpus>/.corpus-nohooks` and `--no-verify`, so this file
+/// is scored but never executed. Without it `precommit_hooks` scored 0.0/20.0
+/// on all three corpora — the honest reading of a repository that has no hook.
+fn write_precommit_hook(root: &Path) {
+    let hook = root.join(".git/hooks/pre-commit");
+    std::fs::write(
+        &hook,
+        "#!/bin/sh\nset -eu\ncargo clippy -- -D warnings\ncargo fmt --check\n",
+    )
+    .expect("write pre-commit hook");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod pre-commit hook");
+    }
 }
 
 /// Generate a project that trips every detector, at graded intensity.
@@ -451,10 +720,23 @@ fn write_large_corpus(root: &Path) {
     }
 
     // Fault patterns: unwrap / expect / panic / unreachable.
+    //
+    // `faults_00` carries *three* `unwrap()` calls where the rest carry one.
+    // TDG's critical-defect penalty is `69.9 * 0.6^(n-1)`, so a single critical
+    // defect is pinned to the 69.9/D ceiling and can never reach F: with one
+    // unwrap per file the corpus had no F-grade input at all, `f_grade_count`
+    // was truthfully zero on every corpus, and the F-grade gate truthfully
+    // passed — indistinguishable, to a differential check, from a counter
+    // nobody increments. Three defects put one file at ~25/F.
     for i in 0..15 {
         let name = format!("faults_{i:02}");
+        let extra = if i == 0 {
+            "    let second = raw.split(',').nth(1).unwrap();\n    let third = second.split(':').next().unwrap();\n    let _ = third.len();\n"
+        } else {
+            ""
+        };
         let body = format!(
-            "/// Parses without handling failure.\npub fn parse_{i:02}(raw: &str) -> i64 {{\n    let first = raw.split(',').next().unwrap();\n    let value: i64 = first.trim().parse().expect(\"caller guarantees a number\");\n    if value < 0 {{\n        panic!(\"negative value: {{value}}\");\n    }}\n    if value > 1_000_000 {{\n        unreachable!(\"validated upstream\");\n    }}\n    value\n}}\n"
+            "/// Parses without handling failure.\npub fn parse_{i:02}(raw: &str) -> i64 {{\n    let first = raw.split(',').next().unwrap();\n{extra}    let value: i64 = first.trim().parse().expect(\"caller guarantees a number\");\n    if value < 0 {{\n        panic!(\"negative value: {{value}}\");\n    }}\n    if value > 1_000_000 {{\n        unreachable!(\"validated upstream\");\n    }}\n    value\n}}\n"
         );
         write_module(root, &name, &body, &mut modules);
     }
@@ -500,6 +782,18 @@ fn write_large_corpus(root: &Path) {
         body.push_str(&format!(
             "struct UnusedRecord{i:02} {{\n    _id: u64,\n    _label: String,\n    _tags: Vec<String>,\n}}\n\n"
         ));
+        // Two more dead items per file, which is what carries every dead_* file
+        // over the 20% mark `quality-gate`'s per-file warning uses. That warning
+        // inspects `files_with_dead_code.iter().take(5)`
+        // (quality_checks_part1_dead_code.rs:85) — an *unordered* first five —
+        // so a single very-dead file is not enough: whichever five the report
+        // happens to list must contain one over the line, which means all of
+        // them have to be.
+        for suffix in ["a", "b"] {
+            body.push_str(&format!(
+                "fn spare_{i:02}_{suffix}(seed: usize) -> usize {{\n    let mut acc = seed;\n    acc = acc.wrapping_mul(3);\n    acc = acc.wrapping_add(11);\n    acc = acc.rotate_left(2);\n    acc = acc.wrapping_sub(5);\n    acc\n}}\n\n"
+            ));
+        }
         // Unused and unreachable are different findings, and the corpus used to
         // supply only the first: every dead item here was an item nothing
         // *references*, so `--include-unreachable` had nothing to include and
@@ -528,7 +822,13 @@ fn write_large_corpus(root: &Path) {
     // way is correct, and treating its empty O(n^2) bucket as a defect was a
     // fixture gap. A metric can only be checked across a range the corpus
     // actually spans.
-    for i in 0..6 {
+    //
+    // Fourteen files, not six: `analyze big-o` ranks with a default
+    // `--top-files 10`, so `summary.high_complexity_truncated` can only become
+    // true when the high-complexity findings span more than ten files. At six
+    // it was false for every corpus and read as a dead flag echo rather than
+    // the truncation disclosure it is.
+    for i in 0..14 {
         let name = format!("superlinear_{i:02}");
         let body = format!(
             "/// Quadratic scan.\npub fn pairwise_{i:02}(items: &[i64]) -> i64 {{\n    let mut acc = 0i64;\n    for a in items {{\n        for b in items {{\n            acc += a * b;\n        }}\n    }}\n    acc\n}}\n\n/// Cubic scan.\npub fn triple_{i:02}(items: &[i64]) -> i64 {{\n    let mut acc = 0i64;\n    for a in items {{\n        for b in items {{\n            for c in items {{\n                acc += a + b + c;\n            }}\n        }}\n    }}\n    acc\n}}\n"
@@ -584,6 +884,225 @@ fn write_large_corpus(root: &Path) {
     long.push_str("    acc\n}\n");
     write_module(root, "long_body", &long, &mut modules);
 
+    // A file over 1000 lines, because that is the only axis `score`'s
+    // `sub_scores.file_health` has: it is `(1 - files_over_1000 / total_rs) *
+    // 100`, so with the corpus's biggest file pinned just under 1000 lines
+    // (see `write_critical_risk_file`) it returned exactly 100.0 for an empty
+    // project and a 121-file one alike. Split into ~100-line functions so the
+    // file is long without also being the corpus's worst-graded one.
+    let mut huge = String::from("//! Over the 1000-line file-health threshold.\n");
+    for f in 0..12 {
+        huge.push_str(&format!(
+            "\n/// Ballast block {f}.\npub fn ballast_{f:02}() -> i64 {{\n    let mut acc = 0i64;\n"
+        ));
+        for i in 0..100 {
+            huge.push_str(&format!("    acc += {i};\n"));
+        }
+        huge.push_str("    acc\n}\n");
+    }
+    write_module(root, "huge", &huge, &mut modules);
+
+    // Sorting and binary search, the two shapes `analyze big-o`'s pattern
+    // matcher looks for by name. Without them `pattern_matches[]` was empty on
+    // every corpus — an empty list is not evidence that the matcher runs.
+    // These also populate the O(log n) / O(n log n) buckets the corpus
+    // previously could not reach.
+    let searching = "\
+/// Sorts, then searches — the two patterns the matcher names.
+pub fn lookup(mut values: Vec<i64>, needle: i64) -> Option<usize> {
+    values.sort();
+    values.binary_search(&needle).ok()
+}
+
+/// Exponential recursion: two self-calls per level.
+pub fn fib(n: u64) -> u64 {
+    if n < 2 {
+        n
+    } else {
+        fib(n - 1) + fib(n - 2)
+    }
+}
+
+/// A halving loop — the textbook O(log n) shape.
+pub fn locate(values: &[i64], needle: i64) -> usize {
+    let mut lo = 0usize;
+    let mut hi = values.len();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if values[mid] < needle {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
+";
+    write_module(root, "searching", searching, &mut modules);
+
+    // A file that is almost entirely dead, so `quality-gate`'s dead-code check
+    // has something to fire on. The `dead_*` family above leaves the corpus at
+    // ~3% dead overall with a worst file of ~17.5%, and the check's thresholds
+    // are >15% project-wide and >20% per file — so the detector saw 195 dead
+    // lines and the gate still reported zero violations, honestly.
+    let mut dead_heavy = String::new();
+    for i in 0..20 {
+        dead_heavy.push_str(&format!(
+            "fn buried_{i:02}(seed: usize) -> usize {{\n    let mut total = seed;\n"
+        ));
+        for k in 1..12 {
+            dead_heavy.push_str(&format!(
+                "    total = total.wrapping_add(seed.wrapping_mul({k}));\n"
+            ));
+        }
+        dead_heavy.push_str("    total\n}\n\n");
+    }
+    dead_heavy.push_str("/// The one reachable item in an otherwise dead module.\npub fn surface() -> usize {\n    1\n}\n");
+    write_module(root, "dead_heavy", &dead_heavy, &mut modules);
+
+    // Low-provability functions, for `quality-gate`'s provability check.
+    //
+    // That check scores four properties per function and fires under 0.70, and
+    // it is an *average over the first 50 functions* walkdir happens to yield —
+    // so a handful of low scorers cannot move it: the corpus averaged 0.92 and
+    // reported zero violations honestly. Each function here scores 0.20: a raw
+    // pointer costs both nullability and aliasing, `.expect()` with no `?`
+    // erases the bounds evidence, and `println!` costs purity. 40 files x 4
+    // functions at 0.20 keeps the sampled mean under the floor whichever files
+    // the walk reaches first — an earlier version at 0.50 measured 0.72 and the
+    // check stayed silent, which is exactly the near-miss a fixture must not
+    // sit on.
+    //
+    // The pointer is null-checked and never dereferenced: `clippy::
+    // not_unsafe_ptr_arg_deref` is deny-by-default, and a corpus that fails
+    // clippy takes every clippy-backed command down with it.
+    //
+    // `.expect()` rather than `.unwrap()` is load-bearing. Provability treats
+    // them alike (`has_unwrap` matches both), but TDG's critical-defect
+    // detector counts only `.unwrap()` — with unwraps here every one of these
+    // files would auto-fail to F, the corpus average would fall under 80, and
+    // `grade_capped` (which needs a good average *and* an F file) could never
+    // become true. One family must not eat another's axis.
+    for i in 0..40 {
+        let name = format!("unproven_{i:02}");
+        let mut body =
+            String::from("//! FFI-shaped accessors: raw handles in, panics and stdout out.\n\n");
+        for f in 0..4 {
+            body.push_str(&format!(
+                "/// Unverifiable on all four properties the checker scores.\npub fn emit_{i:02}_{f}(handle: *const u8, raw: &str) -> usize {{\n    if handle.is_null() {{\n        println!(\"null handle {i:02}/{f}\");\n        return 0;\n    }}\n    let head = raw.split(',').next().expect(\"caller guarantees a field\");\n    println!(\"emit {i:02}/{f}: {{head}}\");\n    let width: usize = head.trim().parse().expect(\"caller guarantees a number\");\n    width\n}}\n\n"
+            ));
+        }
+        write_module(root, &name, &body, &mut modules);
+    }
+
+    // A hundred-odd unwraps in ONE file, for the Rust Project Score's Known
+    // Defects category: it is `20 - 5 * (production_unwraps / 100)`
+    // (known_defects_scorer_scoring.rs:13-17), so a corpus with 17 unwraps
+    // scores full marks exactly like an empty one. Concentrating them in a
+    // single module is deliberate — TDG grades per file, so 110 unwraps here
+    // cost one F rather than the thirty-odd that spreading them would, and
+    // `grade_capped` still needs the average above 80.
+    let mut unwrap_heavy = String::from(
+        "/// Parses settings, panicking on every unexpected shape.\npub fn parse_settings(raw: &str) -> Vec<String> {\n    let mut out = Vec::new();\n",
+    );
+    for i in 0..110 {
+        unwrap_heavy.push_str(&format!(
+            "    out.push(raw.split('=').nth({}).unwrap().trim().to_string());\n",
+            i % 4
+        ));
+    }
+    unwrap_heavy.push_str("    out\n}\n");
+    write_module(root, "unwrap_heavy", &unwrap_heavy, &mut modules);
+
+    // Deep nesting and unsafe: the two things the Rust Project Score's Code
+    // Quality category actually measures in the mode `pmat score` runs.
+    // `score_complexity_simple` counts lines indented past 40 columns and
+    // `score_unsafe` counts unsafe blocks against documented ones
+    // (code_quality_scoring_heuristics.rs:4-14, 64-76) — with neither in the
+    // corpus the category was 100% for an empty crate and for one carrying 59
+    // complexity violations alike. Unsafe also moves Formal Verification, whose
+    // fast-mode Miri score keys off the unsafe count.
+    let mut nested = String::from("/// Nested past the point any linter forgives.\npub fn deeply(a: i64, b: i64) -> i64 {\n    let mut acc = 0i64;\n");
+    for level in 1..=12 {
+        nested.push_str(&" ".repeat(level * 4));
+        nested.push_str(&format!("if a > {level} {{\n"));
+    }
+    for k in 0..30 {
+        nested.push_str(&" ".repeat(13 * 4));
+        nested.push_str(&format!("acc += b + {k};\n"));
+    }
+    for level in (1..=12).rev() {
+        nested.push_str(&" ".repeat(level * 4));
+        nested.push_str("}\n");
+    }
+    nested.push_str("    acc\n}\n");
+    write_module(root, "nested", &nested, &mut modules);
+
+    let ffi = "\
+//! Raw-pointer helpers, one documented and one not.
+
+/// Reads the first byte behind a caller-supplied pointer.
+///
+/// # Safety
+/// `ptr` must be valid for reads of one byte.
+pub unsafe fn first_byte(ptr: *const u8) -> u8 {
+    *ptr
+}
+
+/// Copies the common prefix of two slices.
+pub fn copy_prefix(src: &[u8], dst: &mut [u8]) {
+    let n = src.len().min(dst.len());
+    unsafe {
+        std::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), n);
+    }
+}
+";
+    write_module(root, "ffi", ffi, &mut modules);
+
+    // Sources in languages this build has no TDG analyser for, so
+    // `ungraded_files[]` — the disclosure that some of the tree was not part of
+    // the score — has entries to carry. With an all-Rust corpus it was empty
+    // everywhere, which looks identical to a disclosure that is never emitted.
+    std::fs::write(
+        root.join("src/deploy.sh"),
+        "#!/bin/sh\nset -eu\n# TODO: this deploy script is not covered by any gate\ncargo build --release\n",
+    )
+    .expect("write deploy.sh");
+    std::fs::write(
+        root.join("src/mod.zig"),
+        "pub fn add(a: i32, b: i32) i32 {\n    return a + b;\n}\n",
+    )
+    .expect("write mod.zig");
+
+    // A file that is not valid Rust, so `files_not_analyzed` counts something.
+    //
+    // Deliberately *not* declared in lib.rs: rustc never sees it, so `cargo
+    // check` still succeeds and every clippy-backed command keeps working,
+    // while the AST walkers that read the directory rather than the module
+    // tree still have to fail on it.
+    std::fs::write(
+        root.join("src/broken_syntax.rs"),
+        "pub fn broken( { this is not rust ,,, ]\nfn ) ( unbalanced {{{\n",
+    )
+    .expect("write broken_syntax.rs");
+
+    // Duplication *inside lib.rs itself*. `file_statistics` is keyed by path,
+    // and `./src/lib.rs` is the one file every corpus has, so it is the only
+    // duplication row the three can be compared on — and it was 0 everywhere
+    // because the corpus put its clones in dup_a_*/dup_b_* instead.
+    let dup_body = "\
+    /// Normalises a record.
+    pub fn normalise(record: &str) -> String {
+        let trimmed = record.trim();
+        let lowered = trimmed.to_lowercase();
+        let collapsed = lowered.split_whitespace().collect::<Vec<_>>().join(\" \");
+        let stripped = collapsed.replace(['\\'', '\"'], \"\");
+        if stripped.is_empty() {
+            return String::from(\"<blank>\");
+        }
+        format!(\"{}:{}\", stripped.len(), stripped)
+    }
+";
     let lib = modules
         .iter()
         .map(|m| format!("pub mod {m};"))
@@ -591,7 +1110,9 @@ fn write_large_corpus(root: &Path) {
         .join("\n");
     std::fs::write(
         root.join("src/lib.rs"),
-        format!("//! Defect-rich fixture.\n\n{lib}\n"),
+        format!(
+            "//! Defect-rich fixture.\n\n{lib}\n\npub mod inline_dup_a {{\n{dup_body}}}\n\npub mod inline_dup_b {{\n{dup_body}}}\n"
+        ),
     )
     .expect("write lib.rs");
 
@@ -670,6 +1191,16 @@ fn write_wasm_fixtures(root: &Path) {
     let mut broken = b"NOTWASM!".to_vec();
     broken.resize(40, 0);
     std::fs::write(root.join("broken.wasm"), &broken).expect("write broken.wasm");
+
+    // Ten more valid modules, because the report's `files_truncated` disclosure
+    // can only become true past `--top-files`, which defaults to 10. With two
+    // reportable binaries it was false for every corpus — a truncation flag
+    // that never truncates is indistinguishable from one nobody reads.
+    std::fs::create_dir_all(root.join("wasm")).expect("mkdir wasm");
+    for i in 0..10 {
+        std::fs::write(root.join(format!("wasm/mod_{i:02}.wasm")), SMALL_WASM)
+            .expect("write extra wasm module");
+    }
 }
 
 /// AssemblyScript sources, so `analyze assembly-script` finds three files.
@@ -687,6 +1218,16 @@ fn write_assemblyscript_fixtures(root: &Path) {
     )
     .expect("write mem.ts");
     std::fs::write(root.join("extra.as"), add).expect("write extra.as");
+
+    // Past `--top-files`' default of 10, for the same reason the wasm family
+    // gets ten more modules: `files_truncated` has no other axis.
+    for i in 0..9 {
+        std::fs::write(
+            root.join(format!("assembly/mod_{i:02}.ts")),
+            format!("export function scale_{i:02}(a: i32): i32 {{\n  let s: i32 = 0;\n  for (let i: i32 = 0; i < a; i++) {{ s += {i}; }}\n  return s;\n}}\n"),
+        )
+        .expect("write extra assemblyscript module");
+    }
 }
 
 /// Model files, so `analyze models` has an inventory to report.
@@ -920,6 +1461,45 @@ fn git_init(root: &Path, size: CorpusSize) {
                 "corpus: revise hot files",
             ],
         );
+
+        // Five more commits, each touching the *same pair* of files.
+        //
+        // Two leaves needed this and neither is about volume. `analyze
+        // bottleneck` reports a file only once its churn ratio clears a
+        // threshold and reports a coupling only for files that change
+        // *together*, so a history of two commits gave it an empty
+        // `bottlenecks[]` and `couplings[]` on every corpus. `analyze churn`'s
+        // `summary.stable_files[]` is the complement: with every file touched
+        // in the same fraction of history nothing is quiet enough to be
+        // stable, so that list was empty too. One hot pair against ~180
+        // untouched files produces both.
+        //
+        // Ten, not five, because `stable_files` has an arithmetic floor:
+        // `churn_score = 0.6 * commits/max_commits + 0.4 * changes/max_changes`
+        // and the list takes only files under 0.10 (git_analysis.rs:404-410).
+        // A file touched once needs `max_commits > 6` before 0.6/max_commits
+        // even fits under the threshold, so a shorter history cannot produce a
+        // stable file no matter how quiet the file is.
+        for c in 0..10 {
+            for name in ["chain_00", "chain_01"] {
+                let p = root.join(format!("src/{name}.rs"));
+                if let Ok(mut body) = std::fs::read_to_string(&p) {
+                    body.push_str(&format!("// churn revision {c}\n"));
+                    let _ = std::fs::write(&p, body);
+                }
+            }
+            git(&["add", "-A"]);
+            git_at(
+                &days_ago(2),
+                &[
+                    "commit",
+                    "--quiet",
+                    "--no-verify",
+                    "-m",
+                    &format!("corpus: churn the hot pair ({c})"),
+                ],
+            );
+        }
     }
 }
 
@@ -1180,3 +1760,26 @@ pub(crate) fn help_for(path: &[&str], cwd: &Path) -> Option<String> {
 /// dropped — a skipped check that looks like a pass is the original sin these
 /// harnesses exist to prevent.
 pub(crate) type SkipReasons = BTreeMap<String, String>;
+
+#[test]
+#[ignore = "dev helper: dumps the three corpora to $PMAT_CORPUS_DUMP for hand-probing"]
+fn dump_corpora() {
+    // No env var ⇒ nothing to dump. Panicking here would break any run of the
+    // whole ignored set, which is how the release gate invokes these sweeps.
+    let Ok(dir) = std::env::var("PMAT_CORPUS_DUMP") else {
+        println!("PMAT_CORPUS_DUMP unset; nothing dumped");
+        return;
+    };
+    let out = std::path::PathBuf::from(dir);
+    for size in [CorpusSize::Empty, CorpusSize::Tiny, CorpusSize::Large] {
+        let d = build_corpus(size);
+        let dest = out.join(size.name());
+        let _ = std::fs::remove_dir_all(&dest);
+        let st = Command::new("cp")
+            .args(["-a".as_ref(), d.path().as_os_str(), dest.as_os_str()])
+            .status()
+            .expect("cp");
+        assert!(st.success());
+        println!("{} -> {}", size.name(), dest.display());
+    }
+}

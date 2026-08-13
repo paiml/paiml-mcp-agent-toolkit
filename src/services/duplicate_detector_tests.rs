@@ -598,12 +598,12 @@ mod tests {
 
     #[test]
     fn test_canonicalize_identifier() {
-        let config = DuplicateDetectionConfig::default();
-        let extractor = UniversalFeatureExtractor::new(config);
+        use crate::services::duplicate_detector::IdentifierScope;
+        let mut scope = IdentifierScope::default();
 
-        let canonical1 = extractor.canonicalize_identifier("myVar");
-        let canonical2 = extractor.canonicalize_identifier("myVar");
-        let canonical3 = extractor.canonicalize_identifier("otherVar");
+        let canonical1 = scope.canonicalize("myVar");
+        let canonical2 = scope.canonicalize("myVar");
+        let canonical3 = scope.canonicalize("otherVar");
 
         // Same identifier should get same canonical name
         assert_eq!(canonical1, canonical2);
@@ -612,8 +612,37 @@ mod tests {
         assert_ne!(canonical1, canonical3);
 
         // Should follow VAR_N pattern
-        assert!(canonical1.starts_with("VAR_"));
-        assert!(canonical3.starts_with("VAR_"));
+        assert_eq!(canonical1, "VAR_0");
+        assert_eq!(canonical3, "VAR_1");
+    }
+
+    /// The numbering is per scope, in order of first appearance: two fragments
+    /// that differ only in their names normalise to the SAME token stream.
+    /// A counter shared across the project instead made the second copy of a
+    /// function normalise to `VAR_9…` where the first was `VAR_2…`, so renamed
+    /// clones — the entire point of normalisation — hashed differently and
+    /// measured a MinHash similarity of 0.10.
+    #[test]
+    fn identifier_numbering_is_rename_invariant() {
+        let config = DuplicateDetectionConfig::default();
+        let extractor = UniversalFeatureExtractor::new(config);
+
+        let first = extractor.extract_features(
+            "fn alpha(values: &[i64]) -> i64 { let mut total = 0; for v in values { total += v; } total }",
+            Language::Rust,
+        );
+        let second = extractor.extract_features(
+            "fn beta(items: &[i64]) -> i64 { let mut sum = 0; for i in items { sum += i; } sum }",
+            Language::Rust,
+        );
+
+        let text =
+            |tokens: &[Token]| -> Vec<String> { tokens.iter().map(|t| t.text.clone()).collect() };
+        assert_eq!(
+            text(&first),
+            text(&second),
+            "renaming every identifier must not change the normalised stream"
+        );
     }
 
     #[test]
@@ -922,5 +951,171 @@ mod tests {
 
         let missing = index.get_signature(999);
         assert!(missing.is_none());
+    }
+}
+
+/// The two measurements the clone engine is built on: what a fragment IS, and
+/// how similar two fragments are. Both were wrong in ways that made the engine
+/// report exact copies and nothing else — see `analyze duplicates ::
+/// structural_similarities`, a hard 0 on every input.
+#[cfg(test)]
+mod fragment_and_similarity_tests {
+    use crate::services::duplicate_detector::{
+        DuplicateDetectionConfig, DuplicateDetectionEngine, Language, MinHashGenerator, Token,
+        TokenKind,
+    };
+    use std::path::Path;
+
+    fn tokens(text: &str) -> Vec<Token> {
+        text.split_whitespace()
+            .map(|w| Token::new(TokenKind::Identifier(w.to_string())))
+            .collect()
+    }
+
+    /// `MinHash` estimates the similarity of SETS, so a fragment built from six
+    /// copies of a block and one built from seven copies had the identical
+    /// shingle set and measured 1.00 — "exact clone". Every near-miss pair in a
+    /// corpus of 40 deliberately near-miss files was therefore invisible.
+    #[test]
+    fn repeating_a_block_changes_the_signature() {
+        let generator = MinHashGenerator::new(64);
+        let block = "let value = compute ( ) ; total += value ; ";
+        let six = tokens(&block.repeat(6));
+        let seven = tokens(&block.repeat(7));
+
+        let sig_six = generator.compute_signature(&generator.generate_shingles(&six, 5));
+        let sig_seven = generator.compute_signature(&generator.generate_shingles(&seven, 5));
+
+        let similarity = sig_six.jaccard_similarity(&sig_seven);
+        assert!(
+            similarity < 1.0,
+            "six copies of a block are not identical to seven, got {similarity}"
+        );
+        assert!(
+            similarity > 0.5,
+            "but they are still highly similar, got {similarity}"
+        );
+    }
+
+    /// A function fragment is the WHOLE function. The boundary used to be the
+    /// first line whose trimmed text was `"}"`, which is every nested block
+    /// close: a function containing an `if` was cut short there, so the engine
+    /// compared prefixes of functions and two functions differing only after
+    /// their first block were "identical".
+    #[test]
+    fn a_fragment_spans_the_whole_function() {
+        let source = "\
+pub fn wide(values: &[i64]) -> i64 {
+    let mut total = 0i64;
+    for value in values {
+        if *value > 0 {
+            total += value;
+        } else {
+            total -= value;
+        }
+    }
+    let scaled = total * 2;
+    let shifted = scaled + 7;
+    let clamped = shifted.min(1000);
+    clamped
+}
+";
+        let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig {
+            min_tokens: 10,
+            ..DuplicateDetectionConfig::default()
+        });
+        let fragments = engine
+            .extract_fragments(Path::new("wide.rs"), source, Language::Rust)
+            .expect("extraction must succeed");
+
+        assert_eq!(fragments.len(), 1, "one function, one fragment");
+        assert_eq!(fragments[0].start_line, 1);
+        assert_eq!(
+            fragments[0].end_line, 14,
+            "the fragment must reach the function's closing brace, not the `if`'s"
+        );
+    }
+
+    /// The similarity a group reports is measured from the fragments, not
+    /// echoed from the search's cut-off. It used to be
+    /// `config.similarity_threshold` verbatim, so RAISING the threshold RAISED
+    /// the reported similarity of the groups that survived.
+    #[test]
+    fn group_similarity_does_not_follow_the_threshold() {
+        let alpha = "\
+pub fn tally_alpha(values: &[i64], limit: i64) -> i64 {
+    let mut total = 0i64;
+    let mut seen = 0usize;
+    for value in values {
+        if *value > limit {
+            total = total.wrapping_add(value * 3);
+            seen += 1;
+        } else if *value < 0 {
+            total = total.wrapping_sub(value / 2);
+        } else {
+            total = total.wrapping_add(1);
+        }
+        if seen > 100 {
+            break;
+        }
+    }
+    total
+}
+";
+        let beta = "\
+pub fn tally_beta(items: &[i64], bound: i64) -> i64 {
+    let mut sum = 0i64;
+    let mut counted = 0usize;
+    for item in items {
+        if *item > bound {
+            sum = sum.wrapping_add(item * 3);
+            counted += 1;
+        } else if *item < 0 {
+            sum = sum.wrapping_sub(item / 2);
+        } else {
+            sum = sum.wrapping_add(1);
+        }
+        if counted % 7 == 0 {
+            sum = sum.wrapping_mul(2);
+        }
+        if counted > 100 {
+            break;
+        }
+    }
+    sum
+}
+";
+        let measured = |threshold: f64| -> f64 {
+            let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig {
+                similarity_threshold: threshold,
+                ..DuplicateDetectionConfig::default()
+            });
+            let files = vec![
+                (
+                    std::path::PathBuf::from("alpha.rs"),
+                    alpha.to_string(),
+                    Language::Rust,
+                ),
+                (
+                    std::path::PathBuf::from("beta.rs"),
+                    beta.to_string(),
+                    Language::Rust,
+                ),
+            ];
+            let report = engine.detect_duplicates(&files).expect("detection");
+            assert_eq!(report.groups.len(), 1, "the pair is one clone group");
+            report.groups[0].average_similarity
+        };
+
+        let loose = measured(0.50);
+        let tighter = measured(0.70);
+        assert!(
+            (loose - tighter).abs() < 1e-9,
+            "the same two functions must measure the same similarity at any cut-off: {loose} vs {tighter}"
+        );
+        assert!(
+            loose > 0.7 && loose < 1.0,
+            "a near-miss pair is neither unrelated nor identical, got {loose}"
+        );
     }
 }

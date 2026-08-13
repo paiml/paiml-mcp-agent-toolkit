@@ -1,3 +1,51 @@
+/// The coverage floor this gate enforces. It was written twice, as the literal
+/// `80.0`, at the two call sites of [`check_coverage`].
+const QUALITY_GATE_COVERAGE_MIN: f64 = 80.0;
+
+/// The coverage check, with an absent report disclosed instead of counted as zero.
+///
+/// [`check_coverage`] does not measure coverage — it reads a report someone else
+/// produced (`.pmat/coverage-cache.json`, else `.pmat-metrics/coverage.json`).
+/// When neither file exists it returned an empty violation list, which is the
+/// same value it returns for a project measured at 100%. `coverage_violations: 0`
+/// therefore meant "clean" and "never looked" at once, and the second reading is
+/// the common one: none of the three differential corpora carries a coverage
+/// report, and neither does a freshly cloned repository.
+///
+/// A check that did not run has not passed, so the gap is reported as a coverage
+/// finding of its own. `check_coverage` is left alone: it answers "how does the
+/// measured coverage compare to the floor", which is a different question from
+/// "was there a measurement", and only the caller composing the two can answer
+/// the second without the first losing its meaning.
+async fn run_coverage_check(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    if read_coverage_from_cache(project_path).is_none() {
+        return Ok(vec![QualityViolation {
+            check_type: "coverage".to_string(),
+            severity: "error".to_string(),
+            file: "project".to_string(),
+            line: None,
+            message: format!(
+                "Code coverage was NOT measured (no coverage report at .pmat/coverage-cache.json \
+                 or .pmat-metrics/coverage.json), so the {QUALITY_GATE_COVERAGE_MIN:.1}% minimum \
+                 is unverified — this gate does not cover coverage"
+            ),
+            details: Some(ViolationDetails {
+                affected_files: Vec::new(),
+                example_code: None,
+                fix_suggestion: Some(
+                    "Produce a report first — `pmat query --coverage` runs cargo-llvm-cov and \
+                     writes .pmat/coverage-cache.json; alternatively write \
+                     {\"coverage\": <percent>} to .pmat-metrics/coverage.json — then re-run the \
+                     gate, or deselect the check with `--checks` if coverage is gated elsewhere."
+                        .to_string(),
+                ),
+                score_factors: vec!["coverage: not measured".to_string()],
+            }),
+        }]);
+    }
+    check_coverage(project_path, QUALITY_GATE_COVERAGE_MIN).await
+}
+
 /// Helper for provability check execution
 async fn execute_provability_check(
     project_path: &Path,
@@ -85,7 +133,7 @@ async fn run_all_project_checks(
     );
     run_check!(
         "test coverage",
-        check_coverage(project_path, 80.0),
+        run_coverage_check(project_path),
         coverage_violations
     );
     run_check!(

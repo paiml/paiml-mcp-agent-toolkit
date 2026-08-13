@@ -51,6 +51,14 @@ pub struct QualityAssessment {
     pub measured_phases: usize,
     /// Phases attempted.
     pub total_phases: usize,
+    /// How many source files the run actually read.
+    ///
+    /// The largest count any phase reported: phases that do not enumerate files
+    /// report `0`, and the complexity phase enumerates exactly the analysable
+    /// source set. `progress.files_completed` is this minus the files that carry
+    /// a finding; before it was measured, that field was the literal `0` for
+    /// every project, empty directories and 121-file corpora alike.
+    pub files_examined: usize,
 }
 
 impl QualityAssessment {
@@ -274,6 +282,11 @@ pub(super) fn summarize(
         .collect();
     let total_phases = outcomes.len();
     let measured_phases = measured.len();
+    let files_examined = outcomes
+        .iter()
+        .map(|(_, o)| o.files_examined)
+        .max()
+        .unwrap_or(0);
     let score = if measured.is_empty() {
         0.0
     } else {
@@ -314,6 +327,7 @@ pub(super) fn summarize(
         score,
         measured_phases,
         total_phases,
+        files_examined,
     })
 }
 

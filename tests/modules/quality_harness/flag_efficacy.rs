@@ -72,6 +72,18 @@ const DENY_PATHS: &[(&str, &str)] = &[
         "analyze clippy",
         "runs clippy --fix and rewrites the fixture's source in place",
     ),
+    // Mutating, like `comply enforce`: it writes ./.pmat/backup and can rewrite
+    // project.toml, so sweeping it changes the fixture every other step
+    // measures. Its `--no-backup` is NOT a no-op — on a project the migration
+    // actually backs up, the flag removes the "✓ Created backup at:" line
+    // (304B -> 266B, verified by hand). It reads inert only on this corpus,
+    // which pins version 2.0.0 so `comply` has a version gap to react to; that
+    // input sends migrate down the "3 breaking changes detected" path, which
+    // returns before any backup is taken, leaving the flag nothing to suppress.
+    (
+        "comply migrate",
+        "writes ./.pmat/backup and may rewrite project.toml, mutating the shared fixture",
+    ),
 ];
 
 /// Flags that mutate or block regardless of which command carries them.
@@ -1637,5 +1649,335 @@ fn large_corpus_contains_every_defect_family() {
         tracked.is_empty(),
         "critical.rs must stay uncommitted: with churn history its prediction \
          confidence saturates and a confidence threshold has no boundary to cross"
+    );
+
+    assert_large_corpus_spans_the_gate_a_inputs(root, &read);
+}
+
+/// The inputs added for the differential gate's 49 corpus gaps.
+///
+/// Split out only for length. Every assertion here pins a fixture that some
+/// numeric leaf's *responsiveness* depends on: an unasserted fixture rots
+/// silently, and the corpus has lost content that way before. Each one names
+/// the leaf it feeds, so a failure says what breaks rather than only what
+/// changed.
+fn assert_large_corpus_spans_the_gate_a_inputs(root: &Path, read: &dyn Fn(&str) -> String) {
+    // score :: sub_scores.file_health — `(1 - files_over_1000 / total_rs) * 100`,
+    // and critical.rs is deliberately pinned under 1000 lines just above.
+    let huge = read("src/huge.rs").lines().count();
+    assert!(
+        huge > 1000,
+        "src/huge.rs is {huge} lines; file_health only moves off 100.0 when a \
+         file exceeds 1000 lines"
+    );
+
+    // analyze tdg / build-tdg :: f_grade_count, grade_capped — TDG's penalty is
+    // 69.9 * 0.6^(n-1), so ONE critical defect can never reach F. Exactly one
+    // file may carry three, or the average falls under 80 and grade_capped (which
+    // needs a good average *and* an F) stops being reachable.
+    let f_grade_file = read("src/faults_00.rs").matches(".unwrap()").count();
+    assert!(
+        f_grade_file >= 3,
+        "src/faults_00.rs has {f_grade_file} unwrap() calls; F needs at least 2 \
+         critical defects and the fixture carries 3"
+    );
+    assert_eq!(
+        read("src/faults_01.rs").matches(".unwrap()").count(),
+        1,
+        "only faults_00 may be F-grade: more F files pull the average under 80 \
+         and grade_capped can never become true"
+    );
+    assert!(
+        !read("src/unproven_00.rs").contains(".unwrap()"),
+        "the unproven_* family must use .expect(), which TDG does not count as a \
+         critical defect — with unwraps every one of its 40 files auto-fails to F"
+    );
+
+    // quality-gate :: results.provability_violations — the check averages the
+    // first 50 functions walkdir yields and fires under 0.70. Each of these
+    // scores 0.20: raw pointer (nullability + aliasing), .expect() with no `?`
+    // (bounds), println! (purity).
+    let unproven = read("src/unproven_39.rs");
+    assert!(
+        unproven.contains("*const u8")
+            && unproven.contains("println!")
+            && unproven.contains(".expect("),
+        "unproven_* must be low on all four provability properties at once"
+    );
+    assert!(
+        !unproven.contains("unsafe"),
+        "the raw pointer must never be dereferenced: clippy::not_unsafe_ptr_arg_deref \
+         is deny-by-default and a corpus that fails clippy takes every \
+         clippy-backed command down with it"
+    );
+
+    // analyze tdg :: ungraded_files[] — sources in languages this build cannot
+    // grade, so the "not part of the score" disclosure has entries.
+    assert!(
+        root.join("src/deploy.sh").exists() && root.join("src/mod.zig").exists(),
+        "corpus must carry ungradable-language sources (.sh, .zig)"
+    );
+
+    // analyze proof-annotations :: summary.files_not_analyzed. Deliberately not
+    // declared in lib.rs: rustc never sees it, so cargo check still succeeds.
+    assert!(
+        read("src/broken_syntax.rs").contains("this is not rust"),
+        "corpus must carry a file the AST walkers cannot parse"
+    );
+    assert!(
+        !read("src/lib.rs").contains("pub mod broken_syntax;"),
+        "broken_syntax.rs must stay out of the module tree, or the whole corpus \
+         stops compiling and every clippy-backed command fails first"
+    );
+
+    // analyze duplicates :: file_statistics ./src/lib.rs — lib.rs is the one
+    // file all three corpora have, so it is the only per-file duplication row
+    // they can be compared on.
+    let lib = read("src/lib.rs");
+    assert!(
+        lib.contains("pub mod inline_dup_a") && lib.contains("pub mod inline_dup_b"),
+        "lib.rs must contain its own clone pair"
+    );
+
+    // analyze big-o :: pattern_matches[], distribution.O(n log n), and
+    // summary.high_complexity_truncated (which needs findings past --top-files 10).
+    let searching = read("src/searching.rs");
+    assert!(
+        searching.contains(".sort()") && searching.contains(".binary_search("),
+        "corpus must contain the sorting and binary-search patterns the matcher names"
+    );
+    assert!(
+        searching.contains("fib(n - 1) + fib(n - 2)") && searching.contains("hi - lo"),
+        "corpus must contain an exponential and a logarithmic algorithm — both \
+         buckets stay empty, which is recorded in ALLOWED_CONSTANTS as a \
+         classifier gap and must stay falsifiable"
+    );
+    let superlinear = (0..14)
+        .filter(|i| root.join(format!("src/superlinear_{i:02}.rs")).exists())
+        .count();
+    assert!(
+        superlinear >= 11,
+        "only {superlinear} superlinear files; high_complexity_truncated needs \
+         findings in more than --top-files (default 10) files"
+    );
+
+    // quality-gate :: results.dead_code_violations — the per-file warning walks
+    // an UNORDERED `files_with_dead_code.iter().take(5)`, so every dead file has
+    // to clear 20%, not just the worst one.
+    let dead_heavy = read("src/dead_heavy.rs");
+    assert!(
+        dead_heavy.matches("fn buried_").count() >= 20,
+        "dead_heavy.rs must be overwhelmingly dead"
+    );
+    assert!(
+        read("src/dead_00.rs").contains("fn spare_00_a"),
+        "every dead_* file needs its extra dead items to clear the 20% per-file \
+         threshold; only the worst file clearing it is a coin flip"
+    );
+
+    // quality-gate :: results.security_violations — check_security reads only
+    // the top level (fs::read_dir, no recursion), so a file under src/ is
+    // invisible to it.
+    let leak = read("leak.rs");
+    assert!(
+        leak.contains("password") && leak.contains("api_key"),
+        "the hardcoded-secret fixture must sit at the repository root, where the \
+         non-recursive security scan can see it"
+    );
+
+    // repo-score :: repository_hygiene / pmat_compliance / precommit_hooks.
+    for cruft in [".DS_Store", "backup.bak", "old.orig", "scratch.tmp"] {
+        assert!(
+            root.join(cruft).exists(),
+            "cruft fixture {cruft} missing; repository_hygiene C1 scores 5.0/5.0 without it"
+        );
+    }
+    assert!(
+        root.join(".idea/workspace.xml").exists() && root.join(".vscode/settings.json").exists(),
+        "team-specific files missing; repository_hygiene C2 scores full marks without them"
+    );
+    let blob = std::fs::metadata(root.join("bigblob.dat"))
+        .map(|m| m.len())
+        .unwrap_or(0);
+    assert!(
+        blob > 1_000_000,
+        "bigblob.dat is {blob} bytes; C3 deducts only for blobs over 1MB in git history"
+    );
+    let in_history = std::process::Command::new("git")
+        .args(["ls-files", "bigblob.dat"])
+        .current_dir(root)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+    assert!(
+        !in_history.is_empty(),
+        "bigblob.dat must be COMMITTED — C3 pipes `git rev-list --objects HEAD`, \
+         so an uncommitted blob is invisible to it"
+    );
+    assert!(
+        read(".pmat-gates.toml").contains("[complexity]"),
+        "pmat_compliance F1/F2 both key off .pmat-gates.toml"
+    );
+    let hook = root.join(".git/hooks/pre-commit");
+    assert!(
+        read(".git/hooks/pre-commit").contains("clippy"),
+        "precommit_hooks B2 grades the hook's contents"
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&hook)
+            .map(|m| m.permissions().mode())
+            .unwrap_or(0);
+        assert!(
+            mode & 0o111 != 0,
+            "the pre-commit hook must be executable, or B1 scores 5.0 instead of 10.0"
+        );
+    }
+
+    // comply :: versions_behind, breaking_changes[], recommendations[],
+    // is_compliant — all four move only for a project pinned to an older pmat.
+    assert!(
+        read(".pmat/project.toml").contains("version = \"2.0.0\""),
+        "the comply surface has no other axis: an unpinned project is 0 versions \
+         behind with nothing breaking, truthfully"
+    );
+
+    // quality-gate :: results.coverage_violations — the large corpus is the
+    // below-floor branch; empty carries the passing report, tiny none at all.
+    assert!(
+        read(".pmat/coverage-cache.json").contains("\"1\":1"),
+        "the below-floor coverage report must be a hit map, so the check does the \
+         percentage arithmetic itself rather than echoing a number"
+    );
+    let lcov = read("target/coverage/lcov.info");
+    assert!(
+        lcov.contains(&format!("SF:{}", root.join("src/lib.rs").display())),
+        "the lcov artifact must use absolute SF: paths, as cargo-llvm-cov writes \
+         them — a ./-prefixed artifact would paper over the key mismatch that \
+         keeps analyze incremental-coverage on the skip list"
+    );
+
+    // analyze churn :: summary.stable_files[] and analyze bottleneck ::
+    // couplings[] — one hot pair against a quiet tree, over enough commits that
+    // 0.6/max_commits fits under the 0.10 stable threshold.
+    assert!(
+        super::commit_count(root) >= 12,
+        "large corpus has {} commits; a file touched once cannot score under 0.10 \
+         until max_commits exceeds 6",
+        super::commit_count(root)
+    );
+
+    // analyze assembly-script / web-assembly :: files_truncated — needs more
+    // reportable files than --top-files' default of 10.
+    let wasm_modules = (0..10)
+        .filter(|i| root.join(format!("wasm/mod_{i:02}.wasm")).exists())
+        .count();
+    assert_eq!(
+        wasm_modules, 10,
+        "ten extra valid wasm modules are what push the report past --top-files"
+    );
+    let as_modules = (0..9)
+        .filter(|i| root.join(format!("assembly/mod_{i:02}.ts")).exists())
+        .count();
+    assert_eq!(
+        as_modules, 9,
+        "nine extra AssemblyScript sources, same reason"
+    );
+
+    // score :: rps_categories."Dependency Health" and "Performance & Benchmarking"
+    // are read straight out of the manifest — feature-flag tiers and a [[bench]]
+    // section with harness = false.
+    let manifest = read("Cargo.toml");
+    assert!(
+        manifest.contains("[features]"),
+        "the large corpus manifest must declare feature flags, or Dependency \
+         Health scores the same 5/12 for every project"
+    );
+    assert!(
+        manifest.contains("[[bench]]") && manifest.contains("harness = false"),
+        "the large corpus manifest must declare a custom-harness benchmark"
+    );
+    assert!(
+        root.join("benches/throughput.rs").exists(),
+        "a declared [[bench]] with no file makes cargo refuse the manifest, which \
+         takes every cargo-backed command down with it"
+    );
+    assert!(
+        read(".github/workflows/ci.yml").contains("cargo bench"),
+        "3 of the 10 benchmarking points are for running benchmarks in CI"
+    );
+    // score :: rps_categories."Known Defects" is `20 - 5 * (unwraps / 100)`, and
+    // "GPU/SIMD Quality" is N/A until a GPU file sits at the TOP LEVEL.
+    let unwraps = read("src/unwrap_heavy.rs").matches(".unwrap()").count();
+    assert!(
+        unwraps >= 100,
+        "src/unwrap_heavy.rs has {unwraps} unwraps; Known Defects does not move          below 100, and they must stay in ONE file or the F grades they create          drag the TDG average under 80 and grade_capped stops being reachable"
+    );
+    assert!(
+        read("kernel.cu").contains("__syncthreads"),
+        "the CUDA kernel must sit at the repository root: has_gpu_simd_code reads          only the top level, so the same file one directory down leaves the          category N/A"
+    );
+    assert!(
+        read(".pmat-metrics/coverage.result").contains("coverage_pct"),
+        "`pmat score` reads coverage from .pmat-metrics/coverage.result, which is \
+         neither of the two files quality-gate reads"
+    );
+}
+
+/// The empty and tiny corpora must stay poor.
+///
+/// The differential invariant is a *contrast*, so every input added to the large
+/// corpus for it is only worth anything while the other two lack it. This is the
+/// other half of `large_corpus_contains_every_defect_family`: it fails if a
+/// future fixture is added to `build_corpus` unconditionally.
+#[test]
+fn small_corpora_stay_poor_so_the_contrast_survives() {
+    for size in [CorpusSize::Empty, CorpusSize::Tiny] {
+        let corpus = build_corpus(size);
+        let root = corpus.path();
+        for absent in [
+            ".pmat-gates.toml",
+            ".pmat/project.toml",
+            ".git/hooks/pre-commit",
+            "bigblob.dat",
+            ".DS_Store",
+            ".idea/workspace.xml",
+            "leak.rs",
+            "src/huge.rs",
+            "src/broken_syntax.rs",
+            "src/deploy.sh",
+            "src/unproven_00.rs",
+            "src/dead_heavy.rs",
+            "models/tiny.gguf",
+            "mod.wasm",
+            "assembly/index.ts",
+            "target/coverage/lcov.info",
+            "benches/throughput.rs",
+            "kernel.cu",
+            "src/unwrap_heavy.rs",
+            "src/nested.rs",
+            ".pmat-metrics/coverage.result",
+        ] {
+            assert!(
+                !root.join(absent).exists(),
+                "{} corpus contains {absent}; the gate compares the three and an \
+                 input present everywhere proves nothing",
+                size.name()
+            );
+        }
+    }
+    // The one deliberate exception, and why: `results.passed` needs a project
+    // that passes, and `coverage_violations` needs the above-floor branch.
+    let empty = build_corpus(CorpusSize::Empty);
+    assert!(
+        empty.path().join(".pmat-metrics/coverage.json").exists(),
+        "the empty corpus carries the passing coverage report — without it no \
+         corpus passes quality-gate and results.passed is constant false"
+    );
+    let tiny = build_corpus(CorpusSize::Tiny);
+    assert!(
+        !tiny.path().join(".pmat-metrics/coverage.json").exists(),
+        "tiny must stay reportless, or the not-measured branch is never exercised"
     );
 }

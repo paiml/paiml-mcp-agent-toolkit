@@ -8,12 +8,12 @@ use super::output::{
     print_enforcement_summary,
 };
 use super::states::{
-    handle_analyzing_state, handle_complete_state, handle_refactoring_pass,
-    handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
+    handle_analyzing_state, handle_refactoring_pass, handle_validating_enforcement_state,
+    handle_violating_enforcement_state_proxy,
 };
 use super::types::{
-    EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
-    EnforcementState, QualityProfile,
+    EnforcementIterationResult, EnforcementLoopResult, EnforcementResult, EnforcementState,
+    QualityProfile,
 };
 use crate::cli::colors as c;
 use crate::cli::EnforceOutputFormat;
@@ -356,7 +356,23 @@ pub async fn run_enforcement_step(
             .await
         }
 
-        EnforcementState::Complete => handle_complete_state(),
+        // This arm used to call a handler that takes no arguments and answers
+        // `score: 1.0`, `violations: []`, `files_completed: 100 // Would count
+        // actual` — a perfect verdict for a project it never opened. Complete is
+        // a claim about the tree, so it is read from the tree, exactly as the
+        // Validating arm already does.
+        EnforcementState::Complete => {
+            handle_analyzing_state(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await
+        }
     }
 }
 
@@ -470,15 +486,10 @@ async fn validate_current_state(
         } else {
             format!("fix_{violations_count}_violations")
         },
-        progress: EnforcementProgress {
-            files_completed: 0,
-            files_remaining: 0,
-            estimated_iterations: if passes {
-                0
-            } else {
-                ((1.0 - result.score) * 10.0) as u32
-            },
-        },
+        // `--validate-only` re-stated progress as `0 / 0` while holding the run
+        // that had just measured it, so the surface that exists to report the
+        // current state was the one surface that reported none of it.
+        progress: result.progress,
     };
 
     output_result(&validation_result, format, false, output)?;

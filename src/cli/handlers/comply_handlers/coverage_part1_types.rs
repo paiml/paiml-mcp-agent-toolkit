@@ -57,6 +57,8 @@ auto_update = true
     fn test_compliance_report_serialization() {
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "2.0.0".to_string(),
             is_compliant: true,
             versions_behind: 10,
@@ -81,6 +83,8 @@ auto_update = true
         };
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "1.0.0".to_string(),
             is_compliant: true,
             versions_behind: 0,

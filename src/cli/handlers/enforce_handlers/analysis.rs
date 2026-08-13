@@ -287,16 +287,24 @@ pub async fn run_complexity_analysis(
             .then_with(|| a.location.cmp(&b.location))
     });
 
+    // This is the phase that enumerates the analysable source set — the same
+    // set its "no analysable source files" disclosure above is about — so it is
+    // the one that can say how many files the run read. `progress.files_completed`
+    // is computed from this instead of being the literal `0` it used to be.
+    let files_examined = file_metrics.len();
+
     if failures.is_empty() {
-        return Ok(PhaseOutcome::measured(violations));
+        return Ok(PhaseOutcome::measured(violations).over_files(files_examined));
     }
 
     // Partly measured: keep the findings from the files that DID parse, and
-    // still deny the run a clean bill of health for the ones that did not.
+    // still deny the run a clean bill of health for the ones that did not. Only
+    // the files that parsed were measured, so only those are counted as read.
     let reason = warn_not_measured("complexity", project_path, &unparseable_reason(&failures));
     Ok(PhaseOutcome {
         violations,
         unmeasured: Some(reason),
+        files_examined: files_examined.saturating_sub(failures.len()),
     })
 }
 

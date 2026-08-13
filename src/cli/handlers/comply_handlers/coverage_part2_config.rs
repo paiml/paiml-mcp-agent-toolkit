@@ -239,6 +239,8 @@
     fn test_print_compliance_text_compliant() {
         let report = ComplianceReport {
             project_version: PMAT_VERSION.to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: PMAT_VERSION.to_string(),
             is_compliant: true,
             versions_behind: 0,
@@ -261,6 +263,8 @@
     fn test_print_compliance_text_non_compliant() {
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: PMAT_VERSION.to_string(),
             is_compliant: false,
             versions_behind: 10,

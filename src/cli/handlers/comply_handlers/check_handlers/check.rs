@@ -44,32 +44,60 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
-    // A `debug_assert!` is not a guard in a release build: `comply check -p
-    // /does/not/exist` sailed past it, and the first thing that touched the
-    // filesystem was `load_or_create_project_config`, which tried to
-    // `create_dir_all("/does/not/exist/.pmat")`. That surfaced as "Permission
-    // denied (os error 13)" and exit 126 — an error about the wrong thing,
-    // pointing at a permissions problem the user does not have. Reject the
-    // missing path by name, like every other analysis handler does.
+    let report = compute_compliance_report(project_path, failures_only)?;
+
+    output_compliance_report(&report, format, project_path)?;
+    let _ = update_last_check_timestamp(project_path);
+
+    apply_exit_policy(&report, strict)
+}
+
+/// Reject an input no compliance verdict can honestly be given for.
+///
+/// A `debug_assert!` is not a guard in a release build: `comply check -p
+/// /does/not/exist` sailed past it, and the first thing that touched the
+/// filesystem was `load_or_create_project_config`, which tried to
+/// `create_dir_all("/does/not/exist/.pmat")`. That surfaced as "Permission
+/// denied (os error 13)" and exit 126 — an error about the wrong thing,
+/// pointing at a permissions problem the user does not have.
+///
+/// A path that exists is not yet a project either. An EMPTY directory came back
+/// "Project Version: 3.30.0 / Versions Behind: 0 / Status: COMPLIANT",
+/// "154 checks (0 fail)", exit 0 — the same headline check count this
+/// repository reports, and a better verdict than this repository gets. Every
+/// one of those 154 checks had skipped for want of anything to look at, and
+/// `load_or_create_project_config` had meanwhile WRITTEN a `.pmat/` directory
+/// into the empty tree to invent the version it then reported as current.
+fn guard_analysable_project(project_path: &Path) -> Result<()> {
     if !project_path.exists() {
         anyhow::bail!("Path not found: {}", project_path.display());
     }
-
-    // A path that exists is not yet a project. An EMPTY directory came back
-    // "Project Version: 3.30.0 / Versions Behind: 0 / Status: COMPLIANT",
-    // "154 checks (0 fail)", exit 0 — the same headline check count this
-    // repository reports, and a better verdict than this repository gets. Every
-    // one of those 154 checks had skipped for want of anything to look at, and
-    // `load_or_create_project_config` had meanwhile WRITTEN a `.pmat/` directory
-    // into the empty tree to invent the version it then reported as current.
-    // `project-diag` already refuses this input by name; comply must not answer
-    // a compliance question about a path with nothing in it to comply.
     if let Some(reason) = no_project_here(project_path) {
         anyhow::bail!(
             "No project found at {}: {reason} — comply has nothing to check here, and an unmeasured project is not a compliant one",
             project_path.display()
         );
     }
+    Ok(())
+}
+
+/// THE compliance computation. `comply check` and `comply report` are two
+/// renderings of this one result, not two implementations of it.
+///
+/// `comply report` used to run a five-check stub of its own and finish it with
+/// a literal `recommendations: vec![]`, while `comply check` computed that same
+/// schema field from the same config a few hundred lines away — so on the very
+/// inputs where check returned one and two recommendations, report returned
+/// none. Worse, report's five checks contained the only ones that cannot fail,
+/// so report answered COMPLIANT on a tree where check had just reported a Fail,
+/// and report's JSON was byte-identical for an empty project and a 121-file
+/// defect-ridden one bar the timestamp. Both commands now share this function,
+/// so there is exactly one answer to give.
+pub(crate) fn compute_compliance_report(
+    project_path: &Path,
+    failures_only: bool,
+) -> Result<ComplianceReport> {
+    guard_analysable_project(project_path)?;
 
     crate::status_eprintln!("Checking PMAT compliance for {}", project_path.display());
 
@@ -77,16 +105,16 @@ pub(crate) async fn handle_check(
     let comply_config = &yaml_config.comply;
     announce_suppressions(project_path, comply_config);
 
-    let config = load_or_create_project_config(project_path)?;
+    let (config, version_source) = load_project_config_with_source(project_path)?;
     let project_version = &config.pmat.version;
 
     let checks = build_all_compliance_checks(project_path, comply_config, project_version);
-    let report = build_compliance_report(checks, project_version, failures_only);
-
-    output_compliance_report(&report, format, project_path)?;
-    let _ = update_last_check_timestamp(project_path);
-
-    apply_exit_policy(&report, strict)
+    Ok(build_compliance_report(
+        checks,
+        project_version,
+        version_source,
+        failures_only,
+    ))
 }
 
 /// Why this path holds no project, or `None` if it plausibly does.
@@ -307,6 +335,7 @@ fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
 fn build_compliance_report(
     checks: Vec<ComplianceCheck>,
     project_version: &str,
+    version_source: VersionSource,
     failures_only: bool,
 ) -> ComplianceReport {
     debug_assert!(
@@ -333,9 +362,11 @@ fn build_compliance_report(
 
     ComplianceReport {
         project_version: project_version.to_string(),
+        project_version_source: version_source,
         current_version: PMAT_VERSION.to_string(),
         is_compliant: failures == 0,
         versions_behind,
+        summary: CheckSummary::tally(&checks),
         checks: if failures_only {
             checks
                 .into_iter()
@@ -536,7 +567,8 @@ mod build_compliance_report_tests {
     #[test]
     fn test_compliant_when_no_failures() {
         let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Warn)];
-        let report = build_compliance_report(checks, "1.0.0", false);
+        let report =
+            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
         assert!(report.is_compliant);
         assert_eq!(report.checks.len(), 2);
     }
@@ -544,7 +576,8 @@ mod build_compliance_report_tests {
     #[test]
     fn test_non_compliant_when_any_fail() {
         let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Fail)];
-        let report = build_compliance_report(checks, "1.0.0", false);
+        let report =
+            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
         assert!(!report.is_compliant);
     }
 
@@ -556,7 +589,7 @@ mod build_compliance_report_tests {
             check("s", CheckStatus::Skip),
             check("f", CheckStatus::Fail),
         ];
-        let report = build_compliance_report(checks, "1.0.0", true);
+        let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, true);
         assert_eq!(report.checks.len(), 1);
         assert_eq!(report.checks[0].name, "f");
     }
@@ -568,13 +601,15 @@ mod build_compliance_report_tests {
             check("w", CheckStatus::Warn),
             check("f", CheckStatus::Fail),
         ];
-        let report = build_compliance_report(checks, "1.0.0", false);
+        let report =
+            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
         assert_eq!(report.checks.len(), 3);
     }
 
     #[test]
     fn test_project_version_propagates() {
-        let report = build_compliance_report(vec![], "2.5.0", false);
+        let report =
+            build_compliance_report(vec![], "2.5.0", VersionSource::PinnedByProject, false);
         assert_eq!(report.project_version, "2.5.0");
         assert!(!report.current_version.is_empty());
     }
@@ -582,7 +617,8 @@ mod build_compliance_report_tests {
     #[test]
     fn test_empty_checks_compliant() {
         // No failures = compliant by definition
-        let report = build_compliance_report(vec![], "1.0.0", false);
+        let report =
+            build_compliance_report(vec![], "1.0.0", VersionSource::PinnedByProject, false);
         assert!(report.is_compliant);
         assert_eq!(report.checks.len(), 0);
     }
@@ -591,6 +627,8 @@ mod build_compliance_report_tests {
     fn test_apply_exit_policy_returns_ok_when_compliant_no_warnings() {
         let report = ComplianceReport {
             project_version: "1.0".into(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "1.0".into(),
             is_compliant: true,
             versions_behind: 0,
@@ -608,6 +646,8 @@ mod build_compliance_report_tests {
     fn test_apply_exit_policy_returns_ok_when_strict_but_no_warnings() {
         let report = ComplianceReport {
             project_version: "1.0".into(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "1.0".into(),
             is_compliant: true,
             versions_behind: 0,
@@ -629,6 +669,8 @@ mod build_compliance_report_tests {
     fn sarif_is_sarif_and_carries_pmats_own_checks() {
         let report = ComplianceReport {
             project_version: "1.0".into(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "1.0".into(),
             is_compliant: false,
             versions_behind: 0,

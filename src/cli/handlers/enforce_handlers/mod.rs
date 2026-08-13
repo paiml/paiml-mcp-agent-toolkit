@@ -37,15 +37,19 @@ pub use output::{
     print_progress_bar,
 };
 pub use states::{
-    handle_analyzing_enforcement_state, handle_analyzing_state, handle_complete_enforcement_state,
-    handle_complete_state, handle_refactoring_pass, handle_validating_enforcement_state,
-    handle_violating_enforcement_state_proxy, handle_violating_state,
+    handle_analyzing_enforcement_state, handle_analyzing_state, handle_refactoring_pass,
+    handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
+    handle_violating_state,
 };
 
-// The fabricating refactoring handlers no longer exist outside the test build:
-// nothing the binary can run reaches them. See `states::handle_refactoring_pass`.
+// The handlers that answer without measuring no longer exist outside the test
+// build: nothing the binary can run reaches them. See
+// `states::handle_refactoring_pass`, and `run_enforcement_step`'s Complete arm.
 #[cfg(test)]
-pub use states::{handle_refactoring_enforcement_state, handle_refactoring_state};
+pub use states::{
+    handle_complete_enforcement_state, handle_complete_state, handle_refactoring_enforcement_state,
+    handle_refactoring_state,
+};
 pub use types::{
     EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
     EnforcementState, QualityProfile, QualityViolation,

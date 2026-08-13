@@ -533,6 +533,157 @@ mod both_analyzers_apply_one_gate {
         );
     }
 
+    /// #919's own "Expected", stated as one assertion over every git context a
+    /// file can be handed to the analyzer in.
+    ///
+    /// The two already-pinned contexts (committed / no repository) were the
+    /// pair in the report. Three neighbours share the predicate and none of
+    /// them were covered: a repository with NO commits at all, a file that is
+    /// merely untracked in a repository that has history, and a file the
+    /// repository ignores. On 3.30.0 (`4b99816a5`) all three read
+    /// `99.545456 / A+` while the byte-identical committed copy read
+    /// `0.0 / F` — the same 99.5-point swing the issue reports, reached three
+    /// more ways. Both analyzers are checked because the rule is shared and a
+    /// gap in either is a gap for half the callers (MCP goes through the
+    /// heuristic one).
+    ///
+    /// What may legitimately differ between contexts is the WAIVER
+    /// (`critical_defects_suppressed`), which is a property of the gate. The
+    /// score, the grade, and the reported defect count are properties of the
+    /// code and must not move.
+    #[test]
+    fn identical_bytes_score_identically_in_every_git_context() {
+        fn init(dir: &Path) {
+            git(dir, &["init", "-q", "--template="]);
+        }
+        fn commit(dir: &Path) {
+            git(
+                dir,
+                &[
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "commit",
+                    "-qm",
+                    "c",
+                    "--no-verify",
+                ],
+            );
+        }
+
+        // Each closure prepares a directory and returns the file to analyze.
+        let contexts: Vec<(&str, fn(&Path) -> PathBuf)> = vec![
+            ("committed", |dir| {
+                init(dir);
+                let f = dir.join("a.rs");
+                std::fs::write(&f, THREE_UNWRAPS).expect("write");
+                git(dir, &["add", "-A"]);
+                commit(dir);
+                f
+            }),
+            ("no repository", |dir| {
+                let f = dir.join("a.rs");
+                std::fs::write(&f, THREE_UNWRAPS).expect("write");
+                f
+            }),
+            ("repository with zero commits", |dir| {
+                init(dir);
+                let f = dir.join("a.rs");
+                std::fs::write(&f, THREE_UNWRAPS).expect("write");
+                f
+            }),
+            ("untracked in a repository with history", |dir| {
+                init(dir);
+                std::fs::write(dir.join("other.rs"), "pub fn ok() {}\n").expect("write");
+                git(dir, &["add", "other.rs"]);
+                commit(dir);
+                let f = dir.join("a.rs");
+                std::fs::write(&f, THREE_UNWRAPS).expect("write");
+                f
+            }),
+            ("gitignored", |dir| {
+                init(dir);
+                std::fs::write(dir.join(".gitignore"), "a.rs\n").expect("write");
+                git(dir, &["add", ".gitignore"]);
+                commit(dir);
+                let f = dir.join("a.rs");
+                std::fs::write(&f, THREE_UNWRAPS).expect("write");
+                f
+            }),
+        ];
+
+        let mut reference: Option<(&str, f32, Grade, usize, bool, f32)> = None;
+        for (label, prepare) in contexts {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let file = prepare(dir.path());
+
+            let ast = TdgAnalyzerAst::new()
+                .expect("ast analyzer")
+                .analyze_source(THREE_UNWRAPS, Language::Rust, Some(file.clone()))
+                .expect("ast analyze");
+            let simple = TdgAnalyzerSimple::new()
+                .expect("simple analyzer")
+                .analyze_source(THREE_UNWRAPS, Language::Rust, Some(file))
+                .expect("simple analyze");
+
+            // The count is what the source contains; it never depends on git.
+            assert_eq!(
+                ast.critical_defects_count, 3,
+                "{label}: three unwraps must be three critical defects"
+            );
+            assert_eq!(
+                simple.critical_defects_count, ast.critical_defects_count,
+                "{label}: the two analyzers disagree on the count"
+            );
+            // The contradiction the issue is named for: a record that says
+            // "3 critical defects" and "no critical defects" at once.
+            for (which, s) in [("ast", &ast), ("simple", &simple)] {
+                assert_eq!(
+                    s.has_critical_defects,
+                    s.critical_defects_count > 0,
+                    "{label}/{which}: count {} but has_critical_defects {}",
+                    s.critical_defects_count,
+                    s.has_critical_defects
+                );
+            }
+
+            let observed = (
+                label,
+                ast.total,
+                ast.grade,
+                ast.critical_defects_count,
+                ast.has_critical_defects,
+                simple.total,
+            );
+            match reference {
+                None => reference = Some(observed),
+                Some((first_label, total, grade, count, has, simple_total)) => {
+                    assert!(
+                        (ast.total - total).abs() < f32::EPSILON,
+                        "the same bytes scored {} as '{first_label}' and {} as \
+                         '{label}' — the score must not depend on git status",
+                        total,
+                        ast.total
+                    );
+                    assert_eq!(ast.grade, grade, "{label} vs {first_label}: grade moved");
+                    assert_eq!(
+                        ast.critical_defects_count, count,
+                        "{label} vs {first_label}"
+                    );
+                    assert_eq!(ast.has_critical_defects, has, "{label} vs {first_label}");
+                    // The MCP half of the same claim: `quality_gate` goes
+                    // through the heuristic analyzer, and it must not be
+                    // git-dependent either.
+                    assert!(
+                        (simple.total - simple_total).abs() < f32::EPSILON,
+                        "heuristic analyzer: {simple_total} as '{first_label}' but {} as \
+                         '{label}'",
+                        simple.total
+                    );
+                }
+            }
+        }
+    }
+
     /// The Lean `sorry` counter existed twice, byte for byte, once per
     /// analyzer. There is now one, and it is reached from both.
     #[test]

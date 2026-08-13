@@ -78,28 +78,41 @@ const NON_MEASURING: &[(&str, &str)] = &[
         "prints configuration, not a measurement — constant by definition",
     ),
     (
-        "analyze models",
-        "inventories ML models on disk, not project source",
-    ),
-    (
-        "analyze assembly-script",
-        "corpus contains no AssemblyScript sources to measure",
-    ),
-    (
-        "analyze web-assembly",
-        "corpus contains no WebAssembly modules to measure",
-    ),
-    (
         "tdg baseline list",
         "lists stored baselines; a fresh corpus has none by construction",
     ),
     (
         "tdg diagnostics",
-        "reports cache/storage state, not a property of the project",
+        "reports cache/storage state, not a property of the project; it also \
+         reads a project-local ./.pmat/tdg-*.db while the capture path writes \
+         the global $HOME/.pmat one, so it reports 0 entries by construction",
     ),
     (
         "analyze incremental-coverage",
-        "requires prior coverage data; the corpus ships none",
+        "reports every changed file NotMeasured even with a real artifact: the \
+         corpus ships target/coverage/lcov.info (absolute SF: paths, as \
+         cargo-llvm-cov writes it) and the parser normalises those to \
+         `src/x.rs` while the changed-file list is keyed `./src/x.rs`, so the \
+         lookup never hits. Unskip this the moment that key mismatch is fixed",
+    ),
+    (
+        "analyze wasm",
+        "needs the `wasm-ast` cargo feature, which is not in `default` \
+         (Cargo.toml:322/393): the subcommand is exposed in the build \
+         `cargo install pmat` produces and exits 5 with \"requires the wasm-ast \
+         feature\" for every input, so no corpus can exercise it",
+    ),
+    (
+        "tdg history",
+        "reads the GLOBAL $HOME/.pmat TDG store, not the project: it reports the \
+         same record count from inside any directory, so its numbers are a \
+         property of the machine's history and not of the corpus under it",
+    ),
+    (
+        "comply enforce",
+        "installs hooks into the project under test — a sweep step that mutates \
+         the fixture other steps measure (repo-score grades .git/hooks/pre-commit) \
+         cannot be run against a shared corpus; its JSON is a fixed two-hook echo",
     ),
 ];
 
@@ -120,6 +133,25 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "a fixed checklist; the count is structural",
     ),
     (
+        "comply check",
+        "summary.total",
+        "the same fixed checklist as checks[].len, counted again; pass/warn/fail/skip \
+         all respond (25/28 pass, 109/113 skip across the corpora)",
+    ),
+    (
+        "comply report",
+        "summary.total",
+        "the same fixed checklist as checks[].len, counted again; its pass/warn/fail \
+         breakdown responds",
+    ),
+    (
+        "score",
+        "dimensions_total",
+        "the composite's dimension count, fixed by the scoring model \
+         (score_handler.rs SubScores); `dimensions_measured` is the one that \
+         responds, and does (4/4/5) once a corpus carries a coverage result",
+    ),
+    (
         "comply review",
         "[].len",
         "a fixed review checklist; the count is structural",
@@ -134,41 +166,26 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "categories[].len",
         "5 categories by specification",
     ),
-    // The corpus cannot reach an F. `src/awful.rs` — 399 lines, ~300 branches,
-    // four levels of nesting, three SATD markers — grades 76.6/B. That TDG
-    // sensitivity is worth investigating on its own, but until an F-grade
-    // input exists these two leaves are truthfully constant rather than
-    // unmeasured. `tdg check-quality` still fails on this corpus, via
-    // MinimumGradeGate.
+    // `not_measured` names the aggregates a run could not produce, and it is
+    // populated only when NOTHING in the tree is gradable. Every corpus here is
+    // a Rust crate with at least one .rs file — an empty one is still a crate —
+    // so the disclosure is correctly empty on all three. The triage demonstrated
+    // it moving 0 -> 2 on a tree whose only sources were .sh and .php, which is
+    // not a project shape this corpus can take without ceasing to be a corpus.
+    // Its sibling `ungraded_files[]` does respond (0/0/3), so the disclosure
+    // machinery itself is under test.
     (
         "analyze tdg",
-        "f_grade_count",
-        "corpus has no F-grade file; its worst (awful.rs, 399 lines) grades B",
-    ),
-    (
-        "analyze tdg",
-        "grade_capped",
-        "grade capping only triggers on an F, which the corpus cannot produce",
+        "not_measured[].len",
+        "populated only when NO file in the tree is gradable; all three corpora \
+         are Rust crates, so it is truthfully empty. Sibling leaf ungraded_files[] \
+         responds 0/0/3",
     ),
     (
         "analyze build-tdg",
-        "f_grade_count",
-        "same corpus limitation as `analyze tdg`",
-    ),
-    (
-        "analyze build-tdg",
-        "grade_capped",
-        "same corpus limitation as `analyze tdg`",
-    ),
-    (
-        "tdg check-quality",
-        "f_grade_gate.passed",
-        "no F-grade input; the overall gate does fail here, via MinimumGradeGate",
-    ),
-    (
-        "tdg check-quality",
-        "f_grade_gate.violations[].len",
-        "no F-grade input to populate it",
+        "not_measured[].len",
+        "same as `analyze tdg`: needs a project with nothing gradable in it, \
+         which a Rust corpus cannot be",
     ),
     (
         "analyze defects",
@@ -185,25 +202,123 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "summary.by_severity.low",
         "every defect rule emits Critical",
     ),
+    // Two buckets the classifier never fills, on inputs written for them.
+    // `src/searching.rs` carries a doubly-recursive `fib` and a hand-written
+    // halving loop; probed alone, a file containing only `fib` reports
+    // `analyzed_functions: 0` (the function is not classified at all) and the
+    // halving loop lands in O(n). These are recorded here rather than deleted
+    // from the corpus so the input stays visible: the day the classifier learns
+    // either shape, these entries become stale and the leaves move.
     (
         "analyze big-o",
         "distribution.O(2^n)",
-        "corpus contains no exponential algorithms",
+        "corpus carries a doubly-recursive fib (src/searching.rs) and the \
+         classifier still never emits this bucket — a file containing only that \
+         function reports analyzed_functions: 0",
     ),
     (
         "analyze big-o",
         "distribution.O(log n)",
-        "corpus contains no logarithmic algorithms",
-    ),
-    (
-        "analyze big-o",
-        "distribution.O(n log n)",
-        "corpus contains no linearithmic algorithms",
+        "corpus carries a binary_search call and a hand-written halving loop \
+         (src/searching.rs); the classifier files the loop under O(n) and never \
+         emits this bucket",
     ),
     (
         "analyze big-o",
         "distribution.O(?)",
         "the unclassifiable bucket stays empty because every fixture function is classifiable",
+    ),
+    // ---- configuration echoed into the report, per the Gate A triage -------
+    //
+    // Each of these is a flag value or a fixed checklist length stamped into
+    // the JSON, with the declaration site named. They are constant across
+    // corpora because they are not about the corpus.
+    (
+        "analyze big-o",
+        "summary.high_complexity_only",
+        "verbatim echo of the --high-complexity-only flag (declared \
+         analyze_commands/mod.rs:1351-1352, default false; emitted \
+         big_o_analyzer_report.rs:252) — a scope disclosure, not a measurement",
+    ),
+    (
+        "analyze dead-code",
+        "files_truncated",
+        "set only inside `if let Some(limit) = filters.top_files` \
+         (dead_code_handlers_analysis.rs:127-133); dead-code declares --top-files \
+         as Option<usize> with NO default (analyze_commands/mod.rs:234-236), so \
+         a plain invocation never enters the branch",
+    ),
+    (
+        "analyze dead-code",
+        "summary.dead_modules",
+        "no input can produce it: rustc's dead-code lint has no DefKind::Mod arm \
+         (rustc_passes/src/dead.rs:1147-1163) and the multi-language path emits \
+         only Function items. Sibling counters from the same summation respond \
+         (dead_functions 0/0/80)",
+    ),
+    (
+        "analyze dead-code",
+        "summary.unreachable_blocks",
+        "zeroed by a config default: `if include_unreachable { .. } else { 0 }` \
+         (dead_code_handlers_analysis.rs:447-451) over DeadCodeAnalysisConfig's \
+         `include_unreachable: false` (models/dead_code.rs:196-199). The corpus \
+         HAS the input — `--include-unreachable` reads 3 on the large corpus",
+    ),
+    (
+        "repo-score",
+        "failures_only",
+        "the --failures-only flag stamped into the document so a consumer knows \
+         the category map is filtered (repo_score_handlers_display.rs:194); \
+         passing the flag flips it with total_score unchanged",
+    ),
+    (
+        "repo-score",
+        "categories.repository_hygiene.subcategories[].len",
+        "the fixed C1/C2/C3 checklist, `vec![c1, c2, c3]` \
+         (hygiene_scorer/mod.rs:66) — the length is the checklist size; the \
+         category's score, percentage and findings[] all respond",
+    ),
+    (
+        "repo-score",
+        "categories.pmat_compliance.subcategories[].len",
+        "the fixed F1/F2 checklist, `vec![f1, f2]` (pmat_scorer.rs:214)",
+    ),
+    (
+        "repo-score",
+        "categories.pmat_compliance.findings[].len",
+        "structurally 2: every branch of score_configuration and score_violations \
+         returns exactly one finding (pmat_scorer.rs:30-88, 158-176), joined at \
+         :208-210. Score and percentage respond (2.5/2.5/5.0)",
+    ),
+    (
+        "repo-score",
+        "categories.precommit_hooks.subcategories[].len",
+        "the fixed B1/B2 checklist, `vec![b1, b2]` (precommit_scorer.rs:234)",
+    ),
+    (
+        "repo-score",
+        "categories.precommit_hooks.findings[].len",
+        "structurally 2: each of B1's four branches and B2's five branches builds \
+         a one-element vec (precommit_scorer.rs:27-207), joined at :228-230. The \
+         score responds 0/0/20 now that the large corpus carries a hook",
+    ),
+    (
+        "repo-score",
+        "categories.documentation.subcategories[].len",
+        "the fixed A1/A2/A3 checklist, `vec![a1, a2, a3]` (readme_scorer.rs:55); \
+         the category's score and findings[] respond",
+    ),
+    (
+        "repo-score",
+        "categories.build_test_automation.subcategories[].len",
+        "the fixed D1/D2/D3 checklist, `vec![d1, d2, d3]` (makefile_scorer.rs:261); \
+         score 0/0/18 and findings[] 1/1/6 in the same runs",
+    ),
+    (
+        "repo-score",
+        "categories.continuous_integration.subcategories[].len",
+        "the fixed E1/E2/E3 checklist, `vec![e1, e2, e3]` (ci_scorer.rs:58); \
+         score 0/0/6 and findings[] 2/2/8 in the same runs",
     ),
 ];
 
@@ -378,6 +493,7 @@ fn metrics_must_respond_to_the_corpus() {
     // ---- verdicts ---------------------------------------------------------
     let mut constant_leaves: Vec<(String, String, f64)> = Vec::new();
     let mut wholly_inert: Vec<String> = Vec::new();
+    let mut fully_excused: Vec<String> = Vec::new();
     let mut skipped: Vec<(String, String)> = Vec::new();
 
     for r in &results {
@@ -396,6 +512,7 @@ fn metrics_must_respond_to_the_corpus() {
             .collect();
 
         let mut responsive = 0usize;
+        let mut excused = 0usize;
         let mut inert = Vec::new();
         for k in &shared {
             let a = r.per_corpus[0][*k];
@@ -403,12 +520,14 @@ fn metrics_must_respond_to_the_corpus() {
             let c = r.per_corpus[2][*k];
             if a == b && b == c {
                 if is_config_key(k) {
+                    excused += 1;
                     continue;
                 }
                 if ALLOWED_CONSTANTS
                     .iter()
                     .any(|(p, leaf, _)| *p == r.path && *leaf == k.as_str())
                 {
+                    excused += 1;
                     continue;
                 }
                 inert.push(((*k).clone(), a));
@@ -416,8 +535,21 @@ fn metrics_must_respond_to_the_corpus() {
                 responsive += 1;
             }
         }
+        // "Wholly inert" must mean *nothing here was interrogated*, not "every
+        // numeric leaf this command has is a defended constant". `comply review`
+        // was reported inert while three of its five checklist items demonstrably
+        // change between corpora — they are strings, and `numeric_leaves` records
+        // only numbers, bools and array lengths, so its single numeric leaf is the
+        // checklist length. Failing the gate on that is the harness manufacturing
+        // a finding. Fully-excused commands are still listed, in their own
+        // section, because a command with nothing measurable left to check is
+        // worth seeing.
         if responsive == 0 && !shared.is_empty() {
-            wholly_inert.push(r.path.clone());
+            if excused == shared.len() {
+                fully_excused.push(r.path.clone());
+            } else {
+                wholly_inert.push(r.path.clone());
+            }
         }
         for (k, v) in inert {
             constant_leaves.push((r.path.clone(), k, v));
@@ -462,9 +594,11 @@ fn metrics_must_respond_to_the_corpus() {
     }
     let _ = writeln!(
         report,
-        "\nsummary: {} inert command(s), {} constant leaf/leaves, {} skipped",
+        "\nsummary: {} inert command(s), {} constant leaf/leaves, {} fully \
+         excused, {} skipped",
         wholly_inert.len(),
         constant_leaves.len(),
+        fully_excused.len(),
         skipped.len()
     );
 

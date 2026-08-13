@@ -1,16 +1,12 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Universal feature extractor with cross-language tokenization and normalization.
 
-use dashmap::DashMap;
-
 use super::keywords::{C_CPP_KEYWORDS, KOTLIN_KEYWORDS, PYTHON_KEYWORDS, TYPESCRIPT_KEYWORDS};
 use super::types::{DuplicateDetectionConfig, Language, Token, TokenKind};
 
 /// Universal feature extractor for cross-language analysis
 pub struct UniversalFeatureExtractor {
     pub(super) config: DuplicateDetectionConfig,
-    identifier_counter: std::sync::atomic::AtomicU32,
-    identifier_map: DashMap<String, String>,
 }
 
 impl UniversalFeatureExtractor {
@@ -18,11 +14,7 @@ impl UniversalFeatureExtractor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
     pub fn new(config: DuplicateDetectionConfig) -> Self {
-        Self {
-            config,
-            identifier_counter: std::sync::atomic::AtomicU32::new(0),
-            identifier_map: DashMap::new(),
-        }
+        Self { config }
     }
 
     /// Extract features from source code
@@ -361,15 +353,32 @@ impl UniversalFeatureExtractor {
         matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | '.')
     }
 
-    /// Normalize tokens for Type-2 clone detection
+    /// Normalize tokens for Type-2 clone detection.
+    ///
+    /// RENAME-INVARIANCE: the canonical names are numbered per CALL, in order of
+    /// first appearance, so two fragments that differ only in their identifiers
+    /// normalise to the same token stream — which is the definition of a Type-2
+    /// clone and the whole purpose of this pass.
+    ///
+    /// They used to be numbered from a counter and map that lived on the
+    /// extractor for its whole lifetime, i.e. across every file of the project.
+    /// The first file's `total` became `VAR_2` and the second file's `sum`
+    /// became `VAR_9`, so a renamed copy of a function hashed differently and
+    /// its MinHash signature barely overlapped: two 14-line functions differing
+    /// only in variable names and one extra statement measured a Jaccard
+    /// similarity of 0.10 and no clone group was formed. The engine could
+    /// therefore only ever find clones that were identical MODULO LITERALS —
+    /// exactly what the cheap hash pass in `analyze duplicates` already found —
+    /// while advertising Type-2/Type-3 detection.
     pub(super) fn normalize_tokens(&self, tokens: &[Token]) -> Vec<Token> {
+        let mut scope = IdentifierScope::default();
         tokens
             .iter()
             .filter_map(|token| match &token.kind {
                 TokenKind::Whitespace | TokenKind::Comment if self.config.ignore_comments => None,
-                TokenKind::Identifier(name) if self.config.normalize_identifiers => Some(
-                    Token::new(TokenKind::Identifier(self.canonicalize_identifier(name))),
-                ),
+                TokenKind::Identifier(name) if self.config.normalize_identifiers => {
+                    Some(Token::new(TokenKind::Identifier(scope.canonicalize(name))))
+                }
                 TokenKind::Literal(_) if self.config.normalize_literals => {
                     Some(Token::new(TokenKind::Literal("LITERAL".to_string())))
                 }
@@ -377,20 +386,29 @@ impl UniversalFeatureExtractor {
             })
             .collect()
     }
+}
 
-    /// Canonicalize identifier names
+/// Identifier numbering for ONE normalisation pass.
+///
+/// Scoped deliberately: see `normalize_tokens`. A scope shared between
+/// fragments makes the numbering depend on which other code was tokenized
+/// first, which is precisely what breaks rename-invariance.
+#[derive(Debug, Default)]
+pub struct IdentifierScope {
+    names: std::collections::HashMap<String, String>,
+}
+
+impl IdentifierScope {
+    /// Canonical name for `name` within this scope: `VAR_0` for the first
+    /// distinct identifier seen, `VAR_1` for the second, and the same name again
+    /// for every later occurrence of the same identifier.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub(crate) fn canonicalize_identifier(&self, name: &str) -> String {
-        if let Some(canonical) = self.identifier_map.get(name) {
-            canonical.clone()
-        } else {
-            let id = self
-                .identifier_counter
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let canonical = format!("VAR_{id}");
-            self.identifier_map
-                .insert(name.to_string(), canonical.clone());
-            canonical
+    pub fn canonicalize(&mut self, name: &str) -> String {
+        if let Some(canonical) = self.names.get(name) {
+            return canonical.clone();
         }
+        let canonical = format!("VAR_{}", self.names.len());
+        self.names.insert(name.to_string(), canonical.clone());
+        canonical
     }
 }
