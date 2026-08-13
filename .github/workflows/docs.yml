@@ -23,10 +23,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Checkout provable-contracts (path dep)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: paiml/provable-contracts
           path: provable-contracts

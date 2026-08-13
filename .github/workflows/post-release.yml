@@ -15,7 +15,7 @@ jobs:
     name: Verify published release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify crate published
         run: |
@@ -26,7 +26,7 @@ jobs:
     name: MSRV verification
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Derive the MSRV from Cargo.toml's declared `rust-version` instead of
       # hardcoding it here. A hardcoded `1.80.0` went stale when v3.19.1 raised
       # the declared MSRV to 1.95.0 (to match modernized deps), so this job

@@ -26,12 +26,12 @@ jobs:
     name: pmat score
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Full history for git churn/evoscore
 
       - name: Checkout provable-contracts (path dep)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: paiml/provable-contracts
           path: provable-contracts
@@ -76,7 +76,7 @@ jobs:
     name: provable ladder
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -103,7 +103,7 @@ jobs:
           cache-on-failure: true
 
       - name: Checkout provable-contracts (path dep)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: paiml/provable-contracts
           path: provable-contracts
