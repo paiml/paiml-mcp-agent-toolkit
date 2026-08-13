@@ -37,6 +37,15 @@ enum TextDetail {
 /// Blocks the default (`human`) rendering lists before summarising the rest.
 const HUMAN_BLOCK_LIMIT: usize = 20;
 
+/// How many blocks of this report were measured to be `clone_type`.
+fn count_of(report: &DuplicateReport, clone_type: CloneType) -> usize {
+    report
+        .duplicate_blocks
+        .iter()
+        .filter(|b| b.clone_type == clone_type)
+        .count()
+}
+
 /// Format output as JSON
 fn format_json_output(report: &DuplicateReport) -> Result<String> {
     // Create enhanced JSON with test-expected fields
@@ -47,19 +56,25 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
         "duplication_percentage": report.duplication_percentage,
         "duplicate_blocks": report.duplicate_blocks,
         "file_statistics": report.file_statistics,
-        "exact_duplicates": report.duplicate_blocks.iter().filter(|b| b.similarity >= 1.0).count(),
+        // Each count reads the block's MEASURED clone class. `exact_duplicates`
+        // used to be `similarity >= 1.0` over blocks whose only producer wrote
+        // `similarity: 1.0` as a literal, so it equalled `total_duplicates` for
+        // every input and every `--detection-type`: under `renamed` it claimed
+        // that clones which differ on 8 of 39 lines are byte identical.
+        "exact_duplicates": count_of(report, CloneType::Exact),
+        // Type-2: identical up to identifier names. It had no count at all, so
+        // the only clone class `--detection-type renamed` can find was reported
+        // under the name of the one class it cannot.
+        "renamed_duplicates": count_of(report, CloneType::Renamed),
         // Near-miss (Type-3) groups: blocks whose members are similar but NOT
         // identical. The predicate used to be `0.8 <= s < 1.0`, and the only
         // producer of a block set `similarity: 1.0` as a literal, so this was
         // unsatisfiable for every possible input — a hard 0 printed beside a
         // real `exact_duplicates` count, which is what made it look measured.
-        // The lower bound is `--threshold` now: the near-miss search admits a
-        // pair only at or above it. It is not repeated here because a block's
-        // `similarity` is the group's MEAN similarity to its representative, and
-        // a group chained through several accepted pairs can average slightly
-        // below the cut-off any single pair had to clear. Re-applying the
-        // cut-off to the mean would silently drop groups the search accepted.
-        "structural_similarities": report.duplicate_blocks.iter().filter(|b| b.similarity < 1.0).count(),
+        // It counts the class now rather than re-deriving one from a similarity
+        // band, so a change to how similarity is measured can never silently
+        // empty it again.
+        "structural_similarities": count_of(report, CloneType::NearMiss),
         // `entropy_analysis` and `analysis_time_ms` used to be emitted here as
         // the constants 0.5 / 0 / 100 in EVERY run, regardless of input. This
         // command runs no entropy analysis and did not time itself, so those
@@ -304,16 +319,22 @@ fn write_block_details(
     Ok(())
 }
 
-/// Write block header with summary info
+/// Write block header with summary info.
+///
+/// Carries the same measured clone class the JSON and CSV surfaces carry: the
+/// text rendering used to say only "N lines, M locations", so the one surface a
+/// human reads could not tell an exact clone from a renamed one while the JSON
+/// beside it claimed everything was exact.
 fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBlock) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(
         output,
-        "  {}Block {}{} ({} lines, {} locations)",
+        "  {}Block {}{} ({}, {} lines, {} locations)",
         c::seq(c::BOLD),
         block_num,
         c::seq(c::RESET),
+        block.clone_type.label(),
         c::number(&block.lines.to_string()),
         c::number(&block.locations.len().to_string()),
     )?;
@@ -447,6 +468,7 @@ mod top_files_is_a_row_limit_tests {
             lines: 12,
             tokens: 40,
             similarity: 1.0,
+            clone_type: CloneType::Exact,
             locations: vec![
                 DuplicateLocation {
                     file: "src/a.rs".to_string(),
@@ -486,6 +508,7 @@ mod top_files_is_a_row_limit_tests {
                 lines: 6,
                 tokens: 20,
                 similarity: 1.0,
+                clone_type: CloneType::Exact,
                 locations: vec![
                     DuplicateLocation {
                         file: format!("src/a{i:02}.rs"),
@@ -653,26 +676,260 @@ fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
     Ok(serde_json::to_string_pretty(&sarif)?)
 }
 
-/// Format output as CSV
+/// Format output as CSV.
+///
+/// One row per SITE past the first, all sharing the block's first location as
+/// `File1`. This used to take `locations[0]` and `locations[1]` and drop the
+/// rest, so a clone family living in 10,486 places was exported as a single
+/// pair: on this repo's own `src` the CSV carried 98,244 of 175,106 located
+/// sites and said nothing about the 76,862 (43.9%) it discarded, with exit code
+/// 0. Every location reaches the spreadsheet now, and rows of one family share
+/// `File1,Start1,End1`, which is the group key a pivot needs.
+///
+/// The star (first-vs-each) decomposition, not every pair: the same family of
+/// 10,486 sites is 10,485 rows this way and 55 MILLION as a full cross product,
+/// and the extra rows would carry no site the star does not already name.
+///
+/// `Type` is the block's measured clone class. It was the literal string
+/// `"exact"` on every row of every run, which carried "these two are byte
+/// identical" into a spreadsheet about clones that are not.
 fn format_csv_output(report: &DuplicateReport) -> Result<String> {
     let mut csv = String::new();
     csv.push_str("Type,File1,Start1,End1,File2,Start2,End2\n");
 
     for block in &report.duplicate_blocks {
-        if block.locations.len() >= 2 {
-            let loc1 = &block.locations[0];
-            let loc2 = &block.locations[1];
+        let Some((first, rest)) = block.locations.split_first() else {
+            continue;
+        };
+        for other in rest {
             csv.push_str(&format!(
-                "exact,{},{},{},{},{},{}\n",
-                loc1.file,
-                loc1.start_line,
-                loc1.end_line,
-                loc2.file,
-                loc2.start_line,
-                loc2.end_line
+                "{},{},{},{},{},{},{}\n",
+                block.clone_type.label(),
+                first.file,
+                first.start_line,
+                first.end_line,
+                other.file,
+                other.start_line,
+                other.end_line
             ));
         }
     }
 
     Ok(csv)
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod clone_class_and_csv_completeness_tests {
+    //! GH-935 (every clone labelled "exact") and GH-936 (CSV drops every
+    //! location past the second).
+    //!
+    //! Both are read through the emitters rather than through the struct, so
+    //! these tests describe what a consumer of `--format json` / `-f csv`
+    //! actually receives.
+    use super::*;
+    use crate::cli::DuplicateType;
+    use std::path::Path;
+
+    /// FOUR copies of one body with every identifier renamed — a Type-2 family
+    /// with more than two sites, which is what makes it a fixture for both
+    /// defects at once.
+    const RENAMED_FOURFOLD: &str = "\
+fn alpha(input: usize) -> usize {
+    let total = input + 1;
+    let doubled = total * 2;
+    doubled
+}
+fn beta(value: usize) -> usize {
+    let sum = value + 1;
+    let twice = sum * 2;
+    twice
+}
+fn gamma(arg: usize) -> usize {
+    let acc = arg + 1;
+    let scaled = acc * 2;
+    scaled
+}
+fn delta(operand: usize) -> usize {
+    let carry = operand + 1;
+    let bumped = carry * 2;
+    bumped
+}
+";
+
+    /// TWO byte-identical copies of one body. A genuine Type-1 family, so a fix
+    /// that simply relabels everything "renamed" fails here.
+    const IDENTICAL_TWICE: &str = "\
+fn first_caller() -> usize {
+    let accumulator = compute_value();
+    let adjusted = accumulator + OFFSET;
+    let rounded = adjusted / DIVISOR;
+    rounded
+}
+fn second_caller() -> usize {
+    let accumulator = compute_value();
+    let adjusted = accumulator + OFFSET;
+    let rounded = adjusted / DIVISOR;
+    rounded
+}
+";
+
+    fn report_for(source: &str, kind: DuplicateType) -> DuplicateReport {
+        let lines: Vec<&str> = source.lines().collect();
+        let blocks = extract_blocks(&lines, Path::new("dup.rs"), 4, 1000, kind);
+        let duplicate_blocks = find_duplicate_blocks(blocks);
+        DuplicateReport {
+            total_duplicates: duplicate_blocks.len(),
+            duplicate_lines: 0,
+            total_lines: lines.len(),
+            duplication_percentage: 0.0,
+            duplicate_blocks,
+            file_statistics: BTreeMap::new(),
+        }
+    }
+
+    fn json_of(report: &DuplicateReport) -> serde_json::Value {
+        serde_json::from_str(&format_json_output(report).unwrap()).unwrap()
+    }
+
+    fn data_rows(csv: &str) -> Vec<&str> {
+        csv.lines().skip(1).filter(|l| !l.is_empty()).collect()
+    }
+
+    /// GH-935: `--detection-type renamed` can only find Type-2 clones, and every
+    /// one of them was reported as `exact_duplicates`, with `similarity: 1.0`
+    /// written as a literal. On this repo that claimed `rules.rs:40-78` and
+    /// `rules.rs:98-136` are byte identical when they differ on 8 of 39 lines.
+    #[test]
+    fn renamed_clones_are_not_counted_as_exact() {
+        let report = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
+        assert!(
+            report.total_duplicates > 0,
+            "fixture must produce renamed clone groups"
+        );
+
+        let json = json_of(&report);
+        assert_eq!(
+            json["exact_duplicates"], 0,
+            "no group here is byte identical: {json:#}"
+        );
+        assert_eq!(
+            json["renamed_duplicates"].as_u64().unwrap() as usize,
+            report.total_duplicates,
+            "every group here is Type-2: {json:#}"
+        );
+        for block in &json["duplicate_blocks"].as_array().unwrap().clone() {
+            assert_eq!(block["clone_type"], "renamed", "{block:#}");
+            assert!(
+                block["similarity"].as_f64().unwrap() < 1.0,
+                "a renamed clone is not a perfect match: {block:#}"
+            );
+        }
+    }
+
+    /// The other half of the same rule: a family that IS byte identical must
+    /// still be reported as exact, so the fix cannot be "call everything
+    /// renamed".
+    #[test]
+    fn identical_clones_are_still_counted_as_exact() {
+        let report = report_for(IDENTICAL_TWICE, DuplicateType::Exact);
+        assert!(report.total_duplicates > 0, "fixture must produce a group");
+
+        let json = json_of(&report);
+        assert_eq!(
+            json["exact_duplicates"].as_u64().unwrap() as usize,
+            report.total_duplicates,
+            "{json:#}"
+        );
+        assert_eq!(json["renamed_duplicates"], 0, "{json:#}");
+        for block in json["duplicate_blocks"].as_array().unwrap() {
+            assert_eq!(block["clone_type"], "exact", "{block:#}");
+            assert_eq!(block["similarity"].as_f64().unwrap(), 1.0, "{block:#}");
+        }
+    }
+
+    /// GH-935, CSV surface: the `Type` column was the literal `"exact"` on every
+    /// row of every run, carrying the same false claim into a spreadsheet.
+    #[test]
+    fn the_csv_type_column_is_the_measured_clone_class() {
+        let renamed = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
+        let csv = format_csv_output(&renamed).unwrap();
+        let rows = data_rows(&csv);
+        assert!(!rows.is_empty(), "fixture must produce CSV rows");
+        for row in &rows {
+            assert!(
+                row.starts_with("renamed,"),
+                "a Type-2 clone must not be exported as `exact`: {row}"
+            );
+        }
+
+        let exact = report_for(IDENTICAL_TWICE, DuplicateType::Exact);
+        let csv = format_csv_output(&exact).unwrap();
+        for row in data_rows(&csv) {
+            assert!(row.starts_with("exact,"), "{row}");
+        }
+    }
+
+    /// GH-936: the CSV took `locations[0]` and `locations[1]` and discarded
+    /// every site past the second — 76,862 of 175,106 (43.9%) on this repo's
+    /// own `src`, silently and with exit code 0.
+    #[test]
+    fn the_csv_exports_every_located_site() {
+        let report = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
+        assert!(
+            report
+                .duplicate_blocks
+                .iter()
+                .any(|b| b.locations.len() > 2),
+            "fixture must contain a family of more than two sites, else this \
+             test cannot see the defect"
+        );
+
+        let csv = format_csv_output(&report).unwrap();
+        let rows = data_rows(&csv);
+
+        let expected: usize = report
+            .duplicate_blocks
+            .iter()
+            .map(|b| b.locations.len().saturating_sub(1))
+            .sum();
+        assert_eq!(
+            rows.len(),
+            expected,
+            "one row per site past the first; got {} rows for {} sites",
+            rows.len(),
+            report
+                .duplicate_blocks
+                .iter()
+                .map(|b| b.locations.len())
+                .sum::<usize>()
+        );
+
+        // Naming the sites is the point: every start line of every location has
+        // to be findable in the export.
+        for block in &report.duplicate_blocks {
+            for loc in &block.locations {
+                let needle = format!(",{},{}", loc.start_line, loc.end_line);
+                assert!(
+                    rows.iter().any(|r| r.contains(&needle)),
+                    "{}:{}-{} never reached the CSV",
+                    loc.file,
+                    loc.start_line,
+                    loc.end_line
+                );
+            }
+        }
+    }
+
+    /// The header is a published schema; widening the rows must not move a
+    /// column.
+    #[test]
+    fn the_csv_schema_is_unchanged() {
+        let report = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
+        let csv = format_csv_output(&report).unwrap();
+        assert!(csv.starts_with("Type,File1,Start1,End1,File2,Start2,End2\n"));
+        for row in data_rows(&csv) {
+            assert_eq!(row.split(',').count(), 7, "{row}");
+        }
+    }
 }

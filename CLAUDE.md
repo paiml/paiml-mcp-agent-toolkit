@@ -33,10 +33,11 @@ Before adding ANY external dependency for math, algorithms, data science, ML, or
 
 | External Dep | Status | Batuta Alternative |
 |--------------|--------|-------------------|
-| `nalgebra-sparse` | Review | `aprender::primitives` sparse matrices |
 | `roaring` | Keep | Specialized bitmap (no batuta equivalent yet) |
 | `rand` | Keep | Foundational (may add to trueno later) |
 | `rayon` | Keep | Foundational parallel iterator |
+
+(`nalgebra-sparse` was removed — see the note at `Cargo.toml:251`. Do not re-add it.)
 
 Before adding ANY new dependency: check batuta stack first (`pmat query "YourFeature" --limit 5` in aprender), build if close, document if external required.
 
@@ -141,8 +142,9 @@ pmat query "parse" --coverage --uncovered-only --limit 10
 make validate-book
 ```
 
-- Runs critical chapters in parallel (Ch 5, 7, 13, 14), completes in <30 seconds
+- Runs critical chapters in parallel (Ch 05, 07, 13, 14 — `scripts/validate-pmat-book.sh:28`), 60s timeout per chapter
 - Chapter 13 (Multi-Language) is CRITICAL - must always pass
+- The book checkout is looked for at `/home/noah/src/pmat-book`; override with `PMAT_BOOK_DIR=<path>`. If the directory is absent the script **skips** rather than fails, so a green `make validate-book` on a machine without the book proves nothing
 - If tests fail, fix code OR update book tests. Apply Andon Cord: STOP if quality issues found
 
 ---
@@ -151,8 +153,12 @@ make validate-book
 
 **MANDATORY: Book updates MUST be pushed with code changes**
 
-- **Pre-Commit Hook**: Warns about unpushed pmat-book commits (non-blocking)
-- **Pre-Push Hook**: **BLOCKS `git push`** until all pmat-book commits are pushed first
+This is enforced only by the hooks written by `bash scripts/install-git-hooks.sh`:
+
+- **Pre-Commit Hook**: Warns about unpushed pmat-book commits (non-blocking) — `scripts/install-git-hooks.sh:128`
+- **Pre-Push Hook**: **BLOCKS `git push`** until all pmat-book commits are pushed first — `scripts/install-git-hooks.sh:238`
+
+**The hooks `pmat hooks install` writes do NOT contain either check** — they run format/complexity/SATD only. Two installers, two different hook sets: check `.git/hooks/pre-push` for the string `pmat-book` before relying on this gate.
 
 **Workflow**: Update pmat-book → push to main (deploys GitHub Pages) → push code.
 
@@ -180,17 +186,31 @@ Spec: `docs/specifications/pmat-verify-autonomous-preflight.md`. Loop doc:
 
 ---
 
-## CRITICAL: O(1) Quality Gates (Phase 2 - Active)
+## Build-Budget Metrics (`.pmat-metrics.toml`) — RECORDED, NOT ENFORCED
 
-**AUTOMATIC ENFORCEMENT: Pre-commit hooks validate metrics in <30ms**
+**Do not treat these as gates.** The `[thresholds]` table in `.pmat-metrics.toml` is a
+budget document. Grep for its keys before believing otherwise:
 
-Spec: `docs/specifications/quick-test-build-O(1)-checking.md`
+```bash
+pmat query --literal "lint_max_ms" --limit 5                              # code
+grep -n "lint_max_ms\|test_fast_max_ms\|coverage_max_ms\|deps_default_max" \
+     Makefile scripts/*.sh .github/workflows/*.yml                        # non-code
+```
 
-Metric recording during development (`make lint/test-fast/coverage/release`) populates `.pmat-metrics/`. Pre-commit validates against thresholds in `.pmat-metrics.toml`:
+The only code hit is a test fixture (`src/cli/analysis_utilities/quality_gate_part2f.rs:41`),
+and there are no non-code hits at all — no hook, no Makefile target and no CI job reads any
+timing threshold, so nothing can fail on one. Current budgets, as actually written in the file:
 
-- **lint**: ≤30s | **test-fast**: ≤5min | **coverage**: ≤10min | **binary size**: ≤50MB | **dependencies**: ≤3,000
+- **lint**: ≤150s | **test-fast**: ≤360s | **coverage**: ≤600s | **binary size**: ≤50MB | **dependencies**: ≤3,000
 
-Staleness: Metrics older than 7 days trigger warnings. Emergency bypass: `git commit --no-verify`.
+What *is* real:
+
+- **Recording**: only `make coverage` and `make build-release` call `scripts/record-metric.sh`. `make lint` and `make test-fast` record nothing.
+- **Binary size**: enforced by a hardcoded 50MB constant in `src/tests/binary_size.rs:40`, not by reading `binary_max_bytes`.
+- **`[exclude]` and `[entropy]`**: these two sections of `.pmat-metrics.toml` *are* read, by `pmat quality-gate` (`src/cli/analysis_utilities/quality_checks_part1_complexity.rs:120` and `src/cli/analysis_utilities/quality_checks_part1_entropy.rs:220`).
+
+The real pre-commit gate set is the one described under **Pre-Commit Verification** above;
+run `pmat verify`. Emergency bypass for the hooks that do exist: `git commit --no-verify`.
 
 ---
 
@@ -199,10 +219,10 @@ Staleness: Metrics older than 7 days trigger warnings. Emergency bypass: `git co
 **MANDATORY FOR README.md, CLAUDE.md, GEMINI.md, AGENT.md:**
 
 ```bash
-# Step 1: Generate deep context
+# Step 1: Generate deep context (~25s)
 pmat context --output deep_context.md --format llm-optimized
 
-# Step 2: Validate documentation accuracy
+# Step 2: Validate documentation accuracy (--deep-context is REQUIRED)
 pmat validate-readme \
     --targets README.md CLAUDE.md GEMINI.md AGENT.md \
     --deep-context deep_context.md \
@@ -211,22 +231,63 @@ pmat validate-readme \
 
 Validates: capability claims against AST, file path references, function/module references, external URLs (404 detection). Uses Semantic Entropy (Nature 2024) and MIND framework (IJCAI 2025).
 
-Enforced by pre-commit hook, CI/CD pipeline, and `pmat quality-gate --checks docs-accuracy`. Spec: `docs/specifications/documentation-accuracy-enforcement.md`
+**There is no docs-accuracy check on `pmat quality-gate`.** Its `--checks` argument accepts
+only: dead-code, complexity, coverage, sections, provability, satd, entropy, security,
+duplicates, all. Passing docs-accuracy exits 2 with a clap error. `pmat validate-readme`
+above is the whole enforcement surface.
+
+**Where it actually runs**: the pre-commit hook written by `bash scripts/install-git-hooks.sh`
+(`scripts/install-git-hooks.sh:98`, blocking on contradictions). It is **not** in any
+`.github/workflows/` job, and the hook that `pmat hooks install` writes does not run it —
+so on a fresh clone nothing checks this file until you invoke it by hand.
+
+`validate-readme` does not extract every reference. It silently skipped a dead path whose
+filename contained parentheses in this very document, so a clean run is a floor, not a
+proof. Cheap belt-and-braces check for the paths cited here:
+
+```bash
+# every backtick-quoted repo path in CLAUDE.md must exist (":42" suffix allowed)
+grep -oE '`[A-Za-z0-9_./()-]+\.(md|rs|sh|toml)(:[0-9]+)?`' CLAUDE.md \
+  | tr -d '`' | sed 's/:[0-9]*$//' | sort -u \
+  | while read -r p; do test -e "$p" || echo "DEAD PATH: $p"; done
+```
+
+And for the commands — `validate-readme` checks no command at all, which is how
+`quality-gate --checks docs-accuracy` survived here for releases:
+
+```bash
+# every pmat invocation cited in CLAUDE.md must at least parse
+{ sed -e ':a' -e '/\\$/{N;s/\\\n//;ba}' CLAUDE.md | grep -oE '^pmat [^#|>]+'
+  grep -oE '`pmat [^`]+`' CLAUDE.md | tr -d '`'
+} | sed 's/[[:space:]]*$//' | grep -vE '[][^…\\]' | sort -u \
+  | while read -r c; do eval "$c --help" >/dev/null 2>&1 || echo "BAD COMMAND: $c"; done
+```
+
+(The `grep -vE` drops this snippet's own regex text from its input.)
+
+Expected output from both: nothing. Run them after editing this file. On the pre-fix
+revision of this document they print 8 dead paths and 1 bad command.
 
 ---
 
 ## Bash/Makefile Quality Enforcement with bashrs
 
-**MANDATORY: All bash scripts and Makefiles must pass bashrs linting.**
+**Bash scripts and Makefiles should pass bashrs linting.**
 
 bashrs (PAIML) lints for SC2086/SC2046/SC2116, DET003 (non-determinism), IDEM002 (idempotency), SEC008 (security).
 
 ```bash
-bashrs lint Makefile
-bashrs lint Makefile
+make lint-makefile                     # what the repo actually runs
+bashrs lint Makefile --ignore MAKE003,MAKE006,MAKE010,MAKE012,MAKE017,MAKE018
+bashrs lint scripts/<script>.sh        # ad-hoc, for a single script
 ```
 
-Installation: `pmat hooks install --tdg-enforcement`. Bug reports: https://github.com/paiml/bashrs/issues
+`make lint-makefile` ends in `|| true` (`Makefile:898`) — bashrs findings are reported but
+**non-blocking**; intentional suppressions live in `.bashrsignore`. `make lint-scripts` is
+deno/TypeScript, not bash, and does not invoke bashrs.
+
+Installation: `cargo install bashrs` (`pmat hooks install --tdg-enforcement` installs pmat's
+own hooks; it does not install or wire up bashrs). Bug reports: https://github.com/paiml/bashrs/issues
 
 ---
 
@@ -238,28 +299,25 @@ Installation: `pmat hooks install --tdg-enforcement`. Bug reports: https://githu
 
 ## Test Coverage
 
-**Total: ~94 tests ignored** (82 in src/, remainder in tests/). Tests marked `#[ignore]` for stable coverage metrics.
+Tests marked `#[ignore]` do not run in `cargo test` and therefore do not appear in coverage.
+The count is large and moves every release, so **measure it, never quote it**:
 
-| Category | Count | Status |
-|----------|-------|--------|
-| Language-Specific (Kotlin, WASM) | 4 | Ignored |
-| Language Regression (C, WASM, Bash, C++, PHP, Swift) | 6 | All PASSING (Sprint 42), ignored for concurrency |
-| Infrastructure (memory, TDG, profiler, dashboard) | 8 | Ignored |
-| Binary/E2E Integration | 8 | Require pmat binary |
-| Annotation TDD | 7 | Require pmat binary |
-| Unified Quality Framework | 14 | Property tests, ignored |
-| Language Detection | 5 | Need fixes |
-| Enhanced Naming | 6 | Require implementation |
-| Unified Context | 4 | Require implementation |
-| TypeScript/JavaScript | 3 | Need implementation |
-| Real-World/Performance | 5 | Need proper setup |
-| Timeout Integration | 3 | Require binary |
-| Ruchy Parser | 10 | RED tests for ruchy-ast feature |
-| CLI/Quality | 3 | Various |
+```bash
+git grep -cE '^[[:space:]]*#\[ignore' -- src   | awk -F: '{n+=$2} END{print n+0}'
+git grep -cE '^[[:space:]]*#\[ignore' -- tests | awk -F: '{n+=$2} END{print n+0}'
+env -u RUST_MIN_STACK cargo test --lib -- --ignored --list   # authoritative, lib only
+```
 
-**Previously "Known Failing" 14 tests**: ALL NOW PASSING (verified October 19, 2025). Service layer (6), defect report (5), E2E binary (3 - correctly ignored, require binary).
+At `fcb1eb45d` that is **341 in `src/` and 816 in `tests/`** — an earlier revision of this
+section claimed "~94 total (82 in src/)" together with a 14-row breakdown by category; both
+were off by more than 10x and the breakdown is not reconstructible from the tree, so it has
+been deleted rather than guessed at.
 
-Re-enable by removing `#[ignore]` when fixed. Always work on master - no branching.
+An `#[ignore]` is a silently unmeasured test. When you touch one, either fix it and remove
+the attribute or record why it must stay ignored next to it.
+
+Branching policy lives in the global instructions (feature branch + PR); this file used to
+say "always work on master", which contradicts them. Follow the global instructions.
 
 ---
 
@@ -270,15 +328,24 @@ Re-enable by removing `#[ignore]` when fixed. Always work on master - no branchi
 Evidence-based root cause analysis using Toyota Way Five Whys. **This is the ONLY acceptable debugging method.**
 
 ```bash
-pmat five-whys "Stack overflow in parser"              # Basic (5 iterations)
+pmat five-whys "Stack overflow in parser"              # Basic (default --depth 5)
 pmat why "Memory leak in cache" --depth 3              # Short alias
 pmat five-whys "Test failures" --format json -o out.json  # JSON output
-pmat five-whys "Perf regression" --format markdown --auto-analyze
+pmat five-whys "Perf regression" --format markdown
 ```
 
-Options: `--depth <1-10>`, `--format <text|json|markdown>`, `--output <FILE>`, `--path <PATH>`, `--context <FILE>`, `--auto-analyze`
+Options: `--depth <1-10>` (default 5), `--format <text|json|markdown>`, `--output <FILE>`, `--path <PATH>`.
 
-Evidence sources: complexity (25%), TDG (25%), SATD (20%), git churn (20%), dead code (10%). Spec: `docs/specifications/pmat-debug-five-whys.md`
+**`--auto-analyze` and `--context <FILE>` are accepted but do nothing.** Both print
+`Warning: ... is not yet implemented. Flag ignored.` and produce byte-identical output —
+verified by diffing full JSON with and without. Do not build a workflow on them.
+
+Evidence weights (v2, PMAT-510 — `calculate_confidence` in `src/services/five_whys_analyzer.rs`):
+IssueLocation 35%, Complexity 25%, SATD 20%, GitChurn 15%, EvoScoreTrajectory 15%,
+CoverageDelta 15%, ManualInspection 15%, DeadCode 10%. **TDG is weighted 0%** — removed as
+redundant with complexity+churn. Without at least one issue-specific `IssueLocation`
+evidence item the confidence score is capped (`NO_ISSUE_EVIDENCE_CEILING`), because every
+other source is a repo-wide metric that is identical whatever issue you typed.
 
 ---
 
@@ -306,9 +373,14 @@ Spec: `docs/specifications/components/repo-health.md` | Location: `src/services/
 **MANDATORY for**: Transpilers, distributed systems, multi-process workflows, cross-language integrations.
 
 ```bash
-renacer capture --scenario transpile_rust_to_js  # Capture golden trace
-renacer validate --all                            # Validate before commits
+renacer validate --generate <DIR> -- <command>    # Create a golden baseline
+renacer validate --baseline <DIR> -- <command>    # Compare against it
 ```
+
+renacer 0.10.2 has exactly two subcommands, `validate` and `visualize`; there is no
+`renacer capture` and no `renacer validate --all` (both were documented here and both
+error out). `validate` traces a command you pass after `--`; exit codes: 0=passed,
+1=failed, 2=baseline not found, 3=invalid baseline, 4=command error, 5=config error.
 
 Config: `renacer.toml` in project root. Always validate golden traces before completing work.
 
@@ -317,13 +389,12 @@ Config: `renacer.toml` in project root. Always validate golden traces before com
 ## trueno-graph O(1) Context and TDG Integration
 
 **STATUS**: ACTIVE (NOT feature-gated, used in production)
-**Spec**: `docs/specifications/trueno-o1-context-tdg-integration.md`
 
 trueno-graph provides CSR graph database for O(1) symbol lookups and PageRank-based importance scoring.
 
 **Integrations**:
-1. **Context Generation** (`context.rs:565-572`, `context_graph.rs`): Every `analyze_project_with_cache()` builds a ProjectContextGraph. 8/8 tests passing.
-2. **TDG Analysis** (`tdg/tdg_graph.rs`): TdgGraph provides O(1) function dependency tracking with PageRank criticality. 7/7 tests passing.
+1. **Context Generation**: `analyze_project_with_cache()` (`src/services/context_impl/visitor.rs:473`) calls `build_context_graph()` at line 483, so every cached project analysis builds a `ProjectContextGraph`. Type: `src/services/context_graph.rs`; tests: `src/services/context_graph_tests.rs` plus `context_graph_coverage_{core,extended,fixtures}.rs`.
+2. **TDG Analysis**: `src/tdg/tdg_graph.rs` — TdgGraph provides O(1) function dependency tracking with PageRank criticality; tests in `src/tdg/tdg_graph_tests.rs`.
 
 **Architecture**: Dual storage pattern - HashMap (O(1) lookups) + CSR graph (PageRank) + bidirectional NodeId mapping.
 
@@ -335,8 +406,8 @@ trueno-graph provides CSR graph database for O(1) symbol lookups and PageRank-ba
 
 Follow instructions in **`docs/agent-instructions/`** for deterministic fixes:
 
-1. **`pmat-work-ux-fixes.md`** - Fuzzy ID matching, status display, quality gates, short IDs
-2. **`pmat-work-quality-principles.md`** - Five Whys, Renacer tracing, Rust project requirements, commit metadata
+1. **`docs/agent-instructions/pmat-work-ux-fixes.md`** - Fuzzy ID matching, status display, quality gates, short IDs
+2. **`docs/agent-instructions/pmat-work-quality-principles.md`** - Five Whys, Renacer tracing, Rust project requirements, commit metadata
 
 Workflow: Read instruction doc → apply fixes in priority order → test each fix → commit atomically.
 
@@ -347,10 +418,13 @@ Workflow: Read instruction doc → apply fixes in priority order → test each f
 ```bash
 batuta oracle --rag-index                    # Index all stack docs (once)
 batuta oracle --rag "your question here"     # Search across stack
-batuta oracle --rag-stats                    # Check index status
+batuta oracle --rag-stats                    # Check index status / freshness
+batuta oracle --rag-index-force              # Force reindex (clears cache first)
 ```
 
-Auto-updates via post-commit hooks. Manual freshness check: `ora-fresh`. Force reindex: `batuta oracle --rag-index --force`
+Force reindex is the single flag `--rag-index-force`; `--rag-index --force` errors
+(`unexpected argument '--force'`). `ora-fresh` is a personal shell alias, not part of this
+repo or of batuta — use `batuta oracle --rag-stats` instead. Verified against batuta 0.7.3.
 
 ---
 

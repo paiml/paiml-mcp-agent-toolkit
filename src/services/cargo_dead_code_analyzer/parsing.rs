@@ -367,7 +367,6 @@ fn dead_code_kind_to_str(kind: &DeadCodeKind) -> &str {
         DeadCodeKind::Module => "module",
         DeadCodeKind::Trait => "trait",
         DeadCodeKind::TypeAlias => "type_alias",
-        DeadCodeKind::Suppressed => "suppressed",
         DeadCodeKind::UnreachableCode => "unreachable",
         DeadCodeKind::Other(s) => s,
     }

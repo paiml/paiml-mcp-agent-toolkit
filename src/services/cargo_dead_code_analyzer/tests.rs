@@ -87,9 +87,34 @@ fn used_function() {{
             items.len()
         );
 
-        // Verify the items are marked as Suppressed
+        // Every item carries its REAL kind. This used to assert
+        // `DeadCodeKind::Suppressed` for all three — the erased kind that made
+        // `dead_functions`/`dead_classes` count 0 over a list of dead functions
+        // and typed every one of them `variable`. The test pinned the defect.
+        let kind_of = |name: &str| {
+            items
+                .iter()
+                .find(|(_, i)| i.name == name)
+                .map(|(_, i)| i.kind.clone())
+                .unwrap_or_else(|| panic!("{name} missing from {items:?}"))
+        };
+        assert_eq!(kind_of("unused_function"), DeadCodeKind::Function);
+        assert_eq!(kind_of("UnusedStruct"), DeadCodeKind::Struct);
+        assert_eq!(kind_of("UNUSED_CONST"), DeadCodeKind::Constant);
+
+        // The provenance — "this was an explicit admission, not a compiler
+        // finding" — is what the message carries, now that it no longer
+        // displaces the kind.
         for (_, item) in &items {
-            assert_eq!(item.kind, DeadCodeKind::Suppressed);
+            assert!(
+                item.message.contains("explicit dead code admission"),
+                "{item:?} lost the record of how it was found"
+            );
+            assert!(
+                !item.message.contains("has  suppression"),
+                "the doubled space is back: {}",
+                item.message
+            );
         }
 
         // Check specific names
@@ -192,7 +217,11 @@ mod integration_tests {
             .unwrap();
 
         for (path, item) in &default_items {
-            assert_eq!(item.kind, DeadCodeKind::Suppressed);
+            assert_ne!(
+                item.kind,
+                DeadCodeKind::Other("unknown".to_string()),
+                "a suppressed item kept no identifiable kind: {item:?}"
+            );
             let relative = path.strip_prefix(&project_path).unwrap_or(path);
             assert!(
                 !relative.components().any(|c| c.as_os_str() == "tests"),
@@ -229,9 +258,21 @@ mod integration_tests {
             default_items.len()
         );
 
-        // Verify items are marked as Suppressed
+        // Every suppression the scan reports is attributed to a real kind, and
+        // the repo has at least one suppressed FUNCTION — the kind the erased
+        // `Suppressed` category used to make uncountable.
+        assert!(
+            with_tests
+                .iter()
+                .any(|(_, i)| i.kind == DeadCodeKind::Function),
+            "no suppressed item was attributed to a function"
+        );
         for (_, item) in &with_tests {
-            assert_eq!(item.kind, DeadCodeKind::Suppressed);
+            assert_ne!(
+                item.kind,
+                DeadCodeKind::Other("unknown".to_string()),
+                "a suppressed item kept no identifiable kind: {item:?}"
+            );
         }
 
         eprintln!(

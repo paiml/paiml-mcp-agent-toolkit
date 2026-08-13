@@ -1,3 +1,46 @@
+/// The clone class a duplicate group was actually MEASURED to be.
+///
+/// Every block used to be reported as an exact duplicate: `exact_duplicates`
+/// was `blocks with similarity >= 1.0` and the only hash-bucketing constructor
+/// wrote `similarity: 1.0` as a literal, so `--detection-type renamed` reported
+/// `exact_duplicates == total_duplicates` and the CSV `Type` column was the
+/// string `"exact"` on every row. On this repo that told a consumer that
+/// `rules.rs:40-78` and `rules.rs:98-136` — which differ on 8 of 39 lines
+/// (`CyclomaticComplexityRule` vs `CognitiveComplexityRule`) — are byte
+/// identical.
+///
+/// The class is derived from the group's CONTENTS, not from which extractor
+/// produced it: a fuzzy-hashed group whose members happen to be byte identical
+/// is still a Type-1 clone, and saying so costs one string comparison.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CloneType {
+    /// Type-1: the members are identical once comments and blank lines are
+    /// removed. `similarity` is exactly 1.0 and that is a measurement.
+    Exact,
+    /// Type-2: the members are identical up to identifier and literal NAMES —
+    /// they hash alike only after identifier normalisation, and their text
+    /// differs. `similarity` is the measured text similarity, which is < 1.0.
+    Renamed,
+    /// Type-3: near-miss — statements added, removed or reordered.
+    /// `similarity` is the clone engine's measured mean similarity.
+    NearMiss,
+}
+
+impl CloneType {
+    /// The one spelling of this class used by every renderer (CSV `Type`
+    /// column, JSON `clone_type`), so two surfaces of one report cannot
+    /// disagree about what a block is.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            CloneType::Exact => "exact",
+            CloneType::Renamed => "renamed",
+            CloneType::NearMiss => "near-miss",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Duplicate block.
 pub struct DuplicateBlock {
@@ -6,6 +49,9 @@ pub struct DuplicateBlock {
     pub lines: usize,
     pub tokens: usize,
     pub similarity: f32,
+    /// Which clone class this group was measured to be. Never a constant: see
+    /// [`CloneType`].
+    pub clone_type: CloneType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -566,6 +612,10 @@ fn near_miss_block(
         // representative, computed by the same comparison that admitted them.
         #[allow(clippy::cast_possible_truncation)]
         similarity: group.average_similarity as f32,
+        // Type-3 by construction: `find_structural_similarities` keeps only the
+        // groups whose average similarity is BELOW 1.0, i.e. exactly the ones
+        // hash bucketing cannot see.
+        clone_type: CloneType::NearMiss,
     })
 }
 

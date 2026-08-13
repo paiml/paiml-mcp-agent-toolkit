@@ -509,3 +509,125 @@ mod lint_hotspot_measurement_tests {
         assert!(build_lint_hotspot_result(HashMap::new()).unwrap().is_none());
     }
 }
+
+#[cfg(test)]
+mod doc_comment_denominator_tests {
+    //! Regression tests for #924 — the defect-density denominator excluded the
+    //! very lines the doc lints in the numerator fire on, so writing
+    //! documentation raised a file's density.
+    use super::*;
+
+    /// The #924 fixture. `//!` lines were not counted, so the SLOC stayed 3
+    /// while four `clippy::doc_markdown` findings landed on them.
+    #[test]
+    fn test_doc_comment_lines_are_counted_as_measured_lines() {
+        let code_only = "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n";
+        let with_docs = concat!(
+            "//! Helpers around std::vec::Vec and HashMap for the ctldoc crate.\n",
+            "//! See also std::collections::BTreeMap and PathBuf.\n",
+            "pub fn add(a: i32, b: i32) -> i32 {\n",
+            "    a + b\n",
+            "}\n",
+        );
+
+        assert_eq!(count_sloc(code_only), 3);
+        assert_eq!(
+            count_sloc(with_docs),
+            5,
+            "the two `//!` lines are lines clippy lints; they used to count 0"
+        );
+    }
+
+    /// The observable defect: documenting a file, with no code change, raised
+    /// its reported density from 2.67 to 4.00.
+    #[test]
+    fn test_documenting_a_file_no_longer_raises_its_density() {
+        let code_only = "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n";
+        let with_docs = concat!(
+            "//! Helpers around std::vec::Vec and HashMap for the ctldoc crate.\n",
+            "//! See also std::collections::BTreeMap and PathBuf.\n",
+            "pub fn add(a: i32, b: i32) -> i32 {\n",
+            "    a + b\n",
+            "}\n",
+        );
+
+        // Violation counts measured with `analyze lint-hotspot -f json` on the
+        // #924 fixture: 8 before the doc comment, 12 after (4 doc_markdown).
+        let before = calculate_defect_density(8, count_sloc(code_only));
+        let after = calculate_defect_density(12, count_sloc(with_docs));
+
+        assert!(
+            after <= before,
+            "adding documentation and no code raised density {before} -> {after}"
+        );
+    }
+
+    /// The reported #1 hotspot of this repo: `platform_routes.rs`, 15 lines —
+    /// 5 `//!`, 2 `use`, 2 `include!`, the rest blank. All 9 of its violations
+    /// sat on doc lines, over a denominator of 4, for a density of 2.25.
+    #[test]
+    fn test_module_header_denominator_includes_its_doc_lines() {
+        // Verbatim src/cli/handlers/analysis_handlers/platform_routes.rs.
+        let platform_routes = concat!(
+            "//! Platform-specific and specialized analysis route handlers\n",
+            "//!\n",
+            "//! Handles: GraphMetrics, NameSimilarity, ProofAnnotations, IncrementalCoverage,\n",
+            "//! SymbolTable, BigO, AssemblyScript, WebAssembly, Wasm, DeepWasm, Mutation,\n",
+            "//! Makefile, Models (MLOps)\n",
+            "\n",
+            "use crate::cli::{self, AnalyzeCommands};\n",
+            "use anyhow::Result;\n",
+            "\n",
+            "// Route handlers for graph, name similarity, proof, coverage, symbol table,\n",
+            "// big-o, assemblyscript, webassembly, wasm, deep_wasm, mutation, makefile\n",
+            "include!(\"platform_routes_routing.rs\");\n",
+            "\n",
+            "// Model analysis route handler and MLOps inventory helpers\n",
+            "include!(\"platform_routes_models.rs\");\n",
+        );
+
+        assert_eq!(
+            count_sloc(platform_routes),
+            9,
+            "5 doc lines + 2 use + 2 include!; the denominator used to be 4"
+        );
+        assert!(
+            calculate_defect_density(9, count_sloc(platform_routes)) <= 1.0,
+            "9 violations spread over 9 measured lines cannot exceed 1.0"
+        );
+    }
+
+    /// Plain comments are still not code, and `////` is not rustdoc.
+    #[test]
+    fn test_plain_and_quad_slash_comments_stay_excluded() {
+        let content = concat!(
+            "// a plain comment\n",
+            "//// four slashes is not rustdoc\n",
+            "\n",
+            "   // indented plain comment\n",
+            "let x = 1;\n",
+        );
+        assert_eq!(count_sloc(content), 1);
+    }
+
+    /// Both measurement paths must apply the same rule; `--file` used to carry
+    /// its own copy of it.
+    #[tokio::test]
+    async fn test_single_file_path_uses_the_same_sloc_rule() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let content = concat!(
+            "//! Documented module about Vec and HashMap.\n",
+            "//! More prose about PathBuf.\n",
+            "pub fn add(a: i32, b: i32) -> i32 {\n",
+            "    a + b\n",
+            "}\n",
+        );
+        std::fs::write(dir.path().join("lib.rs"), content).unwrap();
+
+        let sloc = count_source_lines(dir.path(), Path::new("lib.rs"))
+            .await
+            .unwrap();
+        assert_eq!(sloc, count_sloc(content));
+        assert_eq!(sloc, 5, "the `--file` path used to report 3 here");
+    }
+}

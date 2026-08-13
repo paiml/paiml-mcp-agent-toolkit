@@ -107,10 +107,36 @@ impl EntropyReport {
         }
     }
 
-    /// Format as human-readable report
+    /// Format as human-readable report, listing every violation.
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_report(&self) -> String {
+        self.format_report_top(0)
+    }
+
+    /// Format as human-readable report, listing at most `top_n` violations
+    /// (`0` = all) in the same "highest priority first" order `--top-violations`
+    /// uses everywhere else.
+    ///
+    /// `--format detailed` called `format_report()` and threw `--top-violations`
+    /// away, so `--top-violations 1` printed all 26 violations, byte-identically
+    /// to `--top-violations 100`, while `--format summary` and
+    /// `--format markdown` honoured the same flag on the same run. Two renderers
+    /// of one command disagreed about how many violations the run reports.
+    ///
+    /// The LIMIT is a display control and must not touch a measurement: the
+    /// "Actionable Violations" header keeps the full count and says how many of
+    /// them are listed, so a narrowed report can never be read as a smaller
+    /// finding.
+    #[must_use]
+    pub fn format_report_top(&self, top_n: usize) -> String {
+        let shown: &[crate::entropy::violation_detector::ActionableViolation] =
+            if top_n > 0 && self.actionable_violations.len() > top_n {
+                &self.actionable_violations[..top_n]
+            } else {
+                &self.actionable_violations
+            };
+
         let mut report = String::new();
 
         report.push_str("Entropy Analysis Results\n");
@@ -129,6 +155,13 @@ impl EntropyReport {
             "Actionable Violations: {}\n",
             self.actionable_violations.len()
         ));
+        if shown.len() < self.actionable_violations.len() {
+            report.push_str(&format!(
+                "Listing: top {} of {} (--top-violations)\n",
+                shown.len(),
+                self.actionable_violations.len()
+            ));
+        }
         if let Some(note) = &self.measurement_note {
             report.push_str(&format!("Note: {note}\n"));
         }
@@ -139,7 +172,7 @@ impl EntropyReport {
         let mut medium = Vec::new();
         let mut low = Vec::new();
 
-        for violation in &self.actionable_violations {
+        for violation in shown {
             match violation.severity {
                 crate::entropy::violation_detector::Severity::High => high.push(violation),
                 crate::entropy::violation_detector::Severity::Medium => medium.push(violation),

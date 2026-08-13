@@ -19,9 +19,11 @@ fn test_calculate_metrics_all_types() {
 
     for node in &result.nodes {
         assert!(node.degree_centrality >= 0.0);
-        assert!(node.betweenness_centrality >= 0.0);
-        assert!(node.closeness_centrality >= 0.0);
-        assert!(node.pagerank >= 0.0);
+        // Every one of these was explicitly selected above, so each must be
+        // Some: `None` here would mean the selection computed nothing.
+        assert!(node.betweenness_centrality.expect("betweenness selected") >= 0.0);
+        assert!(node.closeness_centrality.expect("closeness selected") >= 0.0);
+        assert!(node.pagerank.expect("page-rank selected") >= 0.0);
     }
 }
 
@@ -242,27 +244,33 @@ fn create_mock_result() -> GraphMetricsResult {
             NodeMetrics {
                 name: "high".to_string(),
                 degree_centrality: 0.9,
-                betweenness_centrality: 0.8,
-                closeness_centrality: 0.7,
-                pagerank: 0.3,
+                betweenness_centrality: Some(0.8),
+                closeness_centrality: Some(0.7),
+                pagerank: Some(0.3),
+                clustering_coefficient: None,
+                component_id: None,
                 in_degree: 5,
                 out_degree: 4,
             },
             NodeMetrics {
                 name: "medium".to_string(),
                 degree_centrality: 0.5,
-                betweenness_centrality: 0.4,
-                closeness_centrality: 0.3,
-                pagerank: 0.2,
+                betweenness_centrality: Some(0.4),
+                closeness_centrality: Some(0.3),
+                pagerank: Some(0.2),
+                clustering_coefficient: None,
+                component_id: None,
                 in_degree: 2,
                 out_degree: 2,
             },
             NodeMetrics {
                 name: "low".to_string(),
                 degree_centrality: 0.1,
-                betweenness_centrality: 0.05,
-                closeness_centrality: 0.08,
-                pagerank: 0.1,
+                betweenness_centrality: Some(0.05),
+                closeness_centrality: Some(0.08),
+                pagerank: Some(0.1),
+                clustering_coefficient: None,
+                component_id: None,
                 in_degree: 1,
                 out_degree: 0,
             },
@@ -292,8 +300,8 @@ fn test_filter_results_min_centrality() {
 
     // Only nodes with centrality >= 0.2 should remain
     assert!(filtered.nodes.iter().all(|n| n.degree_centrality >= 0.2
-        || n.betweenness_centrality >= 0.2
-        || n.closeness_centrality >= 0.2));
+        || n.betweenness_centrality.is_some_and(|v| v >= 0.2)
+        || n.closeness_centrality.is_some_and(|v| v >= 0.2)));
 }
 
 #[test]

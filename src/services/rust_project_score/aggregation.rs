@@ -65,6 +65,37 @@ pub fn sorted_categories(
     ordered
 }
 
+/// The percentage at or above which a category is rendered as passing (the `✓`
+/// tier in the text renderer).
+pub const PASSING_PERCENTAGE: f64 = 90.0;
+
+/// True when `--failures-only` should hide this category.
+///
+/// #943: the flag was a no-op, so this predicate did not exist and the four
+/// renderers had nothing to share. It lives here, next to the fold every
+/// renderer already goes through, so text, markdown, json and yaml cannot
+/// disagree about which categories are failures.
+///
+/// A category that is **not applicable** is not hidden: N/A means "not
+/// measured", which is not a pass, and hiding it would leave the reported
+/// denominator unexplainable.
+#[must_use]
+pub fn hidden_by_failures_only(category: &CategoryScore) -> bool {
+    category.applicable && category.percentage() >= PASSING_PERCENTAGE
+}
+
+/// Category pairs in name-sorted order, optionally dropping passing categories.
+#[must_use]
+pub fn sorted_categories_filtered(
+    categories: &HashMap<String, CategoryScore>,
+    failures_only: bool,
+) -> Vec<(&String, &CategoryScore)> {
+    sorted_categories(categories)
+        .into_iter()
+        .filter(|(_, cat)| !(failures_only && hidden_by_failures_only(cat)))
+        .collect()
+}
+
 /// Deterministic sum over categories, folded in name-sorted order.
 fn sorted_sum<F>(categories: &HashMap<String, CategoryScore>, mut value_of: F) -> f64
 where

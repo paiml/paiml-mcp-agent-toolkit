@@ -206,11 +206,18 @@ impl SATDDetector {
             || (path_str.contains("test") && path_str.contains("satd"))
     }
 
+    /// The package's own build script and manifest — the ones that sit beside
+    /// `src/`, not every file that happens to be called `build.rs`.
+    ///
+    /// #925's false negative was exactly this: `src/services/context_impl/
+    /// build.rs` holds a production `// TODO: Implement call graph edge
+    /// extraction in future iteration`, and `contains("/build.rs")` excluded
+    /// the whole file — so the one real marker the issue looked for was
+    /// invisible while 57 pieces of prose were reported.
     fn is_build_or_config_file(&self, path_str: &str) -> bool {
-        path_str.contains("/build.rs")
-            || path_str.contains("/Cargo.toml")
-            || path_str.contains(".gitignore")
-            || path_str.contains("README")
+        matches!(path_str, "/build.rs" | "/Cargo.toml")
+            || path_str.ends_with(".gitignore")
+            || path_str.ends_with("README.md")
     }
 
     fn is_example_or_demo(&self, path_str: &str) -> bool {

@@ -87,6 +87,18 @@ fn parse_clippy_line(
         return Ok(None);
     };
 
+    // A crate-level lint describes the MANIFEST, not a line of code, but cargo
+    // still has to anchor the diagnostic somewhere and picks the crate root at
+    // 1:1. Attributing it to that file put six `cargo_common_metadata` findings
+    // ("missing package.description", "missing package.license", …) on
+    // src/lib.rs and divided them by its SLOC, so a crate whose only source
+    // line was `//! nothing` reported density 6.0 and FAILED the quality gate
+    // on the strength of an incomplete Cargo.toml. Same shape as #924: a
+    // numerator that does not belong to the lines in the denominator.
+    if is_crate_level_lint(diagnostic) {
+        return Ok(None);
+    }
+
     let Some(span) = find_primary_span(diagnostic) else {
         return Ok(None);
     };
@@ -137,6 +149,26 @@ pub(super) fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&Diagn
         .spans
         .iter()
         .find(|s| s.is_primary || diagnostic.spans.len() == 1)
+}
+
+/// Is this a lint about the crate as a whole rather than about a line of code?
+///
+/// The `clippy::cargo` group inspects `Cargo.toml` — missing `description`,
+/// `license`, `keywords`, a wildcard dependency, a redundant feature name. None
+/// of them is a property of any source line, but cargo must anchor every
+/// diagnostic somewhere and uses the crate root at 1:1. Counting them as
+/// violations *of that file* is the #924 error in miniature: a numerator drawn
+/// from outside the lines the denominator measures.
+///
+/// They are dropped rather than rehomed because `analyze lint-hotspot` answers
+/// one question — which FILE has the highest violations per line — and a
+/// manifest has no lines. `pmat analyze makefile` and the repo-score hygiene
+/// checks are where manifest completeness belongs.
+fn is_crate_level_lint(diagnostic: &DiagnosticMessage) -> bool {
+    diagnostic
+        .code
+        .as_ref()
+        .is_some_and(|c| c.code.starts_with("clippy::cargo_") || c.code == "clippy::cargo")
 }
 
 /// Does this diagnostic belong to the file the user named with `--file`?
@@ -297,6 +329,14 @@ pub(crate) fn parse_clippy_json_output(
         let Some(diagnostic) = msg.message else {
             continue;
         };
+        // The same rule the `--file` path applies in `parse_clippy_line`: a
+        // crate-level lint has no line to belong to. Without this the project
+        // path and the single-file path disagreed about the same crate — two
+        // parsers, one rule, which is how this file already collected #679,
+        // #698 and the 100x unit split recorded above.
+        if is_crate_level_lint(&diagnostic) {
+            continue;
+        }
         if let Some(key) = diagnostic_dedup_key(&diagnostic) {
             if !seen.insert(key) {
                 continue;

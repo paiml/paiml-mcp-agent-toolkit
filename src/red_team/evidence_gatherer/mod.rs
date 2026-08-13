@@ -21,16 +21,60 @@ pub enum EvidenceSource {
     BenchmarkResults, // Performance measurements
     IssueTracker,     // GitHub issue status
     CodeGrep,         // Searching codebase for references
+    /// A source that could not adjudicate this claim: the artefact it reads was
+    /// absent or unreadable, or pmat does not run that measurement at all.
+    ///
+    /// This exists because absence had no representation. A missing benchmark
+    /// scored `supports_claim: false` and failed every Performance claim,
+    /// including ones true by construction; a missing coverage report produced
+    /// no entry at all and let "✅ All claims verified" stand over a number
+    /// nothing had read. Neither is a finding about the claim, so neither may
+    /// be rendered as one.
+    NotMeasured,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Result of evidence operation.
 pub struct EvidenceResult {
     pub source: EvidenceSource,
+    /// Meaningless unless [`EvidenceResult::measured`] — read it through
+    /// [`EvidenceResult::contradicts`] rather than directly.
     pub supports_claim: bool,
     pub confidence: f64, // 0.0 to 1.0
     pub details: String,
     pub timestamp: Option<i64>,
+}
+
+impl EvidenceResult {
+    /// Did this source actually observe something about the claim?
+    #[must_use]
+    pub fn measured(&self) -> bool {
+        !matches!(self.source, EvidenceSource::NotMeasured)
+    }
+
+    /// The single definition of "this evidence contradicts the claim".
+    ///
+    /// Every consumer — the verdict, the exit code, the contradicting-evidence
+    /// list — must ask here, so that a check which never ran cannot fail a
+    /// commit on one surface while reading as silence on another.
+    #[must_use]
+    pub fn contradicts(&self) -> bool {
+        self.measured() && !self.supports_claim
+    }
+
+    /// A check that did not run, and the artefact that would make it run.
+    #[must_use]
+    pub fn not_measured(reason: impl Into<String>) -> Self {
+        Self {
+            source: EvidenceSource::NotMeasured,
+            // Not support: an unread artefact certifies nothing. Not a
+            // contradiction either — see `contradicts`, which gates on source.
+            supports_claim: false,
+            confidence: 0.0,
+            details: format!("NOT MEASURED: {}", reason.into()),
+            timestamp: None,
+        }
+    }
 }
 
 /// Evidence gatherer.

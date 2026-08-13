@@ -7,7 +7,9 @@
 
 use crate::cli::RepoScoreOutputFormat;
 use crate::services::infra_score::aggregator::InfraScoreAggregator;
-use crate::services::infra_score::models::{InfraCheck, InfraScore, InfraSeverity};
+use crate::services::infra_score::models::{
+    InfraCategoryScore, InfraCheck, InfraFinding, InfraScore, InfraSeverity,
+};
 use anyhow::Result;
 use std::path::Path;
 
@@ -27,9 +29,19 @@ pub async fn handle_infra_score(
     let aggregator = InfraScoreAggregator::new();
     let result = aggregator.aggregate(path).await?;
 
+    // Every advertised format is rendered by a formatter of its own.
+    //
+    // This match used to be `Json => json, _ => text`, so `-f yaml` and
+    // `-f markdown` both emitted the ANSI text report — byte-identical to
+    // `-f text` — and `yaml.safe_load` failed on the box-drawing rule. The
+    // wildcard arm is deliberately gone: adding a variant to
+    // `RepoScoreOutputFormat` must now fail to compile here rather than
+    // silently resolve to "print the text report and exit 0".
     let output_str = match format {
+        RepoScoreOutputFormat::Text => format_text_output(&result, verbose, failures_only),
         RepoScoreOutputFormat::Json => serde_json::to_string_pretty(&result)?,
-        _ => format_text_output(&result, verbose, failures_only),
+        RepoScoreOutputFormat::Yaml => serde_yaml_ng::to_string(&result)?,
+        RepoScoreOutputFormat::Markdown => format_markdown_output(&result, verbose, failures_only),
     };
 
     if let Some(out_path) = output {
@@ -150,21 +162,7 @@ fn write_infra_categories(
     use crate::cli::colors as c;
     use std::fmt::Write;
     let _ = writeln!(out, "\n{}", c::subheader("Categories"));
-    let categories = [
-        (
-            "Workflow Architecture",
-            &result.categories.workflow_architecture,
-        ),
-        ("Build Reliability", &result.categories.build_reliability),
-        ("Quality Pipeline", &result.categories.quality_pipeline),
-        (
-            "Deployment & Release",
-            &result.categories.deployment_release,
-        ),
-        ("Supply Chain Security", &result.categories.supply_chain),
-    ];
-
-    for (name, cat) in &categories {
+    for (name, cat) in &infra_categories(result) {
         let pct_color = infra_pct_color(cat.percentage);
         let _ = writeln!(
             out,
@@ -228,17 +226,14 @@ fn write_infra_provable_contracts(
 fn write_infra_findings(out: &mut String, result: &InfraScore, verbose: bool, failures_only: bool) {
     use crate::cli::colors as c;
     use std::fmt::Write;
-    let all_findings: Vec<_> = [
-        &result.categories.workflow_architecture.findings,
-        &result.categories.build_reliability.findings,
-        &result.categories.quality_pipeline.findings,
-        &result.categories.deployment_release.findings,
-        &result.categories.supply_chain.findings,
-        &result.categories.provable_contracts.findings,
-    ]
-    .iter()
-    .flat_map(|f| f.iter())
-    .collect();
+    let all_findings: Vec<_> = infra_categories(result)
+        .iter()
+        .map(|(_, cat)| &cat.findings)
+        .chain(std::iter::once(
+            &result.categories.provable_contracts.findings,
+        ))
+        .flat_map(|f| f.iter())
+        .collect();
 
     if all_findings.is_empty() || (!verbose && failures_only) {
         return;
@@ -310,6 +305,167 @@ fn format_text_output(result: &InfraScore, verbose: bool, failures_only: bool) -
             "Executed in {}ms | pmat v{}",
             result.metadata.execution_time_ms, result.metadata.pmat_version
         ))
+    );
+
+    out
+}
+
+/// The five scored categories plus their display names, in report order.
+///
+/// One list, used by the text renderer and the markdown renderer alike — the
+/// two must never disagree about which categories exist.
+fn infra_categories(result: &InfraScore) -> [(&'static str, &InfraCategoryScore); 5] {
+    [
+        (
+            "Workflow Architecture",
+            &result.categories.workflow_architecture,
+        ),
+        ("Build Reliability", &result.categories.build_reliability),
+        ("Quality Pipeline", &result.categories.quality_pipeline),
+        (
+            "Deployment & Release",
+            &result.categories.deployment_release,
+        ),
+        ("Supply Chain Security", &result.categories.supply_chain),
+    ]
+}
+
+/// Render the report as Markdown: no ANSI, no box drawing, tables a docs
+/// pipeline can embed verbatim.
+fn format_markdown_output(result: &InfraScore, verbose: bool, failures_only: bool) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    let _ = writeln!(out, "# Infra Score v1.0\n");
+    let _ = writeln!(out, "## Summary\n");
+    let _ = writeln!(
+        out,
+        "- **Score**: {:.1}/{:.1}",
+        result.total_score,
+        crate::services::infra_score::models::INFRA_SCORE_MAX_POINTS
+    );
+    let _ = writeln!(out, "- **Grade**: {}", result.grade.as_str());
+    let _ = writeln!(
+        out,
+        "- **Status**: {}",
+        if result.auto_fail {
+            "AUTO-FAIL (< 90 required)"
+        } else {
+            "PASS"
+        }
+    );
+    let bonus = result.categories.provable_contracts.score;
+    if bonus > 0.0 {
+        let _ = writeln!(out, "- **Bonus**: +{bonus:.1} (provable contracts)");
+        let _ = writeln!(
+            out,
+            "- **Total with bonus**: {:.1}/{:.1}",
+            result.categories.total_with_bonus(),
+            crate::services::infra_score::models::INFRA_SCORE_MAX_POINTS
+                + result.categories.provable_contracts.max_score
+        );
+    }
+
+    let _ = writeln!(out, "\n## Categories\n");
+    let _ = writeln!(out, "| Category | Score | Max | Percentage |");
+    let _ = writeln!(out, "|----------|-------|-----|------------|");
+    for (name, cat) in infra_categories(result) {
+        let _ = writeln!(
+            out,
+            "| {} | {:.1} | {:.1} | {:.1}% |",
+            name, cat.score, cat.max_score, cat.percentage
+        );
+    }
+    let pv = &result.categories.provable_contracts;
+    if pv.score > 0.0 || verbose {
+        let _ = writeln!(
+            out,
+            "| Provable Contracts (bonus) | {:.1} | {:.1} | {:.1}% |",
+            pv.score, pv.max_score, pv.percentage
+        );
+    }
+
+    if verbose {
+        let _ = writeln!(out, "\n## Checks\n");
+        let _ = writeln!(out, "| Check | Name | Score | Max | Result |");
+        let _ = writeln!(out, "|-------|------|-------|-----|--------|");
+        let mut shown = 0usize;
+        let mut total = 0usize;
+        for (_, cat) in infra_categories(result).iter().chain(std::iter::once(&(
+            "Provable Contracts",
+            &result.categories.provable_contracts,
+        ))) {
+            for check in &cat.checks {
+                total += 1;
+                if failures_only && check.passed {
+                    continue;
+                }
+                shown += 1;
+                let _ = writeln!(
+                    out,
+                    "| {} | {} | {:.0} | {:.0} | {} |",
+                    check.id,
+                    check.name,
+                    check.score,
+                    check.max_score,
+                    if check.passed { "pass" } else { "FAIL" }
+                );
+            }
+        }
+        if shown < total {
+            let _ = writeln!(
+                out,
+                "\n_Showing {shown} of {total} checks (--failures-only)._"
+            );
+        }
+    }
+
+    let findings: Vec<&InfraFinding> = infra_categories(result)
+        .iter()
+        .map(|(_, cat)| &cat.findings)
+        .chain(std::iter::once(
+            &result.categories.provable_contracts.findings,
+        ))
+        .flat_map(|f| f.iter())
+        .filter(|f| !(failures_only && f.severity == InfraSeverity::Pass))
+        .collect();
+    if !findings.is_empty() {
+        let _ = writeln!(out, "\n## Findings\n");
+        let _ = writeln!(out, "| Severity | Check | Location | Message |");
+        let _ = writeln!(out, "|----------|-------|----------|---------|");
+        for f in findings {
+            let severity = match f.severity {
+                InfraSeverity::Fail => "fail",
+                InfraSeverity::Warning => "warning",
+                InfraSeverity::Info => "info",
+                InfraSeverity::Pass => "pass",
+            };
+            let _ = writeln!(
+                out,
+                "| {} | {} | {} | {} |",
+                severity,
+                f.check_id,
+                f.location.as_deref().unwrap_or("-"),
+                f.message.replace('|', "\\|").replace('\n', " ")
+            );
+        }
+    }
+
+    if !result.recommendations.is_empty() {
+        let _ = writeln!(out, "\n## Recommendations\n");
+        for rec in &result.recommendations {
+            let _ = writeln!(
+                out,
+                "- **{}**: {} (+{:.0} pts, ~{})",
+                rec.check_id, rec.description, rec.impact_points, rec.estimated_effort
+            );
+        }
+    }
+
+    let _ = writeln!(
+        out,
+        "\n---\n\n_Executed in {}ms | pmat v{}_",
+        result.metadata.execution_time_ms, result.metadata.pmat_version
     );
 
     out
@@ -594,6 +750,64 @@ mod format_text_tests {
     }
 
     // ── Header always present ──
+
+    // ── #942: markdown and yaml were the text report ──
+
+    /// `-f markdown` used to fall through the `_ =>` arm and emit the ANSI text
+    /// report, so a docs pipeline embedded box-drawing rules and escape
+    /// sequences. Markdown must be markdown.
+    #[test]
+    fn markdown_output_is_markdown_not_the_text_report() {
+        let mut r = make_score(85.0, InfraGrade::B, true);
+        r.categories.workflow_architecture.checks = vec![check("WA-01", "Workflow", false, vec![])];
+        r.categories.workflow_architecture.findings =
+            vec![finding(InfraSeverity::Fail, "WA-01", "no workflow")];
+
+        let md = format_markdown_output(&r, true, false);
+        let text = format_text_output(&r, true, false);
+
+        assert_ne!(md, text, "markdown must not be the text report");
+        assert!(md.starts_with("# Infra Score v1.0"), "{md}");
+        assert!(!md.contains('\u{2501}'), "no box drawing in markdown: {md}");
+        assert!(!md.contains('\x1b'), "no ANSI escapes in markdown: {md}");
+        assert!(
+            md.contains("| Category | Score | Max | Percentage |"),
+            "{md}"
+        );
+        assert!(md.contains("| WA-01 | Workflow |"), "{md}");
+        assert!(md.contains("**Score**: 85.0/100.0"), "{md}");
+        assert!(md.contains("AUTO-FAIL"), "{md}");
+    }
+
+    /// `-f yaml` used to emit the same text report; `yaml.safe_load` failed on
+    /// `Score: 7.0/100.0`. The YAML must round-trip back to the same numbers.
+    #[test]
+    fn yaml_output_parses_back_to_the_scored_report() {
+        let r = make_score(42.5, InfraGrade::D, true);
+        let yaml = serde_yaml_ng::to_string(&r).expect("serialize infra score to YAML");
+        assert!(!yaml.contains('\u{2501}'), "{yaml}");
+        assert!(!yaml.contains('\x1b'), "{yaml}");
+
+        let back: InfraScore = serde_yaml_ng::from_str(&yaml).expect("YAML must parse back");
+        assert_eq!(back.total_score, 42.5);
+        assert!(back.auto_fail);
+        assert_ne!(yaml, format_text_output(&r, false, false));
+    }
+
+    /// `--failures-only` must reach the markdown check table, exactly as it
+    /// reaches the text one.
+    #[test]
+    fn markdown_failures_only_drops_passing_checks() {
+        let mut r = make_score(95.0, InfraGrade::APlus, false);
+        r.categories.workflow_architecture.checks = vec![
+            check("PASS-01", "Pass", true, vec![]),
+            check("FAIL-01", "Fail", false, vec![]),
+        ];
+        let md = format_markdown_output(&r, true, true);
+        assert!(md.contains("FAIL-01"), "{md}");
+        assert!(!md.contains("PASS-01"), "{md}");
+        assert!(md.contains("(--failures-only)"), "{md}");
+    }
 
     #[test]
     fn test_format_text_output_always_emits_header_and_footer() {

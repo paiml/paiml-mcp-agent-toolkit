@@ -112,6 +112,26 @@ fn write_graphml_footer(graphml: &mut String) -> Result<()> {
     Ok(())
 }
 
+/// Render a metric for a human-facing format.
+///
+/// `None` means the selected `--metrics` set did not compute it, and every
+/// non-JSON format has to say so: printing `0.000` for an uncomputed measure is
+/// the same fabrication as the initializer that used to reach JSON.
+fn fmt_metric(value: Option<f64>) -> String {
+    value.map_or_else(|| "n/a".to_string(), |v| format!("{v:.3}"))
+}
+
+/// Render a metric for CSV: an empty field for "not computed", which is the CSV
+/// spelling of JSON's `null`. `0.000` would be a value.
+fn csv_metric(value: Option<f64>) -> String {
+    value.map_or_else(String::new, |v| format!("{v:.3}"))
+}
+
+/// Render the component id for a text format.
+fn fmt_component(value: Option<usize>) -> String {
+    value.map_or_else(|| "n/a".to_string(), |v| v.to_string())
+}
+
 // Format output
 // Refactored format_output with reduced complexity
 fn format_output(
@@ -184,42 +204,54 @@ fn format_gm_as_detailed(result: &GraphMetricsResult) -> Result<String> {
     Ok(output)
 }
 
-/// A centrality measure: its heading and how to read it off a node.
-type CentralityMeasure = (&'static str, fn(&NodeMetrics) -> f64);
+/// A centrality measure: its heading and how to read it off a node. `None` from
+/// the accessor means this run did not compute it.
+type CentralityMeasure = (&'static str, fn(&NodeMetrics) -> Option<f64>);
 
 /// One ranked list per centrality measure.
 fn write_gm_rankings(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
 
-    let measures: [CentralityMeasure; 4] = [
+    let measures: [CentralityMeasure; 5] = [
         ("PageRank", |n| n.pagerank),
         ("Betweenness", |n| n.betweenness_centrality),
         ("Closeness", |n| n.closeness_centrality),
-        ("Degree", |n| n.degree_centrality),
+        ("Clustering", |n| n.clustering_coefficient),
+        ("Degree", |n| Some(n.degree_centrality)),
     ];
 
     for (label, key) in measures {
         writeln!(output, "\n{}Ranked by {}{}\n", c::BOLD, label, c::RESET)?;
+        // A measure nothing computed has no ranking. Ordering the nodes by a
+        // value that does not exist would print a ranking of `n/a`s that reads
+        // as a result.
+        if result.nodes.iter().all(|n| key(n).is_none()) {
+            writeln!(
+                output,
+                "  not computed — add it to --metrics (or use --metrics all)"
+            )?;
+            continue;
+        }
         let mut ranked: Vec<&NodeMetrics> = result.nodes.iter().collect();
         // DETERMINISM: name breaks ties, so nodes with equal scores (which is
         // most of them on a sparse graph) rank in a fixed order across runs.
         ranked.sort_by(|a, b| {
             key(b)
-                .partial_cmp(&key(a))
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .unwrap_or(f64::NEG_INFINITY)
+                .total_cmp(&key(a).unwrap_or(f64::NEG_INFINITY))
                 .then_with(|| a.name.cmp(&b.name))
         });
         for (i, node) in ranked.iter().enumerate() {
             writeln!(
                 output,
-                "  {}. {}{}{} {}{:.3}{}",
+                "  {}. {}{}{} {}{}{}",
                 i + 1,
                 c::CYAN,
                 node.name,
                 c::RESET,
                 c::BOLD_WHITE,
-                key(node),
+                fmt_metric(key(node)),
                 c::RESET
             )?;
         }
@@ -335,29 +367,47 @@ fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) 
     )?;
     writeln!(
         output,
-        "     {}Betweenness:{} {}{:.3}{}",
+        "     {}Betweenness:{} {}{}{}",
         c::BOLD,
         c::RESET,
         c::BOLD_WHITE,
-        node.betweenness_centrality,
+        fmt_metric(node.betweenness_centrality),
         c::RESET
     )?;
     writeln!(
         output,
-        "     {}Closeness:{} {}{:.3}{}",
+        "     {}Closeness:{} {}{}{}",
         c::BOLD,
         c::RESET,
         c::BOLD_WHITE,
-        node.closeness_centrality,
+        fmt_metric(node.closeness_centrality),
         c::RESET
     )?;
     writeln!(
         output,
-        "     {}PageRank:{} {}{:.3}{}",
+        "     {}PageRank:{} {}{}{}",
         c::BOLD,
         c::RESET,
         c::BOLD_WHITE,
-        node.pagerank,
+        fmt_metric(node.pagerank),
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "     {}Clustering:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        fmt_metric(node.clustering_coefficient),
+        c::RESET
+    )?;
+    writeln!(
+        output,
+        "     {}Component:{} {}{}{}",
+        c::BOLD,
+        c::RESET,
+        c::BOLD_WHITE,
+        fmt_component(node.component_id),
         c::RESET
     )?;
     writeln!(output)?;
@@ -372,19 +422,24 @@ fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
     // Write header
     writeln!(
         output,
-        "name,degree_centrality,betweenness,closeness,pagerank,in_degree,out_degree"
+        "name,degree_centrality,betweenness,closeness,pagerank,clustering,component_id,in_degree,out_degree"
     )?;
 
-    // Write data rows
+    // Write data rows. An uncomputed measure is an EMPTY field, not `0.000`:
+    // `-f csv` used to print `mod.rs,0.397,0.000,0.000,0.001,1,432` where the
+    // 0.001 was 1/N and the two 0.000s were initializers.
     for node in result.nodes {
         writeln!(
             output,
-            "{},{:.3},{:.3},{:.3},{:.3},{},{}",
+            "{},{:.3},{},{},{},{},{},{},{}",
             node.name,
             node.degree_centrality,
-            node.betweenness_centrality,
-            node.closeness_centrality,
-            node.pagerank,
+            csv_metric(node.betweenness_centrality),
+            csv_metric(node.closeness_centrality),
+            csv_metric(node.pagerank),
+            csv_metric(node.clustering_coefficient),
+            node.component_id
+                .map_or_else(String::new, |id| id.to_string()),
             node.in_degree,
             node.out_degree
         )?;
@@ -436,22 +491,24 @@ fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult)
     writeln!(output, "\n## Top Nodes\n")?;
     writeln!(
         output,
-        "| Node | Degree | Betweenness | Closeness | PageRank |"
+        "| Node | Degree | Betweenness | Closeness | PageRank | Clustering | Component |"
     )?;
     writeln!(
         output,
-        "|------|--------|-------------|-----------|----------|"
+        "|------|--------|-------------|-----------|----------|------------|-----------|"
     )?;
 
     for node in result.nodes.iter().take(10) {
         writeln!(
             output,
-            "| {} | {:.3} | {:.3} | {:.3} | {:.3} |",
+            "| {} | {:.3} | {} | {} | {} | {} | {} |",
             node.name,
             node.degree_centrality,
-            node.betweenness_centrality,
-            node.closeness_centrality,
-            node.pagerank
+            fmt_metric(node.betweenness_centrality),
+            fmt_metric(node.closeness_centrality),
+            fmt_metric(node.pagerank),
+            fmt_metric(node.clustering_coefficient),
+            fmt_component(node.component_id)
         )?;
     }
 

@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 /// Configuration for dead code analysis
 #[allow(clippy::too_many_arguments)]
+#[derive(Clone)]
 struct DeadCodeAnalysisFilters {
     include_unreachable: bool,
     include_tests: bool,
@@ -57,25 +58,49 @@ pub async fn handle_analyze_dead_code(
         }
     }
 
-    // Run analysis with timeout
-    let timeout_duration = tokio::time::Duration::from_secs(timeout);
-    let outcome = tokio::time::timeout(timeout_duration, async {
-        run_dead_code_analysis_with_filters(
-            &path,
-            DeadCodeAnalysisFilters {
-                include_unreachable,
-                include_tests,
-                min_dead_lines,
-                top_files,
-                include,
-                exclude,
-                max_depth,
-            },
-        )
-        .await
-    })
+    // Run analysis with the budget the flag names.
+    //
+    // This used to be a `tokio::time::timeout` wrapped around a call that
+    // blocks — `std::process::Command::output()` running `cargo check` — so the
+    // timer could never fire: `--timeout 1` ran 20.2s to completion and exited
+    // 0 under a banner promising a 1-second bound. A timer cannot cancel a
+    // future that never yields, and cancelling would not have killed `cargo`
+    // anyway. The budget is now carried INTO the analysis, where the code that
+    // owns the child process can kill it (see
+    // `CargoDeadCodeAnalyzer::wait_for_cargo_check`).
+    let budget = tokio::time::Duration::from_secs(timeout);
+    let outcome = run_dead_code_analysis_with_filters(
+        &path,
+        DeadCodeAnalysisFilters {
+            include_unreachable,
+            include_tests,
+            min_dead_lines,
+            top_files,
+            include,
+            exclude,
+            max_depth,
+        },
+        budget,
+    )
     .await
-    .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {timeout} seconds"))??;
+    // Now that the budget is real, the default (60s) can genuinely be too small:
+    // a COLD `cargo check` on a large crate takes minutes, and this command used
+    // to run for as long as it liked. Name the remedy in the error rather than
+    // leaving the operator to guess which knob moved.
+    .map_err(|e| {
+        if e.to_string().contains("timed out after") {
+            // A flat message, not `.context()`: the CLI's error printer shows
+            // the root cause, so a wrapper would be the half that never reaches
+            // the operator.
+            anyhow::anyhow!(
+                "{e} (cargo check was killed). A cold check on a large crate can take \
+                 minutes — re-run with a larger --timeout; the result is cached, so the \
+                 next run is fast"
+            )
+        } else {
+            e
+        }
+    })?;
 
     let result = outcome.report;
     let scope = outcome.scope;
@@ -160,6 +185,12 @@ include!("dead_code_handlers_output.rs");
 #[cfg(test)]
 #[path = "dead_code_handlers_scope_tests.rs"]
 mod scope_tests;
+
+// The summary's categories vs. the items it heads, and `--timeout`.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_handlers_budget_tests.rs"]
+mod budget_tests;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

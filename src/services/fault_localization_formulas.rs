@@ -102,7 +102,6 @@ impl SbflLocalizer {
         self
     }
 
-    
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// With min confidence.
     pub fn with_min_confidence(mut self, threshold: f32) -> Self {
@@ -143,8 +142,17 @@ impl SbflLocalizer {
             })
             .collect();
 
-        // Sort by suspiciousness (descending)
-        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        // Sort by suspiciousness (descending), then by statement (file, line)
+        // so that ties break the same way on every run. Ties are the normal
+        // case, not the exception — a whole file of statements touched by the
+        // same tests scores identically — and while the tie-break was `HashMap`
+        // order, six identical invocations returned six disjoint top-10s and no
+        // result could be quoted in a bug report (#949).
+        scored.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(&b.0))
+        });
 
         // Take top N
         let rankings: Vec<SuspiciousnessRanking> = scored

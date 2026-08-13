@@ -498,4 +498,96 @@ This line SHOULD be extracted.
         // testable = 2 (0 unfalsifiable); survived/testable = 0.5.
         assert!((s.health_score - 0.5).abs() < f64::EPSILON);
     }
+
+    // ── #956: the verdict must not depend on PATH ──
+
+    /// REGRESSION (#956): every real check spawned a bare `pmat`, resolved
+    /// through PATH. The verdict therefore came from whatever build happened to
+    /// be installed — on the reporting machine, a *different, dirty* commit than
+    /// the binary being asked — and disappeared entirely on a runner with no
+    /// pmat installed.
+    ///
+    /// The fake `pmat` planted on PATH below answers every search with 999999
+    /// occurrences. On the old code the absence check consumed that answer and
+    /// returned a measured contradiction; the running build must ignore it.
+    #[cfg(unix)]
+    #[test]
+    #[serial_test::serial]
+    fn a_pmat_on_path_is_never_consulted() {
+        use std::os::unix::fs::PermissionsExt;
+
+        struct PathGuard(Option<std::ffi::OsString>);
+        impl Drop for PathGuard {
+            fn drop(&mut self) {
+                match self.0.take() {
+                    Some(old) => std::env::set_var("PATH", old),
+                    None => std::env::remove_var("PATH"),
+                }
+            }
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("pmat");
+        std::fs::write(&fake, "#!/bin/sh\necho 'src/lib.rs:999999'\nexit 0\n").unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let _guard = PathGuard(std::env::var_os("PATH"));
+        std::env::set_var("PATH", dir.path());
+
+        let engine = FalsificationEngine::new(dir.path());
+        let claim = make_claim(
+            "a",
+            "The project MUST have zero unwrap() calls.",
+            SpecClaimCategory::AbsenceClaim,
+        );
+        let evidence = engine.check_absence_claim(&claim);
+
+        assert_eq!(evidence.len(), 1, "one search term: unwrap()");
+        assert!(
+            !evidence[0].measured,
+            "an impostor `pmat` on PATH was consulted: {}",
+            evidence[0].finding
+        );
+        assert!(
+            !evidence[0].finding.contains("999999"),
+            "evidence came from the PATH binary, not from this build: {}",
+            evidence[0].finding
+        );
+        assert_eq!(
+            engine.determine_verdict(&claim, &evidence),
+            VerdictStatus::Inconclusive,
+            "a check that did not run is inconclusive, never survived"
+        );
+    }
+
+    /// The falsifier must ask the build that is running, not a name on PATH.
+    /// Source-level pin: three call sites regressed to `Command::new("pmat")`
+    /// once already, and each one flips a verdict when PATH changes.
+    #[test]
+    fn the_engine_spawns_only_its_own_executable() {
+        let source = include_str!("spec_falsification_engine.rs");
+        // Split so this probe cannot match its own text.
+        let bare = concat!("Command::new(", "\"pmat\")");
+        assert!(
+            !source.contains(bare),
+            "a bare `pmat` resolved through PATH makes the verdict machine-dependent"
+        );
+        assert!(source.contains("std::env::current_exe()"));
+    }
+
+    /// Under `cargo test` the running executable is a libtest harness, which
+    /// cannot answer `pmat query`. Refusing is the honest outcome; spawning it
+    /// anyway would let libtest's own `--help` masquerade as a pmat subcommand.
+    #[test]
+    fn self_exe_refuses_a_non_pmat_harness() {
+        let resolved = FalsificationEngine::self_exe();
+        let running = std::env::current_exe().unwrap();
+        let stem = running.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if stem == "pmat" {
+            assert!(resolved.is_ok());
+        } else {
+            let err = resolved.expect_err("a non-pmat executable must be refused");
+            assert!(err.to_string().contains("not a pmat binary"), "{err}");
+        }
+    }
 }

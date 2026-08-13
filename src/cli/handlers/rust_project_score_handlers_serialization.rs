@@ -15,14 +15,21 @@
 fn build_score_document(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
+    failures_only: bool,
 ) -> serde_json::Value {
     use crate::services::rust_project_score::aggregation;
 
     // Totals exclude N/A categories (#237: GPU N/A pollutes totals).
+    //
+    // They are computed over EVERY category even under `--failures-only`
+    // (#943): the flag selects what is listed, never what is scored, so the
+    // grade a CI step reads cannot change with a display flag.
     let applicable_earned = aggregation::applicable_earned(&score.categories);
     let applicable_possible = aggregation::applicable_possible(&score.categories);
 
-    let categories: Vec<serde_json::Value> = aggregation::sorted_categories(&score.categories)
+    let listed = aggregation::sorted_categories_filtered(&score.categories, failures_only);
+    let categories_omitted = score.categories.len() - listed.len();
+    let categories: Vec<serde_json::Value> = listed
         .into_iter()
         .map(|(name, cat)| {
             serde_json::json!({
@@ -62,6 +69,10 @@ fn build_score_document(
         "grade": score.grade.to_string(),
         "grade_basis": "points_percentage",
         "categories": categories,
+        // Named so a consumer can never mistake a filtered list for a project
+        // with fewer categories.
+        "categories_filtered": failures_only,
+        "categories_omitted": categories_omitted,
         "recommendations": recommendations,
     })
 }
@@ -70,8 +81,9 @@ fn build_score_document(
 fn format_json(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
+    failures_only: bool,
 ) -> Result<String> {
-    let json = build_score_document(score, recommendations);
+    let json = build_score_document(score, recommendations, failures_only);
     serde_json::to_string_pretty(&json).context("Failed to serialize to JSON")
 }
 
@@ -79,7 +91,8 @@ fn format_json(
 fn format_yaml(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
+    failures_only: bool,
 ) -> Result<String> {
-    let doc = build_score_document(score, recommendations);
+    let doc = build_score_document(score, recommendations, failures_only);
     serde_yaml_ng::to_string(&doc).context("Failed to serialize to YAML")
 }

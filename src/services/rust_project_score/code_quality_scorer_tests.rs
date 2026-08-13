@@ -50,16 +50,14 @@ mod tests {
         .unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer
-            .score_complexity_simple(temp_dir.path(), None)
-            .unwrap();
 
-        // No code = no complexity issues = full points
-        assert_eq!(result, 3.0);
+        // No source is NOT "no complexity issues": nothing was measured. This
+        // used to return a full 3.0 for a project with no code at all.
+        assert_eq!(scorer.measure_cyclomatic(temp_dir.path(), None), None);
     }
 
     #[test]
-    fn test_complexity_no_deep_nesting() {
+    fn test_complexity_simple_function_scores_full_points() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
         fs::write(
@@ -74,16 +72,20 @@ mod tests {
         .unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer
-            .score_complexity_simple(temp_dir.path(), None)
-            .unwrap();
+        let profile = scorer
+            .measure_cyclomatic(temp_dir.path(), None)
+            .expect("one measurable function");
 
-        // No deep nesting = full points
-        assert_eq!(result, 3.0);
+        assert_eq!(profile.functions, 1);
+        assert_eq!(profile.over_error, 0);
+        assert_eq!(score_from_cyclomatic(profile), 3.0);
     }
 
+    /// A wide line is not complexity. The old check counted lines indented past
+    /// column 40 and charged a point for each handful of them, so formatting
+    /// moved the score.
     #[test]
-    fn test_complexity_with_moderate_nesting() {
+    fn test_deep_indentation_alone_does_not_cost_points() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
         fs::write(
@@ -92,24 +94,32 @@ mod tests {
         )
         .unwrap();
 
-        // Create code with 3 deeply nested lines (indent > 40 chars threshold)
+        // 25 lines indented 45 columns, cyclomatic complexity 1.
         let deep_code = format!(
-            "fn main() {{\n{}",
-            "                                             nested();\n".repeat(3) // 45 spaces
+            "fn main() {{\n{}}}\n",
+            "                                             nested();\n".repeat(25)
         );
         fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer
-            .score_complexity_simple(temp_dir.path(), None)
-            .unwrap();
+        let profile = scorer
+            .measure_cyclomatic(temp_dir.path(), None)
+            .expect("one measurable function");
 
-        // 1-5 deep nesting = 2.0 points
-        assert_eq!(result, 2.0);
+        assert_eq!(profile.max, 1, "no decision points in the fixture");
+        assert_eq!(
+            score_from_cyclomatic(profile),
+            3.0,
+            "indentation must not be scored as complexity"
+        );
     }
 
+    /// #937: the reported case. A crate whose only function has cyclomatic
+    /// complexity 241 scored the Complexity check 3.0/3.0 (and Code Quality
+    /// 14.0/14.0) because none of its lines are deeply indented, while the
+    /// same binary's `quality-gate --checks complexity` blocked it.
     #[test]
-    fn test_complexity_with_excessive_nesting() {
+    fn test_high_cyclomatic_function_scores_zero() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
         fs::write(
@@ -118,20 +128,83 @@ mod tests {
         )
         .unwrap();
 
-        // Create code with >20 deeply nested lines (indent > 40 chars threshold)
-        let deep_code = format!(
-            "fn main() {{\n{}",
-            "                                             nested();\n".repeat(25) // 45 spaces
-        );
-        fs::write(temp_dir.path().join("src/lib.rs"), deep_code).unwrap();
+        let mut monster = String::from("pub fn monster(a: i32, b: i32, c: i32, d: i32) -> i32 {\n    let mut r = 0;\n");
+        for i in 0..60 {
+            monster.push_str(&format!(
+                "    if a > {i} && b < {i} || c == {i} {{ r += {i}; }} else if d != {i} {{ r -= {i}; }}\n"
+            ));
+        }
+        monster.push_str("    r\n}\n");
+        fs::write(temp_dir.path().join("src/lib.rs"), monster).unwrap();
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer
-            .score_complexity_simple(temp_dir.path(), None)
+        let profile = scorer
+            .measure_cyclomatic(temp_dir.path(), None)
+            .expect("one measurable function");
+
+        assert!(
+            profile.max > 200,
+            "expected the measured cyclomatic complexity, got {}",
+            profile.max
+        );
+        assert_eq!(profile.over_error, 1);
+        assert_eq!(score_from_cyclomatic(profile), 0.0);
+
+        // ...and the category it feeds cannot report 100% for that crate.
+        let category = scorer
+            .score_with_mode(temp_dir.path(), ScoringMode::Fast)
+            .expect("fast score");
+        assert!(
+            category.percentage() < 100.0,
+            "Code Quality was {}/{} for a cyclomatic-241 crate",
+            category.earned,
+            category.max
+        );
+    }
+
+    /// The ranking must not be inverted: a complex crate cannot outscore a
+    /// trivial one on the Complexity check.
+    #[test]
+    fn test_complex_crate_scores_below_simple_crate() {
+        let make = |name: &str, body: &str| {
+            let dir = TempDir::new().unwrap();
+            fs::create_dir_all(dir.path().join("src")).unwrap();
+            fs::write(
+                dir.path().join("Cargo.toml"),
+                format!("[package]\nname = \"{name}\""),
+            )
+            .unwrap();
+            fs::write(dir.path().join("src/lib.rs"), body).unwrap();
+            dir
+        };
+
+        let mut hot_body = String::from("pub fn monster(a: i32, b: i32) -> i32 {\n    let mut r = 0;\n");
+        for i in 0..60 {
+            hot_body.push_str(&format!("    if a > {i} && b < {i} {{ r += {i}; }}\n"));
+        }
+        hot_body.push_str("    r\n}\n");
+        let hot = make("hot", &hot_body);
+
+        // One function, complexity 1, one line indented 44 columns.
+        let deep = make(
+            "deep",
+            "pub fn simple() -> i32 {\n                                            1\n}\n",
+        );
+
+        let scorer = CodeQualityScorer::new();
+        let hot_score = scorer
+            .score_with_mode(hot.path(), ScoringMode::Fast)
+            .unwrap();
+        let deep_score = scorer
+            .score_with_mode(deep.path(), ScoringMode::Fast)
             .unwrap();
 
-        // >20 deep nesting = 0.0 points
-        assert_eq!(result, 0.0);
+        assert!(
+            hot_score.percentage() < deep_score.percentage(),
+            "cyclomatic-heavy crate scored {}% vs {}% for the trivial one",
+            hot_score.percentage(),
+            deep_score.percentage()
+        );
     }
 
     #[test]
@@ -446,7 +519,7 @@ fn foo() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir_all(temp_dir.path().join("src")).unwrap();
 
-        // Create cache with shallow code
+        // Create cache with a trivial function
         let mut cache = FileCache::new();
         cache.insert(
             temp_dir.path().join("src/lib.rs"),
@@ -454,12 +527,11 @@ fn foo() {
         );
 
         let scorer = CodeQualityScorer::new();
-        let result = scorer
-            .score_complexity_simple(temp_dir.path(), Some(&cache))
-            .unwrap();
+        let profile = scorer
+            .measure_cyclomatic(temp_dir.path(), Some(&cache))
+            .expect("one measurable function");
 
-        // No deep nesting = full points
-        assert_eq!(result, 3.0);
+        assert_eq!(score_from_cyclomatic(profile), 3.0);
     }
 
     #[test]

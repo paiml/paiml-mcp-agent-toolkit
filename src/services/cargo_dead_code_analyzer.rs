@@ -32,7 +32,12 @@ use std::process::Command;
 /// all on any tree with a warm cache — the flag would have looked inert again,
 /// for a reason nothing in the report disclosed. Bump this whenever the cached
 /// report gains or changes a field.
-pub const DEAD_CODE_CACHE_SCHEMA: u32 = 2;
+/// 3: `DeadCodeKind::Suppressed` was removed. A cache entry written by an
+/// earlier build carries `"Suppressed"` kinds, which this build cannot
+/// deserialise — and if it could, it would restore exactly the erased-kind
+/// report (`dead_functions: 0` over six dead functions) that removing the
+/// variant fixed.
+pub const DEAD_CODE_CACHE_SCHEMA: u32 = 3;
 
 /// Cached dead code result with metadata for O(1) invalidation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,9 +143,15 @@ pub enum DeadCodeKind {
     Module,
     Trait,
     TypeAlias,
-    /// Layer 1: Code explicitly marked with
-    /// This is an admission that the code is unused
-    Suppressed,
+    // There is deliberately no `Suppressed` variant. Layer 1 (the scan for
+    // explicit `allow(dead_code)` admissions) used to tag every item it found
+    // with one, which erased the item's real kind: "suppressed" is a category
+    // `count_dead_items_by_kind` and `dead_by_type` know nothing about, so a
+    // suppressed function could not increment `dead_functions`, could not be
+    // typed `function` in the report, and was billed the 2-line "anything else"
+    // estimate instead of a function's 5. How an item was DISCOVERED is
+    // provenance and belongs in `DeadItem::message`; WHAT it is belongs in
+    // `kind`, and one must not overwrite the other.
     /// rustc's `unreachable_code` lint: a statement that can never execute.
     ///
     /// Only ever stored in `FileDeadCode::unreachable_items`, never in
@@ -160,6 +171,13 @@ pub struct CargoDeadCodeAnalyzer {
     use_cache: bool,
     /// Force cache refresh even if valid
     force_refresh: bool,
+    /// How long the analysis may run before the `cargo check` child is killed.
+    ///
+    /// This was a hardcoded `Duration::from_secs(90)` inside `analyze()`, so
+    /// `analyze dead-code --timeout 300` was silently capped at 90 even once the
+    /// timer worked. The caller that has a user-facing budget owns it; 90s
+    /// remains the default for callers that do not.
+    timeout: std::time::Duration,
 }
 
 impl CargoDeadCodeAnalyzer {
@@ -182,7 +200,16 @@ impl CargoDeadCodeAnalyzer {
             max_depth: 8,
             use_cache: true,
             force_refresh: false,
+            timeout: std::time::Duration::from_secs(90),
         }
+    }
+
+    /// Set how long the analysis may run before `cargo check` is killed.
+    #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 
     /// Include test code in analysis

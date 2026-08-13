@@ -15,6 +15,18 @@ use std::fmt;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+/// What red-team could conclude about one claim.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClaimVerdict {
+    /// Every source that this claim needs ran, and none contradicted it.
+    Verified,
+    /// At least one source that ran contradicts the claim.
+    Contradicted,
+    /// A source the claim depends on never ran. Not a pass and not a failure —
+    /// see the NOT MEASURED evidence for the artefact that would settle it.
+    Unverified,
+}
+
 /// Red Team Mode handler result
 #[derive(Debug)]
 pub struct RedTeamResult {
@@ -26,6 +38,45 @@ pub struct RedTeamResult {
 }
 
 impl RedTeamResult {
+    /// The single rule for reading a claim's evidence.
+    ///
+    /// "Verified" requires that something was actually measured *and* that
+    /// nothing went unmeasured; anything else is stated as such. Previously a
+    /// claim whose only capable source never ran printed "✅ All claims
+    /// verified", and a claim whose source could not run printed 🔴
+    /// HALLUCINATION — absence was rendered as both verdicts, never as itself.
+    #[must_use]
+    pub fn verdict_for(evidence: &[EvidenceResult]) -> ClaimVerdict {
+        if evidence.iter().any(EvidenceResult::contradicts) {
+            return ClaimVerdict::Contradicted;
+        }
+        let measured = evidence.iter().filter(|e| e.measured()).count();
+        if measured == 0 || evidence.iter().any(|e| !e.measured()) {
+            return ClaimVerdict::Unverified;
+        }
+        ClaimVerdict::Verified
+    }
+
+    /// Per-claim verdicts, in claim order.
+    #[must_use]
+    pub fn verdicts(&self) -> Vec<ClaimVerdict> {
+        self.evidence_per_claim
+            .iter()
+            .map(|e| Self::verdict_for(e))
+            .collect()
+    }
+
+    /// Claims red-team could not settle either way.
+    #[must_use]
+    pub fn unverified_claims(&self) -> Vec<usize> {
+        self.verdicts()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, v)| *v == ClaimVerdict::Unverified)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
     /// Format as human-readable text report
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_text(&self) -> String {
@@ -40,15 +91,43 @@ impl RedTeamResult {
         }
 
         if !self.hallucinations_detected {
-            output.push_str("✅ All claims verified\n\n");
+            let verdicts = self.verdicts();
+            let unverified = self.unverified_claims();
+
+            if unverified.is_empty() {
+                output.push_str("✅ All claims verified\n\n");
+            } else if unverified.len() == self.claims.len() {
+                output.push_str("⚠️  NOT VERIFIED — no claim could be checked\n\n");
+            } else {
+                output.push_str(&format!(
+                    "⚠️  PARTIALLY VERIFIED — {} of {} claim(s) could not be checked\n\n",
+                    unverified.len(),
+                    self.claims.len()
+                ));
+            }
             output.push_str(&format!("Commit message: \"{}\"\n\n", self.commit_message));
             output.push_str(&format!("Found {} testable claim(s):\n", self.claims.len()));
 
-            for claim in &self.claims {
-                output.push_str(&format!("  • {}\n", claim.text));
+            for (i, claim) in self.claims.iter().enumerate() {
+                let mark = match verdicts[i] {
+                    ClaimVerdict::Verified => "✅",
+                    ClaimVerdict::Unverified => "❓",
+                    ClaimVerdict::Contradicted => "❌",
+                };
+                output.push_str(&format!("  {} {}\n", mark, claim.text));
+                for e in self.evidence_per_claim[i].iter().filter(|e| !e.measured()) {
+                    output.push_str(&format!("      {}\n", e.details));
+                }
             }
 
-            output.push_str("\nAll claims are supported by evidence.\n");
+            if unverified.is_empty() {
+                output.push_str("\nAll claims are supported by evidence.\n");
+            } else {
+                output.push_str(
+                    "\nA claim marked ❓ was neither supported nor contradicted: the source \
+                     that could settle it never ran.\n",
+                );
+            }
             return output;
         }
 
@@ -59,7 +138,10 @@ impl RedTeamResult {
 
         for (i, claim) in self.claims.iter().enumerate() {
             let evidence = &self.evidence_per_claim[i];
-            let contradicting: Vec<_> = evidence.iter().filter(|e| !e.supports_claim).collect();
+            let contradicting: Vec<_> = evidence
+                .iter()
+                .filter(|e| EvidenceResult::contradicts(e))
+                .collect();
 
             if contradicting.is_empty() {
                 continue;
@@ -111,13 +193,22 @@ impl RedTeamResult {
                 evidence_list.iter().map(|e| {
                     serde_json::json!({
                         "source": format!("{:?}", e.source),
+                        // `measured` travels with the datum: a consumer reading
+                        // supports_claim alone would count an unread artefact
+                        // as a contradiction.
+                        "measured": e.measured(),
                         "supports_claim": e.supports_claim,
+                        "contradicts_claim": e.contradicts(),
                         "confidence": e.confidence,
                         "details": e.details,
                         "timestamp": e.timestamp,
                     })
                 }).collect::<Vec<_>>()
             }).collect::<Vec<_>>(),
+            "claim_verdicts": self.verdicts().iter()
+                .map(|v| format!("{v:?}"))
+                .collect::<Vec<_>>(),
+            "unverified_claims": self.unverified_claims(),
             "hallucinations_detected": self.hallucinations_detected,
             "confidence": self.confidence,
         })
@@ -180,10 +271,11 @@ impl RedTeamHandler {
         for claim in &claims {
             let evidence = self.gatherer.gather_evidence(claim, context);
 
-            // Check if any evidence contradicts the claim
+            // Only *measured* evidence can contradict: a source that never ran
+            // used to land here as `supports_claim: false` and fail the commit.
             let contradicting = evidence
                 .iter()
-                .filter(|e| !e.supports_claim)
+                .filter(|e| EvidenceResult::contradicts(e))
                 .collect::<Vec<_>>();
 
             if !contradicting.is_empty() {
@@ -338,12 +430,20 @@ impl RedTeamCmd {
                         "🧪 Test files: {} found",
                         context.get_test_files().len()
                     );
+                    // "✅ Found" used to mean "a path exists", while the report
+                    // itself went unread. Say what was read, or why not.
                     crate::status_eprintln!(
                         "📈 Coverage report: {}",
-                        if context.has_coverage_report() {
-                            "✅ Found"
-                        } else {
-                            "⚠️  None"
+                        match (context.has_coverage_report(), context.actual_coverage) {
+                            (_, Some(pct)) => format!("✅ Read: {pct:.1}% of lines covered"),
+                            (true, None) => format!(
+                                "⚠️  Found but unreadable: {}",
+                                context
+                                    .coverage_error
+                                    .as_deref()
+                                    .unwrap_or("no LF/LH records")
+                            ),
+                            (false, None) => "⚠️  None".to_string(),
                         }
                     );
                 }
@@ -436,5 +536,120 @@ mod tests {
         let json = result.format_json();
         assert_eq!(json["commit_message"], "test: Add new tests");
         assert_eq!(json["hallucinations_detected"], false);
+    }
+
+    // ── #958: absence of benchmark data is not a hallucination ──
+
+    /// REGRESSION (#958): every Performance claim exited 1 under a 🔴
+    /// HALLUCINATION DETECTED banner, because the only reachable arm of
+    /// `gather_performance_evidence` pushed `supports_claim: false` when no
+    /// benchmark data had been read. `perf: 0% faster` is true by construction
+    /// and was still reported a hallucination.
+    #[test]
+    fn a_perf_claim_without_benchmarks_is_unverified_not_hallucinated() {
+        let handler = RedTeamHandler::new();
+        let context = RepositoryContext::new_mock();
+
+        for message in [
+            "perf: 30% faster after SIMD",
+            "perf: 0% faster",
+            "perf: performance improved",
+        ] {
+            let result = handler.analyze_commit_message(message, &context);
+            if result.claims.is_empty() {
+                continue; // nothing testable was claimed
+            }
+            assert!(
+                !result.hallucinations_detected,
+                "{message:?} was reported a hallucination on absent benchmark data"
+            );
+            let text = result.format_text();
+            assert!(
+                !text.contains("HALLUCINATION"),
+                "{message:?} still prints the hallucination banner:\n{text}"
+            );
+            assert_eq!(
+                RedTeamResult::verdict_for(&result.evidence_per_claim[0]),
+                ClaimVerdict::Unverified,
+                "an unbenchmarked perf claim is neither verified nor contradicted"
+            );
+        }
+    }
+
+    // ── #957: an unread artefact may not read as verification ──
+
+    /// A claim whose only capable source never ran used to print
+    /// "✅ All claims verified".
+    #[test]
+    fn an_unmeasured_claim_is_not_reported_as_verified() {
+        let unmeasured = vec![
+            EvidenceResult {
+                source: crate::red_team::EvidenceSource::GitHistory,
+                supports_claim: true,
+                confidence: 0.75,
+                details: "No subsequent coverage fixes found".to_string(),
+                timestamp: None,
+            },
+            EvidenceResult::not_measured("no coverage report found"),
+        ];
+        assert_eq!(
+            RedTeamResult::verdict_for(&unmeasured),
+            ClaimVerdict::Unverified
+        );
+
+        // Everything measured and consistent → verified.
+        let measured = vec![EvidenceResult {
+            source: crate::red_team::EvidenceSource::CoverageReport,
+            supports_claim: true,
+            confidence: 0.95,
+            details: "Claimed: 95.0%, Actual: 95.2%".to_string(),
+            timestamp: None,
+        }];
+        assert_eq!(
+            RedTeamResult::verdict_for(&measured),
+            ClaimVerdict::Verified
+        );
+
+        // A measured contradiction still wins.
+        let contradicted = vec![
+            EvidenceResult {
+                source: crate::red_team::EvidenceSource::CoverageReport,
+                supports_claim: false,
+                confidence: 0.95,
+                details: "Claimed: 95.0%, Actual: 10.0%".to_string(),
+                timestamp: None,
+            },
+            EvidenceResult::not_measured("cargo audit was not run"),
+        ];
+        assert_eq!(
+            RedTeamResult::verdict_for(&contradicted),
+            ClaimVerdict::Contradicted
+        );
+
+        // No evidence at all is not a pass either.
+        assert_eq!(RedTeamResult::verdict_for(&[]), ClaimVerdict::Unverified);
+    }
+
+    /// The banner must not claim verification the run did not perform.
+    #[test]
+    fn the_report_names_the_claims_it_could_not_check() {
+        let handler = RedTeamHandler::new();
+        let result =
+            handler.analyze_commit_message("test: coverage at 95%", &RepositoryContext::new_mock());
+        assert!(!result.claims.is_empty(), "the claim must be extracted");
+        assert!(!result.hallucinations_detected);
+
+        let text = result.format_text();
+        assert!(
+            !text.contains("All claims verified"),
+            "a coverage claim adjudicated without a coverage report is not verified:\n{text}"
+        );
+        assert!(text.contains("NOT MEASURED"), "{text}");
+        assert_eq!(result.unverified_claims(), vec![0]);
+
+        let json = result.format_json();
+        assert_eq!(json["claim_verdicts"][0], "Unverified");
+        assert_eq!(json["evidence"][0][1]["measured"], false);
+        assert_eq!(json["evidence"][0][1]["contradicts_claim"], false);
     }
 }

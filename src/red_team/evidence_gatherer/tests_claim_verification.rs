@@ -367,11 +367,15 @@
         let context = RepositoryContext::new_mock().with_coverage_error("Tool failed to run");
         let evidence = gatherer.gather_evidence(&claim, &context);
 
+        // A coverage tool that failed measured nothing. This test used to
+        // assert the failure was CoverageReport evidence with supports_claim
+        // false — i.e. that a tool crash contradicted the claim.
         let coverage_evidence = evidence
             .iter()
-            .find(|e| e.source == EvidenceSource::CoverageReport)
-            .expect("Should have coverage report evidence");
-        assert!(!coverage_evidence.supports_claim);
-        assert!(coverage_evidence.details.contains("Coverage tool error"));
+            .find(|e| e.source == EvidenceSource::NotMeasured)
+            .expect("Should record that coverage was not measured");
+        assert!(!coverage_evidence.measured());
+        assert!(!coverage_evidence.contradicts());
+        assert!(coverage_evidence.details.contains("Tool failed to run"));
     }
 

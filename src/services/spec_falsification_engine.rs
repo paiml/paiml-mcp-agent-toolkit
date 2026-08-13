@@ -106,6 +106,45 @@ impl FalsificationEngine {
         String::new()
     }
 
+    /// The pmat binary that answers this engine's questions.
+    ///
+    /// Spawning the bare name `pmat` resolved it through PATH, so the same spec
+    /// against the same repo returned FALSIFIED/exit 1 on a machine with pmat
+    /// installed and INCONCLUSIVE/exit 0 on one without it — and when it *was*
+    /// installed, the evidence came from whatever other build happened to be
+    /// first on PATH rather than from the build being asked. The running
+    /// executable answers its own questions instead.
+    ///
+    /// When the running executable is not a `pmat` binary — a unit-test harness
+    /// under `cargo test`, say — this refuses rather than spawning something
+    /// that cannot answer, and the caller renders the check NOT MEASURED.
+    fn self_exe() -> std::io::Result<PathBuf> {
+        let exe = std::env::current_exe()?;
+        let is_pmat = exe
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .is_some_and(|stem| stem == "pmat");
+        if is_pmat {
+            Ok(exe)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!(
+                    "the running executable ({}) is not a pmat binary",
+                    exe.display()
+                ),
+            ))
+        }
+    }
+
+    /// Run a subcommand of *this* build against the project under test.
+    fn run_self(&self, args: &[&str]) -> std::io::Result<std::process::Output> {
+        std::process::Command::new(Self::self_exe()?)
+            .args(args)
+            .current_dir(&self.project_path)
+            .output()
+    }
+
     /// Check if referenced code entities exist using pmat query
     fn check_code_entities(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
         claim
@@ -113,19 +152,22 @@ impl FalsificationEngine {
             .iter()
             .map(|entity| {
                 // Use pmat query --literal with --files-with-matches for simpler parsing
-                let output = std::process::Command::new("pmat")
-                    .args([
-                        "query",
-                        "--literal",
-                        entity,
-                        "--files-with-matches",
-                        "--limit",
-                        "5",
-                    ])
-                    .current_dir(&self.project_path)
-                    .output();
+                let output = self.run_self(&[
+                    "query",
+                    "--literal",
+                    entity,
+                    "--files-with-matches",
+                    "--limit",
+                    "5",
+                ]);
 
                 match output {
+                    // The search ran but failed — an empty stdout from a failed
+                    // search is not the same fact as "the entity is absent".
+                    Ok(out) if !out.status.success() => SpecEvidence::unmeasured(
+                        format!("Entity exists: `{}`", entity),
+                        format!("NOT MEASURED: `pmat query` exited with {}", out.status),
+                    ),
                     Ok(out) => {
                         let stdout = String::from_utf8_lossy(&out.stdout);
                         // Strip ANSI codes and count non-empty lines that look like file paths
@@ -169,9 +211,9 @@ impl FalsificationEngine {
                         }
                     }
                     // The search never ran — that is not evidence the entity exists.
-                    Err(_) => SpecEvidence::unmeasured(
+                    Err(e) => SpecEvidence::unmeasured(
                         format!("Entity exists: `{}`", entity),
-                        "NOT MEASURED: could not run `pmat query` (pmat not on PATH)",
+                        format!("NOT MEASURED: could not run `pmat query` ({e})"),
                     ),
                 }
             })
@@ -200,20 +242,23 @@ impl FalsificationEngine {
         search_terms
             .iter()
             .map(|term| {
-                let output = std::process::Command::new("pmat")
-                    .args([
-                        "query",
-                        "--literal",
-                        term,
-                        "--count",
-                        "--exclude-tests",
-                        "--limit",
-                        "5",
-                    ])
-                    .current_dir(&self.project_path)
-                    .output();
+                let output = self.run_self(&[
+                    "query",
+                    "--literal",
+                    term,
+                    "--count",
+                    "--exclude-tests",
+                    "--limit",
+                    "5",
+                ]);
 
                 match output {
+                    // A search that failed reports zero occurrences, which is
+                    // exactly the shape of "the claim holds". Refuse instead.
+                    Ok(out) if !out.status.success() => SpecEvidence::unmeasured(
+                        format!("Absence: no `{}`", term),
+                        format!("NOT MEASURED: `pmat query` exited with {}", out.status),
+                    ),
                     Ok(out) => {
                         let stdout = String::from_utf8_lossy(&out.stdout);
                         // Strip ANSI codes before parsing count output
@@ -238,9 +283,9 @@ impl FalsificationEngine {
                         }
                     }
                     // The search never ran — absence was not demonstrated.
-                    Err(_) => SpecEvidence::unmeasured(
+                    Err(e) => SpecEvidence::unmeasured(
                         format!("Absence: no `{}`", term),
-                        "NOT MEASURED: could not search the codebase",
+                        format!("NOT MEASURED: could not search the codebase ({e})"),
                     ),
                 }
             })
@@ -262,10 +307,7 @@ impl FalsificationEngine {
                 let parts: Vec<&str> = cmd.split_whitespace().collect();
                 if parts.len() >= 2 {
                     let subcommand = parts[1];
-                    let output = std::process::Command::new("pmat")
-                        .args([subcommand, "--help"])
-                        .current_dir(&self.project_path)
-                        .output();
+                    let output = self.run_self(&[subcommand, "--help"]);
 
                     let check = format!("Command exists: `{}`", cmd);
                     match output {
@@ -274,9 +316,9 @@ impl FalsificationEngine {
                         }
                         Ok(_) => SpecEvidence::contradicts_with(check, "Command NOT recognized"),
                         // pmat itself could not be spawned — nothing was tested.
-                        Err(_) => SpecEvidence::unmeasured(
+                        Err(e) => SpecEvidence::unmeasured(
                             check,
-                            "NOT MEASURED: could not run `pmat` (not on PATH)",
+                            format!("NOT MEASURED: could not run this pmat build ({e})"),
                         ),
                     }
                 } else {

@@ -102,6 +102,11 @@ impl EvidenceGatherer {
                 },
                 timestamp: None,
             });
+        } else {
+            evidence.push(EvidenceResult::not_measured(
+                "no test results were read (looked for target/test-results/output.txt, \
+                 test-results/output.txt); red-team does not run the test suite",
+            ));
         }
 
         evidence
@@ -154,6 +159,10 @@ impl EvidenceGatherer {
                 },
                 timestamp: None,
             });
+        } else {
+            evidence.push(EvidenceResult::not_measured(
+                "link validation was not run, so no documentation link was checked",
+            ));
         }
 
         evidence
@@ -193,8 +202,8 @@ impl EvidenceGatherer {
         }
 
         // Evidence 2: Coverage report comparison
-        if let Some(actual_coverage) = context.actual_coverage {
-            if let Some(claimed_coverage) = claim.numeric_value {
+        match (context.actual_coverage, claim.numeric_value) {
+            (Some(actual_coverage), Some(claimed_coverage)) => {
                 let diff = (actual_coverage - claimed_coverage).abs();
                 let supports_claim = diff <= 2.0; // Within 2% tolerance
 
@@ -209,15 +218,21 @@ impl EvidenceGatherer {
                     timestamp: None,
                 });
             }
-        } else if let Some(ref error) = context.coverage_error {
-            // Coverage tool failed
-            evidence.push(EvidenceResult {
-                source: EvidenceSource::CoverageReport,
-                supports_claim: false, // Cannot verify
-                confidence: 0.5,
-                details: format!("Coverage tool error: {}", error),
-                timestamp: None,
-            });
+            (Some(actual_coverage), None) => {
+                evidence.push(EvidenceResult::not_measured(format!(
+                    "coverage report reads {actual_coverage:.1}%, but the claim states no \
+                     number to compare it against"
+                )));
+            }
+            // A coverage tool that failed is not evidence against the claim; it
+            // is the absence of evidence about it.
+            (None, _) => evidence.push(EvidenceResult::not_measured(match context.coverage_error {
+                Some(ref error) => format!("coverage report could not be read ({error})"),
+                None => "no coverage report found (looked for target/coverage/lcov.info, \
+                         target/llvm-cov/lcov.info, coverage/lcov.info, lcov.info); \
+                         red-team does not run coverage"
+                    .to_string(),
+            })),
         }
 
         evidence
@@ -305,6 +320,10 @@ impl EvidenceGatherer {
                 },
                 timestamp: None,
             });
+        } else {
+            evidence.push(EvidenceResult::not_measured(
+                "the codebase was not searched for references to the migrated-from system",
+            ));
         }
 
         evidence
@@ -319,6 +338,12 @@ impl EvidenceGatherer {
 
         // Evidence 1: Issue tracker status
         if let Some(issue_num) = claim.issue_number {
+            if context.issue_status.is_none() {
+                evidence.push(EvidenceResult::not_measured(format!(
+                    "the status of issue #{issue_num} was not looked up; red-team does not \
+                     query an issue tracker"
+                )));
+            }
             if let Some(ref status) = context.issue_status {
                 let is_closed = status == "closed";
                 let is_reopened = status == "reopened" || status == "open";
@@ -384,18 +409,18 @@ impl EvidenceGatherer {
                 timestamp: None,
             });
         } else {
-            // No benchmark data available
-            evidence.push(EvidenceResult {
-                source: EvidenceSource::BenchmarkResults,
-                supports_claim: false, // Cannot verify without data
-                confidence: 0.7,
-                details: if claim.numeric_value.is_some() {
-                    "No benchmark data found to support numeric claim".to_string()
-                } else {
-                    "No benchmark data available".to_string()
-                },
-                timestamp: None,
-            });
+            // This arm used to push `supports_claim: false, confidence: 0.7`,
+            // and it is the only arm the CLI can reach — so every Performance
+            // claim in every repository was reported 🔴 HALLUCINATION with exit
+            // 1, including `perf: 0% faster`, which is true by construction, in
+            // a tree holding ten benchmark files. Missing data contradicts
+            // nothing.
+            evidence.push(EvidenceResult::not_measured(if claim.numeric_value.is_some() {
+                "no benchmark data was read, so the numeric performance claim was \
+                 neither supported nor contradicted; red-team does not run benchmarks"
+            } else {
+                "no benchmark data was read; red-team does not run benchmarks"
+            }));
         }
 
         // Evidence 2: Git history - check for performance regressions
@@ -451,6 +476,10 @@ impl EvidenceGatherer {
                 },
                 timestamp: None,
             });
+        } else {
+            evidence.push(EvidenceResult::not_measured(
+                "cargo audit was not run, so no advisory was checked",
+            ));
         }
 
         // Evidence 2: Git history - check for subsequent security fixes

@@ -341,9 +341,10 @@ const DOCUMENTED_THRESHOLD_DEFAULT: f32 = 0.85;
 /// UNDER THIS DETECTION TYPE.
 ///
 /// Hash bucketing (this file) is all-or-nothing: two blocks are duplicates iff
-/// they hash identically under the detection type's normalisation, so every
-/// group it returns has similarity 1.0 by construction and no cut-off in
-/// 0.0..=1.0 can change it. `--threshold` was therefore bound as `_threshold`
+/// they hash identically under the detection type's normalisation, so no cut-off
+/// in 0.0..=1.0 can move a block into or out of a group — the similarity each
+/// group reports is measured AFTER the fact, never used to select it.
+/// `--threshold` was therefore bound as `_threshold`
 /// and dropped: 0.01, 0.5 and 0.99 printed the same "Duplication percentage"
 /// over the same tree with no indication that the number had been ignored.
 ///
@@ -369,12 +370,60 @@ fn warn_threshold_has_no_effect(
     ONCE.call_once(|| {
         eprintln!(
             "warning: --threshold {threshold} was ignored: --detection-type {detection_type} \
-matches blocks by hash, so every reported clone is an exact match (similarity 1.0) and no \
-similarity cut-off changes the result. Use --detection-type gapped, fuzzy or all, where the \
-threshold is the near-miss similarity cut-off."
+matches blocks by hash — a block is in a group or it is not — so no similarity cut-off changes \
+the result. Use --detection-type gapped, fuzzy or all, where the threshold is the near-miss \
+similarity cut-off."
         );
     });
     true
+}
+
+/// Classify one hash-bucketed group and measure its similarity.
+///
+/// Hash bucketing proves the members agree under the detection type's
+/// normalisation. That is Type-1 when the normalisation was "drop comments and
+/// blank lines" and only Type-2 when it was "drop identifier names" — and the
+/// extractor that produced the group is NOT the answer, because a fuzzy-hashed
+/// group of byte-identical bodies is a genuine exact clone. Comparing the
+/// group's text settles it.
+///
+/// The returned similarity is measured the same way: exactly 1.0 when every
+/// member is identical, otherwise the mean line-level Jaccard similarity of each
+/// member against the first site. `similarity: 1.0` used to be written for every
+/// group, so a renamed clone differing on 8 of 39 lines reported perfect
+/// identity.
+fn classify_hash_group(texts: &[&str]) -> (CloneType, f32) {
+    let Some((first, rest)) = texts.split_first() else {
+        return (CloneType::Exact, 1.0);
+    };
+
+    if rest.iter().all(|t| t == first) {
+        return (CloneType::Exact, 1.0);
+    }
+
+    let total: f32 = rest.iter().map(|t| line_jaccard(first, t)).sum();
+    #[allow(clippy::cast_precision_loss)]
+    let mean = total / rest.len() as f32;
+
+    // A measured mean can round to 1.0 for texts that are not identical; the
+    // identity test above is the ONLY thing allowed to report 1.0, so that
+    // `exact_duplicates` and `similarity >= 1.0` can never disagree.
+    (CloneType::Renamed, mean.min(1.0 - f32::EPSILON))
+}
+
+/// Jaccard similarity of two blocks over their distinct lines.
+fn line_jaccard(a: &str, b: &str) -> f32 {
+    use std::collections::HashSet;
+    let left: HashSet<&str> = a.lines().collect();
+    let right: HashSet<&str> = b.lines().collect();
+    let union = left.union(&right).count();
+    if union == 0 {
+        return 0.0;
+    }
+    let intersection = left.intersection(&right).count();
+    #[allow(clippy::cast_precision_loss)]
+    let sim = intersection as f32 / union as f32;
+    sim
 }
 
 /// Find duplicate blocks from all blocks.
@@ -424,6 +473,13 @@ fn find_duplicate_blocks(
             let lines = locations[0].2 - locations[0].1 + 1;
             let tokens = count_tokens(&locations[0].3);
 
+            // MEASURED, not assumed: a group survives hash bucketing because its
+            // members agree under the detection type's normalisation, and the
+            // fuzzy hash normalises identifiers away — so a group can be either
+            // Type-1 or Type-2 and only its text can say which.
+            let texts: Vec<&str> = locations.iter().map(|(_, _, _, c)| c.as_str()).collect();
+            let (clone_type, similarity) = classify_hash_group(&texts);
+
             let duplicate_locations: Vec<DuplicateLocation> = locations
                 .into_iter()
                 .map(|(file, start, end, content)| {
@@ -446,12 +502,8 @@ fn find_duplicate_blocks(
                 locations: duplicate_locations,
                 lines,
                 tokens,
-                // 1.0 is not a placeholder: the group exists because its members
-                // hashed identically under the detection type's normalisation,
-                // which makes them exact matches at that level. Detection that
-                // reports anything else has to compare blocks that do NOT hash
-                // alike — see `warn_threshold_has_no_effect`.
-                similarity: 1.0,
+                similarity,
+                clone_type,
             });
         }
     }

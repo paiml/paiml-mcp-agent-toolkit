@@ -437,24 +437,32 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
     }
 }
 
-/// The pinned pmat version AND whether the project actually pinned it.
+/// The pinned pmat version AND whether the project actually pinned it —
+/// WITHOUT writing anything into the project.
 ///
-/// Same load as [`load_or_create_project_config`] — including the write of a
-/// default `.pmat/project.toml` when none exists — but it records whether the
-/// file was there BEFORE the call. Without that, the auto-created default is
-/// indistinguishable from a real pin one line later, which is exactly how
-/// `comply report` came to present pmat's own version as a project verdict.
+/// This used to call [`load_or_create_project_config`], which creates
+/// `.pmat/project.toml` when it is missing. An audit that writes its own
+/// evidence is not an audit: on a pristine crate, run 1 reported
+/// `not pinned by this project` and run 2 of the identical command reported
+/// `pinned in .pmat/project.toml`, because run 1 had done the pinning (#939).
+/// Creating that file is `pmat comply init`'s job and belongs to no other
+/// command.
+///
+/// When the file is absent the caller gets the same defaults it always got —
+/// the difference is only that the default is no longer persisted as if the
+/// project had chosen it.
 pub(crate) fn load_project_config_with_source(
     project_path: &Path,
 ) -> anyhow::Result<(ProjectConfig, VersionSource)> {
-    let existed = project_path.join(".pmat").join("project.toml").exists();
-    let config = load_or_create_project_config(project_path)?;
-    let source = if existed {
-        VersionSource::PinnedByProject
-    } else {
-        VersionSource::InstalledPmatDefault
-    };
-    Ok((config, source))
+    let config_path = project_path.join(".pmat").join("project.toml");
+    if !config_path.exists() {
+        return Ok((
+            ProjectConfig::default(),
+            VersionSource::InstalledPmatDefault,
+        ));
+    }
+    let content = std::fs::read_to_string(&config_path)?;
+    Ok((toml::from_str(&content)?, VersionSource::PinnedByProject))
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

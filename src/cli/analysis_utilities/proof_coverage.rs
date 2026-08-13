@@ -240,6 +240,27 @@ pub use crate::cli::handlers::proof_annotations_handler::handle_analyze_proof_an
 ///   --coverage-threshold 0.95 --perf --force-refresh \
 ///   --output coverage-gate.json
 /// ```ignore
+///
+/// This is the one implementation, forwarded to the wired handler.
+///
+/// There used to be a SECOND implementation here — the one this doc comment
+/// belongs to — and it was fed entirely by fabrications. Its producer,
+/// `IncrementalCoverageAnalyzer::compute_coverage`, is marked
+/// `// For now, return mock data`: `branch_coverage: 75.0` and
+/// `function_coverage: 80.0` are literals and `line_coverage` is
+/// `(0..total).filter(|i| i % 3 != 0)`, i.e. 66.67% for every file in every
+/// project. Its converter then derived the "previous" figure as
+/// `line_coverage.max(50.0) - 10.0  // Simulate previous coverage`, so every
+/// file reported a fixed +10.0 delta. Four fabricated quantities per file,
+/// behind a `pub fn` whose own doc examples above recommend it for CI gating
+/// (#954).
+///
+/// The CLI never routed here — `platform_routes_routing.rs:159` dispatches to
+/// `incremental_coverage_handler`, which measures and reports "not measured"
+/// for the files it cannot measure. That is now the only implementation, and
+/// this entry point is a signature-compatible forwarder to it. Two
+/// implementations of one command name is how the contradictions in this
+/// project keep recurring; the fabricating one is gone rather than synced.
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_incremental_coverage(
@@ -248,270 +269,131 @@ pub async fn handle_analyze_incremental_coverage(
     target_branch: Option<String>,
     format: IncrementalCoverageOutputFormat,
     coverage_threshold: f64,
-    _changed_files_only: bool,
-    _detailed: bool,
+    changed_files_only: bool,
+    detailed: bool,
     output: Option<PathBuf>,
-    _perf: bool,
-    _cache_dir: Option<PathBuf>,
-    _force_refresh: bool,
+    perf: bool,
+    cache_dir: Option<PathBuf>,
+    force_refresh: bool,
     top_files: usize,
 ) -> Result<()> {
-    print_coverage_analysis_header(
-        &project_path,
-        &base_branch,
-        &target_branch,
-        coverage_threshold,
-        &format,
-    );
-
-    // Real implementation using IncrementalCoverageAnalyzer
-    use crate::cli::coverage_helpers::{get_changed_files_for_coverage, setup_coverage_analyzer};
-
-    let analyzer = setup_coverage_analyzer(_cache_dir, _force_refresh)?;
-    let changed_files =
-        get_changed_files_for_coverage(&project_path, &base_branch, target_branch.as_deref())
-            .await?;
-
-    let modified_files = create_file_ids_from_changes(&changed_files)?;
-
-    let changeset = crate::services::incremental_coverage_analyzer::ChangeSet {
-        modified_files,
-        added_files: Vec::new(), // These are included in modified_files above
-        deleted_files: Vec::new(),
+    use crate::cli::handlers::incremental_coverage_handler::{
+        handle_analyze_incremental_coverage as wired, IncrementalCoverageConfig,
     };
 
-    let coverage_update = analyzer.analyze_changes(&changeset).await?;
-
-    // Convert real coverage data to report format expected by formatting functions
-    let report = convert_coverage_update_to_report(
-        coverage_update,
+    wired(IncrementalCoverageConfig {
+        project_path,
         base_branch,
-        target_branch.unwrap_or("HEAD".to_string()),
+        target_branch,
+        format,
         coverage_threshold,
-        changed_files,
-    )?;
-
-    // Format and output
-    let content = format_coverage_report(&report, format, top_files)?;
-    output_coverage_result(content, output).await?;
-
-    Ok(())
-}
-
-fn print_coverage_analysis_header(
-    project_path: &Path,
-    base_branch: &str,
-    target_branch: &Option<String>,
-    coverage_threshold: f64,
-    format: &IncrementalCoverageOutputFormat,
-) {
-    crate::status_eprintln!("📊 Analyzing incremental coverage...");
-    crate::status_eprintln!("📁 Project path: {}", project_path.display());
-    crate::status_eprintln!("🌿 Base branch: {base_branch}");
-    crate::status_eprintln!(
-        "🎯 Target branch: {}",
-        target_branch.as_deref().unwrap_or("HEAD")
-    );
-    crate::status_eprintln!("📈 Coverage threshold: {:.1}%", coverage_threshold * 100.0);
-    crate::status_eprintln!("📄 Format: {format:?}");
-}
-
-fn create_file_ids_from_changes(
-    changed_files: &[(PathBuf, String)],
-) -> Result<Vec<crate::services::incremental_coverage_analyzer::FileId>> {
-    use crate::services::incremental_coverage_analyzer::FileId;
-    use sha2::{Digest, Sha256};
-
-    let mut modified_files = Vec::new();
-    for (path, status) in changed_files {
-        if status == "M" || status == "A" {
-            // Create hash for the file path
-            let mut hasher = Sha256::new();
-            hasher.update(path.to_string_lossy().as_bytes());
-            let hash_result = hasher.finalize();
-            let mut hash = [0u8; 32];
-            hash.copy_from_slice(&hash_result);
-
-            modified_files.push(FileId {
-                path: path.clone(),
-                hash,
-            });
-        }
-    }
-    Ok(modified_files)
-}
-
-fn format_coverage_report(
-    report: &IncrementalCoverageReport,
-    format: IncrementalCoverageOutputFormat,
-    top_files: usize,
-) -> Result<String> {
-    use IncrementalCoverageOutputFormat::{Delta, Detailed, Json, Lcov, Markdown, Sarif, Summary};
-    match format {
-        Summary => format_incremental_coverage_summary(report, top_files),
-        Detailed => format_incremental_coverage_detailed(report, top_files),
-        Json => serde_json::to_string_pretty(report).map_err(Into::into),
-        Markdown => format_incremental_coverage_markdown(report, top_files),
-        Lcov => format_incremental_coverage_lcov(report),
-        Delta => format_incremental_coverage_delta(report, top_files),
-        Sarif => format_incremental_coverage_sarif(report),
-    }
-}
-
-async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Result<()> {
-    crate::status_eprintln!("✅ Incremental coverage analysis complete");
-
-    if let Some(output_path) = output {
-        tokio::fs::write(&output_path, &content).await?;
-        crate::status_eprintln!("📝 Written to {}", output_path.display());
-    } else {
-        println!("{content}");
-    }
-    Ok(())
+        changed_files_only,
+        detailed,
+        output,
+        perf,
+        cache_dir,
+        force_refresh,
+        top_files,
+    })
+    .await
 }
 
 #[cfg(test)]
-mod proof_coverage_tests {
-    //! Covers 0%-covered pure-compute helpers in proof_coverage.rs
-    //! (60 uncov on broad).
+mod incremental_coverage_library_entry_tests {
+    //! #954: the public library entry point used to report a fabricated
+    //! coverage figure and a simulated baseline. It now produces the same
+    //! document the CLI does.
     use super::*;
 
-    fn empty_report() -> IncrementalCoverageReport {
-        IncrementalCoverageReport {
-            base_branch: "main".into(),
-            target_branch: "HEAD".into(),
-            coverage_threshold: 0.9,
-            files: vec![],
-            summary: CoverageSummary {
-                total_files_changed: 0,
-                files_improved: 0,
-                files_degraded: 0,
-                overall_delta: 0.0,
-                meets_threshold: true,
-            },
-        }
-    }
-
-    // ── print_coverage_analysis_header: exercise both target_branch arms ──
-
-    #[test]
-    fn test_print_coverage_analysis_header_with_target_branch() {
-        print_coverage_analysis_header(
-            std::path::Path::new("/tmp/proj"),
-            "main",
-            &Some("feat/x".to_string()),
-            0.95,
-            &IncrementalCoverageOutputFormat::Summary,
+    fn git(dir: &std::path::Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .args(["-c", "core.hooksPath=/dev/null"])
+            .args(["-c", "user.email=a@b", "-c", "user.name=c"])
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("git");
+        assert!(
+            status.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&status.stderr)
         );
     }
 
-    #[test]
-    fn test_print_coverage_analysis_header_target_branch_defaults_to_head() {
-        print_coverage_analysis_header(
-            std::path::Path::new("/tmp/proj"),
-            "main",
-            &None, // triggers unwrap_or("HEAD") arm
-            0.95,
-            &IncrementalCoverageOutputFormat::Json,
+    /// A repo with a `main` baseline and one changed file on top of it.
+    fn repo_with_one_changed_file() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let p = dir.path();
+        git(p, &["init", "-q", "--template=", "--initial-branch=main"]);
+        std::fs::create_dir_all(p.join("src")).unwrap();
+        std::fs::write(p.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").unwrap();
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "--no-verify", "-m", "base"]);
+        git(p, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(
+            p.join("src/lib.rs"),
+            "pub fn a() -> i32 { 1 }\npub fn b() -> i32 { 2 }\n",
+        )
+        .unwrap();
+        git(p, &["add", "-A"]);
+        git(p, &["commit", "-q", "--no-verify", "-m", "change"]);
+        dir
+    }
+
+    #[tokio::test]
+    async fn the_library_entry_point_reports_not_measured_instead_of_a_simulated_delta() {
+        let repo = repo_with_one_changed_file();
+        let out = repo.path().join("report.json");
+
+        handle_analyze_incremental_coverage(
+            repo.path().to_path_buf(),
+            "main".to_string(),
+            None,
+            IncrementalCoverageOutputFormat::Json,
+            80.0,
+            false,
+            false,
+            Some(out.clone()),
+            false,
+            None,
+            false,
+            10,
+        )
+        .await
+        .expect("analysis");
+
+        let text = std::fs::read_to_string(&out).expect("report written");
+        let json: serde_json::Value = serde_json::from_str(&text).expect("valid json");
+
+        // The honest shape: absence is a value. The fabricating implementation
+        // had no such field — it always had a number.
+        assert_eq!(
+            json["files_not_measured"].as_u64(),
+            Some(1),
+            "the one changed file has no coverage artifact, so it is not measured: {text}"
         );
-    }
-
-    // ── create_file_ids_from_changes: only "M" and "A" entries kept, hashes distinct ──
-
-    #[test]
-    fn test_create_file_ids_from_changes_keeps_modified_and_added_only() {
-        let changes = vec![
-            (std::path::PathBuf::from("a.rs"), "M".to_string()),
-            (std::path::PathBuf::from("b.rs"), "A".to_string()),
-            (std::path::PathBuf::from("c.rs"), "D".to_string()), // deleted
-            (std::path::PathBuf::from("d.rs"), "R".to_string()), // renamed
-        ];
-        let ids = create_file_ids_from_changes(&changes).unwrap();
-        assert_eq!(ids.len(), 2);
-        assert!(ids.iter().any(|f| f.path == std::path::Path::new("a.rs")));
-        assert!(ids.iter().any(|f| f.path == std::path::Path::new("b.rs")));
-    }
-
-    #[test]
-    fn test_create_file_ids_from_changes_empty_input_returns_empty() {
-        let ids = create_file_ids_from_changes(&[]).unwrap();
-        assert!(ids.is_empty());
-    }
-
-    #[test]
-    fn test_create_file_ids_from_changes_distinct_paths_produce_distinct_hashes() {
-        let changes = vec![
-            (std::path::PathBuf::from("a.rs"), "M".to_string()),
-            (std::path::PathBuf::from("b.rs"), "M".to_string()),
-        ];
-        let ids = create_file_ids_from_changes(&changes).unwrap();
-        assert_eq!(ids.len(), 2);
-        assert_ne!(
-            ids[0].hash, ids[1].hash,
-            "different paths must yield different SHA256 hashes"
+        assert!(
+            json["coverage_percentage"].is_null(),
+            "an unmeasured project must not report a percentage: {text}"
         );
-    }
 
-    #[test]
-    fn test_create_file_ids_from_changes_same_path_produces_same_hash() {
-        let changes = vec![(std::path::PathBuf::from("a.rs"), "M".to_string())];
-        let a = create_file_ids_from_changes(&changes).unwrap();
-        let b = create_file_ids_from_changes(&changes).unwrap();
-        assert_eq!(a[0].hash, b[0].hash, "hash must be deterministic");
-    }
-
-    // ── format_coverage_report: dispatcher hits Summary/Detailed/Json/Markdown/Lcov/Delta/Sarif arms ──
-
-    #[test]
-    fn test_format_coverage_report_json_variant_round_trips_as_json() {
-        let report = empty_report();
-        let out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Json, 10).unwrap();
-        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
-    }
-
-    #[test]
-    fn test_format_coverage_report_summary_variant_returns_nonempty() {
-        let report = empty_report();
-        let out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Summary, 10).unwrap();
-        assert!(!out.is_empty());
-    }
-
-    #[test]
-    fn test_format_coverage_report_lcov_variant_returns_string() {
-        let report = empty_report();
-        let out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Lcov, 10).unwrap();
-        // LCOV format is always string (even if empty).
-        let _ = out;
-    }
-
-    #[test]
-    fn test_format_coverage_report_delta_variant_returns_string() {
-        let report = empty_report();
-        let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Delta, 10).unwrap();
-    }
-
-    #[test]
-    fn test_format_coverage_report_sarif_variant_returns_string() {
-        let report = empty_report();
-        let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Sarif, 10).unwrap();
-    }
-
-    #[test]
-    fn test_format_coverage_report_markdown_variant_returns_string() {
-        let report = empty_report();
-        let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Markdown, 10).unwrap();
-    }
-
-    #[test]
-    fn test_format_coverage_report_detailed_variant_returns_string() {
-        let report = empty_report();
-        let _out =
-            format_coverage_report(&report, IncrementalCoverageOutputFormat::Detailed, 10).unwrap();
+        // The fabrications, by name. The old implementation reported
+        // base_coverage = max(line_coverage, 50.0) - 10.0 and hence a fixed
+        // coverage_delta of +10.0 for every file; the honest one has no
+        // baseline to report and says so.
+        let file = &json["changed_files"][0];
+        assert_eq!(file["status"].as_str(), Some("NotMeasured"), "{text}");
+        assert!(
+            file["coverage_delta"].is_null(),
+            "the simulated `max(50.0) - 10.0` baseline delta is back: {text}"
+        );
+        assert!(
+            file["coverage_before"].is_null() && file["coverage_after"].is_null(),
+            "a mock coverage constant leaked into the report: {text}"
+        );
+        assert!(
+            !text.contains("base_coverage") && !text.contains("target_coverage"),
+            "the fabricating report shape is back: {text}"
+        );
     }
 }

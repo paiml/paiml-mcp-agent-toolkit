@@ -596,6 +596,7 @@ mod tests {
                 lines: 10,
                 tokens: 20,
                 similarity: 1.0,
+                clone_type: CloneType::Exact,
             }],
             file_statistics: BTreeMap::new(),
         };
@@ -636,6 +637,7 @@ mod tests {
                 lines: 5,
                 tokens: 10,
                 similarity: 1.0,
+                clone_type: CloneType::Exact,
             })
             .collect();
         let mut file_stats = BTreeMap::new();
@@ -739,6 +741,7 @@ mod tests {
             lines: 1,
             tokens: 1,
             similarity: 1.0,
+            clone_type: CloneType::Exact,
         });
         let out = format_csv_output(&r).unwrap();
         // Header only — single-location block dropped.

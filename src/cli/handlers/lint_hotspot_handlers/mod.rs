@@ -268,13 +268,17 @@ fn filter_violations(
     result.summary_by_file = filtered_summary;
 }
 
-/// Recalculate hotspot metrics after filtering
+/// Recalculate hotspot metrics after filtering.
+///
+/// #924: this held a third open-coded copy of the density formula. It now
+/// calls the one implementation, so a change to the metric cannot leave this
+/// path behind. With `sloc == 0` the density is unmeasurable and
+/// `calculate_defect_density` returns 0.0, which is what the previous
+/// `if sloc > 0` guard preserved.
 fn recalculate_hotspot_metrics(result: &mut LintHotspotResult) {
     result.hotspot.total_violations = result.hotspot.detailed_violations.len();
-    if result.hotspot.sloc > 0 {
-        result.hotspot.defect_density =
-            result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
-    }
+    result.hotspot.defect_density =
+        metrics::calculate_defect_density(result.hotspot.total_violations, result.hotspot.sloc);
 }
 
 /// Build final result with enforcement and quality gate data
@@ -521,15 +525,32 @@ mod pure_helper_tests {
     }
 
     #[test]
-    fn test_recalculate_hotspot_metrics_zero_sloc_defect_density_unchanged() {
-        // PIN: when sloc == 0, defect_density is NOT updated (avoids div/0).
+    fn test_recalculate_hotspot_metrics_zero_sloc_density_is_not_stale() {
+        // This test used to PIN "when sloc == 0, defect_density is NOT
+        // updated (avoids div/0)". Division by zero is avoided by
+        // `calculate_defect_density`, which returns 0.0 — leaving the OLD
+        // density in place was a separate, unintended effect of the guard,
+        // and it published a hotspot carrying 0 violations and a density of
+        // 5.0 at the same time. Every other producer of this field
+        // (`collect_project_violations`, `create_single_file_result`) already
+        // reports 0.0 for an unmeasured SLOC, and `format_summary` renders
+        // "SLOC not measured (density unavailable)" rather than the number.
         let mut result = make_result(make_hotspot("src/foo.rs", 0, 5), vec![]);
-        let original_density = result.hotspot.defect_density;
-        // Empty out violations.
+        assert_eq!(result.hotspot.defect_density, 5.0, "fixture precondition");
+
         result.hotspot.detailed_violations.clear();
         recalculate_hotspot_metrics(&mut result);
+
         assert_eq!(result.hotspot.total_violations, 0);
-        assert_eq!(result.hotspot.defect_density, original_density);
+        assert_eq!(
+            result.hotspot.defect_density, 0.0,
+            "a hotspot with zero violations must not keep a density of 5.0"
+        );
+        assert_eq!(
+            result.hotspot.defect_density,
+            metrics::calculate_defect_density(0, 0),
+            "one density implementation, including the unmeasurable case"
+        );
     }
 
     // ── should_exit_with_error ──────────────────────────────────────────────

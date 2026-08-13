@@ -70,6 +70,64 @@ impl SimpleGraph {
         &self.outgoing[idx.0]
     }
 
+    /// Distinct neighbours of `idx` with edge direction ignored, self-loops
+    /// dropped. This is the neighbourhood a local clustering coefficient is
+    /// defined over.
+    fn undirected_neighbors(&self, idx: NodeIndex) -> Vec<usize> {
+        let mut neighbors: Vec<usize> = self.outgoing[idx.0]
+            .iter()
+            .chain(self.incoming[idx.0].iter())
+            .copied()
+            .filter(|&n| n != idx.0)
+            .collect();
+        neighbors.sort_unstable();
+        neighbors.dedup();
+        neighbors
+    }
+
+    /// Every edge as an unordered pair, so `(a,b)` and `(b,a)` are one entry.
+    fn undirected_edge_set(&self) -> std::collections::HashSet<(usize, usize)> {
+        let mut edges = std::collections::HashSet::new();
+        for (from, targets) in self.outgoing.iter().enumerate() {
+            for &to in targets {
+                if from != to {
+                    edges.insert((from.min(to), from.max(to)));
+                }
+            }
+        }
+        edges
+    }
+
+    /// Connected-component id for every node, in the same numbering
+    /// `connected_components` counts.
+    ///
+    /// Iterative on purpose: `dfs_undirected` recurses once per node, and this
+    /// runs over whole repositories (4,000+ nodes in one component).
+    fn component_ids(&self) -> Vec<usize> {
+        let n = self.node_count();
+        let mut ids = vec![usize::MAX; n];
+        let mut next_id = 0;
+
+        for start in 0..n {
+            if ids[start] != usize::MAX {
+                continue;
+            }
+            let mut stack = vec![start];
+            ids[start] = next_id;
+            while let Some(node) = stack.pop() {
+                for &neighbor in self.outgoing[node].iter().chain(self.incoming[node].iter()) {
+                    if ids[neighbor] == usize::MAX {
+                        ids[neighbor] = next_id;
+                        stack.push(neighbor);
+                    }
+                }
+            }
+            next_id += 1;
+        }
+
+        ids
+    }
+
     /// Dijkstra's algorithm for shortest paths
     fn dijkstra(&self, source: NodeIndex, target: Option<NodeIndex>) -> HashMap<NodeIndex, i32> {
         use std::collections::BinaryHeap;
@@ -166,13 +224,41 @@ impl SimpleGraph {
 // Public types
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// Node metrics.
+/// Per-node graph metrics.
+///
+/// Every measure the `--metrics` selection can leave uncomputed is an
+/// `Option<f64>`, and `None` means EXACTLY "this run did not compute it" — it
+/// serialises as `null` and renders as `n/a`.
+///
+/// These were plain `f64` seeded with a struct initializer (`pagerank: 1.0/N`,
+/// `closeness_centrality: 0.0`) that only the selected metrics overwrote. On a
+/// 4,603-node graph `--metrics centrality` therefore published the pagerank
+/// INITIALIZER — 0.00021724961981316532 == 1/4603 to the last digit, byte
+/// identical for every node, hub and leaf alike — as a measured importance
+/// score, and `filter_results` applied `--min-centrality` to a closeness that
+/// had never been computed. An unmeasured metric is not a metric of 0.
 pub struct NodeMetrics {
     pub name: String,
+    /// Always computed: degree is read straight off the adjacency lists, so it
+    /// costs nothing and needs no metric selection.
     pub degree_centrality: f64,
-    pub betweenness_centrality: f64,
-    pub closeness_centrality: f64,
-    pub pagerank: f64,
+    /// `--metrics betweenness` (or `all`); `None` otherwise.
+    pub betweenness_centrality: Option<f64>,
+    /// `--metrics closeness` (or `all`); `None` otherwise.
+    pub closeness_centrality: Option<f64>,
+    /// `--metrics page-rank` (or `all`); `None` otherwise.
+    pub pagerank: Option<f64>,
+    /// Local clustering coefficient: `--metrics clustering` (or `all`).
+    ///
+    /// `Clustering` was an advertised `--metrics` value with no implementation
+    /// and no output field, so `--metrics clustering` returned a document
+    /// byte-identical to `--metrics centrality` and exit 0.
+    pub clustering_coefficient: Option<f64>,
+    /// Connected-component id: `--metrics components` (or `all`).
+    ///
+    /// The graph-wide `connected_components` count is emitted unconditionally;
+    /// this is the per-node membership that makes the selection mean something.
+    pub component_id: Option<usize>,
     pub in_degree: usize,
     pub out_degree: usize,
 }

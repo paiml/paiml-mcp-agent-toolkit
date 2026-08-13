@@ -38,10 +38,11 @@ struct DeadCodeReportScope {
     list_filtered: bool,
 }
 
-/// Run dead code analysis with include/exclude filters
+/// Run dead code analysis with include/exclude filters, inside `budget`.
 async fn run_dead_code_analysis_with_filters(
     path: &Path,
     filters: DeadCodeAnalysisFilters,
+    budget: std::time::Duration,
 ) -> Result<DeadCodeAnalysisOutcome> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::utils::file_filter::FileFilter;
@@ -52,7 +53,7 @@ async fn run_dead_code_analysis_with_filters(
 
     // For non-Rust projects, use the multi-language analyzer
     if detection.language != "rust" {
-        return run_multi_language_dead_code(path, &filters, &detection.language);
+        return run_multi_language_dead_code_within(path, filters, detection.language, budget).await;
     }
 
     // Create file filter
@@ -66,7 +67,11 @@ async fn run_dead_code_analysis_with_filters(
             .with_max_depth(filters.max_depth)
     } else {
         CargoDeadCodeAnalyzer::new(path).with_max_depth(filters.max_depth)
-    };
+    }
+    // `--timeout`, enforced by killing the `cargo check` child. Without this the
+    // analyzer used its own hardcoded 90s, which both ignored a smaller
+    // `--timeout` and silently capped a larger one.
+    .with_timeout(budget);
 
     // Run cargo-based analysis for accurate results
     let accurate_report = cargo_analyzer.analyze().await?;
@@ -191,6 +196,41 @@ fn resummarize_from_listed_files(
     } else {
         0.0
     };
+}
+
+/// Run the multi-language analyzer inside `budget`.
+///
+/// `analyze_dead_code_multi_language` is synchronous and holds its thread for
+/// the whole scan, so a `tokio::time::timeout` wrapped around it directly is
+/// exactly the non-enforcement `--timeout` already had: the timer cannot fire
+/// while the future never yields. Running it on the blocking pool gives the
+/// timer something to fire against, and `--timeout` then reports the same
+/// message on both analyzers.
+///
+/// Caveat, stated rather than hidden: there is no external process to kill
+/// here, so the blocking task keeps running after the budget is spent. It dies
+/// with the process, which exits immediately on the error this returns.
+async fn run_multi_language_dead_code_within(
+    path: &Path,
+    filters: DeadCodeAnalysisFilters,
+    language: String,
+    budget: std::time::Duration,
+) -> Result<DeadCodeAnalysisOutcome> {
+    let owned_path = path.to_path_buf();
+    let task = tokio::task::spawn_blocking(move || {
+        run_multi_language_dead_code(&owned_path, &filters, &language)
+    });
+
+    match tokio::time::timeout(budget, task).await {
+        Ok(joined) => {
+            use anyhow::Context;
+            joined.context("multi-language dead code analysis panicked")?
+        }
+        Err(_) => anyhow::bail!(
+            "Dead code analysis timed out after {} seconds",
+            budget.as_secs()
+        ),
+    }
 }
 
 /// Run multi-language dead code analysis for non-Rust projects
@@ -503,12 +543,29 @@ fn dead_items_to_report_items(
     items
         .iter()
         .map(|item| DeadCodeItem {
-            item_type: match item.kind {
+            // EXHAUSTIVE on purpose: no `_` arm. The wildcard here is what typed
+            // every suppressed function as `"variable"` in a record whose own
+            // `reason` said `fn`, and it would silently swallow any kind added
+            // later the same way. `DeadCodeType` has only four variants, so
+            // `Module` and an unrecognised `Other` have nowhere better to go
+            // than `Variable` — but that is now a decision written down at a
+            // named arm, and adding a `DeadCodeKind` fails to compile until
+            // someone makes the same decision for it.
+            item_type: match &item.kind {
                 DeadCodeKind::Function | DeadCodeKind::Method => DeadCodeType::Function,
-                DeadCodeKind::Struct | DeadCodeKind::Enum | DeadCodeKind::Trait => {
-                    DeadCodeType::Class
-                }
-                _ => DeadCodeType::Variable,
+                DeadCodeKind::Struct
+                | DeadCodeKind::Enum
+                | DeadCodeKind::Trait
+                | DeadCodeKind::TypeAlias => DeadCodeType::Class,
+                DeadCodeKind::Variant
+                | DeadCodeKind::Field
+                | DeadCodeKind::Constant
+                | DeadCodeKind::Static => DeadCodeType::Variable,
+                // `DeadCodeType` cannot say "module"; the kind survives in
+                // `reason`, and `dead_modules` counts it correctly.
+                DeadCodeKind::Module => DeadCodeType::Variable,
+                DeadCodeKind::UnreachableCode => DeadCodeType::UnreachableCode,
+                DeadCodeKind::Other(_) => DeadCodeType::Variable,
             },
             name: item.name.clone(),
             line: u32::try_from(item.line).unwrap_or(u32::MAX),
@@ -546,7 +603,18 @@ fn create_dead_code_summary(
         dead_functions: get_dead_count_by_types(accurate_report, &["function", "method"]),
         dead_classes: get_dead_count_by_types(accurate_report, &["struct", "enum"]),
         dead_modules: get_dead_count_by_types(accurate_report, &["module"]),
-        unreachable_blocks: 0, // Not tracked by cargo
+        // Counted, not assumed. The literal `0` here carried the comment "Not
+        // tracked by cargo", which stopped being true when the analyzer started
+        // collecting rustc's `unreachable_code` lint — and a comment is not
+        // something a JSON consumer can read anyway. Like every other figure in
+        // this summary it is recomputed from the listed files by
+        // `resummarize_from_listed_files`, which is what honours
+        // `--include-unreachable`.
+        unreachable_blocks: accurate_report
+            .files_with_dead_code
+            .iter()
+            .map(|f| f.unreachable_items.len())
+            .sum(),
     }
 }
 

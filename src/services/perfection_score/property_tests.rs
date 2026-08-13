@@ -198,24 +198,46 @@ mod property_tests {
         );
     }
 
+    /// The workspace-aware lookups still work — they just look for *results*
+    /// now instead of empty directories (#938).
     #[tokio::test]
     async fn test_get_performance_score_workspace_structure() {
         let temp_dir = TempDir::new().unwrap();
-        // Create server/benches structure (workspace-aware)
-        fs::create_dir_all(temp_dir.path().join("server/benches")).unwrap();
+        let change = temp_dir.path().join("server/target/criterion/parse/change");
+        fs::create_dir_all(&change).unwrap();
+        fs::write(
+            change.join("estimates.json"),
+            r#"{"mean":{"point_estimate":-0.10}}"#,
+        )
+        .unwrap();
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_performance_score(temp_dir.path()).await;
-        assert_eq!(score, 80.0); // 50 base + 30 for benches
+        let score = calc.get_performance_score(temp_dir.path()).await.unwrap();
+        assert_eq!(score, 100.0, "the only benchmark got faster");
+
+        // An empty server/benches directory is not a benchmark run.
+        let empty = TempDir::new().unwrap();
+        fs::create_dir_all(empty.path().join("server/benches")).unwrap();
+        assert!(calc.get_performance_score(empty.path()).await.is_err());
     }
 
     #[tokio::test]
     async fn test_get_mutation_score_server_mutants_toml() {
         let temp_dir = TempDir::new().unwrap();
-        fs::create_dir(temp_dir.path().join("server")).unwrap();
-        fs::write(temp_dir.path().join("server/mutants.toml"), "[mutants]").unwrap();
+        let out = temp_dir.path().join("server/mutants.out");
+        fs::create_dir_all(&out).unwrap();
+        fs::write(out.join("caught.txt"), "a\nb\n").unwrap();
+        fs::write(out.join("missed.txt"), "c\n").unwrap();
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_mutation_score(temp_dir.path()).await;
-        assert_eq!(score, 70.0); // 50 base + 20 for config
+        let score = calc.get_mutation_score(temp_dir.path()).await.unwrap();
+        assert!((score - (2.0 / 3.0 * 100.0)).abs() < 0.001, "score {score}");
+
+        // A config file alone is not a mutation run.
+        let configured = TempDir::new().unwrap();
+        fs::create_dir(configured.path().join("server")).unwrap();
+        fs::write(configured.path().join("server/mutants.toml"), "[mutants]").unwrap();
+        assert!(calc.get_mutation_score(configured.path()).await.is_err());
     }
 
     #[tokio::test]
@@ -226,7 +248,7 @@ mod property_tests {
         fs::create_dir_all(&metrics_dir).unwrap();
         fs::write(metrics_dir.join("coverage.json"), r#"{"coverage": 92.5}"#).unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_coverage_score(temp_dir.path()).await;
+        let score = calc.get_coverage_score(temp_dir.path()).await.unwrap();
         assert_eq!(score, 92.5);
     }
 
@@ -245,9 +267,8 @@ mod property_tests {
         )
         .unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_coverage_score(temp_dir.path()).await;
-        // Should detect tokio::test annotations
-        assert!(score >= 50.0);
+        // Two `#[tokio::test]` attributes are two tests, not a coverage figure.
+        assert!(calc.get_coverage_score(temp_dir.path()).await.is_err());
     }
 
     #[tokio::test]

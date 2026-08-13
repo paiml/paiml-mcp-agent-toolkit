@@ -176,9 +176,11 @@
         let node = NodeMetrics {
             name: "test_node".to_string(),
             degree_centrality: 0.75,
-            betweenness_centrality: 0.5,
-            closeness_centrality: 0.6,
-            pagerank: 0.25,
+            betweenness_centrality: Some(0.5),
+            closeness_centrality: Some(0.6),
+            pagerank: Some(0.25),
+            clustering_coefficient: None,
+            component_id: None,
             in_degree: 3,
             out_degree: 4,
         };
@@ -241,9 +243,11 @@
             result.nodes.push(NodeMetrics {
                 name: format!("node{}", i),
                 degree_centrality: 0.1,
-                betweenness_centrality: 0.1,
-                closeness_centrality: 0.1,
-                pagerank: 0.05,
+                betweenness_centrality: Some(0.1),
+                closeness_centrality: Some(0.1),
+                pagerank: Some(0.05),
+                clustering_coefficient: None,
+                component_id: None,
                 in_degree: 1,
                 out_degree: 1,
             });
@@ -295,9 +299,11 @@
         let metrics = NodeMetrics {
             name: "debug_test".to_string(),
             degree_centrality: 0.5,
-            betweenness_centrality: 0.3,
-            closeness_centrality: 0.7,
-            pagerank: 0.1,
+            betweenness_centrality: Some(0.3),
+            closeness_centrality: Some(0.7),
+            pagerank: Some(0.1),
+            clustering_coefficient: None,
+            component_id: None,
             in_degree: 2,
             out_degree: 3,
         };

@@ -21,15 +21,14 @@ pub async fn handle_analyze_makefile(
         return Err(anyhow::anyhow!("Makefile not found: {}", path.display()));
     }
 
+    validate_rule_names(&rules)?;
+
     // Run the linter
     let lint_result = makefile_linter::lint_makefile(&path)
         .await
         .map_err(|e| anyhow::anyhow!("Makefile linting failed: {e}"))?;
 
-    print_makefile_analysis_summary(&lint_result);
-
-    // Filter violations by rules if specified
-    let mut filtered_violations = filter_makefile_violations(&lint_result.violations, &rules);
+    let mut measured = lint_result.violations.clone();
 
     // --gnu-version used to reach nothing but the report header: a Makefile
     // built from `.ONESHELL:`, `::=` and `!=` produced byte-identical reports
@@ -39,20 +38,25 @@ pub async fn handle_analyze_makefile(
     if let Some(ref requested) = gnu_version {
         let source = std::fs::read_to_string(&path)?;
         let mut incompat = check_gnu_version_compatibility(&source, requested)?;
-        if rules.is_empty() || rules == vec!["all"] || rules.contains(&GNU_VERSION_RULE.to_string())
-        {
-            crate::status_eprintln!(
-                "📌 {} construct(s) newer than GNU Make {requested}",
-                incompat.len()
-            );
-            filtered_violations.append(&mut incompat);
-        }
+        crate::status_eprintln!(
+            "📌 {} construct(s) newer than GNU Make {requested}",
+            incompat.len()
+        );
+        measured.append(&mut incompat);
     }
+
+    // One filter, applied once, and its arithmetic carried to every surface —
+    // stdout said "✅ No violations found!" while stderr of the same process
+    // said "Found 3 violations" and the header kept the 50.0% score derived
+    // from them, because the summary was printed from the unfiltered list and
+    // the report from the filtered one.
+    let outcome = apply_rule_filter(&measured, &rules);
+    print_makefile_analysis_summary(&lint_result, &outcome);
 
     // Format output based on requested format
     let content = format_makefile_output(
         &path,
-        &filtered_violations,
+        &outcome,
         &lint_result,
         gnu_version.as_ref(),
         format,
@@ -63,9 +67,80 @@ pub async fn handle_analyze_makefile(
     println!("{content}");
 
     // Handle fix mode if requested
-    handle_makefile_fix_mode(fix, &filtered_violations);
+    handle_makefile_fix_mode(fix, &outcome.kept);
 
     Ok(())
+}
+
+/// Reject `--rules` values that cannot name a rule.
+///
+/// `--rules ''` was accepted, matched nothing, and produced a report that said
+/// "✅ No violations found!" over a Makefile with a shell-injection Error.
+///
+/// # Errors
+/// Returns an error when any requested rule name is blank.
+fn validate_rule_names(rules: &[String]) -> Result<()> {
+    if rules.iter().any(|r| r.trim().is_empty()) {
+        return Err(anyhow::anyhow!(
+            "--rules contains an empty rule name; pass rule ids (e.g. \
+             security/shell-injection, undefinedvariable) or omit --rules for all rules"
+        ));
+    }
+    Ok(())
+}
+
+/// The result of applying `--rules`, kept whole so that no surface can report a
+/// count another surface contradicts.
+struct RuleFilterOutcome {
+    /// Violations that survived the filter — what every renderer lists.
+    kept: Vec<makefile_linter::Violation>,
+    /// How many violations were measured before filtering.
+    measured: usize,
+    /// The requested rule names, empty when no filter was applied.
+    filter: Vec<String>,
+    /// Rule ids that actually produced a violation, sorted and deduplicated.
+    rules_present: Vec<String>,
+}
+
+impl RuleFilterOutcome {
+    /// A filter is in force and it removed every measured violation.
+    fn filtered_everything_away(&self) -> bool {
+        !self.filter.is_empty() && self.kept.is_empty() && self.measured > 0
+    }
+
+    fn filter_display(&self) -> String {
+        self.filter.join(",")
+    }
+}
+
+/// Apply `--rules`, recording what was measured as well as what survived.
+fn apply_rule_filter(
+    violations: &[makefile_linter::Violation],
+    rules: &[String],
+) -> RuleFilterOutcome {
+    let no_filter = rules.is_empty() || rules == ["all"];
+    let kept = if no_filter {
+        violations.to_vec()
+    } else {
+        violations
+            .iter()
+            .filter(|v| rules.contains(&v.rule))
+            .cloned()
+            .collect()
+    };
+    let rules_present: Vec<String> = violations
+        .iter()
+        .map(|v| v.rule.clone())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+
+    RuleFilterOutcome {
+        kept,
+        measured: violations.len(),
+        filter: if no_filter { Vec::new() } else { rules.to_vec() },
+        rules_present,
+    }
 }
 
 /// Rule name carried by every `--gnu-version` incompatibility.
@@ -166,28 +241,29 @@ fn check_gnu_version_compatibility(
 }
 
 // Helper: Print analysis summary
-fn print_makefile_analysis_summary(lint_result: &makefile_linter::LintResult) {
-    crate::status_eprintln!("📊 Found {} violations", lint_result.violations.len());
-    crate::status_eprintln!(
-        "✨ Quality score: {:.1}%",
-        lint_result.quality_score * 100.0
-    );
-}
-
-// Helper: Filter violations by rules
-fn filter_makefile_violations(
-    violations: &[makefile_linter::Violation],
-    rules: &[String],
-) -> Vec<makefile_linter::Violation> {
-    if rules.is_empty() || rules == vec!["all"] {
-        violations.to_vec()
+//
+// The count here is the one the report lists; the count that was measured is
+// named alongside it whenever a filter changed them, so stderr and stdout state
+// the same two facts.
+fn print_makefile_analysis_summary(
+    lint_result: &makefile_linter::LintResult,
+    outcome: &RuleFilterOutcome,
+) {
+    if outcome.filter.is_empty() {
+        crate::status_eprintln!("📊 Found {} violations", outcome.measured);
     } else {
-        violations
-            .iter()
-            .filter(|v| rules.contains(&v.rule))
-            .cloned()
-            .collect()
+        crate::status_eprintln!(
+            "📊 Found {} violations; {} match --rules {}",
+            outcome.measured,
+            outcome.kept.len(),
+            outcome.filter_display()
+        );
     }
+    crate::status_eprintln!(
+        "✨ Quality score: {:.1}% (over all {} violations found)",
+        lint_result.quality_score * 100.0,
+        outcome.measured
+    );
 }
 
 // Helper: Handle fix mode
@@ -234,21 +310,27 @@ fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::V
 // the flag bounds what is listed, never what is measured.
 fn format_makefile_output(
     path: &Path,
-    filtered_violations: &[makefile_linter::Violation],
+    outcome: &RuleFilterOutcome,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
     format: MakefileOutputFormat,
     top_files: usize,
 ) -> Result<String> {
-    let listed = crate::cli::top_files_slice(filtered_violations, top_files);
-    let total = filtered_violations.len();
+    let listed = crate::cli::top_files_slice(&outcome.kept, top_files);
+    let total = outcome.kept.len();
     match format {
         MakefileOutputFormat::Json => {
-            format_makefile_as_json(path, listed, total, lint_result, gnu_version)
+            format_makefile_as_json(path, listed, total, outcome, lint_result, gnu_version)
         }
-        MakefileOutputFormat::Human => {
-            format_makefile_as_human(path, listed, total, top_files, lint_result, gnu_version)
-        }
+        MakefileOutputFormat::Human => format_makefile_as_human(
+            path,
+            listed,
+            total,
+            top_files,
+            outcome,
+            lint_result,
+            gnu_version,
+        ),
         MakefileOutputFormat::Sarif => format_makefile_as_sarif(path, listed),
         MakefileOutputFormat::Gcc => format_makefile_as_gcc(path, listed),
     }
@@ -259,6 +341,7 @@ fn format_makefile_as_json(
     path: &Path,
     listed: &[makefile_linter::Violation],
     total: usize,
+    outcome: &RuleFilterOutcome,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
@@ -268,24 +351,32 @@ fn format_makefile_as_json(
         "violations_total": total,
         "violations_listed": listed.len(),
         "violations_truncated": listed.len() < total,
+        // What was measured, before --rules removed anything: a 200-byte
+        // document with an empty violations array used to be the only trace of
+        // a run that found a shell-injection Error.
+        "violations_measured": outcome.measured,
+        "rules_filter": outcome.filter,
+        "rules_present": outcome.rules_present,
         "quality_score": lint_result.quality_score,
         "gnu_version": gnu_version,
     }))?)
 }
 
 // Helper: Format as human-readable
+#[allow(clippy::too_many_arguments)]
 fn format_makefile_as_human(
     path: &Path,
     listed: &[makefile_linter::Violation],
     total: usize,
     top_files: usize,
+    outcome: &RuleFilterOutcome,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
     let mut output = String::new();
 
-    write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
-    write_makefile_violations_table(&mut output, listed, total, top_files)?;
+    write_makefile_human_header(&mut output, path, lint_result, gnu_version, outcome)?;
+    write_makefile_violations_table(&mut output, listed, total, top_files, outcome)?;
     write_makefile_fix_suggestions(&mut output, listed)?;
 
     Ok(output)
@@ -297,15 +388,29 @@ fn write_makefile_human_header(
     path: &Path,
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
+    outcome: &RuleFilterOutcome,
 ) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "# Makefile Analysis Report\n")?;
     writeln!(output, "**File**: {}", path.display())?;
+    // The score is derived from every violation the linter found, so it must
+    // say so when the table below shows a subset — a 50.0% score printed above
+    // "✅ No violations found!" is a report contradicting itself.
     writeln!(
         output,
-        "**Quality Score**: {:.1}%",
-        lint_result.quality_score * 100.0
+        "**Quality Score**: {:.1}% (over all {} violation(s) found)",
+        lint_result.quality_score * 100.0,
+        outcome.measured
     )?;
+    if !outcome.filter.is_empty() {
+        writeln!(
+            output,
+            "**Rules Filter**: {} — {} of {} violation(s) match",
+            outcome.filter_display(),
+            outcome.kept.len(),
+            outcome.measured
+        )?;
+    }
     if let Some(ver) = gnu_version {
         writeln!(output, "**GNU Make Version**: {ver}")?;
     }
@@ -319,11 +424,33 @@ fn write_makefile_violations_table(
     listed: &[makefile_linter::Violation],
     total: usize,
     top_files: usize,
+    outcome: &RuleFilterOutcome,
 ) -> Result<()> {
     use std::fmt::Write;
 
     if listed.is_empty() {
-        writeln!(output, "✅ No violations found!")?;
+        // "No violations found" is a statement about the Makefile; when a
+        // --rules value simply matched nothing, the Makefile is not clean and
+        // the report must not say it is.
+        if outcome.filtered_everything_away() {
+            writeln!(
+                output,
+                "⚠️ {} violation(s) found; 0 match --rules {}.",
+                outcome.measured,
+                outcome.filter_display()
+            )?;
+            writeln!(
+                output,
+                "\nRule(s) that fired on this Makefile: {}",
+                outcome.rules_present.join(", ")
+            )?;
+            writeln!(
+                output,
+                "(no requested name matched — check the spelling of --rules)"
+            )?;
+        } else {
+            writeln!(output, "✅ No violations found!")?;
+        }
     } else {
         writeln!(output, "## Violations\n")?;
         writeln!(output, "| Line | Rule | Severity | Message |")?;
@@ -671,8 +798,16 @@ mod makefile_top_files_tests {
         format: MakefileOutputFormat,
         top: usize,
     ) -> String {
-        format_makefile_output(Path::new("Makefile"), v, &lint_result(), None, format, top)
-            .expect("render")
+        let outcome = apply_rule_filter(v, &[]);
+        format_makefile_output(
+            Path::new("Makefile"),
+            &outcome,
+            &lint_result(),
+            None,
+            format,
+            top,
+        )
+        .expect("render")
     }
 
     #[test]
@@ -742,6 +877,142 @@ mod makefile_top_files_tests {
         let first = render(&v, MakefileOutputFormat::Sarif, 0);
         for _ in 0..8 {
             assert_eq!(first, render(&v, MakefileOutputFormat::Sarif, 0));
+        }
+    }
+}
+
+/// `analyze makefile --rules <typo>` silently filtered every violation away:
+/// stdout printed "✅ No violations found!" under a 50.0% Quality Score while
+/// stderr of the same process printed "Found 3 violations". These tests fail on
+/// that code.
+#[cfg(test)]
+mod makefile_rules_filter_tests {
+    use super::*;
+
+    fn three() -> Vec<makefile_linter::Violation> {
+        [
+            ("security/shell-injection", makefile_linter::Severity::Error),
+            ("undefinedvariable", makefile_linter::Severity::Warning),
+            ("undefinedvariable", makefile_linter::Severity::Warning),
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, (rule, severity))| makefile_linter::Violation {
+            rule: rule.to_string(),
+            severity,
+            span: crate::services::makefile_linter::ast::SourceSpan {
+                start: 0,
+                end: 0,
+                line: i + 1,
+                column: 1,
+            },
+            message: format!("violation {i}"),
+            fix_hint: None,
+        })
+        .collect()
+    }
+
+    fn lint_result() -> makefile_linter::LintResult {
+        makefile_linter::LintResult {
+            path: PathBuf::from("Makefile"),
+            violations: three(),
+            quality_score: 0.5,
+        }
+    }
+
+    fn render(rules: &[&str], format: MakefileOutputFormat) -> String {
+        let owned: Vec<String> = rules.iter().map(|r| (*r).to_string()).collect();
+        let outcome = apply_rule_filter(&three(), &owned);
+        format_makefile_output(
+            Path::new("Makefile"),
+            &outcome,
+            &lint_result(),
+            None,
+            format,
+            0,
+        )
+        .expect("render")
+    }
+
+    #[test]
+    fn an_unmatched_rules_value_does_not_report_a_clean_makefile() {
+        let human = render(&["nonexistent-rule-xyz"], MakefileOutputFormat::Human);
+        assert!(
+            !human.contains("No violations found"),
+            "a filter that matched nothing reported the Makefile clean:\n{human}"
+        );
+        assert!(
+            human.contains("3 violation(s) found; 0 match --rules nonexistent-rule-xyz"),
+            "the report must name both counts:\n{human}"
+        );
+        assert!(
+            human.contains("security/shell-injection"),
+            "the report must name the rules that did fire:\n{human}"
+        );
+    }
+
+    /// The printed score is derived from the unfiltered violations, so it may
+    /// not sit unqualified above a table showing a subset of them.
+    #[test]
+    fn the_quality_score_says_what_it_was_measured_over() {
+        let human = render(&["nonexistent-rule-xyz"], MakefileOutputFormat::Human);
+        assert!(
+            human.contains("**Quality Score**: 50.0% (over all 3 violation(s) found)"),
+            "{human}"
+        );
+        assert!(
+            human.contains("**Rules Filter**: nonexistent-rule-xyz — 0 of 3 violation(s) match"),
+            "{human}"
+        );
+    }
+
+    #[test]
+    fn json_carries_the_measured_total_and_the_filter() {
+        let parsed: serde_json::Value =
+            serde_json::from_str(&render(&["nonexistent-rule-xyz"], MakefileOutputFormat::Json))
+                .expect("json");
+        assert_eq!(parsed["violations_measured"], 3);
+        assert_eq!(parsed["violations_total"], 0);
+        assert_eq!(parsed["rules_filter"][0], "nonexistent-rule-xyz");
+        assert_eq!(parsed["rules_present"][0], "security/shell-injection");
+        assert_eq!(parsed["rules_present"][1], "undefinedvariable");
+    }
+
+    #[test]
+    fn a_matching_rule_still_filters_and_says_so() {
+        let human = render(&["undefinedvariable"], MakefileOutputFormat::Human);
+        assert!(human.contains("2 of 3 violation(s) match"), "{human}");
+        assert!(!human.contains("shell-injection"), "{human}");
+        assert!(!human.contains("0 match --rules"), "{human}");
+    }
+
+    /// A genuinely clean Makefile keeps its clean report.
+    #[test]
+    fn no_violations_at_all_still_reads_as_clean() {
+        let outcome = apply_rule_filter(&[], &["undefinedvariable".to_string()]);
+        assert!(!outcome.filtered_everything_away());
+        let mut out = String::new();
+        write_makefile_violations_table(&mut out, &[], 0, 0, &outcome).expect("write");
+        assert!(out.contains("✅ No violations found!"), "{out}");
+    }
+
+    /// `--rules ''` matched nothing and was accepted; a blank name can never be
+    /// a rule id, so it is rejected the way a nonexistent path already is.
+    #[test]
+    fn a_blank_rule_name_is_rejected() {
+        assert!(validate_rule_names(&["".to_string()]).is_err());
+        assert!(validate_rule_names(&["   ".to_string()]).is_err());
+        assert!(validate_rule_names(&["undefinedvariable".to_string()]).is_ok());
+        assert!(validate_rule_names(&[]).is_ok());
+    }
+
+    #[test]
+    fn all_and_empty_mean_no_filter() {
+        for rules in [vec![], vec!["all".to_string()]] {
+            let outcome = apply_rule_filter(&three(), &rules);
+            assert_eq!(outcome.kept.len(), 3);
+            assert!(outcome.filter.is_empty());
+            assert!(!outcome.filtered_everything_away());
         }
     }
 }

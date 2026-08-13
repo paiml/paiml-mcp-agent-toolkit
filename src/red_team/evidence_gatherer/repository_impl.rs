@@ -58,11 +58,32 @@ impl RepositoryContext {
             None
         };
 
+        // The parsers below already existed and were reachable only from
+        // `get_coverage_percentage()` / `get_test_execution_info()`, which the
+        // CLI never called: red-team located lcov.info, printed "📈 Coverage
+        // report: ✅ Found", and then adjudicated a coverage claim without ever
+        // opening the file — output was byte-identical at 0%, 10%, 100% and
+        // absent. Read the artefacts here, where the context is built, and let
+        // an unreadable one be an explicit error rather than a silent 0%.
+        let (actual_coverage, coverage_error) = match coverage_path.as_ref() {
+            None => (None, None),
+            Some(p) => match Self::parse_coverage_report(p) {
+                Ok(pct) => (Some(pct), None),
+                Err(e) => (None, Some(format!("{}: {e}", p.display()))),
+            },
+        };
+
+        let test_results = test_results_path
+            .as_ref()
+            .and_then(|p| Self::parse_test_results(p).ok())
+            .filter(|info| info.has_results)
+            .map(|info| (info.failed_count == 0, info.ignored_count));
+
         Ok(Self {
             subsequent_commits,
-            test_results: None,
-            actual_coverage: None,
-            coverage_error: None,
+            test_results,
+            actual_coverage,
+            coverage_error,
             broken_links_count: None,
             vulnerabilities_count: None,
             benchmark_results: None,
@@ -353,7 +374,14 @@ impl RepositoryContext {
         if lines_found > 0 {
             Ok((lines_hit as f64 / lines_found as f64) * 100.0)
         } else {
-            Ok(0.0)
+            // An lcov file with no LF records measured nothing. Returning 0.0
+            // here made "no data" indistinguishable from "0% covered", which is
+            // a contradiction of any coverage claim rather than an absence of
+            // evidence for it.
+            anyhow::bail!(
+                "no LF/LH records in {} — nothing was measured",
+                path.display()
+            )
         }
     }
 

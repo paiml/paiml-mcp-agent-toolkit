@@ -36,7 +36,13 @@ use super::check_mono_spec::{
 };
 use super::types::*;
 
-/// Check project compliance with current PMAT version
+/// Check project compliance with current PMAT version.
+///
+/// Read-only by construction: nothing on this path writes into the project
+/// being audited. It used to end with `update_last_check_timestamp`, which
+/// CREATED `.pmat/project.toml` (and the `.pmat/` directory) in a tree that had
+/// neither — so the audit manufactured the pin it reported one run later
+/// (#939). Recording a project's pinned version is `pmat comply init`'s job.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn handle_check(
     project_path: &Path,
@@ -47,7 +53,6 @@ pub(crate) async fn handle_check(
     let report = compute_compliance_report(project_path, failures_only)?;
 
     output_compliance_report(&report, format, project_path)?;
-    let _ = update_last_check_timestamp(project_path);
 
     apply_exit_policy(&report, strict)
 }
@@ -188,23 +193,71 @@ fn announce_suppressions(
     }
 }
 
-/// Apply the report's exit policy: code 1 on failures, code 2 on strict warnings-only.
-fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
-    let failures = report
-        .checks
-        .iter()
-        .filter(|c| c.status == CheckStatus::Fail)
-        .count();
-    let warnings = report
-        .checks
-        .iter()
-        .filter(|c| c.status == CheckStatus::Warn)
-        .count();
+/// The exit code `comply check` will use, and the reason for it.
+///
+/// Pure, so the policy is testable; `apply_exit_policy` is the only thing that
+/// calls `std::process::exit`.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ExitPolicy {
+    pub(crate) code: i32,
+    /// Printed to stderr when the code is not 0. `None` means "nothing to
+    /// explain": the run was clean.
+    pub(crate) reason: Option<String>,
+}
+
+/// Decide the exit code: 0 clean, 1 on failures, 2 on `--strict` with
+/// warnings but no failures.
+///
+/// Two things were wrong here (#945). First, the counts came from
+/// `report.checks`, which `--failures-only` has already filtered — so
+/// `comply check --strict --failures-only` silently dropped every warning and
+/// exited 0 where the same run without `--failures-only` exited 2. The counts
+/// now come from `report.summary`, which is tallied before that filter, so a
+/// display flag can no longer move the exit code.
+///
+/// Second, code 2 was silent. A compliant project (`is_compliant: true`,
+/// `fail: 0`) exited 2 with nothing anywhere saying why, against a `--help`
+/// that promises only "exit with error if non-compliant". The escalation is
+/// kept — `--strict` means warnings are errors, and that is the flag's only
+/// effect — but it now names itself, its counts, and the code the same run
+/// would have produced without the flag.
+pub(crate) fn exit_policy(report: &ComplianceReport, strict: bool) -> ExitPolicy {
+    let failures = report.summary.fail;
+    let warnings = report.summary.warn;
+
     if !report.is_compliant {
-        std::process::exit(1);
+        return ExitPolicy {
+            code: 1,
+            reason: Some(format!(
+                "comply: {failures} check(s) failed -> exit 1 (see the Fail entries above)"
+            )),
+        };
     }
     if strict && warnings > 0 && failures == 0 {
-        std::process::exit(2);
+        return ExitPolicy {
+            code: 2,
+            reason: Some(format!(
+                "comply: the report is COMPLIANT ({failures} failures), but --strict treats \
+                 warnings as errors: {warnings} warning(s) -> exit 2. \
+                 Exit codes: 0 = no failures and no warnings, 1 = failures, \
+                 2 = --strict with warnings only. Without --strict this run exits 0."
+            )),
+        };
+    }
+    ExitPolicy {
+        code: 0,
+        reason: None,
+    }
+}
+
+/// Apply the report's exit policy, explaining any non-zero code on stderr.
+fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
+    let policy = exit_policy(report, strict);
+    if let Some(reason) = &policy.reason {
+        eprintln!("{reason}");
+    }
+    if policy.code != 0 {
+        std::process::exit(policy.code);
     }
     Ok(())
 }
@@ -661,6 +714,99 @@ mod build_compliance_report_tests {
         assert!(apply_exit_policy(&report, true).is_ok());
     }
 
+    fn report_with(summary: CheckSummary, checks: Vec<ComplianceCheck>) -> ComplianceReport {
+        ComplianceReport {
+            project_version: "1.0".into(),
+            project_version_source: VersionSource::PinnedByProject,
+            is_compliant: summary.fail == 0,
+            summary,
+            current_version: "1.0".into(),
+            versions_behind: 0,
+            checks,
+            breaking_changes: vec![],
+            recommendations: vec![],
+            timestamp: Utc::now(),
+            history: None,
+        }
+    }
+
+    /// #945: exit 2 on a COMPLIANT project was silent, against a `--help` that
+    /// promises only "exit with error if non-compliant". The escalation stays —
+    /// it is `--strict`'s only effect — but it must say so.
+    #[test]
+    fn strict_warning_escalation_explains_itself() {
+        let summary = CheckSummary {
+            total: 154,
+            pass: 27,
+            warn: 12,
+            fail: 0,
+            skip: 115,
+        };
+        let report = report_with(summary, vec![check("w", CheckStatus::Warn)]);
+
+        let strict = exit_policy(&report, true);
+        assert_eq!(strict.code, 2);
+        let reason = strict.reason.expect("exit 2 must explain itself");
+        assert!(reason.contains("--strict"), "{reason}");
+        assert!(reason.contains("12 warning(s)"), "{reason}");
+        assert!(reason.contains("COMPLIANT"), "{reason}");
+        assert!(
+            reason.contains("Without --strict this run exits 0"),
+            "{reason}"
+        );
+
+        // The same report without --strict is a clean, silent 0.
+        assert_eq!(
+            exit_policy(&report, false),
+            ExitPolicy {
+                code: 0,
+                reason: None
+            }
+        );
+    }
+
+    /// #945: the counts came from `report.checks`, which `--failures-only` has
+    /// already filtered — so `comply check --strict --failures-only` exited 0
+    /// on a tree where `comply check --strict` exited 2 (verified on the 3.30.0
+    /// binary: rc 0 vs rc 2, both reporting `warn: 12`). A display flag must
+    /// not move the exit code.
+    #[test]
+    fn failures_only_does_not_change_the_exit_code() {
+        let summary = CheckSummary {
+            total: 154,
+            pass: 27,
+            warn: 12,
+            fail: 0,
+            skip: 115,
+        };
+        // What `--failures-only` leaves behind: no failures, so no checks.
+        let filtered = report_with(summary, vec![]);
+        let unfiltered = report_with(summary, vec![check("w", CheckStatus::Warn)]);
+
+        assert_eq!(exit_policy(&filtered, true).code, 2);
+        assert_eq!(
+            exit_policy(&filtered, true).code,
+            exit_policy(&unfiltered, true).code
+        );
+    }
+
+    #[test]
+    fn failures_exit_1_whether_or_not_strict() {
+        let summary = CheckSummary {
+            total: 3,
+            pass: 1,
+            warn: 1,
+            fail: 1,
+            skip: 0,
+        };
+        let report = report_with(summary, vec![check("f", CheckStatus::Fail)]);
+        for strict in [false, true] {
+            let policy = exit_policy(&report, strict);
+            assert_eq!(policy.code, 1, "strict={strict}");
+            assert!(policy.reason.expect("reason").contains("1 check(s) failed"));
+        }
+    }
+
     /// `comply check -f sarif` used to print pmat's plain JSON report whenever
     /// the external `pv` linter was unavailable: no `$schema`, no `version`, no
     /// `runs[]` — a document GitHub's upload-sarif action rejects, and
@@ -718,6 +864,78 @@ mod build_compliance_report_tests {
         // The document must NOT be the plain compliance report.
         assert!(sarif.get("checks").is_none());
         assert!(sarif.get("is_compliant").is_none());
+    }
+
+    /// #939: resolving the project's pinned version CREATED
+    /// `.pmat/project.toml`, so `comply check` reported
+    /// "not pinned by this project" on run 1 and "pinned in .pmat/project.toml"
+    /// on run 2 of the identical command. Reading a pin must not write one.
+    #[test]
+    fn resolving_the_pinned_version_writes_nothing() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(dir.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").expect("write");
+
+        let (config, source) = load_project_config_with_source(dir.path()).expect("load");
+        assert_eq!(source, VersionSource::InstalledPmatDefault);
+        assert!(!config.pmat.version.is_empty());
+        assert!(
+            !dir.path().join(".pmat").exists(),
+            "comply check must not create .pmat/ in the project it audits"
+        );
+
+        // And the verdict is stable across repeated reads.
+        let (_, again) = load_project_config_with_source(dir.path()).expect("load again");
+        assert_eq!(source, again);
+    }
+
+    /// #939, end to end: the whole compliance run on unchanged source must
+    /// return the identical verdict twice. It did not — run 1 reported
+    /// `fail: 2` (`Cargo.lock Present`, `CB-301 Reproducibility`) and run 2 of
+    /// the identical command reported `fail: 0`, because run 1 had written the
+    /// lockfile and the version pin it then read back as evidence.
+    #[test]
+    fn a_second_run_on_unchanged_source_returns_the_identical_verdict() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"idem\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+        )
+        .expect("write manifest");
+        std::fs::write(dir.path().join("src/lib.rs"), "//! x\n").expect("write lib");
+
+        let first = compute_compliance_report(dir.path(), false).expect("run 1");
+        let second = compute_compliance_report(dir.path(), false).expect("run 2");
+
+        assert_eq!(first.summary, second.summary, "verdict moved on its own");
+        assert_eq!(first.is_compliant, second.is_compliant);
+        assert_eq!(
+            first.project_version_source, second.project_version_source,
+            "the audit pinned the version it then reported as pinned"
+        );
+        assert!(
+            !dir.path().join("Cargo.lock").exists(),
+            "comply check must not write Cargo.lock into the audited project"
+        );
+        assert!(
+            !dir.path().join(".pmat/project.toml").exists(),
+            "comply check must not pin the audited project - that is `comply init`"
+        );
+    }
+
+    #[test]
+    fn a_real_pin_is_reported_as_pinned() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join(".pmat")).expect("mkdir");
+        std::fs::write(
+            dir.path().join(".pmat/project.toml"),
+            "[pmat]\nversion = \"1.2.3\"\n",
+        )
+        .expect("write");
+
+        let (config, source) = load_project_config_with_source(dir.path()).expect("load");
+        assert_eq!(source, VersionSource::PinnedByProject);
+        assert_eq!(config.pmat.version, "1.2.3");
     }
 
     #[test]
