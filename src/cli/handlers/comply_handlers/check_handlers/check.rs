@@ -990,3 +990,4 @@ include!("check_pv_enforcement_helpers_tests.rs");
 
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");
+include!("check_readonly_and_exemption_tests.rs");

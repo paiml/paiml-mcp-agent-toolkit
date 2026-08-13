@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 #[test]
 fn test_calculate_summary_with_defects() {
-    let files = vec![
+    let files = [
         PathBuf::from("a.rs"),
         PathBuf::from("b.rs"),
         PathBuf::from("c.rs"),
@@ -108,7 +108,7 @@ fn test_calculate_summary_with_defects() {
         },
     ];
 
-    let summary = calculate_summary(&files, &defects);
+    let summary = calculate_summary(files.len(), &defects);
 
     assert_eq!(summary.total_files_scanned, 3);
     assert_eq!(summary.files_with_defects, 3);
@@ -498,7 +498,7 @@ fn one_defect(severity: Severity, file: &str) -> DefectPattern {
 /// count from the defects it is given, so a summary cannot outlive its list.
 #[test]
 fn files_with_defects_is_zero_once_the_severity_filter_empties_the_list() {
-    let files = vec![PathBuf::from("a.rs"), PathBuf::from("b.rs")];
+    let files = [PathBuf::from("a.rs"), PathBuf::from("b.rs")];
     let scanned = vec![
         one_defect(Severity::Critical, "a.rs"),
         one_defect(Severity::High, "b.rs"),
@@ -510,7 +510,7 @@ fn files_with_defects_is_zero_once_the_severity_filter_empties_the_list() {
         .filter(|d| d.severity == Severity::Low)
         .collect();
 
-    let summary = calculate_summary(&files, &reported);
+    let summary = calculate_summary(files.len(), &reported);
 
     assert_eq!(summary.total_defects, 0);
     assert_eq!(
@@ -523,13 +523,13 @@ fn files_with_defects_is_zero_once_the_severity_filter_empties_the_list() {
 /// The same derivation must not double-count a file that several patterns hit.
 #[test]
 fn files_with_defects_counts_distinct_files_not_patterns() {
-    let files = vec![PathBuf::from("a.rs")];
+    let files = [PathBuf::from("a.rs")];
     let reported = vec![
         one_defect(Severity::Critical, "a.rs"),
         one_defect(Severity::Low, "a.rs"),
     ];
 
-    let summary = calculate_summary(&files, &reported);
+    let summary = calculate_summary(files.len(), &reported);
 
     assert_eq!(summary.total_defects, 2);
     assert_eq!(summary.files_with_defects, 1);

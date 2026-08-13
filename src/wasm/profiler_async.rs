@@ -149,6 +149,24 @@ impl AsyncProfiler {
         })
     }
 
+    /// Snapshot the shadow stacks collected so far by [`Self::start_sampling`].
+    ///
+    /// `start_sampling` pushed every sample into a private
+    /// `Arc<RwLock<Vec<ShadowStack>>>` that had **no reader anywhere in the
+    /// crate**: the sampler looked like it worked, and the profiling data it
+    /// produced was unreachable by construction. This is the accessor that
+    /// makes the collected data observable.
+    ///
+    /// Returns `None` when the lock is poisoned — that is "not measured", and
+    /// it is deliberately distinct from `Some(vec![])`, which means "measured,
+    /// nothing sampled yet". Collapsing the two would render absence as
+    /// success.
+    #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    pub fn samples(&self) -> Option<Vec<ShadowStack>> {
+        self.shadow_stacks.read().ok().map(|s| s.clone())
+    }
+
     /// Start asynchronous sampling of a running instance
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -175,5 +193,109 @@ impl AsyncProfiler {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod start_sampling_tests {
+    //! #974. `start_sampling` had no test at all, and no caller: the samples it
+    //! collected went into a private vector nothing could read.
+    //!
+    //! Every test here runs on a **paused** tokio clock (`start_paused = true`),
+    //! so the sample counts are exact rather than timing-dependent — a test that
+    //! only asserted "some samples appeared" would still pass if the
+    //! `sample_interval` argument were ignored.
+    use super::*;
+
+    fn count(profiler: &AsyncProfiler) -> usize {
+        profiler
+            .samples()
+            .expect("shadow stack lock must not be poisoned")
+            .len()
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sampling_writes_shadow_stacks_the_caller_can_read_back() {
+        let profiler = AsyncProfiler::new();
+        assert_eq!(count(&profiler), 0, "nothing sampled before start_sampling");
+
+        let handle = profiler.start_sampling(Duration::from_millis(100));
+        // interval fires immediately, then every 100ms: t=0,100,200,300.
+        tokio::time::sleep(Duration::from_millis(350)).await;
+        handle.abort();
+
+        let samples = profiler
+            .samples()
+            .expect("shadow stack lock must not be poisoned");
+        assert_eq!(samples.len(), 4, "one sample per 100ms tick over 350ms");
+        assert!(
+            samples
+                .iter()
+                .all(|s| s.depth() == 2 && s.contains_function(1) && s.contains_function(5)),
+            "each sample must be a real ShadowStack::sample(), not a placeholder"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn the_sample_interval_argument_decides_the_sampling_rate() {
+        let fast = AsyncProfiler::new();
+        let slow = AsyncProfiler::new();
+
+        let fast_handle = fast.start_sampling(Duration::from_millis(10));
+        let slow_handle = slow.start_sampling(Duration::from_millis(500));
+        // 995ms, deliberately off every tick boundary so no sample races the
+        // wake-up of this task.
+        tokio::time::sleep(Duration::from_millis(995)).await;
+        fast_handle.abort();
+        slow_handle.abort();
+
+        // If the argument were ignored (e.g. replaced by the hardcoded
+        // `self.sample_interval` of 10ms) these two counts would be equal.
+        assert_eq!(count(&fast), 100, "10ms sampler: ticks at 0, 10, .., 990");
+        assert_eq!(count(&slow), 2, "500ms sampler: ticks at 0 and 500");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn aborting_the_returned_handle_stops_the_sampler() {
+        let profiler = AsyncProfiler::new();
+        let handle = profiler.start_sampling(Duration::from_millis(100));
+        tokio::time::sleep(Duration::from_millis(250)).await;
+
+        handle.abort();
+        let at_abort = count(&profiler);
+        assert_eq!(at_abort, 3, "ticks at 0, 100, 200");
+
+        tokio::time::sleep(Duration::from_millis(5_000)).await;
+        assert_eq!(
+            count(&profiler),
+            at_abort,
+            "the returned handle must own the sampling task"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sampling_stops_itself_at_the_ten_thousand_sample_limit() {
+        let profiler = AsyncProfiler::new();
+        let handle = profiler.start_sampling(Duration::from_millis(1));
+
+        // The task must terminate on its own; nothing aborts it here.
+        handle.await.expect("sampler task must finish at the limit");
+        assert_eq!(count(&profiler), 10_000, "the sample cap is 10_000");
+    }
+
+    #[test]
+    fn a_poisoned_lock_reports_not_measured_rather_than_empty() {
+        let profiler = AsyncProfiler::new();
+        let stacks = profiler.shadow_stacks.clone();
+        let poisoner = std::thread::spawn(move || {
+            let _guard = stacks.write().expect("first write must succeed");
+            panic!("poison the shadow stack lock");
+        });
+        assert!(poisoner.join().is_err(), "the poisoning thread must panic");
+
+        assert!(
+            profiler.samples().is_none(),
+            "an unreadable lock is `not measured` (None), never an empty sample set"
+        );
     }
 }

@@ -77,8 +77,17 @@ pub async fn handle_analyze_makefile(
 /// `--rules ''` was accepted, matched nothing, and produced a report that said
 /// "✅ No violations found!" over a Makefile with a shell-injection Error.
 ///
+/// #961 residual: a non-blank but UNREGISTERED name (`--rules
+/// nonexistent-rule-xyz`) was accepted just as silently — it filtered every
+/// measured violation away and exited 0. The valid set is now read from the
+/// registry that actually runs the rules (`RuleRegistry::rule_ids`), so
+/// "no such rule" is an error while "a real rule that found nothing" stays a
+/// clean, zero-violation success. Deriving the set from the registry rather
+/// than from a second hand-written list is deliberate: a list maintained here
+/// would drift the moment a rule is registered.
+///
 /// # Errors
-/// Returns an error when any requested rule name is blank.
+/// Returns an error when any requested rule name is blank or unregistered.
 fn validate_rule_names(rules: &[String]) -> Result<()> {
     if rules.iter().any(|r| r.trim().is_empty()) {
         return Err(anyhow::anyhow!(
@@ -86,7 +95,48 @@ fn validate_rule_names(rules: &[String]) -> Result<()> {
              security/shell-injection, undefinedvariable) or omit --rules for all rules"
         ));
     }
+
+    // Only names that will actually filter are checked. With `all` present
+    // nothing is filtered, so no name can remove anything and there is no
+    // silent loss to protect against; the residual is that `--rules all,typo`
+    // does not flag the typo.
+    if rules.iter().any(|r| r.trim() == "all") {
+        return Ok(());
+    }
+
+    let valid = valid_rule_names();
+    let unknown: Vec<&str> = rules
+        .iter()
+        .map(|r| r.trim())
+        .filter(|r| !valid.iter().any(|v| v == r))
+        .collect();
+    if !unknown.is_empty() {
+        return Err(anyhow::anyhow!(
+            "--rules names no such rule: {}. Valid rule ids are: {}. \
+             Omit --rules (or pass `all`) to run every rule.",
+            unknown.join(", "),
+            valid.join(", ")
+        ));
+    }
     Ok(())
+}
+
+/// Every value `--rules` accepts: the registered rule ids, plus the two names
+/// that are real but do not come from the registry.
+fn valid_rule_names() -> Vec<String> {
+    let registry = makefile_linter::RuleRegistry::new();
+    let mut names: Vec<String> = registry
+        .rule_ids()
+        .into_iter()
+        .map(ToString::to_string)
+        .collect();
+    // `gnuversion` is emitted here, by --gnu-version, not by a registered rule.
+    names.push(GNU_VERSION_RULE.to_string());
+    // `all` is the documented "no filter" spelling handled by apply_rule_filter.
+    names.push("all".to_string());
+    names.sort();
+    names.dedup();
+    names
 }
 
 /// The result of applying `--rules`, kept whole so that no surface can report a
@@ -118,7 +168,10 @@ fn apply_rule_filter(
     violations: &[makefile_linter::Violation],
     rules: &[String],
 ) -> RuleFilterOutcome {
-    let no_filter = rules.is_empty() || rules == ["all"];
+    // `all` means "no filter" wherever it appears, not only when it is the only
+    // entry: `--rules all,minphony` used to be read as "only minphony", which
+    // silently narrowed a request that literally asks for everything.
+    let no_filter = rules.is_empty() || rules.iter().any(|r| r.trim() == "all");
     let kept = if no_filter {
         violations.to_vec()
     } else {
@@ -260,10 +313,38 @@ fn print_makefile_analysis_summary(
         );
     }
     crate::status_eprintln!(
-        "✨ Quality score: {:.1}% (over all {} violations found)",
+        "✨ Quality score: {:.1}% ({})",
         lint_result.quality_score * 100.0,
-        outcome.measured
+        score_scope(lint_result, outcome)
     );
+}
+
+// What the quality score was computed over, in words.
+//
+// #961 residual, same shape as the one that issue is about: the score comes
+// from `LintResult::quality_score`, which the linter derives from ITS OWN
+// violations, but the caption said "over all {measured} violation(s) found" —
+// and `measured` also counts the incompatibilities `--gnu-version` appends
+// afterwards. `--gnu-version 3.0` over a Makefile using `.ONESHELL:` and `::=`
+// therefore printed "Quality score: 100.0% (over all 2 violations found)": a
+// perfect score attributed to a set of two findings it was not computed over.
+// A number is only as honest as the set it names, so the caption now names the
+// set the score actually covers and reports the appended findings separately.
+fn score_scope(
+    lint_result: &makefile_linter::LintResult,
+    outcome: &RuleFilterOutcome,
+) -> String {
+    let scored = lint_result.violations.len();
+    let appended = outcome.measured.saturating_sub(scored);
+    if appended == 0 {
+        // The common case keeps its original wording: nothing was appended, so
+        // "all N" is exactly what the score covers.
+        return format!("over all {scored} violation(s) found");
+    }
+    format!(
+        "over the {scored} violation(s) the linter measured; {appended} further \
+         --gnu-version finding(s) are not in the score"
+    )
 }
 
 // Helper: Handle fix mode
@@ -395,12 +476,13 @@ fn write_makefile_human_header(
     writeln!(output, "**File**: {}", path.display())?;
     // The score is derived from every violation the linter found, so it must
     // say so when the table below shows a subset — a 50.0% score printed above
-    // "✅ No violations found!" is a report contradicting itself.
+    // "✅ No violations found!" is a report contradicting itself. See
+    // `score_scope` for why the caption is not simply `outcome.measured`.
     writeln!(
         output,
-        "**Quality Score**: {:.1}% (over all {} violation(s) found)",
+        "**Quality Score**: {:.1}% ({})",
         lint_result.quality_score * 100.0,
-        outcome.measured
+        score_scope(lint_result, outcome)
     )?;
     if !outcome.filter.is_empty() {
         writeln!(
@@ -966,6 +1048,48 @@ mod makefile_rules_filter_tests {
         );
     }
 
+    /// #961 residual: `--gnu-version` appends its incompatibilities to the
+    /// measured list AFTER the linter computed `quality_score`, so the caption
+    /// "over all {measured} violation(s) found" attributed the score to a set
+    /// it was never computed over. Measured on a real Makefile using
+    /// `.ONESHELL:` and `::=`, `--gnu-version 3.0` printed
+    /// "Quality score: 100.0% (over all 2 violations found)" — a perfect score
+    /// over two findings.
+    ///
+    /// RED on the old code, which printed the appended total in both cases.
+    #[test]
+    fn the_score_caption_names_only_the_violations_it_covers() {
+        // No appended findings: the original wording, unchanged.
+        let mut outcome = apply_rule_filter(&three(), &[]);
+        assert_eq!(
+            score_scope(&lint_result(), &outcome),
+            "over all 3 violation(s) found"
+        );
+
+        // Two `--gnu-version` findings appended to the three the linter scored.
+        outcome.measured = 5;
+        assert_eq!(
+            score_scope(&lint_result(), &outcome),
+            "over the 3 violation(s) the linter measured; 2 further --gnu-version \
+             finding(s) are not in the score"
+        );
+
+        // A clean Makefile whose only findings come from --gnu-version must not
+        // present its 100% as covering them.
+        let clean = makefile_linter::LintResult {
+            path: PathBuf::from("Makefile"),
+            violations: vec![],
+            quality_score: 1.0,
+        };
+        let mut empty = apply_rule_filter(&[], &[]);
+        empty.measured = 2;
+        assert_eq!(
+            score_scope(&clean, &empty),
+            "over the 0 violation(s) the linter measured; 2 further --gnu-version \
+             finding(s) are not in the score"
+        );
+    }
+
     #[test]
     fn json_carries_the_measured_total_and_the_filter() {
         let parsed: serde_json::Value =
@@ -1008,11 +1132,64 @@ mod makefile_rules_filter_tests {
 
     #[test]
     fn all_and_empty_mean_no_filter() {
-        for rules in [vec![], vec!["all".to_string()]] {
+        for rules in [
+            vec![],
+            vec!["all".to_string()],
+            vec!["all".to_string(), "undefinedvariable".to_string()],
+        ] {
             let outcome = apply_rule_filter(&three(), &rules);
-            assert_eq!(outcome.kept.len(), 3);
-            assert!(outcome.filter.is_empty());
-            assert!(!outcome.filtered_everything_away());
+            assert_eq!(outcome.kept.len(), 3, "{rules:?}");
+            assert!(outcome.filter.is_empty(), "{rules:?}");
+            assert!(!outcome.filtered_everything_away(), "{rules:?}");
+        }
+    }
+
+    /// #961 residual: a non-blank but UNREGISTERED `--rules` value was accepted,
+    /// removed every measured violation and exited 0. RED on the old code, whose
+    /// `validate_rule_names` only rejected blanks.
+    #[test]
+    fn an_unregistered_rule_name_is_rejected() {
+        let err = validate_rule_names(&["nonexistent-rule-xyz".to_string()])
+            .expect_err("a rule id no rule can emit must be rejected, not silently applied");
+        let message = err.to_string();
+        assert!(
+            message.contains("nonexistent-rule-xyz"),
+            "the error must name the offending value:\n{message}"
+        );
+        assert!(
+            message.contains("security/shell-injection") && message.contains("undefinedvariable"),
+            "the error must list the valid rule ids:\n{message}"
+        );
+    }
+
+    /// The counterpart the fix must not break: a REGISTERED rule that simply
+    /// found nothing is a clean run, not an error. Rejecting it would trade one
+    /// silent failure for a loud false one.
+    #[test]
+    fn every_registered_rule_id_is_an_accepted_rules_value() {
+        let registry = makefile_linter::RuleRegistry::new();
+        let ids = registry.rule_ids();
+        assert!(
+            ids.len() >= 11,
+            "the registry should expose every registered rule id, got {ids:?}"
+        );
+        for id in ids {
+            validate_rule_names(&[id.to_string()])
+                .unwrap_or_else(|e| panic!("registered rule '{id}' must be accepted: {e}"));
+        }
+        // Not registry rules, but real `--rules` values.
+        validate_rule_names(&["all".to_string()]).expect("all");
+        validate_rule_names(&[GNU_VERSION_RULE.to_string()]).expect("gnuversion");
+    }
+
+    /// Every id the registry advertises must be an id violations actually carry,
+    /// or the validation would accept names that can never match.
+    #[test]
+    fn advertised_rule_ids_are_the_ids_violations_carry() {
+        let registry = makefile_linter::RuleRegistry::new();
+        let ids = registry.rule_ids();
+        for rule in ["security/shell-injection", "undefinedvariable", "minphony"] {
+            assert!(ids.contains(&rule), "{rule} missing from {ids:?}");
         }
     }
 }

@@ -42,11 +42,13 @@
 /// - Abadi et al. (2013): "The Design and Implementation of Modern Column-Oriented Database Systems"
 /// - MonetDB: Vectorized query processing with columnar storage
 ///
-/// Supports multiple backend implementations:
-/// - Libsql: Modern SQLite-compatible embedded database (default)
-/// - Sled: Embedded database (deprecated - unmaintained)
-/// - RocksDB: Facebook's embedded database with excellent performance
-/// - InMemory: Fast testing and development backend
+/// Supported backend implementations (this is the complete list — Sled and
+/// RocksDB were removed, not deprecated, and no longer exist in the tree):
+/// - `LibsqlBackend`: embedded SQLite-compatible store, the default. Named for
+///   the libsql dialect it speaks; the driver is `rusqlite`, because libsql's
+///   own client is async-first and this trait is synchronous. `libsql` is not a
+///   dependency of this crate — see `backend_name()`.
+/// - `InMemoryBackend`: fast testing and development backend
 use anyhow::Result;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
@@ -175,6 +177,72 @@ mod tests {
         let stats = backend.get_stats();
         assert!(stats.contains_key("entries"));
         assert_eq!(stats.get("entries").unwrap(), "1");
+    }
+
+    /// Characterization test (passes before and after the `flush()` rewrite):
+    /// pins that flush really does TRUNCATE-checkpoint the WAL.
+    ///
+    /// It exists because the old `let _ = db.execute("PRAGMA wal_checkpoint…")`
+    /// got the right result for the wrong reason: `Connection::execute` rejects
+    /// row-returning statements, so it always handed back an
+    /// `ExecuteReturnedResults` that the `let _` discarded — the checkpoint
+    /// landed only because rusqlite steps the statement before noticing the
+    /// rows. Nothing verified the outcome, so any change to that incidental
+    /// ordering would have turned flush into a silent no-op that still returned
+    /// `Ok(())`. This test makes the outcome observable.
+    #[test]
+    fn flush_actually_checkpoints_the_wal() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("flush.db");
+        let backend = LibsqlBackend::new(db_path.as_path()).unwrap();
+
+        // Enough data to be visible, but well under SQLite's 1000-page
+        // auto-checkpoint threshold so only an explicit flush can move it.
+        for i in 0..200 {
+            backend
+                .put(format!("key_{i}").as_bytes(), &[7u8; 512])
+                .unwrap();
+        }
+
+        let wal_path = db_path.with_file_name("flush.db-wal");
+        let wal_before = std::fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0);
+        assert!(
+            wal_before > 0,
+            "precondition: writes should be sitting in the WAL before flush"
+        );
+
+        backend.flush().unwrap();
+
+        let wal_after = std::fs::metadata(&wal_path).map(|m| m.len()).unwrap_or(0);
+        assert_eq!(
+            wal_after, 0,
+            "flush() must TRUNCATE-checkpoint the WAL; {wal_after} bytes still pending"
+        );
+        assert!(
+            std::fs::metadata(&db_path).unwrap().len() > 0,
+            "checkpointed data must be in the main database file"
+        );
+    }
+
+    /// Regression: a failed `stat` was reported as a real size of 0 bytes,
+    /// indistinguishable from a legitimately empty database.
+    #[test]
+    fn size_on_disk_fails_loudly_when_the_db_file_is_gone() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("vanishing.db");
+        let backend = LibsqlBackend::new(db_path.as_path()).unwrap();
+        backend.put(b"k", b"v").unwrap();
+
+        std::fs::remove_file(&db_path).unwrap();
+
+        let err = backend
+            .size_on_disk()
+            .expect_err("an unreadable db file must not be reported as size 0");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("vanishing.db"),
+            "error must identify the database it could not measure, got: {msg}"
+        );
     }
 
     #[test]

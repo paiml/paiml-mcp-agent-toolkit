@@ -2,8 +2,13 @@
 
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::Path;
+
+// #976. The testable core of this build script. `cargo test` never compiles
+// `build.rs`, so anything that needs a regression test lives in `build_support.rs`,
+// which the library's test target also compiles (see the bottom of `src/lib.rs`).
+// These functions exist here once and only once — do not re-inline them.
+include!("build_support.rs");
 
 fn main() {
     // Embed the source revision so a binary can be checked against the tree it
@@ -34,8 +39,16 @@ fn main() {
         println!("cargo:rustc-cfg=coverage_attr_stable");
     }
 
+    // What this build does about the generated MCP discovery tables is decided
+    // once, up front, from the environment (see `build_plan` in build_support.rs).
+    let plan = build_plan(
+        env::var("PMAT_FAST_BUILD").is_ok(),
+        env::var("CARGO_LLVM_COV").is_ok(),
+        env::var("SKIP_MCP_TABLES").is_ok(),
+    );
+
     // Fast build mode for development - skip heavy operations but generate stubs
-    if env::var("PMAT_FAST_BUILD").is_ok() {
+    if plan == BuildPlan::FastStubs {
         println!("cargo:warning=Fast build mode enabled - skipping heavy build operations");
         let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
         generate_stub_files(&out_dir);
@@ -69,13 +82,13 @@ fn main() {
 
     // Generate MCP discovery optimization tables
     // Skip during coverage builds to prevent hangs
-    if env::var("CARGO_LLVM_COV").is_err() && env::var("SKIP_MCP_TABLES").is_err() {
-        generate_mcp_discovery_tables();
-    } else {
+    if plan == BuildPlan::StubTables {
         println!("cargo:warning=Skipping MCP discovery table generation (coverage build or SKIP_MCP_TABLES set)");
         // Generate stub files to allow compilation
         let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
         generate_stub_files(&out_dir);
+    } else {
+        generate_mcp_discovery_tables();
     }
 }
 
@@ -95,17 +108,7 @@ fn rustc_is_at_least_1_94() -> bool {
     let Ok(stdout) = std::str::from_utf8(&output.stdout) else {
         return false;
     };
-    let Some(version) = stdout.split_whitespace().nth(1) else {
-        return false;
-    };
-    let mut parts = version.split('.');
-    let Some(major) = parts.next().and_then(|s| s.parse::<u32>().ok()) else {
-        return false;
-    };
-    let Some(minor) = parts.next().and_then(|s| s.parse::<u32>().ok()) else {
-        return false;
-    };
-    major > 1 || (major == 1 && minor >= 94)
+    version_output_is_at_least_1_94(stdout)
 }
 
 /// Check if we're in a cargo publish context
@@ -113,7 +116,7 @@ fn is_publishing() -> bool {
     // During cargo publish, the package is extracted to a temp directory
     let is_publish = env::var("CARGO_PKG_VERSION").is_ok()
         && env::current_dir()
-            .map(|dir| dir.to_string_lossy().contains("/target/package/"))
+            .map(|dir| path_is_publish_dir(&dir))
             .unwrap_or(false);
 
     if is_publish {
@@ -202,16 +205,6 @@ fn process_assets(assets: &[(&str, &str)]) {
     }
 }
 
-fn should_skip_asset(source_path: &Path, gz_path: &Path, hash_path: &Path) -> bool {
-    // O(1) optimization: Skip if output exists AND source hasn't changed
-    if !gz_path.exists() || !source_path.exists() {
-        return false;
-    }
-
-    // Hash-based check: O(1) for unchanged files
-    !has_file_changed(source_path, hash_path)
-}
-
 fn ensure_asset_downloaded(path: &Path, gz_path: &Path, url: &str, filename: &str) {
     if !path.exists() {
         // Check if we're in a docs.rs build environment
@@ -252,47 +245,6 @@ fn handle_download_failure(e: &ureq::Error, path: &Path, filename: &str) {
     println!("cargo:warning=Failed to download {filename}: {e}. Using placeholder.");
     // Create a placeholder file
     let _ = fs::write(path, b"/* Asset download failed during build */");
-}
-
-fn compress_asset(path: &Path, gz_path: &Path, hash_path: &Path, filename: &str) {
-    if !path.exists() {
-        return;
-    }
-
-    let Ok(input) = fs::read(path) else { return };
-
-    let Some(compressed) = create_compressed_data(&input) else {
-        return;
-    };
-
-    write_compressed_file(gz_path, &compressed, filename, input.len());
-
-    // Save hash for O(1) skip detection on next build
-    if let Some(hash) = calculate_file_hash(path) {
-        let _ = write_hash_file(hash_path, &hash);
-    }
-}
-
-fn create_compressed_data(input: &[u8]) -> Option<Vec<u8>> {
-    use flate2::write::GzEncoder;
-    use flate2::Compression;
-
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
-    encoder.write_all(input).ok()?;
-    encoder.finish().ok()
-}
-
-fn write_compressed_file(gz_path: &Path, compressed: &[u8], filename: &str, original_size: usize) {
-    if fs::write(gz_path, compressed).is_ok() {
-        if let Ok(metadata) = fs::metadata(gz_path) {
-            println!(
-                "cargo:warning=Compressed {} ({} -> {} bytes)",
-                filename,
-                original_size,
-                metadata.len()
-            );
-        }
-    }
 }
 
 fn set_asset_hash_env() {
@@ -732,65 +684,6 @@ fn calculate_asset_hash() -> String {
     }
 
     format!("{:x}", hasher.finish())
-}
-
-/// Calculate SHA256 hash of a file for change detection.
-///
-/// Returns `None` under `--no-default-features` (no `sha2` in build-deps);
-/// callers treat this as "changed" and reprocess unconditionally.
-#[cfg(feature = "standard-deps")]
-fn calculate_file_hash(path: &Path) -> Option<String> {
-    use sha2::{Digest, Sha256};
-
-    let content = fs::read(path).ok()?;
-    let mut hasher = Sha256::new();
-    hasher.update(&content);
-    // sha2 0.11's finalize() returns an Array<u8> that no longer impls LowerHex;
-    // encode the digest bytes to lowercase hex explicitly.
-    Some(
-        hasher
-            .finalize()
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect(),
-    )
-}
-
-#[cfg(not(feature = "standard-deps"))]
-fn calculate_file_hash(_path: &Path) -> Option<String> {
-    None
-}
-
-/// Read stored hash from .hash file
-fn read_stored_hash(hash_path: &Path) -> Option<String> {
-    fs::read_to_string(hash_path)
-        .ok()
-        .map(|s| s.trim().to_string())
-}
-
-/// Write hash to .hash file
-fn write_hash_file(hash_path: &Path, hash: &str) -> bool {
-    fs::write(hash_path, hash).is_ok()
-}
-
-/// Check if source file has changed by comparing hashes
-fn has_file_changed(source_path: &Path, hash_path: &Path) -> bool {
-    // If hash file doesn't exist, file has "changed" (needs processing)
-    if !hash_path.exists() {
-        return true;
-    }
-
-    // Calculate current hash
-    let Some(current_hash) = calculate_file_hash(source_path) else {
-        return true; // Can't read source, assume changed
-    };
-
-    // Compare with stored hash
-    let Some(stored_hash) = read_stored_hash(hash_path) else {
-        return true; // Can't read stored hash, assume changed
-    };
-
-    current_hash != stored_hash
 }
 
 /// Compiles Cap'n Proto schema for MCP server

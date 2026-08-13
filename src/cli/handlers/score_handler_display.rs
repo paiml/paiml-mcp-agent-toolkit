@@ -172,6 +172,26 @@ fn format_text(score: &CompositeScore) -> String {
     out.push_str(&sub_score_line("File Health:", score.sub_scores.file_health));
     out.push_str(&sub_score_line("PV Lint:", score.sub_scores.pv_lint));
 
+    // A red gate changes what the composite MEANS: it is then the mean over the
+    // dimensions that are not gating, so the number describes the project while
+    // the verdict describes the gate. Printing the number without saying so
+    // would be a third meaning for one field (#983).
+    if !score.gated_by.is_empty() {
+        out.push('\n');
+        out.push_str(&format!("{}\n", c::subheader("Gated (verdict, not average)")));
+        for dim in &score.gated_by {
+            out.push_str(&format!(
+                "  {:<12} {}\n",
+                dim,
+                c::dim("measured 0.0 — a red gate, excluded from the composite below")
+            ));
+        }
+        out.push_str(&format!(
+            "  {}\n",
+            c::dim("Composite above is the mean of the non-gating dimensions.")
+        ));
+    }
+
     // Disclose what the composite does not cover. Without this the reader sees
     // a single number and cannot tell which dimensions went into it.
     if !score.not_measured.is_empty() {

@@ -836,6 +836,23 @@ fn write_large_corpus(root: &Path) {
         write_module(root, &name, &body, &mut modules);
     }
 
+    // A dimension that GATES, so `pmat score`'s gated_by[] is exercised.
+    //
+    // `score`'s pv_lint returns 0.0 for a project with no `contracts/` that
+    // declares a `pub fn` named after an ML kernel — a deliberate probe in
+    // score_handler_compute.rs. A zero is the one input that reaches the
+    // gating path added for paiml/aprender #2463, where one zeroed dimension
+    // used to collapse the geometric mean and render `0.0 / F` for a tree whose
+    // File Health was 100. Without a gating input in any corpus, `gated_by[].len`
+    // was 0 everywhere and the differential gate correctly called it a constant:
+    // the verdict this release was built around was never being measured.
+    write_module(
+        root,
+        "matmul",
+        "/// Trips `score`'s ML-kernel probe so one dimension gates.\npub fn matmul(a: &[f32], b: &[f32]) -> f32 {\n    a.len() as f32 + b.len() as f32\n}\n",
+        &mut modules,
+    );
+
     // One genuinely awful file, so the grade-distribution tail is populated.
     //
     // Without it the worst file in the corpus grades C+, `f_grade_count` is

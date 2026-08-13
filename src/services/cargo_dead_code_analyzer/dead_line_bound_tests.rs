@@ -62,3 +62,29 @@ fn no_items_is_no_dead_lines_at_any_length() {
     assert_eq!(estimated_dead_lines_bounded(&[], Some(0)), 0);
     assert_eq!(estimated_dead_lines_bounded(&[], None), 0);
 }
+
+/// #929 CONSEQUENCE. Two defaults for one budget: the CLI shipped `--timeout`
+/// `default_value = "60"` while `CargoDeadCodeAnalyzer::new` shipped a
+/// hardcoded 90s, and neither had ever been tested because the timer could not
+/// fire. The moment the budget bound a real `cargo check` child, the smaller of
+/// the two decided the outcome and `pmat analyze dead-code -p .` on this repo
+/// exited 5 at 60.4s on work that takes 245s cold.
+///
+/// The library default is now a named constant and must cover the measured cold
+/// run. Fails on the old code: 90 < 245.
+#[test]
+fn default_timeout_covers_a_cold_cargo_check() {
+    use crate::services::cargo_dead_code_analyzer::{
+        CargoDeadCodeAnalyzer, DEFAULT_ANALYSIS_TIMEOUT_SECS,
+    };
+
+    assert_eq!(
+        CargoDeadCodeAnalyzer::new(".").timeout(),
+        std::time::Duration::from_secs(DEFAULT_ANALYSIS_TIMEOUT_SECS),
+        "the constructor must use the one named default, not a second literal"
+    );
+    assert!(
+        DEFAULT_ANALYSIS_TIMEOUT_SECS >= 245,
+        "the default must cover a cold `cargo check` on the repo that ships it (measured 245s)"
+    );
+}

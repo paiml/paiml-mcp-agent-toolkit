@@ -8,6 +8,14 @@ use serde::{Deserialize, Serialize};
 /// out instead of adding a second figure on top of it.
 pub const UNREACHABLE_BLOCK_LINE_ESTIMATE: usize = 3;
 
+/// Lines `add_item` bills for a dead module whose real extent is unknown.
+///
+/// A module is a container, so it is charged at least what a container type is
+/// charged (`Class`, 10). Exported for the same reason as
+/// [`UNREACHABLE_BLOCK_LINE_ESTIMATE`]: a producer that measured the real span
+/// should replace this estimate rather than add to it.
+pub const DEAD_MODULE_LINE_ESTIMATE: usize = 10;
+
 /// File-level dead code metrics with ranking support
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileDeadCodeMetrics {
@@ -42,16 +50,38 @@ pub struct DeadCodeItem {
 }
 
 /// Types of dead code
+///
+/// #928: this used to have four variants, so two kinds the producers really do
+/// emit had nowhere to go and were both filed as `Variable`. A dead MODULE
+/// (`module `x` is never used`) was reported as `"item_type": "variable"` in a
+/// record whose own `reason` said `module`, and it was then counted a second
+/// time in the human report's "Other (fields, constants, statics)" row — which
+/// derives that row from the `Variable` items — while the "Dead modules" row
+/// above it counted the same item from the summary. Anything the parser could
+/// not classify (`union `U` is never used`) landed on `variable` too.
+///
+/// A kind the enum cannot say is a kind the JSON cannot be trusted about, so
+/// both are now representable. There is deliberately no catch-all default: an
+/// unrecognised kind is `Other`, which SAYS it is unrecognised.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DeadCodeType {
     #[serde(rename = "function")]
     Function,
     #[serde(rename = "class")]
     Class,
+    /// A binding: a constant, a static, a field or a variant.
     #[serde(rename = "variable")]
     Variable,
+    /// A whole module rustc reported as never used.
+    #[serde(rename = "module")]
+    Module,
     #[serde(rename = "unreachable")]
     UnreachableCode,
+    /// A dead item whose kind the producer could not name. NOT a synonym for
+    /// "variable" — it means the classification is unknown, and a reader who
+    /// needs the kind must read `reason`.
+    #[serde(rename = "other")]
+    Other,
 }
 
 /// Complete dead code ranking result
@@ -137,9 +167,18 @@ impl FileDeadCodeMetrics {
                 self.dead_classes += 1;
                 self.dead_lines += 10; // Estimate 10 lines per class
             }
-            DeadCodeType::Variable => {
-                self.dead_modules += 1; // Track variables in module counter
-                self.dead_lines += 1; // Estimate 1 line per variable
+            // #928: this arm used to read `self.dead_modules += 1` under the
+            // comment "Track variables in module counter", so `dead_modules`
+            // was a count of things that are not modules and a real dead module
+            // (which had no variant of its own) was billed to it by accident
+            // rather than on purpose. A variable is not a module; it increments
+            // no kind counter, and the item list is what accounts for it.
+            DeadCodeType::Variable | DeadCodeType::Other => {
+                self.dead_lines += 1; // Estimate 1 line per binding
+            }
+            DeadCodeType::Module => {
+                self.dead_modules += 1;
+                self.dead_lines += DEAD_MODULE_LINE_ESTIMATE;
             }
             DeadCodeType::UnreachableCode => {
                 self.unreachable_blocks += 1;
@@ -266,7 +305,9 @@ mod tests {
             DeadCodeType::Function,
             DeadCodeType::Class,
             DeadCodeType::Variable,
+            DeadCodeType::Module,
             DeadCodeType::UnreachableCode,
+            DeadCodeType::Other,
         ];
 
         for dead_type in types {
@@ -374,7 +415,7 @@ mod tests {
             reason: "unused".to_string(),
         });
 
-        // Add variable (which increments modules counter due to current implementation)
+        // Add variable
         metrics.add_item(DeadCodeItem {
             item_type: DeadCodeType::Variable,
             name: "var1".to_string(),
@@ -392,9 +433,53 @@ mod tests {
 
         assert_eq!(metrics.dead_functions, 1);
         assert_eq!(metrics.dead_classes, 1);
-        assert_eq!(metrics.dead_modules, 1); // Variable increments modules
         assert_eq!(metrics.unreachable_blocks, 1);
         assert_eq!(metrics.items.len(), 4);
+    }
+
+    /// #928 REGRESSION. `dead_modules` counted VARIABLES ("Track variables in
+    /// module counter") because `DeadCodeType` had no `Module` variant, so the
+    /// one figure named after modules was the one figure that could not be a
+    /// module count. On the old enum this test does not compile
+    /// (`DeadCodeType::Module` does not exist); with the old `add_item` it
+    /// fails on both asserts.
+    #[test]
+    fn test_dead_modules_counts_modules_and_not_variables() {
+        let mut metrics = FileDeadCodeMetrics::new("test.rs".to_string());
+        metrics.add_item(DeadCodeItem {
+            item_type: DeadCodeType::Variable,
+            name: "CONST".to_string(),
+            line: 1,
+            reason: "constant `CONST` is never used".to_string(),
+        });
+        assert_eq!(
+            metrics.dead_modules, 0,
+            "a constant is not a module and must not be counted as one"
+        );
+
+        metrics.add_item(DeadCodeItem {
+            item_type: DeadCodeType::Module,
+            name: "dead_mod".to_string(),
+            line: 2,
+            reason: "module `dead_mod` is never used".to_string(),
+        });
+        assert_eq!(metrics.dead_modules, 1, "a dead module is counted once");
+    }
+
+    /// The two new variants must be legible to a JSON consumer, and must not
+    /// collide with the bucket they used to be folded into.
+    #[test]
+    fn test_module_and_other_serialize_under_their_own_names() {
+        assert_eq!(
+            serde_json::to_string(&DeadCodeType::Module).unwrap(),
+            "\"module\""
+        );
+        assert_eq!(
+            serde_json::to_string(&DeadCodeType::Other).unwrap(),
+            "\"other\""
+        );
+        assert_ne!(DeadCodeType::Module, DeadCodeType::Variable);
+        assert_ne!(DeadCodeType::Other, DeadCodeType::Variable);
     }
 
     #[test]

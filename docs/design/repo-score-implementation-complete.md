@@ -50,7 +50,10 @@ test result: ok. 82 passed; 0 failed; 0 ignored
 
 **Category B: Pre-commit Hooks (20 points)**
 - B1: Hook Present (10 points) - .git/hooks/pre-commit exists and executable
-- B2: Hook Performance (10 points) - Fast execution (<30s heuristic)
+- B2: Hook Gate Coverage (10 points) - which quality gates the hook invokes
+  (a static read of the script; repo-score never executes the audited repo's
+  hooks, so it makes no timing claim — the `<30s heuristic` this line used to
+  describe measured nothing and was removed in #940)
 - **File:** `precommit_scorer.rs` (368 lines)
 
 **Category C: Repository Hygiene (10 points)**

@@ -21,7 +21,15 @@ async fn handle_migrate(
         crate::status_println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
-    let config = load_or_create_project_config(project_path)?;
+    // #939: read, never create. This line used to call
+    // `load_or_create_project_config`, which materialises
+    // `.pmat/project.toml` when absent — so `comply migrate --dry-run`, whose
+    // own banner says "no changes will be made", left a new `.pmat/` directory
+    // behind on a pristine tree. Measured: `.pmat/project.toml` appeared after
+    // a single `--dry-run` on a 2-file crate. Writing that file is
+    // `pmat comply init`'s job; a migration writes it below, and only when it
+    // is really migrating.
+    let config = read_project_config(project_path)?;
     let current_version = &config.pmat.version;
 
     crate::status_println!("{} {}", c::label("Current version:"), current_version);
@@ -90,7 +98,9 @@ async fn handle_diff(
 ) -> Result<()> {
     use crate::cli::colors as c;
 
-    let config = load_or_create_project_config(project_path)?;
+    // #939: `comply diff` prints a changelog. It has no business creating
+    // `.pmat/project.toml` in the tree it is describing.
+    let config = read_project_config(project_path)?;
     let from = from_version.unwrap_or(&config.pmat.version);
     let to = to_version.unwrap_or(PMAT_VERSION);
 

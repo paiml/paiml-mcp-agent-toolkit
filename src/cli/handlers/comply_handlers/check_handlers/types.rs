@@ -419,6 +419,20 @@ pub(crate) fn get_changelog_entries(from: &str, to: &str) -> Vec<ChangelogEntry>
         .collect()
 }
 
+/// Read `.pmat/project.toml`, or the defaults if it is absent — never writing.
+///
+/// The read-only twin of [`load_or_create_project_config`]. Every command that
+/// only *reports* must use this one; only a command whose stated job is to
+/// change the project may use the creating variant (#939).
+pub(crate) fn read_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
+    let config_path = project_path.join(".pmat").join("project.toml");
+    if !config_path.exists() {
+        return Ok(ProjectConfig::default());
+    }
+    let content = std::fs::read_to_string(&config_path)?;
+    Ok(toml::from_str(&content)?)
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
     let config_path = project_path.join(".pmat").join("project.toml");
@@ -589,8 +603,15 @@ pub(crate) fn migrate_project_version(
     target: &str,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
+    // #939: a dry run answers the question "would this change anything?", so it
+    // has to read the current pin to answer it. It used to return `Ok(true)`
+    // unconditionally — "would update" even when the version already equalled
+    // the target, so "no changes needed" was unreachable under --dry-run — and
+    // the caller had *already* created `.pmat/project.toml` on the way in.
+    // Read-only both ways now.
     if dry_run {
-        return Ok(true);
+        let config = read_project_config(project_path)?;
+        return Ok(config.pmat.version != target);
     }
     let mut config = load_or_create_project_config(project_path)?;
     if config.pmat.version == target {

@@ -372,6 +372,17 @@ pub(crate) fn discover_source_files(
             DEFAULT_EXCLUDE_PATTERNS,
         ));
     }
+    // #986: the project's own excludes apply HERE, not at one call site.
+    // `discover_source_files` has three callers and all three are file health
+    // — the CB-040 check, `--include-project` cross-stack health, and the
+    // ratchet baseline. Only the first honoured the project's configured
+    // excludes, so the same generated file was excluded from the check that
+    // fails the build and included in the baseline the check ratchets against.
+    // One rule, one place.
+    let configured = load_file_health_excludes(project_path);
+    if !configured.is_empty() {
+        files.retain(|f| !matches_exclude_pattern(f, &configured));
+    }
     Ok(files)
 }
 
@@ -448,7 +459,18 @@ fn load_file_health_excludes_from_gates(project_path: &Path) -> Vec<String> {
         Ok(t) => t,
         Err(_) => return Vec::new(),
     };
-    table
+    // Read the general exclude keys as well as the File-Health-specific one.
+    //
+    // #986: a project that had configured `.pmat-gates.toml [exclude] paths`
+    // — the key `quality_gate_config.rs::extract_excludes_from_table` honours —
+    // found File Health reporting CRITICAL on generated files it had already
+    // excluded. Both readers parse the SAME file; they simply looked at
+    // different keys, so the config was honoured or ignored depending on which
+    // check you happened to run. One file, one meaning.
+    //
+    // Union, never replace: `[file_health] exclude` stays authoritative for
+    // anyone already using it, and the general keys now apply too.
+    let mut out: Vec<String> = table
         .get("file_health")
         .and_then(|fh| fh.get("exclude"))
         .and_then(|v| v.as_array())
@@ -457,7 +479,79 @@ fn load_file_health_excludes_from_gates(project_path: &Path) -> Vec<String> {
                 .filter_map(|v| v.as_str().map(String::from))
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let general = table
+        .get("exclude")
+        .and_then(|t| t.get("paths"))
+        .and_then(|v| v.as_array())
+        .or_else(|| table.get("exclude_paths").and_then(|v| v.as_array()))
+        .or_else(|| {
+            table
+                .get("quality-gates")
+                .and_then(|t| t.get("exclude"))
+                .and_then(|v| v.as_array())
+        });
+    if let Some(arr) = general {
+        for pat in arr.iter().filter_map(|v| v.as_str()) {
+            if !out.iter().any(|p| p == pat) {
+                out.push(pat.to_string());
+            }
+        }
+    }
+    warn_on_unread_exclude_keys(&table, &toml_path);
+    out
+}
+
+/// Every recognised place an exclude list may live in `.pmat-gates.toml`.
+const GATES_EXCLUDE_KEYS: [&str; 4] = [
+    "[exclude] paths",
+    "exclude_paths",
+    "[quality-gates] exclude",
+    "[file_health] exclude",
+];
+
+/// Say so when a table that exists only to hold excludes holds none we read.
+///
+/// #986, second half: a project wrote
+///
+/// ```toml
+/// [exclude]
+/// patterns = ["…"]
+/// ```
+///
+/// `patterns` is not one of the keys any reader looks at. The file parsed, the
+/// run was green, and three exclusions did nothing for as long as the file had
+/// existed — configuration absent, rendered as configuration honoured. Nothing
+/// in the tree could tell the author, because a key nobody reads is
+/// indistinguishable from a key that matched no file. It is distinguishable at
+/// the point of reading, so that is where it is now said.
+fn warn_on_unread_exclude_keys(table: &toml::Table, toml_path: &Path) {
+    let mut unread: Vec<String> = Vec::new();
+    if let Some(t) = table.get("exclude").and_then(toml::Value::as_table) {
+        for key in t.keys() {
+            if key != "paths" {
+                unread.push(format!("[exclude] {key}"));
+            }
+        }
+    }
+    if let Some(t) = table.get("file_health").and_then(toml::Value::as_table) {
+        for key in t.keys() {
+            if key != "exclude" {
+                unread.push(format!("[file_health] {key}"));
+            }
+        }
+    }
+    if unread.is_empty() {
+        return;
+    }
+    eprintln!(
+        "warning: {}: {} is not read by any pmat check and has no effect. \
+         Exclusions are read from: {}.",
+        toml_path.display(),
+        unread.join(", "),
+        GATES_EXCLUDE_KEYS.join(", ")
+    );
 }
 
 /// Check if a file path matches any exclude pattern (glob-style)
@@ -535,15 +629,13 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         };
     }
-    // GH-292: Read exclude patterns from .pmat.yaml
-    let excludes = load_file_health_excludes(project_path);
+    // Excludes are applied by `discover_source_files` (#986) — one place, so
+    // the check, the cross-stack report and the ratchet baseline see the same
+    // file set. Filtering again here would just be a second implementation of
+    // the same rule.
     let mut metrics: Vec<FileHealthMetrics> = Vec::new();
     let (mut critical_count, mut problem_count, mut over_500_count) = (0, 0, 0);
     for file_path in &files {
-        // Skip files matching exclude patterns
-        if matches_exclude_pattern(file_path, &excludes) {
-            continue;
-        }
         let content = match std::fs::read_to_string(file_path) {
             Ok(c) => c,
             Err(_) => continue,

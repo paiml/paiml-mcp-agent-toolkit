@@ -127,9 +127,6 @@ pub mod agents; // Agent system with Actix actors
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
 #[cfg(feature = "standard-deps")]
 pub mod ast; // Unified AST module for all language parsing
-             // Feature-gated: Not ready for production use (0% coverage, no external usage)
-#[cfg(all(feature = "standard-deps", feature = "claude-integration"))]
-pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
 #[cfg(feature = "standard-deps")]
 pub mod cli;
 #[cfg(feature = "standard-deps")]
@@ -627,3 +624,14 @@ mod lib_unit_tests {
         assert!(result.is_ok());
     }
 }
+
+// #976: `cargo test` never compiles `build.rs`, so the build script's logic is
+// unreachable from every test target. Its testable core lives in
+// `build_support.rs` at the crate root, which `build.rs` pulls in with
+// `include!`; compiling the same file here under `cfg(test)` is what lets
+// `cargo test --lib` run its regression tests. Test-only: this adds nothing to
+// the shipped library.
+#[cfg(test)]
+#[allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
+#[path = "../build_support.rs"]
+mod build_support;

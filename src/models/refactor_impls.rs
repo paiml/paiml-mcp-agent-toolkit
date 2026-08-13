@@ -261,7 +261,53 @@ impl RefactorStateMachine {
 mod session_summary_tests {
     //! The Complete summary must describe the session that ran, not a
     //! `Summary::default()` of hardcoded zeros.
+    //!
+    //! #975: `completing_a_one_file_session_reports_that_file` used
+    //! `let State::X { .. } = .. else { panic!(..) }`. Those `else` arms only
+    //! execute when the test *fails*, so four of its lines were permanently
+    //! uncovered and no passing run could ever close the gap. The state is
+    //! projected through the two helpers below instead, and a dedicated test
+    //! exercises their rejecting arm — so every line here is reachable by a
+    //! green run.
     use super::*;
+
+    /// `Some` iff the machine is currently analysing a file.
+    fn analysed_file(state: &State) -> Option<&FileId> {
+        match state {
+            State::Analyze { current } => Some(current),
+            _ => None,
+        }
+    }
+
+    /// `Some` iff the session has finished.
+    fn finished_summary(state: &State) -> Option<&Summary> {
+        match state {
+            State::Complete { summary } => Some(summary),
+            _ => None,
+        }
+    }
+
+    /// Advance until the session completes, or give up after `budget` steps.
+    fn run_to_completion(sm: &mut RefactorStateMachine, budget: usize) -> Summary {
+        for _ in 0..budget {
+            if let Some(summary) = finished_summary(&sm.current) {
+                return summary.clone();
+            }
+            sm.advance().expect("advance must not fail");
+        }
+        panic!("session did not complete within {budget} transitions");
+    }
+
+    #[test]
+    fn the_state_projections_reject_states_they_do_not_describe() {
+        // A fresh multi-target machine sits in Scan, which is neither Analyze
+        // nor Complete. This covers the rejecting arm of both helpers.
+        let sm =
+            RefactorStateMachine::new(vec![PathBuf::from("src/lib.rs")], RefactorConfig::default());
+        assert!(matches!(sm.current, State::Scan { .. }));
+        assert!(analysed_file(&sm.current).is_none());
+        assert!(finished_summary(&sm.current).is_none());
+    }
 
     #[test]
     fn completing_a_one_file_session_reports_that_file() {
@@ -272,9 +318,11 @@ mod session_summary_tests {
         let mut sm = RefactorStateMachine::new(vec![file.clone()], RefactorConfig::default());
         // Scan -> Analyze
         sm.advance().expect("scan");
-        let State::Analyze { current } = &sm.current else {
-            panic!("expected Analyze, got {:?}", sm.current)
-        };
+        let current = analysed_file(&sm.current).expect("Scan must advance to Analyze");
+        assert_eq!(
+            current.path, file,
+            "the analysed target must be the file we handed in"
+        );
         assert_ne!(
             current.hash, 0,
             "the analysed file's id must be a real content hash"
@@ -282,13 +330,42 @@ mod session_summary_tests {
 
         sm.advance().expect("analyze"); // -> Plan (no violations)
         sm.advance().expect("plan"); // -> Complete
-        let State::Complete { summary } = &sm.current else {
-            panic!("expected Complete, got {:?}", sm.current)
-        };
+        let summary = finished_summary(&sm.current).expect("an empty plan must complete");
         assert_eq!(
             summary.files_processed, 1,
             "one file was scanned and analysed"
         );
+    }
+
+    #[test]
+    fn a_two_file_session_reports_both_files() {
+        // Guards against `files_processed` being pinned to 0 or 1: the count
+        // has to track how many files the run actually reached Analyze on.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let a = dir.path().join("a.rs");
+        let b = dir.path().join("b.rs");
+        std::fs::write(&a, "pub fn a() {}\n").expect("write a");
+        std::fs::write(&b, "pub fn b() {}\n").expect("write b");
+
+        let mut sm = RefactorStateMachine::new(vec![a, b], RefactorConfig::default());
+        let summary = run_to_completion(&mut sm, 16);
+        assert_eq!(
+            summary.files_processed, 2,
+            "both targets were analysed, so both must be counted"
+        );
+    }
+
+    #[test]
+    fn a_session_with_no_targets_reports_nothing_processed() {
+        let mut sm = RefactorStateMachine::new(vec![], RefactorConfig::default());
+        let summary = finished_summary(&sm.current)
+            .expect("an empty target list completes immediately")
+            .clone();
+        assert_eq!(summary.files_processed, 0);
+        assert_eq!(summary.total_time, Duration::from_secs(0));
+        // And Complete is terminal: no further transition is recorded.
+        sm.advance().expect("advance on Complete");
+        assert!(sm.history.is_empty());
     }
 
     #[test]

@@ -70,7 +70,25 @@ pub struct LuaDefectDetector {
     dangerous_api_re: Regex,
 }
 
+/// Defect detector for Python code
+pub struct PythonDefectDetector {
+    dynamic_eval_re: Regex,
+    mutable_default_re: Regex,
+}
+
+/// Defect detector for TypeScript/JavaScript code
+pub struct TypeScriptDefectDetector {
+    any_type_re: Regex,
+    non_null_assert_re: Regex,
+    loose_equality_re: Regex,
+}
+
 // --- Implementation split into include files ---
 include!("defect_detector_rust.rs");
+// Dispatch (which rule set grades a file) and the helpers every non-Rust rule
+// set shares. Included before the rule sets that use them.
+include!("defect_detector_dispatch.rs");
 include!("defect_detector_lua.rs");
+include!("defect_detector_python.rs");
+include!("defect_detector_typescript.rs");
 include!("defect_detector_tests.rs");

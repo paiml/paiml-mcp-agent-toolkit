@@ -137,3 +137,58 @@ async fn a_cargo_check_that_outruns_the_budget_is_killed_and_reported() {
         "the budget was not enforced: {elapsed:?}"
     );
 }
+
+/// #928 RESIDUAL. Every `DeadCodeKind` the parser can produce must reach a
+/// `DeadCodeType` that NAMES it. `Module` and the unclassified `Other` both used
+/// to land on `Variable`, so a record could read
+/// `"item_type": "variable"` beside `"reason": "module `x` is never used"` —
+/// the report contradicting itself inside one object.
+///
+/// This is a pure mapping test on purpose: rustc emits the `module` wording
+/// rarely enough that a fixture cannot be relied on to produce one, while the
+/// parser accepts it unconditionally (`("module `", "` is never used", …)`).
+#[test]
+fn every_dead_code_kind_maps_to_a_type_that_names_it() {
+    use crate::models::dead_code::DeadCodeType;
+    use crate::services::cargo_dead_code_analyzer::{DeadCodeKind, DeadItem};
+
+    let item = |kind: DeadCodeKind, message: &str| DeadItem {
+        name: "x".to_string(),
+        kind,
+        line: 1,
+        column: 1,
+        message: message.to_string(),
+    };
+
+    let cases = [
+        (
+            item(DeadCodeKind::Module, "module `x` is never used"),
+            DeadCodeType::Module,
+        ),
+        (
+            item(
+                DeadCodeKind::Other("union".to_string()),
+                "union `x` is never used",
+            ),
+            DeadCodeType::Other,
+        ),
+        (
+            item(DeadCodeKind::Constant, "constant `x` is never used"),
+            DeadCodeType::Variable,
+        ),
+        (
+            item(DeadCodeKind::Function, "function `x` is never used"),
+            DeadCodeType::Function,
+        ),
+    ];
+
+    for (dead_item, expected) in cases {
+        let reason = dead_item.message.clone();
+        let reported = super::dead_items_to_report_items(std::slice::from_ref(&dead_item));
+        assert_eq!(
+            reported[0].item_type, expected,
+            "`{reason}` must not be reported as {:?}",
+            reported[0].item_type
+        );
+    }
+}

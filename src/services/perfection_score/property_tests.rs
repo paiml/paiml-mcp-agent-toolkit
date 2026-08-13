@@ -277,8 +277,10 @@ mod property_tests {
         fs::write(temp_dir.path().join("README.md"), "# Test").unwrap();
         fs::write(temp_dir.path().join("CHANGELOG.md"), "# Changes").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 60.0); // 40 + 20
+        let (score, _) = calc.get_documentation_score(temp_dir.path()).await;
+        // Two title lines, no bodies: 40 % of 40 + 40 % of 20. Asserted 60.0
+        // when the category scored `exists()`.
+        assert_eq!(score, 16.0 + 8.0);
     }
 
     // ============================================================================

@@ -89,22 +89,16 @@ impl MakefileAst {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Uses automatic variables.
+    ///
+    /// One list, checked once. There used to be two hand-written copies — one
+    /// for recipes, one for variable values — and BOTH were missing `$%`, `$+`
+    /// and `$|`, so `target:\n\techo $|` reported "no automatic variables".
     pub fn uses_automatic_variables(&self) -> bool {
         self.nodes.iter().any(|n| match &n.data {
-            NodeData::Recipe { lines } => lines.iter().any(|line| {
-                line.text.contains("$@")
-                    || line.text.contains("$<")
-                    || line.text.contains("$^")
-                    || line.text.contains("$?")
-                    || line.text.contains("$*")
-            }),
-            NodeData::Variable { value, .. } => {
-                value.contains("$@")
-                    || value.contains("$<")
-                    || value.contains("$^")
-                    || value.contains("$?")
-                    || value.contains("$*")
-            }
+            NodeData::Recipe { lines } => lines
+                .iter()
+                .any(|line| contains_automatic_variable(&line.text)),
+            NodeData::Variable { value, .. } => contains_automatic_variable(value),
             _ => false,
         })
     }
@@ -133,4 +127,18 @@ impl MakefileAst {
             })
             .collect()
     }
+}
+
+/// GNU make's automatic variables, as they appear in source text.
+///
+/// The full set from the GNU Make manual, "Automatic Variables": the target,
+/// the archive member, the first prerequisite, the newer prerequisites, all
+/// prerequisites (with and without duplicates), the order-only prerequisites,
+/// and the stem. `$%`, `$+` and `$|` were missing from both copies of the
+/// old inline check.
+const AUTOMATIC_VARIABLES: &[&str] = &["$@", "$%", "$<", "$?", "$^", "$+", "$|", "$*"];
+
+/// Does this text reference any of GNU make's automatic variables?
+fn contains_automatic_variable(text: &str) -> bool {
+    AUTOMATIC_VARIABLES.iter().any(|var| text.contains(var))
 }

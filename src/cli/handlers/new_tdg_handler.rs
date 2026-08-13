@@ -395,12 +395,17 @@ fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool
         _ => writeln!(w, "**Average Score:** not measured (no files analysed)"),
     };
     let _ = writeln!(w, "**Total Files:** {}", project.total_files);
+    // Named, not just counted (#983), through the same helper the two
+    // box-drawing renderers use — three renderers of one disclosure previously
+    // gave three different answers. Markdown has no frame, so nothing is
+    // elided here.
     if !project.ungraded_files.is_empty() {
-        let _ = writeln!(
-            w,
-            "**Not Graded:** {} file(s) walked but not measured",
-            project.ungraded_files.len()
-        );
+        let lines =
+            crate::tdg::formatters::ungraded::ungraded_markdown_lines(&project.ungraded_files);
+        let _ = writeln!(w, "{}\n", lines[0]);
+        for line in &lines[1..] {
+            let _ = writeln!(w, "{line}");
+        }
     }
     // A truncated list says so, exactly as the box-drawing renderer does.
     if project.files_truncated {

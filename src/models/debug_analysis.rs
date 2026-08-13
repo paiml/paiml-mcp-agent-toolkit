@@ -14,6 +14,17 @@ pub struct DebugAnalysis {
     pub root_cause: Option<String>,
     pub recommendations: Vec<Recommendation>,
     pub evidence_summary: EvidenceSummary,
+    /// Why the chain stopped, when it stopped before `--depth` iterations.
+    ///
+    /// The analyser exits early once confidence exceeds 0.9 after three whys.
+    /// That is a reasonable convergence rule, but it was SILENT: on any real
+    /// repository confidence reaches 1.0 by the third why, so `--depth 5`
+    /// (the documented default), `--depth 7` and `--depth 10` all emitted
+    /// exactly three whys, exit 0, with nothing in the output distinguishing
+    /// "converged" from "truncated" — the flag read as inert (#962). `None`
+    /// means the full requested depth ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopped_early: Option<String>,
 }
 
 impl DebugAnalysis {
@@ -26,6 +37,7 @@ impl DebugAnalysis {
             root_cause: None,
             recommendations: Vec::new(),
             evidence_summary: EvidenceSummary::default(),
+            stopped_early: None,
         }
     }
 }

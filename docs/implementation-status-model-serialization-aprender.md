@@ -1,5 +1,24 @@
 # Model Serialization Implementation Status
 
+> **SCOPE: this document describes work in `aprender` and `realizar`, NOT in pmat.**
+> It is kept here for reference only. Every action item below is `cd ~/src/aprender`;
+> pmat consumes aprender as a published dependency (`aprender = "0.61"`) and contains
+> no model *writer* of any kind, so none of the roadmap below is actionable in this
+> repository. Issue #965 was filed against pmat from this document and closed as
+> wrong-repository.
+>
+> **Also stale upstream**: "Current Blocker 2 — LogisticRegression Missing save/load"
+> was resolved in aprender 0.63.0, which has `save_safetensors`/`load_safetensors`
+> (`crates/aprender-core/src/classification/mod.rs`) and a
+> `crates/aprender-core/src/serialization/` module with an `apr/` container directory.
+>
+> **What pmat does own** is the *reader*: `analyze models` inventories `*.gguf`,
+> `*.apr` and `*.safetensors` and reports a `header_valid` column
+> (`src/cli/handlers/comply_cb_detect/model_quality_parsing.rs`). The eager-validation
+> principle argued for in §2 (Jidoka) was not being applied there — a truncated GGUF,
+> a SafeTensors header running past EOF, and an APR declaring a 4 GiB metadata block
+> all returned success without a byte being read. Fixed; see #965 for the four defects.
+
 **Specification**: `model-serialization-request-spec-aprender.md` v2.0
 **Project**: aprender (Pure Rust ML library) + realizar (NASA-grade ML serving)
 **Status**: CDR APPROVED - Implementation Planning

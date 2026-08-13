@@ -7,6 +7,7 @@ mod human;
 mod json;
 mod markdown;
 mod project;
+pub(crate) mod ungraded;
 
 #[cfg(test)]
 mod tests;

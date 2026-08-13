@@ -85,11 +85,27 @@ pub struct QualityMetrics {
 
 impl QualityReport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Passed.
+    /// A passing report whose `metrics` are the [`QualityMetrics::default`]
+    /// CONSTANTS — cyclomatic 1, cognitive 0, entropy 0.0, `O(1)` — not
+    /// measurements of anything.
+    ///
+    /// Use [`QualityReport::measured`] when the numbers are known;
+    /// `validate_module` used to return this, so every module that passed
+    /// reported those same six values regardless of its contents.
     pub fn passed() -> Self {
         Self {
             passed: true,
             metrics: QualityMetrics::default(),
+            violations: Vec::new(),
+        }
+    }
+
+    /// A passing report carrying the metrics that were actually measured.
+    #[must_use]
+    pub fn measured(metrics: QualityMetrics) -> Self {
+        Self {
+            passed: true,
+            metrics,
             violations: Vec::new(),
         }
     }
@@ -110,7 +126,15 @@ impl Default for QualityMetrics {
 
 /// Quality gate runner.
 pub struct QualityGateRunner {
-    _analyzers: Vec<Box<dyn QualityAnalyzer>>,
+    /// Analyzers whose input is the parsed AST.
+    ///
+    /// `SatdDetector` and `EntropyCalculator` are deliberately absent: both
+    /// read the source TEXT, which [`QualityAnalyzer::analyze`] — whose only
+    /// argument is a `&syn::File` — cannot hand them. That signature mismatch
+    /// is why this registry was left empty behind a "fix analyzer trait
+    /// implementations" debt marker for four releases (#973); the two text-based
+    /// detectors are called directly in [`QualityGateRunner::measure`].
+    analyzers: Vec<Box<dyn QualityAnalyzer>>,
     thresholds: QualityThresholds,
 }
 
@@ -119,12 +143,9 @@ impl QualityGateRunner {
     /// Create a new instance.
     pub fn new(thresholds: QualityThresholds) -> Self {
         Self {
-            _analyzers: vec![
-                // TODO: Fix analyzer trait implementations
-                // Box::new(ComplexityAnalyzer::new()),
-                // Box::new(SatdDetector::new()),
-                // Box::new(EfficiencyAnalyzer::new()),
-                // Box::new(EntropyCalculator::new()),
+            analyzers: vec![
+                Box::new(ComplexityAnalyzer::new()),
+                Box::new(EfficiencyAnalyzer::new()),
             ],
             thresholds,
         }
@@ -146,18 +167,21 @@ impl QualityGateRunner {
         let ast =
             syn::parse_file(&source).map_err(|e| QualityViolation::ParseError(e.to_string()))?;
 
+        // Measure once, then judge. Every number below is a measurement of
+        // THIS module and is carried into the returned report.
+        let satd_results = self.detect_satd(&source)?;
+        let metrics = self.measure(&ast, &source, satd_results.count);
+
         // Run complexity analysis
-        let complexity = self.analyze_complexity(&ast)?;
-        if complexity > self.thresholds.max_cyclomatic {
+        if metrics.cyclomatic_complexity > self.thresholds.max_cyclomatic {
             return Err(QualityViolation::ExcessiveComplexity {
-                found: complexity,
+                found: metrics.cyclomatic_complexity,
                 max: self.thresholds.max_cyclomatic,
                 location: module_path.to_path_buf(),
             });
         }
 
         // Run SATD detection
-        let satd_results = self.detect_satd(&source)?;
         if satd_results.count > self.thresholds.satd_tolerance {
             return Err(QualityViolation::SatdDetected {
                 count: satd_results.count,
@@ -167,43 +191,65 @@ impl QualityGateRunner {
         }
 
         // Run efficiency analysis
-        let efficiency = self.analyze_efficiency(&ast)?;
-        if !self.is_efficiency_acceptable(&efficiency) {
+        if !self.is_efficiency_acceptable(&metrics.efficiency) {
             return Err(QualityViolation::InefficientAlgorithm {
                 function: "unknown".to_string(),
-                complexity: efficiency,
+                complexity: metrics.efficiency,
                 required: self.thresholds.max_big_o.clone(),
             });
         }
 
         // Calculate entropy
-        let entropy = self.calculate_entropy(&source);
-        if entropy < self.thresholds.min_entropy {
+        if metrics.entropy < self.thresholds.min_entropy {
             return Err(QualityViolation::InsufficientDiversity {
-                entropy,
+                entropy: metrics.entropy,
                 required: self.thresholds.min_entropy,
             });
         }
 
-        Ok(QualityReport::passed())
+        Ok(QualityReport::measured(metrics))
     }
 
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    fn analyze_complexity(&self, ast: &syn::File) -> Result<u32, QualityViolation> {
-        let analyzer = ComplexityAnalyzer::new();
-        Ok(analyzer.calculate_cyclomatic(ast))
+    /// Fold every registered analyzer's view of `ast`, plus the source-text
+    /// entropy and the already-computed SATD count, into one measured
+    /// [`QualityMetrics`].
+    ///
+    /// Analyzers report only the dimensions they know about and leave the rest
+    /// at zero, so numeric dimensions combine by `max` and the efficiency class
+    /// by "worst wins" (via [`QualityGateRunner::parse_big_o`]).
+    fn measure(&self, ast: &syn::File, source: &str, satd_count: usize) -> QualityMetrics {
+        let mut metrics = QualityMetrics {
+            cyclomatic_complexity: 0,
+            cognitive_complexity: 0,
+            nesting_depth: 0,
+            satd_count,
+            entropy: self.calculate_entropy(source),
+            efficiency: "O(1)".to_string(),
+        };
+
+        for analyzer in &self.analyzers {
+            let m = analyzer.analyze(ast);
+            metrics.cyclomatic_complexity =
+                metrics.cyclomatic_complexity.max(m.cyclomatic_complexity);
+            metrics.cognitive_complexity = metrics.cognitive_complexity.max(m.cognitive_complexity);
+            metrics.nesting_depth = metrics.nesting_depth.max(m.nesting_depth);
+            if self.parse_big_o(&m.efficiency) > self.parse_big_o(&metrics.efficiency) {
+                metrics.efficiency = m.efficiency;
+            }
+        }
+
+        metrics
     }
+
+    // `analyze_complexity` and `analyze_efficiency` used to live here, each
+    // building its own `ComplexityAnalyzer` / `EfficiencyAnalyzer` — a second
+    // implementation of what the (then-empty) analyzer registry existed to do.
+    // Both are gone; `measure` drives the registry instead.
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn detect_satd(&self, source: &str) -> Result<SatdResult, QualityViolation> {
         let detector = SatdDetector::new();
         Ok(detector.detect(source))
-    }
-
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    fn analyze_efficiency(&self, ast: &syn::File) -> Result<String, QualityViolation> {
-        let analyzer = EfficiencyAnalyzer::new();
-        Ok(analyzer.analyze(ast))
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -242,10 +288,14 @@ pub struct SatdResult {
     pub patterns: Vec<String>,
 }
 
-/// Trait defining Quality analyzer behavior.
-pub trait QualityAnalyzer: Send + Sync {
-    fn analyze(&self, ast: &syn::File) -> QualityMetrics;
-}
+// `QualityAnalyzer` was declared TWICE — once here and once in
+// `super::analyzers` — and the two declarations differed (`analyzers` adds
+// `name()`). Every existing `impl` targeted the OTHER one, so this copy had
+// zero implementors and the registry it typed could not be filled: that is the
+// whole content of the "fix analyzer trait implementations" debt marker (#973).
+// The duplicate is deleted; the path `quality::gate::QualityAnalyzer` keeps
+// resolving, now to the single declaration that has implementors.
+pub use super::analyzers::QualityAnalyzer;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

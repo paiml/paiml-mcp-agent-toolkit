@@ -428,12 +428,11 @@ pub(super) fn calculate_dependency_score(
     }
 }
 
-/// CB-081-E: Load previous dependency metrics for trend tracking
+/// CB-081-E: Load previous dependency metrics for trend tracking.
+///
+/// The trend log lives outside the audited project — see [`cb081_state_dir`].
 pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTrend> {
-    let metrics_path = project_path
-        .join(".pmat")
-        .join("metrics")
-        .join("dependencies.json");
+    let metrics_path = cb081_state_dir(project_path).join("dependencies.json");
 
     let content = fs::read_to_string(&metrics_path).ok()?;
 
@@ -455,13 +454,17 @@ pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTre
     })
 }
 
-/// CB-081-E: Save current dependency metrics for future trend tracking
+/// CB-081-E: Save current dependency metrics for future trend tracking.
+///
+/// #939: this used to write `.pmat/metrics/dependencies.json` *into the project
+/// being audited*, so scoring a repo changed it. It writes to the user's cache
+/// directory instead — see [`cb081_state_dir`].
 pub(super) fn save_dependency_metrics(
     project_path: &Path,
     direct: usize,
     transitive: usize,
 ) -> std::io::Result<()> {
-    let metrics_dir = project_path.join(".pmat").join("metrics");
+    let metrics_dir = cb081_state_dir(project_path);
     fs::create_dir_all(&metrics_dir)?;
 
     let metrics_path = metrics_dir.join("dependencies.json");
@@ -494,10 +497,7 @@ pub(super) fn calculate_trend_deltas(
     current_direct: usize,
     current_transitive: usize,
 ) -> Option<DependencyTrend> {
-    let metrics_path = project_path
-        .join(".pmat")
-        .join("metrics")
-        .join("dependencies.json");
+    let metrics_path = cb081_state_dir(project_path).join("dependencies.json");
 
     let content = fs::read_to_string(&metrics_path).ok()?;
     let prev: serde_json::Value = serde_json::from_str(&content).ok()?;

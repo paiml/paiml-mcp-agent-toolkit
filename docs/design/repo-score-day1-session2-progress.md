@@ -58,6 +58,10 @@ Continued implementation from 17 tests (models only) to **47 tests (57% complete
 - **Subcategories:**
   - B1: Pre-commit Hook Present (10 points) - File exists and executable
   - B2: Hook Execution Time (10 points) - Heuristic analysis
+    **(superseded by #940: renamed to Hook Gate Coverage. The "execution time"
+    was never measured — the hook was never run — so the heuristic below ranked
+    a hook that slept 300s above one that returned in 2ms. It now scores which
+    gates the script invokes and claims no timing.)**
 - **Key Features:**
   - Unix executable permission checking
   - Content analysis for linting vs testing

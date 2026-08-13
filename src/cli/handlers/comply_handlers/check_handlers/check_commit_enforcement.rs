@@ -305,19 +305,31 @@ pub(crate) fn check_hook_determinism(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// CB-1337: Hook Performance
+/// CB-1337: Hook Cold-Start Commands
 ///
-/// Checks that pre-commit hooks have a performance budget.
-/// Reads timing data from .pmat-metrics/hook-timing.json if available.
-/// Falls back to checking hook file for expensive operations.
+/// Reports which known cold-start commands the pre-commit hook *invokes*. This
+/// is a static read of the script — `pmat comply` does not execute the audited
+/// repository's hooks (they routinely run formatters and test suites that
+/// rewrite the working tree, and an auditor must not mutate what it audits), so
+/// it makes no claim about how long a commit takes.
+///
+/// Two claims were removed here, both of the shape repo-score's B2 had in #940:
+/// the doc comment promised to read timing data from
+/// `.pmat-metrics/hook-timing.json` and nothing in the body ever opened that
+/// file, and the check reported "no expensive cold operations" — a performance
+/// verdict — for any hook whose expensive work happens behind an alias such as
+/// `pmat hook pre-commit --all`. Comments are also stripped before matching now,
+/// via the same helper repo-score's B2 uses, so `# cargo test` no longer counts
+/// as invoking cargo test.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
+    const CB1337: &str = "CB-1337: Hook Cold-Start Commands";
     let hooks_dir = project_path.join(".git/hooks");
     let pre_commit = hooks_dir.join("pre-commit");
 
     if !pre_commit.exists() {
         return ComplianceCheck {
-            name: "CB-1337: Hook Performance".into(),
+            name: CB1337.into(),
             status: CheckStatus::Skip,
             message: "No pre-commit hook installed".into(),
             severity: Severity::Info,
@@ -328,7 +340,7 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
         Ok(c) => c,
         Err(_) => {
             return ComplianceCheck {
-                name: "CB-1337: Hook Performance".into(),
+                name: CB1337.into(),
                 status: CheckStatus::Warn,
                 message: "Could not read pre-commit hook".into(),
                 severity: Severity::Warning,
@@ -336,36 +348,44 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
         }
     };
 
+    let code =
+        crate::services::repo_score::scorers::precommit_scorer::strip_shell_comments(&content)
+            .to_lowercase();
     let mut expensive_ops: Vec<String> = Vec::new();
 
-    // Check for known expensive operations in hooks
+    // Commands with a cold-start cost, matched against what the script invokes.
     let expensive_patterns = [
         ("cargo build", "full build in pre-commit"),
         ("cargo test", "full test suite in pre-commit"),
-        ("cargo clippy", "full clippy in pre-commit (use cached results)"),
+        (
+            "cargo clippy",
+            "full clippy in pre-commit (use cached results)",
+        ),
         ("npm install", "package install in pre-commit"),
         ("pip install", "package install in pre-commit"),
     ];
 
     for (pattern, description) in &expensive_patterns {
-        if content.contains(pattern) {
+        if code.contains(pattern) {
             expensive_ops.push(format!("{}: {}", pattern, description));
         }
     }
 
     if expensive_ops.is_empty() {
         ComplianceCheck {
-            name: "CB-1337: Hook Performance".into(),
+            name: CB1337.into(),
             status: CheckStatus::Pass,
-            message: "Pre-commit hook has no expensive cold operations".into(),
+            message: "Pre-commit hook invokes no known cold-start command \
+                      (read from the script; the hook is not run, so this is not a timing)"
+                .into(),
             severity: Severity::Info,
         }
     } else {
         ComplianceCheck {
-            name: "CB-1337: Hook Performance".into(),
+            name: CB1337.into(),
             status: CheckStatus::Warn,
             message: format!(
-                "{} expensive operation(s) in pre-commit: {}",
+                "{} cold-start command(s) invoked by pre-commit: {}",
                 expensive_ops.len(),
                 expensive_ops.join("; ")
             ),

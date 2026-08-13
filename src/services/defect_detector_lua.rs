@@ -29,15 +29,14 @@ impl LuaDefectDetector {
         defects
     }
 
+    /// #926: this used to be a private copy of the exclusion rule that matched
+    /// `"/tests/"`, `"/test/"` and `"/spec/"` as substrings of the **absolute**
+    /// path — the #923 defect, re-committed in a second language. It deferred
+    /// to nothing, so a checkout under any directory called `tests/` reported
+    /// its whole Lua tree as clean. There is one rule; it lives in
+    /// [`support_scope::is_support_file`].
     fn should_exclude_file(&self, file_path: &Path) -> bool {
-        let path_str = file_path.to_string_lossy();
-        let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        path_str.contains("/tests/")
-            || path_str.contains("/test/")
-            || path_str.contains("/spec/")
-            || file_name.starts_with("test_")
-            || file_name.ends_with("_test.lua")
-            || file_name.ends_with("_spec.lua")
+        support_scope::is_support_file(file_path)
     }
 
     fn detect_implicit_globals(

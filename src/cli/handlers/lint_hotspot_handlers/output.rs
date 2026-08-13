@@ -102,7 +102,10 @@ pub fn format_summary(
     output.push_str("# Lint Hotspot Analysis (EXTREME Quality Mode)\n\n");
     push_totals_header(&mut output, result);
 
-    // Show top files with lint issues (consistent with other analyze commands)
+    // Show top files with lint issues (consistent with other analyze commands).
+    // Ordered by the same score that picks the hotspot — see
+    // `sort_files_by_density`; a list ordered one way under a headline chosen
+    // another way reads as a contradiction.
     output.push_str("## Top Files with Lint Issues\n\n");
     let sorted_files = sort_files_by_density(result);
 
@@ -156,7 +159,8 @@ pub fn format_summary(
         "**Total Violations**: {}\n",
         result.hotspot.total_violations
     ));
-    output.push_str(&format!("**Lines of Code**: {}\n\n", result.hotspot.sloc));
+    output.push_str(&format!("**Lines of Code**: {}\n", result.hotspot.sloc));
+    push_density_basis(&mut output, result);
 
     output.push_str("## Severity Distribution\n");
     output.push_str(&format!(
@@ -306,6 +310,37 @@ pub(crate) fn format_detailed(
     Ok(output)
 }
 
+/// Say how the headline file was chosen, and how to read a density above 1.0.
+///
+/// #924: the ranking divides by `sqrt(sloc)` (see `hotspot_rank_score`), so
+/// the file named here is not always the file of highest raw density — a report
+/// that did not say so would look like an arithmetic error. And the density
+/// itself is unbounded above, because several lints fire on one line; the
+/// per-line figures are printed so `> 1.00` reads as arithmetic rather than as
+/// a bug.
+fn push_density_basis(output: &mut String, result: &LintHotspotResult) {
+    let basis = super::metrics::describe_density(&result.hotspot);
+
+    output.push_str(&format!(
+        "**Violations per violating line**: {:.2} ({} located findings on {} distinct lines, \
+         up to {} on one line)\n",
+        basis.violations_per_violating_line,
+        basis.located_violations,
+        basis.distinct_violating_lines,
+        basis.max_violations_on_one_line
+    ));
+    if basis.density_exceeds_one {
+        output.push_str(
+            "_A density above 1.00 is expected when lints share lines; it is not a bug._\n",
+        );
+    }
+    output.push_str(&format!(
+        "**Ranked by**: {:.3} = {} — density alone makes the shortest file the hotspot, count \
+         alone makes the longest one\n\n",
+        basis.ranking_score, basis.ranking_formula
+    ));
+}
+
 /// Write the two count lines that head every summary.
 ///
 /// #700: the first line said "**Total Project Violations**" unconditionally, but
@@ -358,18 +393,31 @@ fn single_file_scope(result: &LintHotspotResult) -> Option<&std::path::PathBuf> 
     }
 }
 
-/// Order `summary_by_file` deterministically: density descending, path ascending.
+/// Order `summary_by_file` deterministically by the SAME score the hotspot is
+/// chosen with, descending, then by path.
 ///
-/// DETERMINISM: the previous comparator looked only at `defect_density`, so
-/// every file that tied (very common — most files sit at the same small
-/// density) came out in `HashMap` order and the rendered list differed between
-/// runs on an unchanged tree.
+/// #924: this used to sort on `defect_density` while the hotspot is chosen by
+/// `hotspot_rank_score`, so the list and the headline disagreed in print — the
+/// "Top Files" table led with `stub.rs` (2.67 violations/SLOC, 8 findings) while
+/// "Hottest File Details" underneath it named `big.rs`. One ordering, one
+/// answer.
+///
+/// DETERMINISM: the comparator looked only at the score, so every file that tied
+/// (very common — most files sit at the same small density) came out in
+/// `HashMap` order and the rendered list differed between runs on an unchanged
+/// tree. Ties break on the path.
 fn sort_files_by_density(result: &LintHotspotResult) -> Vec<(&std::path::PathBuf, &FileSummary)> {
     let mut sorted: Vec<_> = result.summary_by_file.iter().collect();
     sorted.sort_by(|a, b| {
-        b.1.defect_density
-            .partial_cmp(&a.1.defect_density)
+        let rank = |s: &FileSummary| super::metrics::hotspot_rank_score(s.total_violations, s.sloc);
+        rank(b.1)
+            .partial_cmp(&rank(a.1))
             .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| {
+                b.1.defect_density
+                    .partial_cmp(&a.1.defect_density)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .then_with(|| a.0.cmp(b.0))
     });
     sorted
@@ -398,6 +446,7 @@ pub(crate) fn format_clean_result(format: &LintHotspotOutputFormat) -> Result<St
                 "enforcement": serde_json::Value::Null,
                 "refactor_chain": serde_json::Value::Null,
                 "quality_gate": empty_gate,
+                "density_basis": serde_json::Value::Null,
             }))
             .context("Failed to serialize clean result to JSON")
         }
@@ -431,19 +480,38 @@ pub(crate) fn format_clean_result(format: &LintHotspotOutputFormat) -> Result<St
 ///
 /// Returns an error if the operation fails
 pub(super) fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> {
+    // #924: `defect_density` can legitimately exceed 1.0, and a reader with no
+    // way to see why concludes the tool is broken. Both JSON formats carry the
+    // arithmetic — see `DensityBasis`. It is derived from figures already in
+    // the document, so it cannot disagree with them.
+    let density_basis = super::metrics::describe_density(&result.hotspot);
+
     if enforcement {
         // Full enforcement-ready JSON
-        serde_json::to_string_pretty(result).context("Failed to serialize to JSON")
+        #[derive(Serialize)]
+        struct EnforcementResult<'a> {
+            #[serde(flatten)]
+            result: &'a LintHotspotResult,
+            density_basis: DensityBasis,
+        }
+
+        serde_json::to_string_pretty(&EnforcementResult {
+            result,
+            density_basis,
+        })
+        .context("Failed to serialize to JSON")
     } else {
         // Simple JSON without enforcement details
         #[derive(Serialize)]
         struct SimpleResult<'a> {
             hotspot: &'a LintHotspot,
+            density_basis: DensityBasis,
             quality_gate: &'a QualityGateStatus,
         }
 
         let simple = SimpleResult {
             hotspot: &result.hotspot,
+            density_basis,
             quality_gate: &result.quality_gate,
         };
 
@@ -553,9 +621,12 @@ pub(crate) fn format_clean_output(
     let doc = match format {
         LintHotspotOutputFormat::Summary => return Ok(clean_human_report(false, perf, elapsed)),
         LintHotspotOutputFormat::Detailed => return Ok(clean_human_report(true, perf, elapsed)),
-        // Mirrors `SimpleResult` in `format_json` (hotspot + quality_gate).
+        // Mirrors `SimpleResult` in `format_json`
+        // (hotspot + density_basis + quality_gate). `density_basis` is null for
+        // the same reason `hotspot` is: there is no file to explain.
         LintHotspotOutputFormat::Json => serde_json::json!({
             "hotspot": serde_json::Value::Null,
+            "density_basis": serde_json::Value::Null,
             "quality_gate": clean_quality_gate(),
         }),
         // Mirrors the full `LintHotspotResult` serialization.
@@ -567,6 +638,7 @@ pub(crate) fn format_clean_output(
             "enforcement": serde_json::Value::Null,
             "refactor_chain": serde_json::Value::Null,
             "quality_gate": clean_quality_gate(),
+            "density_basis": serde_json::Value::Null,
         }),
         LintHotspotOutputFormat::Sarif => sarif_envelope(vec![]),
     };

@@ -271,25 +271,23 @@ impl SATDDetector {
     /// comments. A gate cannot pass on a measurement that was never taken, so
     /// the absence of a measurement is reported as such, the same way a
     /// nonexistent path already is (`ensure_analysis_path_exists`).
+    ///
+    /// The sentence itself is NOT written here. It used to be — a second copy
+    /// of the wording `analyze defects` uses for the identical event, which is
+    /// the shape #923 was about in the first place: one rule, two
+    /// implementations, free to drift the moment either is edited. Both copies
+    /// were byte-identical, so this is a pure substitution.
     fn nothing_measured(root: &Path, discovered: usize) -> TemplateError {
-        let reason = if discovered == 0 {
-            format!(
-                "no source files were found under {}, so no SATD measurement was taken. \
-                 This is not a clean result.",
-                root.display()
-            )
-        } else {
-            format!(
-                "all {discovered} source file(s) under {} were skipped — test, example, \
-                 fuzz, vendored, generated, minified or oversized — so no SATD \
-                 measurement was taken. This is not a clean result: point the analysis \
-                 at the project root, or pass --include-tests to measure test code.",
-                root.display()
-            )
-        };
         TemplateError::ValidationError {
             parameter: "path".to_string(),
-            reason,
+            reason: crate::services::defect_detector::unmeasured::refusal(
+                "SATD",
+                root,
+                discovered,
+                "test, example, fuzz, vendored, generated, minified or oversized",
+                "point the analysis at the project root, or pass --include-tests to measure \
+                 test code.",
+            ),
         }
     }
 

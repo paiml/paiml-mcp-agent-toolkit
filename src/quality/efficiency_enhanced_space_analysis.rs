@@ -1,7 +1,12 @@
 /// Space complexity analyzer.
 pub struct SpaceComplexityAnalyzer {
     allocations: Vec<Allocation>,
-    max_depth: usize,
+    /// Number of self-recursive functions seen in the file being analyzed.
+    /// Recursion costs stack frames proportional to the recursion depth, so it
+    /// is a space signal in its own right. (Replaces the former `max_depth`
+    /// field, which was only ever assigned `0` and therefore could never make
+    /// `has_recursive` true.)
+    recursive_functions: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +35,7 @@ impl SpaceComplexityAnalyzer {
     pub fn new() -> Self {
         Self {
             allocations: Vec::new(),
-            max_depth: 0,
+            recursive_functions: 0,
         }
     }
 
@@ -38,13 +43,22 @@ impl SpaceComplexityAnalyzer {
     /// Analyze.
     pub fn analyze(&mut self, ast: &syn::File) -> Complexity {
         self.allocations.clear();
+        self.recursive_functions = 0;
         self.visit_file(ast);
 
-        let has_recursive = self.max_depth > 1;
-        let has_dynamic_allocation = self
-            .allocations
-            .iter()
-            .any(|a| matches!(a.size, AllocationSize::Linear | AllocationSize::Quadratic));
+        let has_recursive = self.recursive_functions > 0;
+        // `Dynamic` must be counted here: it is the size class the visitor
+        // actually produces for `Vec`/`String`/`vec![]`, i.e. an allocation
+        // whose size is not statically bounded. Omitting it (the predicate
+        // used to match only `Linear | Quadratic`, which nothing constructs)
+        // made this whole function a constant that returned `O1` for every
+        // input — measurement collected, then thrown away.
+        let has_dynamic_allocation = self.allocations.iter().any(|a| {
+            matches!(
+                a.size,
+                AllocationSize::Linear | AllocationSize::Quadratic | AllocationSize::Dynamic
+            )
+        });
 
         if has_recursive && has_dynamic_allocation {
             Complexity::ON2
@@ -90,6 +104,21 @@ fn check_macro_allocation(mac: &syn::ExprMacro) -> Option<Allocation> {
 }
 
 impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        // Same recursion rule `SymbolicExecutor::analyze_function` uses — one
+        // detector, not a second hand-rolled one.
+        let mut detector = RecursionDetector {
+            function_name: node.sig.ident.to_string(),
+            is_recursive: false,
+        };
+        detector.visit_block(&node.block);
+        if detector.is_recursive {
+            self.recursive_functions += 1;
+        }
+
+        syn::visit::visit_item_fn(self, node);
+    }
+
     fn visit_local(&mut self, node: &'ast syn::Local) {
         if let Some(local_init) = &node.init {
             match &*local_init.expr {

@@ -3,8 +3,9 @@
 #[cfg(test)]
 mod calculator_tests {
     use super::super::calculator::{normalize_rps_percentage, PerfectionScoreCalculator};
-    use super::super::types::CategoryScore;
+    use super::super::types::{CategoryScore, PerfectionScoreResult};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     // ============================================================================
@@ -33,6 +34,9 @@ mod calculator_tests {
         assert!(!calc.fast_mode);
     }
 
+    /// A title line is not a document: each of these is under a paragraph, so
+    /// each earns the thin-file fraction of its weight (40 %), and the empty
+    /// `docs/` directory earns nothing at all. This asserted 100.0 (A+).
     #[tokio::test]
     async fn test_get_documentation_score_all_docs() {
         let temp_dir = TempDir::new().unwrap();
@@ -42,8 +46,9 @@ mod calculator_tests {
         fs::create_dir(root.join("docs")).unwrap();
         fs::write(root.join("CONTRIBUTING.md"), "# Contributing").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 100.0); // 40 + 20 + 25 + 15 = 100
+        let (score, details) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0 + 8.0 + 0.0 + 6.0);
+        assert!(details.contains("docs/ 0/25"), "{details}");
     }
 
     #[tokio::test]
@@ -51,16 +56,17 @@ mod calculator_tests {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("README.md"), "# Test Project").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 40.0);
+        let (score, _) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0);
     }
 
     #[tokio::test]
     async fn test_get_documentation_score_no_docs() {
         let temp_dir = TempDir::new().unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
+        let (score, details) = calc.get_documentation_score(temp_dir.path()).await;
         assert_eq!(score, 0.0);
+        assert!(details.contains("README 0/40 (missing)"), "{details}");
     }
 
     #[tokio::test]
@@ -68,8 +74,8 @@ mod calculator_tests {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("readme.md"), "# Test").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 40.0);
+        let (score, _) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0);
     }
 
     // ========================================================================
@@ -434,5 +440,172 @@ mod calculator_tests {
             negative.grade, zero.grade,
             "negative raw must grade as the clamped 0%"
         );
+    }
+
+    // ── The 120 s backstop reported eight measured zeros (#938 family) ──
+
+    /// The whole-run backstop used to return a scorecard: every category `0.0`
+    /// out of its full weight, details "Timed out", total 0/200, grade F —
+    /// absence rendered as the worst possible measurement. Nothing is
+    /// measurable once the inner future is dropped, so it must refuse.
+    #[tokio::test(start_paused = true)]
+    async fn a_run_that_exceeds_its_budget_refuses_instead_of_grading_zero() {
+        let budget = std::time::Duration::from_secs(120);
+        let never = async {
+            tokio::time::sleep(budget * 10).await;
+            unreachable!("the backstop must fire first")
+        };
+
+        let err = super::super::calculator::guard_total(Path::new("/some/project"), budget, never)
+            .await
+            .expect_err("a run that measured nothing must not produce a score");
+
+        let text = err.to_string();
+        assert!(text.contains("measured nothing"), "{text}");
+        assert!(text.contains("120s"), "{text}");
+        assert!(!text.contains("Timed out"), "{text}");
+    }
+
+    /// The backstop is transparent when the run finishes inside it.
+    #[tokio::test(start_paused = true)]
+    async fn the_backstop_passes_a_finished_run_through_untouched() {
+        let inner = async {
+            Ok(PerfectionScoreResult::new(vec![CategoryScore::new(
+                "Documentation",
+                80.0,
+                15,
+            )]))
+        };
+        let result = super::super::calculator::guard_total(
+            Path::new("/some/project"),
+            std::time::Duration::from_secs(120),
+            inner,
+        )
+        .await
+        .expect("an in-budget run must be returned as-is");
+        assert_eq!(result.categories.len(), 1);
+        assert_eq!(result.categories[0].earned_points, 12.0);
+    }
+
+    /// A single slow category is excluded and disclosed — it does not take the
+    /// run down, and it does not score zero either.
+    #[tokio::test(start_paused = true)]
+    async fn a_category_that_overruns_its_budget_is_not_measured() {
+        let slow = async {
+            tokio::time::sleep(std::time::Duration::from_secs(10_000)).await;
+            Ok(100.0)
+        };
+        let why = super::super::calculator::within_budget(slow)
+            .await
+            .expect_err("an overrunning category must not report a number");
+        assert!(why.contains("did not finish within"), "{why}");
+
+        // …and the category it produces carries no weight, so it cannot drag
+        // the total down.
+        let mut categories = Vec::new();
+        super::super::calculator::push_category(
+            &mut categories,
+            "Technical Debt Grade",
+            40,
+            Err(why),
+        );
+        assert_eq!(categories[0].max_points, 0);
+        assert_eq!(categories[0].grade, "N/A");
+        assert!(
+            categories[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Not measured"),
+            "{:?}",
+            categories[0].details
+        );
+    }
+
+    // ── Documentation scored file existence: four empty files were 100/100 ──
+
+    /// The exact fixture from the report: `touch README.md CHANGELOG.md
+    /// CONTRIBUTING.md && mkdir docs` scored Documentation 100.0 (A+, 15/15
+    /// points) because every component was `Path::exists()`. Empty files
+    /// document nothing.
+    #[tokio::test]
+    async fn four_empty_files_buy_no_documentation_points() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        for name in ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"] {
+            fs::write(root.join(name), "").unwrap();
+        }
+        fs::create_dir(root.join("docs")).unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 0.0, "{details}");
+        assert!(details.contains("README 0/40 (empty)"), "{details}");
+        assert!(details.contains("docs/ 0/25 (0 non-empty"), "{details}");
+    }
+
+    /// …and real documentation still scores. The ordering is the property that
+    /// matters: written documentation must outrank touched filenames.
+    #[tokio::test]
+    async fn written_documentation_outranks_empty_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        let readme = format!(
+            "# Project\n\n{}\n\n## Usage\n\n```sh\npmat perfection-score\n```\n",
+            "It does the thing, and here is a paragraph about how. ".repeat(6)
+        );
+        fs::write(root.join("README.md"), readme).unwrap();
+        fs::write(
+            root.join("CHANGELOG.md"),
+            format!(
+                "# Changelog\n\n## [1.2.3] - 2026-01-01\n\n{}\n",
+                "- fixed a thing that was broken in a way worth writing down. ".repeat(5)
+            ),
+        )
+        .unwrap();
+        fs::create_dir(root.join("docs")).unwrap();
+        for i in 0..5 {
+            fs::write(
+                root.join("docs").join(format!("g{i}.md")),
+                "# Guide\nbody\n",
+            )
+            .unwrap();
+        }
+        fs::write(
+            root.join("CONTRIBUTING.md"),
+            format!(
+                "# Contributing\n\n{}\n",
+                "Run cargo test, then open a pull request. ".repeat(8)
+            ),
+        )
+        .unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 100.0, "{details}");
+    }
+
+    /// A README without an example or sections is prose, not a manual: it earns
+    /// most of its weight, never all of it, and never zero.
+    #[tokio::test]
+    async fn substantive_but_unstructured_readme_earns_partial_credit() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        fs::write(
+            root.join("README.md"),
+            "a wall of prose with no heading and no example. ".repeat(10),
+        )
+        .unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 28.0, "{details}");
+        assert!(details.contains("no structure"), "{details}");
     }
 }

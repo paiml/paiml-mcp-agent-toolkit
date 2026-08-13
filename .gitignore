@@ -286,3 +286,11 @@ golden_traces/*
 # holder. Ignoring it is the correct fix; it was tracked and shipped in the
 # published crate tarball.
 *.yaml.lock
+
+# Agent/analysis scratch output written to the repo root
+complexity.json
+diag_report.json
+diagnose.json
+quality_gate.json
+rust_score.json
+satd.json

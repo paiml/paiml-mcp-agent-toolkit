@@ -65,6 +65,13 @@ fn print_satd_analysis_info(strict: bool, timeout: u64) {
 }
 
 /// Toyota Way Helper: Run SATD analysis with timeout
+///
+/// The budget is enforced by `run_within_analysis_budget` — the single
+/// implementation of what a `--timeout` on `AnalyzeCommands` means — rather
+/// than by the private `tokio::time::timeout(_, async { … })` that used to sit
+/// here. That form polls the analysis on the CALLER's task, so a scan that does
+/// not yield never lets the timer fire: the same non-enforcement #929 found in
+/// `analyze dead-code`, spelled differently.
 async fn run_satd_analysis(
     path: &Path,
     include_tests: bool,
@@ -73,22 +80,23 @@ async fn run_satd_analysis(
 ) -> Result<crate::services::satd_detector::SATDAnalysisResult> {
     use crate::services::satd_detector::SATDDetector;
 
-    // Create detector
-    let detector = if strict {
-        SATDDetector::new_strict()
-    } else {
-        SATDDetector::new()
-    };
-
-    // Run with timeout
-    let timeout_duration = tokio::time::Duration::from_secs(timeout);
-    let result = tokio::time::timeout(timeout_duration, async {
-        detector.analyze_project(path, include_tests).await
-    })
+    let owned_path = path.to_path_buf();
+    crate::cli::commands::analyze_commands::run_within_analysis_budget(
+        "SATD analysis",
+        timeout,
+        async move {
+            let detector = if strict {
+                SATDDetector::new_strict()
+            } else {
+                SATDDetector::new()
+            };
+            detector
+                .analyze_project(&owned_path, include_tests)
+                .await
+                .map_err(anyhow::Error::from)
+        },
+    )
     .await
-    .map_err(|_| anyhow::anyhow!("SATD analysis timed out after {timeout} seconds"))??;
-
-    Ok(result)
 }
 
 /// Toyota Way Helper: Apply SATD filters

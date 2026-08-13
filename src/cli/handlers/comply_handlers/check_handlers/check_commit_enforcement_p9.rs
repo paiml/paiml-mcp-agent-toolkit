@@ -128,6 +128,42 @@ mod tests_commit_enforcement {
         assert!(check.message.contains("cargo test"));
     }
 
+    /// CB-1337 claimed a performance verdict from a substring scan: a hook whose
+    /// only mention of `cargo test` was a comment was reported as running a full
+    /// test suite in pre-commit, the same inversion #940 fixed in repo-score's
+    /// B2. A command named in a comment is not invoked.
+    #[test]
+    fn cb1337_ignores_commands_named_only_in_comments() {
+        let dir = tempdir().unwrap();
+        let hooks = dir.path().join(".git/hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        fs::write(
+            hooks.join("pre-commit"),
+            "#!/bin/sh\n# cargo test is deliberately NOT run here\nexit 0\n",
+        )
+        .unwrap();
+
+        let check = check_hook_performance(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        assert!(!check.message.contains("cargo test"), "{}", check.message);
+    }
+
+    /// …and no output may imply a duration: nothing is executed or timed.
+    #[test]
+    fn cb1337_never_claims_a_timing() {
+        let dir = tempdir().unwrap();
+        let hooks = dir.path().join(".git/hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        for body in ["#!/bin/sh\nexit 0\n", "#!/bin/sh\ncargo build\n"] {
+            fs::write(hooks.join("pre-commit"), body).unwrap();
+            let check = check_hook_performance(dir.path());
+            let text = format!("{} {}", check.name, check.message).to_lowercase();
+            for claim in ["performance", "fast", "slow", "seconds", "budget"] {
+                assert!(!text.contains(claim), "CB-1337 must not claim {claim:?}: {text}");
+            }
+        }
+    }
+
     #[test]
     fn test_cb1321_no_dockerfile() {
         let dir = tempdir().unwrap();

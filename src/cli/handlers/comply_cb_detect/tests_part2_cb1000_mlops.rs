@@ -165,7 +165,7 @@ fn test_cb1004_passes_with_architecture() {
     header.extend_from_slice(&3u32.to_le_bytes());
     header.extend_from_slice(&10u64.to_le_bytes());
     header.extend_from_slice(&1u64.to_le_bytes()); // 1 metadata entry
-    // Add "general.architecture" as a key string
+                                                   // Add "general.architecture" as a key string
     header.extend_from_slice(b"general.architecture");
     header.resize(200, 0);
     fs::write(temp.path().join("model.gguf"), &header).unwrap();
@@ -188,4 +188,148 @@ fn test_cb1005_detects_size_mismatch() {
     let violations = detect_cb1005_quantization_mismatch(temp.path());
     assert_eq!(violations.len(), 1);
     assert_eq!(violations[0].pattern_id, "CB-1005");
+}
+
+// =============================================================================
+// Eager header validation (#965 adjacent): a header that was never actually
+// read must not be reported as a valid one.
+//
+// `model_header_matches_extension` is the ONLY thing in `analyze models` that
+// looks at bytes rather than at the filename, so every one of these files was
+// inventoried as a valid model of its declared format and, under `--check`,
+// reported as passing quality checks.
+// =============================================================================
+
+/// GGUF's fixed header is 24 bytes (magic, version, tensor_count, kv_count).
+/// The parser copied into a zeroed 64-byte stack buffer and then guarded on
+/// `buf.len() < 16` — the length of the BUFFER, never the number of bytes read
+/// — so an 8-byte file read its tensor count out of the zero padding and
+/// validated.
+#[test]
+fn test_truncated_gguf_is_not_a_valid_header() {
+    let temp = TempDir::new().unwrap();
+    let mut bytes = b"GGUF".to_vec();
+    bytes.extend_from_slice(&3u32.to_le_bytes());
+    assert_eq!(
+        bytes.len(),
+        8,
+        "fixture must be shorter than GGUF's 24-byte header"
+    );
+    let path = temp.path().join("truncated.gguf");
+    fs::write(&path, &bytes).unwrap();
+    assert!(
+        !model_header_matches_extension(&path),
+        "an 8-byte GGUF has no tensor count to read; it must not validate"
+    );
+}
+
+/// A 24-byte GGUF is exactly the fixed header and stays valid.
+#[test]
+fn test_minimal_complete_gguf_is_still_valid() {
+    let temp = TempDir::new().unwrap();
+    let mut bytes = b"GGUF".to_vec();
+    bytes.extend_from_slice(&3u32.to_le_bytes());
+    bytes.extend_from_slice(&2u64.to_le_bytes());
+    bytes.extend_from_slice(&1u64.to_le_bytes());
+    assert_eq!(bytes.len(), 24);
+    let path = temp.path().join("minimal.gguf");
+    fs::write(&path, &bytes).unwrap();
+    assert!(model_header_matches_extension(&path));
+}
+
+/// SafeTensors declares its JSON header length in the first 8 bytes. When that
+/// length ran past EOF the parser took an `else` branch that skipped the read
+/// entirely and still returned success — a truncated file was indistinguishable
+/// from a whole one.
+#[test]
+fn test_safetensors_header_running_past_eof_is_not_valid() {
+    let temp = TempDir::new().unwrap();
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(&1000u64.to_le_bytes());
+    let path = temp.path().join("truncated.safetensors");
+    fs::write(&path, &bytes).unwrap();
+    assert!(
+        !model_header_matches_extension(&path),
+        "an 8-byte file declaring a 1000-byte header is truncated, not valid"
+    );
+}
+
+/// The declared header fits, but its bytes are not JSON. Eager validation means
+/// the header is parsed at load time, not assumed.
+#[test]
+fn test_safetensors_header_that_is_not_json_is_not_valid() {
+    let temp = TempDir::new().unwrap();
+    let junk = b"abcdefghij";
+    let mut bytes = (junk.len() as u64).to_le_bytes().to_vec();
+    bytes.extend_from_slice(junk);
+    bytes.extend_from_slice(&[0u8; 8]);
+    let path = temp.path().join("notjson.safetensors");
+    fs::write(&path, &bytes).unwrap();
+    assert!(
+        !model_header_matches_extension(&path),
+        "a SafeTensors header must be a JSON object"
+    );
+}
+
+/// Positive control for the SafeTensors path.
+#[test]
+fn test_well_formed_safetensors_is_valid() {
+    let temp = TempDir::new().unwrap();
+    let json = br#"{"w":{"dtype":"F32","shape":[2],"data_offsets":[0,8]}}"#;
+    let mut bytes = (json.len() as u64).to_le_bytes().to_vec();
+    bytes.extend_from_slice(json);
+    bytes.extend_from_slice(&[0u8; 8]);
+    let path = temp.path().join("good.safetensors");
+    fs::write(&path, &bytes).unwrap();
+    assert!(model_header_matches_extension(&path));
+}
+
+/// The APR metadata length was only bounds-checked when it was BELOW 100 MB;
+/// a length at or above that limit skipped the read and returned success, so
+/// the most implausible value possible was the one that validated.
+#[test]
+fn test_apr_with_absurd_metadata_length_is_not_valid() {
+    let temp = TempDir::new().unwrap();
+    let mut bytes = b"APR2".to_vec();
+    bytes.extend_from_slice(&u32::MAX.to_le_bytes());
+    let path = temp.path().join("absurd.apr");
+    fs::write(&path, &bytes).unwrap();
+    assert!(
+        !model_header_matches_extension(&path),
+        "an 8-byte APR claiming a 4 GiB metadata block must not validate"
+    );
+}
+
+/// Same defect reached through ordinary text: "APRIL " satisfies the 3-byte
+/// `APR` magic and the following bytes decode to a metadata length above the
+/// 100 MB limit, so the bounds check was skipped and a prose file validated as
+/// an aprender model.
+#[test]
+fn test_text_file_beginning_with_apr_is_not_valid() {
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("notes.apr");
+    fs::write(
+        &path,
+        b"APRIL notes on the model serialization container format",
+    )
+    .unwrap();
+    assert!(
+        !model_header_matches_extension(&path),
+        "prose beginning with \"APR\" is not an APR container"
+    );
+}
+
+/// Positive control for the APR path: magic, a metadata length that fits, and a
+/// JSON tensor index.
+#[test]
+fn test_well_formed_apr_is_valid() {
+    let temp = TempDir::new().unwrap();
+    let json = br#"{"tensors":[{"name":"w","dtype":"f32"}]}"#;
+    let mut bytes = b"APR2".to_vec();
+    bytes.extend_from_slice(&(json.len() as u32).to_le_bytes());
+    bytes.extend_from_slice(json);
+    bytes.extend_from_slice(&[0u8; 8]);
+    let path = temp.path().join("good.apr");
+    fs::write(&path, &bytes).unwrap();
+    assert!(model_header_matches_extension(&path));
 }

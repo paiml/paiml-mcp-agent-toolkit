@@ -13,28 +13,11 @@ mod tests {
         assert!(matcher.pattern_matches("*.*", "logs.error"));
     }
 
-    // TODO: Fix test - recipient() is an Actix method not available on tokio::sync::mpsc::Sender
-    // #[actix_rt::test]
-    // async fn test_pubsub() {
-    //     let broker = PubSubBroker::new();
-    //     let topic = Topic("test.topic".to_string());
-
-    //     // Create mock recipient
-    //     let (tx, mut rx) = tokio::sync::mpsc::channel(10);
-    //     let recipient = tx.clone().recipient();
-
-    //     let agent_id = Uuid::new_v4();
-    //     broker.subscribe(agent_id, topic.clone(), recipient);
-
-    //     let event = Event {
-    //         topic: "test.topic".to_string(),
-    //         data: serde_json::json!({"test": "data"}),
-    //         timestamp: 0,
-    //     };
-
-    //     let sent = broker.publish(topic, event).await.unwrap();
-    //     assert_eq!(sent, 1);
-    // }
+    // NOTE: the end-to-end publish test lives in `pubsub_delivery_tests` below.
+    // It was disabled for years behind a TODO claiming `recipient()` was "an Actix
+    // method not available on tokio::sync::mpsc::Sender" — the messaging layer is
+    // Actix-native (`PubSubBroker::subscribe` takes `Recipient<AgentMessage>`), so
+    // the defect was the test reaching for a tokio channel, not the layer.
 
     #[test]
     fn test_event_store() {
@@ -52,6 +35,228 @@ mod tests {
 
         let replayed = store.replay(&topic, 5);
         assert_eq!(replayed.len(), 5);
+    }
+}
+
+/// End-to-end delivery tests for `PubSubBroker` against the real Actix
+/// `Recipient` API (issue #968). These are the tests the old commented-out
+/// `test_pubsub` was trying to be.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod pubsub_delivery_tests {
+    use super::*;
+    use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+
+    /// Minimal Actix actor that records every `AgentMessage` it is handed.
+    struct RecordingAgent {
+        seen: UnboundedSender<AgentMessage>,
+    }
+
+    impl Actor for RecordingAgent {
+        type Context = Context<Self>;
+    }
+
+    impl Handler<AgentMessage> for RecordingAgent {
+        type Result = Result<crate::agents::AgentResponse, crate::agents::AgentError>;
+
+        fn handle(&mut self, msg: AgentMessage, _ctx: &mut Context<Self>) -> Self::Result {
+            let _ = self.seen.send(msg);
+            Ok(crate::agents::AgentResponse::Success(
+                serde_json::json!({"ack": true}),
+            ))
+        }
+    }
+
+    #[derive(actix::Message)]
+    #[rtype(result = "()")]
+    struct StopAgent;
+
+    impl Handler<StopAgent> for RecordingAgent {
+        type Result = ();
+
+        fn handle(&mut self, _msg: StopAgent, ctx: &mut Context<Self>) {
+            ctx.stop();
+        }
+    }
+
+    fn spawn_agent() -> (
+        Addr<RecordingAgent>,
+        Recipient<AgentMessage>,
+        UnboundedReceiver<AgentMessage>,
+    ) {
+        let (tx, rx) = unbounded_channel();
+        let addr = RecordingAgent { seen: tx }.start();
+        let recipient = addr.clone().recipient();
+        (addr, recipient, rx)
+    }
+
+    fn test_event(topic: &str, value: &str) -> Event {
+        Event {
+            topic: topic.to_string(),
+            data: serde_json::json!({ "test": value }),
+            timestamp: 0,
+        }
+    }
+
+    /// Await the next delivered message, failing loudly instead of hanging.
+    async fn next_message(rx: &mut UnboundedReceiver<AgentMessage>) -> AgentMessage {
+        actix_rt::time::timeout(std::time::Duration::from_secs(5), rx.recv())
+            .await
+            .expect("timed out waiting for a published message")
+            .expect("recording agent dropped its channel")
+    }
+
+    /// The restored `test_pubsub`: a real subscriber receives the published event.
+    #[actix_rt::test]
+    async fn test_pubsub_delivers_event_to_subscriber() {
+        let broker = PubSubBroker::new();
+        let topic = Topic("test.topic".to_string());
+        let (_addr, recipient, mut rx) = spawn_agent();
+
+        let agent_id = Uuid::new_v4();
+        broker.subscribe(agent_id, topic.clone(), recipient);
+
+        let sent = broker
+            .publish(topic, test_event("test.topic", "data"))
+            .await
+            .unwrap();
+        assert_eq!(sent, 1, "one live subscriber must be reported as one send");
+
+        let delivered = next_message(&mut rx).await;
+        assert_eq!(
+            delivered.header.to, agent_id,
+            "message must be addressed to the subscribing agent"
+        );
+        let event: Event = delivered.deserialize_payload().unwrap();
+        assert_eq!(event.data, serde_json::json!({"test": "data"}));
+    }
+
+    /// REGRESSION (#968): `publish` used to return `subscribers.len()` — the
+    /// number of ids registered on the topic — without ever checking that the
+    /// message reached anything. A subscriber whose actor has stopped is an
+    /// absence; reporting it as a successful send is absence-as-success.
+    #[actix_rt::test]
+    async fn test_publish_does_not_count_dead_subscribers() {
+        let broker = PubSubBroker::new();
+        let topic = Topic("dead.topic".to_string());
+        let (addr, recipient, _rx) = spawn_agent();
+
+        let agent_id = Uuid::new_v4();
+        broker.subscribe(agent_id, topic.clone(), recipient.clone());
+
+        // Stop the actor and wait until its mailbox is provably closed.
+        addr.do_send(StopAgent);
+        drop(addr);
+        for _ in 0..500 {
+            if !recipient.connected() {
+                break;
+            }
+            actix_rt::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        assert!(
+            !recipient.connected(),
+            "test precondition: subscriber actor must be stopped"
+        );
+
+        let sent = broker
+            .publish(topic, test_event("dead.topic", "data"))
+            .await
+            .unwrap();
+        assert_eq!(
+            sent, 0,
+            "a stopped subscriber received nothing — publish must report 0, not 1"
+        );
+    }
+
+    /// REGRESSION (#968): subscribing the same agent to the same topic twice
+    /// pushed the id twice, so the agent got the event twice and `publish`
+    /// reported 2 sends to 1 subscriber.
+    #[actix_rt::test]
+    async fn test_duplicate_subscribe_delivers_once() {
+        let broker = PubSubBroker::new();
+        let topic = Topic("dup.topic".to_string());
+        let (_addr, recipient, mut rx) = spawn_agent();
+
+        let agent_id = Uuid::new_v4();
+        broker.subscribe(agent_id, topic.clone(), recipient.clone());
+        broker.subscribe(agent_id, topic.clone(), recipient);
+
+        assert_eq!(
+            broker
+                .get_topic_stats()
+                .get("dup.topic")
+                .unwrap()
+                .subscriber_count,
+            1,
+            "re-subscribing one agent must not inflate the subscriber count"
+        );
+
+        let sent = broker
+            .publish(topic, test_event("dup.topic", "once"))
+            .await
+            .unwrap();
+        assert_eq!(sent, 1, "one agent must be counted once");
+
+        let first = next_message(&mut rx).await;
+        assert_eq!(first.header.to, agent_id);
+
+        // Nothing else may arrive. Give the runtime a chance to deliver a
+        // second copy before concluding there is none.
+        actix_rt::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(
+            rx.try_recv().is_err(),
+            "a doubly-subscribed agent must receive the event exactly once"
+        );
+    }
+
+    /// REGRESSION (#968): `unsubscribe` dropped the agent from the topic list
+    /// but never from `subscribers`, so every recipient (and the actor `Addr`
+    /// it holds alive) leaked for the lifetime of the broker.
+    #[actix_rt::test]
+    async fn test_unsubscribe_releases_recipient() {
+        let broker = PubSubBroker::new();
+        let topic = Topic("bye.topic".to_string());
+        let (_addr, recipient, _rx) = spawn_agent();
+
+        let agent_id = Uuid::new_v4();
+        broker.subscribe(agent_id, topic.clone(), recipient);
+        assert_eq!(broker.subscribers.len(), 1);
+
+        broker.unsubscribe(agent_id, &topic);
+
+        assert!(
+            broker.subscribers.is_empty(),
+            "the last unsubscribe must release the recipient, not leak it"
+        );
+        let sent = broker
+            .publish(topic, test_event("bye.topic", "data"))
+            .await
+            .unwrap();
+        assert_eq!(sent, 0, "nobody is subscribed any more");
+    }
+
+    /// An agent subscribed to two topics keeps its recipient after leaving one.
+    #[actix_rt::test]
+    async fn test_unsubscribe_keeps_recipient_for_remaining_topics() {
+        let broker = PubSubBroker::new();
+        let topic_a = Topic("a.topic".to_string());
+        let topic_b = Topic("b.topic".to_string());
+        let (_addr, recipient, mut rx) = spawn_agent();
+
+        let agent_id = Uuid::new_v4();
+        broker.subscribe(agent_id, topic_a.clone(), recipient.clone());
+        broker.subscribe(agent_id, topic_b.clone(), recipient);
+
+        broker.unsubscribe(agent_id, &topic_a);
+
+        let sent = broker
+            .publish(topic_b, test_event("b.topic", "still-here"))
+            .await
+            .unwrap();
+        assert_eq!(sent, 1, "the remaining subscription must still deliver");
+        let delivered = next_message(&mut rx).await;
+        let event: Event = delivered.deserialize_payload().unwrap();
+        assert_eq!(event.data, serde_json::json!({"test": "still-here"}));
     }
 }
 

@@ -1,5 +1,26 @@
 // PubSubBroker implementation methods
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Hand `msg` to `recipient`, reporting whether it was actually queued.
+///
+/// `Recipient::do_send` swallows its `SendError`, so it cannot tell a delivery
+/// from a message dropped on the floor. `try_send` surfaces the distinction:
+/// `Full` still gets queued via `do_send` (unbounded fallback, the historical
+/// behaviour), while `Closed` means the subscriber's actor is gone and nothing
+/// was delivered.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn deliver(recipient: &Recipient<AgentMessage>, msg: AgentMessage) -> bool {
+    match recipient.try_send(msg) {
+        Ok(()) => true,
+        Err(SendError::Full(msg)) => {
+            recipient.do_send(msg);
+            true
+        }
+        Err(SendError::Closed(_)) => false,
+    }
+}
+
 impl PubSubBroker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
@@ -13,43 +34,70 @@ impl PubSubBroker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Subscribe to updates.
     pub fn subscribe(&self, agent_id: Uuid, topic: Topic, recipient: Recipient<AgentMessage>) {
-        // Register subscriber
+        // Register subscriber (latest recipient wins if the agent restarted)
         self.subscribers.insert(agent_id, recipient);
 
-        // Add to topic
-        self.topics.entry(topic).or_default().push(agent_id);
+        // Add to topic. Subscribing is idempotent: a repeated subscribe must not
+        // push the id twice, which would deliver the event twice and inflate
+        // both `subscriber_count` and the count returned by `publish`.
+        let mut ids = self.topics.entry(topic).or_default();
+        if !ids.contains(&agent_id) {
+            ids.push(agent_id);
+        }
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Unsubscribe.
     pub fn unsubscribe(&self, agent_id: Uuid, topic: &Topic) {
-        if let Some(mut subscribers) = self.topics.get_mut(topic) {
-            subscribers.retain(|id| *id != agent_id);
+        {
+            // Scoped so the per-entry lock is released before scanning `topics`
+            // below — DashMap is not re-entrant.
+            if let Some(mut subscribers) = self.topics.get_mut(topic) {
+                subscribers.retain(|id| *id != agent_id);
+            }
+        }
+
+        // Release the recipient once the agent holds no subscription at all.
+        // Without this, `subscribers` grows without bound and keeps every
+        // unsubscribed actor's `Addr` alive for the lifetime of the broker.
+        let still_subscribed = self
+            .topics
+            .iter()
+            .any(|entry| entry.value().contains(&agent_id));
+        if !still_subscribed {
+            self.subscribers.remove(&agent_id);
         }
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn publish(&self, topic: Topic, event: Event) -> Result<usize, PubSubError> {
         let publisher_id = Uuid::new_v4();
-        let mut sent_count = 0;
 
-        if let Some(subscribers) = self.topics.get(&topic) {
-            // Create message once
-            let message = AgentMessage::new(publisher_id, Uuid::nil(), event)?;
+        let Some(subscribers) = self.topics.get(&topic) else {
+            return Ok(0);
+        };
 
-            // Parallel broadcast using rayon
-            subscribers.par_iter().for_each(|agent_id| {
-                if let Some(recipient) = self.subscribers.get(agent_id) {
-                    let mut msg = message.clone();
-                    msg.header.to = *agent_id;
-                    recipient.do_send(msg);
+        // Create message once
+        let message = AgentMessage::new(publisher_id, Uuid::nil(), event)?;
+
+        // The returned count is the number of messages that were actually
+        // handed to a live mailbox — NOT `subscribers.len()`. A subscriber id
+        // with no registered recipient, or one whose actor has stopped, is an
+        // absence; counting it would report a delivery that never happened.
+        let delivered = AtomicUsize::new(0);
+
+        // Parallel broadcast using rayon
+        subscribers.par_iter().for_each(|agent_id| {
+            if let Some(recipient) = self.subscribers.get(agent_id) {
+                let mut msg = message.clone();
+                msg.header.to = *agent_id;
+                if deliver(recipient.value(), msg) {
+                    delivered.fetch_add(1, Ordering::Relaxed);
                 }
-            });
+            }
+        });
 
-            sent_count = subscribers.len();
-        }
-
-        Ok(sent_count)
+        Ok(delivered.into_inner())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

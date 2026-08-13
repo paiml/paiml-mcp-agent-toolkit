@@ -139,8 +139,11 @@ mod tests {
             let expected_dead_lines = items.iter().map(|item| match item.item_type {
                 DeadCodeType::Function => 10,
                 DeadCodeType::Class => 10,
-                DeadCodeType::Variable => 1,
-                DeadCodeType::UnreachableCode => 3,
+                DeadCodeType::Variable | DeadCodeType::Other => 1,
+                // #928: `Module` is its own variant now (it used to be filed as
+                // `Variable`), and `add_item` bills it as a container.
+                DeadCodeType::Module => crate::models::dead_code::DEAD_MODULE_LINE_ESTIMATE,
+                DeadCodeType::UnreachableCode => crate::models::dead_code::UNREACHABLE_BLOCK_LINE_ESTIMATE,
             }).sum::<usize>();
 
             prop_assert_eq!(metrics.dead_lines, expected_dead_lines);

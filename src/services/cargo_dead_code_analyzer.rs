@@ -175,10 +175,32 @@ pub struct CargoDeadCodeAnalyzer {
     ///
     /// This was a hardcoded `Duration::from_secs(90)` inside `analyze()`, so
     /// `analyze dead-code --timeout 300` was silently capped at 90 even once the
-    /// timer worked. The caller that has a user-facing budget owns it; 90s
-    /// remains the default for callers that do not.
+    /// timer worked. The caller that has a user-facing budget owns it;
+    /// [`DEFAULT_ANALYSIS_TIMEOUT_SECS`] is the default for callers that do not.
     timeout: std::time::Duration,
 }
+
+/// How long a dead-code analysis may run before its `cargo check` child is
+/// killed, for any caller that does not name its own budget.
+///
+/// #929 CONSEQUENCE. The budget only started binding when the blocking
+/// `Command::output()` was replaced by a child this analyzer can kill, and the
+/// moment it bound, every default that had never been tested became a real
+/// failure mode: the CLI shipped 60s and this constructor shipped 90s for the
+/// SAME work, so `pmat analyze dead-code -p .` on this repo exited 5 at 60.4s
+/// where the same command used to run 245s to completion.
+///
+/// 900s is what the measurement supports, not a round number: this repo takes
+/// 245s for a COLD `cargo check` (67.6s warm), and a monorepo several times its
+/// size on a slower machine is the case the default has to survive, since the
+/// first run after a dependency bump is always cold. The result is cached, so
+/// the budget is paid once. A caller that wants a tighter bound passes
+/// [`CargoDeadCodeAnalyzer::with_timeout`]; the CLI's `--timeout` does exactly
+/// that.
+///
+/// One constant, so the library default and the CLI default cannot drift apart
+/// again the way 90 and 60 did.
+pub const DEFAULT_ANALYSIS_TIMEOUT_SECS: u64 = 900;
 
 impl CargoDeadCodeAnalyzer {
     /// Create a new analyzer for the given project path
@@ -200,8 +222,18 @@ impl CargoDeadCodeAnalyzer {
             max_depth: 8,
             use_cache: true,
             force_refresh: false,
-            timeout: std::time::Duration::from_secs(90),
+            timeout: std::time::Duration::from_secs(DEFAULT_ANALYSIS_TIMEOUT_SECS),
         }
+    }
+
+    /// How long this analysis may run before `cargo check` is killed.
+    ///
+    /// Readable so the shipped default is testable: it was a literal inside
+    /// `new()` that nothing could observe, which is how it came to disagree
+    /// with the CLI's own default (#929).
+    #[must_use]
+    pub fn timeout(&self) -> std::time::Duration {
+        self.timeout
     }
 
     /// Set how long the analysis may run before `cargo check` is killed.

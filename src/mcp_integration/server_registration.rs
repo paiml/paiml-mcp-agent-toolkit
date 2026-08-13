@@ -134,6 +134,18 @@ impl McpServer {
     ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    // Every use of `tools` and `registered_tools` below sits inside a
+    // `#[cfg(feature = "java-ast")]` or `"scala-ast"` block, so a build with
+    // `mcp-integration` but neither JVM feature leaves both unused — and under
+    // `#![deny(unused)]` that made `cargo check --lib --features mcp-integration`
+    // fail outright. The feature was unbuildable, CI could not see it (it builds
+    // default features only), and 440 lines of java_tools_tests.rs consequently
+    // never ran. Registering nothing here is CORRECT for such a build; the lock
+    // is simply taken and dropped, which is what the allow describes.
+    #[cfg_attr(
+        not(any(feature = "java-ast", feature = "scala-ast")),
+        allow(unused_variables, unused_mut)
+    )]
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut tools = self.context.tools.write();
         let mut registered_tools = 0;

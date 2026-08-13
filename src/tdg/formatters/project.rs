@@ -13,6 +13,7 @@ use std::fmt::Write;
 
 use super::super::ProjectScore;
 use super::boxdraw::{box_blank, box_bottom, box_row, box_separator, box_top};
+use super::ungraded::{box_entry_budget, ungraded_rows};
 use crate::cli::colors as c;
 
 /// Format project-level TDG score.
@@ -68,14 +69,22 @@ pub fn format_project(project: &ProjectScore) -> String {
     // average it is missing from: the warning went to stderr only, so
     // `analyze tdg` on a crate whose only Rust file fails to parse printed
     // "Average Score: 100.0/100 (A+)" over the one file that survived.
-    if !project.ungraded_files.is_empty() {
-        line(box_row(&c::colored(
-            c::YELLOW,
-            &format!(
-                "Not Graded: {} file(s) walked, not measured",
-                project.ungraded_files.len()
-            ),
-        )));
+    // …and it must NAME them. A count alone is unactionable: paiml/aprender
+    // #2462 reported "Not Graded: 159 file(s)" on a 78-crate tree and could not
+    // tell which 159, or whether they mattered. Most were `include!` fragments
+    // — files that compile fine as part of a parent module but not standalone —
+    // and that tree has 1,772 `include!` sites, so the pattern is not an edge
+    // case. The paths were already in `ungraded_files`; only the printer was
+    // withholding them. The rows come from `formatters::ungraded` so this
+    // renderer, `pmat tdg <path>` and the Markdown report cannot drift apart
+    // again (they had three different answers).
+    let ungraded = ungraded_rows(&project.ungraded_files, Some(box_entry_budget()));
+    for (i, row) in ungraded.iter().enumerate() {
+        line(box_row(&if i == 0 {
+            c::colored(c::YELLOW, row)
+        } else {
+            c::dim(row)
+        }));
     }
     // The #279 waiver used to be disclosed only by `check-quality --format
     // json`; a reader of the default table had no way to learn that a file with
@@ -149,6 +158,62 @@ fn percent_of(count: usize, total: usize) -> f32 {
         0.0
     } else {
         (count as f32 / total as f32) * 100.0
+    }
+}
+
+#[cfg(test)]
+mod ungraded_disclosure_tests {
+    //! REGRESSION (#983): the table named the unmeasured files by pasting the
+    //! raw path into a 47-column row, so every entry was clipped to the prefix
+    //! the paths share — `/home/noah/src/aprender/crates/aprender-…` for all of
+    //! them. Naming a file with a string that cannot identify it is the same
+    //! defect as not naming it.
+    use super::*;
+    use crate::tdg::formatters::boxdraw::visible_width;
+    use crate::tdg::{ProjectScore, UngradedFile};
+
+    fn project_with(paths: &[&str]) -> ProjectScore {
+        let mut project = ProjectScore::aggregate(Vec::new());
+        for p in paths {
+            project.ungraded_files.push(UngradedFile {
+                path: (*p).to_string(),
+                reason: "expected `;`".to_string(),
+            });
+        }
+        project
+    }
+
+    #[test]
+    fn long_paths_are_named_by_their_tail_and_stay_distinct() {
+        let rendered = format_project(&project_with(&[
+            "/home/noah/src/aprender/crates/aprender-core/src/oracle/arxiv_entries.rs",
+            "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera_entries.rs",
+        ]));
+        assert!(rendered.contains("Not Graded: 2 file(s)"), "{rendered}");
+        assert!(rendered.contains("arxiv_entries.rs"), "got:\n{rendered}");
+        assert!(rendered.contains("coursera_entries.rs"), "got:\n{rendered}");
+    }
+
+    /// Naming them must not push the frame out of shape.
+    #[test]
+    fn named_rows_stay_inside_the_frame() {
+        let rendered = format_project(&project_with(&[
+            "/home/noah/src/aprender/crates/aprender-core/src/oracle/coursera/arxiv_entries.rs",
+        ]));
+        let widths: Vec<usize> = rendered
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(visible_width)
+            .collect();
+        for (i, w) in widths.iter().enumerate() {
+            assert_eq!(
+                *w,
+                widths[0],
+                "line {i} is {w} cols wide, frame is {} — {:?}",
+                widths[0],
+                rendered.lines().nth(i)
+            );
+        }
     }
 }
 

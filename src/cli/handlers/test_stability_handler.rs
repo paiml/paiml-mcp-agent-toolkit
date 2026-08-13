@@ -1,7 +1,16 @@
 //! Test stability analysis handler
 //!
-//! Runs tests multiple times to detect flaky tests and
-//! timeout-sensitive tests with high duration variance.
+//! Runs tests multiple times to detect flaky tests, tests whose duration varies
+//! from run to run, and tests that are simply slow on every run.
+//!
+//! # What counts as a finding
+//!
+//! The rules are constants here (`VARIANCE_RATIO_THRESHOLD`,
+//! `HIGH_VARIANCE_MIN_MEAN_MS`, `CONSISTENTLY_SLOW_MS`) and are also printed in
+//! every report as `Criteria`, because a `timeout_sensitive: 0` is unreadable
+//! without the rule that produced it. Variance alone used to be the only rule,
+//! which made the report structurally blind to the worst case it exists to find
+//! — a test that reliably burns ten seconds has variance ratio 1.0 (#950).
 //!
 //! # Where the durations come from
 //!
@@ -111,6 +120,92 @@ struct TestResult {
     recommendation: String,
 }
 
+/// Variance (max/mean) above which a test's duration is judged unstable.
+const VARIANCE_RATIO_THRESHOLD: f64 = 2.0;
+
+/// Mean below which a variance ratio is noise rather than a timeout risk:
+/// a 0.1ms test that once took 0.4ms is 4x variable and threatens nothing.
+const HIGH_VARIANCE_MIN_MEAN_MS: f64 = 100.0;
+
+/// Mean at or above which a test is reported even when its timing is perfectly
+/// consistent.
+///
+/// #950 residual: the only criterion was `variance_ratio > 2.0 && mean > 100`,
+/// so a test that sleeps ten seconds on EVERY run has variance ratio 1.0,
+/// classified Stable, and stable tests are not retained — the test most likely
+/// to hit a CI timeout was the one the report could never mention. Consistency
+/// is not safety: a test whose mean sits at 9.5s under a 10s timeout is
+/// maximally timeout-sensitive at zero variance. The threshold is disclosed in
+/// the report (see `Criteria`) so a `0` can be read against the rule that
+/// produced it.
+const CONSISTENTLY_SLOW_MS: f64 = 1000.0;
+
+/// Why a test's duration puts it at risk of a timeout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TimeoutRisk {
+    /// Duration swings from run to run.
+    HighVariance,
+    /// Reliably slow every run.
+    ConsistentlySlow,
+}
+
+impl TimeoutRisk {
+    fn classification(self) -> &'static str {
+        match self {
+            TimeoutRisk::HighVariance => "Timeout-Sensitive",
+            TimeoutRisk::ConsistentlySlow => "Consistently-Slow",
+        }
+    }
+}
+
+/// Classify a test's durations, or `None` when they are no timeout risk.
+///
+/// `None` is also returned when there are no durations at all — but that case is
+/// distinguished for the caller by `Timing`, which carries the reason nothing
+/// was timed, so an unevaluated test is never counted as an evaluated-and-clean
+/// one.
+fn timeout_risk(stats: &DurationStats) -> Option<TimeoutRisk> {
+    let (ratio, mean) = (stats.variance_ratio?, stats.mean?);
+    if ratio > VARIANCE_RATIO_THRESHOLD && mean > HIGH_VARIANCE_MIN_MEAN_MS {
+        Some(TimeoutRisk::HighVariance)
+    } else if mean >= CONSISTENTLY_SLOW_MS {
+        Some(TimeoutRisk::ConsistentlySlow)
+    } else {
+        None
+    }
+}
+
+/// The rules this report applied, carried in the output.
+///
+/// Without them a `timeout_sensitive: 0` is unreadable: the reader cannot tell
+/// a suite with no timeout risk from a criterion that could not fire.
+#[derive(Debug, Clone, serde::Serialize)]
+struct Criteria {
+    flaky: String,
+    timeout_sensitive: String,
+    consistently_slow: String,
+}
+
+impl Criteria {
+    fn current() -> Self {
+        Self {
+            flaky: "0 < pass rate < 1 across the runs".to_string(),
+            timeout_sensitive: format!(
+                "max/mean > {VARIANCE_RATIO_THRESHOLD:.1}x and mean > {HIGH_VARIANCE_MIN_MEAN_MS:.0}ms"
+            ),
+            consistently_slow: format!("mean >= {CONSISTENTLY_SLOW_MS:.0}ms at any variance"),
+        }
+    }
+
+    /// One line for the human reports.
+    fn describe(&self) -> String {
+        format!(
+            "flaky: {}; timeout-sensitive: {}; consistently-slow: {}",
+            self.flaky, self.timeout_sensitive, self.consistently_slow
+        )
+    }
+}
+
 /// Full stability analysis result
 #[derive(Debug, serde::Serialize)]
 struct StabilityAnalysis {
@@ -120,11 +215,19 @@ struct StabilityAnalysis {
     flaky_count: usize,
     /// `None` when no per-test timing was available, so timeout-sensitivity was
     /// not evaluated at all. A `0` here means "evaluated, none found".
+    ///
+    /// Counts both duration risks: high variance and consistent slowness. Each
+    /// row's `classification` says which one it is.
     timeout_sensitive_count: Option<usize>,
+    /// How many of `timeout_sensitive_count` are reliably slow rather than
+    /// variable. `None` for the same reason as above.
+    consistently_slow_count: Option<usize>,
     flaky_tests: Vec<TestResult>,
     timeout_sensitive_tests: Vec<TestResult>,
     total_duration_secs: f64,
     timing: Timing,
+    /// The thresholds above, so the report states what it looked for.
+    criteria: Criteria,
 }
 
 /// Handle the test-stability command
@@ -284,12 +387,9 @@ fn run_stability_analysis(
         let stats = summarize_durations(&samples);
 
         let is_flaky = pass_rate < 1.0 && pass_rate > 0.0;
-        // Timeout-sensitivity is a claim about per-test duration. Without one it
-        // is not "false", it is unevaluated.
-        let is_timeout_sensitive = match (stats.variance_ratio, stats.mean) {
-            (Some(ratio), Some(mean)) => ratio > 2.0 && mean > 100.0,
-            _ => false,
-        };
+        // Timeout risk is a claim about per-test duration. Without one it is not
+        // "false", it is unevaluated.
+        let risk = timeout_risk(&stats);
 
         let (classification, recommendation) = if is_flaky {
             (
@@ -299,17 +399,29 @@ fn run_stability_analysis(
                     pass_rate * 100.0
                 ),
             )
-        } else if is_timeout_sensitive {
-            (
-                "Timeout-Sensitive".to_string(),
-                format!(
-                    "High variance ({:.1}x). Recommend adaptive timeout: {:.0}ms (2x P95)",
-                    stats.variance_ratio.unwrap_or(1.0),
-                    stats.p95.unwrap_or(0.0) * 2.0
-                ),
-            )
         } else {
-            ("Stable".to_string(), String::new())
+            match risk {
+                Some(TimeoutRisk::HighVariance) => (
+                    TimeoutRisk::HighVariance.classification().to_string(),
+                    format!(
+                        "High variance ({:.1}x). Recommend adaptive timeout: {:.0}ms (2x P95)",
+                        stats.variance_ratio.unwrap_or(1.0),
+                        stats.p95.unwrap_or(0.0) * 2.0
+                    ),
+                ),
+                Some(TimeoutRisk::ConsistentlySlow) => (
+                    TimeoutRisk::ConsistentlySlow.classification().to_string(),
+                    format!(
+                        "Reliably slow: {:.0}ms mean at {:.1}x variance. Low variance is not \
+                         safety — this test spends the timeout budget on every run. Recommend \
+                         a timeout above {:.0}ms (2x max), or splitting the test",
+                        stats.mean.unwrap_or(0.0),
+                        stats.variance_ratio.unwrap_or(1.0),
+                        stats.max.unwrap_or(0.0) * 2.0
+                    ),
+                ),
+                None => ("Stable".to_string(), String::new()),
+            }
         };
 
         let test_result = TestResult {
@@ -328,7 +440,7 @@ fn run_stability_analysis(
 
         if is_flaky {
             flaky_tests.push(test_result);
-        } else if is_timeout_sensitive {
+        } else if risk.is_some() {
             timeout_sensitive_tests.push(test_result);
         }
     }
@@ -352,6 +464,16 @@ fn run_stability_analysis(
     } else {
         None
     };
+    let consistently_slow_count = if timing.is_measured() {
+        Some(
+            timeout_sensitive_tests
+                .iter()
+                .filter(|t| t.classification == TimeoutRisk::ConsistentlySlow.classification())
+                .count(),
+        )
+    } else {
+        None
+    };
     let stable_count = total_tests
         .saturating_sub(flaky_tests.len())
         .saturating_sub(timeout_sensitive_count.unwrap_or(0));
@@ -362,10 +484,12 @@ fn run_stability_analysis(
         stable_count,
         flaky_count: flaky_tests.len(),
         timeout_sensitive_count,
+        consistently_slow_count,
         flaky_tests,
         timeout_sensitive_tests,
         total_duration_secs: 0.0, // filled in by caller
         timing,
+        criteria: Criteria::current(),
     })
 }
 
@@ -564,7 +688,15 @@ fn format_summary(analysis: &StabilityAnalysis) -> String {
             .timeout_sensitive_count
             .map_or_else(|| "not_measured".to_string(), |c| c.to_string())
     );
+    let _ = writeln!(
+        out,
+        "consistently_slow={}",
+        analysis
+            .consistently_slow_count
+            .map_or_else(|| "not_measured".to_string(), |c| c.to_string())
+    );
     let _ = writeln!(out, "timing={}", analysis.timing.describe());
+    let _ = writeln!(out, "criteria={}", analysis.criteria.describe());
     let _ = writeln!(out, "duration_secs={:.3}", analysis.total_duration_secs);
     out
 }
@@ -623,6 +755,13 @@ fn format_table(analysis: &StabilityAnalysis) -> String {
         c::BOLD,
         c::RESET,
         analysis.timing.describe(),
+    );
+    // Stated, not implied: a `0` above is only readable against the rules that
+    // produced it (#950).
+    let _ = writeln!(
+        out,
+        "  {}",
+        c::dim(&format!("Criteria — {}", analysis.criteria.describe()))
     );
     let _ = writeln!(out);
 
@@ -715,8 +854,16 @@ fn format_markdown(analysis: &StabilityAnalysis) -> String {
             .timeout_sensitive_count
             .map_or_else(|| "not measured".to_string(), |c| c.to_string())
     );
+    let _ = writeln!(
+        out,
+        "| Consistently slow | {} |",
+        analysis
+            .consistently_slow_count
+            .map_or_else(|| "not measured".to_string(), |c| c.to_string())
+    );
     let _ = writeln!(out, "| Per-test timing | {} |", analysis.timing.describe());
-    let _ = writeln!(out, "| Duration | {:.1}s |\n", analysis.total_duration_secs);
+    let _ = writeln!(out, "| Duration | {:.1}s |", analysis.total_duration_secs);
+    let _ = writeln!(out, "| Criteria | {} |\n", analysis.criteria.describe());
 
     if !analysis.flaky_tests.is_empty() {
         let _ = writeln!(out, "## Flaky Tests\n");
@@ -736,14 +883,18 @@ fn format_markdown(analysis: &StabilityAnalysis) -> String {
     }
 
     if !analysis.timeout_sensitive_tests.is_empty() {
-        let _ = writeln!(out, "## Timeout-Sensitive Tests\n");
-        let _ = writeln!(out, "| Test | Variance | Mean | P95 | Max |");
-        let _ = writeln!(out, "|---|---|---|---|---|");
+        let _ = writeln!(out, "## Timeout-Sensitive and Consistently-Slow Tests\n");
+        let _ = writeln!(
+            out,
+            "| Test | Classification | Variance | Mean | P95 | Max |"
+        );
+        let _ = writeln!(out, "|---|---|---|---|---|---|");
         for test in &analysis.timeout_sensitive_tests {
             let _ = writeln!(
                 out,
-                "| `{}` | {} | {} | {} | {} |",
+                "| `{}` | {} | {} | {} | {} | {} |",
                 test.name,
+                test.classification,
                 test.variance_ratio
                     .map_or_else(|| "n/a".to_string(), |v| format!("{v:.1}x")),
                 opt_ms(test.mean_ms),
@@ -871,12 +1022,32 @@ fn format_text(analysis: &StabilityAnalysis) -> String {
             );
         }
     }
+    if let Some(count) = analysis.consistently_slow_count {
+        if count > 0 {
+            let _ = writeln!(
+                out,
+                "  {}  of which consistently slow:{} {}{}{}",
+                c::BOLD,
+                c::RESET,
+                c::YELLOW,
+                count,
+                c::RESET,
+            );
+        }
+    }
     let _ = writeln!(
         out,
-        "  {}Duration:{} {:.1}s\n",
+        "  {}Duration:{} {:.1}s",
         c::BOLD,
         c::RESET,
         analysis.total_duration_secs,
+    );
+    // #950: the counts above are only readable next to the rules that produced
+    // them, so the rules are printed rather than left to the reader to guess.
+    let _ = writeln!(
+        out,
+        "  {}\n",
+        c::dim(&format!("Criteria — {}", analysis.criteria.describe()))
     );
 
     if !analysis.flaky_tests.is_empty() {
@@ -898,9 +1069,19 @@ fn format_text(analysis: &StabilityAnalysis) -> String {
     }
 
     if !analysis.timeout_sensitive_tests.is_empty() {
-        let _ = writeln!(out, "{}\n", c::subheader("Timeout-Sensitive Tests"));
+        let _ = writeln!(
+            out,
+            "{}\n",
+            c::subheader("Timeout-Sensitive and Consistently-Slow Tests")
+        );
         for test in &analysis.timeout_sensitive_tests {
-            let _ = writeln!(out, "  {} {}", c::warn("!"), c::label(&test.name),);
+            let _ = writeln!(
+                out,
+                "  {} {} ({})",
+                c::warn("!"),
+                c::label(&test.name),
+                test.classification
+            );
             let _ = writeln!(
                 out,
                 "     Variance: {}{}{}  Mean: {}  P95: {}  Max: {}",
@@ -940,10 +1121,12 @@ mod tests {
             stable_count: 100 - flaky.len(),
             flaky_count: flaky.len(),
             timeout_sensitive_count,
+            consistently_slow_count: timeout_sensitive_count,
             flaky_tests: flaky,
             timeout_sensitive_tests: vec![],
             total_duration_secs: 10.0,
             timing,
+            criteria: Criteria::current(),
         }
     }
 
@@ -1307,7 +1490,7 @@ mod tests {
         analysis.timeout_sensitive_tests = vec![make_timeout_sensitive_test("slow_test")];
         analysis.timeout_sensitive_count = Some(1);
         let text = format_text(&analysis);
-        assert!(text.contains("Timeout-Sensitive Tests"));
+        assert!(text.contains("Timeout-Sensitive and Consistently-Slow Tests"));
         assert!(text.contains("slow_test"));
         assert!(text.contains("Variance"));
         // PIN: variance_ratio formatted with 1 decimal + "x" suffix.
@@ -1323,7 +1506,7 @@ mod tests {
         assert!(text.contains("flaky_a"));
         assert!(text.contains("slow_b"));
         assert!(text.contains("Flaky Tests"));
-        assert!(text.contains("Timeout-Sensitive Tests"));
+        assert!(text.contains("Timeout-Sensitive and Consistently-Slow Tests"));
         assert!(!text.contains("All tests are stable"));
     }
 
@@ -1399,5 +1582,112 @@ mod tests {
         assert_eq!(results.len(), 2);
         assert_eq!(results[0].0, "preexisting");
         assert_eq!(results[1].0, "new_test");
+    }
+
+    // ── #950 residual: a CONSISTENTLY slow test was never reported ──────────
+
+    /// RED on the old code: the only duration rule was
+    /// `variance_ratio > 2.0 && mean > 100.0`, so a test that takes ten seconds
+    /// on EVERY run has variance ratio 1.0, classified `Stable`, and stable
+    /// tests are not retained in the report at all.
+    #[test]
+    fn a_test_that_is_slow_on_every_run_is_reported() {
+        let ten_seconds_every_run =
+            summarize_durations(&[Some(10_000.0), Some(10_010.0), Some(9_990.0)]);
+        assert!(
+            ten_seconds_every_run.variance_ratio.unwrap() < VARIANCE_RATIO_THRESHOLD,
+            "the fixture must have LOW variance, or it would be caught by the old rule"
+        );
+        assert_eq!(
+            timeout_risk(&ten_seconds_every_run),
+            Some(TimeoutRisk::ConsistentlySlow),
+            "a reliably 10s test is the one most likely to hit a CI timeout"
+        );
+    }
+
+    /// The old rule must still fire: a variable test is still timeout-sensitive.
+    #[test]
+    fn a_high_variance_test_is_still_classified_by_variance() {
+        let variable = summarize_durations(&[Some(150.0), Some(1500.0), Some(160.0)]);
+        assert_eq!(
+            timeout_risk(&variable),
+            Some(TimeoutRisk::HighVariance),
+            "variance detection must survive the added slow-test rule"
+        );
+    }
+
+    /// And a fast, steady test must stay out of the report, or the new rule
+    /// would flood it.
+    #[test]
+    fn a_fast_steady_test_is_no_timeout_risk() {
+        assert_eq!(
+            timeout_risk(&summarize_durations(&[Some(4.0), Some(5.0), Some(4.5)])),
+            None
+        );
+        // Sub-threshold variance on a sub-threshold mean is noise, not risk.
+        assert_eq!(
+            timeout_risk(&summarize_durations(&[Some(0.1), Some(0.4), Some(0.1)])),
+            None
+        );
+    }
+
+    /// Without timings there is no risk claim to make either way.
+    #[test]
+    fn unmeasured_durations_yield_no_risk_classification() {
+        assert_eq!(timeout_risk(&summarize_durations(&[None, None])), None);
+        assert_eq!(
+            timeout_risk(&summarize_durations(&[Some(10_000.0), None])),
+            None,
+            "a partial series must not be summarised into a claim"
+        );
+    }
+
+    /// The report must state the rules it applied: a bare `timeout_sensitive: 0`
+    /// cannot be read without them.
+    #[test]
+    fn every_format_discloses_the_criteria_it_applied() {
+        let analysis = analysis_with(vec![], measured());
+
+        let json: serde_json::Value =
+            serde_json::from_str(&render(&analysis, OutputFormat::Json).unwrap()).unwrap();
+        assert!(
+            json["criteria"]["consistently_slow"]
+                .as_str()
+                .unwrap()
+                .contains("1000"),
+            "json must carry the slow threshold: {json}"
+        );
+        assert_eq!(json["consistently_slow_count"], 0);
+
+        for format in [
+            OutputFormat::Text,
+            OutputFormat::Table,
+            OutputFormat::Markdown,
+            OutputFormat::Summary,
+        ] {
+            let rendered = render(&analysis, format).unwrap();
+            assert!(
+                rendered.contains("consistently-slow") || rendered.contains("Consistently slow"),
+                "{format:?} must disclose the consistently-slow rule:\n{rendered}"
+            );
+        }
+    }
+
+    /// Unmeasured timing must keep saying "not measured" for the new count too,
+    /// never `0`.
+    #[test]
+    fn an_unmeasured_run_reports_the_slow_count_as_not_measured() {
+        let analysis = analysis_with(vec![], unmeasured());
+        let json: serde_json::Value =
+            serde_json::from_str(&render(&analysis, OutputFormat::Json).unwrap()).unwrap();
+        assert!(
+            json["consistently_slow_count"].is_null(),
+            "an unevaluated criterion must be null, never 0: {json}"
+        );
+        let summary = render(&analysis, OutputFormat::Summary).unwrap();
+        assert!(
+            summary.contains("consistently_slow=not_measured"),
+            "{summary}"
+        );
     }
 }

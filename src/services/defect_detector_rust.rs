@@ -101,6 +101,39 @@ pub(crate) mod source_scope {
     /// read in one place; the SATD detector names its own (wider) set beside
     /// this one in `detection_file_discovery.rs`.
     pub(crate) const NON_PRODUCTION_DIRS: [&str; 4] = ["tests", "benches", "examples", "fuzz"];
+
+    /// Code the project did not write and cannot fix in place: a vendored
+    /// dependency, or a build artifact of one.
+    ///
+    /// THE one implementation. `SATDDetector::is_minified_or_vendor_file` was
+    /// it; `analyze defects` had none, which did not matter while that command
+    /// could only see `.rs` files. The moment the Known-Defects walk learned
+    /// the other four rule sets (#926) it started grading
+    /// `assets/vendor/mermaid.min.js` — **124 of the 146 findings** on this
+    /// repository, every one of them in a file nobody here will ever edit, and
+    /// `analyze satd` had been excluding that same file all along. So the two
+    /// commands share the predicate instead of the second one growing a copy
+    /// that drifts.
+    ///
+    /// Both halves are needed: `vendor/` catches a dependency checked in as
+    /// readable source, the name patterns catch one dropped in as a bundle
+    /// anywhere else (`assets/mermaid.min.js`).
+    pub(crate) fn is_vendored_or_minified(path: &Path) -> bool {
+        // Project-relative, so a checkout that merely SITS under someone's
+        // `vendor/` is not itself vendored (#923).
+        if has_dir_component(&project_relative_str(path), &["vendor"]) {
+            return true;
+        }
+
+        let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
+            return false;
+        };
+        // Common minified/bundled artifact names.
+        file_name.contains(".min.")
+            || file_name.contains(".bundle.")
+            || file_name.contains("-min.")
+            || file_name.contains(".production.")
+    }
 }
 
 /// Test code is what the compiler compiles under `cfg(test)` — not what the
@@ -385,6 +418,96 @@ pub(crate) mod include_scope {
     }
 }
 
+/// "Nothing was measured" as a thing a scan can say.
+///
+/// #923, surviving half: exclusion was a `bool` the caller threw away, so a
+/// file that was never looked at and a file that was looked at and found clean
+/// became the same thing before anything counted them — and a walk in which
+/// EVERY candidate was excluded rendered as `total_defects: 0, exit 0`, the
+/// same sentence as a clean tree. `pmat analyze defects -p <repo>/examples`
+/// printed `total_files_scanned: 117, critical: 0, exit 0` over 117 files, 32
+/// of which contain `.unwrap()`.
+///
+/// The vocabulary and the sentence live here, once, so the detectors that own
+/// an exclusion rule cannot drift into two accounts of the same event. The
+/// SATD detector already shares [`source_scope`] from this file;
+/// `SatdDetector::nothing_measured`
+/// (`satd_detector/detection_analysis.rs:274`) still formats these strings
+/// itself and is a pure substitution away from calling [`refusal`] — it
+/// produces byte-identical text to
+/// `refusal("SATD", root, discovered, "test, example, fuzz, vendored,
+/// generated, minified or oversized", "point the analysis at the project
+/// root, …")`.
+pub(crate) mod unmeasured {
+    use std::path::Path;
+
+    /// Why a discovered file produced no measurement. Naming the reason is
+    /// what lets a caller say "nothing was measured" instead of "nothing was
+    /// found", and say WHICH rule swallowed the walk.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    pub(crate) enum Reason {
+        /// Inside the package's own `tests/`, `benches/`, `examples/` or
+        /// `fuzz/` tree.
+        NonProductionDir,
+        /// `*_test.rs`, `*_tests.rs` or `test_*` by name.
+        TestFileName,
+        /// Reached only from a `#[cfg(test)]` item (#927).
+        TestOnlyInclude,
+        /// Discovered, but not readable as UTF-8 text.
+        Unreadable,
+        /// Vendored or minified: a dependency's source or a built bundle
+        /// checked into the tree, which the project cannot fix in place.
+        VendoredOrMinified,
+        /// #926: written in a language pmat has no rule set for. A `.go` file
+        /// handed to `--file` used to be read, graded by nothing, and reported
+        /// as `total_files_scanned: 1, total_defects: 0, exit 0` — a clean bill
+        /// of health issued by an analyzer that has no opinion about Go.
+        NoRuleSet,
+    }
+
+    impl Reason {
+        /// The phrase used when telling a user what a walk skipped.
+        pub(crate) fn as_str(self) -> &'static str {
+            match self {
+                Reason::NonProductionDir => {
+                    "in the package's own tests/, benches/, examples/ or fuzz/ tree"
+                }
+                Reason::TestFileName => "named as a test file (*_test.rs, *_tests.rs, test_*)",
+                Reason::TestOnlyInclude => "reachable only from a #[cfg(test)] item",
+                Reason::VendoredOrMinified => "vendored or minified, not code this project wrote",
+                Reason::Unreadable => "unreadable",
+                Reason::NoRuleSet => "written in a language pmat has no rule set for",
+            }
+        }
+    }
+
+    /// The refusal a scan owes its caller when it analysed nothing.
+    ///
+    /// `discovered == 0` and "everything was excluded" are different events
+    /// and get different sentences; neither is a clean result.
+    pub(crate) fn refusal(
+        measurement: &str,
+        root: &Path,
+        discovered: usize,
+        skipped_because: &str,
+        remedy: &str,
+    ) -> String {
+        if discovered == 0 {
+            format!(
+                "no source files were found under {}, so no {measurement} measurement was taken. \
+                 This is not a clean result.",
+                root.display()
+            )
+        } else {
+            format!(
+                "all {discovered} source file(s) under {} were skipped — {skipped_because} — so \
+                 no {measurement} measurement was taken. This is not a clean result: {remedy}",
+                root.display()
+            )
+        }
+    }
+}
+
 impl RustDefectDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
@@ -394,7 +517,11 @@ impl RustDefectDetector {
         }
     }
 
-    /// Check if a file should be excluded from defect detection.
+    /// Why this file is not production code this detector measures, or `None`
+    /// when it is.
+    ///
+    /// The one implementation of the rule: [`Self::should_exclude_file`] is
+    /// this function with the reason thrown away.
     ///
     /// The directory test runs against the path RELATIVE TO ITS OWN PROJECT
     /// ROOT (see [`source_scope`]). It used to run against the absolute path,
@@ -402,25 +529,40 @@ impl RustDefectDetector {
     /// under `<tmp>/tests/myproject` reported 0 critical defects and exit 0
     /// while the byte-identical crate under `<tmp>/normal` reported 1 and
     /// exit 1 (#923).
-    pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
+    pub(crate) fn exclusion_reason(&self, file_path: &Path) -> Option<unmeasured::Reason> {
         let path_str = source_scope::project_relative_str(file_path);
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Exclude a package's own tests/, benches/, examples/ and fuzz/ trees.
         // (Examples and fuzz targets legitimately use .unwrap() for brevity.)
         if source_scope::has_dir_component(&path_str, &source_scope::NON_PRODUCTION_DIRS) {
-            return true;
+            return Some(unmeasured::Reason::NonProductionDir);
+        }
+
+        // A vendored copy of someone else's crate is not this project's defect
+        // to fix, and `analyze satd` has always skipped it.
+        if source_scope::is_vendored_or_minified(file_path) {
+            return Some(unmeasured::Reason::VendoredOrMinified);
         }
 
         // Exclude test file patterns
         if include_scope::has_test_file_name(file_name) {
-            return true;
+            return Some(unmeasured::Reason::TestFileName);
         }
 
         // #927: and the ones the naming convention misses — a fragment is test
         // code when the item that pulls it in is `#[cfg(test)]`, whatever the
         // fragment is called.
-        include_scope::is_test_only(file_path)
+        if include_scope::is_test_only(file_path) {
+            return Some(unmeasured::Reason::TestOnlyInclude);
+        }
+
+        None
+    }
+
+    /// Check if a file should be excluded from defect detection.
+    pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
+        self.exclusion_reason(file_path).is_some()
     }
 
     /// The documented per-file escape hatch is an INNER attribute
@@ -439,14 +581,44 @@ impl RustDefectDetector {
             .any(|content| file_allows_unwrap(&content))
     }
 
-    /// True if a single trimmed line is a test-function attribute (`#[test]`,
-    /// `#[tokio::test]`, …). The item it precedes is test code even when it is
-    /// not wrapped in a `#[cfg(test)]` module.
+    /// True if a single trimmed line is a test-function attribute. The item it
+    /// precedes is test code even when it is not wrapped in a `#[cfg(test)]`
+    /// module.
+    ///
+    /// #927, last three findings: this was a list of four literal prefixes —
+    /// `#[test]`, `#[tokio::test`, `#[async_test`, `#[async_std::test` — and
+    /// every async test runtime it had not heard of fell through it. The three
+    /// Critical defects left on this repository after the include-graph fix
+    /// were all `.unwrap()` inside `#[actix_rt::test]` functions in
+    /// `src/workflow/executor_tests_state_action.rs`; `#[rstest]`,
+    /// `#[test_case]`, `#[googletest::test]` and `#[sqlx::test]` were the same
+    /// hole waiting for a different crate.
+    ///
+    /// An enumerated list of harnesses is unmaintainable and fails silently, so
+    /// ask the question the attribute itself answers: **the last segment of the
+    /// attribute path names the harness**, and a harness that runs tests says
+    /// so in its name (`test`, `tokio::test`, `actix_rt::test`, `rstest`,
+    /// `test_case`). That rule needs no entry per crate.
     fn is_test_attr_line(trimmed: &str) -> bool {
-        trimmed.starts_with("#[test]")
-            || trimmed.starts_with("#[tokio::test")
-            || trimmed.starts_with("#[async_test")
-            || trimmed.starts_with("#[async_std::test")
+        let Some(body) = trimmed.strip_prefix("#[") else {
+            return false;
+        };
+        // `#[tokio::test(flavor = "multi_thread")]` -> `tokio::test`;
+        // `#[test]` -> `test`.
+        let path = body
+            .split(['(', ']'])
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .trim_end_matches(',');
+        let Some(harness) = path.rsplit("::").next() else {
+            return false;
+        };
+        harness == "test"
+            || harness == "bench"
+            || harness.ends_with("_test")
+            || harness.starts_with("test_")
+            || matches!(harness, "rstest" | "proptest" | "quickcheck")
     }
 
     /// Detect all defects in Rust source code
@@ -563,6 +735,20 @@ impl RustDefectDetector {
                 pending_suppress = true;
             }
 
+            // Whether this line is part of a suppressed item, decided BEFORE
+            // the braces on it are walked.
+            //
+            // #927: the check below ran only AFTER the walk, so an item whose
+            // whole body sits on one line opened and closed its suppressed
+            // block within a single iteration and left `suppress_entry_depth`
+            // back at `None` — the `.unwrap()` on that very line was then
+            // reported. `#[actix_rt::test] async fn t() { r.unwrap(); }` and
+            // `#[cfg(test)] mod t { … }` written on one line were both
+            // measured as production code, while the identical item spread
+            // over three lines was correctly skipped. Suppression is a
+            // property of the item, not of where its author put newlines.
+            let suppressed_at_line_start = pending_suppress || suppress_entry_depth.is_some();
+
             // Track brace depth and suppressed-block boundaries
             for ch in line.chars() {
                 if ch == '{' {
@@ -584,7 +770,7 @@ impl RustDefectDetector {
             // Skip .unwrap() detection inside #[cfg] blocks (conditional
             // compilation, e.g. GPU init / platform-specific code) or inside
             // an item explicitly annotated with #[allow(clippy::unwrap_used)].
-            if suppress_entry_depth.is_some() {
+            if suppressed_at_line_start || suppress_entry_depth.is_some() {
                 continue;
             }
 

@@ -156,6 +156,18 @@ impl PerfectionScoreResult {
         let mut recs = Vec::new();
 
         for cat in categories {
+            // An unmeasured category has max_points 0 and would divide to NaN,
+            // whose comparisons are all false — it would silently produce no
+            // line at all, so a run that measured nothing would report
+            // "All categories are healthy!". Say so instead.
+            if cat.max_points == 0 {
+                recs.push(format!(
+                    "⚪ {}: {}",
+                    cat.name,
+                    cat.details.as_deref().unwrap_or("not measured")
+                ));
+                continue;
+            }
             let percentage = (cat.earned_points / f64::from(cat.max_points)) * 100.0;
             if percentage < 60.0 {
                 recs.push(format!(

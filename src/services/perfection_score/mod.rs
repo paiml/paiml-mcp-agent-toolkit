@@ -8,7 +8,8 @@
 //! - Popper Score (25 pts)
 //! - Test Coverage (25 pts)
 //! - Mutation Score (20 pts)
-//! - Documentation (15 pts)
+//! - Documentation (15 pts) — README/CHANGELOG/docs/CONTRIBUTING *content*,
+//!   not the existence of those filenames
 //! - Performance (15 pts)
 //!
 //! PMAT-454: All output normalized to 0-100 scale

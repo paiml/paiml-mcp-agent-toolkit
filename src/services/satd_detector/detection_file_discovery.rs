@@ -234,27 +234,18 @@ impl SATDDetector {
             || path_str.contains(".generated")
     }
 
+    /// Whether `path` is vendored or minified.
+    ///
+    /// The rule itself lives in [`source_scope::is_vendored_or_minified`] and
+    /// is shared with the Known-Defects walk, which needed exactly this
+    /// predicate once it learned to read JavaScript (#926) — this method used
+    /// to BE the rule, and four of its eight name patterns
+    /// (`ends_with(".min.js")`, `".min.css"`, `".bundle.js"`,
+    /// `".production.js"`) were already dead, subsumed by the `contains(".min.")`
+    /// / `contains(".bundle.")` / `contains(".production.")` tests above them.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
-        // Check if path contains vendor directory — project-relative, so a
-        // checkout under someone's `vendor/` is not itself vendored (#923).
-        if source_scope::has_dir_component(&source_scope::project_relative_str(path), &["vendor"]) {
-            return true;
-        }
-
-        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-            // Common minified file patterns
-            file_name.contains(".min.")
-                || file_name.contains(".bundle.")
-                || file_name.contains("-min.")
-                || file_name.contains(".production.")
-                || file_name.ends_with(".min.js")
-                || file_name.ends_with(".min.css")
-                || file_name.ends_with(".bundle.js")
-                || file_name.ends_with(".production.js")
-        } else {
-            false
-        }
+        source_scope::is_vendored_or_minified(path)
     }
 
     /// Check if file content suggests it's minified (has very long lines)

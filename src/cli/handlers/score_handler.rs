@@ -68,6 +68,16 @@ pub struct CompositeScore {
     /// Dimensions excluded from `composite` because they were not measured.
     #[serde(default)]
     pub not_measured: Vec<NotMeasured>,
+    /// Dimensions that were measured and came back at zero.
+    ///
+    /// These GATE the verdict rather than averaging into it: a geometric mean
+    /// is zero if any term is zero, so one red gate used to render as
+    /// `0.0 / F`, indistinguishable from a project where everything is bad
+    /// (paiml/aprender #2463). When this list is non-empty the grade is
+    /// `GATED`, and `composite` carries the mean of the non-gating dimensions
+    /// so the project's actual shape is still legible.
+    #[serde(default)]
+    pub gated_by: Vec<String>,
     /// How many of the [`DIMENSIONS`] the composite actually covers.
     #[serde(default)]
     pub dimensions_measured: usize,
@@ -399,17 +409,43 @@ fn assemble_score(
         })
         .collect();
 
+    // A geometric mean is zero if ANY term is zero, so one zeroed dimension
+    // collapsed the whole composite: paiml/aprender #2463 reported
+    // "Composite: 0.0/100 Grade: F" on a tree whose File Health was 100.0 and
+    // whose Muda was 92.0, where the arithmetic mean of what was measured is
+    // ~60.8. Grade F could not be distinguished from "everything is bad", and a
+    // reader cannot act on it.
+    //
+    // A zero here is not a bad average — it is a GATE that came back red, and
+    // that is a different fact. It gets its own state, the same way "not
+    // measured" did: the score reports which dimensions gated, and the mean of
+    // the rest so the reader can still see the shape of the project.
+    let gated_by: Vec<String> = DIMENSIONS
+        .iter()
+        .zip(dimensions.iter())
+        .filter_map(|(name, d)| match d {
+            Ok(v) if *v <= 0.0 => Some((*name).to_string()),
+            _ => None,
+        })
+        .collect();
+    let non_gated: Vec<f64> = values.iter().copied().filter(|v| *v > 0.0).collect();
+
     let composite = if values.is_empty() {
         None // nothing measured — there is no score, and 0.0 would be a lie
-    } else {
+    } else if gated_by.is_empty() {
         Some(geometric_mean(values.as_slice()))
+    } else {
+        // Report the mean over the dimensions that are not gating, so the
+        // number still describes the project. `gated_by` is what makes the
+        // verdict, and `grade_for` renders it GATED rather than F.
+        (!non_gated.is_empty()).then(|| geometric_mean(non_gated.as_slice()))
     };
     debug_assert!(
         composite.is_none_or(|c| (0.0..=100.0).contains(&c)),
         "geometric mean out of range: {composite:?}"
     );
 
-    let grade = grade_for(composite);
+    let grade = grade_for_verdict(composite, &gated_by);
     let [rps, comply, coverage, muda_inv, evoscore, dbc, file_health, pv_lint] = dimensions;
 
     CompositeScore {
@@ -430,6 +466,7 @@ fn assemble_score(
         dimensions_measured: values.len(),
         dimensions_total: DIMENSIONS.len(),
         not_measured,
+        gated_by,
         rps_categories,
         comply_errors,
         comply_warnings,
@@ -437,6 +474,18 @@ fn assemble_score(
 }
 
 /// Letter grade for a composite — `n/a` when there is no composite to grade.
+/// Render the grade, with GATED as a first-class verdict.
+///
+/// `gated_by` is checked before the number: a red gate is a categorical fact,
+/// not a low average, and collapsing it into `F` throws away the only
+/// information the reader can act on — which gate, and therefore what to fix.
+fn grade_for_verdict(composite: Option<f64>, gated_by: &[String]) -> String {
+    if !gated_by.is_empty() {
+        return format!("GATED ({})", gated_by.join(", "));
+    }
+    grade_for(composite)
+}
+
 fn grade_for(composite: Option<f64>) -> String {
     let Some(composite) = composite else {
         return "n/a".to_string();
@@ -637,6 +686,181 @@ include!("score_handler_compute.rs");
 // Display, trend, stack quality, and history functions extracted for CB-040
 include!("score_handler_display.rs");
 
+#[cfg(test)]
+mod gated_verdict_tests {
+    //! REGRESSION (#983 / paiml/aprender#2463): one zeroed dimension collapsed
+    //! the composite to `0.0` and the grade to `F`, on a tree scoring 100.0 on
+    //! File Health and 92.0 on Muda. A geometric mean is zero if any term is
+    //! zero, so `F` could not be distinguished from "everything is bad", and the
+    //! composite was useless for tracking — it could not tell one red gate from
+    //! a collapsed project.
+    //!
+    //! A red gate is a categorical fact, not a low average. It gets its own
+    //! verdict (`GATED (comply)`), and the composite reports the mean over the
+    //! dimensions that are NOT gating so the project's shape stays legible.
+    use super::*;
+
+    fn dims(values: [Option<f64>; 8]) -> [Dimension; 8] {
+        values.map(|v| v.ok_or_else(|| "not measured in this fixture".to_string()))
+    }
+
+    fn score_of(values: [Option<f64>; 8]) -> CompositeScore {
+        assemble_score(
+            "abc1234".into(),
+            "2026-08-13T00:00:00Z".into(),
+            dims(values),
+            HashMap::new(),
+            0,
+            0,
+        )
+    }
+
+    /// The exact shape from the bug report: RPS 63.1, Comply 0.0, Muda 92.0,
+    /// File Health 100.0, PV Lint 48.9, three dimensions unmeasured.
+    fn reported_shape() -> CompositeScore {
+        score_of([
+            Some(63.1),
+            Some(0.0),
+            None,
+            Some(92.0),
+            None,
+            None,
+            Some(100.0),
+            Some(48.9),
+        ])
+    }
+
+    #[test]
+    fn one_red_gate_is_named_instead_of_graded_f() {
+        let score = reported_shape();
+        assert_eq!(
+            score.grade, "GATED (comply)",
+            "a red gate must name itself, not render as F"
+        );
+        assert_eq!(score.gated_by, vec!["comply".to_string()]);
+    }
+
+    #[test]
+    fn the_composite_is_the_mean_of_the_non_gating_dimensions() {
+        let score = reported_shape();
+        let composite = score.composite.expect("four dimensions are non-gating");
+        assert!(
+            composite > 50.0 && composite < 100.0,
+            "a tree at 100.0 File Health and 92.0 Muda must not read as 0.0, got {composite}"
+        );
+        // Geometric mean of 63.1, 92.0, 100.0, 48.9.
+        let expected = (63.1f64 * 92.0 * 100.0 * 48.9).powf(0.25);
+        assert!(
+            (composite - expected).abs() < 1e-6,
+            "composite {composite} is not the mean of the non-gating dimensions ({expected})"
+        );
+    }
+
+    #[test]
+    fn the_dimension_count_still_reports_what_was_measured() {
+        let score = reported_shape();
+        assert_eq!(score.dimensions_measured, 5);
+        assert_eq!(score.dimensions_total, 8);
+        assert_eq!(score.not_measured.len(), 3);
+        for n in &score.not_measured {
+            assert!(!n.reason.is_empty(), "{n:?} must say why");
+        }
+    }
+
+    /// Several gates go into the verdict, so the reader learns every one to fix.
+    #[test]
+    fn every_red_gate_is_named() {
+        let score = score_of([
+            Some(63.1),
+            Some(0.0),
+            None,
+            Some(92.0),
+            None,
+            None,
+            Some(0.0),
+            Some(48.9),
+        ]);
+        assert_eq!(score.grade, "GATED (comply, file_health)", "{score:?}");
+    }
+
+    /// The other direction: no gate means an ordinary grade, so the fix cannot
+    /// have turned every report into "GATED".
+    #[test]
+    fn a_clean_project_still_gets_a_letter_grade() {
+        let score = score_of([
+            Some(95.0),
+            Some(96.0),
+            Some(94.0),
+            Some(93.0),
+            Some(97.0),
+            Some(92.0),
+            Some(98.0),
+            Some(91.0),
+        ]);
+        assert!(score.gated_by.is_empty(), "{score:?}");
+        assert_eq!(score.grade, "A");
+    }
+
+    /// A genuinely bad — but non-zero — project still grades F. GATED must not
+    /// become a way of hiding a low score.
+    #[test]
+    fn a_low_but_measured_project_still_grades_f() {
+        let score = score_of([
+            Some(10.0),
+            Some(12.0),
+            Some(8.0),
+            Some(15.0),
+            Some(11.0),
+            Some(9.0),
+            Some(14.0),
+            Some(13.0),
+        ]);
+        assert!(score.gated_by.is_empty(), "{score:?}");
+        assert_eq!(score.grade, "F");
+    }
+
+    /// Everything gated: there is no non-gating dimension to average, so there
+    /// is no composite — `None`, not `0.0`, which would read as a measurement.
+    #[test]
+    fn all_gates_red_reports_no_composite_at_all() {
+        let score = score_of([Some(0.0); 8]);
+        assert_eq!(score.composite, None, "{score:?}");
+        assert!(score.grade.starts_with("GATED ("), "{score:?}");
+    }
+
+    /// Nothing measured is still "n/a", not F: the gate list is empty because
+    /// no dimension came back at zero — none came back at all.
+    #[test]
+    fn nothing_measured_is_not_a_gate() {
+        let score = score_of([None; 8]);
+        assert_eq!(score.composite, None);
+        assert_eq!(score.grade, "n/a");
+        assert!(score.gated_by.is_empty());
+    }
+
+    /// The verdict has to survive the JSON surface, which is what CI reads.
+    #[test]
+    fn json_carries_the_gate_list_and_the_verdict() {
+        let json = serde_json::to_value(reported_shape()).expect("serialize");
+        assert_eq!(json["grade"], "GATED (comply)");
+        assert_eq!(json["gated_by"], serde_json::json!(["comply"]));
+        assert_eq!(json["dimensions_measured"], 5);
+    }
+
+    /// And the text report must say that the composite excludes the gate,
+    /// otherwise the number silently means something different from run to run.
+    #[test]
+    fn text_report_says_the_composite_excludes_the_gate() {
+        let _guard = crate::cli::colors::ForcedColor::off();
+        let rendered = format_text(&reported_shape());
+        assert!(rendered.contains("GATED (comply)"), "got:\n{rendered}");
+        assert!(
+            rendered.contains("non-gating"),
+            "the report must say what the composite covers, got:\n{rendered}"
+        );
+    }
+}
+
 /// `pmat score --quiet` was byte-identical to `pmat score`.
 ///
 /// The small fixture used during triage showed no stderr at all, so `score`
@@ -731,6 +955,9 @@ mod tests {
             grade: "B".into(),
             sub_scores: sub,
             not_measured: Vec::new(),
+            // No dimension is gated in this fixture: it stands for a fully
+            // measured score, so the grade is a grade rather than `GATED (…)`.
+            gated_by: Vec::new(),
             dimensions_measured: DIMENSIONS.len(),
             dimensions_total: DIMENSIONS.len(),
             rps_categories: HashMap::new(),

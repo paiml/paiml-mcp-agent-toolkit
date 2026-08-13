@@ -55,9 +55,17 @@ impl FiveWhysAnalyzer {
         for i in 1..=depth {
             let why = self.iterate_why(issue, path, i, &analysis.whys).await?;
 
-            // Early termination if high confidence reached (>0.9) after at least 3 iterations
+            // Early termination if high confidence reached (>0.9) after at
+            // least 3 iterations. Say so: the caller asked for `depth` whys and
+            // is getting fewer, and silence made `--depth` look inert (#962).
             if i >= 3 && why.confidence > 0.9 {
+                let confidence = why.confidence;
                 analysis.whys.push(why);
+                if i < depth {
+                    analysis.stopped_early = Some(format!(
+                        "converged after {i} of {depth} whys: confidence {confidence:.2} exceeded 0.90"
+                    ));
+                }
                 break;
             }
 

@@ -33,7 +33,13 @@ pub use output::format_summary;
 
 use crate::cli::LintHotspotOutputFormat;
 use anyhow::Result;
-use metrics::{calculate_enforcement_metadata, check_quality_gates, generate_refactor_chain};
+use metrics::{
+    calculate_enforcement_metadata, check_quality_gates_across_files, generate_refactor_chain,
+};
+// The single-file entry point of the same gate rule, used by the test
+// fragments included below (they reach it through `use super::*`).
+#[cfg(test)]
+use metrics::check_quality_gates;
 use output::format_output;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -288,7 +294,11 @@ fn build_final_result(
 ) -> Result<LintHotspotResult> {
     let enforcement = generate_enforcement_metadata_if_needed(&result.hotspot, params);
     let refactor_chain = generate_refactor_chain_if_needed(&result.hotspot, params, &enforcement);
-    let quality_gate = check_quality_gates(&result.hotspot, params.max_density);
+    // The worst file in the project, not just the one named as the hotspot —
+    // see `check_quality_gates_across_files`. The hotspot is now ranked with a
+    // floored denominator so that a 3-line stub cannot outrank a 500-line file,
+    // and the gate must not lose a breach because the headline moved.
+    let quality_gate = check_quality_gates_across_files(&result, params.max_density);
 
     result.enforcement = enforcement;
     result.refactor_chain = refactor_chain;

@@ -279,7 +279,12 @@ impl GccFormatter {
             DeadCodeType::Function => "function",
             DeadCodeType::Class => "class",
             DeadCodeType::Variable => "variable",
+            // #928: `Module` and `Other` became representable in
+            // `models::dead_code::DeadCodeType`; before that a dead module was
+            // printed here as "variable".
+            DeadCodeType::Module => "module",
             DeadCodeType::UnreachableCode => "unreachable",
+            DeadCodeType::Other => "item",
         };
         output.push_str(&format!(
             "{}:{}:0: {}: {} '{}' - {}\n",
@@ -292,7 +297,11 @@ impl GccFormatter {
             DeadCodeType::Function => "warning",
             DeadCodeType::Class => "warning",
             DeadCodeType::Variable => "note",
+            // A whole unused module is at least as reportable as an unused
+            // function; an unclassified item keeps the conservative "note".
+            DeadCodeType::Module => "warning",
             DeadCodeType::UnreachableCode => "warning",
+            DeadCodeType::Other => "note",
         }
     }
 }

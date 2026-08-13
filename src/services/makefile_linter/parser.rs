@@ -46,3 +46,6 @@ include!("parser_tests.rs");
 
 // Regression tests for `::=` / `:::=` scanning
 include!("parser_scanner_tests.rs");
+
+// Parser/registry coverage tests (previously an orphaned file)
+include!("coverage_tests.rs");

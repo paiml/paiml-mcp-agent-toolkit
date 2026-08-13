@@ -1,9 +1,8 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Unit tests for types, helper functions, and file collection
 
-use super::handler::{calculate_summary, collect_rust_files, is_hidden};
+use super::handler::{calculate_summary, collect_source_files, is_hidden};
 use super::types::*;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 // =========================================================================
@@ -229,18 +228,18 @@ fn test_is_hidden_regular_dir() {
 }
 
 // =========================================================================
-// collect_rust_files tests
+// collect_source_files tests
 // =========================================================================
 
 #[test]
-fn test_collect_rust_files_empty_dir() {
+fn test_collect_source_files_empty_dir() {
     let temp_dir = TempDir::new().expect("temp dir");
-    let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
+    let files = collect_source_files(temp_dir.path()).expect("Should succeed");
     assert!(files.is_empty());
 }
 
 #[test]
-fn test_collect_rust_files_with_rust_files() {
+fn test_collect_source_files_with_rust_files() {
     let temp_dir = TempDir::new().expect("temp dir");
 
     // Create some .rs files
@@ -255,13 +254,13 @@ fn test_collect_rust_files_with_rust_files() {
     assert!(main_path.exists(), "main.rs should exist");
     assert!(lib_path.exists(), "lib.rs should exist");
 
-    let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
+    let files = collect_source_files(temp_dir.path()).expect("Should succeed");
     // Test may find 0, 1, or 2 files depending on filesystem timing
     let _ = &files; // Verify collect succeeded without panic
 }
 
 #[test]
-fn test_collect_rust_files_excludes_hidden() {
+fn test_collect_source_files_excludes_hidden() {
     let temp_dir = TempDir::new().expect("temp dir");
 
     // Create visible file
@@ -274,7 +273,7 @@ fn test_collect_rust_files_excludes_hidden() {
     std::fs::create_dir_all(&hidden_dir).expect("create dir");
     std::fs::write(hidden_dir.join("secret.rs"), "fn secret() {}").expect("write file");
 
-    let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
+    let files = collect_source_files(temp_dir.path()).expect("Should succeed");
     // Hidden files should not be included
     assert!(files
         .iter()
@@ -282,7 +281,7 @@ fn test_collect_rust_files_excludes_hidden() {
 }
 
 #[test]
-fn test_collect_rust_files_excludes_target() {
+fn test_collect_source_files_excludes_target() {
     let temp_dir = TempDir::new().expect("temp dir");
 
     // Create visible file
@@ -295,7 +294,7 @@ fn test_collect_rust_files_excludes_target() {
     std::fs::create_dir_all(&target_dir).expect("create dir");
     std::fs::write(target_dir.join("build.rs"), "fn build() {}").expect("write file");
 
-    let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
+    let files = collect_source_files(temp_dir.path()).expect("Should succeed");
     // Target directory files should not be included
     assert!(files
         .iter()
@@ -303,7 +302,7 @@ fn test_collect_rust_files_excludes_target() {
 }
 
 #[test]
-fn test_collect_rust_files_ignores_non_rust() {
+fn test_collect_source_files_keeps_every_language_with_a_rule_set() {
     let temp_dir = TempDir::new().expect("temp dir");
 
     let src_dir = temp_dir.path().join("src");
@@ -314,12 +313,33 @@ fn test_collect_rust_files_ignores_non_rust() {
     std::fs::write(src_dir.join("config.toml"), "[package]").expect("write");
     std::fs::write(src_dir.join("readme.md"), "# Readme").expect("write");
     std::fs::write(src_dir.join("script.py"), "print('hello')").expect("write");
+    std::fs::write(src_dir.join("mod.lua"), "return {}").expect("write");
+    std::fs::write(src_dir.join("app.ts"), "export const x = 1;").expect("write");
+    std::fs::write(src_dir.join("main.go"), "package main").expect("write");
 
-    let files = collect_rust_files(temp_dir.path()).expect("Should succeed");
-    // All returned files should be .rs files
-    assert!(files
+    let files = collect_source_files(temp_dir.path()).expect("Should succeed");
+    let names: Vec<String> = files
         .iter()
-        .all(|f| f.extension().is_some_and(|ext| ext == "rs")));
+        .filter_map(|f| f.file_name().map(|n| n.to_string_lossy().to_string()))
+        .collect();
+
+    // #926: the walk kept `ext == "rs"`, so the Lua, Python and TypeScript
+    // rule sets could never be reached from this command however many files
+    // of those languages a project had.
+    for wanted in ["main.rs", "script.py", "mod.lua", "app.ts"] {
+        assert!(
+            names.iter().any(|n| n == wanted),
+            "{wanted} has a rule set and must be collected; got {names:?}"
+        );
+    }
+    // A language with no rule set is not collected here — the walk would have
+    // nothing to grade it with. `--file` still reaches it, and refuses.
+    for unwanted in ["config.toml", "readme.md", "main.go"] {
+        assert!(
+            !names.iter().any(|n| n == unwanted),
+            "{unwanted} has no rule set and must not be collected; got {names:?}"
+        );
+    }
 }
 
 // =========================================================================
@@ -328,10 +348,9 @@ fn test_collect_rust_files_ignores_non_rust() {
 
 #[test]
 fn test_calculate_summary_empty() {
-    let files: Vec<PathBuf> = vec![];
     let defects: Vec<crate::services::defect_detector::DefectPattern> = vec![];
 
-    let summary = calculate_summary(&files, &defects);
+    let summary = calculate_summary(0, &defects);
 
     assert_eq!(summary.total_files_scanned, 0);
     assert_eq!(summary.files_with_defects, 0);

@@ -437,7 +437,8 @@ repos identified 14 problem classes: 6 conflicting writers (Critical), shell
 injection (Medium-High), non-deterministic timestamps, TOCTOU races, 72
 `--no-verify` bypasses. Design rules: single `HookRegistry` writer (CB-1333),
 atomic writes (CB-1334), deterministic content (CB-1335), shell escaping
-(CB-1336), O(1) performance budget (CB-1337).
+(CB-1336), cold-start commands invoked by the hook (CB-1337 — a static read of
+the script; no hook is executed or timed).
 
 **Phase 8: Falsify Leak Remediation.** Provable-contracts git history audit
 identified 7 leak classes: ghost bindings (28,206 stripped in PMAT-106),

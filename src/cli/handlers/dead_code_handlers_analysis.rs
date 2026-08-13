@@ -53,7 +53,8 @@ async fn run_dead_code_analysis_with_filters(
 
     // For non-Rust projects, use the multi-language analyzer
     if detection.language != "rust" {
-        return run_multi_language_dead_code_within(path, filters, detection.language, budget).await;
+        return run_multi_language_dead_code_within(path, filters, detection.language, budget)
+            .await;
     }
 
     // Create file filter
@@ -546,11 +547,14 @@ fn dead_items_to_report_items(
             // EXHAUSTIVE on purpose: no `_` arm. The wildcard here is what typed
             // every suppressed function as `"variable"` in a record whose own
             // `reason` said `fn`, and it would silently swallow any kind added
-            // later the same way. `DeadCodeType` has only four variants, so
-            // `Module` and an unrecognised `Other` have nowhere better to go
-            // than `Variable` — but that is now a decision written down at a
-            // named arm, and adding a `DeadCodeKind` fails to compile until
-            // someone makes the same decision for it.
+            // later the same way.
+            //
+            // #928: `Module` and `Other` used to land on `Variable` because the
+            // target enum had no way to say either one — a dead module was
+            // published as `"item_type": "variable"` beside a `reason` reading
+            // "module `x` is never used", and `union `U` is never used` (which
+            // the parser classifies as `Other`) was published the same way.
+            // Both now map to the variant that names them.
             item_type: match &item.kind {
                 DeadCodeKind::Function | DeadCodeKind::Method => DeadCodeType::Function,
                 DeadCodeKind::Struct
@@ -561,11 +565,9 @@ fn dead_items_to_report_items(
                 | DeadCodeKind::Field
                 | DeadCodeKind::Constant
                 | DeadCodeKind::Static => DeadCodeType::Variable,
-                // `DeadCodeType` cannot say "module"; the kind survives in
-                // `reason`, and `dead_modules` counts it correctly.
-                DeadCodeKind::Module => DeadCodeType::Variable,
+                DeadCodeKind::Module => DeadCodeType::Module,
                 DeadCodeKind::UnreachableCode => DeadCodeType::UnreachableCode,
-                DeadCodeKind::Other(_) => DeadCodeType::Variable,
+                DeadCodeKind::Other(_) => DeadCodeType::Other,
             },
             name: item.name.clone(),
             line: u32::try_from(item.line).unwrap_or(u32::MAX),

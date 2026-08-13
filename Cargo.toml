@@ -16,7 +16,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
-exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", ".pmat-work/", ".pmat-qa/", ".pmat-metrics/", ".pmat-baseline.json", "node_modules/", "*.pyc", "__pycache__/", "quality-report.json", "bridge/package-lock.json", "*.yaml.lock"]
+exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", ".pmat-work/", ".pmat-qa/", ".pmat-metrics/", ".pmat-baseline.json", "node_modules/", "*.pyc", "__pycache__/", "quality-report.json", "*.yaml.lock"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
@@ -409,8 +409,6 @@ red-phase-tests = []
 # Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
 # Disabled by default for fast coverage - enable with --features cli-integration
 cli-integration = []
-# Claude Agent SDK integration (not ready for production - 0% test coverage)
-claude-integration = ["bytes", "libc"]
 # Experimental modules (not production-ready, 0% test coverage)
 # These are feature-gated to exclude from default coverage measurement
 agents-md = ["shell-words"]  # AGENTS.md integration for AI agent guidance
@@ -543,10 +541,6 @@ harness = false
 
 [[bench]]
 name = "storage_backend_bench"
-harness = false
-
-[[bench]]
-name = "claude_integration_bench"
 harness = false
 
 [[bench]]
@@ -700,11 +694,6 @@ required-features = ["demo"]
 name = "compare_repos"
 path = "examples/compare_repos.rs"
 required-features = ["demo"]
-
-[[example]]
-name = "claude_integration_example"
-path = "examples/claude_integration_example.rs"
-required-features = ["claude-integration"]
 
 [[example]]
 name = "agent_context_query_demo"

@@ -65,7 +65,9 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
                                     DeadCodeType::Function => "Dead function",
                                     DeadCodeType::Class => "Dead class",
                                     DeadCodeType::Variable => "Dead variable",
+                                    DeadCodeType::Module => "Dead module",
                                     DeadCodeType::UnreachableCode => "Unreachable code",
+                                    DeadCodeType::Other => "Dead item",
                                 },
                                 item.reason
                             )
@@ -249,16 +251,10 @@ fn write_dead_code_by_type_section(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    use crate::models::dead_code::DeadCodeType;
     use std::fmt::Write;
 
     let summary = &result.summary;
-    let other_items = result
-        .files
-        .iter()
-        .flat_map(|f| f.items.iter())
-        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
-        .count();
+    let other_items = count_other_items(result);
 
     writeln!(output, "{}\n", c::subheader("Dead Code by Type"))?;
     for (label, value) in [
@@ -277,6 +273,25 @@ fn write_dead_code_by_type_section(
     }
 
     Ok(())
+}
+
+/// The items that belong in the "Other" row: bindings (fields, constants,
+/// statics, variants) and anything whose kind the producer could not name.
+///
+/// ONE implementation, called by both renderers. #928: this predicate used to
+/// be written out twice as `matches!(item.item_type, DeadCodeType::Variable)`,
+/// and because a dead MODULE was also typed `Variable` back then, every module
+/// was counted in BOTH the "Dead modules" row and this one — the two rows
+/// summed to more items than the report listed.
+fn count_other_items(result: &crate::models::dead_code::DeadCodeResult) -> usize {
+    use crate::models::dead_code::DeadCodeType;
+
+    result
+        .files
+        .iter()
+        .flat_map(|f| f.items.iter())
+        .filter(|item| matches!(item.item_type, DeadCodeType::Variable | DeadCodeType::Other))
+        .count()
 }
 
 /// Write top files with dead code section
@@ -355,15 +370,8 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
 /// counted from the items themselves, exactly as the text renderer does, so
 /// every reported dead item lands in one row.
 fn format_dead_code_breakdown_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
-    use crate::models::dead_code::DeadCodeType;
-
     let summary = &result.summary;
-    let other_items = result
-        .files
-        .iter()
-        .flat_map(|f| f.items.iter())
-        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
-        .count();
+    let other_items = count_other_items(result);
 
     format!(
         "## Dead Code Breakdown\n\n\

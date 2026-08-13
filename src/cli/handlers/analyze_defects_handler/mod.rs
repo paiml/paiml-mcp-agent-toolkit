@@ -20,3 +20,6 @@ mod tests_output;
 
 #[cfg(test)]
 mod tests_integration;
+
+#[cfg(test)]
+mod tests_nothing_measured;

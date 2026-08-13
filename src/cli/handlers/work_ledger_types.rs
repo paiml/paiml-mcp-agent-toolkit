@@ -215,6 +215,20 @@ impl AgentHarness {
             .map(|(_, harness)| harness.clone())
             .unwrap_or_else(|| Self::Other(s.trim().to_string()))
     }
+
+    /// Canonical kebab-case token — the inverse of [`Self::parse_token`],
+    /// read from the same `KNOWN_TOKENS` table (first entry per harness is
+    /// the canonical spelling) so a second naming rule cannot drift from it.
+    pub fn token(&self) -> String {
+        if let Self::Other(s) = self {
+            return s.clone();
+        }
+        Self::KNOWN_TOKENS
+            .iter()
+            .find(|(_, harness)| harness == self)
+            .map(|(token, _)| (*token).to_string())
+            .unwrap_or_else(|| format!("{self:?}"))
+    }
 }
 
 /// How provenance was captured: declared flags are canonical, env detection
@@ -290,6 +304,22 @@ pub enum AgentEvent {
         workflow_id: String,
         /// Number of subagents spawned
         subagents: u32,
+    },
+    /// A ticket was handed to another agent (MACS-019). This IS the
+    /// provenance boundary: it names the delegating agent, the target, and
+    /// the handoff bundle that carries the forwarded task context, so a later
+    /// receipt written by the delegate can be attributed across the handoff.
+    Delegation {
+        /// ISO 8601 timestamp
+        at: String,
+        /// Target token: "agent" | "google-anti-gravity"
+        to: String,
+        /// Path of the handoff bundle carrying the forwarded task context
+        handoff: String,
+        /// sha256 of the handoff bundle bytes
+        digest: String,
+        /// Resolved provenance of the delegating agent (the near side)
+        delegated_by: AgentProvenance,
     },
     /// Acknowledgement of a prior blocking event (MACS-003). Events are
     /// append-only, so an ack is itself a reason-carrying event; a Refusal

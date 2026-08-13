@@ -121,7 +121,7 @@ impl PrecommitScorer {
     ///
     /// A gate mentioned only in a comment is not invoked, so comments are
     /// stripped before matching; that alone reverses the case in #940.
-    async fn score_hook_performance(
+    async fn score_hook_gate_coverage(
         &self,
         repo_path: &Path,
         _config: &ScorerConfig,
@@ -259,7 +259,11 @@ const HOOK_GATES: [(&str, f64, &[&str]); 4] = [
 ///
 /// A `#` inside single or double quotes is not a comment; everything else from
 /// `#` to end of line is dropped, as is the `#!` shebang.
-fn strip_shell_comments(content: &str) -> String {
+///
+/// One rule, one implementation: `pmat comply`'s CB-1337 reads the same hook
+/// script for the same reason and calls this, rather than growing a second
+/// answer to "does this hook invoke X".
+pub(crate) fn strip_shell_comments(content: &str) -> String {
     let mut out = String::with_capacity(content.len());
     for line in content.lines() {
         let mut in_single = false;
@@ -307,7 +311,7 @@ impl Scorer for PrecommitScorer {
 
     async fn score(&self, repo_path: &Path, config: &ScorerConfig) -> Result<CategoryScore> {
         let b1 = self.score_hook_present(repo_path).await?;
-        let b2 = self.score_hook_performance(repo_path, config).await?;
+        let b2 = self.score_hook_gate_coverage(repo_path, config).await?;
 
         let total_score = b1.score + b2.score;
 
@@ -458,7 +462,7 @@ cargo clippy -- -D warnings
     }
 
     #[tokio::test]
-    async fn test_precommit_performance_subcategory() {
+    async fn test_precommit_gate_coverage_subcategory() {
         let temp_dir = create_temp_repo();
         let repo_path = temp_dir.path();
         create_git_repo(repo_path);

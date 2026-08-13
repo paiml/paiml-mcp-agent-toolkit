@@ -665,7 +665,7 @@ Repository Score: 94/100 (A)
 
  ⚠️  B. Pre-commit Hooks              18/20 (90%)
     ✅ B1. Best Practices              9/10
-    ✅ B2. Performance                 9/10
+    ✅ B2. Hook Gate Coverage          9/10
 
  ⚠️  C. Repository Hygiene             8/10 (80%)
     ✅ C1. No Cruft                    5/5

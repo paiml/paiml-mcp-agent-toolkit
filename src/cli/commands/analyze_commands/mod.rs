@@ -158,8 +158,17 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         fail_on_violation: bool,
 
+        // Enforced by `run_within_analysis_budget` — before that it was a
+        // banner only. Default raised from 60s when the bound became real:
+        // this repo's 4400 files take 8.1s to walk, so 60s left under an order
+        // of magnitude of headroom and would have turned a large monorepo's
+        // DEFAULT invocation into a failure.
         /// Analysis timeout in seconds
-        #[arg(long, default_value = "60")]
+        ///
+        /// Cancels the analysis and exits non-zero once the budget is spent —
+        /// it is a bound, not advice. `--timeout 0` is a zero-length budget,
+        /// not "no limit".
+        #[arg(long, default_value = "300")]
         timeout: u64,
 
         /// NOT IMPLEMENTED: ML-based scoring (aprender LinearRegression)
@@ -259,8 +268,19 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "15.0")]
         max_percentage: f64,
 
+        // #929 made this budget real, and here it bounds a `cargo check` child
+        // rather than a walk. The old 60s default was then smaller than the
+        // work the DEFAULT invocation does: `pmat analyze dead-code -p .` on
+        // this repo measured 67.6s with a warm target dir and 245s cold, so 60s
+        // made the plain command fail on the project that ships it.
         /// Analysis timeout in seconds
-        #[arg(long, default_value = "60")]
+        ///
+        /// Cancels the analysis — including the `cargo check` it runs — and
+        /// exits non-zero once the budget is spent. A COLD `cargo check` on a
+        /// large crate takes minutes; raise this rather than reading the
+        /// failure as a hang. `--timeout 0` is a zero-length budget, not "no
+        /// limit".
+        #[arg(long, default_value = "900")]
         timeout: u64,
 
         /// Include file patterns (e.g., "**/*.rs", "src/**")
@@ -1746,6 +1766,132 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         check: bool,
     },
+}
+
+/// Run `work` under the wall-clock budget a `--timeout` on this enum names.
+///
+/// This is the ONE implementation of what `--timeout` means. It lives beside
+/// the flag declarations because the flags are what promise the bound: every
+/// command that declares `timeout: u64` above must route its analysis through
+/// here, or its `--timeout` is a number the user reads and nothing obeys.
+/// Three separate handlers previously grew their own version and only one of
+/// them worked (#929): `analyze complexity` printed "⏰ Analysis timeout set to
+/// N seconds" and never enforced anything (measured: `--timeout 1` ran 8.1s and
+/// exited 0), and the SATD copy wrapped `tokio::time::timeout` around a future
+/// polled inline.
+///
+/// Why `tokio::spawn` and not a bare `tokio::time::timeout(budget, work)`:
+/// `timeout` polls `work` on the CALLER's task, so a future that does not yield
+/// — a synchronous walk or parse inside an `async fn` — never gives the timer a
+/// chance to fire. That is exactly the non-enforcement #929 diagnosed. Moving
+/// the work onto its own task lets the multi-threaded runtime preempt it, and
+/// the timer runs on a thread the work cannot monopolise.
+///
+/// Caveat, stated rather than hidden: `abort()` cancels a task only at its next
+/// await point, so work that is mid-CPU-burn keeps running until it yields. It
+/// dies with the process, which exits on the error returned here. Work that
+/// owns a CHILD PROCESS must additionally kill it — see
+/// `CargoDeadCodeAnalyzer::wait_for_cargo_check`, where the budget is carried
+/// into the analyzer so `cargo check` is actually killed.
+///
+/// `timeout_secs == 0` is a zero-length budget and fails immediately; it is not
+/// a synonym for "no limit". The error says so rather than looking like a hang.
+pub(crate) async fn run_within_analysis_budget<F, T>(
+    what: &str,
+    timeout_secs: u64,
+    work: F,
+) -> anyhow::Result<T>
+where
+    F: std::future::Future<Output = anyhow::Result<T>> + Send + 'static,
+    T: Send + 'static,
+{
+    let budget = std::time::Duration::from_secs(timeout_secs);
+    let task = tokio::spawn(work);
+    let abort = task.abort_handle();
+
+    match tokio::time::timeout(budget, task).await {
+        Ok(joined) => joined.map_err(|e| anyhow::anyhow!("{what} panicked: {e}"))?,
+        Err(_) => {
+            // Dropping a `JoinHandle` DETACHES the task; only `abort` stops it.
+            abort.abort();
+            anyhow::bail!(
+                "{what} timed out after {timeout_secs} seconds — re-run with a larger --timeout \
+                 (--timeout 0 is a zero-length budget, not 'no limit')"
+            )
+        }
+    }
+}
+
+#[cfg(test)]
+mod analysis_budget_tests {
+    //! `--timeout` must be a bound, not a banner. See
+    //! `run_within_analysis_budget`.
+    use super::run_within_analysis_budget;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn work_that_finishes_inside_the_budget_returns_its_value() {
+        let got: u32 = run_within_analysis_budget("Test analysis", 30, async { Ok(7) })
+            .await
+            .expect("work well inside the budget must not be cancelled");
+        assert_eq!(got, 7);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn work_that_outlives_the_budget_fails_and_names_the_budget() {
+        let started = std::time::Instant::now();
+        let err = run_within_analysis_budget("Test analysis", 1, async {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            Ok(())
+        })
+        .await
+        .expect_err("30s of work under a 1s budget must not report success");
+
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(10),
+            "the budget must cut the work short, took {elapsed:?}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("timed out after 1 seconds"),
+            "the error must name the budget that was exceeded, got: {msg}"
+        );
+        assert!(
+            msg.contains("--timeout"),
+            "the error must name the knob that moves the budget, got: {msg}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_zero_budget_fails_rather_than_meaning_unlimited() {
+        let err = run_within_analysis_budget("Test analysis", 0, async {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            Ok(())
+        })
+        .await
+        .expect_err("--timeout 0 must not silently mean 'no limit'");
+        assert!(
+            err.to_string().contains("timed out after 0 seconds"),
+            "got: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_panicking_analysis_is_reported_as_a_panic_not_a_timeout() {
+        let err = run_within_analysis_budget("Test analysis", 30, async {
+            panic!("boom");
+            #[allow(unreachable_code)]
+            Ok(())
+        })
+        .await
+        .expect_err("a panicking analysis must not be reported as success");
+        let msg = err.to_string();
+        assert!(msg.contains("panicked"), "got: {msg}");
+        assert!(
+            !msg.contains("timed out"),
+            "a panic must not be dressed up as a timeout, got: {msg}"
+        );
+    }
 }
 
 #[cfg(test)]
