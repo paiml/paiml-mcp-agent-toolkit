@@ -86,7 +86,7 @@ aprender-viz = { version = "0.61", optional = true, features = ["terminal", "gra
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
-wgpu = { version = "29.0", optional = true, features = ["wgsl"] }
+wgpu = { version = "30.0", optional = true, features = ["wgsl"] }
 pollster = { version = "0.4", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
 arrow = { version = "57", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (57) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
