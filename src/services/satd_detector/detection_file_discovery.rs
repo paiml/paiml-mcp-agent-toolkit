@@ -156,7 +156,7 @@ impl SATDDetector {
     /// a segment — classified every file in the project as test code and
     /// reported the whole tree clean.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub(crate) fn is_test_file(&self, path: &Path) -> bool {
+    pub fn is_test_file(&self, path: &Path) -> bool {
         // Check if path contains test directories
         let path_str = source_scope::project_relative_str(path);
         if source_scope::has_dir_component(&path_str, &["tests", "test"]) {
