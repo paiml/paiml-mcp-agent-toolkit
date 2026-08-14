@@ -97,7 +97,15 @@ pub struct PmatAnalysis {
     pub commands: Vec<Command>,
 
     /// Quality metrics
-    pub quality_metrics: QualityMetrics,
+    /// Measured quality, or `None` when nothing measured it.
+    ///
+    /// `generate_from_project` used to fabricate this — `test_coverage: 80.0`,
+    /// `grade: "A"`, `satd_count: 0` for EVERY repository — and the renderers
+    /// wrote it into AGENTS.md as "Ensure 80%+ coverage maintained" and
+    /// "Current quality grade: A". AGENTS.md is mounted natively into agent
+    /// sandboxes, so that is a fabricated quality claim delivered to an agent
+    /// as fact about the project it is editing. `None` omits the lines instead.
+    pub quality_metrics: Option<QualityMetrics>,
 
     /// Dependencies
     pub dependencies: Vec<String>,
@@ -287,12 +295,12 @@ impl AgentsMdGenerator {
             description: project.description.clone(),
             project_type: self.detect_project_type(&project.root)?,
             commands: self.detect_commands(&project.root)?,
-            quality_metrics: QualityMetrics {
-                avg_complexity: 10.0,
-                test_coverage: 80.0,
-                satd_count: 0,
-                grade: "A".to_string(),
-            },
+            // NOT fabricated. This constructor is handed a `ProjectInfo` —
+            // a name, a description and a root path. It runs no analysis, so
+            // it has no coverage figure, no grade and no SATD count, and must
+            // not invent them. Callers with real measurements build
+            // `PmatAnalysis` directly and pass `Some(..)`.
+            quality_metrics: None,
             dependencies: vec![],
         };
 
@@ -377,11 +385,13 @@ impl AgentsMdGenerator {
     fn generate_testing(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
         writeln!(output, "## Testing Instructions")?;
         writeln!(output, "- Run tests before committing")?;
-        writeln!(
-            output,
-            "- Ensure {}%+ coverage maintained",
-            analysis.quality_metrics.test_coverage as u32
-        )?;
+        if let Some(m) = &analysis.quality_metrics {
+            writeln!(
+                output,
+                "- Ensure {}%+ coverage maintained",
+                m.test_coverage as u32
+            )?;
+        }
         writeln!(output, "- All functions must have complexity ≤{}", 10)?;
         writeln!(output)?;
         Ok(())
@@ -391,11 +401,9 @@ impl AgentsMdGenerator {
     fn generate_code_style(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
         writeln!(output, "## Code Style")?;
         writeln!(output, "- Follow project coding standards")?;
-        writeln!(
-            output,
-            "- Current quality grade: {}",
-            analysis.quality_metrics.grade
-        )?;
+        if let Some(m) = &analysis.quality_metrics {
+            writeln!(output, "- Current quality grade: {}", m.grade)?;
+        }
         writeln!(output, "- Zero SATD tolerance")?;
         writeln!(output)?;
         Ok(())
