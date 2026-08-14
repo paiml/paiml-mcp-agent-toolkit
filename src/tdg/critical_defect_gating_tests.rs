@@ -571,7 +571,9 @@ mod both_analyzers_apply_one_gate {
         }
 
         // Each closure prepares a directory and returns the file to analyze.
-        let contexts: Vec<(&str, fn(&Path) -> PathBuf)> = vec![
+        /// A named git context: a label, and a setup fn returning the file to analyze.
+        type GitContext = (&'static str, fn(&Path) -> PathBuf);
+        let contexts: Vec<GitContext> = vec![
             ("committed", |dir| {
                 init(dir);
                 let f = dir.join("a.rs");

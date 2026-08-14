@@ -128,9 +128,9 @@ impl TestingScorer {
         // Score coverage (8pts)
         // FAST MODE: Skip expensive cargo llvm-cov, use heuristic estimation (#243)
         if mode.is_full() {
-            match self.score_coverage(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
+            {
+                let score = self.score_coverage(project_path)?;
+                total_earned += score
             }
         } else {
             // Fast mode: Estimate from project metadata (#243)
@@ -138,23 +138,23 @@ impl TestingScorer {
         }
 
         // Score integration tests (4pts) - Fast (filesystem check, no cache benefit)
-        match self.score_integration_tests(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_integration_tests(project_path)?;
+            total_earned += score
         }
 
         // Score doc tests (3pts) - Fast (filesystem check with cache)
-        match self.score_doc_tests(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_doc_tests(project_path, cache)?;
+            total_earned += score
         }
 
         // Score mutation testing (5pts)
         // FAST MODE: Skip expensive cargo mutants, estimate from metadata (#243)
         if mode.is_full() {
-            match self.score_mutation(project_path) {
-                Ok(score) => total_earned += score,
-                Err(e) => return Err(e),
+            {
+                let score = self.score_mutation(project_path)?;
+                total_earned += score
             }
         } else {
             // Fast mode: Estimate from project metadata (#243)

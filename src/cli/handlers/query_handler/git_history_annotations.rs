@@ -212,11 +212,10 @@ fn load_work_ticket(project_path: &std::path::Path, issue_ref: &str) -> Option<W
     // Try matching PMAT-### style refs
     let ticket_id = if issue_ref.starts_with("PMAT-") || issue_ref.starts_with("pmat-") {
         issue_ref.to_uppercase()
-    } else if let Some(stripped) = issue_ref.strip_prefix('#') {
+    } else {
+        let stripped = issue_ref.strip_prefix('#')?;
         // Try GH-### format
         format!("PMAT-{}", stripped)
-    } else {
-        return None;
     };
 
     let contract_path = project_path

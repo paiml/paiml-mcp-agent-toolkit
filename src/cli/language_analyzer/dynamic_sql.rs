@@ -96,10 +96,9 @@ impl SqlAnalyzer {
             ("proc:", a)
         } else if let Some(a) = rest.strip_prefix("VIEW ") {
             ("view:", a)
-        } else if let Some(a) = rest.strip_prefix("TRIGGER ") {
-            ("trigger:", a)
         } else {
-            return None;
+            let a = rest.strip_prefix("TRIGGER ")?;
+            ("trigger:", a)
         };
 
         let name = after_kind

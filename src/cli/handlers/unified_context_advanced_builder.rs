@@ -105,7 +105,7 @@ impl AdvancedUnifiedContextBuilder {
         self.output
             .push_str(&format!("Project: {}\n", self.project_path.display()));
         self.output
-            .push_str(&format!("Language: {}\n\n", &context.project_type));
+            .push_str(&format!("Language: {}\n\n", context.project_type));
     }
 
     fn add_project_structure(&mut self, context: &ProjectContext) {

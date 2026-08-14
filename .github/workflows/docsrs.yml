@@ -140,8 +140,18 @@ jobs:
 
   # What actually shipped. docs.rs serves HTTP 200 for a failed build, so the
   # ONLY honest signal is the status API.
+  # NOT on pull_request. This leg speaks about what is already ON crates.io, and
+  # on a PR that is by definition the version BEFORE the PR — so a PR that fixes
+  # a broken docs build would be blocked by the very breakage it fixes. That is
+  # what happened on the PR introducing this file: `3.30.0 -> doc_status=false`
+  # is the correct reading of a release that predates the fix, and turning it
+  # into a merge blocker would make the defect unfixable.
+  #
+  # It stays blocking where it is meaningful: on master, on the weekly schedule,
+  # and on demand — all of which describe a published release honestly.
   published:
     name: published version builds on docs.rs
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

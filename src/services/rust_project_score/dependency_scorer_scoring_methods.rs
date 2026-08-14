@@ -194,21 +194,21 @@ impl DependencyScorer {
         let mut total_earned = 0.0;
 
         // Score dependency count (5pts)
-        match self.score_dependency_count(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_dependency_count(project_path, cache)?;
+            total_earned += score
         }
 
         // Score feature flags (4pts)
-        match self.score_feature_flags(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_feature_flags(project_path, cache)?;
+            total_earned += score
         }
 
         // Score tree pruning (3pts)
-        match self.score_tree_pruning(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_tree_pruning(project_path, cache)?;
+            total_earned += score
         }
 
         Ok(CategoryScore::new(total_earned, self.max_points))

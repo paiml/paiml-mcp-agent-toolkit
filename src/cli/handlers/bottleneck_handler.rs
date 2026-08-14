@@ -705,7 +705,7 @@ pub(crate) mod quiet_chatter_tests {
                 let mut from = 0;
                 while let Some(i) = line[from..].find(needle) {
                     let at = from + i;
-                    if line[..at].chars().last() != Some('_') {
+                    if !line[..at].ends_with('_') {
                         return true;
                     }
                     from = at + needle.len();

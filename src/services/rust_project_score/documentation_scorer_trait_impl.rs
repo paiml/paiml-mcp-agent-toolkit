@@ -17,21 +17,21 @@ impl DocumentationScorer {
         let mut total_earned = 0.0;
 
         // Rustdoc coverage (7pts)
-        match self.score_rustdoc(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_rustdoc(project_path, cache)?;
+            total_earned += score
         }
 
         // README quality (5pts)
-        match self.score_readme(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_readme(project_path, cache)?;
+            total_earned += score
         }
 
         // Changelog presence (3pts)
-        match self.score_changelog(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_changelog(project_path, cache)?;
+            total_earned += score
         }
 
         Ok(CategoryScore::new(total_earned, self.max_points))

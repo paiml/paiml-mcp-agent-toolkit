@@ -269,7 +269,7 @@ fn format_tdg_score_table(
             c::number(&git.commit_sha_short)
         )));
         line(box_row(&format!("├─ Branch:  {}", c::path(&git.branch))));
-        line(box_row(&format!("└─ Author:  {}", &git.author_name)));
+        line(box_row(&format!("└─ Author:  {}", git.author_name)));
     }
 
     if include_components && nothing_was_measured(project) {

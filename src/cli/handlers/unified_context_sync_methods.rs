@@ -9,7 +9,7 @@ impl UnifiedContextBuilder {
         self.output.push_str("# Project Context\n\n");
         self.output.push_str("## Project Structure\n\n");
         self.output
-            .push_str(&format!("- **Language**: {}\n", &context.project_type));
+            .push_str(&format!("- **Language**: {}\n", context.project_type));
         self.output.push_str(&format!(
             "- **Total Files**: {}\n",
             context.summary.total_files

@@ -114,9 +114,9 @@ impl CodeQualityScorer {
             None => Self::COMPLEXITY_POINTS,
         };
 
-        match self.score_unsafe(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_unsafe(project_path, cache)?;
+            total_earned += score
         }
 
         // Mutation Testing (8pts) and Build Time (4pts) are only scored when
@@ -147,9 +147,9 @@ impl CodeQualityScorer {
             self.max_points - Self::UNMEASURED_IN_FAST_MODE - unmeasured_complexity
         };
 
-        match self.score_dead_code(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_dead_code(project_path, cache)?;
+            total_earned += score
         }
 
         Ok(CategoryScore::new(total_earned, max_points))
