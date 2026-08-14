@@ -1248,3 +1248,134 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod agent_quality_hook_tests {
+    //! EV-3 (#999): the dual-client quality hook bundle.
+    //!
+    //! These are FEEDBACK hooks, not gates, and the tests say so — including
+    //! the clause the ticket makes mandatory: with `pmat` unavailable, both
+    //! clients allow the edit. That is not a bug to be fixed later, it is the
+    //! documented limit of the mechanism, and a test that did not assert it
+    //! would let someone come to believe the hook enforces something.
+    use std::path::Path;
+    use std::process::{Command, Stdio};
+
+    fn hook() -> &'static Path {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+    }
+
+    fn script() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(".agents/hooks/pmat-quality-feedback.sh")
+    }
+
+    /// Both client configs must exist, parse, and point at the one entrypoint.
+    #[test]
+    fn both_client_configs_point_at_the_same_entrypoint() {
+        let root = hook();
+        let claude: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join(".claude/settings.json")).expect("claude settings"),
+        )
+        .expect("claude settings parse");
+        let anti: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join(".agents/hooks.json")).expect("agents hooks"),
+        )
+        .expect("agents hooks parse");
+
+        let claude_cmd = claude["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            .as_str()
+            .expect("claude command");
+        let anti_cmd = anti["hooks"][0]["handler"]["command"]
+            .as_str()
+            .expect("antigravity command");
+
+        assert!(
+            claude_cmd.contains("pmat-quality-feedback.sh") && claude_cmd.ends_with("claude"),
+            "claude hook must invoke the shared entrypoint in claude mode: {claude_cmd}"
+        );
+        assert!(
+            anti_cmd.contains("pmat-quality-feedback.sh") && anti_cmd.ends_with("antigravity"),
+            "antigravity hook must invoke the shared entrypoint in antigravity mode: {anti_cmd}"
+        );
+        assert!(
+            script().is_file(),
+            "the entrypoint both configs name must exist"
+        );
+    }
+
+    /// Antigravity blocks only on the exact string `{"decision": "deny"}`;
+    /// anything else — including a crash — is an approval. So the script must
+    /// emit parseable JSON on BOTH paths.
+    #[test]
+    fn antigravity_mode_always_emits_parseable_json() {
+        for (label, payload) in [
+            ("clean", r#"{"tool_call":{"args":{"path":"src/lib.rs"}}}"#),
+            ("no path", r#"{"tool_call":{"args":{}}}"#),
+            ("garbage", "not json at all"),
+        ] {
+            let out = run(&["antigravity"], payload);
+            let parsed: serde_json::Value = serde_json::from_str(out.trim())
+                .unwrap_or_else(|e| panic!("{label}: unrecognized JSON is treated as approval by the runtime, so this must parse. got {out:?}: {e}"));
+            assert!(
+                parsed["decision"].is_string(),
+                "{label}: must carry a decision, got {parsed}"
+            );
+        }
+    }
+
+    /// The mandatory acceptance clause: no pmat, no enforcement, on both
+    /// clients. Asserted so it cannot quietly stop being true and be mistaken
+    /// for a gate.
+    #[test]
+    fn without_pmat_both_clients_allow_the_edit() {
+        let payload = r#"{"tool_input":{"file_path":"src/lib.rs"}}"#;
+        let claude = run_without_pmat(&["claude"], payload);
+        assert_eq!(
+            claude.0, 0,
+            "Claude Code blocks only on exit 2; with pmat missing the hook must NOT block, and does not"
+        );
+        let anti = run_without_pmat(&["antigravity"], payload);
+        assert_eq!(anti.0, 0, "antigravity handler must exit 0");
+        assert!(
+            anti.1.contains("allow"),
+            "with pmat missing the decision must be allow, got {:?}",
+            anti.1
+        );
+    }
+
+    fn run(args: &[&str], stdin: &str) -> String {
+        run_with_path(args, stdin, None).1
+    }
+
+    fn run_without_pmat(args: &[&str], stdin: &str) -> (i32, String) {
+        run_with_path(args, stdin, Some("/usr/bin:/bin"))
+    }
+
+    fn run_with_path(args: &[&str], stdin: &str, path: Option<&str>) -> (i32, String) {
+        use std::io::Write;
+        let mut cmd = Command::new("sh");
+        cmd.arg(script());
+        for a in args {
+            cmd.arg(a);
+        }
+        cmd.current_dir(hook())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null());
+        if let Some(p) = path {
+            cmd.env("PATH", p);
+        }
+        let mut child = cmd.spawn().expect("spawn hook");
+        child
+            .stdin
+            .as_mut()
+            .expect("stdin")
+            .write_all(stdin.as_bytes())
+            .expect("write stdin");
+        let out = child.wait_with_output().expect("wait");
+        (
+            out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&out.stdout).to_string(),
+        )
+    }
+}

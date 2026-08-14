@@ -1,0 +1,12 @@
+{
+  "hooks": [
+    {
+      "event": "pre_tool_execution",
+      "matcher": "write_file|code_execution",
+      "handler": {
+        "type": "command",
+        "command": ".agents/hooks/pmat-quality-feedback.sh antigravity"
+      }
+    }
+  ]
+}
