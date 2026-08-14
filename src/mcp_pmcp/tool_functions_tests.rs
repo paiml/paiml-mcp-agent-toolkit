@@ -96,7 +96,7 @@ mod coverage_tests {
 
     #[tokio::test]
     async fn test_analyze_satd_empty_paths() {
-        let result = analyze_satd(&[], false).await;
+        let result = analyze_satd(&[], false, false).await;
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -715,7 +715,7 @@ mod coverage_tests {
     #[tokio::test]
     async fn test_analyze_satd_with_nonexistent_paths() {
         let paths = vec![PathBuf::from("/tmp/nonexistent_12345.rs")];
-        let result = analyze_satd(&paths, false).await;
+        let result = analyze_satd(&paths, false, false).await;
 
         assert!(result.is_ok());
         let json = result.unwrap();
@@ -768,7 +768,7 @@ mod coverage_tests {
         )?;
 
         let paths = vec![file_path];
-        let result = analyze_satd(&paths, false).await;
+        let result = analyze_satd(&paths, false, false).await;
 
         assert!(result.is_ok());
         let json = result.unwrap();
@@ -997,7 +997,7 @@ mod coverage_tests {
         )?;
 
         let paths = vec![temp_dir.path().to_path_buf()];
-        let json = analyze_satd(&paths, false).await.unwrap();
+        let json = analyze_satd(&paths, false, false).await.unwrap();
 
         let total = json["results"]["total_satd"].as_u64().unwrap_or(0);
         assert!(
@@ -1214,7 +1214,7 @@ mod coverage_tests {
         )?;
 
         let pattern = temp.path().join("**/*.rs");
-        let json = analyze_satd(&[pattern], false).await?;
+        let json = analyze_satd(&[pattern], false, false).await?;
 
         let total = json["results"]["total_satd"].as_u64().unwrap_or(0);
         assert!(

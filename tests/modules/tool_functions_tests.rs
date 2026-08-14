@@ -29,7 +29,7 @@ async fn test_analyze_complexity_empty_paths() {
 #[tokio::test]
 async fn test_analyze_satd_empty_paths() {
     // RED: Should error when paths array is empty
-    let result = analyze_satd(&[], false).await;
+    let result = analyze_satd(&[], false, false).await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -96,7 +96,7 @@ async fn test_analyze_complexity_nonexistent_path() {
 async fn test_analyze_satd_nonexistent_path() {
     // RED: Should handle nonexistent paths gracefully
     let nonexistent = PathBuf::from("/nonexistent/file.rs");
-    let result = analyze_satd(&[nonexistent], false).await;
+    let result = analyze_satd(&[nonexistent], false, false).await;
 
     // Should succeed with 0 SATD found
     assert!(result.is_ok());
@@ -225,7 +225,7 @@ async fn test_analyze_satd_detects_todo_comments() {
     )
     .unwrap();
 
-    let result = analyze_satd(&[rust_file], false).await;
+    let result = analyze_satd(&[rust_file], false, false).await;
 
     // Should detect at least 1 SATD marker
     assert!(result.is_ok());
@@ -249,7 +249,7 @@ async fn test_analyze_satd_no_markers() {
     )
     .unwrap();
 
-    let result = analyze_satd(&[rust_file], false).await;
+    let result = analyze_satd(&[rust_file], false, false).await;
 
     // Should succeed with 0 SATD
     assert!(result.is_ok());
@@ -541,7 +541,7 @@ async fn test_analyze_satd_output_structure() {
     let rust_file = temp_dir.path().join("test.rs");
     fs::write(&rust_file, "// TODO: test\nfn test() {}").unwrap();
 
-    let result = analyze_satd(&[rust_file], false).await;
+    let result = analyze_satd(&[rust_file], false, false).await;
 
     assert!(result.is_ok());
     let output = result.unwrap();

@@ -6,6 +6,9 @@ struct SatdArgs {
     paths: Vec<String>,
     #[serde(default)]
     include_resolved: bool,
+    /// Include test files. Defaults to false, matching `analyze satd` (#997).
+    #[serde(default)]
+    include_tests: bool,
 }
 
 /// Tool handler for detecting self-admitted technical debt in code comments.
@@ -18,7 +21,8 @@ struct SatdArgs {
 /// ```json
 /// {
 ///   "paths": ["src/"],              // Required: paths to analyze
-///   "include_resolved": false       // Optional: include resolved items
+///   "include_resolved": false,      // Optional: include resolved items
+///   "include_tests": false          // Optional: include test files (CLI default: false)
 /// }
 /// ```ignore
 ///
@@ -64,9 +68,10 @@ impl ToolHandler for SatdTool {
 
         let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
-        let results = tool_functions::analyze_satd(&paths, params.include_resolved)
-            .await
-            .map_err(|e| Error::internal(format!("SATD analysis failed: {e}")))?;
+        let results =
+            tool_functions::analyze_satd(&paths, params.include_resolved, params.include_tests)
+                .await
+                .map_err(|e| Error::internal(format!("SATD analysis failed: {e}")))?;
 
         Ok(results)
     }

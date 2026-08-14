@@ -101,7 +101,17 @@ pub async fn analyze_complexity(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<Value> {
+/// `include_tests` exists because this tool used to have no concept of test
+/// files at all, while the CLI excludes them by default. For the same fixture
+/// the two surfaces answered 3 and 2, and the MCP schema offered no way to ask
+/// for the CLI's answer — so neither could be made to agree with the other
+/// (#997). It defaults to `false`, matching `analyze satd`'s default and
+/// `AnalysisOptions::default()`.
+pub async fn analyze_satd(
+    paths: &[PathBuf],
+    _include_resolved: bool,
+    include_tests: bool,
+) -> Result<Value> {
     use crate::services::satd_detector::SATDDetector;
 
     // Validate input
@@ -110,7 +120,12 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
     }
 
     let detector = SATDDetector::new();
-    let files = expand_paths_to_source_files(paths);
+    let mut files = expand_paths_to_source_files(paths);
+    // The SAME predicate the CLI's discovery uses. A second opinion about what
+    // "a test file" means is how these two surfaces drifted apart.
+    if !include_tests {
+        files.retain(|f| !detector.is_test_file(f));
+    }
 
     let mut total_satd = 0;
     let mut file_results = Vec::new();
@@ -526,7 +541,8 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
     // `_truncated`); keep the two surfaces telling the same story.
     let listed = high_complexity.len();
     let dist = &report.complexity_distribution;
-    let found = (dist.quadratic + dist.cubic + dist.exponential).max(report.high_complexity_functions.len());
+    let found = (dist.quadratic + dist.cubic + dist.exponential)
+        .max(report.high_complexity_functions.len());
 
     Ok(json!({
         "status": "completed",
@@ -805,9 +821,9 @@ mod big_o_payload_tests {
         );
         for func in functions {
             // A notation string ("O(n²)"), not the packed bound struct.
-            let time = func["time_complexity"].as_str().unwrap_or_else(|| {
-                panic!("time_complexity must be a notation string: {func}")
-            });
+            let time = func["time_complexity"]
+                .as_str()
+                .unwrap_or_else(|| panic!("time_complexity must be a notation string: {func}"));
             assert!(time.starts_with("O("), "unexpected notation {time:?}");
             assert!(func["time_complexity_confidence"].is_number());
             assert!(func["space_complexity"].is_string());
@@ -896,5 +912,101 @@ mod dead_code_include_tests_tests {
             Some("multi-language-reachability"),
             "the payload must name which analyzer produced these numbers"
         );
+    }
+}
+
+#[cfg(test)]
+mod satd_surface_agreement_tests {
+    //! REGRESSION (#997): the MCP tool and `analyze satd` answered the same
+    //! question differently, and the MCP schema offered no way to ask for the
+    //! CLI's answer — so neither surface could be made to agree with the other.
+    //!
+    //! ```text
+    //! MCP  analyze_satd {"paths":[fixture]}      -> 3
+    //! CLI  analyze satd -p fixture               -> 2
+    //! CLI  analyze satd -p fixture --include-tests -> 3
+    //! ```
+    //!
+    //! This tool had no concept of a test file at all: it walked
+    //! `expand_paths_to_source_files` and scanned whatever came back. It is the
+    //! THIRD independent SATD implementation — the CLI goes through
+    //! `SatdFacade::analyze_directory_with_tests`, and
+    //! `analysis_service_analyzers::analyze_satd` hardcodes `true` while
+    //! ignoring its own options argument.
+    use super::*;
+
+    fn fixture() -> tempfile::TempDir {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("src");
+        std::fs::create_dir_all(d.path().join("tests")).expect("tests");
+        std::fs::write(
+            d.path().join("Cargo.toml"),
+            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(
+            d.path().join("src/lib.rs"),
+            "// TODO: production marker\n// FIXME: production fixme\npub fn f() -> i32 { 1 }\n",
+        )
+        .expect("lib");
+        std::fs::write(
+            d.path().join("tests/it.rs"),
+            "// TODO: integration-test marker\n#[test] fn t() { assert_eq!(1,1); }\n",
+        )
+        .expect("it");
+        d
+    }
+
+    fn total(v: &serde_json::Value) -> u64 {
+        v.get("results")
+            .and_then(|r| r.get("total_satd"))
+            .and_then(serde_json::Value::as_u64)
+            .expect("total_satd in the payload")
+    }
+
+    /// The default must match the CLI's default: production only.
+    #[tokio::test]
+    async fn default_excludes_test_files_like_the_cli() {
+        let d = fixture();
+        let out = analyze_satd(&[d.path().to_path_buf()], false, false)
+            .await
+            .expect("analysis");
+        assert_eq!(
+            total(&out),
+            2,
+            "MCP default must agree with `analyze satd` (2 production markers): {out}"
+        );
+    }
+
+    /// And the flag must be able to reach the CLI's `--include-tests` answer.
+    #[tokio::test]
+    async fn include_tests_reaches_the_cli_include_tests_answer() {
+        let d = fixture();
+        let out = analyze_satd(&[d.path().to_path_buf()], false, true)
+            .await
+            .expect("analysis");
+        assert_eq!(
+            total(&out),
+            3,
+            "include_tests must agree with `--include-tests` (3 markers): {out}"
+        );
+    }
+
+    /// The two must never be the same number, or the test above proves nothing
+    /// about the flag.
+    #[tokio::test]
+    async fn the_flag_actually_moves_the_answer() {
+        let d = fixture();
+        let off = total(
+            &analyze_satd(&[d.path().to_path_buf()], false, false)
+                .await
+                .unwrap(),
+        );
+        let on = total(
+            &analyze_satd(&[d.path().to_path_buf()], false, true)
+                .await
+                .unwrap(),
+        );
+        assert!(on > off, "include_tests changed nothing: {off} vs {on}");
     }
 }
