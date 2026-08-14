@@ -566,8 +566,26 @@ pub async fn run_tdg_analysis(
     Ok(PhaseOutcome::measured(violations))
 }
 
+/// Wall-clock budget for the dead-code phase of an `enforce` run.
+///
+/// Was 60. Dead-code analysis shells out to `cargo check`, and that budget is
+/// wall clock — it covers waiting for the build, not just the analysis — so on
+/// a cold target directory, a large workspace, or a loaded machine it expired
+/// on work that was progressing normally, and the phase reported
+/// "dead code could not be measured" for a project that is perfectly
+/// measurable. A false "not measured" is the worse failure here: it is exactly
+/// the absence-rendered-as-a-result that the surrounding code goes to lengths
+/// to avoid, and 60 seconds is not enough of a wall to be worth hitting.
+///
+/// It fires on a genuine hang, which is what a budget is for. This also stops
+/// four tests flaking in CI, where a contended runner starved the blocking task
+/// long enough to trip the old value — but the user-facing false negative is
+/// the reason to change it.
+const DEAD_CODE_BUDGET_SECS: u64 = 300;
+
 /// Run dead code analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+
 pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
@@ -592,7 +610,7 @@ pub async fn run_dead_code_analysis(
         Some(capture.clone()), // output
         false,                 // fail_on_violation
         15.0,                  // max_percentage
-        60,                    // timeout
+        DEAD_CODE_BUDGET_SECS, // timeout
         Vec::new(),            // include
         Vec::new(),            // exclude
         8,                     // max_depth
