@@ -165,17 +165,24 @@ jobs:
   package-size:
     name: package size
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: cargo package stays clear of the crates.io ceiling
+      - name: the packaged tarball builds, and fits
         shell: bash
         run: |
           set -uo pipefail
-          out=$(cargo package --locked --no-verify --allow-dirty 2>&1) || {
-            echo "$out"; echo "::error::cargo package failed"; exit 1; }
+          # NOT --no-verify. `cargo package --no-verify` skips building the
+          # packaged tarball, so it cannot see that an exclude pattern removed a
+          # source file. That happened here: an unanchored "coverage/" pattern
+          # matched src/services/agent_context/query/coverage/ as well as the
+          # top-level artifacts dir, and --no-verify reported a healthy 7.4 MiB
+          # for a tarball that did not compile. Measuring a package without
+          # building it is the same defect this repo keeps finding.
+          out=$(cargo package --locked --allow-dirty 2>&1) || {
+            echo "$out"; echo "::error::cargo package failed to build the packaged tarball"; exit 1; }
           echo "$out" | tail -3
           line=$(echo "$out" | grep -oE '\([0-9.]+MiB compressed\)' | tail -1)
           mib=$(echo "$line" | grep -oE '[0-9.]+')

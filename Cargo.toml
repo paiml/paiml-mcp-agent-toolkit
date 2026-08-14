@@ -21,8 +21,8 @@ exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions
     # 9.4 MiB against crates.io's 10 MiB ceiling — 94% — so one more asset
     # would have made the crate unpublishable, and an oversized upload does
     # not report a size error, it returns a bare 503.
-    "docs/", "scripts/", "rust-docs/", "golden_traces/", "ROADMAP.md",
-    "comprehensive_language_test/", "artifacts/", "coverage/", "*.crate"]
+    "/docs/", "/scripts/", "/rust-docs/", "/golden_traces/", "/ROADMAP.md",
+    "/comprehensive_language_test/", "/artifacts/", "/coverage/", "*.crate"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
