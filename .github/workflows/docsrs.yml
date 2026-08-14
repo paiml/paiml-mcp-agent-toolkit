@@ -176,8 +176,24 @@ jobs:
           cat /tmp/st.json
 
           status=$(python3 -c "import json;print(json.load(open('/tmp/st.json')).get('doc_status'))")
-          if [ "$status" != "True" ]; then
-            echo "::error::docs.rs reports doc_status=$status for pmat $ver — the published crate has NO documentation. https://docs.rs/crate/pmat/$ver/builds"
-            exit 1
+          if [ "$status" = "True" ]; then
+            echo "pmat $ver documents cleanly on docs.rs"
+            exit 0
           fi
-          echo "pmat $ver documents cleanly on docs.rs"
+
+          # `doc_status: false` means BOTH "the build failed" and "the build has
+          # not run yet", and a freshly published version sits in the queue for
+          # minutes. Reporting a failure for a build that never ran is the same
+          # unmeasured-passes-as-measured defect this gate exists to catch, with
+          # the sign flipped — so distinguish before failing.
+          #
+          # The queue page is the discriminator, verified against both states at
+          # the 3.30.1 release: it listed `pmat 3.30.1` while queued, and does
+          # not list `pmat 3.30.0`, which genuinely failed.
+          if curl -sf https://docs.rs/releases/queue | grep -qE "pmat[[:space:]]+${ver//./\.}([^0-9]|$)"; then
+            echo "::notice::pmat $ver is still in the docs.rs build queue — not built yet, so there is nothing to report. Re-run once it leaves the queue."
+            exit 0
+          fi
+
+          echo "::error::docs.rs reports doc_status=$status for pmat $ver, and it is not in the build queue — the published crate has NO documentation. https://docs.rs/crate/pmat/$ver/builds"
+          exit 1
