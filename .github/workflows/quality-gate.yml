@@ -61,12 +61,55 @@ jobs:
       - name: Post score summary
         if: always()
         run: |
+          # `composite` is null when a dimension could not be measured, and a
+          # sub-score is null when THAT dimension could not be measured — an
+          # unmeasured thing is no longer reported as 0.0, because "measured,
+          # terrible" and "never ran" are not the same claim (paiml/aprender
+          # #2463). This step still formatted both with `:.1f` and died with
+          # `TypeError: unsupported format string passed to NoneType.__format__`,
+          # so the producer changed and this consumer did not — the one-rule-two-
+          # implementations defect, in the reporting layer this time.
           if [ -f score.json ]; then
-            COMPOSITE=$(python3 -c "import json; print(f'{json.load(open(\"score.json\"))[\"composite\"]:.1f}')")
-            GRADE=$(python3 -c "import json; print(json.load(open('score.json'))['grade'])")
-            echo "### PMAT Score: ${COMPOSITE}/100 (${GRADE})" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            python3 -c "import json; d=json.load(open('score.json')); s=d['sub_scores']; print('| Sub-Score | Value |'); print('|-----------|-------|'); [print(f'| {k} | {v:.1f} |') for k,v in s.items()]" >> "$GITHUB_STEP_SUMMARY"
+            python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("score.json"))
+
+          def num(v):
+              """A number, or why there isn't one. Never a fabricated 0.0."""
+              if isinstance(v, (int, float)):
+                  return f"{v:.1f}"
+              if isinstance(v, dict):          # Result-shaped: {"Ok": x} / {"Err": "reason"}
+                  if "Ok" in v:
+                      return num(v["Ok"])
+                  return f"not measured — {v.get('Err', 'reason unrecorded')}"
+              return "not measured"
+
+          gated = d.get("gated_by") or []
+          grade = d.get("grade", "?")
+          composite = d.get("composite")
+          headline = (
+              f"{composite:.1f}/100"
+              if isinstance(composite, (int, float))
+              else "not measured"          # never "0.0/100", which reads as a verdict
+          )
+          print(f"### PMAT Score: {headline} ({grade})")
+          print()
+          if gated:
+              print(f"**Gated by:** {', '.join(gated)} — a measured zero gates the verdict "
+                    f"rather than averaging into it, so one red dimension cannot masquerade "
+                    f"as a uniformly bad project.")
+              print()
+          for nm in d.get("not_measured") or []:
+              name = nm.get("dimension", nm) if isinstance(nm, dict) else nm
+              why = nm.get("reason", "") if isinstance(nm, dict) else ""
+              print(f"- **not measured:** {name}{f' — {why}' if why else ''}")
+          if d.get("not_measured"):
+              print()
+          print("| Sub-Score | Value |")
+          print("|-----------|-------|")
+          for k, v in (d.get("sub_scores") or {}).items():
+              print(f"| {k} | {num(v)} |")
+          PY
           fi
 
   # Provable-contracts L1–L5 ladder gate.
