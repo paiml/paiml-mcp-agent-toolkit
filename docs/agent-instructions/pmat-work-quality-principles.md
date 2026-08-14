@@ -195,7 +195,7 @@ git commit -m "feat: ${TITLE}
 Work-Item: ${ID}
 TDG-Score: ${TDG_SCORE}/100
 Repo-Score: ${REPO_SCORE}/100
-Rust-Score: ${RUST_SCORE}/134
+Rust-Score: ${RUST_SCORE}/289
 
 Metrics: .pmat-metrics/commit-${SHORT_SHA}-meta.json"
 ```
@@ -276,7 +276,7 @@ pmat work complete <id>
    🦀 Rust project detected...
       📦 Checking examples...
       ✅ Examples compile (5 examples)
-      📊 Capturing rust-project-score... (82.5/134)
+      📊 Capturing rust-project-score... (82.5/289)
 
    🎯 Golden traces detected...
       ✅ Golden traces match (3/3 scenarios)
@@ -287,7 +287,7 @@ pmat work complete <id>
    📊 Capturing commit metadata...
       ✅ TDG Score: 87.3/100
       ✅ Repo Score: 92.1/100
-      ✅ Rust Project Score: 82.5/134
+      ✅ Rust Project Score: 82.5/289
 
 ✅ Marked as complete: Continue unwrap elimination
 ✅ Updated roadmap: ./docs/roadmaps/roadmap.yaml
@@ -299,7 +299,7 @@ pmat work complete <id>
    Work-Item: Continue unwrap elimination: 27 more unwraps...
    TDG-Score: 87.3/100
    Repo-Score: 92.1/100
-   Rust-Score: 82.5/134
+   Rust-Score: 82.5/289
 
    Metrics: .pmat-metrics/commit-abc123-meta.json"
 ```

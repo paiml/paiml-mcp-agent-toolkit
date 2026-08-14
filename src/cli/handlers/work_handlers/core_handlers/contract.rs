@@ -98,7 +98,10 @@ pub(super) async fn create_work_contract(
             contract.baseline_rust_score = rust_score;
             println!("      TDG: {:.1}, Coverage: {:.1}%", tdg, coverage);
             if let Some(rs) = rust_score {
-                println!("      Rust Score: {:.1}/134", rs);
+                println!(
+                    "      Rust Score: {rs:.1}/{:.0}",
+                    crate::services::rust_project_score::rubric_max_points()
+                );
             }
         }
         Err(e) => {

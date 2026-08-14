@@ -162,7 +162,10 @@ pub async fn capture_baseline(project_path: &Path) -> Result<(f64, f64, Option<f
 
     println!("      TDG: {:.1}, Coverage: {:.1}%", tdg_score, coverage);
     if let Some(rs) = rust_score {
-        println!("      Rust Score: {:.1}/134", rs);
+        println!(
+            "      Rust Score: {rs:.1}/{:.0}",
+            crate::services::rust_project_score::rubric_max_points()
+        );
     }
 
     Ok((tdg_score, coverage, rust_score))
