@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.30.1] - 2026-08-14
+
+### Fixed
+
+**docs.rs has never built this crate** (#988). 3.28.2, 3.29.0 and 3.30.0 all failed, so
+pmat has been on crates.io with no API documentation at all. Nothing noticed for three
+releases because docs.rs returns **HTTP 200 for a failed build** — any check asserting the
+docs URL resolves passes it — and `cargo doc` locally runs on stable without `docsrs`
+defined, so the failure reproduced on no invocation anyone ran.
+
+The cause was this crate's own manifest. docs.rs turns `[package.metadata.docs.rs]
+rustc-args` into `RUSTFLAGS`, which applies to the compilation of every **dependency**, and
+`lexical-util 1.0.7` (arrow-cast ← arrow ← aprender-db ← aprender-graph) opens with
+`#![cfg_attr(docsrs, feature(doc_auto_cfg))]` — a feature removed in Rust 1.92:
+
+```
+RUSTFLAGS="--cfg docsrs" cargo +nightly check -p lexical-util   → E0557
+                         cargo +nightly check -p lexical-util   → ok
+```
+
+This crate has zero `cfg(docsrs)` sites, so the flag bought nothing and cost the entire
+public API documentation. A second failure sat behind the first:
+`--generate-link-to-definition` is nightly-only and needs `-Z unstable-options`, so fixing
+`rustc-args` alone would have traded one broken build for another. Verified by reproducing
+the docs.rs environment and deleting the output first: **5,048 pages generated**.
+
+**Two advertised features had never compiled.** `notify`, `bytes` and `http` were declared
+`optional = true` and enabled by no feature, so `--features agents-md` failed with E0432 and
+`--features unified-protocol` with E0433 in every build ever made. Wiring them via `dep:`
+exposed that unified-protocol's adapters still passed `dag_type`, `cache_strategy` and
+`analysis_depth` as non-`Option`, from before #915 made those flags refusable; the adapters
+now refuse exactly what the CLI route refuses.
+
+**`five-whys` ignored `--depth` above 3** (#962), and stamped 100% confidence on hypotheses
+the same report disclaimed as "repo-wide signals, not findings about this defect". Every
+severity scale was a hard clamp that real repositories blow past — 62 SATD markers against a
+cap of 10, 29 commits against 20, 12 matched locations against 6 — so every severity pinned
+to 1.0, the weighted mean was exactly 1.0, and the `i >= 3 && confidence > 0.9` early exit
+fired on iteration 3 every time. Replaced with a monotone, asymptotic scale, plus a ceiling
+on the repo-level rungs of the hypothesis ladder. `--depth 1,2,3,5,7,10` now yields
+1,2,3,5,7,10 whys where it previously yielded 1,2,3,3,3,3.
+
+**`enforce` reported "dead code could not be measured" for measurable projects.** The phase
+carried a hardcoded 60-second budget, and that budget is wall clock around a `cargo check`,
+so it expired on work progressing normally whenever the target directory was cold or the
+workspace large. Raised to 300s.
+
+### Added
+
+**`CB-081-F: Workspace Member From Registry`** (#989) — a workspace member pulled from
+crates.io by a sibling, split out of CB-081's undifferentiated duplicate count because the
+remedy is unconditional. Matches on `[lib]` name as well as `[package]` name, treats `-` and
+`_` as the same character (as Cargo does), and scans `[workspace.dependencies]`. 24 findings
+on a real 78-crate workspace.
+
+**Feature matrix CI** — every advertised feature compiles, lib and bin, plus
+`clippy --all-targets` so benches and examples are covered. `ci.yml` previously compiled
+only `--bin pmat` with default features, which is how six features shipped broken.
+
+**docs.rs CI gate** — reproduces the docs.rs environment on nightly and refuses `rustc-args`;
+a second leg reads docs.rs's `status.json`, the only honest signal, since the page is HTTP 200
+either way.
+
+**Package-size gate** — crates.io rejects an upload over 10 MiB with an opaque 503, and
+`--dry-run` passes because it never uploads. Budget 9.0 MiB, and it builds the tarball rather
+than using `--no-verify`, which cannot see that an exclude pattern removed a source file.
+
+**MACS-012 falsification tests** (#978) and a `no_raw_resume` contract equation, so the
+ultracode workflow's invariants are enforced rather than merely unbroken.
+
 ## [3.30.0] - 2026-08-11
 
 ### Fixed — 255 defects found by dogfooding the released artifact
