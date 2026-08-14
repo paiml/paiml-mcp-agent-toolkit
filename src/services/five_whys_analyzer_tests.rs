@@ -816,7 +816,10 @@ mod coverage_tests {
             .extract_root_cause(&located)
             .expect("should succeed")
             .expect("located evidence should yield a cause");
-        assert!(root_cause.starts_with("The hypothesis"), "got: {root_cause}");
+        assert!(
+            root_cause.starts_with("The hypothesis"),
+            "got: {root_cause}"
+        );
         assert!(
             root_cause.contains("no causal chain was derived"),
             "must state its own limits rather than implying a derived chain, got: {root_cause}"
@@ -842,7 +845,10 @@ mod coverage_tests {
             .extract_root_cause(&whys)
             .expect("should succeed")
             .expect("located evidence should yield a cause");
-        assert!(root_cause.starts_with("Final hypothesis"), "got: {root_cause}");
+        assert!(
+            root_cause.starts_with("Final hypothesis"),
+            "got: {root_cause}"
+        );
     }
 
     // ============================================================================
@@ -1028,7 +1034,9 @@ mod coverage_tests {
         let analyzer = create_analyzer();
         let temp_dir = create_evidence_temp_dir();
 
-        let result = analyzer.gather_evidence("test issue", temp_dir.path()).await;
+        let result = analyzer
+            .gather_evidence("test issue", temp_dir.path())
+            .await;
         assert!(result.is_ok());
 
         let evidence = result.expect("should succeed");
@@ -1079,7 +1087,11 @@ mod coverage_tests {
             .iter()
             .find(|e| e.source == EvidenceSource::SATD)
             .unwrap();
-        let count = satd.value.get("count").and_then(|v| v.as_u64()).unwrap_or(0);
+        let count = satd
+            .value
+            .get("count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
         assert!(count >= 2, "Expected >=2 SATD markers, got {}", count);
     }
 
@@ -1616,7 +1628,11 @@ mod coverage_tests {
         let ev = evidence.unwrap();
         assert_eq!(ev.source, EvidenceSource::EvoScoreTrajectory);
         let evoscore = ev.value.get("evoscore").and_then(|v| v.as_f64()).unwrap();
-        assert!(evoscore > 0.0, "Improving trend should have positive evoscore, got {}", evoscore);
+        assert!(
+            evoscore > 0.0,
+            "Improving trend should have positive evoscore, got {}",
+            evoscore
+        );
     }
 
     #[test]
@@ -1642,7 +1658,10 @@ mod coverage_tests {
     fn test_v2_gather_evoscore_no_metrics_dir() {
         let temp_dir = TempDir::new().expect("tempdir");
         let evidence = FiveWhysAnalyzer::gather_evoscore_evidence(temp_dir.path());
-        assert!(evidence.is_none(), "Should return None without .pmat-metrics/");
+        assert!(
+            evidence.is_none(),
+            "Should return None without .pmat-metrics/"
+        );
     }
 
     #[test]
@@ -1664,7 +1683,11 @@ mod coverage_tests {
 
         let ev = evidence.unwrap();
         assert_eq!(ev.source, EvidenceSource::CoverageDelta);
-        let coverage_pct = ev.value.get("coverage_pct").and_then(|v| v.as_f64()).unwrap();
+        let coverage_pct = ev
+            .value
+            .get("coverage_pct")
+            .and_then(|v| v.as_f64())
+            .unwrap();
         // 3 covered out of 5 = 60%
         assert!(
             (coverage_pct - 60.0).abs() < 0.1,
@@ -1672,14 +1695,20 @@ mod coverage_tests {
             coverage_pct
         );
         let delta = ev.value.get("delta").and_then(|v| v.as_f64()).unwrap();
-        assert!(delta < 0.0, "60% is below 85% baseline, delta should be negative");
+        assert!(
+            delta < 0.0,
+            "60% is below 85% baseline, delta should be negative"
+        );
     }
 
     #[test]
     fn test_v2_gather_coverage_delta_no_cache() {
         let temp_dir = TempDir::new().expect("tempdir");
         let evidence = FiveWhysAnalyzer::gather_coverage_delta_evidence(temp_dir.path());
-        assert!(evidence.is_none(), "Should return None without coverage cache");
+        assert!(
+            evidence.is_none(),
+            "Should return None without coverage cache"
+        );
     }
 
     #[test]
@@ -1730,7 +1759,9 @@ mod coverage_tests {
         assert!(result.is_ok());
         let hypothesis = result.unwrap();
         assert!(
-            hypothesis.contains("trajectory") || hypothesis.contains("declining") || hypothesis.contains("worse"),
+            hypothesis.contains("trajectory")
+                || hypothesis.contains("declining")
+                || hypothesis.contains("worse"),
             "Depth 3 with regressing evoscore should mention trajectory, got: {}",
             hypothesis
         );
@@ -1786,175 +1817,297 @@ mod coverage_tests {
         }
     }
 
-// ── GH #637: the analysis must be about the issue it was given ──────────────
-//
-// Before these, `five-whys` produced identical repo-wide evidence for any
-// input, asserted 100% confidence from it, and named a truism as the root
-// cause. See `FiveWhysAnalyzer::calculate_confidence` for the two structural
-// faults.
+    // ── GH #637: the analysis must be about the issue it was given ──────────────
+    //
+    // Before these, `five-whys` produced identical repo-wide evidence for any
+    // input, asserted 100% confidence from it, and named a truism as the root
+    // cause. See `FiveWhysAnalyzer::calculate_confidence` for the two structural
+    // faults.
 
-#[test]
-fn issue_terms_drop_noise_and_keep_identifiers() {
-    let terms = FiveWhysAnalyzer::issue_terms(
-        "MCP stdio server drops responses when the client closes stdin and this fails",
-    );
-    for kept in ["stdio", "server", "drops", "responses", "client", "closes", "stdin"] {
-        assert!(terms.contains(&kept.to_string()), "should keep {kept}: {terms:?}");
+    #[test]
+    fn issue_terms_drop_noise_and_keep_identifiers() {
+        let terms = FiveWhysAnalyzer::issue_terms(
+            "MCP stdio server drops responses when the client closes stdin and this fails",
+        );
+        for kept in [
+            "stdio",
+            "server",
+            "drops",
+            "responses",
+            "client",
+            "closes",
+            "stdin",
+        ] {
+            assert!(
+                terms.contains(&kept.to_string()),
+                "should keep {kept}: {terms:?}"
+            );
+        }
+        for dropped in ["the", "when", "this", "fails", "mcp"] {
+            assert!(
+                !terms.contains(&dropped.to_string()),
+                "should drop {dropped} (stopword or <4 chars): {terms:?}"
+            );
+        }
     }
-    for dropped in ["the", "when", "this", "fails", "mcp"] {
+
+    #[test]
+    fn confidence_is_capped_when_the_issue_was_never_located() {
+        let analyzer = create_analyzer();
+        // Every repo-wide source at maximum severity, but nothing issue-specific.
+        let evidence = vec![
+            create_evidence_with_values(
+                EvidenceSource::Complexity,
+                json!({"value": 500, "threshold": 20}),
+            ),
+            create_evidence_with_values(EvidenceSource::SATD, json!({"count": 5000})),
+            create_evidence_with_values(EvidenceSource::GitChurn, json!({"commit_count": 900})),
+            create_evidence_with_values(EvidenceSource::CoverageDelta, json!({"delta": -80.0})),
+        ];
+        let confidence = analyzer
+            .calculate_confidence(&evidence)
+            .expect("should succeed");
         assert!(
-            !terms.contains(&dropped.to_string()),
-            "should drop {dropped} (stopword or <4 chars): {terms:?}"
+            confidence <= FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+            "piling up repo-wide metrics must not buy confidence about a specific \
+         issue; got {confidence}"
         );
     }
-}
 
-#[test]
-fn confidence_is_capped_when_the_issue_was_never_located() {
-    let analyzer = create_analyzer();
-    // Every repo-wide source at maximum severity, but nothing issue-specific.
-    let evidence = vec![
-        create_evidence_with_values(EvidenceSource::Complexity, json!({"value": 500, "threshold": 20})),
-        create_evidence_with_values(EvidenceSource::SATD, json!({"count": 5000})),
-        create_evidence_with_values(EvidenceSource::GitChurn, json!({"commit_count": 900})),
-        create_evidence_with_values(EvidenceSource::CoverageDelta, json!({"delta": -80.0})),
-    ];
-    let confidence = analyzer
-        .calculate_confidence(&evidence)
-        .expect("should succeed");
-    assert!(
-        confidence <= FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
-        "piling up repo-wide metrics must not buy confidence about a specific \
-         issue; got {confidence}"
-    );
-}
+    #[test]
+    fn confidence_can_exceed_the_cap_once_the_issue_is_located() {
+        let analyzer = create_analyzer();
+        let locations: Vec<_> = (0..8)
+            .map(|i| json!({"file": "src/x.rs", "line": i, "terms_matched": 2, "term": "a+b"}))
+            .collect();
+        let evidence = vec![
+            create_evidence_with_values(
+                EvidenceSource::IssueLocation,
+                json!({"terms": ["stdio", "transport"], "locations": locations}),
+            ),
+            create_evidence_with_values(
+                EvidenceSource::Complexity,
+                json!({"value": 500, "threshold": 20}),
+            ),
+        ];
+        let confidence = analyzer
+            .calculate_confidence(&evidence)
+            .expect("should succeed");
+        assert!(
+            confidence > FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+            "located evidence should support real confidence; got {confidence}"
+        );
+    }
 
-#[test]
-fn confidence_can_exceed_the_cap_once_the_issue_is_located() {
-    let analyzer = create_analyzer();
-    let locations: Vec<_> = (0..8)
-        .map(|i| json!({"file": "src/x.rs", "line": i, "terms_matched": 2, "term": "a+b"}))
-        .collect();
-    let evidence = vec![
-        create_evidence_with_values(
-            EvidenceSource::IssueLocation,
-            json!({"terms": ["stdio", "transport"], "locations": locations}),
-        ),
-        create_evidence_with_values(EvidenceSource::Complexity, json!({"value": 500, "threshold": 20})),
-    ];
-    let confidence = analyzer
-        .calculate_confidence(&evidence)
-        .expect("should succeed");
-    assert!(
-        confidence > FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
-        "located evidence should support real confidence; got {confidence}"
-    );
-}
+    #[test]
+    fn confidence_is_never_pinned_to_one() {
+        // The old formula divided `weight * (1.0 + severity)` by `weight`, so the
+        // result was always >= 1.0 and clamped to exactly 1.0 for every input.
+        let analyzer = create_analyzer();
+        let mild = vec![create_evidence_with_values(
+            EvidenceSource::GitChurn,
+            json!({"commit_count": 1}),
+        )];
+        let confidence = analyzer
+            .calculate_confidence(&mild)
+            .expect("should succeed");
+        assert!(
+            confidence < 0.9,
+            "a single low-severity signal must not read as near-certainty; got {confidence}"
+        );
+    }
 
-#[test]
-fn confidence_is_never_pinned_to_one() {
-    // The old formula divided `weight * (1.0 + severity)` by `weight`, so the
-    // result was always >= 1.0 and clamped to exactly 1.0 for every input.
-    let analyzer = create_analyzer();
-    let mild = vec![create_evidence_with_values(
-        EvidenceSource::GitChurn,
-        json!({"commit_count": 1}),
-    )];
-    let confidence = analyzer
-        .calculate_confidence(&mild)
-        .expect("should succeed");
-    assert!(
-        confidence < 0.9,
-        "a single low-severity signal must not read as near-certainty; got {confidence}"
-    );
-}
+    /// five-whys reported 808 SATD markers for this repo while `pmat analyze satd`
+    /// reported 39 for the same path in the same session — the old
+    /// `count_satd_markers` was a raw substring scan with no comment awareness, so
+    /// it counted pattern tables, fixtures and doc prose. Both surfaces now read the
+    /// same detector.
+    #[tokio::test]
+    async fn satd_evidence_agrees_with_the_analyze_satd_detector() {
+        use crate::services::satd_detector::SATDDetector;
 
-
-/// five-whys reported 808 SATD markers for this repo while `pmat analyze satd`
-/// reported 39 for the same path in the same session — the old
-/// `count_satd_markers` was a raw substring scan with no comment awareness, so
-/// it counted pattern tables, fixtures and doc prose. Both surfaces now read the
-/// same detector.
-#[tokio::test]
-async fn satd_evidence_agrees_with_the_analyze_satd_detector() {
-    use crate::services::satd_detector::SATDDetector;
-
-    let dir = tempfile::tempdir().expect("tempdir");
-    // A named subdirectory: `tempfile` roots are dot-prefixed and source walks
-    // skip hidden entries.
-    let root = dir.path().join("proj");
-    std::fs::create_dir_all(root.join("src")).expect("mkdir");
-    std::fs::write(
-        root.join("src/lib.rs"),
-        // One genuine SATD comment, plus three lines that a bare substring
-        // scan counts and a detector does not: a string literal, a doc mention
-        // and an identifier.
-        "// TODO: implement retry\n\
+        let dir = tempfile::tempdir().expect("tempdir");
+        // A named subdirectory: `tempfile` roots are dot-prefixed and source walks
+        // skip hidden entries.
+        let root = dir.path().join("proj");
+        std::fs::create_dir_all(root.join("src")).expect("mkdir");
+        std::fs::write(
+            root.join("src/lib.rs"),
+            // One genuine SATD comment, plus three lines that a bare substring
+            // scan counts and a detector does not: a string literal, a doc mention
+            // and an identifier.
+            "// TODO: implement retry\n\
          pub const MARKERS: &[&str] = &[\"TODO\", \"FIXME\", \"HACK\"];\n\
          /// Explains why the word FIXME appears in the pattern table above.\n\
          pub fn xxx_helper() -> u32 { 1 }\n",
-    )
-    .expect("write");
-
-    let evidence = FiveWhysAnalyzer::gather_satd_evidence(&root)
-        .await
-        .expect("SATD evidence must be gathered");
-    let five_whys_count = evidence.value["count"].as_u64().expect("count key");
-
-    let detector_count = SATDDetector::new()
-        .analyze_project(&root, false)
-        .await
-        .expect("detector must run")
-        .summary
-        .total_items as u64;
-
-    assert_eq!(
-        five_whys_count, detector_count,
-        "five-whys must report the SATD number `analyze satd` reports"
-    );
-}
-
-
-/// `complexity_violations` was structurally always 0: this producer wrote
-/// `{total_lines, deep_nesting, threshold}` while
-/// `EvidenceSummary::process_complexity_evidence` reads a `value` key nobody
-/// wrote, so the comparison was always `0.0 > 20.0`. The producer and the
-/// consumer must agree on the key.
-#[test]
-fn complexity_evidence_carries_the_key_the_summary_reads() {
-    use crate::models::debug_analysis::{EvidenceSummary, WhyIteration};
-
-    let dir = tempfile::tempdir().expect("tempdir");
-    let root = dir.path().join("proj");
-    std::fs::create_dir_all(root.join("src")).expect("mkdir");
-    // Three of four lines sit deeper than the nesting threshold, so the
-    // estimated density is far above 20/1000 lines.
-    std::fs::write(root.join("src/deep.rs"), "{{{{{{\nfoo\nbar\n}}}}}}\n")
+        )
         .expect("write");
 
-    let evidence = FiveWhysAnalyzer::gather_complexity_evidence(&root)
-        .expect("a src/ tree must yield complexity evidence");
+        let evidence = FiveWhysAnalyzer::gather_satd_evidence(&root)
+            .await
+            .expect("SATD evidence must be gathered");
+        let five_whys_count = evidence.value["count"].as_u64().expect("count key");
 
-    let value = evidence
-        .value
-        .get("value")
-        .and_then(serde_json::Value::as_f64)
-        .expect("the payload must carry the `value` key the summary reads");
-    let threshold = evidence
-        .value
-        .get("threshold")
-        .and_then(serde_json::Value::as_f64)
-        .expect("threshold");
-    assert!(value > threshold, "{value} vs {threshold}");
+        let detector_count = SATDDetector::new()
+            .analyze_project(&root, false)
+            .await
+            .expect("detector must run")
+            .summary
+            .total_items as u64;
 
-    let mut why = WhyIteration::new(1, "Why?".to_string(), "H".to_string());
-    why.add_evidence(evidence);
-    let summary = EvidenceSummary::from_whys(&[why]);
-    assert_eq!(
-        summary.complexity_violations, 1,
-        "the summary must see the violation the evidence describes"
-    );
-    assert!(summary.complexity_measured);
+        assert_eq!(
+            five_whys_count, detector_count,
+            "five-whys must report the SATD number `analyze satd` reports"
+        );
+    }
+
+    /// `complexity_violations` was structurally always 0: this producer wrote
+    /// `{total_lines, deep_nesting, threshold}` while
+    /// `EvidenceSummary::process_complexity_evidence` reads a `value` key nobody
+    /// wrote, so the comparison was always `0.0 > 20.0`. The producer and the
+    /// consumer must agree on the key.
+    #[test]
+    fn complexity_evidence_carries_the_key_the_summary_reads() {
+        use crate::models::debug_analysis::{EvidenceSummary, WhyIteration};
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path().join("proj");
+        std::fs::create_dir_all(root.join("src")).expect("mkdir");
+        // Three of four lines sit deeper than the nesting threshold, so the
+        // estimated density is far above 20/1000 lines.
+        std::fs::write(root.join("src/deep.rs"), "{{{{{{\nfoo\nbar\n}}}}}}\n").expect("write");
+
+        let evidence = FiveWhysAnalyzer::gather_complexity_evidence(&root)
+            .expect("a src/ tree must yield complexity evidence");
+
+        let value = evidence
+            .value
+            .get("value")
+            .and_then(serde_json::Value::as_f64)
+            .expect("the payload must carry the `value` key the summary reads");
+        let threshold = evidence
+            .value
+            .get("threshold")
+            .and_then(serde_json::Value::as_f64)
+            .expect("threshold");
+        assert!(value > threshold, "{value} vs {threshold}");
+
+        let mut why = WhyIteration::new(1, "Why?".to_string(), "H".to_string());
+        why.add_evidence(evidence);
+        let summary = EvidenceSummary::from_whys(&[why]);
+        assert_eq!(
+            summary.complexity_violations, 1,
+            "the summary must see the violation the evidence describes"
+        );
+        assert!(summary.complexity_measured);
+    }
 }
 
+#[cfg(test)]
+mod depth_and_saturation_tests {
+    //! REGRESSION (#962): `--depth` was inert above 3 on any real repository.
+    //!
+    //! Every severity scale was a hard clamp that real repos blew past — pmat
+    //! reports 62 SATD markers against a cap of 10, 29 commits against 20, 12
+    //! matched locations against 6 — so every severity pinned to 1.0, the
+    //! weighted mean was exactly 1.0, and the `i >= 3 && confidence > 0.9` early
+    //! exit fired on iteration 3 every time. `--depth 5`, `7` and `10` all
+    //! returned three whys, each stamped 100.0% directly above the report's own
+    //! sentence disclaiming them as "repo-wide signals, not findings about this
+    //! defect".
+    use super::*;
+
+    /// The scale must distinguish codebases it is there to compare. Under the
+    /// old `count.min(10.0) / 10.0` these three were all exactly 1.0.
+    #[test]
+    fn severity_discriminates_past_the_old_clamp() {
+        let at_10 = FiveWhysAnalyzer::saturating_severity(10.0, 10.0);
+        let at_62 = FiveWhysAnalyzer::saturating_severity(62.0, 10.0);
+        let at_200 = FiveWhysAnalyzer::saturating_severity(200.0, 10.0);
+        assert!(
+            at_10 < at_62,
+            "10 and 62 markers must differ: {at_10} vs {at_62}"
+        );
+        assert!(at_62 < at_200, "62 and 200 markers must differ");
+        assert!(
+            (at_10 - 0.5).abs() < 1e-9,
+            "`half` is the half-severity point, got {at_10}"
+        );
+        assert!(
+            at_200 < 1.0,
+            "no finite count may reach certainty, got {at_200}"
+        );
+    }
+
+    /// Monotone and bounded, including the degenerate inputs.
+    #[test]
+    fn severity_is_monotone_and_bounded() {
+        assert_eq!(FiveWhysAnalyzer::saturating_severity(0.0, 10.0), 0.0);
+        assert_eq!(FiveWhysAnalyzer::saturating_severity(-5.0, 10.0), 0.0);
+        assert_eq!(FiveWhysAnalyzer::saturating_severity(5.0, 0.0), 0.0);
+        let mut prev = 0.0;
+        for n in 1..500 {
+            let s = FiveWhysAnalyzer::saturating_severity(f64::from(n), 20.0);
+            assert!(s > prev, "must rise at n={n}");
+            assert!(s < 1.0, "must stay below 1.0 at n={n}");
+            prev = s;
+        }
+    }
+
+    /// The ceiling has to sit BELOW the early-exit threshold, or capping the
+    /// repo-level rungs would not restore `--depth` at all. This is the exact
+    /// coupling that made the bug: a constant on one side, a literal on the
+    /// other, with nothing asserting the relation.
+    #[test]
+    fn repo_level_ceiling_cannot_trip_the_early_exit() {
+        assert!(
+            FiveWhysAnalyzer::REPO_LEVEL_CEILING <= 0.9,
+            "a chain of repo-wide signals must not be able to terminate the analysis"
+        );
+        assert!(
+            FiveWhysAnalyzer::REPO_LEVEL_CEILING > FiveWhysAnalyzer::NO_ISSUE_EVIDENCE_CEILING,
+            "these runs DID locate the issue; the localisation is real evidence"
+        );
+    }
+
+    /// A hypothesis the report disclaims must not be stamped near-certain, no
+    /// matter how much repo-wide evidence piled up behind it.
+    #[tokio::test]
+    async fn depth_is_honoured_and_repo_level_rungs_are_capped() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("src");
+        // Enough SATD to have saturated every old scale several times over.
+        let mut body = String::from("fn main() {}\n");
+        for i in 0..80 {
+            body.push_str(&format!("// TODO: parser stack overflow case {i}\n"));
+        }
+        std::fs::write(dir.path().join("src/main.rs"), body).expect("write");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write");
+
+        let analyzer = FiveWhysAnalyzer::new();
+        let analysis = analyzer
+            .analyze("parser stack overflow", dir.path(), 10)
+            .await
+            .expect("analyze");
+
+        assert_eq!(
+            analysis.whys.len(),
+            10,
+            "--depth 10 must produce 10 whys; it produced 3 for two releases"
+        );
+        for why in &analysis.whys {
+            if why.hypothesis.contains(FiveWhysAnalyzer::REPO_LEVEL_TAG) {
+                assert!(
+                    why.confidence <= FiveWhysAnalyzer::REPO_LEVEL_CEILING,
+                    "a rung the report disclaims was stamped {:.3}: {}",
+                    why.confidence,
+                    why.hypothesis
+                );
+            }
+        }
+    }
 }
