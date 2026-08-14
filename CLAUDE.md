@@ -224,7 +224,7 @@ pmat context --output deep_context.md --format llm-optimized
 
 # Step 2: Validate documentation accuracy (--deep-context is REQUIRED)
 pmat validate-readme \
-    --targets README.md CLAUDE.md GEMINI.md AGENT.md \
+    --targets README.md CLAUDE.md \
     --deep-context deep_context.md \
     --fail-on-contradiction --verbose
 ```
