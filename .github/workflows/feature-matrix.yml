@@ -1,0 +1,170 @@
+# Every feature this crate advertises must compile.
+#
+# WHY THIS EXISTS
+# ci.yml compiles `cargo check --bin pmat --locked` — default features only. In
+# the 3.30.0 cycle that blind spot let SIX advertised features ship broken:
+#
+#   java-ast, csharp-ast, kotlin-ast, ruby-ast, scala-ast
+#       one bug, five instances. Sprint 46 emptied the `*-ast` features but left
+#       the mapper imports gated on them, while their use sites in `create()`
+#       were gated on `polyglot-*`. Under `#![deny(unused_imports)]` each became
+#       a hard error, so `cargo check --lib --features java-ast` had not
+#       compiled for months.
+#   mcp-integration
+#       `register_jvm_tools` binds a write lock used only inside JVM-gated
+#       blocks, so a build without them tripped `#![deny(unused_variables)]`.
+#       Consequence: 440 lines of java_tools_tests.rs never ran under any
+#       invocation.
+#
+# The same gap broke three FULL STRUCT LITERALS when a field was added to the
+# public `TdgScore`: benches/storage_backend_bench.rs, examples/
+# quality_gate_violations.rs, and src/tdg/olap_analytics_trueno.rs. The last
+# sits behind analytics-gpu / advanced-analysis / full, so
+# `cargo install pmat --features full` did not compile for an entire release.
+#
+# A feature a user can type is a feature that must build. This job is the only
+# thing that checks that.
+name: Feature Matrix
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: feature-matrix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Every leg checks the same dependency graph, so the expensive part compiles
+  # once per shard and each feature after that recompiles only the lib.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # The user-facing bundles: what someone actually types after
+  # `cargo install pmat --features …`. Fast, and blocking.
+  bundles:
+    name: bundle / ${{ matrix.feature }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        feature:
+          - default
+          - full
+          - all-languages
+          - most-languages
+          - core-languages
+          - extended-languages
+          - rust-only
+          - advanced-analysis
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: featmatrix-${{ matrix.feature }}
+      - name: cargo check --lib --features ${{ matrix.feature }}
+        run: cargo check --lib --locked --features '${{ matrix.feature }}'
+      # The bin is what `cargo install` builds; a lib that compiles and a binary
+      # that does not is still a broken install.
+      - name: cargo check --bin pmat --features ${{ matrix.feature }}
+        run: cargo check --bin pmat --locked --features '${{ matrix.feature }}'
+
+  # Every individual feature, sharded so the wall clock stays reasonable.
+  # Deps compile once per shard; each feature after that is a lib recompile.
+  #
+  # The list is derived from Cargo.toml at run time rather than duplicated here,
+  # because a hand-copied list silently stops covering features added later —
+  # which is the same "the check does not know what it is not checking" defect
+  # this job exists to catch.
+  individual:
+    name: individual / shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: featmatrix-shard-${{ matrix.shard }}
+      - name: cargo check every feature in this shard
+        shell: bash
+        run: |
+          set -uo pipefail
+          # `broken-tests` is a deliberate non-compiling quarantine — the only
+          # feature exempt, and named here so the exemption is visible.
+          mapfile -t FEATURES < <(
+            python3 - <<'PY'
+          import re
+          body = re.search(r'^\[features\]\n(.*?)(?=^\[)', open('Cargo.toml').read(), re.S | re.M).group(1)
+          skip = {'broken-tests'}
+          for m in re.finditer(r'^([a-zA-Z0-9_-]+)\s*=', body, re.M):
+              if m.group(1) not in skip:
+                  print(m.group(1))
+          PY
+          )
+          total=${#FEATURES[@]}
+          echo "::notice::${total} features discovered; this is shard ${{ matrix.shard }} of 6"
+          if [ "$total" -lt 40 ]; then
+            echo "::error::only ${total} features parsed from Cargo.toml — the parser is broken, not the crate"
+            exit 1
+          fi
+          failed=()
+          for i in "${!FEATURES[@]}"; do
+            if [ $(( i % 6 )) -ne ${{ matrix.shard }} ]; then continue; fi
+            f="${FEATURES[$i]}"
+            echo "::group::cargo check --lib --features $f"
+            if cargo check --lib --locked --features "$f"; then
+              echo "ok $f"
+            else
+              echo "::error::feature '$f' does not compile"
+              failed+=("$f")
+            fi
+            echo "::endgroup::"
+          done
+          if [ ${#failed[@]} -ne 0 ]; then
+            echo "features that do not compile: ${failed[*]}"
+            exit 1
+          fi
+          echo "all features in shard ${{ matrix.shard }} compile"
+
+  # benches/ and examples/ are the two target classes `cargo check --bin pmat`
+  # never touches, and both were broken this release by a field added to a
+  # public struct. `--all-targets` is the only invocation that sees them.
+  all-targets:
+    name: clippy --all-targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: clippy --all-targets (compiles benches and examples)
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+  feature-gate:
+    name: feature-gate
+    runs-on: ubuntu-latest
+    needs: [bundles, individual, all-targets]
+    if: always()
+    steps:
+      - name: Require every leg
+        run: |
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}"; do
+            if [ "$r" != "success" ]; then
+              echo "a feature leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }}"
+              exit 1
+            fi
+          done
+          echo "every advertised feature compiles"
