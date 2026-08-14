@@ -359,7 +359,7 @@ pmat/
 | Coverage | 99.66% |
 | Mutation Score | >80% |
 | Languages | 20 supported + MLOps model formats |
-| MCP Tools | 20 available |
+| MCP Tools | 16 available |
 
 ### Falsifiable Quality Commitments
 
