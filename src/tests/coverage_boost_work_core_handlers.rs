@@ -10,11 +10,11 @@
 //! - Falsification report processing helpers
 //! - Score capture helper functions
 
-use crate::cli::handlers::work_contract::{
-    EvidenceType, FalsificationMethod, FalsificationResult,
-};
+use crate::cli::handlers::work_contract::{EvidenceType, FalsificationMethod, FalsificationResult};
 use crate::cli::handlers::work_falsification::{ClaimResult, FalsificationReport};
-use crate::models::roadmap::{ItemStatus, ItemType, Priority, RoadmapItem, Roadmap, Phase, SubTask};
+use crate::models::roadmap::{
+    ItemStatus, ItemType, Phase, Priority, Roadmap, RoadmapItem, SubTask,
+};
 use std::path::PathBuf;
 
 // ============================================================================
@@ -175,7 +175,10 @@ fn test_parse_github_url_ssh_no_git() {
 #[test]
 fn test_parse_github_url_nested_path() {
     let url = "https://github.com/org/project/subproject.git";
-    assert_eq!(parse_github_url_test(url), Some("org/project/subproject".to_string()));
+    assert_eq!(
+        parse_github_url_test(url),
+        Some("org/project/subproject".to_string())
+    );
 }
 
 #[test]
@@ -203,21 +206,51 @@ fn test_parse_github_url_invalid() {
 /// Pattern-based lookup for claim_to_override_name
 const CLAIM_PATTERNS: &[(&[&str], &str)] = &[
     (&["manifest", "files deleted"], "manifest"),
-    (&["meta-falsification", "falsification system"], "meta-falsification"),
-    (&["coverage gaming", "coverage exclusion", "cfg(not(coverage))"], "coverage-gaming"),
-    (&["differential coverage", "new code", "changed lines"], "differential-coverage"),
-    (&["total coverage", "absolute coverage", "coverage does not decrease", "coverage >= 95"], "coverage"),
+    (
+        &["meta-falsification", "falsification system"],
+        "meta-falsification",
+    ),
+    (
+        &[
+            "coverage gaming",
+            "coverage exclusion",
+            "cfg(not(coverage))",
+        ],
+        "coverage-gaming",
+    ),
+    (
+        &["differential coverage", "new code", "changed lines"],
+        "differential-coverage",
+    ),
+    (
+        &[
+            "total coverage",
+            "absolute coverage",
+            "coverage does not decrease",
+            "coverage >= 95",
+        ],
+        "coverage",
+    ),
     (&["tdg", "test-driven grade"], "tdg"),
     (&["complexity", "cyclomatic"], "complexity"),
-    (&["supply chain", "dependencies", "vulnerable dependencies"], "supply-chain"),
+    (
+        &["supply chain", "dependencies", "vulnerable dependencies"],
+        "supply-chain",
+    ),
     (&["file size", "500 lines"], "file-size"),
     (&["spec", "specification"], "spec-quality"),
-    (&["github", "sync", "changes pushed", "uncommitted"], "github-sync"),
+    (
+        &["github", "sync", "changes pushed", "uncommitted"],
+        "github-sync",
+    ),
     (&["examples", "compile"], "examples"),
     (&["book", "pmat-book"], "book"),
     (&["satd", "todo/fixme/hack"], "satd"),
     (&["dead code introduced", "dead code detected"], "dead-code"),
-    (&["per-file coverage", "files have >= 95%", "all files have"], "per-file-coverage"),
+    (
+        &["per-file coverage", "files have >= 95%", "all files have"],
+        "per-file-coverage",
+    ),
     (&["lint passes", "make lint"], "lint"),
 ];
 
@@ -240,35 +273,74 @@ fn claim_to_override_name_test(hypothesis: &str) -> String {
 
 #[test]
 fn test_claim_to_override_manifest() {
-    assert_eq!(claim_to_override_name_test("All manifest files exist"), "manifest");
-    assert_eq!(claim_to_override_name_test("No files deleted from baseline"), "manifest");
+    assert_eq!(
+        claim_to_override_name_test("All manifest files exist"),
+        "manifest"
+    );
+    assert_eq!(
+        claim_to_override_name_test("No files deleted from baseline"),
+        "manifest"
+    );
 }
 
 #[test]
 fn test_claim_to_override_meta_falsification() {
-    assert_eq!(claim_to_override_name_test("The meta-falsification check passes"), "meta-falsification");
-    assert_eq!(claim_to_override_name_test("The falsification system is working"), "meta-falsification");
+    assert_eq!(
+        claim_to_override_name_test("The meta-falsification check passes"),
+        "meta-falsification"
+    );
+    assert_eq!(
+        claim_to_override_name_test("The falsification system is working"),
+        "meta-falsification"
+    );
 }
 
 #[test]
 fn test_claim_to_override_coverage_gaming() {
-    assert_eq!(claim_to_override_name_test("No coverage gaming detected"), "coverage-gaming");
-    assert_eq!(claim_to_override_name_test("No coverage exclusion patterns"), "coverage-gaming");
-    assert_eq!(claim_to_override_name_test("No cfg(not(coverage)) found"), "coverage-gaming");
+    assert_eq!(
+        claim_to_override_name_test("No coverage gaming detected"),
+        "coverage-gaming"
+    );
+    assert_eq!(
+        claim_to_override_name_test("No coverage exclusion patterns"),
+        "coverage-gaming"
+    );
+    assert_eq!(
+        claim_to_override_name_test("No cfg(not(coverage)) found"),
+        "coverage-gaming"
+    );
 }
 
 #[test]
 fn test_claim_to_override_differential_coverage() {
-    assert_eq!(claim_to_override_name_test("All changed lines are covered"), "differential-coverage");
-    assert_eq!(claim_to_override_name_test("New code is tested"), "differential-coverage");
-    assert_eq!(claim_to_override_name_test("Differential coverage met"), "differential-coverage");
+    assert_eq!(
+        claim_to_override_name_test("All changed lines are covered"),
+        "differential-coverage"
+    );
+    assert_eq!(
+        claim_to_override_name_test("New code is tested"),
+        "differential-coverage"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Differential coverage met"),
+        "differential-coverage"
+    );
 }
 
 #[test]
 fn test_claim_to_override_total_coverage() {
-    assert_eq!(claim_to_override_name_test("Total coverage >= 95%"), "coverage");
-    assert_eq!(claim_to_override_name_test("Absolute coverage threshold met"), "coverage");
-    assert_eq!(claim_to_override_name_test("Coverage does not decrease"), "coverage");
+    assert_eq!(
+        claim_to_override_name_test("Total coverage >= 95%"),
+        "coverage"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Absolute coverage threshold met"),
+        "coverage"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Coverage does not decrease"),
+        "coverage"
+    );
 }
 
 #[test]
@@ -279,70 +351,136 @@ fn test_claim_to_override_tdg() {
 
 #[test]
 fn test_claim_to_override_complexity() {
-    assert_eq!(claim_to_override_name_test("No function exceeds complexity 20"), "complexity");
-    assert_eq!(claim_to_override_name_test("Cyclomatic complexity under threshold"), "complexity");
+    assert_eq!(
+        claim_to_override_name_test("No function exceeds complexity 20"),
+        "complexity"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Cyclomatic complexity under threshold"),
+        "complexity"
+    );
 }
 
 #[test]
 fn test_claim_to_override_supply_chain() {
-    assert_eq!(claim_to_override_name_test("No vulnerable dependencies added"), "supply-chain");
-    assert_eq!(claim_to_override_name_test("Supply chain integrity verified"), "supply-chain");
-    assert_eq!(claim_to_override_name_test("Dependencies are secure"), "supply-chain");
+    assert_eq!(
+        claim_to_override_name_test("No vulnerable dependencies added"),
+        "supply-chain"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Supply chain integrity verified"),
+        "supply-chain"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Dependencies are secure"),
+        "supply-chain"
+    );
 }
 
 #[test]
 fn test_claim_to_override_file_size() {
-    assert_eq!(claim_to_override_name_test("No file exceeds 500 lines"), "file-size");
-    assert_eq!(claim_to_override_name_test("File size limit respected"), "file-size");
+    assert_eq!(
+        claim_to_override_name_test("No file exceeds 500 lines"),
+        "file-size"
+    );
+    assert_eq!(
+        claim_to_override_name_test("File size limit respected"),
+        "file-size"
+    );
 }
 
 #[test]
 fn test_claim_to_override_spec_quality() {
-    assert_eq!(claim_to_override_name_test("Spec score above threshold"), "spec-quality");
-    assert_eq!(claim_to_override_name_test("Specification quality met"), "spec-quality");
+    assert_eq!(
+        claim_to_override_name_test("Spec score above threshold"),
+        "spec-quality"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Specification quality met"),
+        "spec-quality"
+    );
 }
 
 #[test]
 fn test_claim_to_override_github_sync() {
-    assert_eq!(claim_to_override_name_test("All changes pushed to GitHub"), "github-sync");
-    assert_eq!(claim_to_override_name_test("No uncommitted changes"), "github-sync");
-    assert_eq!(claim_to_override_name_test("Sync status verified"), "github-sync");
+    assert_eq!(
+        claim_to_override_name_test("All changes pushed to GitHub"),
+        "github-sync"
+    );
+    assert_eq!(
+        claim_to_override_name_test("No uncommitted changes"),
+        "github-sync"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Sync status verified"),
+        "github-sync"
+    );
 }
 
 #[test]
 fn test_claim_to_override_examples() {
-    assert_eq!(claim_to_override_name_test("All examples compile"), "examples");
-    assert_eq!(claim_to_override_name_test("Examples run successfully"), "examples");
+    assert_eq!(
+        claim_to_override_name_test("All examples compile"),
+        "examples"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Examples run successfully"),
+        "examples"
+    );
 }
 
 #[test]
 fn test_claim_to_override_book() {
-    assert_eq!(claim_to_override_name_test("pmat-book validation passes"), "book");
-    assert_eq!(claim_to_override_name_test("Book documentation correct"), "book");
+    assert_eq!(
+        claim_to_override_name_test("pmat-book validation passes"),
+        "book"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Book documentation correct"),
+        "book"
+    );
 }
 
 #[test]
 fn test_claim_to_override_satd() {
     assert_eq!(claim_to_override_name_test("No new SATD markers"), "satd");
-    assert_eq!(claim_to_override_name_test("No TODO/FIXME/HACK added"), "satd");
+    assert_eq!(
+        claim_to_override_name_test("No TODO/FIXME/HACK added"),
+        "satd"
+    );
 }
 
 #[test]
 fn test_claim_to_override_dead_code() {
-    assert_eq!(claim_to_override_name_test("No dead code introduced"), "dead-code");
-    assert_eq!(claim_to_override_name_test("Dead code detected and removed"), "dead-code");
+    assert_eq!(
+        claim_to_override_name_test("No dead code introduced"),
+        "dead-code"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Dead code detected and removed"),
+        "dead-code"
+    );
 }
 
 #[test]
 fn test_claim_to_override_per_file_coverage() {
-    assert_eq!(claim_to_override_name_test("All files have >= 95% coverage"), "per-file-coverage");
-    assert_eq!(claim_to_override_name_test("Per-file coverage threshold met"), "per-file-coverage");
+    assert_eq!(
+        claim_to_override_name_test("All files have >= 95% coverage"),
+        "per-file-coverage"
+    );
+    assert_eq!(
+        claim_to_override_name_test("Per-file coverage threshold met"),
+        "per-file-coverage"
+    );
 }
 
 #[test]
 fn test_claim_to_override_lint() {
     assert_eq!(claim_to_override_name_test("make lint passes"), "lint");
-    assert_eq!(claim_to_override_name_test("Lint passes with no errors"), "lint");
+    assert_eq!(
+        claim_to_override_name_test("Lint passes with no errors"),
+        "lint"
+    );
 }
 
 #[test]
@@ -350,14 +488,22 @@ fn test_claim_to_override_unknown() {
     let result = claim_to_override_name_test("Some completely unknown claim");
     // Should sanitize and truncate
     assert!(result.len() <= 30);
-    assert!(result.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
+    assert!(result
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_'));
 }
 
 #[test]
 fn test_claim_to_override_case_insensitive() {
     assert_eq!(claim_to_override_name_test("TDG SCORE"), "tdg");
-    assert_eq!(claim_to_override_name_test("Complexity Check"), "complexity");
-    assert_eq!(claim_to_override_name_test("COVERAGE GAMING"), "coverage-gaming");
+    assert_eq!(
+        claim_to_override_name_test("Complexity Check"),
+        "complexity"
+    );
+    assert_eq!(
+        claim_to_override_name_test("COVERAGE GAMING"),
+        "coverage-gaming"
+    );
 }
 
 // ============================================================================
@@ -494,7 +640,9 @@ fn filter_unoverriden_failures_test<'a>(
         .filter(|failure| {
             let claim_name = claim_to_override_name_test(&failure.hypothesis);
             if let Some(overrides) = override_claims {
-                !overrides.iter().any(|o| o.to_lowercase() == claim_name.to_lowercase())
+                !overrides
+                    .iter()
+                    .any(|o| o.to_lowercase() == claim_name.to_lowercase())
             } else {
                 true
             }
@@ -698,7 +846,12 @@ fn test_roadmap_item_completion_percentage_all_statuses() {
     for (status, expected) in test_cases {
         let mut item = RoadmapItem::new("TEST".to_string(), "Test".to_string());
         item.status = status;
-        assert_eq!(item.completion_percentage(), expected, "Failed for status: {:?}", status);
+        assert_eq!(
+            item.completion_percentage(),
+            expected,
+            "Failed for status: {:?}",
+            status
+        );
     }
 }
 
@@ -872,7 +1025,10 @@ fn test_rust_project_score_json_parsing() {
     let json = r#"{"total_earned": 78.3, "total_possible": 106}"#;
     let value: serde_json::Value = serde_json::from_str(json).unwrap();
 
-    let score = value.get("total_earned").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let score = value
+        .get("total_earned")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
     assert!((score - 78.3).abs() < f64::EPSILON);
 }
 
@@ -924,7 +1080,7 @@ fn test_commit_message_with_rust_score() {
     let rust_score = Some(78.3);
 
     let rust_line = if let Some(rs) = rust_score {
-        format!("Rust-Score: {:.1}/134\n", rs)
+        format!("Rust-Score: {rs:.1}/289\n")
     } else {
         String::new()
     };
@@ -934,7 +1090,11 @@ fn test_commit_message_with_rust_score() {
         title, id, id, tdg_score, repo_score, rust_line
     );
 
-    assert!(commit_msg.contains("Rust-Score: 78.3/134"));
+    // NOTE: this test rebuilds the format string locally, so it pins its own
+    // copy rather than the shipped code — which is why it did not catch the
+    // /134-over-a-289-rubric defect. The real assertions live in
+    // `commit::rust_score_trailer_tests`, which call the function.
+    assert!(commit_msg.contains("Rust-Score: 78.3/289"));
 }
 
 #[test]
@@ -942,7 +1102,7 @@ fn test_commit_message_no_rust_score() {
     let rust_score: Option<f64> = None;
 
     let rust_line = if let Some(rs) = rust_score {
-        format!("Rust-Score: {:.1}/134\n", rs)
+        format!("Rust-Score: {rs:.1}/289\n")
     } else {
         String::new()
     };
@@ -990,7 +1150,11 @@ fn test_evidence_type_git_state() {
         dirty_files: 2,
     };
 
-    if let EvidenceType::GitState { unpushed_commits, dirty_files } = evidence {
+    if let EvidenceType::GitState {
+        unpushed_commits,
+        dirty_files,
+    } = evidence
+    {
         assert_eq!(unpushed_commits, 3);
         assert_eq!(dirty_files, 2);
     } else {
@@ -1041,7 +1205,10 @@ fn test_spec_path_github_issue() {
         project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()))
     };
 
-    assert_eq!(spec_path, PathBuf::from("/project/docs/specifications/042-spec.md"));
+    assert_eq!(
+        spec_path,
+        PathBuf::from("/project/docs/specifications/042-spec.md")
+    );
 }
 
 #[test]
@@ -1051,7 +1218,10 @@ fn test_spec_path_yaml_ticket() {
 
     let spec_path = project_path.join(format!("docs/specifications/{}-spec.md", id.to_lowercase()));
 
-    assert_eq!(spec_path, PathBuf::from("/project/docs/specifications/pmat-new-feature-spec.md"));
+    assert_eq!(
+        spec_path,
+        PathBuf::from("/project/docs/specifications/pmat-new-feature-spec.md")
+    );
 }
 
 // ============================================================================

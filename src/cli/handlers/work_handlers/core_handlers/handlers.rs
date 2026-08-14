@@ -682,7 +682,10 @@ pub async fn handle_work_complete(
         println!(
             "      {} Rust Project Score: {}",
             c::pass(""),
-            c::number(&format!("{:.1}/134", rust_score))
+            c::number(&format!(
+                "{rust_score:.1}/{:.0}",
+                crate::services::rust_project_score::rubric_max_points()
+            ))
         );
     }
     let meta_file = project_path

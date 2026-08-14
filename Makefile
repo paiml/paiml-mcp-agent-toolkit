@@ -2651,11 +2651,17 @@ bench-all: bench-baseline ## Run all dependency reduction benchmarks
 
 .PHONY: pmat-validate-docs
 pmat-validate-docs: ## Validate documentation accuracy (hallucination detection - Phase 3.5)
+# NOTE: --targets must list files that EXIST. `validate-readme` hard-errors on
+# the first unreadable target BEFORE validating anything, so naming a missing
+# file makes this target fail for that reason and never reach
+# --fail-on-contradiction. AGENT.md was listed here and has never existed, so
+# the hallucination detector validated zero files. Add a file here only after
+# creating it.
 	@echo "📚 Validating documentation accuracy (Phase 3.5)..."
 	@which pmat > /dev/null 2>&1 || { echo "❌ PMAT not found! Install with: cargo install --path server"; exit 1; }
 	@cargo run --release --bin pmat -- context --output deep_context.md --format llm-optimized
 	@cargo run --release --bin pmat -- validate-readme \
-		--targets README.md CLAUDE.md AGENT.md \
+		--targets README.md CLAUDE.md \
 		--deep-context deep_context.md \
 		--fail-on-contradiction \
 		--verbose || { \

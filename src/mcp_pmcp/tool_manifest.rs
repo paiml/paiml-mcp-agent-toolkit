@@ -123,8 +123,13 @@ pub fn render_manifest(version: &str) -> String {
         "name": "pmat",
         "version": version,
         "description": "Project Analysis and Intelligence Modeling Toolkit",
-        "main": "target/release/pmat",
-        "bin": {"pmat": "target/release/pmat"},
+        // NOT "target/release/pmat". This manifest ships inside the published
+        // crate, and a build-artifact path only resolves on a machine that has
+        // built from source in this exact layout — for anyone who ran
+        // `cargo install pmat` it points at nothing. The installed binary is on
+        // PATH under its own name, which is what a client can actually launch.
+        "main": "pmat",
+        "bin": {"pmat": "pmat"},
         "mcp": {
             "runtime": "binary",
             "launch": {"env": {"MCP_VERSION": "1"}},
@@ -205,6 +210,38 @@ mod tests {
             manifest["mcp"]["tool_count"].as_u64(),
             Some(LIVE_MCP_TOOLS.len() as u64)
         );
+    }
+
+    /// The manifest must not advertise a build-artifact path.
+    ///
+    /// `mcp.json` ships inside the published crate (verified: it is present in
+    /// pmat-3.30.1.crate). It carried `target/release/pmat`, which resolves
+    /// only on a machine that has built from source in that layout — for a
+    /// `cargo install pmat` user it names a file that does not exist.
+    ///
+    /// This pins the property rather than the version: CB-1656 deliberately
+    /// ignores version churn so a release bump does not turn it red
+    /// (`check_macs_artifacts.rs:5-6`), and a version-equality assertion here
+    /// would fight that decision and redden every release.
+    #[test]
+    fn manifest_advertises_no_build_artifact_path() {
+        let rendered = render_manifest("9.9.9");
+        for bad in ["target/release", "target/debug", "../target"] {
+            assert!(
+                !rendered.contains(bad),
+                "manifest advertises the build-artifact path '{bad}', which does not exist for an installed binary:\n{rendered}"
+            );
+        }
+        let committed = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("mcp.json"),
+        )
+        .expect("committed mcp.json");
+        for bad in ["target/release", "target/debug"] {
+            assert!(
+                !committed.contains(bad),
+                "committed mcp.json still advertises '{bad}' — regenerate it: cargo test --lib regenerate_mcp_json -- --ignored"
+            );
+        }
     }
 
     #[test]

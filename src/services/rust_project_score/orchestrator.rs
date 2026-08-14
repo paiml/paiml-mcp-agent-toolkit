@@ -100,6 +100,18 @@ pub struct RustProjectScoreOrchestrator {
     scorers: Vec<Box<dyn Scorer>>,
 }
 
+/// The rubric's total, for callers that need the denominator without running a
+/// scoring pass.
+///
+/// A literal `134` was hardcoded at five display sites and in two commit-trailer
+/// writers while this rubric totalled 289, so a recorded 236.9 rendered as
+/// `236.9/134` = 176.8%. Derived from the scorers so adding one cannot
+/// reintroduce the drift.
+#[must_use]
+pub fn rubric_max_points() -> f64 {
+    RustProjectScoreOrchestrator::new().max_points()
+}
+
 impl RustProjectScoreOrchestrator {
     /// Create a new orchestrator with all 11 scorers (v3.0)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
