@@ -61,7 +61,13 @@ async fn a_suppressed_function_is_counted_and_typed_as_a_function() {
         None,
     );
 
-    let outcome = run_dead_code_analysis_with_filters(root, filters(0), Duration::from_secs(120))
+    // Generous on purpose: this test asserts what the analysis FOUND, not how
+    // fast it ran, and the budget is wall clock over a `cargo check` of a fresh
+    // crate. At 120s it failed in CI — not because the two-function fixture is
+    // slow, but because a runner executing ~19,800 tests starved the blocking
+    // task. A timing bound in a test that is not about timing is a flake with no
+    // upside; the one test that IS about the budget uses 1 second, below.
+    let outcome = run_dead_code_analysis_with_filters(root, filters(0), Duration::from_secs(600))
         .await
         .expect("analysis runs");
 
