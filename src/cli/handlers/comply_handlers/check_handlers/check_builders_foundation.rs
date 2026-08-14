@@ -63,6 +63,11 @@ fn build_foundation_checks(
             comply_config,
         ),
         filter_check_by_config(
+            check_workspace_member_registry_deps(project_path),
+            "cb-081-f",
+            comply_config,
+        ),
+        filter_check_by_config(
             check_shell_makefile_quality(project_path),
             "cb-400",
             comply_config,

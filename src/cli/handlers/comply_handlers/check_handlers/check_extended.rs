@@ -336,6 +336,65 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// CB-081-F: a workspace member pulled from crates.io by a sibling.
+///
+/// Split out of CB-081's duplicate COUNT because the remedy is different and
+/// unconditional. CB-081-B reports every crate resolving to more than one
+/// version as one undifferentiated list, and that list is dominated by
+/// third-party major conflicts a project often cannot fix — so the subset it
+/// can always fix is invisible inside it.
+///
+/// paiml/aprender (78 crates) resolved `trueno` at 0.16, 0.16.5 and the in-tree
+/// 0.63.0 at once — three compilations of the SIMD kernels in one binary —
+/// while `jugar-probar` spanned seven declared versions. `comply check` did see
+/// it: `trueno` sat inside "176 duplicate crates: codespan-reporting, syn,
+/// schemars, …" under "run cargo tree --duplicates". The signal was there and
+/// the severity was not (#989).
+///
+/// Skipped, not passed, on a non-workspace: a single crate has no members, so
+/// there is nothing to measure and nothing to claim.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub(crate) fn check_workspace_member_registry_deps(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-081-F: Workspace Member From Registry";
+    if !project_path.join("Cargo.toml").exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Not a Rust project (no Cargo.toml)".into(),
+            severity: Severity::Info,
+        };
+    }
+    let members = crate::cli::handlers::comply_cb_detect::workspace_member_count(project_path);
+    if members == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Not a workspace: no members to pull from the registry".into(),
+            severity: Severity::Info,
+        };
+    }
+    let found = crate::cli::handlers::comply_cb_detect::detect_workspace_members_from_registry(
+        project_path,
+    );
+    if found.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{members} workspace member(s); every sibling dependency uses a path or \
+                 workspace inheritance"
+            ),
+            severity: Severity::Info,
+        };
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: crate::cli::handlers::comply_cb_detect::format_registry_member_deps(&found),
+        severity: Severity::Error,
+    }
+}
+
 /// Detect project type and discover source files across all source directories.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn discover_source_files(

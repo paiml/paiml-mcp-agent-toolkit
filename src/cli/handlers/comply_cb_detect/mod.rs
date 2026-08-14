@@ -18,6 +18,7 @@ mod spec_work_traceability;
 mod sql_best_practices;
 mod stale_paths;
 mod types;
+mod workspace_registry_deps;
 mod yaml_best_practices;
 
 pub use dependency_checks::*;
@@ -34,6 +35,7 @@ pub use spec_work_traceability::*;
 pub use sql_best_practices::*;
 pub use stale_paths::*;
 pub use types::*;
+pub use workspace_registry_deps::*;
 pub use yaml_best_practices::*;
 
 #[cfg(test)]

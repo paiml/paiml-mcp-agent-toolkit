@@ -30,6 +30,7 @@ use super::check_extended::{
     check_dead_code_percentage, check_dependency_count, check_edd_compliance, check_file_health,
     check_golden_trace_drift, check_muda_waste_score, check_paiml_deps_workspace,
     check_reproducibility_level, check_sovereign_stack_patterns,
+    check_workspace_member_registry_deps,
 };
 use super::check_mono_spec::{
     check_memory_profiling, check_mono_spec_structure, check_swe_ci_evoscore,
