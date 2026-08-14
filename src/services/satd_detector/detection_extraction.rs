@@ -40,12 +40,43 @@ impl SATDDetector {
         Self { debt_classifier }
     }
 
-    /// Extract technical debt from source code content
+    /// Extract technical debt from source code content, excluding inline
+    /// `#[cfg(test)]` blocks.
+    ///
+    /// Equivalent to [`Self::extract_from_content_with_tests`] with
+    /// `include_tests = false`.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn extract_from_content(
         &self,
         content: &str,
         file_path: &Path,
+    ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        self.extract_from_content_with_tests(content, file_path, false)
+    }
+
+    /// Extract technical debt from source code content.
+    ///
+    /// `include_tests` reaches the inline `#[cfg(test)]` skip below. It did not
+    /// before, and the two halves of "test code" were treated differently as a
+    /// result (#994):
+    ///
+    /// | where the debt lives | reported under `--include-tests`? |
+    /// |---|---|
+    /// | `tests/it.rs` | yes |
+    /// | `src/lib.rs`, inside `#[cfg(test)] mod tests` | **no, and no flag could** |
+    ///
+    /// `include_tests` only ever reached file *discovery*
+    /// (`discover_files`, `should_skip_file`), so it selected which paths to
+    /// open and had no say over what was read inside them. In Rust the inline
+    /// `#[cfg(test)] mod tests` is the dominant idiom, so the majority of test
+    /// code sat in the half no invocation could reach — a marker that is
+    /// present, and that every invocation reports as absent.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn extract_from_content_with_tests(
+        &self,
+        content: &str,
+        file_path: &Path,
+        include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
         let mut debts = Vec::new();
 
@@ -70,7 +101,7 @@ impl SATDDetector {
             test_tracker.update_from_line(line.trim());
             let comment = scanner.scan_line(line);
 
-            if test_tracker.is_in_test_block() {
+            if !include_tests && test_tracker.is_in_test_block() {
                 continue;
             }
             if let Some(debt) = self.debt_of(comment, file_path, line_num as u32 + 1) {

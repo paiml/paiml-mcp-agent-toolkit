@@ -705,3 +705,69 @@ mod build_script_exclusion_regression_tests {
         assert_eq!(found.len(), 1, "{found:?}");
     }
 }
+
+#[cfg(test)]
+mod include_tests_reaches_inline_blocks {
+    //! REGRESSION (#994): `--include-tests` could not reach an inline
+    //! `#[cfg(test)]` block, so the two halves of "test code" behaved
+    //! differently and one of them was unreachable by any invocation.
+    //!
+    //! | where the debt lives | before | after |
+    //! |---|---|---|
+    //! | `tests/it.rs` | included by the flag | unchanged |
+    //! | `src/lib.rs`, in `#[cfg(test)] mod tests` | **no flag could reach it** | included by the flag |
+    //!
+    //! `include_tests` reached file DISCOVERY only, so it chose which paths to
+    //! open and had no say over what was read inside them.
+    use crate::services::satd_detector::SATDDetector;
+    use std::path::Path;
+
+    const INLINE: &str = "pub fn f() -> i32 { 1 }\n\
+                          \n\
+                          #[cfg(test)]\n\
+                          mod tests {\n\
+                          \x20   // TODO: debt inside an inline test module\n\
+                          \x20   // FIXME: and more of it\n\
+                          \x20   #[test] fn t() { assert_eq!(1, 1); }\n\
+                          }\n";
+
+    /// The default stays as it was: inline test blocks are production-clean.
+    #[test]
+    fn excluded_by_default() {
+        let found = SATDDetector::new()
+            .extract_from_content(INLINE, Path::new("src/lib.rs"))
+            .expect("extraction");
+        assert!(
+            found.is_empty(),
+            "inline test debt must stay out of a production scan, got {found:?}"
+        );
+    }
+
+    /// …and is now reachable, which is the whole defect.
+    #[test]
+    fn reachable_when_tests_are_requested() {
+        let found = SATDDetector::new()
+            .extract_from_content_with_tests(INLINE, Path::new("src/lib.rs"), true)
+            .expect("extraction");
+        assert_eq!(
+            found.len(),
+            2,
+            "both markers must be reachable with include_tests, got {found:?}"
+        );
+    }
+
+    /// Production debt is reported either way — the flag adds, never replaces.
+    #[test]
+    fn production_debt_is_unaffected_by_the_flag() {
+        let mixed = format!("// TODO: production\n{INLINE}");
+        let d = SATDDetector::new();
+        let without = d
+            .extract_from_content(&mixed, Path::new("src/lib.rs"))
+            .expect("extraction");
+        let with = d
+            .extract_from_content_with_tests(&mixed, Path::new("src/lib.rs"), true)
+            .expect("extraction");
+        assert_eq!(without.len(), 1, "production marker only: {without:?}");
+        assert_eq!(with.len(), 3, "production + both inline markers: {with:?}");
+    }
+}

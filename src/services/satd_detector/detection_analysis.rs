@@ -88,7 +88,8 @@ impl SATDDetector {
             }
 
             stats.total_files_analyzed += 1;
-            self.process_single_file(file_path, stats).await;
+            self.process_single_file(file_path, include_tests, stats)
+                .await;
         }
     }
 
@@ -116,12 +117,18 @@ impl SATDDetector {
         // Check file size constraints
         if let Ok(metadata) = tokio::fs::metadata(file_path).await {
             if metadata.len() > crate::services::file_classifier::LARGE_FILE_THRESHOLD as u64 {
-                eprintln!("Warning: Skipped: {} (large file >500KB)", file_path.display());
+                eprintln!(
+                    "Warning: Skipped: {} (large file >500KB)",
+                    file_path.display()
+                );
                 return true;
             }
 
             if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
-                eprintln!("Warning: Skipped: {} (minified content)", file_path.display());
+                eprintln!(
+                    "Warning: Skipped: {} (minified content)",
+                    file_path.display()
+                );
                 return true;
             }
         }
@@ -130,7 +137,12 @@ impl SATDDetector {
     }
 
     /// Toyota Way: Extract Method - process individual file (complexity <=8)
-    async fn process_single_file(&self, file_path: &Path, stats: &mut ProjectAnalysisStats) {
+    async fn process_single_file(
+        &self,
+        file_path: &Path,
+        include_tests: bool,
+        stats: &mut ProjectAnalysisStats,
+    ) {
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
                 if content.len() > 10_000_000 {
@@ -142,7 +154,7 @@ impl SATDDetector {
                     return;
                 }
 
-                match self.extract_from_content(&content, file_path) {
+                match self.extract_from_content_with_tests(&content, file_path, include_tests) {
                     Ok(debts) => {
                         if !debts.is_empty() {
                             stats.files_with_debt += 1;
@@ -249,7 +261,7 @@ impl SATDDetector {
             }
 
             analyzed += 1;
-            let debts = self.process_file_for_debts(&file_path).await;
+            let debts = self.process_file_for_debts(&file_path, include_tests).await;
             all_debts.extend(debts);
         }
 
@@ -320,9 +332,13 @@ impl SATDDetector {
         false
     }
 
-    async fn process_file_for_debts(&self, file_path: &Path) -> Vec<TechnicalDebt> {
+    async fn process_file_for_debts(
+        &self,
+        file_path: &Path,
+        include_tests: bool,
+    ) -> Vec<TechnicalDebt> {
         match tokio::fs::read_to_string(file_path).await {
-            Ok(content) => self.extract_debts_from_content(&content, file_path),
+            Ok(content) => self.extract_debts_from_content(&content, file_path, include_tests),
             Err(_e) => {
                 // Silently skip unreadable files
                 // BUG-010: Removed noisy warning that interleaved with progress
@@ -331,7 +347,12 @@ impl SATDDetector {
         }
     }
 
-    fn extract_debts_from_content(&self, content: &str, file_path: &Path) -> Vec<TechnicalDebt> {
+    fn extract_debts_from_content(
+        &self,
+        content: &str,
+        file_path: &Path,
+        include_tests: bool,
+    ) -> Vec<TechnicalDebt> {
         // Validate file size before processing
         if content.len() > 10_000_000 {
             eprintln!(
@@ -343,7 +364,7 @@ impl SATDDetector {
         }
 
         // Silently skip files that fail parsing (BUG-010: Removed noisy warning)
-        self.extract_from_content(content, file_path)
+        self.extract_from_content_with_tests(content, file_path, include_tests)
             .unwrap_or_default()
     }
 }
