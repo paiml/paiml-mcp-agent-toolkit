@@ -74,6 +74,136 @@ end_of_record
         assert_eq!(result[0].1, 10);
     }
 
+    // ── #949: the aggregate LCOV shape, and a ranking that survives a rerun ──
+
+    /// 100 statements, one aggregate record per file — the shape
+    /// `cargo llvm-cov --lcov` emits and the parser's own doc comment names.
+    /// Lines 51..=100 are hit by all 8 failing tests and 1 passing test;
+    /// lines 1..=50 by all 10 passing tests and 1 failing test.
+    ///
+    /// Hand-computed Tarantula: 51..=100 → (8/8) / ((1/10) + (8/8)) = 0.909;
+    /// 1..=50 → (1/8) / ((10/10) + (1/8)) = 0.111.
+    fn aggregate_fixture() -> (String, String) {
+        let mut passed = String::from("SF:src/lib.rs\n");
+        let mut failed = String::from("SF:src/lib.rs\n");
+        for i in 1..=100 {
+            let (p, f) = if i <= 50 { (10, 1) } else { (1, 8) };
+            passed.push_str(&format!("DA:{i},{p}\n"));
+            failed.push_str(&format!("DA:{i},{f}\n"));
+        }
+        passed.push_str("end_of_record\n");
+        failed.push_str("end_of_record\n");
+        (passed, failed)
+    }
+
+    #[test]
+    fn aggregate_lcov_hit_counts_are_test_counts_not_booleans() {
+        let (passed, failed) = aggregate_fixture();
+        let combined = LcovParser::combine_coverage(
+            &LcovParser::parse(&passed).unwrap(),
+            &LcovParser::parse(&failed).unwrap(),
+            10,
+            8,
+        );
+        assert_eq!(combined.len(), 100);
+
+        let by_line: HashMap<usize, &StatementCoverage> =
+            combined.iter().map(|c| (c.id.line, c)).collect();
+
+        // The 8 in `DA:51,8` used to be read as a boolean and tallied as 1.
+        let hot = by_line[&51];
+        assert_eq!(hot.executed_by_failed, 8, "aggregate hit count discarded");
+        assert_eq!(hot.executed_by_passed, 1);
+        let cold = by_line[&1];
+        assert_eq!(cold.executed_by_failed, 1);
+        assert_eq!(cold.executed_by_passed, 10);
+
+        let hot_score = tarantula(8, 1, 8, 10);
+        let cold_score = tarantula(1, 10, 8, 10);
+        assert!(
+            (hot_score - 0.909).abs() < 0.001,
+            "expected 0.909, got {hot_score}"
+        );
+        assert!(
+            (cold_score - 0.111).abs() < 0.001,
+            "expected 0.111, got {cold_score}"
+        );
+        assert!(
+            hot_score > cold_score,
+            "the whole point: the failing half must outrank the passing half"
+        );
+    }
+
+    #[test]
+    fn aggregate_lcov_top_n_is_the_failing_half_and_is_reproducible() {
+        let (passed, failed) = aggregate_fixture();
+        let p = LcovParser::parse(&passed).unwrap();
+        let f = LcovParser::parse(&failed).unwrap();
+
+        let run = || {
+            let result =
+                FaultLocalizer::run_localization(&p, &f, 10, 8, SbflFormula::Tarantula, 10);
+            result
+                .rankings
+                .iter()
+                .map(|r| r.statement.line)
+                .collect::<Vec<_>>()
+        };
+
+        let first = run();
+        assert_eq!(first.len(), 10);
+        assert!(
+            first.iter().all(|l| *l > 50),
+            "top-10 must be the failing half (51..=100), got {first:?}"
+        );
+        // Six identical invocations returned six disjoint top-10s before the
+        // ranking had a tie-break.
+        for _ in 0..5 {
+            assert_eq!(run(), first, "identical inputs must rank identically");
+        }
+    }
+
+    #[test]
+    fn concatenated_per_test_lcov_still_counts_one_record_as_one_test() {
+        // The shape that already worked must keep working: one record per test
+        // (as cargo-llvm-cov emits per test, listing every instrumented line
+        // including the ones that test did not reach), so 1 of 10 passing tests
+        // and 8 of 8 failing tests executed line 51 — and an in-test loop count
+        // of 99 must not inflate that to 99 tests.
+        let mut passed = String::new();
+        for i in 0..10 {
+            let hits = if i == 0 { 99 } else { 0 };
+            passed.push_str(&format!("SF:src/lib.rs\nDA:51,{hits}\nend_of_record\n"));
+        }
+        let mut failed = String::new();
+        for _ in 0..8 {
+            failed.push_str("SF:src/lib.rs\nDA:51,99\nend_of_record\n");
+        }
+        let combined = LcovParser::combine_coverage(
+            &LcovParser::parse(&passed).unwrap(),
+            &LcovParser::parse(&failed).unwrap(),
+            10,
+            8,
+        );
+        assert_eq!(combined.len(), 1);
+        assert_eq!(combined[0].executed_by_failed, 8);
+        assert_eq!(combined[0].executed_by_passed, 1);
+    }
+
+    #[test]
+    fn an_aggregate_hit_count_cannot_exceed_the_declared_test_total() {
+        // A loop body hit 1000 times by at most 10 passing tests is executed by
+        // at most 10 passing tests.
+        let combined = LcovParser::combine_coverage(
+            &LcovParser::parse("SF:a.rs\nDA:1,1000\nend_of_record\n").unwrap(),
+            &LcovParser::parse("SF:a.rs\nDA:1,7\nend_of_record\n").unwrap(),
+            10,
+            3,
+        );
+        assert_eq!(combined[0].executed_by_passed, 10);
+        assert_eq!(combined[0].executed_by_failed, 3);
+    }
+
     #[test]
     fn test_formula_from_str() {
         assert!(matches!(

@@ -501,7 +501,18 @@ mod tests {
             without, with,
             "--show-references must change what is rendered"
         );
-        assert!(with.contains("used at: main.rs:3"), "got: {with}");
+        // The renderer prints the call site's full path, which for this fixture
+        // is a fresh temp directory. Asserting a bare `main.rs:3` pinned a path
+        // shape the formatter never produced, so the test failed while the flag
+        // it covers worked.
+        assert!(
+            with.contains("used at:") && with.contains("main.rs:3"),
+            "reference sites must be rendered, got: {with}"
+        );
+        assert!(
+            !without.contains("used at:"),
+            "references must be absent without the flag, got: {without}"
+        );
     }
 
     /// `--help` advertises `detailed` as "Detailed output with all symbols",

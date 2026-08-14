@@ -29,8 +29,12 @@ pub(super) async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<
     } = cmd
     {
         let path = project_path.unwrap_or(path);
-        let converted_dag_type = convert_deep_context_dag_type(dag_type);
-        let converted_cache_strategy = convert_cache_strategy(cache_strategy);
+        // `Option` all the way through: the handler refuses both flags, and a
+        // refusal must fire only when the USER passed one. They used to carry
+        // clap defaults, so the handler could not distinguish that from a
+        // default and dropped them silently instead.
+        let converted_dag_type = dag_type.map(convert_deep_context_dag_type);
+        let converted_cache_strategy = cache_strategy.map(convert_cache_strategy);
 
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_deep_context(
             path,
@@ -40,11 +44,11 @@ pub(super) async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<
             include,
             exclude,
             period_days,
-            Some(converted_dag_type),
+            converted_dag_type,
             max_depth,
             include_patterns,
             exclude_patterns,
-            Some(converted_cache_strategy),
+            converted_cache_strategy,
             parallel.is_some(),
             verbose,
             top_files,
@@ -86,9 +90,16 @@ pub(super) async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
         output,
         critical_only,
         verbose,
-        ml: _, // GH-97: ML flag (not yet implemented in handler)
+        ml,
     } = cmd
     {
+        // GH-97, same defect and same refusal as `analyze complexity --ml`:
+        // `ml: _` threw the flag away and `TdgAnalysisConfig` was built without
+        // it, so `analyze tdg --ml` printed the heuristic weighted-sum scores
+        // while --help promised "trained ML models instead of heuristic
+        // weighted sums". Refuse rather than relabel.
+        super::reject_unimplemented_ml(ml, "analyze tdg", "TDG scores")?;
+
         use crate::cli::handlers::new_tdg_handler::TdgAnalysisConfig;
 
         let config = TdgAnalysisConfig {
@@ -270,10 +281,13 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
         output,
         perf,
         executive_summary,
-        top_files: _,
+        top_files,
     } = cmd
     {
         let path = project_path.unwrap_or(path);
+        // `top_files: _` here plus a hardcoded `top_files: 20` in the wrapper
+        // below made `--top-files` unobservable twice over: the flag was
+        // dropped at the route, and the value the config carried was a literal.
         crate::cli::handlers::advanced_analysis_handlers::handle_analyze_comprehensive(
             path,
             file,
@@ -291,6 +305,7 @@ pub(super) async fn route_comprehensive_analysis(cmd: AnalyzeCommands) -> Result
             output,
             perf,
             executive_summary,
+            top_files,
         )
         .await
     } else {
@@ -394,11 +409,24 @@ pub(super) async fn route_provability_analysis(cmd: AnalyzeCommands) -> Result<(
     {
         use crate::cli::handlers::provability_handler::ProvabilityConfig;
 
+        // A KNOB WIRED TO NOTHING IS WORSE THAN NO KNOB. `--analysis-depth`
+        // documented "number of iterations"; the analyzer runs no iteration
+        // (`AbstractInterpreter::analyze_iteration` has no caller) and its depth
+        // is the fixed `ANALYSIS_DEPTH`. Every value from 0 to 1000 produced the
+        // same report. Refuse rather than accept and ignore (#920).
+        if analysis_depth.is_some() {
+            anyhow::bail!(
+                "--analysis-depth is not implemented: provability scores each function once \
+                 from its source, with no iteration to bound, so every value produced the same \
+                 report. Re-run `analyze provability` without --analysis-depth."
+            );
+        }
+
         let path = project_path.unwrap_or(path);
         let config = ProvabilityConfig {
             project_path: path,
             functions,
-            analysis_depth,
+            analysis_depth: crate::services::lightweight_provability_analyzer::ANALYSIS_DEPTH,
             format,
             high_confidence_only,
             include_evidence,

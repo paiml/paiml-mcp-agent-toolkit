@@ -120,21 +120,27 @@ pub async fn handle_rust_project_score(
         project_score.total_possible
     );
 
-    // Filter recommendations if failures_only
-    let recommendations = if failures_only {
-        project_score.recommendations.clone()
-    } else {
-        project_score.recommendations.clone()
-    };
+    // #943: `--failures-only` used to be a provable no-op — both arms of this
+    // `if` returned the same expression and the flag reached nothing else, so
+    // stdout was byte-identical with and without it while `--help` promised
+    // "Show only failures and warnings". It now filters the category list the
+    // same way `infra-score`, `repo-score` and `project-diag` already do.
+    //
+    // Only the DISPLAYED categories are filtered. The totals, the percentages
+    // and the grade are still computed over every category, because a display
+    // flag that changed the score would be a worse defect than the no-op.
+    let recommendations = &project_score.recommendations;
 
     // Format output
     let output_text = match format {
-        RepoScoreOutputFormat::Text => format_text(&project_score, &recommendations, verbose),
-        RepoScoreOutputFormat::Json => format_json(&project_score, &recommendations)?,
-        RepoScoreOutputFormat::Markdown => {
-            format_markdown(&project_score, &recommendations, verbose)
+        RepoScoreOutputFormat::Text => {
+            format_text(&project_score, recommendations, verbose, failures_only)
         }
-        RepoScoreOutputFormat::Yaml => format_yaml(&project_score, &recommendations)?,
+        RepoScoreOutputFormat::Json => format_json(&project_score, recommendations, failures_only)?,
+        RepoScoreOutputFormat::Markdown => {
+            format_markdown(&project_score, recommendations, verbose, failures_only)
+        }
+        RepoScoreOutputFormat::Yaml => format_yaml(&project_score, recommendations, failures_only)?,
     };
 
     // Write output

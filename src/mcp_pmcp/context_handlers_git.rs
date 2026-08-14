@@ -90,6 +90,23 @@ impl ToolHandler for GitStatusTool {
 
         let path = PathBuf::from(params.path);
 
+        // A path the caller mistyped is a bad ARGUMENT, not a server fault.
+        // Without this, `git_status` handed the missing directory to
+        // `Command::current_dir`, and the spawn failure surfaced as
+        // `-32603 Internal error: ... Failed to run git: No such file or
+        // directory (os error 2)` — an errno about the git binary, blaming the
+        // server for the caller's typo. `resolve_existing_paths` already
+        // answers this class with `-32602` for every `paths`-shaped tool; this
+        // tool takes a single `path` and must answer the same way.
+        if !path.exists() {
+            return Err(Error::validation(format!(
+                "path not found: {}. Querying a nonexistent repository would \
+                 report no changes, which is indistinguishable from a clean \
+                 working tree.",
+                path.display()
+            )));
+        }
+
         let status = tool_functions::git_status(path.as_ref())
             .await
             .map_err(|e| Error::internal(format!("Failed to get git status: {e}")))?;

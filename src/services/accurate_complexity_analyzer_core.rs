@@ -13,15 +13,14 @@ impl AccurateComplexityAnalyzer {
 
         let mut functions = Vec::new();
 
-        for item in ast.items {
-            if let Item::Fn(func) = item {
-                let name = func.sig.ident.to_string();
-                // Spans are consumed in textual order so duplicate names in
-                // different scopes don't all collapse onto the first one.
-                let span = line_map.take(&name).unwrap_or(LineSpan::UNKNOWN);
-                let metrics = self.analyze_function(&func, span);
-                functions.push(metrics);
-            }
+        // Every function, not just the free ones: methods in `impl` blocks,
+        // trait default methods and functions inside inline `mod` blocks all
+        // used to be invisible here, so idiomatic Rust measured as 0 functions.
+        for func in collect_functions(&ast.items) {
+            // Spans are consumed in textual order so duplicate names in
+            // different scopes don't all collapse onto the first one.
+            let span = line_map.take(&func.name).unwrap_or(LineSpan::UNKNOWN);
+            functions.push(self.measure_discovered(&func, span));
         }
 
         Ok(FileComplexityResult {
@@ -61,15 +60,26 @@ impl AccurateComplexityAnalyzer {
         })
     }
 
-    /// Analyze a single function
+    /// Analyze a single free function (kept for callers holding an `ItemFn`).
     fn analyze_function(&self, func: &ItemFn, span: LineSpan) -> FunctionMetrics {
-        let name = func.sig.ident.to_string();
-        let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
+        self.measure_discovered(
+            &DiscoveredFn {
+                name: func.sig.ident.to_string(),
+                attrs: &func.attrs,
+                block: &func.block,
+            },
+            span,
+        )
+    }
 
-        let complexity = measure_block(&name, &func.block);
+    /// Measure one discovered function body, wherever it was declared.
+    fn measure_discovered(&self, func: &DiscoveredFn<'_>, span: LineSpan) -> FunctionMetrics {
+        let suppressed = self.respect_annotations && self.has_suppress_annotation(func.attrs);
+
+        let complexity = measure_block(&func.name, func.block);
 
         FunctionMetrics {
-            name,
+            name: func.name.clone(),
             cyclomatic_complexity: complexity.cyclomatic,
             cognitive_complexity: complexity.cognitive,
             max_nesting: complexity.max_nesting,

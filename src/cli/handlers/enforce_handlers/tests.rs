@@ -38,10 +38,9 @@ mod enforce_tests_external;
 #[cfg(test)]
 mod tests {
     use crate::cli::handlers::enforce_handlers::{
-        clear_enforcement_cache, handle_complete_state, handle_refactoring_state,
-        handle_violating_state, load_quality_profile, output_result, should_continue_enforcement,
-        EnforcementConfig, EnforcementProgress, EnforcementResult, EnforcementState,
-        QualityProfile, QualityViolation,
+        clear_enforcement_cache, handle_complete_state, handle_violating_state,
+        load_quality_profile, output_result, should_continue_enforcement, EnforcementConfig,
+        EnforcementProgress, EnforcementResult, EnforcementState, QualityProfile, QualityViolation,
     };
     use crate::cli::EnforceOutputFormat;
 
@@ -193,20 +192,15 @@ mod tests {
         assert!(result.violations.is_empty());
     }
 
-    #[test]
-    fn test_handle_refactoring_state_no_file() {
-        let result = handle_refactoring_state(85.0, None).unwrap();
-        assert!(matches!(result.state, EnforcementState::Validating));
-        assert!(result.score > 85.0); // adds 0.1
-    }
-
-    #[test]
-    fn test_handle_refactoring_state_with_file() {
-        let path = std::path::PathBuf::from("src/main.rs");
-        let result = handle_refactoring_state(90.0, Some(&path)).unwrap();
-        assert!(matches!(result.state, EnforcementState::Validating));
-        assert!(result.score > 90.0);
-    }
+    // `test_handle_refactoring_state_no_file` / `_with_file` used to live here.
+    // Both asserted `result.score > <input>` — that the refactoring state adds
+    // 0.1 to a score after refactoring nothing — which is the defect, not the
+    // contract. The enforcement path runs `handle_refactoring_pass`, whose
+    // numbers come from the one assessment; see
+    // `surface_agreement_tests::the_refactoring_state_reports_the_run_it_did_not_change`.
+    // Five more tests pinning the same arithmetic remain in
+    // `../enforce_coverage_part2.rs`, `../enforce_coverage_part4.rs` and
+    // `../enforce_coverage_part3_state_tests.rs`.
 
     #[test]
     fn test_handle_violating_state_empty_violations() {
@@ -244,7 +238,7 @@ mod tests {
                 estimated_iterations: 0,
             },
         };
-        let out = output_result(&result, EnforceOutputFormat::Json, false);
+        let out = output_result(&result, EnforceOutputFormat::Json, false, None);
         assert!(out.is_ok());
     }
 
@@ -270,7 +264,7 @@ mod tests {
                 estimated_iterations: 1,
             },
         };
-        let out = output_result(&result, EnforceOutputFormat::Summary, false);
+        let out = output_result(&result, EnforceOutputFormat::Summary, false, None);
         assert!(out.is_ok());
     }
 
@@ -290,7 +284,31 @@ mod tests {
 
     #[test]
     fn test_clear_enforcement_cache_none() {
-        clear_enforcement_cache(&None);
-        // Should not panic
+        // No --cache-dir: enforce keeps no cache of its own, so there is
+        // nothing to clear and that is reported, not an error.
+        clear_enforcement_cache(&None).expect("no cache dir is not a failure");
+    }
+
+    /// The stub version returned `()` after printing "🧹 Clearing cache at: DIR"
+    /// and running `// In real implementation, would clear cache`, so the
+    /// directory it named still held every entry when the run finished.
+    #[test]
+    fn test_clear_enforcement_cache_deletes_entries() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("entry.bin"), b"stale").expect("write entry");
+        std::fs::create_dir(dir.path().join("sub")).expect("mkdir");
+        std::fs::write(dir.path().join("sub/nested.bin"), b"stale").expect("write nested");
+
+        clear_enforcement_cache(&Some(dir.path().to_path_buf())).expect("clear");
+
+        assert!(
+            !dir.path().join("entry.bin").exists(),
+            "--clear-cache must delete cache files"
+        );
+        assert!(
+            !dir.path().join("sub").exists(),
+            "--clear-cache must delete cache subdirectories"
+        );
+        assert!(dir.path().is_dir(), "the cache directory itself is kept");
     }
 }

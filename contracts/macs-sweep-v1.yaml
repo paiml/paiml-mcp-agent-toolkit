@@ -33,6 +33,16 @@ equations:
       - no stray print/log bytes interleave JSON-RPC frames
     preconditions: []
 
+  no_raw_resume:
+    formula: raw_resume_calls(release-sweep.ultracode.mjs) = 0
+    domain: the committed ultracode judgment workflow, comments stripped
+    codomain: bool
+    invariants:
+      - durable state is .pmat-work receipts, never a session-bound continuation (MACS E7)
+      - exactly one spawnSubagent site, so PMAT_AGENT_* stamping is structural not observed
+    preconditions:
+      - contracts/workflows/release-sweep.ultracode.mjs is committed
+
   concurrency_safe:
     formula: lock_errors = 0 and scratch_leftovers = 0 for N <= 8
     domain: N in {1..8} concurrent tool calls against one working tree
@@ -47,6 +57,9 @@ falsification:
     action: reject_push
   - condition: "Two sweep runs differ beyond timestamp/duration fields"
     severity: P0
+    action: reject_push
+  - condition: "Orchestration layer calls a session-bound resume instead of .pmat-work receipts"
+    severity: P1
     action: reject_push
   - condition: "Concurrency N<=8 produces lock errors or scratch leftovers"
     severity: P0
@@ -73,3 +86,13 @@ falsification_tests:
     prediction: qa_mcp_sweep.rs references no LLM client symbols
     test: cargo test --lib no_llm_symbols_linked
     if_fails: stochastic tokens leak into a deterministic gate (E6)
+  - id: no_raw_resume
+    rule: the committed judgment workflow never relies on session-bound resume
+    prediction: workflow source (comments stripped) contains no `resume`; exactly one spawn site
+    test: cargo test --lib qa_mcp_sweep::tests::workflow_
+    if_fails: durable state silently becomes session-bound, so a run cannot be reproduced by the team (E7)
+  - id: macs012_workflow_properties
+    rule: the four MACS-012 RED tests run where CI looks
+    prediction: workflow file is embedded at compile time; reads only the sweep artifact; stamps PMAT_AGENT_*; records refusals
+    test: cargo test --lib qa_mcp_sweep::tests::workflow_
+    if_fails: the workflow's properties hold only until someone edits it, which is not enforcement

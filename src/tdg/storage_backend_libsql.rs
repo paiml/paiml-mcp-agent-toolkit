@@ -130,19 +130,31 @@ impl StorageBackend for LibsqlBackend {
 
             Ok(total_bytes.unwrap_or(0) as u64)
         } else {
-            // File-based database
-            match std::fs::metadata(&self.path) {
-                Ok(metadata) => Ok(metadata.len()),
-                Err(_) => Ok(0),
-            }
+            // File-based database. A failed stat is NOT a size of zero: an
+            // unreadable or deleted database would otherwise be reported as an
+            // empty one, which is indistinguishable from a healthy db holding
+            // no rows. Surface the failure instead.
+            let metadata = std::fs::metadata(&self.path).map_err(|e| {
+                anyhow::anyhow!("cannot measure database {}: {e}", self.path.display())
+            })?;
+            Ok(metadata.len())
         }
     }
 
     fn flush(&self) -> Result<()> {
-        // SQLite auto-commits by default, but we can execute a checkpoint for WAL mode
+        // SQLite auto-commits by default; for WAL mode we checkpoint so the
+        // main database file actually contains the writes.
+        //
+        // `Connection::execute` rejects statements that return rows, and
+        // `PRAGMA wal_checkpoint` returns one (busy, log, checkpointed). The
+        // previous `let _ = db.execute(...)` therefore always produced an
+        // `ExecuteReturnedResults` error and discarded it — the checkpoint
+        // happened only as a side effect of rusqlite stepping the statement
+        // before noticing the rows. `execute_batch` accepts row-returning
+        // pragmas, so the checkpoint is now intentional rather than incidental,
+        // and a genuine failure is reported instead of swallowed.
         let db = self.db.lock();
-        // Try WAL checkpoint, ignore error if not in WAL mode
-        let _ = db.execute("PRAGMA wal_checkpoint(TRUNCATE)", []);
+        db.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
         Ok(())
     }
 

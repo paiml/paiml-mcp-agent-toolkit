@@ -190,13 +190,33 @@ fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
     println!("{}", c::dim("Currently showing storage statistics only."));
 }
 
+/// The storage section, with every field that carries `null` named.
+///
+/// `tdg storage stats` says "Compression ratio: not measured (nothing stored)"
+/// while this section reported `"compression_ratio": 0.0` for the same store.
+/// The `null` alone is not enough to close that gap — a reader must not have to
+/// guess why it is null, so the unmeasured fields are listed the way `analyze
+/// tdg` lists `average_score`/`average_grade`.
+fn storage_section(stats: &crate::tdg::storage::StorageStatistics) -> Result<serde_json::Value> {
+    let mut value = serde_json::to_value(stats)?;
+    if let Some(object) = value.as_object_mut() {
+        object.insert("not_measured".to_string(), json!(stats.not_measured()));
+    }
+    Ok(value)
+}
+
 fn show_json_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
     show_storage: bool,
     unavailable: &[&str],
 ) -> Result<()> {
+    let storage = if show_storage {
+        Some(storage_section(stats)?)
+    } else {
+        None
+    };
     let json_output = json!({
-        "storage": if show_storage { Some(stats) } else { None },
+        "storage": storage,
         "unavailable_sections": unavailable,
         "note": "Full diagnostic infrastructure in development"
     });
@@ -209,8 +229,13 @@ fn show_yaml_diagnostics(
     show_storage: bool,
     unavailable: &[&str],
 ) -> Result<()> {
+    let storage = if show_storage {
+        Some(storage_section(stats)?)
+    } else {
+        None
+    };
     let yaml_output = json!({
-        "storage": if show_storage { Some(stats) } else { None },
+        "storage": storage,
         "unavailable_sections": unavailable,
         "note": "Full diagnostic infrastructure in development"
     });

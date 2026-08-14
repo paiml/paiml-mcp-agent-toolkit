@@ -96,7 +96,11 @@ pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, us
     counts
 }
 
-/// Count source lines in a file
+/// Count source lines in a file (the `--file` measurement path).
+///
+/// #924: this carried its OWN copy of the SLOC rule, so the `--file` path and
+/// the `-p` path could disagree about what a source line is. There is now one
+/// implementation, [`count_sloc`]; this only reads the file.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn count_source_lines(project_path: &Path, file_path: &Path) -> Result<usize> {
     let full_path = if file_path.is_absolute() {
@@ -106,12 +110,8 @@ pub(crate) async fn count_source_lines(project_path: &Path, file_path: &Path) ->
     };
 
     let content = tokio::fs::read_to_string(&full_path).await?;
-    let non_empty_lines = content
-        .lines()
-        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
-        .count();
 
-    Ok(non_empty_lines.max(1)) // At least 1 to avoid division by zero
+    Ok(count_sloc(&content).max(1)) // At least 1 to avoid division by zero
 }
 
 /// Build the cargo argv used for every lint-hotspot measurement and run it.
@@ -298,12 +298,45 @@ fn resolve_file_path(
     project_path.join(file_path)
 }
 
-/// Count source lines of code (non-empty, non-comment lines)
+/// Count the lines the defect density is measured over.
+///
+/// #924 FIX: this used to drop every line whose trimmed form starts with `//`,
+/// which drops `///` and `//!` along with plain comments — and those are
+/// exactly the lines `clippy::doc_markdown` and the other rustdoc lints fire
+/// on. The violation numerator counted those findings while the denominator
+/// refused to count their lines, so the two sides described different line
+/// sets. Adding two `//!` lines and no code raised a fixture's density from
+/// 2.67 to 4.00 (+50%), and `analysis_handlers/platform_routes.rs` — 15 lines
+/// holding 5 `//!` lines, 4 code lines and 3 plain comments, whose 9
+/// `doc_markdown` warnings ALL sit on `//!` lines — was reported as the #1
+/// hotspot of a 4,305-file repo at density 2.25 (9 over a denominator of 4)
+/// and failed the blocking quality gate. Documenting a file was measurably
+/// penalised.
+///
+/// A doc comment is a line clippy lints, therefore a line the density is
+/// measured over. Only NON-doc line comments are excluded.
 pub(super) fn count_sloc(content: &str) -> usize {
-    content
-        .lines()
-        .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
-        .count()
+    content.lines().filter(|line| is_measured_line(line)).count()
+}
+
+/// A line a lint can be reported against: non-blank and not a plain `//`
+/// comment. Doc comments count — see [`count_sloc`].
+fn is_measured_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    !trimmed.is_empty() && !is_plain_line_comment(trimmed)
+}
+
+/// True for `//` comments that carry no documentation.
+///
+/// `///` and `//!` are rustdoc and ARE linted. `////` (four or more slashes)
+/// is not rustdoc, so it stays excluded.
+fn is_plain_line_comment(trimmed: &str) -> bool {
+    if !trimmed.starts_with("//") {
+        return false;
+    }
+    let outer_doc = trimmed.starts_with("///") && !trimmed.starts_with("////");
+    let inner_doc = trimmed.starts_with("//!");
+    !outer_doc && !inner_doc
 }
 
 /// Log SLOC debug info if enabled

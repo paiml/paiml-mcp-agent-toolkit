@@ -223,7 +223,7 @@ pub enum WorkCommands {
     Delegate {
         /// Ticket ID to delegate
         id: String,
-        
+
         /// Delegate to Google Anti-Gravity agent
         #[arg(long)]
         agy: bool,
@@ -314,6 +314,23 @@ pub enum WorkCommands {
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
+    },
+
+    /// Claim exclusive ownership of paths for one agent, so concurrent
+    /// agents cannot silently collide on the same file (ULTRA-002)
+    #[command(visible_alias = "claims")]
+    Claim {
+        /// Claim subcommand
+        #[command(subcommand)]
+        command: WorkClaimCommands,
+    },
+
+    /// Record and gate the coverage of a bounded triage pass: what was
+    /// examined, what was acted on, and what was dropped (ULTRA-003)
+    Triage {
+        /// Triage subcommand
+        #[command(subcommand)]
+        command: WorkTriageCommands,
     },
 
     /// Show work status
@@ -504,6 +521,189 @@ pub enum WorkCotCommands {
 
         /// Project path (default: current directory)
         #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Agent file-claim subcommands (ULTRA-002): `pmat work claim ...`.
+///
+/// Distinct from the *falsification* claims of `--override-claims`: these are
+/// ownership claims over paths in the working tree, held by one agent at a
+/// time and journalled in `.pmat-work/claims.jsonl`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkClaimCommands {
+    /// Take exclusive ownership of paths; exits non-zero and claims nothing
+    /// if any of them is already held
+    #[command(visible_aliases = &["take", "lock"])]
+    Acquire {
+        /// Paths to claim (repo-relative; a directory covers everything under it)
+        #[arg(required = true)]
+        paths: Vec<String>,
+
+        /// Agent identity taking the claim
+        #[arg(long, env = "PMAT_AGENT_ID")]
+        agent: String,
+
+        /// Seconds before the claim lapses, so a crashed agent frees its paths
+        #[arg(long, default_value = "3600")]
+        ttl: u64,
+
+        /// Ticket this claim belongs to
+        #[arg(long)]
+        work_item: Option<String>,
+
+        /// Free-form note recorded with the claim
+        #[arg(long)]
+        note: Option<String>,
+
+        /// Take paths already held by another agent (requires --reason)
+        #[arg(long)]
+        force: bool,
+
+        /// Why the claim was forced (recorded for accountability)
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+
+    /// Give claimed paths back
+    #[command(visible_aliases = &["free", "unlock"])]
+    Release {
+        /// Paths to release (omit with --all)
+        paths: Vec<String>,
+
+        /// Agent identity releasing the claim
+        #[arg(long, env = "PMAT_AGENT_ID")]
+        agent: String,
+
+        /// Release every path this agent currently holds
+        #[arg(long)]
+        all: bool,
+
+        /// Release paths held by another agent (requires --reason)
+        #[arg(long)]
+        force: bool,
+
+        /// Why the release was forced (recorded for accountability)
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+
+    /// Show which paths are currently owned, and by whom
+    #[command(visible_aliases = &["ls"])]
+    List {
+        /// Only claims held by this agent
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Also show claims whose TTL has run out
+        #[arg(long)]
+        include_expired: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+
+    /// Ask whether paths are free before starting work; exits non-zero if not
+    Check {
+        /// Paths to test
+        #[arg(required = true)]
+        paths: Vec<String>,
+
+        /// Treat claims held by this agent as free (it already owns them)
+        #[arg(long, env = "PMAT_AGENT_ID")]
+        agent: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Triage-coverage subcommands (ULTRA-003): `pmat work triage ...`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkTriageCommands {
+    /// Declare the bound of a bounded pass. Refuses when the count of items
+    /// examined does not account for the items acted on plus those deferred.
+    Record {
+        /// Agent identity that ran the pass
+        #[arg(long, env = "PMAT_AGENT_ID")]
+        agent: String,
+
+        /// What was triaged, in the agent's own words
+        #[arg(long)]
+        scope: String,
+
+        /// How many candidates the pass looked at
+        #[arg(long)]
+        examined: u32,
+
+        /// How many it acted on
+        #[arg(long)]
+        acted: u32,
+
+        /// Identifiers of the items it did NOT act on (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        deferred: Vec<String>,
+
+        /// Why those items were left
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Ticket this pass belongs to
+        #[arg(long)]
+        work_item: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
+    },
+
+    /// Gate on stated coverage. Fails when a work item has no triage record
+    /// at all — unstated coverage is not the same as complete coverage.
+    Verify {
+        /// Only records for this ticket (and require at least one)
+        #[arg(long)]
+        work_item: Option<String>,
+
+        /// Only records written by this agent
+        #[arg(long)]
+        agent: Option<String>,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
         path: Option<PathBuf>,
     },
 }

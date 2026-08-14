@@ -432,9 +432,13 @@ fn foo() {
     #[test]
     fn test_discover_files_nonexistent() {
         let analyzer = TdgAnalyzer::new().unwrap();
-        let result = analyzer.discover_files(Path::new("/nonexistent/path"));
-        assert!(result.is_ok());
-        assert!(result.unwrap().is_empty());
+        let found = analyzer
+            .discover_files(Path::new("/nonexistent/path"))
+            .expect("a missing directory is empty, not an error");
+        assert!(found.gradable.is_empty());
+        // ...and nothing may be reported as ungraded either: a path that does
+        // not exist is not a file this build refused.
+        assert!(found.ungraded.is_empty());
     }
 
     #[test]
@@ -512,7 +516,14 @@ def unfinished : Nat := sorry
         assert_eq!(score.language, Language::Lean);
         assert!(score.has_critical_defects, "Lean file with sorry should have critical defects");
         assert_eq!(score.critical_defects_count, 2, "Should detect 2 sorry occurrences");
-        assert_eq!(score.total, 0.0, "Files with sorry should score 0");
+        // Was `assert_eq!(score.total, 0.0)`. Critical defects now apply a
+        // graduated penalty instead of annihilating the score, so that fixing
+        // some of them moves the number; two `sorry`s still land in the F band.
+        assert!(
+            score.total > 0.0 && score.total < 50.0,
+            "two sorry occurrences should score badly without erasing the file: got {}",
+            score.total
+        );
         assert_eq!(score.grade, crate::tdg::grade::Grade::F, "Files with sorry should get grade F");
         Ok(())
     }

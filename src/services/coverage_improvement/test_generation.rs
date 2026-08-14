@@ -47,14 +47,11 @@ impl CoverageImprovementService {
     ///
     /// Supports: i32, i64, u32, u64, String, Vec<T>, Option<T>
     async fn generate_property_tests(&self, targets: &[PathBuf]) -> Result<usize> {
-        eprintln!("🧪 Generating property-based tests...");
+        crate::status_eprintln!("🧪 Generating property-based tests...");
 
         let manifest_path = self.config.project_path.join("Cargo.toml");
         let manifest = tokio::fs::read_to_string(&manifest_path).await.ok();
-        let Some(test_targets) = manifest
-            .as_deref()
-            .and_then(read_generated_test_targets)
-        else {
+        let Some(test_targets) = manifest.as_deref().and_then(read_generated_test_targets) else {
             eprintln!(
                 "⚠️  Not generating property tests: no readable [package] in {}",
                 manifest_path.display()
@@ -135,7 +132,7 @@ impl CoverageImprovementService {
             written.push(test_path);
 
             tests_generated += functions.len();
-            eprintln!(
+            crate::status_eprintln!(
                 "  ✅ Generated {} tests for {} -> {}",
                 functions.len(),
                 target.display(),
@@ -158,7 +155,7 @@ impl CoverageImprovementService {
             return Ok(0);
         }
 
-        eprintln!("✅ Generated {} property tests total", tests_generated);
+        crate::status_eprintln!("✅ Generated {} property tests total", tests_generated);
 
         Ok(tests_generated)
     }

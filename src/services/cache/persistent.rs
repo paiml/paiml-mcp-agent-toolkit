@@ -386,7 +386,7 @@ where
         // Clear memory cache and update stats
         {
             let mut memory = self.memory_cache.write();
-            for (_, entry) in memory.iter() {
+            for entry in memory.values() {
                 self.stats.remove_bytes(entry.size_bytes);
             }
             memory.clear();

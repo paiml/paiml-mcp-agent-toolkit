@@ -149,15 +149,17 @@ impl SATDDetector {
     }
 
     /// Check if a file is a test file
+    ///
+    /// The directory test runs against the project-relative path (#923): it
+    /// used to run against the absolute one, so a checkout that merely sat
+    /// under a directory named `tests/` — any CI runner or monorepo with such
+    /// a segment — classified every file in the project as test code and
+    /// reported the whole tree clean.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_test_file(&self, path: &Path) -> bool {
         // Check if path contains test directories
-        let path_str = path.to_string_lossy();
-        if path_str.contains("/tests/")
-            || path_str.contains("/test/")
-            || path_str.contains("\\tests\\")
-            || path_str.contains("\\test\\")
-        {
+        let path_str = source_scope::project_relative_str(path);
+        if source_scope::has_dir_component(&path_str, &["tests", "test"]) {
             return true;
         }
 
@@ -180,9 +182,15 @@ impl SATDDetector {
 
     /// Check if file is minified or in vendor directory
     /// Check if file should be excluded from SATD analysis
+    ///
+    /// Every predicate below reads the path RELATIVE TO ITS OWN PROJECT ROOT
+    /// (see [`source_scope`]). They used to read the absolute path, so an
+    /// ancestor directory named `examples`, `demo`, `fuzz`, `vendor`, `book`
+    /// or `target` — none of which the analysed project chose — excluded the
+    /// entire tree and reported "0 violations in 0 files" with exit 0 (#923).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
-        let path_str = file_path.to_string_lossy();
+        let path_str = source_scope::project_relative_str(file_path);
 
         self.is_satd_analysis_tool(&path_str)
             || self.is_build_or_config_file(&path_str)
@@ -198,49 +206,46 @@ impl SATDDetector {
             || (path_str.contains("test") && path_str.contains("satd"))
     }
 
+    /// The package's own build script and manifest — the ones that sit beside
+    /// `src/`, not every file that happens to be called `build.rs`.
+    ///
+    /// #925's false negative was exactly this: `src/services/context_impl/
+    /// build.rs` holds a production `// TODO: Implement call graph edge
+    /// extraction in future iteration`, and `contains("/build.rs")` excluded
+    /// the whole file — so the one real marker the issue looked for was
+    /// invisible while 57 pieces of prose were reported.
     fn is_build_or_config_file(&self, path_str: &str) -> bool {
-        path_str.contains("/build.rs")
-            || path_str.contains("/Cargo.toml")
-            || path_str.contains(".gitignore")
-            || path_str.contains("README")
+        matches!(path_str, "/build.rs" | "/Cargo.toml")
+            || path_str.ends_with(".gitignore")
+            || path_str.ends_with("README.md")
     }
 
     fn is_example_or_demo(&self, path_str: &str) -> bool {
-        path_str.contains("/examples/") || path_str.contains("/demo/") || path_str.contains("_demo")
+        source_scope::has_dir_component(path_str, &["examples", "demo"])
+            || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {
-        path_str.contains("/fuzz/") || path_str.contains("fuzz_targets")
+        source_scope::has_dir_component(path_str, &["fuzz", "fuzz_targets"])
     }
 
     fn is_generated_or_vendor(&self, path_str: &str) -> bool {
-        path_str.contains("/target/")
-            || path_str.contains("/vendor/")
-            || path_str.contains("/node_modules/")
-            || path_str.contains("/book/")
+        source_scope::has_dir_component(path_str, &["target", "vendor", "node_modules", "book"])
             || path_str.contains(".generated")
     }
 
+    /// Whether `path` is vendored or minified.
+    ///
+    /// The rule itself lives in [`source_scope::is_vendored_or_minified`] and
+    /// is shared with the Known-Defects walk, which needed exactly this
+    /// predicate once it learned to read JavaScript (#926) — this method used
+    /// to BE the rule, and four of its eight name patterns
+    /// (`ends_with(".min.js")`, `".min.css"`, `".bundle.js"`,
+    /// `".production.js"`) were already dead, subsumed by the `contains(".min.")`
+    /// / `contains(".bundle.")` / `contains(".production.")` tests above them.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
-        // Check if path contains vendor directory
-        if path.components().any(|c| c.as_os_str() == "vendor") {
-            return true;
-        }
-
-        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-            // Common minified file patterns
-            file_name.contains(".min.")
-                || file_name.contains(".bundle.")
-                || file_name.contains("-min.")
-                || file_name.contains(".production.")
-                || file_name.ends_with(".min.js")
-                || file_name.ends_with(".min.css")
-                || file_name.ends_with(".bundle.js")
-                || file_name.ends_with(".production.js")
-        } else {
-            false
-        }
+        source_scope::is_vendored_or_minified(path)
     }
 
     /// Check if file content suggests it's minified (has very long lines)

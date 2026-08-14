@@ -16,6 +16,17 @@ fn delta_or_unmeasured(value: Option<f64>) -> String {
     value.map_or_else(|| "not measured".to_string(), |v| format!("{v:+.1}%"))
 }
 
+/// Row count `--top-files N` permits out of `total`, where `0` means all.
+///
+/// Every renderer below used a bare `.iter().take(top_files)`, which reads `0`
+/// as "show nothing" — the exact opposite of the documented "0 = all", so
+/// `--top-files 0` printed an empty file list and a report that looked clean.
+/// The shared authority is `crate::cli::top_files_count`; this is its one call
+/// site for this command so no renderer can drift from another.
+fn incremental_rows_shown(total: usize, top_files: usize) -> usize {
+    crate::cli::top_files_count(total, top_files)
+}
+
 /// Format as summary
 fn format_summary(result: &IncrementalCoverageResult, top_files: usize) -> String {
     let mut output = String::new();
@@ -23,7 +34,8 @@ fn format_summary(result: &IncrementalCoverageResult, top_files: usize) -> Strin
     output.push_str(&result.summary);
     output.push_str("\n\n## Top Changed Files\n");
 
-    for (i, file) in result.changed_files.iter().take(top_files).enumerate() {
+    let shown = incremental_rows_shown(result.changed_files.len(), top_files);
+    for (i, file) in result.changed_files.iter().take(shown).enumerate() {
         output.push_str(&format!(
             "{}. {} - {} → {} (Δ{})\n",
             i + 1,
@@ -31,6 +43,12 @@ fn format_summary(result: &IncrementalCoverageResult, top_files: usize) -> Strin
             pct_or_unmeasured(file.coverage_before),
             pct_or_unmeasured(file.coverage_after),
             delta_or_unmeasured(file.coverage_delta)
+        ));
+    }
+    if shown < result.changed_files.len() {
+        output.push_str(&format!(
+            "… {} more not shown (--top-files {top_files}, 0 = all)\n",
+            result.changed_files.len() - shown
         ));
     }
 
@@ -60,8 +78,12 @@ fn format_detailed(result: &IncrementalCoverageResult, top_files: usize) -> Stri
         result.files_not_measured
     ));
 
-    output.push_str(&format!("## Changed Files (Top {top_files})\n"));
-    for file in result.changed_files.iter().take(top_files) {
+    let shown = incremental_rows_shown(result.changed_files.len(), top_files);
+    output.push_str(&format!(
+        "## Changed Files (showing {shown} of {})\n",
+        result.changed_files.len()
+    ));
+    for file in result.changed_files.iter().take(shown) {
         output.push_str(&format!("\n### {}\n", file.file_path));
         output.push_str(&format!("- Status: {:?}\n", file.status));
         output.push_str(&format!(
@@ -114,7 +136,8 @@ fn format_markdown(result: &IncrementalCoverageResult, top_files: usize) -> Stri
     output.push_str("| File | Before | After | Delta | Status |\n");
     output.push_str("|------|--------|-------|-------|--------|\n");
 
-    for file in result.changed_files.iter().take(top_files) {
+    let shown = incremental_rows_shown(result.changed_files.len(), top_files);
+    for file in result.changed_files.iter().take(shown) {
         output.push_str(&format!(
             "| {} | {} | {} | {} | {:?} |\n",
             file.file_path,
@@ -156,19 +179,19 @@ fn format_delta(result: &IncrementalCoverageResult, top_files: usize) -> String 
     output.push_str("Coverage Delta Report\n");
     output.push_str("====================\n\n");
 
-    let improved: Vec<_> = result
+    let all_improved: Vec<_> = result
         .changed_files
         .iter()
         .filter(|f| f.coverage_delta.is_some_and(|d| d > 0.0))
-        .take(top_files)
         .collect();
+    let improved = &all_improved[..incremental_rows_shown(all_improved.len(), top_files)];
 
-    let degraded: Vec<_> = result
+    let all_degraded: Vec<_> = result
         .changed_files
         .iter()
         .filter(|f| f.coverage_delta.is_some_and(|d| d < 0.0))
-        .take(top_files)
         .collect();
+    let degraded = &all_degraded[..incremental_rows_shown(all_degraded.len(), top_files)];
 
     let unmeasured = result
         .changed_files

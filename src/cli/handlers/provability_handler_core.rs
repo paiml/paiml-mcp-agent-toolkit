@@ -46,9 +46,14 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
     crate::cli::ensure_analysis_path_exists(&config.project_path)?;
 
     use crate::cli::colors as c;
-    eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
+    crate::status_eprintln!("{}", c::dim("🔬 Analyzing function provability..."));
 
-    let analyzer = LightweightProvabilityAnalyzer::new();
+    // The discovered FunctionIds carry paths relative to `project_path` (that is
+    // what the report prints), so the analyzer has to be told what they are
+    // relative TO. Without it the source was read relative to the process cwd
+    // and every function fell back to the 20% no-evidence baseline whenever the
+    // shell was not already inside the analyzed project.
+    let analyzer = LightweightProvabilityAnalyzer::new().with_project_root(&config.project_path);
     let function_ids = resolve_function_targets(&config).await?;
     let summaries = run_provability_analysis(&analyzer, &function_ids).await?;
     let filtered_summaries = prepare_filtered_summaries(&summaries, config.high_confidence_only);
@@ -97,7 +102,11 @@ async fn run_provability_analysis(
 ) -> Result<Vec<ProofSummary>> {
     let summaries = analyzer.analyze_incrementally(function_ids).await;
     use crate::cli::colors as c;
-    eprintln!("{} Analyzed {} functions", c::pass(""), c::number(&summaries.len().to_string()));
+    crate::status_eprintln!(
+        "{} Analyzed {} functions",
+        c::pass(""),
+        c::number(&summaries.len().to_string())
+    );
     Ok(summaries)
 }
 
@@ -147,12 +156,128 @@ async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) 
     if let Some(output_path) = output_path {
         tokio::fs::write(output_path, content).await?;
         use crate::cli::colors as c;
-        eprintln!(
+        crate::status_eprintln!(
             "{} Provability analysis written to: {}",
-            c::pass(""), c::path(&output_path.display().to_string())
+            c::pass(""),
+            c::path(&output_path.display().to_string())
         );
     } else {
         println!("{content}");
     }
     Ok(())
+}
+
+/// `analyze provability -p <dir>` must score the same from any working directory.
+///
+/// Discovery hands the analyzer paths relative to `-p` (that is what the report
+/// prints), and the analyzer used to read them back relative to the process
+/// cwd. Same binary, same 58,233 functions of the 3.30.0 snapshot: run from
+/// inside the project, mean 89.31% over 14 distinct scores; run from `/tmp`,
+/// exactly one score — 0.2 — for all 58,233. A 4.5x difference decided by the
+/// caller's shell.
+///
+/// This test runs the handler against a project that is NOT the process cwd,
+/// which is the shape the first fix (#754) missed: every test it added ran from
+/// inside the tree it analyzed.
+#[cfg(test)]
+mod provability_is_cwd_independent_tests {
+    use super::ProvabilityConfig;
+    use crate::cli::enums::ProvabilityOutputFormat;
+
+    /// The probe directory name cannot exist relative to any plausible cwd, so
+    /// pre-fix this scored the empty-source baseline deterministically rather
+    /// than accidentally reading a same-named file of the *host* repo.
+    fn write_probe_project(root: &std::path::Path) {
+        let probe = root.join("provability_cwd_probe");
+        std::fs::create_dir_all(&probe).unwrap();
+        std::fs::write(
+            probe.join("pure.rs"),
+            "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn scores_are_evidence_based_when_run_from_another_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        write_probe_project(dir.path());
+        let out = dir.path().join("report.json");
+
+        assert_ne!(
+            std::env::current_dir().unwrap().canonicalize().unwrap(),
+            dir.path().canonicalize().unwrap(),
+            "this test is only meaningful when the cwd is not the analyzed project"
+        );
+
+        super::handle_analyze_provability(ProvabilityConfig {
+            project_path: dir.path().to_path_buf(),
+            functions: vec![],
+            analysis_depth: crate::services::lightweight_provability_analyzer::ANALYSIS_DEPTH,
+            format: ProvabilityOutputFormat::Json,
+            high_confidence_only: false,
+            include_evidence: false,
+            output: Some(out.clone()),
+            top_files: 10,
+        })
+        .await
+        .unwrap();
+
+        let report: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
+        let results = report["provability_analysis"]["results"]
+            .as_array()
+            .expect("json report must carry per-function results")
+            .clone();
+        assert_eq!(
+            results.len(),
+            1,
+            "one function was written, one is expected"
+        );
+
+        let score = results[0]["provability_score"].as_f64().unwrap();
+        let properties = results[0]["verified_properties"].as_u64().unwrap();
+        assert!(
+            score > 0.2 && properties > 0,
+            "a pure two-line function read from disk scores on evidence; \
+             {score} with {properties} properties is the no-evidence baseline, \
+             i.e. the source was resolved against the cwd and never opened"
+        );
+    }
+}
+
+/// `analyze provability --quiet` was byte-identical to `analyze provability`.
+///
+/// On the flag-efficacy gate's ~120-file corpus it wrote 125 bytes of progress
+/// to stderr — "🔬 Analyzing function provability…", "📂 Discovering functions
+/// in project…", "📊 Found 124 source files", "✓ Analyzed 160 functions" —
+/// through unguarded stderr macros here and in the discovery helper. Note that
+/// `analysis_utilities/provability.rs`, a *second* copy of the same banners,
+/// was already routed; only this path was left, which is why the flag looked
+/// half-fixed. The report itself still goes to stdout unconditionally.
+#[cfg(test)]
+mod provability_quiet_chatter_tests {
+    use crate::cli::handlers::bottleneck_handler::quiet_chatter_tests::unguarded_stderr_lines;
+
+    #[test]
+    fn provability_progress_obeys_quiet() {
+        for (what, source) in [
+            ("handler", include_str!("provability_handler_core.rs")),
+            (
+                "discovery helper",
+                include_str!("../provability_helpers_discovery.rs"),
+            ),
+        ] {
+            assert!(
+                source.contains("Analyzing function provability")
+                    || source.contains("Discovering functions in project"),
+                "{what}: the banner this test pins must still exist"
+            );
+            let leaking = unguarded_stderr_lines(source);
+            assert!(
+                leaking.is_empty(),
+                "{what}: provability's stderr is progress chatter only, so every \
+                 line must be suppressible; unguarded: {leaking:?}"
+            );
+        }
+    }
 }

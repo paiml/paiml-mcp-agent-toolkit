@@ -115,6 +115,9 @@ pub mod simple_unified_server;
 pub mod stdio_frames; // #648: raw-line stdio transport with honest JSON-RPC errors
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
+mod surface_verdict_and_scope_tests; // R13/R17/R18 drift guards
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
 pub mod tdg_git_context_tests;
 pub mod tdg_handlers;
 pub mod tool_functions;

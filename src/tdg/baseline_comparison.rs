@@ -20,7 +20,7 @@ impl BaselineComparison {
             output.push_str(&format!("✅ Improved: {} files\n", self.improved.len()));
             for cmp in &self.improved {
                 output.push_str(&format!(
-                    "   - {}: {:?} ({:.1}) → {:?} ({:.1}) [+{:.1}]\n",
+                    "   - {}: {} ({:.1}) → {} ({:.1}) [+{:.1}]\n",
                     cmp.path.display(),
                     cmp.grade_change.0,
                     cmp.old_score.total,
@@ -35,7 +35,7 @@ impl BaselineComparison {
             output.push_str(&format!("⚠️  Regressed: {} files\n", self.regressed.len()));
             for cmp in &self.regressed {
                 output.push_str(&format!(
-                    "   - {}: {:?} ({:.1}) → {:?} ({:.1}) [{:.1}]\n",
+                    "   - {}: {} ({:.1}) → {} ({:.1}) [{:.1}]\n",
                     cmp.path.display(),
                     cmp.grade_change.0,
                     cmp.old_score.total,

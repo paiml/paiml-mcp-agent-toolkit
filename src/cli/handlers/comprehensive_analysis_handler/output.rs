@@ -5,14 +5,24 @@ use crate::services::facades::analysis_orchestrator::ComprehensiveAnalysisResult
 use anyhow::Result;
 use std::path::PathBuf;
 
+/// `--top-files N`, the one implementation, aliased for the six lists below.
+///
+/// Every one of them was a hardcoded `.iter().take(5)`, so `--top-files 1` and
+/// `--top-files 50` printed the same five "Top Complexity Violations", five
+/// "Dead Code Items" and five "SATD Violations" over a corpus with 87, 45 and
+/// 63 of them respectively — the flag reached `DefectPredictionRequest` and
+/// nothing else, and comprehensive discards those predictions.
+use crate::cli::top_files_slice as top_slice;
+
 /// Output results in the requested format
 pub(super) async fn output_results(
     result: ComprehensiveAnalysisResult,
     format: ComprehensiveOutputFormat,
     executive_summary: bool,
     output: Option<PathBuf>,
+    top_files: usize,
 ) -> Result<()> {
-    let content = format_result(result, format, executive_summary)?;
+    let content = format_result(result, format, executive_summary, top_files)?;
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
@@ -29,13 +39,19 @@ pub(super) fn format_result(
     result: ComprehensiveAnalysisResult,
     format: ComprehensiveOutputFormat,
     executive_summary: bool,
+    top_files: usize,
 ) -> Result<String> {
     match format {
         ComprehensiveOutputFormat::Json => format_as_json(&result),
-        ComprehensiveOutputFormat::Markdown => format_as_markdown(&result, executive_summary),
+        ComprehensiveOutputFormat::Markdown => {
+            format_as_markdown(&result, executive_summary, top_files)
+        }
+        // SARIF stays complete: it is the format a code scanner ingests, and a
+        // row limit there hides real findings from the tool meant to surface
+        // them. JSON likewise carries the whole result set.
         ComprehensiveOutputFormat::Sarif => format_as_sarif(&result),
-        ComprehensiveOutputFormat::Summary => format_as_text(&result, true),
-        ComprehensiveOutputFormat::Detailed => format_as_text(&result, false),
+        ComprehensiveOutputFormat::Summary => format_as_text(&result, true, top_files),
+        ComprehensiveOutputFormat::Detailed => format_as_text(&result, false, top_files),
     }
 }
 
@@ -48,6 +64,7 @@ pub(super) fn format_as_json(result: &ComprehensiveAnalysisResult) -> Result<Str
 pub(super) fn format_as_markdown(
     result: &ComprehensiveAnalysisResult,
     executive_summary: bool,
+    top_files: usize,
 ) -> Result<String> {
     use std::fmt::Write;
 
@@ -60,15 +77,15 @@ pub(super) fn format_as_markdown(
 
     // Delegate each section to specialized functions
     if let Some(complexity) = &result.complexity {
-        format_complexity_section(&mut output, complexity)?;
+        format_complexity_section(&mut output, complexity, top_files)?;
     }
 
     if let Some(dead_code) = &result.dead_code {
-        format_dead_code_section(&mut output, dead_code)?;
+        format_dead_code_section(&mut output, dead_code, top_files)?;
     }
 
     if let Some(satd) = &result.satd {
-        format_satd_section(&mut output, satd)?;
+        format_satd_section(&mut output, satd, top_files)?;
     }
 
     Ok(output)
@@ -109,6 +126,7 @@ pub(super) fn format_executive_summary(
 pub(super) fn format_complexity_section(
     output: &mut String,
     complexity: &crate::services::facades::complexity_facade::ComplexityAnalysisResult,
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
 
@@ -128,7 +146,10 @@ pub(super) fn format_complexity_section(
 
     if !complexity.violations.is_empty() {
         writeln!(output, "\n### Top Complexity Violations\n")?;
-        for (i, violation) in complexity.violations.iter().take(5).enumerate() {
+        for (i, violation) in top_slice(&complexity.violations, top_files)
+            .iter()
+            .enumerate()
+        {
             writeln!(
                 output,
                 "{}. {} - {} (complexity: {})",
@@ -146,6 +167,7 @@ pub(super) fn format_complexity_section(
 pub(super) fn format_dead_code_section(
     output: &mut String,
     dead_code: &crate::services::facades::dead_code_facade::DeadCodeAnalysisResult,
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
 
@@ -160,7 +182,10 @@ pub(super) fn format_dead_code_section(
 
     if !dead_code.dead_items.is_empty() {
         writeln!(output, "\n### Dead Code Items\n")?;
-        for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
+        for (i, item) in top_slice(&dead_code.dead_items, top_files)
+            .iter()
+            .enumerate()
+        {
             writeln!(
                 output,
                 "{}. {} - {} ({:?})",
@@ -178,6 +203,7 @@ pub(super) fn format_dead_code_section(
 pub(super) fn format_satd_section(
     output: &mut String,
     satd: &crate::services::facades::satd_facade::SatdAnalysisResult,
+    top_files: usize,
 ) -> Result<()> {
     use std::fmt::Write;
 
@@ -187,7 +213,7 @@ pub(super) fn format_satd_section(
 
     if !satd.violations.is_empty() {
         writeln!(output, "\n### SATD Violations\n")?;
-        for (i, violation) in satd.violations.iter().take(5).enumerate() {
+        for (i, violation) in top_slice(&satd.violations, top_files).iter().enumerate() {
             writeln!(
                 output,
                 "{}. {}:{} - {} ({:?})",
@@ -207,6 +233,7 @@ pub(super) fn format_satd_section(
 pub(super) fn format_as_text(
     result: &ComprehensiveAnalysisResult,
     executive_summary: bool,
+    top_files: usize,
 ) -> Result<String> {
     use crate::cli::colors as c;
     use std::fmt::Write;
@@ -303,7 +330,10 @@ pub(super) fn format_as_text(
                 c::BOLD,
                 c::RESET
             )?;
-            for (i, v) in complexity.violations.iter().take(5).enumerate() {
+            for (i, v) in top_slice(&complexity.violations, top_files)
+                .iter()
+                .enumerate()
+            {
                 writeln!(
                     &mut output,
                     "    {}. {} - {} (complexity: {})",
@@ -336,7 +366,10 @@ pub(super) fn format_as_text(
         )?;
         if !dead_code.dead_items.is_empty() {
             writeln!(&mut output, "\n  {}Dead Code Items{}\n", c::BOLD, c::RESET)?;
-            for (i, item) in dead_code.dead_items.iter().take(5).enumerate() {
+            for (i, item) in top_slice(&dead_code.dead_items, top_files)
+                .iter()
+                .enumerate()
+            {
                 writeln!(
                     &mut output,
                     "    {}. {} - {} ({:?})",
@@ -372,7 +405,7 @@ pub(super) fn format_as_text(
         )?;
         if !satd.violations.is_empty() {
             writeln!(&mut output, "\n  {}SATD Violations{}\n", c::BOLD, c::RESET)?;
-            for (i, v) in satd.violations.iter().take(5).enumerate() {
+            for (i, v) in top_slice(&satd.violations, top_files).iter().enumerate() {
                 writeln!(
                     &mut output,
                     "    {}. {}:{} - {} ({:?})",

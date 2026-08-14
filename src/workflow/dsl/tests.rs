@@ -4,7 +4,6 @@
 mod tests {
     use crate::workflow::dsl::*;
     use crate::{step, workflow};
-    use std::collections::HashMap;
     use std::time::Duration;
 
     #[test]

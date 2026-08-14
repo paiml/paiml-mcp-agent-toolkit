@@ -316,11 +316,15 @@ mod tests {
         )
         .unwrap();
 
-        let result = analyze_java_file(file.path(), true, false).await;
-        assert!(result.is_ok());
-
-        let value = result.unwrap();
-        assert!(value["status"] == "completed" || value["status"] == "error");
+        // `status == "completed" || status == "error"` passed for every possible
+        // outcome, so it measured nothing. Valid Java must analyse.
+        let value = analyze_java_file(file.path(), true, false).await.unwrap();
+        assert_eq!(
+            value["status"], "completed",
+            "valid Java must analyse, got: {value}"
+        );
+        assert_eq!(value["summary"]["class_count"], 1);
+        assert_eq!(value["summary"]["method_count"], 1);
     }
 
     #[tokio::test]
@@ -378,14 +382,14 @@ mod tests {
         )
         .unwrap();
 
-        let result = analyze_java_file(file.path(), true, false).await;
-        assert!(result.is_ok());
-
-        let value = result.unwrap();
-        // Should have metrics if the analysis succeeded
-        if value["status"] == "completed" {
-            assert!(value.get("metrics").is_some());
-        }
+        // The `if status == "completed"` guard let this test pass on a build
+        // where nothing ever completes. Assert the completion too.
+        let value = analyze_java_file(file.path(), true, false).await.unwrap();
+        assert_eq!(
+            value["status"], "completed",
+            "valid Java must analyse, got: {value}"
+        );
+        assert!(value.get("metrics").is_some(), "got: {value}");
     }
 
     #[tokio::test]
@@ -424,6 +428,77 @@ mod tests {
         let value = result.unwrap();
         assert_eq!(value["status"], "completed");
         assert_eq!(value["summary"]["file_count"], 2);
+    }
+
+    // ==================== #966 adjacent: unmeasured files must be visible ====
+
+    /// A directory in which every Java file fails to parse used to come back as
+    /// `status: "completed"` with `class_count: 0` — byte-identical to a
+    /// directory of valid-but-empty classes. The aggregate now has to say how
+    /// many files it actually derived its counts from.
+    #[tokio::test]
+    async fn test_analyze_java_directory_reports_unparseable_files() {
+        use std::fs;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        fs::write(
+            dir.path().join("Good.java"),
+            "package com.example;\npublic class Good { public void run() {} }",
+        )
+        .unwrap();
+        // Unbalanced braces: rejected by `is_valid_java_syntax`.
+        fs::write(
+            dir.path().join("Broken.java"),
+            "package com.example;\npublic class Broken { public void run() {\n",
+        )
+        .unwrap();
+
+        let value = analyze_java_directory(dir.path(), 3, true, false)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            value["status"], "completed_with_errors",
+            "a directory holding an unparseable file must not report plain success, got: {value}"
+        );
+        assert_eq!(value["summary"]["file_count"], 2);
+        assert_eq!(
+            value["summary"]["analyzed_file_count"], 1,
+            "counts were derived from one file only, got: {value}"
+        );
+        assert_eq!(value["summary"]["failed_file_count"], 1);
+        let failures = value["failures"]
+            .as_array()
+            .unwrap_or_else(|| panic!("failures must be listed, got: {value}"));
+        assert_eq!(failures.len(), 1);
+        assert!(
+            failures[0]["path"]
+                .as_str()
+                .unwrap()
+                .ends_with("Broken.java"),
+            "the failing file must be named, got: {value}"
+        );
+    }
+
+    /// The all-good case must stay clean: no error status, nothing unmeasured.
+    #[tokio::test]
+    async fn test_analyze_java_directory_all_parseable_reports_none_failed() {
+        use std::fs;
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("A.java"), "public class A { void a() {} }").unwrap();
+        fs::write(dir.path().join("B.java"), "public class B { void b() {} }").unwrap();
+
+        let value = analyze_java_directory(dir.path(), 3, true, false)
+            .await
+            .unwrap();
+
+        assert_eq!(value["status"], "completed", "got: {value}");
+        assert_eq!(value["summary"]["analyzed_file_count"], 2);
+        assert_eq!(value["summary"]["failed_file_count"], 0);
+        assert!(value.get("failures").is_none(), "got: {value}");
     }
 
     #[test]

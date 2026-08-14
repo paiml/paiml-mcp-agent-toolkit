@@ -52,6 +52,19 @@ pub async fn handle_refactor_docs(
 
     output_results(&result, format, dry_run, perf, start_time.elapsed(), output).await?;
 
+    // `--perf` reached only the summary/detailed renderers, which fold the
+    // timing into their own markdown document, so `refactor docs --format json
+    // --perf` was byte-identical to `refactor docs --format json` — the same
+    // format-conditioned defect `analyze web-assembly --perf` had. The readout
+    // now comes from the one `--perf` implementation and goes to stderr, so it
+    // reaches every format without corrupting the JSON document on stdout.
+    crate::cli::handlers::analysis_handlers::perf_report::emit_readout(
+        "refactor docs",
+        start_time.elapsed(),
+        perf,
+        &[],
+    );
+
     handle_exit_code(&result, auto_remove, dry_run);
     Ok(())
 }

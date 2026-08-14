@@ -208,8 +208,26 @@ fn format_cell(row: &rusqlite::Row<'_>, idx: usize) -> String {
     "NULL".to_string()
 }
 
-/// Open a read-only connection to the database
+/// Open a read-only connection to the database.
+///
+/// R30: the single chokepoint every `pmat sql` surface goes through, and
+/// therefore where the TDG-scale guard belongs. `pmat sql` hands the user
+/// arbitrary SQL over `functions.tdg_score` / `functions.tdg_grade`; on a
+/// pre-v3.30.0 index those columns hold 0-10 lower-is-better debt numbers and
+/// five-letter grades, so `ORDER BY tdg_score DESC` ranks the WORST function
+/// first and `grade-dist` reports a vocabulary this build no longer writes —
+/// previously with exit 0 and no warning at all. Refuse instead of guessing.
 fn open_readonly(db_path: &Path) -> Result<rusqlite::Connection> {
+    // Same rule, same implementation as `AgentContextIndex::load`.
+    if let Err(reason) = crate::services::agent_context::verify_db_scale(db_path) {
+        anyhow::bail!(
+            "{}: {reason}\n  \
+             Its tdg_score/tdg_grade columns cannot be read on this build's scale \
+             (0-100, higher is better).\n  \
+             Run `pmat query \"test\" --rebuild-index` to regenerate the index.",
+            db_path.display()
+        );
+    }
     let conn = rusqlite::Connection::open_with_flags(
         db_path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -441,8 +459,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_handle_sql_with_in_memory_db() {
+    /// Build a `functions` table on disk. `scale` is the value written to the
+    /// `metadata.tdg_scale` row; `None` reproduces a pre-v3.30.0 index, which
+    /// wrote no marker at all.
+    fn write_test_db(db_path: &Path, scale: Option<&str>) {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         conn.execute_batch(
             "CREATE TABLE functions (
@@ -452,15 +472,67 @@ mod tests {
             );
             INSERT INTO functions VALUES (1, 'src/main.rs', 'main', 'A', 5, 20, 0);
             INSERT INTO functions VALUES (2, 'src/lib.rs', 'parse', 'B', 15, 80, 1);
-            INSERT INTO functions VALUES (3, 'src/lib.rs', 'analyze', 'C', 25, 120, 3);",
+            INSERT INTO functions VALUES (3, 'src/lib.rs', 'analyze', 'C', 25, 120, 3);
+            CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);",
         )
         .unwrap();
-
-        // Save to temp file
-        let dir = tempfile::tempdir().unwrap();
-        let db_path = dir.path().join("test.db");
+        if let Some(scale) = scale {
+            conn.execute(
+                "INSERT INTO metadata (key, value) VALUES ('tdg_scale', ?1)",
+                rusqlite::params![scale],
+            )
+            .unwrap();
+        }
         conn.execute(&format!("VACUUM INTO '{}'", db_path.display()), [])
             .unwrap();
+    }
+
+    /// R30: `pmat sql` must refuse an index written on the old TDG scale.
+    ///
+    /// A pre-v3.30.0 database holds 0-10 lower-is-better debt scores and
+    /// five-letter grades in the same columns this build reads as 0-100
+    /// higher-is-better quality. It used to be printed verbatim with exit 0,
+    /// so `ORDER BY tdg_score DESC` surfaced the WORST function first.
+    #[test]
+    fn test_handle_sql_refuses_index_written_under_old_tdg_scale() {
+        let dir = tempfile::tempdir().unwrap();
+
+        // Unmarked = pre-v3.30.0. Unmeasured is not clean; it must FAIL.
+        let stale = dir.path().join("stale.db");
+        write_test_db(&stale, None);
+        let err = handle_sql("grade-dist", SqlOutputFormat::Json, &stale)
+            .expect_err("an unmarked (pre-v3.30.0) index must be refused, not printed");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("rebuild required"), "got: {msg}");
+
+        // A marker from some other scale is equally unreadable.
+        let foreign = dir.path().join("foreign.db");
+        write_test_db(&foreign, Some("tdg-0-10-lower-is-better"));
+        let err = handle_sql("grade-dist", SqlOutputFormat::Json, &foreign)
+            .expect_err("a foreign scale marker must be refused");
+        assert!(
+            format!("{err:#}").contains("tdg-0-10-lower-is-better"),
+            "error should name the stored scale, got: {err:#}"
+        );
+
+        // --schema goes through the same chokepoint, so it is guarded too.
+        assert!(
+            handle_schema(&stale).is_err(),
+            "handle_schema must refuse a stale-scale index as well"
+        );
+
+        // And a current index still works.
+        let fresh = dir.path().join("fresh.db");
+        write_test_db(&fresh, Some(crate::services::agent_context::TDG_SCALE));
+        handle_sql("grade-dist", SqlOutputFormat::Json, &fresh)
+            .expect("an index on the current scale must still be readable");
+    }
+
+    #[test]
+    fn test_handle_sql_with_in_memory_db() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        write_test_db(&db_path, Some(crate::services::agent_context::TDG_SCALE));
 
         // Test table format
         let result = handle_sql(

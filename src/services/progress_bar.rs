@@ -104,10 +104,16 @@ impl SimpleProgressBar {
     }
 
     /// Finish the progress bar with a message
+    ///
+    /// Progress text is status chatter, so it goes through
+    /// [`status_eprintln!`](crate::status_eprintln) and is silent under
+    /// `--quiet`. `pmat context` used to print "Analyzing project…" /
+    /// "Analyses complete" / "Analysis complete!" through this bar no matter
+    /// what, which is why `context --quiet` was byte-identical to `context`.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finish_with_message(&self, msg: impl Into<String>) {
         if !self.hidden {
-            eprintln!("{}", msg.into());
+            crate::status_eprintln!("{}", msg.into());
         }
     }
 
@@ -133,7 +139,7 @@ impl SimpleProgressBar {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn abandon_with_message(&self, msg: impl Into<String>) {
         if !self.hidden {
-            eprintln!("{}", msg.into());
+            crate::status_eprintln!("{}", msg.into());
         }
     }
 
@@ -159,7 +165,7 @@ impl SimpleProgressBar {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn println(&self, msg: impl AsRef<str>) {
         if !self.hidden {
-            eprintln!("{}", msg.as_ref());
+            crate::status_eprintln!("{}", msg.as_ref());
         }
     }
 

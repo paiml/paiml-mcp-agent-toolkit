@@ -7,12 +7,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+/// Identifier of the TDG scale persisted `tdg_score` values were written under.
+///
+/// Stored in `IndexManifest::tdg_scale` (blob) and in the SQLite `metadata`
+/// table under the `tdg_scale` key. An index whose marker is absent or
+/// different was written under a DIFFERENT scale — before v3.30.0 the index
+/// stored a 0-10 LOWER-is-better debt number — and must be REBUILT, never
+/// reinterpreted: reading a stored `0.12` as 0.12/100 would turn the best
+/// possible legacy score into an F. Absent is not "fine", it is unknown.
+pub const TDG_SCALE: &str = "tdg-0-100-higher-is-better";
+
 /// Quality metrics for a function
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct QualityMetrics {
-    /// TDG score (lower is better, 0-10 scale)
+    /// TDG score on the 0-100 HIGHER-is-better scale `pmat tdg` reports.
+    ///
+    /// Was a 0-10 lower-is-better debt number before v3.30.0; see [`TDG_SCALE`].
     pub tdg_score: f32,
-    /// TDG grade (A, B, C, D, F)
+    /// TDG grade, one of `crate::tdg::Grade` (`A+`, `A`, `A-`, … `D`, `F`)
     pub tdg_grade: String,
     /// Cyclomatic complexity
     pub complexity: u32,
@@ -113,8 +125,15 @@ pub struct IndexManifest {
     pub file_count: usize,
     /// Languages detected
     pub languages: Vec<String>,
-    /// Average TDG score
+    /// Average TDG score (0-100, higher is better)
     pub avg_tdg_score: f32,
+    /// Scale the persisted `tdg_score` values were written under.
+    ///
+    /// Empty (the serde default, which is what every pre-v3.30.0 index
+    /// deserialises to) means UNKNOWN, and unknown must fail loudly rather
+    /// than be read on today's scale. See [`TDG_SCALE`].
+    #[serde(default)]
+    pub tdg_scale: String,
     /// SHA256 checksums for each source file (for incremental updates)
     #[serde(default)]
     pub file_checksums: HashMap<String, String>,

@@ -244,8 +244,8 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     let output_path = pmat_dir.join("binding-index.json");
     fs::write(&output_path, &json)?;
 
-    println!("✅ Binding index generated: {}", output_path.display());
-    println!("   {} file(s) → {} binding(s)", index.len(), binding_count);
+    crate::status_println!("✅ Binding index generated: {}", output_path.display());
+    crate::status_println!("   {} file(s) → {} binding(s)", index.len(), binding_count);
 
     // 4. Generate O(1) cache files (R-5 remediation)
     let mut cache_count = 0u8;
@@ -272,15 +272,15 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     fs::write(pmat_dir.join("asset-layout-cache.json"), serde_json::to_string_pretty(&asset_cache)?)?;
     cache_count += 1;
 
-    println!("   {} O(1) cache file(s) generated", cache_count);
+    crate::status_println!("   {} O(1) cache file(s) generated", cache_count);
 
     // 5. Generate contracts/work/<ID>.yaml from .pmat-work/ (R-4)
     let yaml_count = generate_work_contract_yamls(project_path)?;
     if yaml_count > 0 {
-        println!("   {} contracts/work/*.yaml file(s) generated", yaml_count);
+        crate::status_println!("   {} contracts/work/*.yaml file(s) generated", yaml_count);
     }
 
-    println!("   CB-1350 differential obligations now enabled");
+    crate::status_println!("   CB-1350 differential obligations now enabled");
 
     Ok(())
 }

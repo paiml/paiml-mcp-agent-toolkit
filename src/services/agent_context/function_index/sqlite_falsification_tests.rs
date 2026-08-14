@@ -68,6 +68,7 @@ mod tests {
             file_count: flc,
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         }
@@ -960,7 +961,10 @@ mod tests {
         let m = manifest(10, 5);
         insert_metadata(&conn, &m).unwrap();
         let loaded = load_metadata(&conn).unwrap();
-        assert_eq!(loaded.version, "2.0.0");
+        assert_eq!(
+            loaded.version,
+            crate::services::agent_context::function_index::sqlite_backend::SCHEMA_VERSION
+        );
     }
 
     /// F-052: Metadata stores built_at timestamp

@@ -28,12 +28,12 @@ pub async fn handle_analyze_similarity(
     top_files: usize,
 ) -> Result<()> {
     let start = if perf { Some(Instant::now()) } else { None };
-    eprintln!("🔍 Advanced similarity analysis starting...");
+    crate::status_eprintln!("🔍 Advanced similarity analysis starting...");
 
     let config = build_config(detection_type, threshold, min_lines, max_tokens);
     let detector = SimilarityDetector::new(config);
     let files = collect_files(&project_path, &include, &exclude).await?;
-    eprintln!("📊 Analyzing {} files...", files.len());
+    crate::status_eprintln!("📊 Analyzing {} files...", files.len());
 
     let report = detector.comprehensive_analysis(&files);
     let filtered_report = if top_files > 0 {
@@ -45,7 +45,7 @@ pub async fn handle_analyze_similarity(
     let output_str = format_report(&filtered_report, format)?;
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_str).await?;
-        eprintln!("📄 Report written to: {}", output_path.display());
+        crate::status_eprintln!("📄 Report written to: {}", output_path.display());
     } else {
         println!("{output_str}");
     }
@@ -155,7 +155,7 @@ fn should_include_file(
 
 fn filter_top_files(report: ComprehensiveReport, top_files: usize) -> ComprehensiveReport {
     if top_files > 0 {
-        eprintln!("📈 Showing top {top_files} files with issues");
+        crate::status_eprintln!("📈 Showing top {top_files} files with issues");
     }
     report
 }

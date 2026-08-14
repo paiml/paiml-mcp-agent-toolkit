@@ -5,11 +5,12 @@
 fn format_dead_code_result(
     result: &crate::models::dead_code::DeadCodeResult,
     format: &DeadCodeOutputFormat,
+    scope: DeadCodeReportScope,
 ) -> Result<String> {
     match format {
         DeadCodeOutputFormat::Json => format_dead_code_as_json(result),
         DeadCodeOutputFormat::Sarif => format_dead_code_as_sarif(result),
-        DeadCodeOutputFormat::Summary => format_dead_code_as_summary(result),
+        DeadCodeOutputFormat::Summary => format_dead_code_as_summary_scoped(result, scope),
         DeadCodeOutputFormat::Markdown => format_dead_code_as_markdown(result),
     }
 }
@@ -64,7 +65,9 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
                                     DeadCodeType::Function => "Dead function",
                                     DeadCodeType::Class => "Dead class",
                                     DeadCodeType::Variable => "Dead variable",
+                                    DeadCodeType::Module => "Dead module",
                                     DeadCodeType::UnreachableCode => "Unreachable code",
+                                    DeadCodeType::Other => "Dead item",
                                 },
                                 item.reason
                             )
@@ -87,14 +90,25 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
     Ok(serde_json::to_string_pretty(&sarif)?)
 }
 
-/// Format result as summary
+/// Format result as summary, with no analyzer scope information.
+///
+/// Every figure the renderer cannot verify is then reported as unknown rather
+/// than guessed: no project-wide percentage, no name for the skipped files.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_dead_code_as_summary(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<String> {
+    format_dead_code_as_summary_scoped(result, DeadCodeReportScope::default())
+}
+
+/// Format result as summary, told what the analyzer could and could not measure.
+fn format_dead_code_as_summary_scoped(
+    result: &crate::models::dead_code::DeadCodeResult,
+    scope: DeadCodeReportScope,
+) -> Result<String> {
     let mut output = String::new();
 
-    write_dead_code_header(&mut output, result)?;
+    write_dead_code_header(&mut output, result, scope)?;
 
     // Print the breakdown whenever there is anything to break down. Gating on
     // `dead_functions > 0` hid it exactly when it was needed: a report of 26
@@ -114,6 +128,7 @@ pub fn format_dead_code_as_summary(
 fn write_dead_code_header(
     output: &mut String,
     result: &crate::models::dead_code::DeadCodeResult,
+    scope: DeadCodeReportScope,
 ) -> Result<()> {
     use crate::cli::colors as c;
     use std::fmt::Write;
@@ -123,8 +138,27 @@ fn write_dead_code_header(
         output,
         "  {} {}",
         c::label("Files analyzed:"),
-        c::number(&result.total_files.to_string())
+        c::number(&result.analyzed_files.to_string())
     )?;
+    // Name the narrowing. Without it, a repo whose only dead code lives in test
+    // code got an all-zero report headed by the project's whole file count -- a
+    // clean bill of health for files the scan never opened.
+    //
+    // The parenthetical comes from the analyzer that did the skipping. It used
+    // to be one hardcoded phrase naming the test tree AND the example and
+    // benchmark trees, neither of which the cargo scan skips -- and the Top
+    // Files list directly beneath it was made of `examples/`.
+    if result.total_files > result.analyzed_files {
+        writeln!(
+            output,
+            "  {} {} ({})",
+            c::label("Files skipped (out of scope):"),
+            c::number(&(result.total_files - result.analyzed_files).to_string()),
+            scope
+                .skipped_kind
+                .unwrap_or("the analyzer did not say which files")
+        )?;
+    }
     writeln!(
         output,
         "  {} {}",
@@ -133,19 +167,38 @@ fn write_dead_code_header(
     )?;
     // Name the cap instead of letting the reported count stand for the total:
     // `files_with_dead_code: 26` used to head a list of 4.
-    let omitted = result.files_omitted();
-    if omitted > 0 {
+    // `--include`/`--exclude` filter the REPORT, not the walk. Saying so is the
+    // difference between "Files analyzed: 2" being a fact about the scan and it
+    // reading as a claim that the filter narrowed the scan -- which it does not:
+    // `--include 'examples/**'` on a two-file crate still analyzes both files
+    // and still divides by the whole project's lines.
+    if scope.list_filtered {
         writeln!(
             output,
-            "  {} {} ({} not listed: below --min-dead-lines{})",
+            "  {} --include/--exclude filter this report, not the scan; \
+             the counts above and the percentage below cover every scanned file",
+            c::label("Note:")
+        )?;
+    }
+    let omitted = result.files_omitted();
+    if omitted > 0 {
+        // Name every cut that could have removed them. A file dropped by
+        // `--exclude 'src/**'` was reported as "below --min-dead-lines",
+        // blaming a threshold that had nothing to do with it.
+        let mut reasons: Vec<&str> = vec!["below --min-dead-lines"];
+        if result.files_truncated {
+            reasons.push("beyond --top-files");
+        }
+        if scope.list_filtered {
+            reasons.push("removed by --include/--exclude");
+        }
+        writeln!(
+            output,
+            "  {} {} ({} not listed: {})",
             c::label("Files found with dead code:"),
             c::number(&result.files_with_dead_code_found.to_string()),
             c::number(&omitted.to_string()),
-            if result.files_truncated {
-                " or beyond --top-files"
-            } else {
-                ""
-            }
+            reasons.join(" or ")
         )?;
     }
     writeln!(
@@ -154,15 +207,34 @@ fn write_dead_code_header(
         c::label("Total dead lines:"),
         c::number(&result.summary.total_dead_lines.to_string())
     )?;
+    // Named for its scope. Both this and the figure `--fail-on-violation`
+    // compares are real, but they measure different sets — this one covers the
+    // files actually LISTED (which `--min-dead-lines` and `--top-files` shrink),
+    // the gate's covers every line walked. Printing this one as plain "Dead code
+    // percentage" made them look like one number disagreeing with itself: a run
+    // could report 0.0% here while the gate failed the same run at 100%.
+    //
+    // When there is NO project-wide figure at all — the multi-language analyzer
+    // never counts total project lines — the note says so. It used to print a
+    // bare "Dead code percentage: 100.0%" and then, in the same run,
+    // `--fail-on-violation` bailed with "no project-wide dead-code percentage
+    // was measured for this project": the report both stated a measurement and
+    // denied making one.
+    let scope_note = match scope.project_dead_percentage {
+        Some(project) if result.files_omitted() > 0 || scope.list_filtered => {
+            format!(" (listed files only; project-wide: {project:.1}%)")
+        }
+        Some(_) => String::new(),
+        None => {
+            " (listed files only; no project-wide figure was measured for this project)".to_string()
+        }
+    };
     writeln!(
         output,
-        "  {} {}\n",
+        "  {}{} {}\n",
         c::label("Dead code percentage:"),
-        c::pct(
-            f64::from(result.summary.dead_percentage),
-            5.0,
-            15.0,
-        )
+        c::dim(&scope_note),
+        c::pct(f64::from(result.summary.dead_percentage), 5.0, 15.0)
     )?;
 
     Ok(())
@@ -179,16 +251,10 @@ fn write_dead_code_by_type_section(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    use crate::models::dead_code::DeadCodeType;
     use std::fmt::Write;
 
     let summary = &result.summary;
-    let other_items = result
-        .files
-        .iter()
-        .flat_map(|f| f.items.iter())
-        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
-        .count();
+    let other_items = count_other_items(result);
 
     writeln!(output, "{}\n", c::subheader("Dead Code by Type"))?;
     for (label, value) in [
@@ -207,6 +273,25 @@ fn write_dead_code_by_type_section(
     }
 
     Ok(())
+}
+
+/// The items that belong in the "Other" row: bindings (fields, constants,
+/// statics, variants) and anything whose kind the producer could not name.
+///
+/// ONE implementation, called by both renderers. #928: this predicate used to
+/// be written out twice as `matches!(item.item_type, DeadCodeType::Variable)`,
+/// and because a dead MODULE was also typed `Variable` back then, every module
+/// was counted in BOTH the "Dead modules" row and this one — the two rows
+/// summed to more items than the report listed.
+fn count_other_items(result: &crate::models::dead_code::DeadCodeResult) -> usize {
+    use crate::models::dead_code::DeadCodeType;
+
+    result
+        .files
+        .iter()
+        .flat_map(|f| f.items.iter())
+        .filter(|item| matches!(item.item_type, DeadCodeType::Variable | DeadCodeType::Other))
+        .count()
 }
 
 /// Write top files with dead code section
@@ -264,10 +349,12 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
          | Metric | Value |\n\
          |--------|-------|\n\
          | Files Analyzed | {} |\n\
+         | Files Skipped (out of scope) | {} |\n\
          | Files with Dead Code | {} |\n\
          | Total Dead Lines | {} |\n\
          | Dead Code Percentage | {:.2}% |\n",
-        result.total_files,
+        result.analyzed_files,
+        result.total_files.saturating_sub(result.analyzed_files),
         result.summary.files_with_dead_code,
         result.summary.total_dead_lines,
         result.summary.dead_percentage
@@ -282,18 +369,9 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
 /// under a row heading no producer fills. Fields, constants and statics are
 /// counted from the items themselves, exactly as the text renderer does, so
 /// every reported dead item lands in one row.
-fn format_dead_code_breakdown_section(
-    result: &crate::models::dead_code::DeadCodeResult,
-) -> String {
-    use crate::models::dead_code::DeadCodeType;
-
+fn format_dead_code_breakdown_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
     let summary = &result.summary;
-    let other_items = result
-        .files
-        .iter()
-        .flat_map(|f| f.items.iter())
-        .filter(|item| matches!(item.item_type, DeadCodeType::Variable))
-        .count();
+    let other_items = count_other_items(result);
 
     format!(
         "## Dead Code Breakdown\n\n\
@@ -349,7 +427,7 @@ async fn write_dead_code_output(content: String, output: Option<PathBuf>) -> Res
     match output {
         Some(path) => {
             tokio::fs::write(&path, content).await?;
-            eprintln!("📝 Results written to: {}", path.display());
+            crate::status_eprintln!("📝 Results written to: {}", path.display());
         }
         None => {
             println!("{content}");

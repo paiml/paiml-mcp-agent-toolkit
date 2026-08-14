@@ -386,6 +386,42 @@ pub async fn analyze_churn(
     }
 }
 
+/// The `dag_type` values `analyze_dag` accepts, in the spelling the tool's
+/// `inputSchema` advertises.
+pub const DAG_TYPES: [&str; 4] = [
+    "call-graph",
+    "import-graph",
+    "inheritance",
+    "full-dependency",
+];
+
+/// Resolve the `dag_type` argument, REJECTING anything not in [`DAG_TYPES`].
+///
+/// The match used to end in `_ => DagType::FullDependency`, so `"BOGUS"`, `""`
+/// and `"12345"` all came back `status: "completed"` with
+/// `results.dag_type: "FullDependency"` and no warning: a client that typo'd the
+/// mode got a successful-looking result for a DIFFERENT analysis than the one it
+/// asked for, and no way to tell. `generate_context` already rejects an
+/// unsupported `format` and `scaffold_project` an unsupported `level`; silently
+/// coercing an enum is the one behaviour a schema-declared `enum` promises will
+/// not happen.
+///
+/// The underscore spellings stay accepted — they were accepted before, and
+/// removing them would break callers for no gain.
+pub fn parse_dag_type(dag_type: Option<&str>) -> Result<crate::services::deep_context::DagType> {
+    use crate::services::deep_context::DagType;
+    match dag_type.unwrap_or("full-dependency") {
+        "call-graph" | "call_graph" => Ok(DagType::CallGraph),
+        "import-graph" | "import_graph" => Ok(DagType::ImportGraph),
+        "inheritance" => Ok(DagType::Inheritance),
+        "full-dependency" | "full_dependency" => Ok(DagType::FullDependency),
+        other => Err(anyhow::anyhow!(
+            "Unsupported dag_type: {other:?} (expected one of {})",
+            DAG_TYPES.join(", ")
+        )),
+    }
+}
+
 // --- DAG analysis (R17-1) ---
 //
 // Dispatches to `services::deep_context::analysis_functions::analyze_dag`,
@@ -394,18 +430,12 @@ pub async fn analyze_churn(
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dag(paths: &[PathBuf], dag_type: Option<String>) -> Result<Value> {
     use crate::services::deep_context::analysis_functions::analyze_dag as svc_analyze_dag;
-    use crate::services::deep_context::DagType;
 
     if paths.is_empty() {
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
-    let dag_type_parsed = match dag_type.as_deref().unwrap_or("full-dependency") {
-        "call-graph" | "call_graph" => DagType::CallGraph,
-        "import-graph" | "import_graph" => DagType::ImportGraph,
-        "inheritance" => DagType::Inheritance,
-        _ => DagType::FullDependency,
-    };
+    let dag_type_parsed = parse_dag_type(dag_type.as_deref())?;
     let dag_type_label = format!("{:?}", dag_type_parsed);
 
     let project_path = &paths[0];
@@ -521,13 +551,15 @@ pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Resul
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_deep_context(
     paths: &[PathBuf],
-    _include_patterns: Option<Vec<String>>,
+    include_patterns: Option<Vec<String>>,
 ) -> Result<Value> {
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
 
     if paths.is_empty() {
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
+
+    reject_unsupported_include_patterns(include_patterns.as_deref())?;
 
     let project_path = &paths[0];
     let config = DeepContextConfig::default();
@@ -552,6 +584,44 @@ pub async fn analyze_deep_context(
             "ast_contexts": context.analyses.ast_contexts.len(),
         }
     }))
+}
+
+/// Refuse `include_patterns` rather than accept it and ignore it.
+///
+/// `analyze_deep_context {"paths":[dir]}` and
+/// `analyze_deep_context {"paths":[dir],"include_patterns":["*.py"]}` returned
+/// the SAME `file_count: 3` over a directory holding `a.go app.ts main.py`: the
+/// argument parsed, was bound to `_include_patterns`, and was thrown away. The
+/// tool's own schema described it as "accepted but not yet applied as a filter",
+/// which is a defect annotated and shipped rather than fixed.
+///
+/// It cannot be wired up from here. `DeepContextConfig::include_patterns` exists
+/// but is READ BY NOBODY — `grep -rn include_patterns src/services/deep_context/`
+/// finds the declaration, the `Default` initialiser and nothing else, so setting
+/// it would be a second no-op stacked on the first. Only `exclude_patterns` is
+/// honoured, and only by the file-tree walk (`analyzer_core/file_tree.rs`), not
+/// by the analysis phase that produces `ast_contexts` and the scorecard. Post-
+/// filtering the results here would be worse than useless: `quality_scorecard`
+/// is computed inside the pipeline over the WHOLE tree, so a filtered
+/// `file_count` beside an unfiltered scorecard is a payload that reads as
+/// measured and is not.
+///
+/// So the parameter is refused, loudly and by name, with the operation that
+/// actually narrows the analysis. Wiring it for real needs
+/// `src/services/deep_context/analyzer_core/` to honour the config field — the
+/// CLI's `pmat analyze deep-context --include` sets that same dead field
+/// (`src/cli/handlers/advanced_analysis_handlers.rs:272`) and is equally inert.
+fn reject_unsupported_include_patterns(patterns: Option<&[String]>) -> Result<()> {
+    let Some(patterns) = patterns.filter(|p| !p.is_empty()) else {
+        return Ok(());
+    };
+    Err(anyhow::anyhow!(
+        "include_patterns is not supported by analyze_deep_context: the deep-context \
+         pipeline has no file filter, so applying {patterns:?} would change nothing about \
+         the analysis. Rejecting instead of silently ignoring it. Narrow the analysis by \
+         passing the subdirectory you want in `paths`, or use analyze_complexity / \
+         analyze_satd, which do filter."
+    ))
 }
 
 /// Serialise a quality scorecard for MCP consumers.

@@ -173,6 +173,15 @@ pub(crate) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Re
     )
     .map_err(|e| format!("Failed to insert version: {e}"))?;
 
+    // R30: record the scale `tdg_score` was computed on. `load()` refuses an
+    // index whose marker is absent or different rather than reading old
+    // 0-10 lower-is-better numbers as 0-100 higher-is-better ones.
+    conn.execute(
+        "INSERT OR REPLACE INTO metadata (key, value) VALUES ('tdg_scale', ?1)",
+        params![crate::services::agent_context::TDG_SCALE],
+    )
+    .map_err(|e| format!("Failed to insert tdg_scale: {e}"))?;
+
     conn.execute(
         "INSERT OR REPLACE INTO metadata (key, value) VALUES ('built_at', ?1)",
         params![manifest.built_at],

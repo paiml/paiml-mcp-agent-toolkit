@@ -1,21 +1,19 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core enforcement loop orchestration and routing logic
 
-use super::analysis::{
-    run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
-    run_duplication_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
-};
+use super::assessment::assess_project;
 use super::config::EnforcementConfig;
 use super::output::{
-    format_violations_output, handle_ci_mode_exit, output_result, print_enforcement_summary,
+    emit_report, format_violations_output, handle_ci_mode_exit, output_result,
+    print_enforcement_summary,
 };
 use super::states::{
-    handle_analyzing_state, handle_complete_state, handle_refactoring_enforcement_state,
-    handle_validating_enforcement_state, handle_violating_enforcement_state_proxy,
+    handle_analyzing_state, handle_refactoring_pass, handle_validating_enforcement_state,
+    handle_violating_enforcement_state_proxy,
 };
 use super::types::{
-    EnforcementIterationResult, EnforcementLoopResult, EnforcementProgress, EnforcementResult,
-    EnforcementState, QualityProfile, QualityViolation,
+    EnforcementIterationResult, EnforcementLoopResult, EnforcementResult, EnforcementState,
+    QualityProfile,
 };
 use crate::cli::colors as c;
 use crate::cli::EnforceOutputFormat;
@@ -33,16 +31,39 @@ pub async fn handle_special_modes(
     format: EnforceOutputFormat,
     ci_mode: bool,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<Option<Result<()>>> {
     if list_violations {
         return Ok(Some(
-            list_all_violations(project_path, profile, format, specific_file).await,
+            list_all_violations(
+                project_path,
+                profile,
+                format,
+                ci_mode,
+                specific_file,
+                output,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await,
         ));
     }
 
     if validate_only {
         return Ok(Some(
-            validate_current_state(project_path, profile, format, ci_mode, specific_file).await,
+            validate_current_state(
+                project_path,
+                profile,
+                format,
+                ci_mode,
+                specific_file,
+                output,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await,
         ));
     }
 
@@ -55,11 +76,12 @@ pub async fn run_main_enforcement_loop(
     project_path: &PathBuf,
     profile: &QualityProfile,
     config: EnforcementConfig,
+    output: Option<&Path>,
 ) -> Result<()> {
     let start_time = Instant::now();
 
     // Delegate entire loop logic to extracted function - COMPLEXITY NOW ≤10
-    let loop_result = execute_main_loop(project_path, profile, &config, start_time).await?;
+    let loop_result = execute_main_loop(project_path, profile, &config, start_time, output).await?;
 
     finalize_enforcement_run(
         loop_result.final_score,
@@ -167,8 +189,9 @@ pub async fn handle_enforcement_iteration(
     current_state: EnforcementState,
     config: &EnforcementConfig,
     iteration: u32,
+    output: Option<&Path>,
 ) -> Result<EnforcementIterationResult> {
-    eprintln!(
+    crate::status_eprintln!(
         "\n{} {}",
         c::label("Iteration"),
         c::number(&iteration.to_string())
@@ -177,7 +200,7 @@ pub async fn handle_enforcement_iteration(
     let result =
         execute_enforcement_iteration(project_path, profile, current_state, config).await?;
 
-    output_result(&result, config.format, config.show_progress)?;
+    output_result(&result, config.format, config.show_progress, output)?;
 
     Ok(EnforcementIterationResult {
         iteration,
@@ -193,10 +216,18 @@ pub async fn execute_main_loop(
     profile: &QualityProfile,
     config: &EnforcementConfig,
     start_time: Instant,
+    output: Option<&Path>,
 ) -> Result<EnforcementLoopResult> {
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
+    // Every verdict this run has already produced. Comparing against the
+    // immediately preceding iteration alone was not enough: the state machine
+    // cycles Violating -> Refactoring -> Validating -> Violating, so three
+    // identical measurements wearing three different labels looked like
+    // progress and `--apply-suggestions` spun the full 100 iterations (15.8s)
+    // over a five-line crate.
+    let mut seen: Vec<(EnforcementState, f64)> = Vec::new();
 
     while should_continue_enforcement(current_state, iteration, config, start_time) {
         let loop_result = handle_enforcement_iteration(
@@ -205,16 +236,43 @@ pub async fn execute_main_loop(
             current_state,
             config,
             iteration + 1,
+            output,
         )
         .await?;
 
         iteration = loop_result.iteration;
+        // The improvement check compared the new score against `current_score`
+        // AFTER `current_score` had already been overwritten with it, i.e. the
+        // score against itself, so `--target-improvement` could only ever fire
+        // for a non-positive delta. Compare against the score we came in with.
+        let score_before = current_score;
         current_state = loop_result.state;
         current_score = loop_result.score;
 
-        if check_improvement_targets(config, loop_result.score, current_score) {
+        if check_improvement_targets(config, loop_result.score, score_before) {
             break;
         }
+
+        // Nothing in this loop edits the tree — `--apply-suggestions` included,
+        // since no automated rewrite exists behind it — so a project that
+        // cannot converge re-measured the same unchanged tree 100 times:
+        // `pmat enforce extreme` printed the identical three-line summary a
+        // hundred times over 11 seconds for a 13-line crate. An iteration that
+        // reproduces a verdict this run has ALREADY reported has demonstrated
+        // that iterating changes nothing; say so and stop.
+        if seen.iter().any(|(state, score)| {
+            *state == loop_result.state && (score - loop_result.score).abs() < f64::EPSILON
+        }) {
+            eprintln!(
+                "{}",
+                c::warn(&format!(
+                    "no progress after {iteration} iterations ({:?} at {:.2} has already been reported); stopping",
+                    loop_result.state, loop_result.score
+                ))
+            );
+            break;
+        }
+        seen.push((loop_result.state, loop_result.score));
 
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
@@ -249,6 +307,8 @@ pub async fn run_enforcement_step(
                 single_file_mode,
                 dry_run,
                 specific_file,
+                include_pattern,
+                exclude_pattern,
             )
             .await
         }
@@ -261,11 +321,27 @@ pub async fn run_enforcement_step(
                 dry_run,
                 specific_file,
                 apply_suggestions,
+                include_pattern,
+                exclude_pattern,
             )
             .await
         }
 
-        EnforcementState::Refactoring => handle_refactoring_enforcement_state(0.7, specific_file),
+        // The score this arm reported was the literal `0.7`, passed to a handler
+        // that added 0.1 to it and emptied the violation list. Both are gone:
+        // the refactoring pass reads the same assessment as every other state.
+        EnforcementState::Refactoring => {
+            handle_refactoring_pass(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await
+        }
 
         EnforcementState::Validating => {
             handle_validating_enforcement_state(
@@ -280,67 +356,83 @@ pub async fn run_enforcement_step(
             .await
         }
 
-        EnforcementState::Complete => handle_complete_state(),
+        // This arm used to call a handler that takes no arguments and answers
+        // `score: 1.0`, `violations: []`, `files_completed: 100 // Would count
+        // actual` — a perfect verdict for a project it never opened. Complete is
+        // a claim about the tree, so it is read from the tree, exactly as the
+        // Validating arm already does.
+        EnforcementState::Complete => {
+            handle_analyzing_state(
+                project_path,
+                profile,
+                single_file_mode,
+                dry_run,
+                specific_file,
+                include_pattern,
+                exclude_pattern,
+            )
+            .await
+        }
     }
 }
 
-/// List all violations in the project - REFACTORED (complexity: ≤10)
+/// List all violations in the project — a rendering of the one assessment.
+///
+/// This function used to run its own six-phase analysis and keep only
+/// `PhaseOutcome::violations`, discarding every `unmeasured` disclosure. So
+/// `pmat enforce extreme -p empty --list-violations` printed `Found 0
+/// violations` and exited 0 while `--ci-mode` on the same directory printed
+/// `Violations: 2` and exited 1, and `--format json` printed both of them; and
+/// `--list-violations -p /nonexistent` printed `Found 0 violations`, exit 0, for
+/// a path the state machine refuses to grade at all.
+///
+/// The second analysis path is gone. Everything here comes from
+/// [`assess_project`], which is what the state machine reads too, so the three
+/// surfaces can no longer describe different runs.
 async fn list_all_violations(
     project_path: &Path,
     profile: &QualityProfile,
     format: EnforceOutputFormat,
+    ci_mode: bool,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<()> {
-    eprintln!("{}", c::header("Listing all quality violations..."));
+    crate::status_eprintln!("{}", c::header("Listing all quality violations..."));
 
-    let scope = AnalysisScope::resolve(project_path, specific_file.map(PathBuf::as_path));
-    if let AnalysisScope::SingleFile { module_dir, .. } = &scope {
-        // Directory-walk phases cannot target a lone file
-        eprintln!(
-            "  {} Single-file mode: SATD/dead-code/duplication scoped to parent module {}",
-            c::dim(">>"),
-            module_dir.display()
-        );
+    let assessment = assess_project(
+        project_path,
+        profile,
+        specific_file.map(PathBuf::as_path),
+        include_pattern,
+        exclude_pattern,
+    )
+    .await?;
+
+    crate::status_eprintln!(
+        "\n{} {} violations ({}{}/{} dimensions measured)",
+        c::label("Found"),
+        c::number(&assessment.violations.len().to_string()),
+        c::DIM,
+        assessment.measured_phases,
+        assessment.total_phases
+    );
+    // Paired with the line above: the reset must not be emitted on its own when
+    // the banner it closes is suppressed. Same rule, same check.
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("{}", c::RESET);
     }
 
-    let mut all_violations: Vec<QualityViolation> = Vec::new();
+    // Use extracted formatting function. `-o` is honoured here for the same
+    // reason it is honoured for the iteration report: one flag, one meaning.
+    let formatted_output = format_violations_output(&assessment.violations, profile, format)?;
+    emit_report(&formatted_output, output)?;
 
-    // Run all analyses using extracted functions - COMPLEXITY REDUCED FROM 48 TO ≤10
-    eprintln!("  {} Analyzing complexity...", c::dim(">>"));
-    let complexity_violations =
-        run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
-    all_violations.extend(complexity_violations);
-
-    eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
-    let satd_violations = run_satd_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(satd_violations);
-
-    eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));
-    let tdg_violations = run_tdg_analysis(scope.file_or_root(), profile).await?;
-    all_violations.extend(tdg_violations);
-
-    eprintln!("  {} Analyzing dead code...", c::dim(">>"));
-    let dead_code_violations = run_dead_code_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(dead_code_violations);
-
-    eprintln!("  {} Analyzing code duplication...", c::dim(">>"));
-    let duplication_violations = run_duplication_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(duplication_violations);
-
-    eprintln!("  {} Checking test coverage...", c::dim(">>"));
-    let coverage_violations = run_coverage_analysis(scope.walk_root(), profile).await?;
-    all_violations.extend(coverage_violations);
-
-    eprintln!(
-        "\n{} {} violations",
-        c::label("Found"),
-        c::number(&all_violations.len().to_string())
-    );
-
-    // Use extracted formatting function
-    let formatted_output = format_violations_output(&all_violations, profile, format)?;
-    println!("{formatted_output}");
-
+    // The same verdict, and therefore the same exit code, as every other
+    // surface: a listing that reports unmeasured dimensions must not exit 0
+    // under --ci-mode while `--ci-mode` alone exits 1 for the same run.
+    handle_ci_mode_exit(ci_mode, assessment.verdict_state());
     Ok(())
 }
 
@@ -351,8 +443,11 @@ async fn validate_current_state(
     format: EnforceOutputFormat,
     ci_mode: bool,
     specific_file: Option<&PathBuf>,
+    output: Option<&Path>,
+    include_pattern: Option<&String>,
+    exclude_pattern: Option<&String>,
 ) -> Result<()> {
-    eprintln!("{}", c::label("Validating current quality state..."));
+    crate::status_eprintln!("{}", c::label("Validating current quality state..."));
 
     // Run the analysis step to get current state
     let result = run_enforcement_step(
@@ -363,12 +458,16 @@ async fn validate_current_state(
         true,                    // dry_run
         false,                   // apply_suggestions
         specific_file,
-        None, // include_pattern
-        None, // exclude_pattern
+        include_pattern,
+        exclude_pattern,
     )
     .await?;
 
-    let passes = result.score >= result.target;
+    // `passes` used to be `score >= target`, a third copy of the verdict rule
+    // sitting beside the state machine's and `--list-violations`'. The verdict
+    // is decided once, in `QualityAssessment::verdict_state`, and arrives here
+    // as the analysing state's own state.
+    let passes = result.state == EnforcementState::Complete;
     let violations_count = result.violations.len();
 
     // Create summary result
@@ -387,18 +486,13 @@ async fn validate_current_state(
         } else {
             format!("fix_{violations_count}_violations")
         },
-        progress: EnforcementProgress {
-            files_completed: 0,
-            files_remaining: 0,
-            estimated_iterations: if passes {
-                0
-            } else {
-                ((1.0 - result.score) * 10.0) as u32
-            },
-        },
+        // `--validate-only` re-stated progress as `0 / 0` while holding the run
+        // that had just measured it, so the surface that exists to report the
+        // current state was the one surface that reported none of it.
+        progress: result.progress,
     };
 
-    output_result(&validation_result, format, false)?;
+    output_result(&validation_result, format, false, output)?;
 
     if ci_mode && !passes {
         eprintln!("\n{}", c::fail("Quality validation failed!"));

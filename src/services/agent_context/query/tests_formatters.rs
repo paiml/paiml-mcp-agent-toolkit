@@ -3,7 +3,7 @@
 
 #[test]
 fn test_enrich_with_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
 
     // Initially no churn data
@@ -24,7 +24,7 @@ fn test_enrich_with_churn() {
 
 #[test]
 fn test_enrich_with_churn_no_match() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
 
     // Churn map with different file
@@ -41,7 +41,7 @@ fn test_enrich_with_churn_no_match() {
 
 #[test]
 fn test_format_text_with_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.commit_count = 25;
     result.churn_score = 0.8;
@@ -76,7 +76,7 @@ fn test_format_text_with_code_shows_metrics() {
 
 #[test]
 fn test_format_text_with_code_minimal_metrics() {
-    let entry = create_test_entry("simple_func", 3, 1.0);
+    let entry = create_test_entry("simple_func", 3, 92.0);
     let result = QueryResult::from_entry(&entry, 0.9, true);
 
     let text = format_text_with_code(&[result], None);
@@ -90,7 +90,7 @@ fn test_format_text_with_code_minimal_metrics() {
 
 #[test]
 fn test_format_text_with_low_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.commit_count = 5;
     result.churn_score = 0.2; // Below 0.5 threshold
@@ -102,7 +102,7 @@ fn test_format_text_with_low_churn() {
 
 #[test]
 fn test_format_markdown_with_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.commit_count = 30;
     result.churn_score = 0.9;
@@ -244,7 +244,7 @@ fn test_rankby_from_str() {
 
 #[test]
 fn test_format_text_with_clones() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.clone_count = 3;
     result.duplication_score = 0.85;
@@ -256,7 +256,7 @@ fn test_format_text_with_clones() {
 
 #[test]
 fn test_format_text_with_entropy() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.pattern_diversity = 0.2;
 
@@ -266,7 +266,7 @@ fn test_format_text_with_entropy() {
 
 #[test]
 fn test_format_text_with_fault_annotations() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.fault_annotations = vec![
         "BH001: Boundary condition at line 10".to_string(),
@@ -280,7 +280,7 @@ fn test_format_text_with_fault_annotations() {
 
 #[test]
 fn test_format_text_with_graph_metrics() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.pagerank = 0.05;
     result.in_degree = 3;
@@ -293,7 +293,7 @@ fn test_format_text_with_graph_metrics() {
 
 #[test]
 fn test_format_text_with_large_loc() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.loc = 100;
 
@@ -303,7 +303,7 @@ fn test_format_text_with_large_loc() {
 
 #[test]
 fn test_format_markdown_with_clones_and_entropy() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.clone_count = 2;
     result.duplication_score = 0.7;
@@ -325,7 +325,7 @@ fn test_format_markdown_with_clones_and_entropy() {
 
 #[test]
 fn test_format_markdown_with_low_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.commit_count = 3;
     result.churn_score = 0.2;
@@ -337,7 +337,7 @@ fn test_format_markdown_with_low_churn() {
 
 #[test]
 fn test_format_text_with_code_clones_and_faults() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.clone_count = 3;
     result.fault_annotations = vec![
@@ -353,7 +353,7 @@ fn test_format_text_with_code_clones_and_faults() {
 
 #[test]
 fn test_format_text_with_code_call_graph_truncation() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     // More than 5 calls -> should truncate
     result.calls = (0..8).map(|i| format!("func_{i}")).collect();
@@ -367,7 +367,7 @@ fn test_format_text_with_code_call_graph_truncation() {
 
 #[test]
 fn test_format_text_with_code_doc_truncation() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.doc_comment = Some("A".repeat(150)); // >100 chars
 
@@ -377,7 +377,7 @@ fn test_format_text_with_code_doc_truncation() {
 
 #[test]
 fn test_format_text_with_code_no_source() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
 
     let text = format_text_with_code(&[result], None);
@@ -386,7 +386,7 @@ fn test_format_text_with_code_no_source() {
 
 #[test]
 fn test_format_text_with_code_high_pagerank() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pagerank = 0.005; // scaled: 50 -> >= 10 threshold
 
@@ -396,7 +396,7 @@ fn test_format_text_with_code_high_pagerank() {
 
 #[test]
 fn test_format_text_with_code_medium_pagerank() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pagerank = 0.0005; // scaled: 5 -> >= 1 threshold
 
@@ -406,7 +406,7 @@ fn test_format_text_with_code_medium_pagerank() {
 
 #[test]
 fn test_format_text_with_code_high_indegree() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.in_degree = 10;
 
@@ -416,7 +416,7 @@ fn test_format_text_with_code_high_indegree() {
 
 #[test]
 fn test_format_text_with_code_low_indegree() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.in_degree = 2;
 
@@ -426,7 +426,7 @@ fn test_format_text_with_code_low_indegree() {
 
 #[test]
 fn test_format_text_with_code_medium_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.commit_count = 15;
     result.churn_score = 0.4;
@@ -438,7 +438,7 @@ fn test_format_text_with_code_medium_churn() {
 
 #[test]
 fn test_format_text_with_code_low_churn() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.commit_count = 3;
     result.churn_score = 0.1;
@@ -449,7 +449,7 @@ fn test_format_text_with_code_low_churn() {
 
 #[test]
 fn test_format_text_with_code_high_entropy() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pattern_diversity = 0.9;
 
@@ -459,7 +459,7 @@ fn test_format_text_with_code_high_entropy() {
 
 #[test]
 fn test_format_text_with_code_low_entropy() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, true);
     result.pattern_diversity = 0.2;
 

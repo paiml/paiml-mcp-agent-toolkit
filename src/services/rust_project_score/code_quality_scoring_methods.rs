@@ -83,6 +83,11 @@ impl CodeQualityScorer {
     /// maximum rather than awarded a heuristic.
     const UNMEASURED_IN_FAST_MODE: f64 = 12.0;
 
+    /// Points the Complexity check is worth when it could be measured. When no
+    /// function could be measured at all they leave the denominator, the same
+    /// treatment Mutation Testing and Build Time get in fast mode.
+    const COMPLEXITY_POINTS: f64 = 3.0;
+
     /// Internal scoring logic that accepts optional cache
     fn score_internal(
         &self,
@@ -98,14 +103,20 @@ impl CodeQualityScorer {
 
         let mut total_earned = 0.0;
 
-        match self.score_complexity_simple(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
-        }
+        // Complexity (3pts), measured with the AST visitor `analyze complexity`
+        // and `quality-gate` use. A tree with no measurable function scores
+        // nothing and costs nothing (#937).
+        let unmeasured_complexity = match self.measure_cyclomatic(project_path, cache) {
+            Some(profile) => {
+                total_earned += score_from_cyclomatic(profile);
+                0.0
+            }
+            None => Self::COMPLEXITY_POINTS,
+        };
 
-        match self.score_unsafe(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_unsafe(project_path, cache)?;
+            total_earned += score
         }
 
         // Mutation Testing (8pts) and Build Time (4pts) are only scored when
@@ -131,14 +142,14 @@ impl CodeQualityScorer {
                 Ok(score) => total_earned += score,
                 Err(_) => total_earned += 2.0,
             }
-            self.max_points
+            self.max_points - unmeasured_complexity
         } else {
-            self.max_points - Self::UNMEASURED_IN_FAST_MODE
+            self.max_points - Self::UNMEASURED_IN_FAST_MODE - unmeasured_complexity
         };
 
-        match self.score_dead_code(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_dead_code(project_path, cache)?;
+            total_earned += score
         }
 
         Ok(CategoryScore::new(total_earned, max_points))

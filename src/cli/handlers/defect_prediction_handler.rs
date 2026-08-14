@@ -70,7 +70,7 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 
     {
         use crate::cli::colors as c;
-        eprintln!("{}", c::pass("Defect prediction analysis complete"));
+        crate::status_eprintln!("{}", c::pass("Defect prediction analysis complete"));
     }
     Ok(())
 }
@@ -86,18 +86,18 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 /// helpers consult `colors_enabled()`; the constants cannot.
 fn print_analysis_header(project_path: &Path, high_risk_only: bool, include_low_confidence: bool) {
     use crate::cli::colors as c;
-    eprintln!("{}", c::dim("Analyzing defect probability..."));
-    eprintln!(
+    crate::status_eprintln!("{}", c::dim("Analyzing defect probability..."));
+    crate::status_eprintln!(
         "  {} {}",
         c::label("Project path:"),
         c::path(&project_path.display().to_string())
     );
-    eprintln!(
+    crate::status_eprintln!(
         "  {} {}",
         c::label("High risk only:"),
         c::number(&high_risk_only.to_string())
     );
-    eprintln!(
+    crate::status_eprintln!(
         "  {} {}",
         c::label("Include low confidence:"),
         c::number(&include_low_confidence.to_string())
@@ -114,7 +114,7 @@ async fn output_results(
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("📝 Written to {}", output_path.display());
+        crate::status_eprintln!("📝 Written to {}", output_path.display());
     } else {
         println!("{content}");
     }

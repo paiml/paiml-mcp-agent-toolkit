@@ -9,7 +9,7 @@ mod tests_part2 {
     fn test_space_complexity_analyzer_new() {
         let analyzer = SpaceComplexityAnalyzer::new();
         assert!(analyzer.allocations.is_empty());
-        assert_eq!(analyzer.max_depth, 0);
+        assert_eq!(analyzer.recursive_functions, 0);
     }
 
     #[test]
@@ -32,6 +32,12 @@ mod tests_part2 {
         assert_eq!(complexity, Complexity::O1);
     }
 
+    /// REGRESSION (#967 adjacent): `analyze` collected the allocation and then
+    /// discarded it — `has_dynamic_allocation` matched only `Linear |
+    /// Quadratic`, variants nothing in the crate ever constructs, so the verdict
+    /// was `O1` for every input. The old assertion here was
+    /// `complexity >= Complexity::O1`, which is a tautology (`O1` is the
+    /// minimum of the enum) and so passed on the constant.
     #[test]
     fn test_space_complexity_with_vec() {
         let code = r#"
@@ -42,7 +48,96 @@ mod tests_part2 {
         let ast = syn::parse_file(code).unwrap();
         let mut analyzer = SpaceComplexityAnalyzer::new();
         let complexity = analyzer.analyze(&ast);
-        assert!(complexity >= Complexity::O1);
+        assert_eq!(
+            complexity,
+            Complexity::ON,
+            "an unbounded heap container is O(n) space, not O(1)"
+        );
+    }
+
+    /// REGRESSION (#967 adjacent): `SpaceComplexityAnalyzer::max_depth` was
+    /// written exactly once — to `0`, in `new()` — so `has_recursive` was
+    /// always false and recursion never influenced the verdict, even though
+    /// `SymbolicExecutor::analyze_function` right next door detects it
+    /// correctly with `RecursionDetector`.
+    #[test]
+    fn test_space_complexity_recursion_is_on() {
+        let code = r#"
+            fn countdown(n: u64) -> u64 {
+                if n == 0 {
+                    return 0;
+                }
+                countdown(n - 1)
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        assert_eq!(
+            analyzer.analyze(&ast),
+            Complexity::ON,
+            "recursion costs O(n) stack frames"
+        );
+    }
+
+    /// Recursion *and* a dynamic allocation compound to O(n^2).
+    #[test]
+    fn test_space_complexity_recursion_with_allocation_is_on2() {
+        let code = r#"
+            fn build(n: u64) -> Vec<u64> {
+                let mut acc = Vec::new();
+                if n == 0 {
+                    return acc;
+                }
+                acc = build(n - 1);
+                acc
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        assert_eq!(analyzer.analyze(&ast), Complexity::ON2);
+    }
+
+    /// Control: the verdict must still be `O(1)` when there is genuinely
+    /// nothing unbounded — otherwise the fix above would just be a new
+    /// constant in the other direction.
+    #[test]
+    fn test_space_complexity_fixed_size_stays_o1() {
+        let code = r#"
+            fn fixed() -> i32 {
+                let x = 5;
+                let arr = [1, 2, 3];
+                arr[0] + x
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        assert_eq!(analyzer.analyze(&ast), Complexity::O1);
+    }
+
+    /// A non-recursive function that calls a *different* function is not
+    /// recursion — pins `RecursionDetector`'s name comparison as used here.
+    #[test]
+    fn test_space_complexity_non_recursive_call_stays_o1() {
+        let code = r#"
+            fn outer(n: u64) -> u64 {
+                helper(n)
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        assert_eq!(analyzer.analyze(&ast), Complexity::O1);
+    }
+
+    /// `analyze` must not accumulate state across calls: a second, cheaper
+    /// file must not inherit the first file's recursion.
+    #[test]
+    fn test_space_complexity_resets_between_files() {
+        let recursive = syn::parse_file("fn r(n: u64) -> u64 { r(n - 1) }").unwrap();
+        let plain = syn::parse_file("fn p() -> i32 { let x = 5; x }").unwrap();
+
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        assert_eq!(analyzer.analyze(&recursive), Complexity::ON);
+        assert_eq!(analyzer.analyze(&plain), Complexity::O1);
     }
 
     // === path_to_string Tests ===

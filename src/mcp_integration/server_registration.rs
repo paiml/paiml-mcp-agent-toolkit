@@ -134,6 +134,18 @@ impl McpServer {
     ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    // Every use of `tools` and `registered_tools` below sits inside a
+    // `#[cfg(feature = "java-ast")]` or `"scala-ast"` block, so a build with
+    // `mcp-integration` but neither JVM feature leaves both unused — and under
+    // `#![deny(unused)]` that made `cargo check --lib --features mcp-integration`
+    // fail outright. The feature was unbuildable, CI could not see it (it builds
+    // default features only), and 440 lines of java_tools_tests.rs consequently
+    // never ran. Registering nothing here is CORRECT for such a build; the lock
+    // is simply taken and dropped, which is what the allow describes.
+    #[cfg_attr(
+        not(any(feature = "java-ast", feature = "scala-ast")),
+        allow(unused_variables, unused_mut)
+    )]
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut tools = self.context.tools.write();
         let mut registered_tools = 0;
@@ -256,7 +268,7 @@ impl McpServer {
     ///
     /// Configuration is loaded from environment variables:
     /// - PMAT_SEMANTIC_ENABLED: Enable semantic search (default: false)
-    /// - PMAT_VECTOR_DB_PATH: Path to vector database (default: ~/.pmat/embeddings.db)
+    /// - PMAT_VECTOR_DB_PATH: Path to vector database (default: `<workspace>/.pmat/embeddings.db`)
     /// - PMAT_WORKSPACE: Workspace path for code indexing (default: current directory)
     ///
     /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
@@ -274,22 +286,17 @@ impl McpServer {
         use crate::mcp_integration::tools::*;
         use crate::services::semantic::HybridSearchEngine;
 
-        let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| {
-                    h.join(".pmat")
-                        .join("embeddings.db")
-                        .to_string_lossy()
-                        .to_string()
-                })
-                .unwrap_or_else(|| "embeddings.db".to_string())
-        });
-
         let workspace = self
             .config
             .semantic_workspace
             .clone()
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+        // Scoped to the workspace being served, never a machine-global store —
+        // see `configuration_service::default_vector_db_path`.
+        let db_path = self.config.semantic_db_path.clone().unwrap_or_else(|| {
+            crate::services::configuration_service::default_vector_db_path(&workspace)
+        });
 
         // Initialize hybrid search engine (no API key required - uses local embeddings)
         tracing::info!(

@@ -114,22 +114,32 @@ pub(super) fn print_document_results(
     results: &[crate::services::agent_context::DocumentResult],
     show_separator: bool,
 ) {
+    // Every sequence below goes through `colors::seq`, the one place that
+    // decides whether this binary emits colour. These were the raw constants
+    // interpolated directly, so this printer coloured unconditionally:
+    // `--color never` did not silence it, and redirecting the output wrote
+    // escapes into the file. That is the same defect `tint` had, in a third
+    // place — the constants stay importable, so the guard belongs at the use
+    // site, and pointing at the shared rule keeps a fourth copy from appearing.
+    use crate::cli::colors::seq;
+    let (bold, dim, reset) = (seq(BOLD), seq(DIM), seq(RESET));
+    let (red, green, yellow, cyan) = (seq(RED), seq(GREEN), seq(YELLOW), seq(CYAN));
     if results.is_empty() {
-        eprintln!("{DIM}No document matches found.{RESET}");
+        eprintln!("{dim}No document matches found.{reset}");
         return;
     }
 
     if show_separator {
-        println!("\n{BOLD}-- Document Results --{RESET}\n");
+        println!("\n{bold}-- Document Results --{reset}\n");
     }
 
     for (i, r) in results.iter().enumerate() {
         let doc_type_badge = match r.doc_type.as_str() {
-            "pdf" => format!("{RED}PDF{RESET}"),
-            "svg" => format!("{GREEN}SVG{RESET}"),
-            "image" => format!("{YELLOW}IMG{RESET}"),
-            "markdown" => format!("{CYAN}MD{RESET}"),
-            "plaintext" => format!("{DIM}TXT{RESET}"),
+            "pdf" => format!("{red}PDF{reset}"),
+            "svg" => format!("{green}SVG{reset}"),
+            "image" => format!("{yellow}IMG{reset}"),
+            "markdown" => format!("{cyan}MD{reset}"),
+            "plaintext" => format!("{dim}TXT{reset}"),
             other => other.to_string(),
         };
 
@@ -142,15 +152,15 @@ pub(super) fn print_document_results(
         };
 
         let quality_bar = if r.extraction_quality >= 0.8 {
-            format!("{GREEN}\u{25cf}{RESET}")
+            format!("{green}\u{25cf}{reset}")
         } else if r.extraction_quality >= 0.5 {
-            format!("{YELLOW}\u{25cf}{RESET}")
+            format!("{yellow}\u{25cf}{reset}")
         } else {
-            format!("{RED}\u{25cb}{RESET}")
+            format!("{red}\u{25cb}{reset}")
         };
 
         println!(
-            "{DIM}{:>3}.{RESET} [{doc_type_badge}] {quality_bar} {BOLD}{}{RESET}{DIM}{location}{RESET}",
+            "{dim}{:>3}.{reset} [{doc_type_badge}] {quality_bar} {bold}{}{reset}{dim}{location}{reset}",
             i + 1,
             r.file_path,
         );
@@ -161,11 +171,11 @@ pub(super) fn print_document_results(
         } else {
             r.snippet.clone()
         };
-        println!("     {DIM}{snippet}{RESET}");
+        println!("     {dim}{snippet}{reset}");
     }
 
     println!(
-        "\n{DIM}Found {} document match{}{RESET}",
+        "\n{dim}Found {} document match{}{reset}",
         results.len(),
         if results.len() == 1 { "" } else { "es" }
     );

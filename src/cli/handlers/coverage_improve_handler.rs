@@ -34,9 +34,9 @@ pub async fn handle_coverage_improve(
     output: Option<PathBuf>,
     format: CoverageImproveOutputFormat,
 ) -> Result<()> {
-    eprintln!("📊 PMAT Coverage Improvement");
-    eprintln!("🎯 Target: {:.1}%", target);
-    eprintln!("📁 Project: {}", project_path.display());
+    crate::status_eprintln!("📊 PMAT Coverage Improvement");
+    crate::status_eprintln!("🎯 Target: {:.1}%", target);
+    crate::status_eprintln!("📁 Project: {}", project_path.display());
 
     // Create configuration
     let config = CoverageImprovementConfig {
@@ -62,7 +62,7 @@ pub async fn handle_coverage_improve(
 
     if let Some(output_path) = output {
         std::fs::write(&output_path, &formatted)?;
-        eprintln!("📝 Report written to: {}", output_path.display());
+        crate::status_eprintln!("📝 Report written to: {}", output_path.display());
     } else {
         println!("{}", formatted);
     }
@@ -182,17 +182,17 @@ fn format_markdown(report: &CoverageImprovementReport) -> String {
 
 /// Print summary to stderr
 fn print_summary(report: &CoverageImprovementReport) {
-    eprintln!("\n📊 Summary:");
-    eprintln!("   Baseline:  {:.2}%", report.baseline_coverage);
-    eprintln!("   Final:     {:.2}%", report.final_coverage);
-    eprintln!(
+    crate::status_eprintln!("\n📊 Summary:");
+    crate::status_eprintln!("   Baseline:  {:.2}%", report.baseline_coverage);
+    crate::status_eprintln!("   Final:     {:.2}%", report.final_coverage);
+    crate::status_eprintln!(
         "   Gain:      +{:.2}%",
         report.final_coverage - report.baseline_coverage
     );
-    eprintln!("   Iterations: {}", report.iterations.len());
+    crate::status_eprintln!("   Iterations: {}", report.iterations.len());
 
     if report.success {
-        eprintln!("✅ Target coverage reached!");
+        crate::status_eprintln!("✅ Target coverage reached!");
     } else {
         eprintln!("⚠️  {}", report.stop_reason);
     }

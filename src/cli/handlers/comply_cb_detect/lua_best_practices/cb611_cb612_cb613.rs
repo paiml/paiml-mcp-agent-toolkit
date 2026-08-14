@@ -403,10 +403,9 @@ fn extract_require_module(line: &str) -> Option<String> {
     let after = after.strip_prefix('(').unwrap_or(after).trim();
     let (quote, rest) = if let Some(stripped) = after.strip_prefix('"') {
         ('"', stripped)
-    } else if let Some(stripped) = after.strip_prefix('\'') {
-        ('\'', stripped)
     } else {
-        return None;
+        let stripped = after.strip_prefix('\'')?;
+        ('\'', stripped)
     };
     let end = rest.find(quote)?;
     let module = rest[..end].to_string();

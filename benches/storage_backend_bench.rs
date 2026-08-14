@@ -296,6 +296,7 @@ fn create_test_record(path: &str, score: f32, grade: Grade) -> FullTdgRecord {
             penalties_applied: Vec::new(),
             critical_defects_count: 0,
             has_critical_defects: false,
+            critical_defects_suppressed: None,
             has_contract_coverage: false,
         },
         components: ComponentScores {

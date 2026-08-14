@@ -52,10 +52,20 @@ impl TursoVectorDB {
         let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
         let mut entries = Vec::with_capacity(metadata.len());
         for (chunk_id, meta) in metadata.iter() {
+            // A chunk present in `metadata` with no embedding in `store` means
+            // the two have drifted apart. Defaulting to an empty vector here
+            // wrote that corruption straight to disk as if it were data, and
+            // reloading it re-inserted zero-dimension entries. Refuse instead.
             let embedding = store
                 .get(*chunk_id)
                 .and_then(|c| c.embedding.clone())
-                .unwrap_or_default();
+                .ok_or_else(|| {
+                    format!(
+                        "vector db is inconsistent: {}::{} is indexed but has no embedding in \
+                         the store; refusing to persist a fabricated empty embedding",
+                        meta.file_path, meta.chunk_name
+                    )
+                })?;
             entries.push(EmbeddingEntry {
                 file_path: meta.file_path.clone(),
                 chunk_name: meta.chunk_name.clone(),
@@ -108,14 +118,28 @@ impl TursoVectorDB {
     /// Row ID of inserted/updated entry
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn insert(&self, entry: &EmbeddingEntry) -> Result<i64, String> {
-        // Check if we need to reinitialize with different dimension
+        // Adopt the caller's embedding dimension, but only while that is
+        // non-destructive. Replacing `store` throws away every vector already
+        // indexed, whereas `file_index`/`metadata` survive — leaving the db
+        // claiming entries it has no embeddings for, which `collect_entries`
+        // then persisted as `embedding: []`. So the swap is allowed only on an
+        // empty store (the documented first-insert auto-adjust in `new_local`);
+        // against a populated store a dimension change is a caller error and
+        // must be reported instead of silently destroying the index.
         let embedding_dim = entry.embedding.len();
         {
-            let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
-            if store.config().dimension != embedding_dim {
-                drop(store);
-                // Reinitialize with correct dimension
-                let mut store = self.store.write().map_err(|e| format!("Lock error: {e}"))?;
+            let mut store = self.store.write().map_err(|e| format!("Lock error: {e}"))?;
+            let store_dim = store.config().dimension;
+            if store_dim != embedding_dim {
+                let indexed = store.len();
+                if indexed > 0 {
+                    return Err(format!(
+                        "embedding dimension mismatch: store holds {indexed} vector(s) of \
+                         dimension {store_dim}, refusing to insert dimension {embedding_dim} \
+                         for {}::{} (changing embedding model requires re-indexing from scratch)",
+                        entry.file_path, entry.chunk_name
+                    ));
+                }
                 *store = VectorStore::new(VectorStoreConfig {
                     dimension: embedding_dim,
                     ..Default::default()

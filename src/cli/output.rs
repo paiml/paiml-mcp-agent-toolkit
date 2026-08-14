@@ -70,7 +70,7 @@ impl StdoutWriter {
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl OutputWriter for StdoutWriter {
     fn status(&mut self, msg: &str) {
-        eprintln!("{msg}");
+        crate::status_eprintln!("{msg}");
     }
 
     fn result(&mut self, msg: &str) {
@@ -90,7 +90,7 @@ impl OutputWriter for StdoutWriter {
     }
 
     fn info(&mut self, msg: &str) {
-        eprintln!("🔍 {msg}");
+        crate::status_eprintln!("🔍 {msg}");
     }
 
     fn flush(&mut self) {

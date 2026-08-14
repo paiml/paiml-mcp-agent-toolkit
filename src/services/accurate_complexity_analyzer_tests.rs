@@ -343,4 +343,114 @@ mod unit_tests {
         let analyzer = AccurateComplexityAnalyzer::new();
         assert!(!analyzer.has_suppress_annotation(&func.attrs));
     }
+
+    // --- Functions are not only the free ones ---
+    //
+    // The walker matched top-level `Item::Fn` and nothing else, so a file whose
+    // functions all lived in `impl` / `trait` / `mod` blocks measured as zero
+    // functions with max cyclomatic 0 — and a complexity gate reading that
+    // passes everything. Idiomatic Rust is mostly `impl` blocks.
+
+    /// The same body must measure the same wherever it is declared.
+    async fn measured(source: &str) -> FileComplexityResult {
+        let dir = tempfile::TempDir::new().unwrap();
+        let file = dir.path().join("lib.rs");
+        std::fs::write(&file, source).unwrap();
+        AccurateComplexityAnalyzer::new()
+            .analyze_file(&file)
+            .await
+            .unwrap()
+    }
+
+    const BRANCHY_BODY: &str = "        let mut n = 0;\n        if x > 1 { n += 1; }\n        n\n";
+
+    #[tokio::test]
+    async fn test_impl_methods_are_counted_like_free_functions() {
+        let free = measured(&format!("pub fn f(x: i32) -> i32 {{\n{BRANCHY_BODY}}}\n")).await;
+        let in_impl = measured(&format!(
+            "pub struct S;\nimpl S {{\n    pub fn f(&self, x: i32) -> i32 {{\n{BRANCHY_BODY}    }}\n}}\n"
+        ))
+        .await;
+
+        assert_eq!(free.functions.len(), 1);
+        assert_eq!(
+            in_impl.functions.len(),
+            1,
+            "impl methods used to be invisible: 0 functions, max cyclomatic 0"
+        );
+        assert_eq!(
+            in_impl.functions[0].cyclomatic_complexity, free.functions[0].cyclomatic_complexity,
+            "the same body must score the same inside an impl block"
+        );
+        assert_eq!(in_impl.functions[0].name, "f");
+        // Extent is measured, not invented: the method spans its own 5 lines.
+        assert_eq!(
+            (
+                in_impl.functions[0].line_start,
+                in_impl.functions[0].line_end
+            ),
+            (3, 7)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_trait_default_methods_are_counted_and_required_ones_are_not() {
+        let result = measured(&format!(
+            "pub trait T {{\n    fn provided(&self, x: i32) -> i32 {{\n{BRANCHY_BODY}    }}\n    fn required(&self) -> u8;\n}}\n"
+        ))
+        .await;
+
+        let names: Vec<&str> = result.functions.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["provided"],
+            "a default method has a body to measure; a required one has none"
+        );
+        assert_eq!(result.functions[0].cyclomatic_complexity, 2);
+    }
+
+    #[tokio::test]
+    async fn test_functions_inside_inline_modules_are_counted() {
+        let result = measured(&format!(
+            "pub mod outer {{\n    pub mod inner {{\n        pub fn deep(x: i32) -> i32 {{\n{BRANCHY_BODY}        }}\n    }}\n}}\n"
+        ))
+        .await;
+
+        assert_eq!(
+            result.functions.len(),
+            1,
+            "nested `mod` bodies were skipped"
+        );
+        assert_eq!(result.functions[0].name, "deep");
+        assert_eq!(result.functions[0].cyclomatic_complexity, 2);
+    }
+
+    #[tokio::test]
+    async fn test_all_declaration_sites_are_walked_in_source_order() {
+        // Spans are consumed by name in textual order, so a name reused across
+        // scopes must be visited in the order it appears or every extent shifts.
+        let result = measured(concat!(
+            "impl S {\n",
+            "    fn go(&self) {}\n",
+            "}\n",
+            "mod m {\n",
+            "    pub fn go() {\n",
+            "        ()\n",
+            "    }\n",
+            "}\n",
+            "fn go() {}\n",
+        ))
+        .await;
+
+        let spans: Vec<(u32, u32)> = result
+            .functions
+            .iter()
+            .map(|f| (f.line_start, f.line_end))
+            .collect();
+        assert_eq!(
+            spans,
+            vec![(2, 2), (5, 7), (9, 9)],
+            "impl / mod / free `go` must be measured in source order"
+        );
+    }
 }

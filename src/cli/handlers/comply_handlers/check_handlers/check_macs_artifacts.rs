@@ -57,9 +57,21 @@ pub(crate) fn check_mcp_manifest_faithful(project_path: &Path) -> ComplianceChec
     }
 }
 
+/// Marks a document as a historical record, exempting it from CB-1657.
+///
+/// Put it anywhere in the file, ideally in the front matter:
+/// `<!-- pmat: historical-model-ids -->`
+///
+/// It exempts the document from the superseded-id scan and nothing else. It
+/// exists so a record of what was true on a date can stay accurate, instead of
+/// being rewritten to satisfy a check about what is true now (#987).
+pub(crate) const HISTORICAL_MARKER: &str = "<!-- pmat: historical-model-ids -->";
+
 /// CB-1657: no superseded model id (`claude-3-*`, `claude-2*`, `gpt-4-turbo`)
 /// appears in `docs/` outside the allow-listed registry (MACS F6). Stale ids
 /// in agent-facing docs are executable misinformation.
+///
+/// Exempt: `docs/archive/**` and any file carrying [`HISTORICAL_MARKER`].
 pub(crate) fn check_doc_model_drift(project_path: &Path) -> ComplianceCheck {
     let name = "CB-1657: Doc Model Drift";
     let docs_dir = project_path.join("docs");
@@ -76,6 +88,12 @@ pub(crate) fn check_doc_model_drift(project_path: &Path) -> ComplianceCheck {
 
     let mut hits: Vec<String> = Vec::new();
     let mut scanned = 0usize;
+    // Counted separately so "nothing was scanned" can never be reported as
+    // "there was nothing to scan" (#987). A tree whose only docs are archived
+    // used to come back `Skip: No markdown docs to scan`, which is a false
+    // statement about the tree and hides the fact that an exemption is load
+    // bearing. Exempted docs are now named in the message.
+    let mut exempt = 0usize;
     macs_walk_markdown(&docs_dir, &mut |path, text| {
         let rel = path
             .strip_prefix(project_path)
@@ -83,6 +101,26 @@ pub(crate) fn check_doc_model_drift(project_path: &Path) -> ComplianceCheck {
             .to_string_lossy()
             .replace('\\', "/");
         if allow.iter().any(|a| rel == *a) {
+            return;
+        }
+        // A historical document is not drift. #987: an archived analysis dated
+        // 2026-02-23 quoted a cost-tier match expression from the code as it
+        // stood that day. CB-1657 flagged its five superseded ids and the only
+        // ways to pass were to EDIT the historical record or DELETE it — both
+        // of which make the archive describe something that did not happen, in
+        // order to satisfy a present-day gate. A check that can only be
+        // satisfied by falsifying the record is worse than no check.
+        //
+        // Two exemptions, both narrow:
+        //  - an in-file marker, so the exemption lives beside the content it
+        //    covers and is visible in review rather than drifting away in a
+        //    config file;
+        //  - `docs/archive/` by default, because archived documentation is a
+        //    common enough pattern to be worth a default.
+        // Neither weakens the check for live docs, which is what F6 is about:
+        // stale ids in agent-facing documentation are executable misinformation.
+        if rel.starts_with("docs/archive/") || text.contains(HISTORICAL_MARKER) {
+            exempt += 1;
             return;
         }
         scanned += 1;
@@ -93,14 +131,29 @@ pub(crate) fn check_doc_model_drift(project_path: &Path) -> ComplianceCheck {
         }
     });
 
+    let exempt_note = if exempt > 0 {
+        format!(" ({exempt} exempt: docs/archive/ or `{HISTORICAL_MARKER}`)")
+    } else {
+        String::new()
+    };
     if scanned == 0 {
-        return skip_check(name, "No markdown docs to scan");
+        return skip_check(
+            name,
+            &if exempt > 0 {
+                format!(
+                    "no doc left to scan — all {exempt} markdown doc(s) are exempt \
+                     (docs/archive/ or `{HISTORICAL_MARKER}`)"
+                )
+            } else {
+                "No markdown docs to scan".to_string()
+            },
+        );
     }
     if hits.is_empty() {
         return ComplianceCheck {
             name: name.to_string(),
             status: CheckStatus::Pass,
-            message: format!("{scanned} doc(s) clean of superseded model ids"),
+            message: format!("{scanned} doc(s) clean of superseded model ids{exempt_note}"),
             severity: Severity::Info,
         };
     }

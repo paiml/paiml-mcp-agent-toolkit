@@ -8,7 +8,7 @@ fn scan_rust_targets(
     _min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
-    println!("🦀 Scanning Rust target directories...");
+    crate::status_println!("🦀 Scanning Rust target directories...");
 
     for entry in WalkDir::new(project_dir)
         .max_depth(5)
@@ -62,7 +62,7 @@ fn scan_node_targets(
     _min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
-    println!("📦 Scanning Node.js node_modules...");
+    crate::status_println!("📦 Scanning Node.js node_modules...");
 
     let mut node_count = 0;
     let mut node_size: u64 = 0;
@@ -114,7 +114,7 @@ fn scan_node_targets(
 
 /// Scan for Git garbage collection opportunities
 fn scan_git_targets(project_dir: &Path, result: &mut CleanupResult) -> Result<()> {
-    println!("📚 Scanning Git repositories...");
+    crate::status_println!("📚 Scanning Git repositories...");
 
     let git_dir = project_dir.join(".git");
     if git_dir.exists() {
@@ -154,7 +154,7 @@ fn scan_log_targets(
     min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
-    println!("📝 Scanning log files...");
+    crate::status_println!("📝 Scanning log files...");
 
     let mut log_count = 0;
     let mut log_size: u64 = 0;

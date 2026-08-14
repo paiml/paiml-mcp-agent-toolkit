@@ -77,12 +77,12 @@ fn extract_refactor_params(params: RefactorServeParams) -> ExtractedRefactorPara
 
 /// Log refactor server startup information
 fn log_refactor_server_startup(params: &ExtractedRefactorParams) {
-    println!("🔧 Starting refactor server mode...");
-    println!("📁 Project: {}", params.project.display());
-    println!("⚙️  Mode: {:?}", params.mode);
-    println!("🔄 Parallel workers: {}", params.parallel);
-    println!("💾 Memory limit: {}MB", params.memory_limit);
-    println!("📦 Batch size: {} files", params.batch_size);
+    crate::status_println!("🔧 Starting refactor server mode...");
+    crate::status_println!("📁 Project: {}", params.project.display());
+    crate::status_println!("⚙️  Mode: {:?}", params.mode);
+    crate::status_println!("🔄 Parallel workers: {}", params.parallel);
+    crate::status_println!("💾 Memory limit: {}MB", params.memory_limit);
+    crate::status_println!("📦 Batch size: {} files", params.batch_size);
 }
 
 /// Setup refactor configuration from file and command-line overrides
@@ -99,7 +99,7 @@ async fn load_base_configuration(
     params: &ExtractedRefactorParams,
 ) -> anyhow::Result<RefactorConfig> {
     if let Some(config_path) = &params.config {
-        println!("📋 Loading config from: {}", config_path.display());
+        crate::status_println!("📋 Loading config from: {}", config_path.display());
         load_refactor_config_json(config_path).await
     } else {
         Ok(RefactorConfig::default())
@@ -109,12 +109,12 @@ async fn load_base_configuration(
 /// Apply command-line parameter overrides to configuration
 fn apply_command_line_overrides(config: &mut RefactorConfig, params: &ExtractedRefactorParams) {
     if let Some(prio) = &params.priority {
-        println!("🎯 Priority expression: {prio}");
+        crate::status_println!("🎯 Priority expression: {prio}");
         config.priority_expression = Some(prio.clone());
     }
 
     if let Some(commit_template) = &params.auto_commit {
-        println!("🔗 Auto-commit template: {commit_template}");
+        crate::status_println!("🔗 Auto-commit template: {commit_template}");
         config.auto_commit_template = Some(commit_template.clone());
     }
 
@@ -131,7 +131,7 @@ async fn setup_checkpoint_directory(params: &ExtractedRefactorParams) -> anyhow:
         .unwrap_or_else(|| params.project.join(".refactor_checkpoints"));
 
     if params.resume {
-        println!(
+        crate::status_println!(
             "🔄 Resuming from checkpoint in: {}",
             checkpoint_path.display()
         );
@@ -178,14 +178,14 @@ async fn discover_and_prioritize_targets(
     let mut targets = discover_refactor_targets(&params.project).await?;
 
     if let Some(priority_expr) = &config.priority_expression {
-        println!(
+        crate::status_println!(
             "🔀 Sorting {} targets by priority expression",
             targets.len()
         );
         targets = sort_targets_by_priority(targets, priority_expr).await?;
     }
 
-    println!("🎯 Found {} refactoring targets", targets.len());
+    crate::status_println!("🎯 Found {} refactoring targets", targets.len());
     Ok(targets)
 }
 
@@ -213,7 +213,7 @@ async fn execute_with_timeout(
     runtime_seconds: u64,
 ) -> anyhow::Result<Summary> {
     let limit = Duration::from_secs(runtime_seconds);
-    println!("⏱️  Maximum runtime: {} seconds", limit.as_secs());
+    crate::status_println!("⏱️  Maximum runtime: {} seconds", limit.as_secs());
 
     let result = tokio::time::timeout(limit, engine.run()).await;
 
@@ -244,7 +244,7 @@ fn print_refactor_summary(summary: &Summary) {
 async fn handle_auto_commit(config: &RefactorConfig, summary: &Summary) -> anyhow::Result<()> {
     if let Some(commit_template) = &config.auto_commit_template {
         if summary.refactors_applied > 0 {
-            println!("\n📝 Creating auto-commit...");
+            crate::status_println!("\n📝 Creating auto-commit...");
             create_auto_commit(commit_template, summary).await?;
         }
     }

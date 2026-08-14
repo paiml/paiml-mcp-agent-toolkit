@@ -9,38 +9,63 @@ impl CargoDeadCodeAnalyzer {
     /// 2. COMPILER_LINT: Run cargo check with -W dead_code
     /// 3. REFERENCE_GRAPH: (future) Build call graph for unreachable code
     /// 4. HEURISTICS: (future) Pattern-based detection
+    ///
+    /// # Timeout
+    ///
+    /// The budget (`with_timeout`, default 90s) is enforced by *killing the
+    /// cargo child process*, not by a timer around the future. It used to be a
+    /// `tokio::time::timeout` wrapped around this whole block while the work
+    /// inside was a blocking `std::process::Command::output()`: a blocking call
+    /// never yields, so the timer could not fire and neither this 90s bound nor
+    /// the CLI's `--timeout` ever elapsed. `--timeout 1` ran to completion in
+    /// 20.2s and exited 0.
+    ///
+    /// The deadline is checked at each stage boundary and, crucially, *inside*
+    /// `run_cargo_check`, which owns the child and can kill it. One timer, at
+    /// the only place that can actually stop the work.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self) -> Result<AccurateDeadCodeReport> {
-        use tokio::time::{timeout, Duration};
-
         // Try cache first for O(1) performance
         if let Some(cached) = self.try_load_cache() {
             return Ok(cached);
         }
 
-        // Cache miss - run full analysis
-        let analysis_future = async {
-            // Layer 1: Scan for suppression attributes (fast, catches explicit admissions)
-            let mut all_dead_items = self.scan_for_suppression_attributes()?;
+        let deadline = std::time::Instant::now() + self.timeout;
 
-            // Layer 2: Run cargo check for compiler-detected dead code
-            let cargo_output = self.run_cargo_check()?;
-            let compiler_dead_items = self.parse_cargo_warnings(&cargo_output)?;
-            all_dead_items.extend(compiler_dead_items);
+        // Layer 1: Scan for suppression attributes (fast, catches explicit admissions)
+        let mut all_dead_items = self.scan_for_suppression_attributes()?;
+        self.check_deadline(deadline)?;
 
-            let files_with_dead_code = self.group_by_file(all_dead_items);
-            let report = self.calculate_metrics(files_with_dead_code).await?;
+        // Layer 2: Run cargo check for compiler-detected dead code
+        let cargo_output = self.run_cargo_check(deadline).await?;
+        let compiler_dead_items = self.parse_cargo_warnings(&cargo_output)?;
+        all_dead_items.extend(compiler_dead_items);
 
-            // Save to cache for next time
-            self.save_cache(&report);
+        let files_with_dead_code = self.group_by_file(all_dead_items);
+        let report = self.calculate_metrics(files_with_dead_code).await?;
+        self.check_deadline(deadline)?;
 
-            Ok(report)
-        };
+        // Save to cache for next time
+        self.save_cache(&report);
 
-        // Apply 90 second timeout to the entire analysis
-        timeout(Duration::from_secs(90), analysis_future)
-            .await
-            .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after 90 seconds"))?
+        Ok(report)
+    }
+
+    /// Stop here if the analysis budget is already spent.
+    fn check_deadline(&self, deadline: std::time::Instant) -> Result<()> {
+        if std::time::Instant::now() >= deadline {
+            return Err(self.timeout_error());
+        }
+        Ok(())
+    }
+
+    /// The one message this analyzer reports a spent budget with, so the CLI's
+    /// `--timeout` and the library default read identically.
+    fn timeout_error(&self) -> anyhow::Error {
+        anyhow::anyhow!(
+            "Dead code analysis timed out after {} seconds",
+            self.timeout.as_secs()
+        )
     }
 
     /// Layer 1: Scan for  attributes
@@ -128,9 +153,12 @@ impl CargoDeadCodeAnalyzer {
 
     /// Is this source file outside the scope the analyzer was configured with?
     ///
-    /// Mirrors what `--include-tests` / `--include-examples` /
-    /// `--include-benches` promise: with the flag absent, the corresponding
-    /// tree contributes nothing to the report.
+    /// Mirrors what `--include-tests` promises: with the flag absent, the test
+    /// tree contributes nothing to the report. `examples/` and `benches/` are
+    /// NOT excluded by default — this comment used to claim an
+    /// `--include-examples` / `--include-benches` pair that does not exist on
+    /// any surface, so those arms could only ever fire, and the two trees fell
+    /// out of the report entirely.
     fn is_excluded_source(&self, path: &Path) -> bool {
         let relative = path.strip_prefix(&self.project_path).unwrap_or(path);
         let under = |dir: &str| {
@@ -188,13 +216,25 @@ impl CargoDeadCodeAnalyzer {
                         suppressed_items.push((
                             relative_path,
                             DeadItem {
+                                // The item's REAL kind, which the regex above
+                                // has just captured. This used to be a
+                                // `DeadCodeKind::Suppressed` that erased it, and
+                                // "suppressed" is a category no counter knows:
+                                // `dead_functions`/`dead_classes`/`dead_modules`
+                                // are counted by kind, so six dead functions
+                                // reported `dead_functions: 0` and every one of
+                                // them was typed `item_type: "variable"` in a
+                                // record whose own reason said `fn`. Provenance
+                                // (compiler lint vs. explicit admission) lives
+                                // in the message below, where it does not
+                                // displace the kind.
+                                kind: suppressed_item_kind(kind_str),
                                 name: name.to_string(),
-                                kind: DeadCodeKind::Suppressed,
                                 line: item_line + 1, // 1-indexed
                                 column: 1,
                                 message: format!(
-                                    "{} `{}` has  suppression (explicit dead code admission)",
-                                    kind_str, name
+                                    "{kind_str} `{name}` carries an allow(dead_code) \
+                                     suppression (explicit dead code admission)"
                                 ),
                             },
                         ));
@@ -205,12 +245,20 @@ impl CargoDeadCodeAnalyzer {
         }
     }
 
-    /// Run cargo check and capture JSON output with timeout
-    fn run_cargo_check(&self) -> Result<String> {
+    /// Run cargo check and capture JSON output, killing the child at `deadline`.
+    async fn run_cargo_check(&self, deadline: std::time::Instant) -> Result<String> {
+        let Some(cmd) = self.build_cargo_check_command() else {
+            return Ok(r#"{"reason":"build-finished","success":true}"#.to_string());
+        };
+        self.wait_for_cargo_check(cmd, deadline).await
+    }
+
+    /// Build the `cargo check` invocation, or `None` when the scan is skipped.
+    fn build_cargo_check_command(&self) -> Option<Command> {
         // PMAT_DEAD_CODE_SKIP=1 can be used to skip in specific test scenarios
         // Removed CI bypass per CB-128 spec - dead code detection must work everywhere
         if std::env::var("PMAT_DEAD_CODE_SKIP").is_ok() {
-            return Ok(r#"{"reason":"build-finished","success":true}"#.to_string());
+            return None;
         }
 
         let mut cmd = Command::new("cargo");
@@ -230,28 +278,139 @@ impl CargoDeadCodeAnalyzer {
         // cargo metadata: --lib only when a lib exists; otherwise --bins.
         let has_lib = project_has_library(&self.project_path);
 
-        if self.exclude_tests {
-            if has_lib {
-                cmd.arg("--lib").arg("--bins");
-            } else {
-                cmd.arg("--bins");
-            }
-        } else if has_lib {
+        // The cargo target set MUST be the same scope `is_excluded_source`
+        // walks, or the report's numerator and denominator describe different
+        // file sets. `examples/` and `benches/` are in scope by default (see
+        // `CargoDeadCodeAnalyzer::new`) and were entering the totals walk, but
+        // this builder only ever asked cargo for `--lib`/`--bins`: rustc never
+        // compiled them, so their unused items could not be reported and a
+        // crate whose only dead code lived in `examples/` read `0 dead lines`
+        // over `3 files analyzed`. `--include-tests` had the mirror-image bug —
+        // it dropped `--bins` and never added `--tests`, so turning it on
+        // narrowed the compile instead of widening it.
+        if has_lib {
             cmd.arg("--lib");
-        } else {
-            cmd.arg("--bins");
+        }
+        cmd.arg("--bins");
+        if !self.exclude_tests {
+            cmd.arg("--tests");
+        }
+        // Named targets, not the blanket `--examples`/`--benches`: a library
+        // carries IMPLICIT test and bench targets, so `--benches` compiles the
+        // lib a second time with `cfg(test)` on and drags every `#[cfg(test)]`
+        // item into the report even when `--include-tests` is off. Selecting
+        // each real target by name keeps the compile scope equal to the walk
+        // scope in both directions.
+        if !self.exclude_examples {
+            for name in named_targets(&self.project_path, "example") {
+                cmd.arg("--example").arg(name);
+            }
+        }
+        if !self.exclude_benches {
+            for name in named_targets(&self.project_path, "bench") {
+                cmd.arg("--bench").arg(name);
+            }
         }
 
-        let output = cmd.output().context("Failed to run cargo check")?;
+        Some(cmd)
+    }
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("Cargo check failed: {}", stderr));
+    /// Run `cargo check` to completion, or kill it when `deadline` passes.
+    ///
+    /// This is the whole of `--timeout`. It was `cmd.output()` — a BLOCKING
+    /// call sitting inside an `async` block — so the two `tokio::time::timeout`
+    /// wrappers around it (the analyzer's hardcoded 90s and the CLI's
+    /// `--timeout`) were both timers on a future that never yields. Neither
+    /// could fire, and neither could have stopped `cargo` if it had: dropping a
+    /// `std::process::Child` does not kill the process.
+    ///
+    /// So the child is spawned rather than waited on, the deadline is polled
+    /// between `try_wait`s at a real `.await` point, and the child is KILLED
+    /// when the budget is spent. `cargo` in turn kills its own children on
+    /// SIGKILL of the job only for the rustc invocations it is waiting on; a
+    /// long-running build script may outlive it briefly, but the command
+    /// returns at the deadline instead of running to completion.
+    ///
+    /// stdout and stderr are drained by threads because `cargo check
+    /// --message-format=json` writes far more than a pipe buffer holds, and a
+    /// full pipe would block the child forever while we poll it.
+    async fn wait_for_cargo_check(
+        &self,
+        mut cmd: Command,
+        deadline: std::time::Instant,
+    ) -> Result<String> {
+        use std::io::Read;
+        use std::process::Stdio;
+
+        let mut child = cmd
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .context("Failed to run cargo check")?;
+
+        let mut stdout_pipe = child.stdout.take().expect("stdout was piped");
+        let mut stderr_pipe = child.stderr.take().expect("stderr was piped");
+        let stdout_reader = std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = stdout_pipe.read_to_end(&mut buf);
+            buf
+        });
+        let stderr_reader = std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = stderr_pipe.read_to_end(&mut buf);
+            buf
+        });
+
+        let status = loop {
+            match child.try_wait().context("Failed to run cargo check")? {
+                Some(status) => break status,
+                None => {
+                    if std::time::Instant::now() >= deadline {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        // Let the drain threads finish now that the pipes are
+                        // closed, so no thread is left holding the child's fds.
+                        let _ = stdout_reader.join();
+                        let _ = stderr_reader.join();
+                        return Err(self.timeout_error());
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+                }
+            }
+        };
+
+        let stdout = stdout_reader.join().unwrap_or_default();
+        let stderr = stderr_reader.join().unwrap_or_default();
+
+        if !status.success() {
+            return Err(anyhow::anyhow!(
+                "Cargo check failed: {}",
+                String::from_utf8_lossy(&stderr)
+            ));
         }
 
         // Cargo outputs JSON messages to stdout
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Ok(stdout.to_string())
+        Ok(String::from_utf8_lossy(&stdout).to_string())
+    }
+}
+
+/// The `DeadCodeKind` behind a suppression attribute, from the keyword the item
+/// is declared with.
+///
+/// The keywords are exactly the alternation the item regex captures, so the
+/// `Other` arm is unreachable from that call site and is there to keep an
+/// unknown keyword identifiable instead of collapsing it into a wrong category.
+fn suppressed_item_kind(kind_str: &str) -> DeadCodeKind {
+    match kind_str {
+        "fn" => DeadCodeKind::Function,
+        "struct" => DeadCodeKind::Struct,
+        "enum" => DeadCodeKind::Enum,
+        "type" => DeadCodeKind::TypeAlias,
+        "trait" => DeadCodeKind::Trait,
+        "mod" => DeadCodeKind::Module,
+        "const" => DeadCodeKind::Constant,
+        "static" => DeadCodeKind::Static,
+        other => DeadCodeKind::Other(other.to_string()),
     }
 }
 
@@ -296,6 +455,64 @@ fn project_has_library(project_path: &std::path::Path) -> bool {
         }
     }
     false
+}
+
+/// Cargo targets of `kind` ("example" / "bench") belonging to the package at
+/// `project_path`, excluding any that need features this check does not enable.
+///
+/// Named targets rather than the blanket `--examples`/`--benches` flags,
+/// because a library carries IMPLICIT test and bench targets: `--benches`
+/// compiles the lib a second time with `cfg(test)` on and drags every
+/// `#[cfg(test)]` item into the report even when `--include-tests` is off.
+///
+/// Targets with `required-features` are skipped: naming one whose features are
+/// off is a hard cargo error ("target `x` requires the features: `demo`"),
+/// which would abort the whole analysis. Returned sorted so the argument list —
+/// and therefore the cargo invocation — is deterministic.
+fn named_targets(project_path: &std::path::Path, kind: &str) -> Vec<String> {
+    let Ok(output) = Command::new("cargo")
+        .current_dir(project_path)
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .output()
+    else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    let Ok(meta) = serde_json::from_slice::<Value>(&output.stdout) else {
+        return Vec::new();
+    };
+    let manifest = project_path.join("Cargo.toml");
+    let mut names: Vec<String> = Vec::new();
+    for package in meta["packages"].as_array().into_iter().flatten() {
+        // Workspace roots list every member; only the package being analysed
+        // can satisfy a bare `--example NAME` / `--bench NAME`.
+        if package["manifest_path"].as_str().map(std::path::Path::new) != Some(manifest.as_path()) {
+            continue;
+        }
+        for target in package["targets"].as_array().into_iter().flatten() {
+            let is_kind = target["kind"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|k| k.as_str() == Some(kind));
+            if !is_kind {
+                continue;
+            }
+            let needs_features = target["required-features"]
+                .as_array()
+                .is_some_and(|f| !f.is_empty());
+            if needs_features {
+                continue;
+            }
+            if let Some(name) = target["name"].as_str() {
+                names.push(name.to_string());
+            }
+        }
+    }
+    names.sort();
+    names
 }
 
 #[cfg(test)]
@@ -394,10 +611,18 @@ mod include_tests_flag_tests {
         let tmp = fixture();
         let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
         let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
+        // `--include-tests` gates the test tree and nothing else. This used to
+        // demand `["in_lib"]`, which pinned the defect: examples and benches
+        // have no flag of their own, so excluding them by default removed them
+        // from every possible invocation.
         assert_eq!(
             found,
-            vec!["in_lib".to_string()],
-            "only library code is in scope without --include-tests/examples/benches"
+            vec![
+                "in_bench".to_string(),
+                "in_demo".to_string(),
+                "in_lib".to_string()
+            ],
+            "only the test tree is out of scope without --include-tests"
         );
     }
 
@@ -409,20 +634,26 @@ mod include_tests_flag_tests {
         assert!(found.contains(&"in_it".to_string()), "{found:?}");
         assert!(found.contains(&"in_src_tests".to_string()), "{found:?}");
         assert!(found.contains(&"in_lib".to_string()), "{found:?}");
-        // Examples and benches stay out — their own flags were not passed.
-        assert!(!found.contains(&"in_demo".to_string()), "{found:?}");
-        assert!(!found.contains(&"in_bench".to_string()), "{found:?}");
+        // Examples and benches are in scope with or without the flag; the flag
+        // adds the test tree on top of them rather than swapping one for another.
+        assert!(found.contains(&"in_demo".to_string()), "{found:?}");
+        assert!(found.contains(&"in_bench".to_string()), "{found:?}");
     }
 
+    /// 3.30.0 reported `src/lib.rs` alone on a crate whose `examples/`,
+    /// `benches/` and `tests/` trees held identical suppressed items, and no
+    /// flag put the first two back — not `--include-tests`, not `-u`, and not
+    /// `--include 'examples/**'`, which came back EMPTY because the glob ran
+    /// over a set the tree had already been cut from. Constructing the
+    /// analyzer with no builder at all is the case that regressed.
     #[test]
-    fn test_include_examples_and_benches_add_their_trees() {
+    fn test_examples_and_benches_are_in_scope_without_any_flag() {
         let tmp = fixture();
-        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path())
-            .include_examples()
-            .include_benches();
+        let analyzer = CargoDeadCodeAnalyzer::new(tmp.path());
         let found = names(&analyzer.scan_for_suppression_attributes().expect("scan"));
         assert!(found.contains(&"in_demo".to_string()), "{found:?}");
         assert!(found.contains(&"in_bench".to_string()), "{found:?}");
+        // The test tree is still gated on --include-tests.
         assert!(!found.contains(&"in_it".to_string()), "{found:?}");
     }
 

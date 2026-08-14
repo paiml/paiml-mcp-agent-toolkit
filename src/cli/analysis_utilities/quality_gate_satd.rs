@@ -14,7 +14,7 @@ pub async fn handle_analyze_satd(
     output: Option<PathBuf>,
 ) -> Result<()> {
     use crate::services::satd_detector::SATDDetector;
-    eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
+    crate::status_eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     let detector = SATDDetector::new();
     let satd_items = analyze_satd_items(&detector, &path, include_tests).await?;
@@ -100,7 +100,7 @@ fn generate_satd_output(
 async fn write_satd_output(output: Option<PathBuf>, content: &str) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
-        eprintln!("✅ SATD analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -120,9 +120,9 @@ pub async fn handle_analyze_dag(
     include_dead_code: bool,
     enhanced: bool,
 ) -> Result<()> {
-    eprintln!("🔍 Analyzing Directed Acyclic Graph (DAG)...");
-    eprintln!("📊 DAG Type: {dag_type:?}");
-    eprintln!("📁 Project: {}", project_path.display());
+    crate::status_eprintln!("🔍 Analyzing Directed Acyclic Graph (DAG)...");
+    crate::status_eprintln!("📊 DAG Type: {dag_type:?}");
+    crate::status_eprintln!("📁 Project: {}", project_path.display());
 
     // Simple DAG analysis implementation
     let mut output_content = String::new();
@@ -147,7 +147,7 @@ pub async fn handle_analyze_dag(
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &output_content).await?;
-        eprintln!("✅ DAG analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ DAG analysis written to: {}", output_path.display());
     } else {
         println!("{output_content}");
     }

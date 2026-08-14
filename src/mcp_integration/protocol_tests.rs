@@ -2,11 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::mcp_integration::registry::{
-        PromptRegistry, ResourceContent, ResourceContentType, ResourceRegistry, ResourceTemplate,
-        ToolRegistry,
-    };
-    use crate::mcp_integration::types::{error_codes, McpError, ServerInfo, MCP_VERSION};
+    use crate::mcp_integration::registry::{PromptRegistry, ResourceRegistry, ToolRegistry};
+    use crate::mcp_integration::types::{ServerInfo, MCP_VERSION};
 
     #[test]
     fn test_server_info() {

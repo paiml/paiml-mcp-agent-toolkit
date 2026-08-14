@@ -35,12 +35,20 @@ impl Scorer for CodeQualityScorer {
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
         let mut recommendations = Vec::new();
 
-        // Check complexity - USE SIMPLE FALLBACK (no subprocess, no cache)
-        if let Ok(score) = self.score_complexity_simple(project_path, None) {
-            if score < 3.0 {
-                recommendations.push(
-                    "Reduce cyclomatic complexity: refactor functions with >20 complexity into smaller units".to_string(),
-                );
+        // Complexity — measured, not guessed. This advice used to come from the
+        // deep-nesting proxy (#937): a project could be told to "refactor
+        // functions with >20 complexity" because eight lines somewhere were
+        // indented past column 40, and an agent climbing the score would
+        // reformat instead of refactor. It now names the functions that are
+        // actually over the threshold `analyze complexity` flags.
+        if let Some(profile) = self.measure_cyclomatic(project_path, None) {
+            if score_from_cyclomatic(profile) < 3.0 {
+                let error_threshold = crate::services::complexity::ComplexityThresholds::default()
+                    .cyclomatic_error;
+                recommendations.push(format!(
+                    "Reduce cyclomatic complexity: {} of {} functions exceed {} (worst is {}); split them into smaller units",
+                    profile.over_error, profile.functions, error_threshold, profile.max
+                ));
             }
         }
 

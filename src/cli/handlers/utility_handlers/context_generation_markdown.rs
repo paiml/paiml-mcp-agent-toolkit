@@ -263,4 +263,68 @@ mod header_body_agreement_tests {
         assert_eq!(sections, 2);
         assert_eq!(functions, 3);
     }
+
+    /// The same rule for the JSON surface. #915 fixed the markdown header and
+    /// left this one reading `complexity_report`, so `--format json` shipped a
+    /// 19-entry `files` array under `total_files: 12`.
+    #[test]
+    fn json_header_totals_match_the_body_they_head() {
+        let mut context = DeepContext::default();
+        context.analyses.ast_contexts = vec![
+            file_with_functions("src/a.rs", &["one", "two"]),
+            file_with_functions("src/b.rs", &["three"]),
+        ];
+        context.analyses.complexity_report = Some(ComplexityReport {
+            summary: ComplexitySummary {
+                total_files: 7,
+                total_functions: 999,
+                ..ComplexitySummary::default()
+            },
+            violations: vec![],
+            hotspots: vec![],
+            files: vec![],
+        });
+
+        let json = generate_json_context("rust", std::path::Path::new("/repo"), &context).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("parseable");
+
+        assert_eq!(parsed["project"]["total_files"], 2, "{json}");
+        assert_eq!(parsed["project"]["total_functions"], 3, "{json}");
+        assert_eq!(
+            parsed["files"].as_array().expect("files array").len(),
+            2,
+            "header must count the array it heads:\n{json}"
+        );
+    }
+
+    /// Two formats of one command, on one project, in one run.
+    #[test]
+    fn markdown_and_json_headers_agree() {
+        let mut context = DeepContext::default();
+        context.analyses.ast_contexts = vec![
+            file_with_functions("src/a.rs", &["one", "two"]),
+            file_with_functions("src/b.rs", &["three"]),
+            file_with_functions("src/c.rs", &["four", "five", "six"]),
+        ];
+        context.analyses.complexity_report = Some(ComplexityReport {
+            summary: ComplexitySummary {
+                total_files: 7,
+                total_functions: 999,
+                ..ComplexitySummary::default()
+            },
+            violations: vec![],
+            hotspots: vec![],
+            files: vec![],
+        });
+        let path = std::path::Path::new("/repo");
+
+        let md = generate_markdown_context("rust", path, &context).unwrap();
+        let json = generate_json_context("rust", path, &context).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("parseable");
+
+        assert!(md.contains("- **Total Files**: 3\n"), "{md}");
+        assert!(md.contains("- **Total Functions**: 6\n"), "{md}");
+        assert_eq!(parsed["project"]["total_files"], 3, "{json}");
+        assert_eq!(parsed["project"]["total_functions"], 6, "{json}");
+    }
 }

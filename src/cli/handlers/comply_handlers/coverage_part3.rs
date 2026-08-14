@@ -2,6 +2,8 @@
     fn test_print_compliance_text_all_status_types() {
         let report = ComplianceReport {
             project_version: PMAT_VERSION.to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: PMAT_VERSION.to_string(),
             is_compliant: true,
             versions_behind: 0,
@@ -34,6 +36,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_text(&report);
     }
@@ -44,6 +47,8 @@
     fn test_print_compliance_markdown_compliant() {
         let report = ComplianceReport {
             project_version: PMAT_VERSION.to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: PMAT_VERSION.to_string(),
             is_compliant: true,
             versions_behind: 0,
@@ -51,6 +56,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_markdown(&report);
     }
@@ -59,6 +65,8 @@
     fn test_print_compliance_markdown_non_compliant() {
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: PMAT_VERSION.to_string(),
             is_compliant: false,
             versions_behind: 5,
@@ -71,6 +79,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         print_compliance_markdown(&report);
     }
@@ -267,37 +276,58 @@
         assert!(result.is_ok());
     }
 
+    /// A project `comply report` will actually answer about.
+    ///
+    /// `create_pmat_project` produces a directory containing nothing but
+    /// `.pmat/` — no manifest, no source, no VCS. `comply check` has refused
+    /// that input since the empty-project guard landed ("an unmeasured project
+    /// is not a compliant one"); `comply report` used to answer it COMPLIANT
+    /// because its five checks only looked at config files. Now that both
+    /// commands share one computation, report refuses it too, so these tests
+    /// hand it a real manifest.
+    fn create_reportable_project(version: &str) -> TempDir {
+        let temp = create_pmat_project(version);
+        fs::write(
+            temp.path().join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write Cargo.toml");
+        fs::create_dir_all(temp.path().join("src")).expect("mkdir src");
+        fs::write(temp.path().join("src/lib.rs"), "pub fn ok() -> u8 { 1 }\n").expect("write lib");
+        temp
+    }
+
     #[tokio::test]
     async fn test_handle_report_text() {
-        let temp = create_pmat_project(PMAT_VERSION);
+        let temp = create_reportable_project(PMAT_VERSION);
         let result = handle_report(temp.path(), false, ComplyOutputFormat::Text, None).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_handle_report_json() {
-        let temp = create_pmat_project(PMAT_VERSION);
+        let temp = create_reportable_project(PMAT_VERSION);
         let result = handle_report(temp.path(), false, ComplyOutputFormat::Json, None).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_handle_report_markdown() {
-        let temp = create_pmat_project(PMAT_VERSION);
+        let temp = create_reportable_project(PMAT_VERSION);
         let result = handle_report(temp.path(), false, ComplyOutputFormat::Markdown, None).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_handle_report_with_history() {
-        let temp = create_pmat_project(PMAT_VERSION);
+        let temp = create_reportable_project(PMAT_VERSION);
         let result = handle_report(temp.path(), true, ComplyOutputFormat::Text, None).await;
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn test_handle_report_to_file() {
-        let temp = create_pmat_project(PMAT_VERSION);
+        let temp = create_reportable_project(PMAT_VERSION);
         let output_file = temp.path().join("report.md");
         let result = handle_report(
             temp.path(),
@@ -439,6 +469,8 @@
     fn test_compliance_report_debug_impl() {
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "2.0.0".to_string(),
             is_compliant: true,
             versions_behind: 0,
@@ -446,6 +478,7 @@
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         let debug_str = format!("{:?}", report);
         assert!(debug_str.contains("ComplianceReport"));

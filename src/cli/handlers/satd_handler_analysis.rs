@@ -11,7 +11,7 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
 
     reject_unimplemented_evolution(config.evolution)?;
 
-    eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
+    crate::status_eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function
     log_filter_info(&config);
@@ -81,12 +81,12 @@ fn enforce_fail_on_violation(result: &SatdAnalysisResult, fail_on_violation: boo
 /// Complexity: 5 (A+ standard)
 fn log_filter_info(config: &SatdAnalysisConfig) {
     if !config.include.is_empty() || !config.exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !config.include.is_empty() {
-            eprintln!("  Include patterns: {:?}", config.include);
+            crate::status_eprintln!("  Include patterns: {:?}", config.include);
         }
         if !config.exclude.is_empty() {
-            eprintln!("  Exclude patterns: {:?}", config.exclude);
+            crate::status_eprintln!("  Exclude patterns: {:?}", config.exclude);
         }
     }
 }
@@ -100,7 +100,9 @@ async fn execute_satd_analysis(config: &SatdAnalysisConfig) -> Result<SatdAnalys
 
     // Log extended mode if enabled
     if config.extended {
-        eprintln!("📋 Extended mode: detecting euphemisms (placeholder, stub, for now...)");
+        crate::status_eprintln!(
+            "📋 Extended mode: detecting euphemisms (placeholder, stub, for now...)"
+        );
     }
 
     // Build analysis request
@@ -148,7 +150,33 @@ fn apply_analysis_filters(
     //  "summary":"Found 7 SATD violations in 1 files","violations":[]} — one
     // document, two contradictory answers. Restate both from what survived.
     recompute_totals(&mut filtered);
+    rank_violations(&mut filtered);
     Ok(filtered)
+}
+
+/// Put the violations in the order the report claims to print them in.
+///
+/// The summary heading says "Top Violations" and then took the first ten in
+/// whatever order the facade's file walk produced, so the ten shown were not
+/// the ten worst and were not stable between runs on the same tree. `--top-files`
+/// is a limit on a *ranked* list; ranking has to exist before limiting means
+/// anything. Severity descending, then file and line so ties are deterministic.
+fn rank_violations(result: &mut SatdAnalysisResult) {
+    use crate::services::facades::satd_facade::SatdSeverity as FacadeSeverity;
+    fn rank(severity: &FacadeSeverity) -> u8 {
+        match severity {
+            FacadeSeverity::Critical => 0,
+            FacadeSeverity::High => 1,
+            FacadeSeverity::Medium => 2,
+            FacadeSeverity::Low => 3,
+        }
+    }
+    result.violations.sort_by(|a, b| {
+        rank(&a.severity)
+            .cmp(&rank(&b.severity))
+            .then_with(|| a.file_path.cmp(&b.file_path))
+            .then_with(|| a.line_number.cmp(&b.line_number))
+    });
 }
 
 /// Restate `total_files` and `summary` from the violations actually retained.
@@ -169,13 +197,20 @@ async fn write_satd_output(
     filtered_result: &SatdAnalysisResult,
     config: &SatdAnalysisConfig,
 ) -> Result<()> {
-    // Format output
-    let content = format_output(filtered_result, config.format.clone(), config.metrics);
+    // Format output. `config.top_files` used to stop at the struct field: it
+    // was declared, parsed and stored, and no renderer ever read it, so
+    // `--top-files 1` and `--top-files 50` printed the same ten rows.
+    let content = format_output(
+        filtered_result,
+        config.format.clone(),
+        config.metrics,
+        config.top_files,
+    );
 
     // Write to file or stdout
     if let Some(output_path) = &config.output {
         tokio::fs::write(output_path, &content).await?;
-        eprintln!("✅ SATD analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

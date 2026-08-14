@@ -1,3 +1,51 @@
+/// The coverage floor this gate enforces. It was written twice, as the literal
+/// `80.0`, at the two call sites of [`check_coverage`].
+const QUALITY_GATE_COVERAGE_MIN: f64 = 80.0;
+
+/// The coverage check, with an absent report disclosed instead of counted as zero.
+///
+/// [`check_coverage`] does not measure coverage — it reads a report someone else
+/// produced (`.pmat/coverage-cache.json`, else `.pmat-metrics/coverage.json`).
+/// When neither file exists it returned an empty violation list, which is the
+/// same value it returns for a project measured at 100%. `coverage_violations: 0`
+/// therefore meant "clean" and "never looked" at once, and the second reading is
+/// the common one: none of the three differential corpora carries a coverage
+/// report, and neither does a freshly cloned repository.
+///
+/// A check that did not run has not passed, so the gap is reported as a coverage
+/// finding of its own. `check_coverage` is left alone: it answers "how does the
+/// measured coverage compare to the floor", which is a different question from
+/// "was there a measurement", and only the caller composing the two can answer
+/// the second without the first losing its meaning.
+async fn run_coverage_check(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    if read_coverage_from_cache(project_path).is_none() {
+        return Ok(vec![QualityViolation {
+            check_type: "coverage".to_string(),
+            severity: "error".to_string(),
+            file: "project".to_string(),
+            line: None,
+            message: format!(
+                "Code coverage was NOT measured (no coverage report at .pmat/coverage-cache.json \
+                 or .pmat-metrics/coverage.json), so the {QUALITY_GATE_COVERAGE_MIN:.1}% minimum \
+                 is unverified — this gate does not cover coverage"
+            ),
+            details: Some(ViolationDetails {
+                affected_files: Vec::new(),
+                example_code: None,
+                fix_suggestion: Some(
+                    "Produce a report first — `pmat query --coverage` runs cargo-llvm-cov and \
+                     writes .pmat/coverage-cache.json; alternatively write \
+                     {\"coverage\": <percent>} to .pmat-metrics/coverage.json — then re-run the \
+                     gate, or deselect the check with `--checks` if coverage is gated elsewhere."
+                        .to_string(),
+                ),
+                score_factors: vec!["coverage: not measured".to_string()],
+            }),
+        }]);
+    }
+    check_coverage(project_path, QUALITY_GATE_COVERAGE_MIN).await
+}
+
 /// Helper for provability check execution
 async fn execute_provability_check(
     project_path: &Path,
@@ -23,50 +71,45 @@ async fn run_all_project_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
-    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
 
     // Run all checks
-    if !quiet {
+    if !crate::cli::progress::quiet_mode_enabled() {
         eprint!("  🔍 Checking complexity...");
     }
     let start = if perf { Some(Instant::now()) } else { None };
     let complexity_violations = check_complexity(project_path, max_complexity_p99).await?;
     results.complexity_violations = complexity_violations.len();
     violations.extend(complexity_violations);
-    if !quiet {
-        if let Some(s) = start {
-            eprintln!(
-                " {} violations found ({:.3}s)",
-                results.complexity_violations,
-                s.elapsed().as_secs_f64()
-            );
-        } else {
-            eprintln!(" {} violations found", results.complexity_violations);
-        }
+    if let Some(s) = start {
+        crate::status_eprintln!(
+            " {} violations found ({:.3}s)",
+            results.complexity_violations,
+            s.elapsed().as_secs_f64()
+        );
+    } else {
+        crate::status_eprintln!(" {} violations found", results.complexity_violations);
     }
 
-    // Macro to handle timing for each check (#230: suppress progress in JSON mode)
+    // Macro to handle timing for each check (progress chatter: silent under --quiet)
     macro_rules! run_check {
         ($name:expr, $check_expr:expr, $result_field:ident) => {{
-            if !quiet {
+            if !$crate::cli::progress::quiet_mode_enabled() {
                 eprint!("  🔍 Checking {}...", $name);
             }
             let start = if perf { Some(Instant::now()) } else { None };
             let check_violations = $check_expr.await?;
             results.$result_field = check_violations.len();
             violations.extend(check_violations);
-            if !quiet {
-                if let Some(s) = start {
-                    eprintln!(
-                        " {} violations found ({:.3}s)",
-                        results.$result_field,
-                        s.elapsed().as_secs_f64()
-                    );
-                } else {
-                    eprintln!(" {} violations found", results.$result_field);
-                }
+            if let Some(s) = start {
+                $crate::status_eprintln!(
+                    " {} violations found ({:.3}s)",
+                    results.$result_field,
+                    s.elapsed().as_secs_f64()
+                );
+            } else {
+                $crate::status_eprintln!(" {} violations found", results.$result_field);
             }
         }};
     }
@@ -77,7 +120,7 @@ async fn run_all_project_checks(
         dead_code_violations
     );
     run_check!("technical debt", check_satd(project_path), satd_violations);
-    run_entropy_check_gated(project_path, min_entropy, violations, results, perf, quiet).await?;
+    run_entropy_check_gated(project_path, min_entropy, violations, results, perf).await?;
     run_check!(
         "security",
         check_security(project_path),
@@ -90,7 +133,7 @@ async fn run_all_project_checks(
     );
     run_check!(
         "test coverage",
-        check_coverage(project_path, 80.0),
+        run_coverage_check(project_path),
         coverage_violations
     );
     run_check!(
@@ -115,15 +158,14 @@ async fn run_entropy_check_gated(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
     perf: bool,
-    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
 
     let gate_config = load_entropy_gate_config(project_path);
     if !gate_config.enabled {
-        if !quiet {
-            eprintln!("  \u{23ed}\u{fe0f}  Skipping code entropy (disabled via .pmat-gates.toml)");
-        }
+        crate::status_eprintln!(
+            "  \u{23ed}\u{fe0f}  Skipping code entropy (disabled via .pmat-gates.toml)"
+        );
         return Ok(());
     }
 
@@ -131,7 +173,7 @@ async fn run_entropy_check_gated(
     let mut ent_excludes = load_entropy_exclude_paths(project_path);
     merge_excludes(&mut ent_excludes, &gate_config.exclude);
 
-    if !quiet {
+    if !crate::cli::progress::quiet_mode_enabled() {
         eprint!("  \u{1f50d} Checking code entropy...");
     }
     let start = if perf { Some(Instant::now()) } else { None };
@@ -140,16 +182,14 @@ async fn run_entropy_check_gated(
     results.entropy_violations = ent_violations.len();
     violations.extend(ent_violations);
 
-    if !quiet {
-        if let Some(s) = start {
-            eprintln!(
-                " {} violations found ({:.3}s)",
-                results.entropy_violations,
-                s.elapsed().as_secs_f64()
-            );
-        } else {
-            eprintln!(" {} violations found", results.entropy_violations);
-        }
+    if let Some(s) = start {
+        crate::status_eprintln!(
+            " {} violations found ({:.3}s)",
+            results.entropy_violations,
+            s.elapsed().as_secs_f64()
+        );
+    } else {
+        crate::status_eprintln!(" {} violations found", results.entropy_violations);
     }
 
     // Apply max_violations threshold (#220)

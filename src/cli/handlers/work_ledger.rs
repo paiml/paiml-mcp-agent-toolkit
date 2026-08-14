@@ -32,5 +32,23 @@ include!("work_ledger_receipt.rs");
 // --- FalsificationLedger service ---
 include!("work_ledger_service.rs");
 
+// --- ULTRA-002: agent file claims (.pmat-work/claims.jsonl) ---
+include!("work_agent_claims.rs");
+include!("work_agent_claims_handlers.rs");
+include!("work_agent_claims_render.rs");
+
+// --- ULTRA-003: triage coverage accounting (.pmat-work/triage.jsonl) ---
+include!("work_agent_triage.rs");
+include!("work_agent_triage_handlers.rs");
+
+// --- MACS-019: delegation handoff + provenance boundary (#985) ---
+include!("work_ledger_delegate.rs");
+
+// --- Subcommand routing for both ---
+include!("work_agent_dispatch.rs");
+
 // --- Tests ---
 include!("work_ledger_tests.rs");
+include!("work_agent_claims_tests.rs");
+include!("work_agent_triage_tests.rs");
+include!("work_ledger_delegate_tests.rs");

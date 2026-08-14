@@ -158,8 +158,17 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         fail_on_violation: bool,
 
+        // Enforced by `run_within_analysis_budget` — before that it was a
+        // banner only. Default raised from 60s when the bound became real:
+        // this repo's 4400 files take 8.1s to walk, so 60s left under an order
+        // of magnitude of headroom and would have turned a large monorepo's
+        // DEFAULT invocation into a failure.
         /// Analysis timeout in seconds
-        #[arg(long, default_value = "60")]
+        ///
+        /// Cancels the analysis and exits non-zero once the budget is spent —
+        /// it is a bound, not advice. `--timeout 0` is a zero-length budget,
+        /// not "no limit".
+        #[arg(long, default_value = "300")]
         timeout: u64,
 
         /// NOT IMPLEMENTED: ML-based scoring (aprender LinearRegression)
@@ -259,8 +268,19 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value = "15.0")]
         max_percentage: f64,
 
+        // #929 made this budget real, and here it bounds a `cargo check` child
+        // rather than a walk. The old 60s default was then smaller than the
+        // work the DEFAULT invocation does: `pmat analyze dead-code -p .` on
+        // this repo measured 67.6s with a warm target dir and 245s cold, so 60s
+        // made the plain command fail on the project that ships it.
         /// Analysis timeout in seconds
-        #[arg(long, default_value = "60")]
+        ///
+        /// Cancels the analysis — including the `cargo check` it runs — and
+        /// exits non-zero once the budget is spent. A COLD `cargo check` on a
+        /// large crate takes minutes; raise this rather than reading the
+        /// failure as a hang. `--timeout 0` is a zero-length budget, not "no
+        /// limit".
+        #[arg(long, default_value = "900")]
         timeout: u64,
 
         /// Include file patterns (e.g., "**/*.rs", "src/**")
@@ -390,15 +410,28 @@ pub enum AnalyzeCommands {
         #[arg(long, value_enum, default_value = "markdown")]
         format: DeepContextOutputFormat,
 
-        /// Enable full detailed report (default is terse)
+        /// NOT IMPLEMENTED: enable full detailed report (default is terse)
+        ///
+        /// Bound to a parameter nothing read, so every variant of the command
+        /// over one corpus produced the same report; the handler now refuses
+        /// it rather than relabelling that report as "full" (#915). Use
+        /// --top-files to size the report. The help text stays visible so the
+        /// refusal is discoverable, matching `analyze complexity --ml`.
         #[arg(long)]
         full: bool,
 
-        /// Comma-separated list of analyses to include
+        /// NOT IMPLEMENTED: comma-separated list of analyses to include
+        ///
+        /// deep-context always runs the same pipeline; this never selected a
+        /// stage. Refused by the handler (#915) — use --include-pattern to
+        /// select files.
         #[arg(long, value_delimiter = ',')]
         include: Vec<String>,
 
-        /// Comma-separated list of analyses to exclude
+        /// NOT IMPLEMENTED: comma-separated list of analyses to exclude
+        ///
+        /// Counterpart of --include and equally unread; refused by the handler
+        /// (#915) — use --exclude-pattern to drop files.
         #[arg(long, value_delimiter = ',')]
         exclude: Vec<String>,
 
@@ -406,11 +439,23 @@ pub enum AnalyzeCommands {
         #[arg(long, default_value_t = 30)]
         period_days: u32,
 
-        /// DAG type for dependency analysis
-        #[arg(long, value_enum, default_value = "call-graph")]
-        dag_type: DeepContextDagType,
+        /// NOT IMPLEMENTED: DAG type for dependency analysis
+        ///
+        /// deep-context builds no DAG at all — `SimpleDeepContext` walks files
+        /// for complexity and SATD — so all four values produced one identical
+        /// report (same sha256 after stripping the duration). It carried a clap
+        /// default, which is why it could not be refused alongside --full:
+        /// there was no way to tell "user asked" from "clap filled it in". It is
+        /// an `Option` now and the handler refuses it (#915). Use `analyze dag
+        /// --dag-type`, which does read it.
+        #[arg(long, value_enum)]
+        dag_type: Option<DeepContextDagType>,
 
-        /// Maximum directory traversal depth
+        /// NOT IMPLEMENTED: maximum directory traversal depth
+        ///
+        /// Traversal was never bounded by this value; refused by the handler
+        /// (#915) — use --include-pattern / --exclude-pattern to limit what is
+        /// walked.
         #[arg(long)]
         max_depth: Option<usize>,
 
@@ -422,11 +467,21 @@ pub enum AnalyzeCommands {
         #[arg(long = "exclude-pattern")]
         exclude_patterns: Vec<String>,
 
-        /// Cache usage strategy
-        #[arg(long, value_enum, default_value = "normal")]
-        cache_strategy: DeepContextCacheStrategy,
+        /// NOT IMPLEMENTED: cache usage strategy
+        ///
+        /// This path consults and writes no cache: run all three values against
+        /// an empty HOME and nothing is created, so `force-refresh` has nothing
+        /// to refresh and `offline` nothing to fall back to. Same clap-default
+        /// problem as --dag-type; an `Option` now, and refused by the handler
+        /// (#915).
+        #[arg(long, value_enum)]
+        cache_strategy: Option<DeepContextCacheStrategy>,
 
-        /// Parallelism level for analysis
+        /// NOT IMPLEMENTED: parallelism level for analysis
+        ///
+        /// The number never reached a thread pool — `route_deep_context_analysis`
+        /// collapses it to `parallel.is_some()` and the handler refuses it
+        /// (#915).
         #[arg(long)]
         parallel: Option<usize>,
 
@@ -477,11 +532,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         verbose: bool,
 
-        /// Use ML-based scoring (aprender LinearRegression)
+        /// NOT IMPLEMENTED: ML-based scoring (aprender LinearRegression)
         ///
-        /// When enabled, TDG scores are calculated using trained ML models
-        /// instead of heuristic weighted sums. This provides more accurate,
-        /// data-driven scores that can learn from project history.
+        /// The route destructured this as `ml: _` and built the config without
+        /// it, so `--ml` returned exactly the heuristic weighted-sum scores
+        /// under a promise of "trained ML models instead of heuristic weighted
+        /// sums" — relabelling a number rather than changing it. It now errors,
+        /// the same refusal `analyze complexity --ml` already makes (GH-97).
         #[arg(long)]
         ml: bool,
     },
@@ -662,9 +719,17 @@ pub enum AnalyzeCommands {
         #[arg(long, value_delimiter = ',')]
         functions: Vec<String>,
 
-        /// Analysis depth (number of iterations)
-        #[arg(long, default_value_t = 10)]
-        analysis_depth: usize,
+        /// NOT IMPLEMENTED: analysis depth (number of iterations)
+        ///
+        /// There is no iteration to bound: `LightweightProvabilityAnalyzer`
+        /// scores each function once from source patterns, and its
+        /// `AbstractInterpreter::analyze_iteration` has no caller at all. Depth
+        /// 0, 1, 10, 50 and 1000 produced one identical report (same sha256 of
+        /// the JSON). It carried a clap default, so the value could not be
+        /// refused; it is an `Option` now and the route refuses it rather than
+        /// accept a knob wired to nothing.
+        #[arg(long)]
+        analysis_depth: Option<usize>,
 
         /// Output format
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
@@ -1132,7 +1197,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         changed_files_only: bool,
 
-        /// Show detailed per-file coverage
+        /// Show detailed per-file coverage (shorthand for --format detailed)
+        ///
+        /// It was copied into `IncrementalCoverageRequest.detailed` and read by
+        /// nothing — no analyzer and no renderer — so the flag was
+        /// byte-identical to no flag in every format. It now upgrades the
+        /// default `summary` report to the `detailed` one; an explicit
+        /// `--format` other than `summary` still wins.
         #[arg(long)]
         detailed: bool,
 
@@ -1290,7 +1361,13 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         exclude: Vec<String>,
 
-        /// Show only high complexity functions (O(n²) or worse)
+        /// Report only the O(n²)-or-worse rows of the distribution
+        ///
+        /// The listed functions are ALWAYS high-complexity — `build_report`
+        /// selects them with the same predicate — so this narrows the
+        /// distribution (the only part of the report that covers every class).
+        /// It used to `retain` the already-filtered list and could not change a
+        /// byte of any format.
         #[arg(long)]
         high_complexity_only: bool,
 
@@ -1324,7 +1401,15 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'f', value_enum, default_value = "summary")]
         format: ComplexityOutputFormat,
 
-        /// Include WASM complexity analysis
+        /// NO-OP: complexity is measured for every parsed file already
+        ///
+        /// It used to decide whether a parsed file appeared in the report at
+        /// all, which is why the default run printed "Found 3 AssemblyScript
+        /// files", three "Parsed:" lines, and then `files_analyzed: 0`. Fixing
+        /// that left the flag with nothing to gate — every row already carries
+        /// cyclomatic and cognitive — so it is accepted (existing invocations
+        /// keep working) and the help no longer promises an analysis it
+        /// switches on. Same disclosure as `analyze big-o --analyze-space`.
         #[arg(long)]
         wasm_complexity: bool,
 
@@ -1681,6 +1766,132 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         check: bool,
     },
+}
+
+/// Run `work` under the wall-clock budget a `--timeout` on this enum names.
+///
+/// This is the ONE implementation of what `--timeout` means. It lives beside
+/// the flag declarations because the flags are what promise the bound: every
+/// command that declares `timeout: u64` above must route its analysis through
+/// here, or its `--timeout` is a number the user reads and nothing obeys.
+/// Three separate handlers previously grew their own version and only one of
+/// them worked (#929): `analyze complexity` printed "⏰ Analysis timeout set to
+/// N seconds" and never enforced anything (measured: `--timeout 1` ran 8.1s and
+/// exited 0), and the SATD copy wrapped `tokio::time::timeout` around a future
+/// polled inline.
+///
+/// Why `tokio::spawn` and not a bare `tokio::time::timeout(budget, work)`:
+/// `timeout` polls `work` on the CALLER's task, so a future that does not yield
+/// — a synchronous walk or parse inside an `async fn` — never gives the timer a
+/// chance to fire. That is exactly the non-enforcement #929 diagnosed. Moving
+/// the work onto its own task lets the multi-threaded runtime preempt it, and
+/// the timer runs on a thread the work cannot monopolise.
+///
+/// Caveat, stated rather than hidden: `abort()` cancels a task only at its next
+/// await point, so work that is mid-CPU-burn keeps running until it yields. It
+/// dies with the process, which exits on the error returned here. Work that
+/// owns a CHILD PROCESS must additionally kill it — see
+/// `CargoDeadCodeAnalyzer::wait_for_cargo_check`, where the budget is carried
+/// into the analyzer so `cargo check` is actually killed.
+///
+/// `timeout_secs == 0` is a zero-length budget and fails immediately; it is not
+/// a synonym for "no limit". The error says so rather than looking like a hang.
+pub(crate) async fn run_within_analysis_budget<F, T>(
+    what: &str,
+    timeout_secs: u64,
+    work: F,
+) -> anyhow::Result<T>
+where
+    F: std::future::Future<Output = anyhow::Result<T>> + Send + 'static,
+    T: Send + 'static,
+{
+    let budget = std::time::Duration::from_secs(timeout_secs);
+    let task = tokio::spawn(work);
+    let abort = task.abort_handle();
+
+    match tokio::time::timeout(budget, task).await {
+        Ok(joined) => joined.map_err(|e| anyhow::anyhow!("{what} panicked: {e}"))?,
+        Err(_) => {
+            // Dropping a `JoinHandle` DETACHES the task; only `abort` stops it.
+            abort.abort();
+            anyhow::bail!(
+                "{what} timed out after {timeout_secs} seconds — re-run with a larger --timeout \
+                 (--timeout 0 is a zero-length budget, not 'no limit')"
+            )
+        }
+    }
+}
+
+#[cfg(test)]
+mod analysis_budget_tests {
+    //! `--timeout` must be a bound, not a banner. See
+    //! `run_within_analysis_budget`.
+    use super::run_within_analysis_budget;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn work_that_finishes_inside_the_budget_returns_its_value() {
+        let got: u32 = run_within_analysis_budget("Test analysis", 30, async { Ok(7) })
+            .await
+            .expect("work well inside the budget must not be cancelled");
+        assert_eq!(got, 7);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn work_that_outlives_the_budget_fails_and_names_the_budget() {
+        let started = std::time::Instant::now();
+        let err = run_within_analysis_budget("Test analysis", 1, async {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            Ok(())
+        })
+        .await
+        .expect_err("30s of work under a 1s budget must not report success");
+
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(10),
+            "the budget must cut the work short, took {elapsed:?}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("timed out after 1 seconds"),
+            "the error must name the budget that was exceeded, got: {msg}"
+        );
+        assert!(
+            msg.contains("--timeout"),
+            "the error must name the knob that moves the budget, got: {msg}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_zero_budget_fails_rather_than_meaning_unlimited() {
+        let err = run_within_analysis_budget("Test analysis", 0, async {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            Ok(())
+        })
+        .await
+        .expect_err("--timeout 0 must not silently mean 'no limit'");
+        assert!(
+            err.to_string().contains("timed out after 0 seconds"),
+            "got: {err}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_panicking_analysis_is_reported_as_a_panic_not_a_timeout() {
+        let err = run_within_analysis_budget("Test analysis", 30, async {
+            panic!("boom");
+            #[allow(unreachable_code)]
+            Ok(())
+        })
+        .await
+        .expect_err("a panicking analysis must not be reported as success");
+        let msg = err.to_string();
+        assert!(msg.contains("panicked"), "got: {msg}");
+        assert!(
+            !msg.contains("timed out"),
+            "a panic must not be dressed up as a timeout, got: {msg}"
+        );
+    }
 }
 
 #[cfg(test)]

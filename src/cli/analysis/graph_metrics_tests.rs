@@ -55,18 +55,20 @@ mod coverage_tests {
         let metrics = NodeMetrics {
             name: "test_node".to_string(),
             degree_centrality: 0.5,
-            betweenness_centrality: 0.3,
-            closeness_centrality: 0.7,
-            pagerank: 0.1,
+            betweenness_centrality: Some(0.3),
+            closeness_centrality: Some(0.7),
+            pagerank: Some(0.1),
+            clustering_coefficient: None,
+            component_id: None,
             in_degree: 3,
             out_degree: 2,
         };
 
         assert_eq!(metrics.name, "test_node");
         assert!((metrics.degree_centrality - 0.5).abs() < f64::EPSILON);
-        assert!((metrics.betweenness_centrality - 0.3).abs() < f64::EPSILON);
-        assert!((metrics.closeness_centrality - 0.7).abs() < f64::EPSILON);
-        assert!((metrics.pagerank - 0.1).abs() < f64::EPSILON);
+        assert!((metrics.betweenness_centrality.unwrap() - 0.3).abs() < f64::EPSILON);
+        assert!((metrics.closeness_centrality.unwrap() - 0.7).abs() < f64::EPSILON);
+        assert!((metrics.pagerank.unwrap() - 0.1).abs() < f64::EPSILON);
         assert_eq!(metrics.in_degree, 3);
         assert_eq!(metrics.out_degree, 2);
     }
@@ -76,9 +78,11 @@ mod coverage_tests {
         let metrics = NodeMetrics {
             name: "clone_test".to_string(),
             degree_centrality: 0.25,
-            betweenness_centrality: 0.15,
-            closeness_centrality: 0.35,
-            pagerank: 0.05,
+            betweenness_centrality: Some(0.15),
+            closeness_centrality: Some(0.35),
+            pagerank: Some(0.05),
+            clustering_coefficient: None,
+            component_id: None,
             in_degree: 1,
             out_degree: 4,
         };
@@ -93,9 +97,11 @@ mod coverage_tests {
         let metrics = NodeMetrics {
             name: "serialize_test".to_string(),
             degree_centrality: 0.5,
-            betweenness_centrality: 0.3,
-            closeness_centrality: 0.7,
-            pagerank: 0.1,
+            betweenness_centrality: Some(0.3),
+            closeness_centrality: Some(0.7),
+            pagerank: Some(0.1),
+            clustering_coefficient: None,
+            component_id: None,
             in_degree: 2,
             out_degree: 3,
         };
@@ -117,9 +123,11 @@ mod coverage_tests {
             nodes: vec![NodeMetrics {
                 name: "node1".to_string(),
                 degree_centrality: 0.5,
-                betweenness_centrality: 0.0,
-                closeness_centrality: 0.0,
-                pagerank: 0.2,
+                betweenness_centrality: Some(0.0),
+                closeness_centrality: Some(0.0),
+                pagerank: Some(0.2),
+                clustering_coefficient: None,
+                component_id: None,
                 in_degree: 1,
                 out_degree: 1,
             }],
@@ -435,7 +443,9 @@ mod coverage_tests {
         .unwrap();
 
         for node in &result.nodes {
-            assert!(node.closeness_centrality >= 0.0);
+            // `--metrics closeness` COMPUTED it, so it is Some; a run that
+            // did not select it must leave it None rather than 0.0.
+            assert!(node.closeness_centrality.expect("closeness was selected") >= 0.0);
         }
     }
 
@@ -452,7 +462,11 @@ mod coverage_tests {
         )
         .unwrap();
 
-        let total_pagerank: f64 = result.nodes.iter().map(|n| n.pagerank).sum();
+        let total_pagerank: f64 = result
+            .nodes
+            .iter()
+            .map(|n| n.pagerank.expect("page-rank was selected"))
+            .sum();
         // PageRank should approximately sum to 1
         assert!((total_pagerank - 1.0).abs() < 0.1);
     }

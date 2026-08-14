@@ -222,6 +222,12 @@ impl ToolHandler for AnalyzeDagTool {
         let params: AnalyzeDagArgs = serde_json::from_value(args)
             .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
 
+        // Checked before any analysis runs, and reported as an ARGUMENT error
+        // (-32602) rather than an internal one: an unsupported `dag_type` used
+        // to be coerced to FullDependency and returned as `status: "completed"`.
+        tool_functions::parse_dag_type(params.dag_type.as_deref())
+            .map_err(|e| Error::validation(e.to_string()))?;
+
         let paths = crate::mcp_pmcp::tool_schemas::resolve_existing_paths(params.paths)?;
 
         let results = tool_functions::analyze_dag(&paths, params.dag_type)
@@ -350,13 +356,17 @@ impl ToolHandler for AnalyzeDeepContextTool {
     }
 
     fn metadata(&self) -> Option<ToolInfo> {
-        let extra = json!({
-            "include_patterns": {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "Optional file glob patterns (accepted but not yet applied as a filter)"
-            }
-        });
+        // `include_patterns` USED to be advertised here, described as "accepted
+        // but not yet applied as a filter" — a schema that told clients about a
+        // knob wired to nothing: `{"paths":[dir]}` and
+        // `{"paths":[dir],"include_patterns":["*.py"]}` both answered
+        // `file_count: 3` over `a.go app.ts main.py`. The deep-context pipeline
+        // has no include filter to wire it to (see
+        // `reject_unsupported_include_patterns`), so it is off the schema AND
+        // refused with an error if a client sends it anyway. It is still parsed
+        // by `AnalyzeDeepContextArgs` for exactly that reason: dropping the
+        // field from the struct would make serde ignore it in silence again.
+        let extra = json!({});
         Some(build_tool_info(
             "analyze_deep_context",
             "Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.",

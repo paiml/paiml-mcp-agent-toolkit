@@ -78,7 +78,8 @@ mod tests {
         };
         let status = crate::services::oracle::ConvergenceStatus::Converged;
 
-        let result = format_status(&metrics, &targets, &status, OracleOutputFormat::Text).unwrap();
+        let result =
+            format_status(&metrics, &targets, &status, &[], OracleOutputFormat::Text).unwrap();
         assert!(result.contains("Test Coverage"));
         assert!(result.contains("95.0%"));
         assert!(result.contains("CONVERGED"));
@@ -117,7 +118,8 @@ mod tests {
         let remaining = vec!["Coverage below 90%".to_string()];
         let status = crate::services::oracle::ConvergenceStatus::NotConverged { remaining };
 
-        let result = format_status(&metrics, &targets, &status, OracleOutputFormat::Text).unwrap();
+        let result =
+            format_status(&metrics, &targets, &status, &[], OracleOutputFormat::Text).unwrap();
         assert!(result.contains("NOT CONVERGED"));
         assert!(result.contains("Coverage below 90%"));
     }
@@ -287,8 +289,8 @@ mod tests {
             ..crate::services::oracle::ConvergenceTargets::default()
         };
         let status = crate::services::oracle::ConvergenceStatus::Converged;
-        let r =
-            format_status(&metrics, &targets, &status, OracleOutputFormat::Markdown).unwrap();
+        let r = format_status(&metrics, &targets, &status, &[], OracleOutputFormat::Markdown)
+            .unwrap();
         assert!(r.contains("# Project Quality Status"));
         // All three metrics should pass with ✅.
         assert!(r.contains("✅"));
@@ -326,7 +328,8 @@ mod tests {
         };
         let status = crate::services::oracle::ConvergenceStatus::Converged;
 
-        let result = format_status(&metrics, &targets, &status, OracleOutputFormat::Json).unwrap();
+        let result =
+            format_status(&metrics, &targets, &status, &[], OracleOutputFormat::Json).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert!(parsed.get("metrics").is_some());
         assert!(parsed.get("converged").is_some());

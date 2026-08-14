@@ -11,7 +11,7 @@ async fn format_and_output_results(
     context: &RefactorContext,
 ) -> Result<()> {
     use crate::cli::colors as c;
-    eprintln!("{}", c::dim("Formatting and outputting refactoring results..."));
+    crate::status_eprintln!("{}", c::dim("Formatting and outputting refactoring results..."));
 
     match &context.config.output.format {
         RefactorAutoOutputFormat::Json => {
@@ -25,7 +25,7 @@ async fn format_and_output_results(
         }
     }
 
-    eprintln!("{}", c::pass("Results output completed"));
+    crate::status_eprintln!("{}", c::pass("Results output completed"));
     Ok(())
 }
 

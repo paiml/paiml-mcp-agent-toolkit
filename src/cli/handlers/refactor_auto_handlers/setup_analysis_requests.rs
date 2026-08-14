@@ -13,7 +13,7 @@ async fn generate_refactoring_requests(
     quality_analysis: &ProjectQualityAnalysis,
     context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
-    eprintln!("🎯 Generating targeted refactoring requests...");
+    crate::status_eprintln!("🎯 Generating targeted refactoring requests...");
 
     let mut requests = Vec::new();
 
@@ -46,7 +46,7 @@ async fn generate_refactoring_requests(
         requests.extend(coverage_requests);
     }
 
-    eprintln!("📋 Generated {} refactoring requests", requests.len());
+    crate::status_eprintln!("📋 Generated {} refactoring requests", requests.len());
     Ok(requests)
 }
 

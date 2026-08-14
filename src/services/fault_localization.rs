@@ -8,12 +8,16 @@
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 /// Represents a code location for fault localization
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+///
+/// `Ord` is derived (file, then line, then column) so that ranking ties break
+/// deterministically. Without it the top-N came out of `HashMap` iteration
+/// order and two runs of the same command disagreed (#949).
+#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct StatementId {
     pub file: PathBuf,
     pub line: usize,

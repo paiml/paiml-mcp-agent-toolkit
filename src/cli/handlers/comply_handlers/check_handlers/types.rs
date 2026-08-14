@@ -38,17 +38,113 @@ impl Default for ProjectConfig {
     }
 }
 
+/// Where a report's `project_version` came from.
+///
+/// `project_version` is NOT the version of the project under analysis — it is
+/// the PMAT version that project pins in `.pmat/project.toml`. When the file is
+/// absent, [`load_or_create_project_config`] stamps a fresh one with
+/// [`PMAT_VERSION`], so an unpinned project reports the *installed pmat's* own
+/// version as its "project version", and everything derived from it
+/// (`versions_behind`, `breaking_changes`, the Version Currency check, the
+/// migrate/diff recommendations) then describes pmat rather than the project.
+///
+/// A reader cannot tell those two cases apart from the version string alone —
+/// `3.30.0` looks measured either way — so the report says which it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum VersionSource {
+    /// Read from the project's own `.pmat/project.toml`.
+    #[serde(rename = "pinned in .pmat/project.toml")]
+    PinnedByProject,
+    /// The project pinned nothing; this is the installed pmat's own version,
+    /// and the version-derived fields below describe pmat, not this project.
+    #[serde(rename = "not pinned by this project - defaulted to the installed pmat's own version")]
+    InstalledPmatDefault,
+}
+
+impl VersionSource {
+    /// The sentence the text/markdown reports print next to the version.
+    pub(crate) fn note(self) -> Option<&'static str> {
+        match self {
+            VersionSource::PinnedByProject => None,
+            VersionSource::InstalledPmatDefault => Some(
+                "this project pins no pmat version, so the version shown is the installed pmat's own; \
+                 versions-behind, breaking changes and Version Currency describe pmat, not this project",
+            ),
+        }
+    }
+}
+
 /// Compliance check result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct ComplianceReport {
     pub project_version: String,
+    /// What `project_version` actually is — see [`VersionSource`].
+    pub project_version_source: VersionSource,
     pub current_version: String,
     pub is_compliant: bool,
     pub versions_behind: u32,
+    /// Outcome tally over every check that RAN.
+    ///
+    /// `checks` is a fixed-length roster whose length says nothing (154 for an
+    /// empty directory and 154 for a defect-ridden one), and the outcomes
+    /// themselves are strings, so the only numbers the report published —
+    /// `versions_behind`, the two list lengths, `is_compliant` — were all
+    /// derived from the pinned version string and none of them from the project.
+    /// This is the measured part: it moved 28/11/2 → 27/14/3 between the two
+    /// corpora that produced otherwise byte-identical reports.
+    ///
+    /// Counted before `--failures-only` filters `checks`, so the denominator
+    /// survives that flag.
+    pub summary: CheckSummary,
     pub checks: Vec<ComplianceCheck>,
     pub breaking_changes: Vec<BreakingChange>,
     pub recommendations: Vec<String>,
     pub timestamp: DateTime<Utc>,
+    /// Debt tickets found under `.pmat-tickets/`, or `None` when
+    /// `--include-history` was not passed.
+    ///
+    /// `Some(vec![])` is a result — "the flag ran and the store is empty" — and
+    /// is rendered as such rather than as silence. Skipped when absent so the
+    /// default JSON document is unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<Vec<TicketHistoryEntry>>,
+}
+
+/// One debt ticket, as written by `pmat comply upgrade` into `.pmat-tickets/`.
+///
+/// Every field is read from the file; nothing is inferred. `None` means the
+/// ticket did not carry that key.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct TicketHistoryEntry {
+    /// File the entry was read from, relative to the project root.
+    pub file: String,
+    pub ticket_id: Option<String>,
+    pub category: Option<String>,
+    pub status: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/// How many checks landed in each outcome. Derived from the checks, never set.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CheckSummary {
+    pub total: usize,
+    pub pass: usize,
+    pub warn: usize,
+    pub fail: usize,
+    pub skip: usize,
+}
+
+impl CheckSummary {
+    pub(crate) fn tally(checks: &[ComplianceCheck]) -> Self {
+        let count = |s: CheckStatus| checks.iter().filter(|c| c.status == s).count();
+        Self {
+            total: checks.len(),
+            pass: count(CheckStatus::Pass),
+            warn: count(CheckStatus::Warn),
+            fail: count(CheckStatus::Fail),
+            skip: count(CheckStatus::Skip),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -323,6 +419,20 @@ pub(crate) fn get_changelog_entries(from: &str, to: &str) -> Vec<ChangelogEntry>
         .collect()
 }
 
+/// Read `.pmat/project.toml`, or the defaults if it is absent — never writing.
+///
+/// The read-only twin of [`load_or_create_project_config`]. Every command that
+/// only *reports* must use this one; only a command whose stated job is to
+/// change the project may use the creating variant (#939).
+pub(crate) fn read_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
+    let config_path = project_path.join(".pmat").join("project.toml");
+    if !config_path.exists() {
+        return Ok(ProjectConfig::default());
+    }
+    let content = std::fs::read_to_string(&config_path)?;
+    Ok(toml::from_str(&content)?)
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
     let config_path = project_path.join(".pmat").join("project.toml");
@@ -341,6 +451,34 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
     }
 }
 
+/// The pinned pmat version AND whether the project actually pinned it —
+/// WITHOUT writing anything into the project.
+///
+/// This used to call [`load_or_create_project_config`], which creates
+/// `.pmat/project.toml` when it is missing. An audit that writes its own
+/// evidence is not an audit: on a pristine crate, run 1 reported
+/// `not pinned by this project` and run 2 of the identical command reported
+/// `pinned in .pmat/project.toml`, because run 1 had done the pinning (#939).
+/// Creating that file is `pmat comply init`'s job and belongs to no other
+/// command.
+///
+/// When the file is absent the caller gets the same defaults it always got —
+/// the difference is only that the default is no longer persisted as if the
+/// project had chosen it.
+pub(crate) fn load_project_config_with_source(
+    project_path: &Path,
+) -> anyhow::Result<(ProjectConfig, VersionSource)> {
+    let config_path = project_path.join(".pmat").join("project.toml");
+    if !config_path.exists() {
+        return Ok((
+            ProjectConfig::default(),
+            VersionSource::InstalledPmatDefault,
+        ));
+    }
+    let content = std::fs::read_to_string(&config_path)?;
+    Ok((toml::from_str(&content)?, VersionSource::PinnedByProject))
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
     let config_path = project_path.join(".pmat").join("project.toml");
@@ -352,32 +490,65 @@ pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result
     Ok(())
 }
 
+/// The COMPLIANT / NON-COMPLIANT word, coloured only when colour is enabled.
+pub(crate) fn compliance_status_text(is_compliant: bool) -> String {
+    if is_compliant {
+        c::colored(c::GREEN, "COMPLIANT")
+    } else {
+        c::colored(c::RED, "NON-COMPLIANT")
+    }
+}
+
+/// The per-check status glyph, coloured only when colour is enabled.
+pub(crate) fn check_status_icon(status: CheckStatus) -> String {
+    match status {
+        CheckStatus::Pass => c::colored(c::GREEN, "\u{2713}"),
+        CheckStatus::Warn => c::colored(c::YELLOW, "\u{26a0}"),
+        CheckStatus::Fail => c::colored(c::RED, "\u{2717}"),
+        CheckStatus::Skip => c::colored(c::DIM, "-"),
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", c::rule());
     println!("{}", c::header("PMAT Compliance Report"));
     println!("{}", c::rule());
     println!("\nProject Version: {}", c::number(&report.project_version));
+    if let Some(note) = report.project_version_source.note() {
+        println!("                 {}", c::dim(&format!("({note})")));
+    }
     println!("Current PMAT:    {}", c::number(&report.current_version));
     println!(
         "Versions Behind: {}",
         c::number(&report.versions_behind.to_string())
     );
-    let status = if report.is_compliant {
-        format!("{}COMPLIANT{}", c::GREEN, c::RESET)
-    } else {
-        format!("{}NON-COMPLIANT{}", c::RED, c::RESET)
-    };
-    println!("Status:          {}\n", status);
+    // GH #684: the status word and every check icon used to interpolate the raw
+    // `pub const` sequences. Those are `const`, so they cannot consult
+    // `colors_enabled`, and `pmat comply check --color never > out.txt` wrote
+    // **155** escape-bearing lines — byte-identical to `--color auto`. NO_COLOR=1
+    // was ignored for the same reason. `c::colored` keeps the colour SELECTION
+    // here while honouring the rule.
+    println!(
+        "Status:          {}\n",
+        compliance_status_text(report.is_compliant)
+    );
+    println!(
+        "Checks:          {} total \u{b7} {} pass \u{b7} {} warn \u{b7} {} fail \u{b7} {} skip\n",
+        c::number(&report.summary.total.to_string()),
+        c::number(&report.summary.pass.to_string()),
+        c::number(&report.summary.warn.to_string()),
+        c::number(&report.summary.fail.to_string()),
+        c::number(&report.summary.skip.to_string()),
+    );
     println!("{}:", c::label("Checks"));
     for check in &report.checks {
-        let icon = match check.status {
-            CheckStatus::Pass => format!("{}\u{2713}{}", c::GREEN, c::RESET),
-            CheckStatus::Warn => format!("{}\u{26a0}{}", c::YELLOW, c::RESET),
-            CheckStatus::Fail => format!("{}\u{2717}{}", c::RED, c::RESET),
-            CheckStatus::Skip => format!("{}-{}", c::DIM, c::RESET),
-        };
-        println!("  {} {}: {}", icon, check.name, check.message);
+        println!(
+            "  {} {}: {}",
+            check_status_icon(check.status),
+            check.name,
+            check.message
+        );
     }
     if !report.recommendations.is_empty() {
         println!("\n{}:", c::label("Recommendations"));
@@ -394,6 +565,9 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("| Property | Value |");
     println!("|----------|-------|");
     println!("| Project Version | {} |", report.project_version);
+    if let Some(note) = report.project_version_source.note() {
+        println!("| Project Version caveat | {} |", note);
+    }
     println!("| Current PMAT | {} |", report.current_version);
     println!(
         "| Status | {} |",
@@ -402,6 +576,14 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
         } else {
             "NON-COMPLIANT"
         }
+    );
+    println!(
+        "| Checks | {} total, {} pass, {} warn, {} fail, {} skip |",
+        report.summary.total,
+        report.summary.pass,
+        report.summary.warn,
+        report.summary.fail,
+        report.summary.skip
     );
     println!("\n## Checks\n");
     for check in &report.checks {
@@ -421,8 +603,15 @@ pub(crate) fn migrate_project_version(
     target: &str,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
+    // #939: a dry run answers the question "would this change anything?", so it
+    // has to read the current pin to answer it. It used to return `Ok(true)`
+    // unconditionally — "would update" even when the version already equalled
+    // the target, so "no changes needed" was unreachable under --dry-run — and
+    // the caller had *already* created `.pmat/project.toml` on the way in.
+    // Read-only both ways now.
     if dry_run {
-        return Ok(true);
+        let config = read_project_config(project_path)?;
+        return Ok(config.pmat.version != target);
     }
     let mut config = load_or_create_project_config(project_path)?;
     if config.pmat.version == target {
@@ -629,5 +818,39 @@ mod changelog_range_tests {
             entries.iter().any(|e| e.version == PMAT_VERSION),
             "the current release must be inside (2.0.0, {PMAT_VERSION}]"
         );
+    }
+}
+
+// ── GH #684 (round 4): --color never / NO_COLOR must reach comply check ──
+
+#[cfg(test)]
+mod colour_contract_tests {
+    use super::{check_status_icon, compliance_status_text, CheckStatus};
+
+    /// `pmat comply check --color never > out.txt` wrote **155**
+    /// escape-bearing lines — byte-identical to `--color auto` — because the
+    /// status word and every check icon interpolated the raw `pub const`
+    /// sequences, which are `const` and so cannot consult `colors_enabled`.
+    #[test]
+    fn status_text_and_icons_are_plain_when_colour_is_disabled() {
+        assert!(
+            !crate::cli::colors::colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        assert_eq!(compliance_status_text(true), "COMPLIANT");
+        assert_eq!(compliance_status_text(false), "NON-COMPLIANT");
+        for status in [
+            CheckStatus::Pass,
+            CheckStatus::Warn,
+            CheckStatus::Fail,
+            CheckStatus::Skip,
+        ] {
+            let icon = check_status_icon(status);
+            assert!(
+                !icon.contains('\u{1b}'),
+                "expected a plain glyph with colour off, got {icon:?}"
+            );
+            assert!(!icon.is_empty(), "the glyph itself must survive");
+        }
     }
 }

@@ -34,6 +34,14 @@ pub(super) fn emit_query_output(
         && git_data.as_ref().is_none_or(|(hits, _)| hits.is_empty())
     {
         eprintln!("No matching functions found for: {}", query);
+        let ctx_requested = context_lines
+            .or(after_context)
+            .or(before_context)
+            .unwrap_or(0)
+            > 0;
+        if let Some(empty) = empty_result_output(format, ctx_requested) {
+            println!("{}", empty);
+        }
         return Ok(());
     }
 
@@ -95,18 +103,47 @@ fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat
     }
 }
 
-/// Colour code, or nothing when stdout is not a terminal.
+/// The one document stdout still owes a zero-match run, or `None` when the
+/// format has nothing machine-readable to say.
+///
+/// `--docs` is on by default and its JSON payload was moved to stderr so that
+/// stdout carries exactly one parseable document. That left the zero-match
+/// branch emitting nothing at all on stdout: an exit-0 `pmat query --format
+/// json` handed `jq` an empty stream while the only payload sat on stderr,
+/// where a machine consumer never looks. The empty document has to keep the
+/// shape the same flags produce when they DO match, hence the `-A/-B/-C`
+/// envelope — every other JSON mode (plain, `--count`,
+/// `--files-with-matches`) renders an array.
+fn empty_result_output(format: &QueryOutputFormat, ctx_requested: bool) -> Option<String> {
+    if !matches!(format, QueryOutputFormat::Json) {
+        return None;
+    }
+    if ctx_requested {
+        let json = serde_json::json!({ "context_matches": [] });
+        return Some(serde_json::to_string_pretty(&json).unwrap_or_default());
+    }
+    Some("[]".to_string())
+}
+
+#[cfg(test)]
+#[path = "tint_honours_color_flag_tests.rs"]
+mod tint_honours_color_flag_tests;
+
+/// Colour code, or nothing when colour is off.
 ///
 /// `--files-with-matches`, `--count` and `-A/-B/-C` wrote raw CYAN/YELLOW
 /// escapes unconditionally, so redirecting them to a file produced a file full
 /// of `\e[36m`. Everything these three modes print goes through here.
-fn tint(code: &'static str) -> &'static str {
-    use std::io::IsTerminal;
-    if std::io::stdout().is_terminal() {
-        code
-    } else {
-        ""
-    }
+///
+/// This delegates rather than testing `is_terminal()` itself, which is what it
+/// used to do. That second, weaker rule ignored `--color` entirely: the flag is
+/// translated into `NO_COLOR` / `CLICOLOR_FORCE` before it reaches here, so
+/// `--color always` produced no colour at all the moment output was piped —
+/// fixing the raw-escape leak had quietly made the flag unreachable for these
+/// three modes. One implementation of "should this be coloured" for the whole
+/// binary is the only version of this that stays fixed.
+fn tint(code: crate::cli::colors::Sgr) -> crate::cli::colors::Sgr {
+    crate::cli::colors::seq(code)
 }
 
 /// Returns Ok(true) if handled, Ok(false) for standard output.
@@ -405,7 +442,9 @@ fn print_query_output(
 
     if coverage && !matches!(format, QueryOutputFormat::Json) {
         if let Some(summary) = format_coverage_summary(results) {
-            eprintln!("\x1b[2m{}\x1b[0m", summary);
+            // The last raw escape on the query path: `--color never` reached the
+            // result body but not this one-line coverage footer.
+            eprintln!("{}", crate::cli::colors::dim(&summary));
         }
     }
 

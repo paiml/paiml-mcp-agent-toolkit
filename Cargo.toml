@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.29.1"
+version = "3.30.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -16,7 +16,13 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["mcp", "code-analysis", "refactoring", "quality", "ai"]
 categories = ["command-line-utilities", "development-tools", "development-tools::testing"]
-exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", ".pmat-work/", ".pmat-qa/", ".pmat-metrics/", ".pmat-baseline.json", "node_modules/", "*.pyc", "__pycache__/", "quality-report.json", "bridge/package-lock.json", "*.yaml.lock"]
+exclude = ["target/", "*.log", "*.profraw", ".pmat-cache", "proptest-regressions", ".pmat/", ".pmat-tickets/", ".pmat-work/", ".pmat-qa/", ".pmat-metrics/", ".pmat-baseline.json", "node_modules/", "*.pyc", "__pycache__/", "quality-report.json", "*.yaml.lock",
+    # Not build inputs and not needed to compile the crate. The package was
+    # 9.4 MiB against crates.io's 10 MiB ceiling — 94% — so one more asset
+    # would have made the crate unpublishable, and an oversized upload does
+    # not report a size error, it returns a bare 503.
+    "/docs/", "/scripts/", "/rust-docs/", "/golden_traces/", "/ROADMAP.md",
+    "/comprehensive_language_test/", "/artifacts/", "/coverage/", "*.crate"]
 # PERF: Disable autotest discovery - 193 .rs files = 193 binaries = slow coverage
 # Instead, use explicit [[test]] declarations for unified test binaries
 autotests = false
@@ -409,14 +415,18 @@ red-phase-tests = []
 # Feature flag for slow CLI integration tests (assert_cmd spawns binaries)
 # Disabled by default for fast coverage - enable with --features cli-integration
 cli-integration = []
-# Claude Agent SDK integration (not ready for production - 0% test coverage)
-claude-integration = ["bytes", "libc"]
 # Experimental modules (not production-ready, 0% test coverage)
 # These are feature-gated to exclude from default coverage measurement
-agents-md = ["shell-words"]  # AGENTS.md integration for AI agent guidance
-mcp-integration = ["actix", "actix-rt", "crossbeam", "sysinfo", "bytes", "libc"]  # MCP protocol integration experiments
-unified-protocol = ["http-server"]  # Unified protocol layer experiments
-agent-daemon = ["notify"]  # Claude Code Agent Mode (daemon, MCP server, quality monitor)
+# `dep:notify`: the AGENTS.md watcher imports `notify`, which is declared
+# `optional = true` and was enabled by NO feature, so `--features agents-md` had
+# never compiled (E0432: unresolved import `notify`).
+agents-md = ["shell-words", "dep:notify"]  # AGENTS.md integration for AI agent guidance
+mcp-integration = ["actix", "actix-rt", "crossbeam", "sysinfo", "dep:bytes", "libc"]  # MCP protocol integration experiments
+# `dep:bytes`/`dep:http`: same defect as `agents-md` — both are declared
+# `optional = true` and enabled by no feature, while the protocol adapters import
+# them unconditionally under this gate.
+unified-protocol = ["http-server", "dep:bytes", "dep:http"]  # Unified protocol layer experiments
+agent-daemon = ["dep:notify"]  # Claude Code Agent Mode (daemon, MCP server, quality monitor)
 rust-ast = ["quote", "proc-macro2", "tree-sitter", "tree-sitter-rust"]
 typescript-ast = ["rust-ast", "swc_ecma_parser", "swc_common", "swc_ecma_ast", "swc_ecma_visit", "tree-sitter", "tree-sitter-typescript", "tree-sitter-javascript", "polyglot-typescript"]
 python-ast = ["rust-ast", "tree-sitter", "tree-sitter-python"]
@@ -430,7 +440,7 @@ lua-ast = ["tree-sitter", "tree-sitter-lua"]
 c-ast = ["tree-sitter", "tree-sitter-c"]
 cpp-ast = ["c-ast", "tree-sitter-cpp", "gimli"]
 # Feature to exclude demo/reporting functionality for minimal builds
-demo = ["http-server", "bytes", "http"]
+demo = ["http-server", "dep:bytes", "dep:http"]
 
 # HTTP client (reqwest) - for GitHub API, doc validation, git clone
 # Disable for headless/CI builds that don't need HTTP (~30 fewer crates)
@@ -449,7 +459,7 @@ syntax-highlighting = ["syntect"]
 reporting = []
 
 # File watching (complexity --watch, TDG dashboard, config hot-reload)
-watch = ["notify"]
+watch = ["dep:notify"]
 
 # System diagnostics (pmat diagnose)
 diagnostics = ["sys-info"]
@@ -543,10 +553,6 @@ harness = false
 
 [[bench]]
 name = "storage_backend_bench"
-harness = false
-
-[[bench]]
-name = "claude_integration_bench"
 harness = false
 
 [[bench]]
@@ -702,11 +708,6 @@ path = "examples/compare_repos.rs"
 required-features = ["demo"]
 
 [[example]]
-name = "claude_integration_example"
-path = "examples/claude_integration_example.rs"
-required-features = ["claude-integration"]
-
-[[example]]
 name = "agent_context_query_demo"
 path = "examples/agent_context_query_demo.rs"
 
@@ -761,8 +762,25 @@ ignored = [
 no-default-features = true
 features = ["standard-deps", "rust-ast", "viz", "http-client"]
 # Set DOCS_RS environment variable to skip network operations
-rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
-rustc-args = ["--cfg", "docsrs"]
+# `--generate-link-to-definition` is NOT listed: it is a nightly-only flag that
+# needs `-Z unstable-options`, and docs.rs enables it by default regardless. It
+# was a second failure hiding behind the first — the E0557 below aborted the
+# build before rustdoc ever ran, so fixing that alone would have traded one
+# broken build for another.
+rustdoc-args = ["--cfg", "docsrs"]
+# NO rustc-args. docs.rs turns `rustc-args` into RUSTFLAGS, which applies to the
+# compilation of every DEPENDENCY as well as this crate — and `lexical-util
+# 1.0.7` (arrow-cast → arrow → aprender-db → aprender-graph, a non-optional dep)
+# opens with `#![cfg_attr(docsrs, feature(doc_auto_cfg))]`. `doc_auto_cfg` was
+# removed in Rust 1.92, so defining `docsrs` for dependencies is what made the
+# docs.rs build fail (E0557), for 3.28.2, 3.29.0 and 3.30.0 alike:
+#
+#     RUSTFLAGS="--cfg docsrs" cargo +nightly check -p lexical-util   → E0557
+#                              cargo +nightly check -p lexical-util   → ok
+#
+# This crate has zero `cfg(docsrs)` sites of its own, so the flag bought nothing
+# and cost the entire API documentation. `rustdoc-args` keeps `--cfg docsrs` for
+# rustdoc, which is where `doc_cfg` is read and which never reaches deps.
 
 [package.metadata.release]
 pre-release-replacements = [

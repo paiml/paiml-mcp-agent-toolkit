@@ -46,45 +46,13 @@ impl TdgAnalyzerAst {
 
         score.penalties_applied = tracker.get_attributions();
 
-        // Known Defects v2.1: Detect critical defects for auto-fail
-        if let Some(ref path) = score.file_path {
-            let defects = match language {
-                Language::Rust => {
-                    let detector = RustDefectDetector::new();
-                    detector.detect(source, path)
-                }
-                Language::Lua => {
-                    let detector = LuaDefectDetector::new();
-                    detector.detect(source, path)
-                }
-                _ => Vec::new(),
-            };
-
-            let critical_count: usize = defects
-                .iter()
-                .filter(|d| d.severity == DefectSeverity::Critical)
-                .map(|d| d.instances.len())
-                .sum();
-
-            // Lean-specific: sorry = critical defect (proof incompleteness)
-            let lean_sorry_count = if language == Language::Lean {
-                count_lean_sorry_ast(source)
-            } else {
-                0
-            };
-
-            score.critical_defects_count = critical_count + lean_sorry_count;
-            score.has_critical_defects = score.critical_defects_count > 0;
-
-            // Issue #279: New files with no git history should not be auto-failed.
-            // This prevents a circular dependency where new files can't be committed
-            // because the quality gate blocks them, but they can't pass the gate
-            // because they have no git history. Score based on code quality only.
-            if score.has_critical_defects && !is_file_git_tracked(path) {
-                score.has_critical_defects = false;
-                // Keep critical_defects_count for informational reporting
-            }
-        }
+        // Known Defects v2.1: critical defects auto-fail. The rule lives in
+        // `crate::tdg::critical_defect_gate` because the OTHER `analyze_source`
+        // (the heuristic `analyzer_simple::TdgAnalyzer` behind the MCP
+        // `quality_gate` tool) has to apply the identical rule: while this block
+        // was inline here, one build answered F/25.2 from `pmat tdg` and A/90.0
+        // from `quality_gate` for the same committed file.
+        crate::tdg::critical_defect_gate::apply(&mut score, source, language);
 
         score.calculate_total();
 
@@ -229,48 +197,8 @@ impl TdgAnalyzerAst {
     }
 }
 
-/// Check if a file is tracked by git (has at least one commit).
-/// Returns false for new/untracked files, enabling graceful degradation (issue #279).
-///
-/// The git query MUST be rooted at the ANALYSED FILE, never at the process
-/// working directory. Before this was fixed the command was plain
-/// `git log --oneline -1 -- <path>`, which git resolves against the CWD: run
-/// from anywhere outside the analysed repository git exits 128 ("not a git
-/// repository"), the committed file was read as untracked, and
-/// `has_critical_defects` was silently cleared. Observed on one unchanged
-/// fixture (round 3): `cd <repo> && pmat analyze tdg -p .` scored 0.0 / grade F
-/// while `cd /tmp && pmat analyze tdg -p <repo>` scored 100.0 / grade A+ — a
-/// 5-band grade swing produced by nothing but the caller's CWD, which also made
-/// the Known-Defects auto-fail unreachable from the normal CI invocation form.
-fn is_file_git_tracked(path: &Path) -> bool {
-    // Resolve to an absolute path so the query is independent of the CWD, and
-    // run git from the file's own directory so it discovers the file's repo.
-    let absolute = path
-        .canonicalize()
-        .unwrap_or_else(|_| std::env::current_dir().map_or_else(|_| path.to_path_buf(), |cwd| cwd.join(path)));
-    let repo_anchor = if absolute.is_dir() {
-        absolute.clone()
-    } else {
-        absolute.parent().map_or_else(
-            || absolute.clone(),
-            |parent| {
-                if parent.as_os_str().is_empty() {
-                    absolute.clone()
-                } else {
-                    parent.to_path_buf()
-                }
-            },
-        )
-    };
-
-    std::process::Command::new("git")
-        .arg("-C")
-        .arg(&repo_anchor)
-        .args(["log", "--oneline", "-1", "--"])
-        .arg(&absolute)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
-        .output()
-        .map(|o| o.status.success() && !o.stdout.is_empty())
-        .unwrap_or(true) // If git unavailable, assume tracked (don't change behavior)
-}
+// The #279 waiver, the git tri-state and the Lean `sorry` counter used to live
+// here as this analyzer's private copies — which is precisely why the OTHER
+// analyzer never applied them. They are now the shared rule in
+// `crate::tdg::critical_defect_gate`, called above by both `analyze_source`
+// implementations. There is deliberately no re-export: one rule, one home.

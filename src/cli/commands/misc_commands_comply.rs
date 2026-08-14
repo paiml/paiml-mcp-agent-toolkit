@@ -8,7 +8,21 @@ pub enum ComplyCommands {
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
 
-        /// Exit with error if non-compliant
+        /// Treat warnings as errors (exit 2 on a warnings-only report)
+        ///
+        /// Exit codes for `comply check` are a tri-state, and `--strict`
+        /// changes only the third (#945):
+        ///
+        /// 0 = no failures, and with --strict no warnings either.
+        ///
+        /// 1 = one or more checks Failed (with or without --strict).
+        ///
+        /// 2 = --strict only: 0 failures but 1+ warnings. The report still says
+        /// COMPLIANT, and without --strict the same run exits 0.
+        ///
+        /// Code 2 therefore means "compliant, but not clean". A CI job that
+        /// wants the old "fail only on failures" behaviour should drop
+        /// --strict rather than special-case the code.
         #[arg(long)]
         strict: bool,
 
@@ -139,7 +153,12 @@ pub enum ComplyCommands {
         #[arg(short = 'p', long = "path", default_value = ".")]
         path: PathBuf,
 
-        /// Include ticket history
+        /// Include the debt tickets under .pmat-tickets/ in the report
+        ///
+        /// It used to be read inside the `-f text` arm alone, and there it only
+        /// printed "(Work history not yet implemented)" — so with the DEFAULT
+        /// markdown format, and with json/sarif, the flag changed nothing. Every
+        /// format carries the ticket listing now.
         #[arg(long)]
         include_history: bool,
 

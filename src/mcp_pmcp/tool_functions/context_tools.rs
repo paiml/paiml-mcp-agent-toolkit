@@ -325,7 +325,14 @@ const SUMMARY_LEVELS: [&str; 3] = ["brief", "normal", "detailed"];
 /// returned byte-identical summaries and a value like `bogus-level-xyz` was
 /// accepted in silence. A schema `enum` the tool does not enforce is a
 /// documented contract the tool does not keep.
-fn resolve_summary_level(level: Option<&str>) -> Result<&'static str> {
+///
+/// `pub` so the MCP handler can apply the SAME rule before dispatching and
+/// report the refusal as `-32602 Invalid params`. It is a schema-enum
+/// violation, and the handler's blanket `Error::internal` turned it into
+/// `-32603 Internal error`, which is reserved for genuine server faults — a
+/// client cannot tell "you sent a bad enum" from "the server crashed", and
+/// retries the call. Enforcing it in one place keeps the two answers identical.
+pub fn resolve_summary_level(level: Option<&str>) -> Result<&'static str> {
     let Some(requested) = level else {
         return Ok("normal");
     };

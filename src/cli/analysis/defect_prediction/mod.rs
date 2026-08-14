@@ -1,39 +1,13 @@
-//! Defect prediction analysis implementation using real ML-based service
+//! Defect prediction analysis: the library entry point for the command.
+//!
+//! #948/#954 shape: this module used to hold a second, private implementation
+//! of `analyze defect-prediction` — its own summary/detailed/JSON/CSV/SARIF
+//! renderers over a model fed by a comment-density number called `churn_score`
+//! and two hardcoded `0.0`s. The CLI never routed here. The duplicate is
+//! deleted; see [`handler`] for what it computed and why syncing it was the
+//! wrong repair.
 
-mod detailed_format;
 mod handler;
-mod output_formats;
-mod summary_format;
 
 // Re-export the main handler for external use
 pub use handler::handle_analyze_defect_prediction;
-
-// Re-export internal items for tests (used by coverage_tests and tests modules via super::*)
-#[cfg(test)]
-pub(crate) use crate::cli::DefectPredictionOutputFormat;
-#[cfg(test)]
-pub(crate) use crate::services::defect_probability::DefectScore;
-#[cfg(test)]
-pub(crate) use detailed_format::{
-    format_defect_detailed, format_defect_json, format_risk_level_display, write_analysis_footer,
-    write_confidence_level, write_contributing_factors, write_detailed_header, write_file_details,
-    write_recommendations, write_risk_level,
-};
-#[cfg(test)]
-pub(crate) use handler::{create_defect_prediction_config, filter_and_sort_predictions};
-#[cfg(test)]
-pub(crate) use output_formats::{format_defect_csv, format_defect_output, format_defect_sarif};
-#[cfg(test)]
-pub(crate) use summary_format::{
-    calculate_risk_statistics, format_defect_summary, get_risk_icon, write_risk_distribution,
-    write_summary_footer, write_summary_header, write_top_risk_files, RiskStatistics,
-};
-
-#[cfg(test)]
-mod coverage_tests;
-
-/// Active unit tests for defect prediction module
-// Tests extracted to defect_prediction_tests.rs for file health compliance (CB-040)
-#[cfg(test)]
-#[path = "defect_prediction_tests.rs"]
-mod tests;

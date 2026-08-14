@@ -3,10 +3,18 @@
 
 impl RustBorrowChecker {
     /// Check if an item contains unsafe code
+    ///
+    /// #953: this used to read `item_fn.sig.unsafety` and nothing else, so an
+    /// `unsafe` BLOCK inside a safe `fn` was invisible and
+    /// `fn deref_null() -> u8 { let p: *const u8 = std::ptr::null(); unsafe { *p } }`
+    /// collected a `MemorySafety` proof whose assumption reads "Safe Rust
+    /// subset" over a body performing guaranteed UB. An unmeasured property is
+    /// a gap; a property *proven of code that violates it* is a fabricated
+    /// artifact, so the whole body is scanned for `unsafe`, not just the
+    /// signature.
     #[cfg(feature = "rust-ast")]
     fn contains_unsafe(&self, item_fn: &ItemFn) -> bool {
-        // Simple check for unsafe keyword
-        item_fn.sig.unsafety.is_some()
+        item_fn.sig.unsafety.is_some() || block_contains_unsafe(&item_fn.block)
     }
 
     #[cfg(not(feature = "rust-ast"))]
@@ -16,9 +24,13 @@ impl RustBorrowChecker {
     }
 
     /// Check if an impl block contains unsafe code
+    ///
+    /// Like `contains_unsafe`, the `unsafe` keyword on the `impl` itself is not
+    /// the only way unsafe code enters the block: a method body may open an
+    /// `unsafe` block (#953).
     #[cfg(feature = "rust-ast")]
     fn contains_unsafe_impl(&self, item_impl: &ItemImpl) -> bool {
-        item_impl.unsafety.is_some()
+        item_impl.unsafety.is_some() || impl_contains_unsafe(item_impl)
     }
 
     /// Analyze thread safety via trait bounds and type analysis
@@ -214,6 +226,71 @@ impl RustBorrowChecker {
     }
 }
 
+/// Finds any `unsafe` reachable from the node it is walked over.
+///
+/// `unsafe` enters a function four ways and all four must count, because each
+/// one is enough to break the "Safe Rust subset" assumption the collected
+/// `MemorySafety` annotation carries (#953):
+///   * an `unsafe { .. }` expression in the body (including nested closures,
+///     `async` blocks, macro-free nested blocks and nested items);
+///   * an `unsafe fn` declared inside the body;
+///   * an `unsafe impl` or `unsafe trait` declared inside the body;
+///   * the `unsafe` on the signature itself, which the callers check directly.
+#[cfg(feature = "rust-ast")]
+#[derive(Default)]
+struct UnsafeFinder {
+    found: bool,
+}
+
+#[cfg(feature = "rust-ast")]
+impl<'ast> syn::visit::Visit<'ast> for UnsafeFinder {
+    fn visit_expr_unsafe(&mut self, node: &'ast syn::ExprUnsafe) {
+        self.found = true;
+        syn::visit::visit_expr_unsafe(self, node);
+    }
+
+    fn visit_signature(&mut self, node: &'ast syn::Signature) {
+        if node.unsafety.is_some() {
+            self.found = true;
+        }
+        syn::visit::visit_signature(self, node);
+    }
+
+    fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
+        if node.unsafety.is_some() {
+            self.found = true;
+        }
+        syn::visit::visit_item_impl(self, node);
+    }
+
+    fn visit_item_trait(&mut self, node: &'ast syn::ItemTrait) {
+        if node.unsafety.is_some() {
+            self.found = true;
+        }
+        syn::visit::visit_item_trait(self, node);
+    }
+}
+
+/// Does this block contain `unsafe` anywhere inside it?
+#[cfg(feature = "rust-ast")]
+fn block_contains_unsafe(block: &syn::Block) -> bool {
+    use syn::visit::Visit;
+    let mut finder = UnsafeFinder::default();
+    finder.visit_block(block);
+    finder.found
+}
+
+/// Does this impl block contain `unsafe` anywhere inside it?
+#[cfg(feature = "rust-ast")]
+fn impl_contains_unsafe(item_impl: &ItemImpl) -> bool {
+    use syn::visit::Visit;
+    let mut finder = UnsafeFinder::default();
+    for item in &item_impl.items {
+        finder.visit_impl_item(item);
+    }
+    finder.found
+}
+
 /// Byte offset at which each line of `content` begins.
 ///
 /// `content.lines()` drops the terminators, so the offsets are accumulated from
@@ -287,4 +364,101 @@ fn span_of_lines(
         u32::try_from(start).unwrap_or(u32::MAX),
         u32::try_from(end.max(start)).unwrap_or(u32::MAX),
     )
+}
+
+/// #953: a `MemorySafety` proof must never be collected over a body that opens
+/// an `unsafe` block.
+///
+/// RED on the old code: `contains_unsafe` read only `item_fn.sig.unsafety`, so
+/// every one of these bodies was classified safe and received a `MemorySafety`
+/// annotation asserting "Safe Rust subset".
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(all(test, feature = "rust-ast"))]
+mod unsafe_detection_tests {
+    use super::*;
+
+    /// Property types proven over `source`, in item order.
+    fn proven(source: &str) -> Vec<PropertyType> {
+        let file = syn::parse_file(source).expect("fixture must parse");
+        let checker = RustBorrowChecker::default();
+        let path = std::path::PathBuf::from("fixture.rs");
+        file.items
+            .iter()
+            .flat_map(|item| checker.analyze_item(item, &path, (0, 1)))
+            .map(|(_, annotation)| annotation.property_proven)
+            .collect()
+    }
+
+    fn proves_memory_safety(source: &str) -> bool {
+        proven(source)
+            .iter()
+            .any(|p| matches!(p, PropertyType::MemorySafety))
+    }
+
+    #[test]
+    fn an_unsafe_block_inside_a_safe_fn_defeats_the_memory_safety_proof() {
+        assert!(
+            !proves_memory_safety(
+                "pub fn deref_null() -> u8 { let p: *const u8 = std::ptr::null(); unsafe { *p } }"
+            ),
+            "a body that dereferences a null pointer inside `unsafe` must not \
+             collect a MemorySafety proof asserting the Safe Rust subset"
+        );
+    }
+
+    #[test]
+    fn an_unsafe_block_nested_in_a_closure_or_branch_also_defeats_it() {
+        assert!(
+            !proves_memory_safety(
+                "pub fn nested(flag: bool) -> u8 { \
+                 let f = || unsafe { *(std::ptr::null::<u8>()) }; \
+                 if flag { f() } else { 0 } }"
+            ),
+            "unsafe reached through a closure must still be found"
+        );
+        assert!(
+            !proves_memory_safety(
+                "pub fn inner_item() { unsafe fn hidden() {} let _ = hidden as usize; }"
+            ),
+            "an `unsafe fn` declared inside the body must still be found"
+        );
+    }
+
+    #[test]
+    fn a_genuinely_safe_fn_still_collects_the_proof() {
+        assert!(
+            proves_memory_safety("pub fn add(a: i32) -> i32 { a + 1 }"),
+            "the fix must not silence the proof for code that really is in the \
+             safe subset — an over-broad rule would make the command useless"
+        );
+    }
+
+    #[test]
+    fn an_unsafe_fn_signature_is_still_rejected() {
+        assert!(
+            !proves_memory_safety("pub unsafe fn raw(p: *const u8) -> u8 { *p }"),
+            "the pre-existing signature check must survive the fix"
+        );
+    }
+
+    #[test]
+    fn an_impl_whose_method_opens_unsafe_is_not_treated_as_unsafe_free() {
+        let file = syn::parse_file(
+            "struct S; impl S { fn m(&self) -> u8 { unsafe { *(std::ptr::null::<u8>()) } } }",
+        )
+        .expect("fixture must parse");
+        let checker = RustBorrowChecker::default();
+        let item_impl = file
+            .items
+            .iter()
+            .find_map(|i| match i {
+                Item::Impl(item_impl) => Some(item_impl),
+                _ => None,
+            })
+            .expect("fixture has an impl");
+        assert!(
+            checker.contains_unsafe_impl(item_impl),
+            "an impl block carrying an unsafe method body contains unsafe code"
+        );
+    }
 }

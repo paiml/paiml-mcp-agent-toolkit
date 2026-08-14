@@ -289,7 +289,13 @@ mod tests {
         create_file(
             repo_path,
             ".git/hooks/pre-commit",
-            "#!/bin/bash\ncargo clippy",
+            // A "perfect repo" needs a hook that actually gates. B2 used to
+            // grep the script text for `clippy` and hand out 10/10, so a
+            // one-gate hook scored full marks; since #940 it scores the gates
+            // the hook really invokes, and one out of four is not perfect.
+            // The assertion below is unchanged — the fixture was the thing
+            // that did not match its own name.
+            "#!/bin/bash\nset -e\ncargo fmt --check\ncargo clippy -- -D warnings\ncargo test\npmat quality-gate\n",
         );
         create_file(repo_path, "Makefile", ".PHONY: test-fast test lint coverage\ntest-fast:\n\tcargo test\ntest:\n\tcargo test\nlint:\n\tcargo clippy\ncoverage:\n\tcargo llvm-cov");
         create_file(repo_path, ".github/workflows/ci.yml", "name: CI\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: cargo test");

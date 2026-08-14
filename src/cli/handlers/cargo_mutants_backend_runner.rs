@@ -5,8 +5,8 @@
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     // 1. Detect and validate cargo-mutants installation
-    eprintln!("🧪 cargo-mutants Backend");
-    eprintln!();
+    crate::status_eprintln!("🧪 cargo-mutants Backend");
+    crate::status_eprintln!();
 
     let wrapper = CargoMutantsWrapper::new().map_err(|e| {
         anyhow::anyhow!(
@@ -21,8 +21,8 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     let version = wrapper
         .version()
         .map_err(|e| anyhow::anyhow!("Failed to get cargo-mutants version: {}", e))?;
-    eprintln!("✅ Detected: {}", version);
-    eprintln!();
+    crate::status_eprintln!("✅ Detected: {}", version);
+    crate::status_eprintln!();
 
     // Determine output directory
     let output_dir = if let Some(ref output) = config.output {
@@ -65,7 +65,7 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     }
 
     // Display command being executed
-    eprintln!(
+    crate::status_eprintln!(
         "🔧 Executing: cargo mutants --output {} --timeout {} {}",
         output_dir.display(),
         config.timeout,
@@ -75,11 +75,11 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
             String::new()
         }
     );
-    eprintln!();
+    crate::status_eprintln!();
 
     // 3. Execute cargo-mutants
-    eprintln!("⏳ Running mutation tests... (this may take several minutes)");
-    eprintln!();
+    crate::status_eprintln!("⏳ Running mutation tests... (this may take several minutes)");
+    crate::status_eprintln!();
 
     let output_result = cmd
         .output()
@@ -99,8 +99,8 @@ pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
         );
     }
 
-    eprintln!("✅ Mutation testing complete");
-    eprintln!();
+    crate::status_eprintln!("✅ Mutation testing complete");
+    crate::status_eprintln!();
 
     // cargo-mutants may create a nested directory structure
     // Check if outcomes.json exists, if not check nested location

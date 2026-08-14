@@ -55,9 +55,17 @@ impl FiveWhysAnalyzer {
         for i in 1..=depth {
             let why = self.iterate_why(issue, path, i, &analysis.whys).await?;
 
-            // Early termination if high confidence reached (>0.9) after at least 3 iterations
+            // Early termination if high confidence reached (>0.9) after at
+            // least 3 iterations. Say so: the caller asked for `depth` whys and
+            // is getting fewer, and silence made `--depth` look inert (#962).
             if i >= 3 && why.confidence > 0.9 {
+                let confidence = why.confidence;
                 analysis.whys.push(why);
+                if i < depth {
+                    analysis.stopped_early = Some(format!(
+                        "converged after {i} of {depth} whys: confidence {confidence:.2} exceeded 0.90"
+                    ));
+                }
                 break;
             }
 
@@ -96,8 +104,30 @@ impl FiveWhysAnalyzer {
         // Generate hypothesis based on evidence
         let hypothesis = self.generate_hypothesis(&question, &evidence, depth)?;
 
-        // Calculate confidence
+        // Calculate confidence.
+        //
+        // A hypothesis the report itself tags "repo-level signal" cannot carry a
+        // confident causal claim about the reported issue, for exactly the
+        // reason `NO_ISSUE_EVIDENCE_CEILING` exists: the rungs of the ladder
+        // below localisation are keyed on churn/SATD/coverage, which are
+        // identical whatever issue was typed. Stamping one 100.0% directly above
+        // the sentence disclaiming it ("Beyond localisation no causal chain was
+        // derived") gave a reader who trusts the number a maximally-confident
+        // non-answer (#962).
+        //
+        // This is also what made `--depth` inert. Every severity scale saturated
+        // on any real repository, so confidence was exactly 1.0, so the
+        // `i >= 3 && confidence > 0.9` early exit fired on iteration 3 every
+        // time: `--depth 5`, `7` and `10` all returned three whys. Capping the
+        // repo-level rungs below the threshold means depth is honoured again,
+        // without weakening the early exit where it is meaningful — a located,
+        // issue-specific hypothesis is not capped.
         let confidence = self.calculate_confidence(&evidence)?;
+        let confidence = if hypothesis.contains(Self::REPO_LEVEL_TAG) {
+            confidence.min(Self::REPO_LEVEL_CEILING)
+        } else {
+            confidence
+        };
 
         let mut why = WhyIteration::new(depth, question, hypothesis).with_confidence(confidence);
 
@@ -224,6 +254,42 @@ impl FiveWhysAnalyzer {
     /// more of them must not raise confidence in a causal claim about a
     /// specific issue.
     pub const NO_ISSUE_EVIDENCE_CEILING: f64 = 0.35;
+
+    /// Marker the hypothesis ladder puts on every rung below localisation.
+    ///
+    /// One spelling, used by the renderer, by `extract_root_cause` and by the
+    /// confidence ceiling — three readers of one rule, which is how this
+    /// codebase's recurring defect starts when they are allowed to drift.
+    pub const REPO_LEVEL_TAG: &'static str = "repo-level signal";
+
+    /// Highest confidence a rung tagged [`Self::REPO_LEVEL_TAG`] may claim.
+    ///
+    /// Deliberately below the `> 0.9` early-exit threshold in [`Self::analyze`]:
+    /// a chain of repo-wide signals must not be able to terminate the analysis
+    /// by looking certain. Above [`Self::NO_ISSUE_EVIDENCE_CEILING`] because
+    /// these runs did locate the issue — the localisation is real evidence, the
+    /// rungs built on top of it are not.
+    pub const REPO_LEVEL_CEILING: f64 = 0.60;
+
+    /// Severity that rises with `count` and never quite reaches 1.0.
+    ///
+    /// `count / (count + half)` — `half` is the value scoring 0.5. The scales
+    /// this replaces were hard clamps (`count.min(10.0) / 10.0`), and every one
+    /// of them saturated on any real repository: pmat reports 62 SATD markers
+    /// against a cap of 10, 29 commits against 20, 12 matched locations against
+    /// 6. A 10-marker repo and a 62-marker repo scored identically at 1.0, so
+    /// the metric could not discriminate between the codebases it was there to
+    /// compare — and with every severity pinned at 1.0 the weighted mean was
+    /// exactly 1.0, which is what tripped the early exit (#962).
+    ///
+    /// Monotone, so more evidence is still more severity, and asymptotic, so no
+    /// finite amount of repo-wide signal alone reaches certainty.
+    fn saturating_severity(count: f64, half: f64) -> f64 {
+        if count <= 0.0 || half <= 0.0 {
+            return 0.0;
+        }
+        count / (count + half)
+    }
 
     /// Did any evidence actually pertain to the reported issue?
     fn has_issue_evidence(evidence: &[Evidence]) -> bool {
@@ -832,8 +898,7 @@ impl FiveWhysAnalyzer {
                 }
                 EvidenceSource::SATD => {
                     let count = ev.value.get("count").and_then(|v| v.as_u64()).unwrap_or(1);
-                    let severity = (count as f64).min(10.0) / 10.0;
-                    (0.20, severity)
+                    (0.20, Self::saturating_severity(count as f64, 10.0))
                 }
                 // v2: TDG removed (redundant with complexity+churn). Weight = 0.
                 EvidenceSource::TDG => (0.0, 0.0),
@@ -843,8 +908,7 @@ impl FiveWhysAnalyzer {
                         .get("commit_count")
                         .and_then(|v| v.as_u64())
                         .unwrap_or(0);
-                    let severity = (commits as f64).min(20.0) / 20.0;
-                    (0.15, severity)
+                    (0.15, Self::saturating_severity(commits as f64, 20.0))
                 }
                 EvidenceSource::DeadCode => (0.10, 0.5),
                 EvidenceSource::ManualInspection => (0.15, 1.0),
@@ -873,8 +937,7 @@ impl FiveWhysAnalyzer {
                         .get("locations")
                         .and_then(|v| v.as_array())
                         .map_or(0, Vec::len);
-                    let severity = (found as f64 / 6.0).min(1.0);
-                    (0.35, severity)
+                    (0.35, Self::saturating_severity(found as f64, 6.0))
                 }
                 EvidenceSource::CoverageDelta => {
                     let delta = ev
@@ -942,14 +1005,13 @@ impl FiveWhysAnalyzer {
         // SATD, coverage) tagged as such; presenting one of those as "the root
         // cause" is what made an EOF race read as "Frequent changes indicate
         // unstable or poorly understood code" (GH #637).
-        const REPO_LEVEL_TAG: &str = "repo-level signal";
         let derived = whys
             .iter()
             .rev()
-            .find(|why| !why.hypothesis.contains(REPO_LEVEL_TAG))
+            .find(|why| !why.hypothesis.contains(Self::REPO_LEVEL_TAG))
             .unwrap_or(last_why);
 
-        if derived.hypothesis.contains(REPO_LEVEL_TAG) {
+        if derived.hypothesis.contains(Self::REPO_LEVEL_TAG) {
             return Ok(None);
         }
 

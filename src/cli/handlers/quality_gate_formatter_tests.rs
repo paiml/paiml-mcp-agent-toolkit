@@ -9,6 +9,7 @@ mod tests {
         QualityGateResults {
             passed,
             total_violations: total,
+            blocking_violations: total,
             complexity_violations: total / 3,
             dead_code_violations: total / 3,
             satd_violations: total / 3,

@@ -22,18 +22,28 @@ fn extract_blocks(
         crate::cli::DuplicateType::Exact => {
             extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        crate::cli::DuplicateType::Fuzzy | crate::cli::DuplicateType::Gapped => {
+        crate::cli::DuplicateType::Fuzzy => {
             extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
-        // `All` must be a superset of every sub-mode, never a subset. Both
-        // extractors run and their blocks are unioned; the hashes cannot
-        // collide across modes because `extract_fuzzy_blocks` hashes a
-        // structural signature while `extract_exact_blocks` hashes normalised
-        // source, and identical content legitimately matching under both is a
-        // genuine duplicate either way.
+        // Type-3 (gapped) subsumes Type-2, so it runs the renamed extractor AND
+        // the gap-tolerant one. #935: it used to run ONLY the renamed extractor,
+        // so `--detection-type gapped` and `--detection-type renamed` executed
+        // identical code and no amount of "gapped" in the help text made the
+        // hash tolerant of an inserted statement.
+        crate::cli::DuplicateType::Gapped => {
+            extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+            extract_gapped_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+        }
+        // `All` must be a superset of every sub-mode, never a subset. Every
+        // extractor runs and their blocks are unioned; the hashes cannot
+        // collide across modes because each pass prefixes its own digest
+        // (`f` fuzzy, `g` gapped, bare hex exact), and identical content
+        // legitimately matching under more than one is a genuine duplicate
+        // either way.
         crate::cli::DuplicateType::All => {
             extract_exact_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
             extract_fuzzy_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
+            extract_gapped_blocks(&mut blocks, lines, &file_str, min_lines, max_tokens);
         }
         // Type-2 (renamed). `extract_fuzzy_blocks` hashes an
         // identifier-normalised token stream, which is exactly what makes two
@@ -69,7 +79,26 @@ Use --detection-type all, exact, renamed, fuzzy or gapped."
     });
 }
 
-/// Extract exact match blocks using sliding window
+/// Extract exact match blocks using a window over SUBSTANTIVE lines.
+///
+/// The window slides over code, not over the file. It used to slide over raw
+/// lines and hash whatever `normalize_block` left behind — and
+/// `normalize_block` DELETES comments and blank lines, so a window covering
+/// nothing but comments normalised to the empty string. Every such window in
+/// every file of the project hashed to `30406ea523c53def`, the hash of `""`,
+/// and landed in one bucket: two files whose sorted lines shared not a single
+/// line (`comm -12` empty) were reported as `exact_duplicates: 1`, `similarity:
+/// 1.0`, `tokens: 0`, "Duplication percentage: 62.5%". A detector that calls
+/// two unrelated files two-thirds duplicated points the wrong way, and
+/// `--duplicates` is what this project uses to hunt its own copy-paste.
+///
+/// The floor is not new policy: the MinHash engine
+/// (`services::duplicate_detector`) has always required
+/// `tokens.len() >= config.min_tokens` before it will build a fragment. This
+/// pass was the one clone finder with an upper bound on tokens (`--max-tokens`)
+/// and no lower bound at all. Windowing over substantive lines gives it one and
+/// makes `--min-lines` mean what its help text says: every block carries
+/// `min_lines` lines of actual code as evidence.
 fn extract_exact_blocks(
     blocks: &mut Vec<(String, String, usize, usize, String)>,
     lines: &[&str],
@@ -80,32 +109,44 @@ fn extract_exact_blocks(
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
-    // Sliding window for exact matches
-    for i in 0..lines.len().saturating_sub(min_lines) {
-        let block_lines = &lines[i..i + min_lines];
-        let content = normalize_block(block_lines);
+    // A block of zero lines is not a block. `windows(0)` panics, and the old
+    // code answered `--min-lines 0` with a stream of empty-content blocks.
+    let min_lines = min_lines.max(1);
+
+    let substantive = substantive_lines(lines);
+    for window in substantive.windows(min_lines) {
+        let content = window
+            .iter()
+            .map(|(_, line)| *line)
+            .collect::<Vec<_>>()
+            .join("\n");
 
         if count_tokens(&content) <= max_tokens {
             let mut hasher = DefaultHasher::new();
             content.hash(&mut hasher);
             let hash = format!("{:x}", hasher.finish());
 
-            blocks.push((hash, file_str.to_string(), i + 1, i + min_lines, content));
+            let start = window[0].0;
+            let end = window[window.len() - 1].0;
+            blocks.push((hash, file_str.to_string(), start, end, content));
         }
     }
 }
 
-/// Extract fuzzy match blocks based on code structure
-fn extract_fuzzy_blocks(
-    blocks: &mut Vec<(String, String, usize, usize, String)>,
+/// Walk the structural blocks of a file once and hand each qualifying one to
+/// `emit` as `(normalised content, start line, end line)`.
+///
+/// ONE walk, shared by the Type-2 (`extract_fuzzy_blocks`) and Type-3
+/// (`extract_gapped_blocks`) passes. Both used to need the identical clamping,
+/// floor and span arithmetic below; a second copy of that arithmetic is a second
+/// place for the "range end index out of range" panic and the empty-block hole
+/// to come back.
+fn for_each_structural_block(
     lines: &[&str],
-    file_str: &str,
     min_lines: usize,
     max_tokens: usize,
+    mut emit: impl FnMut(&str, usize, usize),
 ) {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
     let mut i = 0;
     while i < lines.len() {
         if is_block_start(lines[i]) {
@@ -124,18 +165,19 @@ fn extract_fuzzy_blocks(
                 let block_lines = &lines[i..end];
                 let content = normalize_block(block_lines);
 
-                if count_tokens(&content) <= max_tokens {
-                    // Hash the identifier-normalised token stream, not the
-                    // source text. Hashing the text made this extractor a
-                    // second, slower exact matcher: three structurally
-                    // identical functions differ in their signature line, so
-                    // they hashed differently and fuzzy/gapped/renamed reported
-                    // 0 blocks over provably duplicated code.
-                    let mut hasher = DefaultHasher::new();
-                    normalize_identifiers(&content).hash(&mut hasher);
-                    let hash = format!("f{:x}", hasher.finish());
-
-                    blocks.push((hash, file_str.to_string(), i + 1, end, content));
+                // Same floor as the exact pass: the block must carry
+                // `min_lines` lines of real code. `is_block_start` is textual
+                // (`contains("fn ")`, "ends with `{`"), so a run of comments
+                // such as `// build the fn {` opens a "block" whose normalised
+                // content is empty — and every empty block in the project
+                // hashes alike. Reporting the block's SUBSTANTIVE span rather
+                // than its raw span also stops leading and trailing comment
+                // lines from being counted as duplicated code.
+                let substantive = substantive_lines(block_lines);
+                if substantive.len() >= min_lines && count_tokens(&content) <= max_tokens {
+                    let start_line = substantive[0].0 + i;
+                    let end_line = substantive[substantive.len() - 1].0 + i;
+                    emit(&content, start_line, end_line);
                 }
             }
             i = end;
@@ -145,17 +187,215 @@ fn extract_fuzzy_blocks(
     }
 }
 
+/// Extract fuzzy match blocks based on code structure (Type-2: renamed).
+fn extract_fuzzy_blocks(
+    blocks: &mut Vec<(String, String, usize, usize, String)>,
+    lines: &[&str],
+    file_str: &str,
+    min_lines: usize,
+    max_tokens: usize,
+) {
+    for_each_structural_block(lines, min_lines, max_tokens, |content, start, end| {
+        // Hash the identifier-normalised token stream, not the source text.
+        // Hashing the text made this extractor a second, slower exact matcher:
+        // three structurally identical functions differ in their signature line,
+        // so they hashed differently and fuzzy/gapped/renamed reported 0 blocks
+        // over provably duplicated code.
+        let hash = format!("f{}", hash_of(&normalize_identifiers(content)));
+        blocks.push((hash, file_str.to_string(), start, end, content.to_string()));
+    });
+}
+
+/// Extract Type-3 (gapped) blocks: the same body with straight-line statements
+/// ADDED OR REMOVED.
+///
+/// #935: `--detection-type gapped` and `--detection-type renamed` ran the same
+/// extractor. Two declared modes executing identical code is a flag that does
+/// not do what it says, and `gapped` in particular claimed the one tolerance
+/// nothing in the hash-bucketing pass provided: hashing an
+/// identifier-normalised token stream (the Type-2 rule) is exact matching — one
+/// extra `let` line changes the hash and the copy is not found.
+///
+/// The gapped bucket hashes the block's SKELETON: its identifier-normalised
+/// lines with straight-line statements elided (see [`gapped_skeleton`]). Two
+/// copies of one body that differ by inserted or deleted simple statements
+/// produce the same skeleton and bucket together, which is exactly the Type-3
+/// definition. Type-3 subsumes Type-2, so `gapped` runs this pass IN ADDITION TO
+/// the Type-2 one and can never report less than `renamed` does.
+///
+/// Over-grouping is what makes a loose skeleton worthless, so a block only gets
+/// a gapped hash when all three hold:
+/// 1. eliding actually removed a line — otherwise the skeleton is just the
+///    Type-2 hash under another name and the group would be double counted;
+/// 2. the skeleton carries at least two CONTROL-FLOW lines, so the near-universal
+///    `fn v ( v ) { }` shape cannot bucket every one-statement function together;
+/// 3. the skeleton is at least `--min-lines` lines long — the same floor the
+///    user already set for what counts as a block.
+fn extract_gapped_blocks(
+    blocks: &mut Vec<(String, String, usize, usize, String)>,
+    lines: &[&str],
+    file_str: &str,
+    min_lines: usize,
+    max_tokens: usize,
+) {
+    for_each_structural_block(lines, min_lines, max_tokens, |content, start, end| {
+        if let Some(skeleton) = gapped_skeleton(content, min_lines) {
+            let hash = format!("g{}", hash_of(&skeleton));
+            blocks.push((hash, file_str.to_string(), start, end, content.to_string()));
+        }
+    });
+}
+
+/// The stable 64-bit digest every extractor buckets on.
+fn hash_of(text: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    text.hash(&mut hasher);
+    format!("{:x}", hasher.finish())
+}
+
+/// Words that carry CONTROL FLOW, as opposed to structure in general.
+///
+/// A skeleton made only of braces and a signature describes almost every
+/// function ever written; one made of branches and loops describes a shape.
+const CONTROL_FLOW_KEYWORDS: &[&str] = &[
+    "case", "catch", "do", "elif", "else", "finally", "for", "if", "loop", "match", "switch",
+    "try", "when", "while",
+];
+
+/// The gap-tolerant signature of a block, or `None` when the block has no
+/// distinctive skeleton (see [`extract_gapped_blocks`] for the three guards).
+fn gapped_skeleton(content: &str, min_lines: usize) -> Option<String> {
+    let normalized: Vec<String> = content.lines().map(normalize_identifiers).collect();
+    let kept: Vec<&str> = normalized
+        .iter()
+        .map(String::as_str)
+        .filter(|line| carries_structure(line))
+        .collect();
+
+    // (1) Nothing was elided: this block has no straight-line statements to be
+    // tolerant ABOUT, so its skeleton is its Type-2 signature and the fuzzy pass
+    // has already bucketed it.
+    if kept.len() == normalized.len() {
+        return None;
+    }
+    // (3) and (2): long enough to be a shape, and branching enough to be a
+    // distinctive one.
+    if kept.len() < min_lines.max(1) {
+        return None;
+    }
+    if kept
+        .iter()
+        .filter(|line| carries_control_flow(line))
+        .count()
+        < 2
+    {
+        return None;
+    }
+
+    Some(kept.join("\n"))
+}
+
+/// Does this identifier-normalised line carry block structure — a brace or a
+/// control-flow word — rather than being a straight-line statement?
+fn carries_structure(normalized_line: &str) -> bool {
+    normalized_line.contains('{')
+        || normalized_line.contains('}')
+        || carries_control_flow(normalized_line)
+}
+
+/// Does this identifier-normalised line branch or loop?
+///
+/// `normalize_identifiers` emits whitespace-separated words and keeps the
+/// structural keywords verbatim, so whole-word matching is exact here — no
+/// substring test that would find `if` inside `notify`.
+fn carries_control_flow(normalized_line: &str) -> bool {
+    normalized_line
+        .split_whitespace()
+        .any(|word| CONTROL_FLOW_KEYWORDS.contains(&word))
+}
+
 /// Cross-language keywords that carry a block's structure. Everything else that
 /// looks like a word is a name, and names are exactly what a Type-2 clone
 /// changes.
 const STRUCTURAL_KEYWORDS: &[&str] = &[
-    "and", "as", "async", "await", "bool", "break", "case", "catch", "class", "const", "continue",
-    "def", "delete", "do", "elif", "else", "enum", "export", "extends", "false", "final",
-    "finally", "float", "fn", "for", "from", "function", "if", "impl", "import", "in", "int",
-    "interface", "is", "let", "loop", "match", "mod", "move", "mut", "new", "nil", "none", "not",
-    "null", "or", "pass", "private", "protected", "public", "pub", "raise", "ref", "return",
-    "self", "static", "std", "str", "string", "struct", "super", "switch", "this", "throw",
-    "trait", "true", "try", "type", "typeof", "use", "var", "void", "where", "while", "with",
+    "and",
+    "as",
+    "async",
+    "await",
+    "bool",
+    "break",
+    "case",
+    "catch",
+    "class",
+    "const",
+    "continue",
+    "def",
+    "delete",
+    "do",
+    "elif",
+    "else",
+    "enum",
+    "export",
+    "extends",
+    "false",
+    "final",
+    "finally",
+    "float",
+    "fn",
+    "for",
+    "from",
+    "function",
+    "if",
+    "impl",
+    "import",
+    "in",
+    "int",
+    "interface",
+    "is",
+    "let",
+    "loop",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "new",
+    "nil",
+    "none",
+    "not",
+    "null",
+    "or",
+    "pass",
+    "private",
+    "protected",
+    "public",
+    "pub",
+    "raise",
+    "ref",
+    "return",
+    "self",
+    "static",
+    "std",
+    "str",
+    "string",
+    "struct",
+    "super",
+    "switch",
+    "this",
+    "throw",
+    "trait",
+    "true",
+    "try",
+    "type",
+    "typeof",
+    "use",
+    "var",
+    "void",
+    "where",
+    "while",
+    "with",
     "yield",
 ];
 
@@ -194,12 +434,34 @@ fn normalize_identifiers(content: &str) -> String {
     out
 }
 
-/// Normalize code block (remove whitespace variations)
-fn normalize_block(lines: &[&str]) -> String {
+/// Does this (already trimmed) line carry code?
+///
+/// THE rule for what this analysis treats as content. `normalize_block` deletes
+/// everything else, so anything built out of non-substantive lines alone is
+/// built out of nothing — which is how comment-only windows all came to hash to
+/// the empty string and cluster into a single bogus "exact duplicate".
+/// Every caller that decides whether something is a block asks this one
+/// function; a second copy of the predicate is a second chance to disagree.
+fn is_substantive_line(trimmed: &str) -> bool {
+    !trimmed.is_empty() && !trimmed.starts_with("//") && !trimmed.starts_with('#')
+}
+
+/// The substantive lines of `lines`, each paired with its 1-based index WITHIN
+/// `lines`, so a block can report the span of the code it actually contains.
+fn substantive_lines<'a>(lines: &[&'a str]) -> Vec<(usize, &'a str)> {
     lines
         .iter()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with('#'))
+        .enumerate()
+        .map(|(i, line)| (i + 1, line.trim()))
+        .filter(|(_, line)| is_substantive_line(line))
+        .collect()
+}
+
+/// Normalize code block (remove whitespace variations)
+fn normalize_block(lines: &[&str]) -> String {
+    substantive_lines(lines)
+        .into_iter()
+        .map(|(_, line)| line)
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -276,20 +538,31 @@ fn find_block_end(lines: &[&str]) -> Option<usize> {
 /// user, and the user is owed an answer about what it did.
 const DOCUMENTED_THRESHOLD_DEFAULT: f32 = 0.85;
 
-/// Say once, on stderr, that `--threshold` cannot move any block in or out.
+/// Say once, on stderr, that `--threshold` cannot move any block in or out
+/// UNDER THIS DETECTION TYPE.
 ///
-/// Detection here is hash bucketing: two blocks are duplicates iff they hash
-/// identically under the detection type's normalisation, so every group this
-/// function returns has similarity 1.0 by construction and no cut-off in
-/// 0.0..=1.0 can change the result. The parameter was literally bound as
-/// `_threshold` and dropped, so `--threshold 0.01`, `0.5` and `0.99` printed
-/// the same "Duplication percentage" over the same tree with no indication
-/// that the number had been ignored. A real cut-off needs near-miss (Type-3)
-/// matching between blocks that do NOT hash alike, which this extractor does
-/// not do; until it does, the flag must say so rather than look effective.
+/// Hash bucketing (this file) is all-or-nothing: two blocks are duplicates iff
+/// they hash identically under the detection type's normalisation, so no cut-off
+/// in 0.0..=1.0 can move a block into or out of a group — the similarity each
+/// group reports is measured AFTER the fact, never used to select it.
+/// `--threshold` was therefore bound as `_threshold`
+/// and dropped: 0.01, 0.5 and 0.99 printed the same "Duplication percentage"
+/// over the same tree with no indication that the number had been ignored.
+///
+/// `gapped`, `fuzzy` and `all` now also run the near-miss (Type-3) pass in
+/// `find_structural_similarities`, where the threshold IS the similarity
+/// cut-off, so under those types the value acts and nothing is warned about.
+/// Under `exact` (Type-1), `renamed` (Type-2) and `semantic` (unimplemented)
+/// there is still no similarity comparison for a cut-off to control.
 ///
 /// Returns whether the value is inert, so the behaviour is testable.
-fn warn_threshold_has_no_effect(threshold: f32) -> bool {
+fn warn_threshold_has_no_effect(
+    threshold: f32,
+    detection_type: &crate::cli::DuplicateType,
+) -> bool {
+    if near_miss_enabled(detection_type) {
+        return false;
+    }
     if (threshold - DOCUMENTED_THRESHOLD_DEFAULT).abs() < 1e-6 {
         return false;
     }
@@ -297,22 +570,82 @@ fn warn_threshold_has_no_effect(threshold: f32) -> bool {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         eprintln!(
-            "warning: --threshold {threshold} was ignored: duplicate detection matches blocks by \
-hash under the selected --detection-type, so every reported clone is an exact match (similarity \
-1.0) and no similarity cut-off changes the result. Use --detection-type to widen or narrow \
-matching instead."
+            "warning: --threshold {threshold} was ignored: --detection-type {detection_type} \
+matches blocks by hash — a block is in a group or it is not — so no similarity cut-off changes \
+the result. Use --detection-type gapped, fuzzy or all, where the threshold is the near-miss \
+similarity cut-off."
         );
     });
     true
 }
 
-/// Find duplicate blocks from all blocks
+/// Classify one hash-bucketed group and measure its similarity.
+///
+/// Hash bucketing proves the members agree under the detection type's
+/// normalisation. That is Type-1 when the normalisation was "drop comments and
+/// blank lines" and only Type-2 when it was "drop identifier names" — and the
+/// extractor that produced the group is NOT the answer, because a fuzzy-hashed
+/// group of byte-identical bodies is a genuine exact clone. Comparing the
+/// group's text settles it.
+///
+/// The returned similarity is measured the same way: exactly 1.0 when every
+/// member is identical, otherwise the mean line-level Jaccard similarity of each
+/// member against the first site. `similarity: 1.0` used to be written for every
+/// group, so a renamed clone differing on 8 of 39 lines reported perfect
+/// identity.
+fn classify_hash_group(texts: &[&str]) -> (CloneType, f32) {
+    let Some((first, rest)) = texts.split_first() else {
+        return (CloneType::Exact, 1.0);
+    };
+
+    if rest.iter().all(|t| t == first) {
+        return (CloneType::Exact, 1.0);
+    }
+
+    let total: f32 = rest.iter().map(|t| line_jaccard(first, t)).sum();
+    #[allow(clippy::cast_precision_loss)]
+    let mean = total / rest.len() as f32;
+
+    // Type-2 vs Type-3, decided by the CONTENT and not by which extractor
+    // produced the bucket: members that agree once identifiers are normalised
+    // away differ only in names (Type-2, renamed); members that still differ
+    // afterwards differ in their STATEMENTS (Type-3, near-miss). Before the
+    // gapped pass existed no bucket could reach the second case, so every
+    // non-identical group was labelled "renamed" — which would have mislabelled
+    // every gapped group the moment one appeared.
+    let first_shape = normalize_identifiers(first);
+    if !rest.iter().all(|t| normalize_identifiers(t) == first_shape) {
+        return (CloneType::NearMiss, mean.min(1.0 - f32::EPSILON));
+    }
+
+    // A measured mean can round to 1.0 for texts that are not identical; the
+    // identity test above is the ONLY thing allowed to report 1.0, so that
+    // `exact_duplicates` and `similarity >= 1.0` can never disagree.
+    (CloneType::Renamed, mean.min(1.0 - f32::EPSILON))
+}
+
+/// Jaccard similarity of two blocks over their distinct lines.
+fn line_jaccard(a: &str, b: &str) -> f32 {
+    use std::collections::HashSet;
+    let left: HashSet<&str> = a.lines().collect();
+    let right: HashSet<&str> = b.lines().collect();
+    let union = left.union(&right).count();
+    if union == 0 {
+        return 0.0;
+    }
+    let intersection = left.intersection(&right).count();
+    #[allow(clippy::cast_precision_loss)]
+    let sim = intersection as f32 / union as f32;
+    sim
+}
+
+/// Find duplicate blocks from all blocks.
+///
+/// Takes no threshold: hash bucketing has no similarity cut-off to apply. The
+/// near-miss pass (`find_structural_similarities`) is where `--threshold` acts.
 fn find_duplicate_blocks(
     all_blocks: Vec<(String, String, usize, usize, String)>,
-    threshold: f32,
 ) -> Vec<DuplicateBlock> {
-    warn_threshold_has_no_effect(threshold);
-
     let mut hash_groups: HashMap<String, Vec<(String, usize, usize, String)>> = HashMap::new();
 
     // Group by hash
@@ -353,6 +686,25 @@ fn find_duplicate_blocks(
             let lines = locations[0].2 - locations[0].1 + 1;
             let tokens = count_tokens(&locations[0].3);
 
+            // MEASURED, not assumed: a group survives hash bucketing because its
+            // members agree under the detection type's normalisation, and the
+            // fuzzy hash normalises identifiers away — so a group can be either
+            // Type-1 or Type-2 and only its text can say which.
+            let texts: Vec<&str> = locations.iter().map(|(_, _, _, c)| c.as_str()).collect();
+            let (clone_type, similarity) = classify_hash_group(&texts);
+
+            // A gapped bucket (`g` prefix) only earns its place when the members
+            // really do differ in their STATEMENTS. If they agree once
+            // identifiers are normalised away they are a Type-2 group, and the
+            // Type-2 pass — which `gapped` and `all` both run — has already
+            // reported them: keeping this copy listed the same pair of sites
+            // twice (measured on `src/services/complexity`: 10 blocks under
+            // `gapped` against 9 under `fuzzy`, over the identical 278
+            // duplicate lines).
+            if hash.starts_with('g') && clone_type != CloneType::NearMiss {
+                continue;
+            }
+
             let duplicate_locations: Vec<DuplicateLocation> = locations
                 .into_iter()
                 .map(|(file, start, end, content)| {
@@ -375,26 +727,31 @@ fn find_duplicate_blocks(
                 locations: duplicate_locations,
                 lines,
                 tokens,
-                // 1.0 is not a placeholder: the group exists because its members
-                // hashed identically under the detection type's normalisation,
-                // which makes them exact matches at that level. Detection that
-                // reports anything else has to compare blocks that do NOT hash
-                // alike — see `warn_threshold_has_no_effect`.
-                similarity: 1.0,
+                similarity,
+                clone_type,
             });
         }
     }
 
-    // Sort by lines descending.
-    //
-    // DETERMINISM (round-3 sweep): `hash_groups` is a `HashMap`, so the vector
-    // above was built in a per-process random order, and `sort_by_key` is
-    // stable — every block of the same `lines` therefore kept that random
-    // order. `analyze duplicates --format json` on a fixed two-file fixture
-    // produced 5 DIFFERENT md5 sums over 5 runs, with the same 14 block hashes
-    // merely reordered. The (file, start_line, hash) suffix is a total order
-    // over blocks: `locations` is already sorted by (file, start) above, and no
-    // two surviving blocks share a hash.
+    sort_duplicate_blocks(&mut duplicates);
+
+    duplicates
+}
+
+/// Put duplicate blocks in a total order.
+///
+/// DETERMINISM (round-3 sweep): `find_duplicate_blocks` groups in a `HashMap`,
+/// so the vector is built in a per-process random order, and `sort_by_key` is
+/// stable — every block of the same `lines` therefore kept that random order.
+/// `analyze duplicates --format json` on a fixed two-file fixture produced 5
+/// DIFFERENT md5 sums over 5 runs, with the same 14 block hashes merely
+/// reordered. The (file, start_line, hash) suffix is a total order over blocks:
+/// `locations` is sorted by (file, start) before this runs, and no two blocks
+/// share a hash.
+///
+/// Shared with the near-miss pass, whose blocks are appended to the same vector
+/// and must be interleaved in the same fixed order.
+fn sort_duplicate_blocks(duplicates: &mut [DuplicateBlock]) {
     duplicates.sort_by(|a, b| {
         b.lines
             .cmp(&a.lines)
@@ -410,8 +767,6 @@ fn find_duplicate_blocks(
             })
             .then_with(|| a.hash.cmp(&b.hash))
     });
-
-    duplicates
 }
 
 /// Check if file should be processed.
@@ -518,7 +873,11 @@ mod include_exclude_pattern_tests {
             &Some("path_validator".to_string()),
             &None
         ));
-        assert!(!should_process_file(path, &Some("tests".to_string()), &None));
+        assert!(!should_process_file(
+            path,
+            &Some("tests".to_string()),
+            &None
+        ));
         assert!(!should_process_file(path, &None, &Some(".rs".to_string())));
     }
 }
@@ -563,7 +922,7 @@ fn gamma(arg: usize) -> usize {
         let blocks = blocks_for(DuplicateType::Renamed);
         assert!(!blocks.is_empty(), "renamed mode must extract blocks");
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert!(
             duplicates.iter().any(|d| d.locations.len() >= 3),
             "three renamed copies of one body are one duplicate group, got {duplicates:?}"
@@ -575,7 +934,7 @@ fn gamma(arg: usize) -> usize {
     #[test]
     fn gapped_and_fuzzy_find_the_renamed_copies_too() {
         for kind in [DuplicateType::Gapped, DuplicateType::Fuzzy] {
-            let duplicates = find_duplicate_blocks(blocks_for(kind.clone()), 0.8);
+            let duplicates = find_duplicate_blocks(blocks_for(kind.clone()));
             assert!(
                 duplicates.iter().any(|d| d.locations.len() >= 3),
                 "{kind:?} must report the renamed clones"
@@ -587,7 +946,7 @@ fn gamma(arg: usize) -> usize {
     /// duplicates, and that zero IS a measurement.
     #[test]
     fn exact_mode_does_not_claim_renamed_copies() {
-        let duplicates = find_duplicate_blocks(blocks_for(DuplicateType::Exact), 0.8);
+        let duplicates = find_duplicate_blocks(blocks_for(DuplicateType::Exact));
         assert!(duplicates.iter().all(|d| d.locations.len() < 3));
     }
 
@@ -607,17 +966,44 @@ fn gamma(arg: usize) -> usize {
 mod threshold_tests {
     use super::*;
 
+    use crate::cli::DuplicateType;
+
     /// `--threshold` was bound as `_threshold` and dropped: 0.01, 0.5 and 0.99
     /// printed the same duplication percentage with nothing said about the
     /// number being ignored. Hash bucketing cannot honour a similarity cut-off,
-    /// so a value that cannot act must be reported as inert.
+    /// so under the detection types that only bucket, a value that cannot act
+    /// must still be reported as inert.
     #[test]
     fn a_threshold_that_cannot_act_is_disclosed() {
-        for typed in [0.0_f32, 0.01, 0.5, 0.99, 1.0] {
-            assert!(
-                warn_threshold_has_no_effect(typed),
-                "--threshold {typed} changes nothing and must say so"
-            );
+        for kind in [
+            DuplicateType::Exact,
+            DuplicateType::Renamed,
+            DuplicateType::Semantic,
+        ] {
+            for typed in [0.0_f32, 0.01, 0.5, 0.99, 1.0] {
+                assert!(
+                    warn_threshold_has_no_effect(typed, &kind),
+                    "--threshold {typed} changes nothing under {kind:?} and must say so"
+                );
+            }
+        }
+    }
+
+    /// Under the near-miss types the threshold IS the similarity cut-off the
+    /// Type-3 search uses, so warning that it was ignored would be false.
+    #[test]
+    fn a_threshold_that_acts_is_not_disclaimed() {
+        for kind in [
+            DuplicateType::Gapped,
+            DuplicateType::Fuzzy,
+            DuplicateType::All,
+        ] {
+            for typed in [0.0_f32, 0.5, 0.99] {
+                assert!(
+                    !warn_threshold_has_no_effect(typed, &kind),
+                    "--threshold {typed} controls the near-miss cut-off under {kind:?}"
+                );
+            }
         }
     }
 
@@ -625,6 +1011,197 @@ mod threshold_tests {
     /// every ordinary run.
     #[test]
     fn the_default_threshold_is_quiet() {
-        assert!(!warn_threshold_has_no_effect(DOCUMENTED_THRESHOLD_DEFAULT));
+        assert!(!warn_threshold_has_no_effect(
+            DOCUMENTED_THRESHOLD_DEFAULT,
+            &DuplicateType::Exact
+        ));
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod gapped_clone_tests {
+    //! #935: `--detection-type gapped` and `--detection-type renamed` ran the
+    //! SAME extractor, so the mode that promises tolerance for added or removed
+    //! statements matched nothing an exact identifier-normalised hash would not
+    //! already match. Two declared modes executing identical code is a flag that
+    //! does not do what its help text says.
+
+    use super::*;
+    use crate::cli::DuplicateType;
+    use std::path::Path;
+
+    /// Two copies of one body. `beta` renames every identifier AND inserts a
+    /// straight-line statement (`let scale = 2;`), which is the textbook Type-3
+    /// (gapped) clone: same shape, different statements.
+    const GAPPED_SOURCE: &str = "\
+fn alpha(items: &[u32]) -> u32 {
+    let mut total = 0;
+    for item in items {
+        if *item > 10 {
+            total += item;
+        } else {
+            total -= item;
+        }
+    }
+    total
+}
+fn beta(values: &[u32]) -> u32 {
+    let mut acc = 0;
+    let scale = 2;
+    for value in values {
+        if *value > 10 {
+            acc += value;
+        } else {
+            acc -= value;
+        }
+    }
+    acc
+}
+";
+
+    fn blocks_for(kind: DuplicateType) -> Vec<(String, String, usize, usize, String)> {
+        let lines: Vec<&str> = GAPPED_SOURCE.lines().collect();
+        extract_blocks(&lines, Path::new("dup.rs"), 5, 1000, kind)
+    }
+
+    /// THE #935 REGRESSION. On the old code `gapped` and `renamed` produced
+    /// byte-identical block lists, so this assertion could not hold for any
+    /// input whatsoever.
+    #[test]
+    fn gapped_extracts_something_renamed_does_not() {
+        let renamed: Vec<String> = blocks_for(DuplicateType::Renamed)
+            .into_iter()
+            .map(|(hash, ..)| hash)
+            .collect();
+        let gapped: Vec<String> = blocks_for(DuplicateType::Gapped)
+            .into_iter()
+            .map(|(hash, ..)| hash)
+            .collect();
+
+        assert!(
+            gapped.iter().any(|h| !renamed.contains(h)),
+            "gapped must run a pass renamed does not; renamed={renamed:?} gapped={gapped:?}"
+        );
+        // Type-3 subsumes Type-2: gapped can never report LESS than renamed.
+        for hash in &renamed {
+            assert!(gapped.contains(hash), "gapped lost the renamed hash {hash}");
+        }
+    }
+
+    /// The distinction is not cosmetic: the inserted statement means the two
+    /// bodies do NOT share a Type-2 hash, so only a gap-tolerant bucket can pair
+    /// them.
+    #[test]
+    fn only_gapped_pairs_bodies_separated_by_an_inserted_statement() {
+        let renamed = find_duplicate_blocks(blocks_for(DuplicateType::Renamed));
+        assert!(
+            renamed.is_empty(),
+            "one inserted statement defeats a Type-2 hash — that zero is a measurement: {renamed:?}"
+        );
+
+        let gapped = find_duplicate_blocks(blocks_for(DuplicateType::Gapped));
+        let paired: Vec<_> = gapped.iter().filter(|d| d.locations.len() >= 2).collect();
+        assert!(
+            !paired.is_empty(),
+            "gapped must pair two copies that differ by an inserted statement: {gapped:?}"
+        );
+        assert_eq!(
+            paired[0].clone_type,
+            CloneType::NearMiss,
+            "statements differ, not merely names, so the class is Type-3"
+        );
+        assert!(
+            paired[0].similarity < 1.0,
+            "a measured near-miss is never reported as identical"
+        );
+    }
+
+    /// A gapped bucket that turns out to be a Type-2 group is NOT a second
+    /// duplicate: the Type-2 pass already reported it. Measured on
+    /// `src/services/complexity`, keeping it listed 10 blocks under `gapped`
+    /// against 9 under `fuzzy` over the identical 278 duplicate lines.
+    #[test]
+    fn gapped_does_not_double_count_a_type_2_group() {
+        // Two copies with renamed identifiers and NO inserted statement: a
+        // Type-2 group, which both the Type-2 and the gapped bucket can form.
+        const TYPE_2_ONLY: &str = "\
+fn alpha(items: &[u32]) -> u32 {
+    let mut total = 0;
+    for item in items {
+        if *item > 10 {
+            total += item;
+        } else {
+            total -= item;
+        }
+    }
+    total
+}
+fn beta(values: &[u32]) -> u32 {
+    let mut acc = 0;
+    for value in values {
+        if *value > 10 {
+            acc += value;
+        } else {
+            acc -= value;
+        }
+    }
+    acc
+}
+";
+        let blocks = |kind: DuplicateType| {
+            let lines: Vec<&str> = TYPE_2_ONLY.lines().collect();
+            find_duplicate_blocks(extract_blocks(&lines, Path::new("dup.rs"), 5, 1000, kind))
+        };
+
+        let renamed = blocks(DuplicateType::Renamed);
+        assert!(!renamed.is_empty(), "fixture must be a Type-2 clone");
+        assert_eq!(
+            renamed.len(),
+            blocks(DuplicateType::Gapped).len(),
+            "gapped must not report a Type-2 group a second time"
+        );
+    }
+
+    /// `all` stays a superset of every sub-mode.
+    #[test]
+    fn all_is_a_superset_of_gapped() {
+        let gapped: Vec<String> = blocks_for(DuplicateType::Gapped)
+            .into_iter()
+            .map(|(hash, ..)| hash)
+            .collect();
+        let all: Vec<String> = blocks_for(DuplicateType::All)
+            .into_iter()
+            .map(|(hash, ..)| hash)
+            .collect();
+        for hash in &gapped {
+            assert!(all.contains(hash), "`all` dropped the gapped hash {hash}");
+        }
+    }
+
+    /// The guards that stop the skeleton from grouping unrelated code: a body
+    /// with no branching has no distinctive shape, and a body with nothing to
+    /// elide is already covered by the Type-2 hash.
+    #[test]
+    fn skeleton_refuses_shapes_that_would_over_group() {
+        // No control flow at all: `fn v ( v ) { }` describes almost every
+        // function ever written.
+        let straight_line = "fn v(x: usize) -> usize {\nlet a = x + 1;\nlet b = a * 2;\nb\n}";
+        assert!(gapped_skeleton(straight_line, 5).is_none());
+
+        // Nothing elided: every line is structural, so the skeleton would be the
+        // Type-2 signature under another name.
+        let all_structural = "for a {\nif b {\n} else {\n}\n}";
+        assert!(gapped_skeleton(all_structural, 5).is_none());
+    }
+
+    /// Whole-word matching: `notify` must not read as `if`.
+    #[test]
+    fn control_flow_detection_is_word_exact() {
+        assert!(carries_control_flow(&normalize_identifiers("if x {")));
+        assert!(!carries_control_flow(&normalize_identifiers("notify(x);")));
+        assert!(!carries_control_flow(&normalize_identifiers(
+            "let iffy = 1;"
+        )));
     }
 }

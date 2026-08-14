@@ -57,6 +57,8 @@ auto_update = true
     fn test_compliance_report_serialization() {
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "2.0.0".to_string(),
             is_compliant: true,
             versions_behind: 10,
@@ -64,6 +66,7 @@ auto_update = true
             breaking_changes: vec![],
             recommendations: vec![],
             timestamp: Utc::now(),
+            history: None,
         };
         let json = serde_json::to_string(&report).expect("JSON serialization failed");
         assert!(json.contains("project_version"));
@@ -80,6 +83,8 @@ auto_update = true
         };
         let report = ComplianceReport {
             project_version: "1.0.0".to_string(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::default(),
             current_version: "1.0.0".to_string(),
             is_compliant: true,
             versions_behind: 0,
@@ -87,6 +92,7 @@ auto_update = true
             breaking_changes: vec![],
             recommendations: vec!["Upgrade soon".to_string()],
             timestamp: Utc::now(),
+            history: None,
         };
         assert_eq!(report.checks.len(), 1);
         assert_eq!(report.recommendations.len(), 1);

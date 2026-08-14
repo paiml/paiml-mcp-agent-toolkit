@@ -296,8 +296,17 @@
         // Delete the temp directory to simulate file not found
         drop(temp_dir);
 
-        // size_on_disk should return 0 for non-existent file, or actual size
-        let _size = backend.size_on_disk().unwrap();
+        // A database that cannot be measured must report that, not a size of 0
+        // bytes — "0" is a legitimate reading for a healthy empty db, so
+        // conflating the two hides the failure. (This test previously accepted
+        // either answer and asserted nothing.)
+        let err = backend
+            .size_on_disk()
+            .expect_err("a deleted database file must not be measured as 0 bytes");
+        assert!(
+            err.to_string().contains("to_delete.db"),
+            "error must identify the database it could not measure, got: {err}"
+        );
     }
 
     #[test]

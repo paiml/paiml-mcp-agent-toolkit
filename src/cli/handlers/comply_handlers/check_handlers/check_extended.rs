@@ -272,6 +272,16 @@ fn append_violation_details(msg: &mut String, report: &DependencyCountReport, li
 }
 
 /// CB-081: Dependency Count Check
+///
+/// Refuses to run when the project has no `Cargo.lock`. The transitive count
+/// comes from `cargo tree`, and cargo RESOLVES the dependency graph to answer
+/// it — which writes a `Cargo.lock` into a tree that had none. That is how
+/// `comply check` came to satisfy its own findings: run 1 reported
+/// "Cargo.lock Present: Fail" and "CB-301: Reproducibility: None — Fail",
+/// wrote the lockfile as a side effect of measuring, and run 2 of the identical
+/// command on byte-identical source reported 0 failures and exit 2 instead of 1
+/// (#939). An auditor may not create the artifact it is auditing, so an
+/// unresolved project is reported as unmeasured, not as healthy.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
     if !project_path.join("Cargo.toml").exists() {
@@ -279,6 +289,16 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
             name: "CB-081: Dependency Health".into(),
             status: CheckStatus::Skip,
             message: "Not a Rust project (no Cargo.toml)".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !project_path.join("Cargo.lock").exists() {
+        return ComplianceCheck {
+            name: "CB-081: Dependency Health".into(),
+            status: CheckStatus::Skip,
+            message: "Not measured: no Cargo.lock, and resolving the dependency graph would \
+                      write one into the audited project - run 'cargo generate-lockfile' first"
+                .into(),
             severity: Severity::Info,
         };
     }
@@ -313,6 +333,65 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
             message: msg,
             severity: Severity::Error,
         }
+    }
+}
+
+/// CB-081-F: a workspace member pulled from crates.io by a sibling.
+///
+/// Split out of CB-081's duplicate COUNT because the remedy is different and
+/// unconditional. CB-081-B reports every crate resolving to more than one
+/// version as one undifferentiated list, and that list is dominated by
+/// third-party major conflicts a project often cannot fix — so the subset it
+/// can always fix is invisible inside it.
+///
+/// paiml/aprender (78 crates) resolved `trueno` at 0.16, 0.16.5 and the in-tree
+/// 0.63.0 at once — three compilations of the SIMD kernels in one binary —
+/// while `jugar-probar` spanned seven declared versions. `comply check` did see
+/// it: `trueno` sat inside "176 duplicate crates: codespan-reporting, syn,
+/// schemars, …" under "run cargo tree --duplicates". The signal was there and
+/// the severity was not (#989).
+///
+/// Skipped, not passed, on a non-workspace: a single crate has no members, so
+/// there is nothing to measure and nothing to claim.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub(crate) fn check_workspace_member_registry_deps(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-081-F: Workspace Member From Registry";
+    if !project_path.join("Cargo.toml").exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Not a Rust project (no Cargo.toml)".into(),
+            severity: Severity::Info,
+        };
+    }
+    let members = crate::cli::handlers::comply_cb_detect::workspace_member_count(project_path);
+    if members == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Not a workspace: no members to pull from the registry".into(),
+            severity: Severity::Info,
+        };
+    }
+    let found = crate::cli::handlers::comply_cb_detect::detect_workspace_members_from_registry(
+        project_path,
+    );
+    if found.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{members} workspace member(s); every sibling dependency uses a path or \
+                 workspace inheritance"
+            ),
+            severity: Severity::Info,
+        };
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: crate::cli::handlers::comply_cb_detect::format_registry_member_deps(&found),
+        severity: Severity::Error,
     }
 }
 
@@ -351,6 +430,17 @@ pub(crate) fn discover_source_files(
             extensions,
             DEFAULT_EXCLUDE_PATTERNS,
         ));
+    }
+    // #986: the project's own excludes apply HERE, not at one call site.
+    // `discover_source_files` has three callers and all three are file health
+    // — the CB-040 check, `--include-project` cross-stack health, and the
+    // ratchet baseline. Only the first honoured the project's configured
+    // excludes, so the same generated file was excluded from the check that
+    // fails the build and included in the baseline the check ratchets against.
+    // One rule, one place.
+    let configured = load_file_health_excludes(project_path);
+    if !configured.is_empty() {
+        files.retain(|f| !matches_exclude_pattern(f, &configured));
     }
     Ok(files)
 }
@@ -428,7 +518,18 @@ fn load_file_health_excludes_from_gates(project_path: &Path) -> Vec<String> {
         Ok(t) => t,
         Err(_) => return Vec::new(),
     };
-    table
+    // Read the general exclude keys as well as the File-Health-specific one.
+    //
+    // #986: a project that had configured `.pmat-gates.toml [exclude] paths`
+    // — the key `quality_gate_config.rs::extract_excludes_from_table` honours —
+    // found File Health reporting CRITICAL on generated files it had already
+    // excluded. Both readers parse the SAME file; they simply looked at
+    // different keys, so the config was honoured or ignored depending on which
+    // check you happened to run. One file, one meaning.
+    //
+    // Union, never replace: `[file_health] exclude` stays authoritative for
+    // anyone already using it, and the general keys now apply too.
+    let mut out: Vec<String> = table
         .get("file_health")
         .and_then(|fh| fh.get("exclude"))
         .and_then(|v| v.as_array())
@@ -437,7 +538,79 @@ fn load_file_health_excludes_from_gates(project_path: &Path) -> Vec<String> {
                 .filter_map(|v| v.as_str().map(String::from))
                 .collect()
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let general = table
+        .get("exclude")
+        .and_then(|t| t.get("paths"))
+        .and_then(|v| v.as_array())
+        .or_else(|| table.get("exclude_paths").and_then(|v| v.as_array()))
+        .or_else(|| {
+            table
+                .get("quality-gates")
+                .and_then(|t| t.get("exclude"))
+                .and_then(|v| v.as_array())
+        });
+    if let Some(arr) = general {
+        for pat in arr.iter().filter_map(|v| v.as_str()) {
+            if !out.iter().any(|p| p == pat) {
+                out.push(pat.to_string());
+            }
+        }
+    }
+    warn_on_unread_exclude_keys(&table, &toml_path);
+    out
+}
+
+/// Every recognised place an exclude list may live in `.pmat-gates.toml`.
+const GATES_EXCLUDE_KEYS: [&str; 4] = [
+    "[exclude] paths",
+    "exclude_paths",
+    "[quality-gates] exclude",
+    "[file_health] exclude",
+];
+
+/// Say so when a table that exists only to hold excludes holds none we read.
+///
+/// #986, second half: a project wrote
+///
+/// ```toml
+/// [exclude]
+/// patterns = ["…"]
+/// ```
+///
+/// `patterns` is not one of the keys any reader looks at. The file parsed, the
+/// run was green, and three exclusions did nothing for as long as the file had
+/// existed — configuration absent, rendered as configuration honoured. Nothing
+/// in the tree could tell the author, because a key nobody reads is
+/// indistinguishable from a key that matched no file. It is distinguishable at
+/// the point of reading, so that is where it is now said.
+fn warn_on_unread_exclude_keys(table: &toml::Table, toml_path: &Path) {
+    let mut unread: Vec<String> = Vec::new();
+    if let Some(t) = table.get("exclude").and_then(toml::Value::as_table) {
+        for key in t.keys() {
+            if key != "paths" {
+                unread.push(format!("[exclude] {key}"));
+            }
+        }
+    }
+    if let Some(t) = table.get("file_health").and_then(toml::Value::as_table) {
+        for key in t.keys() {
+            if key != "exclude" {
+                unread.push(format!("[file_health] {key}"));
+            }
+        }
+    }
+    if unread.is_empty() {
+        return;
+    }
+    eprintln!(
+        "warning: {}: {} is not read by any pmat check and has no effect. \
+         Exclusions are read from: {}.",
+        toml_path.display(),
+        unread.join(", "),
+        GATES_EXCLUDE_KEYS.join(", ")
+    );
 }
 
 /// Check if a file path matches any exclude pattern (glob-style)
@@ -515,15 +688,13 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         };
     }
-    // GH-292: Read exclude patterns from .pmat.yaml
-    let excludes = load_file_health_excludes(project_path);
+    // Excludes are applied by `discover_source_files` (#986) — one place, so
+    // the check, the cross-stack report and the ratchet baseline see the same
+    // file set. Filtering again here would just be a second implementation of
+    // the same rule.
     let mut metrics: Vec<FileHealthMetrics> = Vec::new();
     let (mut critical_count, mut problem_count, mut over_500_count) = (0, 0, 0);
     for file_path in &files {
-        // Skip files matching exclude patterns
-        if matches_exclude_pattern(file_path, &excludes) {
-            continue;
-        }
         let content = match std::fs::read_to_string(file_path) {
             Ok(c) => c,
             Err(_) => continue,
@@ -947,5 +1118,59 @@ mod check_extended_tests {
         assert!(matches!(check.status, CheckStatus::Pass));
         assert_eq!(check.severity, Severity::Info);
         assert!(check.message.contains("all files <500 lines"));
+    }
+
+    /// #939: CB-081 measured the transitive dependency graph with `cargo tree`,
+    /// and cargo WRITES `Cargo.lock` to answer. So `comply check` created the
+    /// very file its own "Cargo.lock Present" check was about to look for: run
+    /// 1 said Fail, run 2 of the identical command said Pass. Measuring must
+    /// not create the evidence.
+    #[test]
+    fn cb081_does_not_create_a_lockfile_in_the_audited_project() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"idem\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+        )
+        .expect("write manifest");
+        std::fs::write(dir.path().join("src/lib.rs"), "//! x\n").expect("write lib");
+
+        let check = check_dependency_count(dir.path());
+
+        assert!(
+            !dir.path().join("Cargo.lock").exists(),
+            "comply check must not write Cargo.lock into the project it audits"
+        );
+        assert!(
+            !dir.path().join(".pmat").exists(),
+            "comply check must not write .pmat/ into the project it audits"
+        );
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(
+            check.message.contains("Not measured"),
+            "an unresolved project is unmeasured, not healthy: {}",
+            check.message
+        );
+    }
+
+    /// The measurement itself is unchanged when the project HAS resolved its
+    /// dependencies: a lockfile present means CB-081 runs as before.
+    #[test]
+    fn cb081_still_scores_a_project_that_has_a_lockfile() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"idem\"\nversion = \"0.1.0\"\n\n[dependencies]\n",
+        )
+        .expect("write manifest");
+        std::fs::write(
+            dir.path().join("Cargo.lock"),
+            "# This file is automatically @generated by Cargo.\nversion = 4\n",
+        )
+        .expect("write lock");
+
+        let check = check_dependency_count(dir.path());
+        assert_ne!(check.status, CheckStatus::Skip, "{}", check.message);
     }
 }

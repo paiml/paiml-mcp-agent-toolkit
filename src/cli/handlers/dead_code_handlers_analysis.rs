@@ -13,12 +13,36 @@
 struct DeadCodeAnalysisOutcome {
     report: crate::models::dead_code::DeadCodeResult,
     project_dead_percentage: Option<f32>,
+    scope: DeadCodeReportScope,
 }
 
-/// Run dead code analysis with include/exclude filters
+/// What the summary renderer needs in order to describe its own scope, and
+/// which `DeadCodeResult` itself does not carry.
+///
+/// Every field exists because the report made a claim it could not stand
+/// behind: the skipped-file line named "tests, examples and benches" on a scan
+/// that skips only tests, the omission line blamed `--min-dead-lines` for files
+/// `--exclude` had removed, and the percentage was printed unqualified next to a
+/// gate that then refused to measure one.
+#[derive(Clone, Copy, Default)]
+struct DeadCodeReportScope {
+    /// Dead-code percentage over every line the analyzer walked, `None` when it
+    /// cannot measure one. The summary's own percentage covers only the files it
+    /// LISTS, so unqualified it read as a project figure.
+    project_dead_percentage: Option<f32>,
+    /// What the `total_files - analyzed_files` difference is, in the analyzer's
+    /// own terms. `None` when the analyzer did not say.
+    skipped_kind: Option<&'static str>,
+    /// True when `--include`/`--exclude` removed files from the reported list.
+    /// They filter the REPORT, not the scan.
+    list_filtered: bool,
+}
+
+/// Run dead code analysis with include/exclude filters, inside `budget`.
 async fn run_dead_code_analysis_with_filters(
     path: &Path,
     filters: DeadCodeAnalysisFilters,
+    budget: std::time::Duration,
 ) -> Result<DeadCodeAnalysisOutcome> {
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::utils::file_filter::FileFilter;
@@ -29,7 +53,8 @@ async fn run_dead_code_analysis_with_filters(
 
     // For non-Rust projects, use the multi-language analyzer
     if detection.language != "rust" {
-        return run_multi_language_dead_code(path, &filters, &detection.language);
+        return run_multi_language_dead_code_within(path, filters, detection.language, budget)
+            .await;
     }
 
     // Create file filter
@@ -43,7 +68,11 @@ async fn run_dead_code_analysis_with_filters(
             .with_max_depth(filters.max_depth)
     } else {
         CargoDeadCodeAnalyzer::new(path).with_max_depth(filters.max_depth)
-    };
+    }
+    // `--timeout`, enforced by killing the `cargo check` child. Without this the
+    // analyzer used its own hardcoded 90s, which both ignored a smaller
+    // `--timeout` and silently capped a larger one.
+    .with_timeout(budget);
 
     // Run cargo-based analysis for accurate results
     let accurate_report = cargo_analyzer.analyze().await?;
@@ -61,8 +90,23 @@ async fn run_dead_code_analysis_with_filters(
     // count that heads the emitted list: `--min-dead-lines` (default 10) and
     // `--top-files` cut that list down, and the summary used to keep reporting
     // the pre-filter number — 26 files claimed above a 4-entry array.
-    let files_with_dead_code_found = accurate_report.files_with_dead_code.len();
+    // Files with at least one UNUSED item. Since `--include-unreachable` was
+    // wired up, `files_with_dead_code` can also hold files whose only finding is
+    // an unreachable statement; counting those here would change the default
+    // report's headline on any tree containing unreachable code.
+    let files_with_dead_code_found = accurate_report
+        .files_with_dead_code
+        .iter()
+        .filter(|f| !f.dead_items.is_empty())
+        .count();
     let project_total_lines = accurate_report.total_lines;
+    // Every .rs file in the project, against the subset actually scanned. A
+    // cache entry written before `project_files` existed deserialises it as 0,
+    // so fall back to the scanned count rather than claim a project smaller
+    // than the scan.
+    let project_files = accurate_report
+        .project_files
+        .max(accurate_report.total_files);
     // Measured over every line the analyzer walked, before any filter. This is
     // the only figure `--fail-on-violation` may compare against; the summary's
     // is scoped to the list that survived `--top-files`/`--min-dead-lines`.
@@ -71,8 +115,14 @@ async fn run_dead_code_analysis_with_filters(
     let mut analysis_result =
         create_dead_code_ranking_result(accurate_report, filters.min_dead_lines, config);
 
-    // Apply file filter to results if filters are active
-    if filter.has_filters() {
+    // Apply file filter to results if filters are active.
+    //
+    // This filters the REPORTED LIST, not the scan: `analyzed_files` and the
+    // project-wide percentage still cover every file cargo walked. The report
+    // says so rather than letting `--include 'examples/**'` on a two-file crate
+    // print "Files analyzed: 2" as though the filter had narrowed the scan.
+    let list_filtered = filter.has_filters();
+    if list_filtered {
         analysis_result.ranked_files.retain(|file| {
             let path = std::path::Path::new(&file.path);
             filter.should_include(path)
@@ -101,12 +151,25 @@ async fn run_dead_code_analysis_with_filters(
         report: crate::models::dead_code::DeadCodeResult {
             summary: analysis_result.summary.clone(),
             files: analysis_result.ranked_files,
-            total_files: analysis_result.summary.total_files_analyzed,
+            // `total_files` is the project; `analyzed_files` is what was read.
+            // They differ whenever a tree was excluded, which is what makes the
+            // narrowing visible to a reader -- and to a CI gate -- instead of
+            // the report reading as a clean bill of health over everything.
+            total_files: project_files,
             analyzed_files: analysis_result.summary.total_files_analyzed,
             files_with_dead_code_found,
             files_truncated,
         },
         project_dead_percentage,
+        scope: DeadCodeReportScope {
+            project_dead_percentage,
+            // Only the test tree is out of scope: `examples/` and `benches/`
+            // are scanned with or without `--include-tests` (see
+            // `CargoDeadCodeAnalyzer::should_analyze`). The line used to name
+            // all three, directly above a Top Files list made of `examples/`.
+            skipped_kind: Some("test code; --include-tests scans it too"),
+            list_filtered,
+        },
     })
 }
 
@@ -136,6 +199,41 @@ fn resummarize_from_listed_files(
     };
 }
 
+/// Run the multi-language analyzer inside `budget`.
+///
+/// `analyze_dead_code_multi_language` is synchronous and holds its thread for
+/// the whole scan, so a `tokio::time::timeout` wrapped around it directly is
+/// exactly the non-enforcement `--timeout` already had: the timer cannot fire
+/// while the future never yields. Running it on the blocking pool gives the
+/// timer something to fire against, and `--timeout` then reports the same
+/// message on both analyzers.
+///
+/// Caveat, stated rather than hidden: there is no external process to kill
+/// here, so the blocking task keeps running after the budget is spent. It dies
+/// with the process, which exits immediately on the error this returns.
+async fn run_multi_language_dead_code_within(
+    path: &Path,
+    filters: DeadCodeAnalysisFilters,
+    language: String,
+    budget: std::time::Duration,
+) -> Result<DeadCodeAnalysisOutcome> {
+    let owned_path = path.to_path_buf();
+    let task = tokio::task::spawn_blocking(move || {
+        run_multi_language_dead_code(&owned_path, &filters, &language)
+    });
+
+    match tokio::time::timeout(budget, task).await {
+        Ok(joined) => {
+            use anyhow::Context;
+            joined.context("multi-language dead code analysis panicked")?
+        }
+        Err(_) => anyhow::bail!(
+            "Dead code analysis timed out after {} seconds",
+            budget.as_secs()
+        ),
+    }
+}
+
 /// Run multi-language dead code analysis for non-Rust projects
 fn run_multi_language_dead_code(
     path: &Path,
@@ -147,7 +245,7 @@ fn run_multi_language_dead_code(
     };
     use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
 
-    eprintln!("🌐 Using multi-language analyzer for {language}");
+    crate::status_eprintln!("🌐 Using multi-language analyzer for {language}");
 
     let ml_result = analyze_dead_code_multi_language(path)?;
 
@@ -219,7 +317,21 @@ fn run_multi_language_dead_code(
 
     // from_files() derives every figure from the files it is given, so the
     // summary always agrees with the list that follows it.
-    let summary = DeadCodeSummary::from_files(&files);
+    let mut summary = DeadCodeSummary::from_files(&files);
+    // ...but `total_files_analyzed` is not a figure about the LISTED files: it
+    // is how many files were read. `from_files` had it counting the files with
+    // dead code, so one run of `analyze dead-code` reported three different
+    // numbers for it -- stdout "Files analyzed: 2" (from `analyzed_files`),
+    // stderr "0 files analyzed" and JSON `summary.total_files_analyzed: 0`
+    // (both from here).
+    summary.total_files_analyzed = ml_result.total_files;
+
+    // Source files under `path` in a language this run did not read. The
+    // multi-language analyzer picks ONE language per project, so on a 19-file /
+    // 12-language tree it silently dropped 17 files and still headed the report
+    // "Files analyzed: 2" with no skip line at all.
+    let source_files = count_source_files(path);
+    let total_files = source_files.max(ml_result.total_files);
 
     Ok(DeadCodeAnalysisOutcome {
         report: crate::models::dead_code::DeadCodeResult {
@@ -229,7 +341,7 @@ fn run_multi_language_dead_code(
             // fixture with 4 functions print "Files Analyzed | 4" directly above
             // a summary that correctly said 2, and `.max(1)` invented one file
             // for an empty project.
-            total_files: ml_result.total_files,
+            total_files,
             analyzed_files: ml_result.total_files,
             files,
             files_with_dead_code_found,
@@ -240,7 +352,43 @@ fn run_multi_language_dead_code(
         // ratio to report. `--fail-on-violation` refuses rather than comparing
         // the list-scoped figure and calling the result a pass.
         project_dead_percentage: None,
+        scope: DeadCodeReportScope {
+            project_dead_percentage: None,
+            skipped_kind: Some(
+                "source in languages this run did not read; the multi-language \
+                 analyzer reads one language per project",
+            ),
+            // `--include`/`--exclude` are not wired into this path at all, so
+            // nothing here was list-filtered.
+            list_filtered: false,
+        },
     })
+}
+
+/// Source files under `root`, by extension.
+///
+/// The multi-language analyzer reports only the files of the ONE language it
+/// chose, so its count cannot say how much of the tree went unread. This is the
+/// denominator that makes the gap visible.
+fn count_source_files(root: &Path) -> usize {
+    const SOURCE_EXTENSIONS: &[&str] = &[
+        "rs", "ruchy", "rh", "c", "h", "cpp", "cc", "cxx", "hpp", "hxx", "py", "pyi", "lua", "go",
+        "java", "kt", "kts", "scala", "swift", "cs", "rb", "php", "js", "jsx", "mjs", "cjs", "ts",
+        "tsx", "sh", "bash", "zig", "zsh", "pl", "pm", "ex", "exs", "erl", "hs", "ml", "dart",
+        "vim", "r", "jl",
+    ];
+
+    walkdir::WalkDir::new(root)
+        .into_iter()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| SOURCE_EXTENSIONS.contains(&ext))
+        })
+        .count()
 }
 
 /// Physical line count for a file discovered by the multi-language analyzer.
@@ -273,6 +421,7 @@ fn create_dead_code_ranking_result(
         ranked_files: convert_cargo_files_to_metrics(
             accurate_report.files_with_dead_code.clone(),
             min_dead_lines,
+            config.include_unreachable,
         ),
         summary: create_dead_code_summary(&accurate_report),
         analysis_timestamp: Utc::now(),
@@ -281,9 +430,15 @@ fn create_dead_code_ranking_result(
 }
 
 /// Convert cargo dead code files to metrics format
+///
+/// `include_unreachable` is the ONLY thing that lets an unreachable finding into
+/// the report: with it off the rows are exactly what they were before the
+/// analyzer started collecting rustc's `unreachable_code` lint, down to the
+/// `unreachable_blocks: 0`.
 fn convert_cargo_files_to_metrics(
     cargo_files: Vec<crate::services::cargo_dead_code_analyzer::FileDeadCode>,
     min_dead_lines: usize,
+    include_unreachable: bool,
 ) -> Vec<crate::models::dead_code::FileDeadCodeMetrics> {
     use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
 
@@ -315,8 +470,9 @@ fn convert_cargo_files_to_metrics(
                 // Same estimator as the project total (5 lines per fn/method,
                 // 3 per struct/enum, 2 otherwise). It used to be
                 // `dead_items.len() * 4`, which disagreed with the summary.
-                dead_lines: crate::services::cargo_dead_code_analyzer::estimated_dead_lines(
+                dead_lines: crate::services::cargo_dead_code_analyzer::estimated_dead_lines_bounded(
                     &file.dead_items,
+                    file.total_lines,
                 ),
                 // MEASURED (was the literal `100` for every file, which
                 // contradicted the dead_percentage printed beside it: a
@@ -329,13 +485,48 @@ fn convert_cargo_files_to_metrics(
                 dead_functions: dead_functions_count,
                 dead_classes: dead_classes_count,
                 dead_modules: dead_modules_count,
-                unreachable_blocks: 0,
+                unreachable_blocks: if include_unreachable {
+                    file.unreachable_items.len()
+                } else {
+                    0
+                },
                 dead_score: file.file_dead_percentage as f32,
                 confidence: ConfidenceLevel::High, // Cargo-based detection is high confidence
-                items: dead_items_to_report_items(&file.dead_items),
+                items: {
+                    let mut items = dead_items_to_report_items(&file.dead_items);
+                    if include_unreachable {
+                        items.extend(unreachable_items_to_report_items(&file.unreachable_items));
+                    }
+                    items
+                },
             }
         })
-        .filter(|f| f.dead_lines >= min_dead_lines)
+        // `--min-dead-lines` gates on UNUSED lines, and an unreachable
+        // statement contributes none — so an unreachable-only file scored 0 and
+        // was cut here, which is one of the two reasons the flag showed nothing.
+        // With the flag on, a file that has unreachable blocks to report is
+        // reported.
+        .filter(|f| f.dead_lines >= min_dead_lines || f.unreachable_blocks > 0)
+        .collect()
+}
+
+/// Carry rustc's `unreachable_code` findings into the report.
+///
+/// `DeadCodeType::UnreachableCode` already existed and already had a summary
+/// counter (`unreachable_blocks`); nothing on the CLI path ever produced one.
+fn unreachable_items_to_report_items(
+    items: &[crate::services::cargo_dead_code_analyzer::DeadItem],
+) -> Vec<crate::models::dead_code::DeadCodeItem> {
+    use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
+
+    items
+        .iter()
+        .map(|item| DeadCodeItem {
+            item_type: DeadCodeType::UnreachableCode,
+            name: item.name.clone(),
+            line: u32::try_from(item.line).unwrap_or(u32::MAX),
+            reason: item.message.clone(),
+        })
         .collect()
 }
 
@@ -353,12 +544,30 @@ fn dead_items_to_report_items(
     items
         .iter()
         .map(|item| DeadCodeItem {
-            item_type: match item.kind {
+            // EXHAUSTIVE on purpose: no `_` arm. The wildcard here is what typed
+            // every suppressed function as `"variable"` in a record whose own
+            // `reason` said `fn`, and it would silently swallow any kind added
+            // later the same way.
+            //
+            // #928: `Module` and `Other` used to land on `Variable` because the
+            // target enum had no way to say either one — a dead module was
+            // published as `"item_type": "variable"` beside a `reason` reading
+            // "module `x` is never used", and `union `U` is never used` (which
+            // the parser classifies as `Other`) was published the same way.
+            // Both now map to the variant that names them.
+            item_type: match &item.kind {
                 DeadCodeKind::Function | DeadCodeKind::Method => DeadCodeType::Function,
-                DeadCodeKind::Struct | DeadCodeKind::Enum | DeadCodeKind::Trait => {
-                    DeadCodeType::Class
-                }
-                _ => DeadCodeType::Variable,
+                DeadCodeKind::Struct
+                | DeadCodeKind::Enum
+                | DeadCodeKind::Trait
+                | DeadCodeKind::TypeAlias => DeadCodeType::Class,
+                DeadCodeKind::Variant
+                | DeadCodeKind::Field
+                | DeadCodeKind::Constant
+                | DeadCodeKind::Static => DeadCodeType::Variable,
+                DeadCodeKind::Module => DeadCodeType::Module,
+                DeadCodeKind::UnreachableCode => DeadCodeType::UnreachableCode,
+                DeadCodeKind::Other(_) => DeadCodeType::Other,
             },
             name: item.name.clone(),
             line: u32::try_from(item.line).unwrap_or(u32::MAX),
@@ -396,7 +605,18 @@ fn create_dead_code_summary(
         dead_functions: get_dead_count_by_types(accurate_report, &["function", "method"]),
         dead_classes: get_dead_count_by_types(accurate_report, &["struct", "enum"]),
         dead_modules: get_dead_count_by_types(accurate_report, &["module"]),
-        unreachable_blocks: 0, // Not tracked by cargo
+        // Counted, not assumed. The literal `0` here carried the comment "Not
+        // tracked by cargo", which stopped being true when the analyzer started
+        // collecting rustc's `unreachable_code` lint — and a comment is not
+        // something a JSON consumer can read anyway. Like every other figure in
+        // this summary it is recomputed from the listed files by
+        // `resummarize_from_listed_files`, which is what honours
+        // `--include-unreachable`.
+        unreachable_blocks: accurate_report
+            .files_with_dead_code
+            .iter()
+            .map(|f| f.unreachable_items.len())
+            .sum(),
     }
 }
 

@@ -159,29 +159,30 @@ mod tests {
             prop_assert!(result.is_ok());
         }
 
-        fn ast_validation_never_panics(
-            node_count in 0usize..100
+        /// Replaces `ast_validation_never_panics`: `validate_ast` was a constant
+        /// `Ok(())` over an `AstDag` the WASM parsers never populate, so it
+        /// could not panic and could not report. Text validation is the check
+        /// `--security` reaches now, and it must be total over arbitrary lines.
+        ///
+        /// NOTE the `#[test]`: proptest 1.x only emits a test for functions
+        /// inside `proptest! {}` that carry it, and no other function in this
+        /// file has one — `cargo test -- security_property_tests --list` reports
+        /// 2 tests for a file containing 9. The other seven have never run.
+        #[test]
+        fn text_validation_is_total_over_lines(
+            line_count in 0usize..50
         ) {
-            use crate::models::unified_ast::{AstDag, UnifiedAstNode, AstKind, Language, FunctionKind};
-
             let validator = WasmSecurityValidator::new();
-            let mut dag = AstDag::new();
+            let text: String = (0..line_count)
+                .map(|i| format!("(memory {i})\n"))
+                .collect();
 
-            // Add some nodes
-            for _i in 0..node_count {
-                let node = UnifiedAstNode::new(
-                    AstKind::Function(FunctionKind::Regular),
-                    Language::WebAssembly,
-                );
-                dag.add_node(node);
-            }
+            let validation = validator.validate_text(&text).unwrap();
 
-            // Should not panic
-            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                validator.validate_ast(&dag)
-            }));
-
-            prop_assert!(result.is_ok());
+            // Every `(memory N)` here has no maximum, so each line is one
+            // unbounded-growth finding — no more, no less.
+            prop_assert_eq!(validation.issues.len(), line_count);
+            prop_assert_eq!(validation.passed, line_count == 0);
         }
     }
 

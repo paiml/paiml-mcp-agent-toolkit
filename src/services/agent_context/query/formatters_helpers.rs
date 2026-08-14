@@ -40,30 +40,40 @@ fn format_coverage_diff_md(diff: f32, out: &mut String) {
 
 // --- Coverage metric helpers (colorized text) ---
 
+/// Colour a partial-coverage percentage is rendered in: red < 50%, yellow
+/// < 80%, green otherwise.
+///
+/// Pure, so colour SELECTION stays assertable after colour EMISSION became
+/// conditional — the tests below used to assert `out.contains("\x1b[1;31m")`,
+/// which pinned the unconditional-escape defect rather than the tier rule.
+fn coverage_tier_color(pct: f32) -> Sgr {
+    if pct < 50.0 {
+        BOLD_RED
+    } else if pct < 80.0 {
+        YELLOW
+    } else {
+        GREEN
+    }
+}
+
 fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
     match r.coverage_status.as_str() {
         "uncovered" => {
             out.push_str(&format!(
-                " | \x1b[1;31m🛡️ Uncovered (0/{})\x1b[0m",
+                " | {BOLD_RED}🛡️ Uncovered (0/{}){RESET}",
                 r.lines_total
             ));
         }
         "partial" => {
-            let cov_color = if r.line_coverage_pct < 50.0 {
-                "\x1b[1;31m"
-            } else if r.line_coverage_pct < 80.0 {
-                "\x1b[33m"
-            } else {
-                "\x1b[32m"
-            };
+            let cov_color = coverage_tier_color(r.line_coverage_pct);
             out.push_str(&format!(
-                " | {}🛡️ Cov: {:.0}% ({}/{})\x1b[0m",
+                " | {}🛡️ Cov: {:.0}% ({}/{}){RESET}",
                 cov_color, r.line_coverage_pct, r.lines_covered, r.lines_total
             ));
         }
         "full" => {
             out.push_str(&format!(
-                " | \x1b[32m🛡️ Covered ({} lines)\x1b[0m",
+                " | {GREEN}🛡️ Covered ({} lines){RESET}",
                 r.lines_total
             ));
         }
@@ -71,7 +81,7 @@ fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
     }
     if r.impact_score > 1.0 {
         out.push_str(&format!(
-            " | \x1b[1;33m📈 Impact: {:.1}\x1b[0m",
+            " | {BOLD_YELLOW}📈 Impact: {:.1}{RESET}",
             r.impact_score
         ));
     }
@@ -80,9 +90,9 @@ fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
 
 fn format_coverage_diff_text(diff: f32, out: &mut String) {
     if diff > 0.0 {
-        out.push_str(&format!(" | \x1b[1;32m✅ +{:.1}% cov\x1b[0m", diff));
+        out.push_str(&format!(" | {BOLD_GREEN}✅ +{:.1}% cov{RESET}", diff));
     } else if diff < 0.0 {
-        out.push_str(&format!(" | \x1b[1;31m❌ {:.1}% cov\x1b[0m", diff));
+        out.push_str(&format!(" | {BOLD_RED}❌ {:.1}% cov{RESET}", diff));
     }
 }
 
@@ -114,10 +124,10 @@ fn build_rich_metrics(r: &QueryResult) -> Vec<String> {
     push_churn_metric_rich(r, &mut metrics);
     push_entropy_metric(r, &mut metrics);
     if r.satd_count > 0 {
-        metrics.push(format!("\x1b[1;33m⚠{}\x1b[0m", r.satd_count));
+        metrics.push(format!("{BOLD_YELLOW}⚠{}{RESET}", r.satd_count));
     }
     if r.clone_count > 0 {
-        metrics.push(format!("\x1b[1;35m📋{}\x1b[0m", r.clone_count));
+        metrics.push(format!("{BOLD_MAGENTA}📋{}{RESET}", r.clone_count));
     }
     push_coverage_metric_rich(r, &mut metrics);
     push_fault_metric_rich(r, &mut metrics);
@@ -130,7 +140,7 @@ fn push_pagerank_metric(r: &QueryResult, metrics: &mut Vec<String>) {
     }
     let pr_scaled = r.pagerank * 10000.0;
     if pr_scaled >= 10.0 {
-        metrics.push(format!("\x1b[1;36m★{:.0}\x1b[0m", pr_scaled));
+        metrics.push(format!("{BOLD_CYAN}★{:.0}{RESET}", pr_scaled));
     } else if pr_scaled >= 1.0 {
         metrics.push(format!("★{:.1}", pr_scaled));
     }
@@ -138,7 +148,7 @@ fn push_pagerank_metric(r: &QueryResult, metrics: &mut Vec<String>) {
 
 fn push_indegree_metric(r: &QueryResult, metrics: &mut Vec<String>) {
     if r.in_degree >= 5 {
-        metrics.push(format!("\x1b[1;32m↓{}\x1b[0m", r.in_degree));
+        metrics.push(format!("{BOLD_GREEN}↓{}{RESET}", r.in_degree));
     } else if r.in_degree > 0 {
         metrics.push(format!("↓{}", r.in_degree));
     }
@@ -150,7 +160,7 @@ fn push_churn_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
     }
     if r.churn_score > 0.7 {
         metrics.push(format!(
-            "\x1b[1;31m🔥{}c {:.0}%\x1b[0m",
+            "{BOLD_RED}🔥{}c {:.0}%{RESET}",
             r.commit_count,
             r.churn_score * 100.0
         ));
@@ -166,10 +176,7 @@ fn push_entropy_metric(r: &QueryResult, metrics: &mut Vec<String>) {
         return;
     }
     if r.pattern_diversity < 0.3 {
-        metrics.push(format!(
-            "\x1b[2m🔄{:.0}%\x1b[0m",
-            r.pattern_diversity * 100.0
-        ));
+        metrics.push(format!("{DIM}🔄{:.0}%{RESET}", r.pattern_diversity * 100.0));
     } else if r.pattern_diversity > 0.8 {
         metrics.push(format!("H:{:.0}%", r.pattern_diversity * 100.0));
     }
@@ -179,38 +186,38 @@ fn push_coverage_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
     match r.coverage_status.as_str() {
         "uncovered" => {
             metrics.push(format!(
-                "\x1b[1;31m\u{1f6e1}\u{fe0f}0/{}\x1b[0m",
+                "{BOLD_RED}\u{1f6e1}\u{fe0f}0/{}{RESET}",
                 r.lines_total
             ));
         }
         "partial" => {
             let fmt = if r.line_coverage_pct < 50.0 {
                 format!(
-                    "\x1b[1;31m\u{1f6e1}\u{fe0f}{:.0}%\x1b[0m",
+                    "{BOLD_RED}\u{1f6e1}\u{fe0f}{:.0}%{RESET}",
                     r.line_coverage_pct
                 )
             } else if r.line_coverage_pct < 80.0 {
                 format!("\u{1f6e1}\u{fe0f}{:.0}%", r.line_coverage_pct)
             } else {
-                format!(
-                    "\x1b[32m\u{1f6e1}\u{fe0f}{:.0}%\x1b[0m",
-                    r.line_coverage_pct
-                )
+                format!("{GREEN}\u{1f6e1}\u{fe0f}{:.0}%{RESET}", r.line_coverage_pct)
             };
             metrics.push(fmt);
         }
         "full" => {
-            metrics.push("\x1b[32m\u{1f6e1}\u{fe0f}100%\x1b[0m".to_string());
+            metrics.push(format!("{GREEN}\u{1f6e1}\u{fe0f}100%{RESET}"));
         }
         _ => {}
     }
     if r.impact_score > 1.0 {
-        metrics.push(format!("\x1b[1;33m\u{1f4c8}{:.1}\x1b[0m", r.impact_score));
+        metrics.push(format!(
+            "{BOLD_YELLOW}\u{1f4c8}{:.1}{RESET}",
+            r.impact_score
+        ));
     }
     if r.coverage_diff > 0.0 {
-        metrics.push(format!("\x1b[1;32m+{:.1}%\x1b[0m", r.coverage_diff));
+        metrics.push(format!("{BOLD_GREEN}+{:.1}%{RESET}", r.coverage_diff));
     } else if r.coverage_diff < 0.0 {
-        metrics.push(format!("\x1b[1;31m{:.1}%\x1b[0m", r.coverage_diff));
+        metrics.push(format!("{BOLD_RED}{:.1}%{RESET}", r.coverage_diff));
     }
 }
 
@@ -223,7 +230,7 @@ fn push_fault_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
         .first()
         .map_or("", |s| s.split(':').next().unwrap_or(s));
     metrics.push(format!(
-        "\x1b[1;91m🐛{}:{}\x1b[0m",
+        "{BRIGHT_RED_BOLD}🐛{}:{}{RESET}",
         r.fault_annotations.len(),
         first
     ));
@@ -264,11 +271,11 @@ fn format_call_graph(r: &QueryResult) -> Option<String> {
 fn format_fault_lines(faults: &[String], output: &mut String) {
     for fault in faults {
         if fault.contains("Boundary") || fault.contains("condition") {
-            output.push_str(&format!("\x1b[1;33m⚠️  {}\x1b[0m\n", fault));
+            output.push_str(&format!("{BOLD_YELLOW}⚠️  {}{RESET}\n", fault));
         } else if fault.contains("Arithmetic") {
-            output.push_str(&format!("\x1b[1;31m⚠️  {}\x1b[0m\n", fault));
+            output.push_str(&format!("{BOLD_RED}⚠️  {}{RESET}\n", fault));
         } else {
-            output.push_str(&format!("\x1b[1;35m⚠️  {}\x1b[0m\n", fault));
+            output.push_str(&format!("{BOLD_MAGENTA}⚠️  {}{RESET}\n", fault));
         }
     }
 }
@@ -279,8 +286,11 @@ fn format_fault_lines(faults: &[String], output: &mut String) {
 /// For literal mode (`is_regex=false`), does case-insensitive substring matching.
 /// For regex mode (`is_regex=true`), uses regex pattern matching.
 fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> String {
-    const HL_START: &str = "\x1b[1;43m"; // Bold + yellow background
-    const HL_END: &str = "\x1b[0m";
+    // Bold + yellow background, gated on `--color`/`NO_COLOR` like everything
+    // else this module prints: these used to be `const &str` raw escapes, which
+    // is exactly how `--color never` leaked out of `pmat query`.
+    let hl_start = BG_YELLOW_BOLD.to_string();
+    let hl_end = RESET.to_string();
 
     if is_regex {
         if let Ok(re) = regex::Regex::new(pattern) {
@@ -288,9 +298,9 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
             let mut last = 0;
             for m in re.find_iter(line) {
                 result.push_str(line.get(last..m.start()).unwrap_or_default());
-                result.push_str(HL_START);
+                result.push_str(&hl_start);
                 result.push_str(m.as_str());
-                result.push_str(HL_END);
+                result.push_str(&hl_end);
                 last = m.end();
             }
             result.push_str(line.get(last..).unwrap_or_default());
@@ -314,16 +324,25 @@ fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> Strin
         {
             let abs_idx = pos + idx;
             result.push_str(line.get(pos..abs_idx).unwrap_or_default());
-            result.push_str(HL_START);
+            result.push_str(&hl_start);
             result.push_str(
                 line.get(abs_idx..abs_idx + pattern.len())
                     .unwrap_or_default(),
             );
-            result.push_str(HL_END);
+            result.push_str(&hl_end);
             pos = abs_idx + pattern.len();
         }
         result.push_str(line.get(pos..).unwrap_or_default());
         result
+    }
+}
+
+/// Numbered, uncoloured source lines — the rendering used when syntect is not
+/// compiled in AND when it is but colour is off.
+fn plain_source_lines(source: &str, start_line: usize, output: &mut String) {
+    for (i, line) in source.lines().enumerate() {
+        let line_num = start_line + i;
+        output.push_str(&format!("{DIM}{:>4}{RESET}\u{2502} {}\n", line_num, line));
     }
 }
 
@@ -340,13 +359,16 @@ fn highlight_source(
             let line_num = start_line + i;
             let highlighted = highlight_matches_in_line(line, pattern, is_regex);
             output.push_str(&format!(
-                "\x1b[2m{:>4}\x1b[0m\u{2502} {}\n",
+                "{DIM}{:>4}{RESET}\u{2502} {}\n",
                 line_num, highlighted
             ));
         }
     } else {
+        // Syntect writes its own 24-bit escapes, which no `--color` rule can
+        // reach from the outside, so the decision is made here: with colour off
+        // the plain fallback runs instead.
         #[cfg(feature = "syntax-highlighting")]
-        {
+        if crate::cli::colors::colors_enabled() {
             // Syntect syntax highlighting mode
             use syntect::easy::HighlightLines;
             use syntect::highlighting::ThemeSet;
@@ -372,16 +394,15 @@ fn highlight_source(
             if !source.ends_with('\n') {
                 output.push('\n');
             }
-            output.push_str("\x1b[0m");
+            output.push_str(&RESET.to_string());
+        } else {
+            plain_source_lines(source, start_line, output);
         }
         #[cfg(not(feature = "syntax-highlighting"))]
         {
             // Plain text fallback when syntect is not available
             let _ = file_path; // Used only by syntax-highlighting feature
-            for (i, line) in source.lines().enumerate() {
-                let line_num = start_line + i;
-                output.push_str(&format!("\x1b[2m{:>4}\x1b[0m\u{2502} {}\n", line_num, line));
-            }
+            plain_source_lines(source, start_line, output);
         }
     }
 }

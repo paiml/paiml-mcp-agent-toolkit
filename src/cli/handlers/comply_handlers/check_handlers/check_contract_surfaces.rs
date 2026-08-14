@@ -629,96 +629,127 @@ pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck
 /// functions use Result<_, JsValue> (not panic) and have doc comments.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
-    // Check if WASM target exists
-    let has_wasm_dep = project_path.join("Cargo.toml").exists()
-        && std::fs::read_to_string(project_path.join("Cargo.toml"))
-            .map(|c| c.contains("wasm-bindgen") || c.contains("wasm_bindgen"))
-            .unwrap_or(false);
-
-    if !has_wasm_dep {
-        return ComplianceCheck {
-            name: "CB-1307: WASM FFI Contracts".into(),
-            status: CheckStatus::Skip,
-            message: "No wasm-bindgen dependency".into(),
-            severity: Severity::Info,
-        };
+    if !declares_wasm_bindgen(project_path) {
+        return wasm_ffi_check(
+            CheckStatus::Skip,
+            Severity::Info,
+            "No wasm-bindgen dependency".to_string(),
+        );
     }
 
+    let counts = tally_wasm_exports(project_path);
+    if counts.total_exports == 0 {
+        return wasm_ffi_check(
+            CheckStatus::Skip,
+            Severity::Info,
+            "No #[wasm_bindgen] exports found".to_string(),
+        );
+    }
+
+    let issues = wasm_export_issues(&counts);
+    if issues.is_empty() {
+        wasm_ffi_check(
+            CheckStatus::Pass,
+            Severity::Info,
+            format!(
+                "{} WASM exports, {} undocumented, 0 unwrap-across-FFI",
+                counts.total_exports, counts.undocumented
+            ),
+        )
+    } else {
+        wasm_ffi_check(
+            CheckStatus::Warn,
+            Severity::Warning,
+            format!(
+                "{} WASM exports: {}",
+                counts.total_exports,
+                issues.join("; ")
+            ),
+        )
+    }
+}
+
+/// Build a CB-1307 result; every return path used to repeat the literal.
+fn wasm_ffi_check(status: CheckStatus, severity: Severity, message: String) -> ComplianceCheck {
+    ComplianceCheck {
+        name: "CB-1307: WASM FFI Contracts".into(),
+        status,
+        message,
+        severity,
+    }
+}
+
+/// True when the project's manifest names wasm-bindgen (either spelling).
+/// An unreadable/absent manifest declares nothing.
+fn declares_wasm_bindgen(project_path: &Path) -> bool {
+    std::fs::read_to_string(project_path.join("Cargo.toml"))
+        .map(|c| c.contains("wasm-bindgen") || c.contains("wasm_bindgen"))
+        .unwrap_or(false)
+}
+
+/// Source of a non-test `.rs` file that mentions `wasm_bindgen`, or `None` for
+/// every file the scan skips.
+fn wasm_source_to_scan(path: &Path) -> Option<String> {
+    if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
+        return None;
+    }
+    if path.to_string_lossy().contains("test") {
+        return None;
+    }
+    let content = std::fs::read_to_string(path).ok()?;
+    content.contains("wasm_bindgen").then_some(content)
+}
+
+/// Sum [`scan_wasm_exports`] over `src/` and `crates/`.
+fn tally_wasm_exports(project_path: &Path) -> WasmExportCounts {
     let src_dir = project_path.join("src");
     let crates_dir = project_path.join("crates");
-    let search_dirs: Vec<&Path> = [src_dir.as_path(), crates_dir.as_path()]
+    let mut totals = WasmExportCounts::default();
+    for search_dir in [src_dir.as_path(), crates_dir.as_path()]
         .into_iter()
         .filter(|d| d.exists())
-        .collect();
-
-    let mut total_exports = 0usize;
-    let mut undocumented = 0usize;
-    let mut unwrap_in_export = 0usize;
-    let mut no_result_return = 0usize;
-
-    for search_dir in &search_dirs {
+    {
         for entry in walkdir::WalkDir::new(search_dir)
             .max_depth(8)
             .into_iter()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
         {
-            let path = entry.path();
-            if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
-                continue;
-            }
-            if path.to_string_lossy().contains("test") {
-                continue;
-            }
-            let Ok(content) = std::fs::read_to_string(path) else {
+            let Some(content) = wasm_source_to_scan(entry.path()) else {
                 continue;
             };
-            if !content.contains("wasm_bindgen") {
-                continue;
-            }
-
             let c = scan_wasm_exports(&content);
-            total_exports += c.total_exports;
-            undocumented += c.undocumented;
-            unwrap_in_export += c.unwrap_in_export;
-            no_result_return += c.no_result_return;
+            totals.total_exports += c.total_exports;
+            totals.undocumented += c.undocumented;
+            totals.unwrap_in_export += c.unwrap_in_export;
+            totals.no_result_return += c.no_result_return;
         }
     }
+    totals
+}
 
-    if total_exports == 0 {
-        return ComplianceCheck {
-            name: "CB-1307: WASM FFI Contracts".into(),
-            status: CheckStatus::Skip,
-            message: "No #[wasm_bindgen] exports found".into(),
-            severity: Severity::Info,
-        };
-    }
-
+/// Contract violations implied by a tally, in report order. Caller guarantees
+/// `total_exports > 0`.
+fn wasm_export_issues(c: &WasmExportCounts) -> Vec<String> {
     let mut issues = Vec::new();
-    if unwrap_in_export > 0 {
-        issues.push(format!("{unwrap_in_export} export(s) use .unwrap() (panic across FFI)"));
+    if c.unwrap_in_export > 0 {
+        issues.push(format!(
+            "{} export(s) use .unwrap() (panic across FFI)",
+            c.unwrap_in_export
+        ));
     }
-    if no_result_return > 0 {
-        issues.push(format!("{no_result_return} constructor(s) don't return Result<_, JsValue>"));
+    if c.no_result_return > 0 {
+        issues.push(format!(
+            "{} constructor(s) don't return Result<_, JsValue>",
+            c.no_result_return
+        ));
     }
-    if undocumented as f64 / total_exports as f64 > 0.5 {
-        issues.push(format!("{undocumented}/{total_exports} exports undocumented"));
+    if c.undocumented as f64 / c.total_exports as f64 > 0.5 {
+        issues.push(format!(
+            "{}/{} exports undocumented",
+            c.undocumented, c.total_exports
+        ));
     }
-
-    if !issues.is_empty() {
-        ComplianceCheck {
-            name: "CB-1307: WASM FFI Contracts".into(),
-            status: CheckStatus::Warn,
-            message: format!("{total_exports} WASM exports: {}", issues.join("; ")),
-            severity: Severity::Warning,
-        }
-    } else {
-        ComplianceCheck {
-            name: "CB-1307: WASM FFI Contracts".into(),
-            status: CheckStatus::Pass,
-            message: format!("{total_exports} WASM exports, {undocumented} undocumented, 0 unwrap-across-FFI"),
-            severity: Severity::Info,
-        }
-    }
+    issues
 }
 
 /// Tally of `#[wasm_bindgen]` export issues found in one source file.
@@ -1163,12 +1194,53 @@ fn check_cargo_contracts(
 
     *checks_run += 1;
 
-    // Contract: edition should be 2021+
-    if !content.contains("edition = \"2021\"")
-        && !content.contains("edition = \"2024\"")
-    {
+    // Contract: edition should be 2021+.
+    //
+    // Parsed, not string-matched. The substring test `content.contains(
+    // "edition = \"2021\"")` reported drift on three manifests that are
+    // perfectly compliant TOML: `edition="2021"` (no spaces — measured, the
+    // check fired), `edition = '2021'` (single quotes), and
+    // `edition.workspace = true` (a workspace member inheriting the edition
+    // from `[workspace.package]`, which is the normal shape in every monorepo).
+    // A gate that reads a manifest must read it the way cargo does.
+    if !cargo_edition_is_modern(&content) {
         issues.push("Cargo.toml: edition is not 2021 or 2024".into());
     }
+}
+
+/// Does this manifest declare (or inherit) edition 2021/2024?
+///
+/// `None` of the accepted shapes is a substring match: the manifest is parsed.
+/// Inheritance (`edition.workspace = true`) is accepted because the value lives
+/// in the workspace root, which this check does not have in hand — flagging it
+/// would be reporting "not 2021" for a manifest whose edition is unknown here.
+fn cargo_edition_is_modern(content: &str) -> bool {
+    let Ok(table) = content.parse::<toml::Table>() else {
+        // Unparseable manifest is a different defect; do not also claim the
+        // edition is wrong on evidence we could not read.
+        return true;
+    };
+    let root = toml::Value::Table(table);
+    for section in ["package", "workspace.package"] {
+        let node = section.split('.').try_fold(&root, |acc, key| acc.get(key));
+        let Some(edition) = node.and_then(|t| t.get("edition")) else {
+            continue;
+        };
+        if let Some(s) = edition.as_str() {
+            if s == "2021" || s == "2024" {
+                return true;
+            }
+        }
+        // `edition = { workspace = true }` / `edition.workspace = true`
+        if edition
+            .get("workspace")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// Extract dependency version from Cargo.toml content.

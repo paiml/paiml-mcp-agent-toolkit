@@ -164,11 +164,15 @@ mod full {
             return Ok(EnvFilter::try_new(custom)?);
         }
 
-        let filter_str = match (cli.trace, cli.debug, cli.verbose) {
-            (true, _, _) => "debug,pmat=trace",
-            (_, true, _) => "warn,pmat=debug",
-            (_, _, true) => "warn,pmat=info",
-            _ => return Ok(get_default_filter()),
+        // The decision itself lives in the library (`cli::log_level_directive`)
+        // so it is covered by the `--lib` suite CI runs. This match used to be
+        // spelled out here over `(trace, debug, verbose)` only — with no arm for
+        // `--quiet`, which is why "Enable quiet mode (errors only)" named a log
+        // level no argv could select.
+        let Some(filter_str) =
+            cli::log_level_directive(cli.trace, cli.debug, cli.verbose, cli.quiet)
+        else {
+            return Ok(get_default_filter());
         };
 
         Ok(EnvFilter::new(filter_str))

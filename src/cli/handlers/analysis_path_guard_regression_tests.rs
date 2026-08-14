@@ -198,6 +198,7 @@ async fn proof_annotations_rejects_missing_path() {
         None,
         false,
         false,
+        10,
     )
     .await
     .expect_err("a missing path must not produce proof annotations");
@@ -216,6 +217,7 @@ async fn assemblyscript_rejects_missing_path() {
         None,
         30,
         false,
+        10,
     )
     .await
     .expect_err("a missing path must not produce an AssemblyScript report");
@@ -235,6 +237,7 @@ async fn webassembly_rejects_missing_path() {
         false,
         None,
         false,
+        10,
     )
     .await
     .expect_err("a missing path must not produce a WebAssembly report");

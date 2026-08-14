@@ -27,3 +27,7 @@ include!("qdd_tools.rs");
 #[cfg(test)]
 #[path = "../tool_functions_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tool_functions_unmeasured_gate_tests.rs"]
+mod unmeasured_gate_tests;

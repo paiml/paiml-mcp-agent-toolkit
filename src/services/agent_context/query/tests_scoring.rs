@@ -43,6 +43,7 @@ fn test_full_scoring_empty_corpus() {
             file_count: 0,
             languages: vec![],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },

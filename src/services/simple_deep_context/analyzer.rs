@@ -342,28 +342,46 @@ impl SimpleDeepContext {
                 .unwrap_or_default(),
         };
 
-        // Adjust counts based on actual function names found
-        let actual_function_count = function_names.len();
-        let adjusted_function_count = if actual_function_count > 0 {
-            actual_function_count
-        } else {
+        // The per-language analyzers above return a MEASURED triple: how many
+        // functions they parsed, how many of those exceed the cyclomatic
+        // threshold, and the mean cyclomatic over them. Those three agree with
+        // each other by construction.
+        //
+        // This block used to throw two of them away whenever function-name
+        // extraction found anything, substituting `names.len() / 4` for the
+        // high-complexity count and `2.5` for a zero average. Both are
+        // constants wearing a measurement's clothes, and the ratio was visible
+        // in the report: `analyze deep-context` on this repo listed
+        //
+        //   1. comprehensive_assert_cmd_coverage.rs - 1.0 avg complexity
+        //      (134 functions, 33 high complexity)
+        //
+        // — 134/4 = 33 "functions above complexity 10" in a file whose measured
+        // mean complexity is 1.0, which is arithmetically impossible. Repo-wide
+        // it fabricated 4352 high-complexity functions where the AST had found
+        // a small fraction of that.
+        //
+        // A measurement is now reported only when it was taken. The fix is
+        // scoped to the two values that were being invented: name extraction
+        // can say nothing about complexity, so it no longer sets
+        // `high_complexity_functions` or `avg_complexity`.
+        //
+        // It remains the better source for the *count*. For languages whose
+        // AST complexity pass is a stub in this build — Java, Ruby — the pass
+        // reports one function for a file that plainly declares two, while
+        // name extraction finds both. Preferring the pass's count there traded
+        // a fabrication for an undercount; both are wrong answers, and only
+        // the fabrication was the defect being fixed.
+        let function_count = if function_names.is_empty() {
             function_count
-        };
-        let adjusted_high_complexity = if actual_function_count > 0 {
-            actual_function_count / 4
         } else {
-            high_complexity_functions
-        };
-        let adjusted_avg_complexity = if actual_function_count > 0 && avg_complexity == 0.0 {
-            2.5
-        } else {
-            avg_complexity
+            function_names.len()
         };
 
         Ok(FileComplexityMetrics {
-            function_count: adjusted_function_count,
-            high_complexity_functions: adjusted_high_complexity,
-            avg_complexity: adjusted_avg_complexity,
+            function_count,
+            high_complexity_functions,
+            avg_complexity,
             function_names,
         })
     }
@@ -558,7 +576,10 @@ impl SimpleDeepContext {
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            let files_to_show = if top_files == 0 { 10 } else { top_files };
+            // `if top_files == 0 { 10 }` contradicted the flag's own help text
+            // ("0 = all"): `--top-files 0` listed ten files while `--top-files
+            // 50` listed fifty. One authority: crate::cli::top_files_count.
+            let files_to_show = crate::cli::top_files_count(sorted_files.len(), top_files);
             for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
                 let filename = file_detail
                     .file_path
@@ -586,6 +607,54 @@ impl SimpleDeepContext {
         }
 
         markdown
+    }
+}
+
+#[cfg(test)]
+mod top_files_zero_regression_tests {
+    //! `--top-files 0` is documented as "0 = all". This renderer read it as
+    //! "0 = ten", so `--top-files 0` listed FEWER files than `--top-files 50`.
+    use super::*;
+
+    fn report(files: usize) -> SimpleAnalysisReport {
+        SimpleAnalysisReport {
+            file_count: files,
+            analysis_duration: std::time::Duration::from_millis(1),
+            complexity_metrics: crate::services::simple_deep_context::types::ComplexityMetrics {
+                total_functions: files,
+                high_complexity_count: 0,
+                avg_complexity: 1.0,
+            },
+            recommendations: vec![],
+            file_complexity_details: (0..files)
+                .map(
+                    |i| crate::services::simple_deep_context::types::FileComplexityDetail {
+                        file_path: PathBuf::from(format!("src/f{i}.rs")),
+                        function_count: 1,
+                        high_complexity_functions: 0,
+                        avg_complexity: 1.0,
+                        complexity_score: (files - i) as f64,
+                        function_names: vec![],
+                    },
+                )
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn zero_lists_every_file_not_ten() {
+        let report = report(25);
+        let analyzer = SimpleDeepContext::new();
+        let zero = analyzer.format_as_markdown(&report, 0);
+        let fifty = analyzer.format_as_markdown(&report, 50);
+        assert_eq!(zero, fifty, "0 must mean all, exactly as --help says");
+        assert!(
+            zero.contains("src/f24.rs") || zero.contains("f24.rs"),
+            "--top-files 0 stopped at ten files: {zero}"
+        );
+        // And a real limit still bites.
+        let three = analyzer.format_as_markdown(&report, 3);
+        assert!(!three.contains("f3.rs"), "--top-files 3 listed a 4th file");
     }
 }
 

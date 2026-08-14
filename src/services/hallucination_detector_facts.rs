@@ -47,6 +47,14 @@ impl CodeFactDatabase {
         self.functions.contains_key(name)
     }
 
+    /// Number of function facts available as ground truth.
+    ///
+    /// Zero means the deep context carried no function inventory, so "not
+    /// found" says nothing about the codebase and must not be reported as one.
+    pub fn function_count(&self) -> usize {
+        self.functions.len()
+    }
+
     /// Check if database supports a language
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_language_support(&self, language: &str) -> bool {

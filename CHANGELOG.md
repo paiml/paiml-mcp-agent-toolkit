@@ -7,6 +7,129 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.30.0] - 2026-08-11
+
+### Fixed — 255 defects found by dogfooding the released artifact
+
+A deep dogfood of the **released 3.29.0 artifact** — a fresh
+`cargo install pmat --version 3.29.0` from crates.io, not a working-tree build —
+ran **1,154 real invocations** across the whole surface: 259 CLI leaf/group
+commands, all 20 MCP stdio tools, and the HTTP/serve surface. Every metric was
+checked for movement between an empty directory, a 1-file crate, a polyglot
+tree, an unparseable crate and this 4,260-file repo. A number that does not move
+between those measures nothing.
+
+Every candidate was then re-run by an independent adversarial verifier told to
+default to REFUTED: 30 were refuted, 12 were duplicates, 3 were already fixed,
+and **243 survived** — 48 blocker, 137 major, 58 minor. A follow-up pass closed
+the **12** older issues that still reproduced, including every item the 3.29.1
+notes deferred as "will be redone against the correct base".
+
+The dominant class is unchanged from the last four releases: **output pmat never
+measured, presented as a measurement.** Most of these fixes therefore *remove* a
+number rather than correct one.
+
+#### Two classes this sweep probed for the first time
+
+**Flags that parse but change nothing** (49). `enforce --profile` returned the
+same profile from every match arm — three names, one profile, and a typo'd name
+silently enforced the strictest thresholds. `ci-local --format` was destructured
+as `format: _`. `comply diff` ignored `--from/--to`. `pmat_query_code`'s
+`path_pattern`, advertised in the MCP schema as a glob, was a substring match, so
+`**/tdg/**` returned an empty set where `src/tdg` returned five hits.
+
+**Cross-surface contradiction** (24) — the MCP tool and its CLI equivalent
+disagreeing about the same file. `analyze_complexity` used the heuristic counter
+over MCP and the AST analyzer on the CLI (10/18 vs 6/9 for one function).
+`analyze_dag` always returned an empty call graph, because the edge enrichment was
+only ever wired into the CLI handler. `quality_gate` graded a file that does not
+parse — and a README — at the maximum 90.0/A. `quality_proxy` edit/append never
+opened the target file, so an edit whose anchor text was absent was "accepted".
+
+#### False green lights
+
+`verify --stage <typo>` selected no stages, so `ok:true` and exit 0 came back
+from a tree whose format stage was red. `cuda-tdg validate-tiles` printed
+"Status: INVALID / shared memory overflow" and exited 0 — CI gating on it passed
+overflowing configurations. `enforce extreme` pushed literal violations naming a
+path that exists in no project and a hardcoded `coverage 65.0`, so every project
+read 15 points under the 80% floor, including an empty one.
+
+### Changed — commands that could not measure something now say so
+
+This is user-visible and deliberate. A gate that cannot measure a signal no
+longer reports a pass:
+
+- `analyze tdg` on an empty directory returns `average_score: null` /
+  `average_grade: null` with an explicit `not_measured` list, instead of `0.0`/`F`.
+- `cache stats` reports "not measured (no cache evaluations in this process)"
+  instead of a hardcoded 85.0% effectiveness / 100.0 req/sec / 64.0 MB.
+- `enforce`'s coverage phase reads a real lcov report and reports nothing when
+  there is none, instead of a "simulated" 65.0.
+- Fast modes across the score commands no longer award partial credit for checks
+  they skip, nor count those points in the denominator.
+- `quality-gate` (both CLI and MCP) refuses to grade a file that does not parse.
+- `pmat serve`, `pmat debug serve` and the demo/agent commands state plainly that
+  they are unavailable in the shipped build, and exit non-zero.
+
+### Fixed — machine-readable output that machines could not read
+
+- `pmat query --format json` emitted **two concatenated top-level JSON documents**
+  by default, so the search command CLAUDE.md mandates over grep could not be
+  piped to `jq` at all. Only `--no-docs` parsed.
+- `-f markdown` on `analyze provability`, `analyze tdg` and `analyze build-tdg`
+  emitted ANSI-escaped plain text byte-identical to the terminal renderer.
+- `--color never` still emitted escape sequences through several commands.
+- Grades were spelled a third way over MCP (`{:?}` Debug variants: `APlus` where
+  the CLI says `A+`), fixed at the `Serialize` impl so serde and `pmat tdg` cannot
+  drift apart again.
+
+### Fixed — scope that did not match the claim
+
+- `analyze entropy` and `analyze big-o` walked hidden dot-directories every other
+  analyzer excludes, reporting 2,650,897 functions where `analyze complexity`
+  reports ~41,000.
+- The same file scored `0.00/F` or `77.88/B` depending on the caller's working
+  directory: the skip-path check was a substring match, so any project under a
+  path containing "test" was skipped wholesale.
+- `analyze complexity --file` could not see functions inside `include!()`-ed
+  fragments. `--file` mode labelled one file's violations "Total Project
+  Violations". `symbol-table` missed every impl method, trait declaration and fn
+  in an inline `mod`.
+
+### Fixed — the toolchain's own gates
+
+- `pmat verify` discarded rustc errors from its clippy stage — a red gate whose
+  JSON did not contain the error. It keeps `level == "error"` diagnostics with
+  file/line now, and prefers the first error over the tail of cargo's progress.
+- `pmat --help` advertised `pmat agent start`, which exits 1 in the shipped build.
+  **Three separate tests were asserting the dead example was present.**
+- `technical_debt_hours` rendered as `-0.0` for every violation-free project:
+  `Iterator::sum::<f32>()` seeds with `-0.0`.
+
+### Notes for maintainers
+
+Fourteen existing tests broke across the fix waves and were triaged
+independently; **none was an over-reaching fix.** They asserted the defects
+themselves — a "simulated" 65% coverage, a stub that "always returns empty", a
+shared-memory overflow returning `Ok` — including two proptests that had a stub
+written down as an invariant, and five vacuous ones asserting
+`result.is_ok() || result.is_err()`. All were rewritten, not deleted.
+
+Two defects were introduced *by* the fixes and caught only by re-probing the
+rebuilt binary, not by the test suite:
+
+1. Fixing MCP `quality_gate`'s parse guard left CLI `quality-gate --file` still
+   reporting PASSED for the same unparseable file. Fixing one side of a
+   cross-surface contradiction re-creates it.
+2. Six new tests built or parsed the clap command tree inline, overflowing the
+   default 2MB test stack and aborting the whole test binary under `ci / coverage`.
+   Invisible locally because every local runner sets `RUST_MIN_STACK=8388608`.
+   **Validate with `env -u RUST_MIN_STACK cargo test --lib`.**
+
+19,202 lib tests and 899 integration tests pass; clippy clean.
+
+
 ## [3.29.1] - 2026-08-01
 
 ### Fixed

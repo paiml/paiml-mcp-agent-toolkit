@@ -19,8 +19,18 @@ pub async fn handle_localize(
     output: Option<&Path>,
     format: &str,
 ) -> Result<()> {
-    println!("\n🔍 Tarantula Fault Localization");
-    println!("   Formula: {}", formula);
+    // Parse the formula BEFORE printing the banner. The header echoed the raw
+    // string while the parse fell back to Tarantula on anything unrecognised,
+    // so `--formula bogus` printed `Formula: bogus` above a report the banner
+    // labelled `Tarantula`, with Tarantula's scores — one page contradicting
+    // itself. `--formula` is clap-validated now; this parse is the second line
+    // of defence and reports rather than substitutes.
+    let sbfl_formula: SbflFormula = formula
+        .parse()
+        .with_context(|| format!("Invalid --formula '{formula}'"))?;
+
+    println!("\n🔍 {sbfl_formula} Fault Localization");
+    println!("   Formula: {sbfl_formula}");
     println!("   Passed tests: {}", passed_count);
     println!("   Failed tests: {}", failed_count);
     println!("   Top-N: {}", top_n);
@@ -44,9 +54,6 @@ pub async fn handle_localize(
         passed_data.len(),
         failed_data.len()
     );
-
-    // Parse formula
-    let sbfl_formula: SbflFormula = formula.parse().unwrap_or(SbflFormula::Tarantula);
 
     // Run localization
     let result = FaultLocalizer::run_localization(

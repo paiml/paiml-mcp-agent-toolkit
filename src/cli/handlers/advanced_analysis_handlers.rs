@@ -96,11 +96,11 @@ pub async fn handle_analyze_deep_context(
     include: Vec<String>,
     exclude: Vec<String>,
     period_days: u32,
-    _dag_type: Option<DagType>,
+    dag_type: Option<DagType>,
     max_depth: Option<usize>,
     include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
-    _cache_strategy: Option<String>,
+    cache_strategy: Option<String>,
     parallel: bool,
     verbose: bool,
     top_files: usize,
@@ -112,7 +112,15 @@ pub async fn handle_analyze_deep_context(
     // discovery patterns" with exit 0. Found alongside GH-663/GH-666.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
-    reject_unimplemented_deep_context_flags(full, &include, &exclude, max_depth, parallel)?;
+    reject_unimplemented_deep_context_flags(
+        full,
+        &include,
+        &exclude,
+        max_depth,
+        parallel,
+        dag_type.is_some(),
+        cache_strategy.is_some(),
+    )?;
 
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
@@ -203,15 +211,25 @@ pub async fn handle_analyze_deep_context(
 /// documents as changing the analysis must fail loudly rather than be dropped
 /// on the floor.
 ///
-/// `--dag-type` and `--period-days` are not checked here: clap supplies a
-/// default for both, so there is no way to tell "user asked for it" from "clap
-/// filled it in". `--period-days` does reach the SARIF path.
+/// `--dag-type` and `--cache-strategy` are checked here too, since #920. They
+/// used to be exempt because clap supplied a default for each, so "user asked
+/// for it" and "clap filled it in" were indistinguishable — they are `Option`
+/// now, and `Some` means the user typed it. deep-context builds no DAG
+/// (`SimpleDeepContext` walks files for complexity and SATD) and consults no
+/// cache, so all four `--dag-type` values and all three `--cache-strategy`
+/// values produced one identical report.
+///
+/// `--period-days` is still not checked: it carries a clap default and does
+/// reach the SARIF path.
+#[allow(clippy::fn_params_excessive_bools)]
 fn reject_unimplemented_deep_context_flags(
     full: bool,
     include: &[String],
     exclude: &[String],
     max_depth: Option<usize>,
     parallel: bool,
+    dag_type: bool,
+    cache_strategy: bool,
 ) -> Result<()> {
     let mut unsupported = Vec::new();
     if full {
@@ -229,6 +247,12 @@ fn reject_unimplemented_deep_context_flags(
     if parallel {
         unsupported.push("--parallel");
     }
+    if dag_type {
+        unsupported.push("--dag-type");
+    }
+    if cache_strategy {
+        unsupported.push("--cache-strategy");
+    }
 
     if unsupported.is_empty() {
         return Ok(());
@@ -236,7 +260,8 @@ fn reject_unimplemented_deep_context_flags(
 
     anyhow::bail!(
         "analyze deep-context does not implement {}; the flag(s) would be accepted and ignored. \
-         Use --include-pattern / --exclude-pattern to select files and --top-files to size the report.",
+         Use --include-pattern / --exclude-pattern to select files; --top-files sizes \
+         the markdown and text reports (the JSON report is never truncated).",
         unsupported.join(", ")
     )
 }
@@ -400,6 +425,7 @@ pub async fn handle_analyze_comprehensive(
     output: Option<PathBuf>,
     perf: bool,
     executive_summary: bool,
+    top_files: usize,
 ) -> Result<()> {
     use super::comprehensive_analysis_handler::ComprehensiveAnalysisConfig;
 
@@ -421,7 +447,9 @@ pub async fn handle_analyze_comprehensive(
         output,
         perf,
         executive_summary,
-        top_files: 20, // default value
+        // Was `top_files: 20, // default value`: a literal standing in for the
+        // parsed flag, so no `--top-files` value could reach the report.
+        top_files,
     };
 
     // Use the new orchestrator-based comprehensive handler implementation
@@ -559,16 +587,15 @@ fn format_deep_context_text(
                 .partial_cmp(&a.complexity_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let files_to_show = if top_files == 0 { 10 } else { top_files };
+        // `if top_files == 0 { 10 }` read the documented "0 = all" as "0 = ten",
+        // so `--top-files 0` silently listed FEWER files than `--top-files 50`.
+        // One authority decides what a limit permits: crate::cli::top_files_count.
+        let files_to_show = crate::cli::top_files_count(sorted_files.len(), top_files);
         for (i, file_detail) in sorted_files.iter().take(files_to_show).enumerate() {
-            let filename = file_detail
-                .file_path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .map_or_else(
-                    || file_detail.file_path.to_string_lossy().to_string(),
-                    std::string::ToString::to_string,
-                );
+            // Was `file_name()`: a "Top Files" list of bare basenames cannot be
+            // resolved back to a file in a tree that holds many `mod.rs`.
+            let path_str = file_detail.file_path.to_string_lossy();
+            let filename = crate::cli::report_paths::report_path(&path_str).to_string();
             let _ = writeln!(
                 &mut out,
                 "  {}. {} - {} avg complexity ({} functions, {} high complexity)",
@@ -611,14 +638,46 @@ mod unimplemented_flag_tests {
 
     #[test]
     fn supported_invocation_is_accepted() {
-        assert!(reject_unimplemented_deep_context_flags(false, &[], &[], None, false).is_ok());
+        assert!(reject_unimplemented_deep_context_flags(
+            false,
+            &[],
+            &[],
+            None,
+            false,
+            false,
+            false
+        )
+        .is_ok());
     }
 
     #[test]
     fn full_is_refused_rather_than_ignored() {
-        let err = reject_unimplemented_deep_context_flags(true, &[], &[], None, false)
-            .expect_err("--full changes nothing, so it must not be accepted");
+        let err =
+            reject_unimplemented_deep_context_flags(true, &[], &[], None, false, false, false)
+                .expect_err("--full changes nothing, so it must not be accepted");
         assert!(err.to_string().contains("--full"), "{err}");
+    }
+
+    /// `--dag-type` was exempt from the refusal because clap gave it a default,
+    /// so "user asked" and "clap filled it in" were the same value. It is an
+    /// `Option` now: all four values produced one identical report (same sha256
+    /// after stripping the duration) because deep-context builds no DAG at all.
+    #[test]
+    fn dag_type_is_refused_rather_than_ignored() {
+        let err =
+            reject_unimplemented_deep_context_flags(false, &[], &[], None, false, true, false)
+                .expect_err("--dag-type changes nothing, so it must not be accepted");
+        assert!(err.to_string().contains("--dag-type"), "{err}");
+    }
+
+    /// Same story for `--cache-strategy`: this path consults and writes no
+    /// cache, so `normal`, `force-refresh` and `offline` were one report.
+    #[test]
+    fn cache_strategy_is_refused_rather_than_ignored() {
+        let err =
+            reject_unimplemented_deep_context_flags(false, &[], &[], None, false, false, true)
+                .expect_err("--cache-strategy changes nothing, so it must not be accepted");
+        assert!(err.to_string().contains("--cache-strategy"), "{err}");
     }
 
     #[tokio::test]
@@ -656,6 +715,8 @@ mod unimplemented_flag_tests {
             &["churn".to_string()],
             Some(0),
             true,
+            true,
+            true,
         )
         .unwrap_err()
         .to_string();
@@ -665,6 +726,8 @@ mod unimplemented_flag_tests {
             "--exclude",
             "--max-depth",
             "--parallel",
+            "--dag-type",
+            "--cache-strategy",
         ] {
             assert!(err.contains(flag), "{flag} missing from: {err}");
         }

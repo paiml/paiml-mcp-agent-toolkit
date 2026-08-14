@@ -99,13 +99,13 @@ pub async fn handle_mutate(
 
 /// Print mutation testing header
 fn print_header(path: &PathBuf, operators: &Option<Vec<String>>) {
-    println!("🧬 Mutation Testing");
-    println!("Path: {}", path.display());
+    crate::status_println!("🧬 Mutation Testing");
+    crate::status_println!("Path: {}", path.display());
 
     if let Some(ref ops) = operators {
-        println!("Operators: {}", ops.join(", "));
+        crate::status_println!("Operators: {}", ops.join(", "));
     } else {
-        println!("Operators: AOR, ROR, COR, UOR (default)");
+        crate::status_println!("Operators: AOR, ROR, COR, UOR (default)");
     }
 }
 
@@ -129,7 +129,7 @@ async fn generate_mutants(
     engine: &MutationEngine,
     path: &PathBuf,
 ) -> Result<Vec<crate::services::mutation::Mutant>> {
-    println!("\n📝 Generating mutants...");
+    crate::status_println!("\n📝 Generating mutants...");
 
     let mutants = if path.is_file() {
         engine
@@ -142,7 +142,7 @@ async fn generate_mutants(
         );
     };
 
-    println!("✅ Generated {} mutants", mutants.len());
+    crate::status_println!("✅ Generated {} mutants", mutants.len());
     Ok(mutants)
 }
 
@@ -153,7 +153,7 @@ async fn execute_mutants(
     distributed: bool,
     workers: usize,
 ) -> Result<Vec<crate::services::mutation::MutationResult>> {
-    println!("\n🧪 Running tests on mutants...");
+    crate::status_println!("\n🧪 Running tests on mutants...");
 
     let work_dir = path
         .parent()
@@ -256,7 +256,7 @@ async fn output_report(report: &serde_json::Value, output: Option<PathBuf>) -> R
     if let Some(output_path) = output {
         let output_str = serde_json::to_string_pretty(report)?;
         tokio::fs::write(&output_path, output_str).await?;
-        println!("\n📄 Report written to: {}", output_path.display());
+        crate::status_println!("\n📄 Report written to: {}", output_path.display());
     } else {
         println!("\n📊 Results:");
         println!("{}", serde_json::to_string_pretty(report)?);

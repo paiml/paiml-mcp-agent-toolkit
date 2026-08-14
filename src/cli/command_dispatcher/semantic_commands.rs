@@ -11,26 +11,13 @@ use super::CommandDispatcher;
 use crate::cli::commands::{EmbedCommands, SearchMode, SemanticCommands};
 use crate::cli::semantic_commands::SemanticCli;
 use crate::cli::OutputFormat;
-use crate::services::configuration_service::ConfigurationService;
+// THE workspace-scoped embeddings-store default lives in the configuration
+// service, which is also what fills `vector_db_path` in when nothing else does.
+// This module used to carry its own copy; the copy was unreachable, because the
+// config service's machine-global default ran first and always returned `Some`.
+use crate::services::configuration_service::{default_vector_db_path, ConfigurationService};
+#[cfg(test)]
 use std::path::Path;
-
-/// Where a workspace's embeddings live when the config names no path.
-///
-/// This used to default to a single machine-global `~/.pmat/embeddings.db`,
-/// shared by every project on the machine, while chunk paths are stored
-/// workspace-relative (`./src/main.rs`). One project's leftover index was
-/// therefore returned for every OTHER project, at paths that do not resolve
-/// there: `pmat semantic search` in this repo returned five `./src/main.rs`
-/// chunks from an unrelated crate, and an unrelated crate got the same five.
-/// Keying the store to the workspace makes a relative chunk path mean something
-/// again.
-fn default_vector_db_path(workspace: &Path) -> String {
-    workspace
-        .join(".pmat")
-        .join("embeddings.db")
-        .to_string_lossy()
-        .to_string()
-}
 
 impl CommandDispatcher {
     /// Execute embed commands for semantic search (PMAT-SEARCH-011)

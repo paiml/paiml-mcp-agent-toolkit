@@ -248,7 +248,7 @@ pub fn handle_deps_audit(
             println!("{}", serde_yaml_ng::to_string(&report)?);
         }
         _ => {
-            print_text_report(&report);
+            print_text_report(&report, show_all);
         }
     }
 

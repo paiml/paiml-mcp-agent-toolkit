@@ -9,12 +9,9 @@ async fn handle_single_file_quality_gate(
     max_complexity_p99: u32,
     output: Option<PathBuf>,
     perf: bool,
-    quiet: bool,
 ) -> Result<()> {
     use std::time::Instant;
-    if !quiet {
-        eprintln!("📄 Analyzing single file: {}", single_file.display());
-    }
+    crate::status_eprintln!("📄 Analyzing single file: {}", single_file.display());
 
     // A file that does not parse cannot be given a quality verdict. Without this
     // the CLI reported "✅ Quality Gate: PASSED / Total Violations: 0" for
@@ -46,16 +43,19 @@ async fn handle_single_file_quality_gate(
     )
     .await?;
 
-    if !quiet {
-        if let Some(start) = check_start {
-            let duration = start.elapsed();
-            eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
-        }
+    if let Some(start) = check_start {
+        let duration = start.elapsed();
+        crate::status_eprintln!("\n⏱️  File analysis took: {:.3}s", duration.as_secs_f64());
     }
 
-    // Calculate overall status
-    results.passed = violations.is_empty();
+    // Calculate overall status — THE rule, shared with the project gate and the
+    // MCP tool (see `violations_pass`). Was `violations.is_empty()`.
+    results.passed = violations_pass(&violations);
     results.total_violations = violations.len();
+    results.blocking_violations = blocking_violation_count(&violations);
+    // `results.violations` shipped as a permanently-empty array beside
+    // `total_violations: 1`, exactly as the project gate did before #196.
+    results.set_violation_lines(&violations);
 
     // Format and output results
     output_single_file_results(&single_file, &results, &violations, format, output).await?;
@@ -170,11 +170,13 @@ async fn run_single_file_complexity_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    eprint!("  🔍 Checking complexity...");
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  🔍 Checking complexity...");
+    }
     let violations_found =
         check_single_file_complexity(project_path, single_file, max_complexity_p99).await?;
     results.complexity_violations = violations_found.len();
-    eprintln!(" {} violations found", results.complexity_violations);
+    crate::status_eprintln!(" {} violations found", results.complexity_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -186,10 +188,12 @@ async fn run_single_file_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    eprint!("  🔍 Checking dead code...");
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  🔍 Checking dead code...");
+    }
     let violations_found = check_single_file_dead_code(project_path, single_file).await?;
     results.dead_code_violations = violations_found.len();
-    eprintln!(" {} violations found", results.dead_code_violations);
+    crate::status_eprintln!(" {} violations found", results.dead_code_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -201,10 +205,12 @@ async fn run_single_file_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    eprint!("  🔍 Checking SATD...");
-    let violations_found = check_single_file_satd(project_path, single_file).await?;
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  🔍 Checking SATD...");
+    }
+    let violations_found = check_satd_file(project_path, single_file).await?;
     results.satd_violations = violations_found.len();
-    eprintln!(" {} violations found", results.satd_violations);
+    crate::status_eprintln!(" {} violations found", results.satd_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -216,10 +222,12 @@ async fn run_single_file_security_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    eprint!("  🔍 Checking security...");
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  🔍 Checking security...");
+    }
     let violations_found = check_single_file_security(project_path, single_file).await?;
     results.security_violations = violations_found.len();
-    eprintln!(" {} violations found", results.security_violations);
+    crate::status_eprintln!(" {} violations found", results.security_violations);
     violations.extend(violations_found);
     Ok(())
 }
@@ -266,4 +274,3 @@ fn format_single_file_output(
         }
     }
 }
-

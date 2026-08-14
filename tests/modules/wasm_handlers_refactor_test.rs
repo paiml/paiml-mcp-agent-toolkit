@@ -30,6 +30,7 @@ async fn test_assemblyscript_handler_structure() -> Result<()> {
         None,  // output
         60,    // timeout
         false, // perf
+        10,    // top_files
     )
     .await;
 
@@ -54,6 +55,7 @@ async fn test_parameter_variations() -> Result<()> {
         None,
         60,
         true, // perf enabled
+        10,   // top_files
     )
     .await;
 
@@ -68,6 +70,7 @@ async fn test_parameter_variations() -> Result<()> {
         Some(output_file),
         30, // shorter timeout
         false,
+        10, // top_files
     )
     .await;
 

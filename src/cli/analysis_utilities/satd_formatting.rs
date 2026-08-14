@@ -172,8 +172,8 @@ fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) 
 
 /// Print SATD metrics
 fn print_satd_metrics(items: &[crate::services::satd_detector::TechnicalDebt]) {
-    eprintln!("\n📈 SATD Metrics:");
-    eprintln!("  Total items: {}", items.len());
+    crate::status_eprintln!("\n📈 SATD Metrics:");
+    crate::status_eprintln!("  Total items: {}", items.len());
 
     let high_severity_count = items
         .iter()
@@ -184,11 +184,11 @@ fn print_satd_metrics(items: &[crate::services::satd_detector::TechnicalDebt]) {
             )
         })
         .count();
-    eprintln!("  High severity: {high_severity_count}");
+    crate::status_eprintln!("  High severity: {high_severity_count}");
 
     let files_with_satd: std::collections::HashSet<_> =
         items.iter().map(|item| &item.file).collect();
-    eprintln!("  Files affected: {}", files_with_satd.len());
+    crate::status_eprintln!("  Files affected: {}", files_with_satd.len());
 }
 
 #[cfg(test)]

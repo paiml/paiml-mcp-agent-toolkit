@@ -230,6 +230,15 @@ fn build_tdg_score_from_row(cols: &ArrowColumns<'_>, i: usize) -> TdgScore {
         penalties_applied: Vec::new(),
         critical_defects_count: 0,
         has_critical_defects: false,
+        // Not persisted in the OLAP arrow schema — a row read back from arrow
+        // carries no waiver, which is the same thing `TdgScore::default()` says.
+        // The THIRD full-literal site broken by adding a field to this public
+        // struct in 8e3e91b35, after benches/storage_backend_bench.rs and
+        // examples/quality_gate_violations.rs. Each was invisible to CI, which
+        // builds `cargo check --bin pmat` with default features only; this one
+        // sits behind `analytics-gpu`/`advanced-analysis`/`full`, so
+        // `cargo install pmat --features full` did not compile.
+        critical_defects_suppressed: None,
         // Not persisted in the OLAP arrow schema; default to false (matches
         // TdgScore::default() and other non-test initializers).
         has_contract_coverage: false,

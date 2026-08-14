@@ -3,12 +3,14 @@
 //! This module provides quality gates that can enforce quality standards
 //! by detecting regressions, enforcing minimum grades, and validating new files.
 
+mod critical_defect;
 mod f_grade;
 mod grade;
 mod newfile;
 mod regression;
 mod types;
 
+pub use critical_defect::CriticalDefectGate;
 pub use f_grade::FGradeGate;
 pub use grade::MinimumGradeGate;
 pub use newfile::NewFileGate;

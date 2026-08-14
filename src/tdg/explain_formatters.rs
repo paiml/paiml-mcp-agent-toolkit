@@ -103,7 +103,20 @@ pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
             "Critical Defects: {}\n",
             explained.score.critical_defects_count
         ));
-        output.push_str("Status: AUTO-FAIL (Score: 0.0, Grade: F)\n\n");
+        // Say when the auto-fail was waived and why. It used to always print
+        // AUTO-FAIL, while the #279 untracked-file exemption could silently have
+        // switched the gate off — so the explanation contradicted the score it
+        // was explaining (#919).
+        match &explained.score.critical_defects_suppressed {
+            None => output.push_str("Status: AUTO-FAIL (Score: 0.0, Grade: F)\n\n"),
+            Some(reason) => {
+                output.push_str(&format!(
+                    "Status: NOT GATED — {reason}\n\
+                     The defects above are real; the auto-fail was waived, so this \
+                     score reflects code quality only.\n\n"
+                ));
+            }
+        }
         output.push_str("Run 'pmat analyze defects' for detailed defect report.\n");
     }
 

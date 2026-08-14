@@ -65,7 +65,8 @@ pub(crate) use function_index::sqlite_backend::persist_entropy_violations;
 pub(crate) use function_index::sqlite_backend::persist_provability_scores;
 pub(crate) use function_index::sqlite_backend::persist_quality_violations;
 pub use function_index::{
-    AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats, QualityMetrics,
+    verify_db_scale, AgentContextIndex, FunctionEntry, GraphMetrics, IndexManifest, IndexStats,
+    QualityMetrics, TDG_SCALE,
 };
 pub use query::coverage_exclusion::{classify_exclusions, CoverageExclusion, ExclusionSummary};
 pub use query::ptx_diagnostics::{
@@ -85,6 +86,7 @@ pub use query::{
     enrich_results_with_coverage, enrich_results_with_duplicates, enrich_results_with_entropy,
     enrich_results_with_faults, enrich_with_churn, enrich_with_coverage, enrich_with_coverage_diff,
     format_coverage_summary, format_json, format_markdown, format_text, format_text_with_code,
-    load_workspace_coverage, suggest_renames, CaseSensitivity, QueryOptions, QueryResult, RankBy,
-    RenameSignal, RenameSuggestion, SearchMode,
+    load_workspace_coverage, normalize_definition_type, suggest_renames, CaseSensitivity,
+    QueryOptions, QueryResult, RankBy, RenameSignal, RenameSuggestion, SearchMode,
+    DEFINITION_TYPE_VALUES,
 };

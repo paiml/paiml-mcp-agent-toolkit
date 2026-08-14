@@ -3,8 +3,9 @@
 #[cfg(test)]
 mod calculator_tests {
     use super::super::calculator::{normalize_rps_percentage, PerfectionScoreCalculator};
-    use super::super::types::CategoryScore;
+    use super::super::types::{CategoryScore, PerfectionScoreResult};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     // ============================================================================
@@ -33,6 +34,9 @@ mod calculator_tests {
         assert!(!calc.fast_mode);
     }
 
+    /// A title line is not a document: each of these is under a paragraph, so
+    /// each earns the thin-file fraction of its weight (40 %), and the empty
+    /// `docs/` directory earns nothing at all. This asserted 100.0 (A+).
     #[tokio::test]
     async fn test_get_documentation_score_all_docs() {
         let temp_dir = TempDir::new().unwrap();
@@ -42,8 +46,9 @@ mod calculator_tests {
         fs::create_dir(root.join("docs")).unwrap();
         fs::write(root.join("CONTRIBUTING.md"), "# Contributing").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 100.0); // 40 + 20 + 25 + 15 = 100
+        let (score, details) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0 + 8.0 + 0.0 + 6.0);
+        assert!(details.contains("docs/ 0/25"), "{details}");
     }
 
     #[tokio::test]
@@ -51,16 +56,17 @@ mod calculator_tests {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("README.md"), "# Test Project").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 40.0);
+        let (score, _) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0);
     }
 
     #[tokio::test]
     async fn test_get_documentation_score_no_docs() {
         let temp_dir = TempDir::new().unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
+        let (score, details) = calc.get_documentation_score(temp_dir.path()).await;
         assert_eq!(score, 0.0);
+        assert!(details.contains("README 0/40 (missing)"), "{details}");
     }
 
     #[tokio::test]
@@ -68,83 +74,101 @@ mod calculator_tests {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("readme.md"), "# Test").unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_documentation_score(temp_dir.path()).await;
-        assert_eq!(score, 40.0);
+        let (score, _) = calc.get_documentation_score(temp_dir.path()).await;
+        assert_eq!(score, 16.0);
     }
 
-    #[tokio::test]
-    async fn test_get_performance_score_with_benches() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir(temp_dir.path().join("benches")).unwrap();
-        let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_performance_score(temp_dir.path()).await;
-        assert_eq!(score, 80.0); // 50 base + 30 for benches
-    }
+    // ========================================================================
+    // #938: three categories were a 50.0 constant plus file-existence bonuses
+    //
+    // Every assertion below used to encode the arithmetic of that constant
+    // ("50 base + 30 for benches"). A benchmark that was never run, a mutant
+    // that was never generated and a line of code that was never executed are
+    // all *not measured*, and now say so.
+    // ========================================================================
 
     #[tokio::test]
-    async fn test_get_performance_score_with_criterion() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::write(
-            temp_dir.path().join("Cargo.toml"),
-            r#"[dev-dependencies]
-criterion = "0.5"
-"#,
-        )
-        .unwrap();
-        let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_performance_score(temp_dir.path()).await;
-        assert_eq!(score, 70.0); // 50 base + 20 for criterion
-    }
-
-    #[tokio::test]
-    async fn test_get_performance_score_with_both() {
+    async fn test_performance_is_not_measured_from_a_benches_directory() {
         let temp_dir = TempDir::new().unwrap();
         fs::create_dir(temp_dir.path().join("benches")).unwrap();
         fs::write(
             temp_dir.path().join("Cargo.toml"),
-            r#"[dev-dependencies]
-criterion = "0.5"
-"#,
+            "[dev-dependencies]\ncriterion = \"0.5\"\n",
         )
         .unwrap();
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_performance_score(temp_dir.path()).await;
-        assert_eq!(score, 100.0); // 50 base + 30 benches + 20 criterion = 100 (capped)
+        let err = calc
+            .get_performance_score(temp_dir.path())
+            .await
+            .expect_err("an empty benches/ dir is not a benchmark run");
+        assert!(err.contains("cargo bench"), "unhelpful reason: {err}");
     }
 
     #[tokio::test]
-    async fn test_get_mutation_score_with_mutants_config() {
+    async fn test_performance_scores_criterion_comparisons() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("mutants.toml"), "[mutants]").unwrap();
+        let criterion = temp_dir.path().join("target/criterion");
+        for (name, mean) in [("fast", -0.02), ("slow", 0.40), ("steady", 0.001)] {
+            let dir = criterion.join(name).join("change");
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(
+                dir.join("estimates.json"),
+                format!("{{\"mean\":{{\"point_estimate\":{mean}}}}}"),
+            )
+            .unwrap();
+        }
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_mutation_score(temp_dir.path()).await;
-        assert_eq!(score, 70.0); // 50 base + 20 for config
+        let score = calc.get_performance_score(temp_dir.path()).await.unwrap();
+        // 1 of 3 benchmarks regressed past the 5% noise threshold.
+        assert!(
+            (score - (2.0 / 3.0 * 100.0)).abs() < 0.001,
+            "score was {score}"
+        );
     }
 
     #[tokio::test]
-    async fn test_get_mutation_score_with_mutants_dir() {
-        let temp_dir = TempDir::new().unwrap();
-        fs::create_dir(temp_dir.path().join(".mutants")).unwrap();
-        let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_mutation_score(temp_dir.path()).await;
-        assert_eq!(score, 70.0); // 50 base + 20 for results dir
-    }
-
-    #[tokio::test]
-    async fn test_get_mutation_score_with_all_indicators() {
+    async fn test_mutation_is_not_measured_from_config_files() {
         let temp_dir = TempDir::new().unwrap();
         fs::write(temp_dir.path().join("mutants.toml"), "[mutants]").unwrap();
         fs::create_dir(temp_dir.path().join(".mutants")).unwrap();
         fs::write(
             temp_dir.path().join("Cargo.toml"),
-            r#"[dev-dependencies]
-cargo-mutants = "1.0"
-"#,
+            "[dev-dependencies]\ncargo-mutants = \"1.0\"\n",
         )
         .unwrap();
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_mutation_score(temp_dir.path()).await;
-        assert_eq!(score, 100.0); // 50 + 20 + 20 + 10 = 100 (capped)
+        let err = calc
+            .get_mutation_score(temp_dir.path())
+            .await
+            .expect_err("configuration is not a mutation run");
+        assert!(err.contains("cargo mutants"), "unhelpful reason: {err}");
+    }
+
+    #[tokio::test]
+    async fn test_mutation_scores_cargo_mutants_outcomes() {
+        let temp_dir = TempDir::new().unwrap();
+        let out = temp_dir.path().join("mutants.out");
+        fs::create_dir_all(&out).unwrap();
+        fs::write(
+            out.join("outcomes.json"),
+            r#"{"outcomes":[
+                {"scenario":"Baseline","summary":"Success"},
+                {"scenario":{"Mutant":{}},"summary":"CaughtMutant"},
+                {"scenario":{"Mutant":{}},"summary":"CaughtMutant"},
+                {"scenario":{"Mutant":{}},"summary":"CaughtMutant"},
+                {"scenario":{"Mutant":{}},"summary":"MissedMutant"},
+                {"scenario":{"Mutant":{}},"summary":"Unviable"}
+            ]}"#,
+        )
+        .unwrap();
+
+        let calc = PerfectionScoreCalculator::new();
+        let score = calc.get_mutation_score(temp_dir.path()).await.unwrap();
+        // 3 caught of 4 viable; the unviable mutant and the baseline are excluded.
+        assert_eq!(score, 75.0);
     }
 
     #[tokio::test]
@@ -154,43 +178,90 @@ cargo-mutants = "1.0"
         fs::create_dir_all(&metrics_dir).unwrap();
         fs::write(metrics_dir.join("coverage.json"), r#"{"coverage": 85.5}"#).unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_coverage_score(temp_dir.path()).await;
+        let score = calc.get_coverage_score(temp_dir.path()).await.unwrap();
         assert_eq!(score, 85.5);
     }
 
+    /// Counting `#[test]` attributes measures how many tests were written, not
+    /// how much code they execute. It used to produce
+    /// `50 + test_count * 0.1 + density * 5` and call it coverage.
     #[tokio::test]
-    async fn test_get_coverage_score_heuristic() {
+    async fn test_coverage_is_not_estimated_from_test_attribute_counts() {
         let temp_dir = TempDir::new().unwrap();
         let root = temp_dir.path();
         fs::create_dir(root.join("src")).unwrap();
         for i in 0..5_usize {
-            let mut content = format!("// Source file {}\n", i);
-            if i < 10 {
-                content.push_str(&format!("\n#[test]\nfn test_{}_0 () {{}}\n", i));
-            }
-            fs::write(root.join("src").join(format!("mod_{}.rs", i)), content).unwrap();
+            fs::write(
+                root.join("src").join(format!("mod_{i}.rs")),
+                format!("// Source file {i}\n\n#[test]\nfn test_{i}_0 () {{}}\n"),
+            )
+            .unwrap();
         }
-        fs::write(
-            root.join("Cargo.toml"),
-            r#"[package]
-name = "test_project"
-version = "0.1.0"
-edition = "2021"
-"#,
-        )
-        .unwrap();
+        fs::write(root.join("Cargo.toml"), "[package]\nname = \"t\"\n").unwrap();
+
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_coverage_score(temp_dir.path()).await;
-        // Score based on test density heuristic
-        assert!((50.0..=95.0).contains(&score));
+        let err = calc
+            .get_coverage_score(root)
+            .await
+            .expect_err("test attributes are not coverage");
+        assert!(err.contains("llvm-cov"), "unhelpful reason: {err}");
     }
 
     #[tokio::test]
     async fn test_get_coverage_score_empty_project() {
         let temp_dir = TempDir::new().unwrap();
         let calc = PerfectionScoreCalculator::new();
-        let score = calc.get_coverage_score(temp_dir.path()).await;
-        assert_eq!(score, 70.0); // Default moderate estimate
+        assert!(
+            calc.get_coverage_score(temp_dir.path()).await.is_err(),
+            "an empty project has no coverage, not 70%"
+        );
+    }
+
+    /// #938's reproduction, as a test: four empty files must not move the score.
+    #[tokio::test]
+    async fn test_empty_files_do_not_move_the_total() {
+        fn bare_crate() -> TempDir {
+            let dir = TempDir::new().unwrap();
+            fs::create_dir(dir.path().join("src")).unwrap();
+            fs::write(dir.path().join("Cargo.toml"), "[package]\nname = \"t\"\n").unwrap();
+            fs::write(dir.path().join("src/lib.rs"), "//! x\n").unwrap();
+            dir
+        }
+
+        let bare = bare_crate();
+        let dressed = bare_crate();
+        fs::write(dressed.path().join("mutants.toml"), "").unwrap();
+        fs::create_dir(dressed.path().join(".mutants")).unwrap();
+        fs::create_dir(dressed.path().join("benches")).unwrap();
+        fs::write(
+            dressed.path().join("Cargo.toml"),
+            "[package]\nname = \"t\"\n\n[dev-dependencies]\ncriterion = \"0.5\"\n",
+        )
+        .unwrap();
+
+        let calc = PerfectionScoreCalculator::new().fast_mode(true);
+        let bare_result = calc.calculate(bare.path()).await.unwrap();
+        let dressed_result = calc.calculate(dressed.path()).await.unwrap();
+
+        let category = |r: &super::super::types::PerfectionScoreResult, name: &str| {
+            r.categories
+                .iter()
+                .find(|c| c.name == name)
+                .unwrap_or_else(|| panic!("missing category {name}"))
+                .earned_points
+        };
+        for name in ["Mutation Testing", "Performance", "Test Coverage"] {
+            assert_eq!(
+                category(&bare_result, name),
+                category(&dressed_result, name),
+                "{name} moved on four empty files"
+            );
+            assert_eq!(
+                category(&bare_result, name),
+                0.0,
+                "{name} was scored without evidence"
+            );
+        }
     }
 
     // ============================================================================
@@ -228,9 +299,81 @@ edition = "2021"
             .is_some_and(|d| d.contains("Not measured")));
 
         // The reported denominator must equal what was actually measured.
-        assert_eq!(result.max_score, 180);
+        // (This asserted a fixed 180 when Mutation Testing was the only
+        // category that could be N/A; Test Coverage and Performance now drop
+        // out too when no coverage or benchmark run left evidence — #938.)
         let summed: u16 = result.categories.iter().map(|c| c.max_points).sum();
         assert_eq!(summed, result.max_score);
+        assert!(
+            result.max_score <= 180,
+            "mutation must have left the denominator, got {}",
+            result.max_score
+        );
+    }
+
+    // ========================================================================
+    // #941: Technical Debt Grade contradicted `pmat tdg` on the same path
+    // ========================================================================
+
+    /// A file `pmat tdg` grades F must not be graded C+ by the same binary's
+    /// perfection-score. The category used to run a separate `TDGCalculator` on
+    /// a 0-5 debt scale converted as `100 - average_tdg * 20`, which reported
+    /// 77.2 (C+, 30.9 of 40 points) for the fixture below while `pmat tdg` and
+    /// `pmat analyze tdg` both reported 0.0/100 (F).
+    #[tokio::test]
+    async fn test_tdg_category_agrees_with_the_tdg_command() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        fs::create_dir(root.join("src")).unwrap();
+        fs::write(root.join("Cargo.toml"), "[package]\nname = \"awful\"\n").unwrap();
+
+        let mut src = String::from(
+            "// TODO: this whole file is a mess\n// FIXME: rewrite\n// HACK: do not ship\n",
+        );
+        src.push_str(
+            "pub fn monster(a: i32, b: i32, c: i32, d: i32) -> i32 {\n    let mut r = 0;\n",
+        );
+        for i in 0..60 {
+            src.push_str(&format!(
+                "    if a > {i} && b < {i} || c == {i} {{ r += {i}; }} else if d != {i} {{ r -= {i}; }}\n"
+            ));
+        }
+        src.push_str("    r\n}\n");
+        for i in 0..40 {
+            src.push_str(&format!(
+                "pub fn bad{i}(s: &str) -> i32 {{ // TODO fix bad{i}\n    let v: i32 = s.parse().unwrap();\n    if v < 0 {{ panic!(\"negative\"); }}\n    v\n}}\n"
+            ));
+        }
+        fs::write(root.join("src/lib.rs"), src).unwrap();
+
+        // What `pmat tdg` / `pmat analyze tdg` report for this tree.
+        let expected = crate::tdg::TdgAnalyzer::new()
+            .unwrap()
+            .analyze_project(root)
+            .await
+            .unwrap()
+            .average_score
+            .expect("the fixture has a gradable file");
+
+        let calc = PerfectionScoreCalculator::new();
+        let measured = calc.get_tdg_score(root).await.expect("a gradable tree");
+
+        assert!(
+            (measured - f64::from(expected)).abs() < 0.001,
+            "perfection-score says {measured}, `pmat tdg` says {expected}"
+        );
+    }
+
+    /// A tree with nothing to grade is not a tree that scored 100 — or 0.
+    #[tokio::test]
+    async fn test_tdg_category_is_not_measured_without_source() {
+        let temp_dir = TempDir::new().unwrap();
+        let calc = PerfectionScoreCalculator::new();
+        let err = calc
+            .get_tdg_score(temp_dir.path())
+            .await
+            .expect_err("nothing to grade");
+        assert!(err.contains("gradable"), "unhelpful reason: {err}");
     }
 
     #[test]
@@ -297,5 +440,172 @@ edition = "2021"
             negative.grade, zero.grade,
             "negative raw must grade as the clamped 0%"
         );
+    }
+
+    // ── The 120 s backstop reported eight measured zeros (#938 family) ──
+
+    /// The whole-run backstop used to return a scorecard: every category `0.0`
+    /// out of its full weight, details "Timed out", total 0/200, grade F —
+    /// absence rendered as the worst possible measurement. Nothing is
+    /// measurable once the inner future is dropped, so it must refuse.
+    #[tokio::test(start_paused = true)]
+    async fn a_run_that_exceeds_its_budget_refuses_instead_of_grading_zero() {
+        let budget = std::time::Duration::from_secs(120);
+        let never = async {
+            tokio::time::sleep(budget * 10).await;
+            unreachable!("the backstop must fire first")
+        };
+
+        let err = super::super::calculator::guard_total(Path::new("/some/project"), budget, never)
+            .await
+            .expect_err("a run that measured nothing must not produce a score");
+
+        let text = err.to_string();
+        assert!(text.contains("measured nothing"), "{text}");
+        assert!(text.contains("120s"), "{text}");
+        assert!(!text.contains("Timed out"), "{text}");
+    }
+
+    /// The backstop is transparent when the run finishes inside it.
+    #[tokio::test(start_paused = true)]
+    async fn the_backstop_passes_a_finished_run_through_untouched() {
+        let inner = async {
+            Ok(PerfectionScoreResult::new(vec![CategoryScore::new(
+                "Documentation",
+                80.0,
+                15,
+            )]))
+        };
+        let result = super::super::calculator::guard_total(
+            Path::new("/some/project"),
+            std::time::Duration::from_secs(120),
+            inner,
+        )
+        .await
+        .expect("an in-budget run must be returned as-is");
+        assert_eq!(result.categories.len(), 1);
+        assert_eq!(result.categories[0].earned_points, 12.0);
+    }
+
+    /// A single slow category is excluded and disclosed — it does not take the
+    /// run down, and it does not score zero either.
+    #[tokio::test(start_paused = true)]
+    async fn a_category_that_overruns_its_budget_is_not_measured() {
+        let slow = async {
+            tokio::time::sleep(std::time::Duration::from_secs(10_000)).await;
+            Ok(100.0)
+        };
+        let why = super::super::calculator::within_budget(slow)
+            .await
+            .expect_err("an overrunning category must not report a number");
+        assert!(why.contains("did not finish within"), "{why}");
+
+        // …and the category it produces carries no weight, so it cannot drag
+        // the total down.
+        let mut categories = Vec::new();
+        super::super::calculator::push_category(
+            &mut categories,
+            "Technical Debt Grade",
+            40,
+            Err(why),
+        );
+        assert_eq!(categories[0].max_points, 0);
+        assert_eq!(categories[0].grade, "N/A");
+        assert!(
+            categories[0]
+                .details
+                .as_deref()
+                .unwrap_or_default()
+                .contains("Not measured"),
+            "{:?}",
+            categories[0].details
+        );
+    }
+
+    // ── Documentation scored file existence: four empty files were 100/100 ──
+
+    /// The exact fixture from the report: `touch README.md CHANGELOG.md
+    /// CONTRIBUTING.md && mkdir docs` scored Documentation 100.0 (A+, 15/15
+    /// points) because every component was `Path::exists()`. Empty files
+    /// document nothing.
+    #[tokio::test]
+    async fn four_empty_files_buy_no_documentation_points() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        for name in ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"] {
+            fs::write(root.join(name), "").unwrap();
+        }
+        fs::create_dir(root.join("docs")).unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 0.0, "{details}");
+        assert!(details.contains("README 0/40 (empty)"), "{details}");
+        assert!(details.contains("docs/ 0/25 (0 non-empty"), "{details}");
+    }
+
+    /// …and real documentation still scores. The ordering is the property that
+    /// matters: written documentation must outrank touched filenames.
+    #[tokio::test]
+    async fn written_documentation_outranks_empty_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        let readme = format!(
+            "# Project\n\n{}\n\n## Usage\n\n```sh\npmat perfection-score\n```\n",
+            "It does the thing, and here is a paragraph about how. ".repeat(6)
+        );
+        fs::write(root.join("README.md"), readme).unwrap();
+        fs::write(
+            root.join("CHANGELOG.md"),
+            format!(
+                "# Changelog\n\n## [1.2.3] - 2026-01-01\n\n{}\n",
+                "- fixed a thing that was broken in a way worth writing down. ".repeat(5)
+            ),
+        )
+        .unwrap();
+        fs::create_dir(root.join("docs")).unwrap();
+        for i in 0..5 {
+            fs::write(
+                root.join("docs").join(format!("g{i}.md")),
+                "# Guide\nbody\n",
+            )
+            .unwrap();
+        }
+        fs::write(
+            root.join("CONTRIBUTING.md"),
+            format!(
+                "# Contributing\n\n{}\n",
+                "Run cargo test, then open a pull request. ".repeat(8)
+            ),
+        )
+        .unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 100.0, "{details}");
+    }
+
+    /// A README without an example or sections is prose, not a manual: it earns
+    /// most of its weight, never all of it, and never zero.
+    #[tokio::test]
+    async fn substantive_but_unstructured_readme_earns_partial_credit() {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+        fs::write(
+            root.join("README.md"),
+            "a wall of prose with no heading and no example. ".repeat(10),
+        )
+        .unwrap();
+
+        let (score, details) = PerfectionScoreCalculator::new()
+            .get_documentation_score(root)
+            .await;
+
+        assert_eq!(score, 28.0, "{details}");
+        assert!(details.contains("no structure"), "{details}");
     }
 }

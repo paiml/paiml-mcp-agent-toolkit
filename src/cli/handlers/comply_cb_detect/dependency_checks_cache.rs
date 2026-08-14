@@ -1,6 +1,44 @@
 // dependency_checks_cache.rs — included by dependency_checks.rs
 // DependencyCache impl, Cargo.lock parsing, transitive dependency counting
 
+/// Where CB-081 keeps its own state for a given project.
+///
+/// #939: `pmat comply check` is an auditor, and an auditor must not write to
+/// the tree it audits. CB-081 used to drop `.pmat/deps-cache.json` and
+/// `.pmat/metrics/dependencies.json` into the project as a side effect of
+/// reading it, so a second `comply check` on an unchanged tree saw a different
+/// tree: `CB-1332: Cache Staleness` flipped Skip -> Pass and the pass count
+/// moved 25 -> 26 with no edit in between. On a repo with no `.pmat/` at all,
+/// merely being scored created one.
+///
+/// The state now lives in the user's cache directory, keyed by the project
+/// path, so scoring is read-only. Nothing here is a project artifact: it is a
+/// cache and a trend log, both regenerable.
+///
+/// One rule, one place — every CB-081 read and write goes through this.
+pub(super) fn cb081_state_dir(project_path: &Path) -> std::path::PathBuf {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let canonical = fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
+    let mut hasher = DefaultHasher::new();
+    canonical.hash(&mut hasher);
+    let name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project");
+    let key = format!("{name}-{:016x}", hasher.finish());
+
+    let base = dirs::cache_dir()
+        .or_else(|| dirs::home_dir().map(|h| h.join(".cache")))
+        .unwrap_or_else(std::env::temp_dir);
+
+    base.join("paiml-mcp-agent-toolkit")
+        .join("comply")
+        .join("cb081")
+        .join(key)
+}
+
 impl DependencyCache {
     /// Check if cache is valid (Cargo.lock unchanged)
     fn is_valid(&self, cargo_lock_path: &Path) -> bool {
@@ -16,17 +54,18 @@ impl DependencyCache {
         false
     }
 
-    /// Load cache from .pmat/deps-cache.json
+    /// Load cache from the out-of-project state directory.
     fn load(project_path: &Path) -> Option<Self> {
-        let cache_path = project_path.join(".pmat/deps-cache.json");
+        let cache_path = cb081_state_dir(project_path).join("deps-cache.json");
         fs::read_to_string(&cache_path)
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
     }
 
-    /// Save cache to .pmat/deps-cache.json
+    /// Save cache to the out-of-project state directory (never into the audited
+    /// project — see [`cb081_state_dir`]).
     fn save(&self, project_path: &Path) {
-        let cache_path = project_path.join(".pmat/deps-cache.json");
+        let cache_path = cb081_state_dir(project_path).join("deps-cache.json");
         if let Some(parent) = cache_path.parent() {
             let _ = fs::create_dir_all(parent);
         }
@@ -84,11 +123,23 @@ pub(super) fn parse_cargo_lock(cargo_lock_path: &Path) -> (usize, Vec<DuplicateC
     (package_count, duplicates)
 }
 
-/// Count production-only transitive dependencies using `cargo tree -e no-dev`
-/// Returns None if cargo tree is unavailable or fails
+/// Count production-only transitive dependencies using `cargo tree -e no-dev`.
+///
+/// Returns `None` when cargo tree is unavailable, fails, or would have to
+/// change the lockfile.
+///
+/// `--locked` is not optional here (#939). Without it, `cargo tree` *resolves*:
+/// on a project whose `Cargo.lock` is incomplete or stale it rewrites the
+/// lockfile in place — measured at 45 bytes -> 1,790 bytes on a one-dependency
+/// fixture, after fetching from the network — so merely scoring a repository
+/// edited a tracked file in it. The caller of this function already refuses to
+/// run at all when there is no `Cargo.lock` for exactly that reason; a lockfile
+/// that exists deserves the same protection. With `--locked`, cargo exits 101
+/// rather than writing, and the count falls back to the total from
+/// `Cargo.lock`.
 pub(super) fn count_production_transitive(project_path: &Path) -> Option<usize> {
     let output = std::process::Command::new("cargo")
-        .args(["tree", "-e", "no-dev", "--prefix=none"])
+        .args(["tree", "-e", "no-dev", "--prefix=none", "--locked"])
         .current_dir(project_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())

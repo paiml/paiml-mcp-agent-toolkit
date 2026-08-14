@@ -167,6 +167,12 @@ include!("deep_context_quality_types.rs");
 mod analyzer_core;
 mod analyzer_formatting;
 
+// The single owner of the include/exclude pattern rule (R18).
+pub mod scope;
+
+#[cfg(test)]
+mod scope_wiring_tests;
+
 // Analysis helper functions
 include!("analysis_helpers.rs");
 

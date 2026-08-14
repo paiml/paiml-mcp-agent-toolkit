@@ -209,6 +209,7 @@ fn test_compliance_report_compliant() {
         breaking_changes: vec![],
         recommendations: vec![],
         timestamp: Utc::now(),
+        history: None,
     };
 
     assert!(report.is_compliant);
@@ -236,6 +237,7 @@ fn test_compliance_report_not_compliant() {
         }],
         recommendations: vec!["Update now".to_string()],
         timestamp: Utc::now(),
+        history: None,
     };
 
     assert!(!report.is_compliant);
@@ -255,6 +257,7 @@ fn test_compliance_report_serialization() {
         breaking_changes: vec![],
         recommendations: vec![],
         timestamp: Utc::now(),
+        history: None,
     };
 
     let json = serde_json::to_string_pretty(&report).unwrap();

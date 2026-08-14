@@ -310,7 +310,7 @@ fn print_status_table(repos: &[StackRepo]) {
         };
 
         // Use raw name (no ANSI) for fixed-width alignment, then print colored
-        println!("  {:<28} {} {}", &repo.name, status_str, path_str,);
+        println!("  {:<28} {} {}", repo.name, status_str, path_str,);
     }
 
     println!();

@@ -280,31 +280,26 @@ fn print_work_start_next_steps(id: &str) {
     println!();
 }
 
-/// Handle work continue command
+/// Handle `pmat work delegate` (MACS-019): hand a ticket to another agent by
+/// writing the handoff bundle and the provenance boundary. (The doc comment
+/// here used to read "Handle work continue command".)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_delegate(id: String, agy: bool, path: Option<PathBuf>) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 
-    println!(
-        "{}",
-        c::label(&format!(
-            "🤝 Delegating work to {}: {}",
-            if agy { "Google Anti-Gravity" } else { "Agent" },
-            c::path(&id)
-        ))
-    );
-    println!();
-
-    // Find item
-    let _item = service
+    // #985: this used to print "✅ MACS-019: Task delegated and provenance
+    // boundaries preserved." after discarding the item, writing nothing. The
+    // delegation now lives in the ledger (work_ledger_delegate.rs): it writes
+    // the handoff bundle that carries the forwarded task context, appends the
+    // provenance boundary to the ticket's events.jsonl, and refuses outright
+    // when the delegating agent is unidentified.
+    let item = service
         .find_item(&id)?
         .with_context(|| format!("Item not found: {}", id))?;
 
-    // TODO(MACS-019): Implement task context forwarding and provenance boundaries
-    println!("✅ MACS-019: Task delegated and provenance boundaries preserved.");
-    Ok(())
+    crate::cli::handlers::work_ledger::run_work_delegate(&item, agy, &project_path)
 }
 
 pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<()> {

@@ -3,18 +3,19 @@
 
 #[test]
 fn test_query_result_from_entry() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
 
     assert_eq!(result.function_name, "test_func");
     assert_eq!(result.complexity, 5);
-    assert!((result.tdg_score - 1.5).abs() < 0.01);
+    assert!((result.tdg_score - 88.0).abs() < 0.01);
+    assert_eq!(result.tdg_grade, "A-");
     assert!(result.source.is_none());
 }
 
 #[test]
 fn test_query_result_with_source() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, true);
 
     assert!(result.source.is_some());
@@ -22,7 +23,7 @@ fn test_query_result_with_source() {
 
 #[test]
 fn test_format_display() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     let display = result.format_display();
 
@@ -32,7 +33,7 @@ fn test_format_display() {
 
 #[test]
 fn test_format_text() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     let text = format_text(&[result]);
 
@@ -42,7 +43,7 @@ fn test_format_text() {
 
 #[test]
 fn test_format_markdown() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     let md = format_markdown(&[result]);
 
@@ -52,7 +53,7 @@ fn test_format_markdown() {
 
 #[test]
 fn test_format_json() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     let json = format_json(&[result]).unwrap();
 
@@ -101,7 +102,7 @@ fn test_parse_query_prefixes_empty_value() {
 
 #[test]
 fn test_query_result_has_calls_fields() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     assert!(result.calls.is_empty());
     assert!(result.called_by.is_empty());
@@ -109,7 +110,7 @@ fn test_query_result_has_calls_fields() {
 
 #[test]
 fn test_format_text_with_calls() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.calls = vec!["helper_func".to_string()];
     result.called_by = vec!["main".to_string()];
@@ -120,7 +121,7 @@ fn test_format_text_with_calls() {
 
 #[test]
 fn test_format_markdown_with_calls() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.9, false);
     result.calls = vec!["helper_func".to_string(), "other".to_string()];
     let md = format_markdown(&[result]);
@@ -129,7 +130,7 @@ fn test_format_markdown_with_calls() {
 
 #[test]
 fn test_format_json_skips_empty_calls() {
-    let entry = create_test_entry("test_func", 5, 1.5);
+    let entry = create_test_entry("test_func", 5, 88.0);
     let result = QueryResult::from_entry(&entry, 0.9, false);
     let json = format_json(&[result]).unwrap();
     // Empty calls/called_by should not appear in JSON (skip_serializing_if)

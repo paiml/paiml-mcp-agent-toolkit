@@ -1,8 +1,8 @@
 /// Phase 6: Resolve paths - Find test file paths from test names
 async fn handle_resolve_paths(input: &Path, output: &Path, project_path: &Path) -> Result<()> {
-    println!("🔍 Resolving test file paths");
-    println!("   Project: {}", project_path.display());
-    println!();
+    crate::status_println!("🔍 Resolving test file paths");
+    crate::status_println!("   Project: {}", project_path.display());
+    crate::status_println!();
 
     // Read discovery report
     let content = std::fs::read_to_string(input).context("Failed to read discovery report")?;
@@ -37,7 +37,7 @@ async fn handle_resolve_paths(input: &Path, output: &Path, project_path: &Path) 
     let json = serde_json::to_string_pretty(&report)?;
     std::fs::write(output, json)?;
 
-    println!("\n✅ Output written to: {}", output.display());
+    crate::status_println!("\n✅ Output written to: {}", output.display());
 
     Ok(())
 }

@@ -47,12 +47,18 @@ pub async fn handle_repo_score(
         update_readme_badge(path, &score)?;
     }
 
-    // Format output
+    // Format output.
+    //
+    // `failures_only` reaches the formatters and nothing else. It used to reach
+    // neither: it was discarded at `build_scorer_config` (correctly, see below)
+    // and the four formatters were never given it, so the flag had no consumer
+    // at all and `--failures-only` was byte-identical to the plain run on a
+    // repo with a passing category to drop.
     let output_text = match format {
-        RepoScoreOutputFormat::Text => format_text(&score, verbose),
-        RepoScoreOutputFormat::Json => format_json(&score)?,
-        RepoScoreOutputFormat::Markdown => format_markdown(&score),
-        RepoScoreOutputFormat::Yaml => format_yaml(&score)?,
+        RepoScoreOutputFormat::Text => format_text(&score, verbose, failures_only),
+        RepoScoreOutputFormat::Json => format_json(&score, failures_only)?,
+        RepoScoreOutputFormat::Markdown => format_markdown(&score, failures_only),
+        RepoScoreOutputFormat::Yaml => format_yaml(&score, failures_only)?,
     };
 
     // Write output
@@ -125,3 +131,123 @@ mod failures_only_is_a_display_filter_tests {
 // Design-by-contract specifications (Verus-style)
 // #[requires(project_path.is_dir())]
 // #[ensures(result.is_ok() ==> ret.len() > 0)]
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod failures_only_filters_the_report_tests {
+    //! `--failures-only` must remove passing rows from every format.
+    //!
+    //! The flag was discarded at `build_scorer_config` (correctly — see the
+    //! doc there) and was never handed to a formatter, so it had NO consumer:
+    //! on a repo with 5 failing categories and 1 passing one, `repo-score` and
+    //! `repo-score --failures-only` were byte-identical and the ✓ row survived
+    //! in both.
+    use super::*;
+    use crate::services::repo_score::{
+        models::{CategoryScore, CategoryScores, ScoreMetadata, ScoreStatus},
+        RepoScore,
+    };
+
+    fn category(score: f64, max: f64, status: ScoreStatus) -> CategoryScore {
+        CategoryScore {
+            score,
+            max_score: max,
+            percentage: score / max * 100.0,
+            status,
+            subcategories: vec![],
+            findings: vec![],
+        }
+    }
+
+    /// One passing category among five failing ones — the mixed state the flag
+    /// exists to filter.
+    fn mixed_score() -> RepoScore {
+        RepoScore {
+            total_score: 42.0,
+            grade: Grade::F,
+            categories: CategoryScores {
+                documentation: category(2.0, 20.0, ScoreStatus::Fail),
+                precommit_hooks: category(2.0, 20.0, ScoreStatus::Fail),
+                repository_hygiene: category(10.0, 10.0, ScoreStatus::Pass),
+                build_test_automation: category(2.0, 25.0, ScoreStatus::Fail),
+                continuous_integration: category(2.0, 20.0, ScoreStatus::Fail),
+                pmat_compliance: category(1.0, 5.0, ScoreStatus::Warning),
+            },
+            recommendations: vec![],
+            metadata: ScoreMetadata::new(std::path::PathBuf::from(".")),
+        }
+    }
+
+    #[test]
+    fn text_drops_the_passing_row_and_keeps_the_failing_ones() {
+        let score = mixed_score();
+        let plain = format_text(&score, false, false);
+        let filtered = format_text(&score, false, true);
+
+        assert_ne!(plain, filtered, "--failures-only changed nothing");
+        assert!(
+            plain.contains("Repository Hygiene"),
+            "control: the passing row is in the plain report:\n{plain}"
+        );
+        assert!(
+            !filtered.contains("Repository Hygiene"),
+            "the passing row survived --failures-only:\n{filtered}"
+        );
+        assert!(
+            filtered.contains("Documentation"),
+            "a failing row must survive:\n{filtered}"
+        );
+    }
+
+    #[test]
+    fn markdown_drops_the_passing_row() {
+        let score = mixed_score();
+        let plain = format_markdown(&score, false);
+        let filtered = format_markdown(&score, true);
+
+        assert_ne!(plain, filtered);
+        assert!(plain.contains("Repository Hygiene"));
+        assert!(!filtered.contains("Repository Hygiene"), "{filtered}");
+    }
+
+    #[test]
+    fn json_and_yaml_drop_the_passing_category() {
+        let score = mixed_score();
+        let doc: serde_json::Value =
+            serde_json::from_str(&format_json(&score, true).expect("json")).expect("parse");
+
+        assert!(
+            doc["categories"].get("repository_hygiene").is_none(),
+            "the passing category survived in JSON: {doc}"
+        );
+        assert!(
+            doc["categories"].get("documentation").is_some(),
+            "a failing category must survive in JSON: {doc}"
+        );
+        assert_eq!(doc["failures_only"], serde_json::Value::Bool(true));
+
+        let yaml = format_yaml(&score, true).expect("yaml");
+        assert!(!yaml.contains("repository_hygiene"), "{yaml}");
+        assert!(yaml.contains("documentation"), "{yaml}");
+    }
+
+    /// A display filter must never move a number. The flag used to reach
+    /// `ScorerConfig.skip_slow_checks`, which scored a skipped check as a full
+    /// pass: 96.0 plain, 99.0 with the flag, on the same repository.
+    #[test]
+    fn the_total_is_the_measured_one_in_every_format() {
+        let score = mixed_score();
+        for report in [
+            format_text(&score, false, true),
+            format_markdown(&score, true),
+        ] {
+            assert!(
+                report.contains("42.0"),
+                "the filtered report must still show the measured total:\n{report}"
+            );
+        }
+        let doc: serde_json::Value =
+            serde_json::from_str(&format_json(&score, true).expect("json")).expect("parse");
+        assert_eq!(doc["total_score"], 42.0);
+    }
+}

@@ -70,6 +70,7 @@ fn index_of(paths: &[&str]) -> AgentContextIndex {
             file_count: paths.len(),
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 1.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         },

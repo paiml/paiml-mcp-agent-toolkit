@@ -60,7 +60,13 @@ impl CargoDeadCodeAnalyzer {
         let current_tree_hash = self.get_tree_hash()?;
         let current_version = env!("CARGO_PKG_VERSION");
 
-        if cached.tree_hash == current_tree_hash && cached.pmat_version == current_version {
+        // The SHAPE of the cached report is part of the key. Without it, a
+        // cache written by an earlier build of the same version was accepted
+        // whole, and a field added since (`unreachable_items`) came back empty.
+        if cached.report_schema == DEAD_CODE_CACHE_SCHEMA
+            && cached.tree_hash == current_tree_hash
+            && cached.pmat_version == current_version
+        {
             tracing::debug!("Dead code cache hit (tree_hash: {})", current_tree_hash);
             Some(cached.report)
         } else {
@@ -86,6 +92,7 @@ impl CargoDeadCodeAnalyzer {
         };
 
         let cached = CachedDeadCodeResult {
+            report_schema: DEAD_CODE_CACHE_SCHEMA,
             tree_hash,
             pmat_version: env!("CARGO_PKG_VERSION").to_string(),
             timestamp: chrono::Utc::now(),
@@ -117,13 +124,11 @@ mod cache_key_tests {
         let root = std::path::Path::new("/p");
         let default_path = CargoDeadCodeAnalyzer::new(root).cache_path();
         let with_tests = CargoDeadCodeAnalyzer::new(root).include_tests().cache_path();
-        let with_examples = CargoDeadCodeAnalyzer::new(root)
-            .include_examples()
-            .cache_path();
 
+        // `include_examples()` no longer separates keys, because examples and
+        // benches are in scope by default — it re-asserts the default rather
+        // than widening the walk, so there is no second file set to key apart.
         assert_ne!(default_path, with_tests);
-        assert_ne!(default_path, with_examples);
-        assert_ne!(with_tests, with_examples);
         assert!(default_path.starts_with("/p/.pmat"), "{default_path:?}");
     }
 

@@ -308,7 +308,56 @@ Supported languages:
 
     let result = cmd.execute();
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), ExitCode::SUCCESS);
+    // REGRESSION: this used to assert SUCCESS. A document from which no
+    // verifiable claim could be extracted was never checked, so reporting it
+    // as a pass let fabricated documentation through the gate. Nothing
+    // checked is now an explicit failure, not a green tick.
+    assert_eq!(result.unwrap(), ExitCode::FAILURE);
+}
+
+/// REGRESSION (blocker: `pmat validate-readme` certified fabricated docs).
+///
+/// A document citing a file that does not exist must fail the gate. Before the
+/// fix the extractor recognised only three "PMAT can/cannot/supports" phrases,
+/// so this document yielded zero claims and printed
+/// "All documentation claims are verified!" with exit 0.
+#[test]
+fn test_execute_fails_on_fabricated_file_reference() {
+    let mut deep_context_file = NamedTempFile::new().unwrap();
+    writeln!(
+        deep_context_file,
+        r#"
+Functions:
+- main()
+
+Supported languages:
+- Rust
+        "#
+    )
+    .unwrap();
+
+    let mut readme_file = NamedTempFile::new().unwrap();
+    writeln!(
+        readme_file,
+        "The entry point lives in `src/totally/made/up/nonexistent_module.rs` today."
+    )
+    .unwrap();
+
+    let cmd = ValidateReadmeCmd {
+        targets: vec![readme_file.path().to_path_buf()],
+        deep_context: deep_context_file.path().to_path_buf(),
+        verified_threshold: 0.9,
+        contradiction_threshold: 0.3,
+        fail_on_contradiction: true,
+        fail_on_unverified: false,
+        output: OutputFormat::Text,
+        failures_only: false,
+        verbose: false,
+    };
+
+    let result = cmd.execute();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), ExitCode::FAILURE);
 }
 
 #[test]
@@ -323,10 +372,13 @@ Supported languages:
     )
     .unwrap();
 
-    // README with claim inside code block (should be ignored)
+    // README with a false claim inside a code block (must be ignored) plus a
+    // real claim outside it, so the run has something to actually verify —
+    // otherwise "nothing was checked" would be indistinguishable from a pass.
     let mut readme_file = NamedTempFile::new().unwrap();
     writeln!(readme_file, "# Usage").unwrap();
     writeln!(readme_file).unwrap();
+    writeln!(readme_file, "PMAT can analyze Rust code.").unwrap();
     writeln!(readme_file, "```bash").unwrap();
     writeln!(readme_file, "# PMAT can compile code inside code block").unwrap();
     writeln!(readme_file, "pmat analyze").unwrap();

@@ -73,16 +73,19 @@ pub(super) async fn format_and_write_output(
     }?;
 
     if listing.truncated {
-        eprintln!(
+        crate::status_eprintln!(
             "ℹ️  Listing the {} most complex of {} analyzed files (--top-files {}); \
              the summary covers all {}.",
-            listing.files_listed, listing.files_analyzed, listing.top_files, listing.files_analyzed
+            listing.files_listed,
+            listing.files_analyzed,
+            listing.top_files,
+            listing.files_analyzed
         );
     }
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &formatted_output).await?;
-        eprintln!("📝 Results written to: {}", output_path.display());
+        crate::status_eprintln!("📝 Results written to: {}", output_path.display());
     } else {
         println!("{formatted_output}");
     }
@@ -441,7 +444,7 @@ pub(super) fn format_satd_output(
 pub(super) async fn write_satd_output(content: String, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ SATD analysis written to: {}", output_path.display());
+        crate::status_eprintln!("✅ SATD analysis written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

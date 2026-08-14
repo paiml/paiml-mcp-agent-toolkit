@@ -156,52 +156,10 @@ async fn check_single_file_dead_code(
     Ok(violations)
 }
 
-async fn check_single_file_satd(
-    project_path: &Path,
-    file_path: &Path,
-) -> Result<Vec<QualityViolation>> {
-    use regex::Regex;
-
-    let mut violations = Vec::new();
-    let satd_pattern = Regex::new(r"(?i)\b(TODO|FIXME|HACK|XXX|BUG|REFACTOR):\s*(.+)")?;
-
-    // Make file path absolute
-    let abs_file_path = if file_path.is_absolute() {
-        file_path.to_path_buf()
-    } else {
-        project_path.join(file_path)
-    };
-
-    if !abs_file_path.exists() {
-        return Ok(violations);
-    }
-
-    let content = tokio::fs::read_to_string(&abs_file_path).await?;
-
-    for (line_no, line) in content.lines().enumerate() {
-        if let Some(captures) = satd_pattern.captures(line) {
-            let satd_type = captures
-                .get(1)
-                .expect("Match group 1 exists for successful regex match")
-                .as_str();
-            let text = captures
-                .get(2)
-                .expect("Match group 2 exists for successful regex match")
-                .as_str();
-
-            violations.push(QualityViolation {
-                check_type: "satd".to_string(),
-                severity: "warning".to_string(),
-                file: file_path.to_string_lossy().to_string(),
-                line: Some(line_no + 1),
-                message: format!("Self-admitted technical debt: {satd_type} - {text}"),
-                details: None,
-            });
-        }
-    }
-
-    Ok(violations)
-}
+// DELETED: `check_single_file_satd`, a second hardcoded SATD regex with its own
+// severity scale (every marker => "warning"). `pmat quality-gate --file` now
+// runs `check_satd_file` (quality_checks_part1_satd.rs), the same SATDDetector
+// and the same scale as the project gate and the MCP tool.
 
 async fn check_single_file_security(
     project_path: &Path,

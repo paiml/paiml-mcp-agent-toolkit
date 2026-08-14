@@ -8,6 +8,9 @@
 //! 0.0 / grade F from inside the repo vs 100.0 / grade A+ from `/tmp`.
 
 use super::*;
+// The git tri-state moved to the shared Known-Defects gate, which is now the
+// single place both analyzers consult; the behaviour pinned here is unchanged.
+use crate::tdg::critical_defect_gate::is_file_git_tracked;
 use std::process::Command;
 
 /// Returns true when a usable `git` binary is present.
@@ -114,13 +117,24 @@ fn test_critical_defect_grade_is_cwd_independent() {
         .analyze_source(&source, Language::Rust, Some(file.clone()))
         .expect("analysis");
 
-    // The unwrap() is a critical defect in a COMMITTED file, so the auto-fail
-    // must fire even though the test process runs from a different repository.
+    // The unwrap() is a critical defect in a COMMITTED file, so it must be
+    // detected and left un-waived even though the test process runs from a
+    // different repository. The `0.0 / F` this used to assert was the old way
+    // of expressing the auto-fail; the gate is now `CriticalDefectGate` and the
+    // score carries a graduated penalty, so the CWD-independent property to pin
+    // here is the DETECTION, not a particular magic score.
     assert_eq!(score.critical_defects_count, 1);
     assert!(
         score.has_critical_defects,
-        "committed file with a critical defect must auto-fail from any CWD"
+        "committed file with a critical defect must be flagged from any CWD"
     );
-    assert_eq!(score.total, 0.0);
-    assert_eq!(score.grade, Grade::F);
+    assert!(
+        score.critical_defects_suppressed.is_none(),
+        "a committed file is not eligible for the #279 waiver from any CWD"
+    );
+    assert!(
+        score.total < 70.0,
+        "a critical defect must still cap the score below B-: got {}",
+        score.total
+    );
 }

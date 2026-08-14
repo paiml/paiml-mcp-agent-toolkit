@@ -9,6 +9,7 @@ mod engine;
 mod enrichment;
 pub(crate) mod extract_candidates;
 mod formatters;
+pub(crate) mod grades;
 pub(crate) mod ptx_diagnostics;
 pub(crate) mod ptx_flow;
 pub(crate) mod raw_search;
@@ -27,7 +28,10 @@ pub use enrichment::{
 };
 pub use formatters::{format_json, format_markdown, format_text, format_text_with_code};
 pub use suggest_rename::{suggest_renames, RenameSignal, RenameSuggestion};
-pub use types::{CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode};
+pub use types::{
+    normalize_definition_type, CaseSensitivity, QueryOptions, QueryResult, RankBy, SearchMode,
+    DEFINITION_TYPE_VALUES,
+};
 
 // Engine methods are impl'd on AgentContextIndex directly (in engine.rs),
 // so they're available wherever AgentContextIndex is imported.

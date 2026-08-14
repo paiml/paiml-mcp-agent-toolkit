@@ -8,20 +8,32 @@ use std::collections::HashMap;
 
 // ── ANSI color constants ────────────────────────────────────────────────────
 // Re-exported for sibling modules.
+//
+// These were a second, private copy of `crate::cli::colors` typed as
+// `&'static str`, so every `{CYAN}`/`{RESET}` in the query printers emitted its
+// escape unconditionally: `pmat query 'error handling' --color never | cat`
+// still wrote 20 escape-bearing lines. Round 4 only reached the three special
+// modes that go through `tint`, and the document printer. Aliasing the shared
+// `Sgr` constants deletes the duplicate outright — the gating is in the value's
+// `Display`, so every interpolation site is fixed at once and none of them can
+// drift back.
 
-pub(super) const RESET: &str = "\x1b[0m";
-pub(super) const BOLD: &str = "\x1b[1m";
-pub(super) const DIM: &str = "\x1b[2m";
-pub(super) const UNDERLINE: &str = "\x1b[4m";
-pub(super) const RED: &str = "\x1b[31m";
-pub(super) const GREEN: &str = "\x1b[32m";
-pub(super) const YELLOW: &str = "\x1b[33m";
-pub(super) const MAGENTA: &str = "\x1b[35m";
-pub(super) const CYAN: &str = "\x1b[36m";
-pub(super) const WHITE: &str = "\x1b[1;37m";
-pub(super) const BRIGHT_GREEN: &str = "\x1b[1;32m";
-pub(super) const BRIGHT_RED: &str = "\x1b[1;31m";
-pub(super) const DIM_CYAN: &str = "\x1b[2;36m";
+pub(super) use crate::cli::colors::Sgr;
+
+pub(super) const RESET: Sgr = crate::cli::colors::RESET;
+pub(super) const BOLD: Sgr = crate::cli::colors::BOLD;
+pub(super) const DIM: Sgr = crate::cli::colors::DIM;
+pub(super) const UNDERLINE: Sgr = crate::cli::colors::UNDERLINE;
+pub(super) const RED: Sgr = crate::cli::colors::RED;
+pub(super) const GREEN: Sgr = crate::cli::colors::GREEN;
+pub(super) const YELLOW: Sgr = crate::cli::colors::YELLOW;
+pub(super) const MAGENTA: Sgr = crate::cli::colors::MAGENTA;
+pub(super) const CYAN: Sgr = crate::cli::colors::CYAN;
+/// The query printers' "white" has always been the bold variant.
+pub(super) const WHITE: Sgr = crate::cli::colors::BOLD_WHITE;
+pub(super) const BRIGHT_GREEN: Sgr = crate::cli::colors::BOLD_GREEN;
+pub(super) const BRIGHT_RED: Sgr = crate::cli::colors::BOLD_RED;
+pub(super) const DIM_CYAN: Sgr = crate::cli::colors::DIM_CYAN;
 
 // ── Data structures ─────────────────────────────────────────────────────────
 
@@ -304,15 +316,14 @@ pub(super) fn is_test_path(file_path: &str) -> bool {
 }
 
 /// Normalize a definition type filter string to the canonical form
+/// Canonical `definition_type` for a `--type` value.
+///
+/// Delegates to the one mapping in `agent_context::query::types`; the CLI's
+/// `--type` value_parser validates against the same function, so an unknown
+/// value is rejected at parse time and can never reach here.
 pub(super) fn normalize_definition_type(def_type: &str) -> String {
-    match def_type.to_lowercase().as_str() {
-        "fn" | "func" | "function" => "function".to_string(),
-        "struct" | "structs" => "struct".to_string(),
-        "enum" | "enums" => "enum".to_string(),
-        "trait" | "traits" => "trait".to_string(),
-        "type" | "types" | "typealias" => "typealias".to_string(),
-        other => other.to_string(),
-    }
+    crate::services::agent_context::normalize_definition_type(def_type)
+        .unwrap_or_else(|| def_type.to_lowercase())
 }
 
 /// Apply result filters: exclude-tests and definition-type

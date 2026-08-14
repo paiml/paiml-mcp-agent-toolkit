@@ -61,18 +61,34 @@ pub async fn handle_demo_score(
 use crate::services::repo_score::models::CategoryScore;
 
 /// Format score as human-readable text
+///
+/// `--format text` is documented as "Text format with colored output
+/// (default)", but this renderer emitted no escape at all, so `demo-score
+/// --color always` was byte-identical to `--color never`. Colour comes from the
+/// shared helpers, which honour `--color always` on a pipe and stay plain under
+/// `--color never`, `NO_COLOR` and a redirected stdout.
 fn format_text(score: &CategoryScore, verbose: bool, failures_only: bool) -> String {
+    use crate::cli::colors as c;
+
     let mut output = String::new();
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    output.push_str("📚  Demo Quality Score (Category G)\n");
-    output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    output.push_str(&format!("{}\n", c::rule()));
+    output.push_str(&format!(
+        "{}\n",
+        c::subheader("📚  Demo Quality Score (Category G)")
+    ));
+    output.push_str(&format!("{}\n\n", c::rule()));
     let percentage = (score.score / score.max_score) * 100.0;
     let grade = grade_from_percentage(percentage);
     output.push_str(&format!(
-        "Score: {:.1}/{:.1} ({:.1}%) - Grade: {}\n\n",
-        score.score, score.max_score, percentage, grade
+        "{} {:.1}/{:.1} ({}) - {} {}\n\n",
+        c::label("Score:"),
+        score.score,
+        score.max_score,
+        c::pct(percentage, 80.0, 50.0),
+        c::label("Grade:"),
+        c::grade(grade)
     ));
-    output.push_str("Categories:\n");
+    output.push_str(&format!("{}\n", c::subheader("Categories:")));
     for sub in &score.subcategories {
         format_text_subcategory(sub, verbose, failures_only, &mut output);
     }
@@ -121,13 +137,19 @@ fn format_text_subcategory(
     failures_only: bool,
     output: &mut String,
 ) {
+    use crate::cli::colors as c;
+
     let (icon, pct, is_na) = subcategory_status(sub);
     if is_na {
-        output.push_str(&format!("  {} {}: N/A\n", icon, sub.name));
+        output.push_str(&format!("  {} {}: {}\n", icon, sub.name, c::dim("N/A")));
     } else {
         output.push_str(&format!(
-            "  {} {}: {:.1}/{:.1} ({:.0}%)\n",
-            icon, sub.name, sub.score, sub.max_score, pct
+            "  {} {}: {:.1}/{:.1} ({})\n",
+            icon,
+            sub.name,
+            sub.score,
+            sub.max_score,
+            c::colored(c::threshold_color(pct, 80.0, 50.0), &format!("{pct:.0}%"))
         ));
     }
     if !verbose {

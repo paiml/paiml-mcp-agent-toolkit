@@ -10,29 +10,29 @@
 /// Coordinates all quality analysis activities including lint, complexity, SATD, and coverage.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQualityAnalysis> {
-    eprintln!("🔍 Analyzing project quality comprehensively...");
+    crate::status_eprintln!("🔍 Analyzing project quality comprehensively...");
 
     // Analyze lint violations across the project
     let lint_violations = analyze_project_lint_violations(&context.source_files).await?;
-    eprintln!("📊 Found {} lint violations", lint_violations.len());
+    crate::status_eprintln!("📊 Found {} lint violations", lint_violations.len());
 
     // Analyze complexity metrics
     let complexity_analysis = analyze_project_complexity(&context.source_files).await?;
-    eprintln!(
+    crate::status_eprintln!(
         "🔢 Complexity analysis completed: {} high-complexity functions",
         complexity_analysis.high_complexity_count
     );
 
     // Analyze SATD (Self-Admitted Technical Debt)
     let satd_analysis = analyze_project_satd(&context.source_files).await?;
-    eprintln!(
+    crate::status_eprintln!(
         "💭 SATD analysis completed: {} technical debt comments",
         satd_analysis.total_satd_count
     );
 
     // Analyze test coverage (if applicable)
     let coverage_analysis = analyze_project_coverage(&context.config.project_path).await?;
-    eprintln!(
+    crate::status_eprintln!(
         "🧪 Coverage analysis completed: {:.1}% coverage",
         coverage_analysis.overall_coverage_percent
     );

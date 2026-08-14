@@ -71,13 +71,24 @@ mod tests {
         assert!(output.contains("Short doc"));
     }
 
+    // These highlight/colour tests used to assert that a raw escape appeared in
+    // the output — i.e. they pinned the defect that `--color never` could not
+    // turn colour off. Colour SELECTION (which sequence a tier picks) is now
+    // asserted on the pure constants; colour EMISSION is asserted to be absent,
+    // because `cargo test` captures stdout so `colors_enabled()` is false.
+
     #[test]
     fn test_highlight_matches_literal() {
         let line = "let result = unwrap();";
         let out = highlight_matches_in_line(line, "unwrap()", false);
-        assert!(out.contains("\x1b[1;43m"), "missing highlight start");
         assert!(out.contains("unwrap()"), "missing matched text");
-        assert!(out.contains("\x1b[0m"), "missing highlight end");
+        assert!(
+            !out.contains('\x1b'),
+            "highlight must be plain with colour off, got {out:?}"
+        );
+        // …and the sequence it would use when colour is on.
+        assert_eq!(BG_YELLOW_BOLD.raw(), "\x1b[1;43m");
+        assert_eq!(RESET.raw(), "\x1b[0m");
     }
 
     #[test]
@@ -86,15 +97,15 @@ mod tests {
         let out = highlight_matches_in_line(line, "handlerequest", false);
         // Should highlight preserving original case
         assert!(out.contains("HandleRequest"));
-        assert!(out.contains("\x1b[1;43m"));
+        assert!(!out.contains('\x1b'), "plain with colour off: {out:?}");
     }
 
     #[test]
     fn test_highlight_matches_regex() {
         let line = "fn handle_request(ctx: Context) {}";
         let out = highlight_matches_in_line(line, r"fn\s+handle_\w+", true);
-        assert!(out.contains("\x1b[1;43m"));
         assert!(out.contains("fn handle_request"));
+        assert!(!out.contains('\x1b'), "plain with colour off: {out:?}");
     }
 
     #[test]
@@ -116,7 +127,14 @@ mod tests {
         let mut result = make_result("test_fn", None);
         result.source = Some("fn test_fn() {\n    unwrap();\n}".to_string());
         let output = format_text_with_code(&[result], Some(("unwrap()", false)));
-        assert!(output.contains("\x1b[1;43m"), "missing highlight in output");
+        assert!(
+            output.contains("unwrap()"),
+            "missing matched text in output"
+        );
+        assert!(
+            !output.contains('\x1b'),
+            "the code printer must be plain with colour off: {output:?}"
+        );
         // Should have line numbers in highlight mode
         assert!(output.contains("\u{2502}"), "missing line number separator");
     }
@@ -212,9 +230,10 @@ mod tests {
         let r = result_with_coverage("partial", 30.0, 100);
         let mut out = String::new();
         format_coverage_metrics_text(&r, &mut out);
-        // < 50% → red ANSI \x1b[1;31m.
-        assert!(out.contains("\x1b[1;31m"));
+        // < 50% → red. Selection on the pure tier fn; emission is off here.
+        assert_eq!(coverage_tier_color(30.0), BOLD_RED);
         assert!(out.contains("Cov: 30%"));
+        assert!(!out.contains('\x1b'), "plain with colour off: {out:?}");
     }
 
     #[test]
@@ -223,7 +242,9 @@ mod tests {
         let mut out = String::new();
         format_coverage_metrics_text(&r, &mut out);
         // 50-80% → yellow.
-        assert!(out.contains("\x1b[33m"));
+        assert_eq!(coverage_tier_color(70.0), YELLOW);
+        assert!(out.contains("Cov: 70%"));
+        assert!(!out.contains('\x1b'), "plain with colour off: {out:?}");
     }
 
     #[test]
@@ -232,7 +253,9 @@ mod tests {
         let mut out = String::new();
         format_coverage_metrics_text(&r, &mut out);
         // ≥ 80% → green.
-        assert!(out.contains("\x1b[32m"));
+        assert_eq!(coverage_tier_color(90.0), GREEN);
+        assert!(out.contains("Cov: 90%"));
+        assert!(!out.contains('\x1b'), "plain with colour off: {out:?}");
     }
 
     // ── truncate_doc ──
@@ -316,8 +339,10 @@ mod tests {
         let mut metrics = vec![];
         push_indegree_metric(&r, &mut metrics);
         assert_eq!(metrics.len(), 1);
-        // ≥ 5 → green ANSI.
-        assert!(metrics[0].contains("\x1b[1;32m"));
+        // ≥ 5 → bold green, and the payload survives with colour off.
+        assert_eq!(BOLD_GREEN.raw(), "\x1b[1;32m");
+        assert!(metrics[0].contains("10"));
+        assert!(!metrics[0].contains('\x1b'), "plain: {:?}", metrics[0]);
     }
 
     // ── push_churn_metric_rich (3 tier arms) ──

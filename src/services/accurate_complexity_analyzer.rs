@@ -122,6 +122,84 @@ fn build_function_line_map(content: &str) -> FunctionSpans {
     FunctionSpans::from_source(content)
 }
 
+/// One function definition found in a Rust file, with the body to measure.
+///
+/// Borrowed from the parsed tree so discovery allocates nothing but the name.
+pub struct DiscoveredFn<'a> {
+    /// Bare identifier, matching how [`FunctionSpans`] keys the source scan.
+    pub name: String,
+    /// Attributes on the definition (used for `#[allow(complex_function)]`).
+    pub attrs: &'a [Attribute],
+    /// The body whose decision points are counted.
+    pub block: &'a syn::Block,
+}
+
+/// Every function definition in `items`, in source order.
+///
+/// This is the single answer to "which functions does a Rust file contain".
+/// The complexity walker used to ask only for top-level `Item::Fn`, so a file
+/// whose functions all lived inside `impl` / `trait` / `mod` blocks — i.e. most
+/// idiomatic Rust — measured as *zero* functions with `max_cyclomatic: 0`, and
+/// any gate reading those numbers passed the file unconditionally. 50 bodies as
+/// free functions scored `total_functions: 50`; the same 50 bodies moved into
+/// `impl S { .. }` scored 0.
+///
+/// Source order matters: spans are consumed from [`FunctionSpans`] in textual
+/// order, so two functions sharing a name must be visited in the order they
+/// appear in the text.
+#[must_use]
+pub fn collect_functions(items: &[Item]) -> Vec<DiscoveredFn<'_>> {
+    let mut found = Vec::new();
+    collect_functions_into(items, &mut found);
+    found
+}
+
+fn collect_functions_into<'a>(items: &'a [Item], found: &mut Vec<DiscoveredFn<'a>>) {
+    for item in items {
+        match item {
+            Item::Fn(func) => found.push(DiscoveredFn {
+                name: func.sig.ident.to_string(),
+                attrs: &func.attrs,
+                block: &func.block,
+            }),
+            Item::Impl(block) => {
+                for member in &block.items {
+                    if let syn::ImplItem::Fn(func) = member {
+                        found.push(DiscoveredFn {
+                            name: func.sig.ident.to_string(),
+                            attrs: &func.attrs,
+                            block: &func.block,
+                        });
+                    }
+                }
+            }
+            Item::Trait(decl) => {
+                for member in &decl.items {
+                    if let syn::TraitItem::Fn(func) = member {
+                        // A required method (`fn f(&self);`) has no body: there
+                        // is no code to measure, so it is not counted. Only
+                        // default methods carry a block.
+                        if let Some(block) = &func.default {
+                            found.push(DiscoveredFn {
+                                name: func.sig.ident.to_string(),
+                                attrs: &func.attrs,
+                                block,
+                            });
+                        }
+                    }
+                }
+            }
+            // `mod foo;` has no inline body; `mod foo { .. }` does.
+            Item::Mod(module) => {
+                if let Some((_, nested)) = &module.content {
+                    collect_functions_into(nested, found);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 // --- Submodule includes ---
 include!("accurate_complexity_analyzer_core.rs");
 include!("accurate_complexity_analyzer_visitor.rs");

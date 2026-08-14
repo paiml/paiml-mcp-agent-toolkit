@@ -124,6 +124,26 @@ impl RuleRegistry {
         self.rules.push(rule);
     }
 
+    /// Every rule id this registry can emit, sorted.
+    ///
+    /// The ids are the same strings that land in `Violation::rule` (every rule
+    /// builds its violations with `rule: self.id().to_string()`), which is what
+    /// makes them usable both for validating a `--rules` request and for
+    /// telling the caller what the valid values are.
+    ///
+    /// #961: `analyze makefile --rules <typo>` was accepted, filtered every
+    /// measured violation away and exited 0. Without an enumeration of the
+    /// registered ids there was nothing to check a requested name against, so
+    /// "no rule of that name exists" was indistinguishable from "that rule
+    /// found nothing".
+    #[must_use]
+    pub fn rule_ids(&self) -> Vec<&'static str> {
+        let mut ids: Vec<&'static str> = self.rules.iter().map(|r| r.id()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        ids
+    }
+
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Check all.
@@ -212,6 +232,36 @@ mod tests {
         // With empty AST, no violations should be generated
         // MinPhonyRule only warns if targets exist but aren't .PHONY
         assert_eq!(violations.len(), 0);
+    }
+
+    /// #961: `--rules` had no way to tell "no such rule" from "that rule found
+    /// nothing", because the registry did not expose its ids. RED on the old
+    /// code: `rule_ids` did not exist.
+    #[test]
+    fn rule_ids_enumerates_every_registered_rule_and_matches_emitted_ids() {
+        let registry = RuleRegistry::new();
+        let ids = registry.rule_ids();
+        assert_eq!(
+            ids.len(),
+            registry.rules.len(),
+            "every registered rule must be advertised exactly once: {ids:?}"
+        );
+        assert!(ids.windows(2).all(|w| w[0] < w[1]), "sorted: {ids:?}");
+
+        // The advertised id is the id violations carry, which is the whole
+        // reason the list can be used to validate a --rules request.
+        let source = "build:\n\techo $(UNDEFINED_VAR)\n";
+        let mut parser = MakefileParser::new(source);
+        let ast = parser.parse().expect("fixture parses");
+        let violations = registry.check_all(&ast);
+        assert!(!violations.is_empty(), "fixture must produce violations");
+        for violation in &violations {
+            assert!(
+                ids.contains(&violation.rule.as_str()),
+                "emitted rule id '{}' is not advertised by rule_ids(): {ids:?}",
+                violation.rule
+            );
+        }
     }
 
     #[test]

@@ -93,7 +93,11 @@ fn clip_to_width(content: &str, budget: usize) -> (String, usize) {
         used += w;
     }
     if clipped && saw_escape {
-        kept.push_str("\u{1b}[0m");
+        // The reset comes from the colour authority, not a fifth copy of the
+        // literal. It is emitted only when the CONTENT already carried an
+        // escape, so it can never appear under `--color never` — the gating is
+        // `saw_escape`, and with colour off nothing upstream writes one.
+        kept.push_str(crate::cli::colors::RESET.raw());
     }
     (kept, used)
 }

@@ -160,13 +160,17 @@ fn format_annotated_file(out: &mut String, file_path: &str, hotspot: &FileHotspo
     }
 }
 
-/// Map TDG grade letter to ANSI color code
-fn grade_to_color(grade: &str) -> &'static str {
-    match grade {
-        "A" | "B" => GREEN,
-        "C" => YELLOW,
-        "D" => RED,
-        "F" => BRIGHT_RED,
+/// Map TDG grade letter to ANSI color code.
+///
+/// Matches on the LETTER: grades are `crate::tdg::Grade`'s eleven, so exact
+/// matching on `"A".."F"` painted `A+`, `A-`, `B+`, `B-`, `C+`, `C-` the same
+/// neutral `DIM` as "no grade recorded".
+fn grade_to_color(grade: &str) -> Sgr {
+    match grade.trim().chars().next() {
+        Some('A') | Some('B') => GREEN,
+        Some('C') => YELLOW,
+        Some('D') => RED,
+        Some('F') => BRIGHT_RED,
         _ => DIM,
     }
 }
@@ -313,7 +317,7 @@ fn format_cochange_section(out: &mut String, cochange_pairs: &[CoChangePair]) {
 }
 
 /// Commit type classification rules: (prefix, contains, color, tag)
-const COMMIT_TYPE_RULES: &[(&[&str], &[&str], &str, &str)] = &[
+const COMMIT_TYPE_RULES: &[(&[&str], &[&str], Sgr, &str)] = &[
     (&["fix"], &["fix:", "bugfix"], RED, "[fix]"),
     (&["feat", "add "], &["feat:"], GREEN, "[feat]"),
     (&["refactor"], &["refactor:"], MAGENTA, "[refactor]"),
@@ -326,7 +330,7 @@ const COMMIT_TYPE_RULES: &[(&[&str], &[&str], &str, &str)] = &[
 ];
 
 /// Classify commit type from subject line and return (color, tag)
-pub(super) fn classify_commit_type(subject: &str) -> (&'static str, &'static str) {
+pub(super) fn classify_commit_type(subject: &str) -> (Sgr, &'static str) {
     let lower = subject.to_lowercase();
     for &(prefixes, contains, color, tag) in COMMIT_TYPE_RULES {
         if prefixes.iter().any(|p| lower.starts_with(p))

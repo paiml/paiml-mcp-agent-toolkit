@@ -68,6 +68,7 @@ mod tests {
             file_count: flc,
             languages: vec!["Rust".to_string()],
             avg_tdg_score: 0.0,
+            tdg_scale: crate::services::agent_context::TDG_SCALE.to_string(),
             file_checksums: HashMap::new(),
             last_incremental_changes: 0,
         }

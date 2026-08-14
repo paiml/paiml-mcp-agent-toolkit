@@ -2,7 +2,6 @@
 // complexity (with migration), churn, dag, dead_code, satd, deep_context, tdg, provability
 
 impl CliAdapter {
-
     /// Extract Method (Toyota Way): Handle parameter migration for complexity analysis
     /// Complexity reduction: Extracted complex parameter logic from main dispatch
     #[allow(clippy::too_many_arguments)]
@@ -202,14 +201,35 @@ impl CliAdapter {
         include: &[String],
         exclude: &[String],
         period_days: u32,
-        dag_type: &crate::cli::DeepContextDagType,
+        dag_type: &Option<crate::cli::DeepContextDagType>,
         max_depth: &Option<usize>,
         include_patterns: &[String],
         exclude_patterns: &[String],
-        cache_strategy: &crate::cli::DeepContextCacheStrategy,
+        cache_strategy: &Option<crate::cli::DeepContextCacheStrategy>,
         parallel: &Option<usize>,
         verbose: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        // These two are `Option` because deep-context implements NEITHER: it
+        // builds no DAG (all four `--dag-type` values produced one identical
+        // report) and consults no cache. The CLI route refuses them rather than
+        // accept a knob wired to nothing (#915, `reject_unimplemented_deep_
+        // context_flags`), and this route must give the same answer — a flag
+        // that errors on one protocol and is silently dropped on another is the
+        // same defect in a new place. `None` means the user did not pass it.
+        let mut unsupported = Vec::new();
+        if dag_type.is_some() {
+            unsupported.push("--dag-type");
+        }
+        if cache_strategy.is_some() {
+            unsupported.push("--cache-strategy");
+        }
+        if !unsupported.is_empty() {
+            return Err(ProtocolError::InvalidFormat(format!(
+                "analyze deep-context does not implement {}; the flag(s) would be accepted and ignored. \
+                 Use --include-pattern / --exclude-pattern to select files.",
+                unsupported.join(", ")
+            )));
+        }
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "output_path": output,
@@ -218,11 +238,14 @@ impl CliAdapter {
             "include": include,
             "exclude": exclude,
             "period_days": &period_days,
-            "dag_type": deep_context_dag_type_to_string(dag_type),
+            // Refused above when present, so these are always absent here. They
+            // stay in the body as null rather than carrying a fabricated
+            // default, which is what made the flags look implemented.
+            "dag_type": dag_type.as_ref().map(deep_context_dag_type_to_string),
             "max_depth": max_depth,
             "include_patterns": include_patterns,
             "exclude_patterns": exclude_patterns,
-            "cache_strategy": deep_context_cache_strategy_to_string(cache_strategy),
+            "cache_strategy": cache_strategy.as_ref().map(deep_context_cache_strategy_to_string),
             "parallel": parallel,
             "verbose": &verbose
         });
@@ -267,17 +290,29 @@ impl CliAdapter {
     fn decode_analyze_provability(
         project_path: &std::path::Path,
         functions: &[String],
-        analysis_depth: usize,
+        analysis_depth: Option<usize>,
         format: &crate::cli::ProvabilityOutputFormat,
         high_confidence_only: bool,
         include_evidence: bool,
         output: &Option<std::path::PathBuf>,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        // `--analysis-depth` bounds an iteration that does not exist:
+        // `LightweightProvabilityAnalyzer` scores each function once from source
+        // patterns, and `AbstractInterpreter::analyze_iteration` has no caller.
+        // Depths 0, 1, 10, 50 and 1000 produced one identical report. Refused
+        // here for the same reason the CLI refuses it (#915).
+        if analysis_depth.is_some() {
+            return Err(ProtocolError::InvalidFormat(
+                "analyze provability does not implement --analysis-depth; there is no iteration \
+                 to bound, so the flag would be accepted and ignored."
+                    .to_string(),
+            ));
+        }
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "functions": if functions.is_empty() { None } else { Some(functions) },
-            "analysis_depth": &analysis_depth,
+            "analysis_depth": analysis_depth,
             "format": provability_format_to_string(format),
             "high_confidence_only": &high_confidence_only,
             "include_evidence": &include_evidence,

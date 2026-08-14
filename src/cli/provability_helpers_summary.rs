@@ -63,20 +63,75 @@ pub fn format_provability_summary(
 fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
     use crate::cli::colors as c;
     writeln!(output, "{}\n", c::header("Provability Analysis Summary"))?;
-    writeln!(output, "Total functions analyzed: {}", c::number(&total_functions.to_string()))?;
+    writeln!(
+        output,
+        "Total functions analyzed: {}",
+        c::number(&total_functions.to_string())
+    )?;
     Ok(())
 }
 
 /// Explain the 4-factor scoring model so users understand what drives provability (#229).
 fn write_scoring_model(output: &mut String) -> Result<()> {
     use crate::cli::colors as c;
-    writeln!(output, "\n{}\n", c::subheader("Scoring Model (4 factors, equally weighted)"))?;
-    writeln!(output, "  {}{:<14}{} {:<14} {:<14} 0%", c::seq(c::BOLD), "Factor", c::seq(c::RESET), "100%", "50%")?;
+    writeln!(
+        output,
+        "\n{}\n",
+        c::subheader("Scoring Model (4 factors, equally weighted)")
+    )?;
+    writeln!(
+        output,
+        "  {}{:<14}{} {:<14} {:<14} 0%",
+        c::seq(c::BOLD),
+        "Factor",
+        c::seq(c::RESET),
+        "100%",
+        "50%"
+    )?;
     writeln!(output, "  {}", c::separator())?;
-    writeln!(output, "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}", "Nullability", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
-    writeln!(output, "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}", "Bounds", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
-    writeln!(output, "  {:<14} {}NoAlias{}       {:<14} {}MayAlias/Unknown{}", "Aliasing", c::seq(c::GREEN), c::seq(c::RESET), "-", c::seq(c::RED), c::seq(c::RESET))?;
-    writeln!(output, "  {:<14} {}Pure{}          {}ReadOnly(70){} {}WriteGlobal{}", "Purity", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET))?;
+    writeln!(
+        output,
+        "  {:<14} {}NotNull{}       {}MaybeNull{}    {}Unknown/Null{}",
+        "Nullability",
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
+        c::seq(c::RED),
+        c::seq(c::RESET)
+    )?;
+    writeln!(
+        output,
+        "  {:<14} {}Both bounds{}   {}One bound{}    {}No bounds{}",
+        "Bounds",
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
+        c::seq(c::RED),
+        c::seq(c::RESET)
+    )?;
+    writeln!(
+        output,
+        "  {:<14} {}NoAlias{}       {:<14} {}MayAlias/Unknown{}",
+        "Aliasing",
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        "-",
+        c::seq(c::RED),
+        c::seq(c::RESET)
+    )?;
+    writeln!(
+        output,
+        "  {:<14} {}Pure{}          {}ReadOnly(70){} {}WriteGlobal{}",
+        "Purity",
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
+        c::seq(c::RED),
+        c::seq(c::RESET)
+    )?;
     Ok(())
 }
 
@@ -90,7 +145,14 @@ fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> R
 
     let total = summaries.len();
     let mut counts: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
-    for name in &["NullSafety", "BoundsCheck", "NoAliasing", "PureFunction", "MemorySafety", "ThreadSafety"] {
+    for name in &[
+        "NullSafety",
+        "BoundsCheck",
+        "NoAliasing",
+        "PureFunction",
+        "MemorySafety",
+        "ThreadSafety",
+    ] {
         counts.insert(name, 0);
     }
 
@@ -112,8 +174,12 @@ fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> R
     writeln!(output, "\n{}\n", c::subheader("Verified Property Coverage"))?;
     for (name, count) in &counts {
         let pct_val = (*count as f64 / total as f64) * 100.0;
-        writeln!(output, "  {}{}{}: {}/{} ({})",
-            c::seq(c::BOLD), name, c::seq(c::RESET),
+        writeln!(
+            output,
+            "  {}{}{}: {}/{} ({})",
+            c::seq(c::BOLD),
+            name,
+            c::seq(c::RESET),
             c::number(&count.to_string()),
             c::number(&total.to_string()),
             c::pct(pct_val, 80.0, 50.0),
@@ -145,7 +211,9 @@ fn write_lowest_scoring_functions(
     for (idx, score_val) in indexed.iter().take(limit) {
         let func = &function_ids[*idx];
         let summary = &summaries[*idx];
-        let filename = extract_filename(&func.file_path);
+        // Basename only ("mod.rs") does not identify a file in a tree with
+        // hundreds of them; print the path the analyzer keyed the score by.
+        let filename = crate::cli::report_paths::report_path(&func.file_path);
         let props: Vec<String> = summary
             .verified_properties
             .iter()
@@ -173,9 +241,33 @@ fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> 
     let (high_count, medium_count, low_count) = categorize_scores(summaries);
 
     writeln!(output, "\n{}", c::subheader("Score Distribution:"))?;
-    writeln!(output, "  {}High{} ({}\u{2265}80%{}): {} functions", c::seq(c::GREEN), c::seq(c::RESET), c::seq(c::GREEN), c::seq(c::RESET), c::number(&high_count.to_string()))?;
-    writeln!(output, "  {}Medium{} ({}50-79%{}): {} functions", c::seq(c::YELLOW), c::seq(c::RESET), c::seq(c::YELLOW), c::seq(c::RESET), c::number(&medium_count.to_string()))?;
-    writeln!(output, "  {}Low{} ({}<50%{}): {} functions", c::seq(c::RED), c::seq(c::RESET), c::seq(c::RED), c::seq(c::RESET), c::number(&low_count.to_string()))?;
+    writeln!(
+        output,
+        "  {}High{} ({}\u{2265}80%{}): {} functions",
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        c::seq(c::GREEN),
+        c::seq(c::RESET),
+        c::number(&high_count.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {}Medium{} ({}50-79%{}): {} functions",
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
+        c::seq(c::YELLOW),
+        c::seq(c::RESET),
+        c::number(&medium_count.to_string())
+    )?;
+    writeln!(
+        output,
+        "  {}Low{} ({}<50%{}): {} functions",
+        c::seq(c::RED),
+        c::seq(c::RESET),
+        c::seq(c::RED),
+        c::seq(c::RESET),
+        c::number(&low_count.to_string())
+    )?;
 
     Ok(())
 }
@@ -251,17 +343,14 @@ fn write_top_files_list(
     use crate::cli::colors as c;
     // `--help` documents `--top-files <N>` as "0 = all", but 0 was remapped to
     // the default 10 here, so asking for every file silently truncated the
-    // ranking at ten and the dropped files were never mentioned. 0 means all.
-    let files_to_show = if top_files == 0 {
-        file_avg_scores.len()
-    } else {
-        top_files
-    };
-
+    // ranking at ten and the dropped files were never mentioned. The rule has
+    // one implementation now: `crate::cli::top_files_slice`.
     for (i, (file_path, avg_score, function_count)) in
-        file_avg_scores.iter().take(files_to_show).enumerate()
+        crate::cli::top_files_slice(file_avg_scores, top_files)
+            .iter()
+            .enumerate()
     {
-        let filename = extract_filename(file_path);
+        let filename = crate::cli::report_paths::report_path(file_path);
         writeln!(
             output,
             "  {}. {} - {} avg score ({} functions)",
@@ -361,10 +450,7 @@ mod plain_output_tests {
             .collect();
 
         let rendered = format_provability_summary(&ids, &summaries, 0).expect("render");
-        let listed = rendered
-            .lines()
-            .filter(|l| l.contains("avg score"))
-            .count();
+        let listed = rendered.lines().filter(|l| l.contains("avg score")).count();
         assert_eq!(
             listed, 12,
             "--top-files 0 must list all 12 files, not truncate to the default: {rendered}"

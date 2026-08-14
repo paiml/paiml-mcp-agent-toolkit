@@ -30,18 +30,19 @@ impl Default for ServerConfig {
         let semantic_enabled = std::env::var("PMAT_SEMANTIC_ENABLED")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false);
-        let semantic_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
-            dirs::home_dir().map(|h| {
-                h.join(".pmat")
-                    .join("embeddings.db")
-                    .to_string_lossy()
-                    .to_string()
-            })
-        });
         let semantic_workspace = std::env::var("PMAT_WORKSPACE")
             .ok()
             .map(std::path::PathBuf::from)
             .or_else(|| std::env::current_dir().ok());
+        // Per-workspace, not machine-global: embedding chunk paths are stored
+        // workspace-relative, so a `~/.pmat/embeddings.db` shared by every
+        // project served one project's chunks to all the others. Same default
+        // function the CLI uses, so the two surfaces cannot drift apart.
+        let semantic_db_path = std::env::var("PMAT_VECTOR_DB_PATH").ok().or_else(|| {
+            semantic_workspace
+                .as_deref()
+                .map(crate::services::configuration_service::default_vector_db_path)
+        });
 
         Self {
             name: "PMAT MCP Server".to_string(),

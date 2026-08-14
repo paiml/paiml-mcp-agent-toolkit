@@ -57,24 +57,89 @@ fn strict_profile() -> QualityProfile {
     }
 }
 
+/// Threshold overrides read from `--config FILE`.
+///
+/// Every field is optional and every field corresponds to one the enforcement
+/// phases actually read, so a key that lands here changes a verdict. Unknown
+/// keys are rejected rather than ignored: a config whose typo'd key silently
+/// does nothing is the same defect as a flag that silently does nothing.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileOverrides {
+    coverage_min: Option<f64>,
+    complexity_max: Option<u16>,
+    complexity_target: Option<u16>,
+    tdg_max: Option<f64>,
+    satd_allowed: Option<usize>,
+    duplication_max_lines: Option<usize>,
+    big_o_max: Option<String>,
+    provability_min: Option<f64>,
+}
+
+impl ProfileOverrides {
+    fn apply(self, base: &mut QualityProfile) {
+        if let Some(v) = self.coverage_min {
+            base.coverage_min = v;
+        }
+        if let Some(v) = self.complexity_max {
+            base.complexity_max = v;
+        }
+        if let Some(v) = self.complexity_target {
+            base.complexity_target = v;
+        }
+        if let Some(v) = self.tdg_max {
+            base.tdg_max = v;
+        }
+        if let Some(v) = self.satd_allowed {
+            base.satd_allowed = v;
+        }
+        if let Some(v) = self.duplication_max_lines {
+            base.duplication_max_lines = v;
+        }
+        if let Some(v) = self.big_o_max {
+            base.big_o_max = v;
+        }
+        if let Some(v) = self.provability_min {
+            base.provability_min = v;
+        }
+    }
+}
+
 /// Load quality profile from name or config file
+///
+/// `config_path` used to be `_config_path`: `--config /nonexistent.toml` was
+/// accepted in silence, exit 0, with a verdict measured against the built-in
+/// thresholds — a path the binary never opened, reported as if it had. A path
+/// given on the command line is read, and a path that cannot be read is an
+/// error, the same rule `-p` follows.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_quality_profile(
     profile_name: &str,
-    _config_path: Option<PathBuf>,
+    config_path: Option<PathBuf>,
 ) -> Result<QualityProfile> {
-    // TODO(config): `.pmat-extreme.toml` overrides are not read yet; the named
-    // profiles below are the whole story, and an unknown name is an error
-    // rather than a silent fall-through to `extreme`.
-    match profile_name {
-        "standard" => Ok(standard_profile()),
-        "strict" => Ok(strict_profile()),
+    let mut profile = match profile_name {
+        "standard" => standard_profile(),
+        "strict" => strict_profile(),
         // `extreme` is the RIGID profile `--help` describes, and is the default.
-        "extreme" => Ok(QualityProfile::default()),
+        "extreme" => QualityProfile::default(),
         other => anyhow::bail!(
             "Unknown quality profile: {other}. Valid profiles: standard, strict, extreme"
         ),
+    };
+
+    if let Some(path) = config_path {
+        let text = std::fs::read_to_string(&path).map_err(|e| {
+            anyhow::anyhow!(
+                "cannot read quality config {}: {e} — enforce will not report a verdict measured against thresholds it could not load",
+                path.display()
+            )
+        })?;
+        let overrides: ProfileOverrides = toml::from_str(&text)
+            .map_err(|e| anyhow::anyhow!("invalid quality config {}: {e}", path.display()))?;
+        overrides.apply(&mut profile);
     }
+
+    Ok(profile)
 }
 
 /// Initialize enforcement environment
@@ -88,19 +153,40 @@ pub fn initialize_enforcement_environment(
     let profile = load_quality_profile(profile_name, config_path)?;
 
     if clear_cache {
-        clear_enforcement_cache(cache_dir);
+        clear_enforcement_cache(cache_dir)?;
     }
 
     Ok(profile)
 }
 
-/// Clear enforcement cache
+/// Clear the enforcement cache directory named by `--cache-dir`.
+///
+/// This used to be a stub: with `--cache-dir DIR` it printed
+/// "🧹 Clearing cache at: DIR" above `// In real implementation, would clear
+/// cache` (the entries were still there afterwards), and with no `--cache-dir`
+/// — the default — it printed nothing and returned, so `enforce extreme
+/// --clear-cache` was byte-identical to `enforce extreme`.
+///
+/// Now it really empties the directory via the one shared implementation
+/// ([`crate::cli::cache_clearing::clear_cache_directory`]) and says so in every
+/// branch, including the branch where there is nothing to clear.
+///
+/// # Errors
+///
+/// Returns an error when the cache directory exists but cannot be cleared;
+/// `--clear-cache` that fails must not be reported as a clear.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) {
-    if let Some(cache_path) = cache_dir {
-        eprintln!("🧹 Clearing cache at: {}", cache_path.display());
-        // In real implementation, would clear cache
-    }
+pub fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) -> Result<()> {
+    let Some(cache_path) = cache_dir else {
+        eprintln!(
+            "🧹 --clear-cache: no --cache-dir given and enforce keeps no cache of its own — \
+             nothing to clear (every phase is recomputed on each run)"
+        );
+        return Ok(());
+    };
+
+    crate::cli::cache_clearing::clear_cache_directory_reporting(cache_path, "--clear-cache")?;
+    Ok(())
 }
 
 #[cfg(test)]

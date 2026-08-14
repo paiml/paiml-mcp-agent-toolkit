@@ -7,17 +7,22 @@
 #[cfg(feature = "polyglot-typescript")]
 use crate::ast::polyglot::language_mapper::TypeScriptMapper;
 // Sprint 46 Phase 6: Feature-gated unused mapper imports
-#[cfg(feature = "csharp-ast")]
+#[cfg(feature = "polyglot-csharp")]
 use crate::ast::polyglot::language_mapper::CSharpMapper;
-#[cfg(feature = "java-ast")]
+// Gated on the feature that USES it (`create` matches on `polyglot-java`), not
+// on `java-ast`. Sprint 46 Phase 6 turned `java-ast` into an empty feature and
+// left this import behind, so `cargo check --lib --features java-ast` failed
+// outright under `#![deny(unused_imports)]` — the whole feature was unbuildable,
+// and CI could not see it because it builds default features only (#966).
+#[cfg(feature = "polyglot-java")]
 use crate::ast::polyglot::language_mapper::JavaMapper;
 #[cfg(feature = "javascript-ast")]
 use crate::ast::polyglot::language_mapper::JavaScriptMapper;
-#[cfg(feature = "kotlin-ast")]
+#[cfg(feature = "polyglot-kotlin")]
 use crate::ast::polyglot::language_mapper::KotlinMapper;
-#[cfg(feature = "ruby-ast")]
+#[cfg(feature = "polyglot-ruby")]
 use crate::ast::polyglot::language_mapper::RubyMapper;
-#[cfg(feature = "scala-ast")]
+#[cfg(feature = "polyglot-scala")]
 use crate::ast::polyglot::language_mapper::ScalaMapper;
 use crate::ast::polyglot::{Language, LanguageMapper, PolyglotPathValidator, UnifiedNode};
 use crate::services::context::AstItem;

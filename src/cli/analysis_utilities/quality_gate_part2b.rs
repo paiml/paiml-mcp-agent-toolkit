@@ -9,7 +9,7 @@ async fn output_project_results(
 
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!(
+        crate::status_eprintln!(
             "✅ Quality gate report written to: {}",
             output_path.display()
         );
@@ -23,9 +23,22 @@ async fn output_project_results(
 /// Prints the final quality gate status
 fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[QualityViolation]) {
     if results.passed {
-        eprintln!("\n✅ Quality gate PASSED");
+        // "PASSED" beside a non-empty list is only honest if the advisory rows
+        // that did NOT decide the verdict are named as advisory.
+        let advisory = violations.len() - blocking_violation_count(violations);
+        if advisory > 0 {
+            crate::status_eprintln!(
+                "\n✅ Quality gate PASSED ({advisory} advisory finding(s), not blocking)"
+            );
+        } else {
+            crate::status_eprintln!("\n✅ Quality gate PASSED");
+        }
     } else {
-        eprintln!("\n⚠️ Quality gate found {} violations", violations.len());
+        crate::status_eprintln!(
+            "\n⚠️ Quality gate found {} blocking violations ({} total findings)",
+            blocking_violation_count(violations),
+            violations.len()
+        );
     }
 }
 
@@ -42,21 +55,23 @@ fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
 /// Opens the existing `.pmat/context.db` and writes all violations to the
 /// `quality_violations` table. This makes them queryable via:
 ///   `pmat sql "SELECT * FROM quality_violations WHERE check_type = 'complexity'"`
-fn persist_violations_to_sqlite(
-    project_path: &std::path::Path,
-    violations: &[QualityViolation],
-    quiet: bool,
-) {
+fn persist_violations_to_sqlite(project_path: &std::path::Path, violations: &[QualityViolation]) {
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
-        if !quiet {
-            eprintln!("  ⚠️  No .pmat/context.db found — violations not persisted to SQL");
-        }
+        // A warning, not chatter: the user asked for persistence they did not get.
+        eprintln!("  ⚠️  No .pmat/context.db found — violations not persisted to SQL");
         return;
     }
 
     #[allow(clippy::type_complexity)]
-    let tuples: Vec<(String, String, String, Option<usize>, String, Option<String>)> = violations
+    let tuples: Vec<(
+        String,
+        String,
+        String,
+        Option<usize>,
+        String,
+        Option<String>,
+    )> = violations
         .iter()
         .map(|v| {
             let details_json = v
@@ -76,30 +91,22 @@ fn persist_violations_to_sqlite(
 
     match crate::services::agent_context::persist_quality_violations(&db_path, &tuples) {
         Ok(()) => {
-            if !quiet {
-                eprintln!(
-                    "  💾 Persisted {} violations to .pmat/context.db",
-                    violations.len()
-                );
-            }
+            crate::status_eprintln!(
+                "  💾 Persisted {} violations to .pmat/context.db",
+                violations.len()
+            );
         }
         Err(e) => {
-            if !quiet {
-                eprintln!("  ⚠️  Failed to persist violations to SQL: {e}");
-            }
+            eprintln!("  ⚠️  Failed to persist violations to SQL: {e}");
         }
     }
 
     // Persist entropy violations to specialized table (#231)
-    persist_entropy_details_to_sqlite(&db_path, violations, quiet);
+    persist_entropy_details_to_sqlite(&db_path, violations);
 }
 
 /// Extract entropy violation details from QualityViolation and persist to `entropy_violations` (#231).
-fn persist_entropy_details_to_sqlite(
-    db_path: &std::path::Path,
-    violations: &[QualityViolation],
-    quiet: bool,
-) {
+fn persist_entropy_details_to_sqlite(db_path: &std::path::Path, violations: &[QualityViolation]) {
     let entropy_tuples: Vec<_> = violations
         .iter()
         .filter(|v| v.check_type == "entropy")
@@ -113,9 +120,7 @@ fn persist_entropy_details_to_sqlite(
     if let Err(e) =
         crate::services::agent_context::persist_entropy_violations(db_path, &entropy_tuples)
     {
-        if !quiet {
-            eprintln!("  ⚠️  Failed to persist entropy violations: {e}");
-        }
+        eprintln!("  ⚠️  Failed to persist entropy violations: {e}");
     }
 }
 
@@ -123,9 +128,19 @@ fn persist_entropy_details_to_sqlite(
 #[allow(clippy::type_complexity)]
 fn entropy_violation_to_tuple(
     v: &QualityViolation,
-) -> Option<(String, String, String, usize, f64, usize, String, Option<String>)> {
+) -> Option<(
+    String,
+    String,
+    String,
+    usize,
+    f64,
+    usize,
+    String,
+    Option<String>,
+)> {
     let details = v.details.as_ref()?;
-    let (pattern_type, repetitions, variation_score) = parse_entropy_score_factors(&details.score_factors);
+    let (pattern_type, repetitions, variation_score) =
+        parse_entropy_score_factors(&details.score_factors);
     let loc_reduction = parse_loc_reduction(&v.message);
     let pattern_hash = format!("{pattern_type}:{}", v.file);
     Some((
@@ -255,10 +270,7 @@ mod part2b_pure_tests {
 
     #[test]
     fn test_parse_loc_reduction_parses_saves_prefix_number() {
-        assert_eq!(
-            parse_loc_reduction("Entropy pattern saves 42 lines"),
-            42
-        );
+        assert_eq!(parse_loc_reduction("Entropy pattern saves 42 lines"), 42);
         assert_eq!(parse_loc_reduction("prefix saves 0 lines"), 0);
     }
 
@@ -320,7 +332,7 @@ mod part2b_pure_tests {
     fn test_persist_violations_to_sqlite_no_db_is_noop() {
         let tmp = tempfile::tempdir().unwrap();
         // tempdir has no .pmat/context.db → early-return, should not panic.
-        persist_violations_to_sqlite(tmp.path(), &[], true);
+        persist_violations_to_sqlite(tmp.path(), &[]);
     }
 }
 
@@ -329,10 +341,7 @@ mod part2b_pure_tests {
 /// Must be called from async context. Runs the analyzer on sampled functions
 /// and writes results to `provability_scores` table.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub(crate) async fn persist_provability_to_sqlite(
-    project_path: &std::path::Path,
-    quiet: bool,
-) {
+pub(crate) async fn persist_provability_to_sqlite(project_path: &std::path::Path) {
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
         return;
@@ -361,11 +370,7 @@ pub(crate) async fn persist_provability_to_sqlite(
         })
         .collect();
 
-    if let Err(e) =
-        crate::services::agent_context::persist_provability_scores(&db_path, &scores)
-    {
-        if !quiet {
-            eprintln!("  ⚠️  Failed to persist provability scores: {e}");
-        }
+    if let Err(e) = crate::services::agent_context::persist_provability_scores(&db_path, &scores) {
+        eprintln!("  ⚠️  Failed to persist provability scores: {e}");
     }
 }

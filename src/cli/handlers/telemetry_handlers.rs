@@ -12,6 +12,21 @@ use std::collections::HashMap;
 use std::time::Instant;
 use tracing::{debug, info};
 
+/// The service name `handle_telemetry` records its own execution under.
+const CLI_HANDLER_SERVICE: &str = "cli_telemetry_handler";
+
+/// The service name `--test-event` records its sample event under.
+const TEST_EVENT_SERVICE: &str = "telemetry_test_service";
+
+/// Every service name this binary is capable of recording under.
+///
+/// Telemetry has no registry of service names: `services` is a `DashMap` that
+/// grows an entry the first time something records under a name. So the set of
+/// names that can ever appear is exactly the set of names the code records with,
+/// and these two are it. Kept next to the two call sites that use them so the
+/// hint printed on an empty result cannot drift away from reality.
+const RECORDABLE_SERVICES: [&str; 2] = [CLI_HANDLER_SERVICE, TEST_EVENT_SERVICE];
+
 /// Handle telemetry command
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_telemetry(
@@ -184,6 +199,18 @@ async fn show_system_telemetry() -> Result<()> {
 async fn show_service_telemetry(service_name: &str) -> Result<()> {
     info!(service = %service_name, "Generating service telemetry report");
 
+    // A blank name is not a service that happens to be empty, it is a missing
+    // argument. `TelemetryService::validate_input` rejects an empty
+    // `service_name` as a missing field for exactly this reason, so a query for
+    // one cannot be answered and stays an error.
+    if service_name.trim().is_empty() {
+        anyhow::bail!(
+            "--service needs a service name; got an empty one. \
+             Services this build records under: {}",
+            RECORDABLE_SERVICES.join(", ")
+        );
+    }
+
     let telemetry_service = telemetry();
 
     if let Some(service_data) = telemetry_service.get_service_telemetry(service_name).await {
@@ -268,15 +295,65 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&service_data)?);
         Ok(())
     } else {
-        // This printed a ✗ failure marker and then exited 0, so `--service`
-        // naming a service that does not exist was indistinguishable from a
-        // successful report to anything scripting pmat. A named service that
-        // cannot be found is an error.
-        Err(anyhow::anyhow!(
-            "No telemetry data found for service: {service_name}. \
-             Available services can be seen with: pmat telemetry --system"
-        ))
+        show_empty_service_telemetry(service_name)
     }
+}
+
+/// Report that a service has recorded nothing — as an empty result, not a failure.
+///
+/// This used to be an error, and it made every `pmat telemetry --service <name>`
+/// exit 1: telemetry is an in-memory, process-local store that starts empty, and
+/// the only event a query process records (`cli_telemetry_handler`) is recorded
+/// *after* the display runs. So the miss was universal — even
+/// `--service cli_telemetry_handler`, a name pmat definitely records under, exited
+/// 1 with "No telemetry data found". Nothing was wrong with the request; there was
+/// simply nothing recorded yet, which is the normal state.
+///
+/// The cost of calling that an error was not cosmetic: `pmat bug-report` files a
+/// GitHub issue on a non-zero exit, and it filed #922 for a query that behaved
+/// exactly as designed.
+///
+/// The old message also gave advice that cannot be followed —
+/// "Available services can be seen with: pmat telemetry --system" — because
+/// `--system` in a fresh process always reports zero services for the same reason.
+fn show_empty_service_telemetry(service_name: &str) -> Result<()> {
+    println!(
+        "{} {}",
+        c::header("Service Telemetry:"),
+        c::label(service_name)
+    );
+    println!("{}", c::rule());
+    println!();
+    println!(
+        "No telemetry recorded for {} in this process.",
+        c::label(service_name)
+    );
+    println!(
+        "{}",
+        c::dim(
+            "Telemetry counts operations performed by THIS pmat process and is not persisted \
+             between runs, so a freshly started query always finds an empty store."
+        )
+    );
+    println!(
+        "{}",
+        c::dim(&format!(
+            "Services this build records under: {}. To see a populated report in one run: \
+             `pmat telemetry --test-event --service {TEST_EVENT_SERVICE}`.",
+            RECORDABLE_SERVICES.join(", ")
+        ))
+    );
+    println!();
+    println!("{}", c::dim("Raw Data (JSON):"));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json!({
+            "service_name": service_name,
+            "data_recorded": false,
+            "total_operations": 0,
+        }))?
+    );
+    Ok(())
 }
 
 /// Show system overview (default command)
@@ -347,7 +424,7 @@ async fn record_test_telemetry_event() -> Result<()> {
 
     let test_input = TelemetryInput {
         event_type: "test_operation".to_string(),
-        service_name: "telemetry_test_service".to_string(),
+        service_name: TEST_EVENT_SERVICE.to_string(),
         operation: "test_command_execution".to_string(),
         metrics: OperationMetrics {
             duration_ms: 125,
@@ -383,7 +460,7 @@ async fn record_telemetry_command_execution(start_time: Instant) -> Result<()> {
 
     let input = TelemetryInput {
         event_type: "cli_command".to_string(),
-        service_name: "cli_telemetry_handler".to_string(),
+        service_name: CLI_HANDLER_SERVICE.to_string(),
         operation: "telemetry_command".to_string(),
         metrics: OperationMetrics {
             duration_ms: duration.as_millis() as u64,
@@ -433,31 +510,105 @@ mod tests {
         let result = show_service_telemetry("telemetry_test_service").await;
         assert!(result.is_ok());
 
-        // Test non-existent service. This used to assert `is_ok()` — it was
-        // pinning the defect: the handler printed a ✗ marker and returned Ok,
-        // so `pmat telemetry --service nonexistent` exited 0.
+        // A service with nothing recorded is an EMPTY RESULT, not a failure.
+        // This assertion has now been wrong in both directions: it first
+        // asserted `is_ok()` while the handler printed a ✗ marker and returned
+        // Ok (a failure reported as success), then asserted `is_err()` for a
+        // store that is empty on every process start (an empty result reported
+        // as a failure). See `empty_service_is_an_empty_result_not_an_error`.
         let result = show_service_telemetry("non_existent_service").await;
-        let err = result.expect_err("an unknown service must not report success");
         assert!(
-            err.to_string().contains("non_existent_service"),
-            "the error must name the service asked for: {err}"
+            result.is_ok(),
+            "a service with no recorded data is an empty result: {:?}",
+            result.err()
         );
     }
 
-    /// `--service <unknown>` and, on a release build, `--reset` both printed a
-    /// failure marker and then exited 0. A request that could not be carried
-    /// out has to surface as an error.
+    /// Issue #922: `pmat telemetry --service tdg` exited 1, and `pmat bug-report`
+    /// filed a GitHub issue for it.
+    ///
+    /// Telemetry is in-memory and process-local, and the one event a query
+    /// process records happens *after* the display, so the store is empty for
+    /// EVERY name a fresh `--service` query can ask about — including
+    /// `cli_telemetry_handler`, which pmat itself records under. Reporting that
+    /// as an error made a normal query indistinguishable from a broken one.
     #[tokio::test]
     #[serial_test::serial]
-    async fn unknown_service_makes_the_whole_command_fail() {
+    async fn empty_service_is_an_empty_result_not_an_error() {
+        telemetry().reset();
+
+        // The exact command from #922.
+        let result = handle_telemetry(false, Some("tdg".to_string()), false, false).await;
+        assert!(
+            result.is_ok(),
+            "pmat telemetry --service tdg must exit 0 with an empty result: {:?}",
+            result.err()
+        );
+
+        // A name pmat genuinely records under is just as empty in a fresh
+        // process — proof that the miss was never about the name being wrong.
+        telemetry().reset();
+        let result =
+            handle_telemetry(false, Some(CLI_HANDLER_SERVICE.to_string()), false, false).await;
+        assert!(
+            result.is_ok(),
+            "a name pmat records under must not error either: {:?}",
+            result.err()
+        );
+    }
+
+    /// The other half: a name that is not a service name at all still fails.
+    /// `TelemetryService::validate_input` already rejects an empty
+    /// `service_name` as a missing field, so a query for one cannot be answered.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn a_blank_service_name_is_still_an_error() {
         telemetry().reset();
         record_test_telemetry_event().await.unwrap();
 
-        let result =
-            handle_telemetry(false, Some("no_such_service".to_string()), false, false).await;
+        let err = handle_telemetry(false, Some(String::new()), false, false)
+            .await
+            .expect_err("--service '' must exit non-zero");
         assert!(
-            result.is_err(),
-            "pmat telemetry --service no_such_service must exit non-zero"
+            err.to_string().contains("needs a service name"),
+            "the error must say what is wrong with the argument: {err}"
+        );
+
+        let err = handle_telemetry(false, Some("   ".to_string()), false, false)
+            .await
+            .expect_err("--service '   ' must exit non-zero");
+        assert!(
+            err.to_string().contains("needs a service name"),
+            "whitespace is no more a service name than empty is: {err}"
+        );
+    }
+
+    /// The hint printed on an empty result names the services this build can
+    /// record under. If a recording site is renamed without updating the
+    /// constants, the hint becomes a lie — this pins them together.
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn the_recordable_service_list_matches_what_is_actually_recorded() {
+        telemetry().reset();
+
+        record_test_telemetry_event().await.unwrap();
+        record_telemetry_command_execution(Instant::now())
+            .await
+            .unwrap();
+
+        let data = telemetry().get_system_telemetry().await.unwrap();
+        for name in RECORDABLE_SERVICES {
+            assert!(
+                data.services.contains_key(name),
+                "{name} is advertised as recordable but nothing records under it: {:?}",
+                data.services.keys().collect::<Vec<_>>()
+            );
+        }
+        assert_eq!(
+            data.services.len(),
+            RECORDABLE_SERVICES.len(),
+            "a service records under a name the hint does not list: {:?}",
+            data.services.keys().collect::<Vec<_>>()
         );
     }
 

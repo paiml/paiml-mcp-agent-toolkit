@@ -27,6 +27,7 @@ pub async fn handle_analyze_proof_annotations(
     output: Option<PathBuf>,
     _perf: bool,
     clear_cache: bool,
+    top_files: usize,
 ) -> Result<()> {
     // A path that does not exist must fail, not produce a proof report. This
     // command used to exit 0 and emit ten annotations for `/no/such/dir`,
@@ -38,7 +39,7 @@ pub async fn handle_analyze_proof_annotations(
     // do not exist anywhere on disk.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
-    eprintln!("🔍 Collecting proof annotations from project...");
+    crate::status_eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 
     // Setup annotator
@@ -53,13 +54,22 @@ pub async fn handle_analyze_proof_annotations(
 
     // Collect and filter annotations
     let annotations = collect_and_filter_annotations(&annotator, &project_path, &filter).await;
+
+    // #953 (residual): `--verification-method formal-proof` (and
+    // `model-checking`, and `abstract-interpretation`) printed an empty,
+    // exit-0 report over a tree containing 42 kani harnesses. An empty result
+    // is the same document whether the method was checked and found absent or
+    // whether NO COLLECTOR IN THIS BUILD can produce it — absence rendered as
+    // success. What the method filter removed is now measured and disclosed.
+    let method_note = measure_method_filter(&annotator, &project_path, &filter, &annotations).await;
+
     let elapsed = start.elapsed();
 
     // The run's wall clock lives here, on stderr, and not inside the JSON
     // document: `dateVerified` used to be stamped onto every one of 1298
     // annotations and `analysis_time_ms` into the summary, which made two
     // byte-identical analyses of the same tree diff on every invocation.
-    eprintln!(
+    crate::status_eprintln!(
         "✅ Found {} matching proof annotations in {} ms (verified at {})",
         annotations.len(),
         elapsed.as_millis(),
@@ -67,6 +77,9 @@ pub async fn handle_analyze_proof_annotations(
     );
     if let Some(note) = incomplete_analysis_note(annotator.collection_errors()) {
         eprint!("⚠️{note}");
+    }
+    if let Some(ref outcome) = method_note {
+        eprint!("⚠️{}", outcome.note());
     }
 
     // Format output using helpers
@@ -77,12 +90,14 @@ pub async fn handle_analyze_proof_annotations(
         &annotator,
         &project_path,
         include_evidence,
+        top_files,
+        method_note.as_ref(),
     )?;
 
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Proof annotations written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Proof annotations written to: {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -90,7 +105,118 @@ pub async fn handle_analyze_proof_annotations(
     Ok(())
 }
 
+/// What `--verification-method` removed, measured rather than assumed.
+///
+/// Constructed only when the filter matched NOTHING while the same project
+/// does yield annotations by some other method — the one case in which an
+/// empty report would otherwise be indistinguishable from "checked, none
+/// found". The methods listed are read off the annotations this run actually
+/// collected, so nothing here can drift out of step with the registered proof
+/// sources the way a hand-maintained list of supported methods would.
+struct MethodFilterOutcome {
+    /// The `--verification-method` value the user asked for.
+    requested: String,
+    /// Annotations that pass every other filter, whatever their method.
+    collected_ignoring_method: usize,
+    /// The verification methods those annotations actually carry.
+    methods_present: Vec<String>,
+}
+
+impl MethodFilterOutcome {
+    /// The disclosure, in the same shape as [`incomplete_analysis_note`].
+    fn note(&self) -> String {
+        format!(
+            "  UNMEASURED: --verification-method {} matched 0 of the {} annotation(s) this \
+             project yields. The methods actually present are: {}. pmat collects proof \
+             annotations from its Rust static analyser only, so an empty result under \
+             --verification-method {} means no collector in this build produces that method — \
+             NOT that the property was verified and found absent.\n",
+            self.requested,
+            self.collected_ignoring_method,
+            self.methods_present.join(", "),
+            self.requested,
+        )
+    }
+}
+
+/// Measure what `--verification-method` removed.
+///
+/// Returns `None` — no disclosure needed — when no method filter was applied,
+/// when the filter matched something, or when the project yields no
+/// annotations at all (an empty report is then honest on its own terms). The
+/// second collection runs only in the one case that needs it, and
+/// `collect_proofs` *stores* rather than accumulates its error count, so
+/// re-running it cannot inflate `files_not_analyzed`.
+async fn measure_method_filter(
+    annotator: &ProofAnnotator,
+    project_path: &Path,
+    filter: &ProofAnnotationFilter,
+    matched: &[(Location, ProofAnnotation)],
+) -> Option<MethodFilterOutcome> {
+    let requested = match filter.verification_method.as_ref() {
+        None | Some(VerificationMethodFilter::All) => return None,
+        Some(method) => method.to_string(),
+    };
+    if !matched.is_empty() {
+        return None;
+    }
+
+    let without_method = ProofAnnotationFilter {
+        high_confidence_only: filter.high_confidence_only,
+        property_type: filter.property_type.clone(),
+        verification_method: None,
+    };
+    let all = collect_and_filter_annotations(annotator, project_path, &without_method).await;
+    if all.is_empty() {
+        return None;
+    }
+
+    // Sorted and deduplicated by the BTreeSet, so the disclosure is identical
+    // run to run on unchanged input.
+    let methods_present: Vec<String> = all
+        .iter()
+        .map(|(_, annotation)| format!("{:?}", annotation.method))
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
+
+    Some(MethodFilterOutcome {
+        requested,
+        collected_ignoring_method: all.len(),
+        methods_present,
+    })
+}
+
+/// Add the method-filter disclosure to a rendered JSON document.
+///
+/// The fact belongs in the machine-readable document as a field, not only as
+/// prose on stderr, for the same reason `summary.files_not_analyzed` does: a
+/// consumer that reads `total_annotations: 0` has no other way to tell a
+/// measured zero from an uncollectable one.
+fn attach_method_filter_to_json(content: &str, outcome: &MethodFilterOutcome) -> Result<String> {
+    let mut doc: serde_json::Value = serde_json::from_str(content)?;
+    if let Some(summary) = doc.get_mut("summary").and_then(|s| s.as_object_mut()) {
+        summary.insert(
+            "verification_method_filter".to_string(),
+            // No `matched: 0` leaf: it would be constant by construction (the
+            // field exists only when the filter matched nothing), and a
+            // numeric leaf that reads the same for an empty directory and for
+            // a 4,000-file tree is what the differential falsification gate
+            // exists to catch. `summary.total_annotations` already carries the
+            // zero, measured.
+            serde_json::json!({
+                "requested": outcome.requested,
+                "annotations_ignoring_method_filter": outcome.collected_ignoring_method,
+                "methods_present": outcome.methods_present,
+                "reason": "no registered proof source produces this verification method",
+            }),
+        );
+    }
+    Ok(serde_json::to_string_pretty(&doc)?)
+}
+
 /// Format proof annotations based on output format (complexity: 6)
+#[allow(clippy::too_many_arguments)]
 fn format_proof_annotations(
     format: ProofAnnotationOutputFormat,
     annotations: &[(Location, ProofAnnotation)],
@@ -98,10 +224,12 @@ fn format_proof_annotations(
     annotator: &ProofAnnotator,
     project_path: &Path,
     include_evidence: bool,
+    top_files: usize,
+    method_note: Option<&MethodFilterOutcome>,
 ) -> Result<String> {
     let mut content = match format {
         ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator)?,
-        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed)?,
+        ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed, top_files)?,
         ProofAnnotationOutputFormat::Full => {
             format_as_full(annotations, project_path, include_evidence)?
         }
@@ -123,6 +251,18 @@ fn format_proof_annotations(
     ) {
         if let Some(note) = incomplete_analysis_note(annotator.collection_errors()) {
             content.push_str(&note);
+        }
+    }
+
+    // Same split for the method-filter disclosure: prose for the readers that
+    // have room for it, a field for the JSON document. SARIF has neither.
+    if let Some(outcome) = method_note {
+        match format {
+            ProofAnnotationOutputFormat::Json => {
+                content = attach_method_filter_to_json(&content, outcome)?;
+            }
+            ProofAnnotationOutputFormat::Sarif => {}
+            _ => content.push_str(&outcome.note()),
         }
     }
 
@@ -148,6 +288,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -179,6 +320,7 @@ mod active_tests {
             Some(summary_out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("summary run");
@@ -201,6 +343,7 @@ mod active_tests {
             Some(json_out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("json run");
@@ -237,12 +380,149 @@ mod active_tests {
             Some(out.clone()),
             false,
             true,
+            10,
         )
         .await
         .expect("summary run");
 
         let summary = std::fs::read_to_string(&out).expect("read summary");
         assert!(!summary.contains("INCOMPLETE"), "got:\n{summary}");
+    }
+
+    /// #953 (residual): `--verification-method formal-proof` produced an
+    /// exit-0, zero-annotation report indistinguishable from "checked and none
+    /// found" — over a tree that yields annotations by another method and a
+    /// repo that carries 42 kani harnesses. pmat registers exactly one proof
+    /// source (`RustBorrowChecker`), so no formal-proof / model-checking /
+    /// abstract-interpretation collector exists in this build.
+    ///
+    /// RED on the old code: `format_proof_annotations` took no method outcome
+    /// and the summary/JSON carried nothing about the filter, so both
+    /// assertions below failed.
+    #[tokio::test]
+    async fn an_uncollectable_verification_method_is_disclosed_not_rendered_as_zero() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(
+            temp_dir.path().join("lib.rs"),
+            "pub fn safe_add(a: i32, b: i32) -> i32 { a + b }\n",
+        )
+        .expect("write");
+
+        let summary_out = temp_dir.path().join("summary.txt");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            Some(VerificationMethodFilter::FormalProof),
+            Some(summary_out.clone()),
+            false,
+            true,
+            10,
+        )
+        .await
+        .expect("summary run");
+
+        let summary = std::fs::read_to_string(&summary_out).expect("read summary");
+        assert!(
+            summary.contains("UNMEASURED") && summary.contains("formal-proof"),
+            "an empty formal-proof report must say no collector produces that \
+             method, got:\n{summary}"
+        );
+
+        let json_out = temp_dir.path().join("out.json");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Json,
+            false,
+            false,
+            None,
+            Some(VerificationMethodFilter::FormalProof),
+            Some(json_out.clone()),
+            false,
+            true,
+            10,
+        )
+        .await
+        .expect("json run");
+
+        let doc: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&json_out).expect("read json"))
+                .expect("valid json");
+        let filter = &doc["summary"]["verification_method_filter"];
+        assert_eq!(filter["requested"].as_str(), Some("formal-proof"), "{doc}");
+        assert!(
+            filter["annotations_ignoring_method_filter"]
+                .as_u64()
+                .unwrap_or(0)
+                > 0,
+            "the disclosure must carry the count the filter removed: {doc}"
+        );
+        assert!(
+            filter["methods_present"]
+                .as_array()
+                .is_some_and(|m| !m.is_empty()),
+            "the methods actually collected must be named: {doc}"
+        );
+    }
+
+    /// The disclosure must not fire when the filter genuinely matched, nor on
+    /// a project that yields nothing at all — an over-broad note would make
+    /// every honest empty report look like a tool failure.
+    #[tokio::test]
+    async fn a_matching_method_and_an_empty_project_carry_no_disclosure() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        std::fs::write(
+            temp_dir.path().join("lib.rs"),
+            "pub fn safe_add(a: i32, b: i32) -> i32 { a + b }\n",
+        )
+        .expect("write");
+
+        let matched = temp_dir.path().join("matched.txt");
+        handle_analyze_proof_annotations(
+            temp_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            Some(VerificationMethodFilter::BorrowChecker),
+            Some(matched.clone()),
+            false,
+            true,
+            10,
+        )
+        .await
+        .expect("matched run");
+        assert!(
+            !std::fs::read_to_string(&matched)
+                .expect("read")
+                .contains("UNMEASURED"),
+            "borrow-checker matches, so there is nothing to disclose"
+        );
+
+        let empty_dir = TempDir::new().expect("Failed to create temp dir");
+        let empty_out = empty_dir.path().join("empty.txt");
+        handle_analyze_proof_annotations(
+            empty_dir.path().to_path_buf(),
+            ProofAnnotationOutputFormat::Summary,
+            false,
+            false,
+            None,
+            Some(VerificationMethodFilter::FormalProof),
+            Some(empty_out.clone()),
+            false,
+            true,
+            10,
+        )
+        .await
+        .expect("empty run");
+        assert!(
+            !std::fs::read_to_string(&empty_out)
+                .expect("read")
+                .contains("UNMEASURED"),
+            "a project with no annotations at all yields an honest empty report"
+        );
     }
 
     #[tokio::test]
@@ -259,6 +539,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -278,6 +559,7 @@ mod active_tests {
             None,
             false,
             true, // clear_cache
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -298,6 +580,7 @@ mod active_tests {
             Some(output_path.clone()),
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -318,6 +601,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -337,6 +621,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -356,6 +641,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -375,6 +661,7 @@ mod active_tests {
             None,
             false,
             false,
+            10,
         )
         .await;
         assert!(result.is_ok());
@@ -418,6 +705,7 @@ mod active_tests {
                 Some(out.clone()),
                 false,
                 true,
+                10,
             )
             .await
             .expect("json render succeeds");

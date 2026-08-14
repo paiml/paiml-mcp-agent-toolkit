@@ -12,7 +12,7 @@ async fn test_enrich_results_with_faults_empty_results() {
 
 #[tokio::test]
 async fn test_enrich_results_with_faults_batuta_not_found() {
-    let entry = create_test_entry("func_x", 5, 1.5);
+    let entry = create_test_entry("func_x", 5, 88.0);
     let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
     let res =
         enrich_results_with_faults(&mut results, std::path::Path::new("/nonexistent/path")).await;
@@ -27,7 +27,7 @@ async fn test_enrich_results_with_faults_batuta_not_found() {
 
 #[tokio::test]
 async fn test_enrich_results_with_faults_preserves_existing_annotations() {
-    let mut entry = create_test_entry("func_with_existing", 5, 1.5);
+    let mut entry = create_test_entry("func_with_existing", 5, 88.0);
     entry.fault_annotations = vec!["existing_fault".to_string()];
     let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
     assert_eq!(results[0].fault_annotations, vec!["existing_fault"]);
@@ -47,7 +47,7 @@ async fn test_enrich_results_with_churn_empty_results() {
 
 #[tokio::test]
 async fn test_enrich_results_with_churn_nonexistent_project() {
-    let entry = create_test_entry("func_y", 3, 1.0);
+    let entry = create_test_entry("func_y", 3, 92.0);
     let mut results = vec![QueryResult::from_entry(&entry, 0.8, false)];
     let res = enrich_results_with_churn(
         &mut results,
@@ -69,7 +69,7 @@ async fn test_enrich_results_with_duplicates_empty_results() {
 
 #[tokio::test]
 async fn test_enrich_results_with_duplicates_missing_files() {
-    let mut entry = create_test_entry("func_z", 3, 1.0);
+    let mut entry = create_test_entry("func_z", 3, 92.0);
     entry.file_path = "nonexistent_file_that_does_not_exist.rs".to_string();
     let mut results = vec![QueryResult::from_entry(&entry, 0.8, false)];
     let res = enrich_results_with_duplicates(&mut results, std::path::Path::new("/tmp")).await;
@@ -80,7 +80,7 @@ async fn test_enrich_results_with_duplicates_missing_files() {
 
 #[tokio::test]
 async fn test_enrich_results_with_duplicates_unsupported_language() {
-    let mut entry = create_test_entry("func_z", 3, 1.0);
+    let mut entry = create_test_entry("func_z", 3, 92.0);
     entry.file_path = "readme.txt".to_string();
     let mut results = vec![QueryResult::from_entry(&entry, 0.8, false)];
     let tmp = std::env::temp_dir();

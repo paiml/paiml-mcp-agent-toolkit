@@ -12,7 +12,7 @@ async fn analyze_single_file(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📄 Analyzing TDG for file: {}", file.display());
+    crate::status_eprintln!("📄 Analyzing TDG for file: {}", file.display());
 
     // Resolve path
     let full_path = if file.is_absolute() {
@@ -53,7 +53,7 @@ async fn analyze_multiple_files(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📄 Analyzing TDG for {} files...", files.len());
+    crate::status_eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let results =
         process_files_for_tdg(calculator, project_path, files, threshold, critical_only).await;
@@ -127,7 +127,7 @@ async fn analyze_project(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    eprintln!("📁 Project path: {}", project_path.display());
+    crate::status_eprintln!("📁 Project path: {}", project_path.display());
 
     // Analyze directory
     let mut summary = calculator.analyze_directory(project_path).await?;

@@ -185,15 +185,24 @@
 
         #[test]
         fn test_clear_enforcement_cache_none() {
-            // Should not panic with None
-            clear_enforcement_cache(&None);
+            // No --cache-dir: nothing to clear, and that is not an error.
+            clear_enforcement_cache(&None).expect("no cache dir is not a failure");
         }
 
+        /// `--clear-cache --cache-dir DIR` used to print "🧹 Clearing cache at:
+        /// DIR" and leave every entry in place.
         #[test]
         fn test_clear_enforcement_cache_some() {
             let temp_dir = TempDir::new().unwrap();
             let cache_path = temp_dir.path().to_path_buf();
-            clear_enforcement_cache(&Some(cache_path));
+            std::fs::write(cache_path.join("entry.bin"), b"stale").expect("write entry");
+
+            clear_enforcement_cache(&Some(cache_path.clone())).expect("clear");
+
+            assert!(
+                !cache_path.join("entry.bin").exists(),
+                "--clear-cache must delete the cache entry it says it cleared"
+            );
         }
     }
 

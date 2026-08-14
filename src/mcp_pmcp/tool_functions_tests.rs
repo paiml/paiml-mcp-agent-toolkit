@@ -1319,3 +1319,55 @@ mod coverage_tests {
         );
     }
 }
+
+mod dag_type_validation_tests {
+    //! `analyze_dag` used to end its `dag_type` match in
+    //! `_ => DagType::FullDependency`, so `"BOGUS"`, `""` and `"12345"` all came
+    //! back `status: "completed"` with `results.dag_type: "FullDependency"` and
+    //! no warning — a client that typo'd the mode received a successful-looking
+    //! result for a DIFFERENT analysis than the one it asked for. The sibling
+    //! enums (`generate_context`'s `format`, `scaffold_project`'s `level`) reject
+    //! their unknown values; a schema-declared `enum` must not be coerced.
+    use super::*;
+    use crate::services::deep_context::DagType;
+
+    #[test]
+    fn every_advertised_dag_type_parses() {
+        for name in DAG_TYPES {
+            assert!(
+                parse_dag_type(Some(name)).is_ok(),
+                "{name} is in the tool's inputSchema enum and must parse"
+            );
+        }
+        // Underscore spellings were accepted before and stay accepted.
+        assert!(matches!(
+            parse_dag_type(Some("call_graph")).unwrap(),
+            DagType::CallGraph
+        ));
+    }
+
+    #[test]
+    fn omitting_dag_type_defaults_to_full_dependency() {
+        assert!(matches!(
+            parse_dag_type(None).unwrap(),
+            DagType::FullDependency
+        ));
+    }
+
+    #[test]
+    fn an_unknown_dag_type_is_rejected_not_coerced() {
+        for bad in ["BOGUS", "", "12345", "callgraph"] {
+            let err = parse_dag_type(Some(bad))
+                .expect_err("an unknown dag_type must be an error, not a silent FullDependency");
+            let message = err.to_string();
+            assert!(
+                message.contains("Unsupported dag_type"),
+                "the error must name the offending argument: {message}"
+            );
+            assert!(
+                message.contains("full-dependency"),
+                "the error must list the accepted values: {message}"
+            );
+        }
+    }
+}

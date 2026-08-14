@@ -119,6 +119,78 @@ fn test_cb081_no_cargo_toml() {
     assert_eq!(report.transitive_count, 0);
 }
 
+/// Every path under `root`, relative and sorted — a fingerprint of the tree.
+fn tree_fingerprint(root: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path.clone());
+            }
+            if let Ok(rel) = path.strip_prefix(root) {
+                out.push(rel.display().to_string());
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// #939: an auditor must not write to the tree it audits.
+///
+/// CB-081 wrote `.pmat/deps-cache.json` and `.pmat/metrics/dependencies.json`
+/// into the project as a side effect of scoring it, so a second `comply check`
+/// on an untouched repo saw a different repo: `CB-1332: Cache Staleness` went
+/// Skip -> Pass and the pass count moved 25 -> 26 with no edit in between. On a
+/// project with no `.pmat/` at all, being scored created one.
+#[test]
+fn cb081_does_not_write_into_the_audited_project() {
+    let temp = TempDir::new().unwrap();
+    fs::write(
+        temp.path().join("Cargo.toml"),
+        "[package]\nname = \"test\"\nversion = \"0.1.0\"\n\n[dependencies]\nserde = \"1.0\"\n",
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("Cargo.lock"),
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n",
+    )
+    .unwrap();
+
+    let before = tree_fingerprint(temp.path());
+    let lock_before = fs::read(temp.path().join("Cargo.lock")).unwrap();
+    let first = detect_cb081_dependency_count(temp.path());
+    let after = tree_fingerprint(temp.path());
+
+    assert_eq!(
+        before, after,
+        "scoring a project must leave it byte-for-byte alone"
+    );
+    // `cargo tree` without --locked resolves and rewrites the lockfile: this
+    // fixture's 45-byte Cargo.lock came back at 1,790 bytes, fetched from the
+    // network, purely because the project was scored.
+    assert_eq!(
+        fs::read(temp.path().join("Cargo.lock")).unwrap(),
+        lock_before,
+        "CB-081 rewrote the audited project's Cargo.lock"
+    );
+    assert!(
+        !temp.path().join(".pmat").exists(),
+        "CB-081 created a .pmat/ directory in the audited project"
+    );
+
+    // …and the second run answers the same, from the out-of-project cache.
+    let second = detect_cb081_dependency_count(temp.path());
+    assert_eq!(first.direct_count, second.direct_count);
+    assert_eq!(first.transitive_count, second.transitive_count);
+    assert_eq!(tree_fingerprint(temp.path()), before);
+}
+
 // =========================================================================
 // CB-400/401/402 bashrs integration tests
 // =========================================================================

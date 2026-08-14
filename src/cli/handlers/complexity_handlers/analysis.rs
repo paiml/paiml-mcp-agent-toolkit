@@ -19,7 +19,7 @@ pub(crate) async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
+    crate::status_eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
     // Ensure file exists and resolve absolute path
     let full_path = if file_path.is_absolute() {
@@ -163,7 +163,7 @@ fn read_rust_source(path: &Path) -> Option<String> {
 /// Tell the user which files the reported metrics actually cover.
 fn report_include_expansion(root: &Path, included: &[PathBuf], unresolved: &[String]) {
     if !included.is_empty() {
-        eprintln!(
+        crate::status_eprintln!(
             "📎 {} also analyzed via include!(): {}",
             root.display(),
             included
@@ -260,7 +260,7 @@ pub(crate) async fn analyze_multiple_files(
     files: &[PathBuf],
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("🔍 Analyzing complexity of {} files...", files.len());
+    crate::status_eprintln!("🔍 Analyzing complexity of {} files...", files.len());
 
     let mut all_metrics = Vec::new();
     for file_path in files {
@@ -305,7 +305,7 @@ pub(super) async fn analyze_project(
     let explicit_toolchain = config.toolchain.as_deref();
 
     if let Some(toolchain) = explicit_toolchain {
-        eprintln!("🔍 Analyzing {toolchain} files only (--toolchain {toolchain})...");
+        crate::status_eprintln!("🔍 Analyzing {toolchain} files only (--toolchain {toolchain})...");
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
             Some(toolchain),
@@ -317,9 +317,11 @@ pub(super) async fn analyze_project(
     } else {
         match detected_toolchain {
             Some(toolchain) => {
-                eprintln!("🔍 Analyzing {toolchain} project complexity (all languages)...");
+                crate::status_eprintln!(
+                    "🔍 Analyzing {toolchain} project complexity (all languages)..."
+                );
             }
-            None => eprintln!("🔍 Analyzing project complexity (multi-language)..."),
+            None => crate::status_eprintln!("🔍 Analyzing project complexity (multi-language)..."),
         }
         crate::cli::analysis_utilities::analyze_project_files(
             &config.project_path,
@@ -362,7 +364,7 @@ pub(super) fn apply_complexity_filters(
     let filtered_count = original_count - file_metrics.len();
 
     if filtered_count > 0 {
-        eprintln!(
+        crate::status_eprintln!(
             "ℹ️  Filtered {} file(s) with no functions exceeding thresholds ({})",
             filtered_count,
             describe_thresholds(max_cyclomatic, max_cognitive)
@@ -446,21 +448,30 @@ pub(super) fn apply_top_files_limit(
 }
 
 /// Analyze files based on the specified mode (single, multiple, or project)
+///
+/// The banner below used to be the ENTIRETY of `--timeout`: nothing in this
+/// module ever built a `Duration` from `config.timeout`, so `analyze complexity
+/// -p . --timeout 1` printed "⏰ Analysis timeout set to 1 seconds", ran for
+/// 8.1s and exited 0. Same shape as #929 in `analyze dead-code`, and the fix is
+/// deliberately not a third private copy: the budget is enforced by
+/// `run_within_analysis_budget`, which lives beside the `--timeout` flag
+/// declarations that promise it.
 pub(super) async fn analyze_files_by_mode(
     file: Option<PathBuf>,
     files: Vec<PathBuf>,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
+    crate::status_eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
 
-    let result = if let Some(single_file) = file {
-        analyze_single_file(&single_file, config).await
-    } else if !files.is_empty() {
-        analyze_multiple_files(&files, config).await
-    } else {
-        let detected_toolchain = config.detect_toolchain();
-        analyze_project(detected_toolchain, config).await
-    };
+    // Owned so the work can run on its own task: a budget enforced from the
+    // caller's own task is the non-enforcement it replaces (see the helper).
+    let owned = config.clone();
+    let result = crate::cli::commands::analyze_commands::run_within_analysis_budget(
+        "Complexity analysis",
+        config.timeout,
+        async move { analyze_by_mode(file, files, &owned).await },
+    )
+    .await;
 
     // Provide feedback on analysis results
     match &result {
@@ -476,7 +487,7 @@ pub(super) async fn analyze_files_by_mode(
             eprintln!();
         }
         Ok(metrics) => {
-            eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
+            crate::status_eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
         }
         Err(_) => {
             // Error will be returned and handled by caller
@@ -484,6 +495,23 @@ pub(super) async fn analyze_files_by_mode(
     }
 
     result
+}
+
+/// Pick the analysis the flags asked for. Split out of `analyze_files_by_mode`
+/// so the whole of it — mode selection included — sits inside the budget.
+async fn analyze_by_mode(
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
+    config: &ComplexityConfig,
+) -> Result<Vec<FileComplexityMetrics>> {
+    if let Some(single_file) = file {
+        analyze_single_file(&single_file, config).await
+    } else if !files.is_empty() {
+        analyze_multiple_files(&files, config).await
+    } else {
+        let detected_toolchain = config.detect_toolchain();
+        analyze_project(detected_toolchain, config).await
+    }
 }
 
 /// Check for complexity violations and exit if required
@@ -759,5 +787,63 @@ mod include_expansion_tests {
         let solo = dir.path().join("solo.rs");
         std::fs::write(&solo, "fn only() {}\n").unwrap();
         assert!(analyze_included_fragments(&solo).await.unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod timeout_is_a_bound_tests {
+    //! `analyze complexity --timeout N` printed "⏰ Analysis timeout set to N
+    //! seconds" and enforced nothing: measured at HEAD 1ac9feb5a,
+    //! `pmat analyze complexity -p . --timeout 1` walked 4400 files in 8.1s and
+    //! exited 0. Same shape as #929 in `analyze dead-code`.
+    use super::analyze_files_by_mode;
+    use crate::cli::handlers::complexity_handlers::ComplexityConfig;
+    use std::path::{Path, PathBuf};
+
+    fn config_for(path: PathBuf, timeout: u64) -> ComplexityConfig {
+        ComplexityConfig::from_args(path, None, None, None, vec![], timeout, 10)
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_walk_that_outruns_the_budget_fails_instead_of_reporting_success() {
+        // This crate's own src/ tree — the measurement above. One second cannot
+        // buy 8.1 seconds of walking, so the ONLY honest outcomes are an error
+        // naming the budget or (if this machine were ~10x faster) a complete
+        // result inside 1s; a result that took longer than the budget is the
+        // defect. Elapsed is asserted so a future "always Ok" cannot pass.
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        assert!(src.is_dir(), "fixture is this crate's own source tree");
+
+        let started = std::time::Instant::now();
+        let err = analyze_files_by_mode(None, vec![], &config_for(src, 1))
+            .await
+            .expect_err("a 1s budget must not report success for an 8s walk");
+        let elapsed = started.elapsed();
+
+        assert!(
+            err.to_string().contains("timed out after 1 seconds"),
+            "the error must name the budget the banner promised, got: {err}"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_secs(5),
+            "the budget must actually cut the walk short, took {elapsed:?}"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_budget_that_is_ample_still_returns_the_analysis() {
+        // The other half of the contract: enforcement must not turn every run
+        // into a timeout.
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("small.rs"),
+            "fn one(a: bool) -> u8 { if a { 1 } else { 2 } }\n",
+        )
+        .unwrap();
+
+        let metrics = analyze_files_by_mode(None, vec![], &config_for(dir.path().into(), 300))
+            .await
+            .expect("one small file cannot exhaust a 300s budget");
+        assert_eq!(metrics.len(), 1, "the one file must still be analyzed");
     }
 }

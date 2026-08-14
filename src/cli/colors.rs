@@ -12,46 +12,91 @@
 //! --color never > out.txt` still wrote `Overall Score: ^[[1;37m97.2^[[0m/100`
 //! (GH #684).
 //!
-//! The raw `pub const` sequences below cannot be made conditional — they are
-//! `const` and interpolated directly at ~490 call sites. Those sites still emit
-//! colour unconditionally; migrating them to the helpers is the remaining work.
+//! The raw sequences below used to be `const &'static str`, interpolated
+//! directly at ~690 call sites, and every one of those sites emitted its escape
+//! unconditionally. Migrating them a printer at a time is what produced three
+//! separate half-fixes and still left twelve commands — `query`, `analyze
+//! churn`, `analyze graph-metrics`, `infra-score`, `repo-score`, `diagnose`,
+//! `comply check`, `deps-audit`, `popper-score`, `validate-docs`,
+//! `show-metrics` and `enforce` — writing ANSI into a redirected file under an
+//! explicit `--color never`.
 //!
-//! Where no semantic helper fits (a call site that opens a sequence in one
-//! `format!` argument and closes it in another), [`seq`] is the mechanical
-//! migration: `{c::BOLD}` becomes `{}` fed by `c::seq(c::BOLD)`, which is `""`
-//! when colour is off. `analyze provability` and `analyze duplicates` are
-//! migrated; they used to write 17 and 68 escape-bearing lines into a
-//! redirected file under `--color never`, indistinguishable from `--color
-//! auto`.
+//! They are now [`Sgr`] values whose `Display` consults [`colors_enabled`]. A
+//! call site that interpolates one gets the rule for free and cannot drift from
+//! it, because there is no longer a spelling of "emit this escape
+//! unconditionally" to reach for.
 
 // ── ANSI escape sequences ───────────────────────────────────────────────────
 
-pub const RESET: &str = "\x1b[0m";
-pub const BOLD: &str = "\x1b[1m";
-pub const DIM: &str = "\x1b[2m";
-pub const ITALIC: &str = "\x1b[3m";
-pub const UNDERLINE: &str = "\x1b[4m";
+/// An ANSI SGR sequence that renders itself **only when colour is enabled**.
+///
+/// Interpolating one (`format!("{}{text}{}", c::CYAN, c::RESET)`, or
+/// `format!("{CYAN}…{RESET}")` where the constants are in scope) is the
+/// migration-free way to honour `--color never` / `--color always` / a
+/// redirected stdout: with colour off the value formats to the empty string.
+///
+/// Use [`Sgr::raw`] only where the bytes themselves are the subject — tests
+/// asserting *which* colour was selected, or a buffer whose gating is done by
+/// the caller.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Sgr(&'static str);
+
+impl Sgr {
+    /// Wrap a literal escape sequence.
+    #[must_use]
+    pub const fn new(sequence: &'static str) -> Self {
+        Self(sequence)
+    }
+
+    /// The escape bytes, **ungated**. Pure: independent of `colors_enabled`.
+    #[must_use]
+    pub const fn raw(self) -> &'static str {
+        self.0
+    }
+}
+
+impl std::fmt::Display for Sgr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if colors_enabled() {
+            f.write_str(self.0)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl std::fmt::Debug for Sgr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Sgr({:?})", self.0)
+    }
+}
+
+pub const RESET: Sgr = Sgr::new("\x1b[0m");
+pub const BOLD: Sgr = Sgr::new("\x1b[1m");
+pub const DIM: Sgr = Sgr::new("\x1b[2m");
+pub const ITALIC: Sgr = Sgr::new("\x1b[3m");
+pub const UNDERLINE: Sgr = Sgr::new("\x1b[4m");
 
 // Foreground colors
-pub const RED: &str = "\x1b[31m";
-pub const GREEN: &str = "\x1b[32m";
-pub const YELLOW: &str = "\x1b[33m";
-pub const BLUE: &str = "\x1b[34m";
-pub const MAGENTA: &str = "\x1b[35m";
-pub const CYAN: &str = "\x1b[36m";
-pub const WHITE: &str = "\x1b[37m";
+pub const RED: Sgr = Sgr::new("\x1b[31m");
+pub const GREEN: Sgr = Sgr::new("\x1b[32m");
+pub const YELLOW: Sgr = Sgr::new("\x1b[33m");
+pub const BLUE: Sgr = Sgr::new("\x1b[34m");
+pub const MAGENTA: Sgr = Sgr::new("\x1b[35m");
+pub const CYAN: Sgr = Sgr::new("\x1b[36m");
+pub const WHITE: Sgr = Sgr::new("\x1b[37m");
 
 // Bright / bold foreground
-pub const BOLD_RED: &str = "\x1b[1;31m";
-pub const BOLD_GREEN: &str = "\x1b[1;32m";
-pub const BOLD_YELLOW: &str = "\x1b[1;33m";
-pub const BOLD_BLUE: &str = "\x1b[1;34m";
-pub const BOLD_CYAN: &str = "\x1b[1;36m";
-pub const BOLD_WHITE: &str = "\x1b[1;37m";
+pub const BOLD_RED: Sgr = Sgr::new("\x1b[1;31m");
+pub const BOLD_GREEN: Sgr = Sgr::new("\x1b[1;32m");
+pub const BOLD_YELLOW: Sgr = Sgr::new("\x1b[1;33m");
+pub const BOLD_BLUE: Sgr = Sgr::new("\x1b[1;34m");
+pub const BOLD_CYAN: Sgr = Sgr::new("\x1b[1;36m");
+pub const BOLD_WHITE: Sgr = Sgr::new("\x1b[1;37m");
 
 // Dim foreground
-pub const DIM_WHITE: &str = "\x1b[2;37m";
-pub const DIM_CYAN: &str = "\x1b[2;36m";
+pub const DIM_WHITE: Sgr = Sgr::new("\x1b[2;37m");
+pub const DIM_CYAN: Sgr = Sgr::new("\x1b[2;36m");
 
 // ── Colour enablement ───────────────────────────────────────────────────────
 
@@ -84,6 +129,17 @@ pub fn colors_enabled() -> bool {
     use std::io::IsTerminal;
     use std::sync::OnceLock;
 
+    // A test may force the answer for its own thread — see [`ForcedColor`].
+    // Without this seam a unit test can only ever observe the *off* half of the
+    // rule (`cargo test` captures stdout, and the decision below is a
+    // process-wide `OnceLock`), which is precisely how five printers shipped
+    // that emitted nothing under `--color always`: "no escapes here" passed as
+    // green.
+    #[cfg(test)]
+    if let Some(forced) = forced_color::get() {
+        return forced;
+    }
+
     static ENABLED: OnceLock<bool> = OnceLock::new();
     *ENABLED.get_or_init(|| {
         let is_set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty());
@@ -95,28 +151,118 @@ pub fn colors_enabled() -> bool {
     })
 }
 
-/// A raw escape sequence, gated on [`colors_enabled`].
+#[cfg(test)]
+mod forced_color {
+    use std::cell::Cell;
+
+    thread_local! {
+        static FORCED: Cell<Option<bool>> = const { Cell::new(None) };
+    }
+
+    pub(super) fn get() -> Option<bool> {
+        FORCED.with(Cell::get)
+    }
+
+    pub(super) fn set(value: Option<bool>) {
+        FORCED.with(|slot| slot.set(value));
+    }
+}
+
+/// Force [`colors_enabled`] for the current thread, restoring the previous
+/// answer on drop. Test-only.
 ///
-/// Returns `sequence` when colour is on and `""` when it is off. This is the
-/// escape hatch for call sites that cannot use a semantic helper because the
-/// opening and closing sequences land in different `format!` arguments —
-/// `c::seq(c::BOLD)` is a drop-in for a bare `c::BOLD` interpolation and, unlike
-/// the `const`, honours `--color never`, `NO_COLOR` and a redirected stdout.
+/// Thread-local rather than a global, so tests that force colour on cannot make
+/// a concurrently running test see escapes it does not expect — the trap that
+/// env-var-mutating colour tests kept falling into.
+///
+/// This exists so a test can assert **both halves** of the `--color` contract on
+/// the same renderer: escapes present when colour is on, absent when it is off.
+/// A one-sided "is plain" assertion is satisfied by a printer that has no colour
+/// at all, which is exactly the defect shape this module keeps having to fix.
+#[cfg(test)]
+pub(crate) struct ForcedColor(Option<bool>);
+
+#[cfg(test)]
+impl ForcedColor {
+    /// Force colour on (`true`) or off (`false`) until the guard drops.
+    pub(crate) fn new(enabled: bool) -> Self {
+        let previous = forced_color::get();
+        forced_color::set(Some(enabled));
+        Self(previous)
+    }
+
+    /// Force colour on — the state `--color always` produces.
+    pub(crate) fn on() -> Self {
+        Self::new(true)
+    }
+
+    /// Force colour off — the state `--color never` (or a redirected stdout)
+    /// produces.
+    pub(crate) fn off() -> Self {
+        Self::new(false)
+    }
+}
+
+#[cfg(test)]
+impl Drop for ForcedColor {
+    fn drop(&mut self) {
+        forced_color::set(self.0);
+    }
+}
+
+/// The escape byte no renderer may emit while colour is off.
+#[cfg(test)]
+pub(crate) const ESC: char = '\u{1b}';
+
+/// Assert that `render` honours `--color` in **both** directions.
+///
+/// `render` is called twice: once with colour forced on, where its output must
+/// carry at least one ANSI escape, and once with colour forced off, where it
+/// must carry none. `what` names the surface in the failure message.
+///
+/// The "on" half is the one that catches an inert `--color`: a printer that
+/// simply never colours anything passes every plain-output assertion.
+#[cfg(test)]
+pub(crate) fn assert_honours_color(what: &str, mut render: impl FnMut() -> String) {
+    let colored = {
+        let _guard = ForcedColor::on();
+        render()
+    };
+    assert!(
+        colored.contains(ESC),
+        "{what}: `--color always` produced no ANSI escape, so the flag changes \
+         nothing observable. Output was: {colored:?}"
+    );
+
+    let plain = {
+        let _guard = ForcedColor::off();
+        render()
+    };
+    let leaking: Vec<&str> = plain.lines().filter(|l| l.contains(ESC)).collect();
+    assert!(
+        leaking.is_empty(),
+        "{what}: {} line(s) carry ANSI with colour off; first: {:?}",
+        leaking.len(),
+        leaking.first()
+    );
+}
+
+/// Identity on an [`Sgr`], kept because ~50 call sites spell the gating
+/// explicitly as `c::seq(c::BOLD)`.
+///
+/// The gating now lives in `Sgr`'s `Display`, so `c::seq(c::BOLD)` and a bare
+/// `c::BOLD` are the same thing. Prefer the bare constant in new code.
 #[must_use]
 #[inline]
-pub fn seq(sequence: &'static str) -> &'static str {
-    if colors_enabled() {
-        sequence
-    } else {
-        ""
-    }
+pub fn seq(sequence: Sgr) -> Sgr {
+    sequence
 }
 
 /// Wrap `text` in `color` … `RESET`, or return it unchanged when colour is off.
 #[inline]
-fn paint(color: &str, text: &str) -> String {
+fn paint(color: Sgr, text: &str) -> String {
     if colors_enabled() {
-        format!("{color}{text}{RESET}")
+        format!("{}{text}{}", color.raw(), RESET.raw())
     } else {
         text.to_string()
     }
@@ -129,7 +275,7 @@ fn paint(color: &str, text: &str) -> String {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn header(text: &str) -> String {
     if colors_enabled() {
-        format!("{BOLD}{UNDERLINE}{text}{RESET}")
+        format!("{}{}{text}{}", BOLD.raw(), UNDERLINE.raw(), RESET.raw())
     } else {
         text.to_string()
     }
@@ -207,7 +353,7 @@ pub fn label(text: &str) -> String {
 /// raw `pub const`s cannot.
 #[must_use]
 #[inline]
-pub fn colored(color: &str, text: &str) -> String {
+pub fn colored(color: Sgr, text: &str) -> String {
     paint(color, text)
 }
 
@@ -215,7 +361,7 @@ pub fn colored(color: &str, text: &str) -> String {
 /// is enabled, so it stays assertable when output is plain.
 #[must_use]
 #[inline]
-pub fn grade_color(g: &str) -> &'static str {
+pub fn grade_color(g: &str) -> Sgr {
     match g.chars().next() {
         Some('A') => GREEN,
         Some('B' | 'C') => YELLOW,
@@ -228,7 +374,7 @@ pub fn grade_color(g: &str) -> &'static str {
 /// Colour for a higher-is-better value against two thresholds. Pure.
 #[must_use]
 #[inline]
-pub fn threshold_color(value: f64, good_threshold: f64, warn_threshold: f64) -> &'static str {
+pub fn threshold_color(value: f64, good_threshold: f64, warn_threshold: f64) -> Sgr {
     if value >= good_threshold {
         GREEN
     } else if value >= warn_threshold {
@@ -241,11 +387,7 @@ pub fn threshold_color(value: f64, good_threshold: f64, warn_threshold: f64) -> 
 /// Colour for a lower-is-better value against two thresholds. Pure.
 #[must_use]
 #[inline]
-pub fn threshold_color_inverse(
-    value: f64,
-    good_threshold: f64,
-    warn_threshold: f64,
-) -> &'static str {
+pub fn threshold_color_inverse(value: f64, good_threshold: f64, warn_threshold: f64) -> Sgr {
     if value <= good_threshold {
         GREEN
     } else if value <= warn_threshold {
@@ -258,7 +400,7 @@ pub fn threshold_color_inverse(
 /// Colour for a signed delta. Pure.
 #[must_use]
 #[inline]
-pub fn delta_color(value: f64) -> &'static str {
+pub fn delta_color(value: f64) -> Sgr {
     if value > 0.0 {
         GREEN
     } else if value < 0.0 {
@@ -351,6 +493,61 @@ mod tests {
 
     /// Escape byte that must not appear in plain output.
     const ESC: char = '\x1b';
+
+    // ── the seam that makes an inert `--color` fail ─────────────────────────
+
+    /// `ForcedColor` must move `colors_enabled` in both directions and restore
+    /// the previous answer on drop; everything asserted through
+    /// [`assert_honours_color`] rests on this.
+    #[test]
+    fn forced_color_moves_the_decision_and_restores_it() {
+        let baseline = colors_enabled();
+        {
+            let _on = ForcedColor::on();
+            assert!(colors_enabled());
+            assert!(format!("{BOLD}x{RESET}").contains(ESC));
+            {
+                let _off = ForcedColor::off();
+                assert!(!colors_enabled());
+                assert_eq!(format!("{BOLD}x{RESET}"), "x");
+            }
+            assert!(colors_enabled(), "inner guard must restore the outer one");
+        }
+        assert_eq!(
+            colors_enabled(),
+            baseline,
+            "guard must restore the process answer"
+        );
+    }
+
+    /// The point of the helper: a printer that emits no colour at all FAILS it.
+    ///
+    /// Every previous `--color` test in this crate asserted only "output is
+    /// plain when colour is off", which such a printer passes — which is how
+    /// five commands shipped with a `--color` flag that changed nothing.
+    #[test]
+    fn assert_honours_color_rejects_a_printer_that_never_colours() {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let outcome = std::panic::catch_unwind(|| {
+            assert_honours_color("a printer with no colour", || {
+                "Average Score: 90.9/100 (A)".to_string()
+            });
+        });
+        std::panic::set_hook(previous);
+        assert!(
+            outcome.is_err(),
+            "assert_honours_color must reject a renderer that emits no ANSI under --color always"
+        );
+    }
+
+    /// …and accepts one that does.
+    #[test]
+    fn assert_honours_color_accepts_a_printer_that_does() {
+        assert_honours_color("a printer that colours", || {
+            format!("Average Score: {}/100 ({})", number("90.9"), grade("A"))
+        });
+    }
 
     fn is_plain(s: &str) -> bool {
         !s.contains(ESC)
@@ -496,16 +693,70 @@ mod tests {
             "cargo test captures stdout, so colour must resolve to off here"
         );
         for raw in [RESET, BOLD, DIM, GREEN, YELLOW, RED, CYAN, BOLD_WHITE] {
-            assert_eq!(seq(raw), "", "seq must not emit {raw:?} with colour off");
-            assert!(is_plain(seq(raw)));
+            assert_eq!(
+                seq(raw).to_string(),
+                "",
+                "seq must not emit {raw:?} with colour off"
+            );
+            assert!(is_plain(&seq(raw).to_string()));
         }
+    }
+
+    /// The defect this type exists to close: **interpolating a raw constant**
+    /// used to emit its escape unconditionally, so twelve commands wrote ANSI
+    /// into a redirected file under an explicit `--color never`. A bare
+    /// `{CYAN}` must now be exactly as gated as `c::seq(c::CYAN)`.
+    #[test]
+    fn raw_constants_emit_nothing_when_interpolated_with_colour_off() {
+        assert!(
+            !colors_enabled(),
+            "cargo test captures stdout, so colour must resolve to off here"
+        );
+        for sgr in [
+            RESET,
+            BOLD,
+            DIM,
+            ITALIC,
+            UNDERLINE,
+            RED,
+            GREEN,
+            YELLOW,
+            BLUE,
+            MAGENTA,
+            CYAN,
+            WHITE,
+            BOLD_RED,
+            BOLD_GREEN,
+            BOLD_YELLOW,
+            BOLD_BLUE,
+            BOLD_CYAN,
+            BOLD_WHITE,
+            DIM_WHITE,
+            DIM_CYAN,
+        ] {
+            let line = format!("{sgr}src/lib.rs:12{RESET}");
+            assert_eq!(
+                line, "src/lib.rs:12",
+                "interpolating {sgr:?} leaked an escape with colour off"
+            );
+            assert!(is_plain(&line));
+        }
+    }
+
+    /// …while the sequence itself is still reachable, so tests can assert
+    /// *which* colour a value selects and `paint` can build the wrapper.
+    #[test]
+    fn raw_exposes_the_ungated_sequence() {
+        assert_eq!(RESET.raw(), "\x1b[0m");
+        assert_eq!(BOLD_RED.raw(), "\x1b[1;31m");
+        assert_eq!(grade_color("F").raw(), BOLD_RED.raw());
     }
 
     #[test]
     fn paint_wraps_only_when_enabled() {
         // `paint` is what every helper funnels through; assert both branches
         // explicitly rather than relying on the ambient environment.
-        let wrapped = format!("{GREEN}ok{RESET}");
+        let wrapped = format!("{}ok{}", GREEN.raw(), RESET.raw());
         assert_eq!(
             if colors_enabled() {
                 wrapped.clone()
@@ -514,6 +765,6 @@ mod tests {
             },
             paint(GREEN, "ok")
         );
-        assert!(wrapped.starts_with(GREEN) && wrapped.ends_with(RESET));
+        assert!(wrapped.starts_with(GREEN.raw()) && wrapped.ends_with(RESET.raw()));
     }
 }

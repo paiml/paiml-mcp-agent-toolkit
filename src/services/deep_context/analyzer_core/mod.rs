@@ -15,5 +15,6 @@ pub(crate) mod file_tree;
 pub(crate) mod params;
 pub(crate) mod pipeline;
 pub(crate) mod quality;
+pub(crate) mod scope_filter;
 pub(crate) mod spawn;
 pub(crate) mod types;

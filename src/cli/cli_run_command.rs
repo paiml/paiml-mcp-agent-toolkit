@@ -57,10 +57,15 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 ///
 /// CC=3: Quiet mode + color mode checks
 fn apply_ux_settings(cli: &commands::Cli) {
-    // Set quiet mode environment variable
-    if cli.quiet {
-        std::env::set_var("PMAT_QUIET", "1");
-    }
+    // Publish quiet mode on the one channel handlers can see. The env var name
+    // and both its writer and its reader live in `cli::progress`, so there is
+    // one rule with one implementation; see `progress::quiet_mode_enabled`.
+    //
+    // Note this only reaches code that *asks*. The log level `--help` promises
+    // ("errors only") is applied earlier, in `src/bin/pmat.rs` via
+    // `cli::log_level_directive`, because tracing is initialised before clap
+    // parses.
+    crate::cli::progress::set_quiet_mode(cli.quiet);
 
     // Handle color mode
     match cli.color {

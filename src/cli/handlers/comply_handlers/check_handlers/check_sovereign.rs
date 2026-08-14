@@ -401,7 +401,7 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
     fs::create_dir_all(&pmat_dir)?;
     let baseline_path = pmat_dir.join("file-health-baseline.json");
     baseline.save(&baseline_path)?;
-    println!(
+    crate::status_println!(
         "{} {} ({} files)",
         c::pass("File health baseline saved:"),
         c::path(&baseline_path.display().to_string()),

@@ -68,7 +68,7 @@
                 },
             };
             // show_progress = false should skip progress bar
-            let output = output_result(&result, EnforceOutputFormat::Progress, false);
+            let output = output_result(&result, EnforceOutputFormat::Progress, false, None);
             assert!(output.is_ok());
         }
 
@@ -92,7 +92,7 @@
                     estimated_iterations: 5,
                 },
             };
-            let output = output_result(&result, EnforceOutputFormat::Sarif, false);
+            let output = output_result(&result, EnforceOutputFormat::Sarif, false, None);
             assert!(output.is_ok());
         }
 
@@ -111,7 +111,7 @@
                     estimated_iterations: 0,
                 },
             };
-            let output = output_result(&result, EnforceOutputFormat::Summary, false);
+            let output = output_result(&result, EnforceOutputFormat::Summary, false, None);
             assert!(output.is_ok());
         }
 
@@ -130,7 +130,7 @@
                     estimated_iterations: 2,
                 },
             };
-            let output = output_result(&result, EnforceOutputFormat::Summary, false);
+            let output = output_result(&result, EnforceOutputFormat::Summary, false, None);
             assert!(output.is_ok());
         }
     }
@@ -168,6 +168,8 @@
                 true,
                 None,
                 false,
+                None,
+                None,
             )
             .await
             .unwrap();

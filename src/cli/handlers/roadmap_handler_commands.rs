@@ -94,7 +94,7 @@ async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()>
 
     // Report results
     if validation.valid && validation.warnings.is_empty() {
-        eprintln!("✅ Roadmap validation passed!");
+        crate::status_eprintln!("✅ Roadmap validation passed!");
     } else {
         if !validation.errors.is_empty() {
             eprintln!("❌ Validation errors:");
@@ -145,7 +145,7 @@ async fn fix_roadmap_status(roadmap_path: &Path, tickets_dir: &Path, dry_run: bo
     }
 
     if changes.is_empty() {
-        eprintln!("✅ Roadmap is already up-to-date!");
+        crate::status_eprintln!("✅ Roadmap is already up-to-date!");
         return Ok(());
     }
 
@@ -206,7 +206,7 @@ async fn generate_missing_ticket_files(
     tickets_dir: &Path,
     dry_run: bool,
 ) -> Result<()> {
-    eprintln!("📝 Checking for missing ticket files...\n");
+    crate::status_eprintln!("📝 Checking for missing ticket files...\n");
 
     let result = generate_tickets_internal(roadmap_path, tickets_dir, dry_run).await?;
 
@@ -221,18 +221,18 @@ async fn generate_missing_ticket_files(
         }
     }
 
-    eprintln!();
+    crate::status_eprintln!();
     if result.generated.is_empty() {
-        eprintln!("✅ No missing ticket files");
+        crate::status_eprintln!("✅ No missing ticket files");
     } else {
-        eprintln!("✅ Generated {} ticket file(s)", result.generated.len());
+        crate::status_eprintln!("✅ Generated {} ticket file(s)", result.generated.len());
         if dry_run {
-            eprintln!("🔍 Dry-run mode - no files created");
+            crate::status_eprintln!("🔍 Dry-run mode - no files created");
         }
     }
 
     if !result.skipped.is_empty() {
-        eprintln!("⏭️  Skipped {} existing ticket(s)", result.skipped.len());
+        crate::status_eprintln!("⏭️  Skipped {} existing ticket(s)", result.skipped.len());
     }
 
     Ok(())

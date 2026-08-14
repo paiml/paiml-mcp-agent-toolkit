@@ -1,34 +1,64 @@
+/// Warning printed when `--wasm-complexity` is passed.
+///
+/// The flag used to decide whether a parsed file appeared in the report at all,
+/// which is why the default run announced three parsed files and then reported
+/// `files_analyzed: 0`. Complexity is measured for every parsed file now, so
+/// the flag has nothing left to gate — and it was accepted in SILENCE, which
+/// read as if it had switched an extra analysis on. Named as a const so the
+/// disclosure is covered by a test rather than only by eye, exactly like
+/// `big_o_handlers::ANALYZE_SPACE_NOOP_NOTE`.
+pub(crate) const WASM_COMPLEXITY_NOOP_NOTE: &str =
+    "note: --wasm-complexity is a no-op — cyclomatic and cognitive complexity are measured for every parsed file";
+
 /// Handle `AssemblyScript` analysis
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_assemblyscript(
     project_path: PathBuf,
     format: ComplexityOutputFormat,
-    // --wasm-complexity used to decide whether a parsed file appeared in the
-    // report at all, which is why the default run reported files_analyzed 0.
-    // Complexity is now measured for every parsed file and the flag has nothing
-    // left to gate; it is kept so existing invocations keep working.
-    _wasm_complexity: bool,
-    _memory_analysis: bool,
+    wasm_complexity: bool,
+    memory_analysis: bool,
     security: bool,
     output: Option<PathBuf>,
     _timeout: u64,
     perf: bool,
+    top_files: usize,
 ) -> Result<()> {
     // Found alongside GH-663/GH-666: a nonexistent path printed
     // "📁 Found 0 AssemblyScript files" and a complete report with
     // "**Files analyzed**: 0", exit 0.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
-    eprintln!("🔍 Analyzing AssemblyScript code...");
+    // Not `status_eprintln!`: this is a correction to what the USER typed, not
+    // progress noise, so `--quiet` must not swallow it.
+    if wasm_complexity {
+        eprintln!("{WASM_COMPLEXITY_NOOP_NOTE}");
+    }
+
+    use crate::cli::colors as c;
+    crate::status_eprintln!("🔍 {}", c::label("Analyzing AssemblyScript code..."));
     let start = std::time::Instant::now();
 
-    let results = process_assemblyscript_files(&project_path, security).await?;
+    // Both flags used to write their findings to stderr with a bare
+    // `eprintln!`, leaving the report on stdout byte-identical with and without
+    // them. They are report sections now, so `--output`, a pipe and
+    // `--format json` all carry what the rules found.
+    let mut sections = WasmSections {
+        security: security.then(Vec::new),
+        memory: memory_analysis.then(Vec::new),
+        complexity: None,
+    };
+
+    let results = process_assemblyscript_files(&project_path, &mut sections).await?;
     let elapsed = start.elapsed();
 
-    eprintln!("📊 Analysis complete in {:.2}s", elapsed.as_secs_f64());
+    crate::status_eprintln!(
+        "📊 Analysis complete in {}",
+        c::number(&format!("{:.2}s", elapsed.as_secs_f64()))
+    );
 
-    let output_text = format_assemblyscript_results(&results, &format, perf, elapsed)?;
+    let output_text =
+        format_assemblyscript_results(&results, &format, perf, elapsed, top_files, &sections)?;
     write_analysis_output(output_text, output).await?;
 
     Ok(())
@@ -36,18 +66,21 @@ pub async fn handle_analyze_assemblyscript(
 
 async fn process_assemblyscript_files(
     project_path: &Path,
-    security: bool,
+    sections: &mut WasmSections,
 ) -> Result<Vec<(PathBuf, WasmComplexity)>> {
     let detector = WasmLanguageDetector::new();
     let mut parser = AssemblyScriptParser::new()?;
     let mut results = Vec::new();
 
     let as_files = collect_assemblyscript_files(project_path)?;
-    eprintln!("📁 Found {} AssemblyScript files", as_files.len());
+    crate::status_eprintln!(
+        "📁 Found {} AssemblyScript files",
+        crate::cli::colors::number(&as_files.len().to_string())
+    );
 
     for file_path in as_files {
         if let Some(analysis_result) =
-            analyze_single_file(&file_path, &detector, &mut parser, security).await?
+            analyze_single_file(&file_path, &detector, &mut parser, sections).await?
         {
             results.push(analysis_result);
         }
@@ -60,7 +93,7 @@ async fn analyze_single_file(
     file_path: &Path,
     detector: &WasmLanguageDetector,
     parser: &mut AssemblyScriptParser,
-    security: bool,
+    sections: &mut WasmSections,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
     let content = match tokio::fs::read_to_string(file_path).await {
         Ok(content) => content,
@@ -74,14 +107,23 @@ async fn analyze_single_file(
     let ast = match parser.parse_file(file_path, &content).await {
         Ok(ast) => ast,
         Err(e) => {
-            eprintln!("❌ Failed to parse {}: {}", file_path.display(), e);
+            eprintln!(
+                "{}",
+                crate::cli::colors::colored(
+                    crate::cli::colors::RED,
+                    &format!("❌ Failed to parse {}: {}", file_path.display(), e)
+                )
+            );
             return Ok(None);
         }
     };
 
-    eprintln!("✅ Parsed: {}", file_path.display());
+    crate::status_eprintln!(
+        "✅ Parsed: {}",
+        crate::cli::colors::path(&file_path.display().to_string())
+    );
 
-    let result = process_parsed_ast(&ast, file_path, security)?;
+    let result = process_parsed_ast(&ast, &content, file_path, sections)?;
     Ok(result)
 }
 
@@ -95,24 +137,71 @@ async fn analyze_single_file(
 /// complexity is measured from that same AST rather than left out or defaulted.
 fn process_parsed_ast(
     ast: &AstDag,
+    content: &str,
     file_path: &Path,
-    security: bool,
+    sections: &mut WasmSections,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
     let complexity_analyzer = WasmComplexityAnalyzer::new();
     let complexity = complexity_analyzer.analyze_ast(ast)?;
 
-    if security {
-        validate_ast_security(ast, file_path);
+    if let Some(rows) = sections.security.as_mut() {
+        rows.extend(source_security_findings(content, file_path));
+    }
+
+    if let Some(rows) = sections.memory.as_mut() {
+        rows.push(source_memory_finding(content, file_path));
     }
 
     Ok(Some((file_path.to_path_buf(), complexity)))
 }
 
-fn validate_ast_security(ast: &AstDag, file_path: &Path) {
-    let security_validator = WasmSecurityValidator::new();
-    if let Err(e) = security_validator.validate_ast(ast) {
-        eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
-    }
+/// Security findings for one `AssemblyScript` source file.
+///
+/// This used to be `validate_ast_security`, which called
+/// `WasmSecurityValidator::validate_ast` — `Ok(())` for every input — over an
+/// `AstDag` that `AssemblyScriptParser::parse_file` returns EMPTY. The
+/// `if let Err(e)` branch that would have printed a finding was unreachable for
+/// every possible file, so `--security` was byte-identical to no flag on
+/// sources using `memory.grow` and raw `load<T>()`. The rules now run over the
+/// source that was read from disk, and "nothing found" is reported as a result
+/// instead of as silence.
+fn source_security_findings(content: &str, file_path: &Path) -> Vec<WasmFinding> {
+    let validator = WasmSecurityValidator::new();
+    let Ok(validation) = validator.validate_text(content) else {
+        return Vec::new();
+    };
+    security_findings(
+        file_path,
+        &validation,
+        "no issue found by the memory/resource rules",
+    )
+}
+
+/// Memory constructs counted in one `AssemblyScript` source file.
+///
+/// `--memory-analysis` was `_memory_analysis: bool` in the handler signature —
+/// parsed, forwarded, never read. The counts below are occurrences in the file
+/// that was read, nothing else: in particular the report's "Memory pressure"
+/// line is NOT used here, because `WasmComplexityAnalyzer::analyze_ast` returns
+/// the same constant (`memory_pressure: 1.0`) for every input.
+fn source_memory_finding(content: &str, file_path: &Path) -> WasmFinding {
+    const SITES: &[(&str, &str)] = &[
+        ("memory.grow", "memory.grow"),
+        ("load<", "raw load<T>()"),
+        ("store<", "raw store<T>()"),
+        ("changetype<", "changetype<>"),
+        ("new ", "`new` allocation"),
+    ];
+
+    let counts: Vec<String> = SITES
+        .iter()
+        .map(|(needle, label)| {
+            let count = content.matches(needle).count();
+            format!("{label}: {count}")
+        })
+        .collect();
+
+    WasmFinding::info(file_path, "memory-sites", counts.join(", "))
 }
 
 #[cfg(test)]
@@ -133,10 +222,15 @@ mod assemblyscript_default_run_tests {
         std::fs::write(dir.path().join("top.ts"), FIXTURE).expect("write top.ts");
 
         let found = collect_assemblyscript_files(dir.path()).expect("collect");
-        assert_eq!(found.len(), 2, "fixture should present 2 AssemblyScript files");
+        assert_eq!(
+            found.len(),
+            2,
+            "fixture should present 2 AssemblyScript files"
+        );
 
-        // security=false, and no --wasm-complexity anywhere in the call.
-        let results = process_assemblyscript_files(dir.path(), false)
+        // No flags at all, and no --wasm-complexity anywhere in the call.
+        let mut sections = WasmSections::default();
+        let results = process_assemblyscript_files(dir.path(), &mut sections)
             .await
             .expect("analysis");
 
@@ -153,9 +247,27 @@ mod assemblyscript_default_run_tests {
 async fn write_analysis_output(output_text: String, output_path: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, &output_text).await?;
-        eprintln!("📝 Results written to: {}", output_path.display());
+        crate::status_eprintln!(
+            "📝 Results written to: {}",
+            crate::cli::colors::path(&output_path.display().to_string())
+        );
     } else {
         println!("{output_text}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod wasm_complexity_noop_tests {
+    //! The note is the only thing that tells a user `--wasm-complexity` does
+    //! nothing; without it the flag was accepted in silence and read as if it
+    //! had switched an extra analysis on.
+    use super::*;
+
+    #[test]
+    fn the_noop_note_says_the_flag_is_a_no_op() {
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("--wasm-complexity"));
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("no-op"));
+        assert!(WASM_COMPLEXITY_NOOP_NOTE.contains("every parsed file"));
+    }
 }

@@ -14,6 +14,177 @@ include!("duplicates_output.rs");
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
+mod near_miss_tests {
+    //! `structural_similarities` counted duplicate blocks with
+    //! `0.8 <= similarity < 1.0`, but the only production constructor of a
+    //! block set `similarity: 1.0` as a literal — detection was pure hash
+    //! bucketing — so the predicate was unsatisfiable for EVERY input. The JSON
+    //! printed a hard 0 beside `exact_duplicates: 176` and
+    //! `duplication_percentage: 72.46` on a corpus of 121 files, and 0 on an
+    //! empty directory: the same number for "no near-misses here" and "we never
+    //! looked".
+    use super::*;
+
+    /// Two functions that do the same work in nearly the same way: `beta` adds
+    /// one more guarded branch. Structurally similar, not identical, and not
+    /// reachable by any hash-equality test.
+    const ALPHA: &str = "\
+pub fn tally_alpha(values: &[i64], limit: i64) -> i64 {
+    let mut total = 0i64;
+    let mut seen = 0usize;
+    for value in values {
+        if *value > limit {
+            total = total.wrapping_add(value * 3);
+            seen += 1;
+        } else if *value < 0 {
+            total = total.wrapping_sub(value / 2);
+        } else {
+            total = total.wrapping_add(1);
+        }
+        if seen > 100 {
+            break;
+        }
+    }
+    total
+}
+";
+
+    const BETA: &str = "\
+pub fn tally_beta(items: &[i64], bound: i64) -> i64 {
+    let mut sum = 0i64;
+    let mut counted = 0usize;
+    for item in items {
+        if *item > bound {
+            sum = sum.wrapping_add(item * 3);
+            counted += 1;
+        } else if *item < 0 {
+            sum = sum.wrapping_sub(item / 2);
+        } else {
+            sum = sum.wrapping_add(1);
+        }
+        if counted % 7 == 0 {
+            sum = sum.wrapping_mul(2);
+        }
+        if counted > 100 {
+            break;
+        }
+    }
+    sum
+}
+";
+
+    async fn report_for(detection: crate::cli::DuplicateType, threshold: f32) -> DuplicateReport {
+        let temp = tempfile::TempDir::new().unwrap();
+        std::fs::write(temp.path().join("alpha.rs"), ALPHA).unwrap();
+        std::fs::write(temp.path().join("beta.rs"), BETA).unwrap();
+
+        detect_duplicates(temp.path(), detection, threshold, 5, 1000, &None, &None)
+            .await
+            .expect("detection must succeed")
+    }
+
+    fn structural_similarities(report: &DuplicateReport) -> usize {
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json_output(report).unwrap()).unwrap();
+        json["structural_similarities"].as_u64().unwrap() as usize
+    }
+
+    /// The leaf itself: a near-miss clone pair must move `structural_similarities`
+    /// off zero, under the DEFAULT detection type.
+    #[tokio::test]
+    async fn a_near_miss_clone_pair_is_counted_as_a_structural_similarity() {
+        let report = report_for(crate::cli::DuplicateType::All, 0.7).await;
+        assert!(
+            structural_similarities(&report) > 0,
+            "two near-miss clones must be reported as a structural similarity, got blocks {:?}",
+            report
+                .duplicate_blocks
+                .iter()
+                .map(|b| (b.hash.clone(), b.similarity))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    /// And the similarity carried is a MEASUREMENT, not the cut-off echoed back
+    /// and not the literal 1.0: it sits strictly between the threshold and 1.0,
+    /// and does not move when the threshold does.
+    #[tokio::test]
+    async fn the_reported_similarity_is_measured_not_the_threshold() {
+        let loose = report_for(crate::cli::DuplicateType::All, 0.5).await;
+        let tighter = report_for(crate::cli::DuplicateType::All, 0.6).await;
+
+        let near_miss = |r: &DuplicateReport| -> Vec<f32> {
+            let mut sims: Vec<f32> = r
+                .duplicate_blocks
+                .iter()
+                .filter(|b| b.similarity < 1.0)
+                .map(|b| b.similarity)
+                .collect();
+            sims.sort_by(f32::total_cmp);
+            sims
+        };
+
+        let loose_sims = near_miss(&loose);
+        assert!(!loose_sims.is_empty(), "no near-miss block was reported");
+        for sim in &loose_sims {
+            assert!(
+                *sim > 0.6 && *sim < 1.0,
+                "similarity {sim} is neither the 0.5 cut-off nor an exact match"
+            );
+        }
+        assert_eq!(
+            loose_sims,
+            near_miss(&tighter),
+            "the measured similarity must not move with --threshold"
+        );
+    }
+
+    /// `--threshold` now decides what is close enough, so raising it past the
+    /// measured similarity must drop the pair. A flag that changes the answer is
+    /// the only proof it is not inert.
+    #[tokio::test]
+    async fn the_threshold_selects_which_near_misses_survive() {
+        let loose = report_for(crate::cli::DuplicateType::All, 0.5).await;
+        let impossible = report_for(crate::cli::DuplicateType::All, 0.999).await;
+
+        assert!(structural_similarities(&loose) > 0);
+        assert_eq!(
+            structural_similarities(&impossible),
+            0,
+            "nothing is 99.9% similar here, so the count must fall to zero"
+        );
+    }
+
+    /// `exact` is Type-1 by definition: a zero there is a measurement of what
+    /// was looked for, not a missing detector.
+    #[tokio::test]
+    async fn exact_mode_reports_no_structural_similarities() {
+        let report = report_for(crate::cli::DuplicateType::Exact, 0.5).await;
+        assert_eq!(structural_similarities(&report), 0);
+    }
+
+    /// An empty project still reports zero — and now that zero means something,
+    /// because the same command reports non-zero on the fixture above.
+    #[tokio::test]
+    async fn an_empty_project_still_reports_zero() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::All,
+            0.7,
+            5,
+            1000,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(structural_similarities(&report), 0);
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::path::Path;
@@ -165,6 +336,79 @@ mod tests {
         assert!(blocks.iter().all(|(_, file, _, _, _)| file == "test.rs"));
     }
 
+    /// A run of comments is not a code block, so it cannot be half of a
+    /// duplicate pair.
+    ///
+    /// `normalize_block` DELETES comments and blank lines, and the exact pass
+    /// hashed whatever it left behind with only an upper bound on tokens
+    /// (`--max-tokens`) and no lower bound. A window covering nothing but
+    /// comments therefore normalised to `""` and hashed to `30406ea523c53def`
+    /// — the hash of the empty string — in EVERY file of the project, so all of
+    /// them landed in one bucket and were reported as one exact duplicate at
+    /// similarity 1.0 with `tokens: 0`.
+    #[test]
+    fn comment_only_windows_are_not_blocks() {
+        let lines = vec![
+            "// alpha one",
+            "// alpha two",
+            "// alpha three",
+            "// alpha four",
+            "// alpha five",
+            "",
+            "   ",
+        ];
+
+        let mut blocks = Vec::new();
+        extract_exact_blocks(&mut blocks, &lines, "a.rs", 5, 100);
+
+        assert!(
+            blocks.is_empty(),
+            "comments and blank lines carry no code, so no block can be cut \
+             from them; got {blocks:?}"
+        );
+    }
+
+    /// Every block the exact pass emits must carry `min_lines` lines of real
+    /// code, and must report the span of that code rather than the span of the
+    /// comments around it.
+    #[test]
+    fn exact_blocks_span_only_substantive_lines() {
+        let lines = vec![
+            "// leading comment",
+            "",
+            "let a = 1;",
+            "let b = 2;",
+            "// interleaved note",
+            "let c = 3;",
+            "let d = 4;",
+            "let e = 5;",
+            "",
+            "// trailing comment",
+        ];
+
+        let mut blocks = Vec::new();
+        extract_exact_blocks(&mut blocks, &lines, "a.rs", 5, 100);
+
+        assert_eq!(
+            blocks.len(),
+            1,
+            "five substantive lines admit exactly one 5-line window"
+        );
+        let (_, _, start, end, content) = &blocks[0];
+        // Lines 3..=8 in 1-based terms, i.e. `let a` through `let e`, skipping
+        // the note on line 5.
+        assert_eq!((*start, *end), (3, 8), "block must span the code it holds");
+        assert!(
+            !content.contains("//"),
+            "normalised content must hold no comments: {content:?}"
+        );
+        assert_eq!(
+            content.lines().count(),
+            5,
+            "a 5-line block must have 5 lines of evidence: {content:?}"
+        );
+    }
+
     #[test]
     fn test_find_duplicate_blocks_no_duplicates() {
         let blocks = vec![
@@ -184,7 +428,7 @@ mod tests {
             ),
         ];
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert!(duplicates.is_empty());
     }
 
@@ -215,7 +459,7 @@ mod tests {
                     ));
                 }
             }
-            find_duplicate_blocks(blocks, 0.8)
+            find_duplicate_blocks(blocks)
                 .into_iter()
                 .map(|b| b.hash)
                 .collect()
@@ -263,7 +507,7 @@ mod tests {
             ),
         ];
 
-        let duplicates = find_duplicate_blocks(blocks, 0.8);
+        let duplicates = find_duplicate_blocks(blocks);
         assert_eq!(duplicates.len(), 1);
         assert_eq!(duplicates[0].hash, "hash1");
         assert_eq!(duplicates[0].locations.len(), 2);
@@ -352,6 +596,7 @@ mod tests {
                 lines: 10,
                 tokens: 20,
                 similarity: 1.0,
+                clone_type: CloneType::Exact,
             }],
             file_statistics: BTreeMap::new(),
         };
@@ -392,6 +637,7 @@ mod tests {
                 lines: 5,
                 tokens: 10,
                 similarity: 1.0,
+                clone_type: CloneType::Exact,
             })
             .collect();
         let mut file_stats = BTreeMap::new();
@@ -495,6 +741,7 @@ mod tests {
             lines: 1,
             tokens: 1,
             similarity: 1.0,
+            clone_type: CloneType::Exact,
         });
         let out = format_csv_output(&r).unwrap();
         // Header only — single-location block dropped.
@@ -535,14 +782,48 @@ mod tests {
         assert!(!out.contains("more blocks"));
     }
 
+    /// Regression: "Top Files by Duplication" printed `Path::file_name()`, so
+    /// this repo's two `core_tests_properties.rs` files rendered as the SAME
+    /// row twice — identical name, identical counts, identical percentage —
+    /// occupying two of the ten slots with no way to tell them apart.
     #[test]
-    fn test_extract_filename_handles_paths_and_bare_names() {
-        // Bare name → returned unchanged.
-        assert_eq!(extract_filename("foo.rs"), "foo.rs");
-        // Full path → only basename returned.
-        assert_eq!(extract_filename("src/cli/foo.rs"), "foo.rs");
-        // No extension → still returns basename.
-        assert_eq!(extract_filename("src/cli/Makefile"), "Makefile");
+    fn test_top_files_distinguishes_files_sharing_a_basename() {
+        let mut r = populated_report_with_blocks(0);
+        r.file_statistics.clear();
+        r.file_statistics.insert(
+            "./src/ast/core_tests_properties.rs".to_string(),
+            FileStats {
+                duplicate_lines: 292,
+                total_lines: 292,
+                duplication_percentage: 100.0,
+            },
+        );
+        r.file_statistics.insert(
+            "./src/ast/core/core_tests_properties.rs".to_string(),
+            FileStats {
+                duplicate_lines: 292,
+                total_lines: 292,
+                duplication_percentage: 100.0,
+            },
+        );
+
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        let rows: Vec<&str> = out
+            .lines()
+            .filter(|l| l.contains("core_tests_properties.rs"))
+            .collect();
+        assert_eq!(rows.len(), 2, "both files listed:\n{out}");
+        assert_ne!(
+            rows[0].trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ' '),
+            rows[1].trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ' '),
+            "two different files must not render as the same row:\n{out}"
+        );
+        assert!(
+            out.contains("src/ast/core/core_tests_properties.rs"),
+            "{out}"
+        );
+        // The leading "./" of the analyzer's key is trimmed, nothing else.
+        assert!(!out.contains("./src/ast"), "{out}");
     }
 
     #[test]
@@ -637,6 +918,121 @@ mod tests {
         }
     }
 
+    /// Two files that share ZERO lines share zero duplication.
+    ///
+    /// BLOCKER (round-5 sweep). The fixture below is the minimal one: `comm -12`
+    /// over the two files sorted is EMPTY, and `analyze duplicates` reported
+    ///
+    /// ```text
+    ///   Total duplicate blocks: 1
+    ///   Duplication percentage: 62.5%
+    ///   exact_duplicates: 1
+    ///   hash 30406ea523c53def, tokens: 0, similarity: 1.0, content_preview: ""
+    /// ```
+    ///
+    /// The block was lines 1-5 of both files: their comment headers, which
+    /// `normalize_block` deletes, leaving the empty string, whose hash is
+    /// `30406ea523c53def`. A detector that calls two unrelated files two-thirds
+    /// duplicated is worse than one that finds nothing — it points the wrong
+    /// way, and `--duplicates` is how this project hunts its own copy-paste.
+    ///
+    /// Every detection type is checked: `exact` hashes normalised source and
+    /// `fuzzy`/`renamed` hash a structural signature, but both were fed by
+    /// extractors with no lower bound on content.
+    #[tokio::test]
+    async fn files_sharing_no_lines_report_no_duplication() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        std::fs::write(
+            temp.path().join("a.rs"),
+            "// alpha one\n// alpha two\n// alpha three\n// alpha four\n// alpha five\n\
+             \n// alpha six\n// alpha seven\n\
+             fn alpha_unique_function_name() { let alpha_value = 111; \
+             println!(\"alpha {}\", alpha_value); }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            temp.path().join("b.rs"),
+            "// beta one\n// beta two\n// beta three\n// beta four\n// beta five\n\
+             \n// beta six\n// beta seven\n\
+             struct BetaThing { beta_field: u64 }\n",
+        )
+        .unwrap();
+
+        for detection in [
+            crate::cli::DuplicateType::Exact,
+            crate::cli::DuplicateType::Fuzzy,
+            crate::cli::DuplicateType::Renamed,
+            crate::cli::DuplicateType::All,
+        ] {
+            let report =
+                detect_duplicates(temp.path(), detection.clone(), 0.85, 5, 100, &None, &None)
+                    .await
+                    .expect("detection must not fail");
+
+            assert_eq!(
+                report.total_duplicates, 0,
+                "--detection-type {detection}: two files with no line in common \
+                 have no duplicate block, got {:#?}",
+                report.duplicate_blocks
+            );
+            assert_eq!(
+                report.duplicate_lines, 0,
+                "--detection-type {detection}: no line is duplicated"
+            );
+            assert_eq!(
+                report.duplication_percentage, 0.0,
+                "--detection-type {detection}: 62.5% was reported here"
+            );
+        }
+    }
+
+    /// No block may ever be built out of nothing, whatever the input.
+    ///
+    /// The empty normalised block is the failure mode, and it is invisible in
+    /// the summary output: it prints as a block with an empty
+    /// `content_preview`. This asserts the invariant directly over a file that
+    /// is mostly comments.
+    #[tokio::test]
+    async fn no_reported_block_is_empty() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        for (name, word) in [("a.rs", "alpha"), ("b.rs", "beta")] {
+            let mut body = String::new();
+            for i in 0..9 {
+                body.push_str(&format!("// {word} comment {i}\n\n"));
+            }
+            body.push_str(&format!("fn {word}_fn() {{ let {word} = 1; }}\n"));
+            std::fs::write(temp.path().join(name), body).unwrap();
+        }
+
+        let report = detect_duplicates(
+            temp.path(),
+            crate::cli::DuplicateType::All,
+            0.85,
+            5,
+            100,
+            &None,
+            &None,
+        )
+        .await
+        .unwrap();
+
+        for block in &report.duplicate_blocks {
+            assert!(
+                block.tokens > 0,
+                "a block with zero tokens is a block built out of deleted \
+                 comments: {block:#?}"
+            );
+            for loc in &block.locations {
+                assert!(
+                    !loc.content_preview.trim().is_empty(),
+                    "a duplicate with nothing to show is not a duplicate: {block:#?}"
+                );
+            }
+        }
+    }
+
     /// Two identical files are 100% duplicated — not 447%, and not 50%.
     #[tokio::test]
     async fn test_two_identical_files_are_fully_duplicated() {
@@ -661,22 +1057,24 @@ mod tests {
         .unwrap();
 
         assert_eq!(report.total_lines, 24);
-        // The sliding window does not always reach the final line of a file,
-        // so this is "nearly all of both files" rather than exactly all of it —
-        // what matters is that it is BELOW 100%, where 447.06% was reported.
-        assert!(
-            (80.0..=100.0).contains(&report.duplication_percentage),
-            "two identical files must read as almost fully duplicated, got {}%",
+        // Exactly all of both files. This used to read "nearly all", because
+        // `for i in 0..lines.len().saturating_sub(min_lines)` stops one window
+        // early and never covered the last line — 11 of 12 lines, 91.7%.
+        // Windowing over substantive lines with `.windows(min_lines)` has no
+        // such off-by-one, so the honest answer for two identical files is
+        // available and this asserts it rather than a range that would also
+        // accept the old undercount.
+        assert_eq!(
+            report.duplication_percentage, 100.0,
+            "two identical files are entirely duplicated, got {}%",
             report.duplication_percentage
         );
         for (path, stats) in &report.file_statistics {
             assert_eq!(stats.total_lines, 12, "{path}");
-            assert!(
-                stats.duplicate_lines <= 12,
-                "{path}: {} of 12 lines",
-                stats.duplicate_lines
+            assert_eq!(
+                stats.duplicate_lines, 12,
+                "{path}: every line of an identical pair is duplicated"
             );
-            assert!(stats.duplicate_lines >= 10, "{path}");
         }
     }
 

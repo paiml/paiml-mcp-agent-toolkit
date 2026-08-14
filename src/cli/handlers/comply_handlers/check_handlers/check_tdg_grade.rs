@@ -141,48 +141,12 @@ fn is_source_file(path: &Path) -> bool {
         })
 }
 
-fn rebuild_index(project_path: &Path) -> bool {
-    use crate::services::agent_context::AgentContextIndex;
-    let index_path = project_path.join(".pmat").join("context.idx");
-    let start = std::time::Instant::now();
-
-    // Prefer an INCREMENTAL update over a full rebuild (CB-1800 wiring):
-    // load the prior index (fast SQLite path) and re-index only the files that
-    // changed since it was built — seconds, not the minutes a full ~4k-file
-    // scan costs. Fall back to a full build only when no prior index loads.
-    let rebuilt = match AgentContextIndex::load(&index_path) {
-        Ok(prev) => {
-            eprintln!("  \u{1f504} CB-200: context index stale \u{2014} updating changed files (incremental)\u{2026}");
-            AgentContextIndex::build_incremental(project_path, &prev)
-        }
-        Err(_) => {
-            eprintln!("  \u{1f504} CB-200: no prior index \u{2014} building context index (one-time)\u{2026}");
-            AgentContextIndex::build(project_path)
-        }
-    };
-
-    let index = match rebuilt {
-        Ok(i) => i,
-        Err(e) => {
-            eprintln!("  \u{26a0}\u{fe0f} CB-200: Failed to rebuild index: {e}");
-            return false;
-        }
-    };
-    match index.save(&index_path) {
-        Ok(()) => {
-            eprintln!(
-                "  \u{2705} CB-200: index ready ({} functions, {:.1}s)",
-                index.stats().total_functions,
-                start.elapsed().as_secs_f64()
-            );
-            true
-        }
-        Err(e) => {
-            eprintln!("  \u{26a0}\u{fe0f} CB-200: Failed to save rebuilt index: {e}");
-            false
-        }
-    }
-}
+// `rebuild_index` used to live here: CB-200 called
+// `AgentContextIndex::build[_incremental]` and SAVED the result whenever
+// `.pmat/context.db` was missing or stale, so merely ASKING for a compliance
+// verdict wrote 160KB+ of index into the project under audit and, on a large
+// repo, spent minutes doing it. Building the index is `pmat query`'s job; the
+// gate now reads what exists and refuses honestly when nothing does (#939).
 
 /// Check TDG grade gate against the SQLite index.
 /// Query violations from the context database for grades below threshold
@@ -259,12 +223,30 @@ pub(crate) fn check_tdg_grade_gate(
     comply_config: &ComplyConfig,
 ) -> ComplianceCheck {
     let db_path = project_path.join(".pmat").join("context.db");
-    if (!db_path.exists() || is_index_stale(project_path, &db_path))
-        && !rebuild_index(project_path)
-        && !db_path.exists()
-    {
-        return ComplianceCheck { name: "CB-200: TDG Grade Gate".into(), status: CheckStatus::Skip, message: "No .pmat/context.db found and rebuild failed \u{2014} run `pmat query` to create index".into(), severity: Severity::Info };
+    if !db_path.exists() {
+        return ComplianceCheck {
+            name: "CB-200: TDG Grade Gate".into(),
+            status: CheckStatus::Skip,
+            message: "Not measured: no .pmat/context.db. `comply check` will not build one - \
+                      building writes .pmat/context.db and .pmat/context.idx into the project \
+                      being audited. Run `pmat query \"x\"` to create the index, then re-run."
+                .into(),
+            severity: Severity::Info,
+        };
     }
+    // A stale index still measures something REAL; it is a rebuild that would
+    // not. `comply check` used to rebuild and SAVE the index here, writing
+    // .pmat/context.db + .pmat/context.idx (160KB+) into the audited tree on
+    // every run — the same class of defect as the Cargo.lock it created while
+    // checking whether a Cargo.lock existed (#939). The staleness is reported
+    // instead of silently repaired, so the reader knows what the verdict rests
+    // on.
+    let staleness = if is_index_stale(project_path, &db_path) {
+        " (index is stale: source files are newer than .pmat/context.db - \
+         run `pmat query \"x\"` to refresh)"
+    } else {
+        ""
+    };
     let overrides = load_tdg_gate_overrides(project_path);
     let min_grade = overrides
         .min_grade
@@ -275,7 +257,9 @@ pub(crate) fn check_tdg_grade_gate(
         return ComplianceCheck {
             name: "CB-200: TDG Grade Gate".into(),
             status: CheckStatus::Pass,
-            message: format!("Minimum grade {min_grade} \u{2014} no grades below threshold"),
+            message: format!(
+                "Minimum grade {min_grade} \u{2014} no grades below threshold{staleness}"
+            ),
             severity: Severity::Info,
         };
     }
@@ -304,7 +288,7 @@ pub(crate) fn check_tdg_grade_gate(
             name: "CB-200: TDG Grade Gate".into(),
             status: CheckStatus::Pass,
             message: format!(
-                "All non-test functions meet minimum grade {min_grade}{}",
+                "All non-test functions meet minimum grade {min_grade}{}{staleness}",
                 if violations.is_empty() {
                     String::new()
                 } else {
@@ -331,7 +315,7 @@ pub(crate) fn check_tdg_grade_gate(
         name: "CB-200: TDG Grade Gate".into(),
         status: CheckStatus::Fail,
         message: format!(
-            "{count} function(s) below minimum grade {min_grade}\n{}",
+            "{count} function(s) below minimum grade {min_grade}{staleness}\n{}",
             details.join("\n")
         ),
         severity: Severity::Error,
@@ -484,7 +468,77 @@ mod tests_tdg_grade {
         let config = ComplyConfig::default();
         let result = check_tdg_grade_gate(&tmp, &config);
         assert_eq!(result.status, CheckStatus::Skip);
-        assert!(result.message.contains("rebuild failed"));
+        assert!(
+            result.message.contains("Not measured"),
+            "{}",
+            result.message
+        );
+    }
+
+    /// #939: CB-200 used to BUILD and SAVE the agent-context index whenever
+    /// `.pmat/context.db` was missing or stale — so asking for a compliance
+    /// verdict wrote `.pmat/context.db` and `.pmat/context.idx` into the
+    /// project being audited (and spent minutes doing it on a large repo).
+    /// An audit reads; `pmat query` builds.
+    #[test]
+    fn cb200_never_builds_an_index_inside_the_audited_project() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
+        std::fs::write(tmp.path().join("src/lib.rs"), "pub fn f() {}\n").expect("write source");
+
+        let result = check_tdg_grade_gate(tmp.path(), &ComplyConfig::default());
+
+        assert_eq!(result.status, CheckStatus::Skip);
+        assert!(
+            !tmp.path().join(".pmat").exists(),
+            "comply check must not write .pmat/ into the project it audits"
+        );
+        assert!(
+            result.message.contains("Not measured"),
+            "an unbuilt index is unmeasured, not compliant: {}",
+            result.message
+        );
+    }
+
+    /// A stale index is still a real measurement — it is reported, with the
+    /// staleness named, rather than silently repaired by a write.
+    #[test]
+    fn cb200_reports_staleness_instead_of_rebuilding() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).expect("create .pmat");
+        let db_path = pmat_dir.join("context.db");
+        let conn = rusqlite::Connection::open(&db_path).expect("open db");
+        conn.execute_batch(
+            "CREATE TABLE functions (id INTEGER PRIMARY KEY, file_path TEXT NOT NULL, \
+             function_name TEXT NOT NULL, tdg_grade TEXT NOT NULL DEFAULT 'A', \
+             complexity INTEGER NOT NULL DEFAULT 1, start_line INTEGER NOT NULL DEFAULT 0)",
+        )
+        .expect("schema");
+        drop(conn);
+
+        // A source file newer than the db makes the index stale.
+        std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
+        std::fs::write(tmp.path().join("src/lib.rs"), "pub fn f() {}\n").expect("write source");
+        assert!(
+            is_index_stale(tmp.path(), &db_path),
+            "fixture must be stale"
+        );
+
+        let before = std::fs::metadata(&db_path).expect("meta").len();
+        let result = check_tdg_grade_gate(tmp.path(), &ComplyConfig::default());
+        let after = std::fs::metadata(&db_path).expect("meta").len();
+
+        assert_eq!(before, after, "the audit rewrote the index it was reading");
+        assert!(
+            !pmat_dir.join("context.idx").exists(),
+            "comply check must not build .pmat/context.idx"
+        );
+        assert!(
+            result.message.contains("index is stale"),
+            "staleness must be reported, not silently repaired: {}",
+            result.message
+        );
     }
 
     #[test]

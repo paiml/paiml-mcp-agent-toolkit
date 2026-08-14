@@ -95,7 +95,7 @@ mod tests {
     fn test_format_text_contains_header() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_text(&score, &recommendations, false);
+        let output = format_text(&score, &recommendations, false, false);
 
         assert!(output.contains("Rust Project Score"));
         assert!(output.contains(SPEC_VERSION));
@@ -105,7 +105,7 @@ mod tests {
     fn test_format_text_contains_summary() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_text(&score, &recommendations, false);
+        let output = format_text(&score, &recommendations, false, false);
 
         assert!(output.contains("Summary"));
         assert!(output.contains("Score:"));
@@ -117,7 +117,7 @@ mod tests {
     fn test_format_text_contains_categories() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_text(&score, &recommendations, false);
+        let output = format_text(&score, &recommendations, false, false);
 
         assert!(output.contains("Categories"));
         assert!(output.contains("Rust Tooling"));
@@ -129,7 +129,7 @@ mod tests {
     fn test_format_text_contains_recommendations() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_text(&score, &recommendations, false);
+        let output = format_text(&score, &recommendations, false, false);
 
         assert!(output.contains("Recommendations"));
         assert!(output.contains("Add more tests"));
@@ -140,7 +140,7 @@ mod tests {
     fn test_format_text_no_recommendations() {
         let mut score = create_test_score();
         score.recommendations = vec![];
-        let output = format_text(&score, &[], false);
+        let output = format_text(&score, &[], false, false);
 
         // Should not contain Recommendations section when empty
         assert!(!output.contains("Recommendations"));
@@ -153,7 +153,7 @@ mod tests {
         score
             .categories
             .insert("Perfect".to_string(), CategoryScore::new(95.0, 100.0));
-        let output = strip_ansi(&format_text(&score, &[], false));
+        let output = strip_ansi(&format_text(&score, &[], false, false));
 
         assert!(output.contains("\u{2713}")); // ✓ checkmark
     }
@@ -165,7 +165,7 @@ mod tests {
         score
             .categories
             .insert("Warning".to_string(), CategoryScore::new(75.0, 100.0));
-        let output = strip_ansi(&format_text(&score, &[], false));
+        let output = strip_ansi(&format_text(&score, &[], false, false));
 
         assert!(output.contains("\u{26A0}")); // ⚠ warning sign
     }
@@ -177,7 +177,7 @@ mod tests {
         score
             .categories
             .insert("Failing".to_string(), CategoryScore::new(50.0, 100.0));
-        let output = strip_ansi(&format_text(&score, &[], false));
+        let output = strip_ansi(&format_text(&score, &[], false, false));
 
         assert!(output.contains("\u{2717}")); // ✗ ballot x
     }
@@ -186,7 +186,7 @@ mod tests {
     fn test_format_json_valid_json() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_json(&score, &recommendations).unwrap();
+        let output = format_json(&score, &recommendations, false).unwrap();
 
         // Should be valid JSON
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -197,7 +197,7 @@ mod tests {
     fn test_format_json_contains_fields() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_json(&score, &recommendations).unwrap();
+        let output = format_json(&score, &recommendations, false).unwrap();
 
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert!(parsed["version"].is_string());
@@ -213,7 +213,7 @@ mod tests {
     fn test_format_json_correct_values() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_json(&score, &recommendations).unwrap();
+        let output = format_json(&score, &recommendations, false).unwrap();
 
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert_eq!(parsed["total_earned"].as_f64().unwrap(), 53.0);
@@ -225,7 +225,7 @@ mod tests {
     fn test_format_json_categories_have_applicable_field() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_json(&score, &recommendations).unwrap();
+        let output = format_json(&score, &recommendations, false).unwrap();
 
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         let categories = parsed["categories"].as_array().unwrap();
@@ -265,7 +265,7 @@ mod tests {
             recommendations: vec![],
         };
 
-        let output = format_json(&score, &[]).unwrap();
+        let output = format_json(&score, &[], false).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         let cats = parsed["categories"].as_array().unwrap();
 
@@ -286,7 +286,7 @@ mod tests {
     fn test_format_markdown_contains_header() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_markdown(&score, &recommendations, false);
+        let output = format_markdown(&score, &recommendations, false, false);
 
         assert!(output.contains("# Rust Project Score"));
         assert!(output.contains(SPEC_VERSION));
@@ -296,7 +296,7 @@ mod tests {
     fn test_format_markdown_contains_table() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_markdown(&score, &recommendations, false);
+        let output = format_markdown(&score, &recommendations, false, false);
 
         // Should contain markdown table syntax
         assert!(output.contains("| Category | Score | Percentage |"));
@@ -307,7 +307,7 @@ mod tests {
     fn test_format_markdown_contains_categories() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_markdown(&score, &recommendations, false);
+        let output = format_markdown(&score, &recommendations, false, false);
 
         assert!(output.contains("## Categories"));
         assert!(output.contains("Rust Tooling"));
@@ -318,7 +318,7 @@ mod tests {
     fn test_format_markdown_recommendations_as_list() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_markdown(&score, &recommendations, false);
+        let output = format_markdown(&score, &recommendations, false, false);
 
         assert!(output.contains("## Recommendations"));
         assert!(output.contains("- Add more tests"));
@@ -329,7 +329,7 @@ mod tests {
     fn test_format_yaml_valid_yaml() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_yaml(&score, &recommendations).unwrap();
+        let output = format_yaml(&score, &recommendations, false).unwrap();
 
         // Should be valid YAML
         let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&output).unwrap();
@@ -340,7 +340,7 @@ mod tests {
     fn test_format_yaml_contains_fields() {
         let score = create_test_score();
         let recommendations = score.recommendations.clone();
-        let output = format_yaml(&score, &recommendations).unwrap();
+        let output = format_yaml(&score, &recommendations, false).unwrap();
 
         assert!(output.contains("version:"));
         assert!(output.contains("total_earned:"));
@@ -359,7 +359,7 @@ mod tests {
     fn test_format_text_empty_categories() {
         let mut score = create_test_score();
         score.categories.clear();
-        let output = format_text(&score, &[], false);
+        let output = format_text(&score, &[], false, false);
 
         // Should still have Categories section but no entries
         assert!(output.contains("Categories"));
@@ -369,7 +369,7 @@ mod tests {
     fn test_format_json_empty_recommendations() {
         let mut score = create_test_score();
         score.recommendations.clear();
-        let output = format_json(&score, &[]).unwrap();
+        let output = format_json(&score, &[], false).unwrap();
 
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         let recommendations = parsed["recommendations"].as_array().unwrap();
@@ -380,7 +380,7 @@ mod tests {
     fn test_format_markdown_empty_recommendations() {
         let mut score = create_test_score();
         score.recommendations.clear();
-        let output = format_markdown(&score, &[], false);
+        let output = format_markdown(&score, &[], false, false);
 
         // Should not contain recommendations section when empty
         assert!(!output.contains("## 💡 Recommendations"));
@@ -434,9 +434,9 @@ mod tests {
 
     #[test]
     fn test_format_json_is_byte_reproducible_across_12_runs() {
-        let first = format_json(&realistic_score(), &["Add more tests".to_string()]).unwrap();
+        let first = format_json(&realistic_score(), &["Add more tests".to_string()], false).unwrap();
         for i in 1..12 {
-            let again = format_json(&realistic_score(), &["Add more tests".to_string()]).unwrap();
+            let again = format_json(&realistic_score(), &["Add more tests".to_string()], false).unwrap();
             assert_eq!(
                 first, again,
                 "#687: --format json differed on run {i}; an unchanged project must \
@@ -447,11 +447,11 @@ mod tests {
 
     #[test]
     fn test_format_yaml_is_byte_reproducible_across_12_runs() {
-        let first = format_yaml(&realistic_score(), &[]).unwrap();
+        let first = format_yaml(&realistic_score(), &[], false).unwrap();
         for i in 1..12 {
             assert_eq!(
                 first,
-                format_yaml(&realistic_score(), &[]).unwrap(),
+                format_yaml(&realistic_score(), &[], false).unwrap(),
                 "#687: --format yaml differed on run {i}"
             );
         }
@@ -460,7 +460,7 @@ mod tests {
     #[test]
     fn test_format_json_categories_are_alphabetical() {
         // Random HashMap order must not leak into the emitted array.
-        let output = format_json(&realistic_score(), &[]).unwrap();
+        let output = format_json(&realistic_score(), &[], false).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         let names: Vec<String> = parsed["categories"]
             .as_array()
@@ -479,9 +479,9 @@ mod tests {
     fn test_renderers_agree_on_totals() {
         let score = realistic_score();
         let json: serde_json::Value =
-            serde_json::from_str(&format_json(&score, &[]).unwrap()).unwrap();
+            serde_json::from_str(&format_json(&score, &[], false).unwrap()).unwrap();
         let yaml: serde_json::Value =
-            serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap()).unwrap();
+            serde_yaml_ng::from_str(&format_yaml(&score, &[], false).unwrap()).unwrap();
 
         assert_eq!(json["total_earned"], yaml["total_earned"]);
         assert_eq!(json["total_possible"], yaml["total_possible"]);
@@ -490,8 +490,8 @@ mod tests {
         // Text and markdown print the same figures at 1 decimal place.
         let earned = json["total_earned"].as_f64().unwrap();
         let possible = json["total_possible"].as_f64().unwrap();
-        let text = strip_ansi(&format_text(&score, &[], false));
-        let markdown = format_markdown(&score, &[], false);
+        let text = strip_ansi(&format_text(&score, &[], false, false));
+        let markdown = format_markdown(&score, &[], false, false);
         assert!(
             text.contains(&format!("{earned:.1}")),
             "text output must show the same earned total: {text}"
@@ -517,7 +517,7 @@ mod tests {
     fn every_renderer_says_which_percentage_it_is_showing() {
         let score = realistic_score();
         let json: serde_json::Value =
-            serde_json::from_str(&format_json(&score, &[]).unwrap()).unwrap();
+            serde_json::from_str(&format_json(&score, &[], false).unwrap()).unwrap();
 
         let earned = json["total_earned"].as_f64().unwrap();
         let possible = json["total_possible"].as_f64().unwrap();
@@ -548,13 +548,13 @@ mod tests {
 
         // yaml carries the same fields.
         let yaml: serde_json::Value =
-            serde_yaml_ng::from_str(&format_yaml(&score, &[]).unwrap()).unwrap();
+            serde_yaml_ng::from_str(&format_yaml(&score, &[], false).unwrap()).unwrap();
         assert_eq!(yaml["points_percentage"], json["points_percentage"]);
         assert_eq!(yaml["percentage_basis"], json["percentage_basis"]);
 
         // markdown no longer prints the two adjacent without saying which is
         // which, and text names the points ratio too.
-        let markdown = format_markdown(&score, &[], false);
+        let markdown = format_markdown(&score, &[], false, false);
         assert!(
             markdown.contains("mean of category percentages"),
             "markdown must label the percentage: {markdown}"
@@ -563,10 +563,131 @@ mod tests {
             markdown.contains("of possible points"),
             "markdown must also give the points ratio: {markdown}"
         );
-        let text = strip_ansi(&format_text(&score, &[], false));
+        let text = strip_ansi(&format_text(&score, &[], false, false));
         assert!(
             text.contains("of possible points"),
             "text must also give the points ratio: {text}"
+        );
+    }
+
+    // ── #943: `--failures-only` was a provable no-op ────────────────────────
+    //
+    // Both arms of `if failures_only` in the handler returned the same
+    // expression and the flag reached nothing else, so stdout was byte-
+    // identical with and without it (md5 a44c0542 both ways on a real project)
+    // while four passing categories were still printed with a ✓ and `--help`
+    // promised "Show only failures and warnings".
+
+    /// A score with both a passing and a failing category, so the filter has
+    /// something to remove and something to keep.
+    fn mixed_score() -> ProjectScore {
+        use crate::services::rust_project_score::aggregation;
+
+        let mut categories = HashMap::new();
+        categories.insert("Documentation".to_string(), CategoryScore::new(15.0, 15.0));
+        categories.insert("Known Defects".to_string(), CategoryScore::new(20.0, 20.0));
+        categories.insert("Testing Excellence".to_string(), CategoryScore::new(2.0, 20.0));
+        categories.insert(
+            "GPU/SIMD Quality".to_string(),
+            CategoryScore::not_applicable(10.0),
+        );
+
+        let percentage = aggregation::normalized_percentage(&categories);
+        ProjectScore {
+            total_earned: aggregation::applicable_earned(&categories),
+            total_possible: aggregation::applicable_possible(&categories),
+            percentage,
+            grade: crate::services::rust_project_score::models::Grade::from_normalized(percentage),
+            categories,
+            recommendations: vec!["Add more tests".to_string()],
+        }
+    }
+
+    #[test]
+    fn test_failures_only_hides_passing_categories_in_text() {
+        let score = mixed_score();
+        let full = strip_ansi(&format_text(&score, &[], false, false));
+        let filtered = strip_ansi(&format_text(&score, &[], false, true));
+
+        assert_ne!(
+            full, filtered,
+            "--failures-only produced byte-identical output"
+        );
+        assert!(full.contains("Documentation"));
+        assert!(
+            !filtered.contains("Documentation"),
+            "a 100% category must not survive --failures-only: {filtered}"
+        );
+        assert!(
+            !filtered.contains("Known Defects"),
+            "a 100% category must not survive --failures-only: {filtered}"
+        );
+        assert!(
+            filtered.contains("Testing Excellence"),
+            "the failing category must be kept: {filtered}"
+        );
+        // N/A is not a pass — hiding it would leave the denominator unexplained.
+        assert!(filtered.contains("GPU/SIMD Quality"));
+        assert!(
+            filtered.contains("hidden by --failures-only"),
+            "a filtered list must say what it omitted: {filtered}"
+        );
+    }
+
+    /// The flag selects what is listed, never what is scored.
+    #[test]
+    fn test_failures_only_does_not_change_the_score() {
+        let score = mixed_score();
+        let full: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[], false).unwrap()).unwrap();
+        let filtered: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[], true).unwrap()).unwrap();
+
+        assert_eq!(full["total_earned"], filtered["total_earned"]);
+        assert_eq!(full["total_possible"], filtered["total_possible"]);
+        assert_eq!(full["percentage"], filtered["percentage"]);
+        assert_eq!(full["points_percentage"], filtered["points_percentage"]);
+        assert_eq!(full["grade"], filtered["grade"]);
+    }
+
+    #[test]
+    fn test_failures_only_filters_every_renderer() {
+        let score = mixed_score();
+
+        let json: serde_json::Value =
+            serde_json::from_str(&format_json(&score, &[], true).unwrap()).unwrap();
+        let names: Vec<&str> = json["categories"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["name"].as_str().unwrap())
+            .collect();
+        assert!(!names.contains(&"Documentation"), "json: {names:?}");
+        assert!(names.contains(&"Testing Excellence"), "json: {names:?}");
+        assert_eq!(json["categories_omitted"].as_u64(), Some(2));
+        assert_eq!(json["categories_filtered"].as_bool(), Some(true));
+
+        let yaml: serde_json::Value =
+            serde_yaml_ng::from_str(&format_yaml(&score, &[], true).unwrap()).unwrap();
+        assert_eq!(yaml["categories"], json["categories"]);
+
+        let markdown = format_markdown(&score, &[], false, true);
+        assert!(!markdown.contains("Documentation"), "markdown: {markdown}");
+        assert!(markdown.contains("Testing Excellence"), "markdown: {markdown}");
+    }
+
+    /// With nothing to hide, the flag must not change the output at all.
+    #[test]
+    fn test_failures_only_is_a_no_op_when_everything_fails() {
+        let mut score = mixed_score();
+        score.categories.clear();
+        score
+            .categories
+            .insert("Testing Excellence".to_string(), CategoryScore::new(2.0, 20.0));
+
+        assert_eq!(
+            format_text(&score, &[], false, false),
+            format_text(&score, &[], false, true)
         );
     }
 }

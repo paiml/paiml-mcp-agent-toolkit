@@ -6,6 +6,7 @@ use super::boxdraw::{
     box_blank, box_bottom, box_row, box_separator, box_top, ellipsize, BODY_WIDTH,
 };
 use super::helpers::progress_bar;
+use crate::cli::colors as c;
 
 /// Format TDG score for human-readable console output.
 ///
@@ -41,26 +42,31 @@ pub fn format_human(score: &TdgScore) -> String {
     match &score.file_path {
         Some(path) => line(box_row(&format!(
             "TDG Score Report: {}",
-            path.display()
-                .to_string()
-                .chars()
-                .take(30)
-                .collect::<String>()
+            c::path(
+                &path
+                    .display()
+                    .to_string()
+                    .chars()
+                    .take(30)
+                    .collect::<String>()
+            )
         ))),
-        None => line(box_row("TDG Score Report: Code Analysis")),
+        None => line(box_row(&c::header("TDG Score Report: Code Analysis"))),
     }
     line(box_separator());
+    let grade_text = score.grade.to_string();
     line(box_row(&format!(
-        "Overall Score: {:.1}/100 ({})",
-        score.total, score.grade
+        "Overall Score: {}/100 ({})",
+        c::number(&format!("{:.1}", score.total)),
+        c::grade(&grade_text)
     )));
     line(box_row(&format!(
-        "Language: {} (confidence: {:.0}%)",
+        "Language: {} (confidence: {}%)",
         score.language,
-        score.confidence * 100.0
+        c::number(&format!("{:.0}", score.confidence * 100.0))
     )));
     line(box_blank());
-    line(box_row("📊 Breakdown:"));
+    line(box_row(&c::label("📊 Breakdown:")));
 
     for (label, value, max) in [
         ("├─ Structural:    ", score.structural_complexity, 25.0),
@@ -70,23 +76,56 @@ pub fn format_human(score: &TdgScore) -> String {
         ("├─ Documentation: ", score.doc_coverage, 10.0),
         ("└─ Consistency:   ", score.consistency_score, 10.0),
     ] {
+        // Pad BEFORE colouring: `{:4.1}` counts bytes, and an ANSI sequence is
+        // zero columns wide but many bytes long, so colouring first would eat
+        // the column alignment this frame depends on.
         line(box_row(&format!(
-            "{label} {value:4.1}/{max:.0}  {}",
+            "{label} {}/{max:.0}  {}",
+            c::colored(
+                c::threshold_color(f64::from(value), f64::from(max) * 0.8, f64::from(max) * 0.5),
+                &format!("{value:4.1}")
+            ),
             progress_bar(value, max, 10)
         )));
     }
 
+    // A waiver that changes the verdict must be disclosed on every surface that
+    // reports the verdict. The #279 exemption used to be visible ONLY in
+    // `tdg check-quality --format json` (`"… (1 waived under #279)"`); every
+    // human renderer applied it in silence, so a reader of the default output
+    // had no way to learn that a file with critical defects had been let
+    // through.
+    if score.has_critical_defects {
+        line(box_blank());
+        line(box_row(&c::colored(
+            c::RED,
+            &format!("⛔ Critical Defects: {}", score.critical_defects_count),
+        )));
+        if let Some(reason) = &score.critical_defects_suppressed {
+            // Ellipsize BEFORE colouring: the clipper measures visible columns,
+            // and wrapping first would let the escape bytes decide where the
+            // cut lands.
+            line(box_row(&c::colored(
+                c::YELLOW,
+                &ellipsize(&format!("  auto-fail waived: {reason}"), BODY_WIDTH),
+            )));
+        }
+    }
+
     if !score.penalties_applied.is_empty() {
         line(box_blank());
-        line(box_row("🔍 Issues Found:"));
+        line(box_row(&c::label("🔍 Issues Found:")));
         for penalty in &score.penalties_applied {
             let issue_line = format!("  • {}", penalty.issue);
-            line(box_row(&ellipsize(&issue_line, BODY_WIDTH)));
+            line(box_row(&c::dim(&ellipsize(&issue_line, BODY_WIDTH))));
         }
     }
 
     line(box_blank());
-    line(box_row(verdict(score.total)));
+    line(box_row(&c::colored(
+        c::threshold_color(f64::from(score.total), 90.0, 60.0),
+        verdict(score.total),
+    )));
     line(box_bottom());
 
     output

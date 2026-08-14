@@ -1062,6 +1062,138 @@ mod tests {
         }
     }
 
+    // ── MACS-012: the committed ultracode judgment workflow ────────────────
+    //
+    // The spec names four RED tests for `contracts/workflows/
+    // release-sweep.ultracode.mjs` and, until now, one of them existed: `make
+    // release-sweep` ran `node --check`, which is not a test and does not run
+    // in `cargo test`. The other three properties held only because nobody had
+    // broken them — a claim whose sole evidence is its own survival, which is
+    // the defect class this release exists to remove (#978).
+    //
+    // All four are static-text properties of a committed file, so they are
+    // checked by reading it. `include_str!` is the right reader: it embeds at
+    // COMPILE time, so a deleted or renamed workflow fails the build rather
+    // than skipping a test, and since CI builds from a clean checkout, a
+    // successful compile is itself proof the file is committed.
+    const ULTRACODE_WORKFLOW: &str =
+        include_str!("../../../contracts/workflows/release-sweep.ultracode.mjs");
+
+    /// `workflow::file_committed_and_lint_clean` — present, non-trivial, ESM.
+    ///
+    /// The `node --check` half stays in `make release-sweep`; what was missing
+    /// is any assertion that runs where CI actually looks.
+    #[test]
+    fn workflow_file_committed_and_lint_clean() {
+        assert!(
+            ULTRACODE_WORKFLOW.len() > 500,
+            "workflow is {} bytes — a stub cannot judge anything",
+            ULTRACODE_WORKFLOW.len()
+        );
+        assert!(
+            ULTRACODE_WORKFLOW.contains("import ") && ULTRACODE_WORKFLOW.contains("export ")
+                || ULTRACODE_WORKFLOW.contains("import "),
+            "must be plain ESM so CI can `node --check` it without a runtime"
+        );
+        assert!(
+            ULTRACODE_WORKFLOW.contains("main()"),
+            "must have an entry point"
+        );
+    }
+
+    /// `workflow::reads_only_sweep_artifacts` — the judgment layer never re-runs
+    /// the deterministic sweep, it reads MACS-011's artifact.
+    ///
+    /// Re-running it here would make the expensive layer stochastic and would
+    /// double the cost the split exists to avoid.
+    #[test]
+    fn workflow_reads_only_sweep_artifacts() {
+        assert!(
+            ULTRACODE_WORKFLOW.contains("artifacts/qa/mcp-sweep.json"),
+            "must read MACS-011's artifact"
+        );
+        // One read site, and it is the artifact.
+        assert_eq!(
+            ULTRACODE_WORKFLOW.matches("readFileSync(").count(),
+            1,
+            "exactly one read site keeps 'reads only the artifact' structural"
+        );
+        for forbidden in ["qa-work mcp-sweep", "qa mcp-sweep", "--format json"] {
+            assert!(
+                !code_of(ULTRACODE_WORKFLOW).contains(forbidden),
+                "judgment layer must not re-run the sweep (found '{forbidden}')"
+            );
+        }
+    }
+
+    /// `workflow::stamps_PMAT_AGENT_env_on_every_subagent` — attributable
+    /// judgments (MACS F1).
+    ///
+    /// Asserted structurally rather than by observation: there is exactly ONE
+    /// spawn site, so "every spawn stamps it" is a property of the file rather
+    /// than of the runs someone happened to watch.
+    #[test]
+    fn workflow_stamps_pmat_agent_env_on_every_subagent() {
+        assert_eq!(
+            ULTRACODE_WORKFLOW.matches("spawnSubagent(").count(),
+            1,
+            "more than one spawn site means 'every spawn' is no longer structural"
+        );
+        for var in [
+            "PMAT_AGENT_HARNESS",
+            "PMAT_AGENT_WORKFLOW_ID",
+            "PMAT_AGENT_MODEL",
+        ] {
+            assert!(
+                ULTRACODE_WORKFLOW.contains(var),
+                "subagent env must carry {var} for ledger attribution"
+            );
+        }
+    }
+
+    /// `workflow::refusal_path_emits_work_event` — a refused turn is a recorded
+    /// blocking state, never a silent gap (MACS E5).
+    #[test]
+    fn workflow_refusal_path_emits_work_event() {
+        assert!(
+            ULTRACODE_WORKFLOW.contains("work event --type refusal"),
+            "a refusal must be recorded, not swallowed"
+        );
+        assert!(
+            ULTRACODE_WORKFLOW.contains("catch"),
+            "the refusal path must be reachable from a failed spawn"
+        );
+    }
+
+    /// `no_raw_resume` — session-bound continuation is never relied upon
+    /// (spec E7); durable state is the `.pmat-work` receipts.
+    ///
+    /// This invariant existed ONLY as prose in the spec's MACS-012 JSON block.
+    /// It held (`grep -c resume` = 0) but nothing enforced it: adding
+    /// `await session.resume(...)` would have been caught by no gate. Now it is
+    /// an equation in `contracts/macs-sweep-v1.yaml` and this test.
+    #[test]
+    fn workflow_never_relies_on_raw_resume() {
+        let code = code_of(ULTRACODE_WORKFLOW);
+        assert!(
+            !code.contains("resume"),
+            "workflow must not rely on session-bound resume; durable state is .pmat-work receipts"
+        );
+    }
+
+    /// Strip `//` comments so prose about a forbidden token cannot fail (or
+    /// falsely satisfy) a check about the CODE. The header of this very
+    /// workflow discusses `resume` at length.
+    fn code_of(src: &str) -> String {
+        src.lines()
+            .map(|l| match l.find("//") {
+                Some(i) if !l[..i].contains('"') => &l[..i],
+                _ => l,
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
     #[test]
     #[ignore = "spawns the MCP server binary; run after `cargo build` with target/*/pmat present"]
     fn concurrency8_zero_lock_errors_zero_scratch() {

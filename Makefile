@@ -113,6 +113,50 @@ test-lib: ## Run all lib tests (8MB stack for Clap tests)
 		--skip cli_integration_tests \
 		2>&1 | tail -20
 
+# ---------------------------------------------------------------------------
+# Artifact falsification gates
+#
+# These run against a BINARY, not the library. A green `cargo test --lib`
+# coexisted with all 243 defects found by dogfooding the 3.29.0 artifact, so
+# the working-tree build is not the thing being certified. PMAT_BIN retargets
+# every gate without editing a line of test source:
+#
+#   make gate-artifact                          # this workspace's build
+#   PMAT_BIN=$$(which pmat) make gate-artifact  # the installed artifact
+#
+# Neither gate knows the right answer for any metric. They assert only that a
+# flag which parses changes something, and that a number which claims to be a
+# measurement differs between an empty project and a defect-rich one.
+# ---------------------------------------------------------------------------
+.PHONY: gate-flag-efficacy gate-flag-efficacy-full gate-differential gate-artifact
+
+gate-flag-efficacy: ## Every CLI flag must change observable output (49 no-ops shipped in 3.29.0)
+	@echo "🔬 Flag-efficacy sweep..."
+	@env -u RUST_MIN_STACK cargo test --test all -- --ignored --nocapture flag_efficacy_sweep \
+	  || (echo "" \
+	   && echo "❌ flag-efficacy gate failed. Full report (verdict per flag, plus every" \
+	   && echo "   skip and its reason): $${TMPDIR:-/tmp}/pmat-flag-efficacy-report.txt" \
+	   && echo "   Reproduce a finding by hand before filing it:" \
+	   && echo "   PMAT_CORPUS_OUT=/tmp/corpus PMAT_CORPUS_SIZE=large cargo test --test all -- --ignored dump_corpus --nocapture" \
+	   && exit 1)
+
+gate-flag-efficacy-full: ## Flag-efficacy across the entire command tree (release gate)
+	@PMAT_FLAG_SWEEP=all $(MAKE) gate-flag-efficacy
+
+gate-differential: ## Every metric must differ between an empty and a large project
+	@echo "🔬 Differential-corpus sweep..."
+	@env -u RUST_MIN_STACK cargo test --test all -- --ignored --nocapture metrics_must_respond_to_the_corpus \
+	  || (echo "" \
+	   && echo "❌ differential gate failed. Full report (every leaf, per corpus):" \
+	   && echo "   $${TMPDIR:-/tmp}/pmat-differential-corpus-report.txt" \
+	   && echo "   A constant leaf is a fixture claim as often as a defect —" \
+	   && echo "   reproduce it against a dumped corpus before filing either:" \
+	   && echo "   PMAT_CORPUS_OUT=/tmp/corpus PMAT_CORPUS_SIZE=large cargo test --test all -- --ignored dump_corpus --nocapture" \
+	   && exit 1)
+
+gate-artifact: gate-differential gate-flag-efficacy ## Both falsification gates
+	@echo "✅ artifact falsification gates passed"
+
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
 	@echo "⚡ Running ALL tests (unit + 171 integration binaries)..."
@@ -1458,6 +1502,11 @@ pre-release-checks:
 	@echo ""
 	@echo "6️⃣ SemVer compatibility check..."
 	@cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"
+	@echo ""
+	@echo "7️⃣ Artifact falsification gates (flag efficacy + differential corpus)..."
+	@echo "   These run against the binary, not the library. A green --lib run"
+	@echo "   coexisted with all 243 defects found in the 3.29.0 artifact."
+	@$(MAKE) gate-artifact || (echo "❌ Artifact falsification gates failed!" && exit 1)
 	@echo ""
 	@echo "✅ All pre-release checks completed!"
 

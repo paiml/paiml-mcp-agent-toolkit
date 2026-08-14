@@ -14,6 +14,18 @@ impl TdgAnalyzerAst {
         let start_time = SystemTime::now();
         let language = Language::from_extension(path);
 
+        // The SAME skip-or-grade rule the walk and the heuristic analyzer use.
+        // `pmat tdg` refused `tests/bad.rs` from its own CLI handler while this
+        // analyzer happily graded `src/widget_tests.rs` — byte-identical to a
+        // `src/widget.rs` it scored 25.164/F — 100.0/A+, because the defect
+        // detector excluded the file from detection and nothing excluded it
+        // from grading. A file the rule refuses gets no score from any surface.
+        if let Some(reason) =
+            crate::tdg::file_discovery::refusal(path, crate::tdg::file_discovery::Policy::ast())
+        {
+            anyhow::bail!("{}: {reason}", path.display());
+        }
+
         // Toyota Way Extract Method: Resource allocation
         let _resource_allocation = self.request_analysis_resources(path, priority).await?;
 

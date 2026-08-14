@@ -153,10 +153,21 @@ impl TdgAnalyzerAst {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
-        let files = self.discover_files(dir)?;
+        let found = self.discover_files(dir)?;
         let mut scores = Vec::new();
+        // Seeded with what the WALK refused: source files this build has no
+        // analyzer for never reach `analyze_file`, so they raise no error and
+        // used to disappear from numerator and denominator alike.
+        let mut ungraded: Vec<crate::tdg::UngradedFile> = found
+            .ungraded
+            .iter()
+            .map(|(path, reason)| crate::tdg::UngradedFile {
+                path: path.display().to_string(),
+                reason: reason.clone(),
+            })
+            .collect();
 
-        for file in &files {
+        for file in &found.gradable {
             // Skip include!() fragment files — they aren't standalone Rust modules
             if crate::cli::language_analyzer::is_include_fragment(file) {
                 continue;
@@ -165,11 +176,25 @@ impl TdgAnalyzerAst {
                 Ok(score) => scores.push(score),
                 Err(e) => {
                     eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
+                    // A refused file used to leave NO trace in the return value:
+                    // stderr is not part of a `--format json` payload, so
+                    // `analyze tdg` reported `average_score: 100.0` over the
+                    // survivors of a tree whose only Rust file did not parse.
+                    ungraded.push(crate::tdg::UngradedFile {
+                        path: file.display().to_string(),
+                        reason: e.to_string(),
+                    });
                 }
             }
         }
 
-        Ok(ProjectScore::aggregate(scores))
+        // `discover_files` walks in filesystem order; this list is serialised
+        // verbatim, so identical input must serialise identically.
+        ungraded.sort_by(|a, b| a.path.cmp(&b.path));
+
+        let mut project = ProjectScore::aggregate(scores);
+        project.ungraded_files = ungraded;
+        Ok(project)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -189,123 +214,29 @@ impl TdgAnalyzerAst {
         Ok(crate::tdg::Comparison::new(score1, score2))
     }
 
-    /// Enumerate the files TDG will score under `dir`.
+    /// Enumerate the files TDG will score under `dir`, and the source files it
+    /// will not.
     ///
     /// This was a hand-rolled `read_dir` recursion that consulted nothing but a
     /// hardcoded directory-name skip list — no `.gitignore`, no hidden-directory
     /// handling — so it descended into ignored trees and scored them: on this
     /// repo it discovered 133,825 files for 4,260 tracked ones, because
-    /// `.claude/worktrees/` holds whole copies of the very tree being analysed,
-    /// and every copy contributed its files to the project average. Both
-    /// `pmat tdg <dir>` and `pmat analyze tdg -p <dir>` reported scores over
-    /// that inflated universe. The walk is now `.gitignore`-aware, like the one
-    /// `check_for_critical_defects` already uses.
-    fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        use ignore::WalkBuilder;
-
-        let mut files = Vec::new();
-        if !dir.is_dir() {
-            return Ok(files);
-        }
-
-        for entry in WalkBuilder::new(dir)
-            .follow_links(false)
-            .hidden(true)
-            .parents(true)
-            .ignore(true)
-            .git_ignore(true)
-            .git_global(true)
-            .git_exclude(true)
-            // Honour a .gitignore even when the tree is not itself a checkout:
-            // an ignored directory is ignored because it is not source, and
-            // whether `.git` happens to sit above it does not change that.
-            .require_git(false)
-            .filter_entry(|entry| {
-                // Keep the historical name-based skip list on top of the ignore
-                // rules: `tests/`, `vendor/` and friends are analysed by other
-                // surfaces and are not part of the TDG population.
-                if entry.depth() == 0 {
-                    return true;
-                }
-                if entry.file_type().is_some_and(|t| t.is_dir()) {
-                    return !Self::is_skipped_directory(entry.path());
-                }
-                true
-            })
-            .build()
-            .filter_map(std::result::Result::ok)
-        {
-            let path = entry.path();
-            if entry.file_type().is_some_and(|t| t.is_file()) && self.should_analyze_file(path) {
-                files.push(path.to_path_buf());
-            }
-        }
-
-        Ok(files)
+    /// `.claude/worktrees/` holds whole copies of the very tree being analysed.
+    /// The gitignore-aware walk that replaced it was then duplicated, with a
+    /// second extension whitelist, in `analyzer_simple_helpers.rs`. Both are now
+    /// `crate::tdg::file_discovery`, which also RETURNS the source files it
+    /// refuses rather than dropping them.
+    fn discover_files(&self, dir: &Path) -> Result<crate::tdg::file_discovery::Discovery> {
+        crate::tdg::file_discovery::discover(dir, crate::tdg::file_discovery::Policy::ast())
     }
 
-    fn is_skipped_directory(path: &Path) -> bool {
-        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            matches!(
-                name,
-                "node_modules"
-                    | "target"
-                    | "build"
-                    | "dist"
-                    | ".git"
-                    | "__pycache__"
-                    | ".pytest_cache"
-                    | "venv"
-                    | ".venv"
-                    | "vendor"
-                    | ".idea"
-                    | ".vscode"
-                    | ".lake"
-                    | "tests"
-            )
-        } else {
-            false
-        }
-    }
-
+    #[cfg(test)]
     fn should_analyze_file(&self, path: &Path) -> bool {
-        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            matches!(
-                ext,
-                "rs" | "py"
-                    | "js"
-                    | "ts"
-                    | "jsx"
-                    | "tsx"
-                    | "go"
-                    | "java"
-                    | "c"
-                    | "h"
-                    | "cpp"
-                    | "cc"
-                    | "cxx"
-                    | "hpp"
-                    | "rb"
-                    | "swift"
-                    | "kt"
-                    | "kts"
-                    | "sql"
-                    | "ddl"
-                    | "dml"
-                    | "scala"
-                    | "sc"
-                    | "lean"
-                    | "yaml"
-                    | "yml"
-                    | "md"
-                    | "mdx"
-                    | "markdown"
-            )
-        } else {
-            false
-        }
+        crate::tdg::file_discovery::is_gradable_path(
+            path,
+            crate::tdg::file_discovery::Policy::ast(),
+        )
     }
-
 }
 
 #[cfg(test)]
@@ -336,8 +267,9 @@ mod discover_files_tests {
         std::fs::write(root.join("tests/it.rs"), "pub fn it() {}\n").expect("write");
 
         let analyzer = TdgAnalyzerAst::new().expect("analyzer");
-        let files = analyzer.discover_files(root).expect("discover");
-        let names: Vec<String> = files
+        let found = analyzer.discover_files(root).expect("discover");
+        let names: Vec<String> = found
+            .gradable
             .iter()
             .map(|p| p.strip_prefix(root).unwrap_or(p).display().to_string())
             .collect();

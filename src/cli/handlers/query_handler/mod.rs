@@ -33,6 +33,12 @@ use options::{
 
 include!("query_execution.rs");
 
+// Own file, not a `#[cfg(test)]` block inside the include, so no item follows a
+// test module inside `query_execution.rs` (clippy::items_after_test_module).
+#[cfg(test)]
+#[path = "docs_section_gate_tests.rs"]
+mod docs_section_gate_tests;
+
 #[cfg(test)]
 mod tests {
     use super::git_history::{

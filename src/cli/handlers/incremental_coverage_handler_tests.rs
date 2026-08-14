@@ -132,6 +132,56 @@ mod tests {
         assert!(output.contains("src/lib.rs"));
     }
 
+    /// `--top-files` is documented as "0 = all", but every renderer here used a
+    /// bare `.iter().take(top_files)`, so `--top-files 0` listed nothing at all
+    /// and a report over changed files looked empty. These fail on that code.
+    #[test]
+    fn top_files_zero_lists_every_changed_file() {
+        let result = create_test_result();
+        let all = result.changed_files.len();
+        assert!(all >= 2, "fixture must have rows for a limit to hide");
+
+        for format in [
+            IncrementalCoverageOutputFormat::Summary,
+            IncrementalCoverageOutputFormat::Detailed,
+            IncrementalCoverageOutputFormat::Markdown,
+            IncrementalCoverageOutputFormat::Delta,
+        ] {
+            let zero = format_result(create_test_result(), format.clone(), 0).expect("render");
+            let many = format_result(create_test_result(), format.clone(), 50).expect("render");
+            assert_eq!(zero, many, "0 must mean all rows for {format:?}");
+            for file in &result.changed_files {
+                assert!(
+                    zero.contains(&file.file_path),
+                    "--top-files 0 dropped {} from {format:?}",
+                    file.file_path
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn top_files_one_hides_the_rest_and_says_so() {
+        let one = format_summary(&create_test_result(), 1);
+        assert!(one.contains("src/lib.rs"));
+        assert!(
+            !one.contains("src/main.rs"),
+            "the limit did not bite: {one}"
+        );
+        assert!(
+            one.contains("1 more not shown (--top-files 1, 0 = all)"),
+            "a capped list must name the rows it hid: {one}"
+        );
+
+        // The delta report splits by direction; the cap applies per section.
+        let delta = format_delta(&create_test_result(), 1);
+        assert!(delta.contains("src/lib.rs"));
+        assert!(
+            !delta.contains("src/main.rs"),
+            "--top-files did not bite on the delta report: {delta}"
+        );
+    }
+
     #[test]
     fn test_format_sarif() {
         let result = create_test_result();
@@ -242,4 +292,3 @@ mod tests {
         assert!(debug.contains("main"));
     }
 }
-

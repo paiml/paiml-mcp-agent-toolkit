@@ -261,7 +261,15 @@ All phases share a single pre-commit entry point reading cached data only.
 | HR-2 Atomic Writes | CB-1334 | Write-then-rename, never `fs::write()` to hook path | Kill during write → file is old or new, never partial |
 | HR-3 Deterministic | CB-1335 | No timestamps, no HashMap iteration, byte-identical output | Two consecutive installs → `diff` → zero diff |
 | HR-4 No Injection | CB-1336 | Template substitution escapes shell metacharacters | Set path to `$(whoami)` → literal in output |
-| HR-5 Performance | CB-1337 | Pre-commit p95 < 45ms | `.pmat-metrics/hook-timing.json` tracked per run |
+| HR-5 Cold-start commands | CB-1337 | Hook invokes no known cold-start command (`cargo build/test/clippy`, `npm/pip install`) | Add `cargo build` to the hook → Warn; name it only in a `#` comment → Pass |
+
+> HR-5 previously read "Pre-commit p95 < 45ms, `.pmat-metrics/hook-timing.json`
+> tracked per run". Nothing ever wrote or read that file and no hook was ever
+> executed or timed: `pmat comply` audits a repository and must not run its
+> hooks, which routinely reformat and test the working tree. The check is a
+> static read of the hook script, and now says so in its name, its message and
+> here. A timing budget would need a separate opt-in command that actually runs
+> the hook.
 
 ---
 

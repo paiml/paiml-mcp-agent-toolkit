@@ -24,7 +24,7 @@ mod tests {
             summary: "Test summary".to_string(),
         };
 
-        let output = strip_ansi(&format_summary(&result));
+        let output = strip_ansi(&format_summary(&result, 10));
         assert!(output.contains("Test summary"));
         assert!(output.contains("Total violations:"));
         assert!(output.contains("1"));
@@ -69,6 +69,7 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Summary,
             false,
+            10,
         );
         let s = strip_ansi(&r);
         assert!(s.contains("SATD Analysis Summary"));
@@ -80,6 +81,7 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Json,
             false,
+            10,
         );
         assert!(r.contains("\"total_violations\": 4"));
     }
@@ -90,6 +92,7 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Sarif,
             false,
+            10,
         );
         assert!(r.contains("\"version\":\"2.1.0\""));
         assert!(r.contains("satd-violation"));
@@ -101,6 +104,7 @@ mod tests {
             &result_with_all_severities(),
             SatdOutputFormat::Markdown,
             false,
+            10,
         );
         assert!(r.contains("# SATD Analysis Report"));
     }
@@ -109,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_format_summary_with_all_severities_lists_each_count() {
-        let r = strip_ansi(&format_summary(&result_with_all_severities()));
+        let r = strip_ansi(&format_summary(&result_with_all_severities(), 10));
         assert!(r.contains("Critical:"));
         assert!(r.contains("High:"));
         assert!(r.contains("Medium:"));
@@ -131,7 +135,7 @@ mod tests {
             return;
         }
 
-        let r = format_summary(&result_with_all_severities());
+        let r = format_summary(&result_with_all_severities(), 10);
         assert!(
             !r.contains('\x1b'),
             "no ANSI escape may survive with colour disabled, got: {r:?}"
@@ -143,30 +147,67 @@ mod tests {
 
     #[test]
     fn test_format_summary_empty_skips_top_violations() {
-        let r = strip_ansi(&format_summary(&empty_result()));
+        let r = strip_ansi(&format_summary(&empty_result(), 10));
         assert!(!r.contains("Top Violations"));
     }
 
+    /// Sixteen violations, and the row count is whatever `--top-files` says.
+    ///
+    /// This test used to be `test_format_summary_top_violations_caps_at_10`,
+    /// and it asserted the defect: the cap was the literal `.take(10)` in
+    /// `format_summary`, so `analyze satd --top-files 1` and
+    /// `--top-files 50` printed the same ten rows over a 63-violation corpus.
+    /// A test that pins a hardcoded limit cannot fail when the flag that is
+    /// supposed to set that limit does nothing.
     #[test]
-    fn test_format_summary_top_violations_caps_at_10() {
+    fn test_format_summary_top_violations_row_count_is_top_files() {
         let mut res = result_with_all_severities();
-        // Inject 12 more → total 16; format cap is 10.
         for i in 0..12 {
             res.violations
                 .push(make_violation(FacadeSeverity::Low, &format!("V{i}")));
         }
-        let r = strip_ansi(&format_summary(&res));
-        // V0..V5 (first 6 of the 12 extras) appear after the 4 baseline,
-        // so V0..V5 in (4 + 0..6 = positions 5..10), V6+ should NOT appear.
-        // Conservative check: V11 (last extra) must not appear.
-        assert!(!r.contains("V11"));
+        assert_eq!(res.violations.len(), 16, "fixture must exceed every probe");
+
+        let rows = |top_files: usize| {
+            strip_ansi(&format_summary(&res, top_files))
+                .lines()
+                .filter(|l| l.trim_start().starts_with(|c: char| c.is_ascii_digit()))
+                .filter(|l| l.contains(".rs:"))
+                .count()
+        };
+
+        assert_eq!(rows(1), 1, "--top-files 1 must list one violation");
+        assert_eq!(rows(5), 5, "--top-files 5 must list five violations");
+        assert_eq!(rows(50), 16, "a limit above the total lists every row");
+        assert_eq!(rows(0), 16, "--top-files 0 means all");
+    }
+
+    /// Truncation must say it truncated: a capped list that looks complete is
+    /// how "10 of 63" gets read as "63".
+    #[test]
+    fn test_format_summary_discloses_what_the_limit_hid() {
+        let mut res = result_with_all_severities();
+        for i in 0..12 {
+            res.violations
+                .push(make_violation(FacadeSeverity::Low, &format!("V{i}")));
+        }
+        let capped = strip_ansi(&format_summary(&res, 3));
+        assert!(
+            capped.contains("13 more not shown"),
+            "expected a disclosure of the 13 hidden rows, got:\n{capped}"
+        );
+        let uncapped = strip_ansi(&format_summary(&res, 0));
+        assert!(
+            !uncapped.contains("more not shown"),
+            "nothing was hidden, so nothing to disclose:\n{uncapped}"
+        );
     }
 
     // ── format_json: metrics flag toggle ──
 
     #[test]
     fn test_format_json_metrics_flag_adds_metrics_block() {
-        let r = format_json(&result_with_all_severities(), true);
+        let r = format_json(&result_with_all_severities(), true, 10);
         assert!(r.contains("\"metrics\""));
         assert!(r.contains("\"critical_count\": 1"));
         assert!(r.contains("\"high_count\": 1"));
@@ -174,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_format_json_no_metrics_flag_omits_metrics() {
-        let r = format_json(&result_with_all_severities(), false);
+        let r = format_json(&result_with_all_severities(), false, 10);
         assert!(!r.contains("\"metrics\""));
     }
 
@@ -185,7 +226,7 @@ mod tests {
     /// by the handler and no such key can be emitted.
     #[test]
     fn test_format_json_never_emits_an_evolution_placeholder() {
-        let r = format_json(&result_with_all_severities(), true);
+        let r = format_json(&result_with_all_severities(), true, 10);
         assert!(!r.contains("\"evolution\""));
         assert!(!r.contains("Evolution tracking"));
     }
@@ -230,22 +271,22 @@ mod tests {
     /// section may be emitted at all now.
     #[test]
     fn test_format_markdown_never_emits_an_evolution_section() {
-        let r = format_markdown(&result_with_all_severities());
+        let r = format_markdown(&result_with_all_severities(), 10);
         assert!(!r.contains("## Evolution"));
         assert!(!r.contains("Evolution tracking"));
     }
 
     #[test]
     fn test_format_markdown_violations_table_emitted_only_when_non_empty() {
-        let with = format_markdown(&result_with_all_severities());
+        let with = format_markdown(&result_with_all_severities(), 10);
         assert!(with.contains("## Violations"));
-        let without = format_markdown(&empty_result());
+        let without = format_markdown(&empty_result(), 10);
         assert!(!without.contains("## Violations"));
     }
 
     #[test]
     fn test_format_markdown_metrics_table_includes_critical_high_counts() {
-        let r = format_markdown(&result_with_all_severities());
+        let r = format_markdown(&result_with_all_severities(), 10);
         assert!(r.contains("Critical Violations | 1"));
         assert!(r.contains("High Violations | 1"));
     }
@@ -313,9 +354,11 @@ mod tests {
             )
         });
 
-        let filtered =
-            apply_analysis_filters(only_low, &config_with_severity(Some(SatdSeverity::Critical)))
-                .unwrap();
+        let filtered = apply_analysis_filters(
+            only_low,
+            &config_with_severity(Some(SatdSeverity::Critical)),
+        )
+        .unwrap();
 
         assert_eq!(filtered.violations.len(), 0);
         assert_eq!(filtered.total_files, 0, "no violations => no files");
@@ -332,4 +375,3 @@ mod tests {
         assert_eq!(filtered.summary, "Found 4 SATD violations in 4 files");
     }
 }
-

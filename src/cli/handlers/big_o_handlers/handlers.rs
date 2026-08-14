@@ -63,7 +63,7 @@ pub async fn handle_analyze_big_o(
 
     apply_report_filters(&mut report, high_complexity_only, top_files, perf);
 
-    let output_content = format_analysis_output(&analyzer, &report, format)?;
+    let output_content = format_analysis_output(&analyzer, &report, format, high_complexity_only)?;
     write_analysis_output(&output_content, output).await?;
 
     print_analysis_summary(&report, start_time.elapsed(), perf);
@@ -112,8 +112,18 @@ pub(super) fn print_analysis_summary(
     }
 
     if perf {
+        // This used to be `info!`, which the default `warn`-level EnvFilter
+        // discards: the only user-visible effect of `--perf` on `analyze big-o`
+        // required the user to also pass `-v`. A performance readout routed
+        // through a log sink the default filter drops is not "Show performance
+        // metrics". The wall-clock line comes from the analyze router; this is
+        // the one measurement only big-o can compute.
         let functions_per_sec = report.analyzed_functions as f64 / elapsed.as_secs_f64();
-        info!("⚡ Performance: {:.0} functions/second", functions_per_sec);
+        crate::cli::handlers::analysis_handlers::perf_report::emit_detail(
+            "analyze big-o",
+            "throughput",
+            &format!("{functions_per_sec:.0} functions/second"),
+        );
     }
 }
 

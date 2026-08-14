@@ -5,6 +5,7 @@ fn format_text(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
     verbose: bool,
+    failures_only: bool,
 ) -> String {
     // GH-46: --verbose not yet implemented for project score text output
     if verbose {
@@ -63,23 +64,25 @@ fn format_text(
     output.push_str(&format!("{}\n", c::label("Categories")));
 
     // Sort categories by name for consistent output (#687: same ordering as
-    // the json/yaml/markdown renderers)
-    let categories = aggregation::sorted_categories(&score.categories);
+    // the json/yaml/markdown renderers). #943: `--failures-only` drops the
+    // passing ones, using the single predicate in `aggregation`.
+    let categories = aggregation::sorted_categories_filtered(&score.categories, failures_only);
+    let hidden = score.categories.len() - categories.len();
 
     for (name, category) in categories {
         if !category.applicable {
-            output.push_str(&format!("  {}  {}: N/A{}\n", c::DIM, name, c::RESET));
+            output.push_str(&format!("  {}  {}: N/A{}\n", c::seq(c::DIM), name, c::seq(c::RESET)));
             continue;
         }
 
         let percentage = category.percentage();
 
         let icon = if percentage >= 90.0 {
-            format!("{}✓{}", c::GREEN, c::RESET)
+            format!("{}✓{}", c::seq(c::GREEN), c::seq(c::RESET))
         } else if percentage >= 70.0 {
-            format!("{}⚠{}", c::YELLOW, c::RESET)
+            format!("{}⚠{}", c::seq(c::YELLOW), c::seq(c::RESET))
         } else {
-            format!("{}✗{}", c::RED, c::RESET)
+            format!("{}✗{}", c::seq(c::RED), c::seq(c::RESET))
         };
 
         output.push_str(&format!(
@@ -90,13 +93,23 @@ fn format_text(
             c::pct(percentage, 80.0, 60.0)
         ));
     }
+    // A filtered list must say what it left out, or the reader cannot tell a
+    // clean project from a truncated report.
+    if hidden > 0 {
+        output.push_str(&format!(
+            "  {}({hidden} passing categor{} hidden by --failures-only; totals above cover all of them){}\n",
+            c::seq(c::DIM),
+            if hidden == 1 { "y" } else { "ies" },
+            c::seq(c::RESET)
+        ));
+    }
     output.push('\n');
 
     // Recommendations
     if !recommendations.is_empty() {
         output.push_str(&format!("{}\n", c::label("Recommendations")));
         for rec in recommendations {
-            output.push_str(&format!("  {}{}{}\n", c::DIM_WHITE, rec, c::RESET));
+            output.push_str(&format!("  {}{}{}\n", c::seq(c::DIM_WHITE), rec, c::seq(c::RESET)));
         }
         output.push('\n');
     }
@@ -112,6 +125,7 @@ fn format_markdown(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
     verbose: bool,
+    failures_only: bool,
 ) -> String {
     // GH-46: --verbose not yet implemented for project score markdown output
     if verbose {
@@ -160,12 +174,13 @@ fn format_markdown(
     output.push_str("| Category | Score | Percentage |\n");
     output.push_str("|----------|-------|------------|\n");
 
-    let categories = aggregation::sorted_categories(&score.categories);
+    let categories = aggregation::sorted_categories_filtered(&score.categories, failures_only);
+    let hidden = score.categories.len() - categories.len();
 
     for (name, category) in categories {
         let percentage = category.percentage();
 
-        let icon = if percentage >= 90.0 {
+        let icon = if percentage >= aggregation::PASSING_PERCENTAGE {
             "Pass"
         } else if percentage >= 70.0 {
             "Warning"
@@ -176,6 +191,11 @@ fn format_markdown(
         output.push_str(&format!(
             "| {} {} | {:.1}/{:.0} | {:.1}% |\n",
             icon, name, category.earned, category.max, percentage
+        ));
+    }
+    if hidden > 0 {
+        output.push_str(&format!(
+            "\n_{hidden} passing categories hidden by `--failures-only`; the totals above cover all of them._\n"
         ));
     }
     output.push('\n');

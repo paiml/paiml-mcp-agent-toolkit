@@ -235,3 +235,114 @@ fn test_quality_gate_with_match_expression() {
     let result = runner.validate_module(file.path());
     assert!(result.is_ok());
 }
+
+// ============================================================
+// #973: the analyzer registry / measured-vs-default metrics
+// ============================================================
+
+#[test]
+fn test_quality_gate_runner_registers_analyzers() {
+    // The registry was `_analyzers: vec![]` behind a "TODO: Fix analyzer trait
+    // implementations" comment: a gate runner that ran no analyzer.
+    let runner = QualityGateRunner::strict();
+    assert!(
+        !runner.analyzers.is_empty(),
+        "QualityGateRunner registered no analyzers"
+    );
+}
+
+#[test]
+fn test_validate_module_reports_measured_metrics_not_defaults() {
+    // RED before the fix: validate_module returned QualityReport::passed(),
+    // whose metrics are QualityMetrics::default() — cyclomatic 1, cognitive 0,
+    // nesting 0, satd 0, entropy 0.0, "O(1)" — for EVERY module that passed.
+    // Those are constants, not measurements of this file.
+    let code = r#"
+        // TODO: this one is deliberate
+        // FIXME: so is this
+        fn branchy(n: usize, flag: bool) -> usize {
+            let mut total = 0;
+            for i in 0..n {
+                for j in 0..n {
+                    if flag && i > j {
+                        total += i * j;
+                    } else if i == j {
+                        total += 1;
+                    }
+                }
+            }
+            total
+        }
+    "#;
+    let file = create_temp_file(code);
+
+    let thresholds = QualityThresholds {
+        max_cyclomatic: 100,
+        satd_tolerance: 100,
+        min_entropy: 0.0,
+        max_big_o: "O(2^n)".to_string(),
+        ..Default::default()
+    };
+    let runner = QualityGateRunner::new(thresholds);
+    let report = runner.validate_module(file.path()).expect("should pass");
+
+    assert!(report.passed);
+    let d = QualityMetrics::default();
+    assert!(
+        report.metrics.cyclomatic_complexity > d.cyclomatic_complexity,
+        "cyclomatic was {} (default is {})",
+        report.metrics.cyclomatic_complexity,
+        d.cyclomatic_complexity
+    );
+    assert!(
+        report.metrics.entropy > 0.0,
+        "entropy was {}",
+        report.metrics.entropy
+    );
+    assert_eq!(
+        report.metrics.satd_count, 2,
+        "the two SATD markers in the fixture must be counted"
+    );
+    assert_ne!(
+        report.metrics.efficiency, "O(1)",
+        "a doubly nested loop is not O(1)"
+    );
+}
+
+#[test]
+fn test_validate_module_metrics_differ_between_modules() {
+    // Differential control: a trivial module and a complex one must not
+    // report the same numbers. Identical output for both is the signature of
+    // a constant standing in for a measurement.
+    let trivial = create_temp_file("fn a() {}\n");
+    let complex = create_temp_file(
+        r#"
+        fn b(n: usize) -> usize {
+            let mut t = 0;
+            for i in 0..n {
+                for j in 0..n {
+                    if i > j { t += 1; } else if i == j { t += 2; } else { t += 3; }
+                }
+            }
+            t
+        }
+    "#,
+    );
+
+    let thresholds = QualityThresholds {
+        max_cyclomatic: 100,
+        satd_tolerance: 100,
+        min_entropy: 0.0,
+        max_big_o: "O(2^n)".to_string(),
+        ..Default::default()
+    };
+    let runner = QualityGateRunner::new(thresholds);
+    let a = runner.validate_module(trivial.path()).unwrap().metrics;
+    let b = runner.validate_module(complex.path()).unwrap().metrics;
+
+    assert_ne!(
+        (a.cyclomatic_complexity, a.efficiency.as_str()),
+        (b.cyclomatic_complexity, b.efficiency.as_str()),
+        "both modules reported the same metrics"
+    );
+}

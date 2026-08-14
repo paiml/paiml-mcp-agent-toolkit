@@ -10,9 +10,9 @@ fn banner_enabled(format: OracleOutputFormat) -> bool {
 /// stdout reserved for the payload.
 fn notify_results_written(output_path: &Path, format: OracleOutputFormat) {
     if banner_enabled(format) {
-        println!("✅ Results written to: {}", output_path.display());
+        crate::status_println!("✅ Results written to: {}", output_path.display());
     } else {
-        eprintln!("✅ Results written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Results written to: {}", output_path.display());
     }
 }
 
@@ -27,17 +27,18 @@ async fn handle_oracle_fix(
     output: Option<&Path>,
 ) -> Result<()> {
     if banner_enabled(format) {
-        println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
-        println!("   Path: {}", path.display());
-        println!("   Max iterations: {}", max_iterations);
-        println!(
+        crate::status_println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
+        crate::status_println!("   Path: {}", path.display());
+        crate::status_println!("   Max iterations: {}", max_iterations);
+        crate::status_println!(
             "   Thresholds: auto={:.2}, review={:.2}",
-            auto_apply_threshold, review_threshold
+            auto_apply_threshold,
+            review_threshold
         );
         if dry_run {
-            println!("   Mode: DRY RUN (no changes will be applied)");
+            crate::status_println!("   Mode: DRY RUN (no changes will be applied)");
         }
-        println!();
+        crate::status_println!();
     }
 
     // Validate path
@@ -59,7 +60,7 @@ async fn handle_oracle_fix(
 
     if dry_run {
         if banner_enabled(format) {
-            println!("🔍 Dry run: Collecting signals only...\n");
+            crate::status_println!("🔍 Dry run: Collecting signals only...\n");
         }
         // Just run one iteration without applying fixes
         let results = pdca.run_iterations(path, 1).await?;
@@ -68,7 +69,7 @@ async fn handle_oracle_fix(
         }
     } else {
         if banner_enabled(format) {
-            println!("🚀 Starting PDCA loop...\n");
+            crate::status_println!("🚀 Starting PDCA loop...\n");
         }
         let results = pdca.run(path).await?;
 
@@ -89,9 +90,9 @@ async fn handle_oracle_fix(
 /// Handle `pmat oracle status` - Show current quality status
 async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result<()> {
     if banner_enabled(format) {
-        println!("📊 PMAT Oracle - Project Quality Status");
-        println!("   Path: {}", path.display());
-        println!();
+        crate::status_println!("📊 PMAT Oracle - Project Quality Status");
+        crate::status_println!("   Path: {}", path.display());
+        crate::status_println!();
     }
 
     // Validate path
@@ -102,14 +103,20 @@ async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result
     let targets = ConvergenceTargets::default();
 
     if banner_enabled(format) {
-        println!("   Collecting signals (cargo build / clippy / test)...");
-        println!();
+        crate::status_println!("   Collecting signals (cargo build / clippy / test)...");
+        crate::status_println!();
     }
 
     let collected = collect_project_metrics(path).await?;
     let status = convergence_status_with_gaps(&targets, &collected);
 
-    let formatted = format_status(&collected.metrics, &targets, &status, format)?;
+    let formatted = format_status(
+        &collected.metrics,
+        &targets,
+        &status,
+        &collected.unmeasured,
+        format,
+    )?;
     println!("{}", formatted);
 
     Ok(())
@@ -256,7 +263,9 @@ mod oracle_status_metric_tests {
                 panic!("must not declare convergence over a target nothing measured")
             }
             ConvergenceStatus::NotConverged { remaining } => {
-                assert!(remaining.iter().any(|r| r.contains("TDG score: not measured")));
+                assert!(remaining
+                    .iter()
+                    .any(|r| r.contains("TDG score: not measured")));
             }
         }
     }
@@ -269,9 +278,9 @@ async fn handle_oracle_single(
     output: Option<&Path>,
 ) -> Result<()> {
     if banner_enabled(format) {
-        println!("⚡ PMAT Oracle - Single PDCA Iteration");
-        println!("   Path: {}", path.display());
-        println!();
+        crate::status_println!("⚡ PMAT Oracle - Single PDCA Iteration");
+        crate::status_println!("   Path: {}", path.display());
+        crate::status_println!();
     }
 
     // Validate path
@@ -293,4 +302,3 @@ async fn handle_oracle_single(
 
     Ok(())
 }
-

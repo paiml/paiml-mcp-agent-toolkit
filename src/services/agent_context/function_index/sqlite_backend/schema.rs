@@ -8,8 +8,15 @@
 use rusqlite::{Connection, OpenFlags};
 use std::path::Path;
 
-/// Database schema version for migration tracking
-pub(crate) const SCHEMA_VERSION: &str = "2.0.0";
+/// Database schema version for migration tracking.
+///
+/// Bumped 2.0.0 → 3.0.0 in v3.30.0: the `functions.tdg_score` column changed
+/// meaning (0-10 lower-is-better debt → 0-100 higher-is-better quality, the
+/// scale `pmat tdg` reports) and `tdg_grade` widened from five letters to
+/// `crate::tdg::Grade`'s eleven. The column layout is unchanged, so the version
+/// alone would not stop a stale database from loading; the authoritative guard
+/// is the `tdg_scale` metadata key checked by `stored_scale_is_current`.
+pub(crate) const SCHEMA_VERSION: &str = "3.0.0";
 
 /// Open or create a SQLite index database at the given path.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -164,6 +171,12 @@ pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
 
     Ok(())
 }
+
+// R30: the "was this written on the current TDG scale?" predicate used to live
+// here as `stored_scale_is_current`, a second decision point beside the blob
+// path's inline manifest comparison — and `pmat sql` had no third. It now lives
+// once, in `super::super::scale_guard`, which owns both the reader
+// (`db_scale`) and the verdict (`stale_scale_reason`).
 
 /// Check if the database has a valid v2.0 schema (all required tables exist).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

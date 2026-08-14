@@ -244,8 +244,30 @@ fn render_csv(record: &CiRunRecord<'_>) -> String {
     out
 }
 
+/// Escape text for an XML text node, and make it *legal* XML while at it.
+///
+/// Entity escaping alone is not enough. `check.output` is the child process's
+/// captured output verbatim, and `cargo fmt --check` colours its diff, so the
+/// JUnit report carried raw `\x1b[…m` bytes inside `<failure>`. XML 1.0 permits
+/// no control characters except TAB, LF and CR, so every XML parser rejected the
+/// artifact outright — `not well-formed (invalid token)` — and a CI system
+/// consuming the JUnit file got nothing at all.
+///
+/// `verify` hit exactly this and fixed it for its JSON output (see
+/// [`crate::cli::verify::strip_ansi`]); the fix never reached this writer.
+/// Stripping the escape *sequences* rather than merely dropping the ESC byte
+/// matters: dropping ESC alone would leave the `[0m` remainder as visible
+/// garbage in the report.
+///
+/// The control-character pass is kept as a second step because it is the actual
+/// XML requirement — a child emitting a stray NUL or BEL that is not part of an
+/// ANSI sequence would otherwise produce the same unparseable file.
 fn xml_escape(text: &str) -> String {
-    text.replace('&', "&amp;")
+    crate::cli::verify::strip_ansi(text)
+        .chars()
+        .filter(|c| matches!(c, '\t' | '\n' | '\r') || !c.is_control())
+        .collect::<String>()
+        .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
@@ -605,6 +627,34 @@ mod format_tests {
         assert_eq!(parsed["failed"], 1);
         assert_eq!(parsed["checks"][0]["name"], "cargo-fmt");
         assert!(!out.contains("PMAT Local CI Simulation"));
+    }
+
+    /// #F4: the JUnit writer embedded the child's colourised output verbatim,
+    /// so `<failure>` carried raw ESC bytes and every XML parser rejected the
+    /// file. Entity escaping was already correct — it was never the problem.
+    #[test]
+    fn junit_failure_body_is_legal_xml_despite_ansi_and_control_bytes() {
+        let escaped = xml_escape("\x1b[1;31mdiff\x1b[0m line\x07\u{0}end\ttab\nnl");
+
+        assert!(
+            !escaped.contains('\x1b'),
+            "ESC must not survive into XML: {escaped:?}"
+        );
+        assert!(
+            !escaped
+                .chars()
+                .any(|c| c.is_control() && !matches!(c, '\t' | '\n' | '\r')),
+            "no control chars beyond TAB/LF/CR are legal in XML 1.0: {escaped:?}"
+        );
+        // The visible text survives — stripping the ESC byte alone would have
+        // left "[1;31m" behind as garbage.
+        assert!(escaped.contains("diff"), "{escaped:?}");
+        assert!(!escaped.contains("[1;31m"), "{escaped:?}");
+        // TAB/LF are legal and must be preserved.
+        assert!(
+            escaped.contains('\t') && escaped.contains('\n'),
+            "{escaped:?}"
+        );
     }
 
     /// `-f junit` emitted no XML at all.

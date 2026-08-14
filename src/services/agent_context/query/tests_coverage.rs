@@ -3,7 +3,7 @@
 
 #[test]
 fn test_format_markdown_coverage_uncovered() {
-    let entry = create_test_entry("uncov_fn", 5, 1.5);
+    let entry = create_test_entry("uncov_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.coverage_status = "uncovered".to_string();
     result.lines_total = 20;
@@ -14,7 +14,7 @@ fn test_format_markdown_coverage_uncovered() {
 
 #[test]
 fn test_format_markdown_coverage_partial() {
-    let entry = create_test_entry("partial_fn", 5, 1.5);
+    let entry = create_test_entry("partial_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.coverage_status = "partial".to_string();
     result.line_coverage_pct = 60.0;
@@ -28,7 +28,7 @@ fn test_format_markdown_coverage_partial() {
 
 #[test]
 fn test_format_markdown_coverage_full() {
-    let entry = create_test_entry("full_fn", 5, 1.5);
+    let entry = create_test_entry("full_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.coverage_status = "full".to_string();
     result.lines_total = 15;
@@ -39,7 +39,7 @@ fn test_format_markdown_coverage_full() {
 
 #[test]
 fn test_format_markdown_coverage_impact() {
-    let entry = create_test_entry("impact_fn", 5, 1.5);
+    let entry = create_test_entry("impact_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.impact_score = 5.2;
     let md = format_markdown(&[result]);
@@ -48,7 +48,7 @@ fn test_format_markdown_coverage_impact() {
 
 #[test]
 fn test_format_markdown_coverage_diff_positive() {
-    let entry = create_test_entry("diff_fn", 5, 1.5);
+    let entry = create_test_entry("diff_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.coverage_diff = 3.5;
     let md = format_markdown(&[result]);
@@ -57,7 +57,7 @@ fn test_format_markdown_coverage_diff_positive() {
 
 #[test]
 fn test_format_markdown_coverage_diff_negative() {
-    let entry = create_test_entry("diff_fn", 5, 1.5);
+    let entry = create_test_entry("diff_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.8, false);
     result.coverage_diff = -2.1;
     let md = format_markdown(&[result]);
@@ -66,7 +66,7 @@ fn test_format_markdown_coverage_diff_negative() {
 
 #[test]
 fn test_format_text_coverage_uncovered() {
-    let entry = create_test_entry("uncov_fn", 5, 1.5);
+    let entry = create_test_entry("uncov_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.1, false);
     result.coverage_status = "uncovered".to_string();
     result.lines_total = 30;
@@ -77,7 +77,7 @@ fn test_format_text_coverage_uncovered() {
 
 #[test]
 fn test_format_text_coverage_partial_low() {
-    let entry = create_test_entry("partial_fn", 5, 1.5);
+    let entry = create_test_entry("partial_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.1, false);
     result.coverage_status = "partial".to_string();
     result.line_coverage_pct = 30.0;
@@ -89,7 +89,7 @@ fn test_format_text_coverage_partial_low() {
 
 #[test]
 fn test_format_text_coverage_partial_mid() {
-    let entry = create_test_entry("partial_fn", 5, 1.5);
+    let entry = create_test_entry("partial_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.coverage_status = "partial".to_string();
     result.line_coverage_pct = 65.0;
@@ -101,7 +101,7 @@ fn test_format_text_coverage_partial_mid() {
 
 #[test]
 fn test_format_text_coverage_full() {
-    let entry = create_test_entry("full_fn", 5, 1.5);
+    let entry = create_test_entry("full_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.coverage_status = "full".to_string();
     result.lines_total = 10;
@@ -111,7 +111,7 @@ fn test_format_text_coverage_full() {
 
 #[test]
 fn test_format_text_coverage_impact() {
-    let entry = create_test_entry("impact_fn", 5, 1.5);
+    let entry = create_test_entry("impact_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.impact_score = 3.7;
     let text = format_text(&[result]);
@@ -120,7 +120,7 @@ fn test_format_text_coverage_impact() {
 
 #[test]
 fn test_format_text_coverage_diff_positive() {
-    let entry = create_test_entry("diff_fn", 5, 1.5);
+    let entry = create_test_entry("diff_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.coverage_diff = 5.0;
     let text = format_text(&[result]);
@@ -129,7 +129,7 @@ fn test_format_text_coverage_diff_positive() {
 
 #[test]
 fn test_format_text_coverage_diff_negative() {
-    let entry = create_test_entry("diff_fn", 5, 1.5);
+    let entry = create_test_entry("diff_fn", 5, 88.0);
     let mut result = QueryResult::from_entry(&entry, 0.5, false);
     result.coverage_diff = -1.5;
     let text = format_text(&[result]);

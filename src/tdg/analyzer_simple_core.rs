@@ -27,14 +27,11 @@ impl TdgAnalyzer {
     /// be graded at all, let alone graded perfect.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
-        if matches!(
-            language,
-            Language::Unknown | Language::Yaml | Language::Markdown
-        ) {
-            anyhow::bail!(
-                "{}: TDG grades source files; {language} is not one",
-                path.display()
-            );
+        // ONE refusal rule, and it says WHY: this used to be a language-only
+        // check with a language-only sentence, so a caller that refused a test
+        // file had nothing truthful to report about it.
+        if let Some(reason) = not_gradable_reason(path) {
+            anyhow::bail!("{}: {reason}", path.display());
         }
         let source = fs::read_to_string(path)?;
         // The parse gate used to be Rust-only, so `def f(:` in a .py file still
@@ -75,14 +72,13 @@ impl TdgAnalyzer {
         score.doc_coverage = self.analyze_documentation(source, language, &mut tracker);
         score.consistency_score = self.analyze_consistency(source, language, &mut tracker);
 
-        // Lean-specific: detect `sorry` (proof incompleteness = critical defect)
-        if language == Language::Lean {
-            let sorry_count = count_lean_sorry(source);
-            if sorry_count > 0 {
-                score.has_critical_defects = true;
-                score.critical_defects_count = sorry_count;
-            }
-        }
+        // The SAME Known-Defects gate the AST analyzer runs. This used to be a
+        // Lean-only `sorry` count, so this analyzer — the one behind the MCP
+        // `quality_gate` tool and `mcp_integration::tdg_tools` — never saw a
+        // Rust or Lua critical defect at all: a committed `.rs` file with three
+        // `Option::unwrap()` calls came back A/90.0 here while `pmat tdg` graded
+        // the same bytes F/25.2. One rule, one implementation, both callers.
+        crate::tdg::critical_defect_gate::apply(&mut score, source, language);
 
         score.penalties_applied = tracker.get_attributions();
         score.calculate_total();
@@ -93,13 +89,37 @@ impl TdgAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     /// Analyze project.
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
-        let files = self.discover_files(dir)?;
+        Ok(self.analyze_project_reporting_ungraded(dir)?.0)
+    }
+
+    /// Analyze project, returning the files that could NOT be graded alongside
+    /// the score, each with the reason it was refused.
+    ///
+    /// The skipped files used to exist only as an `eprintln!`, and stderr is not
+    /// part of an MCP response: the `quality_gate` tool answered
+    /// `{"passed":true,"grade":"A","not_measured":[],"files_analyzed":1}` for a
+    /// 9-file tree whose other 8 files this same build refuses one at a time
+    /// (`quality-gate --file` exits 4 on each). `total_files` counts the files
+    /// that SUCCEEDED, so a caller holding only a `ProjectScore` cannot tell
+    /// "9 files, all graded" from "9 files, 1 graded" — the skip has to come back
+    /// through the return value for a gate to be able to disclose it.
+    pub fn analyze_project_reporting_ungraded(
+        &self,
+        dir: &Path,
+    ) -> Result<(ProjectScore, Vec<(PathBuf, String)>)> {
+        let found = self.discover_files(dir)?;
         let mut scores = Vec::new();
+        // Seeded with the files the WALK refused, not only the ones the analyzer
+        // refused. A file dropped by the extension filter never reached
+        // `analyze_file`, so it produced no error to report and vanished from
+        // both the numerator and the denominator: twelve source files in, six
+        // graded, `not_measured: []` out. See `crate::tdg::file_discovery`.
+        let mut ungraded = found.ungraded;
 
         // CB-1400: Resolve contract coverage for A-tier gating
         let contracted_paths = collect_contracted_file_paths(dir);
 
-        for file in &files {
+        for file in &found.gradable {
             // Skip include!() fragment files — they aren't standalone Rust modules
             // and tree-sitter can't parse them, resulting in false 0.0 (F-grade) scores
             if crate::cli::language_analyzer::is_include_fragment(file) {
@@ -114,12 +134,32 @@ impl TdgAnalyzer {
                     // Suppress warnings for include!() fragment files (PMAT-507)
                     if !crate::cli::language_analyzer::is_include_fragment(file) {
                         eprintln!("Warning: Failed to analyze {}: {}", file.display(), e);
+                        ungraded.push((file.clone(), e.to_string()));
                     }
                 }
             }
         }
 
-        Ok(ProjectScore::aggregate(scores))
+        // `discover_files` walks in `read_dir` order, which is the filesystem's.
+        // This list is reported verbatim in a JSON payload, so it is sorted for
+        // the same reason `grade_distribution` is a `BTreeMap`: identical input
+        // must serialise identically.
+        ungraded.sort();
+
+        // The skip list also travels ON the score, not only beside it: every
+        // consumer that holds a bare `ProjectScore` (`analyze tdg --format
+        // json`, the table renderer, SARIF) used to have no way to learn that
+        // `average_score` was computed over a subset. See `UngradedFile`.
+        let mut project = ProjectScore::aggregate(scores);
+        project.ungraded_files = ungraded
+            .iter()
+            .map(|(path, reason)| crate::tdg::UngradedFile {
+                path: path.display().to_string(),
+                reason: reason.clone(),
+            })
+            .collect();
+
+        Ok((project, ungraded))
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -167,6 +207,38 @@ pub fn ensure_parseable(path: &Path) -> Result<()> {
         );
     }
     Ok(())
+}
+
+/// Will TDG grade this path at all?
+///
+/// One question, one answer: this delegates to
+/// [`crate::tdg::file_discovery::refusal`], the module that also decides what a
+/// project walk covers. It used to test the extension alone, which is why the
+/// MCP `quality_gate` tool — whose only gradability check is this function —
+/// graded `<repo>/tests/bad.rs` 90.0/A while `pmat tdg` on the same path
+/// answered `{"analyzed":false,"skipped":true,"score":null}`. Test and bench
+/// source is refused here for the same reason it is refused there.
+///
+/// `analyze_file`'s refusal is about TDG's own scope, not about the file being
+/// bad input, so a caller that reports a *gate verdict* rather than a grade must
+/// not turn it into an error: `pmat quality-gate --file a.md` reports the
+/// `TODO:` on line 3 as a violation, while the MCP `quality_gate` tool answered
+/// `-32603 Internal error: ... Markdown is not one` for the same file in the
+/// same build — the surface contradiction `ensure_parseable` above was added to
+/// remove, reintroduced from the other side. Such callers leave score/grade
+/// unmeasured and let their language-agnostic checks give the verdict.
+pub fn grades_source(path: &Path) -> bool {
+    not_gradable_reason(path).is_none()
+}
+
+/// Why TDG will not grade `path`, in the words every surface uses.
+///
+/// Exported so a gate can DISCLOSE the refusal instead of inventing a sentence
+/// of its own — a caller that says "TDG does not grade .rs" about a test file
+/// is describing the wrong rule.
+#[must_use]
+pub fn not_gradable_reason(path: &Path) -> Option<String> {
+    crate::tdg::file_discovery::refusal(path, crate::tdg::file_discovery::Policy::heuristic())
 }
 
 /// Does `source` parse as `language`, in THIS build?
@@ -272,9 +344,14 @@ mod unparseable_input_tests {
     #[cfg(feature = "python-ast")]
     #[test]
     fn test_valid_python_still_scores() {
-        let f = write_temp(".py", "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n");
+        let f = write_temp(
+            ".py",
+            "def add(a, b):\n    \"\"\"Adds.\"\"\"\n    return a + b\n",
+        );
         let analyzer = TdgAnalyzer::new().expect("analyzer");
-        let score = analyzer.analyze_file(f.path()).expect("valid Python grades");
+        let score = analyzer
+            .analyze_file(f.path())
+            .expect("valid Python grades");
         assert_eq!(score.language, Language::Python);
         assert!(score.total > 0.0);
     }
@@ -295,7 +372,10 @@ mod unparseable_input_tests {
 
     #[test]
     fn test_valid_rust_still_scores() {
-        let f = write_temp(".rs", "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n");
+        let f = write_temp(
+            ".rs",
+            "/// Doc\npub fn add(a: i32, b: i32) -> i32 { a + b }\n",
+        );
         let analyzer = TdgAnalyzer::new().expect("analyzer");
         let score = analyzer.analyze_file(f.path()).expect("valid Rust grades");
         assert_eq!(score.language, Language::Rust);

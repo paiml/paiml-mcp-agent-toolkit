@@ -79,24 +79,27 @@ pub async fn analyze_rust_file_with_complexity_and_classifier(
         });
     }
 
-    // Calculate average complexity for the file
-    let avg_cyclomatic = if function_metrics.is_empty() {
-        1
-    } else {
-        total_cyclomatic / function_metrics.len() as u32
-    };
-
-    let avg_cognitive = if function_metrics.is_empty() {
-        0
-    } else {
-        total_cognitive / function_metrics.len() as u32
-    };
+    // #931: `total_complexity` is the SUM of the file's function complexities.
+    //
+    // This used to divide by `function_metrics.len()` and store the integer
+    // MEAN in the field literally named `total_complexity`, while the other
+    // producer of the same field (`cli::language_analyzer::mod::
+    // calculate_total_complexity`, which handles include!() fragments and
+    // non-Rust files) stored the sum. One field carried two meanings in one
+    // report — 2,084 files summed and 762 averaged — so no consumer could be
+    // right, and "Top Files by Complexity", which sorts on this field, was
+    // inverted: pmat's own build.rs (61 functions, true sum 157) reported 2
+    // and ranked below 792 strictly simpler files. Under the mean, adding
+    // trivial helpers to a file LOWERED its reported complexity.
+    //
+    // `nesting_max` stays a maximum (a depth does not add up) and `lines` is
+    // the file length; only the two additive counters are summed.
 
     Ok(FileComplexityMetrics {
         path: path.display().to_string(),
         total_complexity: ComplexityMetrics {
-            cyclomatic: clamp_u16(avg_cyclomatic),
-            cognitive: clamp_u16(avg_cognitive),
+            cyclomatic: clamp_u16(total_cyclomatic),
+            cognitive: clamp_u16(total_cognitive),
             nesting_max: clamp_u8(max_nesting),
             // The real file length, not the last function's invented end.
             lines: clamp_u16(accurate_result.total_lines),
@@ -250,5 +253,134 @@ mod fabrication_tests {
         let metrics = metrics_for("").await;
         assert!(metrics.functions.is_empty());
         assert_eq!(metrics.total_complexity.lines, 0);
+    }
+}
+
+/// #931 — `total_complexity` was the integer MEAN on this (AST) path and the
+/// SUM on the include!()-fragment path, in the same report.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod total_complexity_is_a_total_tests {
+    use super::*;
+
+    async fn metrics_for(source: &str) -> FileComplexityMetrics {
+        let dir = tempfile::TempDir::new().unwrap();
+        let file = dir.path().join("lib.rs");
+        std::fs::write(&file, source).unwrap();
+        analyze_rust_file_with_complexity(&file).await.unwrap()
+    }
+
+    fn sum_of_functions(metrics: &FileComplexityMetrics) -> u16 {
+        metrics.functions.iter().map(|f| f.metrics.cyclomatic).sum()
+    }
+
+    /// The exact shape called out with #931: one branchy function plus a
+    /// trivial free function. Sum 5; the mean floor was 2, which is neither
+    /// the sum nor the maximum.
+    #[tokio::test]
+    async fn test_file_total_is_the_sum_not_the_mean() {
+        let source = concat!(
+            "pub fn branchy(a: i32) -> i32 {\n",
+            "    if a > 1 { return 1; }\n",
+            "    if a > 2 { return 2; }\n",
+            "    0\n",
+            "}\n",
+            "\n",
+            "pub fn trivial() -> i32 {\n",
+            "    7\n",
+            "}\n",
+        );
+        let metrics = metrics_for(source).await;
+
+        assert_eq!(metrics.functions.len(), 2);
+        let sum = sum_of_functions(&metrics);
+        assert_eq!(
+            metrics.total_complexity.cyclomatic, sum,
+            "total_complexity must equal the sum of the file's functions; \
+             the integer mean used to be reported here"
+        );
+        assert!(
+            metrics.total_complexity.cyclomatic > 2,
+            "the mean floor of this fixture was 2 — a value that is neither \
+             the sum ({sum}) nor the maximum"
+        );
+    }
+
+    /// #931's inverted ranking, reduced: a file holding one 60-branch function
+    /// plus 60 trivial helpers must not report LESS than a file whose worst
+    /// function is a 3.
+    #[tokio::test]
+    async fn test_trivial_helpers_cannot_lower_a_file_total() {
+        let mut worst = String::from("pub fn beast(k: i64) -> i64 {\n    let mut r = 0i64;\n");
+        for i in 0..60 {
+            worst.push_str(&format!("    if k > {i} {{ r += {i}; }}\n"));
+        }
+        worst.push_str("    r\n}\n");
+        let beast_only = metrics_for(&worst).await;
+
+        for i in 0..60 {
+            worst.push_str(&format!("pub fn t{i}() -> i64 {{ {i} }}\n"));
+        }
+        let with_helpers = metrics_for(&worst).await;
+
+        assert_eq!(
+            with_helpers.total_complexity.cyclomatic,
+            sum_of_functions(&with_helpers)
+        );
+        assert!(
+            with_helpers.total_complexity.cyclomatic >= beast_only.total_complexity.cyclomatic,
+            "adding 60 trivial helpers dropped the reported total from {} to {} \
+             (the mean collapsed a true sum of 122 to 2)",
+            beast_only.total_complexity.cyclomatic,
+            with_helpers.total_complexity.cyclomatic
+        );
+
+        let mild: String = (0..8)
+            .map(|i| {
+                format!(
+                    "pub fn m{i}(a:i32,b:i32)->i32{{ if a>b {{ a }} else if a<b {{ b }} else {{ 0 }} }}\n"
+                )
+            })
+            .collect();
+        let mild = metrics_for(&mild).await;
+        assert!(
+            with_helpers.total_complexity.cyclomatic > mild.total_complexity.cyclomatic,
+            "the file holding a 61-branch function reported {} while a file whose \
+             worst function is a 3 reported {} — this is the inverted 'Top Files \
+             by Complexity' ranking",
+            with_helpers.total_complexity.cyclomatic,
+            mild.total_complexity.cyclomatic
+        );
+    }
+
+    /// Both producers of `total_complexity` must mean the same thing. The
+    /// heuristic path (include!() fragments, non-Rust) already summed; the AST
+    /// path averaged.
+    #[tokio::test]
+    async fn test_ast_and_heuristic_producers_agree_on_the_meaning() {
+        let source = concat!(
+            "pub fn a(x: i32) -> i32 {\n",
+            "    if x > 0 { 1 } else { 0 }\n",
+            "}\n",
+            "pub fn b(x: i32) -> i32 {\n",
+            "    if x > 0 { if x > 1 { 2 } else { 1 } } else { 0 }\n",
+            "}\n",
+            "pub fn c() -> i32 { 3 }\n",
+        );
+
+        let ast = metrics_for(source).await;
+        assert_eq!(ast.total_complexity.cyclomatic, sum_of_functions(&ast));
+
+        let heuristic = crate::cli::language_analyzer::analyze_with_heuristics(
+            Path::new("fragment.rs"),
+            source,
+            crate::cli::language_analyzer::Language::Rust,
+        )
+        .unwrap();
+        assert_eq!(
+            heuristic.total_complexity.cyclomatic,
+            sum_of_functions(&heuristic),
+            "the include!()-fragment producer must also report a sum"
+        );
     }
 }

@@ -19,6 +19,72 @@ pub enum EnforcementState {
     Complete,
 }
 
+/// What one analysis phase produced.
+///
+/// A phase used to return a bare `Vec<QualityViolation>`, in which `Vec::new()`
+/// already means "I measured, and found nothing". A phase that could not run had
+/// no value left to say so with, so it warned on stderr and returned the empty
+/// vec — indistinguishable from clean. `enforce extreme` therefore scored a
+/// nonexistent path, an empty directory, and a project whose sources do not
+/// parse at a perfect 1.00/1.00 "Complete", exit 0.
+///
+/// `states.rs` carried this as a documented caveat ("telling clean from not
+/// measured needs those functions to return that distinction") rather than a
+/// defect. This type is that distinction: a phase cannot report silence without
+/// saying which kind of silence it is.
+#[derive(Debug, Clone, Default)]
+pub struct PhaseOutcome {
+    /// What the phase found. Meaningful only when `unmeasured` is `None`.
+    pub violations: Vec<QualityViolation>,
+    /// Why the phase produced no measurement. `None` means it ran.
+    pub unmeasured: Option<String>,
+    /// How many source files this phase actually read.
+    ///
+    /// `0` for phases that do not enumerate files (they report on the project as
+    /// a whole), so a fold over the phases takes the maximum rather than a sum.
+    /// This exists because `EnforcementProgress::files_completed` had no
+    /// measurement to be computed from and was therefore a literal: a run that
+    /// analysed 121 files reported `files_completed: 0` exactly like a run over
+    /// an empty directory.
+    pub files_examined: usize,
+}
+
+impl PhaseOutcome {
+    /// The phase ran; these are its findings (possibly none).
+    #[must_use]
+    pub fn measured(violations: Vec<QualityViolation>) -> Self {
+        Self {
+            violations,
+            unmeasured: None,
+            files_examined: 0,
+        }
+    }
+
+    /// The phase could not run. The reason travels with the result so the
+    /// verdict can disclose it instead of crediting the gap.
+    #[must_use]
+    pub fn unmeasured(reason: impl Into<String>) -> Self {
+        Self {
+            violations: Vec::new(),
+            unmeasured: Some(reason.into()),
+            files_examined: 0,
+        }
+    }
+
+    /// Record how many source files the phase read.
+    #[must_use]
+    pub fn over_files(mut self, files_examined: usize) -> Self {
+        self.files_examined = files_examined;
+        self
+    }
+
+    /// Did this phase actually measure anything?
+    #[must_use]
+    pub fn is_measured(&self) -> bool {
+        self.unmeasured.is_none()
+    }
+}
+
 /// Quality violation types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityViolation {

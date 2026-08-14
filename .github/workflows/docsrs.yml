@@ -1,0 +1,183 @@
+# docs.rs must be able to build this crate.
+#
+# WHY THIS EXISTS
+# docs.rs had NEVER built pmat. 3.28.2, 3.29.0 and 3.30.0 all failed, and the
+# crate sits on crates.io with no API documentation at all. Nothing noticed for
+# three releases, because both available signals read as success:
+#
+#   * https://docs.rs/pmat returns HTTP 200 for a FAILED build — the page it
+#     serves says "failed to build". Any check asserting "the docs URL resolves"
+#     passes. validate-readme's 404 detection cannot see this.
+#   * `cargo doc` locally uses stable and does not define `docsrs`, so it
+#     succeeds. The failure reproduced on no local invocation anyone ran.
+#
+# The cause was pmat's own manifest. docs.rs turns `[package.metadata.docs.rs]
+# rustc-args` into RUSTFLAGS, which applies to the compilation of every
+# DEPENDENCY — and `lexical-util 1.0.7` (arrow-cast -> arrow -> aprender-db ->
+# aprender-graph, non-optional) opens with
+# `#![cfg_attr(docsrs, feature(doc_auto_cfg))]`. `doc_auto_cfg` was removed in
+# Rust 1.92, so defining `docsrs` for dependencies made it fail to compile:
+#
+#     RUSTFLAGS="--cfg docsrs" cargo +nightly check -p lexical-util   -> E0557
+#                              cargo +nightly check -p lexical-util   -> ok
+#
+# pmat has zero `cfg(docsrs)` sites of its own, so the flag bought nothing and
+# cost the entire API documentation. A second failure sat behind the first:
+# `--generate-link-to-definition` needs `-Z unstable-options`, which would have
+# broken the build the moment the E0557 stopped aborting it first.
+#
+# Refs: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/988
+name: docs.rs
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+  schedule:
+    # A dependency can start failing on nightly without this repo changing —
+    # which is exactly how lexical-util broke. Weekly, so a break surfaces
+    # before the next release rather than after it.
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: docsrs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # Reproduce the docs.rs environment BEFORE publishing: nightly, `--cfg docsrs`
+  # for rustdoc, and the exact feature set the manifest declares.
+  build:
+    name: docs build (docs.rs environment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: docsrs
+      - name: build the documentation the way docs.rs will
+        shell: bash
+        run: |
+          set -uo pipefail
+          # The feature set comes FROM the manifest, never from a copy pasted
+          # here: a hand-copied list stops matching the moment the metadata
+          # changes, and then this job certifies a configuration docs.rs does
+          # not build.
+          eval "$(python3 - <<'PY'
+          import re, shlex
+          s = open('Cargo.toml').read()
+          m = re.search(r'^\[package\.metadata\.docs\.rs\]\n(.*?)(?=^\[)', s, re.S | re.M)
+          if not m:
+              raise SystemExit("no [package.metadata.docs.rs] section — cannot know what docs.rs builds")
+          sec = m.group(1)
+          feats = re.search(r'^features\s*=\s*\[(.*?)\]', sec, re.S | re.M)
+          feats = re.findall(r'"([^"]+)"', feats.group(1)) if feats else []
+          nodef = re.search(r'^no-default-features\s*=\s*true', sec, re.M) is not None
+          rustdoc = re.search(r'^rustdoc-args\s*=\s*\[(.*?)\]', sec, re.S | re.M)
+          rustdoc = re.findall(r'"([^"]+)"', rustdoc.group(1)) if rustdoc else []
+          # rustc-args becomes RUSTFLAGS on docs.rs and applies to DEPENDENCIES.
+          # That is what broke this crate for three releases; refuse it outright
+          # rather than faithfully reproducing a known-bad configuration.
+          if re.search(r'^rustc-args\s*=', sec, re.M):
+              raise SystemExit(
+                  "[package.metadata.docs.rs] declares rustc-args. docs.rs turns it into "
+                  "RUSTFLAGS for every dependency, which is what made lexical-util fail to "
+                  "compile (E0557) and left pmat with no docs on crates.io. See issue #988.")
+          # An empty parse must not silently become "build with no features":
+          # that is a green tick for a configuration nobody ships. The manifest
+          # declares no-default-features today, so an empty list would document
+          # almost nothing and still exit 0.
+          if nodef and not feats:
+              raise SystemExit(
+                  "parsed no features from [package.metadata.docs.rs] while no-default-features "
+                  "is set — the parser is broken, not the manifest. Refusing to certify a build "
+                  "of nothing.")
+          print(f"FEATURES={shlex.quote(','.join(feats))}")
+          print(f"NODEFAULT={'1' if nodef else '0'}")
+          print(f"RUSTDOCFLAGS={shlex.quote(' '.join(rustdoc))}")
+          PY
+          )" || { echo "::error::could not read docs.rs metadata from Cargo.toml"; exit 1; }
+
+          echo "features:      ${FEATURES:-<none>}"
+          echo "no-default:    ${NODEFAULT}"
+          echo "RUSTDOCFLAGS:  ${RUSTDOCFLAGS:-<none>}"
+
+          args=(--no-deps)
+          [ "$NODEFAULT" = "1" ] && args+=(--no-default-features)
+          [ -n "${FEATURES:-}" ] && args+=(--features "$FEATURES")
+
+          # DOCS_RS is what the crate's own build script keys off to skip
+          # network work, exactly as on docs.rs.
+          export DOCS_RS=1
+          export RUSTDOCFLAGS
+          if ! cargo +nightly doc "${args[@]}"; then
+            echo "::error::the documentation does not build in the docs.rs environment. This is what ships to docs.rs — it will fail there too."
+            exit 1
+          fi
+
+          # Exit 0 is not evidence. The build must have PRODUCED documentation:
+          # measuring nothing and calling it success is the defect this repo
+          # keeps finding.
+          doc_dir="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys;print(json.load(sys.stdin)["target_directory"])')/doc"
+          index="$doc_dir/pmat/index.html"
+          if [ ! -s "$index" ]; then
+            echo "::error::cargo doc reported success but produced no $index — nothing was documented"
+            exit 1
+          fi
+          pages=$(find "$doc_dir/pmat" -name '*.html' | wc -l)
+          echo "documented $pages pages"
+          if [ "$pages" -lt 100 ]; then
+            echo "::error::only $pages HTML pages generated; the public API is far larger than that, so this build documented almost nothing"
+            exit 1
+          fi
+
+  # What actually shipped. docs.rs serves HTTP 200 for a failed build, so the
+  # ONLY honest signal is the status API.
+  # NOT on pull_request. This leg speaks about what is already ON crates.io, and
+  # on a PR that is by definition the version BEFORE the PR — so a PR that fixes
+  # a broken docs build would be blocked by the very breakage it fixes. That is
+  # what happened on the PR introducing this file: `3.30.0 -> doc_status=false`
+  # is the correct reading of a release that predates the fix, and turning it
+  # into a merge blocker would make the defect unfixable.
+  #
+  # It stays blocking where it is meaningful: on master, on the weekly schedule,
+  # and on demand — all of which describe a published release honestly.
+  published:
+    name: published version builds on docs.rs
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: docs.rs reports doc_status true for the released version
+        shell: bash
+        run: |
+          set -uo pipefail
+          ver=$(python3 -c "import re;print(re.search(r'^version = \"([^\"]+)\"', open('Cargo.toml').read(), re.M).group(1))")
+          echo "manifest version: $ver"
+
+          # Not yet published is not a failure — this leg speaks about releases.
+          code=$(curl -s -o /tmp/st.json -w '%{http_code}' "https://docs.rs/crate/pmat/$ver/status.json")
+          if [ "$code" = "404" ]; then
+            echo "::notice::pmat $ver is not on docs.rs yet — nothing to report"
+            exit 0
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::error::docs.rs status API returned HTTP $code; cannot determine whether the docs built, and an unmeasured check must not pass"
+            exit 1
+          fi
+          cat /tmp/st.json
+
+          status=$(python3 -c "import json;print(json.load(open('/tmp/st.json')).get('doc_status'))")
+          if [ "$status" != "True" ]; then
+            echo "::error::docs.rs reports doc_status=$status for pmat $ver — the published crate has NO documentation. https://docs.rs/crate/pmat/$ver/builds"
+            exit 1
+          fi
+          echo "pmat $ver documents cleanly on docs.rs"

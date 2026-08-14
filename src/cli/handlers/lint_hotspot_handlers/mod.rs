@@ -33,7 +33,13 @@ pub use output::format_summary;
 
 use crate::cli::LintHotspotOutputFormat;
 use anyhow::Result;
-use metrics::{calculate_enforcement_metadata, check_quality_gates, generate_refactor_chain};
+use metrics::{
+    calculate_enforcement_metadata, check_quality_gates_across_files, generate_refactor_chain,
+};
+// The single-file entry point of the same gate rule, used by the test
+// fragments included below (they reach it through `use super::*`).
+#[cfg(test)]
+use metrics::check_quality_gates;
 use output::format_output;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -79,12 +85,12 @@ pub async fn handle_analyze_lint_hotspot(
 ) -> Result<()> {
     // Apply include/exclude filters if specified
     if !include.is_empty() || !exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {include:?}");
+            crate::status_eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {exclude:?}");
+            crate::status_eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
@@ -165,7 +171,7 @@ async fn write_output(content: &str, params: &LintHotspotParams) -> Result<()> {
 /// stderr should not differ from `json`'s for the same run.
 fn log_analysis_start(format: &LintHotspotOutputFormat) {
     if !is_machine_format(format) {
-        eprintln!("🔍 Running Clippy analysis...");
+        crate::status_eprintln!("🔍 Running Clippy analysis...");
     }
 }
 
@@ -212,7 +218,7 @@ async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
     } else {
         println!("{content}");
     }
-    eprintln!(
+    crate::status_eprintln!(
         "{}",
         c::pass("cargo clippy completed and reported no lint violations")
     );
@@ -222,7 +228,7 @@ async fn report_measured_clean(params: &LintHotspotParams) -> Result<()> {
 /// Log single file analysis mode
 fn log_single_file_mode(file_path: &Path, format: &LintHotspotOutputFormat) {
     if !is_machine_format(format) {
-        eprintln!("📄 Analyzing single file: {}", file_path.display());
+        crate::status_eprintln!("📄 Analyzing single file: {}", file_path.display());
     }
 }
 
@@ -268,13 +274,17 @@ fn filter_violations(
     result.summary_by_file = filtered_summary;
 }
 
-/// Recalculate hotspot metrics after filtering
+/// Recalculate hotspot metrics after filtering.
+///
+/// #924: this held a third open-coded copy of the density formula. It now
+/// calls the one implementation, so a change to the metric cannot leave this
+/// path behind. With `sloc == 0` the density is unmeasurable and
+/// `calculate_defect_density` returns 0.0, which is what the previous
+/// `if sloc > 0` guard preserved.
 fn recalculate_hotspot_metrics(result: &mut LintHotspotResult) {
     result.hotspot.total_violations = result.hotspot.detailed_violations.len();
-    if result.hotspot.sloc > 0 {
-        result.hotspot.defect_density =
-            result.hotspot.total_violations as f64 / result.hotspot.sloc as f64;
-    }
+    result.hotspot.defect_density =
+        metrics::calculate_defect_density(result.hotspot.total_violations, result.hotspot.sloc);
 }
 
 /// Build final result with enforcement and quality gate data
@@ -284,7 +294,11 @@ fn build_final_result(
 ) -> Result<LintHotspotResult> {
     let enforcement = generate_enforcement_metadata_if_needed(&result.hotspot, params);
     let refactor_chain = generate_refactor_chain_if_needed(&result.hotspot, params, &enforcement);
-    let quality_gate = check_quality_gates(&result.hotspot, params.max_density);
+    // The worst file in the project, not just the one named as the hotspot —
+    // see `check_quality_gates_across_files`. The hotspot is now ranked with a
+    // floored denominator so that a 3-line stub cannot outrank a 500-line file,
+    // and the gate must not lose a breach because the headline moved.
+    let quality_gate = check_quality_gates_across_files(&result, params.max_density);
 
     result.enforcement = enforcement;
     result.refactor_chain = refactor_chain;
@@ -521,15 +535,32 @@ mod pure_helper_tests {
     }
 
     #[test]
-    fn test_recalculate_hotspot_metrics_zero_sloc_defect_density_unchanged() {
-        // PIN: when sloc == 0, defect_density is NOT updated (avoids div/0).
+    fn test_recalculate_hotspot_metrics_zero_sloc_density_is_not_stale() {
+        // This test used to PIN "when sloc == 0, defect_density is NOT
+        // updated (avoids div/0)". Division by zero is avoided by
+        // `calculate_defect_density`, which returns 0.0 — leaving the OLD
+        // density in place was a separate, unintended effect of the guard,
+        // and it published a hotspot carrying 0 violations and a density of
+        // 5.0 at the same time. Every other producer of this field
+        // (`collect_project_violations`, `create_single_file_result`) already
+        // reports 0.0 for an unmeasured SLOC, and `format_summary` renders
+        // "SLOC not measured (density unavailable)" rather than the number.
         let mut result = make_result(make_hotspot("src/foo.rs", 0, 5), vec![]);
-        let original_density = result.hotspot.defect_density;
-        // Empty out violations.
+        assert_eq!(result.hotspot.defect_density, 5.0, "fixture precondition");
+
         result.hotspot.detailed_violations.clear();
         recalculate_hotspot_metrics(&mut result);
+
         assert_eq!(result.hotspot.total_violations, 0);
-        assert_eq!(result.hotspot.defect_density, original_density);
+        assert_eq!(
+            result.hotspot.defect_density, 0.0,
+            "a hotspot with zero violations must not keep a density of 5.0"
+        );
+        assert_eq!(
+            result.hotspot.defect_density,
+            metrics::calculate_defect_density(0, 0),
+            "one density implementation, including the unmeasurable case"
+        );
     }
 
     // ── should_exit_with_error ──────────────────────────────────────────────

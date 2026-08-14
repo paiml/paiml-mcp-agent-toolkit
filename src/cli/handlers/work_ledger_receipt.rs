@@ -192,7 +192,11 @@ impl FalsificationReceipt {
             hasher.update(o.ticket.as_bytes());
         }
         hasher.update(format!("{}", self.summary.allows_completion).as_bytes());
-        hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
+        hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
     }
 
     /// MACS (schema_version >= 2) hash: SHA-256 over canonical JSON of the
@@ -206,9 +210,7 @@ impl FalsificationReceipt {
         let value = serde_json::to_value(&hashable)
             .expect("receipt serialization is infallible: string keys, finite floats");
         let canonical = canonical_json(&value);
-        let mut hasher = Sha256::new();
-        hasher.update(canonical.as_bytes());
-        hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
+        sha256_hex(canonical.as_bytes())
     }
 
     /// Verify content hash integrity
@@ -307,8 +309,7 @@ fn canonical_json(value: &serde_json::Value) -> String {
             let inner: Vec<String> = items.iter().map(canonical_json).collect();
             format!("[{}]", inner.join(","))
         }
-        scalar => serde_json::to_string(scalar)
-            .expect("scalar JSON serialization is infallible"),
+        scalar => serde_json::to_string(scalar).expect("scalar JSON serialization is infallible"),
     }
 }
 

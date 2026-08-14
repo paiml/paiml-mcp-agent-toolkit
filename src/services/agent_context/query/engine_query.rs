@@ -141,7 +141,10 @@ impl AgentContextIndex {
 
     fn apply_quality_weighting(&self, idx: usize, relevance: f32) -> f32 {
         let func = &self.functions[idx];
-        let quality_factor = 1.0 - (func.quality.tdg_score / 10.0);
+        // tdg_score is 0-100 HIGHER-is-better (the `pmat tdg` scale), so the
+        // quality factor is the score itself, normalised. It used to be
+        // `1.0 - tdg/10.0` because the stored number was 0-10 debt.
+        let quality_factor = (func.quality.tdg_score / 100.0).clamp(0.0, 1.0);
         let mut combined = relevance * 0.7 + quality_factor * 0.3;
         if is_test_function(func) {
             combined *= 0.6;
@@ -197,12 +200,17 @@ impl AgentContextIndex {
                 });
             }
             super::types::RankBy::Priority => {
+                // Priority = "fix this first", so it must rank the WORST code
+                // highest. tdg_score is now 0-100 higher-is-better, so the debt
+                // term is its complement; multiplying the raw score by churn
+                // (as this did on the old 0-10 debt scale) would now surface the
+                // healthiest volatile functions first — exactly backwards.
                 ranked.sort_by(|a, b| {
                     let priority_a = self.functions.get(a.0).map_or(0.0, |f| {
-                        f.quality.tdg_score * (1.0 + f.quality.churn_score)
+                        (100.0 - f.quality.tdg_score) * (1.0 + f.quality.churn_score)
                     });
                     let priority_b = self.functions.get(b.0).map_or(0.0, |f| {
-                        f.quality.tdg_score * (1.0 + f.quality.churn_score)
+                        (100.0 - f.quality.tdg_score) * (1.0 + f.quality.churn_score)
                     });
                     priority_b
                         .partial_cmp(&priority_a)

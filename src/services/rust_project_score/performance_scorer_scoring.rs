@@ -117,21 +117,21 @@ impl PerformanceScorer {
         let mut total_earned = 0.0;
 
         // Score benchmarks - [[bench]] sections configured (5pts)
-        match self.score_benchmarks(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_benchmarks(project_path, cache)?;
+            total_earned += score
         }
 
         // Score benchmark CI workflow (3pts)
-        match self.score_benchmark_ci(project_path) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_benchmark_ci(project_path)?;
+            total_earned += score
         }
 
         // Score custom harness (2pts)
-        match self.score_custom_harness(project_path, cache) {
-            Ok(score) => total_earned += score,
-            Err(e) => return Err(e),
+        {
+            let score = self.score_custom_harness(project_path, cache)?;
+            total_earned += score
         }
 
         Ok(CategoryScore::new(total_earned, self.max_points))

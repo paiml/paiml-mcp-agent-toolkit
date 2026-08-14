@@ -74,7 +74,7 @@ async fn handle_enforce_extreme(
     profile_name: String,
     show_progress: bool,
     format: EnforceOutputFormat,
-    _output: Option<PathBuf>,
+    output: Option<PathBuf>,
     max_iterations: u32,
     target_improvement: Option<f32>,
     max_time: Option<u64>,
@@ -89,6 +89,16 @@ async fn handle_enforce_extreme(
     cache_dir: Option<PathBuf>,
     clear_cache: bool,
 ) -> Result<()> {
+    // `--max-iterations 0` ran the loop zero times and still exited 0, which for
+    // `--format json` meant zero bytes on stdout: an unparseable document and a
+    // success code for a consumer that asked for JSON. There is no verdict to
+    // report without a single measurement, so the argument is refused up front.
+    if max_iterations == 0 {
+        anyhow::bail!(
+            "--max-iterations must be at least 1: enforce cannot report a verdict without running a single iteration"
+        );
+    }
+
     print_enforcement_header(&project_path);
 
     let profile =
@@ -102,6 +112,9 @@ async fn handle_enforce_extreme(
         format,
         ci_mode,
         specific_file.as_ref(),
+        output.as_deref(),
+        include_pattern.as_ref(),
+        exclude_pattern.as_ref(),
     )
     .await?
     {
@@ -123,5 +136,11 @@ async fn handle_enforce_extreme(
         ci_mode,
     };
 
-    run_main_enforcement_loop(&project_path, &profile, enforcement_config).await
+    run_main_enforcement_loop(
+        &project_path,
+        &profile,
+        enforcement_config,
+        output.as_deref(),
+    )
+    .await
 }

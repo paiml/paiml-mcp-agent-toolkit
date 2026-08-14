@@ -78,6 +78,51 @@ pub struct LintHotspot {
     pub detailed_violations: Vec<ViolationDetail>,
 }
 
+/// How to read `defect_density`, emitted beside the hotspot in every JSON
+/// format.
+///
+/// #924 (residual): `defect_density` is `total_violations / sloc`, and it
+/// legitimately exceeds 1.0 — several findings land on one counted line
+/// (`clippy::doc_markdown` fires once per token, and a single `if x.len() == 0 {
+/// return true } else { return false }` line draws `len_zero`, `needless_bool`,
+/// `needless_return` and `redundant_else` at once). A reader with no way to see
+/// that reasonably concludes `> 1.0` is a bug and stops trusting the number.
+///
+/// Rather than assert a bound the data violates, the report SHOWS the
+/// arithmetic: how many findings there are, how many distinct lines carry them,
+/// and the most any single line carries. `violations_per_violating_line` above
+/// 1.0 is the direct explanation of a density above 1.0.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DensityBasis {
+    /// The formula, spelled out, so no consumer has to infer the unit.
+    pub formula: &'static str,
+    /// Numerator: the same figure as `hotspot.total_violations`.
+    pub total_violations: usize,
+    /// Denominator: the same figure as `hotspot.sloc`.
+    pub sloc: usize,
+    /// Findings that carry a source location; the two line figures below are
+    /// computed over these. Equal to `total_violations` except for findings
+    /// counted by severity that carry no primary span.
+    pub located_violations: usize,
+    /// Distinct lines that carry at least one located finding.
+    pub distinct_violating_lines: usize,
+    /// The most findings any one line carries.
+    pub max_violations_on_one_line: usize,
+    /// `located_violations / distinct_violating_lines`. Above 1.0 exactly when
+    /// findings share lines — which is why the density may exceed 1.0.
+    pub violations_per_violating_line: f64,
+    /// True when `defect_density > 1.0`, with `explanation` saying why that is
+    /// not a defect.
+    pub density_exceeds_one: bool,
+    /// How the hotspot was CHOSEN, spelled out. It is not the density, and a
+    /// report that showed only the density would look like it had ranked wrong.
+    pub ranking_formula: &'static str,
+    /// The value of `ranking_formula` for this file.
+    pub ranking_score: f64,
+    /// One sentence a human can read without the field docs.
+    pub explanation: String,
+}
+
 /// Detailed violation information for rewriting
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ViolationDetail {

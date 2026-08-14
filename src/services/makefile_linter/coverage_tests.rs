@@ -1,3 +1,9 @@
+// Included by parser.rs — this file was ORPHANED: nothing declared or
+// `include!`d it, so rustc never compiled these 17 tests and they contributed
+// nothing while looking like coverage. It is written against the `parser`
+// module (it reaches `MakefileParser`'s private cursor helpers and uses
+// `super::super::*` to reach `makefile_linter`), which is where it is now
+// included from.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
@@ -167,10 +173,10 @@ endif
     #[test]
     fn test_rule_registry() {
         let registry = RuleRegistry::new();
-        assert!(!registry.rules.is_empty());
-        
-        // Test that all standard rules are registered
-        let rule_ids: Vec<_> = registry.rules.iter().map(|r| r.id()).collect();
+        // `rule_ids()` rather than the private `rules` field: one enumeration of
+        // the registered ids, the same one `--rules` validates against (#961).
+        let rule_ids = registry.rule_ids();
+        assert!(!rule_ids.is_empty());
         assert!(rule_ids.contains(&"minphony"));
         assert!(rule_ids.contains(&"phonydeclared"));
         assert!(rule_ids.contains(&"maxbodylength"));
@@ -222,12 +228,20 @@ endif
         let result = parser.parse();
         assert!(result.is_err());
         
-        // Test invalid variable name
+        // An assignment with no name on the left. `is_ok() || is_err()` used to
+        // stand here, which is true of every Result ever returned and therefore
+        // measured nothing.
         let input2 = " = invalid";
         let mut parser2 = MakefileParser::new(input2);
-        let result2 = parser2.parse();
-        // Parser may skip invalid lines
-        assert!(result2.is_ok() || result2.is_err());
+        let errors = parser2
+            .parse()
+            .expect_err("an assignment with an empty variable name is a parse error");
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, ParseError::InvalidVariable(_))),
+            "expected an InvalidVariable error, got {errors:?}"
+        );
     }
 
     #[test]
@@ -271,7 +285,7 @@ endif
     #[test]
     fn test_makefile_node_types() {
         // Test all node types can be created
-        let nodes = vec![
+        let nodes = [
             MakefileNode {
                 kind: MakefileNodeKind::Rule,
                 span: SourceSpan::file_level(),
@@ -320,7 +334,7 @@ endif
     #[test]
     fn test_quality_score_edge_cases() {
         // Test with no violations
-        assert_eq!(calculate_quality_score(&vec![]), 1.0);
+        assert_eq!(calculate_quality_score(&[]), 1.0);
         
         // Test score doesn't go negative
         let many_errors: Vec<_> = (0..100).map(|_| Violation {

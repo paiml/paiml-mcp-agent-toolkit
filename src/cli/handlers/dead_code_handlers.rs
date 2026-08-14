@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 /// Configuration for dead code analysis
 #[allow(clippy::too_many_arguments)]
+#[derive(Clone)]
 struct DeadCodeAnalysisFilters {
     include_unreachable: bool,
     include_tests: bool,
@@ -43,49 +44,75 @@ pub async fn handle_analyze_dead_code(
     exclude: Vec<String>,
     max_depth: usize,
 ) -> Result<()> {
-    eprintln!("☠️ Analyzing dead code in project...");
-    eprintln!("⏰ Analysis timeout set to {timeout} seconds");
+    crate::status_eprintln!("☠️ Analyzing dead code in project...");
+    crate::status_eprintln!("⏰ Analysis timeout set to {timeout} seconds");
 
     // Apply include/exclude filters if specified
     if !include.is_empty() || !exclude.is_empty() {
-        eprintln!("🔍 Applying file filters...");
+        crate::status_eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
-            eprintln!("  Include patterns: {include:?}");
+            crate::status_eprintln!("  Include patterns: {include:?}");
         }
         if !exclude.is_empty() {
-            eprintln!("  Exclude patterns: {exclude:?}");
+            crate::status_eprintln!("  Exclude patterns: {exclude:?}");
         }
     }
 
-    // Run analysis with timeout
-    let timeout_duration = tokio::time::Duration::from_secs(timeout);
-    let outcome = tokio::time::timeout(timeout_duration, async {
-        run_dead_code_analysis_with_filters(
-            &path,
-            DeadCodeAnalysisFilters {
-                include_unreachable,
-                include_tests,
-                min_dead_lines,
-                top_files,
-                include,
-                exclude,
-                max_depth,
-            },
-        )
-        .await
-    })
+    // Run analysis with the budget the flag names.
+    //
+    // This used to be a `tokio::time::timeout` wrapped around a call that
+    // blocks — `std::process::Command::output()` running `cargo check` — so the
+    // timer could never fire: `--timeout 1` ran 20.2s to completion and exited
+    // 0 under a banner promising a 1-second bound. A timer cannot cancel a
+    // future that never yields, and cancelling would not have killed `cargo`
+    // anyway. The budget is now carried INTO the analysis, where the code that
+    // owns the child process can kill it (see
+    // `CargoDeadCodeAnalyzer::wait_for_cargo_check`).
+    let budget = tokio::time::Duration::from_secs(timeout);
+    let outcome = run_dead_code_analysis_with_filters(
+        &path,
+        DeadCodeAnalysisFilters {
+            include_unreachable,
+            include_tests,
+            min_dead_lines,
+            top_files,
+            include,
+            exclude,
+            max_depth,
+        },
+        budget,
+    )
     .await
-    .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after {timeout} seconds"))??;
+    // Now that the budget is real, the default (60s) can genuinely be too small:
+    // a COLD `cargo check` on a large crate takes minutes, and this command used
+    // to run for as long as it liked. Name the remedy in the error rather than
+    // leaving the operator to guess which knob moved.
+    .map_err(|e| {
+        if e.to_string().contains("timed out after") {
+            // A flat message, not `.context()`: the CLI's error printer shows
+            // the root cause, so a wrapper would be the half that never reaches
+            // the operator.
+            anyhow::anyhow!(
+                "{e} (cargo check was killed). A cold check on a large crate can take \
+                 minutes — re-run with a larger --timeout; the result is cached, so the \
+                 next run is fast"
+            )
+        } else {
+            e
+        }
+    })?;
 
     let result = outcome.report;
+    let scope = outcome.scope;
 
-    eprintln!(
+    crate::status_eprintln!(
         "📊 Analysis complete: {} files analyzed, {} with dead code",
-        result.summary.total_files_analyzed, result.summary.files_with_dead_code
+        result.summary.total_files_analyzed,
+        result.summary.files_with_dead_code
     );
 
     // Format output
-    let formatted_output = format_dead_code_result(&result, &format)?;
+    let formatted_output = format_dead_code_result(&result, &format, scope)?;
 
     // Write output
     write_dead_code_output(formatted_output, output).await?;
@@ -103,7 +130,8 @@ pub async fn handle_analyze_dead_code(
             DeadCodeGateVerdict::Pass => {}
             DeadCodeGateVerdict::Violation(dead_code_percentage) => {
                 eprintln!(
-                    "\n❌ Dead code violations found: {dead_code_percentage:.1}% exceeds threshold of {max_percentage:.1}%"
+                    "\n❌ Dead code violations found: {dead_code_percentage:.1}% of all lines \
+                     walked exceeds threshold of {max_percentage:.1}%"
                 );
                 std::process::exit(1);
             }
@@ -151,6 +179,18 @@ fn dead_code_gate_verdict(
 
 include!("dead_code_handlers_analysis.rs");
 include!("dead_code_handlers_output.rs");
+
+// The report's own account of what it did and did not measure.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_handlers_scope_tests.rs"]
+mod scope_tests;
+
+// The summary's categories vs. the items it heads, and `--timeout`.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_handlers_budget_tests.rs"]
+mod budget_tests;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -265,29 +305,47 @@ mod output_tests {
 
     #[test]
     fn test_format_dispatcher_json_arm() {
-        let r = format_dead_code_result(&empty_result(), &DeadCodeOutputFormat::Json).unwrap();
+        let r = format_dead_code_result(
+            &empty_result(),
+            &DeadCodeOutputFormat::Json,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         // serde_json output is non-empty even for empty data.
         assert!(r.contains("summary") || r.contains("files"));
     }
 
     #[test]
     fn test_format_dispatcher_sarif_arm() {
-        let r = format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Sarif).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Sarif,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(r.contains("\"version\": \"2.1.0\""));
         assert!(r.contains("dead-code"));
     }
 
     #[test]
     fn test_format_dispatcher_summary_arm() {
-        let r =
-            format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Summary).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Summary,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(!r.is_empty());
     }
 
     #[test]
     fn test_format_dispatcher_markdown_arm() {
-        let r =
-            format_dead_code_result(&populated_result(), &DeadCodeOutputFormat::Markdown).unwrap();
+        let r = format_dead_code_result(
+            &populated_result(),
+            &DeadCodeOutputFormat::Markdown,
+            DeadCodeReportScope::default(),
+        )
+        .unwrap();
         assert!(r.contains("# Dead Code Analysis Report"));
     }
 
@@ -474,18 +532,20 @@ mod output_tests {
                     cargo_item("f", DeadCodeKind::Function, 10),
                     cargo_item("S", DeadCodeKind::Struct, 20),
                 ],
+                unreachable_items: Vec::new(),
                 file_dead_percentage: 8.0 / 370.0 * 100.0,
                 total_lines: Some(370),
             },
             CargoFileDeadCode {
                 file_path: std::path::PathBuf::from("src/small.rs"),
                 dead_items: vec![cargo_item("g", DeadCodeKind::Function, 3)],
+                unreachable_items: Vec::new(),
                 file_dead_percentage: 5.0 / 20.0 * 100.0,
                 total_lines: Some(20),
             },
         ];
 
-        let metrics = convert_cargo_files_to_metrics(files, 0);
+        let metrics = convert_cargo_files_to_metrics(files, 0, false);
 
         assert_eq!(metrics.len(), 2);
         let by_path = |name: &str| {
@@ -514,6 +574,70 @@ mod output_tests {
         );
         // Items are carried, so the counts above are checkable.
         assert_eq!(big.items.len(), 2);
+    }
+
+    /// `--include-unreachable` was inert on EVERY input: the CLI path could not
+    /// produce an unreachable block at all (`unreachable_blocks: 0` was
+    /// hardcoded and the diagnostic parser dropped rustc's `unreachable_code`
+    /// warnings), so a fixture with four statements after a `return` printed
+    /// "Unreachable blocks: 0" with and without the flag, byte-identical in
+    /// json, sarif, markdown and summary alike.
+    #[test]
+    fn include_unreachable_is_the_only_way_an_unreachable_block_is_reported() {
+        let files = || {
+            vec![CargoFileDeadCode {
+                file_path: std::path::PathBuf::from("src/lib.rs"),
+                dead_items: vec![cargo_item("helper", DeadCodeKind::Function, 10)],
+                unreachable_items: vec![
+                    cargo_item("let y = x * 2;", DeadCodeKind::UnreachableCode, 3),
+                    cargo_item("let z = y + 3;", DeadCodeKind::UnreachableCode, 4),
+                ],
+                file_dead_percentage: 5.0 / 40.0 * 100.0,
+                total_lines: Some(40),
+            }]
+        };
+
+        let off = convert_cargo_files_to_metrics(files(), 0, false);
+        assert_eq!(off[0].unreachable_blocks, 0, "off means absent");
+        assert_eq!(off[0].items.len(), 1, "only the unused item is listed");
+
+        let on = convert_cargo_files_to_metrics(files(), 0, true);
+        assert_eq!(on[0].unreachable_blocks, 2);
+        assert_eq!(on[0].items.len(), 3, "the two unreachable rows are carried");
+        assert!(on[0].items.iter().any(|i| matches!(
+            i.item_type,
+            crate::models::dead_code::DeadCodeType::UnreachableCode
+        )));
+
+        // The flag must not move any figure a default run prints.
+        assert_eq!(off[0].dead_lines, on[0].dead_lines);
+        assert_eq!(off[0].dead_functions, on[0].dead_functions);
+        assert!((off[0].dead_percentage - on[0].dead_percentage).abs() < f32::EPSILON);
+    }
+
+    /// A file whose ONLY finding is unreachable code scores zero dead lines, so
+    /// `--min-dead-lines` (default 10) cut it out — the second reason the flag
+    /// showed nothing. It survives when it has an unreachable block to report,
+    /// and is still absent when the flag is off.
+    #[test]
+    fn an_unreachable_only_file_survives_min_dead_lines_when_asked_for() {
+        let files = || {
+            vec![CargoFileDeadCode {
+                file_path: std::path::PathBuf::from("src/live.rs"),
+                dead_items: vec![],
+                unreachable_items: vec![cargo_item("let y = 1;", DeadCodeKind::UnreachableCode, 3)],
+                file_dead_percentage: 0.0,
+                total_lines: Some(40),
+            }]
+        };
+
+        assert!(
+            convert_cargo_files_to_metrics(files(), 10, false).is_empty(),
+            "nothing to report without the flag"
+        );
+        let on = convert_cargo_files_to_metrics(files(), 10, true);
+        assert_eq!(on.len(), 1);
+        assert_eq!(on[0].unreachable_blocks, 1);
     }
 
     /// Observed on the real repo: `summary.files_with_dead_code: 26` above a

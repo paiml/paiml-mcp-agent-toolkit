@@ -47,27 +47,27 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
 /// Handles GitHub issue processing and integration with FULL implementation.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()> {
-    eprintln!("🔗 GitHub issue mode: {url}");
+    crate::status_eprintln!("🔗 GitHub issue mode: {url}");
 
     // Parse GitHub URL to extract owner, repo, and issue number
     let parsed_url = parse_github_issue_url(url)?;
-    eprintln!(
+    crate::status_eprintln!(
         "📋 Processing issue #{} from {}/{}",
         parsed_url.issue_number, parsed_url.owner, parsed_url.repo
     );
 
     // Fetch issue content (using the existing GitHub integration)
     let issue_content = fetch_github_issue_content(&parsed_url).await?;
-    eprintln!("📄 Issue title: {}", issue_content.title);
+    crate::status_eprintln!("📄 Issue title: {}", issue_content.title);
 
     // Extract target files mentioned in the issue
     let target_files =
         extract_target_files_from_issue(&issue_content, &context.config.project_path)?;
-    eprintln!("🎯 Target files identified: {}", target_files.len());
+    crate::status_eprintln!("🎯 Target files identified: {}", target_files.len());
 
     // Generate focused refactoring requests for the identified files
     for file in target_files {
-        eprintln!("🔍 Analyzing file: {}", file.display());
+        crate::status_eprintln!("🔍 Analyzing file: {}", file.display());
         handle_single_file_refactor(
             file,
             context.config.output.format,

@@ -18,11 +18,11 @@ pub async fn handle_analyze_graph_metrics(
     top_k: usize,
     min_centrality: f64,
 ) -> Result<()> {
-    eprintln!("📊 Analyzing graph metrics...");
+    crate::status_eprintln!("📊 Analyzing graph metrics...");
 
     // Build dependency graph
     let graph = build_dependency_graph(&project_path, &include, &exclude).await?;
-    eprintln!(
+    crate::status_eprintln!(
         "✅ Built graph with {} nodes and {} edges",
         graph.node_count(),
         graph.edge_count()
@@ -41,18 +41,24 @@ pub async fn handle_analyze_graph_metrics(
     // Filter results
     let filtered = filter_results(metrics_result, top_k, min_centrality);
 
-    // Export GraphML if requested
-    if export_graphml {
-        export_to_graphml(&graph, &filtered, &output)?;
-    }
+    // `--export-graphml` says "Export graph as GraphML format", which is the
+    // same request `-f graph-ml` makes. Folding the switch into the format
+    // leaves one document per run and one writer below; modelling it as a
+    // second, side-channel document is what gave it no destination without
+    // `-o` (exit 1) and a colliding one with it (see `render_graphml`).
+    let format = if export_graphml {
+        crate::cli::GraphMetricsOutputFormat::GraphML
+    } else {
+        format
+    };
 
     // Format output
-    let content = format_output(filtered, format)?;
+    let content = format_output(filtered, format, &graph)?;
 
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Results written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Results written to: {}", output_path.display());
     } else {
         println!("{content}");
     }

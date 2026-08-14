@@ -27,7 +27,7 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
     let content = toml::to_string_pretty(&config)?;
     fs::write(&config_path, &content)?;
 
-    println!(
+    crate::status_println!(
         "{}", c::pass(&format!("Initialized PMAT project at {}", c::path(&config_path.display().to_string())))
     );
 
@@ -35,7 +35,7 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
     let yaml_path = project_path.join(".pmat.yaml");
     if !yaml_path.exists() || force {
         fs::write(&yaml_path, generate_default_pmat_yaml())?;
-        println!("{}", c::pass("Generated .pmat.yaml configuration"));
+        crate::status_println!("{}", c::pass("Generated .pmat.yaml configuration"));
     }
 
     // Scaffold CLAUDE.md if missing
@@ -46,15 +46,15 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
             .and_then(|n| n.to_str())
             .unwrap_or("my-project");
         fs::write(&claude_path, generate_claude_md(project_name))?;
-        println!("{}", c::pass("Generated CLAUDE.md with pmat instructions"));
+        crate::status_println!("{}", c::pass("Generated CLAUDE.md with pmat instructions"));
     }
 
-    println!("\n{} v{}", c::label("Project version:"), PMAT_VERSION);
-    println!("\n{}", c::label("Next steps:"));
-    println!("  1. Run '{}' to verify compliance", c::label("pmat comply check"));
-    println!("  2. Run '{}' to install git hooks", c::label("pmat hooks init"));
-    println!("  3. Run '{}' to check code quality", c::label("pmat quality-gate"));
-    println!("  4. Edit {} to add project-specific instructions", c::path("CLAUDE.md"));
+    crate::status_println!("\n{} v{}", c::label("Project version:"), PMAT_VERSION);
+    crate::status_println!("\n{}", c::label("Next steps:"));
+    crate::status_println!("  1. Run '{}' to verify compliance", c::label("pmat comply check"));
+    crate::status_println!("  2. Run '{}' to install git hooks", c::label("pmat hooks init"));
+    crate::status_println!("  3. Run '{}' to check code quality", c::label("pmat quality-gate"));
+    crate::status_println!("  4. Edit {} to add project-specific instructions", c::path("CLAUDE.md"));
 
     Ok(())
 }
@@ -141,14 +141,14 @@ pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) ->
         anyhow::bail!("Unsupported upgrade target: {}. Only 'popperian' is supported currently.", target);
     }
 
-    println!("\n{}", c::header("Upgrading project to Popperian Falsification standard..."));
+    crate::status_println!("\n{}", c::header("Upgrading project to Popperian Falsification standard..."));
 
     if dry_run {
-        println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
+        crate::status_println!("{}\n", c::dim("(dry-run mode - no changes will be made)"));
     }
 
     // 1. Configuration Injection
-    println!("   {} Creating {} with strict blocking rules...", c::label("\u{2699}\u{fe0f}"), c::path(".pmat-work.toml"));
+    crate::status_println!("   {} Creating {} with strict blocking rules...", c::label("\u{2699}\u{fe0f}"), c::path(".pmat-work.toml"));
     if !dry_run {
         let config_path = project_path.join(".pmat-work.toml");
         let default_config = r#"[contract]
@@ -176,7 +176,7 @@ meta_check = "block"
     }
 
     // 2. Baseline Capture
-    println!("   {} Capturing Day 0 baseline...", c::label("\u{1f4f8}"));
+    crate::status_println!("   {} Capturing Day 0 baseline...", c::label("\u{1f4f8}"));
     if !dry_run {
         // Ensure we have a commit
         let baseline_commit = std::process::Command::new("git")
@@ -195,29 +195,29 @@ meta_check = "block"
         contract.baseline_rust_score = rs;
 
         // Generate manifest
-        println!("   {} Generating file manifest...", c::label("\u{1f4c2}"));
+        crate::status_println!("   {} Generating file manifest...", c::label("\u{1f4c2}"));
         contract.baseline_file_manifest = FileManifest::build(project_path)?;
 
         // 3. Debt Recognition
-        println!("   {} Scanning for legacy debt...", c::label("\u{1f50d}"));
+        crate::status_println!("   {} Scanning for legacy debt...", c::label("\u{1f50d}"));
         contract.acknowledge_legacy_debt(project_path)?;
 
         contract.save(project_path)?;
-        println!("   {}", c::pass(&format!("Contract saved to {}", c::path(".pmat-work/baseline-v1/contract.json"))));
+        crate::status_println!("   {}", c::pass(&format!("Contract saved to {}", c::path(".pmat-work/baseline-v1/contract.json"))));
     }
 
     // 4. Hook Installation
-    println!("   {} Installing enforcement hooks...", c::label("\u{1fa9d}"));
+    crate::status_println!("   {} Installing enforcement hooks...", c::label("\u{1fa9d}"));
     if !dry_run {
         // In a real implementation, this would call handle_enforce
-        println!("   {}", c::dim("(Pre-push and pre-commit hooks installed)"));
+        crate::status_println!("   {}", c::dim("(Pre-push and pre-commit hooks installed)"));
     }
 
     if dry_run {
-        println!("\n{}", c::pass("Dry-run complete. Run without --dry-run to apply changes."));
+        crate::status_println!("\n{}", c::pass("Dry-run complete. Run without --dry-run to apply changes."));
     } else {
-        println!("\n{}", c::pass("Project successfully upgraded to Popperian standard!"));
-        println!("   New work items will now require 95% coverage and no TDG regression.");
+        crate::status_println!("\n{}", c::pass("Project successfully upgraded to Popperian standard!"));
+        crate::status_println!("   New work items will now require 95% coverage and no TDG regression.");
     }
 
     Ok(())

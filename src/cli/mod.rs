@@ -8,6 +8,7 @@ pub mod analysis;
 pub mod analysis_helpers;
 pub mod analysis_utilities;
 pub mod args;
+pub mod cache_clearing;
 pub mod colors;
 pub mod command_dispatcher;
 pub mod command_structure;
@@ -33,6 +34,7 @@ pub mod proof_annotation_formatter;
 pub mod proof_annotation_helpers;
 pub mod provability_helpers;
 pub mod registry;
+pub mod report_paths;
 pub mod semantic_commands;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
@@ -102,6 +104,14 @@ pub struct EarlyCliArgs {
     pub verbose: bool,
     pub debug: bool,
     pub trace: bool,
+    /// `-q` / `--quiet`. `--help` calls this "Enable quiet mode (errors only)",
+    /// but the log level it names was structurally unreachable: this struct had
+    /// no `quiet` field and [`log_level_directive`]'s ancestor matched only
+    /// `(trace, debug, verbose)`, so the *only* thing `--quiet` did anywhere in
+    /// the tree was set `PMAT_QUIET`, read by exactly one call site
+    /// ([`progress::quiet_mode_enabled`]) that no analysis command reaches.
+    /// `--quiet` was therefore accepted on ~43 commands and observable on none.
+    pub quiet: bool,
     pub trace_filter: Option<String>,
     pub is_mcp_server: bool,
 }
@@ -128,23 +138,96 @@ pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let verbose = args.iter().any(|arg| arg == "-v" || arg == "--verbose");
     let debug = args.iter().any(|arg| arg == "--debug");
     let trace = args.iter().any(|arg| arg == "--trace");
+    let quiet = quiet_from_args(&args);
 
     // Check if this is an MCP server command
     let is_mcp_server = args.len() >= 3 && args[1] == "agent" && args[2] == "mcp-server";
 
-    let trace_filter = args
+    let explicit_trace_filter = args
         .iter()
         .position(|arg| arg == "--trace-filter")
         .and_then(|pos| args.get(pos + 1))
-        .cloned()
-        .or_else(|| std::env::var("RUST_LOG").ok());
+        .cloned();
+
+    let trace_filter =
+        effective_trace_filter(explicit_trace_filter, std::env::var("RUST_LOG").ok(), quiet);
 
     EarlyCliArgs {
         verbose,
         debug,
         trace,
+        quiet,
         trace_filter,
         is_mcp_server,
+    }
+}
+
+/// Which filter directive wins between an explicit `--trace-filter`, the
+/// `RUST_LOG` environment fallback, and `--quiet`.
+///
+/// `--trace-filter` is documented as "overrides other flags", so an explicit one
+/// still beats `--quiet`. The `RUST_LOG` *fallback* does not: an env var
+/// inherited from the shell must not silently defeat a flag typed on this
+/// invocation, or `--quiet` would go straight back to inert on exactly the
+/// machines (CI, dev shells) that export `RUST_LOG`.
+///
+/// Pure, so the precedence is testable without mutating process env — which
+/// races across test threads.
+#[must_use]
+pub fn effective_trace_filter(
+    explicit: Option<String>,
+    rust_log: Option<String>,
+    quiet: bool,
+) -> Option<String> {
+    explicit.or(if quiet { None } else { rust_log })
+}
+
+/// Whether `-q` / `--quiet` appears in `args`, read straight from argv.
+///
+/// Same reason as [`forced_mode_from_args`] and [`color_mode_from_args`]:
+/// tracing is initialised before clap parses, so the log level cannot be taken
+/// from the parsed `Cli`.
+///
+/// `argv[0]` is the program name and is never scanned — a binary installed at
+/// `~/bin/-q` must not put the whole process into quiet mode.
+#[must_use]
+pub fn quiet_from_args(args: &[String]) -> bool {
+    args.iter()
+        .skip(1)
+        .any(|arg| arg == "-q" || arg == "--quiet")
+}
+
+/// The `EnvFilter` directive the verbosity flags select, or `None` for "use the
+/// default (`RUST_LOG`, else `warn`)".
+///
+/// Pure so it is testable without touching process env or tracing globals, and
+/// it lives in the library rather than in `src/bin/pmat.rs` so the tests below
+/// run under the `--lib` suite CI actually executes — the same reason
+/// [`write_fatal_error`] lives here.
+///
+/// # Precedence
+///
+/// A flag that asks for *more* output outranks `--quiet`. Clap already rejects
+/// `-q -v` outright (`conflicts_with = "verbose"`); `--quiet --debug` is the
+/// user contradicting themselves, and resolving it toward the louder flag keeps
+/// a debugging session from being silently gagged.
+#[must_use]
+pub fn log_level_directive(
+    trace: bool,
+    debug: bool,
+    verbose: bool,
+    quiet: bool,
+) -> Option<&'static str> {
+    match (trace, debug, verbose, quiet) {
+        (true, _, _, _) => Some("debug,pmat=trace"),
+        (_, true, _, _) => Some("warn,pmat=debug"),
+        (_, _, true, _) => Some("warn,pmat=info"),
+        // "errors only", exactly as `--help` describes it. Everything below
+        // ERROR — including the `WARN churn not measured …` line that
+        // `analyze defect-prediction --quiet` used to print verbatim — is
+        // dropped.
+        (_, _, _, true) => Some("error"),
+        _ => None,
     }
 }
 
@@ -318,6 +401,64 @@ pub fn ensure_analysis_path_exists(path: &Path) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// The single implementation of `--top-files N`.
+///
+/// Every `--top-files` flag in the CLI is documented as "Number of top files to
+/// show (0 = all)", but the rule had been written out by hand at each renderer
+/// that bothered — `defect_formatter.rs`, `duplicates_output.rs`,
+/// `provability_helpers_summary.rs` — and simply omitted at the rest, where a
+/// hardcoded `.iter().take(5)` / `.take(10)` stood in its place. Five commands
+/// (`analyze satd`, `analyze proof-annotations`, `analyze comprehensive`,
+/// `analyze assembly-script`, `analyze web-assembly`) therefore parsed the flag
+/// and printed the same fixed-length list for `--top-files 1` and
+/// `--top-files 50`. One rule, one implementation: renderers call this and
+/// nothing else.
+///
+/// `items` must already be ranked — this truncates, it does not sort.
+#[must_use]
+pub fn top_files_slice<T>(items: &[T], top_files: usize) -> &[T] {
+    &items[..top_files_count(items.len(), top_files)]
+}
+
+/// Row count `--top-files N` permits out of `total`; `0` means all of them.
+#[must_use]
+pub fn top_files_count(total: usize, top_files: usize) -> usize {
+    if top_files == 0 {
+        total
+    } else {
+        top_files.min(total)
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_files_limit_tests {
+    use super::{top_files_count, top_files_slice};
+
+    #[test]
+    fn zero_means_every_row() {
+        let rows = [1, 2, 3, 4, 5];
+        assert_eq!(top_files_slice(&rows, 0), &rows[..]);
+        assert_eq!(top_files_count(5, 0), 5);
+    }
+
+    #[test]
+    fn limit_bites_when_below_total() {
+        let rows = [1, 2, 3, 4, 5];
+        assert_eq!(top_files_slice(&rows, 2), &[1, 2]);
+        assert_eq!(top_files_count(5, 2), 2);
+    }
+
+    #[test]
+    fn limit_above_total_is_not_an_out_of_bounds_slice() {
+        let rows = [1, 2, 3];
+        assert_eq!(top_files_slice(&rows, 50), &rows[..]);
+        assert_eq!(top_files_count(3, 50), 3);
+        let empty: [u8; 0] = [];
+        assert!(top_files_slice(&empty, 10).is_empty());
+    }
 }
 
 // Core CLI execution: run(), apply_ux_settings(), parse_with_suggestions()
@@ -597,6 +738,156 @@ mod fatal_error_tests {
                 !out.trim().is_empty(),
                 "fatal path must never produce an empty diagnostic, got: {out:?}"
             );
+        }
+    }
+}
+
+/// `--quiet` is documented as "Enable quiet mode (errors only)" and, before
+/// this, did nothing observable on any of the ~43 commands that accept it: the
+/// log level it names had no arm to select ([`log_level_directive`] matched only
+/// `(trace, debug, verbose)`), and the one `PMAT_QUIET` reader in the tree
+/// ([`progress::quiet_mode_enabled`]) is reached by no analysis command.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod quiet_mode_tests {
+    use super::{effective_trace_filter, log_level_directive, quiet_from_args};
+    use crate::cli::progress::{quiet_mode_enabled, set_quiet_mode};
+
+    fn argv(rest: &[&str]) -> Vec<String> {
+        std::iter::once("pmat")
+            .chain(rest.iter().copied())
+            .map(String::from)
+            .collect()
+    }
+
+    /// The defect: `--quiet` selected no log filter at all, so `pmat analyze
+    /// defect-prediction --quiet` still printed
+    /// `WARN churn not measured for . …` to stderr — byte-identical to the run
+    /// without the flag.
+    #[test]
+    fn quiet_selects_the_errors_only_filter() {
+        assert_eq!(
+            log_level_directive(false, false, false, true),
+            Some("error"),
+            "--help promises \"errors only\"; anything else (None => the default \
+             `warn` filter) makes the flag inert"
+        );
+    }
+
+    /// The default is untouched: no flag still means "use RUST_LOG, else warn".
+    #[test]
+    fn no_flag_still_means_the_default_filter() {
+        assert_eq!(log_level_directive(false, false, false, false), None);
+    }
+
+    /// The three pre-existing levels must keep their exact directives — this
+    /// match moved out of `src/bin/pmat.rs`, where no `--lib` test could see it.
+    #[test]
+    fn the_louder_levels_are_unchanged() {
+        assert_eq!(
+            log_level_directive(true, false, false, false),
+            Some("debug,pmat=trace")
+        );
+        assert_eq!(
+            log_level_directive(false, true, false, false),
+            Some("warn,pmat=debug")
+        );
+        assert_eq!(
+            log_level_directive(false, false, true, false),
+            Some("warn,pmat=info")
+        );
+    }
+
+    /// A flag asking for more output outranks `--quiet`, so a debugging session
+    /// is never silently gagged. (Clap already rejects `-q -v` outright.)
+    #[test]
+    fn a_louder_flag_outranks_quiet() {
+        assert_eq!(
+            log_level_directive(false, true, false, true),
+            Some("warn,pmat=debug")
+        );
+        assert_eq!(
+            log_level_directive(true, false, false, true),
+            Some("debug,pmat=trace")
+        );
+    }
+
+    /// Tracing is initialised before clap parses, so the flag has to be found in
+    /// raw argv — in every position, since it is `global = true`.
+    #[test]
+    fn quiet_is_recognised_in_every_position() {
+        for args in [
+            vec!["-q"],
+            vec!["--quiet"],
+            vec!["analyze", "complexity", "--quiet"],
+            vec!["analyze", "dead-code", "-q"],
+            vec!["-q", "context"],
+        ] {
+            assert!(quiet_from_args(&argv(&args)), "{args:?}");
+        }
+    }
+
+    #[test]
+    fn no_quiet_flag_is_not_quiet() {
+        assert!(!quiet_from_args(&argv(&[])));
+        assert!(!quiet_from_args(&argv(&["analyze", "complexity"])));
+        // Not a prefix match: `--quiet-ish` is not `--quiet`.
+        assert!(!quiet_from_args(&argv(&["--quiet-mode"])));
+    }
+
+    /// argv[0] is the program name, never a flag.
+    #[test]
+    fn the_program_name_is_not_scanned() {
+        assert!(!quiet_from_args(&["-q".to_string()]));
+    }
+
+    /// An inherited `RUST_LOG` must not silently defeat a flag typed on this
+    /// invocation — otherwise `--quiet` is inert again on every CI runner and
+    /// dev shell that exports it.
+    #[test]
+    fn quiet_beats_the_rust_log_fallback_but_not_an_explicit_trace_filter() {
+        assert_eq!(
+            effective_trace_filter(None, Some("debug".into()), true),
+            None,
+            "RUST_LOG=debug must not re-enable output that --quiet turned off"
+        );
+        assert_eq!(
+            effective_trace_filter(None, Some("debug".into()), false),
+            Some("debug".into()),
+            "without --quiet, RUST_LOG keeps working exactly as before"
+        );
+        assert_eq!(
+            effective_trace_filter(Some("pmat=trace".into()), Some("debug".into()), true),
+            Some("pmat=trace".into()),
+            "--trace-filter is documented as overriding other flags"
+        );
+    }
+
+    /// The progress/banner channel: one writer, one reader, and it clears.
+    ///
+    /// `PMAT_QUIET` used only ever to be *set*, never unset, so a second
+    /// `cli::run` in the same process inherited quiet mode from the first.
+    #[test]
+    #[serial_test::serial(pmat_quiet_env)]
+    fn set_quiet_mode_both_sets_and_clears() {
+        let restore = std::env::var_os("PMAT_QUIET");
+
+        set_quiet_mode(true);
+        assert!(quiet_mode_enabled(), "--quiet must reach the one reader");
+        assert!(
+            !crate::cli::progress::ProgressIndicator::new("x").is_enabled(),
+            "a spinner must not start under --quiet"
+        );
+
+        set_quiet_mode(false);
+        assert!(
+            !quiet_mode_enabled(),
+            "quiet must not leak into the next run in the same process"
+        );
+
+        match restore {
+            Some(v) => std::env::set_var("PMAT_QUIET", v),
+            None => std::env::remove_var("PMAT_QUIET"),
         }
     }
 }

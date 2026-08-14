@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 /// Self-Admitted Technical Debt detector with pattern matching
 pub struct SATDDetector {
-    pub(crate) patterns: RegexSet,
     pub(crate) debt_classifier: DebtClassifier,
 }
 
@@ -173,10 +172,15 @@ pub enum AstNodeType {
     Regular,
 }
 
-/// Pattern-based debt classifier
+/// Marker-based debt classifier.
+///
+/// The marker table lives in `classifier.rs`; the only per-instance state is
+/// how demanding the marker match is, plus the prose-admission phrases (and,
+/// in extended mode, the euphemisms of #149).
 pub struct DebtClassifier {
-    pub(crate) patterns: Vec<DebtPattern>,
-    pub(crate) compiled_patterns: RegexSet,
+    pub(crate) mode: super::classifier::MarkerMode,
+    pub(crate) phrases: Vec<DebtPattern>,
+    pub(crate) compiled_phrases: RegexSet,
 }
 
 #[derive(Debug, Clone)]

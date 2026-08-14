@@ -259,14 +259,16 @@
         let context = RepositoryContext::new_mock();
         let evidence = gatherer.gather_evidence(&claim, &context);
 
-        let bench_evidence = evidence
+        // This test used to require that absent benchmark data be reported as
+        // BenchmarkResults evidence *against* the claim — the assertion that
+        // made every Performance claim exit 1 (#958).
+        let note = evidence
             .iter()
-            .find(|e| e.source == EvidenceSource::BenchmarkResults)
-            .expect("Should have benchmark evidence");
-        assert!(!bench_evidence.supports_claim);
-        assert!(bench_evidence
-            .details
-            .contains("No benchmark data found to support numeric claim"));
+            .find(|e| e.source == EvidenceSource::NotMeasured)
+            .expect("Should record that no benchmark data was read");
+        assert!(!note.contradicts());
+        assert!(note.details.contains("no benchmark data was read"));
+        assert!(!evidence.iter().any(EvidenceResult::contradicts));
     }
 
     #[test]
@@ -308,13 +310,11 @@
         let context = RepositoryContext::new_mock();
         let evidence = gatherer.gather_evidence(&claim, &context);
 
-        let bench_evidence = evidence
+        let note = evidence
             .iter()
-            .find(|e| e.source == EvidenceSource::BenchmarkResults)
-            .expect("Should have benchmark evidence");
-        assert!(!bench_evidence.supports_claim);
-        assert!(bench_evidence
-            .details
-            .contains("No benchmark data available"));
+            .find(|e| e.source == EvidenceSource::NotMeasured)
+            .expect("Should record that no benchmark data was read");
+        assert!(!note.contradicts());
+        assert!(note.details.contains("no benchmark data was read"));
     }
 

@@ -151,18 +151,27 @@ mod security_coverage_tests {
     }
 
     #[test]
-    fn test_validate_ast() {
+    fn test_validate_text_clean() {
         let validator = WasmSecurityValidator::new();
-        let ast = crate::models::unified_ast::AstDag::new();
-        let result = validator.validate_ast(&ast);
-        assert!(result.is_ok());
+        let result = validator.validate_text("(module)").unwrap();
+        assert!(result.passed);
+        assert!(result.issues.is_empty());
     }
 
+    /// `validate_ast` was deleted: it took `_ast` and returned `Ok(())`, so the
+    /// `--security` flag that reached it could not report anything. The text
+    /// rules replace it and must actually fire.
     #[test]
-    fn test_validate_text() {
+    fn test_validate_text_reports_raw_memory_access() {
         let validator = WasmSecurityValidator::new();
-        let result = validator.validate_text("(module)");
-        assert!(result.is_ok());
+        let result = validator
+            .validate_text("export function f(p: usize): void { store<i32>(p, 1); }")
+            .unwrap();
+        assert!(!result.passed);
+        assert!(result
+            .issues
+            .iter()
+            .any(|issue| issue.category == SecurityCategory::MemorySafety));
     }
 
     #[test]

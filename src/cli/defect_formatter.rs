@@ -74,16 +74,11 @@ impl FullReportFormatter {
     ) -> Result<()> {
         writeln!(output, "## Detailed File Predictions\n")?;
 
-        let files_to_show = if top_files == 0 {
-            report.file_predictions.len()
-        } else {
-            top_files.min(report.file_predictions.len())
-        };
-
-        for (i, prediction) in report
-            .file_predictions
+        // One rule, one implementation: `crate::cli::top_files_slice`. This was
+        // one of three hand-written copies of "0 means all", while five other
+        // commands had no copy at all and hardcoded their row count.
+        for (i, prediction) in crate::cli::top_files_slice(&report.file_predictions, top_files)
             .iter()
-            .take(files_to_show)
             .enumerate()
         {
             self.write_file_prediction(output, i + 1, prediction)?;

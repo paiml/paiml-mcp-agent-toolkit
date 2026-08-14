@@ -81,12 +81,50 @@ pub(crate) fn format_entropy_report(
 ) -> Result<String> {
     use crate::cli::EntropyOutputFormat;
 
+    // GH-934: `summary` and `markdown` narrowed the listing to `--top-violations`
+    // while `detailed` called `report.format_report()` and `json` serialised the
+    // whole report, both DISCARDING the parameter — so `--top-violations 1` and
+    // `--top-violations 100` produced byte-identical output on the two formats an
+    // agent actually parses, and the documented default of 20 was silently
+    // violated by the JSON surface. Every arm takes the limit now.
     match format {
         EntropyOutputFormat::Summary => Ok(format_summary_report(report, top_violations)),
-        EntropyOutputFormat::Detailed => Ok(report.format_report()),
-        EntropyOutputFormat::Json => Ok(serde_json::to_string_pretty(&report)?),
+        EntropyOutputFormat::Detailed => Ok(report.format_report_top(top_violations)),
+        EntropyOutputFormat::Json => Ok(serde_json::to_string_pretty(&entropy_report_json(
+            report,
+            top_violations,
+        )?)?),
         EntropyOutputFormat::Markdown => Ok(format_markdown_report(report, top_violations)),
     }
+}
+
+/// The JSON document `--format json` emits: the whole report, with
+/// `actionable_violations` narrowed to `--top-violations`.
+///
+/// Narrowing a LISTING must never look like a smaller measurement, so the full
+/// count travels beside the narrowed array as `total_actionable_violations`. A
+/// consumer that reads `len(actionable_violations)` and one that reads the total
+/// can then never disagree about whether 20 rows means "20 violations exist" or
+/// "20 were shown".
+fn entropy_report_json(
+    report: &crate::entropy::EntropyReport,
+    top_violations: usize,
+) -> Result<serde_json::Value> {
+    let mut value = serde_json::to_value(report)?;
+    let shown = get_top_violations(&report.actionable_violations, top_violations);
+
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert(
+            "total_actionable_violations".to_string(),
+            serde_json::json!(report.actionable_violations.len()),
+        );
+        obj.insert(
+            "actionable_violations".to_string(),
+            serde_json::to_value(&shown)?,
+        );
+    }
+
+    Ok(value)
 }
 
 /// Format summary report
@@ -793,5 +831,164 @@ mod colour_gating_tests {
         assert!(out.contains("Top Violations:"), "{out}");
         assert!(out.contains("Fix: Extract a helper"), "{out}");
         assert!(out.contains("High"), "{out}");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_violations_reaches_every_format_tests {
+    //! GH-934: `--top-violations` was applied by `--format summary` and
+    //! `--format markdown` and DISCARDED by `--format detailed` (which called
+    //! `report.format_report()`) and `--format json` (which serialised the whole
+    //! report). `--top-violations 1` and `--top-violations 100` produced
+    //! byte-identical output on the two formats an agent parses, so the
+    //! documented default of 20 was silently violated by the JSON surface and
+    //! two renderers of one command disagreed about how many violations the run
+    //! reports.
+    use super::format_entropy_report;
+    use crate::cli::EntropyOutputFormat;
+    use crate::entropy::entropy_calculator::{EntropyMetrics, EntropyReport};
+    use crate::entropy::violation_detector::{ActionableViolation, Severity};
+    use std::collections::BTreeMap;
+
+    const TOTAL: usize = 6;
+
+    fn report() -> EntropyReport {
+        let severities = [
+            Severity::High,
+            Severity::High,
+            Severity::Medium,
+            Severity::Medium,
+            Severity::Low,
+            Severity::Low,
+        ];
+        EntropyReport {
+            total_files_analyzed: 4,
+            actionable_violations: severities
+                .iter()
+                .enumerate()
+                .map(|(i, severity)| ActionableViolation {
+                    severity: *severity,
+                    pattern: None,
+                    message: format!("violation number {i}"),
+                    fix_suggestion: format!("extract helper {i}"),
+                    estimated_loc_reduction: Some(3),
+                    affected_files: vec![],
+                    priority_score: 1.0 - (i as f64 / 10.0),
+                })
+                .collect(),
+            pattern_summary: None,
+            entropy_metrics: EntropyMetrics {
+                file_level_entropy: Some(0.8),
+                module_level_entropy: Some(0.7),
+                project_level_entropy: Some(0.65),
+                pattern_diversity: Some(0.72),
+                total_patterns: 5,
+                total_instances: 21,
+                total_loc: 200,
+                patterns_by_type: BTreeMap::new(),
+            },
+            measurement_note: None,
+        }
+    }
+
+    fn rendered(format: EntropyOutputFormat, top: usize) -> String {
+        format_entropy_report(&report(), format, top).unwrap()
+    }
+
+    /// `--format json --top-violations 1` returned all 26 violations on this
+    /// repo, byte-identically to `--top-violations 100`.
+    #[test]
+    fn json_honours_the_limit() {
+        for limit in [1usize, 2, 4] {
+            let json: serde_json::Value =
+                serde_json::from_str(&rendered(EntropyOutputFormat::Json, limit)).unwrap();
+            assert_eq!(
+                json["actionable_violations"].as_array().unwrap().len(),
+                limit,
+                "--top-violations {limit} must narrow the JSON listing"
+            );
+        }
+        // "0 = all", per the flag's own help text.
+        let all: serde_json::Value =
+            serde_json::from_str(&rendered(EntropyOutputFormat::Json, 0)).unwrap();
+        assert_eq!(
+            all["actionable_violations"].as_array().unwrap().len(),
+            TOTAL
+        );
+        // A limit larger than the finding cannot invent rows.
+        let over: serde_json::Value =
+            serde_json::from_str(&rendered(EntropyOutputFormat::Json, 99)).unwrap();
+        assert_eq!(
+            over["actionable_violations"].as_array().unwrap().len(),
+            TOTAL
+        );
+    }
+
+    /// Narrowing a LISTING must not look like a smaller measurement.
+    #[test]
+    fn json_keeps_the_total_beside_the_narrowed_listing() {
+        let json: serde_json::Value =
+            serde_json::from_str(&rendered(EntropyOutputFormat::Json, 1)).unwrap();
+        assert_eq!(
+            json["total_actionable_violations"].as_u64().unwrap() as usize,
+            TOTAL,
+            "the measured count must survive the display limit: {json:#}"
+        );
+    }
+
+    /// `--format detailed --top-violations 1` printed all 26 `Fix:` lines.
+    #[test]
+    fn detailed_honours_the_limit() {
+        let fix_lines = |s: &str| -> usize {
+            s.lines()
+                .filter(|l| l.contains("Fix: extract helper"))
+                .count()
+        };
+
+        for limit in [1usize, 2, 4] {
+            let out = rendered(EntropyOutputFormat::Detailed, limit);
+            assert_eq!(
+                fix_lines(&out),
+                limit,
+                "--top-violations {limit} must narrow the detailed listing:\n{out}"
+            );
+        }
+        assert_eq!(
+            fix_lines(&rendered(EntropyOutputFormat::Detailed, 0)),
+            TOTAL
+        );
+    }
+
+    /// Same rule as the JSON surface: the header count is the measurement.
+    #[test]
+    fn detailed_keeps_the_total_in_its_header() {
+        let out = rendered(EntropyOutputFormat::Detailed, 1);
+        assert!(
+            out.contains(&format!("Actionable Violations: {TOTAL}")),
+            "the full count must survive the display limit:\n{out}"
+        );
+        assert!(
+            out.contains(&format!("Listing: top 1 of {TOTAL}")),
+            "a narrowed listing must say so:\n{out}"
+        );
+    }
+
+    /// The defect was that two formats disagreed with the other two about the
+    /// same run; assert all four move together.
+    #[test]
+    fn every_format_responds_to_the_flag() {
+        for format in [
+            EntropyOutputFormat::Summary,
+            EntropyOutputFormat::Detailed,
+            EntropyOutputFormat::Json,
+            EntropyOutputFormat::Markdown,
+        ] {
+            assert_ne!(
+                rendered(format.clone(), 1),
+                rendered(format.clone(), TOTAL),
+                "--format {format:?} ignores --top-violations"
+            );
+        }
     }
 }

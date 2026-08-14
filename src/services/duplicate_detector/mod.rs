@@ -15,7 +15,7 @@ pub mod types;
 pub use engine::DuplicateDetectionEngine;
 pub use lsh::LshIndex;
 pub use minhash::MinHashGenerator;
-pub use tokenizer::UniversalFeatureExtractor;
+pub use tokenizer::{IdentifierScope, UniversalFeatureExtractor};
 pub use types::{
     CloneGroup, CloneInstance, CloneReport, CloneSummary, CloneType, CodeFragment,
     DuplicateDetectionConfig, DuplicationHotspot, FragmentId, Language, MinHashSignature, Token,

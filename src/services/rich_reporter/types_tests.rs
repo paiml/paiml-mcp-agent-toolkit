@@ -21,12 +21,37 @@ fn test_severity_indicator() {
     assert_eq!(Severity::Low.indicator(), "◌");
 }
 
+/// Which colour a severity SELECTS. Asserted on `.raw()`, because the
+/// selection is pure while the emission is not: `color_code()` used to hand out
+/// a `&'static str` that every caller wrote out unconditionally, so this test
+/// passing said nothing about `--color never`. See
+/// `severity_colour_is_emitted_only_when_colour_is_on` below for the other half.
 #[test]
 fn test_severity_color_code() {
-    assert_eq!(Severity::Critical.color_code(), "\x1b[31m");
-    assert_eq!(Severity::High.color_code(), "\x1b[33m");
-    assert_eq!(Severity::Medium.color_code(), "\x1b[36m");
-    assert_eq!(Severity::Low.color_code(), "\x1b[2m");
+    assert_eq!(Severity::Critical.color_code().raw(), "\x1b[31m");
+    assert_eq!(Severity::High.color_code().raw(), "\x1b[33m");
+    assert_eq!(Severity::Medium.color_code().raw(), "\x1b[36m");
+    assert_eq!(Severity::Low.color_code().raw(), "\x1b[2m");
+}
+
+/// EMISSION, as opposed to selection: with colour off nothing is written.
+#[test]
+fn severity_colour_is_emitted_only_when_colour_is_on() {
+    use crate::cli::colors::ForcedColor;
+    {
+        let _on = ForcedColor::on();
+        assert_eq!(
+            format!("{}", Severity::Critical.color_code()),
+            "\x1b[31m",
+            "--color always must still emit the escape"
+        );
+    }
+    let _off = ForcedColor::off();
+    assert_eq!(
+        format!("{}", Severity::Critical.color_code()),
+        "",
+        "--color never must emit nothing"
+    );
 }
 
 #[test]

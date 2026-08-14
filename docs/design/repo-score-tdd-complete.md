@@ -56,7 +56,8 @@ This represents **2,500+ lines of comprehensive test code** covering every aspec
 - ✅ `.pre-commit-config.yaml` detection
 - ✅ Execution timeout (>30s penalty)
 - ✅ Skip slow checks flag
-- ✅ Subcategories (B1: Best Practices, B2: Performance)
+- ✅ Subcategories (B1: Hook Present, B2: Hook Gate Coverage — #940 removed the
+  "Performance"/timeout framing; those two scaffolding cases never ran)
 - ✅ Both config and hook present
 
 ### Category C: Repository Hygiene (10 points)

@@ -275,7 +275,7 @@ pub enum SymbolTableOutputFormat {
     Summary,
     /// Detailed output with all symbols
     Detailed,
-    /// Human-readable format
+    /// Alias for `summary` — the human rendering
     Human,
     /// JSON format for tools
     Json,

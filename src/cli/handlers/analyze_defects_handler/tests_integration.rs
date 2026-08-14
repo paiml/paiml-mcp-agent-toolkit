@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Integration tests for handle_analyze_defects async handler
 
-use super::handler::handle_analyze_defects;
+use super::handler::{handle_analyze_defects, EXIT_NOTHING_MEASURED};
 use super::output::print_text_report;
 use super::types::*;
 use crate::services::defect_detector::Severity;
@@ -11,6 +11,10 @@ use tempfile::TempDir;
 // handle_analyze_defects integration tests
 // =========================================================================
 
+/// This test used to assert `0` — "no critical defects" for a directory in
+/// which nothing was read. That is the #923 defect written down as an
+/// expectation: an empty walk is an absent measurement, not a clean one, and
+/// the handler now refuses it the way `analyze satd` does.
 #[tokio::test]
 async fn test_handle_analyze_defects_empty_dir() {
     let temp_dir = TempDir::new().expect("temp dir");
@@ -19,7 +23,7 @@ async fn test_handle_analyze_defects_empty_dir() {
         handle_analyze_defects(Some(temp_dir.path()), None, None, OutputFormat::Text).await;
 
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), 0); // No critical defects
+    assert_eq!(result.unwrap(), EXIT_NOTHING_MEASURED);
 }
 
 #[tokio::test]

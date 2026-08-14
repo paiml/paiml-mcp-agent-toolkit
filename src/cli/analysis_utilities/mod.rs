@@ -3,11 +3,14 @@
 //! All handlers provide complete functionality with proper AST-based analysis.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+// `ProofAnnotationOutputFormat`, `PropertyTypeFilter` and `VerificationMethodFilter`
+// were imported for a second `handle_analyze_proof_annotations` that lived in
+// `proof_coverage.rs` and that nothing dispatched to; it is gone (see the
+// re-export there), and so are its imports.
 use crate::cli::{
     ComprehensiveOutputFormat, DagType, DeadCodeOutputFormat, DefectPredictionOutputFormat,
-    IncrementalCoverageOutputFormat, MakefileOutputFormat, ProofAnnotationOutputFormat,
-    PropertyTypeFilter, ProvabilityOutputFormat, QualityCheckType, QualityGateOutputFormat,
-    SatdOutputFormat, SatdSeverity, TdgOutputFormat, VerificationMethodFilter,
+    IncrementalCoverageOutputFormat, MakefileOutputFormat, ProvabilityOutputFormat,
+    QualityCheckType, QualityGateOutputFormat, SatdOutputFormat, SatdSeverity, TdgOutputFormat,
 };
 use crate::services::lightweight_provability_analyzer::ProofSummary;
 use crate::services::makefile_linter;
@@ -35,6 +38,14 @@ include!("proof_coverage.rs");
 // Churn handlers - extracted for file health (CB-040)
 include!("churn.rs");
 
+// THE pass/fail rule, one implementation, called by every gate surface.
+include!("quality_gate_verdict.rs");
+
+// CLI-vs-MCP verdict parity + the single SATD severity scale.
+#[cfg(test)]
+#[path = "quality_gate_verdict_parity_tests.rs"]
+mod quality_gate_verdict_parity_tests;
+
 // Quality gate handlers - split for file health (CB-040)
 include!("quality_gate_satd.rs");
 include!("quality_gate_entry.rs");
@@ -43,6 +54,11 @@ include!("quality_gate_single_file.rs");
 #[cfg(test)]
 #[path = "quality_gate_parse_guard_tests.rs"]
 mod quality_gate_parse_guard_tests;
+
+// `--color never` reaching the printers that interpolate raw ANSI constants.
+#[cfg(test)]
+#[path = "color_never_printer_tests.rs"]
+mod color_never_printer_tests;
 include!("quality_gate_project.rs");
 include!("quality_gate_execute.rs");
 include!("quality_gate_config.rs");

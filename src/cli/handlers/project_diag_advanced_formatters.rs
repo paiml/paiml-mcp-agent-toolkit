@@ -166,11 +166,17 @@ fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
     output.push_str(&format!("  {}\n\n", colors::rule()));
 
     // Overall score
+    // GH #684: these four used to interpolate the raw `pub const` sequences,
+    // which are `const` and so cannot consult `colors_enabled`. `pmat
+    // project-diag --color never > out.txt` still wrote
+    // `Overall: ^[[1;31mRED^[[0m` (and 30 such lines in the andon format), and
+    // NO_COLOR=1 was ignored for the same reason. `colors::colored` is the
+    // helper that honours the rule while keeping the colour SELECTION here.
     let status_icon = match report.overall_status {
-        HealthStatus::Green => format!("{}GREEN{}", colors::BOLD_GREEN, colors::RESET),
-        HealthStatus::Yellow => format!("{}YELLOW{}", colors::BOLD_YELLOW, colors::RESET),
-        HealthStatus::Red => format!("{}RED{}", colors::BOLD_RED, colors::RESET),
-        HealthStatus::Skip => format!("{}SKIP{}", colors::DIM, colors::RESET),
+        HealthStatus::Green => colors::colored(colors::BOLD_GREEN, "GREEN"),
+        HealthStatus::Yellow => colors::colored(colors::BOLD_YELLOW, "YELLOW"),
+        HealthStatus::Red => colors::colored(colors::BOLD_RED, "RED"),
+        HealthStatus::Skip => colors::colored(colors::DIM, "SKIP"),
     };
     output.push_str(&format!(
         "  Overall: {} {} ({})\n\n",
@@ -277,59 +283,70 @@ fn format_markdown(report: &DiagnosticReport, failures_only: bool) -> String {
 fn format_andon(report: &DiagnosticReport) -> String {
     let mut output = String::new();
 
+    // GH #684: every sequence below used to be a raw `pub const`, interpolated
+    // with its opening half in one `format!` argument and its closing half in
+    // another. `const`s cannot consult `colors_enabled`, so `pmat project-diag
+    // --format andon --color never > out.txt` wrote 30 escape-bearing lines,
+    // byte-identical to `--color auto`, and NO_COLOR=1 changed nothing.
+    // `colors::seq` is the documented mechanical migration for exactly this
+    // split-across-arguments shape: it is `""` when colour is off.
+    // Gate explicitly on `colors_enabled` and take the bytes with `Sgr::raw`,
+    // which is documented as ungated: `colors::seq` is now an identity on
+    // `Sgr`, so interpolating its result emits the escape whatever `--color`
+    // says.
+    let on = colors::colors_enabled();
+    let sgr = |s: colors::Sgr| if on { s.raw() } else { "" };
+    let bold = sgr(colors::BOLD);
+    let reset = sgr(colors::RESET);
+    let dim = sgr(colors::DIM);
+    let green = sgr(colors::GREEN);
+    let yellow = sgr(colors::YELLOW);
+    let red = sgr(colors::RED);
+    let bold_red = sgr(colors::BOLD_RED);
+
     // Andon-style visualization (Toyota Way)
     output.push('\n');
-    output.push_str(&format!("  {}╔══════════════════════════════════════════════════════════════╗{}\n", colors::BOLD, colors::RESET));
-    output.push_str(&format!("  {}║                    PROJECT DIAGNOSTICS                       ║{}\n", colors::BOLD, colors::RESET));
-    output.push_str(&format!("  {}║                      (Andon Board)                           ║{}\n", colors::BOLD, colors::RESET));
-    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {bold}\u{2554}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2557}{reset}\n"));
+    output.push_str(&format!("  {bold}\u{2551}                    PROJECT DIAGNOSTICS                       \u{2551}{reset}\n"));
+    output.push_str(&format!("  {bold}\u{2551}                      (Andon Board)                           \u{2551}{reset}\n"));
+    output.push_str(&format!("  {bold}\u{2560}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2563}{reset}\n"));
 
     // Score display
     let bar_width = 40;
     let filled = ((report.percentage / 100.0) * bar_width as f64) as usize;
     let empty = bar_width - filled;
-    let bar_color = if report.percentage >= 85.0 {
-        colors::GREEN
-    } else if report.percentage >= 60.0 {
-        colors::YELLOW
-    } else {
-        colors::RED
-    };
+    let bar_color = sgr(colors::threshold_color(report.percentage, 85.0, 60.0));
     let progress_bar = format!(
         "{}{}{}{}",
         bar_color,
         "#".repeat(filled),
-        colors::DIM,
+        dim,
         "-".repeat(empty)
     );
 
     output.push_str(&format!(
-        "  {}║{}  Score: [{progress_bar}{}] {}  {}║{}\n",
-        colors::BOLD, colors::RESET,
-        colors::RESET,
-        colors::pct(report.percentage, 85.0, 60.0),
-        colors::BOLD, colors::RESET
+        "  {bold}\u{2551}{reset}  Score: [{progress_bar}{reset}] {}  {bold}\u{2551}{reset}\n",
+        colors::pct(report.percentage, 85.0, 60.0)
     ));
-    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {bold}\u{2560}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2563}{reset}\n"));
 
     // Category lights
     for cat in &report.categories {
-        let light = if cat.failed > 0 {
-            format!("{}●{} ", colors::RED, colors::RESET)
+        let light_color = if cat.failed > 0 {
+            red
         } else if cat.warned > 0 {
-            format!("{}●{} ", colors::YELLOW, colors::RESET)
+            yellow
         } else {
-            format!("{}●{} ", colors::GREEN, colors::RESET)
+            green
         };
+        let light = format!("{light_color}\u{25cf}{reset} ");
         output.push_str(&format!(
-            "  {}║{}  {} {:20} {}/{} checks passed          {}║{}\n",
-            colors::BOLD, colors::RESET,
-            light, cat.name, cat.passed, cat.total,
-            colors::BOLD, colors::RESET
+            "  {bold}\u{2551}{reset}  {light} {:20} {}/{} checks passed          {bold}\u{2551}{reset}\n",
+            cat.name, cat.passed, cat.total
         ));
     }
 
-    output.push_str(&format!("  {}╠══════════════════════════════════════════════════════════════╣{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {bold}\u{2560}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2563}{reset}\n"));
 
     // Failed checks (Andon cord triggers)
     let failures: Vec<_> = report
@@ -340,30 +357,21 @@ fn format_andon(report: &DiagnosticReport) -> String {
 
     if failures.is_empty() {
         output.push_str(&format!(
-            "  {}║{}  {}No critical issues - production ready{}                       {}║{}\n",
-            colors::BOLD, colors::RESET,
-            colors::GREEN, colors::RESET,
-            colors::BOLD, colors::RESET
+            "  {bold}\u{2551}{reset}  {green}No critical issues - production ready{reset}                       {bold}\u{2551}{reset}\n"
         ));
     } else {
         output.push_str(&format!(
-            "  {}║{}  {}ANDON CORD TRIGGERED{} - Issues require attention:            {}║{}\n",
-            colors::BOLD, colors::RESET,
-            colors::BOLD_RED, colors::RESET,
-            colors::BOLD, colors::RESET
+            "  {bold}\u{2551}{reset}  {bold_red}ANDON CORD TRIGGERED{reset} - Issues require attention:            {bold}\u{2551}{reset}\n"
         ));
         for check in failures.iter().take(5) {
             output.push_str(&format!(
-                "  {}║{}    {}●{} {:<54} {}║{}\n",
-                colors::BOLD, colors::RESET,
-                colors::RED, colors::RESET,
-                check.name,
-                colors::BOLD, colors::RESET
+                "  {bold}\u{2551}{reset}    {red}\u{25cf}{reset} {:<54} {bold}\u{2551}{reset}\n",
+                check.name
             ));
         }
     }
 
-    output.push_str(&format!("  {}╚══════════════════════════════════════════════════════════════╝{}\n", colors::BOLD, colors::RESET));
+    output.push_str(&format!("  {bold}\u{255a}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{255d}{reset}\n"));
     output.push('\n');
 
     output

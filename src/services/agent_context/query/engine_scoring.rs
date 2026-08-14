@@ -164,18 +164,12 @@ impl AgentContextIndex {
     fn passes_filters(&self, idx: usize, options: &QueryOptions) -> bool {
         let func = &self.functions[idx];
 
-        // Grade filter
+        // Grade filter. Goes through crate::tdg::Grade (all eleven grades), not
+        // a local five-letter table: `A-`/`B+`/`C-` used to match nothing and
+        // therefore pass every threshold.
         if let Some(min_grade) = &options.min_grade {
-            let grade_order = ["A", "B", "C", "D", "F"];
-            let min_idx = grade_order.iter().position(|g| *g == min_grade);
-            let func_idx = grade_order
-                .iter()
-                .position(|g| *g == func.quality.tdg_grade.as_str());
-
-            if let (Some(min_i), Some(func_i)) = (min_idx, func_idx) {
-                if func_i > min_i {
-                    return false;
-                }
+            if !super::grades::grade_meets_threshold(&func.quality.tdg_grade, min_grade) {
+                return false;
             }
         }
 

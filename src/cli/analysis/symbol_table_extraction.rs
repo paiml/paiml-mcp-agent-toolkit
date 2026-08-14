@@ -19,7 +19,7 @@ pub async fn handle_analyze_symbol_table(
     // not walk nothing and report an empty (but plausible-looking) table.
     crate::cli::ensure_analysis_path_exists(&project_path)?;
 
-    eprintln!("🔍 Building symbol table for project...");
+    crate::status_eprintln!("🔍 Building symbol table for project...");
 
     // Build the symbol table
     let table = build_symbol_table(&project_path, include, exclude, top_files).await?;
@@ -28,12 +28,18 @@ pub async fn handle_analyze_symbol_table(
     let filtered = apply_filters(table, filter, query, top_files)?;
 
     // Format output
-    let content = format_output(filtered, format, show_unreferenced, show_references, top_files)?;
+    let content = format_output(
+        filtered,
+        format,
+        show_unreferenced,
+        show_references,
+        top_files,
+    )?;
 
     // Write output
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
-        eprintln!("✅ Symbol table written to: {}", output_path.display());
+        crate::status_eprintln!("✅ Symbol table written to: {}", output_path.display());
     } else {
         println!("{content}");
     }
@@ -207,8 +213,7 @@ fn matches_pattern(path: &Path, pattern: &str) -> bool {
     if pattern.contains('*') || pattern.contains('?') || pattern.contains('[') {
         if let Ok(glob) = glob::Pattern::new(pattern) {
             let file_name = path.file_name().map(|n| n.to_string_lossy().to_string());
-            return glob.matches(&path_str)
-                || file_name.is_some_and(|name| glob.matches(&name));
+            return glob.matches(&path_str) || file_name.is_some_and(|name| glob.matches(&name));
         }
     }
 

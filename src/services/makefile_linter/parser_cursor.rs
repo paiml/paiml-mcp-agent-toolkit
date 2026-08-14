@@ -47,14 +47,40 @@ impl<'src> MakefileParser<'src> {
         }
     }
 
+    /// Advance past blank space between top-level lines — but never past a TAB.
+    ///
+    /// A tab is not decoration in a Makefile, it is the recipe marker. This used
+    /// to skip it along with everything else `char::is_whitespace` matches,
+    /// which made `try_parse_special_line`'s "Recipe without rule" error
+    /// unreachable: by the time it peeked, the tab had already been consumed and
+    /// the line fell through to the "unknown line type, skip it" branch. A
+    /// Makefile whose first line is `\techo orphan` — rejected by GNU make with
+    /// "recipe commences before first target" — parsed clean.
+    ///
+    /// Recipe lines belonging to a rule are consumed by `parse_rule`, so a tab
+    /// still visible at this level is always a recipe with no rule above it.
+    ///
+    /// A tab with nothing but whitespace after it is NOT a recipe — GNU make
+    /// ignores such a line — so it is skipped like any other blank.
     fn skip_whitespace_and_blank_lines(&mut self) {
         while let Some(ch) = self.peek() {
+            if ch == '\t' && self.tab_starts_a_recipe_line() {
+                break;
+            }
             if ch.is_whitespace() {
                 self.advance();
             } else {
                 break;
             }
         }
+    }
+
+    /// At a TAB: does the rest of this line carry a command, or is it blank?
+    fn tab_starts_a_recipe_line(&self) -> bool {
+        self.input[self.cursor..]
+            .chars()
+            .take_while(|&c| c != '\n')
+            .any(|c| !c.is_whitespace())
     }
 
     fn skip_to_next_line(&mut self) {

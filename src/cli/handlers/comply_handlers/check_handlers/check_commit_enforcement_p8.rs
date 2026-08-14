@@ -122,10 +122,7 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
             yaml_escape_string(id)
         ));
         yaml.push_str("  references:\n");
-        yaml.push_str(&format!(
-            "    - \".pmat-work/{}/contract.json\"\n",
-            safe_id
-        ));
+        yaml.push_str(&format!("    - \".pmat-work/{}/contract.json\"\n", safe_id));
         yaml.push_str("surface: work-contract\n");
         yaml.push_str(&format!(
             "verification_summary:\n  target_level: {}\n  current_level: {}\n  total_obligations: {}\n",
@@ -195,13 +192,13 @@ pub(crate) fn handle_ratchet_override(
     use std::io::Write;
     writeln!(file, "{}", serde_json::to_string(&entry)?)?;
 
-    println!("✅ Ratchet override recorded:");
-    println!("   Binding: {}", binding);
-    println!("   {} → {} (reason: {})", from, to, reason);
+    crate::status_println!("✅ Ratchet override recorded:");
+    crate::status_println!("   Binding: {}", binding);
+    crate::status_println!("   {} → {} (reason: {})", from, to, reason);
     if let Some(wi) = work_item {
-        println!("   Work item: {}", wi);
+        crate::status_println!("   Work item: {}", wi);
     }
-    println!("   Expires in 14 days. Logged to: {}", log_path.display());
+    crate::status_println!("   Expires in 14 days. Logged to: {}", log_path.display());
 
     Ok(())
 }
@@ -238,34 +235,54 @@ pub(crate) fn handle_asset_validate(
         ],
     };
 
-    let mut pass = 0;
-    let mut warn = 0;
-    let mut skip = 0;
+    let mut pass = 0usize;
+    let mut warn = 0usize;
+    let mut skip = 0usize;
     for check in &checks {
-        let icon = match check.status {
-            CheckStatus::Pass => {
-                pass += 1;
-                "✓"
-            }
-            CheckStatus::Warn => {
-                warn += 1;
-                "⚠"
-            }
-            CheckStatus::Fail => {
-                warn += 1;
-                "✗"
-            }
-            CheckStatus::Skip => {
-                skip += 1;
-                "-"
-            }
-        };
-        println!("  {} {}: {}", icon, check.name, check.message);
+        match check.status {
+            CheckStatus::Pass => pass += 1,
+            // A failing asset contract is counted with the warnings on purpose:
+            // this command does not gate. Only the tally is shared — the glyph
+            // is not.
+            CheckStatus::Warn | CheckStatus::Fail => warn += 1,
+            CheckStatus::Skip => skip += 1,
+        }
+        println!("{}", format_asset_check_line(check));
     }
     println!();
-    println!("{} pass, {} warn, {} skip", pass, warn, skip);
+    println!("{}", format_asset_check_totals(pass, warn, skip));
 
     Ok(())
+}
+
+/// One `  <glyph> <name>: <message>` line for an asset contract check.
+///
+/// The glyph comes from [`check_status_icon`], the one renderer of a
+/// `CheckStatus` in this crate. This function used to carry a second, private
+/// copy of that table — the same four glyphs as bare `&'static str` literals —
+/// so `comply asset-validate --color always` was byte-identical to `--color
+/// never` while `comply report --format text`, printing the SAME enum, painted
+/// them. A duplicated glyph table cannot be kept in sync with a colour rule it
+/// does not know exists; there is now only one table.
+fn format_asset_check_line(check: &ComplianceCheck) -> String {
+    use crate::cli::colors as c;
+    format!(
+        "  {} {}: {}",
+        check_status_icon(check.status),
+        c::label(&check.name),
+        check.message
+    )
+}
+
+/// The `N pass, N warn, N skip` tally under the check list.
+fn format_asset_check_totals(pass: usize, warn: usize, skip: usize) -> String {
+    use crate::cli::colors as c;
+    format!(
+        "{} pass, {} warn, {} skip",
+        c::colored(c::GREEN, &pass.to_string()),
+        c::colored(c::YELLOW, &warn.to_string()),
+        c::dim(&skip.to_string())
+    )
 }
 
 /// Escape a string for safe inclusion in YAML double-quoted values.
@@ -298,4 +315,79 @@ fn chrono_free_timestamp() -> String {
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
     format!("{}-{:02}-{:02}T00:00:00Z", y, m, d)
+}
+
+#[cfg(test)]
+mod asset_validate_color_tests {
+    // `comply asset-validate` must honour `--color`, and must render a
+    // CheckStatus the same way every other comply surface does.
+    //
+    // This handler carried a private second copy of the glyph table — the same
+    // four glyphs as bare literals — so `--color always` was byte-identical to
+    // `--color never` (645 bytes, 0 escapes) while `comply report --format
+    // text`, printing the SAME enum, painted them. The copy is gone; these
+    // tests pin that it stays gone.
+    use super::*;
+    use crate::cli::colors::{assert_honours_color, ForcedColor};
+
+    fn check(status: CheckStatus, name: &str) -> ComplianceCheck {
+        ComplianceCheck {
+            name: name.to_string(),
+            status,
+            message: "2 issue(s): missing required section: install".to_string(),
+            severity: Severity::Warning,
+        }
+    }
+
+    const ALL: [CheckStatus; 4] = [
+        CheckStatus::Pass,
+        CheckStatus::Warn,
+        CheckStatus::Fail,
+        CheckStatus::Skip,
+    ];
+
+    /// Every status must move under `--color`, not just the interesting ones.
+    #[test]
+    fn every_status_line_honours_color() {
+        for status in ALL {
+            assert_honours_color(&format!("format_asset_check_line({status:?})"), || {
+                format_asset_check_line(&check(status, "CB-1320: README Layout Contract"))
+            });
+        }
+    }
+
+    /// The tally under the list is part of the same report surface.
+    #[test]
+    fn totals_line_honours_color() {
+        assert_honours_color("format_asset_check_totals", || {
+            format_asset_check_totals(0, 2, 5)
+        });
+    }
+
+    /// The glyph must come from the shared renderer, not a private copy. If a
+    /// second table ever reappears here, it will disagree with this one.
+    #[test]
+    fn glyphs_come_from_the_shared_check_status_renderer() {
+        let _guard = ForcedColor::off();
+        for status in ALL {
+            let line = format_asset_check_line(&check(status, "CB-1320"));
+            let expected = check_status_icon(status);
+            assert!(
+                line.starts_with(&format!("  {expected} ")),
+                "{status:?}: line {line:?} does not start with the shared glyph {expected:?}"
+            );
+        }
+    }
+
+    /// With colour off the line is exactly what it printed before, so the
+    /// documented `  ⚠ CB-1320: …` shape is unchanged.
+    #[test]
+    fn plain_line_shape_is_unchanged() {
+        let _guard = ForcedColor::off();
+        assert_eq!(
+            format_asset_check_line(&check(CheckStatus::Warn, "CB-1320: README Layout Contract")),
+            "  ⚠ CB-1320: README Layout Contract: 2 issue(s): missing required section: install"
+        );
+        assert_eq!(format_asset_check_totals(0, 2, 5), "0 pass, 2 warn, 5 skip");
+    }
 }

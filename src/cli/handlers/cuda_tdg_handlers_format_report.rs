@@ -29,37 +29,45 @@ fn format_terminal_output(result: &CudaSimdTdgResult) -> Result<String> {
     Ok(output)
 }
 
-fn grade_color(grade: &CudaTdgGrade) -> &'static str {
+/// Colour a CUDA-TDG grade is rendered in. Pure — independent of whether colour
+/// is enabled — so the choice stays assertable when output is plain.
+///
+/// These were raw `"\x1b[32m"` literals interpolated unconditionally, so
+/// `cuda-tdg --format terminal --color never > report.txt` wrote escapes into
+/// the file (the GH #684 class). An [`Sgr`](crate::cli::colors::Sgr) renders
+/// nothing when colour is off, so the gating now happens at interpolation.
+fn grade_color(grade: &CudaTdgGrade) -> crate::cli::colors::Sgr {
+    use crate::cli::colors as c;
     match grade {
-        CudaTdgGrade::APlus | CudaTdgGrade::A => "\x1b[32m",
-        CudaTdgGrade::B => "\x1b[33m",
-        CudaTdgGrade::C | CudaTdgGrade::D => "\x1b[31m",
-        CudaTdgGrade::F | CudaTdgGrade::GatewayFail => "\x1b[91m",
+        CudaTdgGrade::APlus | CudaTdgGrade::A => c::GREEN,
+        CudaTdgGrade::B => c::YELLOW,
+        CudaTdgGrade::C | CudaTdgGrade::D => c::RED,
+        CudaTdgGrade::F | CudaTdgGrade::GatewayFail => c::BOLD_RED,
     }
 }
 
 fn format_terminal_score_line(result: &CudaSimdTdgResult) -> String {
+    use crate::cli::colors as c;
     let color = grade_color(&result.score.grade);
     format!(
         "Score: {}{:.1}/100{} (Grade: {}{}{})\n",
         color,
         result.score.total,
-        "\x1b[0m",
+        c::RESET,
         color,
         result.score.grade,
-        "\x1b[0m"
+        c::RESET
     )
 }
 
 fn format_terminal_gateway_line(result: &CudaSimdTdgResult) -> String {
-    format!(
-        "Gateway: {}\n\n",
-        if result.score.gateway_passed {
-            "\x1b[32mPASSED\x1b[0m"
-        } else {
-            "\x1b[91mFAILED\x1b[0m"
-        }
-    )
+    use crate::cli::colors as c;
+    let (color, word) = if result.score.gateway_passed {
+        (c::GREEN, "PASSED")
+    } else {
+        (c::BOLD_RED, "FAILED")
+    };
+    format!("Gateway: {color}{word}{}\n\n", c::RESET)
 }
 
 fn format_terminal_defects(result: &CudaSimdTdgResult) -> String {
@@ -74,12 +82,19 @@ fn format_terminal_defects(result: &CudaSimdTdgResult) -> String {
         .filter(|d| d.defect_class.severity == DefectSeverity::P1Performance)
         .count();
 
+    use crate::cli::colors as c;
     let mut output = format!("Defects: {} total\n", result.defects.len());
     if p0_count > 0 {
-        output.push_str(&format!("  \x1b[91mP0 Critical: {}\x1b[0m\n", p0_count));
+        output.push_str(&format!(
+            "  {}\n",
+            c::colored(c::BOLD_RED, &format!("P0 Critical: {p0_count}"))
+        ));
     }
     if p1_count > 0 {
-        output.push_str(&format!("  \x1b[33mP1 Performance: {}\x1b[0m\n", p1_count));
+        output.push_str(&format!(
+            "  {}\n",
+            c::colored(c::YELLOW, &format!("P1 Performance: {p1_count}"))
+        ));
     }
     output
 }

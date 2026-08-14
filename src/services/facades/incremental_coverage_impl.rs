@@ -19,6 +19,23 @@ impl IncrementalCoverageFacade {
         &self,
         request: IncrementalCoverageRequest,
     ) -> Result<IncrementalCoverageResult> {
+        // `--force-refresh` reached this struct and stopped there: the only
+        // implementation of it lived on a duplicate handler that the CLI route
+        // does not call, and that implementation was itself
+        // `eprintln!("🧹 Clearing coverage cache...")` above
+        // `// In real implementation, would clear the cache`. It now clears the
+        // cache directory for real, through the same helper
+        // `enforce extreme --clear-cache` uses.
+        if request.force_refresh {
+            let cache_path = request.cache_dir.clone().unwrap_or_else(|| {
+                std::env::temp_dir().join("pmat_coverage_cache")
+            });
+            crate::cli::cache_clearing::clear_cache_directory_reporting(
+                &cache_path,
+                "--force-refresh",
+            )?;
+        }
+
         // Get changed files between branches
         let changed_files = self
             .get_changed_files(
@@ -69,9 +86,21 @@ impl IncrementalCoverageFacade {
         &self,
         project_path: &Path,
         changed_files: &[(PathBuf, String)],
-        _request: &IncrementalCoverageRequest,
+        request: &IncrementalCoverageRequest,
     ) -> Result<Vec<ChangedFileCoverage>> {
         let measured = Self::load_line_coverage(project_path);
+
+        // `--changed-files-only` ("Include only changed files") was carried into
+        // this request and then ignored — the parameter was literally
+        // `_request` — so the flag was accepted on every run and observable on
+        // none. Restricting the run to the changed set is what the flag asks
+        // for; WITHOUT it the run also reports the whole project's measured
+        // coverage, which is the context the changed-file numbers are read
+        // against.
+        if !request.changed_files_only {
+            Self::report_project_wide_coverage(measured.as_ref());
+        }
+
         let mut coverage_data = Vec::new();
 
         for (path, status) in changed_files {
@@ -83,6 +112,54 @@ impl IncrementalCoverageFacade {
         }
 
         Ok(coverage_data)
+    }
+
+    /// Project-wide measured coverage, printed only when the run is NOT limited
+    /// to changed files (`--changed-files-only`).
+    ///
+    /// "No coverage artifact" is stated, never rendered as 0%: an absent
+    /// measurement and a measured zero are different facts.
+    pub(crate) fn report_project_wide_coverage(
+        measured: Option<
+            &std::collections::HashMap<String, std::collections::HashMap<usize, u64>>,
+        >,
+    ) {
+        eprintln!("{}", Self::project_wide_coverage_line(measured));
+    }
+
+    /// The line [`Self::report_project_wide_coverage`] prints, as a value so it
+    /// can be asserted on.
+    pub(crate) fn project_wide_coverage_line(
+        measured: Option<
+            &std::collections::HashMap<String, std::collections::HashMap<usize, u64>>,
+        >,
+    ) -> String {
+        let Some(files) = measured else {
+            return "🌍 Project-wide coverage: not measured — no coverage artifact found \
+                    (run the project's coverage tool first); --changed-files-only skips this"
+                .to_string();
+        };
+
+        let (mut covered, mut total) = (0usize, 0usize);
+        for hits in files.values() {
+            total += hits.len();
+            covered += hits.values().filter(|count| **count > 0).count();
+        }
+
+        if total == 0 {
+            return format!(
+                "🌍 Project-wide coverage: not measured — the coverage artifact lists {} file(s) \
+                 but no lines",
+                files.len()
+            );
+        }
+
+        #[allow(clippy::cast_precision_loss)]
+        let pct = (covered as f64 / total as f64) * 100.0;
+        format!(
+            "🌍 Project-wide coverage: {pct:.1}% ({covered}/{total} lines across {} measured files)",
+            files.len()
+        )
     }
 
     /// Line-hit counts for the project, or `None` when no coverage run has
@@ -218,6 +295,54 @@ impl IncrementalCoverageFacade {
         };
 
         self.analyze_project(request).await
+    }
+}
+
+#[cfg(test)]
+mod changed_files_only_tests {
+    //! `--changed-files-only` was carried into `IncrementalCoverageRequest` and
+    //! then dropped on the floor (`_request: &IncrementalCoverageRequest`), so
+    //! `analyze incremental-coverage -b HEAD~1` and the same command with the
+    //! flag produced byte-identical output over a real 8-file diff.
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_project_wide_line_states_absence_instead_of_zero() {
+        let line = IncrementalCoverageFacade::project_wide_coverage_line(None);
+        assert!(
+            line.contains("not measured"),
+            "no artifact must be reported as absent, not as 0%: {line}"
+        );
+        assert!(
+            !line.contains("0.0%"),
+            "an absent measurement must never render as a measured zero: {line}"
+        );
+    }
+
+    #[test]
+    fn test_project_wide_line_reports_measured_lines() {
+        let mut files: HashMap<String, HashMap<usize, u64>> = HashMap::new();
+        files.insert("src/a.rs".to_string(), HashMap::from([(1, 1), (2, 0)]));
+        files.insert("src/b.rs".to_string(), HashMap::from([(1, 3), (2, 4)]));
+
+        let line = IncrementalCoverageFacade::project_wide_coverage_line(Some(&files));
+
+        assert!(line.contains("75.0%"), "3 of 4 lines are covered: {line}");
+        assert!(line.contains("2 measured files"), "{line}");
+    }
+
+    #[test]
+    fn test_project_wide_line_distinguishes_empty_artifact() {
+        let files: HashMap<String, HashMap<usize, u64>> =
+            HashMap::from([("src/a.rs".to_string(), HashMap::new())]);
+
+        let line = IncrementalCoverageFacade::project_wide_coverage_line(Some(&files));
+
+        assert!(
+            line.contains("not measured") && line.contains("no lines"),
+            "an artifact with no lines is not 0% coverage: {line}"
+        );
     }
 }
 

@@ -151,9 +151,50 @@ impl LightweightProvabilityAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
-            abstract_interpreter: AbstractInterpreter { analysis_depth: 10 },
+            abstract_interpreter: AbstractInterpreter {
+                analysis_depth: ANALYSIS_DEPTH,
+            },
             proof_cache: Arc::new(DashMap::new()),
             current_version: 1,
+            project_root: None,
+        }
+    }
+
+    /// Resolve relative `FunctionId::file_path`s against `project_root`.
+    ///
+    /// Callers that hand the analyzer *display* paths (relative to the analyzed
+    /// project, as `discover_project_functions` produces) must call this;
+    /// otherwise the source is read relative to the process working directory
+    /// and every function outside it scores the 20% no-evidence baseline.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pmat::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
+    ///
+    /// let analyzer = LightweightProvabilityAnalyzer::new().with_project_root("/tmp/proj");
+    /// assert_eq!(
+    ///     analyzer.resolve_source_path("src/lib.rs"),
+    ///     std::path::Path::new("/tmp/proj/src/lib.rs")
+    /// );
+    /// ```
+    #[must_use]
+    pub fn with_project_root(mut self, project_root: impl Into<std::path::PathBuf>) -> Self {
+        self.project_root = Some(project_root.into());
+        self
+    }
+
+    /// The single rule for turning a `FunctionId::file_path` into a path on disk.
+    ///
+    /// Absolute paths are used as given; a relative path is joined onto the
+    /// project root when one is known, and only otherwise left to resolve
+    /// against the process working directory.
+    #[must_use]
+    pub fn resolve_source_path(&self, file_path: &str) -> std::path::PathBuf {
+        let path = std::path::Path::new(file_path);
+        match &self.project_root {
+            Some(root) if path.is_relative() => root.join(path),
+            _ => path.to_path_buf(),
         }
     }
 
@@ -184,7 +225,7 @@ impl LightweightProvabilityAnalyzer {
         let start = std::time::Instant::now();
 
         // Read actual source code for evidence-based analysis
-        let source_snippet = Self::read_function_source(func_id);
+        let source_snippet = self.read_function_source(func_id);
         let state = Self::analyze_source_patterns(&source_snippet, func_id);
         let mut verified_properties = Vec::new();
 
@@ -253,8 +294,13 @@ impl LightweightProvabilityAnalyzer {
 
     /// Read function source code for analysis.
     /// Returns up to 80 lines from the function start.
-    fn read_function_source(func_id: &FunctionId) -> String {
-        let Ok(content) = std::fs::read_to_string(&func_id.file_path) else {
+    ///
+    /// The path goes through [`Self::resolve_source_path`] — reading
+    /// `func_id.file_path` directly made the score depend on the caller's
+    /// working directory.
+    fn read_function_source(&self, func_id: &FunctionId) -> String {
+        let Ok(content) = std::fs::read_to_string(self.resolve_source_path(&func_id.file_path))
+        else {
             return String::new();
         };
         let lines: Vec<&str> = content.lines().collect();

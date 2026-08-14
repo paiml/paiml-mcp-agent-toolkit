@@ -90,26 +90,37 @@ impl VariableDiff {
         }
     }
 
-    /// Render diff with ANSI colors
+    /// Render diff with ANSI colors.
+    ///
+    /// "With ANSI colors" is now conditional on [`crate::cli::colors`] saying
+    /// colour is on. The escapes here were raw literals, so a redirected debug
+    /// log and `--color never` both received them regardless (the GH #684
+    /// class); an `Sgr` renders nothing when colour is off.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_colored(&self) -> String {
+        use crate::cli::colors as c;
         let mut output = String::new();
 
         output.push_str("=== Variable Diff ===\n\n");
 
         // Changed variables (yellow)
         if !self.changed.is_empty() {
-            output.push_str("\x1b[33mChanged:\x1b[0m\n");
+            output.push_str(&format!("{}\n", c::colored(c::YELLOW, "Changed:")));
             for (name, change) in &self.changed {
                 if change.type_changed {
                     output.push_str(&format!(
-                        "  \x1b[33m{}\x1b[0m: {} -> {} \x1b[35m(type changed)\x1b[0m\n",
-                        name, change.old_value, change.new_value
+                        "  {}: {} -> {} {}\n",
+                        c::colored(c::YELLOW, name),
+                        change.old_value,
+                        change.new_value,
+                        c::colored(c::MAGENTA, "(type changed)")
                     ));
                 } else {
                     output.push_str(&format!(
-                        "  \x1b[33m{}\x1b[0m: {} -> {}\n",
-                        name, change.old_value, change.new_value
+                        "  {}: {} -> {}\n",
+                        c::colored(c::YELLOW, name),
+                        change.old_value,
+                        change.new_value
                     ));
                 }
             }
@@ -118,25 +129,33 @@ impl VariableDiff {
 
         // Added variables (green)
         if !self.added.is_empty() {
-            output.push_str("\x1b[32mAdded:\x1b[0m\n");
+            output.push_str(&format!("{}\n", c::colored(c::GREEN, "Added:")));
             for (name, value) in &self.added {
-                output.push_str(&format!("  \x1b[32m+{}\x1b[0m: {}\n", name, value));
+                output.push_str(&format!(
+                    "  {}: {}\n",
+                    c::colored(c::GREEN, &format!("+{name}")),
+                    value
+                ));
             }
             output.push('\n');
         }
 
         // Removed variables (red)
         if !self.removed.is_empty() {
-            output.push_str("\x1b[31mRemoved:\x1b[0m\n");
+            output.push_str(&format!("{}\n", c::colored(c::RED, "Removed:")));
             for (name, value) in &self.removed {
-                output.push_str(&format!("  \x1b[31m-{}\x1b[0m: {}\n", name, value));
+                output.push_str(&format!(
+                    "  {}: {}\n",
+                    c::colored(c::RED, &format!("-{name}")),
+                    value
+                ));
             }
             output.push('\n');
         }
 
-        // Unchanged variables (gray)
+        // Unchanged variables (dim)
         if !self.unchanged.is_empty() {
-            output.push_str("\x1b[90mUnchanged:\x1b[0m ");
+            output.push_str(&format!("{} ", c::dim("Unchanged:")));
             output.push_str(&self.unchanged.join(", "));
             output.push('\n');
         }
@@ -341,6 +360,54 @@ mod tests {
 
         assert_eq!(diff.changed.len(), 1);
         assert!(diff.changed.contains_key("x"));
+    }
+
+    /// `render_colored` must move in BOTH directions with `--color`.
+    ///
+    /// The integration test `tests/modules/variable_diff_tests.rs` can only
+    /// assert the plain half — `ForcedColor` is a crate-internal test seam — and
+    /// a plain-only assertion is satisfied by a renderer with no colour at all.
+    /// This is the half that would catch that.
+    #[test]
+    fn render_colored_honours_color() {
+        use crate::cli::colors::ForcedColor;
+
+        let mut before = create_test_snapshot(0);
+        before
+            .variables
+            .insert("x".to_string(), serde_json::json!(10));
+        before
+            .variables
+            .insert("gone".to_string(), serde_json::json!(1));
+        let mut after = create_test_snapshot(1);
+        after
+            .variables
+            .insert("x".to_string(), serde_json::json!(15));
+        after
+            .variables
+            .insert("new".to_string(), serde_json::json!(2));
+
+        let diff = VariableDiff::compute(&before, &after);
+
+        {
+            let _on = ForcedColor::on();
+            let coloured = diff.render_colored();
+            assert!(
+                coloured.contains('\u{1b}'),
+                "--color always must colour the diff: {coloured:?}"
+            );
+        }
+
+        let _off = ForcedColor::off();
+        let plain = diff.render_colored();
+        assert!(
+            !plain.contains('\u{1b}'),
+            "--color never must leave the diff plain: {plain:?}"
+        );
+        // Not vacuous: the diff body is still rendered.
+        assert!(plain.contains("Changed:"), "{plain:?}");
+        assert!(plain.contains("Added:"), "{plain:?}");
+        assert!(plain.contains("Removed:"), "{plain:?}");
     }
 
     #[test]

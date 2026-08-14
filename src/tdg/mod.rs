@@ -6,6 +6,8 @@ pub mod analyzer_simple;
 pub mod baseline;
 pub mod baseline_analyzer;
 pub mod config;
+/// The single Known-Defects gate both `analyze_source` implementations apply.
+pub(crate) mod critical_defect_gate;
 #[allow(clippy::all)]
 pub mod cuda_simd;
 pub mod cuda_simd_defects; // Defect taxonomy extracted for file health (CB-040)
@@ -14,6 +16,9 @@ pub mod cuda_simd_scores; // Score types extracted for file health (CB-040)
 pub mod diagnostics;
 pub mod explain;
 pub mod explain_formatters;
+/// The single project walk both analyzers use, which also reports what it
+/// refused instead of dropping it.
+pub(crate) mod file_discovery;
 #[cfg(feature = "rust-ast")]
 pub mod function_analyzer;
 pub mod grade;
@@ -23,6 +28,10 @@ pub mod project_score;
 pub mod quality_gate;
 pub mod recommendation_engine;
 pub mod score;
+
+#[cfg(test)]
+#[path = "critical_defect_gating_tests.rs"]
+mod critical_defect_gating_tests;
 pub mod tdg_graph;
 // Temporarily disable export to fix circular dependency
 // pub mod export;
@@ -58,13 +67,20 @@ mod core_property_tests;
 #[cfg(test)]
 mod top_files_determinism_tests;
 
+#[cfg(test)]
+mod ungraded_disclosure_tests;
+
+/// R14: one skip-or-grade rule, asserted on every surface a verdict travels.
+#[cfg(test)]
+mod gradability_unification_tests;
+
 pub use adaptive::{
     AdaptiveConfig, AdaptiveThresholdFactory, AdaptiveThresholdManager, CurrentThresholds,
     PerformanceSample, PerformanceStatistics, PerformanceTrend, ThresholdAdjustment,
 };
 // Use AST analyzer by default (proper implementation)
 pub use analyzer_ast::TdgAnalyzerAst as TdgAnalyzer;
-pub use analyzer_simple::{ensure_parseable, TdgAnalyzer as TdgAnalyzerSimple};
+pub use analyzer_simple::{ensure_parseable, grades_source, TdgAnalyzer as TdgAnalyzerSimple};
 pub use baseline::{
     BaselineComparison, BaselineEntry, BaselineSummary, FileComparison, TdgBaseline,
 };
@@ -90,10 +106,10 @@ pub use language_simple::{Language, LanguageRules};
 pub use olap_analytics::TruenoOlapAnalytics;
 pub use olap_analytics::{AggOp, OlapAnalytics};
 pub use penalty_tracker::PenaltyTracker;
-pub use project_score::{Comparison, ProjectScore};
+pub use project_score::{Comparison, ProjectScore, UngradedFile};
 pub use quality_gate::{
-    FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate, QualityGate, RegressionGate,
-    Severity, Violation, ViolationType,
+    CriticalDefectGate, FGradeGate, GateConfig, GateResult, MinimumGradeGate, NewFileGate,
+    QualityGate, RegressionGate, Severity, Violation, ViolationType,
 };
 pub use recommendation_engine::generate_recommendations;
 pub use resource_control::{

@@ -210,17 +210,40 @@ async fn analyze_java_directory(
     let mut max_complexity = 0;
     let mut total_loc = 0;
 
+    // Files that could not be read or parsed are tracked, not dropped. Before,
+    // an unreadable file vanished (the `Err` arm only logged) and an unparseable
+    // one contributed a `status: "error"` entry with no counts, so a directory
+    // in which every file failed still reported `status: "completed"` with
+    // `class_count: 0` — absence rendered as success.
+    let mut failures: Vec<Value> = Vec::new();
+
     for file_path in &java_files {
         match analyze_java_file(file_path, include_metrics, false).await {
             Ok(result) => {
-                accumulate_summary_counts(&result, &mut total_classes, &mut total_interfaces, &mut total_methods);
-                if include_metrics {
-                    accumulate_metrics(&result, &mut total_complexity, &mut max_complexity, &mut total_loc);
+                if result["status"] == "error" {
+                    warn!(
+                        "Failed to parse Java file {}: {}",
+                        file_path.display(),
+                        result["error"]
+                    );
+                    failures.push(json!({
+                        "path": file_path.display().to_string(),
+                        "error": result["error"].clone(),
+                    }));
+                } else {
+                    accumulate_summary_counts(&result, &mut total_classes, &mut total_interfaces, &mut total_methods);
+                    if include_metrics {
+                        accumulate_metrics(&result, &mut total_complexity, &mut max_complexity, &mut total_loc);
+                    }
                 }
                 file_results.push(result);
             }
             Err(e) => {
                 warn!("Error analyzing Java file {}: {}", file_path.display(), e);
+                failures.push(json!({
+                    "path": file_path.display().to_string(),
+                    "error": e.to_string(),
+                }));
             }
         }
     }
@@ -232,18 +255,32 @@ async fn analyze_java_directory(
         0.0
     };
 
-    // Build aggregate response
+    // Build aggregate response. `analyzed_file_count` is what the counts were
+    // actually derived from; `file_count` is what was found on disk. When they
+    // differ the caller must be able to tell, so the status changes too.
+    let analyzed_file_count = java_files.len() - failures.len();
+    let status = if failures.is_empty() {
+        "completed"
+    } else {
+        "completed_with_errors"
+    };
     let mut result = json!({
-        "status": "completed",
+        "status": status,
         "path": path.display().to_string(),
         "language": "java",
         "summary": {
             "file_count": java_files.len(),
+            "analyzed_file_count": analyzed_file_count,
+            "failed_file_count": failures.len(),
             "class_count": total_classes,
             "interface_count": total_interfaces,
             "method_count": total_methods,
         }
     });
+
+    if !failures.is_empty() {
+        result["failures"] = Value::Array(failures);
+    }
 
     // Add metrics if requested
     if include_metrics {

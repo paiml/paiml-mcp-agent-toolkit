@@ -77,14 +77,14 @@ pub async fn handle_markdown_analysis(
 ) -> Result<()> {
     use anyhow::Context;
 
-    eprintln!("📝 Detected markdown file - analyzing for quality issues...");
+    crate::status_eprintln!("📝 Detected markdown file - analyzing for quality issues...");
 
     let content = tokio::fs::read_to_string(file_path)
         .await
         .context("Failed to read markdown file")?;
 
     let issues = analyze_markdown_issues(file_path, &content)?;
-    eprintln!("📊 Found {} quality issues in markdown", issues.len());
+    crate::status_eprintln!("📊 Found {} quality issues in markdown", issues.len());
 
     let refactor_request = create_markdown_refactor_request(file_path, &issues, &content);
     // For now, just print the results since the function signature changed

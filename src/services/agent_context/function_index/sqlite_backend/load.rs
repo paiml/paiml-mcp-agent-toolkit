@@ -305,6 +305,12 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         .get("version")
         .cloned()
         .unwrap_or_else(|| "2.0".to_string());
+    // NOT self-healed: an absent scale marker means the stored tdg_score values
+    // were written by a build that had no marker to write, i.e. under the old
+    // 0-10 lower-is-better scale. Defaulting it to the current scale here would
+    // be exactly the silent reinterpretation R30 exists to prevent, so the
+    // empty string ("unknown") is carried through to the caller's check.
+    let tdg_scale = rows.get("tdg_scale").cloned().unwrap_or_default();
     let built_at = rows
         .get("built_at")
         .cloned()
@@ -344,6 +350,7 @@ pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> 
         file_count,
         languages: Vec::new(), // Populated from functions
         avg_tdg_score: 0.0,
+        tdg_scale,
         file_checksums,
         last_incremental_changes: 0,
     })

@@ -23,7 +23,7 @@ pub(super) fn save_ratchet_baseline(
 ) -> Result<()> {
     let baseline = CrossCrateBaseline::from_report(report);
     baseline.save(workspace_path)?;
-    eprintln!(
+    crate::status_eprintln!(
         "Baseline saved to .pmat/cross-crate-baseline.json ({} findings)",
         baseline.total_findings
     );

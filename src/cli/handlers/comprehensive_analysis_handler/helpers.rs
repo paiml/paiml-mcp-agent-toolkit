@@ -100,18 +100,21 @@ pub(super) fn report_completion_and_performance(
     use crate::cli::colors as c_;
     if let Some(start_time) = start {
         let elapsed = start_time.elapsed();
-        eprintln!(
+        crate::status_eprintln!(
             "{} Comprehensive analysis completed in {}{elapsed:?}{}",
             c_::pass(""),
             c_::BOLD_WHITE,
             c_::RESET
         );
 
+        // `print_performance_breakdown` is deliberately NOT routed through the
+        // quiet rule: it only runs when the caller passed `--perf`, so it is
+        // the result they asked for, not chatter. `--quiet` suppresses noise.
         if config.perf {
             print_performance_breakdown(result, elapsed.as_millis() as u64);
         }
     } else {
-        eprintln!("{}", c_::pass("Comprehensive analysis completed"));
+        crate::status_eprintln!("{}", c_::pass("Comprehensive analysis completed"));
     }
 }
 
@@ -151,7 +154,7 @@ pub(super) async fn enhance_with_additional_analyses(
 
     // Add defect prediction if requested
     if config.include_defects {
-        eprintln!("🐛 Predicting defects...");
+        crate::status_eprintln!("🐛 Predicting defects...");
 
         // Use our defect prediction facade
         use crate::services::facades::defect_prediction_facade::{

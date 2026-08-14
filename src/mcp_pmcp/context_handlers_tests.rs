@@ -492,4 +492,58 @@ mod coverage_tests {
         // File count depends on current working directory, just verify summary exists
         assert!(value["summary"].is_object(), "Summary should be an object");
     }
+
+    // === JSON-RPC error CLASS for caller mistakes (round-4 R16) ===
+
+    /// A `level` outside the enum this tool's own schema advertises is a bad
+    /// ARGUMENT. It was dispatched first and the refusal wrapped in
+    /// `Error::internal`, so `level:"deep"` came back as -32603 — a client
+    /// cannot tell a rejected enum from a crashed server, and retries.
+    #[tokio::test]
+    async fn an_unknown_level_is_invalid_params_not_an_internal_error() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(dir.path().join("a.rs"), "pub fn a() {}\n").expect("write fixture");
+
+        let tool = ContextSummaryTool::new();
+        let err = tool
+            .handle(
+                json!({"paths": [dir.path().display().to_string()], "level": "deep"}),
+                test_extra(),
+            )
+            .await
+            .expect_err("`deep` is not one of brief/normal/detailed");
+        assert!(
+            matches!(err, Error::Validation(_)),
+            "a schema-enum violation is -32602; got {err:?}"
+        );
+        assert!(
+            err.to_string().contains("brief"),
+            "the refusal must name the accepted values: {err}"
+        );
+    }
+
+    /// A mistyped repository path is a bad ARGUMENT, and the answer must not
+    /// leak the errno from spawning `git` in a directory that is not there.
+    #[tokio::test]
+    async fn a_missing_git_path_is_invalid_params_and_leaks_no_errno() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let missing = dir.path().join("no-such-repo");
+
+        let tool = GitStatusTool::new();
+        let err = tool
+            .handle(
+                json!({"path": missing.display().to_string()}),
+                test_extra(),
+            )
+            .await
+            .expect_err("a nonexistent repository path must be refused");
+        assert!(
+            matches!(err, Error::Validation(_)),
+            "a mistyped path is -32602; got {err:?}"
+        );
+        assert!(
+            !err.to_string().contains("os error"),
+            "the caller gets a path, not a spawn errno: {err}"
+        );
+    }
 }

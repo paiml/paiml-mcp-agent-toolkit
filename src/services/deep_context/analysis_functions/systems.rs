@@ -211,7 +211,26 @@ async fn analyze_kotlin_file(
     Ok(Vec::new())
 }
 
-/// Simple Java file analysis
+/// Error text returned when the binary was built without a Java AST parser.
+///
+/// `java-ast` is NOT in `default`, so a stock `cargo install pmat` has no Java
+/// parser linked in. Returning `Ok(vec![])` in that case made "this build cannot
+/// read Java at all" indistinguishable from "this Java file declares nothing",
+/// which is how `pmat context` came to report `items: []` for a perfectly valid
+/// `.java` file. Refuse honestly instead — same shape as the `--features
+/// deep-wasm` / `--features demo` refusals elsewhere in the CLI.
+pub(crate) const JAVA_AST_UNAVAILABLE: &str =
+    "Java analysis unavailable: this build has no Java AST parser (feature `java-ast` is off, and it is not in the default feature set). Rebuild with --features java-ast. Reporting zero items would be indistinguishable from a Java file that genuinely declares none.";
+
+/// Simple Java file analysis.
+///
+/// Every failure mode is representable in the return value:
+/// * the file cannot be read -> `Err`, naming the path and the io error;
+/// * the source does not parse -> `Err`, naming the path and the parser message;
+/// * this build has no Java parser -> `Err`, [`JAVA_AST_UNAVAILABLE`].
+///
+/// `Ok(vec![])` therefore means one thing only: the file parsed and declared
+/// nothing.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_java_file(
     _file_path: &Path,
@@ -221,19 +240,24 @@ pub async fn analyze_java_file(
         use crate::services::languages::java::JavaAstVisitor;
         use tokio::fs;
 
-        match fs::read_to_string(_file_path).await {
-            Ok(source) => {
-                let visitor = JavaAstVisitor::new(_file_path);
-                match visitor.analyze_java_source(&source) {
-                    Ok(items) => Ok(items),
-                    Err(_) => Ok(Vec::new()),
-                }
-            }
-            Err(_) => Ok(Vec::new()),
-        }
+        let source = fs::read_to_string(_file_path).await.map_err(|e| {
+            anyhow::anyhow!("Java analysis: cannot read {}: {}", _file_path.display(), e)
+        })?;
+        let visitor = JavaAstVisitor::new(_file_path);
+        visitor.analyze_java_source(&source).map_err(|e| {
+            anyhow::anyhow!(
+                "Java analysis: cannot parse {}: {}",
+                _file_path.display(),
+                e
+            )
+        })
     }
     #[cfg(not(feature = "java-ast"))]
-    Ok(Vec::new())
+    Err(anyhow::anyhow!(
+        "{} (path: {})",
+        JAVA_AST_UNAVAILABLE,
+        _file_path.display()
+    ))
 }
 
 /// Simple C# file analysis
@@ -296,4 +320,104 @@ async fn analyze_wasm_file(
     }
     #[cfg(not(feature = "wasm-ast"))]
     Ok(Vec::new())
+}
+
+/// Regression tests for #966's adjacent defect: Java analysis rendered every
+/// failure as an empty success.
+///
+/// All of these fail on the pre-fix code, which returned `Ok(Vec::new())` from
+/// the read-error arm, the parse-error arm and the `cfg(not(java-ast))` arm.
+#[cfg(test)]
+mod java_failure_is_representable_tests {
+    use super::analyze_java_file;
+
+    /// A build without `java-ast` — which is what `cargo install pmat` produces,
+    /// since `java-ast` is not in `default` — must say it cannot analyse Java
+    /// rather than report a Java file as having no items.
+    #[cfg(not(feature = "java-ast"))]
+    #[tokio::test]
+    async fn without_java_ast_feature_refuses_instead_of_reporting_zero_items() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("Good.java");
+        std::fs::write(
+            &file,
+            "package com.example;\npublic class Good {\n  public int add(int a, int b) { return a + b; }\n}\n",
+        )
+        .unwrap();
+
+        let err = analyze_java_file(&file)
+            .await
+            .expect_err("a build with no Java parser must refuse, not return an empty item list");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("--features java-ast"),
+            "refusal must name the feature to rebuild with, got: {msg}"
+        );
+        assert!(
+            msg.contains("Java analysis unavailable"),
+            "refusal must say Java analysis is unavailable, got: {msg}"
+        );
+    }
+
+    /// With the parser linked in, a file that does not parse must be an error,
+    /// not an empty item list that looks like an empty-but-valid class.
+    #[cfg(feature = "java-ast")]
+    #[tokio::test]
+    async fn unparseable_java_is_an_error_not_an_empty_item_list() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("Broken.java");
+        // Unbalanced braces: `is_valid_java_syntax` rejects this.
+        std::fs::write(
+            &file,
+            "package com.example;\npublic class Broken {\n  public int add(int a) { return a;\n",
+        )
+        .unwrap();
+
+        let err = analyze_java_file(&file)
+            .await
+            .expect_err("an unparseable Java file must not analyse as zero items");
+        assert!(
+            err.to_string().contains("cannot parse"),
+            "error must say the file could not be parsed, got: {err}"
+        );
+    }
+
+    /// The `Ok(vec![])` that remains must mean exactly one thing, so a file that
+    /// really does parse still has to produce items.
+    #[cfg(feature = "java-ast")]
+    #[tokio::test]
+    async fn parseable_java_still_yields_items() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("Good.java");
+        std::fs::write(
+            &file,
+            "package com.example;\npublic class Good {\n  public int add(int a, int b) { return a + b; }\n}\n",
+        )
+        .unwrap();
+
+        let items = analyze_java_file(&file)
+            .await
+            .expect("valid Java must parse");
+        assert!(
+            !items.is_empty(),
+            "a class with a method must yield AST items"
+        );
+    }
+
+    /// A path that does not exist is a read failure, and read failures were the
+    /// other arm that silently produced an empty success.
+    #[cfg(feature = "java-ast")]
+    #[tokio::test]
+    async fn unreadable_java_is_an_error_not_an_empty_item_list() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("Absent.java");
+
+        let err = analyze_java_file(&missing)
+            .await
+            .expect_err("an unreadable Java file must not analyse as zero items");
+        assert!(
+            err.to_string().contains("cannot read"),
+            "error must say the file could not be read, got: {err}"
+        );
+    }
 }

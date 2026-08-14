@@ -212,11 +212,53 @@ fn format_tdg_score_table(
     if let Some(note) = cap_note(project) {
         line(box_row(&format!("⚠ Grade {note}")));
     }
+    // A file that was walked but REFUSED is disclosed beside the score it is
+    // missing from. `pmat tdg <dir>` on a crate whose only Rust file fails to
+    // parse printed `Overall Score: 100.0/100 (A+)` over the one Python file
+    // that survived — the refusal was an `eprintln!` on stderr and nothing in
+    // the report said the headline covered a subset. Twin of the same row in
+    // `tdg::formatters::format_project`.
+    //
+    // It must NAME them, not just count them (#983): this is the renderer whose
+    // output the bug report pasted — `⚠ Not Graded: 159 file(s)` over a 78-crate
+    // tree, with no way to learn which 159. The rows come from
+    // `tdg::formatters::ungraded`, the single implementation shared with
+    // `analyze tdg --format table` and `--format markdown`.
+    if let Some(p) = project.filter(|p| !p.ungraded_files.is_empty()) {
+        use crate::tdg::formatters::ungraded::{box_entry_budget, ungraded_rows};
+        for (i, row) in ungraded_rows(&p.ungraded_files, Some(box_entry_budget()))
+            .iter()
+            .enumerate()
+        {
+            line(box_row(&if i == 0 {
+                format!("⚠ {row}")
+            } else {
+                row.clone()
+            }));
+        }
+    }
     line(box_row(&format!(
         "Language: {:?} (confidence: {}%)",
         score.language,
         c::number(&format!("{:.0}", score.confidence * 100.0))
     )));
+
+    // A waiver that changes the verdict must be disclosed on every surface that
+    // reports the verdict. The #279 exemption was visible ONLY in
+    // `tdg check-quality --format json`; this box — the default output of
+    // `pmat tdg <file>` — applied it in silence, so the reader of
+    // `Overall Score: 25.2/100 (F)` had no way to learn the auto-fail this file
+    // should have triggered had been waived. `tdg/formatters/human.rs` is the
+    // twin of this renderer and carries the same disclosure.
+    if score.has_critical_defects {
+        line(box_row(&format!(
+            "Critical Defects: {}",
+            c::number(&score.critical_defects_count.to_string())
+        )));
+        if score.critical_defects_suppressed.is_some() {
+            line(box_row("  auto-fail waived: untracked by git (#279)"));
+        }
+    }
 
     // Sprint 65: Git context (if available)
     if let Some(git) = git_context {
@@ -227,7 +269,7 @@ fn format_tdg_score_table(
             c::number(&git.commit_sha_short)
         )));
         line(box_row(&format!("├─ Branch:  {}", c::path(&git.branch))));
-        line(box_row(&format!("└─ Author:  {}", &git.author_name)));
+        line(box_row(&format!("└─ Author:  {}", git.author_name)));
     }
 
     if include_components && nothing_was_measured(project) {
@@ -471,6 +513,98 @@ mod cap_disclosure_tests {
         assert!(
             rendered.contains("1 F-grade file"),
             "the box must say how many files caused it, got:\n{rendered}"
+        );
+    }
+
+    /// R22: a walked-but-refused file left no trace in the report. `pmat tdg
+    /// <dir>` on a crate whose only Rust file failed to parse printed
+    /// `Overall Score: 100.0/100 (A+)` over the one file that survived.
+    #[test]
+    fn the_box_discloses_files_that_could_not_be_graded() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "./src/main.rs".to_string(),
+            reason: "cannot parse string into token stream".to_string(),
+        });
+        let score = project.average();
+
+        let rendered = format_tdg_score_table(&score, None, false, Some(&project)).expect("render");
+        assert!(
+            rendered.contains("Not Graded: 1 file(s)"),
+            "a 100.0/A+ headline over a subset must say so, got:\n{rendered}"
+        );
+    }
+
+    /// REGRESSION (#983): this renderer — the one the bug report pasted —
+    /// printed the COUNT and nothing else, so a reader of
+    /// `⚠ Not Graded: 159 file(s)` could not tell which 159 or whether they
+    /// mattered. It must name them, and the name must survive the 47-column
+    /// frame: these paths share every leading directory, so a row clipped from
+    /// the right identifies nothing.
+    #[test]
+    fn the_box_names_the_files_it_could_not_grade() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for name in ["arxiv_entries.rs", "coursera_entries.rs"] {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/home/noah/src/aprender/crates/aprender-core/src/oracle/{name}"),
+                reason: "expected `;`".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let rendered = format_tdg_score_table(&score, None, false, Some(&project)).expect("render");
+        for name in ["arxiv_entries.rs", "coursera_entries.rs"] {
+            assert!(
+                rendered.contains(name),
+                "the box must name {name}, got:\n{rendered}"
+            );
+        }
+    }
+
+    /// The list is capped, and the cap says how many it hid and where the full
+    /// list lives — a truncated list that does not say so is the same defect
+    /// one level down.
+    #[test]
+    fn the_box_caps_the_list_and_points_at_the_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for i in 0..30 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("src/frag_{i}.rs"),
+                reason: "expected `;`".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let rendered = format_tdg_score_table(&score, None, false, Some(&project)).expect("render");
+        assert!(rendered.contains("Not Graded: 30 file(s)"), "{rendered}");
+        assert!(rendered.contains("and 20 more"), "{rendered}");
+        assert!(rendered.contains("json"), "{rendered}");
+    }
+
+    /// R23: the #279 waiver was disclosed only by `check-quality --format
+    /// json`. `pmat tdg <file>` — this box — printed `Overall Score: 25.2/100
+    /// (F)` and nothing else, so a reader could not tell that the auto-fail had
+    /// been waived. This renderer is a twin of `tdg::formatters::format_human`;
+    /// both carry the disclosure now.
+    #[test]
+    fn the_file_box_discloses_a_waived_critical_defect() {
+        let mut score = crate::tdg::TdgScore {
+            file_path: Some(std::path::PathBuf::from("src/untracked3.rs")),
+            has_critical_defects: true,
+            critical_defects_count: 3,
+            critical_defects_suppressed: Some("untracked (#279)".to_string()),
+            ..crate::tdg::TdgScore::default()
+        };
+        score.calculate_total();
+
+        let rendered = format_tdg_score_table(&score, None, false, None).expect("render");
+        assert!(
+            rendered.contains("Critical Defects: 3"),
+            "the box must report the defects it found, got:\n{rendered}"
+        );
+        assert!(
+            rendered.contains("waived"),
+            "the box must disclose the waiver that changed the verdict, got:\n{rendered}"
         );
     }
 

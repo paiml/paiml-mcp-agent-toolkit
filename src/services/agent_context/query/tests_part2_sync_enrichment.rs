@@ -13,7 +13,7 @@ fn test_enrich_with_churn_empty_results() {
 
 #[test]
 fn test_enrich_with_churn_empty_map() {
-    let entry = create_test_entry("func_a", 3, 1.0);
+    let entry = create_test_entry("func_a", 3, 92.0);
     let mut results = vec![QueryResult::from_entry(&entry, 0.8, false)];
     let churn_map = HashMap::new();
     enrich_with_churn(&mut results, &churn_map);
@@ -23,9 +23,9 @@ fn test_enrich_with_churn_empty_map() {
 
 #[test]
 fn test_enrich_with_churn_multiple_results_same_file() {
-    let mut entry_a = create_test_entry("func_a", 3, 1.0);
+    let mut entry_a = create_test_entry("func_a", 3, 92.0);
     entry_a.file_path = "src/lib.rs".to_string();
-    let mut entry_b = create_test_entry("func_b", 5, 2.0);
+    let mut entry_b = create_test_entry("func_b", 5, 77.0);
     entry_b.file_path = "src/lib.rs".to_string();
     let mut results = vec![
         QueryResult::from_entry(&entry_a, 0.8, false),
@@ -42,9 +42,9 @@ fn test_enrich_with_churn_multiple_results_same_file() {
 
 #[test]
 fn test_enrich_with_churn_mixed_match_and_miss() {
-    let mut entry_a = create_test_entry("func_a", 3, 1.0);
+    let mut entry_a = create_test_entry("func_a", 3, 92.0);
     entry_a.file_path = "src/known.rs".to_string();
-    let mut entry_b = create_test_entry("func_b", 5, 2.0);
+    let mut entry_b = create_test_entry("func_b", 5, 77.0);
     entry_b.file_path = "src/unknown.rs".to_string();
     let mut results = vec![
         QueryResult::from_entry(&entry_a, 0.8, false),

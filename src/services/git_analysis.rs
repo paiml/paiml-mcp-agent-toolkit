@@ -269,7 +269,13 @@ impl GitAnalysisService {
                     path: project_path.join(&path),
                     relative_path: path.to_string_lossy().to_string(),
                     commit_count: stats.commits.len(),
-                    unique_authors: stats.authors.into_iter().collect(),
+                    // `authors` is a `HashSet`; unsorted it reached the JSON
+                    // document in a per-process random order.
+                    unique_authors: {
+                        let mut authors: Vec<String> = stats.authors.into_iter().collect();
+                        authors.sort_unstable();
+                        authors
+                    },
                     additions: stats.total_additions,
                     deletions: stats.total_deletions,
                     churn_score: 0.0,
@@ -285,13 +291,28 @@ impl GitAnalysisService {
             })
             .collect();
 
-        metrics.sort_by(|a, b| {
-            b.churn_score
-                .partial_cmp(&a.churn_score)
-                .expect("internal error")
-        });
+        metrics.sort_by(Self::churn_rank_cmp);
 
         Ok((metrics, commit_hashes.len()))
+    }
+
+    /// The order `analyze churn` ranks files in: churn score descending, then
+    /// path ascending.
+    ///
+    /// DETERMINISM: `file_stats` above is a `HashMap`, so `into_iter()` hands
+    /// the metrics over in a per-process random order, and `sort_by` is stable
+    /// — every group of files sharing a churn score therefore kept that random
+    /// order. On a repo of any size nearly every low-churn file ties, so two
+    /// back-to-back `analyze churn` runs over an unchanged tree printed
+    /// different "Stable Files (Low Churn)" lists and the section could be
+    /// neither diffed nor committed as a baseline. The path tie-break makes the
+    /// whole report a function of the tree: hotspots, stable files and the
+    /// ranked listing all follow from this one order.
+    pub(crate) fn churn_rank_cmp(a: &FileChurnMetrics, b: &FileChurnMetrics) -> std::cmp::Ordering {
+        b.churn_score
+            .partial_cmp(&a.churn_score)
+            .expect("internal error")
+            .then_with(|| a.relative_path.cmp(&b.relative_path))
     }
 
     fn parse_commit_line(line: &str) -> Option<(String, String, String)> {
@@ -814,5 +835,55 @@ mod tests {
             let again = fingerprint(&GitAnalysisService::analyze_code_churn(&subdir, 365).unwrap());
             assert_eq!(first, again, "churn output differed on run {i}");
         }
+    }
+
+    fn churn_metric(path: &str, score: f32) -> FileChurnMetrics {
+        FileChurnMetrics {
+            path: PathBuf::from(path),
+            relative_path: path.to_string(),
+            commit_count: 1,
+            unique_authors: vec!["a".to_string()],
+            additions: 1,
+            deletions: 1,
+            churn_score: score,
+            last_modified: Utc::now(),
+            first_seen: Utc::now(),
+        }
+    }
+
+    /// Regression: the ranking comparator only compared churn scores, and
+    /// `sort_by` is stable, so files with EQUAL scores kept the random order
+    /// the source `HashMap` handed them in. Nearly every low-churn file ties,
+    /// so entries 2-5 of "Stable Files (Low Churn)" changed between two
+    /// back-to-back runs over an unchanged tree.
+    #[test]
+    fn test_churn_rank_cmp_breaks_score_ties_on_path() {
+        let forward = vec![
+            churn_metric("src/a.rs", 0.05),
+            churn_metric("src/b.rs", 0.05),
+            churn_metric("src/c.rs", 0.05),
+            churn_metric("src/hot.rs", 0.9),
+        ];
+        let mut reversed: Vec<FileChurnMetrics> = forward.iter().rev().cloned().collect();
+        let mut forward = forward;
+
+        forward.sort_by(GitAnalysisService::churn_rank_cmp);
+        reversed.sort_by(GitAnalysisService::churn_rank_cmp);
+
+        let paths = |v: &[FileChurnMetrics]| {
+            v.iter()
+                .map(|f| f.relative_path.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            paths(&forward),
+            vec!["src/hot.rs", "src/a.rs", "src/b.rs", "src/c.rs"],
+            "score descending, then path ascending"
+        );
+        assert_eq!(
+            paths(&forward),
+            paths(&reversed),
+            "the ranking must not depend on the order the metrics arrived in"
+        );
     }
 }

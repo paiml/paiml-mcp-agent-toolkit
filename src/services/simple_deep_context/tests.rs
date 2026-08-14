@@ -1198,7 +1198,14 @@ fn complex(x: i32) -> i32 {
 
         let metrics = analyzer.analyze_file_complexity(&test_file).await.unwrap();
         assert!(metrics.function_count >= 2);
-        assert!(metrics.avg_complexity >= 1.0);
+        // `avg_complexity >= 1.0` held here only because the analyzer
+        // substituted a literal 2.5 whenever the complexity pass returned zero.
+        // Ruby has no AST complexity pass in this build, so the honest answer
+        // is 0.0 and the old assertion was pinning the fabrication.
+        assert_eq!(
+            metrics.avg_complexity, 0.0,
+            "unmeasured complexity must report 0.0, not a stand-in constant"
+        );
     }
 
     #[tokio::test]
@@ -1365,6 +1372,45 @@ fn complex(x: i32) -> i32 {
         assert_eq!(report.file_count, 2);
         assert!(report.complexity_metrics.total_functions >= 2);
         assert!(report.file_complexity_details.len() == 2);
+    }
+    /// Regression (R46): `analyze_file_complexity` threw away the AST's
+    /// measured high-complexity count and substituted `function_names.len()/4`,
+    /// so `analyze deep-context` reported a fixed ~25% of EVERY file as
+    /// "high complexity" — e.g.
+    ///
+    ///   1. comprehensive_assert_cmd_coverage.rs - 1.0 avg complexity
+    ///      (134 functions, 33 high complexity)
+    ///
+    /// 134/4 = 33 functions "above complexity 10" in a file whose measured mean
+    /// complexity is 1.0, which is arithmetically impossible. A zero average
+    /// was likewise replaced by the constant 2.5.
+    #[tokio::test]
+    async fn test_file_complexity_does_not_fabricate_high_complexity_count() {
+        let analyzer = SimpleDeepContext;
+        let temp_dir = TempDir::new().unwrap();
+        let file = temp_dir.path().join("trivial.rs");
+
+        // 20 functions, every one of them cyclomatic complexity 1.
+        let body: String = (0..20)
+            .map(|i| format!("fn f{i}() {{ println!(\"{i}\"); }}\n"))
+            .collect();
+        fs::write(&file, body).unwrap();
+
+        let metrics = analyzer.analyze_file_complexity(&file).await.unwrap();
+
+        assert_eq!(metrics.function_count, 20, "{metrics:?}");
+        assert_eq!(
+            metrics.high_complexity_functions, 0,
+            "no function here exceeds complexity 10; the old code answered {} (20/4)",
+            metrics.high_complexity_functions
+        );
+        // The average and the above-threshold count must come from the same
+        // measurement: a mean of 1.0 cannot coexist with functions above 10.
+        assert!(metrics.avg_complexity < 2.0, "{metrics:?}");
+        assert!(
+            metrics.high_complexity_functions <= metrics.function_count,
+            "{metrics:?}"
+        );
     }
 }
 

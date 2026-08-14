@@ -14,12 +14,17 @@ pub(super) fn format_analysis_output(
     analyzer: &BigOAnalyzer,
     report: &BigOAnalysisReport,
     format: BigOOutputFormat,
+    high_complexity_only: bool,
 ) -> Result<String> {
     match format {
-        BigOOutputFormat::Json => analyzer.format_as_json(report),
-        BigOOutputFormat::Markdown => Ok(analyzer.format_as_markdown(report)),
-        BigOOutputFormat::Summary => Ok(format_big_o_summary(report)),
-        BigOOutputFormat::Detailed => Ok(format_big_o_detailed(report)),
+        BigOOutputFormat::Json => analyzer.format_as_json_scoped(report, high_complexity_only),
+        BigOOutputFormat::Markdown => {
+            Ok(analyzer.format_as_markdown_scoped(report, high_complexity_only))
+        }
+        BigOOutputFormat::Summary => Ok(format_big_o_summary_scoped(report, high_complexity_only)),
+        BigOOutputFormat::Detailed => {
+            Ok(format_big_o_detailed_scoped(report, high_complexity_only))
+        }
     }
 }
 
@@ -78,6 +83,20 @@ pub(super) async fn write_analysis_output(content: &str, output: Option<PathBuf>
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
+    format_big_o_summary_scoped(report, false)
+}
+
+/// `format_big_o_summary`, with the `--high-complexity-only` scope applied.
+///
+/// With the flag on the distribution lists only the O(n²)-or-worse rows, and
+/// says which scope it is in. The flag used to be applied by `retain`ing a list
+/// that had already been built with the same predicate, so it could not change
+/// a byte of any format.
+#[must_use]
+pub(crate) fn format_big_o_summary_scoped(
+    report: &BigOAnalysisReport,
+    high_complexity_only: bool,
+) -> String {
     let mut output = String::with_capacity(1024);
 
     output.push_str(&format!(
@@ -121,48 +140,43 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
         high_suffix,
     ));
 
-    output.push_str(&format!("{}\n", c::subheader("Complexity Distribution:")));
-    let dist = &report.complexity_distribution;
-    output.push_str(&format!(
-        "  {}       : {} functions\n",
-        c::colored(c::GREEN, "O(1)"),
-        c::number(&format!("{:>4}", dist.constant))
-    ));
-    output.push_str(&format!(
-        "  {}   : {} functions\n",
-        c::colored(c::GREEN, "O(log n)"),
-        c::number(&format!("{:>4}", dist.logarithmic))
-    ));
-    output.push_str(&format!(
-        "  {}       : {} functions\n",
-        c::colored(c::YELLOW, "O(n)"),
-        c::number(&format!("{:>4}", dist.linear))
-    ));
-    output.push_str(&format!(
-        "  {} : {} functions\n",
-        c::colored(c::YELLOW, "O(n log n)"),
-        c::number(&format!("{:>4}", dist.linearithmic))
-    ));
-    output.push_str(&format!(
-        "  {}      : {} functions\n",
-        c::colored(c::RED, "O(n²)"),
-        c::number(&format!("{:>4}", dist.quadratic))
-    ));
-    output.push_str(&format!(
-        "  {}      : {} functions\n",
-        c::colored(c::RED, "O(n³)"),
-        c::number(&format!("{:>4}", dist.cubic))
-    ));
-    output.push_str(&format!(
-        "  {}     : {} functions\n",
-        c::colored(c::BOLD_RED, "O(2^n)"),
-        c::number(&format!("{:>4}", dist.exponential))
-    ));
-    output.push_str(&format!(
-        "  {}    : {} functions\n",
-        c::colored(c::DIM, "Unknown"),
-        c::number(&format!("{:>4}", dist.unknown))
-    ));
+    if high_complexity_only {
+        output.push_str(&format!(
+            "{}\n",
+            c::subheader("Complexity Distribution (--high-complexity-only):")
+        ));
+    } else {
+        output.push_str(&format!("{}\n", c::subheader("Complexity Distribution:")));
+    }
+    // The counts and the is-high predicate come from
+    // `BigOAnalyzer::distribution_rows`, so the terminal, markdown and JSON
+    // renderers cannot disagree about which rows the flag keeps. Only the
+    // display label and colour are local (the terminal spells O(n²), markdown
+    // O(n^2), JSON keys it "O(n^2)").
+    const ROWS: [(&str, c::Sgr, usize); 8] = [
+        ("O(1)", c::GREEN, 7),
+        ("O(log n)", c::GREEN, 3),
+        ("O(n)", c::YELLOW, 7),
+        ("O(n log n)", c::YELLOW, 1),
+        ("O(n²)", c::RED, 6),
+        ("O(n³)", c::RED, 6),
+        ("O(2^n)", c::BOLD_RED, 5),
+        ("Unknown", c::DIM, 4),
+    ];
+    for ((_, count, is_high), (label, colour, pad)) in BigOAnalyzer::distribution_rows(report)
+        .into_iter()
+        .zip(ROWS)
+    {
+        if !BigOAnalyzer::distribution_row_kept(is_high, high_complexity_only) {
+            continue;
+        }
+        output.push_str(&format!(
+            "  {}{:pad$}: {} functions\n",
+            c::colored(colour, label),
+            "",
+            c::number(&format!("{count:>4}")),
+        ));
+    }
 
     if !report.recommendations.is_empty() {
         output.push_str(&format!("\n{}\n", c::subheader("Recommendations:")));
@@ -236,7 +250,15 @@ pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
 
 /// Format Big-O report with detailed information
 pub(super) fn format_big_o_detailed(report: &BigOAnalysisReport) -> String {
-    let mut output = format_big_o_summary(report);
+    format_big_o_detailed_scoped(report, false)
+}
+
+/// `format_big_o_detailed`, with the `--high-complexity-only` scope applied.
+pub(super) fn format_big_o_detailed_scoped(
+    report: &BigOAnalysisReport,
+    high_complexity_only: bool,
+) -> String {
+    let mut output = format_big_o_summary_scoped(report, high_complexity_only);
 
     if !report.high_complexity_functions.is_empty() {
         output.push_str(&format!("\n{}\n", c::header("High Complexity Functions:")));
