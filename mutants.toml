@@ -1,33 +1,41 @@
-# Mutation Testing Configuration for PMAT
-# Used by cargo-mutants to improve test quality
-# https://mutants.rs/
+# cargo-mutants configuration.
+#
+# WARNING, learned the hard way: cargo-mutants SILENTLY IGNORES unknown keys.
+# It does not warn and it does not fail. Verified against cargo-mutants 27.0.0
+# with a throwaway crate — a file containing `include = [...]` and
+# `minimum_pass_rate = 80` produced exactly the same mutant list as a file
+# containing neither.
+#
+# This file previously held:
+#
+#     exclude = ["target/**", "**/tests/**", ...]
+#     include = ["server/src/services/**", "server/src/models/**", ...]
+#     minimum_pass_rate = 80
+#     package = "pmat"
+#     jobs = 4
+#     timeout = 60
+#
+# None of `include`, `exclude` or `minimum_pass_rate` is a cargo-mutants key
+# (they are `examine_globs` and `exclude_globs`; there is no pass-rate key at
+# all — that is a CI-side comparison). So the config narrowed nothing: the last
+# master run reported `Found 23258 mutants to test` over the whole crate.
+#
+# The `server/src/**` paths compounded it — `git ls-files server/ | wc -l` is 0.
+# That directory does not exist in this repository and has not for some time.
+#
+# So: every key here must be a real one, and a change to this file proves
+# nothing until a run reports a non-zero caught/missed count.
 
-# Timeout per mutant (in seconds) - prevent hangs on infinite loops
-timeout = 60
-
-# Package to test (workspace-aware)
-package = "pmat"
-
-# Paths to exclude from mutation (auto-generated, tests themselves, build artifacts)
-exclude = [
-    "target/**",
+# Test-target scoping. The `--lib` restriction is passed on the command line so
+# it stays visible next to the invocation.
+exclude_globs = [
     "**/tests/**",
     "**/benches/**",
-    "**/build.rs",
     "**/examples/**",
+    "**/build.rs",
+    "**/*_tests.rs",
+    "**/*_test.rs",
 ]
 
-# High-priority mutation targets for code quality
-# Focus on business logic rather than boilerplate
-include = [
-    "server/src/services/**",
-    "server/src/models/**",
-    "server/src/quality/**",
-]
-
-# Minimum test pass rate required
-# Set to 80% to allow gradual improvement
-minimum_pass_rate = 80
-
-# Cap concurrent jobs to prevent OOM on large codebases
-jobs = 4
+# Timeouts are NOT set here. They are on the command line in ci.yml, where the
+# measured baseline that justifies them is documented next to the number.

@@ -55,6 +55,21 @@ jobs:
   # GH-275: Post-merge mutation testing for RPS Rust Tooling score.
   # Runs only on push to master (never on PRs — takes 30-120 min).
   # `continue-on-error: true` keeps this informational, not blocking.
+  # NOT a gate yet, deliberately, and the order matters.
+  #
+  # This job has never executed a single mutant (see the run step), so
+  # `min_mutation_score_pct = 80.0` in .pmat-metrics.toml names a quantity that
+  # has never been measured. Removing `continue-on-error` before a run reports a
+  # non-zero caught/missed count would replace a silent no-op with a gate whose
+  # threshold nobody has ever seen a real value for.
+  #
+  # Sequence to make it real, in this order:
+  #   1. this commit — fix the baseline timeout and the inert mutants.toml
+  #   2. observe one master run that reports an actual caught/missed count
+  #   3. `needs: [gate]` must go: adding `mutants` to gate's `needs` while it
+  #      needs `gate` is a cycle. Scope to changed files and run on PRs instead.
+  #   4. ratchet from the measured baseline, not the absolute 80.0
+  #   5. only then remove both `continue-on-error`
   mutants:
     runs-on: [self-hosted, X64, Linux]
     continue-on-error: true
@@ -68,7 +83,20 @@ jobs:
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
       - name: Run mutation testing
-        run: cargo mutants --no-times --timeout 300 --in-place -- --lib
+        # `--timeout 300` was the defect: it is an absolute per-test budget
+        # that applies to the UNMUTATED BASELINE too, and this crate's
+        # `cargo test --lib` takes ~367 s. So every run died with
+        # `TIMEOUT Unmutated baseline` -> exit 4, having executed ZERO mutants,
+        # and the two `continue-on-error` below painted that green. The job has
+        # never mutation-tested anything.
+        #
+        # Derive from the measured baseline instead of guessing an absolute,
+        # with a floor so fast mutants are not killed by jitter.
+        run: |
+          cargo mutants --no-times --in-place \
+            --timeout-multiplier 1.5 --minimum-test-timeout 600 \
+            --file 'src/services/**' --file 'src/models/**' \
+            -- --lib
         continue-on-error: true
       - name: Upload mutation results
         uses: actions/upload-artifact@v7
