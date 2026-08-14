@@ -153,18 +153,58 @@ jobs:
       - name: clippy --all-targets (compiles benches and examples)
         run: cargo clippy --all-targets --locked -- -D warnings
 
+  # crates.io rejects an upload over 10 MiB compressed, and it does NOT say so:
+  # `cargo publish` returns a bare 503 from the gateway, and `--dry-run` passes
+  # because it never uploads. 3.30.0 went out at 9.4 MiB — 94% of the ceiling —
+  # and only because a 4.4 MB unstripped debug binary (`test_exclude`, committed
+  # 2026-07-03, referenced by nothing) was found and removed mid-publish. It had
+  # been inside every published crate for a month.
+  #
+  # Fail well before the wall, so the failure lands on the PR that added the
+  # weight rather than on whoever next tries to release.
+  package-size:
+    name: package size
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo package stays clear of the crates.io ceiling
+        shell: bash
+        run: |
+          set -uo pipefail
+          out=$(cargo package --locked --no-verify --allow-dirty 2>&1) || {
+            echo "$out"; echo "::error::cargo package failed"; exit 1; }
+          echo "$out" | tail -3
+          line=$(echo "$out" | grep -oE '\([0-9.]+MiB compressed\)' | tail -1)
+          mib=$(echo "$line" | grep -oE '[0-9.]+')
+          if [ -z "$mib" ]; then
+            echo "::error::could not read the packaged size from cargo output — the check cannot pass without a measurement"
+            exit 1
+          fi
+          echo "packaged: ${mib} MiB compressed (crates.io hard limit: 10 MiB)"
+          # 9.0 leaves room for one ordinary addition; the hard limit leaves none.
+          if awk "BEGIN{exit !($mib >= 9.0)}"; then
+            echo "::error::package is ${mib} MiB compressed, at or past the 9.0 MiB budget (crates.io rejects >10 MiB with an opaque 503). Add large paths to Cargo.toml's exclude list, or drop the asset."
+            exit 1
+          fi
+          if awk "BEGIN{exit !($mib >= 8.0)}"; then
+            echo "::warning::package is ${mib} MiB compressed; the budget is 9.0 and the hard limit is 10."
+          fi
+
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets]
+    needs: [bundles, individual, all-targets, package-size]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.package-size.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a feature leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }}"
+              echo "a leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} package-size=${{ needs.package-size.result }}"
               exit 1
             fi
           done
-          echo "every advertised feature compiles"
+          echo "every advertised feature compiles and the package fits"
