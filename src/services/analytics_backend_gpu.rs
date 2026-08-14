@@ -7,9 +7,9 @@ static INIT: Once = Once::new();
 /// Manages wgpu device lifecycle and compute shader dispatch.
 /// Includes PCIe bandwidth calibration for query optimization.
 pub struct GpuDevice {
-     // Used for GPU compute operations
+    // Used for GPU compute operations
     device: wgpu::Device,
-     // Used for GPU command submission
+    // Used for GPU command submission
     queue: wgpu::Queue,
     pcie_bandwidth_gbps: f64,
 }
@@ -42,10 +42,19 @@ impl GpuDevice {
 
         // Request adapter (GPU device)
         let adapter =
+            // `..Default::default()` on purpose: wgpu adds fields to this
+            // struct across majors, and a full literal turns every such
+            // addition into a compile error in a feature nothing routinely
+            // builds. wgpu 30.0.0 added `apply_limit_buckets` and broke
+            // `--features analytics-gpu` with E0063 — caught only because the
+            // feature matrix added this release compiles every advertised
+            // feature. The three fields below are the ones this code has an
+            // opinion about; the rest are wgpu's defaults by intent.
             pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: None,
+                ..Default::default()
             }))
             .context("Failed to find GPU adapter. Ensure GPU drivers are installed.")?;
 
@@ -57,16 +66,15 @@ impl GpuDevice {
         );
 
         // Request device and queue
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("PMAT Analytics GPU"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: Default::default(),
-                experimental_features: Default::default(),
-                trace: Default::default(),
-            }))
-            .context("Failed to create GPU device")?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("PMAT Analytics GPU"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            memory_hints: Default::default(),
+            experimental_features: Default::default(),
+            trace: Default::default(),
+        }))
+        .context("Failed to create GPU device")?;
 
         // Calibrate PCIe bandwidth
         let pcie_bandwidth_gbps = Self::calibrate_pcie_bandwidth(&device, &queue)?;
@@ -111,13 +119,7 @@ impl GpuDevice {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("PCIe Calibration Encoder"),
         });
-        encoder.copy_buffer_to_buffer(
-            &gpu_buffer,
-            0,
-            &staging_buffer,
-            0,
-            test_bytes.len() as u64,
-        );
+        encoder.copy_buffer_to_buffer(&gpu_buffer, 0, &staging_buffer, 0, test_bytes.len() as u64);
         queue.submit(std::iter::once(encoder.finish()));
 
         // Wait for GPU operations to complete
