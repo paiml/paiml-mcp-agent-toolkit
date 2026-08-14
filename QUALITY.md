@@ -72,10 +72,16 @@ pmat rust-project-score --path server --format text --full
 **Location**: `.git/hooks/pre-commit`
 
 The pre-commit hook automatically enforces:
-1. **Zero Branching** - All commits must be on master branch
-2. **TDG Quality Gates** - Checks for regressions against baseline
-3. **bashrs Linting** - Shell script quality (for .sh and Makefile files)
-4. **Known Defects** - Zero-tolerance for critical defects
+1. **TDG Quality Gates** - Checks for regressions against baseline
+2. **bashrs Linting** - Shell script quality (for .sh and Makefile files)
+3. **Known Defects** - Zero-tolerance for critical defects
+
+> There is no branch check. A "Zero Branching" step was listed here and in
+> `PMAT-INTEGRATION.md`; no committed hook implements it
+> (`grep -c -i branch .git/hooks/pre-commit` -> 0), and it would contradict the
+> workflow this project requires: feature branch -> PR -> the required
+> `ci / gate` check on protected `master`. Direct pushes to master are blocked,
+> so a hook demanding commits be ON master forbids the only path work can take.
 
 **Configuration**: `.pmat/tdg-rules.toml`
 - Mode: `strict` (blocks commits on violations)

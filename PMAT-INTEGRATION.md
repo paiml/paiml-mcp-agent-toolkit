@@ -169,16 +169,12 @@ The existing `make` ecosystem already includes comprehensive quality checks that
 
 When you commit in paiml-mcp-agent-toolkit:
 
-1. **ZERO BRANCHING ENFORCEMENT** (runs FIRST):
-   - Verifies commit is on master branch
-   - Blocks if on any other branch
-
-2. **TDG Quality Check** (~2-5s):
+1. **TDG Quality Check** (~2-5s):
    - Analyzes modified files
    - Compares against baseline
    - Blocks if quality regresses
 
-3. **bashrs Linting** (if shell/Makefile changed):
+2. **bashrs Linting** (if shell/Makefile changed):
    - Lints shell scripts and Makefiles
    - Blocks on errors (warnings allowed)
 
@@ -248,8 +244,7 @@ All PMAT features are based on peer-reviewed research:
 6. ✅ **Documentation Accuracy**: Zero hallucinations enforcement
 7. ✅ **bashrs Integration**: Shell safety validation
 8. ✅ **TDG Enforcement**: Quality baseline protection
-9. ✅ **ZERO BRANCHING**: Master-only workflow enforcement
-10. ✅ **pmat-book Sync**: Documentation synchronization checks
+9. ✅ **pmat-book Sync**: Documentation synchronization checks
 
 ## Critical Issues Found (Dogfooding Results)
 

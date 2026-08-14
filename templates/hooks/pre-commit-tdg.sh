@@ -13,12 +13,21 @@
 
 set -e  # Exit on first error
 
-# ZERO BRANCHING ENFORCEMENT (runs FIRST, before all other checks)
-# shellcheck disable=SC2154 (BASH_SOURCE is set by bash)
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-if [ -x "${SCRIPT_DIR}/pre-commit-branch-enforcer" ]; then
-    "${SCRIPT_DIR}/pre-commit-branch-enforcer"
-fi
+# NO BRANCH ENFORCEMENT. This template used to run, FIRST, whatever executable
+# happened to be named `pre-commit-branch-enforcer` next to it — an enforcer
+# that blocks any commit not on master.
+#
+# That contradicts the workflow this project actually uses and requires:
+# feature branch -> PR -> the required `ci / gate` check on protected master.
+# Direct pushes to master are blocked, so a hook demanding commits BE on master
+# forbids the only path by which work can land.
+#
+# The enforcer itself was renamed aside to
+# `.git/hooks/pre-commit-branch-enforcer.disabled-r6` in April 2026, but this
+# delegation stayed: `[ -x ... ] && run it` is a LATENT RE-ARM. Renaming that
+# file back — or any future file taking the name — silently reinstates a hook
+# that blocks every feature-branch commit in every repository scaffolded from
+# this template. Removed rather than left dormant.
 
 # Colors for output
 RED='\033[0;31m'
