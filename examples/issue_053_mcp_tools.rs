@@ -130,6 +130,7 @@ fn main() {
     let satd_result = tool_functions::analyze_satd(
         std::slice::from_ref(&satd_file),
         false, // don't include resolved
+        false, // don't include test files — matches `analyze satd`'s default
     )
     .await?;
 

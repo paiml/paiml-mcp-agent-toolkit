@@ -104,7 +104,7 @@ async fn test_analyze_satd_calls_real_service() {
     );
 
     // Call analyze_satd with the test file
-    let result = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false)
+    let result = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false, false)
         .await
         .unwrap();
 
@@ -202,7 +202,7 @@ async fn test_analyze_complexity_empty_paths_error() {
 #[ignore = "Issue #53: RED test - analyze_satd with empty paths returns error"]
 async fn test_analyze_satd_empty_paths_error() {
     // Call with empty paths array
-    let result = tool_functions::analyze_satd(&[], false).await;
+    let result = tool_functions::analyze_satd(&[], false, false).await;
 
     // Should return an error for empty paths
     assert!(
@@ -287,14 +287,14 @@ async fn test_analyze_satd_respects_include_resolved() {
     );
 
     // Test without resolved comments
-    let result_without = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false)
+    let result_without = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false, false)
         .await
         .unwrap();
 
     let total_without = result_without["results"]["total_satd"].as_u64().unwrap();
 
     // Test with resolved comments
-    let result_with = tool_functions::analyze_satd(std::slice::from_ref(&file_path), true)
+    let result_with = tool_functions::analyze_satd(std::slice::from_ref(&file_path), true, false)
         .await
         .unwrap();
 
