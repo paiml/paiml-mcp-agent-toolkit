@@ -45,7 +45,7 @@
 - **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
 - **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
-- **MCP Integration** - 20 tools for Claude Code, Cline, and AI agents, validated end-to-end for concurrent multi-agent (ultracode) workflows
+- **MCP Integration** - 16 tools for Claude Code, Cline, and AI agents, validated end-to-end for concurrent multi-agent (ultracode) workflows
 - **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
 - **20+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, Lean, and more
 
@@ -110,7 +110,7 @@ dynamic-workflow orchestration — as both the test harness and the target
 workload:
 
 - **Full CLI sweep**: 111 commands exercised by parallel agent fleets per release
-- **MCP surface**: all 20 tools validated over stdio JSON-RPC — per-tool calls
+- **MCP surface**: all 16 tools validated over stdio JSON-RPC — per-tool calls
   with schema-derived arguments, 8-way concurrent server sessions against one
   working tree (zero lock errors, zero scratch leftovers), and byte-level
   framing checks (stdout is exclusively JSON-RPC)

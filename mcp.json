@@ -13,7 +13,7 @@
         "MCP_VERSION": "1"
       }
     },
-    "tool_count": 20,
+    "tool_count": 16,
     "tools": [
       {
         "name": "analyze_complexity",
@@ -103,48 +103,6 @@
               }
             }
           }
-        }
-      },
-      {
-        "name": "refactor.start",
-        "description": "Start an automated refactoring session",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "refactor.nextIteration",
-        "description": "Advance the active refactoring session",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "refactor.getState",
-        "description": "Return the active refactoring session state",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "additionalProperties": false
-        }
-      },
-      {
-        "name": "refactor.stop",
-        "description": "Stop the active refactoring session",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "additionalProperties": false
         }
       },
       {

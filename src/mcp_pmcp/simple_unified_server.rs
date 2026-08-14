@@ -7,9 +7,6 @@ use crate::mcp_pmcp::analyze_handlers::{
     AnalyzeDeepContextTool, AnalyzeSatdTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
-use crate::mcp_pmcp::handlers::{
-    RefactorGetStateTool, RefactorNextIterationTool, RefactorStartTool, RefactorStopTool,
-};
 use crate::mcp_pmcp::pdmt_handler::PdmtTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
@@ -355,23 +352,25 @@ impl SimpleUnifiedServer {
             .tool("analyze_dag", AnalyzeDagTool)
             .tool("analyze_deep_context", AnalyzeDeepContextTool)
             .tool("analyze_big_o", AnalyzeBigOTool)
-            // === Refactoring Tools (4) ===
-            .tool(
-                "refactor.start",
-                RefactorStartTool::new(self.state_manager.clone()),
-            )
-            .tool(
-                "refactor.nextIteration",
-                RefactorNextIterationTool::new(self.state_manager.clone()),
-            )
-            .tool(
-                "refactor.getState",
-                RefactorGetStateTool::new(self.state_manager.clone()),
-            )
-            .tool(
-                "refactor.stop",
-                RefactorStopTool::new(self.state_manager.clone()),
-            )
+            // === Refactoring Tools: REMOVED (EV-0, #999) ===
+            // `refactor.start` / `nextIteration` / `getState` / `stop` were 4 of
+            // 20 advertised tools — 20% of the agent-facing surface — and the
+            // engine behind them is not an analyzer. `find_violations`
+            // (models/refactor_impls.rs:140-145) returns a hardcoded
+            // HighComplexity violation at "line 100, column 1" for any file
+            // whose PATH CONTAINS THE SUBSTRING "complex", and nothing at all
+            // otherwise. It reads no source and builds no AST.
+            //
+            // docs/mcp/TOOLS.md disclosed this in prose ("currently
+            // simulated — violations are synthesized from filename patterns"),
+            // but a disclosure in a document is not a guard: an agent calls
+            // `tools/list` and gets four tools that answer confidently with
+            // fabricated line numbers and a "suggested_fix".
+            //
+            // Unregistered rather than deleted: the state machine, its
+            // handlers and their tests remain, so implementing real AST
+            // analysis is re-registering four lines, not rebuilding. Until
+            // then it is not advertised.
             // === Quality Tools (3) ===
             .tool("quality_gate", QualityGateTool)
             .tool("quality_proxy", QualityProxyTool)
@@ -661,10 +660,10 @@ mod active_tests {
     /// with no `metadata()` after R17-1 replaced the aliased handlers with
     /// new structs.
     #[test]
-    fn test_all_20_live_tools_advertise_description_and_schema() {
+    fn test_all_16_live_tools_advertise_description_and_schema() {
         use pmcp::ToolHandler;
 
-        let state_manager = Arc::new(Mutex::new(StateManager::new()));
+        let _state_manager = Arc::new(Mutex::new(StateManager::new()));
         let index_manager = Arc::new(IndexManager::new(PathBuf::from(".")));
 
         // (registered name, metadata, takes_arguments) — mirrors the
@@ -682,26 +681,7 @@ mod active_tests {
                 true,
             ),
             ("analyze_big_o", AnalyzeBigOTool.metadata(), true),
-            (
-                "refactor.start",
-                RefactorStartTool::new(state_manager.clone()).metadata(),
-                true,
-            ),
-            (
-                "refactor.nextIteration",
-                RefactorNextIterationTool::new(state_manager.clone()).metadata(),
-                false,
-            ),
-            (
-                "refactor.getState",
-                RefactorGetStateTool::new(state_manager.clone()).metadata(),
-                false,
-            ),
-            (
-                "refactor.stop",
-                RefactorStopTool::new(state_manager).metadata(),
-                false,
-            ),
+            // refactor.* unregistered in EV-0 (#999) — see run()
             ("quality_gate", QualityGateTool.metadata(), true),
             ("quality_proxy", QualityProxyTool.metadata(), true),
             ("pdmt_deterministic_todos", PdmtTool::new().metadata(), true),
@@ -732,7 +712,7 @@ mod active_tests {
 
         assert_eq!(
             tools.len(),
-            20,
+            16,
             "registry drift: update this test when tools are added or removed"
         );
 
@@ -776,44 +756,43 @@ mod active_tests {
         }
     }
 
-    /// v3.18.2: the refactor.* tools run a simulated analysis engine
-    /// (violations are synthesized from filename patterns in
-    /// `src/models/refactor_impls.rs`); their descriptions must disclose
-    /// this so agents are not misled.
+    /// EV-0 acceptance (b): the simulated `refactor.*` tools must NOT be
+    /// advertised.
+    ///
+    /// They used to be, with descriptions disclosing the simulation — and a
+    /// test asserted that the disclosure was present. But a disclosure is not a
+    /// guard. An agent calls `tools/list`, sees four tools, and calls them; the
+    /// engine behind them (`models/refactor_impls.rs:140-145`) returns a
+    /// hardcoded HighComplexity violation at "line 100, column 1" for any file
+    /// whose PATH CONTAINS THE SUBSTRING "complex", and nothing otherwise. It
+    /// reads no source and builds no AST.
+    ///
+    /// So the assertion is now absence, not disclosure. Re-registering them is
+    /// four lines in `run()` — do that when the engine analyses something.
     #[test]
-    fn test_refactor_tool_descriptions_disclose_simulation() {
-        use pmcp::ToolHandler;
-
-        let state_manager = Arc::new(Mutex::new(StateManager::new()));
-        let descriptions = [
-            (
-                "refactor.start",
-                RefactorStartTool::new(state_manager.clone()).metadata(),
-            ),
-            (
-                "refactor.nextIteration",
-                RefactorNextIterationTool::new(state_manager.clone()).metadata(),
-            ),
-            (
-                "refactor.getState",
-                RefactorGetStateTool::new(state_manager.clone()).metadata(),
-            ),
-            (
-                "refactor.stop",
-                RefactorStopTool::new(state_manager).metadata(),
-            ),
-        ];
-
-        for (name, metadata) in descriptions {
-            let description = metadata
-                .and_then(|info| info.description)
-                .unwrap_or_default();
+    fn simulated_refactor_tools_are_not_advertised() {
+        let declared: Vec<&str> = crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS
+            .iter()
+            .map(|(n, _)| *n)
+            .collect();
+        for name in [
+            "refactor.start",
+            "refactor.nextIteration",
+            "refactor.getState",
+            "refactor.stop",
+        ] {
             assert!(
-                description.contains("simulated analysis engine"),
-                "{name}: description must disclose the simulated analysis \
-                 engine, got: {description}"
+                !declared.contains(&name),
+                "{name} is advertised again — its engine synthesizes violations \
+                 from a path substring, so an agent calling it acts on fabricated \
+                 line numbers (EV-0, #999)"
             );
         }
+        assert_eq!(
+            declared.len(),
+            16,
+            "the surface should be 16 tools after removing the 4 simulated ones"
+        );
     }
 }
 

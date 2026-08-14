@@ -11,7 +11,7 @@
 //! drift-guard test pins this list to the server's actual `.tool(...)`
 //! registrations so the two can never silently diverge.
 
-/// The 20 tools registered by `SimpleUnifiedServer::run()`, in registration
+/// The 16 tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
 pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     (
@@ -38,16 +38,6 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
         "analyze_big_o",
         "Estimate algorithmic complexity of functions",
     ),
-    ("refactor.start", "Start an automated refactoring session"),
-    (
-        "refactor.nextIteration",
-        "Advance the active refactoring session",
-    ),
-    (
-        "refactor.getState",
-        "Return the active refactoring session state",
-    ),
-    ("refactor.stop", "Stop the active refactoring session"),
     (
         "quality_gate",
         "Run the quality gate (complexity, satd, lint, tests)",
@@ -176,13 +166,19 @@ mod tests {
     fn manifest_matches_server() {
         // Drift guard: LIVE_MCP_TOOLS must equal the server's actual
         // `.tool(...)` registrations in run(). If a tool is added/removed,
-        // this fails until the const is updated (mirrors the 20-tool pin).
+        // this fails until the const is updated (mirrors the 16-tool pin).
         let src = include_str!("simple_unified_server.rs");
         let run_start = src.find("pub async fn run").expect("run() present");
+        // Sentinel must not embed the tool COUNT: it was `fn test_all_20`, so
+        // renaming that test to `test_all_16` silently widened this scan to the
+        // whole file — including test fixtures that also contain `.tool(` —
+        // and the guard started comparing against the wrong set. A guard keyed
+        // on a number that changes when the thing it guards changes is not a
+        // guard.
         let run_end = src[run_start..]
-            .find("fn test_all_20")
+            .find("fn test_all_")
             .map(|i| run_start + i)
-            .unwrap_or(src.len());
+            .expect("the registry drift sentinel `fn test_all_` must exist");
         let registered: Vec<String> = src[run_start..run_end]
             .split(".tool(")
             .skip(1)
@@ -198,7 +194,11 @@ mod tests {
             registered, declared,
             "LIVE_MCP_TOOLS drifted from server .tool() registrations"
         );
-        assert_eq!(declared.len(), 20, "the live server advertises 20 tools");
+        assert_eq!(
+            declared.len(),
+            16,
+            "the live server advertises 16 tools; the 4 refactor.* tools were unregistered in EV-0 (#999) because their engine synthesizes violations from a path substring"
+        );
     }
 
     #[test]

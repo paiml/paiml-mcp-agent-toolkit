@@ -71,10 +71,24 @@ Returns the current refactoring session state.
 ### 10. `refactor.stop`
 Ends the refactoring session.
 
-> Note: the `refactor.*` analysis engine is currently **simulated** — violations are
-> synthesized from filename patterns rather than real AST analysis. The tool
-> descriptions disclose this (v3.18.2) so agents don't act on the output as if it
-> were a real refactoring engine.
+> **REMOVED (EV-0, #999).** `refactor.start` / `nextIteration` / `getState` /
+> `stop` are no longer advertised: they are absent from `tools/list` and from
+> `mcp.json`, and the surface is 16 tools, not 20.
+>
+> They were removed rather than documented because the engine behind them is not
+> an analyzer. `find_violations` (`src/models/refactor_impls.rs:140-145`) returns
+> a hardcoded `HighComplexity` violation at *"line 100, column 1"* for any file
+> whose **path contains the substring `"complex"`**, and nothing otherwise. It
+> reads no source and builds no AST.
+>
+> This note previously disclosed that, and a test asserted the disclosure was
+> present in each tool's description. A disclosure is not a guard: an agent calls
+> `tools/list`, sees four tools, and acts on fabricated line numbers and a
+> `suggested_fix`. The test now asserts **absence** instead.
+>
+> The state machine, handlers and tests remain in the tree. Re-registering is
+> four lines in `SimpleUnifiedServer::run()` — do it when the engine analyses
+> something.
 
 ---
 
