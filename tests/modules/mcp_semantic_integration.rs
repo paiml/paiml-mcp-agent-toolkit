@@ -32,7 +32,7 @@ async fn test_semantic_search_adapter_metadata() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -52,7 +52,7 @@ async fn test_find_similar_adapter_metadata() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -71,7 +71,7 @@ async fn test_cluster_adapter_metadata() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -90,7 +90,7 @@ async fn test_analyze_topics_adapter_metadata() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -109,7 +109,7 @@ async fn test_semantic_search_missing_query() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -131,7 +131,7 @@ async fn test_semantic_search_empty_query() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -155,7 +155,7 @@ async fn test_semantic_search_invalid_mode() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -180,7 +180,7 @@ async fn test_find_similar_missing_file_path() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -206,7 +206,7 @@ async fn test_cluster_missing_method() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -228,7 +228,7 @@ async fn test_cluster_invalid_method() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -252,7 +252,7 @@ async fn test_analyze_topics_missing_num_topics() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -278,7 +278,7 @@ async fn test_error_conversion() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -305,7 +305,7 @@ async fn test_semantic_search_schema_structure() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };
@@ -332,7 +332,7 @@ async fn test_all_adapters_implement_mcp_tool() {
     let engine = match create_test_engine().await {
         Some(e) => e,
         None => {
-            eprintln!("Skipping test: OPENAI_API_KEY not set");
+            eprintln!("Skipping test: the local-embedding engine could not be built");
             return;
         }
     };

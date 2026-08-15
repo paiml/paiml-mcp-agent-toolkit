@@ -22,17 +22,6 @@ impl HybridSearchEngine {
         })
     }
 
-    /// Create new hybrid search engine (backward compatible - ignores api_key)
-    #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub async fn new_with_key(
-        _api_key: &str,
-        db_path: &str,
-        search_root: &Path,
-    ) -> Result<Self, String> {
-        Self::new(db_path, search_root).await
-    }
-
     /// Search using hybrid mode
     ///
     /// # Arguments

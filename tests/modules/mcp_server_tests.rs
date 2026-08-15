@@ -55,15 +55,33 @@ fn test_server_config_custom() {
 }
 
 #[test]
-fn test_server_config_semantic_disabled_by_default() {
-    // RED: Semantic search should be disabled if no API key
-    std::env::remove_var("OPENAI_API_KEY");
+fn test_server_config_semantic_is_env_gated_not_key_gated() {
+    // Was `test_server_config_semantic_disabled_by_default`, which removed
+    // OPENAI_API_KEY and then did:
+    //
+    //     if config.semantic_enabled { }
+    //
+    // — an empty body. It asserted NOTHING, and its premise ("disabled if no
+    // API key") stopped being true when semantic search moved to local
+    // embeddings. `ServerConfig::default()` reads PMAT_SEMANTIC_ENABLED
+    // (server_types.rs:30) and no key at all.
+    let saved = std::env::var("PMAT_SEMANTIC_ENABLED").ok();
 
-    let config = ServerConfig::default();
+    std::env::remove_var("PMAT_SEMANTIC_ENABLED");
+    assert!(
+        !ServerConfig::default().semantic_enabled,
+        "semantic search must be off unless explicitly enabled"
+    );
 
-    // Will be enabled if OPENAI_API_KEY is set in environment
-    // Otherwise disabled
-    if config.semantic_enabled {
+    std::env::set_var("PMAT_SEMANTIC_ENABLED", "1");
+    assert!(
+        ServerConfig::default().semantic_enabled,
+        "PMAT_SEMANTIC_ENABLED=1 must enable it — this is the only switch"
+    );
+
+    match saved {
+        Some(v) => std::env::set_var("PMAT_SEMANTIC_ENABLED", v),
+        None => std::env::remove_var("PMAT_SEMANTIC_ENABLED"),
     }
 }
 
