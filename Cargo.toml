@@ -4,12 +4,13 @@ version = "3.30.1"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
-# Says CLI and MCP because those are the two interfaces that work. `pmat serve`
-# reports "HTTP transport not yet implemented" (utility_serve_handlers.rs), so
-# advertising HTTP here was a capability claim the binary contradicts -- exactly
-# what this project's documentation-accuracy policy exists to prevent. Restore
-# HTTP to this line when `pmat serve` actually binds.
-description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP)"
+# CLI, MCP and HTTP. The note here used to say `pmat serve` reports "HTTP
+# transport not yet implemented" and to restore HTTP "when `pmat serve` actually
+# binds" — it binds now (EV-6, #999): `pmat serve --transport http` serves the
+# tool surface over streamable HTTP, verified 401-without-token / 200-with.
+# HTTP is behind the opt-in `mcp-http` feature, so the claim is scoped rather
+# than unconditional.
+description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 license = "MIT OR Apache-2.0"
