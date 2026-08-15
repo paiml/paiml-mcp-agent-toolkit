@@ -2,7 +2,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_new() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
         assert_eq!(strategy.config().iterations, 1000);
@@ -10,7 +10,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_config() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig {
             iterations: 500,
             ..Default::default()
@@ -21,7 +21,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_engine() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
         // Just verify we can access the engine
@@ -30,7 +30,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_generate_inputs() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
 
@@ -44,7 +44,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_generate_inputs_zero() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
 
@@ -54,7 +54,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_generate_grammar_based_inputs() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
 
@@ -70,7 +70,7 @@
 
     #[test]
     fn test_fuzz_mutation_strategy_generate_grammar_based_inputs_empty() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
 
@@ -246,7 +246,7 @@
 
     #[test]
     fn test_strategy_with_different_generator_types() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
 
         for gen_type in [
             InputGeneratorType::Random,
@@ -328,7 +328,7 @@
 
     #[test]
     fn test_multiple_input_generation_consistency() {
-        let engine = MutationEngine::new();
+        let engine = MutationEngine::default_rust();
         let config = FuzzConfig::default();
         let strategy = FuzzMutationStrategy::new(engine, config);
 

@@ -5,6 +5,13 @@
 use pmat::cli::commands::AnalyzeCommands;
 #[cfg(feature = "deep-wasm")]
 use pmat::cli::enums::{DeepWasmFocus, DeepWasmLanguage, DeepWasmOutputFormat};
+// These were used and never imported, so this file has never compiled — it is
+// behind `feature = "deep-wasm"`, which no default build and no `cargo check
+// --lib` ever touches.
+#[cfg(feature = "deep-wasm")]
+use std::path::PathBuf;
+#[cfg(feature = "deep-wasm")]
+use tempfile::tempdir;
 
 #[cfg(feature = "deep-wasm")]
 #[test]

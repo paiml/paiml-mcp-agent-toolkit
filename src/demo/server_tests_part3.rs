@@ -6,7 +6,6 @@ use super::*;
 #[cfg(feature = "demo")]
 pub mod demo_feature_tests_continued {
     use super::*;
-    use parking_lot::RwLock;
 
     // -------------------------------------------------------------------------
     // serve_recommendations_json Tests
