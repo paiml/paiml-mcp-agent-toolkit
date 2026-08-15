@@ -432,8 +432,7 @@ impl SimpleUnifiedServer {
             .tool(
                 "pmat_index_stats",
                 PmatIndexStatsHandler::new(index_manager.clone()),
-            )
-            ;
+            );
         let builder = match auth {
             Some(provider) => builder.auth_provider(ArcAuthProvider(provider)),
             None => builder,
