@@ -68,8 +68,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: featmatrix-${{ matrix.feature }}
-      - name: cargo check --lib --features ${{ matrix.feature }}
-        run: cargo check --lib --locked --features '${{ matrix.feature }}'
+      # --tests for the same reason as the individual shards below: `--lib`
+      # cannot see a feature whose test targets do not compile.
+      - name: cargo check --lib --tests --features ${{ matrix.feature }}
+        run: cargo check --lib --tests --locked --features '${{ matrix.feature }}'
       # The bin is what `cargo install` builds; a lib that compiles and a binary
       # that does not is still a broken install.
       - name: cargo check --bin pmat --features ${{ matrix.feature }}
@@ -122,11 +124,24 @@ jobs:
           for i in "${!FEATURES[@]}"; do
             if [ $(( i % 6 )) -ne ${{ matrix.shard }} ]; then continue; fi
             f="${FEATURES[$i]}"
-            echo "::group::cargo check --lib --features $f"
-            if cargo check --lib --locked --features "$f"; then
+            # --tests, not just --lib. `cargo check --lib` does not build test
+            # targets, so a feature whose TESTS have rotted looks perfectly
+            # healthy here. `src/agents_md/` — 27 files, 4,299 lines, 255 test
+            # functions behind `feature = "agents-md"` — had tests that did not
+            # compile at all: `PathBuf` used and never imported, three unused
+            # imports. `cargo test --lib -- --list` reported 19,946 tests and
+            # not one of them was from that module, and a deliberate syntax
+            # error appended to it produced ZERO build errors on a default
+            # build. This job ran green over all of it.
+            #
+            # A feature-gated module is exactly where this hides: nothing else
+            # compiles it, so "the feature compiles" is the only signal there
+            # is, and --lib makes that signal blind to half the code.
+            echo "::group::cargo check --lib --tests --features $f"
+            if cargo check --lib --tests --locked --features "$f"; then
               echo "ok $f"
             else
-              echo "::error::feature '$f' does not compile"
+              echo "::error::feature '$f' does not compile (lib or tests)"
               failed+=("$f")
             fi
             echo "::endgroup::"
