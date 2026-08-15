@@ -21,11 +21,11 @@
 # 1. Install PMAT
 cargo install pmat
 
-# 2. Set OpenAI API key
-export OPENAI_API_KEY="sk-your-api-key-here"
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 
-# Optional: Add to ~/.bashrc or ~/.zshrc
-echo 'export OPENAI_API_KEY="sk-your-key"' >> ~/.bashrc
 ```
 
 ### Verify Installation
@@ -390,7 +390,6 @@ jobs:
       - uses: actions/checkout@v2
       - run: pmat embed sync ./src
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
 ### 2. Search Query Tips
@@ -443,10 +442,13 @@ jobs:
 **Solution**:
 ```bash
 # Set environment variable
-export OPENAI_API_KEY="sk-your-key"
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 
 # Verify
-echo $OPENAI_API_KEY
+echo $PMAT_SEMANTIC_ENABLED
 ```
 
 ### Issue: "No results found"

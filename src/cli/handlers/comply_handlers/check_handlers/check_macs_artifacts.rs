@@ -1,9 +1,13 @@
 // Included from check_macs.rs — do NOT add `use` imports or `#!` attributes here.
 
-/// CB-1656: the committed root `mcp.json` must advertise exactly the live
-/// tool set (MACS F6). Compares the tool NAME set against the canonical
+/// CB-1656: **pmat's own** committed root `mcp.json` must advertise exactly the
+/// live tool set (MACS F6). Compares the tool NAME set against the canonical
 /// `LIVE_MCP_TOOLS` source — version churn is intentionally ignored so a
 /// release bump does not turn this red; only tool add/remove/rename drifts.
+///
+/// Scope is deliberately narrow, see [`manifest_describes_pmat`]: the tool set
+/// this check compares against is compiled into *this binary*. It is pmat's
+/// own surface, not the surface of whatever server the audited repo ships.
 pub(crate) fn check_mcp_manifest_faithful(project_path: &Path) -> ComplianceCheck {
     let name = "CB-1656: MCP Manifest Faithful";
     let manifest_path = project_path.join("mcp.json");
@@ -21,6 +25,10 @@ pub(crate) fn check_mcp_manifest_faithful(project_path: &Path) -> ComplianceChec
             severity: Severity::Error,
         };
     };
+
+    if !manifest_describes_pmat(&value) {
+        return skip_check(name, &foreign_manifest_reason(&value));
+    }
 
     let declared = crate::mcp_pmcp::tool_manifest::manifest_tool_names(&value);
     let canonical = crate::mcp_pmcp::tool_manifest::canonical_tool_names();
@@ -54,6 +62,49 @@ pub(crate) fn check_mcp_manifest_faithful(project_path: &Path) -> ComplianceChec
             canonical.len()
         ),
         severity: Severity::Error,
+    }
+}
+
+/// Does this `mcp.json` describe the pmat server itself?
+///
+/// #1007: CB-1656 compared **every** repo's root `mcp.json` against
+/// `canonical_tool_names()`, which is `LIVE_MCP_TOOLS` compiled into this
+/// binary — pmat's own 16 tools. For any other project that ships an MCP
+/// server, that is not a drift measurement but a category error: the check
+/// reported `missing=[analyze_big_o, pmat_query_code, quality_gate, …]` and
+/// `extra=[<every tool the repo actually has>]`, i.e. it demanded that an
+/// unrelated server advertise pmat's tools and drop its own. Unsatisfiable by
+/// construction for every repo except this one, and its remediation named a
+/// `cargo test` target that exists only here.
+///
+/// Worse, it inverted the incentive it was built to create: a repo with no
+/// root manifest skipped (green), while a repo whose manifest faithfully
+/// described its real server failed (red). rmedia added a root `mcp.json`
+/// believing CB-1656 asked for one, and its comply failure count went 2 → 3.
+///
+/// The discriminator is the manifest's own `name`, which `render_manifest`
+/// emits as `"pmat"`. Anything else — a different server, or the
+/// `{"mcpServers": {…}}` client-config shape that carries no `name` at all —
+/// is something this binary has no source of truth for, so it is skipped
+/// rather than scored against a list that cannot apply to it.
+fn manifest_describes_pmat(manifest: &serde_json::Value) -> bool {
+    manifest.get("name").and_then(|n| n.as_str()) == Some("pmat")
+}
+
+/// Why a manifest was skipped, naming what was found so the skip is auditable
+/// rather than mysterious.
+fn foreign_manifest_reason(manifest: &serde_json::Value) -> String {
+    match manifest.get("name").and_then(|n| n.as_str()) {
+        Some(other) => format!(
+            "root mcp.json describes the `{other}` server, not pmat. This check \
+             compares against pmat's own live tool set (compiled in from \
+             LIVE_MCP_TOOLS), so it has no source of truth for `{other}` and \
+             will not score it"
+        ),
+        None => "root mcp.json declares no `name`, so it is not pmat's server \
+                 manifest (it may be an MCP client config). This check compares \
+                 against pmat's own live tool set and will not score it"
+            .to_string(),
     }
 }
 

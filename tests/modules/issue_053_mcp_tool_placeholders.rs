@@ -287,9 +287,10 @@ async fn test_analyze_satd_respects_include_resolved() {
     );
 
     // Test without resolved comments
-    let result_without = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false, false)
-        .await
-        .unwrap();
+    let result_without =
+        tool_functions::analyze_satd(std::slice::from_ref(&file_path), false, false)
+            .await
+            .unwrap();
 
     let total_without = result_without["results"]["total_satd"].as_u64().unwrap();
 

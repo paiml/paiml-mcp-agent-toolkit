@@ -132,40 +132,50 @@ pub async fn analyze_satd(
 
     for path in &files {
         match tokio::fs::read_to_string(path).await {
-            Ok(content) => match detector.extract_from_content(&content, path) {
-                Ok(debts) => {
-                    // Filter out resolved debt markers (DONE, RESOLVED, FIXED) unless include_resolved
-                    let debts: Vec<_> = if _include_resolved {
-                        debts
-                    } else {
-                        debts
-                            .into_iter()
-                            .filter(|d| {
-                                let upper = d.text.to_uppercase();
-                                !upper.contains("DONE")
-                                    && !upper.contains("RESOLVED")
-                                    && !upper.contains("FIXED")
-                            })
-                            .collect()
-                    };
-                    let satd_count = debts.len();
-                    total_satd += satd_count;
+            // `_with_tests`, not the plain wrapper. `include_tests` has TWO
+            // effects and they must move together: it selects test FILES above,
+            // and it reaches the inline `#[cfg(test)]` skip inside each file
+            // here. Wiring only the first made MCP report 3 markers where the
+            // CLI reported 4 on the same fixture — two fixes (#995 inline
+            // blocks, #997 MCP parity) that each worked alone and did not
+            // compose. Caught dogfooding the installed artifact, not by either
+            // fix's own tests.
+            Ok(content) => {
+                match detector.extract_from_content_with_tests(&content, path, include_tests) {
+                    Ok(debts) => {
+                        // Filter out resolved debt markers (DONE, RESOLVED, FIXED) unless include_resolved
+                        let debts: Vec<_> = if _include_resolved {
+                            debts
+                        } else {
+                            debts
+                                .into_iter()
+                                .filter(|d| {
+                                    let upper = d.text.to_uppercase();
+                                    !upper.contains("DONE")
+                                        && !upper.contains("RESOLVED")
+                                        && !upper.contains("FIXED")
+                                })
+                                .collect()
+                        };
+                        let satd_count = debts.len();
+                        total_satd += satd_count;
 
-                    if satd_count > 0 {
-                        file_results.push(json!({
-                            "file": path.display().to_string(),
-                            "satd_count": satd_count,
-                            "debts": debts.iter().map(|debt| json!({
-                                "line": debt.line,
-                                "category": format!("{:?}", debt.category),
-                                "severity": format!("{:?}", debt.severity),
-                                "text": debt.text,
-                            })).collect::<Vec<_>>(),
-                        }));
+                        if satd_count > 0 {
+                            file_results.push(json!({
+                                "file": path.display().to_string(),
+                                "satd_count": satd_count,
+                                "debts": debts.iter().map(|debt| json!({
+                                    "line": debt.line,
+                                    "category": format!("{:?}", debt.category),
+                                    "severity": format!("{:?}", debt.severity),
+                                    "text": debt.text,
+                                })).collect::<Vec<_>>(),
+                            }));
+                        }
                     }
+                    Err(_) => continue,
                 }
-                Err(_) => continue,
-            },
+            }
             Err(_) => continue,
         }
     }
@@ -989,6 +999,58 @@ mod satd_surface_agreement_tests {
             total(&out),
             3,
             "include_tests must agree with `--include-tests` (3 markers): {out}"
+        );
+    }
+
+    /// REGRESSION: `include_tests` has TWO effects and they must move together.
+    ///
+    /// It selects test FILES, and it reaches the inline `#[cfg(test)]` skip
+    /// inside each file. #997 wired the first; #995 had already fixed the
+    /// second on the CLI path. Neither test noticed that the MCP path still
+    /// called the plain `extract_from_content`, so on a fixture with BOTH kinds
+    /// of test debt the surfaces disagreed again — MCP 3, CLI 4 — and both
+    /// PRs were green.
+    ///
+    /// This fixture deliberately carries both kinds, which is what the two
+    /// earlier fixtures each lacked.
+    #[tokio::test]
+    async fn include_tests_reaches_both_test_files_and_inline_blocks() {
+        let d = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("src");
+        std::fs::create_dir_all(d.path().join("tests")).expect("tests");
+        std::fs::write(
+            d.path().join("Cargo.toml"),
+            "[package]\nname=\"f\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        // 1 production marker + 1 INLINE test marker
+        std::fs::write(
+            d.path().join("src/lib.rs"),
+            "// TODO: production\npub fn f() -> i32 { 1 }\n\n#[cfg(test)]\nmod tests {\n    // TODO: inline test debt\n    #[test] fn t() { assert_eq!(1, 1); }\n}\n",
+        )
+        .expect("lib");
+        // 1 marker in a test FILE
+        std::fs::write(
+            d.path().join("tests/it.rs"),
+            "// TODO: test-file debt\n#[test] fn w() { assert_eq!(2, 2); }\n",
+        )
+        .expect("it");
+
+        let off = total(
+            &analyze_satd(&[d.path().to_path_buf()], false, false)
+                .await
+                .unwrap(),
+        );
+        let on = total(
+            &analyze_satd(&[d.path().to_path_buf()], false, true)
+                .await
+                .unwrap(),
+        );
+        assert_eq!(off, 1, "default is production only");
+        assert_eq!(
+            on, 3,
+            "include_tests must reach the test FILE and the INLINE block — \
+             1 production + 1 inline + 1 test-file"
         );
     }
 

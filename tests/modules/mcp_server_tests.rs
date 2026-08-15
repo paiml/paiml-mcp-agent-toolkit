@@ -41,7 +41,6 @@ fn test_server_config_custom() {
         request_timeout: Duration::from_secs(60),
         enable_logging: false,
         semantic_enabled: false,
-        semantic_api_key: None,
         semantic_db_path: None,
         semantic_workspace: None,
     };
@@ -56,16 +55,33 @@ fn test_server_config_custom() {
 }
 
 #[test]
-fn test_server_config_semantic_disabled_by_default() {
-    // RED: Semantic search should be disabled if no API key
-    std::env::remove_var("OPENAI_API_KEY");
+fn test_server_config_semantic_is_env_gated_not_key_gated() {
+    // Was `test_server_config_semantic_disabled_by_default`, which removed
+    // OPENAI_API_KEY and then did:
+    //
+    //     if config.semantic_enabled { }
+    //
+    // — an empty body. It asserted NOTHING, and its premise ("disabled if no
+    // API key") stopped being true when semantic search moved to local
+    // embeddings. `ServerConfig::default()` reads PMAT_SEMANTIC_ENABLED
+    // (server_types.rs:30) and no key at all.
+    let saved = std::env::var("PMAT_SEMANTIC_ENABLED").ok();
 
-    let config = ServerConfig::default();
+    std::env::remove_var("PMAT_SEMANTIC_ENABLED");
+    assert!(
+        !ServerConfig::default().semantic_enabled,
+        "semantic search must be off unless explicitly enabled"
+    );
 
-    // Will be enabled if OPENAI_API_KEY is set in environment
-    // Otherwise disabled
-    if config.semantic_enabled {
-        assert!(config.semantic_api_key.is_some());
+    std::env::set_var("PMAT_SEMANTIC_ENABLED", "1");
+    assert!(
+        ServerConfig::default().semantic_enabled,
+        "PMAT_SEMANTIC_ENABLED=1 must enable it — this is the only switch"
+    );
+
+    match saved {
+        Some(v) => std::env::set_var("PMAT_SEMANTIC_ENABLED", v),
+        None => std::env::remove_var("PMAT_SEMANTIC_ENABLED"),
     }
 }
 
@@ -108,7 +124,6 @@ fn test_mcp_server_creation_custom_config() {
         request_timeout: Duration::from_secs(10),
         enable_logging: false,
         semantic_enabled: false,
-        semantic_api_key: None,
         semantic_db_path: None,
         semantic_workspace: None,
     };
@@ -338,7 +353,6 @@ fn test_server_config_semantic_with_api_key() {
     // RED: Should configure semantic search with API key
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: Some("test-key".to_string()),
         semantic_db_path: Some("/tmp/test.db".to_string()),
         semantic_workspace: Some(std::path::PathBuf::from("/tmp")),
         ..ServerConfig::default()
@@ -355,7 +369,6 @@ fn test_server_config_semantic_without_api_key() {
     // RED: Should handle semantic enabled but no API key
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: None,
         ..ServerConfig::default()
     };
 
@@ -370,7 +383,6 @@ fn test_server_config_semantic_with_invalid_db_path() {
     // RED: Should handle invalid database path
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: Some("test-key".to_string()),
         semantic_db_path: Some("/nonexistent/path/db.sqlite".to_string()),
         ..ServerConfig::default()
     };

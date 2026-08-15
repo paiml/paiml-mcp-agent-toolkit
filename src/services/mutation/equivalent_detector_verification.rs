@@ -8,9 +8,15 @@ fn create_test_mutant(original: &str, mutated: &str) -> Mutant {
             end_line: 1,
             end_column: 10,
         },
-        operator: MutationOperator::ArithmeticReplace,
-        original_source: original.to_string(),
+        operator: MutationOperatorType::ArithmeticReplacement,
         mutated_source: mutated.to_string(),
+        // `hash` (dedup key) and `status` were added to `Mutant`; a
+        // freshly-built fixture has not been executed yet.
+        // Derived from both sides: `Mutant` no longer stores the original
+        // text, and callers pass distinct originals expecting distinct
+        // mutants. A constant here would collapse them.
+        hash: format!("{original}=>{mutated}"),
+        status: crate::services::mutation::types::MutantStatus::Pending,
     }
 }
 

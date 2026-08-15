@@ -52,7 +52,10 @@ PMAT's semantic search combines **natural language understanding** with traditio
 cargo install pmat
 
 # 2. Set your OpenAI API key
-export OPENAI_API_KEY="sk-..."
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 
 # 3. Index your codebase (one-time)
 cd your-project/
@@ -98,7 +101,10 @@ pmat --version
 
 ```bash
 # Required: OpenAI API key for embeddings
-export OPENAI_API_KEY="sk-..."
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 
 # Optional: Custom database location (default: ~/.pmat/embeddings.db)
 export PMAT_VECTOR_DB_PATH="/path/to/embeddings.db"
@@ -791,7 +797,6 @@ Add to `~/.config/claude-code/mcp.json`:
       "command": "pmat-agent",
       "args": ["serve", "--stdio"],
       "env": {
-        "OPENAI_API_KEY": "sk-..."
       }
     }
   }
@@ -861,7 +866,10 @@ Add to `~/.config/claude-code/mcp.json`:
 
 **Solution:**
 ```bash
-export OPENAI_API_KEY="sk-..."
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 ```
 
 Or add to `~/.config/pmat/config.toml`:

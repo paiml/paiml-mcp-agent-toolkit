@@ -583,6 +583,28 @@ pub async fn run_tdg_analysis(
 /// the reason to change it.
 const DEAD_CODE_BUDGET_SECS: u64 = 300;
 
+/// Environment override for the budget above.
+///
+/// Not a test crutch — no test uses it. When this phase times out it tells the
+/// user to "re-run with a larger --timeout", and `pmat enforce` has no such
+/// flag, so the advice was unfollowable. This is the knob that advice refers to.
+///
+/// It matters because the budget is WALL CLOCK around a `cargo check`: it
+/// measures the machine as much as the code. On a loaded or slow host a
+/// perfectly ordinary project can exceed it and be reported as unmeasured, and
+/// until now the only remedy was to wait and hope.
+///
+pub const DEAD_CODE_BUDGET_ENV: &str = "PMAT_DEAD_CODE_TIMEOUT_SECS";
+
+/// The budget to use: the override when set and parseable, else the default.
+fn dead_code_budget_secs() -> u64 {
+    std::env::var(DEAD_CODE_BUDGET_ENV)
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(DEAD_CODE_BUDGET_SECS)
+}
+
 /// Run dead code analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 
@@ -603,17 +625,17 @@ pub async fn run_dead_code_analysis(
     let ran = handle_analyze_dead_code(
         project_path.to_path_buf(),
         DeadCodeOutputFormat::Json,
-        Some(10),              // top_files
-        true,                  // include_unreachable
-        5,                     // min_dead_lines
-        false,                 // include_tests
-        Some(capture.clone()), // output
-        false,                 // fail_on_violation
-        15.0,                  // max_percentage
-        DEAD_CODE_BUDGET_SECS, // timeout
-        Vec::new(),            // include
-        Vec::new(),            // exclude
-        8,                     // max_depth
+        Some(10),                // top_files
+        true,                    // include_unreachable
+        5,                       // min_dead_lines
+        false,                   // include_tests
+        Some(capture.clone()),   // output
+        false,                   // fail_on_violation
+        15.0,                    // max_percentage
+        dead_code_budget_secs(), // timeout
+        Vec::new(),              // include
+        Vec::new(),              // exclude
+        8,                       // max_depth
     )
     .await;
 

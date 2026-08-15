@@ -1,4 +1,8 @@
-#![cfg(feature = "dap")]
+// `services::dap::timeline_tui` is `#[cfg(feature = "tui")]` (dap/mod.rs:18),
+// so gating on `dap` alone was not enough: under `--features dap` the module
+// does not exist and this file failed to compile. It went unnoticed because
+// nothing built it until the feature matrix grew a --tests leg.
+#![cfg(all(feature = "dap", feature = "tui"))]
 
 // Sprint 78: TUI-005 RED phase - Keyboard Shortcut Handler Tests
 //

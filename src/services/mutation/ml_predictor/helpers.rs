@@ -25,14 +25,24 @@ pub(super) fn estimate_nesting_depth(source: &str) -> u32 {
 /// Helper: Count function parameters
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn count_parameters(source: &str) -> u32 {
-    // Simple heuristic: count commas in first parentheses
+    // Simple heuristic: count commas in first parentheses.
+    //
+    // The empty-parameter guard used to slice `start..start + end`, which stops
+    // BEFORE the closing paren — so for `fn foo()` it produced `"("`, compared
+    // that against `"()"`, never matched, and returned `0 commas + 1 = 1`
+    // parameter for a function that takes none. The guard could not fire for
+    // any input. Found by restoring tests that had not compiled in a long time;
+    // `test_count_parameters_empty` asserts exactly this and was correct.
+    //
+    // Work on the text BETWEEN the parens instead, where "empty" is simply
+    // "nothing there".
     if let Some(start) = source.find('(') {
         if let Some(end) = source.get(start..).unwrap_or_default().find(')') {
-            let params = source.get(start..start + end).unwrap_or_default();
-            if params.trim() == "()" {
+            let inner = source.get(start + 1..start + end).unwrap_or_default();
+            if inner.trim().is_empty() {
                 return 0;
             }
-            return (params.matches(',').count() + 1) as u32;
+            return (inner.matches(',').count() + 1) as u32;
         }
     }
     0

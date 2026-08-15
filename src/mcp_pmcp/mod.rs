@@ -101,12 +101,12 @@
 //! // Memory usage: 50MB (50% reduction)
 //! ```
 
-pub mod http_server;
 pub mod agent_context_handlers;
 pub mod analyze_handlers;
 pub mod context_handlers;
 pub mod discovery;
 pub mod handlers;
+pub mod http_server;
 pub mod pdmt_handler;
 pub mod prompt_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod quality_handlers;

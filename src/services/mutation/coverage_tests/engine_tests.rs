@@ -59,8 +59,16 @@ async fn test_mutation_engine_empty_source() {
         .generate_mutants_from_source(std::path::Path::new("test.rs"), source)
         .await;
 
-    // Empty source should fail to parse
-    assert!(result.is_err());
+    // An empty Rust file is VALID — an empty module — so parsing it is not an
+    // error, and the engine correctly returns Ok. What is worth asserting is
+    // that there is nothing to mutate. The old expectation (`is_err`) described
+    // a parser that does not exist and never ran to find out.
+    let mutants = result.expect("an empty file is valid Rust, not a parse error");
+    assert!(
+        mutants.is_empty(),
+        "empty source has nothing to mutate, got {} mutants",
+        mutants.len()
+    );
 }
 
 #[tokio::test]

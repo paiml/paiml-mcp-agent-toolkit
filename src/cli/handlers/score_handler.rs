@@ -445,7 +445,8 @@ fn assemble_score(
         "geometric mean out of range: {composite:?}"
     );
 
-    let grade = grade_for_verdict(composite, &gated_by);
+    let measured = dimensions.iter().filter(|d| d.is_ok()).count();
+    let grade = grade_for_coverage(composite, &gated_by, measured, dimensions.len());
     let [rps, comply, coverage, muda_inv, evoscore, dbc, file_health, pv_lint] = dimensions;
 
     CompositeScore {
@@ -482,6 +483,39 @@ fn assemble_score(
 fn grade_for_verdict(composite: Option<f64>, gated_by: &[String]) -> String {
     if !gated_by.is_empty() {
         return format!("GATED ({})", gated_by.join(", "));
+    }
+    grade_for(composite)
+}
+
+/// Fewest dimensions a composite may rest on before it stops being a grade.
+///
+/// An EMPTY DIRECTORY scored `composite 97.0, grade A`. Seven of the eight
+/// dimensions were unmeasured and disclosed as such; the eighth was
+/// `muda_inv` — waste inventory — which scores 97 precisely BECAUSE there is
+/// nothing there. So the headline verdict on an empty directory was an A.
+///
+/// `not_measured` listing the other seven is necessary and was not sufficient:
+/// a reader takes the grade. This is the same absence-as-a-good-result defect
+/// the rest of this file fixes (`Dimension = Result`, `gated_by`,
+/// `composite: None`), one level up — at the composite rather than at a term.
+///
+/// Three is a floor, not a target: below it the geometric mean is dominated by
+/// whichever one or two dimensions happened to be computable, which is a
+/// property of the checkout rather than of the code.
+const MIN_DIMENSIONS_FOR_A_GRADE: usize = 3;
+
+/// The verdict, refusing to grade what it barely measured.
+fn grade_for_coverage(
+    composite: Option<f64>,
+    gated_by: &[String],
+    measured: usize,
+    total: usize,
+) -> String {
+    if !gated_by.is_empty() {
+        return format!("GATED ({})", gated_by.join(", "));
+    }
+    if composite.is_some() && measured < MIN_DIMENSIONS_FOR_A_GRADE {
+        return format!("INSUFFICIENT ({measured}/{total} dimensions measured)");
     }
     grade_for(composite)
 }
@@ -1612,5 +1646,53 @@ mod tests {
             "md: {markdown}"
         );
         assert!(markdown.contains("| RPS |"), "md: {markdown}");
+    }
+}
+
+#[cfg(test)]
+mod insufficient_coverage_tests {
+    //! REGRESSION: an EMPTY DIRECTORY scored `composite 97.0, grade A`.
+    //!
+    //! Seven of eight dimensions were unmeasured and correctly disclosed in
+    //! `not_measured`; the eighth was `muda_inv` — waste inventory — which
+    //! scores 97 precisely BECAUSE there is nothing there. The disclosure was
+    //! necessary and not sufficient: a reader takes the grade, and the grade
+    //! said A.
+    //!
+    //! Found dogfooding the installed artifact, not by any unit test, because
+    //! every unit test supplied dimensions.
+    use super::*;
+
+    #[test]
+    fn one_measured_dimension_is_not_a_grade() {
+        let verdict = grade_for_coverage(Some(97.0), &[], 1, 8);
+        assert!(
+            verdict.starts_with("INSUFFICIENT"),
+            "a 97 resting on 1 of 8 dimensions must not render as a letter grade, got {verdict}"
+        );
+        assert!(
+            verdict.contains("1/8"),
+            "the verdict must say how thin it is: {verdict}"
+        );
+    }
+
+    #[test]
+    fn enough_dimensions_still_grade_normally() {
+        assert_eq!(grade_for_coverage(Some(97.0), &[], 3, 8), "A");
+        assert_eq!(grade_for_coverage(Some(75.0), &[], 8, 8), "C");
+    }
+
+    /// A gate is categorical and outranks thin coverage: the reader needs to
+    /// know WHICH gate, which `INSUFFICIENT` would hide.
+    #[test]
+    fn a_gate_still_outranks_insufficient_coverage() {
+        let verdict = grade_for_coverage(Some(50.0), &["comply".to_string()], 1, 8);
+        assert_eq!(verdict, "GATED (comply)");
+    }
+
+    /// Nothing measured at all stays `n/a` — distinct from "measured a little".
+    #[test]
+    fn nothing_measured_is_still_not_applicable() {
+        assert_eq!(grade_for_coverage(None, &[], 0, 8), "n/a");
     }
 }

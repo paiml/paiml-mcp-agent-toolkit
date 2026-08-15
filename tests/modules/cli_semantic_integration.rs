@@ -9,11 +9,6 @@ use predicates::prelude::*;
 use std::fs;
 use tempfile::TempDir;
 
-// Helper to check if OPENAI_API_KEY is set
-fn has_api_key() -> bool {
-    std::env::var("OPENAI_API_KEY").is_ok()
-}
-
 // Test 1: pmat embed --help shows help text
 #[ignore = "requires semantic integration setup"]
 #[test]
@@ -147,52 +142,6 @@ fn test_analyze_topics_help() {
         .stdout(predicate::str::contains("topics"))
         .stdout(predicate::str::contains("--num-topics"));
 }
-
-// Test 10: pmat embed sync without API key shows error
-#[ignore = "requires semantic integration setup"]
-#[test]
-#[ignore] // Integration test requires pmat binary
-fn test_embed_sync_no_api_key() {
-    if has_api_key() {
-        eprintln!("Skipping test: OPENAI_API_KEY is set");
-        return;
-    }
-
-    let temp_dir = TempDir::new().unwrap();
-
-    let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.arg("embed")
-        .arg("sync")
-        .arg("--path")
-        .arg(temp_dir.path())
-        .env_remove("OPENAI_API_KEY");
-
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("API key").or(predicate::str::contains("not enabled")));
-}
-
-// Test 11: pmat semantic search without API key shows error
-#[ignore = "requires semantic integration setup"]
-#[test]
-#[ignore] // Integration test requires pmat binary
-fn test_semantic_search_no_api_key() {
-    if has_api_key() {
-        eprintln!("Skipping test: OPENAI_API_KEY is set");
-        return;
-    }
-
-    let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.arg("semantic")
-        .arg("search")
-        .arg("test query")
-        .env_remove("OPENAI_API_KEY");
-
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("API key").or(predicate::str::contains("not enabled")));
-}
-
 // Test 12: pmat embed status without initialized database
 #[ignore = "requires semantic integration setup"]
 #[test]
@@ -204,7 +153,6 @@ fn test_embed_status_no_database() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed")
         .arg("status")
-        .env_remove("OPENAI_API_KEY")
         .env("PMAT_VECTOR_DB_PATH", db_path);
 
     // Should either fail or show empty status
@@ -279,42 +227,4 @@ fn test_analyze_topics_requires_num_topics() {
 
     // Should fail - missing required --num-topics argument
     cmd.assert().failure();
-}
-
-// Test 18: Configuration environment variables are respected
-#[ignore = "requires semantic integration setup"]
-#[test]
-#[ignore] // Integration test requires pmat binary
-fn test_env_var_configuration() {
-    if !has_api_key() {
-        eprintln!("Skipping test: OPENAI_API_KEY not set");
-        return;
-    }
-
-    let temp_dir = TempDir::new().unwrap();
-    let db_path = temp_dir.path().join("test.db");
-    let workspace = temp_dir.path();
-
-    // Create a simple test file
-    let test_file = workspace.join("test.rs");
-    fs::write(&test_file, "fn main() { println!(\"hello\"); }").unwrap();
-
-    let mut cmd = Command::cargo_bin("pmat").unwrap();
-    cmd.arg("embed")
-        .arg("sync")
-        .arg("--path")
-        .arg(workspace)
-        .env("PMAT_VECTOR_DB_PATH", &db_path)
-        .env("PMAT_WORKSPACE", workspace);
-
-    // Should either succeed or fail with specific error (not generic config error)
-    let output = cmd.output().unwrap();
-    let stderr = String::from_utf8_lossy(&output.stderr);
-
-    // Should not contain generic "not configured" error
-    assert!(
-        !stderr.contains("not configured")
-            || stderr.contains("Synced")
-            || stderr.contains("Indexed")
-    );
 }

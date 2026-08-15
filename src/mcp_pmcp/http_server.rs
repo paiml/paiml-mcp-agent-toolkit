@@ -123,7 +123,9 @@ impl AuthProvider for BearerToken {
             pmcp::error::Error::Internal("Authorization header is not a Bearer token".to_string())
         })?;
         if !self.matches(presented.trim()) {
-            return Err(pmcp::error::Error::Internal("invalid bearer token".to_string()));
+            return Err(pmcp::error::Error::Internal(
+                "invalid bearer token".to_string(),
+            ));
         }
         Ok(Some(AuthContext {
             subject: "pmat-mcp-http".to_string(),
@@ -157,21 +159,17 @@ pub async fn serve(
     use pmcp::server::streamable_http_server::{StreamableHttpServer, StreamableHttpServerConfig};
 
     let provider: Arc<dyn AuthProvider> = Arc::new(auth);
-    let server = crate::mcp_pmcp::simple_unified_server::SimpleUnifiedServer::build_server(Some(
-        provider,
-    ))
-    .map_err(|e| anyhow::anyhow!("building the MCP tool surface failed: {e}"))?;
+    let server =
+        crate::mcp_pmcp::simple_unified_server::SimpleUnifiedServer::build_server(Some(provider))
+            .map_err(|e| anyhow::anyhow!("building the MCP tool surface failed: {e}"))?;
 
     let config = StreamableHttpServerConfig {
         session_id_generator: None, // stateless
         enable_json_response: true,
         ..Default::default()
     };
-    let http = StreamableHttpServer::with_config(
-        addr,
-        Arc::new(tokio::sync::Mutex::new(server)),
-        config,
-    );
+    let http =
+        StreamableHttpServer::with_config(addr, Arc::new(tokio::sync::Mutex::new(server)), config);
     http.start()
         .await
         .map_err(|e| anyhow::anyhow!("starting the streamable-HTTP MCP server failed: {e}"))
@@ -252,8 +250,14 @@ mod tests {
     #[test]
     fn comparison_is_length_checked_and_constant_time() {
         let auth = BearerToken::new("0123456789abcdef0123").expect("token");
-        assert!(!auth.matches("0123456789abcdef012"), "prefix must not match");
-        assert!(!auth.matches("0123456789abcdef01234"), "suffix must not match");
+        assert!(
+            !auth.matches("0123456789abcdef012"),
+            "prefix must not match"
+        );
+        assert!(
+            !auth.matches("0123456789abcdef01234"),
+            "suffix must not match"
+        );
         assert!(auth.matches("0123456789abcdef0123"));
     }
 

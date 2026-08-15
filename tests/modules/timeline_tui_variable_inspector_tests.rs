@@ -1,4 +1,6 @@
-#![cfg(feature = "dap")]
+// `services::dap::timeline_tui` is `#[cfg(feature = "tui")]`, so gating on
+// `dap` alone left this file compiling against a module that is not there.
+#![cfg(all(feature = "dap", feature = "tui"))]
 
 // Sprint 78: TUI-003 RED phase - Variable Inspector View Tests
 //

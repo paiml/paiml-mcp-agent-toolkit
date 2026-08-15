@@ -179,7 +179,10 @@ Complete Rust/Ruchy → WebAssembly analysis pipeline with bidirectional tracing
 
 **Quick Start:**
 ```bash
-export OPENAI_API_KEY="sk-..."
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 pmat embed sync .
 pmat semantic search "authentication logic"
 pmat analyze cluster --method kmeans --k 5

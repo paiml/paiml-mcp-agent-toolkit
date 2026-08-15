@@ -63,7 +63,7 @@ ServerConfig {
     request_timeout: Duration::from_secs(30),
     enable_logging: true,
 
-    // Semantic search (requires OPENAI_API_KEY)
+    // Semantic search (local embeddings; no API key)
     semantic_enabled: false,
     semantic_api_key: None,
     semantic_db_path: Some("~/.pmat/embeddings.db"),
@@ -75,7 +75,10 @@ ServerConfig {
 
 ```bash
 # Enable semantic search tools (optional)
-export OPENAI_API_KEY="sk-..."
+# Semantic search uses LOCAL embeddings. There is no API key: pmat reads
+# no OPENAI_API_KEY and sends nothing to a third party. Enable it with
+# PMAT_SEMANTIC_ENABLED=1.
+export PMAT_SEMANTIC_ENABLED=1
 export PMAT_VECTOR_DB_PATH="~/.pmat/embeddings.db"
 export PMAT_WORKSPACE="/path/to/workspace"
 ```
@@ -530,7 +533,7 @@ const client = new McpClient({
 
 ```bash
 # Ensure OpenAI API key is set
-echo $OPENAI_API_KEY
+echo $PMAT_SEMANTIC_ENABLED
 
 # Check server logs for semantic tool registration
 RUST_LOG=info pmat mcp-server | grep semantic

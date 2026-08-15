@@ -20,13 +20,6 @@ impl SemanticSearchEngine {
         })
     }
 
-    /// Create new search engine (backward compatible - ignores api_key)
-    #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
-    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub async fn new_with_key(_api_key: &str, db_path: &str) -> Result<Self, String> {
-        Self::new(db_path).await
-    }
-
     /// Persist the indexed embeddings to disk (#568). No-op for in-memory stores.
     pub async fn save(&self) -> Result<(), String> {
         self.vector_db.save().await

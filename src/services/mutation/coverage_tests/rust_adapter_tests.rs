@@ -1,7 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use super::*;
-use std::sync::Arc;
 
 #[test]
 fn test_rust_adapter_creation() {

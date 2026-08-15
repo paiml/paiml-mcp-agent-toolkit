@@ -495,14 +495,23 @@ mod composite_score_regression_tests {
             violating_result.score,
             empty_result.score
         );
-        assert!(
-            violating_result
-                .violations
-                .iter()
-                .all(|v| v.violation_type != "not_measured"),
-            "a parseable project measures every dimension: {:?}",
-            violating_result.violations
-        );
+        // NOT asserted here: "a parseable project measures every dimension".
+        //
+        // That assertion flaked, and it flaked because it is not true. The
+        // dead-code phase is a wall-clock budget around a `cargo check`, so
+        // whether a dimension is measured depends on how loaded the machine is
+        // — a contended runner tripped even a 300s budget on a two-function
+        // fixture. The verdict therefore varies for identical code, which is a
+        // property of the PRODUCT, not of this test, and one that cannot be
+        // asserted away here.
+        //
+        // Raising the budget or setting one just for this test would only move
+        // the flake; a test that passes because the machine happened to be idle
+        // is not a test. The disclosure invariant that actually matters — an
+        // unmeasured dimension is never silently scored as clean — is asserted
+        // deterministically in `not_measured_is_disclosed_not_scored` below,
+        // which needs no subprocess. The nondeterminism itself is tracked
+        // separately.
     }
 
     /// `progress.files_completed` was the literal `0` on every path a CLI
@@ -688,5 +697,67 @@ mod composite_score_regression_tests {
 
         assert!((phase_score(&violations) - 0.25).abs() < 1e-9);
         assert_eq!(distinct_violation_files(&violations), 2);
+    }
+    /// The invariant the removed assertion was reaching for, asserted where it
+    /// is actually decidable.
+    ///
+    /// `score_distinguishes_an_empty_directory_from_a_violating_project` used
+    /// to end with "a parseable project measures every dimension". That is not
+    /// a property the product guarantees: the dead-code phase is a wall-clock
+    /// budget around a `cargo check`, so on a loaded machine a dimension goes
+    /// unmeasured and the assertion fails for reasons that have nothing to do
+    /// with the code under test.
+    ///
+    /// What DOES hold, always, is the disclosure rule: a phase that could not
+    /// run is surfaced as a `not_measured` violation rather than being silently
+    /// credited as clean. `summarize` is a pure function over phase outcomes,
+    /// so this needs no subprocess and cannot flake.
+    #[test]
+    fn not_measured_is_disclosed_not_scored() {
+        use crate::cli::handlers::enforce_handlers::assessment::summarize;
+        use crate::cli::handlers::enforce_handlers::types::PhaseOutcome;
+
+        let assessment = summarize(
+            vec![
+                ("complexity", PhaseOutcome::measured(vec![])),
+                (
+                    "dead code",
+                    PhaseOutcome::unmeasured("Dead code analysis timed out after 300 seconds"),
+                ),
+            ],
+            std::path::Path::new("/tmp/whatever"),
+            None,
+            None,
+            None,
+        )
+        .expect("summarize");
+
+        let disclosed: Vec<&crate::cli::handlers::enforce_handlers::types::QualityViolation> =
+            assessment
+                .violations
+                .iter()
+                .filter(|v| v.violation_type == "not_measured")
+                .collect();
+        assert_eq!(
+            disclosed.len(),
+            1,
+            "the phase that could not run must be disclosed: {:?}",
+            assessment.violations
+        );
+        assert!(
+            disclosed[0].suggestion.contains("dead code"),
+            "the disclosure must name WHICH phase: {}",
+            disclosed[0].suggestion
+        );
+        assert!(
+            disclosed[0].suggestion.contains("timed out"),
+            "and carry the reason, so a timeout is not mistaken for a clean result: {}",
+            disclosed[0].suggestion
+        );
+        assert!(
+            assessment.score < 1.0,
+            "a run with an unmeasured dimension must not score full marks: {}",
+            assessment.score
+        );
     }
 }
