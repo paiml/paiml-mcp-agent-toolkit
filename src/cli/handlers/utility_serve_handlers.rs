@@ -82,8 +82,43 @@ pub async fn handle_serve(
         crate::cli::commands::ServeTransport::All => "http+websocket+sse",
     };
 
+    // `http` is implemented now (EV-6, #999): the streamable-HTTP MCP transport.
+    // The other transports are not, and still say so rather than pretending.
+    if matches!(transport, crate::cli::commands::ServeTransport::Http) {
+        return serve_streamable_http(&host, port).await;
+    }
+
     let _ = write_serve_unimplemented_message(std::io::stderr(), &host, port, transport_label);
     std::process::exit(SERVE_UNIMPLEMENTED_EXIT_CODE);
+}
+
+/// Serve the MCP tool surface over streamable HTTP.
+///
+/// Refuses to start without `PMAT_MCP_HTTP_TOKEN`. That is not a convenience
+/// check: pmcp's HTTP layer only consults an auth provider if one is wired, and
+/// with none it serves every request — so a "working" endpoint with no token
+/// would publish the whole tool surface to anyone who can reach the port.
+async fn serve_streamable_http(host: &str, port: u16) -> Result<()> {
+    use crate::mcp_pmcp::http_server::{serve, BearerToken, TOKEN_ENV};
+
+    let auth = BearerToken::from_env()?;
+    let addr: std::net::SocketAddr = format!("{host}:{port}")
+        .parse()
+        .map_err(|e| anyhow::anyhow!("could not parse {host}:{port} as a socket address: {e}"))?;
+
+    let (bound, handle) = serve(addr, auth).await?;
+    eprintln!("pmat MCP (streamable HTTP) listening on http://{bound}/");
+    eprintln!("  auth: Bearer, from {TOKEN_ENV}; unauthenticated requests get 401");
+    eprintln!(
+        "  tools: {}",
+        crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS.len()
+    );
+    // Note for Antigravity: its egress proxy blocks loopback, so bind an
+    // address reachable from the sandbox and register the URL with the bearer
+    // injected via `network.allowlist[].transform` — never mounted in-sandbox.
+    handle
+        .await
+        .map_err(|e| anyhow::anyhow!("the MCP HTTP server task ended abnormally: {e}"))
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

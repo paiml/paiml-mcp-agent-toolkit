@@ -111,6 +111,12 @@ minijinja = { version = "2.16", default-features = false, optional = true }
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
 pmcp = { version = "2.17", features = ["websocket", "http", "sse", "validation"] }
+# Streamable-HTTP MCP transport (EV-6, #999). Opt-in rather than default: it is
+# the only thing that needs pmcp's `streamable-http`, which adds axum 0.8,
+# axum-core, matchit and tower-http 0.7 — four crates, and two of them are
+# DUPLICATE MAJORS of crates already in the tree (axum 0.7.9, tower-http 0.6.11).
+# Measured: 442 -> 446 unique crates, packaged size unchanged at 7.4 MiB. It
+# adds no rustls/hyper-rustls, which are already present via pmcp's `http`.
 
 # Caching
 lru = { version = "0.18", features = ["hashbrown"], optional = true }
@@ -320,6 +326,11 @@ sha2 = { version = "0.11", optional = true }  # For O(1) build artifact hash cac
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
+# EV-6 (#999): serve the MCP tool surface over streamable HTTP, for clients that
+# cannot use stdio (the Google Antigravity Agent registers `{"type":"mcp_server",
+# "url": ...}` and supports streamable HTTP only — no SSE, and loopback is
+# blocked by its egress proxy).
+mcp-http = ["pmcp/streamable-http"]
 # Phase 2 Build Performance (Issue #89): Minimal defaults for fast builds
 # Default: Rust + TypeScript/JavaScript (most common use case)
 # - Opt-in for other languages: --features extended-languages or all-languages
