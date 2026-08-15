@@ -2,6 +2,7 @@
 //! Tests for the command executor module.
 
 use super::*;
+use std::path::PathBuf;
 use std::time::Duration;
 
 #[test]

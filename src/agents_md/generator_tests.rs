@@ -110,12 +110,12 @@ mod tests {
                 timeout: Some(60),
                 safe: true,
             }],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 8.5,
                 test_coverage: 85.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -152,12 +152,12 @@ mod tests {
                     safe: true,
                 },
             ],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 5.0,
                 test_coverage: 90.0,
                 satd_count: 2,
                 grade: "B".to_string(),
-            },
+            }),
             dependencies: vec!["dep1".to_string(), "dep2".to_string()],
         };
 
@@ -196,12 +196,12 @@ mod tests {
             description: "A minimal project".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -239,12 +239,12 @@ mod tests {
             description: "Project with many commands".to_string(),
             project_type: ProjectType::Rust,
             commands,
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -266,12 +266,12 @@ mod tests {
             description: "Project with no commands".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -812,12 +812,12 @@ Test Project
             description: "Testing metrics".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 15.5,
                 test_coverage: 95.5,
                 satd_count: 5,
                 grade: "A+".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -980,12 +980,12 @@ Test Project
             description: "Testing analysis".to_string(),
             project_type: ProjectType::Go,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 5.0,
                 test_coverage: 100.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec!["dep1".to_string()],
         };
 
@@ -1004,12 +1004,12 @@ Test Project
             description: "Description with 'quotes' and special chars: @#$%".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "B".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -1027,12 +1027,12 @@ Test Project
             description: "".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -1050,12 +1050,12 @@ Test Project
             description: "A project with emojis and unicode chars".to_string(),
             project_type: ProjectType::Rust,
             commands: vec![],
-            quality_metrics: QualityMetrics {
+            quality_metrics: Some(QualityMetrics {
                 avg_complexity: 10.0,
                 test_coverage: 80.0,
                 satd_count: 0,
                 grade: "A".to_string(),
-            },
+            }),
             dependencies: vec![],
         };
 
@@ -1210,5 +1210,70 @@ Test Project
         let debug_str = format!("{:?}", metrics);
         assert!(debug_str.contains("QualityMetrics"));
         assert!(debug_str.contains("avg_complexity"));
+    }
+
+    // ==================== Fabricated-claims regression ====================
+
+    /// REGRESSION: `generate_from_project` invented quality numbers.
+    ///
+    /// It hardcoded `test_coverage: 80.0`, `grade: "A"`, `satd_count: 0` and
+    /// `avg_complexity: 10.0` for EVERY repository, and the renderers wrote
+    /// them into AGENTS.md as "Ensure 80%+ coverage maintained" and "Current
+    /// quality grade: A".
+    ///
+    /// AGENTS.md is mounted natively into agent sandboxes, so that is a
+    /// fabricated quality claim handed to an agent as fact about the project it
+    /// is editing — and this constructor is given only a name, a description
+    /// and a path. It runs no analysis, so it has nothing to report.
+    #[test]
+    fn generate_from_project_invents_no_quality_numbers() {
+        let tmp = TempDir::new().expect("tempdir");
+        fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname=\"p\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        let project = ProjectInfo {
+            root: tmp.path().to_path_buf(),
+            name: "p".to_string(),
+            version: "0.1.0".to_string(),
+            description: "a project nobody measured".to_string(),
+            readme: None,
+        };
+        let out = AgentsMdGenerator::new()
+            .generate_from_project(&project)
+            .expect("generate");
+
+        assert!(
+            !out.contains("80%+ coverage"),
+            "invented a coverage figure for an unmeasured project:\n{out}"
+        );
+        assert!(
+            !out.contains("quality grade:"),
+            "invented a quality grade for an unmeasured project:\n{out}"
+        );
+    }
+
+    /// …and a caller that HAS measured something still gets it rendered.
+    #[test]
+    fn measured_quality_is_still_rendered() {
+        let analysis = PmatAnalysis {
+            project_name: "p".to_string(),
+            description: "d".to_string(),
+            project_type: ProjectType::Rust,
+            commands: vec![],
+            quality_metrics: Some(QualityMetrics {
+                avg_complexity: 4.0,
+                test_coverage: 91.0,
+                satd_count: 2,
+                grade: "A-".to_string(),
+            }),
+            dependencies: vec![],
+        };
+        let out = AgentsMdGenerator::new()
+            .generate_from_analysis(&analysis)
+            .expect("generate");
+        assert!(out.contains("91%+ coverage"), "got:\n{out}");
+        assert!(out.contains("quality grade: A-"), "got:\n{out}");
     }
 }

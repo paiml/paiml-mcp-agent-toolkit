@@ -4,13 +4,9 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    use super::super::types::{
-        AgentsMdDiscovery, AgentsMdFile, AgentsMdHierarchy, DiscoveryConfig, HierarchyNode,
-    };
-    use std::collections::HashMap;
+    use super::super::types::{AgentsMdDiscovery, DiscoveryConfig};
     use std::fs;
     use std::path::{Path, PathBuf};
-    use std::time::SystemTime;
     use tempfile::TempDir;
 
     // =============================================================================
