@@ -133,8 +133,10 @@ proptest! {
         };
 
         let cloned = mutant.clone();
+        // Compare the whole value FIRST: reading `cloned.id` by value moves it
+        // out, so the equality check below would be on a partially-moved value.
+        prop_assert_eq!(&cloned, &mutant);
         prop_assert_eq!(cloned.id, id);
-        prop_assert_eq!(cloned, mutant);
     }
 
     #[test]

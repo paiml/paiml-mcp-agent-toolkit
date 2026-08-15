@@ -17,7 +17,7 @@ include!("equivalent_detector_patterns.rs");
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::mutation::types::{MutationOperator, SourceLocation};
+    use crate::services::mutation::types::{MutationOperatorType, SourceLocation};
     use tempfile::TempDir;
 
     include!("equivalent_detector_verification.rs");

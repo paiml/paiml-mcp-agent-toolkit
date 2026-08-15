@@ -214,7 +214,11 @@ mod tests {
     fn test_display_statistics_empty_report() {
         use crate::services::mutation::json_parser::CargoMutantsReport;
 
-        let report = CargoMutantsReport::default();
+        // Constructed rather than `::default()`: the type does not derive
+        // Default, and adding a derive to production code to satisfy a test is
+        // a change to the shipped API for a test's convenience. An empty report
+        // is exactly `mutants: vec![]`, which is what this test means.
+        let report = CargoMutantsReport { mutants: vec![] };
         // This just tests that display_statistics doesn't panic with empty report
         display_statistics(&report);
     }

@@ -61,6 +61,10 @@ performance:
     }
 
     #[tokio::test]
+    // `ConfigManager::watch` is `#[cfg(feature = "watch")]`; this test was
+    // not, so it failed to compile in every build without that feature — i.e.
+    // every build, since nothing else compiles this file either.
+    #[cfg(feature = "watch")]
     #[cfg_attr(
         not(feature = "integration-tests"),
         ignore = "Requires file system watching"

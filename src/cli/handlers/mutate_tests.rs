@@ -3,7 +3,7 @@
 mod tests {
     use super::*;
     use crate::services::mutation::types::{
-        Mutant, MutantStatus, MutationOperator, SourceLocation,
+        Mutant, MutantStatus, MutationOperatorType, SourceLocation,
     };
     use tempfile::TempDir;
 
@@ -37,9 +37,16 @@ fn add(a: i32, b: i32) -> i32 {
                 end_line: line,
                 end_column: 10,
             },
-            operator: MutationOperator::ArithmeticReplace,
-            original_source: "a + b".to_string(),
+            operator: MutationOperatorType::ArithmeticReplacement,
+            // `original_source` was dropped from `Mutant`: it now carries
+            // `original_file` + `location` and the mutated text only. There is
+            // no successor field, so the assertion on it goes too rather than
+            // being retargeted at something that does not mean the same thing.
             mutated_source: "a - b".to_string(),
+            // `hash` (dedup key) and `status` were added to `Mutant`; a
+            // freshly-built fixture has not been executed yet.
+            hash: "test-hash".to_string(),
+            status: MutantStatus::Pending,
         }
     }
 
@@ -48,7 +55,11 @@ fn add(a: i32, b: i32) -> i32 {
             mutant: create_test_mutant(file_path, 8),
             status,
             execution_time_ms: 100,
-            test_output: Some("test output".to_string()),
+            // Was `test_output: Some("test output")`. The current model names
+            // this precisely — "test failures that killed this mutant" — so a
+            // Killed result carries the evidence that killed it.
+            test_failures: vec!["tests::arithmetic_is_checked".to_string()],
+            error_message: None,
         }
     }
 
@@ -272,9 +283,8 @@ fn add(a: i32, b: i32) -> i32 {
         let (temp, file_path) = create_temp_rust_file();
         let mutant = create_test_mutant(&file_path, 8);
 
-        assert_eq!(mutant.original_source, "a + b");
         assert_eq!(mutant.mutated_source, "a - b");
-        assert_eq!(mutant.operator, MutationOperator::ArithmeticReplace);
+        assert_eq!(mutant.operator, MutationOperatorType::ArithmeticReplacement);
         drop(temp);
     }
 
@@ -289,7 +299,10 @@ fn add(a: i32, b: i32) -> i32 {
 
         assert_eq!(result.status, MutantStatus::Killed);
         assert_eq!(result.execution_time_ms, 100);
-        assert!(result.test_output.is_some());
+        assert!(
+            !result.test_failures.is_empty(),
+            "a killed mutant must carry the failures that killed it"
+        );
         drop(temp);
     }
 
@@ -385,12 +398,12 @@ fn add(a: i32, b: i32) -> i32 {
     #[test]
     fn test_mutation_operator_equality() {
         assert_eq!(
-            MutationOperator::ArithmeticReplace,
-            MutationOperator::ArithmeticReplace
+            MutationOperatorType::ArithmeticReplacement,
+            MutationOperatorType::ArithmeticReplacement
         );
         assert_ne!(
-            MutationOperator::ArithmeticReplace,
-            MutationOperator::ComparisonReplace
+            MutationOperatorType::ArithmeticReplacement,
+            MutationOperatorType::RelationalReplacement
         );
     }
 

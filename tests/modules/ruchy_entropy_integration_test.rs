@@ -316,7 +316,12 @@ fun main() {
         assert!(patterns.file_count() > 0);
 
         // Should detect at least some high-frequency patterns
-        let summary = patterns.summary();
+        // `summary()` returns Option; None means "no dominant pattern", which
+        // for this fixture would itself be the failure the next assert is
+        // about. Unwrapped with a reason rather than `?`-ed away.
+        let summary = patterns
+            .summary()
+            .expect("a file of repeated Ruchy patterns must produce a summary");
         assert!(summary.repetitions > 1, "Should detect repetitive patterns");
 
         // Should have reasonable variation scores

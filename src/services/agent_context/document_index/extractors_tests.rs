@@ -211,12 +211,16 @@ mod tests {
         let mut f = std::fs::File::create(&pdf_path).unwrap();
         f.write_all(b"%PDF-1.4 fake").unwrap();
 
-        let result = extract_pdf(&pdf_path, "test.pdf", "hashpdf");
+        // Bound under both configurations, consumed only in the arm below —
+        // with `doc-indexing` on, real extraction of this fake PDF may fail and
+        // this test does not assert which way. Named `_result` so that is
+        // explicit rather than a warning.
+        let _result = extract_pdf(&pdf_path, "test.pdf", "hashpdf");
         // Without the doc-indexing feature, this returns a metadata-only result
         // With the feature, it would attempt real extraction (and likely fail on fake data)
         #[cfg(not(feature = "doc-indexing"))]
         {
-            let chunks = result.unwrap();
+            let chunks = _result.unwrap();
             assert_eq!(chunks.len(), 1);
             assert!(chunks[0].text_content.contains("doc-indexing"));
             assert_eq!(chunks[0].extraction_quality, 0.1);
