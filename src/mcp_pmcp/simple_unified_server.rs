@@ -321,6 +321,27 @@ pub struct SimpleUnifiedServer {
     state_manager: Arc<Mutex<StateManager>>,
 }
 
+/// Forwards an `Arc<dyn AuthProvider>` to `ServerBuilder::auth_provider`,
+/// which takes `impl AuthProvider + 'static` and so will not accept the trait
+/// object directly.
+struct ArcAuthProvider(std::sync::Arc<dyn pmcp::server::auth::AuthProvider>);
+
+#[async_trait::async_trait]
+impl pmcp::server::auth::AuthProvider for ArcAuthProvider {
+    async fn validate_request(
+        &self,
+        authorization_header: Option<&str>,
+    ) -> pmcp::error::Result<Option<pmcp::server::auth::AuthContext>> {
+        self.0.validate_request(authorization_header).await
+    }
+    fn auth_scheme(&self) -> &'static str {
+        self.0.auth_scheme()
+    }
+    fn is_required(&self) -> bool {
+        self.0.is_required()
+    }
+}
+
 impl SimpleUnifiedServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
@@ -333,7 +354,23 @@ impl SimpleUnifiedServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting PMAT Simple Unified MCP server (pmcp SDK)");
+        let server = Self::build_server(None)?;
+        self.run_stdio(server).await
+    }
 
+    /// Build the tool surface, independent of transport.
+    ///
+    /// Extracted from `run()` so the SAME registrations serve stdio and
+    /// streamable HTTP (EV-6, #999). A second builder would be a second answer
+    /// to "which tools does pmat advertise", and this file already carries a
+    /// drift-guard test because that question has had two answers before.
+    ///
+    /// `auth` is applied when present. It is `None` for stdio, where the
+    /// transport is the process boundary; over HTTP it is REQUIRED by the
+    /// caller — see `serve_http`.
+    pub fn build_server(
+        auth: Option<std::sync::Arc<dyn pmcp::server::auth::AuthProvider>>,
+    ) -> Result<Server, Box<dyn std::error::Error>> {
         // KAIZEN-0165: shared IndexManager for the 4 pmat_* AgentContextTools.
         // Construction is cheap (no disk I/O); first tool call triggers index build.
         let index_manager = Arc::new(IndexManager::new(
@@ -341,7 +378,7 @@ impl SimpleUnifiedServer {
         ));
 
         // Build server with core PMAT tools that are already working
-        let server = Server::builder()
+        let builder = Server::builder()
             .name("paiml-mcp-agent-toolkit")
             .version(env!("CARGO_PKG_VERSION"))
             .capabilities(ServerCapabilities::tools_only())
@@ -396,9 +433,20 @@ impl SimpleUnifiedServer {
                 "pmat_index_stats",
                 PmatIndexStatsHandler::new(index_manager.clone()),
             )
-            .build()?;
+            ;
+        let builder = match auth {
+            Some(provider) => builder.auth_provider(ArcAuthProvider(provider)),
+            None => builder,
+        };
+        Ok(builder.build()?)
+    }
 
-        info!("PMAT Simple Unified MCP server ready with 20 tools (16 core + 4 agent_context), listening on stdio");
+    /// Serve the built tool surface over stdio.
+    async fn run_stdio(&self, server: Server) -> Result<(), Box<dyn std::error::Error>> {
+        info!(
+            "PMAT Simple Unified MCP server ready with {} tools, listening on stdio",
+            crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS.len()
+        );
 
         // Run server with stdio transport, racing against stdin EOF. pmcp's
         // `Server::run` keep-alive future never completes (even after the

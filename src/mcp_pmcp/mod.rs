@@ -101,6 +101,7 @@
 //! // Memory usage: 50MB (50% reduction)
 //! ```
 
+pub mod http_server;
 pub mod agent_context_handlers;
 pub mod analyze_handlers;
 pub mod context_handlers;

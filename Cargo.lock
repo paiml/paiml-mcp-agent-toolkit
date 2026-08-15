@@ -869,6 +869,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -908,6 +909,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -5193,6 +5195,7 @@ checksum = "3683fa1ad34aefe9e0d6d01a9bb405f5f6505db20633cbda56b565d9eb656fe0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "axum 0.8.9",
  "base64",
  "bytes",
  "chrono",
@@ -5200,12 +5203,14 @@ dependencies = [
  "futures",
  "futures-channel",
  "futures-locks",
+ "futures-util",
  "garde",
  "getrandom 0.4.3",
  "glob",
  "http",
  "http-body-util",
  "hyper",
+ "hyper-rustls",
  "hyper-util",
  "indexmap",
  "js-sys",
@@ -5214,6 +5219,7 @@ dependencies = [
  "pmcp-widget-utils",
  "regex",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -5224,6 +5230,8 @@ dependencies = [
  "tokio-tungstenite",
  "tokio-util",
  "toml 1.1.4+spec-1.1.0",
+ "tower",
+ "tower-http 0.7.0",
  "tracing",
  "tracing-subscriber",
  "url",
