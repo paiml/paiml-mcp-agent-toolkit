@@ -1327,6 +1327,22 @@ mod coverage_tests {
             prop_assert!(question.contains("Why") || question.contains("why"));
         }
 
+        /// `generate_recommendations` echoes the root cause back — **unless the
+        /// cause is blank**, in which case it says so instead of printing a
+        /// bare "Address root cause: " with nothing after it
+        /// (`five_whys_analyzer.rs:1118`).
+        ///
+        /// This test used to assert only the first half, and it was flaky: the
+        /// generator is `\PC{1,50}` (1-50 NON-CONTROL chars), and "non-control"
+        /// is not "non-blank". U+2028 LINE SEPARATOR is category Zl, so `\PC`
+        /// emits it, and it is `White_Space=yes`, so `trim().is_empty()` is
+        /// true for it. Roughly one CI run in several drew a whitespace-only
+        /// string, took the blank branch, and failed — `minimal failing input:
+        /// root_cause = "\u{2028}"`, after 47 successes.
+        ///
+        /// The product was right and the property was wrong, so the property is
+        /// what changed. It is not narrowed to dodge the case: both branches are
+        /// asserted, so the blank path is now pinned rather than merely avoided.
         #[test]
         fn prop_recommendations_always_include_root_cause(root_cause in "\\PC{1,50}") {
             let analyzer = create_analyzer();
@@ -1335,8 +1351,21 @@ mod coverage_tests {
             prop_assert!(result.is_ok());
 
             let recommendations = result.expect("should succeed");
-            prop_assert!(recommendations.iter().any(|r| r.action.contains(&root_cause)));
+            if root_cause.trim().is_empty() {
+                prop_assert!(
+                    recommendations
+                        .iter()
+                        .any(|r| r.action.contains("No root cause was determined")),
+                    "a blank root cause must be reported as undetermined, not echoed: {recommendations:?}"
+                );
+            } else {
+                prop_assert!(
+                    recommendations.iter().any(|r| r.action.contains(&root_cause)),
+                    "a real root cause must be echoed back: {recommendations:?}"
+                );
+            }
         }
+
 
         #[test]
         fn prop_extract_root_cause_returns_last_hypothesis(
@@ -1783,6 +1812,38 @@ mod coverage_tests {
             "Depth 2 with low coverage should mention coverage, got: {}",
             hypothesis
         );
+    }
+
+    /// The blank branch of `generate_recommendations`, pinned exhaustively.
+    ///
+    /// A plain loop rather than a proptest strategy on purpose: this is a fixed,
+    /// finite set of inputs, and `prop::sample::select` would only *probably*
+    /// reach each one. The case that broke CI (U+2028) is in the list by name,
+    /// so it is checked on every run instead of when the seed cooperates.
+    #[test]
+    fn blank_root_cause_is_reported_as_undetermined() {
+        let analyzer = create_analyzer();
+        // ASCII blanks, then the Unicode ones `\PC` can emit: LINE SEPARATOR,
+        // PARAGRAPH SEPARATOR, NO-BREAK SPACE. All are White_Space=yes, so all
+        // of them make `root_cause.trim().is_empty()` true.
+        for blank in ["", " ", "\t", "   \t  ", "\u{2028}", "\u{2029}", "\u{00a0}"] {
+            let recommendations = analyzer
+                .generate_recommendations(&[], blank)
+                .expect("generate_recommendations should succeed");
+            assert!(
+                recommendations
+                    .iter()
+                    .any(|r| r.action.contains("No root cause was determined")),
+                "blank {blank:?} must be reported as undetermined, not echoed: {recommendations:?}"
+            );
+            assert!(
+                !recommendations
+                    .iter()
+                    .any(|r| r.action == format!("Address root cause: {blank}")),
+                "blank {blank:?} produced a bare 'Address root cause: ' with nothing \
+                 after it — the exact output the guard at five_whys_analyzer.rs:1118 exists to prevent"
+            );
+        }
     }
 
     proptest! {
