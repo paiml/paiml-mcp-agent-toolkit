@@ -11,12 +11,16 @@ use std::sync::Arc;
 
 // Helper function to create test engine (returns None if no API key)
 async fn create_test_engine() -> Option<Arc<HybridSearchEngine>> {
-    let api_key = std::env::var("OPENAI_API_KEY").ok()?;
+    // No API key. Semantic search moved to LOCAL embeddings, so `new` dropped
+    // its `api_key` parameter — and the `OPENAI_API_KEY` lookup that used to sit
+    // here was also a skip-guard: it returned None on any machine without that
+    // variable, which would now skip this test for a feature that does not use
+    // a key.
     let temp_dir = tempfile::tempdir().ok()?;
     let db_path = temp_dir.path().join("test.db");
     let workspace = temp_dir.path();
 
-    HybridSearchEngine::new(&api_key, &db_path.to_string_lossy(), workspace)
+    HybridSearchEngine::new(&db_path.to_string_lossy(), workspace)
         .await
         .ok()
         .map(Arc::new)

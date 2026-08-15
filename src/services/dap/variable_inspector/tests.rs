@@ -2,6 +2,7 @@
 //! Tests for VariableInspector
 
 use super::*;
+use std::path::Path;
 use tree_sitter::Parser;
 
 #[test]

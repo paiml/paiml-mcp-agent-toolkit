@@ -75,7 +75,6 @@ impl AstStrategy for KotlinStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
 
     #[tokio::test]
     async fn test_kotlin_strategy_supports_extension() {

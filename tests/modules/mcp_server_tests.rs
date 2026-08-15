@@ -41,7 +41,6 @@ fn test_server_config_custom() {
         request_timeout: Duration::from_secs(60),
         enable_logging: false,
         semantic_enabled: false,
-        semantic_api_key: None,
         semantic_db_path: None,
         semantic_workspace: None,
     };
@@ -65,7 +64,6 @@ fn test_server_config_semantic_disabled_by_default() {
     // Will be enabled if OPENAI_API_KEY is set in environment
     // Otherwise disabled
     if config.semantic_enabled {
-        assert!(config.semantic_api_key.is_some());
     }
 }
 
@@ -108,7 +106,6 @@ fn test_mcp_server_creation_custom_config() {
         request_timeout: Duration::from_secs(10),
         enable_logging: false,
         semantic_enabled: false,
-        semantic_api_key: None,
         semantic_db_path: None,
         semantic_workspace: None,
     };
@@ -338,7 +335,6 @@ fn test_server_config_semantic_with_api_key() {
     // RED: Should configure semantic search with API key
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: Some("test-key".to_string()),
         semantic_db_path: Some("/tmp/test.db".to_string()),
         semantic_workspace: Some(std::path::PathBuf::from("/tmp")),
         ..ServerConfig::default()
@@ -355,7 +351,6 @@ fn test_server_config_semantic_without_api_key() {
     // RED: Should handle semantic enabled but no API key
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: None,
         ..ServerConfig::default()
     };
 
@@ -370,7 +365,6 @@ fn test_server_config_semantic_with_invalid_db_path() {
     // RED: Should handle invalid database path
     let config = ServerConfig {
         semantic_enabled: true,
-        semantic_api_key: Some("test-key".to_string()),
         semantic_db_path: Some("/nonexistent/path/db.sqlite".to_string()),
         ..ServerConfig::default()
     };
