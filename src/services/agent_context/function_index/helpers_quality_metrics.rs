@@ -287,89 +287,40 @@ pub(super) fn cpp_complexity_penalty(source: &str) -> u32 {
 /// Count SATD markers in implementation comments only.
 /// Excludes doc comments (/// and //!), string literals, and identifiers.
 /// Only counts markers that represent genuine self-admitted technical debt.
+/// SATD markers in one chunk of source, counted by the SAME detector
+/// `pmat analyze satd` uses.
+///
+/// This was a hand-rolled scanner: it counted `TODO`/`FIXME`/`HACK`/`OPTIMIZE`
+/// as raw substrings anywhere in a comment, with its own block-comment and
+/// raw-string tracking, and it skipped doc comments on the reasoning that they
+/// "describe behavior, not debt".
+///
+/// Every one of those rules disagreed with the real detector, in both
+/// directions at once:
+///
+/// | input | this function | `analyze satd` |
+/// |---|---|---|
+/// | `/// TODO: implement X` | 0 (doc comments skipped) | 1 |
+/// | `// the TODO list is empty` | 1 (substring anywhere) | 0 (marker must lead) |
+///
+/// So the agent-context index and the CLI reported different debt for the same
+/// file, which is exactly the defect #998 fixed between the CLI and MCP SATD
+/// surfaces, and #831 fixed for `five-whys` — where the same style of raw scan
+/// reported 808 markers against `analyze satd`'s 39 for one repo, a 20x
+/// disagreement presented as measured evidence.
+///
+/// Rather than fix a third copy of the rule to match, the rule now has one
+/// implementation and this delegates to it.
 #[allow(clippy::cast_possible_truncation)]
 pub(super) fn count_satd_markers(source: &str) -> u32 {
-    let mut count = 0u32;
-    let mut in_block_comment = false;
-    let mut in_raw_string = false;
-
-    for line in source.lines() {
-        let trimmed = line.trim();
-
-        // Skip lines inside raw string literals
-        if update_raw_string_state(trimmed, &mut in_raw_string) {
-            continue;
-        }
-
-        // Track block comment state
-        if in_block_comment {
-            count += count_markers_in_line(trimmed);
-            if trimmed.contains("*/") {
-                in_block_comment = false;
-            }
-            continue;
-        }
-
-        if trimmed.starts_with("/*") {
-            in_block_comment = true;
-            count += count_markers_in_line(trimmed);
-            if trimmed.contains("*/") {
-                in_block_comment = false;
-            }
-            continue;
-        }
-
-        // Skip doc comments (/// and //!) — these describe behavior, not debt
-        if trimmed.starts_with("///") || trimmed.starts_with("//!") {
-            continue;
-        }
-
-        count += count_markers_in_comment(trimmed);
-    }
-
-    count
+    use crate::services::satd_detector::SATDDetector;
+    // A `.rs` path so the scanner selects Rust comment syntax. The path is not
+    // opened — `extract_from_content` reads the string it is handed.
+    SATDDetector::new()
+        .extract_from_content(source, std::path::Path::new("chunk.rs"))
+        .map_or(0, |debts| debts.len() as u32)
 }
 
-/// Count SATD markers in a single line (used for block comments).
-fn count_markers_in_line(line: &str) -> u32 {
-    let upper = line.to_uppercase();
-    let mut count = 0u32;
-    for marker in ["TODO", "FIXME", "HACK", "OPTIMIZE"] {
-        count += upper.matches(marker).count() as u32;
-    }
-    count
-}
-
-/// Count SATD markers in inline comment portion of a line.
-/// Skips if // is inside a string literal (odd quote count before //).
-fn count_markers_in_comment(trimmed: &str) -> u32 {
-    let Some(comment_start) = trimmed.find("//") else {
-        return 0;
-    };
-    let before = &trimmed[..comment_start];
-    if before.chars().filter(|&c| c == '"').count() % 2 != 0 {
-        return 0;
-    }
-    count_markers_in_line(&trimmed[comment_start..])
-}
-
-/// Track raw string literal state. Returns true if line should be skipped.
-fn update_raw_string_state(trimmed: &str, in_raw_string: &mut bool) -> bool {
-    if *in_raw_string {
-        if trimmed.contains("\"#") || trimmed.ends_with('"') {
-            *in_raw_string = false;
-        }
-        return true;
-    }
-    if let Some(pos) = trimmed.find("r#\"") {
-        let after_open = &trimmed[pos + 3..];
-        if !after_open.contains("\"#") {
-            *in_raw_string = true;
-        }
-        return true;
-    }
-    false
-}
 
 /// Estimate Big-O from control flow
 pub(super) fn estimate_big_o(source: &str) -> String {
@@ -907,16 +858,31 @@ mod quality_metrics_tests {
         assert_eq!(count_satd_markers("let x = 1; // TODO: rename"), 1);
     }
 
+    /// One comment admitting debt is ONE debt item, not one per marker word.
+    /// The old hand-rolled counter returned 2 here by counting substrings;
+    /// `pmat analyze satd` reports 1 for the same line, and the whole point of
+    /// delegating is that these two numbers agree.
     #[test]
-    fn test_count_satd_markers_multiple_in_one_line() {
-        assert_eq!(count_satd_markers("// TODO: x and FIXME: y"), 2);
+    fn test_one_comment_is_one_debt_item_however_many_marker_words() {
+        assert_eq!(count_satd_markers("// TODO: x and FIXME: y"), 1);
     }
 
+    /// Doc comments are scanned, and judged by the same marker rule as any
+    /// other comment: a marker counts, prose does not.
+    ///
+    /// This used to assert 0 for both lines on the grounds that "/// and //!
+    /// are doc comments, not implementation comments". They still come back 0,
+    /// but for a completely different and correct reason — neither line carries
+    /// a marker in the canonical `MARKER:` form; they are sentences that happen
+    /// to contain the word. A doc comment that DOES admit debt now counts.
     #[test]
-    fn test_count_satd_markers_skips_doc_comment() {
-        // /// and //! are doc comments, not implementation comments
+    fn test_doc_comments_are_judged_by_the_same_marker_rule() {
+        // Prose that merely contains the word: not debt.
         assert_eq!(count_satd_markers("/// TODO is in doc"), 0);
         assert_eq!(count_satd_markers("//! FIXME doc"), 0);
+        // A real admission in the public API docs: debt.
+        assert_eq!(count_satd_markers("/// TODO: implement the fast path"), 1);
+        assert_eq!(count_satd_markers("//! FIXME: this module leaks"), 1);
     }
 
     #[test]
@@ -933,70 +899,19 @@ mod quality_metrics_tests {
         assert_eq!(count_satd_markers(src), 0);
     }
 
+    /// A sentence that STARTS with a marker word is not an admission.
+    ///
+    /// This asserted 4 for `// TODO and FIXME and HACK and OPTIMIZE` by counting
+    /// substrings. The shared detector requires the canonical `MARKER:` form,
+    /// because #925 measured a 92% false-positive rate from exactly this kind of
+    /// match — `TODO the same analysis reports under -p` and `WIP patterns -
+    /// work in progress` were both reported as debt. Whitespace is deliberately
+    /// not a separator.
     #[test]
-    fn test_count_satd_markers_all_four_marker_types() {
-        let src = "// TODO and FIXME and HACK and OPTIMIZE";
-        assert_eq!(count_satd_markers(src), 4);
-    }
-
-    // ── count_markers_in_line / count_markers_in_comment (private helpers) ──
-
-    #[test]
-    fn test_count_markers_in_line_case_insensitive_match() {
-        // Function uppercases the line, so todo / Todo / TODO all match
-        assert_eq!(count_markers_in_line("// todo lowercase"), 1);
-        assert_eq!(count_markers_in_line("// Fixme MixedCase"), 1);
-        assert_eq!(count_markers_in_line("// hack/optimize"), 2);
-    }
-
-    #[test]
-    fn test_count_markers_in_comment_no_double_slash_returns_zero() {
-        // No `//` in the input → not a comment → 0
-        assert_eq!(count_markers_in_comment("just text TODO here"), 0);
-    }
-
-    // ── update_raw_string_state ─────────────────────────────────────────────
-
-    #[test]
-    fn test_update_raw_string_state_open_and_close_same_line() {
-        let mut in_raw = false;
-        // r#"foo"# has the opener and closer on same line → returns true (skip)
-        // but in_raw stays false because the close was found
-        let skipped = update_raw_string_state("let s = r#\"foo\"#;", &mut in_raw);
-        assert!(skipped);
-        assert!(!in_raw);
-    }
-
-    #[test]
-    fn test_update_raw_string_state_open_only_sets_state() {
-        let mut in_raw = false;
-        let skipped = update_raw_string_state("let s = r#\"unclosed", &mut in_raw);
-        assert!(skipped);
-        assert!(in_raw);
-    }
-
-    #[test]
-    fn test_update_raw_string_state_already_in_raw_continues() {
-        let mut in_raw = true;
-        let skipped = update_raw_string_state("middle of string", &mut in_raw);
-        assert!(skipped);
-        assert!(in_raw); // still in raw
-    }
-
-    #[test]
-    fn test_update_raw_string_state_already_in_raw_with_close() {
-        let mut in_raw = true;
-        let skipped = update_raw_string_state("end\"#", &mut in_raw);
-        assert!(skipped);
-        assert!(!in_raw); // closed
-    }
-
-    #[test]
-    fn test_update_raw_string_state_no_raw_string_returns_false() {
-        let mut in_raw = false;
-        let skipped = update_raw_string_state("normal code line", &mut in_raw);
-        assert!(!skipped);
-        assert!(!in_raw);
+    fn test_marker_word_without_punctuation_is_prose_not_debt() {
+        assert_eq!(count_satd_markers("// TODO and FIXME and HACK and OPTIMIZE"), 0);
+        // …and the canonical form still counts.
+        assert_eq!(count_satd_markers("// TODO: and the rest"), 1);
     }
 
     // ── estimate_big_o ──────────────────────────────────────────────────────

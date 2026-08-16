@@ -9,7 +9,7 @@
 
 #[cfg(feature = "analytics-simd")]
 mod bench {
-    use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+    use criterion::{criterion_group, BenchmarkId, Criterion, Throughput};
     use pmat::services::analytics_top_k::{select_top_k, select_top_k_arrow, TopKSelector};
     use std::hint::black_box;
 
@@ -114,8 +114,27 @@ mod bench {
         bench_unified_topk,
         bench_topk_comparison
     );
-    criterion_main!(benches);
 }
+
+// `criterion_main!` expands to `fn main()`, which cargo requires at CRATE level
+// for a `harness = false` bench. It used to sit inside `mod bench`, so with
+// `analytics-simd` enabled it defined `bench::main` and the crate had no `main`
+// at all:
+//
+//     $ cargo bench --bench topk_selection --features analytics-simd
+//     error[E0601]: `main` function not found in crate `topk_selection`
+//
+// That is the exact command this file's own header tells you to run, so this
+// benchmark had never executed once under the feature it requires — and its
+// stated job is to "validate 5-28x speedup claims from specification". Those
+// claims have never been measured by it. Only the `not(analytics-simd)` arm
+// compiled, and that arm is the empty stub, so `cargo bench` was quietly
+// benchmarking nothing.
+//
+// Found because `cargo clippy --all-targets --features full` aborts here (#1011);
+// `--lib` alone never builds bench targets, the same blind spot as #1005.
+#[cfg(feature = "analytics-simd")]
+criterion::criterion_main!(bench::benches);
 
 #[cfg(not(feature = "analytics-simd"))]
 fn main() {

@@ -152,11 +152,7 @@ impl SwiftSourceAnalyzer {
         // struct StructName {
         let after_keyword = if let Some(stripped) = line.strip_prefix("class ") {
             stripped
-        } else if let Some(stripped) = line.strip_prefix("struct ") {
-            stripped
-        } else {
-            return None;
-        };
+        } else { line.strip_prefix("struct ")? };
 
         let name_part = after_keyword
             .split_whitespace()

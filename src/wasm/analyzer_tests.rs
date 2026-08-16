@@ -308,10 +308,8 @@ mod coverage_tests {
         let mut profiler = InstructionProfiler::new();
         let wasm = simple_function_wasm();
 
-        for payload in Parser::new(0).parse_all(&wasm) {
-            if let Ok(p) = payload {
-                profiler.observe(&p);
-            }
+        for p in Parser::new(0).parse_all(&wasm).flatten() {
+            profiler.observe(&p);
         }
 
         assert!(profiler.total_instructions > 0);
@@ -322,10 +320,8 @@ mod coverage_tests {
         let mut profiler = InstructionProfiler::new();
         let wasm = mixed_instructions_wasm();
 
-        for payload in Parser::new(0).parse_all(&wasm) {
-            if let Ok(p) = payload {
-                profiler.observe(&p);
-            }
+        for p in Parser::new(0).parse_all(&wasm).flatten() {
+            profiler.observe(&p);
         }
 
         let mix = profiler.finalize();

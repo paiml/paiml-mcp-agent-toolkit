@@ -74,7 +74,7 @@ fn test_mutation_summary_generation() {
     assert_eq!(summary.killed, 1);
     assert_eq!(summary.survived, 2);
     assert_eq!(summary.compile_errors, 1);
-    assert!(summary.weak_spots.len() >= 1); // foo.rs has survivors
+    assert!(!summary.weak_spots.is_empty()); // foo.rs has survivors
 }
 
 #[test]

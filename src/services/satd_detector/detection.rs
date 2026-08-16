@@ -27,7 +27,7 @@ use crate::services::defect_detector::source_scope;
 
 use super::types::{
     AstContext, AstNodeType, DebtClassifier, ProjectAnalysisStats, SATDAnalysisResult,
-    SATDDetector, SATDSummary, TechnicalDebt, TestBlockTracker,
+    SATDDetector, SATDSummary, SkipCounts, SkipReason, TechnicalDebt, TestBlockTracker,
 };
 
 include!("detection_extraction.rs");
@@ -126,11 +126,31 @@ mod comment_scanner_tests {
         assert_eq!(text_of("a.rs", "//   TODO   ").as_deref(), Some("TODO"));
     }
 
+    /// Doc comments ARE scanned now. The scanner's job is to find the comment;
+    /// deciding whether it admits debt is the classifier's, and for a doc
+    /// comment the classifier applies the marker rule alone (see `debt_of`).
+    ///
+    /// The previous policy — "documentation is not debt" — dropped these at the
+    /// scanner, so `/// TODO: implement X` was invisible to every SATD surface.
+    /// That conflates two different things: a doc comment is usually PROSE, and
+    /// prose is not debt, but `TODO:` is an admission that the documented
+    /// behaviour does not exist yet. Written in the public API documentation it
+    /// is the most visible debt in the file to a human reader and was the least
+    /// visible to the tool.
     #[test]
-    fn test_doc_comments_are_not_comments_for_satd() {
-        assert_eq!(text_of("a.rs", "/// TODO: documented"), None);
-        assert_eq!(text_of("a.rs", "//! TODO: module doc"), None);
-        assert_eq!(text_of("a.rs", "/** TODO: doc block */"), None);
+    fn test_doc_comments_are_scanned_for_satd() {
+        assert_eq!(
+            text_of("a.rs", "/// TODO: documented").as_deref(),
+            Some("TODO: documented")
+        );
+        assert_eq!(
+            text_of("a.rs", "//! TODO: module doc").as_deref(),
+            Some("TODO: module doc")
+        );
+        assert_eq!(
+            text_of("a.rs", "/** TODO: doc block */").as_deref(),
+            Some("TODO: doc block")
+        );
     }
 
     #[test]
@@ -655,11 +675,37 @@ mod marker_regression_tests {
         assert!(found.is_empty(), "tracker id reported as debt: {found:?}");
     }
 
+    /// The doc-comment policy, in both directions.
+    ///
+    /// A marker-leading doc comment is debt; doc PROSE is not. The second half
+    /// is the load-bearing one: #925 measured a 92% false-positive rate from
+    /// phrase-matching ordinary prose, and doc comments are overwhelmingly
+    /// prose, so scanning them without that asymmetry would have reintroduced
+    /// #925 at a much larger scale. `debt_of` classifies a doc comment by
+    /// `marker_at_start` only, never by phrase.
     #[test]
-    fn test_doc_comment_policy_unchanged() {
+    fn test_doc_comment_marker_is_debt_but_doc_prose_is_not() {
         let detector = SATDDetector::new();
+
         let found = texts(&detector, "/// TODO: documented follow-up\n");
-        assert!(found.is_empty(), "doc comment policy changed: {found:?}");
+        assert_eq!(
+            found.len(),
+            1,
+            "a marker-leading doc comment is self-admitted debt: {found:?}"
+        );
+
+        // #925's literal false positive, now in a doc comment.
+        for prose in [
+            "/// Deterministic order: ties broken by path.\n",
+            "//! This module is a temporary home for the parser.\n",
+            "/// Returns None if the file is missing or broken.\n",
+        ] {
+            let found = texts(&detector, prose);
+            assert!(
+                found.is_empty(),
+                "doc prose reported as debt — #925 reintroduced: {prose:?} -> {found:?}"
+            );
+        }
     }
 }
 

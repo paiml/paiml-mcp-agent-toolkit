@@ -148,12 +148,11 @@ impl WasmStackAnalyzer {
                         self.current_depth -= 1;
                     }
                 }
-                0x1a => {
+                0x1a
                     // drop
-                    if self.current_depth > 0 {
+                    if self.current_depth > 0 => {
                         self.current_depth -= 1;
                     }
-                }
                 _ => {}
             }
             self.max_stack_depth = self.max_stack_depth.max(self.current_depth);

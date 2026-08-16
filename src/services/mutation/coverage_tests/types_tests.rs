@@ -89,7 +89,7 @@ fn test_mutation_operator_type_all_variants() {
 
 #[test]
 fn test_mutant_status_all_variants() {
-    let statuses = vec![
+    let statuses = [
         MutantStatus::Pending,
         MutantStatus::Killed,
         MutantStatus::Survived,

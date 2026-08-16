@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_go_adapter_default() {
-        let adapter = GoAdapter::default();
+        let adapter = GoAdapter;
         let _ = adapter;
     }
 
@@ -338,7 +338,7 @@ mod tests {
         let adapter = GoAdapter::new();
         let extensions = adapter.extensions();
 
-        assert!(extensions.iter().any(|e| *e == "go"), "Missing .go");
+        assert!(extensions.contains(&"go"), "Missing .go");
     }
 
     #[tokio::test]

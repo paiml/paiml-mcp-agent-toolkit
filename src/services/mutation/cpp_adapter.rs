@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_cpp_adapter_default() {
-        let adapter = CppAdapter::default();
+        let adapter = CppAdapter;
         let _ = adapter;
     }
 
@@ -336,10 +336,10 @@ mod tests {
         let adapter = CppAdapter::new();
         let extensions = adapter.extensions();
 
-        assert!(extensions.iter().any(|e| *e == "c"), "Missing .c");
-        assert!(extensions.iter().any(|e| *e == "cpp"), "Missing .cpp");
-        assert!(extensions.iter().any(|e| *e == "h"), "Missing .h");
-        assert!(extensions.iter().any(|e| *e == "hpp"), "Missing .hpp");
+        assert!(extensions.contains(&"c"), "Missing .c");
+        assert!(extensions.contains(&"cpp"), "Missing .cpp");
+        assert!(extensions.contains(&"h"), "Missing .h");
+        assert!(extensions.contains(&"hpp"), "Missing .hpp");
     }
 
     #[tokio::test]

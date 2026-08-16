@@ -350,17 +350,40 @@ async fn the_refactoring_state_reports_the_run_it_did_not_change() {
     .await
     .expect("the refactoring step runs");
 
-    assert_eq!(
-        refactored.violations.len(),
-        source.violations.len(),
-        "the refactoring step cleared a violation list it never fixed: {:?}",
+    // #1013: this used to compare `refactored` against `source` field by field
+    // — equal violation counts, equal scores. Both assertions are confounded by
+    // a dimension neither test is about: dead-code analysis is bounded by wall
+    // clock (it shells out to `cargo check`), so under load it lands in one of
+    // these two runs and times out in the other, and the counts legitimately
+    // differ. That is what reddened `ci / coverage` while `ci / test` passed on
+    // the identical commit.
+    //
+    // The exact-equality property has NOT been dropped, it has been moved
+    // somewhere it can be decided: `label_refactoring_pass` is now a pure
+    // function and `the_refactoring_label_changes_no_number` asserts, over every
+    // input state, that relabelling changes no number at all. That is a stronger
+    // check than this one was — it covers `target` and every violation field,
+    // not just the count — and it cannot flake.
+    //
+    // What is left here is the part only an end-to-end run can establish: that
+    // the refactoring state is WIRED to the real measurement rather than to the
+    // fabricator it replaced. The fabricator emptied the list and returned
+    // `0.7 + 0.1`; both are excluded below without comparing the two runs.
+    assert!(
+        !refactored.violations.is_empty(),
+        "the refactoring step reported an empty violation list for a tree the \
+         assessment found violating — the fabricator is back: {:?}",
         refactored.violations
     );
     assert!(
-        (refactored.score - source.score).abs() < f64::EPSILON,
-        "the refactoring step invented an improvement: {} vs the measured {}",
-        refactored.score,
-        source.score
+        refactored.score < 1.0,
+        "the refactoring step reported a perfect score for a violating tree: {}",
+        refactored.score
+    );
+    assert_ne!(
+        refactored.state,
+        EnforcementState::Complete,
+        "a violating tree was relabelled Complete by a step that changed nothing"
     );
 }
 
@@ -415,25 +438,47 @@ async fn apply_suggestions_agrees_with_every_other_surface_and_terminates() {
          nothing new",
         result.final_iteration
     );
-    assert!(
-        (result.final_score - source.score).abs() < f64::EPSILON,
-        "the loop finished on {} for a run the assessment scores {}",
-        result.final_score,
-        source.score
-    );
+    // #1013: `final_score == source.score` and `document.violations.len() ==
+    // source.violations.len()` both compare two independent measurements of the
+    // same tree, and the wall-clock-budgeted dead-code phase can land in one and
+    // time out in the other. Exact agreement between a labelled result and the
+    // measurement it wraps is pinned deterministically instead, by
+    // `the_refactoring_label_changes_no_number` in `states.rs`.
+    //
+    // The end-to-end properties that only this test can establish are kept: the
+    // loop terminates, it does not declare victory, and the document a consumer
+    // actually parses agrees with the in-process result OF THE SAME RUN — which
+    // is the contradiction the test was written for (`"state":"VALIDATING",
+    // "score":0.8, "violations":[]` for a tree every other surface called
+    // violating). Comparing the document to `result` rather than to `source`
+    // compares one run with itself, so it is exact AND stable.
     assert_ne!(result.final_state, EnforcementState::Complete);
+    assert!(
+        result.final_score < 1.0,
+        "the loop finished on a perfect score for a violating tree: {}",
+        result.final_score
+    );
 
     // The document on disk is the one a consumer reads.
     let last: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&report).expect("-o wrote the report"))
             .expect("the report is JSON");
-    assert_eq!(
-        last["violations"]
-            .as_array()
-            .expect("the document carries violations")
-            .len(),
-        source.violations.len(),
-        "the final --apply-suggestions document contradicts the assessment: {last}"
+    let documented = last["violations"]
+        .as_array()
+        .expect("the document carries violations")
+        .len();
+    assert!(
+        documented > 0,
+        "the final --apply-suggestions document reported no violations for a tree \
+         the assessment found violating: {last}"
+    );
+    let documented_score = last["score"]
+        .as_f64()
+        .expect("the document carries a score");
+    assert!(
+        (documented_score - result.final_score).abs() < f64::EPSILON,
+        "the document and the loop disagree about the SAME run: {documented_score} vs {}",
+        result.final_score
     );
 }
 

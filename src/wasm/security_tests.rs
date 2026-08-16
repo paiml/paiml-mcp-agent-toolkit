@@ -101,10 +101,8 @@ mod coverage_tests {
     fn test_scan_minimal_module() {
         let mut detector = PatternDetector::new();
         // Minimal module has no code section, so nothing to scan
-        for payload in Parser::new(0).parse_all(&minimal_wasm_module()) {
-            if let Ok(p) = payload {
-                let _ = detector.scan(&p);
-            }
+        for p in Parser::new(0).parse_all(&minimal_wasm_module()).flatten() {
+            let _ = detector.scan(&p);
         }
         assert!(detector.finalize().is_empty());
     }
@@ -114,11 +112,9 @@ mod coverage_tests {
         let mut detector = PatternDetector::new();
         let wasm = potential_overflow_wasm();
 
-        for payload in Parser::new(0).parse_all(&wasm) {
-            if let Ok(p) = payload {
-                let result = detector.scan(&p);
-                assert!(result.is_ok());
-            }
+        for p in Parser::new(0).parse_all(&wasm).flatten() {
+            let result = detector.scan(&p);
+            assert!(result.is_ok());
         }
 
         let findings = detector.finalize();
@@ -134,10 +130,8 @@ mod coverage_tests {
         let mut detector = PatternDetector::new();
         let wasm = potential_buffer_overflow_wasm();
 
-        for payload in Parser::new(0).parse_all(&wasm) {
-            if let Ok(p) = payload {
-                let _ = detector.scan(&p);
-            }
+        for p in Parser::new(0).parse_all(&wasm).flatten() {
+            let _ = detector.scan(&p);
         }
 
         let findings = detector.finalize();
@@ -158,10 +152,8 @@ mod coverage_tests {
         let mut detector = PatternDetector::new();
         let wasm = potential_overflow_wasm();
 
-        for payload in Parser::new(0).parse_all(&wasm) {
-            if let Ok(p) = payload {
-                let _ = detector.scan(&p);
-            }
+        for p in Parser::new(0).parse_all(&wasm).flatten() {
+            let _ = detector.scan(&p);
         }
 
         let first = detector.finalize();

@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn test_features_single_item() {
-        let features = vec!["single".to_string()];
+        let features = ["single".to_string()];
         let joined = features.join(",");
         assert_eq!(joined, "single");
     }
@@ -371,14 +371,14 @@ mod tests {
     #[test]
     fn test_quality_good() {
         let score = 80.0;
-        let is_good = score >= 75.0 && score < 90.0;
+        let is_good = (75.0..90.0).contains(&score);
         assert!(is_good);
     }
 
     #[test]
     fn test_quality_moderate() {
         let score = 60.0;
-        let is_moderate = score >= 50.0 && score < 75.0;
+        let is_moderate = (50.0..75.0).contains(&score);
         assert!(is_moderate);
     }
 

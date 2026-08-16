@@ -447,11 +447,9 @@ mod tests {
     #[test]
     fn test_health_determination_critical_many_issues() {
         // Simulate more than 2 issues (would need additional logic in real code)
-        let issues = vec![
-            "High analysis times detected".to_string(),
+        let issues = ["High analysis times detected".to_string(),
             "Low cache hit ratio".to_string(),
-            "Memory pressure detected".to_string(),
-        ];
+            "Memory pressure detected".to_string()];
 
         let overall = if issues.is_empty() {
             "healthy".to_string()

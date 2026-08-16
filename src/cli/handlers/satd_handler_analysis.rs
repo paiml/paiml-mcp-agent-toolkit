@@ -184,8 +184,13 @@ fn recompute_totals(result: &mut SatdAnalysisResult) {
     let unique_files: std::collections::HashSet<_> =
         result.violations.iter().map(|v| &v.file_path).collect();
     result.total_files = unique_files.len();
+    // The scope note survives the restatement. It describes what the WALK
+    // declined to read, which no amount of post-filtering changes, and dropping
+    // it here would put back the sentence #923 was about: a count with no
+    // denominator, identical whether the tree was clean or barely read.
+    let scope = result.skipped.note().map(|n| format!(" ({n})")).unwrap_or_default();
     result.summary = format!(
-        "Found {} SATD violations in {} files",
+        "Found {} SATD violations in {} files{scope}",
         result.violations.len(),
         result.total_files
     );
@@ -269,6 +274,7 @@ mod fail_on_violation_tests {
 
     fn result_with(n: usize) -> SatdAnalysisResult {
         SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: usize::from(n > 0),
             violations: (0..n)
                 .map(|i| SatdViolation {

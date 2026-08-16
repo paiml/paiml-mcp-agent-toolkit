@@ -324,10 +324,8 @@ fn add(a: i32, b: i32) -> i32 {
     #[test]
     fn test_filter_failures_only_keeps_survived() {
         let (temp, file_path) = create_temp_rust_file();
-        let results = vec![
-            create_test_mutation_result(&file_path, MutantStatus::Killed),
-            create_test_mutation_result(&file_path, MutantStatus::Survived),
-        ];
+        let results = [create_test_mutation_result(&file_path, MutantStatus::Killed),
+            create_test_mutation_result(&file_path, MutantStatus::Survived)];
 
         // Simulate failures_only filtering
         let filtered: Vec<_> = results
@@ -348,10 +346,8 @@ fn add(a: i32, b: i32) -> i32 {
     #[test]
     fn test_filter_failures_only_keeps_compile_error() {
         let (temp, file_path) = create_temp_rust_file();
-        let results = vec![
-            create_test_mutation_result(&file_path, MutantStatus::Killed),
-            create_test_mutation_result(&file_path, MutantStatus::CompileError),
-        ];
+        let results = [create_test_mutation_result(&file_path, MutantStatus::Killed),
+            create_test_mutation_result(&file_path, MutantStatus::CompileError)];
 
         let filtered: Vec<_> = results
             .iter()
@@ -371,10 +367,8 @@ fn add(a: i32, b: i32) -> i32 {
     #[test]
     fn test_filter_failures_only_keeps_timeout() {
         let (temp, file_path) = create_temp_rust_file();
-        let results = vec![
-            create_test_mutation_result(&file_path, MutantStatus::Killed),
-            create_test_mutation_result(&file_path, MutantStatus::Timeout),
-        ];
+        let results = [create_test_mutation_result(&file_path, MutantStatus::Killed),
+            create_test_mutation_result(&file_path, MutantStatus::Timeout)];
 
         let filtered: Vec<_> = results
             .iter()

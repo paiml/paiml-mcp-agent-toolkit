@@ -334,7 +334,7 @@
         match result.await {
             Ok(path) => {
                 // If it succeeds, verify path
-                assert!(path.to_string_lossy().len() > 0);
+                assert!(!path.to_string_lossy().is_empty());
             }
             Err(e) => {
                 // Clone failure is acceptable in test environment

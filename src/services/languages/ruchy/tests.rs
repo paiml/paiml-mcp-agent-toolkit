@@ -118,7 +118,7 @@ mod ruchy_unit_tests {
 
     #[test]
     fn test_ruchy_token_operators() {
-        let tokens = vec![
+        let tokens = [
             RuchyToken::Plus,
             RuchyToken::Minus,
             RuchyToken::Star,
@@ -146,7 +146,7 @@ mod ruchy_unit_tests {
     // RuchyType tests
     #[test]
     fn test_ruchy_type_primitives() {
-        let types = vec![
+        let types = [
             RuchyType::Integer,
             RuchyType::Float,
             RuchyType::String,

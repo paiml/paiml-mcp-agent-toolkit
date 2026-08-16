@@ -334,6 +334,83 @@ fn build_all_compliance_checks(
     run_check_groups(groups)
 }
 
+/// Peak RSS one concurrent comply worker costs, in bytes.
+///
+/// Measured on this repo, `/usr/bin/time -v pmat comply check`, varying only
+/// `RAYON_NUM_THREADS` — memory scales LINEARLY with concurrency because each
+/// check walks and reads the tree into its own buffers and nothing is shared:
+///
+/// | threads | peak RSS | wall  |
+/// |---------|----------|-------|
+/// | 1       |  4.1 GB  | 2:23  |
+/// | 4       | 15.5 GB  | 1:12  |
+/// | default | 58.7 GB  | 0:38  |
+///
+/// 4.1 GB x threads predicts 16.4 and 57.4 against 15.5 and 58.7 observed.
+const COMPLY_BYTES_PER_WORKER: u64 = 4 * 1024 * 1024 * 1024;
+
+/// Fraction of *available* RAM comply may plan to use (1/8).
+///
+/// Sizing to all-of-memory-minus-headroom is what an unbounded run effectively
+/// did: on a 125 GB workstation that authorised 24 workers and ~96 GB, which is
+/// hostile to every other build on the box even though it technically fits.
+/// A compliance check is a background chore, not the machine's purpose.
+const COMPLY_MEMORY_DIVISOR: u64 = 8;
+
+/// Default ceiling on concurrent groups, regardless of how big the machine is.
+///
+/// Past ~4 workers the wall-clock return falls off fast while memory keeps
+/// climbing linearly: 1 -> 2:23 at 4.1 GB, 4 -> 1:12 at 15.5 GB, unbounded ->
+/// 0:38 at 58.7 GB. The second halving costs 11 GB; the third costs 43 GB.
+/// Anyone who wants that trade can take it with `PMAT_COMPLY_JOBS`.
+const COMPLY_MAX_DEFAULT_JOBS: usize = 4;
+
+/// How many comply groups may run at once.
+///
+/// Concurrency used to be rayon's default — one worker per CPU — which sizes
+/// the run by the wrong resource. Comply's binding constraint is MEMORY, not
+/// CPU: at ~4 GB per worker a 16-core box peaks near 64 GB and a 64-core box
+/// would ask for 256 GB. On this workstation an unbounded run reached 58.7 GB
+/// against pmat itself and ~94 GB against aprender, driving load average to 75,
+/// starving every other build, and tripping the OOM guard.
+///
+/// The bound is whichever runs out first of: available RAM / 8, the CPU count,
+/// the number of groups (more workers than groups is pure waste), and a default
+/// ceiling. `PMAT_COMPLY_JOBS` overrides all of it.
+fn comply_concurrency(groups: usize) -> usize {
+    if let Ok(raw) = std::env::var("PMAT_COMPLY_JOBS") {
+        if let Ok(n) = raw.trim().parse::<usize>() {
+            if n > 0 {
+                return n;
+            }
+        }
+    }
+    let cpus = num_cpus::get().max(1);
+    // Never 0: one worker always runs, even on a machine with no headroom,
+    // because refusing to check anything is worse than checking slowly.
+    let by_memory = available_memory_bytes()
+        .map(|avail| ((avail / COMPLY_MEMORY_DIVISOR) / COMPLY_BYTES_PER_WORKER).max(1) as usize)
+        .unwrap_or(COMPLY_MAX_DEFAULT_JOBS);
+    by_memory
+        .min(cpus)
+        .min(groups.max(1))
+        .min(COMPLY_MAX_DEFAULT_JOBS)
+        .max(1)
+}
+
+/// Available RAM in bytes, or `None` where it cannot be read.
+///
+/// `MemAvailable` rather than `MemFree`: the kernel's own estimate of what a
+/// new workload can claim without swapping, which is the number this decision
+/// actually needs. Linux only — every other platform gets `None` and the
+/// CPU-count fallback, which is no worse than the behaviour this replaces.
+fn available_memory_bytes() -> Option<u64> {
+    let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+    let line = meminfo.lines().find(|l| l.starts_with("MemAvailable:"))?;
+    let kb: u64 = line.split_whitespace().nth(1)?.parse().ok()?;
+    Some(kb * 1024)
+}
+
 /// Run each check group concurrently, emitting a live per-group status line
 /// (name · count · fail/warn tally · elapsed) to stderr as each completes, plus
 /// a final summary. Replaces the previous silent sequential scan: a long
@@ -345,36 +422,63 @@ fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     let total = groups.len();
+    let jobs = comply_concurrency(total);
+    crate::status_eprintln!(
+        "  comply: {total} group(s), {jobs} at a time (~{} GB peak; \
+         PMAT_COMPLY_JOBS overrides)",
+        (jobs as u64 * COMPLY_BYTES_PER_WORKER) / (1024 * 1024 * 1024)
+    );
     let overall = std::time::Instant::now();
     let done = AtomicUsize::new(0);
 
-    // Each group is timed and reports the moment it finishes (completion order).
-    let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = groups
-        .into_par_iter()
-        .enumerate()
-        .map(|(idx, (name, run))| {
-            let start = std::time::Instant::now();
-            let checks = run();
-            let fails = checks
-                .iter()
-                .filter(|c| c.status == CheckStatus::Fail)
-                .count();
-            let warns = checks
-                .iter()
-                .filter(|c| c.status == CheckStatus::Warn)
-                .count();
-            let n = done.fetch_add(1, Ordering::Relaxed) + 1;
-            crate::status_eprintln!(
-                "  [{n:>2}/{total}] {name:<19} {:>3} checks · {fails} fail · {warns} warn · {:.1}s",
-                checks.len(),
-                start.elapsed().as_secs_f64()
-            );
-            (idx, checks)
-        })
-        .collect();
+    // A DEDICATED pool, not the global one. Comply nests rayon — groups run in
+    // parallel and `run_checks_parallel` splits the checks inside a group again
+    // — so capping only the outer loop would let the inner level re-expand to
+    // one worker per CPU and put the memory straight back. Both levels run
+    // inside `pool.install`, so they draw from the same bounded set of threads.
+    //
+    // If the pool cannot be built we fall back to the global one rather than
+    // failing the run: an unbounded compliance check is bad, refusing to check
+    // at all is worse.
+    let work = || {
+        let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = groups
+            .into_par_iter()
+            .enumerate()
+            .map(|(idx, (name, run))| {
+                let start = std::time::Instant::now();
+                let checks = run();
+                let fails = checks
+                    .iter()
+                    .filter(|c| c.status == CheckStatus::Fail)
+                    .count();
+                let warns = checks
+                    .iter()
+                    .filter(|c| c.status == CheckStatus::Warn)
+                    .count();
+                let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+                crate::status_eprintln!(
+                    "  [{n:>2}/{total}] {name:<19} {:>3} checks · {fails} fail · {warns} warn · {:.1}s",
+                    checks.len(),
+                    start.elapsed().as_secs_f64()
+                );
+                (idx, checks)
+            })
+            .collect();
+        grouped.sort_by_key(|(idx, _)| *idx);
+        grouped
+    };
 
-    // Restore declaration order so report output is deterministic.
-    grouped.sort_by_key(|(idx, _)| *idx);
+    let grouped = match rayon::ThreadPoolBuilder::new()
+        .num_threads(jobs)
+        .thread_name(|i| format!("comply-{i}"))
+        .build()
+    {
+        Ok(pool) => pool.install(work),
+        Err(_) => work(),
+    };
+
+    // Declaration order is restored inside `work` so report output is
+    // deterministic regardless of completion order.
     let all: Vec<ComplianceCheck> = grouped.into_iter().flat_map(|(_, c)| c).collect();
 
     let fails = all.iter().filter(|c| c.status == CheckStatus::Fail).count();
@@ -992,3 +1096,96 @@ include!("check_pv_enforcement_helpers_tests.rs");
 include!("check_path_guard_tests.rs");
 include!("check_empty_project_guard_tests.rs");
 include!("check_readonly_and_exemption_tests.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod comply_concurrency_tests {
+    use super::*;
+    use serial_test::serial;
+
+    const KEY: &str = "PMAT_COMPLY_JOBS";
+
+    /// Restores `PMAT_COMPLY_JOBS` on drop, so a failing assertion cannot leak
+    /// the override into the rest of the suite. `#[serial]` on top of it because
+    /// the process environment is shared state and these tests write to it —
+    /// without both, a green run proves nothing about which value was read.
+    struct JobsEnvGuard(Option<String>);
+
+    impl JobsEnvGuard {
+        fn set(value: &str) -> Self {
+            let prev = std::env::var(KEY).ok();
+            std::env::set_var(KEY, value);
+            Self(prev)
+        }
+    }
+
+    impl Drop for JobsEnvGuard {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var(KEY, v),
+                None => std::env::remove_var(KEY),
+            }
+        }
+    }
+
+    /// The bound exists because an unbounded run peaked at 58.7 GB against this
+    /// repo and ~94 GB against aprender, drove load average to 75 and tripped
+    /// the machine's OOM guard. Memory scales LINEARLY with workers (~4 GB
+    /// each), so "one worker per CPU" asks a 64-core box for 256 GB.
+    #[test]
+    #[serial]
+    fn concurrency_is_bounded_regardless_of_machine_size() {
+        let _guard = JobsEnvGuard::set("");
+        std::env::remove_var(KEY);
+        let jobs = comply_concurrency(13);
+        assert!(
+            jobs >= 1,
+            "at least one worker must always run — refusing to check is worse than checking slowly"
+        );
+        assert!(
+            jobs <= COMPLY_MAX_DEFAULT_JOBS,
+            "default concurrency {jobs} exceeded the ceiling {COMPLY_MAX_DEFAULT_JOBS}; \
+             on this machine that is ~{} GB of peak RSS",
+            (jobs as u64 * COMPLY_BYTES_PER_WORKER) / (1024 * 1024 * 1024)
+        );
+    }
+
+    /// More workers than groups is pure waste — they would idle while still
+    /// costing their share of memory if anything were scheduled onto them.
+    #[test]
+    #[serial]
+    fn concurrency_never_exceeds_the_group_count() {
+        let _guard = JobsEnvGuard::set("");
+        std::env::remove_var(KEY);
+        assert_eq!(comply_concurrency(1), 1);
+        assert!(comply_concurrency(2) <= 2);
+    }
+
+    /// The estimate is a default, not a policy. Anyone who knows their machine
+    /// can raise or lower it.
+    #[test]
+    #[serial]
+    fn env_override_wins() {
+        let _guard = JobsEnvGuard::set("7");
+        assert_eq!(
+            comply_concurrency(13),
+            7,
+            "PMAT_COMPLY_JOBS must override the computed bound"
+        );
+    }
+
+    /// A garbage or zero override falls back to the computed bound rather than
+    /// producing a zero-thread pool.
+    #[test]
+    #[serial]
+    fn zero_or_garbage_override_falls_back() {
+        for bad in ["0", "not-a-number", ""] {
+            let _guard = JobsEnvGuard::set(bad);
+            let jobs = comply_concurrency(13);
+            assert!(
+                (1..=COMPLY_MAX_DEFAULT_JOBS).contains(&jobs),
+                "override {bad:?} produced {jobs} workers"
+            );
+        }
+    }
+}
