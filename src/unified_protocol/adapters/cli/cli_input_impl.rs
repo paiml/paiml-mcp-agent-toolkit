@@ -333,7 +333,10 @@ impl CliAdapter {
             | AnalyzeCommands::BuildTdg { .. }
             | AnalyzeCommands::LintHotspot { .. }
             | AnalyzeCommands::Clippy { .. }
-            | AnalyzeCommands::Entropy { .. } => AnalyzeCommandCategory::Basic,
+            | AnalyzeCommands::Entropy { .. }
+            // Reachability is Basic: it reads the module graph and `git
+            // ls-files`, with no AST pass and no cargo build.
+            | AnalyzeCommands::Reachability { .. } => AnalyzeCommandCategory::Basic,
 
             // Advanced analysis commands (comprehensive)
             AnalyzeCommands::DeepContext { .. }

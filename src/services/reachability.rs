@@ -174,9 +174,12 @@ fn resolve_mod(owner: &Path, name: &str, is_root: bool) -> Option<PathBuf> {
     } else {
         owner.parent()?.join(owner.file_stem()?)
     };
-    [dir.join(format!("{name}.rs")), dir.join(name).join("mod.rs")]
-        .into_iter()
-        .find(|c| c.is_file())
+    [
+        dir.join(format!("{name}.rs")),
+        dir.join(name).join("mod.rs"),
+    ]
+    .into_iter()
+    .find(|c| c.is_file())
 }
 
 fn count_tests(src: &str) -> usize {
@@ -441,4 +444,3 @@ mod tests {
         );
     }
 }
-

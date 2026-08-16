@@ -1,0 +1,20 @@
+{
+  "crate": "pmat",
+  "version": "3.32.0",
+  "timestamp": "20260816T172417Z",
+  "gates": [
+    {"gate": "git-clean", "result": "PASS", "note": "working tree clean"},
+    {"gate": "version-unpublished", "result": "PASS", "note": "3.32.0 not yet published"},
+    {"gate": "changelog", "result": "PASS", "note": "CHANGELOG has 3.32.0"},
+    {"gate": "fmt", "result": "FAIL", "note": "(B[m "},
+    {"gate": "clippy", "result": "FAIL", "note": "    Checking thiserror v2.0.20"},
+    {"gate": "test", "result": "FAIL", "note": "   Compiling thiserror v1.0.69"},
+    {"gate": "coverage", "result": "WARN", "note": "no coverage-check make target — verify ≥95% manually"},
+    {"gate": "security", "result": "PASS", "note": "20 │     { id = \"RUSTSEC-2024-0370\", reason = \"proc-macro-error: transitive via tabled_derive→apr-cli→aprender, no repla"},
+    {"gate": "contracts", "result": "WARN", "note": "no contracts make target"},
+    {"gate": "publish-dry-run", "result": "PASS", "note": "packages cleanly"},
+    {"gate": "dogfood-use", "result": "FAIL", "note": "could not build the release binary"},
+    {"gate": "clean-room", "result": "MANUAL", "note": "run `make -C ../infra/machines/clean-room clean-room-pmat` (MANDATORY release gate)"}
+  ],
+  "verdict": "NO-GO"
+}

@@ -475,4 +475,3 @@ mod ml_refusal_tests {
         assert!(err.contains("analyze complexity"), "{err}");
     }
 }
-
