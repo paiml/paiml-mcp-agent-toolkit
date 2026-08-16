@@ -36,6 +36,65 @@ pub(super) fn reject_unimplemented_ml(ml: bool, command: &str, scores: &str) -> 
     )
 }
 
+/// Report tracked `.rs` files that no compilation unit reaches.
+async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::reachability;
+    let cli::AnalyzeCommands::Reachability {
+        path,
+        format,
+        fail_on_orphan,
+    } = cmd
+    else {
+        unreachable!("Expected Reachability command")
+    };
+
+    let (roots, tracked) = reachability::discover(&path)?;
+    if roots.is_empty() {
+        // Refuse rather than report "0 orphans" over a tree we never walked:
+        // an unmeasured run must not look like a clean one.
+        anyhow::bail!(
+            "no cargo targets found under {} — `cargo metadata --no-deps` returned none, \
+             so reachability could not be measured (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = reachability::analyze(&path, &roots, &tracked);
+
+    if format == "json" {
+        println!(
+            "{}",
+            serde_json::json!({
+                "reachable": report.reachable,
+                "roots": report.roots,
+                "orphan_count": report.orphans.len(),
+                "orphan_lines": report.orphan_lines(),
+                "orphan_tests": report.orphan_tests(),
+                "unresolved_mods": report.unresolved.len(),
+                "summary": report.summary(),
+                "orphans": report.orphans.iter().map(|o| serde_json::json!({
+                    "file": o.path, "lines": o.lines, "tests": o.tests
+                })).collect::<Vec<_>>(),
+            })
+        );
+    } else {
+        println!("{}", report.summary());
+        for o in report.orphans.iter().take(40) {
+            println!("  {}  ({} lines, {} tests)", o.path, o.lines, o.tests);
+        }
+        if report.orphans.len() > 40 {
+            println!("  … and {} more", report.orphans.len() - 40);
+        }
+        for u in report.unresolved.iter().take(10) {
+            println!("  unresolved: {u}");
+        }
+    }
+
+    if fail_on_orphan && !report.orphans.is_empty() {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) use advanced_routes::{convert_cache_strategy, convert_deep_context_dag_type};
 #[cfg(test)]
@@ -201,6 +260,8 @@ async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         | AnalyzeCommands::Defects { .. }
         | AnalyzeCommands::Dag { .. }
         | AnalyzeCommands::Satd { .. } => route_core_analysis(cmd).await,
+
+        AnalyzeCommands::Reachability { .. } => route_reachability(cmd).await,
 
         // Advanced analysis commands
         AnalyzeCommands::DeepContext { .. }
@@ -414,3 +475,4 @@ mod ml_refusal_tests {
         assert!(err.contains("analyze complexity"), "{err}");
     }
 }
+

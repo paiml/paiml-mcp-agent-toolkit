@@ -123,6 +123,101 @@ done
 
 FAIL the gate if any command panics or a real-invocation command exits non-zero unexpectedly.
 
+## Gate 2g: Transports — CLI is only one of three surfaces
+
+pmat ships **three** interfaces over the same analysis core: the CLI, an MCP
+stdio server, and (behind the opt-in `mcp-http` feature) streamable HTTP. A
+dogfood that exercises only the CLI leaves two thirds of the product untested,
+and the two have already disagreed in shipped releases — #998 had the CLI and
+MCP return different SATD counts for the same path.
+
+### 2g-i. MCP stdio: does it serve, and does it agree with the CLI?
+
+```bash
+# The server is `MCP_VERSION=1 pmat`, NOT `pmat mcp` (that is manifest management).
+FRAMES='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"dogfood","version":"1"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+printf '%s\n' "$FRAMES" | timeout 60 env MCP_VERSION=1 pmat 2>/dev/null > /tmp/mcp.out
+python3 - <<'EOF'
+import json
+tools=None; n=0
+for line in open('/tmp/mcp.out'):
+    line=line.strip()
+    if not line: continue
+    try: m=json.loads(line)
+    except Exception:
+        print("NON-JSON ON STDOUT (protocol corruption):", line[:80]); continue
+    n+=1
+    if m.get('id')==2 and 'result' in m: tools=[t['name'] for t in m['result']['tools']]
+print(f"responses={n} tools={len(tools) if tools else 'NONE'}")
+if tools: print("names:", sorted(tools))
+EOF
+```
+
+**FAIL** if: any non-JSON line appears on stdout (stdio transport = stdout is the
+protocol; pforge shipped five `println!` lines into its own stream this way), or
+`tools/list` returns nothing, or the count disagrees with `mcp.json`'s
+`tool_count`.
+
+### 2g-ii. EOF handling — the truncation class
+
+```bash
+# Write both frames then close stdin immediately. A server that ties stdout's
+# lifetime to stdin's EOF drops responses it already owes (pmcp #316).
+for i in 1 2 3 4 5; do
+  printf '%s\n' "$FRAMES" | timeout 40 env MCP_VERSION=1 pmat 2>/dev/null \
+    | grep -c '"result"'
+done
+```
+
+**FAIL** if any run returns fewer results than the others. Expect the same count
+5/5 — this class was intermittent (10/40) before it was fixed.
+
+### 2g-iii. CLI vs MCP must agree
+
+```bash
+CLI=$(pmat analyze satd -p src -f json --top-files 900 | jq .total_violations)
+MCP=$(printf '%s\n{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_satd","arguments":{"paths":["src"]}}}\n' "$FRAMES" \
+  | timeout 300 env MCP_VERSION=1 pmat 2>/dev/null \
+  | python3 -c "import sys,json
+for l in sys.stdin:
+    try: m=json.loads(l)
+    except: continue
+    if m.get('id')==3 and 'result' in m:
+        d=json.loads(m['result']['content'][0]['text']); r=d.get('results',d)
+        print(r.get('total_violations', r.get('total_satd')))")
+echo "CLI=$CLI MCP=$MCP"
+```
+
+**FAIL** if they differ. One rule, two implementations, is pmat's most repeated
+defect (#998 CLI vs MCP, #831 five-whys 808 vs 39, the three SATD counters).
+
+### 2g-iv. HTTP transport (opt-in feature)
+
+```bash
+cargo build --features mcp-http --bin pmat 2>&1 | tail -2
+# It must REFUSE to serve without a token rather than start open.
+timeout 15 env -u PMAT_MCP_HTTP_TOKEN pmat serve --http --port 9977 2>&1 | head -3
+# …and start with one.
+PMAT_MCP_HTTP_TOKEN=0123456789abcdef0123 timeout 15 pmat serve --http --port 9977 &
+sleep 3
+curl -s -o /dev/null -w "no-token -> HTTP %{http_code}\n" -X POST localhost:9977/ \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+curl -s -o /dev/null -w "with-token -> HTTP %{http_code}\n" -X POST localhost:9977/ \
+  -H 'Authorization: Bearer 0123456789abcdef0123' -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+kill %1 2>/dev/null
+```
+
+**FAIL** if it starts without a token, or if the unauthenticated request is not
+rejected. Note the `Accept` header: content negotiation precedes auth, so
+omitting it yields 406 and tells you nothing about authentication.
+
+**If the feature is not built, say so** — "HTTP not exercised" is a result;
+silently skipping it is the defect this whole skill is about.
+
 ## Gate 3: Self-Quality (pmat on pmat) — the CI-faithful gate
 
 ```bash
