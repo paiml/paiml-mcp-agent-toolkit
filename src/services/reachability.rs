@@ -7,10 +7,10 @@
 //! file that no `mod`, `#[path]` or `include!` reaches.
 //!
 //! The gap is not theoretical. A stack-wide audit found ~475 tracked files,
-//! >320,000 lines and ~8,900 `#[test]` functions that no compilation unit
-//! reaches — depyler 109 files, bashrs 239, aprender 105, whisper.apr 121. pmat
-//! had its own: `src/transport/`, 1434 lines and 26 tests, where
-//! `cargo test <name>` printed `0 passed` and exited 0.
+//! over 320,000 lines and ~8,900 `#[test]` functions that no compilation unit
+//! reaches (depyler 109 files, bashrs 239, aprender 105, whisper.apr 121).
+//! pmat had its own: `src/transport/`, 1434 lines and 26 tests, where
+//! `cargo test <name>` printed "0 passed" and exited 0.
 //!
 //! Worse than missing them, pmat **graded** them: 79 of aprender's orphans
 //! appear as scored keys in its baseline, and pepita's orphaned
@@ -174,22 +174,16 @@ fn resolve_mod(owner: &Path, name: &str, is_root: bool) -> Option<PathBuf> {
     } else {
         owner.parent()?.join(owner.file_stem()?)
     };
-    for cand in [
-        dir.join(format!("{name}.rs")),
-        dir.join(name).join("mod.rs"),
-    ] {
-        if cand.is_file() {
-            return Some(cand);
-        }
-    }
-    None
+    [dir.join(format!("{name}.rs")), dir.join(name).join("mod.rs")]
+        .into_iter()
+        .find(|c| c.is_file())
 }
 
 fn count_tests(src: &str) -> usize {
     src.lines()
         .filter(|l| {
             let t = l.trim();
-            t == "#[test]" || t.starts_with("#[tokio::test") || t.starts_with("#[test]")
+            t.starts_with("#[test]") || t.starts_with("#[tokio::test")
         })
         .count()
 }
@@ -266,6 +260,48 @@ pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> R
         roots: roots.len(),
         unresolved,
     }
+}
+
+/// Target roots and tracked files for a cargo project, for CLI use.
+///
+/// Split from [`analyze`] so the walk itself stays pure: this is the only part
+/// that shells out, and it is the part that cannot be unit-tested without a
+/// real repository.
+pub fn discover(project_root: &Path) -> std::io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+    use std::process::Command;
+
+    let meta = Command::new("cargo")
+        .args(["metadata", "--no-deps", "--format-version", "1"])
+        .current_dir(project_root)
+        .output()?;
+    let json: serde_json::Value = serde_json::from_slice(&meta.stdout).unwrap_or_default();
+    let mut roots = Vec::new();
+    if let Some(pkgs) = json.get("packages").and_then(|p| p.as_array()) {
+        for p in pkgs {
+            for t in p
+                .get("targets")
+                .and_then(|t| t.as_array())
+                .into_iter()
+                .flatten()
+            {
+                if let Some(src) = t.get("src_path").and_then(|s| s.as_str()) {
+                    roots.push(PathBuf::from(src));
+                }
+            }
+        }
+    }
+
+    let ls = Command::new("git")
+        .args(["ls-files", "-z", "--", "*.rs"])
+        .current_dir(project_root)
+        .output()?;
+    let tracked = String::from_utf8_lossy(&ls.stdout)
+        .split('\0')
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .collect();
+
+    Ok((roots, tracked))
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -406,44 +442,3 @@ mod tests {
     }
 }
 
-/// Target roots and tracked files for a cargo project, for CLI use.
-///
-/// Split from [`analyze`] so the walk itself stays pure: this is the only part
-/// that shells out, and it is the part that cannot be unit-tested without a
-/// real repository.
-pub fn discover(project_root: &Path) -> std::io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    use std::process::Command;
-
-    let meta = Command::new("cargo")
-        .args(["metadata", "--no-deps", "--format-version", "1"])
-        .current_dir(project_root)
-        .output()?;
-    let json: serde_json::Value = serde_json::from_slice(&meta.stdout).unwrap_or_default();
-    let mut roots = Vec::new();
-    if let Some(pkgs) = json.get("packages").and_then(|p| p.as_array()) {
-        for p in pkgs {
-            for t in p
-                .get("targets")
-                .and_then(|t| t.as_array())
-                .into_iter()
-                .flatten()
-            {
-                if let Some(src) = t.get("src_path").and_then(|s| s.as_str()) {
-                    roots.push(PathBuf::from(src));
-                }
-            }
-        }
-    }
-
-    let ls = Command::new("git")
-        .args(["ls-files", "-z", "--", "*.rs"])
-        .current_dir(project_root)
-        .output()?;
-    let tracked = String::from_utf8_lossy(&ls.stdout)
-        .split('\0')
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from)
-        .collect();
-
-    Ok((roots, tracked))
-}
