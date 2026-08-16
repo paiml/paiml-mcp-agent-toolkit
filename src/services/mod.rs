@@ -224,6 +224,7 @@ pub mod polyglot_analyzer;
 pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
+pub mod reachability;
 pub mod readme_compressor;
 pub mod recommendation_engine;
 pub mod refactor_engine;

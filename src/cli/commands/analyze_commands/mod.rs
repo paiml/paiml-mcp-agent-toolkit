@@ -320,6 +320,27 @@ pub enum AnalyzeCommands {
         output: Option<PathBuf>,
     },
 
+    /// Report tracked .rs files that no compilation unit reaches
+    ///
+    /// rustc emits no diagnostic for a `.rs` file that no `mod`, `#[path]` or
+    /// `include!` reaches, so an orphaned module compiles to nothing and its
+    /// tests report `0 passed; ok`. A stack-wide audit found ~475 such files,
+    /// >320,000 lines and ~8,900 tests that have never executed.
+    #[command(name = "reachability", visible_aliases = &["orphans", "unreachable"])]
+    Reachability {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when any tracked file is unreachable
+        #[arg(long)]
+        fail_on_orphan: bool,
+    },
+
     // ── Debt Analysis ─────────────────────────────────────────────
     // Satd, DeepContext
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
