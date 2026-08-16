@@ -134,14 +134,25 @@ mod tests {
         assert!(hook.contains("--no-verify"));
     }
 
+    /// The generated config is valid TOML and carries the sections pmat reads.
+    ///
+    /// This asserted `run_clippy`, `min_coverage`, `max_complexity` and
+    /// `[gates]` — four things pmat has never parsed. It passed for as long as
+    /// the generator emitted a table no reader consumed, which is precisely the
+    /// defect (#1019): the test pinned the OUTPUT rather than the contract, so
+    /// it could only ever confirm that the generator still did what it did.
     #[test]
     fn test_generate_gate_config_toml() {
         let toml = generate_gate_config_toml();
+        let parsed: ::toml::Table = toml.parse().expect("generated config is valid TOML");
 
-        assert!(toml.contains("run_clippy = true"));
-        assert!(toml.contains("min_coverage = 80.0"));
-        assert!(toml.contains("max_complexity = 10"));
-        assert!(toml.contains("[gates]"));
+        assert!(parsed.contains_key("entropy"), "missing [entropy]: {toml}");
+        assert!(parsed.contains_key("tdg"), "missing [tdg]: {toml}");
+        assert!(
+            !parsed.contains_key("gates"),
+            "[gates] is parsed by nothing in pmat; emitting it promises a knob \
+             that does not exist: {toml}"
+        );
     }
 
     #[test]
@@ -153,9 +164,16 @@ mod tests {
         let config_path = temp_dir.path().join(".pmat-gates.toml");
         assert!(config_path.exists());
 
+        // Assert on what a READER would find, not on substrings of the file.
         let content = fs::read_to_string(&config_path).unwrap();
-        assert!(content.contains("run_clippy"));
-        assert!(content.contains("min_coverage"));
+        let parsed: ::toml::Table = content.parse().expect("installed config is valid TOML");
+        assert!(
+            parsed
+                .get("tdg")
+                .and_then(|t| t.get("min_grade"))
+                .is_some(),
+            "installed config lacks the key CB-200 reads: {content}"
+        );
     }
 
     #[test]
