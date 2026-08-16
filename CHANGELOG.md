@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.32.0] - 2026-08-16
+
+Minor rather than patch: two of these change what pmat *reports* on unchanged code.
+SATD now finds markers in doc comments, so counts go **up** on every project, and a
+project sitting just under a SATD threshold can start failing. `comply check`'s
+concurrency dropped, so it is slower and uses an order of magnitude less memory.
+Neither is a behaviour anyone should be pinned to, but both are visible.
+
+Everything here is one defect family, found by auditing pmat with pmat: **absence
+rendered as success** — a module that never compiled, a benchmark that never ran, a
+comment form never scanned, a directory never walked. In each case a number was
+reported and the reader had no way to see the denominator.
+
+### Fixed
+
+**`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
+concurrency from CPU count while its binding constraint is memory. Measured with
+`/usr/bin/time -v`, varying only `RAYON_NUM_THREADS`, peak RSS scales linearly with
+workers:
+
+| threads | peak RSS | wall | cpu |
+|---|---|---|---|
+| 1 | 4.1 GB | 2:23 | 99% |
+| 4 | 15.5 GB | 1:12 | 334% |
+| default | 58.7 GB | 0:38 | 823% |
+
+Nothing is shared between checks — 40 files under `check_handlers/` do their own
+directory walks and there are 156 `read_to_string` call sites — so every concurrent
+check re-reads the tree into its own buffers. On a 48-core/125 GB host that is a
+~192 GB ask, more RAM than exists; it reached 58.7 GB against pmat, ~94 GB against
+aprender, drove load average to 75 and tripped the OOM guard.
+
+Concurrency is now bounded by whichever runs out first — available RAM / 8, CPU
+count, group count, and a ceiling of 4 — inside a **dedicated** rayon pool. The
+dedicated pool is load-bearing: comply nests rayon, so capping only the outer loop
+lets the inner level re-expand to one worker per core. **58.7 GB → 6.3 GB for seven
+seconds.** The run now states its own budget, and `PMAT_COMPLY_JOBS` overrides it.
+The bound is a tourniquet; the real fix is a shared read-once cache (#1014).
+
+**SATD was blind to doc comments.** `/// TODO: implement X` was invisible to every
+SATD surface — debt recorded in the public API documentation, where it is most
+visible to a human reader and least visible to the tool. Doc comments are now
+scanned but classified by **marker only, never by prose phrase-matching**. That
+asymmetry is the whole point: #925 measured a 92% false-positive rate from
+phrase-matching ordinary prose, and doc comments are overwhelmingly prose. Verified
+in both directions — `/// TODO: x` counts, `/// Deterministic order: ties broken by
+path` (#925's literal false positive) does not. On aprender, 73 → 84 of 94 real
+markers.
+
+**SATD was counted three different ways.** The agent-context index carried its own
+raw-substring scanner that disagreed with `analyze satd` in both directions at once
+(`/// TODO: implement X` → 0 vs 1; `// the TODO list is empty` → 1 vs 0), and its own
+block-comment and raw-string tracking. It now delegates to the one detector. This is
+the third time this shape has been fixed: #831 removed the same style of scan from
+`five-whys`, where it reported 808 markers against `analyze satd`'s 39 for one repo.
+
+**SATD reported a count with no denominator.** `analyze satd -p src` on this repo
+prints 10 violations and said nothing about the 66 files the walk declined to read —
+every `examples/`, `demo/`, fuzz, generated and vendored file. A clean tree and a
+barely-read tree produced the same sentence. Both output formats now disclose scope:
+
+```
+Found 10 SATD violations in 10 files (66 file(s) not read: 66 examples/demo/fuzz/generated)
+```
+
+The note names the actionable flag rather than just a number, lists only non-zero
+reasons, and survives the summary restatement that follows severity filtering.
+
+**A benchmark that had never run, guarding a published speedup claim.**
+`criterion_main!` sat inside a module, so it defined `bench::main` and the crate had
+none — `cargo bench --bench topk_selection --features analytics-simd`, the exact
+command in the file's own header, failed with `error[E0601]`. Its stated job is to
+"validate 5-28x speedup claims from specification"; those claims had never been
+measured by it. The failure was invisible because the other arm compiled: without
+the feature the file is an empty `fn main()` that benchmarks nothing and exits 0.
+
+**`src/transport/` — 1434 lines and 26 tests that had never been compiled** (#1009).
+No `mod` declaration reached it, so `cargo test <name>` printed `0 passed` and exited
+0. Declaring it produces 18 errors: `pmcp::transport` no longer exists and two of its
+crates are not dependencies of pmat at all. Deleted rather than revived.
+
+**Three tests that measured the machine rather than the tree** (#1013). All three
+failed under `cargo llvm-cov` while passing under `cargo test` on the same commit,
+because the dead-code phase is a wall-clock budget around `cargo check` and the
+instrumented harness starves it. Not fixed by raising the budget a third time —
+120s had already been raised to 600s after the identical failure. The finding test
+lost the deadline it could hit (the budget itself is still covered by a separate
+one-second test), and `label_refactoring_pass` was extracted as a pure function so
+the exact-equality property is asserted over every input state on synthetic data —
+strictly stronger than the cross-run comparison it replaces, and unable to flake.
+
+### Changed
+
+`analyze satd` JSON gains `files_not_read`, and `SatdAnalysisResult` gains `skipped`.
+
 ## [3.31.0] - 2026-08-15
 
 ### Added
