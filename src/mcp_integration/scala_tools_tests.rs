@@ -155,9 +155,8 @@ mod tests {
     fn test_calculate_functional_percentage_trait_only() {
         let items = vec![AstItem::Trait {
             name: "MyTrait".to_string(),
-            methods: vec![],
-            line_start: 1,
-            line_end: 10,
+            visibility: "public".to_string(),
+            line: 1,
         }];
 
         let percentage = calculate_functional_percentage(&items);
@@ -169,12 +168,9 @@ mod tests {
     fn test_calculate_functional_percentage_function_only() {
         let items = vec![AstItem::Function {
             name: "myFunc".to_string(),
-            complexity: 5,
-            line_start: 1,
-            line_end: 10,
-            parameters: vec![],
-            return_type: None,
+            visibility: "public".to_string(),
             is_async: false,
+            line: 1,
         }];
 
         let percentage = calculate_functional_percentage(&items);
@@ -187,18 +183,14 @@ mod tests {
         let items = vec![
             AstItem::Trait {
                 name: "Trait1".to_string(),
-                methods: vec![],
-                line_start: 1,
-                line_end: 10,
+                visibility: "public".to_string(),
+                line: 1,
             },
             AstItem::Function {
                 name: "func1".to_string(),
-                complexity: 3,
-                line_start: 11,
-                line_end: 20,
-                parameters: vec![],
-                return_type: None,
+                visibility: "public".to_string(),
                 is_async: false,
+                line: 11,
             },
         ];
 
@@ -211,9 +203,8 @@ mod tests {
     fn test_calculate_functional_percentage_module() {
         let items = vec![AstItem::Module {
             name: "MyModule".to_string(),
-            items: vec![],
-            line_start: 1,
-            line_end: 20,
+            visibility: "public".to_string(),
+            line: 1,
         }];
 
         let percentage = calculate_functional_percentage(&items);
@@ -435,10 +426,10 @@ mod tests {
         // Test with struct that has "Case" prefix in name
         let items = vec![AstItem::Struct {
             name: "CaseUser".to_string(),
-            fields: vec![],
+            visibility: "public".to_string(),
+            fields_count: 0,
             derives: vec![],
-            line_start: 1,
-            line_end: 5,
+            line: 1,
         }];
 
         let percentage = calculate_functional_percentage(&items);

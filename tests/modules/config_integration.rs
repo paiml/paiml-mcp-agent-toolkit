@@ -5,6 +5,11 @@ mod config_integration_tests {
     use pmat::demo::config::{ConfigManager, GroupingStrategy};
     use std::fs;
     use tempfile::TempDir;
+    // Restored: `clippy --fix` removed this as unused, and it IS unused under
+    // `--features full` — which is the only set I checked at the time. Under
+    // the wider feature set the release gate uses, the timeout paths below
+    // (lines ~80, ~125, ~163, ~175) compile and need both names.
+    use tokio::time::{sleep, Duration};
 
     #[tokio::test]
     async fn test_config_loading_from_file() -> Result<()> {
