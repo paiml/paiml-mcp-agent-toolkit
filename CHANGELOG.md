@@ -20,6 +20,31 @@ rendered as success** — a module that never compiled, a benchmark that never r
 comment form never scanned, a directory never walked. In each case a number was
 reported and the reader had no way to see the denominator.
 
+### Added
+
+**`pmat analyze reachability`** — reports tracked `.rs` files that no compilation
+unit reaches. pmat's unit of analysis is the FILE (`git ls-files` + an extension
+allowlist); Rust's unit of compilation is the TARGET, reached through a module
+graph, and nothing reconciled the two. rustc emits no diagnostic for a `.rs` file
+that no `mod`, `#[path]` or `include!` reaches, so an orphaned module compiles to
+nothing and `cargo test <name>` prints `0 passed` and exits 0.
+
+A stack-wide audit found ~475 such files across 8 repos — over 320,000 lines and
+~8,900 `#[test]` functions that have never executed. pmat had its own
+(`src/transport/`, deleted in this release). Worse, pmat *graded* them: 79 of
+aprender's orphans are scored keys in its baseline, and pepita's orphaned
+`verification_specs.rs` is recorded AMinus / 97.27 / confidence 1.0.
+
+```
+pmat analyze reachability [-p PATH] [-f json] [--fail-on-orphan]
+```
+
+On this repo: 3885 of 4297 tracked files reachable from 133 target roots. The
+report always states its scope, and an unresolvable `mod` downgrades the result
+to a FLOOR rather than a total — a count with no denominator is the defect the
+analyzer exists to find. It refuses outright when `cargo metadata` yields no
+targets, so an unmeasured tree cannot read as a clean one.
+
 ### Fixed
 
 **`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
