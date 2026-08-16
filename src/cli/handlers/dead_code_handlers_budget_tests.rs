@@ -9,6 +9,29 @@
 use super::{run_dead_code_analysis_with_filters, DeadCodeAnalysisFilters};
 use std::time::{Duration, Instant};
 
+/// A budget the finding tests cannot hit, for the tests that are not about the
+/// budget.
+///
+/// Dead-code analysis of a Rust crate shells out to `cargo check` and is bounded
+/// by **wall clock**, so any finite deadline in a test that asserts *findings* is
+/// a bet on how loaded the machine is. This one was tuned twice and lost twice:
+/// 120s failed under `cargo test`, and the 600s it was raised to failed again
+/// under `cargo llvm-cov`, where the instrumented harness runs ~19,800 tests and
+/// starves the blocking task (#1013 — `ci / test` passed the same commit that
+/// `ci / coverage` failed).
+///
+/// A third number would only move the odds. The phase has no completion
+/// guarantee, so the deadline is removed from the assertion path entirely rather
+/// than re-tuned. Nothing is lost: the budget IS covered, deterministically, by
+/// `a_cargo_check_that_outruns_the_budget_is_killed_and_reported` below, which
+/// uses one second against a crate rigged to outlive it.
+///
+/// The tradeoff, stated: if the analysis ever genuinely hangs, this test hangs
+/// with it and the CI job timeout reports it instead of an assertion. That is a
+/// worse message for a real bug, in exchange for never again reporting a fake
+/// one — and a hang is a bug we would want to see, not a threshold to tune.
+const NO_DEADLINE: Duration = Duration::from_secs(24 * 60 * 60);
+
 fn filters(min_dead_lines: usize) -> DeadCodeAnalysisFilters {
     DeadCodeAnalysisFilters {
         include_unreachable: false,
@@ -61,13 +84,7 @@ async fn a_suppressed_function_is_counted_and_typed_as_a_function() {
         None,
     );
 
-    // Generous on purpose: this test asserts what the analysis FOUND, not how
-    // fast it ran, and the budget is wall clock over a `cargo check` of a fresh
-    // crate. At 120s it failed in CI — not because the two-function fixture is
-    // slow, but because a runner executing ~19,800 tests starved the blocking
-    // task. A timing bound in a test that is not about timing is a flake with no
-    // upside; the one test that IS about the budget uses 1 second, below.
-    let outcome = run_dead_code_analysis_with_filters(root, filters(0), Duration::from_secs(600))
+    let outcome = run_dead_code_analysis_with_filters(root, filters(0), NO_DEADLINE)
         .await
         .expect("analysis runs");
 

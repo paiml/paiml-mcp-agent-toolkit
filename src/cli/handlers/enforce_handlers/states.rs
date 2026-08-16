@@ -176,7 +176,7 @@ pub async fn handle_refactoring_pass(
         )
     );
 
-    let mut measured = handle_analyzing_state(
+    let measured = handle_analyzing_state(
         project_path,
         profile,
         single_file_mode,
@@ -187,14 +187,32 @@ pub async fn handle_refactoring_pass(
     )
     .await?;
 
-    // The state field names the machine's next step; the numbers belong to the
-    // run. A pass that found the project clean does not get relabelled — the
-    // verdict is `QualityAssessment::verdict_state`'s to give, here as anywhere.
+    Ok(label_refactoring_pass(measured))
+}
+
+/// Relabel a measured run as the refactoring pass's output — and change nothing
+/// else.
+///
+/// The state field names the machine's NEXT step; the numbers belong to the run.
+/// A pass that found the project clean does not get relabelled — the verdict is
+/// `QualityAssessment::verdict_state`'s to give, here as anywhere.
+///
+/// Extracted from [`handle_refactoring_pass`] so the property that actually
+/// matters — *the refactoring pass does not invent numbers* — can be tested
+/// without measuring a real tree twice. The predecessor of this code emptied the
+/// violation list and added 0.1 to a score the caller passed as the literal
+/// `0.7`, so `--apply-suggestions --format json` ended on
+/// `"state":"VALIDATING","score":0.8,"violations":[]` for a directory every other
+/// surface called violating. That is a pure-data defect and it is now pinned by a
+/// pure-data test (#1013): the integration test that used to pin it compared two
+/// independent pipeline runs, and flaked whenever the wall-clock-budgeted
+/// dead-code phase landed in one run and timed out in the other.
+pub(super) fn label_refactoring_pass(mut measured: EnforcementResult) -> EnforcementResult {
     if measured.state != EnforcementState::Complete {
         measured.state = EnforcementState::Validating;
         measured.next_action = "validate_changes".to_string();
     }
-    Ok(measured)
+    measured
 }
 
 /// The fabricating refactoring handler, kept alive ONLY because five tests in
@@ -759,5 +777,99 @@ mod composite_score_regression_tests {
             "a run with an unmeasured dimension must not score full marks: {}",
             assessment.score
         );
+    }
+
+    /// #1013: the deterministic replacement for the cross-run comparison in
+    /// `surface_agreement_tests`.
+    ///
+    /// The property is "the refactoring pass reports the run it did not change".
+    /// The old test asserted it by measuring a real tree TWICE and comparing the
+    /// two violation lists and scores — which fails whenever the dead-code phase
+    /// (a wall-clock budget around `cargo check`) lands in one run and times out
+    /// in the other. That happened under `cargo llvm-cov`, where the instrumented
+    /// harness starves the blocking task; `ci / test` passed the same commit.
+    ///
+    /// The defect being guarded is pure data — the predecessor emptied
+    /// `violations` and added 0.1 to a score handed in as the literal `0.7` — so
+    /// it is guarded with pure data here. Every field except `state` and
+    /// `next_action` must survive relabelling untouched, for every input state.
+    #[test]
+    fn the_refactoring_label_changes_no_number() {
+        let violations = vec![QualityViolation {
+            violation_type: "satd".to_string(),
+            severity: "low".to_string(),
+            location: "src/lib.rs:1:1".to_string(),
+            current: 1.0,
+            target: 0.0,
+            suggestion: "Resolve the debt marker".to_string(),
+        }];
+
+        for state in [
+            EnforcementState::Analyzing,
+            EnforcementState::Violating,
+            EnforcementState::Refactoring,
+            EnforcementState::Validating,
+            EnforcementState::Complete,
+        ] {
+            let measured = EnforcementResult {
+                state,
+                score: 0.7,
+                target: 0.9,
+                current_file: None,
+                violations: violations.clone(),
+                next_action: "measured_next".to_string(),
+                progress: EnforcementProgress {
+                    files_completed: 3,
+                    files_remaining: 1,
+                    estimated_iterations: 2,
+                },
+            };
+            let labelled = label_refactoring_pass(measured.clone());
+
+            // Projected rather than compared whole: QualityViolation derives
+            // neither PartialEq nor Default, and adding derives to a production
+            // type to satisfy a test is a change to the product for the test's
+            // convenience. The projection covers every field the fabricating
+            // predecessor got wrong.
+            let project = |v: &[QualityViolation]| -> Vec<(String, String, String, f64, f64)> {
+                v.iter()
+                    .map(|x| {
+                        (
+                            x.violation_type.clone(),
+                            x.severity.clone(),
+                            x.location.clone(),
+                            x.current,
+                            x.target,
+                        )
+                    })
+                    .collect()
+            };
+            assert_eq!(
+                project(&labelled.violations),
+                project(&measured.violations),
+                "the refactoring label cleared a violation list it never fixed (from {state:?})"
+            );
+            assert!(
+                (labelled.score - measured.score).abs() < f64::EPSILON,
+                "the refactoring label moved the score {} -> {} (from {state:?})",
+                measured.score,
+                labelled.score
+            );
+            assert!((labelled.target - measured.target).abs() < f64::EPSILON);
+
+            // Only the machine's next step is allowed to move, and only when the
+            // run was not already Complete.
+            if state == EnforcementState::Complete {
+                assert_eq!(
+                    labelled.state,
+                    EnforcementState::Complete,
+                    "a clean run was relabelled; the verdict is verdict_state's to give"
+                );
+                assert_eq!(labelled.next_action, "measured_next");
+            } else {
+                assert_eq!(labelled.state, EnforcementState::Validating);
+                assert_eq!(labelled.next_action, "validate_changes");
+            }
+        }
     }
 }
