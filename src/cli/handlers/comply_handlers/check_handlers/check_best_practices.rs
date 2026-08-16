@@ -141,7 +141,15 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
         ComplianceCheck {
             name: "CB-400: Shell & Makefile Quality".into(),
             status: CheckStatus::Pass,
-            message: "bashrs: All shell scripts and Makefiles pass quality checks".into(),
+            // Deliberately not "All shell scripts …". CB-402 lints at most
+            // SHELL_SCAN_LIMIT files at SHELL_SCAN_DEPTH, and it reports a
+            // CB-402-TRUNCATED row when that bites — so a clean result here
+            // means "the files this check reached were clean", and saying
+            // "All" made a claim about the repository that the scan never
+            // supported.
+            message: "bashrs: the shell scripts and Makefiles this check reached pass \
+                      (see any CB-402-TRUNCATED / CB-402-UNMEASURED rows for what it did not)"
+                .into(),
             severity: Severity::Info,
         }
     } else if error_count > 0 {

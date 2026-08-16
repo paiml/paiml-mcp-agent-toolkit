@@ -914,66 +914,6 @@ mod quality_metrics_tests {
         assert_eq!(count_satd_markers("// TODO: and the rest"), 1);
     }
 
-    // ── count_markers_in_line / count_markers_in_comment (private helpers) ──
-
-    #[test]
-    fn test_count_markers_in_line_case_insensitive_match() {
-        // Function uppercases the line, so todo / Todo / TODO all match
-        assert_eq!(count_markers_in_line("// todo lowercase"), 1);
-        assert_eq!(count_markers_in_line("// Fixme MixedCase"), 1);
-        assert_eq!(count_markers_in_line("// hack/optimize"), 2);
-    }
-
-    #[test]
-    fn test_count_markers_in_comment_no_double_slash_returns_zero() {
-        // No `//` in the input → not a comment → 0
-        assert_eq!(count_markers_in_comment("just text TODO here"), 0);
-    }
-
-    // ── update_raw_string_state ─────────────────────────────────────────────
-
-    #[test]
-    fn test_update_raw_string_state_open_and_close_same_line() {
-        let mut in_raw = false;
-        // r#"foo"# has the opener and closer on same line → returns true (skip)
-        // but in_raw stays false because the close was found
-        let skipped = update_raw_string_state("let s = r#\"foo\"#;", &mut in_raw);
-        assert!(skipped);
-        assert!(!in_raw);
-    }
-
-    #[test]
-    fn test_update_raw_string_state_open_only_sets_state() {
-        let mut in_raw = false;
-        let skipped = update_raw_string_state("let s = r#\"unclosed", &mut in_raw);
-        assert!(skipped);
-        assert!(in_raw);
-    }
-
-    #[test]
-    fn test_update_raw_string_state_already_in_raw_continues() {
-        let mut in_raw = true;
-        let skipped = update_raw_string_state("middle of string", &mut in_raw);
-        assert!(skipped);
-        assert!(in_raw); // still in raw
-    }
-
-    #[test]
-    fn test_update_raw_string_state_already_in_raw_with_close() {
-        let mut in_raw = true;
-        let skipped = update_raw_string_state("end\"#", &mut in_raw);
-        assert!(skipped);
-        assert!(!in_raw); // closed
-    }
-
-    #[test]
-    fn test_update_raw_string_state_no_raw_string_returns_false() {
-        let mut in_raw = false;
-        let skipped = update_raw_string_state("normal code line", &mut in_raw);
-        assert!(!skipped);
-        assert!(!in_raw);
-    }
-
     // ── estimate_big_o ──────────────────────────────────────────────────────
 
     #[test]

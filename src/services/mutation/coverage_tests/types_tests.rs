@@ -89,12 +89,14 @@ fn test_mutation_operator_type_all_variants() {
 
 #[test]
 fn test_mutant_status_all_variants() {
-    let statuses = [MutantStatus::Pending,
+    let statuses = [
+        MutantStatus::Pending,
         MutantStatus::Killed,
         MutantStatus::Survived,
         MutantStatus::CompileError,
         MutantStatus::Timeout,
-        MutantStatus::Equivalent];
+        MutantStatus::Equivalent,
+    ];
 
     assert_eq!(statuses.len(), 6);
 

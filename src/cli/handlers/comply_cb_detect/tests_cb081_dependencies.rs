@@ -278,11 +278,17 @@ fn test_parse_bashrs_json_object() {
     assert_eq!(result[0].severity, "error");
 }
 
+/// Invalid output is an ERROR. This test asserted the opposite —
+/// `assert!(result.is_empty(), "Invalid JSON should return empty")` — and that
+/// assertion is precisely the defect: it pinned "I could not read the linter"
+/// to the same value as "the linter found nothing", which is what let
+/// `CB-400: Shell & Makefile Quality` report Pass on a tree with 217 bashrs
+/// errors. The test was guarding the bug.
 #[test]
-fn test_parse_bashrs_json_invalid() {
-    let json = "not valid json";
-    let result = parse_bashrs_json_output(json).unwrap();
-    assert!(result.is_empty(), "Invalid JSON should return empty");
+fn test_parse_bashrs_json_invalid_is_an_error() {
+    let err = parse_bashrs_json_output("not valid json")
+        .expect_err("invalid JSON must not be reported as zero violations");
+    assert!(err.contains("not JSON"), "{err}");
 }
 
 #[test]
@@ -304,4 +310,53 @@ fn test_parse_bashrs_json_multiple_issues() {
     assert_eq!(result[0].code, "SC2086");
     assert_eq!(result[1].code, "SC2046");
     assert_eq!(result[2].code, "SC2116");
+}
+
+/// bashrs 6.66.2 prefixes its stdout with an ANSI-coloured log line before the
+/// JSON payload. The parser used to fail on that and `return Ok(Vec::new())`
+/// under the comment "graceful degradation", so every script came back clean and
+/// `CB-400: Shell & Makefile Quality` reported
+/// `Pass: bashrs: All shell scripts and Makefiles pass quality checks`
+/// for `infra`, where bashrs itself exits 2 with hundreds of diagnostics.
+///
+/// After the fix the same input yields the real diagnostics: CB-400 on infra
+/// went from Pass to `217 errors, 476 warnings`.
+#[test]
+fn bashrs_log_preamble_does_not_hide_the_diagnostics() {
+    let raw = "\u{1b}[2m2026-08-16T11:38:43.919522Z\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \
+               \u{1b}[2mbashrs::cli::commands::lint_cmds\u{1b}[0m\u{1b}[2m:\u{1b}[0m \
+               Linting ./scripts/x.sh\n\
+               {\"file\":\"./scripts/x.sh\",\"diagnostics\":[\
+               {\"code\":\"SC2086\",\"message\":\"Double quote\",\"line\":5,\"severity\":\"error\"}]}\n";
+    let result = parse_bashrs_json_output(raw).expect("payload after a log preamble is parseable");
+    assert_eq!(result.len(), 1, "the log preamble swallowed the diagnostics");
+    assert_eq!(result[0].code, "SC2086");
+}
+
+/// The anchor must be a LINE that opens the payload, not the first `{`/`[` byte.
+/// Every ANSI escape contains a literal `[` (`ESC[2m`), so a byte search lands
+/// inside the colour code — the first version of this fix did exactly that and
+/// still reported "output was not JSON" against real bashrs output.
+#[test]
+fn ansi_escapes_in_the_preamble_do_not_capture_the_json_anchor() {
+    let raw = "\u{1b}[2mINFO\u{1b}[0m Linting x\n[{\"code\":\"SC1014\",\"message\":\"m\",\"line\":1,\"severity\":\"error\"}]";
+    let result = parse_bashrs_json_output(raw).expect("array payload is parseable");
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].code, "SC1014");
+}
+
+/// Output that carries no JSON at all is an ERROR, not a clean bill of health.
+///
+/// This is the load-bearing half. A tool that could not be read tells you
+/// nothing about the code; reporting "no violations" turns "I did not measure"
+/// into "there is nothing to find", which is the defect that made CB-400
+/// unfailable.
+#[test]
+fn unparseable_output_is_an_error_not_an_empty_result() {
+    let err = parse_bashrs_json_output("bashrs: command not found\n")
+        .expect_err("unmeasured must not read as clean");
+    assert!(
+        err.contains("not JSON"),
+        "the error must say what went wrong: {err}"
+    );
 }

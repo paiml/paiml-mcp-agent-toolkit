@@ -118,12 +118,14 @@ mod ruchy_unit_tests {
 
     #[test]
     fn test_ruchy_token_operators() {
-        let tokens = [RuchyToken::Plus,
+        let tokens = [
+            RuchyToken::Plus,
             RuchyToken::Minus,
             RuchyToken::Star,
             RuchyToken::Slash,
             RuchyToken::EqualEqual,
-            RuchyToken::NotEqual];
+            RuchyToken::NotEqual,
+        ];
         assert_eq!(tokens.len(), 6);
         assert!(matches!(tokens[4], RuchyToken::EqualEqual));
     }
@@ -144,12 +146,14 @@ mod ruchy_unit_tests {
     // RuchyType tests
     #[test]
     fn test_ruchy_type_primitives() {
-        let types = [RuchyType::Integer,
+        let types = [
+            RuchyType::Integer,
             RuchyType::Float,
             RuchyType::String,
             RuchyType::Bool,
             RuchyType::Char,
-            RuchyType::Unknown];
+            RuchyType::Unknown,
+        ];
         assert_eq!(types.len(), 6);
         assert_eq!(RuchyType::Integer, RuchyType::Integer);
     }

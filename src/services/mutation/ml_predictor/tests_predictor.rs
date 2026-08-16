@@ -245,10 +245,12 @@ mod tests {
         let mut predictor = SurvivabilityPredictor::new();
 
         // Create training data with different operators
-        let data: Vec<TrainingData> = [MutationOperatorType::ArithmeticReplacement,
+        let data: Vec<TrainingData> = [
+            MutationOperatorType::ArithmeticReplacement,
             MutationOperatorType::RelationalReplacement,
             MutationOperatorType::ConditionalReplacement,
-            MutationOperatorType::StatementDeletion]
+            MutationOperatorType::StatementDeletion,
+        ]
         .iter()
         .enumerate()
         .flat_map(|(i, op)| {
