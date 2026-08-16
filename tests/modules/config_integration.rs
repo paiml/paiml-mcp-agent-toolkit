@@ -5,7 +5,6 @@ mod config_integration_tests {
     use pmat::demo::config::{ConfigManager, GroupingStrategy};
     use std::fs;
     use tempfile::TempDir;
-    use tokio::time::{sleep, Duration};
 
     #[tokio::test]
     async fn test_config_loading_from_file() -> Result<()> {

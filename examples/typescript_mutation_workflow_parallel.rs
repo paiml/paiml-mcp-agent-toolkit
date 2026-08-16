@@ -100,7 +100,7 @@ fn main() -> Result<()> {
         }
 
         let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-        if done % 10 == 0 || done == total {
+        if done.is_multiple_of(10) || done == total {
             println!("   Progress: {}/{} mutants tested", done, total);
         }
     });
