@@ -26,6 +26,12 @@ pub struct SatdAnalysisResult {
     pub total_files: usize,
     pub violations: Vec<SatdViolation>,
     pub summary: String,
+    /// What the walk found and deliberately did not read.
+    ///
+    /// Without this a caller sees only the violations, so "this tree is clean"
+    /// and "almost every file in this tree was skipped" are the same output.
+    #[serde(default)]
+    pub skipped: crate::services::satd_detector::SkipCounts,
 }
 
 /// Individual SATD violation
@@ -99,15 +105,11 @@ impl SatdFacade {
         // `analyze satd --include-tests` took the with-tests branch and then
         // told the detector *not* to include tests: a `// TODO:` in `tests/`
         // stayed invisible with the flag and without it alike.
-        let satd_items = if request.include_tests {
-            detector
-                .analyze_directory_with_tests(&request.path, true)
-                .await?
-        } else {
-            detector.analyze_directory(&request.path).await?
-        };
+        let (satd_items, skipped) = detector
+            .analyze_directory_with_stats(&request.path, request.include_tests)
+            .await?;
 
-        Ok(Self::build_result(&satd_items))
+        Ok(Self::build_result_with_skips(&satd_items, skipped))
     }
 
     /// Convert detector items into the facade's result shape.
@@ -115,6 +117,28 @@ impl SatdFacade {
     /// Shared by the directory walk and the single-file path so both report the
     /// same counts for the same debt.
     fn build_result(
+        satd_items: &[crate::services::satd_detector::TechnicalDebt],
+    ) -> SatdAnalysisResult {
+        Self::build_result_with_skips(satd_items, Default::default())
+    }
+
+    fn build_result_with_skips(
+        satd_items: &[crate::services::satd_detector::TechnicalDebt],
+        skipped: crate::services::satd_detector::SkipCounts,
+    ) -> SatdAnalysisResult {
+        let mut result = Self::build_result_inner(satd_items);
+        // The summary sentence carries the scope too, not just the JSON: the
+        // text output is what a human actually reads, and "Found 0 SATD
+        // violations in 0 files" was the exact sentence that made a walk which
+        // skipped everything look like a clean tree (#923).
+        if let Some(note) = skipped.note() {
+            result.summary = format!("{} ({note})", result.summary);
+        }
+        result.skipped = skipped;
+        result
+    }
+
+    fn build_result_inner(
         satd_items: &[crate::services::satd_detector::TechnicalDebt],
     ) -> SatdAnalysisResult {
         let violations: Vec<SatdViolation> = satd_items
@@ -153,6 +177,7 @@ impl SatdFacade {
             total_files,
             violations,
             summary,
+            skipped: Default::default(),
         }
     }
 

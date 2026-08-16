@@ -160,6 +160,15 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, top_files: usize) -> 
         "total_violations": result.violations.len(),
         "violations_listed": listed.len(),
         "violations_truncated": listed.len() < result.violations.len(),
+        // The denominator. Without it, `total_violations: 0` reads the same
+        // whether the tree is clean or whether the walk skipped nearly all of it.
+        "files_not_read": {
+            "total": result.skipped.total(),
+            "tests": result.skipped.tests,
+            "examples_demo_fuzz_generated": result.skipped.out_of_scope,
+            "minified_or_vendor": result.skipped.minified_or_vendor,
+            "too_large": result.skipped.too_large
+        },
         "summary": result.summary,
         "violations": listed.iter().map(|v| {
             serde_json::json!({

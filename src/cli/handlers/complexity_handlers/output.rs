@@ -463,6 +463,7 @@ mod satd_formatting_tests {
         items: Vec<crate::services::satd_detector::TechnicalDebt>,
     ) -> SATDAnalysisResult {
         SATDAnalysisResult {
+            skipped: Default::default(),
             items,
             summary: SATDSummary {
                 total_items: 0,

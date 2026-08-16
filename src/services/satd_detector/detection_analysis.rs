@@ -83,7 +83,8 @@ impl SATDDetector {
         stats: &mut ProjectAnalysisStats,
     ) {
         for file_path in files {
-            if self.should_skip_file(file_path, include_tests).await {
+            if let Some(reason) = self.skip_reason(file_path, include_tests).await {
+                reason.record(&mut stats.skipped);
                 continue;
             }
 
@@ -93,11 +94,17 @@ impl SATDDetector {
         }
     }
 
-    /// Toyota Way: Extract Method - check if file should be skipped (complexity <=8)
-    async fn should_skip_file(&self, file_path: &Path, include_tests: bool) -> bool {
+    /// Why this file will not be read, or `None` if it will be.
+    ///
+    /// Returns the REASON rather than a bare bool so the report can disclose
+    /// the scope it measured over. Previously this answered only "skip: yes",
+    /// the count went nowhere, and a run that declined to read every candidate
+    /// was indistinguishable in the output from a run that read them all and
+    /// found nothing.
+    async fn skip_reason(&self, file_path: &Path, include_tests: bool) -> Option<SkipReason> {
         // Skip test files if not requested
         if !include_tests && self.is_test_file(file_path) {
-            return true;
+            return Some(SkipReason::Test);
         }
 
         // Files whose every line is suppressed by `should_exclude_file` were
@@ -106,12 +113,12 @@ impl SATDDetector {
         // reported from was not analysed; saying otherwise is what makes
         // "excluded everything" look like "measured clean" (#923).
         if self.should_exclude_file(file_path) {
-            return true;
+            return Some(SkipReason::OutOfScope);
         }
 
         // Skip minified/vendor files
         if self.is_minified_or_vendor_file(file_path) {
-            return true;
+            return Some(SkipReason::MinifiedOrVendor);
         }
 
         // Check file size constraints
@@ -121,7 +128,7 @@ impl SATDDetector {
                     "Warning: Skipped: {} (large file >500KB)",
                     file_path.display()
                 );
-                return true;
+                return Some(SkipReason::TooLarge);
             }
 
             if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
@@ -129,11 +136,11 @@ impl SATDDetector {
                     "Warning: Skipped: {} (minified content)",
                     file_path.display()
                 );
-                return true;
+                return Some(SkipReason::MinifiedOrVendor);
             }
         }
 
-        false
+        None
     }
 
     /// Toyota Way: Extract Method - process individual file (complexity <=8)
@@ -203,6 +210,7 @@ impl SATDDetector {
             },
             total_files_analyzed: stats.total_files_analyzed,
             files_with_debt: stats.files_with_debt,
+            skipped: stats.skipped.clone(),
             analysis_timestamp: chrono::Utc::now(),
         }
     }
@@ -247,16 +255,38 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        self.analyze_directory_with_stats(root, include_tests)
+            .await
+            .map(|(debts, _)| debts)
+    }
+
+    /// As [`Self::analyze_directory_with_tests`], but also returns WHAT THE WALK
+    /// DECLINED TO READ.
+    ///
+    /// The plain variant returns only the debts, so a caller cannot tell a tree
+    /// with no markers from a tree where almost every file was skipped — the two
+    /// arrive as the same empty vec. `nothing_measured` below catches the
+    /// extreme case where *nothing at all* was read, but the ordinary case, a
+    /// run that read some files and silently skipped a hundred others, had no
+    /// disclosure at all. `analyze satd` on a project root skips every
+    /// `examples/`, `demo/`, fuzz, vendored and generated file and never said so.
+    pub async fn analyze_directory_with_stats(
+        &self,
+        root: &Path,
+        include_tests: bool,
+    ) -> Result<(Vec<TechnicalDebt>, SkipCounts), TemplateError> {
+        let mut skipped = SkipCounts::default();
         let mut all_debts = Vec::new();
         let files = self.discover_files(root, include_tests).await?;
         let discovered = files.len();
         let mut analyzed = 0usize;
 
         for file_path in files {
-            if self
-                .should_skip_file_for_analysis(&file_path, include_tests)
+            if let Some(reason) = self
+                .skip_reason_for_analysis(&file_path, include_tests)
                 .await
             {
+                reason.record(&mut skipped);
                 continue;
             }
 
@@ -269,7 +299,7 @@ impl SATDDetector {
             return Err(Self::nothing_measured(root, discovered));
         }
 
-        Ok(all_debts)
+        Ok((all_debts, skipped))
     }
 
     /// The refusal returned when a walk analysed nothing.
@@ -303,24 +333,39 @@ impl SATDDetector {
         }
     }
 
-    async fn should_skip_file_for_analysis(&self, file_path: &Path, include_tests: bool) -> bool {
+    /// Why this file will not be read on the `analyze_directory` path, or `None`.
+    ///
+    /// Deliberately NOT merged with `skip_reason`, despite being nearly the same
+    /// list: that one additionally drops files over 500 KB, and folding the two
+    /// together would make this path skip MORE files than it does today — fewer
+    /// findings, which is the wrong direction to move a detector by accident.
+    /// The duplication is recorded rather than silently resolved; unifying them
+    /// is a behaviour change that deserves its own measurement.
+    async fn skip_reason_for_analysis(
+        &self,
+        file_path: &Path,
+        include_tests: bool,
+    ) -> Option<SkipReason> {
         // Skip test files unless explicitly requested
         if !include_tests && self.is_test_file(file_path) {
-            return true;
+            return Some(SkipReason::Test);
         }
 
-        // See `should_skip_file`: an excluded file is not an analysed file.
+        // See `skip_reason`: an excluded file is not an analysed file.
         if self.should_exclude_file(file_path) {
-            return true;
+            return Some(SkipReason::OutOfScope);
         }
 
         // Skip minified/vendor files
         if self.is_minified_or_vendor_file(file_path) {
-            return true;
+            return Some(SkipReason::MinifiedOrVendor);
         }
 
         // Check file size and minification for large files
-        self.should_skip_large_file(file_path).await
+        if self.should_skip_large_file(file_path).await {
+            return Some(SkipReason::MinifiedOrVendor);
+        }
+        None
     }
 
     async fn should_skip_large_file(&self, file_path: &Path) -> bool {

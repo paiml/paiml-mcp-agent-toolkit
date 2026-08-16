@@ -30,6 +30,10 @@ pub struct SATDAnalysisResult {
     pub summary: SATDSummary,
     pub total_files_analyzed: usize,
     pub files_with_debt: usize,
+    /// Files found and deliberately not read, by reason — the denominator that
+    /// tells "measured clean" apart from "measured almost nothing".
+    #[serde(default)]
+    pub skipped: SkipCounts,
     pub analysis_timestamp: chrono::DateTime<chrono::Utc>,
 }
 
@@ -293,6 +297,86 @@ pub(crate) struct ProjectAnalysisStats {
     pub(crate) all_debts: Vec<TechnicalDebt>,
     pub(crate) files_with_debt: usize,
     pub(crate) total_files_analyzed: usize,
+    /// Files the walk found and then declined to read, by reason.
+    ///
+    /// #923 stopped counting these as *analysed*, which was right — a file
+    /// nothing can be reported from was not analysed. But the report then said
+    /// nothing about them at all, so "SATD: 0" read identically whether the
+    /// tree was clean or whether every candidate in it had been skipped. The
+    /// counts are carried out to the report so a reader can see the scope the
+    /// number was measured over.
+    pub(crate) skipped: SkipCounts,
+}
+
+/// Why files were not read, so an absent finding can be told apart from an
+/// absent measurement.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SkipCounts {
+    /// Test files, when `--include-tests` was not given.
+    pub tests: usize,
+    /// `examples/`, `demo/`, fuzz targets, generated and vendored files.
+    pub out_of_scope: usize,
+    /// Minified or vendored bundles.
+    pub minified_or_vendor: usize,
+    /// Files past the large-file threshold.
+    pub too_large: usize,
+}
+
+/// One reason a file was not read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SkipReason {
+    Test,
+    OutOfScope,
+    MinifiedOrVendor,
+    TooLarge,
+}
+
+impl SkipReason {
+    pub(crate) fn record(self, counts: &mut SkipCounts) {
+        match self {
+            Self::Test => counts.tests += 1,
+            Self::OutOfScope => counts.out_of_scope += 1,
+            Self::MinifiedOrVendor => counts.minified_or_vendor += 1,
+            Self::TooLarge => counts.too_large += 1,
+        }
+    }
+}
+
+impl SkipCounts {
+    #[must_use]
+    pub fn total(&self) -> usize {
+        self.tests + self.out_of_scope + self.minified_or_vendor + self.too_large
+    }
+
+    /// A one-line note for the human-readable report, or `None` when nothing
+    /// was skipped and there is therefore nothing to disclose.
+    #[must_use]
+    pub fn note(&self) -> Option<String> {
+        if self.total() == 0 {
+            return None;
+        }
+        let mut parts = Vec::new();
+        if self.tests > 0 {
+            parts.push(format!("{} test (use --include-tests)", self.tests));
+        }
+        if self.out_of_scope > 0 {
+            parts.push(format!(
+                "{} examples/demo/fuzz/generated",
+                self.out_of_scope
+            ));
+        }
+        if self.minified_or_vendor > 0 {
+            parts.push(format!("{} minified/vendor", self.minified_or_vendor));
+        }
+        if self.too_large > 0 {
+            parts.push(format!("{} too large", self.too_large));
+        }
+        Some(format!(
+            "{} file(s) not read: {}",
+            self.total(),
+            parts.join(", ")
+        ))
+    }
 }
 
 impl ProjectAnalysisStats {
@@ -429,5 +513,51 @@ mod types_tests {
             s = s.escalate();
         }
         assert_eq!(s, Severity::Critical);
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod skip_counts_tests {
+    use super::SkipCounts;
+
+    /// Nothing skipped means nothing to disclose — the note must not clutter
+    /// the summary of a run that genuinely read everything.
+    #[test]
+    fn silent_when_nothing_was_skipped() {
+        assert_eq!(SkipCounts::default().total(), 0);
+        assert!(SkipCounts::default().note().is_none());
+    }
+
+    /// #923: "Found 0 SATD violations in 0 files" was the same sentence whether
+    /// the tree was clean or whether every candidate had been skipped. The note
+    /// is the denominator that tells them apart, so it must name both the count
+    /// and the reason — a bare number would not tell a reader that passing
+    /// `--include-tests` changes the answer.
+    #[test]
+    fn note_names_the_count_and_the_reason() {
+        let counts = SkipCounts {
+            tests: 9,
+            out_of_scope: 66,
+            minified_or_vendor: 0,
+            too_large: 2,
+        };
+        assert_eq!(counts.total(), 77);
+        let note = counts
+            .note()
+            .expect("something was skipped, so there is something to say");
+        assert!(note.contains("77 file(s) not read"), "{note}");
+        assert!(note.contains("9 test"), "{note}");
+        assert!(
+            note.contains("--include-tests"),
+            "the actionable flag must be named: {note}"
+        );
+        assert!(note.contains("66 examples/demo/fuzz/generated"), "{note}");
+        assert!(note.contains("2 too large"), "{note}");
+        // A reason with a zero count is noise, not disclosure.
+        assert!(
+            !note.contains("minified"),
+            "zero-count reason listed: {note}"
+        );
     }
 }

@@ -27,7 +27,7 @@ use crate::services::defect_detector::source_scope;
 
 use super::types::{
     AstContext, AstNodeType, DebtClassifier, ProjectAnalysisStats, SATDAnalysisResult,
-    SATDDetector, SATDSummary, TechnicalDebt, TestBlockTracker,
+    SATDDetector, SATDSummary, SkipCounts, SkipReason, TechnicalDebt, TestBlockTracker,
 };
 
 include!("detection_extraction.rs");

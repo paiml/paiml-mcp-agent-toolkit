@@ -13,7 +13,8 @@ mod types;
 // Re-export all public items that were previously accessible from satd_detector.rs
 pub use types::{
     AstContext, AstNodeType, CategoryMetrics, DebtCategory, DebtClassifier, DebtEvolution,
-    SATDAnalysisResult, SATDDetector, SATDMetrics, SATDSummary, Severity, TechnicalDebt,
+    SATDAnalysisResult, SATDDetector, SATDMetrics, SATDSummary, Severity, SkipCounts,
+    TechnicalDebt,
 };
 
 // Tests extracted to satd_detector_tests.rs for file health compliance (CB-040)

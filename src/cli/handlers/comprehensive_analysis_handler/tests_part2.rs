@@ -119,6 +119,7 @@ mod tests_part2 {
     #[test]
     fn test_format_satd_section() {
         let satd = SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: 8,
             violations: vec![SatdViolation {
                 file_path: "src/hack.rs".to_string(),
@@ -141,6 +142,7 @@ mod tests_part2 {
     #[test]
     fn test_format_satd_section_empty() {
         let satd = SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: 5,
             violations: vec![],
             summary: "No SATD".to_string(),
@@ -210,6 +212,7 @@ mod tests_part2 {
             })
             .collect();
         let satd = SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: 10,
             violations,
             summary: "Many SATD items".to_string(),
@@ -257,6 +260,7 @@ mod tests_part2 {
             summary: "Many dead items".to_string(),
         };
         let satd = SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: 10,
             violations: (0..10)
                 .map(|i| SatdViolation {
@@ -391,6 +395,7 @@ mod tests_part2 {
             },
         ];
         let satd = SatdAnalysisResult {
+            skipped: Default::default(),
             total_files: 1,
             violations,
             summary: "Test".to_string(),
