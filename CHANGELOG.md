@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.31.0] - 2026-08-15
+
+### Added
+
+**MCP over streamable HTTP** (#999 EV-6, PR #1006). The same 16-tool surface the stdio
+server exposes is now reachable over HTTP, behind the opt-in `mcp-http` feature
+(`cargo install pmat --features mcp-http`). It is not in the default build.
+
+It refuses to serve open. `PMAT_MCP_HTTP_TOKEN` is mandatory and must be at least 16
+characters; without it the server does not start, rather than starting unauthenticated
+and logging a warning nobody reads. The token is compared in constant time, and
+`BearerToken`'s `Debug` is hand-written to redact it so it cannot reach a log through a
+derived formatter.
+
+**Dual-client quality hooks** (#999 EV-3, PR #1003). `.agents/hooks/pmat-quality-feedback.sh`
+runs pmat's gates from either Claude Code or a generic agent client and translates the
+result into whichever refusal shape the caller understands (exit 2, or
+`{"decision":"deny"}`). Pure shell — no Node or Python shim.
+
+### Fixed
+
+**Four MCP tools advertised an engine that synthesized its findings** (EV-0, PR #1001).
+The `refactor.*` tools' engine matched on a substring of the path it was given and
+produced violations from that. They are unregistered; the live tool count is 20 → 16, and
+`mcp.json` regenerates from `LIVE_MCP_TOOLS` so the manifest and the server cannot drift
+apart silently.
+
+**A score above its own maximum, written into git commit trailers** (PR #1000). The
+rust-project-score trailer divided by a hardcoded 134 while the rubric had grown to 289
+points, so commits recorded percentages over 100%. The denominator now comes from
+`rubric_max_points()`. Relatedly, a project with almost nothing measurable no longer earns
+grade A: below three measured dimensions the handler reports
+`INSUFFICIENT (n/8 dimensions measured)` instead of grading the silence.
+
+**MCP and the CLI answered the same SATD question with different numbers** (#998, #995).
+`--include-tests` could not reach an inline `#[cfg(test)]` block, and the MCP path applied
+a different rule again. Both now run through
+`extract_from_content_with_tests(content, path, include_tests)`. Verified on the shipped
+binary: CLI and MCP both report 9 for `src/` and both report 34 with tests included.
+
+**AGENTS.md claimed 80% coverage and grade A for every project** (PR #1002) — figures that
+were true of nothing, emitted regardless of what the project actually measured.
+
+**The mutation job had never executed a single mutant.** cargo-mutants silently ignores
+unknown configuration keys, so a misspelled key disabled the run while the job stayed
+green.
+
+**A doc gate that validated zero files, and a manifest shipping a build-artifact path.**
+`mcp.json` is inside the published crate and pointed at `target/release/pmat`, which
+resolves only on a machine that built from source; for `cargo install pmat` users it named
+nothing. It now advertises `pmat`, the name the binary actually has on PATH.
+
+**The feature matrix could not see a feature whose tests do not compile** (PR #1005).
+`cargo check --lib` does not build test targets, so a feature-gated module's tests could
+rot indefinitely without any job noticing. Both bundles and all six individual shards now
+pass `--tests`. That exposed 38 test-compile failures, all since fixed — one of which was
+a real production bug in the ML predictor's parameter counting, where a slice ended before
+the closing paren so the empty-parameter branch could never be taken and every signature
+was counted as having one argument too few.
+
+**docs.rs build gate could not tell "queued" from "failed"** (PR #993), and the wgpu
+upgrade path broke on every new field because a full struct literal was used against a
+`#[non_exhaustive]` type (PR #996).
+
+**CB-1656 demanded pmat's own tools of every other project's MCP server** (#1007). The
+check compared any audited repo's root `mcp.json` against `LIVE_MCP_TOOLS` compiled into
+this binary, so for any project other than pmat it reported pmat's entire tool set as
+`missing` and the repo's entire tool set as `extra` — unsatisfiable by construction, with
+a remediation naming a `cargo test` target that exists only here. It also rewarded having
+no manifest at all: absent skipped green, faithful failed red. It now scores only
+manifests that describe pmat's own server and skips others with a message naming what it
+found.
+
+**The OpenAI API-key surface is deleted.** The product stopped using it; the code that
+read, stored and logged the key did not.
+
+**Two flaky tests removed, neither by widening a tolerance.** An `enforce` test asserted
+that a parseable project measures every dimension — not a property the product guarantees,
+since the dead-code phase is a wall-clock budget around `cargo check`; it is replaced by a
+deterministic test of the pure `summarize()`. A five-whys proptest asserted that
+`generate_recommendations` always echoes the root cause, but its `\PC{1,50}` generator
+emits U+2028 LINE SEPARATOR, which is `White_Space=yes`, so the product correctly took its
+blank-input branch instead. The property was wrong and now asserts both branches, with the
+blank case additionally pinned by an exhaustive non-random test.
+
+### Dependencies
+
+tokio ecosystem, uuid 1.24.0, wgpu 30.0.0, http 1.5.0 and a 24-crate patch sweep.
+
 ## [3.30.1] - 2026-08-14
 
 ### Fixed
