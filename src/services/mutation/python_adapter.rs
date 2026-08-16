@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_python_adapter_default() {
-        let adapter = PythonAdapter::default();
+        let adapter = PythonAdapter;
         let _ = adapter;
     }
 
@@ -393,7 +393,7 @@ class Calculator:
         let adapter = PythonAdapter::new();
         let extensions = adapter.extensions();
 
-        assert!(extensions.iter().any(|e| *e == "py"), "Missing .py");
+        assert!(extensions.contains(&"py"), "Missing .py");
     }
 
     #[tokio::test]

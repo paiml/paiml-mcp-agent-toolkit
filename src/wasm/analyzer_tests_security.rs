@@ -107,13 +107,11 @@ mod coverage_tests_security {
 
     #[test]
     fn test_security_check_names() {
-        let checks = vec![
-            SecurityCheck::NoFilesystemAccess,
+        let checks = [SecurityCheck::NoFilesystemAccess,
             SecurityCheck::NoNetworkAccess,
             SecurityCheck::MemoryBoundsChecked,
             SecurityCheck::NoUnvalidatedIndirectCalls,
-            SecurityCheck::NoIntegerOverflow,
-        ];
+            SecurityCheck::NoIntegerOverflow];
 
         let names: Vec<_> = checks.iter().map(|c| c.name()).collect();
 

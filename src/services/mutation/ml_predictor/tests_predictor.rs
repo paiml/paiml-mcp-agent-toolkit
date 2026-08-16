@@ -184,7 +184,7 @@ mod tests {
         assert!(!imp.is_empty());
 
         // All values should be non-negative
-        for (_, value) in &imp {
+        for value in imp.values() {
             assert!(*value >= 0.0);
         }
     }
@@ -212,7 +212,7 @@ mod tests {
 
         assert!(result.is_ok());
         let accuracy = result.unwrap();
-        assert!(accuracy >= 0.0 && accuracy <= 1.0);
+        assert!((0.0..=1.0).contains(&accuracy));
     }
 
     #[test]
@@ -245,12 +245,10 @@ mod tests {
         let mut predictor = SurvivabilityPredictor::new();
 
         // Create training data with different operators
-        let data: Vec<TrainingData> = vec![
-            MutationOperatorType::ArithmeticReplacement,
+        let data: Vec<TrainingData> = [MutationOperatorType::ArithmeticReplacement,
             MutationOperatorType::RelationalReplacement,
             MutationOperatorType::ConditionalReplacement,
-            MutationOperatorType::StatementDeletion,
-        ]
+            MutationOperatorType::StatementDeletion]
         .iter()
         .enumerate()
         .flat_map(|(i, op)| {

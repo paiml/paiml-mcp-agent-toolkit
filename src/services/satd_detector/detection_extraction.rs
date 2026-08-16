@@ -130,7 +130,19 @@ impl SATDDetector {
         line_num: u32,
     ) -> Option<TechnicalDebt> {
         let comment = comment?;
-        let (category, severity) = self.debt_classifier.classify_comment(&comment.text)?;
+        // A doc comment is classified by its MARKER only. `classify_comment`
+        // falls back to prose phrase-matching, which #925 measured at a 92%
+        // false-positive rate on ordinary prose — and doc comments are almost
+        // entirely prose, so applying it there would reintroduce that defect at
+        // a far larger scale. `/// TODO: x` is debt wherever it is written;
+        // `/// ties broken by path` is documentation.
+        let (category, severity) = if comment.doc {
+            self.debt_classifier
+                .marker_at_start(&comment.text)
+                .map(|rule| (rule.category, rule.severity))?
+        } else {
+            self.debt_classifier.classify_comment(&comment.text)?
+        };
 
         // Basic context (could be enhanced with actual AST analysis)
         let context = AstContext {
@@ -177,6 +189,20 @@ const MAX_LINE_LEN: usize = 10_000;
 pub(crate) struct CommentSpan {
     pub(crate) column: u32,
     pub(crate) text: String,
+    /// Was this a documentation comment (`///`, `//!`, `/** … */`)?
+    ///
+    /// Doc comments used to be dropped by the scanner outright, which made
+    /// `/// TODO: implement X` invisible — debt recorded in the public API
+    /// documentation, where it is most visible to a human reader and least
+    /// visible to the tool. They are now scanned, but they are classified by
+    /// the marker rule ONLY: prose phrase-matching is never applied to them.
+    ///
+    /// That asymmetry is the whole point. #925 found a 92% false-positive rate
+    /// caused by phrase-matching ordinary prose ("ties broken by path"), and
+    /// doc comments are almost entirely prose — turning phrase-matching loose
+    /// on them would reintroduce that bug at a much larger scale. A marker,
+    /// though, means the same thing wherever it appears.
+    pub(crate) doc: bool,
 }
 
 /// Which comment leaders a file's language actually has.
@@ -319,9 +345,10 @@ impl CommentScanner {
                     Some(pos) => (&line[idx..idx + pos], Some(idx + pos + 2)),
                     None => (&line[idx..], None),
                 };
-                if !self.block_is_doc {
+                {
                     let column = self.block_start.unwrap_or(idx);
-                    record(&mut found, column, block_comment_text(chunk));
+                    let is_doc = self.block_is_doc;
+                    record_kind(&mut found, column, block_comment_text(chunk), is_doc);
                 }
                 match next {
                     Some(next) => {
@@ -348,9 +375,15 @@ impl CommentScanner {
 
             if self.syntax.slash && rest.starts_with("//") {
                 // A line comment owns the rest of the line.
-                if !rest.starts_with("///") && !rest.starts_with("//!") {
-                    record(&mut found, idx, rest[2..].trim().to_string());
-                }
+                //
+                // Doc comments (`///`, `//!`) used to be dropped here, which is
+                // why `/// TODO: implement X` was invisible to every SATD
+                // surface. They are recorded now, tagged `doc: true`, and the
+                // classifier applies the marker rule to them WITHOUT the prose
+                // phrase-matching that #925 showed is 92% false positives.
+                let doc = rest.starts_with("///") || rest.starts_with("//!");
+                let body = if doc { &rest[3..] } else { &rest[2..] };
+                record_kind(&mut found, idx, body.trim().to_string(), doc);
                 break;
             }
 
@@ -467,10 +500,15 @@ fn block_comment_text(chunk: &str) -> String {
 }
 
 fn record(found: &mut Option<CommentSpan>, idx: usize, text: String) {
+    record_kind(found, idx, text, false);
+}
+
+fn record_kind(found: &mut Option<CommentSpan>, idx: usize, text: String, doc: bool) {
     if found.is_none() && !text.is_empty() {
         *found = Some(CommentSpan {
             column: idx as u32 + 1,
             text,
+            doc,
         });
     }
 }

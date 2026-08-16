@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_lua_adapter_default() {
-        let adapter = LuaAdapter::default();
+        let adapter = LuaAdapter;
         assert_eq!(adapter.name(), "lua");
     }
 

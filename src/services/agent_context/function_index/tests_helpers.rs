@@ -170,8 +170,13 @@ fn test_count_complexity_various() {
 fn test_count_satd_markers_various() {
     assert_eq!(count_satd_markers("// FIXME: broken"), 1);
     assert_eq!(count_satd_markers("// HACK: workaround"), 1);
-    assert_eq!(count_satd_markers("// XXX: temporary"), 0); // XXX removed - caused false positives from BUG-XXX patterns
+    // `XXX:` is debt. It was excluded here because a raw substring scan matched
+    // `BUG-XXX` tracker ids; the shared detector requires the marker to LEAD the
+    // comment, so `BUG-XXX` cannot match and the exclusion is unnecessary.
+    assert_eq!(count_satd_markers("// XXX: temporary"), 1);
     assert_eq!(count_satd_markers("// TODO: fix\n// FIXME: also fix"), 2);
+    // A tracker id is a reference, not an admission.
+    assert_eq!(count_satd_markers("// BUG-XXX: see tracker"), 0);
     assert_eq!(count_satd_markers("// Normal comment"), 0);
 }
 

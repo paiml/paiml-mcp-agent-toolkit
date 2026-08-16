@@ -205,7 +205,7 @@ pub mod demo_feature_tests {
 
         let body_str = std::str::from_utf8(response.body()).unwrap();
         // Should contain the analyzed files count
-        assert!(body_str.contains("25") || body_str.len() > 0);
+        assert!(body_str.contains("25") || !body_str.is_empty());
     }
 
     // -------------------------------------------------------------------------

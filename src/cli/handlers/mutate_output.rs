@@ -369,24 +369,21 @@ fn output_text(
     // Sprint 62: Show failures with code snippets
     let survived: Vec<_> = filtered_results
         .iter()
-        .filter(|r| r.status == MutantStatus::Survived)
-        .map(|r| *r)
+        .filter(|r| r.status == MutantStatus::Survived).copied()
         .collect();
     output_survived_mutants(&survived);
 
     // Show compile errors if any
     let compile_errors: Vec<_> = filtered_results
         .iter()
-        .filter(|r| r.status == MutantStatus::CompileError)
-        .map(|r| *r)
+        .filter(|r| r.status == MutantStatus::CompileError).copied()
         .collect();
     output_mutant_section("Compile Errors", &compile_errors);
 
     // Show timeouts if any
     let timeouts: Vec<_> = filtered_results
         .iter()
-        .filter(|r| r.status == MutantStatus::Timeout)
-        .map(|r| *r)
+        .filter(|r| r.status == MutantStatus::Timeout).copied()
         .collect();
     output_mutant_section("Timeouts", &timeouts);
 

@@ -15,7 +15,7 @@ mod tests {
 
     #[test]
     fn test_typescript_adapter_default() {
-        let adapter = TypeScriptAdapter::default();
+        let adapter = TypeScriptAdapter;
         let _ = adapter;
     }
 
@@ -367,9 +367,9 @@ mod tests {
         let extensions = adapter.extensions();
 
         // All common JS/TS extensions should be covered
-        assert!(extensions.iter().any(|e| *e == "ts"), "Missing .ts");
-        assert!(extensions.iter().any(|e| *e == "tsx"), "Missing .tsx");
-        assert!(extensions.iter().any(|e| *e == "js"), "Missing .js");
-        assert!(extensions.iter().any(|e| *e == "jsx"), "Missing .jsx");
+        assert!(extensions.contains(&"ts"), "Missing .ts");
+        assert!(extensions.contains(&"tsx"), "Missing .tsx");
+        assert!(extensions.contains(&"js"), "Missing .js");
+        assert!(extensions.contains(&"jsx"), "Missing .jsx");
     }
 }
