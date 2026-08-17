@@ -45,7 +45,96 @@ to a FLOOR rather than a total — a count with no denominator is the defect the
 analyzer exists to find. It refuses outright when `cargo metadata` yields no
 targets, so an unmeasured tree cannot read as a clean one.
 
+**`pmat analyze hardcoded-paths`** — finds machine-specific absolute paths baked
+into source. aprender ships binaries containing `/home/noah/...`: correct on the
+machine that built them, inert everywhere else, and invisible to every gate —
+the code compiles, clippy is clean, the tests pass (there), and the path is just
+a string literal. Nothing in the stack asks whether a value names a location
+that exists on any other host.
+
+```
+pmat analyze hardcoded-paths [-p PATH] [-f json] [--fail-on-shipped] [--fail-on-any]
+```
+
+On aprender: 618 findings across 14,596 files, **324 in shipped code** — 216 in
+`crates/*/examples/*.rs` (cargo examples are binaries, so `cargo run --example`
+cannot work for anyone else) and 45 in `contracts/*.yaml`, where the
+provable-contract tier cites evidence files under one workstation's home. On
+pmat itself: 15 shipped findings, all real, five of them renacer golden-trace
+baselines that pin `/home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat`
+— so golden-trace validation could only ever pass on this machine.
+
+The rule is narrow on purpose, because false positives are what kill a detector:
+a path is flagged only when it names a specific user, nix store hash or build
+root. Being absolute is not enough — `/usr/bin/env`, `/etc/hosts`, `/dev/null`,
+`/home/$USER`, `$(HOME)/.cargo/…` and `/home/user/…` placeholders all produce no
+finding. Findings are tiered shipped / test / doc, and as with `reachability`
+the summary always carries its denominator and degrades to FLOOR ONLY when any
+file could not be read.
+
+**`pmat analyze vacuous-tests`** — finds `#[test]` functions that cannot fail.
+In the pass/fail vocabulary a test that executes code and discards the result
+IS a passing test; nothing distinguishes "the assertion held" from "there was no
+assertion". Line coverage is the only fleet metric with a hard floor, and it
+measures execution rather than verification, so `let _ = call();` is the
+cheapest way to comply with it.
+
+```
+pmat analyze vacuous-tests [-p PATH] [-f json] [--max-rate PCT] [--fail-on-any]
+```
+
+Measured:
+
+| repo | cannot fail | rate |
+|---|---|---|
+| **pmat** | **1180 of 33,925** | **3.5%** |
+| aprender | 2925 of 110,398 | 2.6% |
+| forjar | 356 of 16,888 | 2.1% |
+| pforge | 2 of 238 | 0.8% |
+
+pmat has the worst rate of the four. 181 of its 1180 are tautologies, nearly all
+`assert!(result.is_ok() || result.is_err())`, and its worst single file is
+`src/tests/coverage_boost_unified_ast.rs` (75) — the name says what it is for.
+
+This **corrects the figure in #1018**, which claimed 802 vacuous tests in forjar
+from a grep-based count; parsing gives 356. The narrower definition is the right
+one: `.unwrap()`, `.expect()`, `?`, `panic!` and a same-file helper that asserts
+are all genuine failure modes, so a test using them is weak rather than vacuous.
+Read the ~933 fleet total in #1018 as an upper bound from a looser rule.
+
+A `no-failure-mode` test still catches a panic — what it cannot catch is a wrong
+answer. It is reported as a smoke test, not as a broken one. `#[should_panic]`
+(the attribute is the assertion) and `#[ignore]` (an honest declaration) are
+both excluded. Also reported: tests that `return` early when a fixture is
+missing, which pass having checked nothing and, unlike `#[ignore]`, invisibly —
+14 in pmat, 173 in aprender.
+
+As with the other two, the report refuses to look clean when it is not: zero
+tests examined is an error rather than a pass, and unparseable files are counted
+together with the `#[test]` markers inside them, so pmat's floor reads "30 files
+not analysed, holding 545 unjudged `#[test]` fns" instead of a caveat a reader
+walks past.
+
 ### Fixed
+
+**pmat's scaffolder wrote a config section pmat does not read** (#1019). The
+generated `.pmat-gates.toml` carried a `[gates]` table — `run_tests`,
+`test_timeout`, `run_clippy`, `clippy_strict`, `min_coverage`, `max_complexity`
+— and nothing in pmat parses a `[gates]` section. The readers of that file look
+for `[entropy]`, `[tdg]` and `[quality]`. Checked key by key: `run_tests` and
+`test_timeout` have zero struct-field declarations anywhere in the tree.
+
+So a user ran the scaffolder, set `run_tests = false`, and pmat kept running
+tests — silently, because TOML ignores unknown keys. A config that is read and
+satisfied is indistinguishable from one that is never opened; both produce no
+output.
+
+This is pmat's own instance of what the audit found fleet-wide: **wos has 99 of
+99 config keys parsed by nothing**, and whisper.apr has 51 of 58, including a
+`[file-health]` section spelled with a hyphen where pmat reads `file_health`
+with an underscore. Rejecting (or warning on) unknown keys is the general fix
+and is **not** in this release — it would turn every existing typo into a hard
+error, which needs its own deprecation path. #1019 stays open for it.
 
 **`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
 concurrency from CPU count while its binding constraint is memory. Measured with

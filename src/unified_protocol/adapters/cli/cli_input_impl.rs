@@ -47,6 +47,13 @@ impl CliInput {
             AnalyzeCommands::Satd { .. } => "analyze-satd",
             AnalyzeCommands::Tdg { .. } => "analyze-tdg",
             AnalyzeCommands::LintHotspot { .. } => "analyze-lint-hotspot",
+            // These three are classified Basic above. Omitting them here would
+            // leave them falling into the `unreachable!`, which today is only
+            // reached from tests — but "only tests call it" is how a latent
+            // panic waits for the caller that finally does.
+            AnalyzeCommands::Reachability { .. } => "analyze-reachability",
+            AnalyzeCommands::HardcodedPaths { .. } => "analyze-hardcoded-paths",
+            AnalyzeCommands::VacuousTests { .. } => "analyze-vacuous-tests",
             _ => unreachable!("Non-basic command passed to basic command name extractor"),
         }
     }
@@ -336,7 +343,11 @@ impl CliAdapter {
             | AnalyzeCommands::Entropy { .. }
             // Reachability is Basic: it reads the module graph and `git
             // ls-files`, with no AST pass and no cargo build.
-            | AnalyzeCommands::Reachability { .. } => AnalyzeCommandCategory::Basic,
+            | AnalyzeCommands::Reachability { .. }
+            // HardcodedPaths likewise: `git ls-files` plus a text scan.
+            | AnalyzeCommands::HardcodedPaths { .. }
+            // VacuousTests parses with syn but runs no cargo build.
+            | AnalyzeCommands::VacuousTests { .. } => AnalyzeCommandCategory::Basic,
 
             // Advanced analysis commands (comprehensive)
             AnalyzeCommands::DeepContext { .. }

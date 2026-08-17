@@ -185,6 +185,7 @@ pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
 #[cfg(feature = "http-client")]
 pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
+pub mod hardcoded_paths; // Machine-specific absolute paths baked into source
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
 pub mod infra_score; // Infra Score: CI/CD infrastructure quality scoring (PMAT-150)
@@ -254,6 +255,7 @@ pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyz
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
 #[cfg(feature = "wasm-ast")]
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer (requires wasm-ast feature)
+pub mod vacuous_tests; // #[test] fns that cannot fail
 pub mod verified_complexity;
 pub mod wasm;
 

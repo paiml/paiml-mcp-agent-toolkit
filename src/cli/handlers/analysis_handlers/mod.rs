@@ -263,6 +263,10 @@ async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
         AnalyzeCommands::Reachability { .. } => route_reachability(cmd).await,
 
+        AnalyzeCommands::HardcodedPaths { .. } => route_hardcoded_paths(cmd).await,
+
+        AnalyzeCommands::VacuousTests { .. } => route_vacuous_tests(cmd).await,
+
         // Advanced analysis commands
         AnalyzeCommands::DeepContext { .. }
         | AnalyzeCommands::Tdg { .. }
@@ -474,4 +478,158 @@ mod ml_refusal_tests {
         assert!(err.contains("complexity scores"), "{err}");
         assert!(err.contains("analyze complexity"), "{err}");
     }
+}
+
+/// Find machine-specific absolute paths baked into source.
+async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::hardcoded_paths::{self, Site};
+    let cli::AnalyzeCommands::HardcodedPaths {
+        path,
+        format,
+        fail_on_shipped,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected HardcodedPaths command")
+    };
+
+    let files = hardcoded_paths::tracked_files(&path)?;
+    if files.is_empty() {
+        // Refuse rather than print "0 findings" over a tree we never opened.
+        // An unmeasured run must not be indistinguishable from a clean one
+        // (#1015) — that confusion is the exact defect this command hunts.
+        anyhow::bail!(
+            "no scannable tracked files under {} — `git ls-files` returned none, so no path \
+             scan was performed (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = hardcoded_paths::analyze(&path, &files);
+
+    if format == "json" {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "summary": report.summary(),
+                "files_scanned": report.files_scanned,
+                "literals_scanned": report.literals_scanned,
+                "finding_count": report.findings.len(),
+                "shipped_count": report.shipped(),
+                "by_kind": report.by_kind(),
+                "skipped": report.skipped,
+                "findings": report.findings,
+            }))?
+        );
+    } else {
+        println!("{}", report.summary());
+        let mut shown = 0usize;
+        for f in &report.findings {
+            if shown == 40 {
+                println!("  … and {} more", report.findings.len() - shown);
+                break;
+            }
+            println!(
+                "  [{}] {}:{}  {}  ({})",
+                f.site.as_str(),
+                f.file,
+                f.line,
+                f.path,
+                f.kind.reason()
+            );
+            shown += 1;
+        }
+        for s in report
+            .skipped
+            .unreadable
+            .iter()
+            .chain(&report.skipped.not_utf8)
+        {
+            println!("  skipped: {s}");
+        }
+    }
+
+    let shipped = report
+        .findings
+        .iter()
+        .filter(|f| f.site == Site::Shipped)
+        .count();
+    if (fail_on_any && !report.findings.is_empty()) || (fail_on_shipped && shipped > 0) {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Find `#[test]` functions that cannot fail.
+async fn route_vacuous_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::vacuous_tests;
+    let cli::AnalyzeCommands::VacuousTests {
+        path,
+        format,
+        max_rate,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected VacuousTests command")
+    };
+
+    let files = vacuous_tests::tracked_rust_files(&path)?;
+    if files.is_empty() {
+        anyhow::bail!(
+            "no tracked .rs files under {} — `git ls-files` returned none, so no test was \
+             examined (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = vacuous_tests::analyze(&path, &files);
+    if report.tests_examined == 0 {
+        // Zero vacuous tests out of zero tests is not a pass. Say so.
+        anyhow::bail!(
+            "no #[test] functions found in {} parsed file(s) under {} — nothing was judged, \
+             so this is not a clean result",
+            report.files_parsed,
+            path.display()
+        );
+    }
+
+    if format == "json" {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("{}", report.summary());
+        for v in report.vacuous.iter().take(40) {
+            let detail = v
+                .detail
+                .as_deref()
+                .map(|d| format!(" — {d}"))
+                .unwrap_or_default();
+            println!(
+                "  [{}] {}:{}  {}{}",
+                v.kind.as_str(),
+                v.file,
+                v.line,
+                v.name,
+                detail
+            );
+        }
+        if report.vacuous.len() > 40 {
+            println!("  … and {} more", report.vacuous.len() - 40);
+        }
+        for s in report.conditional_skips.iter().take(10) {
+            println!(
+                "  [silent-skip] {}:{}  {}  if {}",
+                s.file, s.line, s.name, s.guard
+            );
+        }
+        if report.conditional_skips.len() > 10 {
+            println!(
+                "  … and {} more silent skips",
+                report.conditional_skips.len() - 10
+            );
+        }
+    }
+
+    let over_rate = max_rate.is_some_and(|m| report.rate() > m);
+    if (fail_on_any && !report.vacuous.is_empty()) || over_rate {
+        std::process::exit(1);
+    }
+    Ok(())
 }
