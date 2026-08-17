@@ -442,10 +442,16 @@ fn stage_satd() -> StageResult {
     }
     // This stage used to shell out to `analyze satd --strict` with no
     // `--fail-on-violation` and take the child's exit status as its verdict, so
-    // it was green on a tree whose `src/lib.rs` had just gained a FIXME and a
-    // HACK: the subcommand prints "Found 3 SATD violations" and still exits 0.
-    // Ask for the JSON report and read the count ourselves — the gate's verdict
-    // must come from the measurement, not from an exit code that never moves.
+    // it stayed green on a tree carrying two fresh debt markers: the subcommand
+    // prints "Found 3 SATD violations" and still exits 0. Ask for the JSON
+    // report and read the count ourselves — the gate's verdict must come from
+    // the measurement, not from an exit code that never moves.
+    //
+    // The sentence above used to wrap so that a line began with a debt marker,
+    // and the detector flagged this comment as debt. It was right by its own
+    // rule, which is line-oriented; prose that narrates a marker must not start
+    // a line with one. Noted rather than silenced, because the same shape will
+    // reach anyone documenting a marker they removed.
     let (_, out) = run(pmat_self().args([
         "analyze",
         "satd",
