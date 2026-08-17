@@ -252,6 +252,9 @@ impl CliInput {
             Commands::Agy(_) => {
                 CommandCategory::System // Anti-Gravity translator, sibling of Mcp
             }
+            Commands::Init { .. } => {
+                CommandCategory::System // Workspace bootstrap, sibling of Mcp/Agy
+            }
         }
     }
 
@@ -307,6 +310,14 @@ impl CliInput {
             Commands::Context { .. } => "context",
             Commands::Diagnose(_) => "diagnose",
             Commands::Debug { .. } => "debug",
+            Commands::Init { .. } => "init",
+            // `Mcp` and `Agy` are categorised `System` above but were never
+            // named here, so asking either for its command name reached the
+            // `unreachable!()` below and aborted the process. Adding `Init`
+            // without these two would have left the same trap one variant
+            // wider.
+            Commands::Mcp(_) => "mcp",
+            Commands::Agy(_) => "agy",
             _ => unreachable!("Non-system command passed to system command name extractor"),
         }
     }

@@ -5,7 +5,16 @@ set -euo pipefail
 
 # Create temporary test directory
 TEST_DIR=$(mktemp -d)
-trap "rm -rf $TEST_DIR" EXIT
+
+# mktemp can yield an empty or relative path under a hostile TMPDIR; refuse to
+# cd into - or rm -rf - anything that is not a plain absolute path.
+if [ -z "$TEST_DIR" ] || [[ "$TEST_DIR" == *".."* ]] || [[ "$TEST_DIR" != /* ]]; then
+    echo "FATAL: unusable temp directory: '$TEST_DIR'" >&2
+    exit 1
+fi
+# Single-quoted so the path is expanded (and quoted) at trap time, not spliced
+# into the trap string unquoted.
+trap 'rm -rf "$TEST_DIR"' EXIT
 
 cd "$TEST_DIR"
 

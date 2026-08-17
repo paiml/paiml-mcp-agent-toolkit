@@ -87,7 +87,7 @@ pub(super) async fn create_github_issue_from_item(
         let criteria_md: Vec<String> = item
             .acceptance_criteria
             .iter()
-            .map(|c| format!("- [ ] {}", c))
+            .map(|c| crate::models::roadmap::format_criterion_checkbox(c))
             .collect();
 
         format!(
@@ -126,7 +126,7 @@ pub(super) async fn create_github_issue_from_item(
         let criteria_md: Vec<String> = item
             .acceptance_criteria
             .iter()
-            .map(|c| format!("- [ ] {}", c))
+            .map(|c| crate::models::roadmap::format_criterion_checkbox(c))
             .collect();
 
         format!(

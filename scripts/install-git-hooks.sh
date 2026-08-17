@@ -21,9 +21,9 @@ echo ""
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK_DIR="${REPO_ROOT}/.git/hooks"
 
-# Check if we're in a git repository
-if [ ! -d "${REPO_ROOT}/.git" ]; then
-    echo -e "${YELLOW}Error: Not in a git repository${NC}"
+# Hooks dir must exist: a worktree/submodule has .git as a file, not a directory
+if [[ "${HOOK_DIR}" == *".."* ]] || [ ! -d "${HOOK_DIR}" ]; then
+    echo -e "${YELLOW}Error: no git hooks directory at '${HOOK_DIR}'${NC}"
     exit 1
 fi
 
@@ -127,13 +127,15 @@ fi
 
 # === 2. pmat-book Sync Status ===
 # Check pmat-book sync status
-BOOK_DIR="/home/noah/src/pmat-book"
-if [ -d "${BOOK_DIR}/.git" ]; then
-    cd "${BOOK_DIR}"
-    REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
+BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
+if [[ "${BOOK_DIR}" == *".."* ]] || [ ! -d "${BOOK_DIR}/.git" ]; then
+    BOOK_DIR=""  # unusable or traversal-bearing: skip the book check entirely
+fi
+if [ -n "${BOOK_DIR}" ]; then
+    REMOTE_BRANCH=$(git -C "${BOOK_DIR}" rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
 
     if [ -n "${REMOTE_BRANCH}" ]; then
-        UNPUSHED_BOOK_COMMITS=$(git log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
+        UNPUSHED_BOOK_COMMITS=$(git -C "${BOOK_DIR}" log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
 
         if [ -n "${UNPUSHED_BOOK_COMMITS}" ]; then
             COMMIT_COUNT=$(echo "${UNPUSHED_BOOK_COMMITS}" | wc -l)
@@ -158,7 +160,6 @@ if [ -d "${BOOK_DIR}/.git" ]; then
             echo ""
         fi
     fi
-    cd - > /dev/null
 fi
 
 # Check if bashrs is installed
@@ -257,37 +258,33 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-BOOK_DIR="/home/noah/src/pmat-book"
+BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}📚 Checking pmat-book sync status...${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Check if pmat-book directory exists
-if [ ! -d "${BOOK_DIR}/.git" ]; then
+# Check if pmat-book directory exists (and is not a traversal-bearing override)
+if [[ "${BOOK_DIR}" == *".."* ]] || [ ! -d "${BOOK_DIR}/.git" ]; then
     echo -e "${YELLOW}⚠️  WARNING: pmat-book repository not found at ${BOOK_DIR}${NC}"
     echo -e "${YELLOW}   Skipping book sync check${NC}"
     echo ""
     exit 0
 fi
 
-# Navigate to book directory
-cd "${BOOK_DIR}"
-
 # Check for remote tracking branch
-REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
+REMOTE_BRANCH=$(git -C "${BOOK_DIR}" rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
 
 if [ -z "${REMOTE_BRANCH}" ]; then
     echo -e "${YELLOW}⚠️  WARNING: pmat-book has no remote tracking branch${NC}"
-    echo -e "${YELLOW}   Set up tracking with: cd ${BOOK_DIR} && git push -u origin main${NC}"
+    echo -e "${YELLOW}   Set up tracking with: git -C ${BOOK_DIR} push -u origin main${NC}"
     echo ""
-    cd - > /dev/null
     exit 0
 fi
 
 # Check for unpushed commits
-UNPUSHED_COMMITS=$(git log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
+UNPUSHED_COMMITS=$(git -C "${BOOK_DIR}" log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
 
 if [ -n "${UNPUSHED_COMMITS}" ]; then
     COMMIT_COUNT=$(echo "${UNPUSHED_COMMITS}" | wc -l)
@@ -311,10 +308,10 @@ if [ -n "${UNPUSHED_COMMITS}" ]; then
     echo ""
     echo -e "${GREEN}${BOLD}TO FIX:${NC}"
     echo -e "${GREEN}  1. Push pmat-book commits first:${NC}"
-    echo -e "${GREEN}     cd ${BOOK_DIR} && git push origin main${NC}"
+    echo -e "${GREEN}     git -C ${BOOK_DIR} push origin main${NC}"
     echo ""
     echo -e "${GREEN}  2. Then push paiml-mcp-agent-toolkit:${NC}"
-    echo -e "${GREEN}     cd - && git push${NC}"
+    echo -e "${GREEN}     git push${NC}"
     echo ""
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${RED}${BOLD}Push rejected. Fix the issue above and try again.${NC}"
@@ -324,7 +321,6 @@ if [ -n "${UNPUSHED_COMMITS}" ]; then
     echo -e "${YELLOW}  git push --no-verify${NC}"
     echo ""
 
-    cd - > /dev/null
     exit 1
 fi
 
@@ -334,7 +330,6 @@ echo -e "${GREEN}   Book is ready for deployment${NC}"
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-cd - > /dev/null
 exit 0
 HOOK_EOF
 

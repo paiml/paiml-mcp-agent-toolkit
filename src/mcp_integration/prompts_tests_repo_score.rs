@@ -33,7 +33,26 @@ mod repo_score_tests {
             .as_ref()
             .unwrap()
             .contains("repository health"));
-        assert!(metadata.description.as_ref().unwrap().contains("0-110"));
+        // GH #685: the scale is 0-100. The six categories sum to exactly 100 and
+        // `BonusScores` is never added to `total_score`, so "0-110" advertised a
+        // range no run can reach. Derived from the scorers rather than hardcoded,
+        // so a category max change fails here instead of drifting silently.
+        let max_points: f64 = {
+            let c = crate::services::repo_score::models::CategoryScores::default();
+            c.documentation.max_score
+                + c.precommit_hooks.max_score
+                + c.repository_hygiene.max_score
+                + c.build_test_automation.max_score
+                + c.continuous_integration.max_score
+                + c.pmat_compliance.max_score
+        };
+        let scale = format!("0-{} scale", max_points as u32);
+        let description = metadata.description.as_ref().unwrap();
+        assert!(
+            description.contains(&scale),
+            "description {description:?} must advertise the {scale} repo-score emits"
+        );
+        assert!(!description.contains("0-110"));
 
         // Check arguments
         let args = metadata.arguments.as_ref().unwrap();
@@ -71,7 +90,9 @@ mod repo_score_tests {
                 assert!(text.contains("/path/to/repo"));
                 assert!(text.contains("json"));
                 assert!(text.contains("repository health"));
-                assert!(text.contains("0-110"));
+                // GH #685: 0-100, the range repo-score actually emits.
+                assert!(text.contains("(0-100 scale)"));
+                assert!(!text.contains("0-110"));
             }
             _ => panic!("Expected Text content"),
         }
@@ -167,23 +188,41 @@ mod repo_score_tests {
         let system_msg = &messages[0];
         match &system_msg.content {
             PromptContent::Text(text) => {
-                // Check all scoring categories are mentioned
-                assert!(text.contains("Documentation"));
-                assert!(text.contains("Pre-commit Hooks"));
-                assert!(text.contains("Repository Hygiene"));
-                assert!(text.contains("Build & Test"));
-                assert!(text.contains("CI/CD"));
-                assert!(text.contains("PMAT Compliance"));
+                // Every category is named, and named with the point budget its
+                // scorer actually awards. The prompt used to claim 20 for
+                // Documentation and 10 for Repository Hygiene when the scorers
+                // award 15 and 15 (GH #685: do not advertise unmeasured points).
+                let c = crate::services::repo_score::models::CategoryScores::default();
+                for (name, max) in [
+                    ("Documentation (A)", c.documentation.max_score),
+                    ("Pre-commit Hooks (B)", c.precommit_hooks.max_score),
+                    ("Repository Hygiene (C)", c.repository_hygiene.max_score),
+                    ("Build & Test (D)", c.build_test_automation.max_score),
+                    ("CI/CD (E)", c.continuous_integration.max_score),
+                    ("PMAT Compliance (F)", c.pmat_compliance.max_score),
+                ] {
+                    let claim = format!("{name}: {} points", max as u32);
+                    assert!(
+                        text.contains(&claim),
+                        "prompt must describe the category as {claim:?}"
+                    );
+                }
 
                 // Check grading scale
                 assert!(text.contains("A+"));
                 assert!(text.contains("Exceptional"));
                 assert!(text.contains("Failing"));
 
-                // Check bonus features
+                // Bonus features are named, but explicitly as NOT scored: the
+                // model defines BonusScores and nothing ever adds it to
+                // total_score, so the prompt must not sell them as points.
                 assert!(text.contains("Property-based testing"));
                 assert!(text.contains("Fuzzing"));
                 assert!(text.contains("Mutation testing"));
+                assert!(text.contains("**Not scored:**"));
+                // The two stale claims of a 110-point ceiling.
+                assert!(!text.contains("0-110"));
+                assert!(!text.contains("95-110"));
             }
             _ => panic!("Expected Text content"),
         }

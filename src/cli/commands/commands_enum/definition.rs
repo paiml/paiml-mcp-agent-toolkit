@@ -470,6 +470,32 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["antigravity"])]
     Agy(AgyCommands),
 
+    /// Bootstrap an agent-ready workspace: quality hook, MCP registration,
+    /// skill and root rules file
+    ///
+    /// Existing files are never overwritten without `--force`; the report says
+    /// what was skipped and why. Artifacts whose format nobody has defined are
+    /// refused with a reason rather than filled in with a guess.
+    #[command(visible_aliases = &["bootstrap"])]
+    Init {
+        /// Which client's layout to write
+        #[arg(long, value_enum, default_value = "agy")]
+        target: InitTarget,
+
+        /// Workspace root to write into (must already exist)
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+
+        /// Replace files whose contents differ from the template. Your version
+        /// is not backed up.
+        #[arg(long)]
+        force: bool,
+
+        /// Report format
+        #[arg(long, value_enum, default_value = "human")]
+        format: InitFormat,
+    },
+
     /// AI prompt generation (defect-aware, ticket-based, spec-based)
     #[command(subcommand, visible_aliases = &["p"])]
     Prompt(PromptCommands),
@@ -1883,6 +1909,45 @@ mod command_availability_tests {
         assert!(
             analyze.contains("REMOVED"),
             "org analyze must be labelled removed, got: {analyze}"
+        );
+    }
+
+    /// PMAT-INIT-001 claim 1: "CLI provides a `pmat init` command."
+    ///
+    /// `pmat init --help` used to answer "unrecognized subcommand". The
+    /// end-to-end proof is in `tests/init_workspace_t.rs`, which spawns the
+    /// binary — but that target does not run under `cargo test --lib`, which
+    /// is what CI executes, so the presence of the command and of every target
+    /// it advertises is also asserted here, against the clap tree itself.
+    #[test]
+    fn init_exists_and_offers_all_three_targets() {
+        let (about, targets) = crate::cli::commands::on_big_stack(|| {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let init = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "init")
+                .expect("init subcommand must exist")
+                .clone();
+            let about = init.get_about().map(ToString::to_string).unwrap_or_default();
+            let targets: Vec<String> = init
+                .get_arguments()
+                .find(|a| a.get_id() == "target")
+                .expect("init must take --target")
+                .get_possible_values()
+                .iter()
+                .map(|v| v.get_name().to_string())
+                .collect();
+            (about, targets)
+        });
+
+        assert!(
+            about.contains("Bootstrap"),
+            "init must describe what it does, got: {about}"
+        );
+        assert_eq!(
+            targets,
+            vec!["agy", "claude", "ultracode"],
+            "the advertised targets drifted from the generator's"
         );
     }
 }

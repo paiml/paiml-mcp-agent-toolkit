@@ -36,6 +36,10 @@ pub use roadmap_agent::*;
 pub mod config_hooks;
 pub use config_hooks::*;
 
+// `pmat init` — agent workspace bootstrap (#1030/#1031/#1032)
+pub mod init_commands;
+pub use init_commands::*;
+
 // Semantic search commands
 pub mod semantic_search;
 pub use semantic_search::*;

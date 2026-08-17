@@ -1,23 +1,22 @@
-[renacer: DWARF debug info loaded from /home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat]
 {
-  "version": "0.6.5",
+  "version": "0.10.2",
   "format": "renacer-json-v1",
   "syscalls": [
     {
       "name": "brk",
       "args": [
         "0x0",
-        "0x7ffe8d152dcc",
+        "0x7ffc62cc331c",
         "0x0"
       ],
-      "result": 94040076062720
+      "result": 108155393572864
     },
     {
       "name": "arch_prctl",
       "args": [
         "0x3001",
-        "0x7ffe8d152d80",
-        "0x7f5cd79553c0"
+        "0x7ffc62cc32d0",
+        "0x7f7b4163f3c0"
       ],
       "result": -22
     },
@@ -28,14 +27,14 @@
         "0x2000",
         "0x3"
       ],
-      "result": 140036730470400
+      "result": 140167354638336
     },
     {
       "name": "access",
       "args": [
-        "0x7f5cd7965d90",
+        "0x7f7b4164fd90",
         "0x4",
-        "0x55876055c0b0"
+        "0x625dad9f1778"
       ],
       "result": -2
     },
@@ -52,8 +51,8 @@
       "name": "newfstatat",
       "args": [
         "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151ed0"
+        "0x7f7b4164eee9",
+        "0x7ffc62cc2420"
       ],
       "result": 0
     },
@@ -61,251 +60,17 @@
       "name": "mmap",
       "args": [
         "0x0",
-        "0x1c408",
+        "0x1edc4",
         "0x1"
       ],
-      "result": 140036730351616
+      "result": 140167354511360
     },
     {
       "name": "close",
       "args": [
         "0x3",
-        "0x1c408",
+        "0x1edc4",
         "0x1"
-      ],
-      "result": 0
-    },
-    {
-      "name": "openat",
-      "args": [
-        "0xffffff9c",
-        "\"/lib/x86_64-linux-gnu/libssl.so.3\"",
-        "0x80000"
-      ],
-      "result": 3
-    },
-    {
-      "name": "read",
-      "args": [
-        "0x3",
-        "0x7ffe8d152108",
-        "0x340"
-      ],
-      "result": 832
-    },
-    {
-      "name": "newfstatat",
-      "args": [
-        "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151fa0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0xa37f0",
-        "0x1"
-      ],
-      "result": 140036729679872
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7891000",
-        "0x5b000",
-        "0x5"
-      ],
-      "result": 140036729802752
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd78ec000",
-        "0x1d000",
-        "0x1"
-      ],
-      "result": 140036730175488
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7909000",
-        "0xe000",
-        "0x3"
-      ],
-      "result": 140036730294272
-    },
-    {
-      "name": "close",
-      "args": [
-        "0x3",
-        "0x0",
-        "0x7f5cd78732c8"
-      ],
-      "result": 0
-    },
-    {
-      "name": "openat",
-      "args": [
-        "0xffffff9c",
-        "\"/lib/x86_64-linux-gnu/libcrypto.so.3\"",
-        "0x80000"
-      ],
-      "result": 3
-    },
-    {
-      "name": "read",
-      "args": [
-        "0x3",
-        "0x7ffe8d1520e8",
-        "0x340"
-      ],
-      "result": 832
-    },
-    {
-      "name": "newfstatat",
-      "args": [
-        "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151f80"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x4434c0",
-        "0x1"
-      ],
-      "result": 140036725014528
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd74b2000",
-        "0x25f000",
-        "0x5"
-      ],
-      "result": 140036725743616
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7711000",
-        "0xd2000",
-        "0x1"
-      ],
-      "result": 140036728229888
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd77e3000",
-        "0x5e000",
-        "0x3"
-      ],
-      "result": 140036729090048
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7841000",
-        "0x24c0",
-        "0x3"
-      ],
-      "result": 140036729475072
-    },
-    {
-      "name": "close",
-      "args": [
-        "0x3",
-        "0x0",
-        "0x7f5cd74002c8"
-      ],
-      "result": 0
-    },
-    {
-      "name": "openat",
-      "args": [
-        "0xffffff9c",
-        "\"/lib/x86_64-linux-gnu/libz.so.1\"",
-        "0x80000"
-      ],
-      "result": 3
-    },
-    {
-      "name": "read",
-      "args": [
-        "0x3",
-        "0x7ffe8d1520c8",
-        "0x340"
-      ],
-      "result": 832
-    },
-    {
-      "name": "newfstatat",
-      "args": [
-        "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151f60"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x1b0b8",
-        "0x1"
-      ],
-      "result": 140036729565184
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd7859000",
-        "0x18000",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7859000",
-        "0x11000",
-        "0x5"
-      ],
-      "result": 140036729573376
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd786a000",
-        "0x6000",
-        "0x1"
-      ],
-      "result": 140036729643008
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x7f5cd7871000",
-        "0x2000",
-        "0x3"
-      ],
-      "result": 140036729671680
-    },
-    {
-      "name": "close",
-      "args": [
-        "0x3",
-        "0x0",
-        "0x7f5cd78572c8"
       ],
       "result": 0
     },
@@ -322,7 +87,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x7ffe8d1520a8",
+        "0x7ffc62cc2658",
         "0x340"
       ],
       "result": 832
@@ -331,8 +96,8 @@
       "name": "newfstatat",
       "args": [
         "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151f40"
+        "0x7f7b4164eee9",
+        "0x7ffc62cc24f0"
       ],
       "result": 0
     },
@@ -343,41 +108,41 @@
         "0x23368",
         "0x1"
       ],
-      "result": 140036724867072
+      "result": 140167354363904
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd73df000",
+        "0x7f7b415de000",
         "0x1b000",
         "0x5"
       ],
-      "result": 140036724879360
+      "result": 140167354376192
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd73fa000",
+        "0x7f7b415f9000",
         "0x4000",
         "0x1"
       ],
-      "result": 140036724989952
+      "result": 140167354486784
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd73fe000",
+        "0x7f7b415fd000",
         "0x2000",
         "0x3"
       ],
-      "result": 140036725006336
+      "result": 140167354503168
     },
     {
       "name": "close",
       "args": [
         "0x3",
         "0x0",
-        "0x7f5cd73dc2c8"
+        "0x7f7b415db2c8"
       ],
       "result": 0
     },
@@ -394,7 +159,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x7ffe8d152088",
+        "0x7ffc62cc2638",
         "0x340"
       ],
       "result": 832
@@ -403,8 +168,8 @@
       "name": "newfstatat",
       "args": [
         "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151f20"
+        "0x7f7b4164eee9",
+        "0x7ffc62cc24d0"
       ],
       "result": 0
     },
@@ -415,41 +180,41 @@
         "0xe6108",
         "0x1"
       ],
-      "result": 140036723920896
+      "result": 140167353417728
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd7303000",
+        "0x7f7b41502000",
         "0x7c000",
         "0x5"
       ],
-      "result": 140036723978240
+      "result": 140167353475072
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd737f000",
+        "0x7f7b4157e000",
         "0x5b000",
         "0x1"
       ],
-      "result": 140036724486144
+      "result": 140167353982976
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd73da000",
+        "0x7f7b415d9000",
         "0x2000",
         "0x3"
       ],
-      "result": 140036724858880
+      "result": 140167354355712
     },
     {
       "name": "close",
       "args": [
         "0x3",
         "0x4",
-        "0x7f5cd72f52d8"
+        "0x7f7b414f42d8"
       ],
       "result": 0
     },
@@ -466,7 +231,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x7ffe8d152068",
+        "0x7ffc62cc2618",
         "0x340"
       ],
       "result": 832
@@ -475,7 +240,7 @@
       "name": "pread64",
       "args": [
         "0x3",
-        "0x7ffe8d151c70",
+        "0x7ffc62cc2220",
         "0x310"
       ],
       "result": 784
@@ -484,7 +249,7 @@
       "name": "pread64",
       "args": [
         "0x3",
-        "0x7ffe8d151c30",
+        "0x7ffc62cc21e0",
         "0x30"
       ],
       "result": 48
@@ -493,7 +258,7 @@
       "name": "pread64",
       "args": [
         "0x3",
-        "0x7ffe8d151be0",
+        "0x7ffc62cc2190",
         "0x44"
       ],
       "result": 68
@@ -502,25 +267,16 @@
       "name": "newfstatat",
       "args": [
         "0x3",
-        "0x7f5cd7964ee9",
-        "0x7ffe8d151f00"
+        "0x7f7b4164eee9",
+        "0x7ffc62cc24b0"
       ],
       "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x2000",
-        "0x3"
-      ],
-      "result": 140036729556992
     },
     {
       "name": "pread64",
       "args": [
         "0x3",
-        "0x7ffe8d151b40",
+        "0x7ffc62cc20f0",
         "0x310"
       ],
       "result": 784
@@ -532,12 +288,12 @@
         "0x228e50",
         "0x1"
       ],
-      "result": 140036720820224
+      "result": 140167350321152
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd7028000",
+        "0x7f7b41228000",
         "0x1ee000",
         "0x0"
       ],
@@ -546,45 +302,45 @@
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd7028000",
+        "0x7f7b41228000",
         "0x195000",
         "0x5"
       ],
-      "result": 140036720984064
+      "result": 140167350484992
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd71bd000",
+        "0x7f7b413bd000",
         "0x58000",
         "0x1"
       ],
-      "result": 140036722642944
+      "result": 140167352143872
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd7216000",
+        "0x7f7b41416000",
         "0x6000",
         "0x3"
       ],
-      "result": 140036723007488
+      "result": 140167352508416
     },
     {
       "name": "mmap",
       "args": [
-        "0x7f5cd721c000",
+        "0x7f7b4141c000",
         "0xce50",
         "0x3"
       ],
-      "result": 140036723032064
+      "result": 140167352532992
     },
     {
       "name": "close",
       "args": [
         "0x3",
         "0x4",
-        "0x7f5cd7000380"
+        "0x7f7b41200380"
       ],
       "result": 0
     },
@@ -592,42 +348,42 @@
       "name": "mmap",
       "args": [
         "0x0",
-        "0x3000",
+        "0x2000",
         "0x3"
       ],
-      "result": 140036729544704
+      "result": 140167353409536
     },
     {
       "name": "arch_prctl",
       "args": [
         "0x1002",
-        "0x7f5cd7852cc0",
-        "0xffff80a3287ac930"
+        "0x7f7b414f2fc0",
+        "0xffff8084beb0c650"
       ],
       "result": 0
     },
     {
       "name": "set_tid_address",
       "args": [
-        "0x7f5cd7852f90",
-        "0x7f5cd7852cc0",
-        "0x7f5cd79710d8"
+        "0x7f7b414f3290",
+        "0x7f7b414f2fc0",
+        "0x7f7b4165b0d8"
       ],
-      "result": 580606
+      "result": 2813
     },
     {
       "name": "set_robust_list",
       "args": [
-        "0x7f5cd7852fa0",
+        "0x7f7b414f32a0",
         "0x18",
-        "0x7f5cd79710d8"
+        "0x7f7b4165b0d8"
       ],
       "result": 0
     },
     {
-      "name": "unknown",
+      "name": "rseq",
       "args": [
-        "0x7f5cd7853660",
+        "0x7f7b414f3960",
         "0x20",
         "0x0"
       ],
@@ -636,7 +392,7 @@
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd7216000",
+        "0x7f7b41416000",
         "0x4000",
         "0x1"
       ],
@@ -645,7 +401,7 @@
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd73da000",
+        "0x7f7b415d9000",
         "0x1000",
         "0x1"
       ],
@@ -654,7 +410,7 @@
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd73fe000",
+        "0x7f7b415fd000",
         "0x1000",
         "0x1"
       ],
@@ -663,8 +419,8 @@
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd7871000",
-        "0x1000",
+        "0x625dad905000",
+        "0xfb000",
         "0x1"
       ],
       "result": 0
@@ -672,41 +428,14 @@
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd77e3000",
-        "0x5b000",
-        "0x1"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd7909000",
-        "0xa000",
-        "0x1"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x558760478000",
-        "0xf1000",
-        "0x1"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd796e000",
+        "0x7f7b41658000",
         "0x2000",
         "0x1"
       ],
       "result": 0
     },
     {
-      "name": "unknown",
+      "name": "pkey_mprotect",
       "args": [
         "0x0",
         "0x3",
@@ -717,16 +446,16 @@
     {
       "name": "munmap",
       "args": [
-        "0x7f5cd7917000",
-        "0x1c408",
-        "0x7f5cd7090c10"
+        "0x7f7b415ff000",
+        "0x1edc4",
+        "0x7f7b41290c10"
       ],
       "result": 0
     },
     {
       "name": "poll",
       "args": [
-        "0x7ffe8d152d20",
+        "0x7ffc62cc3270",
         "0x3",
         "0x0"
       ],
@@ -736,15 +465,15 @@
       "name": "rt_sigaction",
       "args": [
         "0xd",
-        "0x7ffe8d152a50",
-        "0x7ffe8d152af0"
+        "0x7ffc62cc2fd0",
+        "0x7ffc62cc3070"
       ],
       "result": 0
     },
     {
       "name": "getrandom",
       "args": [
-        "0x7f5cd72214d8",
+        "0x7f7b414214d8",
         "0x8",
         "0x1"
       ],
@@ -754,19 +483,19 @@
       "name": "brk",
       "args": [
         "0x0",
-        "0x7f5cd721ac80",
+        "0x7f7b4141ac80",
         "0x0"
       ],
-      "result": 94040076062720
+      "result": 108155393572864
     },
     {
       "name": "brk",
       "args": [
-        "0x558769562000",
-        "0x7f5cd721ac80",
-        "0x7f5cd7222218"
+        "0x625de3d29000",
+        "0x7f7b4141ac80",
+        "0x7f7b41422218"
       ],
-      "result": 94040076197888
+      "result": 108155393708032
     },
     {
       "name": "openat",
@@ -778,7 +507,7 @@
       "result": 3
     },
     {
-      "name": "unknown",
+      "name": "pkey_mprotect",
       "args": [
         "0x0",
         "0x3",
@@ -790,8 +519,8 @@
       "name": "newfstatat",
       "args": [
         "0x3",
-        "0x7f5cd71d844f",
-        "0x7ffe8d152ac0"
+        "0x7f7b413d844f",
+        "0x7ffc62cc3040"
       ],
       "result": 0
     },
@@ -799,7 +528,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541500",
+        "0x625de3d08500",
         "0x400"
       ],
       "result": 1024
@@ -808,7 +537,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541500",
+        "0x625de3d08500",
         "0x400"
       ],
       "result": 1024
@@ -817,7 +546,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541500",
+        "0x625de3d08500",
         "0x400"
       ],
       "result": 1024
@@ -826,35 +555,26 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541500",
+        "0x625de3d08500",
         "0x400"
       ],
-      "result": 1024
-    },
-    {
-      "name": "read",
-      "args": [
-        "0x3",
-        "0x558769541500",
-        "0x400"
-      ],
-      "result": 1024
+      "result": 481
     },
     {
       "name": "close",
       "args": [
         "0x3",
         "0xfbada408",
-        "0x7f5cd7216a00"
+        "0x7f7b41416a00"
       ],
       "result": 0
     },
     {
       "name": "unknown",
       "args": [
-        "0x8dbfe",
+        "0xafd",
         "0x20",
-        "0x558769541a10"
+        "0x625de3d08a10"
       ],
       "result": 8
     },
@@ -863,7 +583,7 @@
       "args": [
         "0xb",
         "0x0",
-        "0x7ffe8d152c40"
+        "0x7ffc62cc31c0"
       ],
       "result": 0
     },
@@ -871,8 +591,8 @@
       "name": "sigaltstack",
       "args": [
         "0x0",
-        "0x7ffe8d152c10",
-        "0x7ffe8d152c40"
+        "0x7ffc62cc31e0",
+        "0x7ffc62cc31c0"
       ],
       "result": 0
     },
@@ -883,12 +603,12 @@
         "0x3000",
         "0x3"
       ],
-      "result": 140036730458112
+      "result": 140167354626048
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd7931000",
+        "0x7f7b4161b000",
         "0x1000",
         "0x0"
       ],
@@ -897,17 +617,26 @@
     {
       "name": "sigaltstack",
       "args": [
-        "0x7ffe8d152c10",
+        "0x7ffc62cc31e0",
         "0x0",
         "0x0"
       ],
       "result": 0
+    },
+    {
+      "name": "gettid",
+      "args": [
+        "0x7ffc624c4000",
+        "0x7ffc624c5000",
+        "0x0"
+      ],
+      "result": 2813
     },
     {
       "name": "rt_sigaction",
       "args": [
         "0xb",
-        "0x7ffe8d152ba0",
+        "0x7ffc62cc3120",
         "0x0"
       ],
       "result": 0
@@ -917,7 +646,7 @@
       "args": [
         "0x7",
         "0x0",
-        "0x7ffe8d152c40"
+        "0x7ffc62cc31c0"
       ],
       "result": 0
     },
@@ -925,7 +654,7 @@
       "name": "rt_sigaction",
       "args": [
         "0x7",
-        "0x7ffe8d152ba0",
+        "0x7ffc62cc3120",
         "0x0"
       ],
       "result": 0
@@ -933,7 +662,7 @@
     {
       "name": "getrandom",
       "args": [
-        "0x7ffe8d150240",
+        "0x7ffc62cbd790",
         "0x10",
         "0x4"
       ],
@@ -952,7 +681,7 @@
       "name": "statx",
       "args": [
         "0x3",
-        "0x55875e50c0cf",
+        "0x625daaa216b3",
         "0x1000"
       ],
       "result": 0
@@ -970,7 +699,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541d20",
+        "0x625de3d08d80",
         "0x80"
       ],
       "result": 128
@@ -979,7 +708,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x7ffe8d14f980",
+        "0x7ffc62cbcf20",
         "0x20"
       ],
       "result": 13
@@ -988,7 +717,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541dad",
+        "0x625de3d08e0d",
         "0x73"
       ],
       "result": 0
@@ -997,7 +726,7 @@
       "name": "close",
       "args": [
         "0x3",
-        "0x558769541dad",
+        "0x625de3d08e0d",
         "0x8d"
       ],
       "result": 0
@@ -1006,7 +735,7 @@
       "name": "statx",
       "args": [
         "0xffffff9c",
-        "0x7ffe8d14f750",
+        "0x7ffc62cbcdb0",
         "0x0"
       ],
       "result": 0
@@ -1015,7 +744,7 @@
       "name": "openat",
       "args": [
         "0xffffff9c",
-        "\"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-560a6d07-94e7-4e86-86a3-4439e21683d1.scope/cpu.max\"",
+        "\"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-c8f3ea99-0629-4067-bafb-161350a65fc2.scope/cpu.max\"",
         "0x80000"
       ],
       "result": -2
@@ -1069,7 +798,7 @@
       "name": "statx",
       "args": [
         "0x3",
-        "0x55875e50c0cf",
+        "0x625daaa216b3",
         "0x1000"
       ],
       "result": 0
@@ -1087,7 +816,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x7ffe8d14f900",
+        "0x7ffc62cbcec0",
         "0x20"
       ],
       "result": 11
@@ -1096,7 +825,7 @@
       "name": "read",
       "args": [
         "0x3",
-        "0x558769541f5b",
+        "0x625de3d08fbb",
         "0x9"
       ],
       "result": 0
@@ -1105,7 +834,7 @@
       "name": "close",
       "args": [
         "0x3",
-        "0x558769541f50",
+        "0x625de3d08fb0",
         "0xb"
       ],
       "result": 0
@@ -1124,7 +853,7 @@
       "args": [
         "0x0",
         "0x80",
-        "0x7ffe8d14fa90"
+        "0x7ffc62cbd020"
       ],
       "result": 8
     },
@@ -1132,8 +861,8 @@
       "name": "unknown",
       "args": [
         "0x80000",
-        "0x7ffe8d14fe20",
-        "0x0"
+        "0x400",
+        "0x400"
       ],
       "result": 3
     },
@@ -1142,7 +871,7 @@
       "args": [
         "0x0",
         "0x80800",
-        "0x0"
+        "0x400"
       ],
       "result": 4
     },
@@ -1194,17 +923,17 @@
     {
       "name": "brk",
       "args": [
-        "0x558769583000",
-        "0x7f5cd721ac80",
+        "0x625de3d4a000",
+        "0x7f7b4141ac80",
         "0x0"
       ],
-      "result": 94040076333056
+      "result": 108155393843200
     },
     {
       "name": "rt_sigaction",
       "args": [
         "0x21",
-        "0x7ffe8d14f890",
+        "0x7ffc62cbcd70",
         "0x0"
       ],
       "result": 0
@@ -1213,7 +942,7 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x1",
-        "0x7ffe8d14fab8",
+        "0x7ffc62cbcf98",
         "0x0"
       ],
       "result": 0
@@ -1225,12 +954,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036718718976
+      "result": 140167348219904
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd6e00000",
+        "0x7f7b41000000",
         "0x200000",
         "0x3"
       ],
@@ -1240,25 +969,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580607
+      "result": 2814
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1270,12 +999,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036716617728
+      "result": 140167346118656
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd6bff000",
+        "0x7f7b40dff000",
         "0x200000",
         "0x3"
       ],
@@ -1285,25 +1014,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580608
+      "result": 2815
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1311,7 +1040,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd6fff340",
+        "0x7f7b411ff470",
         "0x81",
         "0x1"
       ],
@@ -1324,12 +1053,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036714516480
+      "result": 140167344017408
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd69fe000",
+        "0x7f7b40bfe000",
         "0x200000",
         "0x3"
       ],
@@ -1339,25 +1068,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580609
+      "result": 2816
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1365,7 +1094,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd6dfe340",
+        "0x7f7b40ffe470",
         "0x81",
         "0x1"
       ],
@@ -1378,12 +1107,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036712415232
+      "result": 140167341916160
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd67fd000",
+        "0x7f7b409fd000",
         "0x200000",
         "0x3"
       ],
@@ -1393,25 +1122,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580610
+      "result": 2817
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1423,12 +1152,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036710313984
+      "result": 140167339814912
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd65fc000",
+        "0x7f7b407fc000",
         "0x200000",
         "0x3"
       ],
@@ -1438,25 +1167,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580611
+      "result": 2818
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1464,7 +1193,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd69fc340",
+        "0x7f7b40bfc470",
         "0x81",
         "0x1"
       ],
@@ -1477,12 +1206,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036708212736
+      "result": 140167337713664
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd63fb000",
+        "0x7f7b405fb000",
         "0x200000",
         "0x3"
       ],
@@ -1492,70 +1221,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580612
+      "result": 2819
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140036706111488
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd61fa000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580613
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1563,7 +1247,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd65fa340",
+        "0x7f7b409fb470",
         "0x81",
         "0x1"
       ],
@@ -1576,12 +1260,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036704010240
+      "result": 140167335612416
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd5ff9000",
+        "0x7f7b403fa000",
         "0x200000",
         "0x3"
       ],
@@ -1591,25 +1275,70 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580614
+      "result": 2820
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140167333511168
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7b401f9000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2821
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1617,7 +1346,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd63f9340",
+        "0x7f7b405f9470",
         "0x81",
         "0x1"
       ],
@@ -1630,12 +1359,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036701908992
+      "result": 140166859583488
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd5df8000",
+        "0x7f7b23e00000",
         "0x200000",
         "0x3"
       ],
@@ -1645,70 +1374,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580615
+      "result": 2822
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140036699807744
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd5bf7000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580616
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1716,7 +1400,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd5ff7340",
+        "0x7f7b403f8470",
         "0x81",
         "0x1"
       ],
@@ -1729,12 +1413,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036697706496
+      "result": 140166857482240
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd59f6000",
+        "0x7f7b23bff000",
         "0x200000",
         "0x3"
       ],
@@ -1744,25 +1428,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580617
+      "result": 2823
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1774,12 +1458,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036695605248
+      "result": 140166855380992
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd57f5000",
+        "0x7f7b239fe000",
         "0x200000",
         "0x3"
       ],
@@ -1789,25 +1473,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580618
+      "result": 2824
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1815,7 +1499,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd5bf5340",
+        "0x7f7b23dfe470",
         "0x81",
         "0x1"
       ],
@@ -1828,12 +1512,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036693504000
+      "result": 140166853279744
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd55f4000",
+        "0x7f7b237fd000",
         "0x200000",
         "0x3"
       ],
@@ -1843,25 +1527,70 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580619
+      "result": 2825
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140166851178496
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7b235fc000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2826
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1869,7 +1598,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd59f4340",
+        "0x7f7b239fc470",
         "0x81",
         "0x1"
       ],
@@ -1882,12 +1611,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036691402752
+      "result": 140166849077248
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd53f3000",
+        "0x7f7b233fb000",
         "0x200000",
         "0x3"
       ],
@@ -1897,70 +1626,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580620
+      "result": 2827
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140036689301504
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd51f2000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580621
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -1968,7 +1652,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd55f2340",
+        "0x7f7b237fb470",
         "0x81",
         "0x1"
       ],
@@ -1981,12 +1665,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036687200256
+      "result": 140166846976000
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd4ff1000",
+        "0x7f7b231fa000",
         "0x200000",
         "0x3"
       ],
@@ -1996,25 +1680,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580622
+      "result": 2828
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2022,7 +1706,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd53f1340",
+        "0x7f7b235fa470",
         "0x81",
         "0x1"
       ],
@@ -2035,12 +1719,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036685099008
+      "result": 140166844874752
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd4df0000",
+        "0x7f7b22ff9000",
         "0x200000",
         "0x3"
       ],
@@ -2050,25 +1734,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580623
+      "result": 2829
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2076,7 +1760,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd4fef340",
+        "0x7f7b233f9470",
         "0x81",
         "0x1"
       ],
@@ -2089,12 +1773,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036682997760
+      "result": 140166842773504
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd4bef000",
+        "0x7f7b22df8000",
         "0x200000",
         "0x3"
       ],
@@ -2104,70 +1788,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580624
+      "result": 2830
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140036680896512
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5cd49ee000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580625
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2175,7 +1814,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd4dee340",
+        "0x7f7b231f8470",
         "0x81",
         "0x1"
       ],
@@ -2188,12 +1827,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036678795264
+      "result": 140166840672256
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd47ed000",
+        "0x7f7b22bf7000",
         "0x200000",
         "0x3"
       ],
@@ -2203,25 +1842,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580626
+      "result": 2831
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2233,12 +1872,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036676694016
+      "result": 140166838571008
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd45ec000",
+        "0x7f7b229f6000",
         "0x200000",
         "0x3"
       ],
@@ -2248,25 +1887,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580627
+      "result": 2832
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2274,7 +1913,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd49ec340",
+        "0x7f7b22df6470",
         "0x81",
         "0x1"
       ],
@@ -2287,12 +1926,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036674592768
+      "result": 140166836469760
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd43eb000",
+        "0x7f7b227f5000",
         "0x200000",
         "0x3"
       ],
@@ -2302,25 +1941,70 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580628
+      "result": 2833
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140166834368512
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7b225f4000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2834
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2328,7 +2012,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd47eb340",
+        "0x7f7b229f4470",
         "0x81",
         "0x1"
       ],
@@ -2341,12 +2025,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140036672491520
+      "result": 140166832267264
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5cd41ea000",
+        "0x7f7b223f3000",
         "0x200000",
         "0x3"
       ],
@@ -2356,25 +2040,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580629
+      "result": 2835
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2382,7 +2066,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5cd45ea340",
+        "0x7f7b227f3470",
         "0x81",
         "0x1"
       ],
@@ -2395,12 +2079,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035124883456
+      "result": 140166830166016
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c77e00000",
+        "0x7f7b221f2000",
         "0x200000",
         "0x3"
       ],
@@ -2410,70 +2094,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580630
+      "result": 2836
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140035122782208
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5c77bff000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580631
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2481,7 +2120,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c77fff340",
+        "0x7f7b225f2470",
         "0x81",
         "0x1"
       ],
@@ -2494,12 +2133,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035120680960
+      "result": 140166828064768
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c779fe000",
+        "0x7f7b21ff1000",
         "0x200000",
         "0x3"
       ],
@@ -2509,70 +2148,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580632
+      "result": 2837
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140035118579712
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5c777fd000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580633
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2580,7 +2174,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c77bfd340",
+        "0x7f7b223f1470",
         "0x81",
         "0x1"
       ],
@@ -2593,12 +2187,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035116478464
+      "result": 140166825963520
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c775fc000",
+        "0x7f7b21df0000",
         "0x200000",
         "0x3"
       ],
@@ -2608,25 +2202,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580634
+      "result": 2838
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2638,12 +2232,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035114377216
+      "result": 140166823862272
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c773fb000",
+        "0x7f7b21bef000",
         "0x200000",
         "0x3"
       ],
@@ -2653,25 +2247,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580635
+      "result": 2839
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2679,7 +2273,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c777fb340",
+        "0x7f7b21fef470",
         "0x81",
         "0x1"
       ],
@@ -2692,12 +2286,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035112275968
+      "result": 140166821761024
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c771fa000",
+        "0x7f7b219ee000",
         "0x200000",
         "0x3"
       ],
@@ -2707,25 +2301,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580636
+      "result": 2840
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2733,7 +2327,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c775fa340",
+        "0x7f7b21bed470",
         "0x81",
         "0x1"
       ],
@@ -2746,12 +2340,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035110174720
+      "result": 140166819659776
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c76ff9000",
+        "0x7f7b217ed000",
         "0x200000",
         "0x3"
       ],
@@ -2761,25 +2355,70 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580637
+      "result": 2841
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140166817558528
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7b215ec000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2842
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2787,7 +2426,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c773f9340",
+        "0x7f7b219ec470",
         "0x81",
         "0x1"
       ],
@@ -2800,12 +2439,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035108073472
+      "result": 140166815457280
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c76df8000",
+        "0x7f7b213eb000",
         "0x200000",
         "0x3"
       ],
@@ -2815,25 +2454,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580638
+      "result": 2843
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2841,7 +2480,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c771f8340",
+        "0x7f7b217eb470",
         "0x81",
         "0x1"
       ],
@@ -2854,12 +2493,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035105972224
+      "result": 140166813356032
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c76bf7000",
+        "0x7f7b211ea000",
         "0x200000",
         "0x3"
       ],
@@ -2869,25 +2508,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580639
+      "result": 2844
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2899,12 +2538,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035103870976
+      "result": 140166811254784
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c769f6000",
+        "0x7f7b20fe9000",
         "0x200000",
         "0x3"
       ],
@@ -2914,25 +2553,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580640
+      "result": 2845
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -2940,7 +2579,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c76df6340",
+        "0x7f7b213e9470",
         "0x81",
         "0x1"
       ],
@@ -2953,12 +2592,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035101769728
+      "result": 140166809153536
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c767f5000",
+        "0x7f7b20de8000",
         "0x200000",
         "0x3"
       ],
@@ -2968,70 +2607,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580641
+      "result": 2846
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140035099668480
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5c765f4000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580642
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3039,7 +2633,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c769f4340",
+        "0x7f7b211e8470",
         "0x81",
         "0x1"
       ],
@@ -3052,12 +2646,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035097567232
+      "result": 140166807052288
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c763f3000",
+        "0x7f7b20be7000",
         "0x200000",
         "0x3"
       ],
@@ -3067,25 +2661,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580643
+      "result": 2847
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3097,12 +2691,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035095465984
+      "result": 140166804951040
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c761f2000",
+        "0x7f7b209e6000",
         "0x200000",
         "0x3"
       ],
@@ -3112,25 +2706,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580644
+      "result": 2848
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3138,7 +2732,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c765f2340",
+        "0x7f7b20de6470",
         "0x81",
         "0x1"
       ],
@@ -3151,12 +2745,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035093364736
+      "result": 140166802849792
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c75ff1000",
+        "0x7f7b207e5000",
         "0x200000",
         "0x3"
       ],
@@ -3166,25 +2760,70 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580645
+      "result": 2849
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140166800748544
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7b205e4000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2850
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3192,7 +2831,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c763f1340",
+        "0x7f7b209e4470",
         "0x81",
         "0x1"
       ],
@@ -3205,12 +2844,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035091263488
+      "result": 140166798647296
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c75df0000",
+        "0x7f7b203e3000",
         "0x200000",
         "0x3"
       ],
@@ -3220,25 +2859,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580646
+      "result": 2851
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3250,12 +2889,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035089162240
+      "result": 140166796546048
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c75bef000",
+        "0x7f7b201e2000",
         "0x200000",
         "0x3"
       ],
@@ -3265,25 +2904,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580647
+      "result": 2852
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3291,7 +2930,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c75fef340",
+        "0x7f7b205e2470",
         "0x81",
         "0x1"
       ],
@@ -3304,12 +2943,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035087060992
+      "result": 140164644990976
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c759ee000",
+        "0x7f7a9fe00000",
         "0x200000",
         "0x3"
       ],
@@ -3319,25 +2958,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580648
+      "result": 2853
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3349,12 +2988,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035084959744
+      "result": 140164642889728
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c757ed000",
+        "0x7f7a9fbff000",
         "0x200000",
         "0x3"
       ],
@@ -3364,25 +3003,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580649
+      "result": 2854
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3390,7 +3029,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c75bed340",
+        "0x7f7a9ffff470",
         "0x81",
         "0x1"
       ],
@@ -3403,12 +3042,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035082858496
+      "result": 140164640788480
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c755ec000",
+        "0x7f7a9f9fe000",
         "0x200000",
         "0x3"
       ],
@@ -3418,70 +3057,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580650
+      "result": 2855
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
-        "0x0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "mmap",
-      "args": [
-        "0x0",
-        "0x201000",
-        "0x0"
-      ],
-      "result": 140035080757248
-    },
-    {
-      "name": "mprotect",
-      "args": [
-        "0x7f5c753eb000",
-        "0x200000",
-        "0x3"
-      ],
-      "result": 0
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
-      ],
-      "result": 0
-    },
-    {
-      "name": "clone3",
-      "args": [
-        "0x7ffe8d14f950",
-        "0x58",
-        "0x7f5cd70947d0"
-      ],
-      "result": 580651
-    },
-    {
-      "name": "rt_sigprocmask",
-      "args": [
-        "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3489,7 +3083,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c757eb340",
+        "0x7f7a9fdfe470",
         "0x81",
         "0x1"
       ],
@@ -3502,12 +3096,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035078656000
+      "result": 140164638687232
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c751ea000",
+        "0x7f7a9f7fd000",
         "0x200000",
         "0x3"
       ],
@@ -3517,25 +3111,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580652
+      "result": 2856
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3543,7 +3137,7 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c755ea340",
+        "0x7f7a9fbfd470",
         "0x81",
         "0x1"
       ],
@@ -3556,12 +3150,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035076554752
+      "result": 140164636585984
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c74fe9000",
+        "0x7f7a9f5fc000",
         "0x200000",
         "0x3"
       ],
@@ -3571,25 +3165,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580653
+      "result": 2857
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3601,12 +3195,12 @@
         "0x201000",
         "0x0"
       ],
-      "result": 140035074453504
+      "result": 140164634484736
     },
     {
       "name": "mprotect",
       "args": [
-        "0x7f5c74de8000",
+        "0x7f7a9f3fb000",
         "0x200000",
         "0x3"
       ],
@@ -3616,25 +3210,25 @@
       "name": "rt_sigprocmask",
       "args": [
         "0x0",
-        "0x7f5cd71d29e0",
-        "0x7ffe8d14fab0"
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
       ],
       "result": 0
     },
     {
       "name": "clone3",
       "args": [
-        "0x7ffe8d14f950",
+        "0x7ffc62cbce30",
         "0x58",
-        "0x7f5cd70947d0"
+        "0x7f7b412947d0"
       ],
-      "result": 580654
+      "result": 2858
     },
     {
       "name": "rt_sigprocmask",
       "args": [
         "0x2",
-        "0x7ffe8d14fab0",
+        "0x7ffc62cbcf90",
         "0x0"
       ],
       "result": 0
@@ -3642,29 +3236,191 @@
     {
       "name": "futex",
       "args": [
-        "0x7f5c751e8340",
+        "0x7f7a9f7fb470",
         "0x81",
         "0x1"
       ],
       "result": 1
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140164632383488
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7a9f1fa000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2859
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "futex",
+      "args": [
+        "0x7f7a9f5fa470",
+        "0x81",
+        "0x1"
+      ],
+      "result": 1
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140164630282240
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7a9eff9000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2860
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "mmap",
+      "args": [
+        "0x0",
+        "0x201000",
+        "0x0"
+      ],
+      "result": 140164628180992
+    },
+    {
+      "name": "mprotect",
+      "args": [
+        "0x7f7a9edf8000",
+        "0x200000",
+        "0x3"
+      ],
+      "result": 0
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x0",
+        "0x7f7b413d29e0",
+        "0x7ffc62cbcf90"
+      ],
+      "result": 0
+    },
+    {
+      "name": "clone3",
+      "args": [
+        "0x7ffc62cbce30",
+        "0x58",
+        "0x7f7b412947d0"
+      ],
+      "result": 2861
+    },
+    {
+      "name": "rt_sigprocmask",
+      "args": [
+        "0x2",
+        "0x7ffc62cbcf90",
+        "0x0"
+      ],
+      "result": 0
+    },
+    {
+      "name": "futex",
+      "args": [
+        "0x7f7a9f1f8470",
+        "0x81",
+        "0x1"
+      ],
+      "result": 1
+    },
+    {
+      "name": "ioctl",
+      "args": [
+        "0x2",
+        "0x5401",
+        "0x7ffc62cbaff0"
+      ],
+      "result": -25
     },
     {
       "name": "brk",
       "args": [
-        "0x5587695a5000",
-        "0x7f5cd721ac80",
+        "0x625de3d6d000",
+        "0x7f7b4141ac80",
         "0x0"
       ],
-      "result": 94040076472320
+      "result": 108155393986560
     },
     {
       "name": "ioctl",
       "args": [
         "0x0",
         "0x5401",
-        "0x7ffe8d14c7e0"
+        "0x7ffc62cbd060"
       ],
-      "result": 0
+      "result": -25
     },
     {
       "name": "openat",
@@ -3679,7 +3435,7 @@
       "name": "read",
       "args": [
         "0x9",
-        "0x558769589300",
+        "0x625de3d58660",
         "0x2000"
       ],
       "result": 141
@@ -3688,7 +3444,7 @@
       "name": "read",
       "args": [
         "0x9",
-        "0x558769589300",
+        "0x625de3d58660",
         "0x2000"
       ],
       "result": 0
@@ -3715,10 +3471,10 @@
       "name": "read",
       "args": [
         "0x9",
-        "0x558769589300",
+        "0x625de3d58660",
         "0x2000"
       ],
-      "result": 4053
+      "result": 3997
     },
     {
       "name": "close",
@@ -3733,7 +3489,7 @@
       "name": "openat",
       "args": [
         "0xffffff9c",
-        "\"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-560a6d07-94e7-4e86-86a3-4439e21683d1.scope/cpu.max\"",
+        "\"/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/app-org.gnome.Terminal.slice/vte-spawn-c8f3ea99-0629-4067-bafb-161350a65fc2.scope/cpu.max\"",
         "0x80000"
       ],
       "result": -2
@@ -3743,131 +3499,203 @@
       "args": [
         "0x0",
         "0x80",
-        "0x7ffe8d129350"
+        "0x7ffc62c795b0"
       ],
       "result": 8
     },
     {
       "name": "brk",
       "args": [
-        "0x5587695c6000",
-        "0x7f5cd721ac80",
+        "0x625de3d8f000",
+        "0x7f7b4141ac80",
         "0x0"
       ],
-      "result": 94040076607488
+      "result": 108155394125824
     },
     {
       "name": "brk",
       "args": [
-        "0x5587695e7000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040076742656
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x558769608000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040076877824
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x558769629000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077012992
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x55876964a000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077148160
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x55876966b000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077283328
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x55876968c000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077418496
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x5587696ae000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077557760
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x5587696cf000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077692928
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x5587696f4000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077844480
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x558769716000",
-        "0x7f5cd721ac80",
-        "0x0"
-      ],
-      "result": 94040077983744
-    },
-    {
-      "name": "brk",
-      "args": [
-        "0x5587696d6000",
-        "0x5587696b1210",
+        "0x625de3d8e000",
+        "0x0",
         "0xfffffffffffff000"
       ],
-      "result": 94040077721600
+      "result": 108155394121728
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3db0000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394260992
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3daf000",
+        "0x0",
+        "0xfffffffffffff000"
+      ],
+      "result": 108155394256896
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3dd0000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394392064
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3dfa000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394564096
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3e1b000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394699264
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3e3c000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394834432
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3e5d000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155394969600
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3e7e000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395104768
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3e9f000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395239936
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3ec0000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395375104
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3ee6000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395530752
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f07000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395665920
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f28000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395801088
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f4a000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155395940352
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f6b000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155396075520
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f8d000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155396214784
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3fb0000",
+        "0x7f7b4141ac80",
+        "0x0"
+      ],
+      "result": 108155396358144
+    },
+    {
+      "name": "brk",
+      "args": [
+        "0x625de3f45000",
+        "0x625de3e3db10",
+        "0xfffffffffffff000"
+      ],
+      "result": 108155395919872
     },
     {
       "name": "write",
       "args": [
         "0x1",
-        "0x558769619380",
-        "0xd"
+        "0x625de3f1ecc0",
+        "0x4d"
       ],
-      "result": 13
+      "result": 77
     },
     {
       "name": "sigaltstack",
       "args": [
-        "0x7ffe8d14bed8",
+        "0x7ffc62cbca18",
         "0x0",
         "0x33"
       ],
@@ -3876,7 +3704,7 @@
     {
       "name": "munmap",
       "args": [
-        "0x7f5cd7931000",
+        "0x7f7b4161b000",
         "0x3000",
         "0x33"
       ],
@@ -3884,7 +3712,7 @@
     }
   ],
   "summary": {
-    "total_syscalls": 431,
+    "total_syscalls": 412,
     "exit_code": 0
   }
 }

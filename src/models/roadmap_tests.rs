@@ -605,15 +605,109 @@ roadmap:
         assert_eq!(item.completion_percentage(), 0, "Blocked → 0");
     }
 
-    /// roadmap_impl.rs:161 — acceptance_criteria non-empty, subtasks & phases
-    /// empty. Falls through to the `0` placeholder branch.
+    /// acceptance_criteria non-empty, subtasks & phases empty, and no criterion
+    /// carries a checkbox: the list records nothing, so status decides.
+    ///
+    /// This branch used to return a hard-coded 0 whatever the status, which made
+    /// every completed item with acceptance criteria report 0% done. The previous
+    /// version of this test asserted that 0 — it pinned the placeholder rather
+    /// than any intended behaviour.
     #[test]
-    fn test_completion_percentage_acceptance_criteria_returns_zero() {
+    fn test_completion_percentage_unmarked_criteria_falls_back_to_status() {
         let mut item = RoadmapItem::new("AC-001".to_string(), "ac".to_string());
         item.acceptance_criteria = vec!["criterion 1".to_string(), "criterion 2".to_string()];
-        // Status shouldn't affect this branch — the AC branch returns 0 unconditionally.
+
         item.status = ItemStatus::Completed;
+        assert_eq!(
+            item.completion_percentage(),
+            100,
+            "criteria say nothing, so a completed item is 100% — not 0%"
+        );
+
+        item.status = ItemStatus::Planned;
         assert_eq!(item.completion_percentage(), 0);
+
+        item.status = ItemStatus::InProgress;
+        assert_eq!(item.completion_percentage(), 50);
+    }
+
+    /// Checked criteria are counted individually and outrank the item's status.
+    #[test]
+    fn test_completion_percentage_counts_checked_criteria() {
+        let mut item = RoadmapItem::new("AC-002".to_string(), "ac".to_string());
+        item.status = ItemStatus::InProgress;
+        item.acceptance_criteria = vec![
+            "[x] done one".to_string(),
+            "[x] done two".to_string(),
+            "[ ] pending".to_string(),
+            "[ ] also pending".to_string(),
+        ];
+
+        // 2 of 4 ticked -> 50%, which happens to match InProgress; use 3 of 4 to
+        // prove the criteria, not the status, produced the number.
+        item.acceptance_criteria.push("[x] done three".to_string());
+        assert_eq!(
+            item.completion_percentage(),
+            60,
+            "3 of 5 criteria ticked -> 60%, regardless of InProgress's 50%"
+        );
+    }
+
+    /// All criteria ticked reports 100% even while the item is still In Progress.
+    #[test]
+    fn test_completion_percentage_all_criteria_checked() {
+        let mut item = RoadmapItem::new("AC-003".to_string(), "ac".to_string());
+        item.status = ItemStatus::InProgress;
+        item.acceptance_criteria = vec!["- [x] one".to_string(), "- [X] two".to_string()];
+        assert_eq!(item.completion_percentage(), 100);
+    }
+
+    /// No criteria ticked reports 0% even when the item claims to be complete —
+    /// the checklist is the more specific signal.
+    #[test]
+    fn test_completion_percentage_no_criteria_checked() {
+        let mut item = RoadmapItem::new("AC-004".to_string(), "ac".to_string());
+        item.status = ItemStatus::Completed;
+        item.acceptance_criteria = vec!["[ ] one".to_string(), "[ ] two".to_string()];
+        assert_eq!(item.completion_percentage(), 0);
+    }
+
+    /// An unmarked criterion mixed into a marked list counts as not done.
+    #[test]
+    fn test_completion_percentage_mixed_marked_and_unmarked_criteria() {
+        let mut item = RoadmapItem::new("AC-005".to_string(), "ac".to_string());
+        item.acceptance_criteria = vec![
+            "[x] ticked".to_string(),
+            "plain prose criterion".to_string(),
+        ];
+        assert_eq!(item.completion_percentage(), 50);
+    }
+
+    #[test]
+    fn test_parse_criterion_markers() {
+        use crate::models::roadmap::parse_criterion;
+
+        assert_eq!(parse_criterion("- [x] done"), (Some(true), "done"));
+        assert_eq!(parse_criterion("- [X] done"), (Some(true), "done"));
+        assert_eq!(parse_criterion("[x] done"), (Some(true), "done"));
+        assert_eq!(parse_criterion("- [ ] pending"), (Some(false), "pending"));
+        assert_eq!(parse_criterion("[ ] pending"), (Some(false), "pending"));
+        assert_eq!(parse_criterion("  plain  "), (None, "plain"));
+        assert_eq!(parse_criterion(""), (None, ""));
+    }
+
+    #[test]
+    fn test_format_criterion_checkbox_round_trips_state() {
+        use crate::models::roadmap::format_criterion_checkbox;
+
+        assert_eq!(format_criterion_checkbox("[x] done"), "- [x] done");
+        assert_eq!(format_criterion_checkbox("[ ] pending"), "- [ ] pending");
+        // Unknown state is written unticked, and never doubles the marker.
+        assert_eq!(format_criterion_checkbox("plain"), "- [ ] plain");
+        assert_eq!(
+            format_criterion_checkbox("- [x] already a bullet"),
+            "- [x] already a bullet"
+        );
     }
 
     // ========================================================================

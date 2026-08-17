@@ -1,5 +1,6 @@
 [package]
 name = "pmat"
+default-run = "pmat"
 version = "3.32.0"
 edition = "2021"
 rust-version = "1.91.0"
@@ -610,6 +611,31 @@ required-features = ["perf-tests"]
 name = "contract_traits"
 path = "tests/contract_traits.rs"
 
+# ── Transport gate (release protocol) ──────────────────────────────────────
+#
+# One target per shipped interface, each spawning the built binary via
+# `env!("CARGO_BIN_EXE_pmat")`. See `[package.metadata.transports]` below for
+# why they are declared there and why the names are load-bearing.
+[[test]]
+name = "e2e_cli_t"
+path = "tests/e2e_cli_t.rs"
+
+[[test]]
+name = "e2e_mcp_stdio_t"
+path = "tests/e2e_mcp_stdio_t.rs"
+
+[[test]]
+name = "e2e_http_serve_t"
+path = "tests/e2e_http_serve_t.rs"
+required-features = ["mcp-http"]
+
+# `pmat init` end-to-end: generates into a tempdir, then SPAWNS the MCP
+# invocation the generated config names and requires a JSON-RPC reply. Declared
+# as its own target because `autotests = false`.
+[[test]]
+name = "init_workspace_t"
+path = "tests/init_workspace_t.rs"
+
 # Examples for deterministic MCP agents course
 [[example]]
 name = "scaffold_agent_basics"
@@ -745,6 +771,37 @@ path = "examples/lua_analysis.rs"
 required-features = ["lua-ast"]
 
 # Profile configuration moved to workspace root
+
+# ── Transport gate (release protocol) ──────────────────────────────────────
+#
+# Every interface this release ships, each naming the cargo TEST TARGET that
+# spawns the SHIPPED BINARY. Three interfaces ship: the CLI, MCP over stdio
+# (`MCP_VERSION=1 pmat`), and MCP over streamable HTTP (`pmat serve --transport
+# http`, compiled only with `--features mcp-http`). There is no fourth: the
+# other `--transport` values still exit 2 with "not yet implemented", and
+# `pmat serve` is the only server entry point, so nothing else is declared here.
+#
+# Why the target NAME is load-bearing: `cargo test` silently EXCLUDES targets
+# that carry `required-features`, so a bare run compiles none of the HTTP gate
+# and still reports success — "covered" and "skipped" are indistinguishable.
+# Naming the target turns absence into a hard failure:
+#
+#   cargo test --test e2e_cli_t
+#   cargo test --test e2e_mcp_stdio_t
+#   cargo test --test e2e_http_serve_t --features mcp-http   # exit 101 if missing
+#
+# Why each target must SPAWN the binary rather than call the library: in a
+# sibling repo a four-way parity suite was green for months while the mcp and
+# http servers had no caller from `main.rs` at all. The transports agreed with
+# each other perfectly and were unreachable from the process entry point. Every
+# target below therefore drives `env!("CARGO_BIN_EXE_pmat")` as a real process.
+# `src/mcp_pmcp/http_server.rs::http_e2e_tests` binds a real socket but calls
+# `serve()` directly, which is exactly the shape that failed to notice — it is
+# a unit test of the transport, not a gate on its reachability.
+[package.metadata.transports]
+cli = { e2e = "e2e_cli_t" }
+mcp = { e2e = "e2e_mcp_stdio_t" }
+http = { e2e = "e2e_http_serve_t", features = ["mcp-http"] }
 
 [package.metadata.cargo-machete]
 # Every crate listed here IS used -- under a different identifier. Each sets a

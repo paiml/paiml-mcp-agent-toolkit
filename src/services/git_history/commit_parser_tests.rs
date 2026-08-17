@@ -5,63 +5,175 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use git2::{RepositoryInitOptions, Signature, Time};
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
-    // Falsification Test F4: Update frequency analysis helper
-    fn get_test_repo_path() -> PathBuf {
-        // Use current repo for testing
-        PathBuf::from(".")
+    const SECONDS_PER_DAY: i64 = 86_400;
+    /// 2023-11-14T22:13:20Z. Fixed so day bucketing and timestamp assertions are exact.
+    const FIXTURE_BASE_TS: i64 = 1_700_000_000;
+    const FIXTURE_AUTHOR: &str = "Fixture Author";
+    const FIXTURE_EMAIL: &str = "fixture@example.com";
+
+    /// A throwaway git repository with a known, fixed history.
+    struct FixtureRepo {
+        // Held only to keep the directory alive for the lifetime of the fixture.
+        _dir: TempDir,
+        path: PathBuf,
+        /// Commit hashes, oldest first.
+        hashes: Vec<String>,
+    }
+
+    /// Build a self-contained repository: three commits on three distinct days,
+    /// exactly one of which touches a source file.
+    ///
+    /// These tests used to resolve the repository through `PathBuf::from(".")`, i.e.
+    /// the process-wide CWD. Other tests in this binary (`src/scaffold/tests.rs`,
+    /// `src/models/deep_context_config_tests.rs`, ...) `set_current_dir` into a
+    /// `TempDir` and never restore it, so by the time these ran the CWD could point
+    /// at a deleted directory and `Repository::discover(".")` failed with ENOENT.
+    /// A fixture removes that race and also removes the dependency on whatever
+    /// history the surrounding checkout happens to have.
+    fn build_fixture_repo() -> FixtureRepo {
+        let dir = TempDir::new().expect("create temp dir");
+        let path = dir.path().to_path_buf();
+
+        let mut init_opts = RepositoryInitOptions::new();
+        init_opts.external_template(false).initial_head("main");
+        let repo = Repository::init_opts(&path, &init_opts).expect("init fixture repo");
+
+        // (path, subject, timestamp) - only the middle commit touches code.
+        let planned: [(&str, &str, i64); 3] = [
+            ("README.md", "docs: describe the fixture", FIXTURE_BASE_TS),
+            (
+                "src/lib.rs",
+                "feat: add fixture library",
+                FIXTURE_BASE_TS + SECONDS_PER_DAY,
+            ),
+            (
+                "docs/notes.txt",
+                "docs: add release notes",
+                FIXTURE_BASE_TS + 2 * SECONDS_PER_DAY,
+            ),
+        ];
+
+        let mut hashes = Vec::with_capacity(planned.len());
+        for (rel_path, subject, timestamp) in planned {
+            let file = path.join(rel_path);
+            std::fs::create_dir_all(file.parent().expect("fixture file has a parent"))
+                .expect("create fixture subdirectory");
+            std::fs::write(&file, format!("{subject}\n")).expect("write fixture file");
+
+            let mut index = repo.index().expect("open fixture index");
+            index
+                .add_path(Path::new(rel_path))
+                .expect("stage fixture file");
+            index.write().expect("write fixture index");
+            let tree_id = index.write_tree().expect("write fixture tree");
+            let tree = repo.find_tree(tree_id).expect("find fixture tree");
+
+            // Explicit signature: never reads the ambient git config, so author and
+            // timestamp are identical on every machine.
+            let signature = Signature::new(FIXTURE_AUTHOR, FIXTURE_EMAIL, &Time::new(timestamp, 0))
+                .expect("build fixture signature");
+
+            let parents: Vec<Commit> = repo
+                .head()
+                .ok()
+                .and_then(|head| head.peel_to_commit().ok())
+                .into_iter()
+                .collect();
+            let parent_refs: Vec<&Commit> = parents.iter().collect();
+
+            let oid = repo
+                .commit(
+                    Some("HEAD"),
+                    &signature,
+                    &signature,
+                    subject,
+                    &tree,
+                    &parent_refs,
+                )
+                .expect("create fixture commit");
+            hashes.push(oid.to_string());
+        }
+
+        FixtureRepo {
+            _dir: dir,
+            path,
+            hashes,
+        }
     }
 
     #[test]
     fn test_commit_parser_opens_repo() {
-        let path = get_test_repo_path();
-        let parser = CommitParser::open(&path);
+        let fixture = build_fixture_repo();
+        let parser = CommitParser::open(&fixture.path);
         assert!(parser.is_ok(), "Should open git repository");
     }
 
     #[test]
     fn test_parse_commits_returns_results() {
-        let path = get_test_repo_path();
-        let parser = CommitParser::open(&path).unwrap();
-        let commits = parser.parse_commits(None, Some(10)).unwrap();
+        let fixture = build_fixture_repo();
+        let parser = CommitParser::open(&fixture.path).unwrap();
 
-        assert!(!commits.is_empty(), "Should find commits in repository");
-        assert!(commits.len() <= 10, "Should respect limit");
+        // A limit above the history size must return the whole history, oldest first.
+        let commits = parser.parse_commits(None, Some(10)).unwrap();
+        let hashes: Vec<String> = commits.iter().map(|c| c.hash.clone()).collect();
+        assert_eq!(
+            hashes, fixture.hashes,
+            "Should return every commit in the repository, oldest first"
+        );
+
+        // A limit below the history size must truncate, keeping the same order.
+        let limited = parser.parse_commits(None, Some(2)).unwrap();
+        let limited_hashes: Vec<String> = limited.iter().map(|c| c.hash.clone()).collect();
+        assert_eq!(
+            limited_hashes,
+            fixture.hashes[..2].to_vec(),
+            "Should respect limit"
+        );
     }
 
     #[test]
     fn test_commit_info_fields_populated() {
-        let path = get_test_repo_path();
-        let parser = CommitParser::open(&path).unwrap();
+        let fixture = build_fixture_repo();
+        let parser = CommitParser::open(&fixture.path).unwrap();
         let commits = parser.parse_commits(None, Some(1)).unwrap();
 
         let commit = &commits[0];
 
-        // Hash should be 40 hex chars
+        // Hash should be the oldest commit, as 40 hex chars
+        assert_eq!(
+            commit.hash, fixture.hashes[0],
+            "Should start from the oldest commit"
+        );
         assert_eq!(commit.hash.len(), 40, "Hash should be 40 characters");
         assert!(
             commit.hash.chars().all(|c| c.is_ascii_hexdigit()),
             "Hash should be hex"
         );
 
-        // Subject should be non-empty
-        assert!(
-            !commit.message_subject.is_empty(),
-            "Subject should not be empty"
+        assert_eq!(
+            commit.message_subject, "docs: describe the fixture",
+            "Subject should be the commit's first line"
         );
+        assert_eq!(commit.message_body, None, "Fixture commit has no body");
+        assert_eq!(commit.author_name, FIXTURE_AUTHOR);
+        assert_eq!(commit.author_email, FIXTURE_EMAIL);
+        assert_eq!(
+            commit.timestamp, FIXTURE_BASE_TS,
+            "Timestamp should be the author time of the commit"
+        );
+        assert!(!commit.is_merge, "Root commit is not a merge");
 
-        // Author should be set
-        assert!(
-            !commit.author_name.is_empty(),
-            "Author name should not be empty"
-        );
-
-        // Timestamp should be reasonable (after 2020)
-        assert!(
-            commit.timestamp > 1577836800,
-            "Timestamp should be after 2020"
-        );
+        // The root commit adds exactly the one file it introduced.
+        let files: Vec<(&str, ChangeType)> = commit
+            .files
+            .iter()
+            .map(|f| (f.path.as_str(), f.change_type))
+            .collect();
+        assert_eq!(files, vec![("README.md", ChangeType::Added)]);
     }
 
     #[test]
@@ -217,26 +329,26 @@ mod tests {
 
     #[test]
     fn test_head_commit_hash() {
-        let path = get_test_repo_path();
-        let parser = CommitParser::open(&path).unwrap();
+        let fixture = build_fixture_repo();
+        let parser = CommitParser::open(&fixture.path).unwrap();
         let hash = parser.head_commit_hash().unwrap();
 
         assert_eq!(hash.len(), 40, "HEAD commit hash should be 40 chars");
+        assert_eq!(
+            hash,
+            *fixture.hashes.last().expect("fixture has commits"),
+            "HEAD should be the newest commit, not the oldest"
+        );
     }
 
     // Falsification Test F4: Verify update frequency difference
     #[test]
     fn falsify_update_frequency_difference() {
-        let path = get_test_repo_path();
-        let parser = CommitParser::open(&path).unwrap();
+        let fixture = build_fixture_repo();
+        let parser = CommitParser::open(&fixture.path).unwrap();
 
-        // Get recent commits (last 100)
-        let commits = parser.parse_commits(None, Some(100)).unwrap();
-
-        if commits.len() < 10 {
-            // Skip if not enough history
-            return;
-        }
+        let commits = parser.parse_commits(None, None).unwrap();
+        assert_eq!(commits.len(), 3, "Fixture history should be fully walked");
 
         // Count unique days with commits
         let mut commit_days = std::collections::HashSet::new();
@@ -244,10 +356,10 @@ mod tests {
 
         for commit in &commits {
             // All commits count for git history updates
-            let day = commit.timestamp / 86400;
+            let day = commit.timestamp / SECONDS_PER_DAY;
             commit_days.insert(day);
 
-            // Only commits with .rs file changes count for code index
+            // Only commits with source file changes count for code index
             let has_code_changes = commit.files.iter().any(|f| {
                 f.path.ends_with(".rs") || f.path.ends_with(".ts") || f.path.ends_with(".py")
             });
@@ -257,11 +369,19 @@ mod tests {
             }
         }
 
-        // Git should change at least as often as code
-        // (This is a weak falsification - real test uses semantic changes)
+        // The fixture commits on three distinct days and touches source on exactly
+        // one of them, so the two counts must actually differ. Asserting `>=` against
+        // an arbitrary repository could never fail: code_change_days is by
+        // construction a subset of commit_days.
+        assert_eq!(commit_days.len(), 3, "Fixture spans three distinct days");
+        assert_eq!(
+            code_change_days.len(),
+            1,
+            "Only one fixture commit touches a source file"
+        );
         assert!(
-            commit_days.len() >= code_change_days.len(),
-            "Git history should update at least as often as code changes"
+            commit_days.len() > code_change_days.len(),
+            "Git history should update more often than code changes"
         );
     }
 }

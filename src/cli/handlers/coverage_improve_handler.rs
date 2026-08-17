@@ -31,6 +31,7 @@ pub async fn handle_coverage_improve(
     mutation_threshold: f64,
     focus: Vec<String>,
     exclude: Vec<String>,
+    max_targets: usize,
     output: Option<PathBuf>,
     format: CoverageImproveOutputFormat,
 ) -> Result<()> {
@@ -47,6 +48,7 @@ pub async fn handle_coverage_improve(
         mutation_threshold,
         focus_patterns: focus,
         exclude_patterns: exclude,
+        max_targets,
     };
 
     // Create service and run improvement

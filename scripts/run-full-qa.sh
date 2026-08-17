@@ -4,7 +4,9 @@
 set -e
 
 echo "=== PMAT QA Checklist Re-run ==="
-echo "Date: $(date)"
+# Identify the tree under test, not the wall clock: the revision is what makes
+# two runs of this report comparable.
+echo "Revision: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 echo "Version: $($PMAT_BIN --version 2>/dev/null || echo 'Binary not found')"
 echo ""
 
@@ -25,43 +27,46 @@ PASSED=0
 FAILED=0
 NOT_IMPL=0
 
-# Function to test a command
+# Function to test a command.
+# Usage: test_command <description> <expected> <command> [args...]
+# The command is taken as argv and executed directly, so it is never re-parsed
+# by a shell (the previous `eval "$cmd"` was).
 test_command() {
     local desc="$1"
-    local cmd="$2"
-    local expected="$3"
-    
+    local expected="$2"
+    shift 2
+
     echo "Testing: $desc"
-    echo "Command: $cmd"
-    
-    output=$(eval "$cmd" 2>&1 || true)
-    
+    echo "Command: $*"
+
+    output=$("$@" 2>&1 || true)
+
     case "$expected" in
         "success")
             if [[ $? -eq 0 ]] && [[ "$output" != *"not yet implemented"* ]] && [[ "$output" != *"not implemented"* ]]; then
                 echo "✅ PASS"
-                ((PASSED++))
+                PASSED=$((PASSED + 1))
             else
                 echo "❌ FAIL: Command failed or not implemented"
-                ((FAILED++))
+                FAILED=$((FAILED + 1))
             fi
             ;;
         "not-impl")
             if [[ "$output" == *"not yet implemented"* ]] || [[ "$output" == *"not implemented"* ]]; then
                 echo "⚠️  NOT IMPLEMENTED (expected)"
-                ((NOT_IMPL++))
+                NOT_IMPL=$((NOT_IMPL + 1))
             else
                 echo "❌ FAIL: Should show not implemented message"
-                ((FAILED++))
+                FAILED=$((FAILED + 1))
             fi
             ;;
         *)
             if [[ "$output" == *"$expected"* ]]; then
                 echo "✅ PASS"
-                ((PASSED++))
+                PASSED=$((PASSED + 1))
             else
                 echo "❌ FAIL: Expected '$expected' in output"
-                ((FAILED++))
+                FAILED=$((FAILED + 1))
             fi
             ;;
     esac
@@ -70,62 +75,62 @@ test_command() {
 
 # Run all tests from QA checklist
 echo "=== Basic Commands ==="
-test_command "Help" "$PMAT_BIN --help" "Professional project quantitative"
-test_command "Version" "$PMAT_BIN --version" "paiml-mcp-agent-toolkit"
+test_command "Help" "Professional project quantitative" "$PMAT_BIN" --help
+test_command "Version" "paiml-mcp-agent-toolkit" "$PMAT_BIN" --version
 
 echo "=== Analysis Commands ==="
-test_command "Complexity Analysis" "$PMAT_BIN analyze complexity" "Analyzing.*project complexity"
-test_command "SATD Analysis" "$PMAT_BIN analyze satd" "Analyzing self-admitted technical debt"
-test_command "Dead Code Analysis" "$PMAT_BIN analyze dead-code" "files analyzed"
-test_command "DAG Generation" "$PMAT_BIN analyze dag call-graph" "Generating dependency analysis graph"
-test_command "DAG with target-nodes" "$PMAT_BIN analyze dag call-graph --target-nodes 50" "Generating dependency analysis graph"
-test_command "Deep Context" "$PMAT_BIN analyze deep-context" "Analyzing project context"
-test_command "TDG Analysis" "$PMAT_BIN analyze tdg" "Calculating Technical Debt Gradient"
-test_command "Churn Analysis" "$PMAT_BIN analyze churn" "Analyzing code churn"
-test_command "Duplicates" "$PMAT_BIN analyze duplicates" "Detecting code duplicates"
-test_command "Big-O Analysis" "$PMAT_BIN analyze big-o" "not-impl"
-test_command "Defect Prediction" "$PMAT_BIN analyze defect-prediction" "Predicting potential defects"
-test_command "Proof Annotations" "$PMAT_BIN analyze proof-annotations" "not-impl"
-test_command "Incremental Coverage" "$PMAT_BIN analyze incremental-coverage --base-branch main" "not-impl"
-test_command "Symbol Table" "$PMAT_BIN analyze symbol-table" "not-impl"
-test_command "Name Similarity" "$PMAT_BIN analyze name-similarity test" "not-impl"
-test_command "Graph Metrics" "$PMAT_BIN analyze graph-metrics" "not-impl"
-test_command "Comprehensive" "$PMAT_BIN analyze comprehensive" "not-impl"
-test_command "Provability" "$PMAT_BIN analyze provability" "Analyzing code provability"
+test_command "Complexity Analysis" "Analyzing.*project complexity" "$PMAT_BIN" analyze complexity
+test_command "SATD Analysis" "Analyzing self-admitted technical debt" "$PMAT_BIN" analyze satd
+test_command "Dead Code Analysis" "files analyzed" "$PMAT_BIN" analyze dead-code
+test_command "DAG Generation" "Generating dependency analysis graph" "$PMAT_BIN" analyze dag call-graph
+test_command "DAG with target-nodes" "Generating dependency analysis graph" "$PMAT_BIN" analyze dag call-graph --target-nodes 50
+test_command "Deep Context" "Analyzing project context" "$PMAT_BIN" analyze deep-context
+test_command "TDG Analysis" "Calculating Technical Debt Gradient" "$PMAT_BIN" analyze tdg
+test_command "Churn Analysis" "Analyzing code churn" "$PMAT_BIN" analyze churn
+test_command "Duplicates" "Detecting code duplicates" "$PMAT_BIN" analyze duplicates
+test_command "Big-O Analysis" "not-impl" "$PMAT_BIN" analyze big-o
+test_command "Defect Prediction" "Predicting potential defects" "$PMAT_BIN" analyze defect-prediction
+test_command "Proof Annotations" "not-impl" "$PMAT_BIN" analyze proof-annotations
+test_command "Incremental Coverage" "not-impl" "$PMAT_BIN" analyze incremental-coverage --base-branch main
+test_command "Symbol Table" "not-impl" "$PMAT_BIN" analyze symbol-table
+test_command "Name Similarity" "not-impl" "$PMAT_BIN" analyze name-similarity test
+test_command "Graph Metrics" "not-impl" "$PMAT_BIN" analyze graph-metrics
+test_command "Comprehensive" "not-impl" "$PMAT_BIN" analyze comprehensive
+test_command "Provability" "Analyzing code provability" "$PMAT_BIN" analyze provability
 
 # Makefile analysis
 if [ -f "Makefile" ]; then
-    test_command "Makefile Analysis" "$PMAT_BIN analyze makefile Makefile" "Quality Score:"
+    test_command "Makefile Analysis" "Quality Score:" "$PMAT_BIN" analyze makefile Makefile
 fi
 
 echo "=== Generation Commands ==="
 rm -rf test-scaffold-project
-test_command "Scaffold Rust" "$PMAT_BIN scaffold test-scaffold-project --toolchain rust" "Project scaffolded successfully"
+test_command "Scaffold Rust" "Project scaffolded successfully" "$PMAT_BIN" scaffold test-scaffold-project --toolchain rust
 if [ -d "test-scaffold-project" ]; then
     file_count=$(find test-scaffold-project -type f | wc -l)
     if [ $file_count -gt 0 ]; then
         echo "✅ Scaffold created $file_count files"
-        ((PASSED++))
+        PASSED=$((PASSED + 1))
     else
         echo "❌ Scaffold created no files"
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
     rm -rf test-scaffold-project
 fi
 
 echo "=== Other Commands ==="
-test_command "Context" "$PMAT_BIN context" "Files"
-test_command "Tokenize" "$PMAT_BIN tokenize README.md" "not-impl"
-test_command "Explain" "$PMAT_BIN explain" "not-impl"
-test_command "Refactor" "$PMAT_BIN refactor extract-function test.rs:10-20 new_func" "not-impl"
-test_command "Quality Gate" "$PMAT_BIN quality-gate" "not-impl"
-test_command "Serve" "$PMAT_BIN serve" "not-impl"
-test_command "Chat" "$PMAT_BIN chat test" "not-impl"
-test_command "Report" "$PMAT_BIN report quality" "not-impl"
-test_command "Search" "$PMAT_BIN search TODO" "not-impl"
-test_command "Diff" "$PMAT_BIN diff main feature-branch" "not-impl"
-test_command "Config Get" "$PMAT_BIN config get max_file_size" "not-impl"
-test_command "Diagnose" "$PMAT_BIN diagnose" "Checking system dependencies"
+test_command "Context" "Files" "$PMAT_BIN" context
+test_command "Tokenize" "not-impl" "$PMAT_BIN" tokenize README.md
+test_command "Explain" "not-impl" "$PMAT_BIN" explain
+test_command "Refactor" "not-impl" "$PMAT_BIN" refactor extract-function test.rs:10-20 new_func
+test_command "Quality Gate" "not-impl" "$PMAT_BIN" quality-gate
+test_command "Serve" "not-impl" "$PMAT_BIN" serve
+test_command "Chat" "not-impl" "$PMAT_BIN" chat test
+test_command "Report" "not-impl" "$PMAT_BIN" report quality
+test_command "Search" "not-impl" "$PMAT_BIN" search TODO
+test_command "Diff" "not-impl" "$PMAT_BIN" diff main feature-branch
+test_command "Config Get" "not-impl" "$PMAT_BIN" config get max_file_size
+test_command "Diagnose" "Checking system dependencies" "$PMAT_BIN" diagnose
 
 echo ""
 echo "=== SUMMARY ==="

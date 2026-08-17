@@ -16,6 +16,14 @@ OUTPUT_FILE=".qa-verification.json"
 while [[ $# -gt 0 ]]; do
     case $1 in
         -o|--output)
+            # Guard the operand: under `set -u` a bare `-o` made "$2" an
+            # unbound-variable abort ("line 19: $2: unbound variable") instead
+            # of a usage error, and `shift 2` would then overshift.
+            if [ $# -lt 2 ]; then
+                echo "Error: $1 requires a file argument" >&2
+                echo "Usage: $0 [-o|--output <file>]" >&2
+                exit 1
+            fi
             OUTPUT_FILE="$2"
             shift 2
             ;;

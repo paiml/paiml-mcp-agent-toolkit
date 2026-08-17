@@ -3,6 +3,13 @@
 # Pattern: Modeled after trueno-db competitive benchmarking methodology
 set -euo pipefail
 
+# Ensure we're in the project root FIRST: every path below ($RESULTS_DIR, the
+# cargo invocations, target/release/pmat) is relative to it. This cd used to sit
+# after the mkdir, so running the script from anywhere but the repo root created
+# ./benchmarks/results in the caller's directory and then failed on the first
+# `cat > "$RESULT_FILE"` because the real one had never been created.
+cd "$(dirname "$0")/.."
+
 RESULTS_DIR="benchmarks/results"
 # shellcheck disable=DET002
 # Intentional: Timestamp required for benchmark result tracking
@@ -13,9 +20,6 @@ mkdir -p "$RESULTS_DIR"
 
 echo "🔬 Starting baseline measurements at $TIMESTAMP"
 echo "Results will be saved to: $RESULT_FILE"
-
-# Ensure we're in the project root
-cd "$(dirname "$0")/.."
 
 # Record environment
 cat > "$RESULT_FILE" <<EOF

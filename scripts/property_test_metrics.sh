@@ -19,17 +19,39 @@ NC='\033[0m' # No Color
 SERVER_DIR="${1:-server/src}"
 REPORT_FORMAT="${2:-markdown}" # markdown, json, or terminal
 
+# Scratch space. One directory, removed by a trap, so an early `set -e` exit
+# cannot leak the per-function mktemp files this script used to create.
+SCRATCH=$(mktemp -d)
+cleanup_scratch() {
+    if [ -n "$SCRATCH" ] && [ -d "$SCRATCH" ]; then
+        rm -rf "$SCRATCH"
+    fi
+}
+trap cleanup_scratch EXIT
+
+# Report timestamps. Honour SOURCE_DATE_EPOCH so generated reports are
+# reproducible; fall back to wall clock for interactive runs.
+report_timestamp() {
+    local fmt="$1"
+    if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" +"$fmt" 2>/dev/null \
+            || date -u -r "${SOURCE_DATE_EPOCH}" +"$fmt"
+    else
+        date -u +"$fmt"
+    fi
+}
+
 # Functions
 count_files() {
     find "$SERVER_DIR" -name "*.rs" -type f 2>/dev/null | wc -l
 }
 
 count_files_with_property_tests() {
-    local all_files=$(mktemp)
+    local all_files="$SCRATCH/all_files"
+    : > "$all_files"
     grep -r "proptest!" "$SERVER_DIR" --include="*.rs" -l 2>/dev/null > "$all_files" || true
     grep -r "mod property_tests" "$SERVER_DIR" --include="*.rs" -l 2>/dev/null >> "$all_files" || true
     sort -u "$all_files" | wc -l
-    rm "$all_files"
 }
 
 count_placeholder_tests() {
@@ -41,20 +63,19 @@ count_meaningful_tests() {
 }
 
 get_files_without_tests() {
-    local temp_with_tests=$(mktemp)
-    local temp_all_files=$(mktemp)
-    
+    local temp_with_tests="$SCRATCH/with_tests"
+    local temp_all_files="$SCRATCH/all_rs"
+    : > "$temp_with_tests"
+
     # Get all files with tests
     grep -r "proptest!" "$SERVER_DIR" --include="*.rs" -l 2>/dev/null > "$temp_with_tests" || true
     grep -r "mod property_tests" "$SERVER_DIR" --include="*.rs" -l 2>/dev/null >> "$temp_with_tests" || true
-    
+
     # Get all files
     find "$SERVER_DIR" -name "*.rs" -type f > "$temp_all_files"
-    
+
     # Find difference
-    comm -23 <(sort "$temp_all_files") <(sort -u "$temp_with_tests") 
-    
-    rm "$temp_with_tests" "$temp_all_files"
+    comm -23 <(sort "$temp_all_files") <(sort -u "$temp_with_tests")
 }
 
 analyze_test_distribution() {
@@ -66,12 +87,12 @@ analyze_test_distribution() {
             module_files=$(find "$dir" -name "*.rs" -type f 2>/dev/null | wc -l)
             
             if [ "$module_files" -gt 0 ]; then
-                module_tests=$(mktemp)
+                module_tests="$SCRATCH/module_tests"
+                : > "$module_tests"
                 grep -r "proptest!" "$dir" --include="*.rs" -l 2>/dev/null > "$module_tests" || true
                 grep -r "mod property_tests" "$dir" --include="*.rs" -l 2>/dev/null >> "$module_tests" || true
                 module_with_tests=$(sort -u "$module_tests" | wc -l)
-                rm "$module_tests"
-                
+
                 coverage=$(awk "BEGIN {printf \"%.1f\", ($module_with_tests / $module_files) * 100}")
                 echo "$module_name|$module_with_tests|$module_files|$coverage"
             fi
@@ -133,7 +154,7 @@ generate_terminal_report() {
     
     echo ""
     echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+    echo -e "Generated: $(report_timestamp "%Y-%m-%d %H:%M:%S UTC")"
 }
 
 generate_markdown_report() {
@@ -147,7 +168,7 @@ generate_markdown_report() {
     cat << EOF
 # Property Test Metrics Report
 
-**Generated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+**Generated**: $(report_timestamp "%Y-%m-%d %H:%M:%S UTC")  
 **Sprint 88 Target**: 80% Coverage ✅
 
 ## 📊 Executive Summary
@@ -248,7 +269,7 @@ generate_json_report() {
     
     cat << EOF
 {
-  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "timestamp": "$(report_timestamp "%Y-%m-%dT%H:%M:%SZ")",
   "summary": {
     "total_files": $total_files,
     "files_with_tests": $files_with_tests,

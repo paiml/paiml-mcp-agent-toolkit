@@ -1338,6 +1338,10 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         exclude: Vec<String>,
 
+        /// Maximum files to target per iteration (0 = no limit)
+        #[arg(long, default_value = "10")]
+        max_targets: usize,
+
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,

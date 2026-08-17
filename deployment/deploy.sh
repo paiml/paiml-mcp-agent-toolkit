@@ -33,6 +33,18 @@ print_warning() {
     echo -e "${YELLOW}[!]${NC} $1"
 }
 
+# Every filesystem target below is written to as root, so refuse to act on a
+# path that is not a plain absolute path: an empty, relative or traversal-bearing
+# value must abort the install rather than create/overwrite something arbitrary.
+validate_path() {
+    case "$1" in
+        "")   print_error "Refusing to operate on an empty path" ;;
+        *..*) print_error "Refusing to operate on a path containing '..': $1" ;;
+        /*)   return 0 ;;
+        *)    print_error "Refusing to operate on a relative path: $1" ;;
+    esac
+}
+
 check_root() {
     if [[ $EUID -ne 0 ]]; then
         print_error "This script must be run as root"
@@ -50,7 +62,15 @@ create_user() {
 
 create_directories() {
     print_status "Creating directories"
-    
+
+    validate_path "$INSTALL_DIR"
+    validate_path "$CONFIG_DIR"
+    validate_path "$STATE_DIR"
+    validate_path "$LOG_DIR"
+    if [ -z "$PMAT_USER" ] || [ -z "$PMAT_GROUP" ]; then
+        print_error "PMAT_USER and PMAT_GROUP must be non-empty before chown -R"
+    fi
+
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$CONFIG_DIR"
     mkdir -p "$STATE_DIR"
@@ -67,6 +87,8 @@ create_directories() {
 }
 
 install_binary() {
+    validate_path "$BINARY_PATH"
+
     if [[ ! -f "./target/release/pmat" ]]; then
         print_warning "Binary not found. Building from source..."
         cargo build --release --package pmat

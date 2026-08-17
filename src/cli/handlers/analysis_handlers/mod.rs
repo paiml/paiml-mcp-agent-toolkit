@@ -388,6 +388,7 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             mutation_threshold,
             focus,
             exclude,
+            max_targets,
             output,
             format,
         } => {
@@ -400,6 +401,7 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 mutation_threshold,
                 focus,
                 exclude,
+                max_targets,
                 output,
                 format,
             )

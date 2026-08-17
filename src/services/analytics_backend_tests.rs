@@ -9,6 +9,19 @@ fn test_backend_auto_select() {
     assert_eq!(backend, Backend::Scalar);
 }
 
+/// Pins the documented behaviour of `is_gpu_available`: it reports `false`
+/// unconditionally because device detection is not implemented, and the selector
+/// must agree with it rather than reach for a GPU backend that computes on the CPU.
+#[test]
+#[cfg(feature = "analytics-gpu")]
+fn test_gpu_is_reported_unavailable_and_never_selected() {
+    assert!(
+        !BackendSelector::is_gpu_available(),
+        "GPU detection is unimplemented; this must stay false until real kernels exist"
+    );
+    assert_ne!(BackendSelector::auto_select(), Backend::Gpu);
+}
+
 #[test]
 fn test_generate_dataset() {
     let dataset = generate_test_dataset(1000);

@@ -4,7 +4,9 @@
 set -e
 
 echo "=== QA Re-test Results ==="
-echo "Date: $(date)"
+# Identify the tree under test, not the wall clock: the revision is what makes
+# two runs of this report comparable.
+echo "Revision: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 echo "Binary: $PMAT"
 echo ""
 
