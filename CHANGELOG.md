@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.32.0] - 2026-08-16
+## [3.32.0] - 2026-08-17
 
 Minor rather than patch: two of these change what pmat *reports* on unchanged code.
 SATD now finds markers in doc comments, so counts go **up** on every project, and a
