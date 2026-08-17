@@ -72,6 +72,49 @@ finding. Findings are tiered shipped / test / doc, and as with `reachability`
 the summary always carries its denominator and degrades to FLOOR ONLY when any
 file could not be read.
 
+**`pmat analyze vacuous-tests`** — finds `#[test]` functions that cannot fail.
+In the pass/fail vocabulary a test that executes code and discards the result
+IS a passing test; nothing distinguishes "the assertion held" from "there was no
+assertion". Line coverage is the only fleet metric with a hard floor, and it
+measures execution rather than verification, so `let _ = call();` is the
+cheapest way to comply with it.
+
+```
+pmat analyze vacuous-tests [-p PATH] [-f json] [--max-rate PCT] [--fail-on-any]
+```
+
+Measured:
+
+| repo | cannot fail | rate |
+|---|---|---|
+| **pmat** | **1180 of 33,925** | **3.5%** |
+| aprender | 2925 of 110,398 | 2.6% |
+| forjar | 356 of 16,888 | 2.1% |
+| pforge | 2 of 238 | 0.8% |
+
+pmat has the worst rate of the four. 181 of its 1180 are tautologies, nearly all
+`assert!(result.is_ok() || result.is_err())`, and its worst single file is
+`src/tests/coverage_boost_unified_ast.rs` (75) — the name says what it is for.
+
+This **corrects the figure in #1018**, which claimed 802 vacuous tests in forjar
+from a grep-based count; parsing gives 356. The narrower definition is the right
+one: `.unwrap()`, `.expect()`, `?`, `panic!` and a same-file helper that asserts
+are all genuine failure modes, so a test using them is weak rather than vacuous.
+Read the ~933 fleet total in #1018 as an upper bound from a looser rule.
+
+A `no-failure-mode` test still catches a panic — what it cannot catch is a wrong
+answer. It is reported as a smoke test, not as a broken one. `#[should_panic]`
+(the attribute is the assertion) and `#[ignore]` (an honest declaration) are
+both excluded. Also reported: tests that `return` early when a fixture is
+missing, which pass having checked nothing and, unlike `#[ignore]`, invisibly —
+14 in pmat, 173 in aprender.
+
+As with the other two, the report refuses to look clean when it is not: zero
+tests examined is an error rather than a pass, and unparseable files are counted
+together with the `#[test]` markers inside them, so pmat's floor reads "30 files
+not analysed, holding 545 unjudged `#[test]` fns" instead of a caveat a reader
+walks past.
+
 ### Fixed
 
 **`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
