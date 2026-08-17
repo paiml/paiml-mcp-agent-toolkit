@@ -447,39 +447,6 @@ async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
 #[path = "../analysis_handlers_tests.rs"]
 mod tests;
 
-#[cfg(test)]
-mod ml_refusal_tests {
-    //! `analyze complexity --ml` and `analyze tdg --ml` are the same defect:
-    //! both promised "trained ML models instead of heuristic weighted sums" and
-    //! both threw the flag away, so each printed the heuristic numbers under an
-    //! ML banner. The refusal is one function so the two cannot drift.
-    use super::reject_unimplemented_ml;
-
-    #[test]
-    fn an_unset_flag_is_not_refused() {
-        assert!(reject_unimplemented_ml(false, "analyze tdg", "TDG scores").is_ok());
-    }
-
-    #[test]
-    fn tdg_ml_is_refused_rather_than_relabelled() {
-        let err = reject_unimplemented_ml(true, "analyze tdg", "TDG scores")
-            .expect_err("--ml returned heuristic scores, so it must not be accepted");
-        let err = err.to_string();
-        assert!(err.contains("--ml is not implemented"), "{err}");
-        assert!(err.contains("TDG scores"), "{err}");
-        assert!(err.contains("analyze tdg"), "{err}");
-    }
-
-    #[test]
-    fn complexity_ml_keeps_its_own_wording() {
-        let err = reject_unimplemented_ml(true, "analyze complexity", "complexity scores")
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("complexity scores"), "{err}");
-        assert!(err.contains("analyze complexity"), "{err}");
-    }
-}
-
 /// Find machine-specific absolute paths baked into source.
 async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
     use crate::services::hardcoded_paths::{self, Site};
@@ -522,12 +489,8 @@ async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> 
         );
     } else {
         println!("{}", report.summary());
-        let mut shown = 0usize;
-        for f in &report.findings {
-            if shown == 40 {
-                println!("  … and {} more", report.findings.len() - shown);
-                break;
-            }
+        const MAX_SHOWN: usize = 40;
+        for f in report.findings.iter().take(MAX_SHOWN) {
             println!(
                 "  [{}] {}:{}  {}  ({})",
                 f.site.as_str(),
@@ -536,7 +499,11 @@ async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> 
                 f.path,
                 f.kind.reason()
             );
-            shown += 1;
+        }
+        if let Some(hidden) = report.findings.len().checked_sub(MAX_SHOWN) {
+            if hidden > 0 {
+                println!("  … and {hidden} more");
+            }
         }
         for s in report
             .skipped
@@ -632,4 +599,37 @@ async fn route_vacuous_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod ml_refusal_tests {
+    //! `analyze complexity --ml` and `analyze tdg --ml` are the same defect:
+    //! both promised "trained ML models instead of heuristic weighted sums" and
+    //! both threw the flag away, so each printed the heuristic numbers under an
+    //! ML banner. The refusal is one function so the two cannot drift.
+    use super::reject_unimplemented_ml;
+
+    #[test]
+    fn an_unset_flag_is_not_refused() {
+        assert!(reject_unimplemented_ml(false, "analyze tdg", "TDG scores").is_ok());
+    }
+
+    #[test]
+    fn tdg_ml_is_refused_rather_than_relabelled() {
+        let err = reject_unimplemented_ml(true, "analyze tdg", "TDG scores")
+            .expect_err("--ml returned heuristic scores, so it must not be accepted");
+        let err = err.to_string();
+        assert!(err.contains("--ml is not implemented"), "{err}");
+        assert!(err.contains("TDG scores"), "{err}");
+        assert!(err.contains("analyze tdg"), "{err}");
+    }
+
+    #[test]
+    fn complexity_ml_keeps_its_own_wording() {
+        let err = reject_unimplemented_ml(true, "analyze complexity", "complexity scores")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("complexity scores"), "{err}");
+        assert!(err.contains("analyze complexity"), "{err}");
+    }
 }
