@@ -368,6 +368,33 @@ pub enum AnalyzeCommands {
         fail_on_any: bool,
     },
 
+    /// Find #[test] functions that cannot fail
+    ///
+    /// A stack-wide audit counted ~933 tests whose bodies contain nothing that
+    /// can fail — 584 of forjar's 802 use `let _ = <fallible call>;`, the
+    /// minimum edit that executes a line without checking it. Line coverage is
+    /// the only fleet metric with a hard floor, and it measures execution, not
+    /// verification. Also reports tests that `return` early when a fixture is
+    /// missing: those pass having checked nothing, invisibly, unlike #[ignore].
+    #[command(name = "vacuous-tests", visible_aliases = &["vacuous", "fake-tests"])]
+    VacuousTests {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when the vacuous rate exceeds this percentage
+        #[arg(long)]
+        max_rate: Option<f64>,
+
+        /// Exit non-zero when any test cannot fail
+        #[arg(long)]
+        fail_on_any: bool,
+    },
+
     // ── Debt Analysis ─────────────────────────────────────────────
     // Satd, DeepContext
     /// Analyze Self-Admitted Technical Debt (SATD) in comments
