@@ -115,6 +115,15 @@ together with the `#[test]` markers inside them, so pmat's floor reads "30 files
 not analysed, holding 545 unjudged `#[test]` fns" instead of a caveat a reader
 walks past.
 
+**All three new analyzers are CLI-only** (#1029). The MCP surface is a
+hand-curated list of 16 tools, not a projection of the CLI, so a new
+`AnalyzeCommands` variant appears in `pmat analyze --help` immediately and in
+`tools/list` never. Registering one tool touches six live sites and a seventh
+that `pmat analyze reachability` reports as an orphan — `mcp_impl_server.rs`
+dispatches `analyze_satd` and has never been compiled. Deriving the tool list
+from the clap enum is the fix; hand-adding three tools across six files ahead of
+a release is not.
+
 ### Fixed
 
 **pmat's scaffolder wrote a config section pmat does not read** (#1019). The
