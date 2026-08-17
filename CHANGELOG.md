@@ -117,6 +117,25 @@ walks past.
 
 ### Fixed
 
+**pmat's scaffolder wrote a config section pmat does not read** (#1019). The
+generated `.pmat-gates.toml` carried a `[gates]` table — `run_tests`,
+`test_timeout`, `run_clippy`, `clippy_strict`, `min_coverage`, `max_complexity`
+— and nothing in pmat parses a `[gates]` section. The readers of that file look
+for `[entropy]`, `[tdg]` and `[quality]`. Checked key by key: `run_tests` and
+`test_timeout` have zero struct-field declarations anywhere in the tree.
+
+So a user ran the scaffolder, set `run_tests = false`, and pmat kept running
+tests — silently, because TOML ignores unknown keys. A config that is read and
+satisfied is indistinguishable from one that is never opened; both produce no
+output.
+
+This is pmat's own instance of what the audit found fleet-wide: **wos has 99 of
+99 config keys parsed by nothing**, and whisper.apr has 51 of 58, including a
+`[file-health]` section spelled with a hyphen where pmat reads `file_health`
+with an underscore. Rejecting (or warning on) unknown keys is the general fix
+and is **not** in this release — it would turn every existing typo into a hard
+error, which needs its own deprecation path. #1019 stays open for it.
+
 **`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
 concurrency from CPU count while its binding constraint is memory. Measured with
 `/usr/bin/time -v`, varying only `RAYON_NUM_THREADS`, peak RSS scales linearly with
