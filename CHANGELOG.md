@@ -45,6 +45,33 @@ to a FLOOR rather than a total — a count with no denominator is the defect the
 analyzer exists to find. It refuses outright when `cargo metadata` yields no
 targets, so an unmeasured tree cannot read as a clean one.
 
+**`pmat analyze hardcoded-paths`** — finds machine-specific absolute paths baked
+into source. aprender ships binaries containing `/home/noah/...`: correct on the
+machine that built them, inert everywhere else, and invisible to every gate —
+the code compiles, clippy is clean, the tests pass (there), and the path is just
+a string literal. Nothing in the stack asks whether a value names a location
+that exists on any other host.
+
+```
+pmat analyze hardcoded-paths [-p PATH] [-f json] [--fail-on-shipped] [--fail-on-any]
+```
+
+On aprender: 618 findings across 14,596 files, **324 in shipped code** — 216 in
+`crates/*/examples/*.rs` (cargo examples are binaries, so `cargo run --example`
+cannot work for anyone else) and 45 in `contracts/*.yaml`, where the
+provable-contract tier cites evidence files under one workstation's home. On
+pmat itself: 15 shipped findings, all real, five of them renacer golden-trace
+baselines that pin `/home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat`
+— so golden-trace validation could only ever pass on this machine.
+
+The rule is narrow on purpose, because false positives are what kill a detector:
+a path is flagged only when it names a specific user, nix store hash or build
+root. Being absolute is not enough — `/usr/bin/env`, `/etc/hosts`, `/dev/null`,
+`/home/$USER`, `$(HOME)/.cargo/…` and `/home/user/…` placeholders all produce no
+finding. Findings are tiered shipped / test / doc, and as with `reachability`
+the summary always carries its denominator and degrades to FLOOR ONLY when any
+file could not be read.
+
 ### Fixed
 
 **`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
