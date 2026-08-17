@@ -341,6 +341,33 @@ pub enum AnalyzeCommands {
         fail_on_orphan: bool,
     },
 
+    /// Find machine-specific absolute paths baked into source
+    ///
+    /// aprender shipped binaries containing `/home/noah/…`: correct on the
+    /// machine that built them, inert everywhere else, and invisible to every
+    /// gate — the code compiled, clippy was clean, and the path was just a
+    /// string literal. Flags a path only when it names a specific user, nix
+    /// store hash or build root; `/usr/bin/env` and `/home/$USER` are portable
+    /// and are not findings.
+    #[command(name = "hardcoded-paths", visible_aliases = &["abs-paths", "path-leaks"])]
+    HardcodedPaths {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when a path leaks into shipped (non-test, non-doc) code
+        #[arg(long)]
+        fail_on_shipped: bool,
+
+        /// Exit non-zero on any finding, including tests and documentation
+        #[arg(long)]
+        fail_on_any: bool,
+    },
+
     // ── Debt Analysis ─────────────────────────────────────────────
     // Satd, DeepContext
     /// Analyze Self-Admitted Technical Debt (SATD) in comments

@@ -336,7 +336,9 @@ impl CliAdapter {
             | AnalyzeCommands::Entropy { .. }
             // Reachability is Basic: it reads the module graph and `git
             // ls-files`, with no AST pass and no cargo build.
-            | AnalyzeCommands::Reachability { .. } => AnalyzeCommandCategory::Basic,
+            | AnalyzeCommands::Reachability { .. }
+            // HardcodedPaths likewise: `git ls-files` plus a text scan.
+            | AnalyzeCommands::HardcodedPaths { .. } => AnalyzeCommandCategory::Basic,
 
             // Advanced analysis commands (comprehensive)
             AnalyzeCommands::DeepContext { .. }
