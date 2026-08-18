@@ -47,11 +47,33 @@
 # A timeout here is a failure, deliberately: "mutation could not finish
 # analysing this range" is not "this range is verified".
 #
-# NOT YET A REQUIRED CHECK. Making a check required is a repository ruleset
-# change, which is not in this commit's power. The job fails closed today; the
-# ruleset entry has to be added by someone with settings access, and until it is,
-# a red run here blocks nothing on its own. That is stated rather than papered
-# over.
+# REQUIRED CHECK (PMAT-630 B2). `mutation-diff` — this job's context, since it
+# is a plain top-level job with no matrix and no reusable-workflow indirection
+# — is registered directly in this repository's classic branch protection
+# `required_status_checks`, alongside `docs build (docs.rs environment)` and
+# `pmat score`. All three live in a workflow file separate from
+# feature-matrix.yml, and all three are required THAT way rather than via
+# `feature-gate`'s `needs:`, because GitHub Actions' `needs:` cannot cross
+# workflow files — `feature-gate` can only depend on jobs defined inside
+# feature-matrix.yml itself. A standalone required-status-check entry is the
+# established, and only working, mechanism for a job that lives in its own
+# file. Verified against the live setting:
+#
+#   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection \
+#     --jq '.required_status_checks.contexts'
+#   -> ["ci / gate","feature-gate","docs build (docs.rs environment)",
+#       "pmat score","mutation-diff"]
+#
+# Precisely what "required" buys, because the job below still SKIPS on an
+# unlabelled PR (see its own `if:` below): GitHub posts a `skipped` check-run
+# for a job whose job-level `if:` did not run, and branch protection treats a
+# `skipped` required check as PASSING. So on an ordinary PR this context now
+# exists and is green, and still gates nothing — unchanged from before. What
+# changed is the PR that DOES carry the `mutation` label: previously a red run
+# there blocked nothing at all (the job sat outside every `needs:` list);
+# now, being a required context, a red run blocks that PR's merge. Nightly and
+# `workflow_dispatch` runs are not evaluated against any PR's head commit, so
+# branch protection never applies to them regardless of this setting.
 name: Mutation (diff)
 
 on:
@@ -78,9 +100,13 @@ permissions:
 jobs:
   mutation-diff:
     # Only when asked for, or on the nightly schedule. A pull_request run
-    # without the `mutation` label is skipped, not silently passed — and this
-    # job is not in any other job's `needs`, so a skip cannot be mistaken for a
-    # green gate elsewhere.
+    # without the `mutation` label is SKIPPED — not silently passed in the
+    # sense of asserting anything false, since it asserts nothing at all — but
+    # branch protection's required-status-check semantics read a skipped run
+    # as passing regardless, so an unlabelled PR is exactly as ungated as it
+    # was before this became a required check (see the header comment above
+    # `name:`). Add the `mutation` label to a PR to make this job, and
+    # therefore this requirement, real for it.
     if: >-
       github.event_name != 'pull_request' ||
       contains(github.event.pull_request.labels.*.name, 'mutation')

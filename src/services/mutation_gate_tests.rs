@@ -221,6 +221,37 @@ fn inv_mut_2_zero_mutants_with_an_unknown_scope_is_a_failure() {
     );
 }
 
+/// FALSIFY-MUT-2b (B3, #1034/PMAT-630): the doc comment on
+/// `examples/mutation_gate.rs` says "no diff means `DiffScope::Unknown`, which
+/// the gate treats as a failure ... being unable to see the diff is not
+/// permission to pass" — but `evaluate_mutation_gate` only enforced that when
+/// NO artifact existed at all. A real, non-empty, all-caught `outcomes.json` —
+/// exactly the shape `mutation-diff-gate.sh`'s own header warns a STALE
+/// `mutants.out/` can leave behind — walked straight past every INV-MUT-2
+/// branch when `total_mutants != 0`: the `o.total_mutants == 0` guard never
+/// ran, so the `DiffScope::Unknown` arm inside it never fired, and nothing
+/// else in the function looks at `scope` unless it is
+/// `MutableRustSource`. Result: an unreadable diff sitting next to *any*
+/// nonempty, self-consistent, all-caught artifact was credited as a pass —
+/// the fail-OPEN behaviour the doc comment explicitly disclaims.
+#[test]
+fn falsify_mut_2b_unknown_scope_is_not_saved_by_a_stale_all_caught_artifact() {
+    let stale = parse_outcomes(ALL_CAUGHT).expect("real cargo-mutants fixture");
+    assert!(
+        stale.total_mutants > 0,
+        "the fixture must be non-empty to falsify this"
+    );
+
+    let v = evaluate_mutation_gate(Some(&stale), &DiffScope::Unknown);
+    assert!(
+        !v.passed,
+        "an unreadable diff must fail closed even when mutants.out/ (however real, however \
+         all-caught) sits on disk — it may describe a different change entirely: {:?}",
+        v.findings
+    );
+    assert_eq!(v.fired(), vec!["INV-MUT-2"]);
+}
+
 #[test]
 fn inv_mut_2_mutants_that_never_compiled_are_not_a_pass() {
     let o = MutationOutcomes {

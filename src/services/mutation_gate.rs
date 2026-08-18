@@ -533,16 +533,32 @@ pub fn evaluate_mutation_gate(
         }
     }
 
-    // INV-MUT-2: an empty (or wholly unexecuted) mutant set is not a pass.
+    // INV-MUT-2, part 1: an unknown scope can never be credited, however the
+    // artifact reads. The diff could not be read, so nothing establishes that
+    // `o` describes THIS change rather than a stale prior run — exactly the
+    // shape the module header warns `cargo mutants --in-diff` can leave
+    // behind (exits 0, writes nothing, leaves the previous `mutants.out/` in
+    // place). This check is unconditional on `o.total_mutants`: a real,
+    // non-empty, self-consistent, all-caught artifact must not be allowed to
+    // paper over an unreadable diff, or "no diff means Unknown, which the
+    // gate treats as a failure" (see `examples/mutation_gate.rs`) is a
+    // promise the code does not keep.
+    if *scope == DiffScope::Unknown {
+        findings.push(finding(
+            "INV-MUT-2",
+            "the diff could not be read, so the scope of this change is unknown; an existing \
+             mutants.out/ cannot be credited against an unknown scope — being unable to see the \
+             diff is not permission to trust whatever is already on disk"
+                .into(),
+        ));
+    }
+
+    // INV-MUT-2, part 2: an empty (or wholly unexecuted) mutant set is not a
+    // pass, for a scope the gate COULD read. `Unknown` already failed above;
+    // do not double-report it here.
     if o.total_mutants == 0 {
         match scope {
-            DiffScope::NoMutableRustSource => {}
-            DiffScope::Unknown => findings.push(finding(
-                "INV-MUT-2",
-                "0 mutants were generated and no diff was supplied to prove that is legitimate — \
-                 an empty mutant set is not a pass"
-                    .into(),
-            )),
+            DiffScope::NoMutableRustSource | DiffScope::Unknown => {}
             DiffScope::MutableRustSource(files) => findings.push(finding(
                 "INV-MUT-2",
                 format!(
