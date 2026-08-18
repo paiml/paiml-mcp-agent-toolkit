@@ -41,7 +41,7 @@ fn handle_ledger(project_path: &Path, write: bool, output: Option<&Path>) -> Res
     }
 
     match ledger::committed(project_path) {
-        Some(found) if found == rendered => {
+        Some(found) if !ledger::drifted(&found, &rendered) => {
             println!("{} is up to date", ledger::LEDGER_PATH);
             Ok(())
         }

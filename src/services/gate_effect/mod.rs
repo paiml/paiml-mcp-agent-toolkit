@@ -65,6 +65,68 @@ use std::path::Path;
 /// documented alias of `comply check`.
 pub const COMPLY_NEEDLES: &[&str] = &["comply check", "comply status"];
 
+/// What one required status check actually does to the CB roster.
+///
+/// Only one of these four is a measurement. The roots table used to print a
+/// single phrase — "this required check gates nothing in the CB roster" — for
+/// every context that did not carry a rule, which said the same thing about a
+/// check that was read in full and genuinely reaches nothing as about a check
+/// whose steps this repository cannot read at all. The second is a HOLE: it
+/// cannot be shown to run a rule, and it cannot be shown not to. Rendering a
+/// hole as a zero is the same mistake as rendering an empty roster as a pass,
+/// and this rule exists to reject that mistake.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RootEffect {
+    /// Reaches at least one invocation of the roster whose failure propagates.
+    Carries,
+    /// Resolved to a job in this repository, read in full, and reaches no
+    /// invocation. A measured zero.
+    ReachesNothing,
+    /// Resolves into a reusable workflow hosted elsewhere. Unmeasured.
+    Opaque { reference: String },
+    /// No job in `.github/workflows` produces this context at all, so it can
+    /// never turn green on its own. Unmeasured.
+    Phantom,
+    /// No resolution was recorded for this context — the analysis never got as
+    /// far as asking. Fail closed: unmeasured, never a zero.
+    Unresolved,
+}
+
+impl RootEffect {
+    /// Did this root reach the roster? `false` for every unmeasured case too,
+    /// because "we could not tell" must never read as "enforced".
+    pub fn carries(&self) -> bool {
+        matches!(self, RootEffect::Carries)
+    }
+
+    /// Was this root actually *measured*? A hole is not a zero.
+    pub fn measured(&self) -> bool {
+        matches!(self, RootEffect::Carries | RootEffect::ReachesNothing)
+    }
+
+    /// The cell the ledger prints, and the sentence the check message uses.
+    pub fn explain(&self) -> String {
+        match self {
+            RootEffect::Carries => "yes".to_string(),
+            RootEffect::ReachesNothing => "**no** — this required check was read in full and \
+                                          gates nothing in the CB roster"
+                .to_string(),
+            RootEffect::Opaque { reference } => format!(
+                "**unknown** — resolves into `{reference}`, whose steps this repository cannot \
+                 read. A HOLE, not a measured zero: no rule can be shown to run through it, and \
+                 none can be shown not to"
+            ),
+            RootEffect::Phantom => "**unknown** — no job in `.github/workflows` produces this \
+                                    context at all, so it is a phantom gate: it cannot turn \
+                                    green on its own, and what it would reach is unmeasured"
+                .to_string(),
+            RootEffect::Unresolved => "**unknown** — no resolution was recorded for this \
+                                       context, so nothing about it was measured"
+                .to_string(),
+        }
+    }
+}
+
 /// The verdict, with everything needed to explain it.
 #[derive(Debug, Clone, Default)]
 pub struct GateEffectReport {
@@ -92,24 +154,39 @@ impl GateEffectReport {
         self.holes.is_empty() && self.unreachable_rules.is_empty() && !self.rules.is_empty()
     }
 
-    /// One `(context, reaches an invocation)` pair per required context.
+    /// One `(context, what it does to the roster)` pair per required context.
     ///
     /// This is where a required check with no CB mapping shows up: a context
     /// that reaches nothing is a gate on something other than the rule roster,
     /// and the ledger says so instead of quietly counting it as coverage.
-    pub fn context_carries(&self) -> Vec<(String, bool)> {
+    pub fn context_effects(&self) -> Vec<(String, RootEffect)> {
         self.required_contexts
             .iter()
             .enumerate()
-            .map(|(i, c)| {
-                let reaches = self
-                    .graph
-                    .roots
-                    .get(i)
-                    .is_some_and(|r| !self.graph.invocations_from_root(*r).is_empty());
-                (c.clone(), reaches)
-            })
+            .map(|(i, c)| (c.clone(), self.root_effect(i)))
             .collect()
+    }
+
+    fn root_effect(&self, i: usize) -> RootEffect {
+        let carries = self
+            .graph
+            .roots
+            .get(i)
+            .is_some_and(|r| !self.graph.invocations_from_root(*r).is_empty());
+        if carries {
+            return RootEffect::Carries;
+        }
+        // Not carrying is three different findings, and only one of them is a
+        // measurement. `resolutions` is pushed once per context, in order, by
+        // `finish`, so index `i` is this context's own resolution.
+        match self.resolutions.get(i).map(|(_, r)| r) {
+            Some(Resolution::Job { .. }) => RootEffect::ReachesNothing,
+            Some(Resolution::Opaque { reference, .. }) => RootEffect::Opaque {
+                reference: reference.clone(),
+            },
+            Some(Resolution::Phantom) => RootEffect::Phantom,
+            None => RootEffect::Unresolved,
+        }
     }
 
     pub fn enforcing(&self) -> impl Iterator<Item = &Invocation> {

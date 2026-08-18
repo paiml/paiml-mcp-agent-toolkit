@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 
 // Check handlers split into submodules
-mod check_handlers;
+pub(crate) mod check_handlers;
 pub(crate) use check_handlers::*;
 
 // Migration, enforce, report, init, upgrade handlers

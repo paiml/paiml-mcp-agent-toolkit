@@ -88,7 +88,7 @@ fn gate_effect_ledger_drift(
             "{} is missing — CB-2100 generates it; run `pmat comply ledger --write`",
             ledger::LEDGER_PATH
         )),
-        Some(found) if found != expected => Some(format!(
+        Some(found) if ledger::drifted(&found, &expected) => Some(format!(
             "{} is stale (regenerate with `pmat comply ledger --write`)",
             ledger::LEDGER_PATH
         )),
@@ -123,12 +123,12 @@ fn gate_effect_fail_message(
         }
     )];
     parts.extend(report.holes.iter().take(GATE_EFFECT_MAX_LINES).cloned());
-    for (context, carries) in report.context_carries() {
-        if !carries {
-            parts.push(format!(
-                "required check `{context}` reaches no rule invocation, so it gates nothing in \
-                 the CB roster"
-            ));
+    // A root that was read and reaches nothing, a root this repository cannot
+    // read, and a root no job produces are three different findings. Printing
+    // one sentence for all three reports a hole as a measured zero.
+    for (context, effect) in report.context_effects() {
+        if !effect.carries() {
+            parts.push(format!("required check `{context}`: {}", effect.explain()));
         }
     }
     for inv in report.neutered().take(GATE_EFFECT_MAX_LINES) {

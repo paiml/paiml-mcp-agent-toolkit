@@ -93,7 +93,7 @@ pub(crate) fn build_cb_result(
 ) -> ComplianceCheck {
     if critical_count > 0 {
         ComplianceCheck {
-            name: "ComputeBrick Compliance".into(),
+            name: "CB-060: ComputeBrick Compliance".into(),
             status: CheckStatus::Fail,
             message: format!(
                 "{} critical, {} warnings:\n{}",
@@ -105,7 +105,7 @@ pub(crate) fn build_cb_result(
         }
     } else if warning_count > 0 {
         ComplianceCheck {
-            name: "ComputeBrick Compliance".into(),
+            name: "CB-060: ComputeBrick Compliance".into(),
             status: CheckStatus::Warn,
             message: format!(
                 "{} warnings detected:\n{}",
@@ -116,7 +116,7 @@ pub(crate) fn build_cb_result(
         }
     } else {
         ComplianceCheck {
-            name: "ComputeBrick Compliance".into(),
+            name: "CB-060: ComputeBrick Compliance".into(),
             status: CheckStatus::Pass,
             message: "ComputeBrick patterns validated - no violations detected".into(),
             severity: Severity::Info,
@@ -144,7 +144,7 @@ pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
             .unwrap_or(false);
     if !has_probar && !has_brick_dir && !has_cb_ecosystem {
         return ComplianceCheck {
-            name: "ComputeBrick Compliance".into(),
+            name: "CB-060: ComputeBrick Compliance".into(),
             status: CheckStatus::Skip,
             message: "Not a ComputeBrick project (no probar/trueno/realizar dep or brick/ dir)"
                 .into(),
@@ -180,7 +180,7 @@ pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceChe
     }
     if critical_count > 0 || warning_count > 0 {
         ComplianceCheck {
-            name: "OIP Tarantula Patterns (CB-120 to CB-124)".into(),
+            name: "CB-120: OIP Tarantula Patterns (CB-120 to CB-124)".into(),
             status: CheckStatus::Warn,
             message: format!(
                 "[Advisory] {} issues, {} warnings:\n{}",
@@ -192,7 +192,7 @@ pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceChe
         }
     } else {
         ComplianceCheck {
-            name: "OIP Tarantula Patterns (CB-120 to CB-124)".into(),
+            name: "CB-120: OIP Tarantula Patterns (CB-120 to CB-124)".into(),
             status: CheckStatus::Pass,
             message: "No OIP Tarantula pattern violations detected".into(),
             severity: Severity::Info,
@@ -293,7 +293,7 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
     ];
     let (all_issues, critical, error, warning) = collect_triaged_violations(&violation_sets);
     build_triaged_check(
-        "Coverage Quality Patterns (CB-125 to CB-127)",
+        "CB-125: Coverage Quality Patterns (CB-125 to CB-127)",
         all_issues,
         critical,
         error,

@@ -163,6 +163,14 @@ pub fn render(
          `pmat comply ledger --write`. One row per CB rule declared under\n",
     );
     s.push_str(&format!("`{}`.\n\n", roster::HANDLER_DIR));
+    s.push_str(
+        "Drift is keyed on this document's DATA — rule id, title, severity, status, carrier, and\n\
+         the FILE a rule is declared in. The line number in `Defined at`, and the `Source:`\n\
+         provenance label below, are presentation rather than identity: an edit above a rule\n\
+         declaration moves the first, and reading the same roots from a different place changes\n\
+         the second, and neither is a change to what this repository enforces. The line number is\n\
+         therefore advisory and may lag the source until the next `--write`.\n\n",
+    );
     push_roots(&mut s, report);
     push_summary(&mut s, &rows);
     push_holes(&mut s, report);
@@ -182,15 +190,8 @@ fn push_roots(s: &mut String, report: &GateEffectReport) {
     }
     s.push_str("| Required context | Reaches a rule invocation |\n");
     s.push_str("|---|---|\n");
-    for (context, reaches) in report.context_carries() {
-        s.push_str(&format!(
-            "| `{context}` | {} |\n",
-            if reaches {
-                "yes".to_string()
-            } else {
-                "**no** — this required check gates nothing in the CB roster".to_string()
-            }
-        ));
+    for (context, effect) in report.context_effects() {
+        s.push_str(&format!("| `{context}` | {} |\n", effect.explain()));
     }
     s.push('\n');
 }
@@ -227,13 +228,33 @@ fn push_table(s: &mut String, rows: &[Row]) {
         s.push_str(&format!(
             "| {} | {} | {} | {} | {} | `{}` |\n",
             r.rule.id,
-            escape(&r.rule.title),
+            title_cell(&r.rule),
             r.severity,
             r.status.label(),
             escape(&r.carrier),
             r.rule.citation()
         ));
     }
+}
+
+/// The Title cell for one rule — **never** empty.
+///
+/// A blank cell tells the reader nothing, and worse, it tells them nothing in a
+/// way that looks deliberate. Six rows shipped blank, and "this rule has no
+/// title", "the check never names itself" and "the scanner lost the
+/// declaration" are three different findings that all render as the same empty
+/// space. So a rule with no discoverable title says UNIDENTIFIED and says why.
+pub fn title_cell(rule: &Rule) -> String {
+    if rule.title.trim().is_empty() {
+        return format!(
+            "**UNIDENTIFIED** — registered as `{}`, but no `{}: <title>` declaration was found \
+             in the handler sources, so nothing this check reports at runtime can be tied back \
+             to this row",
+            rule.config_key(),
+            rule.id
+        );
+    }
+    escape(&rule.title)
 }
 
 /// Markdown tables end a cell at `|`, and rule titles contain them.
@@ -244,4 +265,87 @@ fn escape(s: &str) -> String {
 /// Read the committed ledger, if there is one.
 pub fn committed(project_path: &Path) -> Option<String> {
     std::fs::read_to_string(project_path.join(LEDGER_PATH)).ok()
+}
+
+// ── identity ────────────────────────────────────────────────────────────────
+
+/// What the identity substitutes for the provenance label. A fixed string, so
+/// that a ledger which has *lost* the line still differs from one that has it.
+const PROVENANCE_MASK: &str = "Source: (provenance — not part of the ledger identity)";
+
+/// Prefix of the one rendered line that names where the root list came from.
+const PROVENANCE_PREFIX: &str = "Source: ";
+
+/// Has the committed ledger drifted from what the engine computes?
+///
+/// Drift is a difference in the ledger's [`identity`], not in its bytes.
+pub fn drifted(committed: &str, expected: &str) -> bool {
+    identity(committed) != identity(expected)
+}
+
+/// The ledger's **identity**: what it actually asserts, with the two
+/// presentation-only fields masked out.
+///
+/// Drift used to be a byte compare of the rendering, which made CB-2100 go red
+/// for two reasons that say nothing about what this repository enforces:
+///
+/// * **a line number moved.** Every citation is `file:line`, so a two-line
+///   clippy restructure *above* a rule declaration was drift. A gate that
+///   reddens on edits it does not measure is a gate people learn to regenerate
+///   reflexively, and a reflex carries no signal — which is how a real drift
+///   would eventually be regenerated away unread.
+/// * **the provenance label changed.** Supplying the identical required
+///   contexts through `PMAT_REQUIRED_STATUS_CHECKS` instead of the committed
+///   manifest rewrote one `Source:` line and nothing else. The roots were the
+///   same; only the label differed.
+///
+/// So identity keys on the data — rule id, title, severity, status, carrier,
+/// and the **file** a rule is declared in. Never the line, never the label.
+///
+/// The line is still *printed*: a citation you cannot navigate to is not a
+/// citation. It is simply not part of what the ledger claims, and it may
+/// therefore lag the source until the next `pmat comply ledger --write`. That
+/// is the trade, stated: an advisory line number that can be stale, in exchange
+/// for a gate that only fires on enforcement changing.
+pub fn identity(document: &str) -> String {
+    document
+        .lines()
+        .map(|line| {
+            if line.starts_with(PROVENANCE_PREFIX) {
+                PROVENANCE_MASK.to_string()
+            } else {
+                mask_line_numbers(line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// `` `src/x.rs:167` `` → `` `src/x.rs` ``.
+///
+/// Only inside backticks, and only when the suffix is entirely digits — the
+/// carrier column spells an invocation site `workflow:job_id`, unbackticked and
+/// with a job id that is not a number, and masking that would blind the ledger
+/// to a rule changing which job carries it.
+fn mask_line_numbers(line: &str) -> String {
+    line.split('`')
+        .enumerate()
+        .map(|(i, part)| {
+            if i % 2 == 1 {
+                strip_line_suffix(part)
+            } else {
+                part.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("`")
+}
+
+fn strip_line_suffix(inner: &str) -> String {
+    match inner.rsplit_once(':') {
+        Some((head, tail)) if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit()) => {
+            head.to_string()
+        }
+        _ => inner.to_string(),
+    }
 }

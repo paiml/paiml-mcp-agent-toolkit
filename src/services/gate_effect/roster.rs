@@ -134,7 +134,15 @@ fn definition_sites(project_path: &Path) -> Vec<Rule> {
             // A rule id inside a test fixture is not a rule. `CB-001: test
             // issue` is an assertion's payload, and listing it would put rows
             // in the ledger that no check ever emits.
-            if line.contains("#[cfg(test)]") {
+            //
+            // The guard is the ATTRIBUTE, not a mention of it. A substring
+            // match truncated the scan of any file that merely talks about
+            // `#[cfg(test)]` — in a doc comment, or in a string literal it
+            // greps source for — and everything declared below the mention was
+            // lost. `check_commit_enforcement_p2.rs` does both near its top and
+            // declares CB-1334 and CB-1336 two hundred lines later, so both
+            // arrived in the ledger with no title at all.
+            if is_cfg_test_attribute(line) {
                 break;
             }
             rules.extend(rules_in_line(line, &rel, n + 1));
@@ -152,6 +160,15 @@ fn definition_sites(project_path: &Path) -> Vec<Rule> {
     });
     rules.dedup_by(|a, b| a.id == b.id);
     rules
+}
+
+/// Is this line the `#[cfg(test)]` **attribute**, rather than a mention of it?
+///
+/// An attribute is the first thing on its line. A comment about one, or a
+/// string literal containing one, is not — and treating it as one silently
+/// discards every declaration below it.
+fn is_cfg_test_attribute(line: &str) -> bool {
+    line.trim_start().starts_with("#[cfg(test)]")
 }
 
 /// A rule the registry knows about but no source line names.

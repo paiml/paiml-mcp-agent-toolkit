@@ -473,10 +473,10 @@ fn build_file_health_check(
     over_500_count: usize,
 ) -> ComplianceCheck {
     if critical_count > 0 {
-        ComplianceCheck { name: "File Health".into(), status: CheckStatus::Fail, message: format!("CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})", critical_count, problem_count, over_500_count, report.average_health, report.average_grade.as_str()), severity: Severity::Critical }
+        ComplianceCheck { name: "CB-040: File Health".into(), status: CheckStatus::Fail, message: format!("CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})", critical_count, problem_count, over_500_count, report.average_health, report.average_grade.as_str()), severity: Severity::Critical }
     } else if problem_count > 0 || over_500_count > 5 {
         ComplianceCheck {
-            name: "File Health".into(),
+            name: "CB-040: File Health".into(),
             status: CheckStatus::Warn,
             message: format!(
                 "{} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})",
@@ -488,7 +488,7 @@ fn build_file_health_check(
             severity: Severity::Warning,
         }
     } else {
-        ComplianceCheck { name: "File Health".into(), status: CheckStatus::Pass, message: format!("{} files analyzed, avg health: {}%, grade: {} (all files <500 lines or within tolerance)", report.total_files, report.average_health, report.average_grade.as_str()), severity: Severity::Info }
+        ComplianceCheck { name: "CB-040: File Health".into(), status: CheckStatus::Pass, message: format!("{} files analyzed, avg health: {}%, grade: {} (all files <500 lines or within tolerance)", report.total_files, report.average_health, report.average_grade.as_str()), severity: Severity::Info }
     }
 }
 
@@ -673,7 +673,7 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
         Ok(f) => f,
         Err(msg) => {
             return ComplianceCheck {
-                name: "File Health".into(),
+                name: "CB-040: File Health".into(),
                 status: CheckStatus::Skip,
                 message: msg,
                 severity: Severity::Info,
@@ -682,7 +682,7 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
     };
     if files.is_empty() {
         return ComplianceCheck {
-            name: "File Health".into(),
+            name: "CB-040: File Health".into(),
             status: CheckStatus::Pass,
             message: "No source files found".into(),
             severity: Severity::Info,

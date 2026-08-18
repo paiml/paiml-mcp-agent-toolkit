@@ -28,6 +28,42 @@ metadata:
     CB-1411 with three invariants; v2 renames it to CB-2100 and adds four.
   contract: comply-gate-effect
   status: enforced
+  verification:
+    kani_status: not_discharged
+    measured_at: "pmat 3.32.0, kani 0.67.0, 2026-08-18"
+    detail: >
+      The three `kani_harness` names below are REAL harnesses — `#[kani::proof]`
+      functions at the bottom of src/services/gate_effect/kernel.rs, held to
+      their names by
+      tests_cb2100.rs::every_kani_harness_the_contract_names_exists. They are
+      NOT discharged: nothing in this repository has ever run them, and with
+      kani installed they cannot be run at all. Measured, not assumed:
+
+      (1) `cargo kani --harness verify_gates_only_on_exit_code` fails with
+      "error: target `pmat-agent` in package `pmat` requires the features:
+      `mcp-integration`" — kani enumerates every target in the package, and one
+      of them does not build under default features.
+
+      (2) `cargo kani --harness verify_gates_only_on_exit_code --features
+      mcp-integration` fails with "error: rustc 1.93.0-nightly is not supported
+      by the following package: sysinfo@0.39.6 requires rustc 1.95" — kani
+      0.67.0 pins a nightly older than a transitive dependency's MSRV.
+
+      (3) No .github/workflows job, Makefile target or script invokes kani, so
+      none of the repository's 38 `#[kani::proof]` harnesses is compiled by any
+      gate. `#[cfg(kani)]` code is not built by `cargo test` either.
+
+      These harnesses are therefore ASPIRATIONAL: they state the intended
+      theorems and are the specification a future proof will discharge, but
+      `kind: kernel` here must not be read as "proved". Naming that is the
+      honest alternative to deleting the harnesses or letting the reader infer
+      a proof that never ran — a contract that names a proof which does not
+      discharge is exactly the defect class this backlog exists to rule on.
+
+      To make them real: kernel.rs has no dependencies beyond the contract
+      attribute macro, so lifting it into its own workspace crate would give
+      kani a dependency graph it can build. That is a separate work item and
+      has not been done.
   references:
     - src/services/gate_effect/kernel.rs
     - src/services/gate_effect/mod.rs
@@ -115,6 +151,7 @@ equations:
     - "a workflow that does not parse is a hole in the reachability graph, and a hole fails"
     - "zero jobs across all workflows is a failure, not a pass"
     - "a required context that reaches no invocation is named in the verdict, not silently counted as coverage"
+    - "a required context that was READ IN FULL and reaches nothing is a measured zero; one that is opaque, phantom or unresolved is a HOLE, and the two must never render identically"
     preconditions:
     - ".github/workflows exists (otherwise the rule Skips: there is no Actions gate to verify)"
 
@@ -172,6 +209,10 @@ equations:
     - "the rendering is deterministic: no timestamps, no version stamps, rows sorted by rule id"
     - "a required context that carries no rule is listed as carrying none"
     - "the population is read from the existing registry, never recounted: one rule, one answer"
+    - "drift is keyed on the ledger's DATA — rule id, title, severity, status, carrier, and the FILE a rule is declared in — never on its presentation"
+    - "a moved line number is NOT drift: an edit above a rule declaration changes nothing about what the repository enforces"
+    - "the provenance label of an IDENTICAL root list is NOT drift: the same four contexts read from PMAT_REQUIRED_STATUS_CHECKS instead of the manifest are the same four contexts"
+    - "loosening drift must not blind it: a changed status, carrier, declaring file, severity, title or id, and a missing or added row, are each still drift"
     preconditions:
     - "the repository declares CB rules in-tree (src/cli/handlers/comply_handlers exists); a repo that merely runs the rules owes no ledger"
 
@@ -234,6 +275,48 @@ falsification:
   - condition: "a configuration that declares rules and grades none of them error is reported as a clean roster"
     severity: P0
     test: src/services/gate_effect/tests_cb2100.rs::a_config_whose_checks_are_all_sub_error_is_a_hole_with_a_diagnosis
+  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::every_kani_harness_the_contract_names_exists
+  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::the_contract_states_whether_its_kani_harnesses_discharge
+  - condition: "the not_discharged note rots into a false claim: the contract says the harnesses are discharged while nothing runs kani, or a runner is added and the note is left stale"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::a_discharged_claim_requires_something_that_actually_runs_kani
+  - condition: "an opaque required context — one resolving into a workflow this repository cannot read — renders identically to a context that was read in full and reaches nothing, so a hole is reported as a measured zero"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::an_opaque_root_is_not_rendered_as_a_measured_zero
+  - condition: "a phantom required context renders as a measured zero"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::a_phantom_root_is_not_rendered_as_a_measured_zero
+  - condition: "the control: every root is rendered `unknown`, which satisfies the two tests above and destroys the table"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::a_root_that_carries_the_roster_still_reads_as_yes
+  - condition: "a ledger row renders a blank Title, which is indistinguishable from `has no title`, `never names itself` and `the scanner lost it`"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::the_ledger_never_renders_a_blank_title
+  - condition: "the roster's `#[cfg(test)]` guard is a substring match, so a file that MENTIONS the attribute in a comment loses every rule declared below the mention"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::a_cfg_test_mention_in_a_comment_does_not_truncate_the_roster_scan
+  - condition: "the control: loosening that guard makes the roster cite lines that do not declare the rule they are attributed to"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::every_citation_points_at_a_line_that_names_its_rule
+  - condition: "a check owns a CB id and never reports it, so no finding it emits can be tied back to its ledger row"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::every_rule_that_owns_a_cb_id_reports_it_at_runtime
+  - condition: "an edit two lines above a rule declaration moves its citation and is reported as ledger drift, so the gate reddens on changes it does not measure"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::an_edit_above_a_rule_declaration_is_not_ledger_drift
+  - condition: "supplying the IDENTICAL required contexts through PMAT_REQUIRED_STATUS_CHECKS instead of the manifest is reported as ledger drift"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::the_provenance_of_the_root_list_is_not_ledger_drift
+  - condition: "the control: drift is loosened until a changed status, carrier, declaring file, severity, title or id no longer registers"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::a_changed_status_carrier_or_file_is_still_ledger_drift
+  - condition: "the control: drift is loosened until a ledger missing a whole rule still reads as up to date"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::a_missing_row_is_still_ledger_drift
   - condition: "the ledger is non-deterministic, so nobody can diff it and drift goes unnoticed"
     severity: P1
     test: src/services/gate_effect/tests_cb2100.rs::the_rendered_ledger_is_deterministic
