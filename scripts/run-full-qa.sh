@@ -39,11 +39,17 @@ test_command() {
     echo "Testing: $desc"
     echo "Command: $*"
 
-    output=$("$@" 2>&1 || true)
+    # Capture the real exit code via an `if` (exempt from `set -e`), not a
+    # `cmd || true` that unconditionally forces $? to 0 before it can be read.
+    if output=$("$@" 2>&1); then
+        rc=0
+    else
+        rc=$?
+    fi
 
     case "$expected" in
         "success")
-            if [[ $? -eq 0 ]] && [[ "$output" != *"not yet implemented"* ]] && [[ "$output" != *"not implemented"* ]]; then
+            if [[ $rc -eq 0 ]] && [[ "$output" != *"not yet implemented"* ]] && [[ "$output" != *"not implemented"* ]]; then
                 echo "✅ PASS"
                 PASSED=$((PASSED + 1))
             else
