@@ -240,3 +240,8 @@ bindings:
   source_file: src/mcp_pmcp/simple_unified_server.rs
   function: EofSignalingTransport::receive
   status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: gate_effect
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
+  function: check_comply_gate_effect
+  status: implemented

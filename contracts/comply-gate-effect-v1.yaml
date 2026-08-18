@@ -1,0 +1,127 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-08-18"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Gate-effect verification (EV-1, CB-1411). Every "enforced in CI" claim this
+    repository makes rests on one chain: a REQUIRED STATUS CHECK CONTEXT STRING
+    -> the job that reports that context -> a step (or a Makefile/script one hop
+    away) that invokes the rule -> whose non-zero exit can still fail the job.
+    Break any link and the rule is decoration. This contract pins the three
+    invariants that make the chain checkable, and in particular pins that
+    reachability is computed against the CONTEXT STRING and never against a job
+    display name -- a repository can carry a required `ci / gate` produced by a
+    reusable workflow AND an unrequired top-level job whose display name is
+    `gate`, and a display-name matcher reports the wrong one as the gate.
+
+    Implemented as comply rule CB-1411, not CB-1400 as the source backlog says:
+    CB-1400 has shipped since PMAT-032 as "Agent Contract Existence" and reusing
+    the id would have deleted a live rule.
+  contract: comply-gate-effect
+  status: enforced
+  references:
+    - src/services/gate_effect/mod.rs
+    - src/services/gate_effect/resolve.rs
+    - src/services/gate_effect/effect.rs
+    - src/services/gate_effect/reach.rs
+    - src/services/gate_effect/required.rs
+    - src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
+
+equations:
+  gate_effect:
+    formula: >
+      enforced(rule) = exists ctx in required_contexts, exists job in
+      resolve(ctx) union needs_closure(resolve(ctx)), exists step in job.steps,
+      invokes(step, rule) and propagates(step)
+    domain: >
+      required_contexts is a non-empty list of GitHub branch-protection context
+      strings; workflows is the parsed set of .github/workflows/*.y[a]ml
+    codomain: >
+      GateEffectReport with passed() true only when every severity=error rule is
+      enforced and no hole was recorded
+    invariants:
+    - "INV-1400-1: every severity=error comply rule is reachable from a required check context"
+    - "INV-1400-2: a reachable invocation whose failure cannot propagate is NOT reachable (not continue_on_error and not suppressed and exit_code_compared)"
+    - "INV-1400-3: reachability is computed against the required-check CONTEXT STRING, not the job display name"
+    - "an empty severity=error roster is a failure, not a vacuous pass"
+    - "an empty or unresolvable required-context list is a failure, not a pass"
+    - "a required context produced by no job (phantom gate) is a failure"
+    - "a required context resolving into an unreadable external reusable workflow is a failure, because no rule can be SHOWN to run through it"
+    - "a workflow that does not parse is a hole in the reachability graph, and a hole fails"
+    - "zero jobs across all workflows is a failure, not a pass"
+    preconditions:
+    - ".github/workflows exists (otherwise the rule Skips: there is no Actions gate to verify)"
+
+  context_string_resolution:
+    formula: >
+      context(job) = job.name if present else job.id;
+      context(caller.uses(callee)) = context(caller) + " / " + context(callee_job)
+    domain: a parsed workflow set and one required context string
+    codomain: Resolution in {Job, Opaque, Phantom}
+    invariants:
+    - "a top-level job reports as its display name when it has one, else its job id"
+    - "a reusable-workflow call reports one context per callee job, namespaced `<caller> / <callee>`"
+    - "`gate` and `ci / gate` are different contexts and may resolve to different jobs"
+    - "an external `owner/repo/...@ref` callee resolves to Opaque, never to a Job"
+    - "Opaque is never evidence of enforcement"
+    preconditions:
+    - "workflow YAML parses"
+
+  failure_propagation:
+    formula: >
+      propagates(inv) = not job.continue_on_error and not step.continue_on_error
+      and not suppressed(line) and exit_code_compared(script, line)
+    domain: one shell line invoking the rule, within its script and its job
+    codomain: boolean, with the reasons it is false
+    invariants:
+    - "`continue-on-error: true` at job or step level suppresses"
+    - "a `continue-on-error` EXPRESSION suppresses: `might be false` is not `provably propagates`"
+    - "`|| true`, `|| :`, `|| echo ...`, `|| exit 0` suppress"
+    - "a Makefile recipe line prefixed with `-` suppresses"
+    - "a pipeline suppresses unless the script sets pipefail (GitHub runs `run:` under `bash -e`, pipefail off)"
+    - "an exit code captured into a variable, consumed by `if`, or disarmed by `set +e` propagates only when a later line exits non-zero"
+    - "a `needs` edge under `if: always()` propagates only when the job inspects needs.<id>.result"
+    preconditions:
+    - "the invocation line was found in a `run:` block, or one hop away in a Makefile recipe or shell script"
+
+preconditions:
+  - "pmat >= 3.30.0 with `pmat comply check` running CB-1411"
+  - "required contexts resolvable from PMAT_REQUIRED_STATUS_CHECKS, .github/required-status-checks.txt, or the GitHub branch-protection API"
+
+postconditions:
+  - "CB-1411 reports Skip only when .github/workflows/ is absent"
+  - "CB-1411 reports Fail with severity=error whenever any invariant above is violated"
+  - "CB-1411's Fail message names the job and the key responsible"
+
+falsification:
+  - condition: "the job invoking `pmat comply check` carries `continue-on-error: true` and CB-1411 still passes"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::falsify_1400_1_job_level_continue_on_error_fails
+  - condition: "the step is `pmat comply check || true` and CB-1411 still passes"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::falsify_1400_2_or_true_fails
+  - condition: "a job whose DISPLAY NAME is `gate` runs comply, the required context is `ci / quality`, and CB-1411 passes on the strength of the display-name match"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::falsify_1400_3_display_name_match_is_not_context_match
+  - condition: "a workflow with zero jobs yields a pass instead of a fail"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::falsify_1400_4_workflow_with_zero_jobs_fails
+  - condition: "an empty severity=error roster yields a vacuous pass"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::control_roster_is_not_empty
+  - condition: "a required context that no job produces is treated as absence of evidence rather than a phantom gate"
+    severity: P1
+    test: src/services/gate_effect/tests.rs::a_phantom_required_context_fails
+  - condition: "an unreadable external reusable workflow is credited as enforcement"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::falsify_1400_3b_external_reusable_workflow_is_opaque_not_compliant
+  - condition: "a `run:` block that pipes the invocation is credited with its exit code although bash -e leaves pipefail off"
+    severity: P1
+    test: src/services/gate_effect/tests.rs::falsify_1400_2c_piped_invocation_loses_its_status
+  - condition: "an `if: always()` summary job is credited with its needs' failures although it never inspects needs.<id>.result"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::if_always_without_a_result_check_breaks_the_edge
+  - condition: "every fixture fails, including the healthy one, so the rule proves nothing"
+    severity: P0
+    test: src/services/gate_effect/tests.rs::control_a_plain_enforcing_job_passes

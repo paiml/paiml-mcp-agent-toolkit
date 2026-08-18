@@ -355,12 +355,25 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["qd"])]
     Qdd(QddCommands),
 
-    /// [NOT AVAILABLE in the default build] Interactive demo — needs --features demo.
+    /// Interactive demo of pmat's analysis output
     ///
     /// `cargo install pmat` produces a build in which every demo mode (including
     /// `--cli`) exits 1 with "Demo feature not enabled", so all the flags below
     /// are inert. Listed the same way `serve` is: an entry that cannot run must
     /// say so in the command list rather than advertise itself as working.
+    ///
+    /// The label is CONDITIONAL, matching `Org` below. It used to be an
+    /// unconditional doc comment, so a binary built with `--features demo` —
+    /// one in which the command works — still told its user
+    /// "[NOT AVAILABLE in the default build]". A disclosure that is wrong in
+    /// the build that enables the feature is a new defect, not a fix for the
+    /// old one.
+    #[cfg_attr(
+        not(feature = "demo"),
+        command(
+            about = "[NOT AVAILABLE in the default build] Interactive demo — needs --features demo"
+        )
+    )]
     #[command(visible_aliases = &["d", "show"])]
     Demo {
         /// Repository path (defaults to current directory)

@@ -290,5 +290,20 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-1411: Comply Gate Effect (EV-1) — every severity=error rule must be
+    // reachable from a required status check context, through an invocation
+    // whose failure can still fail the job. Declared Error, and so a member of
+    // the roster it verifies: a gate that does not gate itself is the exact
+    // defect this rule exists to find.
+    checks.insert(
+        "cb-1411".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     checks
 }

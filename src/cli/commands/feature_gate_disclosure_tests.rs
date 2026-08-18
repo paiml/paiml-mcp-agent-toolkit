@@ -26,10 +26,15 @@
 //! field instead of failing; `doc-indexing` only shortens PDF text. None of
 //! those is a precondition for the command running.
 //!
-//! The label is unconditional on purpose. "[NOT AVAILABLE in the default
-//! build]" is a statement about the default build, which stays true in a build
-//! that does enable the feature, so the help text does not fork per feature
-//! set — the same choice `demo` and `org` already make.
+//! The label IS conditional, via `#[cfg_attr(not(feature = "..."), command(
+//! about = "[NOT AVAILABLE ...]"))]` — see `definition.rs:457` for `org`. A
+//! build that enables the feature must not tell its user the command is
+//! unavailable, so the tests below are gated the same way, and each also
+//! asserts the positive case: with the feature ON, the entry must NOT carry the
+//! label. An earlier draft of this header claimed the label was unconditional
+//! and the test enforced that claim; it passed under `default` and failed under
+//! every-feature-on, because the claim was about a design the code does not
+//! implement.
 
 use super::on_big_stack;
 use clap::CommandFactory;
@@ -257,22 +262,62 @@ fn commands_that_work_in_the_default_build_claim_no_feature_requirement() {
 /// COUNTER-TEST. The three disclosures that already existed must survive: a
 /// change to this area that dropped them would be a regression of the same
 /// defect, not a fix for it.
+///
+/// GATED PER FEATURE, and the first revision of this test was not — which is
+/// how it passed under `default` and failed under every-feature-on with
+/// "`pmat org` cannot run in the default build; its command-list entry must say
+/// so, got: Organizational intelligence analysis (GitHub org defect patterns)".
+///
+/// The label is NOT unconditional, whatever this module's header used to
+/// claim. `definition.rs:457` gates it:
+///
+///     #[cfg_attr(not(feature = "org-intelligence"), command(about = "[NOT
+///     AVAILABLE in the default build] Organizational intelligence — needs
+///     --features org-intelligence"))]
+///
+/// and that is right: a build that HAS the feature must not tell its user the
+/// command is unavailable. `definition.rs:2170` already asserts the label
+/// behind the same `cfg`. Asserting it unconditionally contradicted both the
+/// code and that existing test.
 #[test]
 fn the_disclosures_that_already_existed_are_still_there() {
     // These two carry their label in the command-list entry only; widening
     // them to the `--help` body is a separate fix and is not asserted here.
+    #[cfg(not(feature = "demo"))]
     assert_text_discloses(
         "`pmat demo`",
         "command-list entry",
         &list_entry(&["demo"]),
         "demo",
     );
+    #[cfg(not(feature = "org-intelligence"))]
     assert_text_discloses(
         "`pmat org`",
         "command-list entry",
         &list_entry(&["org"]),
         "org-intelligence",
     );
+    // The other half of the property, asserted where the first revision
+    // asserted nothing: with the feature ON, the entry must NOT claim the
+    // command is unavailable.
+    #[cfg(feature = "org-intelligence")]
+    {
+        let entry = list_entry(&["org"]);
+        assert!(
+            !entry.contains("NOT AVAILABLE"),
+            "a build WITH --features org-intelligence must not tell the reader \
+             `org` is unavailable, got: {entry}"
+        );
+    }
+    #[cfg(feature = "demo")]
+    {
+        let entry = list_entry(&["demo"]);
+        assert!(
+            !entry.contains("NOT AVAILABLE"),
+            "a build WITH --features demo must not tell the reader `demo` is \
+             unavailable, got: {entry}"
+        );
+    }
     assert!(
         help_text(&["serve"]).contains("--features mcp-http"),
         "`pmat serve --help` must keep naming the feature its HTTP transport \

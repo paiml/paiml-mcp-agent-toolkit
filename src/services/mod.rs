@@ -196,6 +196,7 @@ pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
+pub mod metrics_ratchet; // CB-1420/CB-1421: threshold coherence + ratchet baselines
 pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod parallel_git;
@@ -266,6 +267,13 @@ pub mod workspace_init; // `pmat init`: agent workspace bootstrap (#1030/#1031/#
 #[cfg(feature = "mutation-testing")]
 pub mod mutation;
 
+// EV-4 (#1034): the mutation-adequacy GATE — deliberately NOT behind
+// `mutation-testing`. The engine above is an optional analysis feature; this is
+// a CI gate, and a gate that only compiles under a feature no required job
+// builds is not a gate. It parses `cargo mutants` output rather than generating
+// mutants, so it needs none of the engine.
+pub mod mutation_gate;
+
 // PMAT Oracle - PDCA loop for automated quality improvement
 pub mod oracle;
 
@@ -290,6 +298,7 @@ mod quality_proxy_property_tests;
 pub mod agent_context;
 pub mod changelog_manager;
 pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
+pub mod gate_effect; // EV-1/CB-1411: does a required status check actually reach the rules it claims to enforce?
 #[cfg(feature = "github-api")]
 pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow
