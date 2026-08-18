@@ -538,6 +538,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: unrun-tests
+      # `cargo run` rather than a hand-written `./target/...` path: a local
+      # `.cargo/config.toml` can redirect CARGO_TARGET_DIR, and a hardcoded path
+      # then validates a STALE binary while reporting success. Cargo knows where
+      # it put the artefact; nothing else reliably does.
       - name: cargo build --bin pmat
         run: cargo build --release --locked --bin pmat
       # `--executed ''` declares the one test-running leg that is NOT in this
@@ -550,7 +554,7 @@ jobs:
       # ledger is a confident wrong answer), a bucket with no recorded reason,
       # a cfg predicate the analysis cannot decide, or a file it cannot parse.
       - name: every test is executed by some leg, or the ledger says why
-        run: ./target/release/pmat analyze unrun-tests --executed '' --check-ledger
+        run: cargo run --release --locked --quiet --bin pmat -- analyze unrun-tests --executed '' --check-ledger
 
   feature-gate:
     name: feature-gate
