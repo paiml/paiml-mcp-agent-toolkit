@@ -261,8 +261,16 @@ impl CargoDeadCodeAnalyzer {
             return None;
         }
 
+        // THE CRATE, not the directory the caller pointed at. rustc cannot
+        // type-check half a crate, so a subdirectory request compiles the whole
+        // crate and the findings are restricted to the subdirectory afterwards
+        // (`scoped_report_path`). This used to be `self.project_path`, which
+        // left cargo to walk up for the manifest by itself while every
+        // target-shape decision below was still made from the subdirectory —
+        // and that is how `--lib` came to be dropped for a library crate,
+        // leaving `cargo check --bins` with no target to build at all.
         let mut cmd = Command::new("cargo");
-        cmd.current_dir(&self.project_path)
+        cmd.current_dir(&self.cargo_root)
             .arg("check")
             .arg("--message-format=json");
 
@@ -276,7 +284,10 @@ impl CargoDeadCodeAnalyzer {
         // Bin-only crates (no src/lib.rs and no `[lib]` section) fail
         // `cargo check --lib` with "no library targets found". Match the
         // cargo metadata: --lib only when a lib exists; otherwise --bins.
-        let has_lib = project_has_library(&self.project_path);
+        // Asked of the CRATE. Asked of the requested path it answered "no
+        // library" for every subdirectory of every crate on earth, because a
+        // subdirectory holds neither a Cargo.toml nor a src/lib.rs.
+        let has_lib = project_has_library(&self.cargo_root);
 
         // The cargo target set MUST be the same scope `is_excluded_source`
         // walks, or the report's numerator and denominator describe different
@@ -302,12 +313,12 @@ impl CargoDeadCodeAnalyzer {
         // each real target by name keeps the compile scope equal to the walk
         // scope in both directions.
         if !self.exclude_examples {
-            for name in named_targets(&self.project_path, "example") {
+            for name in named_targets(&self.cargo_root, "example") {
                 cmd.arg("--example").arg(name);
             }
         }
         if !self.exclude_benches {
-            for name in named_targets(&self.project_path, "bench") {
+            for name in named_targets(&self.cargo_root, "bench") {
                 cmd.arg("--bench").arg(name);
             }
         }
@@ -436,11 +447,17 @@ fn is_test_file_name(path: &std::path::Path) -> bool {
 /// A library is present when *either* the conventional `src/lib.rs` file
 /// exists *or* `Cargo.toml` declares an explicit `[lib]` table. The check is
 /// cheap (one stat + one read) and runs once per analysis.
+///
+/// `pub(crate)` because the multi-language engine — the one that answers when
+/// there is no cargo — asks the same question to decide whether a crate's `pub`
+/// items are its public API. Two copies of "is this a library" would be two
+/// answers, and the two engines disagreeing about what a crate IS is how a
+/// library's whole public API came to be reported dead on one of them.
 //
 // Wave 39 release-prep: contract added — output is bool determined by a
 // stat + a substring check on Cargo.toml. Deterministic.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-fn project_has_library(project_path: &std::path::Path) -> bool {
+pub(crate) fn project_has_library(project_path: &std::path::Path) -> bool {
     if project_path.join("src/lib.rs").exists() {
         return true;
     }

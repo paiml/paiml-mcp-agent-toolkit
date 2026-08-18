@@ -115,6 +115,14 @@ mod tests {
         assert!(config.output.is_none());
     }
 
+    /// The delegation reaches the real analyzer, and the real analyzer refuses
+    /// an empty tree.
+    ///
+    /// This body used to end in `assert!(result.is_err() || result.is_ok())` —
+    /// a tautology that held for every possible outcome, so it covered the
+    /// delegation without checking anything about it. The empty-directory
+    /// refusal (#1015) is proof the call actually arrived somewhere that looked
+    /// at the path.
     #[tokio::test]
     async fn test_handle_analyze_duplicates_delegates() {
         let temp_dir = TempDir::new().unwrap();
@@ -132,8 +140,14 @@ mod tests {
             top_files: 10,
         };
 
-        // This will fail since the directory is empty, but that's expected
-        let result = handle_analyze_duplicates(config).await;
-        assert!(result.is_err() || result.is_ok()); // Either outcome is fine for this test
+        let message = handle_analyze_duplicates(config)
+            .await
+            .expect_err("0 duplicate lines out of 0 total lines is not a measurement")
+            .to_string();
+        assert!(
+            message.contains("no source files were found")
+                && message.contains("This is not a clean result"),
+            "the refusal must name what was missing and say it is not clean, got: {message}"
+        );
     }
 }

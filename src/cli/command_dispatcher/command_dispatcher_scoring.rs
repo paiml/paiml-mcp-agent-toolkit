@@ -17,7 +17,11 @@ impl CommandDispatcher {
                 project_path,
                 file,
                 format,
-                fail_on_violation,
+                report_only,
+                // A no-op since 3.32.0 — the gate exits non-zero on blocking
+                // violations by default — and its help text says so. Still
+                // parsed so existing `--fail-on-violation` callers keep working.
+                fail_on_violation: _,
                 checks,
                 max_dead_code,
                 min_entropy,
@@ -31,7 +35,7 @@ impl CommandDispatcher {
                     project_path,
                     file,
                     format,
-                    fail_on_violation,
+                    crate::cli::analysis_utilities::gate_exits_on_violation(report_only),
                     checks,
                     max_dead_code,
                     min_entropy,

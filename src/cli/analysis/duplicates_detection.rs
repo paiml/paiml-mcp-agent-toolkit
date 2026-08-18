@@ -129,6 +129,17 @@ pub async fn handle_analyze_duplicates(
     )
     .await?;
 
+    // #1015: "Duplication: 0.0% (0 / 0 lines)" was printed, with exit 0, for a
+    // directory holding no source file at all — byte-identical to the report a
+    // genuinely duplicate-free tree produces. `file_statistics` carries one
+    // entry per file this run actually read, so an empty map is the denominator
+    // saying it does not exist. 0/0 is undefined, not clean.
+    crate::cli::ensure_source_files_were_analyzed(
+        "duplication",
+        &project_path,
+        report.file_statistics.len(),
+    )?;
+
     print_duplicate_summary(&report);
 
     if perf {

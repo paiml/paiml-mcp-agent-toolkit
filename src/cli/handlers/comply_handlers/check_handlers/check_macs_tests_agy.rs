@@ -415,7 +415,22 @@ mod tests_macs_agy {
         );
         let check = check_agy_mcp_config(dir.path());
         assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
-        assert!(check.message.contains("NOT IMPLEMENTED"), "{}", check.message);
+        // The reason bare `pmat serve` is wrong in an mcpServers entry is that
+        // it never speaks MCP on **stdio**, which is what an mcpServers entry
+        // launches — not that the command is unimplemented. This asserted
+        // `NOT IMPLEMENTED`, quoting a help text that denied the shipped
+        // streamable-HTTP transport; the finding has to be true of the binary
+        // it is describing.
+        assert!(
+            check.message.contains("never on stdio"),
+            "{}",
+            check.message
+        );
+        assert!(
+            check.message.contains("--mode") && check.message.contains("mcp"),
+            "the finding must name the entrypoint that does work: {}",
+            check.message
+        );
     }
 
     #[test]

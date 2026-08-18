@@ -296,18 +296,24 @@ impl DocValidator {
         let mut all_links = Vec::new();
         let mut file_count = 0;
 
-        // Find all markdown files, skipping excluded directories
-        for entry in WalkDir::new(root)
-            .into_iter()
-            .filter_entry(|e| !self.should_exclude(e.path()))
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().is_file() && e.path().extension().is_some_and(|ext| ext == "md"))
-        {
+        // Find all markdown files, skipping excluded directories.
+        //
+        // The walk is the shared, ignore-aware one. A bare `WalkDir` filtered
+        // only by `--exclude` substrings stood here, and it read no
+        // `.gitignore`: against this repository it validated 30,897 Markdown
+        // files — the same documentation over and over, once per checkout under
+        // the gitignored `.claude/worktrees/` — and took ~114 seconds to report
+        // duplicated broken links. `should_exclude` still applies on top, since
+        // those patterns come from the user.
+        for path in crate::services::file_discovery::project_files(root)? {
+            if path.extension().is_none_or(|ext| ext != "md") || self.should_exclude(&path) {
+                continue;
+            }
             file_count += 1;
-            let content = tokio::fs::read_to_string(entry.path())
+            let content = tokio::fs::read_to_string(&path)
                 .await
-                .context(format!("Failed to read {}", entry.path().display()))?;
-            let links = extract_links(&content, entry.path());
+                .context(format!("Failed to read {}", path.display()))?;
+            let links = extract_links(&content, &path);
             all_links.extend(links);
         }
 

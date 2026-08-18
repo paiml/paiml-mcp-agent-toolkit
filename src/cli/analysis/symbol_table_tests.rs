@@ -604,10 +604,12 @@ mod tests {
             unreferenced_symbols: vec!["test".to_string()],
             most_referenced: vec![],
             referenced_symbol_count: 0,
+            files_scanned: 1,
         };
 
         assert_eq!(table.total_symbols, 1);
         assert_eq!(table.unreferenced_symbols.len(), 1);
+        assert_eq!(table.files_scanned, 1);
     }
 
     // === round 3: residue of the #654 fix ===

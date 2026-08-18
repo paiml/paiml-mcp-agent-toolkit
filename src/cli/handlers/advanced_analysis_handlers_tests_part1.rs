@@ -272,8 +272,15 @@ clean:
         }
     }
 
+    /// An empty project must be REFUSED, not reported.
+    ///
+    /// This asserted `result.is_ok()` under the comment "Should succeed even
+    /// with no files" — i.e. it pinned the defect (#1015). The report that
+    /// "success" printed was "Files Analyzed: 0 / Total Functions: 0 / Average
+    /// Complexity: 0.0", the same document a clean tree produces, and the exit
+    /// code a CI gate reads said nothing was wrong.
     #[tokio::test]
-    async fn test_handle_analyze_deep_context_with_empty_project() {
+    async fn test_handle_analyze_deep_context_refuses_an_empty_project() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         // Create an empty directory
@@ -296,8 +303,14 @@ clean:
         )
         .await;
 
-        // Should succeed even with no files
-        assert!(result.is_ok());
+        let message = result
+            .expect_err("an empty project cannot yield a deep-context measurement")
+            .to_string();
+        assert!(
+            message.contains("no source files were found")
+                && message.contains("This is not a clean result"),
+            "the refusal must name what was missing and say it is not clean, got: {message}"
+        );
     }
 
     #[tokio::test]

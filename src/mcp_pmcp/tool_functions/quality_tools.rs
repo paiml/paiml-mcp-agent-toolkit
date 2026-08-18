@@ -117,13 +117,16 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     let scope = GateScope::measure(&analyzer, paths)?;
     let ungraded = &scope.ungraded;
 
-    // SATD comes from the same detector `pmat quality-gate` runs: this tool and
-    // the CLI gate carry one name and must not be two different checks. A
-    // TDG-only verdict let a `TODO:` the CLI fails on pass over MCP.
-    let mut satd: Vec<Value> = Vec::new();
-    for path in paths {
-        satd.extend(satd_findings(path).await);
-    }
+    // The advertised checks, RUN — every one of them, from the same functions
+    // `pmat quality-gate --checks all` runs (see `run_gate_suite`). This tool
+    // and the CLI gate carry one name and must not be two different checks.
+    // This was a call to SATD alone, so over a fixture whose only debt was two
+    // markers the CLI answered `{satd: 2, coverage: 1}` and this tool answered
+    // `{satd: 2}` — and, because the missing row is coverage's own "was NOT
+    // measured" disclosure, the surface that ran two of nine checks was the one
+    // reporting `not_measured: []`.
+    let suite = crate::cli::analysis_utilities::run_gate_suite_over(paths).await?;
+    let suite_findings = gate_suite_findings(&suite);
 
     let project_score = crate::tdg::ProjectScore::aggregate(scope.graded.clone());
 
@@ -172,9 +175,9 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // `unmeasured_cannot_pass_tests.rs`. The identical "nothing was graded"
     // state already returned `passed:false` for a DIRECTORY, so one tool was
     // giving two answers to one question. GH #704 is untouched: a path TDG
-    // *does* grade but scored badly still fails, and the SATD findings below
+    // *does* grade but scored badly still fails, and the suite's findings below
     // are still reported either way.
-    violations.extend(satd);
+    violations.extend(suite_findings);
 
     // Every source file the analyzer REFUSED is a hole in this verdict, and the
     // hole belongs in the payload. `analyze_project` drops those files with a
@@ -232,20 +235,27 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
     // here for the same reason `score`/`grade` are named when nothing graded at
     // all: never make a reader infer "not measured" from a number that looks fine.
     let ungraded_names: Vec<String> = scope.ungraded_names();
-    let (score, grade, not_measured) = if graded {
+    // …and the advertised CHECKS that did not run, for the same reason. A path
+    // that is a single file cannot answer the five project-wide checks, and this
+    // field asserting `[]` beside seven checks that never ran is the defect this
+    // whole change removes.
+    let mut not_measured: Vec<String> = Vec::new();
+    let (score, grade) = if graded {
+        not_measured.extend(ungraded_names);
         (
             json!(project_score.average_score),
             // GH #703: this was `format!("{:?}", ..)`, so MCP answered "AMinus"
             // where `pmat tdg --format json` answered "A-" for the same score.
             // One spelling on the wire: `Display`, which `Serialize` now matches.
             json!(project_score.average_grade.map(|g| g.to_string())),
-            json!(ungraded_names),
         )
     } else {
-        let mut unmeasured = vec!["score".to_string(), "grade".to_string()];
-        unmeasured.extend(ungraded_names);
-        (Value::Null, Value::Null, json!(unmeasured))
+        not_measured.push("score".to_string());
+        not_measured.push("grade".to_string());
+        not_measured.extend(ungraded_names);
+        (Value::Null, Value::Null)
     };
+    not_measured.extend(suite.not_run_names());
 
     Ok(json!({
         "status": "completed",
@@ -257,6 +267,11 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         "score": score,
         "grade": grade,
         "not_measured": not_measured,
+        // Which checks produced the verdict, named rather than left to be
+        // inferred from an empty `violations` list — "no complexity finding" and
+        // "complexity never ran" are not the same fact, and the reason each
+        // unrun check did not run travels with it.
+        "checks": checks_payload(&suite),
         "threshold": threshold_score,
         "files_analyzed": project_score.total_files,
         // `violations` now legitimately contains rows that did NOT decide the
@@ -265,6 +280,22 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         "blocking_violations": blocking,
         "violations": violations
     }))
+}
+
+/// What the gate ran and what it did not, on the wire.
+///
+/// ONE encoding, shared by both entry points of this tool family — the reason a
+/// check did not run is a sentence from
+/// `crate::cli::analysis_utilities`, never one re-typed here.
+fn checks_payload(suite: &crate::cli::analysis_utilities::GateSuite) -> Value {
+    json!({
+        "ran": suite.ran,
+        "not_run": suite.not_run.iter().map(|unrun| json!({
+            "check": unrun.check,
+            "path": unrun.path.display().to_string(),
+            "reason": unrun.reason,
+        })).collect::<Vec<_>>(),
+    })
 }
 
 /// Said of a path that produced no measurement AND no per-file refusal — an
@@ -276,32 +307,23 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
 const NOTHING_GRADABLE_HERE: &str =
     "no file under this path could be graded (unreadable, unparseable, or not source) — the score is not a measurement";
 
-/// The SATD findings for one path, file or directory, as gate violations.
+/// The gate suite's findings for one path, file or directory, as JSON rows.
 ///
-/// ONE implementation, and it owns the file/directory split so no caller has to
-/// repeat it. Both halves come from `crate::cli::analysis_utilities` — the
-/// detector, the severity scale and the message wording `pmat quality-gate`
-/// publishes — and the rows are serialised from `QualityViolation` itself
-/// rather than re-typed field by field. This file used to carry
+/// ONE implementation, and it owns nothing but the encoding: which checks run
+/// for a file and which for a directory is
+/// `crate::cli::analysis_utilities::run_gate_suite`'s answer, i.e. the CLI
+/// gate's answer, and the rows are serialised from `QualityViolation` itself
+/// rather than re-typed field by field. This used to be `satd_findings`, which
+/// ran exactly one of the nine advertised checks; before that it was
 /// `satd_violations_for_file`, a THIRD copy of the detector-severity mapping
 /// (`Critical|High => "error"`, …) alongside the CLI's two, plus a second
 /// message format (`"{category}: {text}"` against the CLI's
 /// `"{category}: {text} (at column {column})"`), so one tool family described
 /// one finding two ways depending on whether the caller named a file or the
 /// directory containing it.
-async fn satd_findings(path: &Path) -> Vec<Value> {
-    let violations = if path.is_file() {
-        crate::cli::analysis_utilities::check_satd_file(
-            path.parent().unwrap_or_else(|| Path::new(".")),
-            path,
-        )
-        .await
-    } else {
-        crate::cli::analysis_utilities::check_satd(path).await
-    };
-
-    violations
-        .unwrap_or_default()
+fn gate_suite_findings(suite: &crate::cli::analysis_utilities::GateSuite) -> Vec<Value> {
+    suite
+        .violations
         .iter()
         .filter_map(|v| serde_json::to_value(v).ok())
         .collect()
@@ -377,9 +399,13 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         })
         .collect();
 
-    // The gate's violations come from the same SATD detector the CLI gate runs,
-    // through the same function `check_quality_gates` uses.
-    let mut violations = satd_findings(file_path).await;
+    // The gate's violations come from the same check suite the CLI gate runs,
+    // through the same function `check_quality_gates` uses — the four checks
+    // `pmat quality-gate --file` can answer for a single file, with the five
+    // project-wide ones disclosed in `not_measured` below rather than skipped in
+    // silence.
+    let suite = crate::cli::analysis_utilities::run_gate_suite(file_path).await?;
+    let mut violations = gate_suite_findings(&suite);
     // Same rule, same wording, same shape as `check_quality_gates`: a hole in
     // the verdict is a row in `violations`, never an unexplained `passed:true`.
     if let Some(reason) = not_gradable {
@@ -404,7 +430,7 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
     // Same convention as `check_quality_gates` above and `analyze_deep_context`:
     // what was not measured goes on the wire as null plus a `not_measured` list,
     // never as a number a client would read as a measurement.
-    let (score, grade, metrics, not_measured) = match file_score.as_ref() {
+    let (score, grade, metrics, mut not_measured) = match file_score.as_ref() {
         Some(s) => (
             json!(s.total),
             json!(s.grade.to_string()),
@@ -416,15 +442,22 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
                 "doc_coverage": s.doc_coverage,
                 "consistency_score": s.consistency_score,
             }),
-            json!([]),
+            Vec::new(),
         ),
         None => (
             Value::Null,
             Value::Null,
             Value::Null,
-            json!(["score", "grade", "metrics"]),
+            vec![
+                "score".to_string(),
+                "grade".to_string(),
+                "metrics".to_string(),
+            ],
         ),
     };
+    // The advertised checks this path did not run, named for exactly the reason
+    // `score`/`grade`/`metrics` are named above.
+    not_measured.extend(suite.not_run_names());
 
     Ok(json!({
         "status": "completed",
@@ -437,6 +470,9 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         "score": score,
         "grade": grade,
         "not_measured": not_measured,
+        // The same disclosure `check_quality_gates` publishes, from the same
+        // encoder: one tool family, one answer to "what did you actually run?".
+        "checks": checks_payload(&suite),
         "threshold": threshold_score,
         "blocking_violations": blocking,
         "violations": violations,

@@ -1,13 +1,14 @@
 /// Collect `AssemblyScript` files (.as, .ts with AS context)
+///
+/// Walks via [`project_files`], the shared ignore-aware discovery, rather than
+/// a bare `WalkDir`. The bare walk read no `.gitignore`: run against this
+/// repository it returned 48 hits for a single `.ts` file, one per checkout
+/// under the gitignored `.claude/worktrees/`.
 fn collect_assemblyscript_files(project_path: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
-    for entry in WalkDir::new(project_path)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        process_assemblyscript_entry(entry.path(), &mut files);
+    for path in project_files(project_path)? {
+        process_assemblyscript_entry(&path, &mut files);
     }
 
     Ok(files)
@@ -66,16 +67,11 @@ fn collect_wasm_files(
 ) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
-    for entry in WalkDir::new(project_path)
-        .into_iter()
-        .filter_map(std::result::Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
-        let path = entry.path();
+    for path in project_files(project_path)? {
         if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
             match ext {
-                "wasm" if include_binary => files.push(path.to_path_buf()),
-                "wat" if include_text => files.push(path.to_path_buf()),
+                "wasm" if include_binary => files.push(path),
+                "wat" if include_text => files.push(path),
                 _ => {}
             }
         }

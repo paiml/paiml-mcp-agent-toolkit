@@ -196,9 +196,10 @@ fn agy_judge_pmat_entrypoint(
     let speaks_mcp = args.windows(2).any(|w| w[0] == "--mode" && w[1] == "mcp");
     if args.iter().any(|a| a == "serve") && !speaks_mcp {
         hard.push(format!(
-            "mcpServers.{server}: `pmat serve` is the HTTP/WebSocket server and its own help says \
-             [NOT IMPLEMENTED]; bare `pmat serve` refuses to start without PMAT_MCP_HTTP_TOKEN and \
-             never speaks MCP on stdio. Use command `pmat` with args [\"--mode\", \"mcp\"]"
+            "mcpServers.{server}: `pmat serve` speaks MCP over streamable HTTP, never on stdio — \
+             and only with `--transport http`, only in a build with `--features mcp-http`, and \
+             only with PMAT_MCP_HTTP_TOKEN set (it refuses to start without one). A stdio \
+             mcpServers entry needs command `pmat` with args [\"--mode\", \"mcp\"]"
         ));
     }
 }

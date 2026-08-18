@@ -1,28 +1,14 @@
 // =============================================================================
-// Rust-specific helpers (existing cargo-based analysis)
+// Rust-specific helpers
 // =============================================================================
-
-fn analyze_rust_dead_code_with_cargo(path: &Path) -> Result<Vec<DeadFunction>> {
-    // Simple regex-based analyzer (similar to C/Python)
-    // In future, could integrate cargo check warnings
-
-    let rust_files = find_files_by_extension(path, &["rs"]);
-    let (defined_functions, called_functions) = analyze_rust_files(&rust_files)?;
-    let dead_functions = find_uncalled_functions(&defined_functions, &called_functions);
-
-    Ok(dead_functions)
-}
-
-/// Returns `(defined functions, .rs files walked)`.
-///
-/// The file count is returned alongside the function count so the caller never
-/// has to substitute one for the other (#720): it used to report
-/// `total_functions.max(1)` as its file count.
-fn count_rust_functions_and_files(path: &Path) -> Result<(usize, usize)> {
-    let rust_files = find_files_by_extension(path, &["rs"]);
-    let (defined_functions, _) = analyze_rust_files(&rust_files)?;
-    Ok((defined_functions.len(), rust_files.len()))
-}
+//
+// There was an `analyze_rust_dead_code_with_cargo` here, and a
+// `count_rust_functions_and_files` beside it that walked and re-parsed the same
+// tree a second time to recover a count the first walk had already produced.
+// Neither ran cargo — the name was left over from a plan to — and the strategy
+// now does the one walk itself, because the library-root seeding has to happen
+// between "definitions found" and "dead functions computed", which is inside
+// what those two helpers each did privately.
 
 /// Analyze Rust files
 fn analyze_rust_files(
@@ -47,6 +33,12 @@ fn analyze_rust_files(
                             name: func_name,
                             file: file.display().to_string(),
                             line: line_idx + 1,
+                            // `pub` is Rust's export keyword. In a LIBRARY
+                            // crate a `pub fn` is reachable from outside the
+                            // crate, which is precisely why rustc's own
+                            // dead-code pass does not flag it — and why this
+                            // engine, which has no rustc, must not either.
+                            exported: line.trim_start().starts_with("pub "),
                         });
                     }
                 }

@@ -14,13 +14,13 @@
 
 use crate::cli::ComplexityOutputFormat;
 use crate::models::unified_ast::AstDag;
+use crate::services::file_discovery::project_files;
 use crate::services::wasm::{
     AssemblyScriptParser, WasmBinaryAnalyzer, WasmComplexity, WasmComplexityAnalyzer,
     WasmLanguageDetector, WasmMetrics, WasmSecurityValidator, WatParser,
 };
 use anyhow::Result;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 // --- AssemblyScript analysis (handle_analyze_assemblyscript + helpers) ---
 include!("wasm_handlers_assemblyscript.rs");

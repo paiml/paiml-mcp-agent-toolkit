@@ -28,6 +28,19 @@ pub async fn handle_analyze_graph_metrics(
         graph.edge_count()
     );
 
+    // #1015: `build_dependency_graph` adds exactly one node per source file it
+    // found, so a node count of 0 means no source file was found — and this
+    // went on to print "Total nodes: 0 / Density: 0.000 / Average degree: 0.00
+    // / Connected components: 0" and exit 0. Density and average degree are
+    // ratios over the node count; at 0 they are undefined, not 0.000. A graph
+    // that WAS built and simply has no edges still measures something, so the
+    // refusal is on nodes, not edges.
+    crate::cli::ensure_source_files_were_analyzed(
+        "graph-metrics",
+        &project_path,
+        graph.node_count(),
+    )?;
+
     // Calculate metrics
     let metrics_result = calculate_metrics(
         &graph,

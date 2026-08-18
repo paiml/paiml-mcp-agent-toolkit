@@ -9,7 +9,7 @@ use axum::http::Method;
 use serde_json::{json, Value};
 use tracing::debug;
 
-use crate::cli::commands::{QddCommands, ScaffoldCommands};
+use crate::cli::commands::ScaffoldCommands;
 use crate::cli::{
     AnalyzeCommands, Commands, ComplexityOutputFormat, ContextFormat, DagType, OutputFormat,
 };
@@ -61,6 +61,15 @@ include!("protocol_impl.rs");
 
 // Include CliInput impl and additional CliAdapter impl
 include!("cli_input_impl.rs");
+
+// `command_name_totality_tests` moved to `src/cli/command_wire_names_tests.rs`.
+// Behind this feature gate it ran in no build the project ships, which is the
+// opposite of what a totality guard is for.
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "wire_name_delegation_tests.rs"]
+mod wire_name_delegation_tests;
 
 // TEMPORARILY DISABLED: File splitting broke syntax
 #[cfg(all(test, feature = "broken-tests"))]

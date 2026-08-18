@@ -132,6 +132,8 @@ pub mod coupling_analyzer;
 pub mod coverage_improvement;
 pub mod dag_builder;
 pub mod dag_call_edges;
+pub mod dag_complexity;
+pub mod dag_pipeline;
 pub mod dead_code_analyzer;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

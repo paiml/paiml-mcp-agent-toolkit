@@ -9,6 +9,8 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod agy_handler;
 pub mod analysis;
+#[cfg(test)]
+mod analysis_empty_tree_regression_tests; // #1015
 pub mod analysis_handlers;
 #[cfg(test)]
 mod analysis_path_guard_regression_tests; // GH-662/663/664/666/681/682

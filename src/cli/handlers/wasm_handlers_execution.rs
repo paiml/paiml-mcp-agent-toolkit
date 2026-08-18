@@ -27,6 +27,21 @@ pub async fn handle_analyze_webassembly(
         "📁 Found {} WebAssembly files",
         c::number(&wasm_files.len().to_string())
     );
+    // #1015. The path guard above closes "the tree is not there"; an EMPTY but
+    // real directory got past it and printed "📁 **Files analyzed**: 0" /
+    // `"files_analyzed": 0, "results": []` with exit 0 — byte-identical to the
+    // report a genuinely clean WebAssembly project produces.
+    //
+    // The check is on DISCOVERY, not on `results`: a .wat-only tree
+    // legitimately yields no metrics row (the text front end produces no
+    // `WasmMetrics`) and already says so on stderr, so those files were looked
+    // at and that run is measured.
+    crate::cli::ensure_files_were_analyzed(
+        selected_wasm_population(include_binary, include_text),
+        "WebAssembly",
+        &project_path,
+        wasm_files.len(),
+    )?;
 
     // `security`/`complexity` findings are collected, not printed: they used to
     // go to stderr with a bare `eprintln!` while the report on stdout stayed
@@ -61,6 +76,24 @@ pub async fn handle_analyze_webassembly(
     .await?;
 
     Ok(())
+}
+
+/// The file population `--include-binary` / `--include-text` selected, named
+/// for the refusal message.
+///
+/// `--include-binary=false --include-text=false` selects nothing at all, and
+/// "no WebAssembly files were found" would blame the tree for a choice the
+/// caller made; that case names the flags instead.
+fn selected_wasm_population(include_binary: bool, include_text: bool) -> &'static str {
+    match (include_binary, include_text) {
+        (true, true) => "WebAssembly (.wasm/.wat) files",
+        (true, false) => "WebAssembly binary (.wasm) files",
+        (false, true) => "WebAssembly text (.wat) files",
+        (false, false) => {
+            "WebAssembly files selectable with --include-binary=false --include-text=false \
+             (which select nothing)"
+        }
+    }
 }
 
 /// Analyze WASM files based on type and flags (cognitive complexity ≤8)

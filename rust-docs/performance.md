@@ -376,4 +376,4 @@ make test       # Standard test suite with coverage reports
 
 ---
 
-*Last Updated: 7/4/2026*
+*Last Updated: 8/17/2026*

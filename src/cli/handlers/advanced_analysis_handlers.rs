@@ -169,6 +169,18 @@ pub async fn handle_analyze_deep_context(
     // Perform analysis
     let report = analyzer.analyze(config).await?;
 
+    // #1015: an empty directory produced the whole report — "Files Analyzed: 0
+    // / Total Functions: 0 / Average Complexity: 0.0" and the recommendation
+    // "No functions detected - verify file discovery patterns" — and exited 0.
+    // That recommendation is the analyzer telling the user its own output is
+    // untrustworthy while the exit code says the opposite; a caller that reads
+    // the exit code (every CI gate) cannot see it.
+    crate::cli::ensure_source_files_were_analyzed(
+        "deep-context",
+        &project_path,
+        report.file_count,
+    )?;
+
     // Format and output results
     let output_content = match (&format, &output) {
         (DeepContextOutputFormat::Json, _) => analyzer.format_as_json(&report)?,
@@ -299,6 +311,15 @@ async fn deep_context_sarif(
     };
     let analyzer = DeepContextAnalyzer::new(config);
     let context = analyzer.analyze_project(project_path).await?;
+    // `--format sarif` goes through a different analyzer than the other three
+    // formats, so it needs the same refusal stated over its own denominator:
+    // `ast_contexts` is one entry per file this run built a context for, and an
+    // empty SARIF run with zero results is otherwise a clean bill of health.
+    crate::cli::ensure_source_files_were_analyzed(
+        "deep-context",
+        project_path,
+        context.analyses.ast_contexts.len(),
+    )?;
     analyzer.format_as_sarif(&context)
 }
 

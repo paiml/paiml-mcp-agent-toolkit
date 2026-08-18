@@ -146,7 +146,11 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         include: Vec<String>,
 
-        /// Watch mode for continuous analysis
+        /// [NOT AVAILABLE in the default build] Watch mode for continuous analysis — needs --features watch
+        ///
+        /// `watch` is not in the default feature set: a `cargo install pmat`
+        /// binary exits rc=1 with "Watch mode requires the 'watch' feature"
+        /// before it analyses anything.
         #[arg(long)]
         watch: bool,
 
@@ -248,8 +252,25 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'u')]
         include_unreachable: bool,
 
-        /// Minimum dead lines to report a file (default: 10)
-        #[arg(long, default_value = "10")]
+        // The default was 10, and `dead_lines` on the cargo path is an ESTIMATE
+        // of 5 lines per dead function (3 per struct/enum, 2 otherwise), not a
+        // measured span — so the DEFAULT invocation discarded every file whose
+        // whole finding set estimated under 10 lines, i.e. any file with a
+        // single dead function. `pmat analyze dead-code` on a crate with one
+        // dead function answered `dead_functions: 0, files: []` while the same
+        // tool's MCP `analyze_dead_code` answered with the function's name and
+        // line, and the CLI's own JSON carried `files_with_dead_code_found: 1`
+        // beside the zeros. A trimmer may narrow a long list on request; it may
+        // not answer "no dead code" by default over dead code the analyzer
+        // found. `--top-files`, the other trimmer, already defaults to showing
+        // everything.
+        /// Minimum estimated dead lines before a file is listed (default: 0 —
+        /// list every file with a finding)
+        ///
+        /// Trims the reported list only. Whatever it removes is still counted
+        /// in the report's `omitted` block and named in the summary, so raising
+        /// it can never turn a finding into a silent zero.
+        #[arg(long, default_value = "0")]
         min_dead_lines: usize,
 
         /// Include test files in analysis
@@ -1651,7 +1672,13 @@ pub enum AnalyzeCommands {
         include_tests: bool,
     },
 
-    /// Analyze WebAssembly modules for quality, security, and performance
+    /// [NOT AVAILABLE in the default build] Analyze WebAssembly modules — needs --features wasm-ast
+    ///
+    /// Quality, security and performance analysis of a compiled `.wasm`
+    /// module. `wasm-ast` is not in the default feature set, so a
+    /// `cargo install pmat` binary exits rc=1 with "WASM analysis requires
+    /// the 'wasm-ast' feature" as soon as it is given a file. Rebuild with
+    /// `cargo install pmat --features wasm-ast` to use it.
     Wasm {
         /// Path to WASM file to analyze
         wasm_file: PathBuf,

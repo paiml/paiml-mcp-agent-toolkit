@@ -246,20 +246,31 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     result
 }
 
-/// Dispatch to the per-family routers. Split out of [`route_analyze_command`]
-/// so the `--perf` measurement wraps every analyze subcommand exactly once.
+/// Route every `analyze` subcommand to its handler, in one total match.
+///
+/// Split out of [`route_analyze_command`] so the `--perf` measurement wraps
+/// every analyze subcommand exactly once.
+///
+/// **One match, no catch-all.** This used to be seven matches: this one sorted
+/// variants into six families, and each family router re-matched and ended in
+/// `_ => unreachable!("Expected <family> analysis command")`. Only this match
+/// was checked by the compiler, so listing a variant in the wrong family — or
+/// adding it to a family and forgetting its router — compiled cleanly and
+/// aborted the process at run time. The families survive as comments; the
+/// dispatch decision is made once, by name, so that omitting a variant is a
+/// compile error.
 async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::AnalyzeCommands;
 
     match cmd {
         // Core analysis commands
-        AnalyzeCommands::Bottleneck { .. }
-        | AnalyzeCommands::Complexity { .. }
-        | AnalyzeCommands::Churn { .. }
-        | AnalyzeCommands::DeadCode { .. }
-        | AnalyzeCommands::Defects { .. }
-        | AnalyzeCommands::Dag { .. }
-        | AnalyzeCommands::Satd { .. } => route_core_analysis(cmd).await,
+        AnalyzeCommands::Bottleneck { .. } => core_routes::route_bottleneck_analysis(cmd).await,
+        AnalyzeCommands::Complexity { .. } => core_routes::route_complexity_analysis(cmd).await,
+        AnalyzeCommands::Churn { .. } => core_routes::route_churn_analysis(cmd).await,
+        AnalyzeCommands::DeadCode { .. } => core_routes::route_dead_code_analysis(cmd).await,
+        AnalyzeCommands::Defects { .. } => core_routes::route_defects_analysis(cmd).await,
+        AnalyzeCommands::Dag { .. } => core_routes::route_dag_analysis(cmd).await,
+        AnalyzeCommands::Satd { .. } => core_routes::route_satd_analysis(cmd).await,
 
         AnalyzeCommands::Reachability { .. } => route_reachability(cmd).await,
 
@@ -268,71 +279,6 @@ async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::VacuousTests { .. } => route_vacuous_tests(cmd).await,
 
         // Advanced analysis commands
-        AnalyzeCommands::DeepContext { .. }
-        | AnalyzeCommands::Tdg { .. }
-        | AnalyzeCommands::BuildTdg { .. }
-        | AnalyzeCommands::LintHotspot { .. }
-        | AnalyzeCommands::Comprehensive { .. } => route_advanced_analysis(cmd).await,
-
-        // Quality analysis commands
-        AnalyzeCommands::Duplicates { .. }
-        | AnalyzeCommands::DefectPrediction { .. }
-        | AnalyzeCommands::Provability { .. }
-        | AnalyzeCommands::Clippy { .. }
-        | AnalyzeCommands::Entropy { .. } => route_quality_analysis(cmd).await,
-
-        // Specialized analysis commands
-        AnalyzeCommands::GraphMetrics { .. }
-        | AnalyzeCommands::NameSimilarity { .. }
-        | AnalyzeCommands::ProofAnnotations { .. }
-        | AnalyzeCommands::IncrementalCoverage { .. }
-        | AnalyzeCommands::CoverageImprove { .. }
-        | AnalyzeCommands::SymbolTable { .. }
-        | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
-
-        // Language-specific commands
-        AnalyzeCommands::AssemblyScript { .. }
-        | AnalyzeCommands::WebAssembly { .. }
-        | AnalyzeCommands::Wasm { .. } => route_language_specific_analysis(cmd).await,
-
-        // Deep WASM analysis (feature-gated)
-        #[cfg(feature = "deep-wasm")]
-        AnalyzeCommands::DeepWasm { .. } => platform_routes::route_deep_wasm_analysis(cmd).await,
-
-        // Mutation testing (feature-gated)
-        #[cfg(feature = "mutation-testing")]
-        AnalyzeCommands::Mutate { .. } => platform_routes::route_mutation_testing(cmd).await,
-
-        // System commands
-        AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
-
-        // Semantic analysis commands (PMAT-SEARCH-011)
-        AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
-            entropy_semantic::route_semantic_analysis(cmd).await
-        }
-
-        // MLOps model analysis (PMAT-500)
-        AnalyzeCommands::Models { .. } => platform_routes::route_model_analysis(cmd).await,
-    }
-}
-
-/// Route core analysis commands
-async fn route_core_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
-        AnalyzeCommands::Bottleneck { .. } => core_routes::route_bottleneck_analysis(cmd).await,
-        AnalyzeCommands::Complexity { .. } => core_routes::route_complexity_analysis(cmd).await,
-        AnalyzeCommands::Churn { .. } => core_routes::route_churn_analysis(cmd).await,
-        AnalyzeCommands::DeadCode { .. } => core_routes::route_dead_code_analysis(cmd).await,
-        AnalyzeCommands::Defects { .. } => core_routes::route_defects_analysis(cmd).await,
-        AnalyzeCommands::Dag { .. } => core_routes::route_dag_analysis(cmd).await,
-        AnalyzeCommands::Satd { .. } => core_routes::route_satd_analysis(cmd).await,
-        _ => unreachable!("Expected core analysis command"),
-    }
-}
-
-/// Route advanced analysis commands
-async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
         AnalyzeCommands::DeepContext { .. } => {
             advanced_routes::route_deep_context_analysis(cmd).await
         }
@@ -344,13 +290,8 @@ async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Comprehensive { .. } => {
             advanced_routes::route_comprehensive_analysis(cmd).await
         }
-        _ => unreachable!("Expected advanced analysis command"),
-    }
-}
 
-/// Route quality analysis commands
-async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Quality analysis commands
         AnalyzeCommands::Duplicates { .. } => advanced_routes::route_duplicates_analysis(cmd).await,
         AnalyzeCommands::DefectPrediction { .. } => {
             advanced_routes::route_defect_prediction_analysis(cmd).await
@@ -360,13 +301,8 @@ async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
         }
         AnalyzeCommands::Clippy { .. } => advanced_routes::route_clippy_analysis(cmd).await,
         AnalyzeCommands::Entropy { .. } => entropy_semantic::route_entropy_analysis(cmd).await,
-        _ => unreachable!("Expected quality analysis command"),
-    }
-}
 
-/// Route specialized analysis commands
-async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Specialized analysis commands
         AnalyzeCommands::GraphMetrics { .. } => {
             platform_routes::route_graph_metrics_analysis(cmd).await
         }
@@ -411,13 +347,8 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             platform_routes::route_symbol_table_analysis(cmd).await
         }
         AnalyzeCommands::BigO { .. } => platform_routes::route_big_o_analysis(cmd).await,
-        _ => unreachable!("Expected specialized analysis command"),
-    }
-}
 
-/// Route language-specific analysis commands
-async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Language-specific commands
         AnalyzeCommands::AssemblyScript { .. } => {
             platform_routes::route_assemblyscript_analysis(cmd).await
         }
@@ -432,15 +363,25 @@ async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 "WASM analysis requires the 'wasm-ast' feature. Build with --features wasm-ast"
             )
         }
-        _ => unreachable!("Expected language-specific analysis command"),
-    }
-}
 
-/// Route system analysis commands
-async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Deep WASM analysis (feature-gated)
+        #[cfg(feature = "deep-wasm")]
+        AnalyzeCommands::DeepWasm { .. } => platform_routes::route_deep_wasm_analysis(cmd).await,
+
+        // Mutation testing (feature-gated)
+        #[cfg(feature = "mutation-testing")]
+        AnalyzeCommands::Mutate { .. } => platform_routes::route_mutation_testing(cmd).await,
+
+        // System commands
         AnalyzeCommands::Makefile { .. } => platform_routes::route_makefile_analysis(cmd).await,
-        _ => unreachable!("Expected system analysis command"),
+
+        // Semantic analysis commands (PMAT-SEARCH-011)
+        AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
+            entropy_semantic::route_semantic_analysis(cmd).await
+        }
+
+        // MLOps model analysis (PMAT-500)
+        AnalyzeCommands::Models { .. } => platform_routes::route_model_analysis(cmd).await,
     }
 }
 
@@ -448,6 +389,11 @@ async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
 #[cfg(test)]
 #[path = "../analysis_handlers_tests.rs"]
 mod tests;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dispatch_totality_tests.rs"]
+mod dispatch_totality_tests;
 
 /// Find machine-specific absolute paths baked into source.
 async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {

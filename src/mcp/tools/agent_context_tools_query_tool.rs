@@ -27,10 +27,15 @@ impl QueryCodeTool {
                         "maximum": 100,
                         "default": 10
                     },
+                    // The enum used to list five letters while the filter
+                    // underneath accepted all eleven grades case-insensitively,
+                    // so `A-` and `a` worked but were undocumented, and `Z`
+                    // was neither documented nor rejected — it just returned
+                    // `total: 0`. Schema and validator now name the same set.
                     "min_grade": {
                         "type": "string",
-                        "enum": ["A", "B", "C", "D", "F"],
-                        "description": "Minimum TDG grade filter (A is best)"
+                        "enum": min_grade_enum(),
+                        "description": "Minimum TDG grade filter (A+ is best). Case-insensitive."
                     },
                     "max_complexity": {
                         "type": "integer",
@@ -74,30 +79,35 @@ impl McpTool for QueryCodeTool {
         Self::schema()
     }
 
-    async fn execute(&self, params: Value) -> Result<Value, String> {
+    async fn execute(&self, params: Value) -> Result<Value, ToolError> {
         let start = Instant::now();
 
         // Extract query parameter
         let query = params["query"]
             .as_str()
-            .ok_or("Missing required parameter: query")?;
+            .ok_or_else(|| ToolError::invalid("Missing required parameter: query"))?;
 
         if query.trim().is_empty() {
-            return Err("Query cannot be empty".to_string());
+            return Err(ToolError::invalid("Query cannot be empty"));
         }
 
-        // Extract optional parameters
-        let limit = params["limit"].as_u64().unwrap_or(10) as usize;
-        if limit > 100 {
-            return Err("Limit exceeds maximum of 100".to_string());
-        }
+        // Extract optional parameters. Every bound below is the one this tool's
+        // own schema advertises, enforced at BOTH ends: `limit: 9999` was
+        // already refused while `limit: -1` and `limit: "10"` silently became
+        // the default 10, so a typo was indistinguishable from an intended
+        // value — the exact hole the upper bound was added to close.
+        let limit = bounded_integer(&params, "limit", 1, 100)?.unwrap_or(10) as usize;
 
-        let min_grade = params["min_grade"].as_str().map(|s| s.to_string());
-        let max_complexity = params["max_complexity"].as_u64().map(|n| n as u32);
-        let language = params["language"].as_str().map(|s| s.to_string());
-        let path_pattern = params["path_pattern"].as_str().map(|s| s.to_string());
-        let include_source = params["include_source"].as_bool().unwrap_or(false);
-        let rebuild_index = params["rebuild_index"].as_bool().unwrap_or(false);
+        let min_grade = string(&params, "min_grade")?
+            .map(validate_min_grade)
+            .transpose()?;
+        // A silently dropped `max_complexity` is worse than a silently defaulted
+        // `limit`: the caller asked for a FILTER and got unfiltered results.
+        let max_complexity = bounded_integer(&params, "max_complexity", 1, 100)?.map(|n| n as u32);
+        let language = string(&params, "language")?.map(std::string::ToString::to_string);
+        let path_pattern = string(&params, "path_pattern")?.map(std::string::ToString::to_string);
+        let include_source = boolean(&params, "include_source")?.unwrap_or(false);
+        let rebuild_index = boolean(&params, "rebuild_index")?.unwrap_or(false);
 
         // Get or rebuild index
         let index = if rebuild_index {

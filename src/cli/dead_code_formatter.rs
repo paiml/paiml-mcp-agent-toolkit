@@ -384,6 +384,7 @@ mod tests {
             analyzed_files: 100,
             files_with_dead_code_found: 10,
             files_truncated: false,
+            library_target: None,
         }
     }
 

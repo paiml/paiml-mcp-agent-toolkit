@@ -436,6 +436,12 @@ async fn test_resolve_function_targets_with_specific_functions() {
 #[tokio::test]
 async fn test_resolve_function_targets_rejects_unknown_function_name() {
     let temp_dir = TempDir::new().unwrap();
+    // A real source file, so discovery succeeds and the error under test is
+    // "that name is not in this tree". The tree used to be EMPTY here, which
+    // since #1015 is refused one step earlier ("no source files were found"):
+    // that refusal is correct but it is a different fact, and asserting on it
+    // would stop this test from covering the unknown-name path at all.
+    std::fs::write(temp_dir.path().join("real.rs"), "pub fn present() {}\n").unwrap();
 
     let config = provability_config_for(temp_dir.path(), vec!["ghost".to_string()]);
     let err = resolve_function_targets(&config)
@@ -444,7 +450,6 @@ async fn test_resolve_function_targets_rejects_unknown_function_name() {
     assert!(err.to_string().contains("ghost"), "unexpected: {err}");
 
     // Same for a file-qualified spec whose file exists but whose function does not.
-    std::fs::write(temp_dir.path().join("real.rs"), "pub fn present() {}\n").unwrap();
     let config = provability_config_for(temp_dir.path(), vec!["real.rs:absent".to_string()]);
     assert!(resolve_function_targets(&config).await.is_err());
 

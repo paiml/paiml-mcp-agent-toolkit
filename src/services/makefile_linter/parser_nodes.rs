@@ -60,10 +60,28 @@ impl<'src> MakefileParser<'src> {
             ast.add_node(target_node);
         }
 
-        // Parse recipe lines if present
+        // Parse recipe lines if present.
+        //
+        // GNU make: "Blank lines and lines of just comments may appear among the
+        // recipe lines; they are ignored." (make manual, "Recipe Syntax".) They
+        // do NOT end the recipe — the tab lines after them still belong to this
+        // rule. This loop used to stop at the first line that was not a tab, so
+        // every such recipe was cut in half: the remaining tab lines came back
+        // to `parse()` at top level, where a tab with no rule above it is
+        // rejected as "Recipe without rule". pmat's own Makefile has one target
+        // documented by six comment lines between `pmat-validate-docs:` and its
+        // first command, and that alone made `pmat analyze makefile Makefile`
+        // exit 4 with twelve parse errors on a file GNU make runs.
         self.skip_to_next_line();
-        while !self.at_end() && self.peek() == Some('\t') {
-            self.parse_recipe_line(ast, rule_idx)?;
+        loop {
+            if !self.at_end() && self.peek() == Some('\t') {
+                self.parse_recipe_line(ast, rule_idx)?;
+                continue;
+            }
+            if !self.recipe_resumes_after_ignorable_lines() {
+                break;
+            }
+            self.skip_ignorable_recipe_lines(ast);
         }
 
         Ok(())

@@ -55,6 +55,16 @@ include!("quality_gate_single_file.rs");
 #[path = "quality_gate_parse_guard_tests.rs"]
 mod quality_gate_parse_guard_tests;
 
+// The gate's EXIT CODE, pinned in the target CI actually runs. The end-to-end
+// version of this lives in `tests/modules/quality_gate_exit_status.rs`, which
+// belongs to the `all` integration target — and CI's only test commands are
+// `cargo test --lib` and `cargo llvm-cov test --lib`, neither of which builds a
+// `tests/*.rs` target. See the module docs for how a lib test observes a
+// process exit code.
+#[cfg(test)]
+#[path = "quality_gate_exit_status_guard_tests.rs"]
+mod quality_gate_exit_status_guard_tests;
+
 // `--color never` reaching the printers that interpolate raw ANSI constants.
 #[cfg(test)]
 #[path = "color_never_printer_tests.rs"]
@@ -68,6 +78,11 @@ include!("quality_gate_part2c.rs");
 include!("quality_gate_part2d.rs");
 include!("quality_gate_part2e.rs");
 include!("quality_gate_part2f.rs");
+
+// THE `--checks all` suite, one implementation, shared with the MCP
+// `quality_gate` tool — which used to advertise nine checks, run two, and
+// report `not_measured: []`.
+include!("quality_gate_suite.rs");
 
 // Comprehensive and serve handlers - extracted for file health (CB-040)
 include!("comprehensive.rs");

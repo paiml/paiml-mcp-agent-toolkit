@@ -78,3 +78,8 @@ pub(crate) fn on_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'st
         .join()
         .expect("8MB-stack test thread panicked")
 }
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "feature_gate_disclosure_tests.rs"]
+mod feature_gate_disclosure_tests;

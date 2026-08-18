@@ -25,6 +25,121 @@ struct DeadCodeAnalysisFilters {
     max_depth: usize,
 }
 
+// THE analysis that carries the name "dead code", in ONE place, for every
+// surface that runs it.
+//
+// MCP `analyze_dead_code` used to call `analyze_dead_code_multi_language`
+// directly, and the two surfaces answered the same question differently in both
+// directions at once:
+//
+// ```text
+//   bin crate, 1 dead fn + 2 never-constructed structs
+//     CLI  dead_functions:1  dead_classes:2      MCP  total_dead_code:1
+//   lib crate
+//     CLI  {never_called_one, never_called_two, dead_method, NeverConstructed}
+//     MCP  {entry, never_called_one, never_called_two, dead_method}
+//   src/models (this repo)
+//     CLI  0                                     MCP  50
+// ```
+//
+// The reachability analyzer has no notion of a dead TYPE, so `dead_classes`
+// could never reach MCP at all; and it calls any un-called `pub` item dead,
+// which is exactly wrong for a library, whose public API *is* its entry point —
+// hence `entry`, and hence 50 findings over `src/models`. Reporting a library's
+// whole public API as dead code is the kind of false positive that ends a
+// tool's usefulness.
+//
+// A disclosure field would not have fixed either half: the numbers would still
+// have been wrong, just annotated. So this follows the same route the
+// `quality_gate` split took (`src/cli/analysis_utilities/quality_gate_suite.rs`)
+// — one runner, called by both surfaces. [`run_dead_code_suite`] calls the SAME
+// `run_dead_code_analysis_with_filters` that `pmat analyze dead-code` calls, at
+// the SAME defaults, so the two surfaces cannot report different findings for
+// the same path without the CLI reporting them too. Rust still goes to cargo
+// and everything else still goes to the reachability analyzer — that dispatch
+// is one decision in one place, which is the opposite of two analyzers under
+// one name.
+
+/// `--min-dead-lines`'s default. Pinned to clap by
+/// `the_suite_defaults_are_the_cli_defaults`: two numbers under one name is the
+/// same defect as two implementations under one name.
+pub(crate) const DEAD_CODE_DEFAULT_MIN_DEAD_LINES: usize = 0;
+
+/// `--max-depth`'s default. Pinned to clap the same way.
+pub(crate) const DEAD_CODE_DEFAULT_MAX_DEPTH: usize = 8;
+
+/// `--timeout`'s default, in seconds. Pinned to clap the same way.
+///
+/// This is a real budget on the `cargo check` child (#929), so a surface that
+/// picked its own number would be a surface that gives up at a different point
+/// than the CLI does on the same tree.
+pub(crate) const DEAD_CODE_DEFAULT_TIMEOUT_SECS: u64 = 900;
+
+/// One path's dead-code analysis, as `pmat analyze dead-code` runs it.
+pub(crate) struct DeadCodeSuiteRun {
+    /// The report, in the same shape the CLI renders — including the `items`
+    /// list, which is what carries dead TYPES.
+    pub(crate) report: crate::models::dead_code::DeadCodeResult,
+    /// Which engine answered: [`DEAD_CODE_ENGINE_CARGO`] or
+    /// [`DEAD_CODE_ENGINE_MULTI_LANGUAGE`].
+    pub(crate) engine: &'static str,
+    /// The language that was actually READ.
+    ///
+    /// The multi-language engine reads one language per project and skips the
+    /// rest of the tree, so "which engine" does not answer "what was looked
+    /// at". MCP's `analyze_dead_code` publishes this as `languages`.
+    pub(crate) language: String,
+    /// Functions the engine walked — the denominator for the dead-function
+    /// count — and `None` where the engine measures none.
+    ///
+    /// Carried rather than re-derived: the only honest source for this figure
+    /// is the engine that produced the findings, and a second walk to count
+    /// functions would measure a different file set than the numerator.
+    pub(crate) total_functions: Option<usize>,
+}
+
+/// Run the dead-code analysis over `path` at the CLI's default flags.
+///
+/// `include_tests` is the one knob any other surface offers, and it is the one
+/// knob this takes; every other filter is left at the default that lists
+/// everything found, so a caller cannot narrow the report without saying so.
+pub(crate) async fn run_dead_code_suite(
+    path: &Path,
+    include_tests: bool,
+) -> Result<DeadCodeSuiteRun> {
+    let outcome = run_dead_code_analysis_with_filters(
+        path,
+        DeadCodeAnalysisFilters {
+            include_unreachable: false,
+            include_tests,
+            min_dead_lines: DEAD_CODE_DEFAULT_MIN_DEAD_LINES,
+            top_files: None,
+            include: Vec::new(),
+            exclude: Vec::new(),
+            max_depth: DEAD_CODE_DEFAULT_MAX_DEPTH,
+        },
+        std::time::Duration::from_secs(DEAD_CODE_DEFAULT_TIMEOUT_SECS),
+    )
+    .await?;
+
+    // At these defaults no filter can remove a row, so the list IS everything
+    // found and there is nothing for a caller to have to declare. Asserted
+    // rather than assumed: if a default ever changes so that it trims, this
+    // fails loudly instead of quietly shipping a short list.
+    debug_assert!(
+        outcome.scope.omitted.is_empty(),
+        "the suite's defaults dropped findings: {:?}",
+        outcome.scope.omitted
+    );
+
+    Ok(DeadCodeSuiteRun {
+        report: outcome.report,
+        engine: outcome.engine,
+        language: outcome.language,
+        total_functions: outcome.total_functions,
+    })
+}
+
 /// Handle dead code analysis command - REFACTORED
 /// Cognitive complexity reduced from 244 to ~10
 #[allow(clippy::too_many_arguments)]
@@ -186,6 +301,24 @@ include!("dead_code_handlers_output.rs");
 #[path = "dead_code_handlers_scope_tests.rs"]
 mod scope_tests;
 
+// Whether the report says it decided the target was a library.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_library_disclosure_tests.rs"]
+mod library_disclosure_tests;
+
+// `--path` pointed at a directory INSIDE a crate.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_subtree_scope_tests.rs"]
+mod subtree_scope_tests;
+
+// `--path` governed by a WORKSPACE-ONLY manifest, which declares no crate.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_workspace_root_tests.rs"]
+mod workspace_root_tests;
+
 // The summary's categories vs. the items it heads, and `--timeout`.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -287,6 +420,7 @@ mod output_tests {
             analyzed_files: 5,
             files_with_dead_code_found: 2,
             files_truncated: false,
+            library_target: None,
         }
     }
 
@@ -298,6 +432,7 @@ mod output_tests {
             analyzed_files: 5,
             files_with_dead_code_found: 2,
             files_truncated: false,
+            library_target: None,
         }
     }
 

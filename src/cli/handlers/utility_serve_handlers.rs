@@ -10,10 +10,15 @@
 //! produced HTTP 000 on every request while reporting exit code 0, which is a
 //! classic D75 "exit 0 on error" regression.
 //!
-//! Per the remediation policy, the command now fails LOUD: it prints a clear
-//! error to stderr and exits with code 2 (misuse) until real HTTP/WebSocket/SSE
-//! transports are wired up. Honest failure is strictly better than a lying
-//! success.
+//! Per the remediation policy, an unimplemented transport fails LOUD: it prints
+//! a clear error to stderr and exits with code 2 (misuse). Honest failure is
+//! strictly better than a lying success.
+//!
+//! `--transport http` is no longer in that set — it serves the MCP tool surface
+//! over streamable HTTP (EV-6, #999), in builds with `--features mcp-http`, and
+//! is exercised end to end against the spawned binary by
+//! `tests/e2e_http_serve_t.rs`. `web-socket`, `http-sse`, `both` and `all` are
+//! still unimplemented and still exit 2.
 //!
 //! If you need an MCP server today, use stdio transport via `MCP_VERSION=1
 //! pmat` — see the `SimpleUnifiedServer` in `mcp_pmcp`. Do not add
@@ -24,9 +29,9 @@
 
 use anyhow::Result;
 
-/// Exit code returned when `pmat serve` is invoked while HTTP transports are
-/// not yet implemented. `2` is the conventional "misuse" code and matches the
-/// D75 remediation guidance.
+/// Exit code returned when `pmat serve` is asked for a transport that is not
+/// implemented. `2` is the conventional "misuse" code and matches the D75
+/// remediation guidance.
 pub const SERVE_UNIMPLEMENTED_EXIT_CODE: i32 = 2;
 
 /// Emit the honest-failure diagnostic to the given writer.
@@ -39,10 +44,21 @@ pub fn write_serve_unimplemented_message<W: std::io::Write>(
     port: u16,
     transport: &str,
 ) -> std::io::Result<()> {
-    writeln!(out, "error: pmat serve HTTP transport not yet implemented")?;
+    // Names the transport, not "HTTP": `--transport http` IS implemented (the
+    // streamable-HTTP MCP endpoint), and a blanket "HTTP transport not yet
+    // implemented" on a websocket request denies a shipped feature.
+    writeln!(
+        out,
+        "error: pmat serve --transport {transport} is not yet implemented"
+    )?;
     writeln!(
         out,
         "  requested: transport={transport} host={host} port={port}"
+    )?;
+    writeln!(
+        out,
+        "hint: `--transport http` works — build with `--features mcp-http` and set \
+         PMAT_MCP_HTTP_TOKEN"
     )?;
     // Names only the route verified to serve the 20 analysis tools.
     //
@@ -65,8 +81,10 @@ pub fn write_serve_unimplemented_message<W: std::io::Write>(
 
 /// Handle serve command.
 ///
-/// Prints a clear "not yet implemented" diagnostic to stderr and exits the
-/// process with [`SERVE_UNIMPLEMENTED_EXIT_CODE`]. Never returns.
+/// `--transport http` serves the MCP tool surface over streamable HTTP and runs
+/// until the server task ends. Every other transport prints a "not yet
+/// implemented" diagnostic to stderr and exits the process with
+/// [`SERVE_UNIMPLEMENTED_EXIT_CODE`] without returning.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_serve(
     host: String,
@@ -98,6 +116,14 @@ pub async fn handle_serve(
 /// check: pmcp's HTTP layer only consults an auth provider if one is wired, and
 /// with none it serves every request — so a "working" endpoint with no token
 /// would publish the whole tool surface to anyone who can reach the port.
+///
+/// The token is read BEFORE [`crate::mcp_pmcp::http_server::serve`], so in a
+/// build without `--features mcp-http` an unset token — the common case — is
+/// the error the user sees, and the "not compiled in" error is only reachable
+/// once a token is set. `serve --help` states both cases in that order for
+/// exactly this reason; `serve_help_describes_the_no_token_failure_it_actually_produces`
+/// (src/cli/commands/commands_enum/definition.rs) measures it and holds the
+/// help to it.
 async fn serve_streamable_http(host: &str, port: u16) -> Result<()> {
     use crate::mcp_pmcp::http_server::{serve, BearerToken, TOKEN_ENV};
 
@@ -176,5 +202,30 @@ mod tests {
     #[test]
     fn exit_code_is_misuse_convention() {
         assert_eq!(SERVE_UNIMPLEMENTED_EXIT_CODE, 2);
+    }
+
+    /// The diagnostic for an unimplemented transport must not deny the one that
+    /// works. It read "pmat serve HTTP transport not yet implemented" for a
+    /// *websocket* request, throughout the release in which the streamable-HTTP
+    /// MCP transport shipped.
+    #[test]
+    fn message_does_not_deny_the_http_transport_that_works() {
+        let mut buf = Vec::new();
+        write_serve_unimplemented_message(&mut buf, "127.0.0.1", 8080, "websocket").unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(
+            !s.contains("HTTP transport not yet implemented"),
+            "`--transport http` is implemented; the message must name the \
+             transport that was requested, got: {s}"
+        );
+        assert!(
+            s.contains("websocket is not yet implemented"),
+            "must say which transport is missing, got: {s}"
+        );
+        assert!(
+            s.contains("mcp-http"),
+            "must name the feature that enables the transport that does work, \
+             got: {s}"
+        );
     }
 }

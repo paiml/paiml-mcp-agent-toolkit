@@ -26,7 +26,7 @@ pub(super) mod helpers {
                 total_files: 10,
                 total_issues: 5,
                 critical_issues: 2,
-                quality_score: 85.0,
+                quality_score: Some(85.0),
                 recommendations: vec!["Test recommendation".to_string()],
             },
             duration_ms: 1000,
@@ -85,7 +85,7 @@ pub(super) mod helpers {
                 total_files: 10,
                 total_issues: 4,
                 critical_issues: 1,
-                quality_score: 75.0,
+                quality_score: Some(75.0),
                 recommendations: vec![
                     "Refactor complex functions".to_string(),
                     "Remove dead code".to_string(),
@@ -259,7 +259,7 @@ mod tests {
                 total_files: 2,
                 total_issues: 2,
                 critical_issues: 1,
-                quality_score: 70.0,
+                quality_score: Some(70.0),
                 recommendations: vec![],
             },
             duration_ms: 500,
@@ -413,7 +413,7 @@ mod tests {
             total_files: 50,
             total_issues: 10,
             critical_issues: 3,
-            quality_score: 90.5,
+            quality_score: Some(90.5),
             recommendations: vec![
                 "First recommendation".to_string(),
                 "Second recommendation".to_string(),
@@ -437,7 +437,7 @@ mod tests {
             total_files: 10,
             total_issues: 0,
             critical_issues: 0,
-            quality_score: 100.0,
+            quality_score: Some(100.0),
             recommendations: vec![],
         };
         let mut output = String::new();
@@ -461,7 +461,7 @@ mod tests {
                 total_files: 0,
                 total_issues: 0,
                 critical_issues: 0,
-                quality_score: 100.0,
+                quality_score: Some(100.0),
                 recommendations: vec![],
             },
             duration_ms: 100,

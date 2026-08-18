@@ -108,6 +108,7 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
                     name: func_name.to_string(),
                     file: file_str.clone(),
                     line: line_idx + 1,
+                    exported: is_exported,
                 });
                 continue;
             }
@@ -130,6 +131,7 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
                     name: func_name.to_string(),
                     file: file_str.clone(),
                     line: line_idx + 1,
+                    exported: is_exported,
                 });
                 continue;
             }
@@ -143,6 +145,10 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
                             name: func_name.to_string(),
                             file: file_str.clone(),
                             line: line_idx + 1,
+                            // `local` is Lua's privacy keyword: a local function
+                            // is not reachable from another chunk, so it is not
+                            // part of any module's API.
+                            exported: false,
                         });
                     }
                 }
@@ -159,6 +165,11 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
                             name: func_name.to_string(),
                             file: file_str.clone(),
                             line: line_idx + 1,
+                            // A global is ambient, not declared: nothing in the
+                            // tree states that it is a module's API, so it is
+                            // not treated as one. That gap is what
+                            // `detect_lua_library_target` discloses.
+                            exported: false,
                         });
                     }
                 }
@@ -176,6 +187,20 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
     );
 
     Ok((defined_functions, called_functions))
+}
+
+/// How many of `files` end in `return <table>` — Lua's one declaration that a
+/// file is a module whose fields are its API.
+///
+/// Read separately from [`analyze_lua_files`] rather than threaded through its
+/// return type: that signature is what four existing tests exercise, and a
+/// count for the report is not worth changing what they call.
+fn count_lua_module_returns(files: &[std::path::PathBuf]) -> usize {
+    files
+        .iter()
+        .filter_map(|file| std::fs::read_to_string(file).ok())
+        .filter(|content| detect_lua_module_return(content).is_some())
+        .count()
 }
 
 /// Detect if a Lua file returns a module table (e.g., `return M`)

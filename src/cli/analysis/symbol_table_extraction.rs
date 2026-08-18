@@ -24,6 +24,16 @@ pub async fn handle_analyze_symbol_table(
     // Build the symbol table
     let table = build_symbol_table(&project_path, include, exclude, top_files).await?;
 
+    // #1015: "Total symbols: 0" with exit 0 over a directory holding no source
+    // file is the same report a project of empty modules produces. Refused
+    // here, after the build, so `build_symbol_table` stays a pure builder and
+    // the count it reports is the one the refusal is made on.
+    crate::cli::ensure_source_files_were_analyzed(
+        "symbol-table",
+        &project_path,
+        table.files_scanned,
+    )?;
+
     // Apply filters
     let filtered = apply_filters(table, filter, query, top_files)?;
 
@@ -89,6 +99,7 @@ async fn build_symbol_table(
         unreferenced_symbols: unreferenced,
         most_referenced,
         referenced_symbol_count,
+        files_scanned: sources.len(),
     })
 }
 

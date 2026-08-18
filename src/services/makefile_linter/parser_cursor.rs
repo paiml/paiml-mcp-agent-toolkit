@@ -83,6 +83,69 @@ impl<'src> MakefileParser<'src> {
             .any(|c| !c.is_whitespace())
     }
 
+    /// Sitting between recipe lines: does the recipe continue after this run of
+    /// blank and comment-only lines?
+    ///
+    /// GNU make's recipe grammar ignores both ("Blank lines and lines of just
+    /// comments may appear among the recipe lines; they are ignored"), so a
+    /// recipe is not over until a line appears that is neither blank, nor a
+    /// comment, nor a recipe. Answering this by look-ahead rather than by
+    /// consuming means a blank run that leads somewhere else is left untouched
+    /// for `parse()` to handle exactly as before.
+    fn recipe_resumes_after_ignorable_lines(&self) -> bool {
+        self.input[self.cursor..]
+            .split('\n')
+            .find_map(|line| {
+                if Self::line_is_ignorable_within_recipe(line) {
+                    None
+                } else {
+                    // A tab is the recipe marker; anything else ends the recipe.
+                    Some(line.starts_with('\t'))
+                }
+            })
+            .unwrap_or(false)
+    }
+
+    /// A line make ignores when it appears among recipe lines: one that is
+    /// blank, or whose first non-blank character is `#`.
+    ///
+    /// A `#` *after* a leading tab is not a make comment — it is a recipe line
+    /// whose text the shell happens to treat as a comment — so the tab is
+    /// checked first.
+    fn line_is_ignorable_within_recipe(line: &str) -> bool {
+        if line.trim().is_empty() {
+            return true;
+        }
+        !line.starts_with('\t') && line.trim_start().starts_with('#')
+    }
+
+    /// Consume the blank/comment lines `recipe_resumes_after_ignorable_lines`
+    /// looked past, leaving the cursor on the recipe line it found.
+    ///
+    /// Comments are still recorded as [`MakefileNodeKind::Comment`] nodes: they
+    /// used to reach the AST via `parse()`'s top-level comment branch (as a side
+    /// effect of the recipe being cut short there), and a rule that consults
+    /// comments must not lose them to this fix.
+    fn skip_ignorable_recipe_lines(&mut self, ast: &mut MakefileAst) {
+        while !self.at_end() && self.peek() != Some('\t') {
+            if self.current_line_is_comment() {
+                self.skip_spaces();
+                self.parse_comment(ast);
+            } else {
+                self.skip_to_next_line();
+            }
+        }
+    }
+
+    /// At the start of a line: is it a make comment line?
+    fn current_line_is_comment(&self) -> bool {
+        let line = self.input[self.cursor..]
+            .split('\n')
+            .next()
+            .unwrap_or_default();
+        !line.starts_with('\t') && line.trim_start().starts_with('#')
+    }
+
     fn skip_to_next_line(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
