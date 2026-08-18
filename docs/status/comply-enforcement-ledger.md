@@ -21,6 +21,7 @@ Source: .github/required-status-checks.txt
 | `feature-gate` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `docs build (docs.rs environment)` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `pmat score` | **no** — this required check was read in full and gates nothing in the CB roster |
+| `mutation-diff` | **no** — this required check was read in full and gates nothing in the CB roster |
 
 ## Summary
 

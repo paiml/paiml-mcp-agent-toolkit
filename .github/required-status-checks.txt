@@ -16,3 +16,4 @@ ci / gate
 feature-gate
 docs build (docs.rs environment)
 pmat score
+mutation-diff
