@@ -262,6 +262,77 @@ fn the_hook_allows_a_commit_when_the_clippy_stage_is_green() {
     );
 }
 
+/// A failing format gate has to say so.
+///
+/// Found while replaying the clippy defect, in the gate right above it. The hook
+/// runs under `set -e`, and `FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1)` is
+/// an assignment whose exit status *is* the command substitution's — so a
+/// non-zero rustfmt killed the hook on that line and the entire `else` branch
+/// beneath it (the "❌", the "Unformatted Rust code detected" message, the
+/// excerpt of the diff) was unreachable. Observed live: the hook printed
+/// "  Format check... " and exited 1 with nothing after it. An operator sees a
+/// refused commit and no reason for it, which is one step from `--no-verify`.
+#[test]
+fn a_failing_format_gate_prints_why_instead_of_dying_on_the_line() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let bin = root.join("bin");
+    std::fs::create_dir_all(&bin).expect("mkdir");
+    write_exec(
+        &bin.join("cargo"),
+        "#!/bin/sh\necho 'Diff in /x/y.rs at line 1:'\nexit 1\n",
+    );
+    write_exec(&bin.join("pmat"), "#!/bin/sh\necho 'Total violations: 0'\n");
+
+    let git = |args: &[&str]| {
+        assert!(
+            Command::new("git")
+                .args(args)
+                .current_dir(root)
+                .output()
+                .expect("git")
+                .status
+                .success(),
+            "git {args:?} failed"
+        );
+    };
+    git(&["init", "-q"]);
+    git(&["config", "user.email", "t@t"]);
+    git(&["config", "user.name", "t"]);
+    std::fs::write(root.join("Cargo.toml"), "[package]\nname='x'\n").expect("write");
+    std::fs::write(root.join("a.rs"), "pub fn a() {}\n").expect("write");
+    git(&["add", "Cargo.toml", "a.rs"]);
+
+    let hook = root.join("hook.sh");
+    std::fs::write(&hook, generated_hook()).expect("write hook");
+    let out = Command::new(bash())
+        .arg(&hook)
+        .current_dir(root)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
+        .output()
+        .expect("run hook");
+
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_ne!(out.status.code().unwrap_or(-1), 0, "must refuse:\n{text}");
+    assert!(
+        text.contains("Unformatted Rust code detected"),
+        "the format gate must explain its refusal; got:\n{text}"
+    );
+}
+
+fn write_exec(path: &Path, body: &str) {
+    std::fs::write(path, body).expect("write script");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+    }
+}
+
 /// A hook that cannot reach its gate must not report the gate as passed.
 #[test]
 fn the_hook_fails_closed_when_pmat_is_missing_from_a_cargo_project() {

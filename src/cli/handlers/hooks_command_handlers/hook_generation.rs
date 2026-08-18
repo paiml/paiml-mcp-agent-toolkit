@@ -97,8 +97,16 @@ if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; th
     # --all matches the pre-push gate. Without it only the current package is
     # checked, so an unformatted file in a workspace MEMBER passes pre-commit
     # and then fails pre-push -- two gates disagreeing about the same repo.
-    FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1)
-    if [ $? -eq 0 ]; then
+    # `FMT_STATUS=0; ... || FMT_STATUS=$?` rather than testing `$?` after the
+    # assignment. The hook runs under `set -e`, and the exit status of
+    # `X=$(cmd)` *is* cmd's, so a non-zero rustfmt killed the hook on that line
+    # and everything below — the "❌", this message, the diff excerpt — was
+    # unreachable. Observed live: "  Format check... " and then exit 1, with no
+    # reason printed. A refusal an operator cannot read is a refusal they route
+    # around.
+    FMT_STATUS=0
+    FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1) || FMT_STATUS=$?
+    if [ "$FMT_STATUS" -eq 0 ]; then
         echo "✅"
     else
         echo "❌"
