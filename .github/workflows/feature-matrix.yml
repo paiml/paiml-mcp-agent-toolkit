@@ -508,18 +508,62 @@ jobs:
             echo "::warning::package is ${mib} MiB compressed; the budget is 9.0 and the hard limit is 10."
           fi
 
+  # `orphan-ledger` above asks whether every orphan FEATURE is tested or
+  # explained. It says nothing about a TEST that lives behind a feature no leg
+  # runs, and that gap shipped four regression tests in the 3.32.0 cycle which
+  # have never executed once: three under `mcp-integration`
+  # (`mcp_integration::tdg_tools::tests::test_analyze_technical_debt_refuses_
+  # ungradable_file` and two in `mcp_integration::tools::context_adapters::
+  # tests`) and one under `analytics-gpu`.
+  #
+  # Two of those four were invisible to a name search, which is the part worth
+  # understanding: `mcp_pmcp::agent_context_handlers::tests` holds tests with
+  # IDENTICAL names that DO run, so `cargo test --lib -- --list | grep <name>`
+  # printed the name while the hidden copy compiled in no invocation. This job
+  # keys on the full module path, never the bare name.
+  #
+  # `cargo check --features X` — what `bundles` and `individual` run — is not
+  # coverage here and is not counted as a leg: it compiles no `#[cfg(test)]`
+  # item and executes no body.
+  #
+  # Replayed against the tree at f47d715706 (the commit before
+  # `mcp-integration` became a leg): all four named, neither twin flagged.
+  unrun-tests:
+    name: no test behind a feature nothing runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: unrun-tests
+      - name: cargo build --bin pmat
+        run: cargo build --release --locked --bin pmat
+      # `--executed ''` declares the one test-running leg that is NOT in this
+      # repository: `ci / test` lives in the reusable paiml/.github workflow and
+      # runs `cargo test --lib` on default features. Every other leg is derived
+      # from the workflow files, so a leg added or removed here changes the
+      # answer without anyone editing this job.
+      #
+      # Exits non-zero on: a test newly unrun, a test no longer unrun (a stale
+      # ledger is a confident wrong answer), a bucket with no recorded reason,
+      # a cfg predicate the analysis cannot decide, or a file it cannot parse.
+      - name: every test is executed by some leg, or the ledger says why
+        run: ./target/release/pmat analyze unrun-tests --executed '' --check-ledger
+
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, unrun-tests]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.unrun-tests.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }}"
+              echo "a leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
               exit 1
             fi
           done
-          echo "every advertised feature compiles, its tests run or its exemption is written down, and the package fits"
+          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, and the package fits"
