@@ -526,8 +526,9 @@ jobs:
   # coverage here and is not counted as a leg: it compiles no `#[cfg(test)]`
   # item and executes no body.
   #
-  # Replayed against the tree at f47d715706 (the commit before
-  # `mcp-integration` became a leg): all four named, neither twin flagged.
+  # Replayed against the tree at f47d751709 (the commit before
+  # `mcp-integration` became a leg, i.e. f32f57dcf's parent): all four named,
+  # neither twin flagged.
   unrun-tests:
     name: no test behind a feature nothing runs
     runs-on: ubuntu-latest
