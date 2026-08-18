@@ -276,6 +276,7 @@ async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
 
         AnalyzeCommands::HardcodedPaths { .. } => route_hardcoded_paths(cmd).await,
 
+        AnalyzeCommands::UnrunTests { .. } => route_unrun_tests(cmd).await,
         AnalyzeCommands::VacuousTests { .. } => route_vacuous_tests(cmd).await,
 
         // Advanced analysis commands
@@ -472,6 +473,122 @@ async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> 
         std::process::exit(1);
     }
     Ok(())
+}
+
+/// Report tests that no CI leg executes.
+async fn route_unrun_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::unrun_tests::{self, ledger};
+    let cli::AnalyzeCommands::UnrunTests {
+        path,
+        format,
+        executed,
+        write_ledger,
+        check_ledger,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected UnrunTests command")
+    };
+
+    let report = unrun_tests::analyze(&path, &executed).map_err(anyhow::Error::msg)?;
+    if write_ledger {
+        ledger::write(&path, &report)?;
+        println!("wrote {}", ledger::LEDGER_PATH);
+        return Ok(());
+    }
+    print_unrun_report(&report, &format)?;
+
+    let mut failed = fail_on_any && !report.unrun.is_empty();
+    if check_ledger {
+        let drift = ledger::check(&path, &report);
+        if drift.is_clean() {
+            println!("ledger is current: {}", ledger::LEDGER_PATH);
+        } else {
+            report_ledger_drift(&drift);
+            failed = true;
+        }
+    }
+    // A predicate this analysis cannot decide is a finding, never a pass.
+    if !report.undeterminable.is_empty() || !report.unparsed.is_empty() {
+        failed = true;
+    }
+    if failed {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn print_unrun_report(
+    report: &crate::services::unrun_tests::Report,
+    format: &str,
+) -> anyhow::Result<()> {
+    use crate::services::unrun_tests::ledger;
+    match format {
+        "ledger" => print!("{}", ledger::render(report)),
+        "json" => println!("{}", serde_json::to_string_pretty(&json_of(report))?),
+        _ => {
+            println!("{}", report.summary());
+            for leg in &report.legs {
+                println!("  leg: {leg}");
+            }
+            for (bucket, members) in report.buckets() {
+                println!("  [{}] {} test(s)", bucket, members.len());
+                for m in members.iter().take(5) {
+                    println!("      {}", m.path);
+                }
+                if members.len() > 5 {
+                    println!("      … and {} more", members.len() - 5);
+                }
+            }
+            for f in &report.undeterminable {
+                println!("  [undeterminable] {}  cfg: {}", f.path, f.cfg);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn json_of(report: &crate::services::unrun_tests::Report) -> serde_json::Value {
+    let rows = |v: &[crate::services::unrun_tests::Finding]| {
+        v.iter()
+            .map(|f| {
+                serde_json::json!({
+                    "path": f.path, "file": f.file, "bucket": f.bucket, "cfg": f.cfg,
+                })
+            })
+            .collect::<Vec<_>>()
+    };
+    serde_json::json!({
+        "legs": report.legs,
+        "total_tests": report.total_tests,
+        "executed": report.executed,
+        "ignored": report.ignored,
+        "unrun": rows(&report.unrun),
+        "undeterminable": rows(&report.undeterminable),
+        "unresolved": report.unresolved,
+        "unparsed": report.unparsed,
+        "summary": report.summary(),
+    })
+}
+
+fn report_ledger_drift(drift: &crate::services::unrun_tests::ledger::Drift) {
+    use crate::services::unrun_tests::ledger::LEDGER_PATH;
+    eprintln!("{LEDGER_PATH} has drifted from the tree:");
+    for p in &drift.added {
+        eprintln!("  NEWLY UNRUN  {p}");
+    }
+    for p in &drift.removed {
+        eprintln!("  NO LONGER UNRUN  {p}");
+    }
+    for b in &drift.unexplained {
+        eprintln!("  NO RECORDED REASON for bucket `{b}` — add one to src/services/unrun_tests/reasons.rs");
+    }
+    for b in &drift.stale_reasons {
+        eprintln!("  STALE REASON for bucket `{b}` — nothing is unrun for it any more");
+    }
+    if drift.added.is_empty() && drift.removed.is_empty() && drift.text_differs {
+        eprintln!("  the rendered ledger differs from the committed copy");
+    }
 }
 
 /// Find `#[test]` functions that cannot fail.

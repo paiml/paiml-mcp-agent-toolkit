@@ -95,6 +95,9 @@ pub fn classify_analyze_command(
         AnalyzeCommands::HardcodedPaths { .. } => (Basic, "analyze-hardcoded-paths"),
         // VacuousTests parses with syn but runs no cargo build.
         AnalyzeCommands::VacuousTests { .. } => (Basic, "analyze-vacuous-tests"),
+        // UnrunTests parses the lib module graph with syn and reads the
+        // workflow files; no cargo build, no network.
+        AnalyzeCommands::UnrunTests { .. } => (Basic, "analyze-unrun-tests"),
 
         // Advanced analysis commands (comprehensive)
         AnalyzeCommands::DeepContext { .. } => (Advanced, "analyze-deep-context"),

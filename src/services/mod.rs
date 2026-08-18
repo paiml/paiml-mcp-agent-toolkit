@@ -258,6 +258,7 @@ pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyz
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
 #[cfg(feature = "wasm-ast")]
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer (requires wasm-ast feature)
+pub mod unrun_tests; // PMAT-630: tests behind a feature no CI leg executes
 pub mod vacuous_tests; // #[test] fns that cannot fail
 pub mod verified_complexity;
 pub mod wasm;

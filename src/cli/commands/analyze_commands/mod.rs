@@ -389,6 +389,43 @@ pub enum AnalyzeCommands {
         fail_on_any: bool,
     },
 
+    /// Report tests no CI leg executes, keyed on the full module path
+    ///
+    /// Four regression tests shipped in the 3.32.0 cycle behind features no job
+    /// ran — three under `mcp-integration`, one under `analytics-gpu`. Two were
+    /// invisible to a name search because identically-named tests under
+    /// `mcp_pmcp` DO run, so `cargo test -- --list | grep <name>` printed the
+    /// name while the hidden copy never executed. `cargo check --features X`
+    /// compiles no `#[cfg(test)]` body and is therefore not coverage.
+    #[command(name = "unrun-tests", visible_aliases = &["unrun", "test-ledger"])]
+    UnrunTests {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// A test-running invocation defined outside this repository, as a
+        /// comma-separated feature spec ("" for default features). `ci / test`
+        /// lives in the reusable paiml/.github workflow and cannot be read here.
+        #[arg(long = "executed", value_name = "FEATURES")]
+        executed: Vec<String>,
+
+        /// Rewrite the committed ledger from the tree
+        #[arg(long)]
+        write_ledger: bool,
+
+        /// Exit non-zero when the committed ledger has drifted
+        #[arg(long)]
+        check_ledger: bool,
+
+        /// Exit non-zero when any test is executed by no leg
+        #[arg(long)]
+        fail_on_any: bool,
+    },
+
     /// Find #[test] functions that cannot fail
     ///
     /// A stack-wide audit counted ~933 tests whose bodies contain nothing that
