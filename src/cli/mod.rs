@@ -45,6 +45,14 @@ pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 pub mod unified_help;
 pub mod verify;
+pub mod verify_lint_receipt;
+
+// PMAT-630 (#1034 CASE 1): end-to-end replay of the clippy-red commit the
+// pre-commit hook waved through. Declared here rather than dropped in `tests/`
+// because `autotests = false` (`Cargo.toml:30`) silently never compiles an
+// undeclared test file. `cargo test --lib -- hook_clippy_gate` lists them.
+#[cfg(test)]
+mod hook_clippy_gate_tests;
 
 // Re-export commonly used types from submodules
 pub use commands::{

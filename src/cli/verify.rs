@@ -8,6 +8,7 @@
 //!
 //! Spec: `docs/specifications/pmat-verify-autonomous-preflight.md`.
 
+use crate::cli::verify_lint_receipt;
 use anyhow::Result;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -528,14 +529,35 @@ fn stage_tests() -> StageResult {
 /// combos CI never builds and that fail to compile. (PMAT_FAST_BUILD is also
 /// deliberately unset — it stubs build.rs codegen and conflicts with a normal
 /// build's target state.)
-const CLIPPY_TARGETS: &str = "--all-targets";
-const CLIPPY_LINTS: &[&str] = &["-D", "warnings", "-A", "unused-variables"];
+pub(crate) const CLIPPY_TARGETS: &str = "--all-targets";
+pub(crate) const CLIPPY_LINTS: &[&str] = &["-D", "warnings", "-A", "unused-variables"];
+
+/// The lint question, as one string, for the receipt fingerprint. Changing what
+/// we ask clippy has to invalidate every answer taken under the old question.
+fn clippy_question() -> String {
+    format!("{CLIPPY_TARGETS} {}", CLIPPY_LINTS.join(" "))
+}
 
 fn stage_clippy(args: &VerifyArgs) -> StageResult {
     if !in_cargo_project(Path::new(".")) {
         return StageResult::not_applicable(
             "cargo clippy needs a Cargo project; no Cargo.toml in this directory or any parent",
         );
+    }
+    // PMAT-630: a green verdict is reused only for a byte-identical tree under
+    // an identical toolchain and identical lint flags. This is what makes the
+    // pre-commit clippy gate affordable (~0.3s instead of the measured 1m06s
+    // for a no-op `cargo clippy --all-targets` on this crate) without ever
+    // handing back a pass for a tree nobody linted. `--fix` deliberately
+    // bypasses the reuse: it is asked to change the tree, not to judge it.
+    let here = Path::new(".");
+    let question = clippy_question();
+    if !args.fix {
+        if let Ok(fp) = verify_lint_receipt::fingerprint(here, &question) {
+            if verify_lint_receipt::is_proven(here, &fp) {
+                return StageResult::ran(true, Vec::new(), None);
+            }
+        }
     }
     if args.fix {
         let mut fix = cargo();
@@ -550,18 +572,55 @@ fn stage_clippy(args: &VerifyArgs) -> StageResult {
         .args(CLIPPY_LINTS);
         let _ = run(&mut fix);
     }
+    // Fingerprint the tree clippy is about to read, not the tree it was asked
+    // about: under `--fix` those differ, because the fix pass just rewrote it.
+    let before = verify_lint_receipt::fingerprint(here, &question).ok();
     let mut check = cargo();
     check
         .args(["clippy", CLIPPY_TARGETS, "--message-format=json", "--"])
         .args(CLIPPY_LINTS);
     let (ok, out) = run(&mut check);
     let violations = parse_clippy_violations(&out);
+    record_or_revoke(
+        here,
+        &question,
+        before.as_deref(),
+        ok && violations.is_empty(),
+    );
     let detail = if violations.is_empty() {
         first_error(&out).or_else(|| tail(&out, 10))
     } else {
         None
     };
     StageResult::ran(ok, violations, detail)
+}
+
+/// Persist, or destroy, the proof that this tree lints clean.
+///
+/// Three rules, and the second is the one that makes the receipt trustworthy:
+///
+/// 1. Red revokes. A tree that fails must leave no proof behind, so a later
+///    edit back to previously-green bytes cannot be waved through on a receipt
+///    that outlived the failure.
+/// 2. Green records **only if the tree did not move while clippy ran**. Clippy
+///    takes minutes on this crate; a file saved during the run was never read by
+///    it. Comparing the fingerprint taken just before the run with one taken
+///    just after is what distinguishes "clippy judged these bytes" from "clippy
+///    judged some bytes and these are the ones on disk now".
+/// 3. A fingerprint that could not be computed records nothing. Failing to
+///    measure is not a green measurement.
+fn record_or_revoke(project: &Path, question: &str, before: Option<&str>, green: bool) {
+    if !green {
+        verify_lint_receipt::revoke(project);
+        return;
+    }
+    let Some(before) = before else { return };
+    let Ok(after) = verify_lint_receipt::fingerprint(project, question) else {
+        return;
+    };
+    if before == after {
+        let _ = verify_lint_receipt::record(project, &after);
+    }
 }
 
 /// First error-shaped line of a failed command's output.
@@ -755,6 +814,88 @@ fn print_text(report: &VerifyReport) {
             "\n{red}✗ verify failed{reset} ({}ms) — fix before committing",
             report.duration_ms
         );
+    }
+}
+
+#[cfg(test)]
+mod clippy_receipt_tests {
+    use super::*;
+
+    fn scratch() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("Cargo.toml"), "[package]\nname='x'\n").expect("write");
+        std::fs::write(dir.path().join("lib.rs"), "pub fn a() {}\n").expect("write");
+        dir
+    }
+
+    /// The dangerous direction: a red run must not leave a green proof behind.
+    /// If it did, the very next commit would be waved through on a receipt
+    /// written before the code went bad — a hook that reports the past.
+    #[test]
+    fn a_red_run_destroys_any_existing_receipt() {
+        let dir = scratch();
+        let q = clippy_question();
+        let fp = verify_lint_receipt::fingerprint(dir.path(), &q).expect("fingerprint");
+        verify_lint_receipt::record(dir.path(), &fp).expect("record");
+        assert!(verify_lint_receipt::is_proven(dir.path(), &fp));
+
+        record_or_revoke(dir.path(), &q, Some(&fp), false);
+        assert!(
+            !verify_lint_receipt::is_proven(dir.path(), &fp),
+            "a failing clippy run must revoke the proof, not leave it standing"
+        );
+    }
+
+    #[test]
+    fn a_green_run_over_a_still_tree_records_a_usable_receipt() {
+        let dir = scratch();
+        let q = clippy_question();
+        let fp = verify_lint_receipt::fingerprint(dir.path(), &q).expect("fingerprint");
+        record_or_revoke(dir.path(), &q, Some(&fp), true);
+        assert!(verify_lint_receipt::is_proven(dir.path(), &fp));
+    }
+
+    /// Clippy takes minutes on this crate. A file saved while it ran was never
+    /// read by it, so the "green" verdict describes bytes that are no longer on
+    /// disk. That must record nothing at all.
+    #[test]
+    fn a_green_run_over_a_tree_that_moved_records_nothing() {
+        let dir = scratch();
+        let q = clippy_question();
+        let before = verify_lint_receipt::fingerprint(dir.path(), &q).expect("fingerprint");
+        std::fs::write(dir.path().join("lib.rs"), "pub fn a() {}\npub fn b() {}\n").expect("write");
+        record_or_revoke(dir.path(), &q, Some(&before), true);
+
+        let after = verify_lint_receipt::fingerprint(dir.path(), &q).expect("fingerprint");
+        assert!(
+            !verify_lint_receipt::is_proven(dir.path(), &after),
+            "the edited tree was never linted and must not be proven"
+        );
+        assert!(
+            !verify_lint_receipt::is_proven(dir.path(), &before),
+            "the pre-edit tree is no longer on disk and must not be proven either"
+        );
+    }
+
+    /// A fingerprint that could not be taken is not a green measurement.
+    #[test]
+    fn a_green_run_with_no_fingerprint_records_nothing() {
+        let dir = scratch();
+        let q = clippy_question();
+        record_or_revoke(dir.path(), &q, None, true);
+        assert!(!verify_lint_receipt::receipt_path(dir.path()).exists());
+    }
+
+    /// The receipt key must name the exact question. Both the target selector
+    /// and every lint flag have to be in it, or a change to `CLIPPY_LINTS`
+    /// would silently reuse verdicts taken under the old flags.
+    #[test]
+    fn the_receipt_question_names_the_targets_and_every_lint_flag() {
+        let q = clippy_question();
+        assert!(q.contains(CLIPPY_TARGETS), "targets missing from `{q}`");
+        for flag in CLIPPY_LINTS {
+            assert!(q.contains(flag), "lint flag `{flag}` missing from `{q}`");
+        }
     }
 }
 

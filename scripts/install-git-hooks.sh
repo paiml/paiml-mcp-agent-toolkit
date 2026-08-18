@@ -48,6 +48,61 @@ NC='\033[0m' # No Color
 
 echo "Running pre-commit checks..."
 
+# === 0. Clippy gate (PMAT-630, #1034 CASE 1) ===
+# This block is byte-identical to the one `pmat hooks install` generates
+# (src/cli/handlers/hooks_command_handlers/hook_generation.rs). The two
+# installers write different pre-commit hooks to the same path, so whichever
+# ran last decides what is enforced; `both_hook_installers_embed_the_identical
+# _clippy_gate` in src/cli/hook_clippy_gate_tests.rs compares them character for
+# character. Edit the Rust generator, then re-sync this copy.
+# >>> pmat clippy gate (PMAT-630) >>>
+if [ -f Cargo.toml ]; then
+    echo -n "  Clippy check... "
+
+    # The gate runs through pmat. If pmat is gone, the gate has not run, and a
+    # gate that has not run has not passed. Never `exit 0` from this branch.
+    if ! command -v pmat > /dev/null 2>&1; then
+        echo "❌"
+        echo "   pmat is not in PATH, so the clippy gate could not run."
+        echo "   An unchecked gate is not a passed gate."
+        echo "   Install with: cargo install pmat"
+        echo "   Emergency bypass (leaves a trace): git commit --no-verify"
+        exit 1
+    fi
+
+    # clippy reads the WORKTREE, never the index. A lint-relevant file that is
+    # staged in one state and left in another on disk would be committed
+    # without anything having linted the committed bytes. Refuse, rather than
+    # imply a coverage this gate does not have.
+    STAGED_LINT=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    DIRTY_LINT=$(git diff --name-only -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    UNSYNCED_LINT=$(printf '%s\n%s\n' "$STAGED_LINT" "$DIRTY_LINT" | sed '/^$/d' | sort | uniq -d)
+    if [ -n "$UNSYNCED_LINT" ]; then
+        echo "❌"
+        echo "   These files are staged in a state that differs from the worktree:"
+        printf '     %s\n' $UNSYNCED_LINT
+        echo "   clippy lints the worktree, so the staged bytes would go in unlinted."
+        echo "   Stage the rest ('git add <file>') or stash the remainder, then retry."
+        exit 1
+    fi
+
+    # Content-addressed: ~0.3s when this exact tree already linted green,
+    # a full clippy run when it did not. Never a pass without one or the other.
+    CLIPPY_STATUS=0
+    CLIPPY_OUTPUT=$(pmat verify --stage clippy 2>&1) || CLIPPY_STATUS=$?
+    if [ "$CLIPPY_STATUS" -eq 0 ]; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "$CLIPPY_OUTPUT" | tail -n 30
+        echo ""
+        echo "   'ci / lint' runs these same lints; this commit could not merge."
+        echo "   Fix: pmat verify --stage clippy --fix"
+        exit 1
+    fi
+fi
+# <<< pmat clippy gate (PMAT-630) <<<
+
 # === 1. Documentation Validation (pmat validate-docs + validate-readme) ===
 # Check if README.md or other docs are staged
 DOC_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(README\.md|CLAUDE\.md|GEMINI\.md|AGENT\.md)$' || true)
