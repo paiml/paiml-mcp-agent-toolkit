@@ -50,8 +50,9 @@ metadata:
       0.67.0 pins a nightly older than a transitive dependency's MSRV.
 
       (3) No .github/workflows job, Makefile target or script invokes kani, so
-      none of the repository's 38 `#[kani::proof]` harnesses is compiled by any
-      gate. `#[cfg(kani)]` code is not built by `cargo test` either.
+      not one of the repository's `#[kani::proof]` harnesses is compiled by any
+      gate (count them with `grep -rn '#\[kani::proof\]' src/ | wc -l`; the
+      number moves, the fact that nothing runs them does not). `#[cfg(kani)]` code is not built by `cargo test` either.
 
       These harnesses are therefore ASPIRATIONAL: they state the intended
       theorems and are the specification a future proof will discharge, but
