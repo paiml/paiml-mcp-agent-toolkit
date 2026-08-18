@@ -56,7 +56,7 @@ mod implementation {
     /// // Router starts with empty routes
     /// assert_eq!(router.exact_routes.len(), 0);
     /// ```
-    pub struct Router {
+    pub(crate) struct Router {
         exact_routes: Vec<(&'static str, RouteHandler)>,
     }
 
@@ -139,7 +139,7 @@ mod implementation {
     }
 
     lazy_static! {
-        pub static ref DEMO_ROUTES: Router = build_router();
+        pub(crate) static ref DEMO_ROUTES: Router = build_router();
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

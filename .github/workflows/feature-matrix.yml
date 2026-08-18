@@ -24,6 +24,14 @@
 #
 # A feature a user can type is a feature that must build. This job is the only
 # thing that checks that.
+#
+# COMPILING IS NOT RUNNING. `cargo check` neither lints nor executes, so a
+# feature can be green in the two jobs above and still ship a broken test suite.
+# The `feature-tests` job is where test bodies actually execute. Read its
+# comment before adding a feature anywhere in this file: the three regression
+# tests added in the 3.32.0 cycle for `mcp_integration` were compiled by
+# `individual` and executed by nothing, which is the same as not having written
+# them.
 name: Feature Matrix
 
 on:
@@ -173,13 +181,14 @@ jobs:
   # runs `cargo test --lib` + `clippy` on DEFAULT FEATURES ONLY — so a feature
   # outside `default` has its test bodies compiled and then thrown away.
   #
-  # Measured on 3.32.0 with `cargo test --lib --features F -- --list`:
+  # Measured with `cargo test --lib --features F -- --list`:
   #
-  #   default            20,283 tests   <- the only set any gate executes
-  #   full               22,203          +1,920 compiled, never run
-  #   mcp-integration    21,200            +917 compiled, never run
-  #   unified-protocol   20,570            +287 compiled, never run
-  #   agents-md          20,530            +247 compiled, never run
+  #                      3.32.0    f47d75170 (this branch)
+  #   default            20,283    20,291   <- what ci.yml runs
+  #   full               22,203    22,204
+  #   mcp-integration    21,200    21,201
+  #   unified-protocol   20,570    20,575
+  #   agents-md          20,530    (unmeasured this pass)
   #
   # `unified-protocol` is why this job exists. It is in neither `default` nor
   # `full`, so its 287 lib tests had never once executed, and no invocation had
@@ -189,16 +198,16 @@ jobs:
   # named the feature. A feature can be green under `cargo check` and still be
   # red under the two things that decide whether it works.
   #
-  # Scope, deliberately: only features VERIFIED green go in the matrix.
-  # `full`'s +1,920 tests are still unrun — the bundle has never been executed,
-  # so nobody knows how many of them pass, and adding it here on optimism would
-  # land a red required check. Making `full` green and promoting it is the next
-  # step, not this one. `orphan-ledger` below keeps the remaining gaps written
-  # down so they cannot go quiet again.
+  # Scope, deliberately: only features VERIFIED green go in the matrix. Each
+  # entry below records the run that earned it a slot.
   feature-tests:
     name: run the tests / ${{ matrix.features }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 90, not 60: `full` and `mcp-integration` each spend ~5 min in the test
+    # binary alone (303.18s and 302.10s measured locally), on top of a cold
+    # dependency compile. 60 was sized for `unified-protocol`, whose delta over
+    # a default build is 284 tests.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -219,6 +228,60 @@ jobs:
           # lands red blocks every PR and gets reverted, which is how the last
           # one stopped covering anything.
           - features: unified-protocol
+
+          # `full` is the bundle `cargo install pmat --features full` builds,
+          # and until this commit NOTHING had ever executed a line of its
+          # +1,913 extra lib tests or pointed clippy at them. Both are now
+          # measured, at f47d75170, on the machine that added this entry:
+          #
+          #   cargo clippy --all-targets --features full -- -D warnings
+          #     -> 24 errors, all in code no lint gate had ever compiled:
+          #        11x unreachable_pub (src/demo/), 3x approx_constant (ruchy
+          #        tests), 3x manual descending sorts, 2x stray duplicated
+          #        outer attribute (src/wasm/), useless_vec, and an
+          #        `assert!(count >= 0)` on a u32 that could not fail — plus
+          #        17 more in tests/ and examples/ that `--all-targets`
+          #        reaches and `--lib` does not. All fixed here; now exits 0.
+          #   cargo test --lib --features full
+          #     -> 22,034 passed; 0 failed; 172 ignored; finished in 303.27s
+          #
+          # THE FIRST TWO RUNS OF THIS LEG DISAGREED. Run 1 was 22,032/0; run 2
+          # failed `services::mutation::fuzzing::tests::
+          # test_mutate_input_single_byte`. `mutate_input`'s delete-byte
+          # strategy is 1 of 5 drawn uniformly, so a 1-byte seed came back
+          # empty 20% of the time — a flake that had been sitting in a shipped
+          # feature for as long as nothing ran it. Fixed at the source
+          # (fuzzing_helpers.rs) and pinned by
+          # `mutate_input_never_empties_a_non_empty_seed`. A test suite nobody
+          # runs does not merely fail to catch regressions; it also hides which
+          # of its own tests are nondeterministic.
+          #
+          # Per-PR rather than nightly, deliberately: 303s of test time is the
+          # same order as the `unified-protocol` leg already running here, and
+          # the `bundles` job above already pays for `full`'s dependency
+          # compile. A nightly-only gate reports a break to nobody who can
+          # still fix it cheaply.
+          - features: full
+
+          # `mcp-integration` gates 910 lib tests that no invocation had ever
+          # run, INCLUDING three regression tests added in this very release
+          # cycle — `mcp_integration::tdg_tools::tests::
+          # test_analyze_technical_debt_refuses_ungradable_file` and the two
+          # `mcp_integration::tools::context_adapters::tests::*`. A regression
+          # test behind a feature nothing executes is a comment.
+          #
+          # The previous revision of this file excluded it as "clippy-red (14
+          # errs)". Measured at f47d75170 that was 11 errors, all in test
+          # bodies no gate had compiled with lints on (default_constructed_
+          # unit_structs, for_kv_map, len_zero, manual_range_contains,
+          # field_reassign_with_default, unused_mut in a macro expansion).
+          # Fixed in this commit; now:
+          #
+          #   cargo clippy --all-targets --features mcp-integration -- -D warnings
+          #     -> exits 0
+          #   cargo test --lib --features mcp-integration
+          #     -> 21,056 passed; 0 failed; 145 ignored; finished in 302.10s
+          - features: mcp-integration
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -237,8 +300,9 @@ jobs:
           # A feature whose test bodies do not run is not tested, however green
           # `cargo check` is. Print the count so the log carries the evidence.
           # Floor, not an equality: a feature build is default + delta, so this
-          # only trips when the flag silently did nothing. Measured on 3.32.0.
-          default_tests=20283
+          # only trips when the flag silently did nothing. Measured at
+          # f47d75170 with `cargo test --lib -- --list | grep -c ': test$'`.
+          default_tests=20291
           n=$(cargo test --lib --locked --features '${{ matrix.features }}' -- --list \
                 | grep -c ': test$')
           echo "::notice::${{ matrix.features }} -> ${n} lib tests"
@@ -289,23 +353,24 @@ jobs:
           orphans = set(feats) - (closure('default') | closure('full'))
 
           # Executed by the `feature-tests` job above.
-          TESTED = {'unified-protocol'}
+          #
+          # `full` is NOT listed here and must not be: it is a closure root, so
+          # it is not an orphan, and the `stale` check below would reject it.
+          # Its leg lives in the `feature-tests` matrix all the same.
+          TESTED = {'unified-protocol', 'mcp-integration'}
 
           # Each entry is a reason this feature's tests are not executed here.
           # Every reason below was checked against the tree, not assumed.
           # `files_with_cfg` is `grep -rl 'feature = "F"' src/ --include='*.rs'`.
           EXCLUDED = {
-              # MEASURED DEBT, not a clean bill of health. `cargo clippy
-              # --all-targets --features mcp-integration,agents-md,agent-daemon
-              # -- -D warnings` reports 14 errors (3.32.0), every one in a test
-              # body no gate has ever compiled with lints on: for_kv_map,
-              # len_zero, cmp_owned, manual_range_contains, clone_on_copy,
-              # default_constructed_unit_structs, field_reassign_with_default.
-              # Promote each to TESTED once it is green; adding a red feature to
-              # the matrix blocks every PR, which is how a gate gets reverted.
-              'mcp-integration':   'clippy-red (14 errs across this group, 3.32.0); +917 lib tests never run',
-              'agents-md':         'clippy-red (same group); +247 lib tests never run',
-              'agent-daemon':      'clippy-red (same group); lib-test delta unmeasured',
+              # MEASURED DEBT, not a clean bill of health. The previous
+              # revision excluded all three of these as one "clippy-red" group
+              # of 14 errors. `mcp-integration` has since been fixed and
+              # promoted to TESTED (11 of those errors were reachable from it
+              # alone). These two have NOT been re-measured since that fix, so
+              # the honest state is unknown, not red:
+              'agents-md':         'clippy state unremeasured since the mcp-integration fix; +247 lib tests never run',
+              'agent-daemon':      'clippy state unremeasured since the mcp-integration fix; lib-test delta unmeasured',
 
               # Deliberate quarantines.
               'broken-tests':      'deliberate non-compiling quarantine (#1023)',
@@ -313,6 +378,14 @@ jobs:
 
               # Cannot run on this runner.
               'gpu':               'needs GPU hardware; ubuntu-latest has none',
+              # NOTE: over-broad for at least one test. `services::
+              # analytics_backend::test_gpu_is_reported_unavailable_and_never_
+              # selected` (added in the 3.32.0 cycle) asserts that GPU
+              # detection reports FALSE and that the selector never picks
+              # Backend::Gpu -- it wants a GPU-less runner, which is exactly
+              # what ubuntu-latest is. Splitting the hardware-needing tests
+              # from the hardware-asserting ones would let this feature be
+              # tested here; until someone does, it is unrun.
               'analytics-gpu':     'needs GPU hardware; ubuntu-latest has none',
 
               # Select tests/ targets rather than lib tests; a Makefile target

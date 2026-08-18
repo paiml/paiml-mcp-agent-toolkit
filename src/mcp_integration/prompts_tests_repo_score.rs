@@ -16,9 +16,18 @@ mod repo_score_tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_repo_score_prompt_default() {
+        // `X::default()` on a unit struct is what clippy's
+        // default_constructed_unit_structs wants rewritten to `X` -- but the
+        // `Default` impl IS the subject here, so rewriting it would delete
+        // the test. Allowed locally, and given something that can actually
+        // fail: `Default` and `new()` must produce the same prompt.
         let prompt = RepoScorePrompt::default();
-        let _ = prompt;
+        assert_eq!(
+            prompt.metadata().name,
+            RepoScorePrompt::new().metadata().name
+        );
     }
 
     #[test]

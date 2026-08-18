@@ -70,11 +70,13 @@ A count in a release note is a measurement of a specific tree, and a measurement
 without its tree is the defect this release is about. So every figure below is given
 with the command, fixture or issue it came from, and:
 
-- **"On this repo" means this repository at the commit this entry ships in**, measured
-  with the 3.32.0 binary built from it (`cargo build --release --bin pmat`). These are
-  measurements, not guarantees: they move as the tree moves, and a checkout that
-  carries extra untracked or gitignored files will not match to the digit. Re-run the
-  command rather than trusting the digit — where the two disagree, the command is right.
+- **"On this repo" means this repository at `f47d75170`**, in a pristine worktree of
+  that commit, measured with the 3.32.0 binary built from it (`cargo build --release
+  --bin pmat`). The commit is named because "the tree this release ships" is not an
+  address: this entry's own SATD, reachability and vacuous-test figures were first
+  taken one commit earlier and were already stale by one file when it shipped. Re-run
+  the command rather than trusting the digit — where the two disagree, the command is
+  right.
 - **Figures labelled 3.31.0 are the "before" half of a before/after pair** and were
   produced by the 3.31.0 binary (`git checkout v3.31.0 && cargo build --release --bin
   pmat`), not by this release's.
@@ -84,9 +86,16 @@ with the command, fixture or issue it came from, and:
 - **Figures attributed to the stack-wide audit (#1017, #1018, #1019) are quoted from
   those issues**, which record the trees and dates they were taken on. They are cited
   as evidence of a class, not re-measured here, and several have moved since.
-- Two figures below are properties of the machine that ran them rather than of any
-  tree — peak RSS and wall clock for `comply check`, and any count taken over a
-  checkout holding gitignored worktrees. Both say so where they appear.
+- **Three kinds of figure below are not properties of the commit at all**, and each
+  says so where it appears. (1) Peak RSS and wall clock for `comply check` are
+  properties of the host. (2) Any count taken over a checkout holding gitignored
+  worktrees — the `cuda-tdg` / `validate-docs` / `assembly-script` before/after table —
+  is a property of that checkout; the multiplier is the worktrees, and they are not in
+  git. (3) `quality-gate`'s finding count and `validate-docs`'s broken-link count both
+  move with gitignored state present at the same commit (`.pmat/` cache, untracked
+  Markdown that satisfies a link), so a pristine worktree and a working checkout of
+  `f47d75170` disagree by a few. Where that happens the exit code, the ratio or the
+  shape of the output is quoted instead of the count.
 
 ### Added
 
@@ -111,13 +120,15 @@ counts. pmat had its own (`src/transport/`, deleted in this release). Worse, pma
 pmat analyze reachability [-p PATH] [-f json] [--fail-on-orphan]
 ```
 
-On this repo, `pmat analyze reachability -p .` reports 3905 of 4317 tracked `.rs`
-files reachable from 137 target roots — 412 unreachable, holding 132,050 lines and
-6562 `#[test]` fns that never run, with 35 `mod` declarations unresolved. The
-report always states its scope, and an unresolvable `mod` downgrades the result
-to a FLOOR rather than a total — a count with no denominator is the defect the
-analyzer exists to find. It refuses outright when `cargo metadata` yields no
-targets, so an unmeasured tree cannot read as a clean one.
+On this repo at `f47d75170`, `pmat analyze reachability -p .` reports 3925 of 4337
+tracked `.rs` files reachable from 137 target roots — 412 unreachable, holding
+132,050 lines and 6562 `#[test]` fns that never run, with 35 `mod` declarations
+unresolved. The two totals are `git ls-files '*.rs'` and so move with every commit
+that adds a file; the 412 is the number to read. The report always states its
+scope, and an unresolvable `mod` downgrades the result to a FLOOR rather than a
+total — a count with no denominator is the defect the analyzer exists to find. It
+refuses outright when `cargo metadata` yields no targets, so an unmeasured tree
+cannot read as a clean one.
 
 **`pmat analyze hardcoded-paths`** — finds machine-specific absolute paths baked
 into source. aprender ships binaries containing `/home/noah/...`: correct on the
@@ -140,15 +151,16 @@ pmat itself the first run found 15 shipped findings, all real, five of them unde
 baseline manifests and one recorded trace — so golden-trace validation could only
 ever have passed on this machine. **Those five are fixed in this release**: the
 baselines under `golden_traces/` now name `./.renacer-bin`, and no path under that
-directory names a home directory. What remains on this repo, from `pmat analyze
-hardcoded-paths -p .`, is 140 findings over ~152,000 literals in 4722 files,
-**9 of them shipped** — `pmat.toml`'s absolute `project_path`, four
+directory names a home directory. What remains on this repo at `f47d75170`, from
+`pmat analyze hardcoded-paths -p .`, is 140 findings over ~153,000 literals in
+~4,700 files, **9 of them shipped** — `pmat.toml`'s absolute `project_path`, four
 `.pmat-tickets/*.yaml` evidence paths naming sibling checkouts, three helper
 scripts under `scripts/`, and one recorded dogfood receipt. The 9 is the number to
-watch. The literal count is quoted to three significant figures on purpose: it is
-the size of the haystack, it moved by five between two runs an hour apart while
-this entry was being written, and a denominator's job is to give the 9 a scale, not
-to be pinned. `literals_scanned` in the JSON is the exact figure for your tree.
+watch, and `--fail-on-shipped` is the way to watch it; run the command rather than
+comparing against the 140. The haystack figures are deliberately rounded: they are
+there to give the 9 a scale, they moved by five between two runs an hour apart
+while this entry was being written, and `files_scanned` / `literals_scanned` in the
+JSON are the exact figures for your tree.
 
 The rule is narrow on purpose, because false positives are what kill a detector:
 a path is flagged only when it names a specific user, nix store hash or build
@@ -174,12 +186,12 @@ commit named:
 
 | repo | commit | cannot fail | rate |
 |---|---|---|---|
-| **pmat** | this release | **1180 of 34,129** | **3.5%** |
+| **pmat** | `f47d75170` | **1183 of 34,260** | **3.5%** |
 | aprender | `d40756541` | 2925 of 110,398 | 2.6% |
 | forjar | `5d438509` | 357 of 16,962 | 2.1% |
 | pforge | `7dfb9a6` | 2 of 238 | 0.8% |
 
-pmat has the worst rate of the four. 181 of its 1180 are tautologies, nearly all
+pmat has the worst rate of the four. 181 of its 1183 are tautologies, nearly all
 `assert!(result.is_ok() || result.is_err())`, and its worst single file is
 `src/tests/coverage_boost_unified_ast.rs` (75) — the name says what it is for.
 
@@ -269,19 +281,31 @@ fix.
 fail. Exiting non-zero lived behind an opt-in `--fail-on-violation`: the command whose
 NAME is a gate delivered a REPORT by default, and the two were indistinguishable to
 anything that reads only an exit code — which is everything that calls it from a
-shell. Under 3.31.0, with this repo's own `make dogfood-all` invocation, on the tree
-this release ships (the finding counts move with the tree; the `0` did not):
+shell. Under 3.31.0, with this repo's own `make dogfood-all` invocation:
 
 ```
 $ pmat quality-gate --perf --max-complexity-p99 20
-⚠️ Quality gate found 35 blocking violations (37 total findings)
+⚠️ Quality gate found N blocking violations (M total findings)
 $ echo $?
 0
 ```
 
+`N` is not quoted here because it is not a property of the commit. Run against a
+pristine `f47d75170` worktree it is 36; run against the working checkout this entry
+was written in — same commit, plus gitignored `.pmat/` cache state — it is 35, and
+both binaries agree on both trees. **Only the exit code changed between 3.31.0 and
+3.32.0**, and it changed from `0` to `1` on every tree tried. That is the claim to
+check:
+
+```
+$ pmat quality-gate --perf --max-complexity-p99 20 >/dev/null; echo $?   # 3.31.0 → 0
+$ pmat quality-gate --perf --max-complexity-p99 20 >/dev/null; echo $?   # 3.32.0 → 1
+$ pmat quality-gate --perf --max-complexity-p99 20 --report-only >/dev/null; echo $?  # → 0
+```
+
 `Makefile:2239` is `pmat quality-gate … || (echo "❌ Quality gate failed" && exit 1)`,
 so that `||` arm could never run — pmat's own dogfood gate was decorative, as was
-every `gate || fail` line anyone else had written against it. "35 blocking violations"
+every `gate || fail` line anyone else had written against it. Blocking violations
 that do not block is a contradiction in terms.
 
 Blocking violations now exit 1 **by default**, for `--file` as well as project runs.
@@ -371,11 +395,13 @@ the third time this shape has been fixed: #831 removed the same style of scan fr
 printed a violation count and said nothing about the 1400-odd files the walk declined
 to read — every test, `examples/`, `demo/`, fuzz, generated and vendored file. A clean
 tree and a barely-read tree produced the same sentence. Both output formats now
-disclose scope. `pmat analyze satd -p src` on the tree this release ships answers —
-the counts are this tree's, the sentence is the point:
+disclose scope. The shape of the note is the point; run it rather than reading the
+digits below. At `f47d75170`, `pmat analyze satd -p src` answers:
 
 ```
-Found 3 SATD violations in 3 files (1443 file(s) not read: 1377 test (use --include-tests), 66 examples/demo/fuzz/generated)
+$ git -C <clean checkout> checkout f47d75170 && cargo build --release --bin pmat
+$ ./target/release/pmat analyze satd -p src
+Found 3 SATD violations in 3 files (1444 file(s) not read: 1378 test (use --include-tests), 66 examples/demo/fuzz/generated)
 ```
 
 The note names the actionable flag rather than just a number, lists only non-zero
@@ -566,16 +592,29 @@ existing invocation moves; `--max-targets 0` lifts the limit.
 hand-rolled a `walkdir` walk, because the shared discovery applies a source-extension
 whitelist that `.cu`, `.ptx`, `.wgsl`, `.wasm`, `.wat` and `.md` are not in. None of
 the four read a `.gitignore`, so all four descended into the author's gitignored
-`.claude/worktrees/` — 48 checkouts of pmat inside pmat. The before/after figures below
-are therefore a property of that checkout, not of pmat: on a clone with no worktrees
-there is nothing to count twice and the two columns converge. On that checkout, 3.31.0's
-`pmat cuda-tdg .` reported **205,622 files** and graded the tree C; `validate-docs`
-scanned **30,897** Markdown files and took **112 seconds** to report **2085** broken
-links; `analyze assembly-script` found **48** copies of one file. The 3.32.0 binary
-against the same checkout, still holding its 48 worktrees: cuda-tdg **4346** files,
-`validate-docs` **430** Markdown files in **7 seconds** — the same 2085 reports collapse
-to the **37** distinct broken links that were always there — and `analyze
-assembly-script` **1** file. There is now one ignore policy
+`.claude/worktrees/` — 48 checkouts of pmat inside pmat.
+
+**Every figure in this paragraph is a property of that checkout rather than of the
+commit**, and none of them will reproduce from a clean clone: the multiplier IS the
+gitignored worktrees, and they are not in git. The table below is what the two
+binaries answered against that checkout while this entry was being written; the
+worktrees have themselves moved since, so expect neighbouring numbers, not these.
+Ratios are the durable part.
+
+| command (working checkout, 48 worktrees) | 3.31.0 | 3.32.0 |
+|---|---|---|
+| `pmat cuda-tdg .` | ~205,600 files | ~4,350 files |
+| `pmat validate-docs` | ~30,900 Markdown files, ~2min, ~2,080 broken links | ~430 Markdown files, ~5s, ~30 broken links |
+| `pmat analyze assembly-script -p .` | 48 copies of one file | 1 file |
+
+The collapse in broken links is deduplication, not repair: one real broken link
+reported once per worktree became one report. The residue is the ~30 distinct broken
+links that were always there. The *only* part of this reproducible from `f47d75170`
+alone is the convergence claim — in a pristine worktree of that commit, with no
+worktrees nested inside it, `cuda-tdg` answers 4349 under 3.31.0 and 4348 under
+3.32.0, and `assembly-script` answers 1 under both. That is the check to run.
+
+There is now one ignore policy
 (`services::file_discovery::project_files`) with the extension question left to the
 caller, and its caps are deliberately off: `FileDiscoveryConfig`'s defaults (depth 15,
 50,000 files) would silently shrink the population a verdict covers.
@@ -675,7 +714,10 @@ measured by it. The failure was invisible because the other arm compiled: withou
 the feature the file is an empty `fn main()` that benchmarks nothing and exits 0.
 
 **`src/transport/` — 1434 lines and 39 tests that had never been compiled** (#1009,
-26 `#[test]` and 13 `#[tokio::test]`).
+26 `#[test]` and 13 `#[tokio::test]`; deleted in `2093ed492`, so
+`git show 2093ed492^:src/transport/*.rs | wc -l` is the 1434 — `git show --stat` says
+1439 for the same five files, because none of them ended in a newline, which is the
+sort of gap between two counts of "the same thing" this release is about).
 No `mod` declaration reached it, so `cargo test <name>` printed `0 passed` and exited
 0. Declaring it produces 18 errors: `pmcp::transport` no longer exists and two of its
 crates are not dependencies of pmat at all. Deleted rather than revived.
@@ -771,9 +813,10 @@ be noticed — it needs a re-read of whatever parses pmat's output.
   tool's `description` is rewritten to name the nine checks it runs; it previously
   advertised a `lint` check that does not exist on any pmat gate.
 - `analyze_dead_code` gains `by_kind` (a counter for every kind the report can produce,
-  summing to `total_dead_code`), `engines`, `paths[]` (per requested path: the engine,
-  `language`, `total_functions`, `analysis_root`, `files_analyzed`, `files_listed`,
-  `library_target`, `findings_outside_requested_path`) and
+  summing to `total_dead_code`), `engines`, a top-level `files_analyzed`, `paths[]`
+  (per requested path: `requested` — the path as the caller spelled it — plus the
+  `engine`, `language`, `total_functions`, `analysis_root`, `files_analyzed`,
+  `files_listed`, `library_target`, `findings_outside_requested_path`) and
   `paths_not_analyzed[{path, reason}]`. `analyzer` is now `pmat analyze dead-code`
   — the string changed, from `multi-language-reachability` — and the per-file rows
   carry every kind, not only `dead_functions`: `dead_classes`, `dead_variables`,

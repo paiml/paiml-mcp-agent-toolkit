@@ -283,9 +283,16 @@ mod coverage_tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_quality_report_resource_default() {
+        // See the note on the prompt `*_default` tests: the `Default` impl is
+        // the subject, so the lint's rewrite would delete the test. Compare an
+        // observable instead of discarding the value.
         let resource = QualityReportResource::default();
-        let _ = resource;
+        assert_eq!(
+            resource.template().uri_template,
+            QualityReportResource::new().template().uri_template
+        );
     }
 
     #[test]

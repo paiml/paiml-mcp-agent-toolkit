@@ -230,8 +230,8 @@ async fn test_invalid_threshold_above_100() {
     // Current implementation doesn't validate threshold range,
     // but mutation score will be 0.0-1.0, so threshold > 1.0 will always fail
     // This is a valid edge case to test
-    if result.is_err() {
-        let msg = result.unwrap_err().to_string();
+    if let Err(err) = result {
+        let msg = err.to_string();
         // Either validation error or threshold comparison will fail
         assert!(
             msg.contains("threshold") || msg.contains("below"),
@@ -379,9 +379,10 @@ async fn test_jobs_parameter_values() {
 
     // Assert: All should either succeed or fail gracefully (not panic)
     // The main point is to ensure different job counts are handled
-    match (result_zero, result_one, result_max) {
-        (_, _, _) => {} // Any combination of Ok/Err is acceptable
-    }
+    // Any combination of Ok/Err is acceptable; what this pins is that none of
+    // the three job counts panics. Written as a discard rather than a
+    // `match (_, _, _)`, which is the same no-op dressed up as an assertion.
+    let _ = (result_zero, result_one, result_max);
 }
 
 /// Test 9: Timeout parameter validation
@@ -429,9 +430,7 @@ async fn test_timeout_parameter() {
 
     // Assert: Both should be accepted (timeout validation happens during execution)
     // The handler should not reject based on timeout value alone
-    match (result_short, result_long) {
-        (_, _) => {} // Any combination is acceptable
-    }
+    let _ = (result_short, result_long);
 }
 
 /// Test 10: Combined argument validation
@@ -727,9 +726,7 @@ async fn test_output_format_selection() {
 
     // Assert: All formats should be handled
     // (Results may vary, but shouldn't crash)
-    match (result_json, result_md, result_text) {
-        (_, _, _) => {} // Any combination is acceptable
-    }
+    let _ = (result_json, result_md, result_text);
 }
 
 /// Test 17: Empty results output handling
@@ -909,12 +906,6 @@ async fn test_large_results_output() {
     // Would test that output formatting scales properly
 }
 
-// ============================================================================
-// Test Helpers
-// ============================================================================
-
-/// Create a temporary Rust file with basic content for testing
-#[allow(dead_code)]
 // ============================================================================
 // Category 3: Filtering Logic (8 tests)
 // ============================================================================

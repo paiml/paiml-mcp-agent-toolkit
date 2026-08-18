@@ -8,7 +8,7 @@ use super::*;
 // =============================================================================
 
 /// Creates a minimal DemoContent for testing
-pub fn create_test_demo_content() -> DemoContent {
+pub(crate) fn create_test_demo_content() -> DemoContent {
     DemoContent {
         mermaid_diagram: "graph TD\n    A --> B".to_string(),
         system_diagram: Some("graph TD\n    Main --> Sub".to_string()),
@@ -52,7 +52,7 @@ pub fn create_test_demo_content() -> DemoContent {
 }
 
 /// Creates a test DependencyGraph
-pub fn create_test_dag() -> DependencyGraph {
+pub(crate) fn create_test_dag() -> DependencyGraph {
     let mut dag = DependencyGraph::default();
     dag.nodes.insert(
         "main::run".to_string(),
@@ -88,7 +88,7 @@ pub fn create_test_dag() -> DependencyGraph {
 }
 
 /// Creates a test Hotspot vector
-pub fn create_test_hotspots() -> Vec<Hotspot> {
+pub(crate) fn create_test_hotspots() -> Vec<Hotspot> {
     vec![
         Hotspot {
             file: "src/complex.rs".to_string(),

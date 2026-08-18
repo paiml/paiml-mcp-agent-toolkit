@@ -4,7 +4,7 @@
 use super::*;
 
 #[cfg(feature = "demo")]
-pub mod demo_feature_tests_continued {
+pub(crate) mod demo_feature_tests_continued {
     use super::*;
 
     // -------------------------------------------------------------------------

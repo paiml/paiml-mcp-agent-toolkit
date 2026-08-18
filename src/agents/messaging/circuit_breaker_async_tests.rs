@@ -53,7 +53,7 @@ mod coverage_tests_async {
         assert!(metrics.contains_key("service-c"));
 
         // All should be closed
-        for (_, m) in metrics.iter() {
+        for m in metrics.values() {
             assert_eq!(m.state, CircuitState::Closed);
         }
     }
@@ -81,7 +81,7 @@ mod coverage_tests_async {
 
         // Verify all reset
         let metrics = manager.get_all_metrics();
-        for (_, m) in metrics.iter() {
+        for m in metrics.values() {
             assert_eq!(m.state, CircuitState::Closed);
             assert_eq!(m.failure_count, 0);
         }

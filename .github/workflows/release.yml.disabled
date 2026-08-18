@@ -71,8 +71,16 @@ jobs:
               exit 1
             fi
           else
+            # Root-package tag (vX.Y.Z): select `pmat` by NAME. `.packages[0]` is
+            # ordering-dependent in this 2-member workspace (pmat +
+            # pmat-dashboard) and resolves to pmat-dashboard here, so the tag
+            # would have been compared against the dashboard's version.
             CARGO_VER=$(cargo metadata --format-version 1 --no-deps \
-              | jq -r '.packages[0].version')
+              | jq -r '.packages[] | select(.name == "pmat") | .version')
+            if [ -z "$CARGO_VER" ] || [ "$CARGO_VER" = "null" ]; then
+              echo "::error::Root crate 'pmat' not found in workspace"
+              exit 1
+            fi
           fi
 
           if [ "$TAG_VER" != "$CARGO_VER" ]; then

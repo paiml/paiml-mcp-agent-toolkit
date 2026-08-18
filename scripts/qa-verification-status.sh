@@ -44,7 +44,17 @@ echo "================================"
 
 # Initialize results
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "paiml-mcp-agent-toolkit") | .version')
+# Select by the CURRENT package name. The crate was renamed
+# paiml-mcp-agent-toolkit -> pmat; this selector was never updated, so it matched
+# nothing and every report this script wrote carried "version": "".
+# `--no-deps` keeps the match inside the workspace (a dependency could otherwise
+# share a name), and the guard makes a future rename fail loudly here instead of
+# silently emitting an empty field again.
+VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "pmat") | .version')
+if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+    echo -e "${RED}✗ Could not read version for package 'pmat' from cargo metadata${NC}" >&2
+    exit 1
+fi
 
 # Run dead code analysis
 echo

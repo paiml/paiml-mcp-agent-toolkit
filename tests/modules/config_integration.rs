@@ -5,10 +5,12 @@ mod config_integration_tests {
     use pmat::demo::config::{ConfigManager, GroupingStrategy};
     use std::fs;
     use tempfile::TempDir;
-    // Restored: `clippy --fix` removed this as unused, and it IS unused under
-    // `--features full` — which is the only set I checked at the time. Under
-    // the wider feature set the release gate uses, the timeout paths below
-    // (lines ~80, ~125, ~163, ~175) compile and need both names.
+    // Both names are used ONLY by `test_config_watching`, which is itself
+    // `#[cfg(feature = "watch")]`. Importing them unconditionally is an
+    // unused import under every feature set that does not enable `watch` --
+    // including `full`, which is the set the new feature-matrix leg runs.
+    // The import has to carry the same gate as its only use site.
+    #[cfg(feature = "watch")]
     use tokio::time::{sleep, Duration};
 
     #[tokio::test]

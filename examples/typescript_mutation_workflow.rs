@@ -154,13 +154,13 @@ async fn run_tests(project_root: &Path, output_filter: Option<&str>) -> Result<b
     let package_json_path = project_root.join("package.json");
     let package_json = fs::read_to_string(&package_json_path).await?;
 
-    let test_cmd = if package_json.contains("\"vitest\"") {
-        "test"
-    } else if package_json.contains("\"jest\"") {
-        "test"
-    } else {
+    // vitest and jest are both driven by `npm run test`; the two arms used to
+    // be written out separately with the same body, which reads as if they
+    // differed.
+    if !package_json.contains("\"vitest\"") && !package_json.contains("\"jest\"") {
         return Err(anyhow::anyhow!("No test framework detected"));
-    };
+    }
+    let test_cmd = "test";
 
     // Run tests
     let output = Command::new("npm")
