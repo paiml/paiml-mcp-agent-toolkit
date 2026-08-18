@@ -175,7 +175,7 @@ mod tests {
 
         let percentage = calculate_functional_percentage(&items);
         // Functions have some imperative score
-        assert!(percentage >= 0.0 && percentage <= 100.0);
+        assert!((0.0..=100.0).contains(&percentage));
     }
 
     #[test]

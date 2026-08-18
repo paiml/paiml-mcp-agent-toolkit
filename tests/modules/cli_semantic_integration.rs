@@ -6,13 +6,12 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::fs;
 use tempfile::TempDir;
 
 // Test 1: pmat embed --help shows help text
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed").arg("--help");
@@ -30,7 +29,7 @@ fn test_embed_help() {
 // Test 2: pmat embed sync --help shows sync help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_sync_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed").arg("sync").arg("--help");
@@ -45,7 +44,7 @@ fn test_embed_sync_help() {
 // Test 3: pmat embed status --help shows status help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_status_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed").arg("status").arg("--help");
@@ -58,7 +57,7 @@ fn test_embed_status_help() {
 // Test 4: pmat embed clear --help shows clear help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_clear_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed").arg("clear").arg("--help");
@@ -72,7 +71,7 @@ fn test_embed_clear_help() {
 // Test 5: pmat semantic --help shows help text
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_semantic_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("semantic").arg("--help");
@@ -87,7 +86,7 @@ fn test_semantic_help() {
 // Test 6: pmat semantic search --help shows search help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_semantic_search_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("semantic").arg("search").arg("--help");
@@ -103,7 +102,7 @@ fn test_semantic_search_help() {
 // Test 7: pmat semantic similar --help shows similar help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_semantic_similar_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("semantic").arg("similar").arg("--help");
@@ -117,7 +116,7 @@ fn test_semantic_similar_help() {
 // Test 8: pmat analyze cluster --help shows cluster help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_analyze_cluster_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze").arg("cluster").arg("--help");
@@ -132,7 +131,7 @@ fn test_analyze_cluster_help() {
 // Test 9: pmat analyze topics --help shows topics help
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_analyze_topics_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze").arg("topics").arg("--help");
@@ -145,7 +144,7 @@ fn test_analyze_topics_help() {
 // Test 12: pmat embed status without initialized database
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_status_no_database() {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("nonexistent.db");
@@ -167,7 +166,7 @@ fn test_embed_status_no_database() {
 // Test 13: pmat embed clear without --confirm flag shows error
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_embed_clear_requires_confirm() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("embed").arg("clear");
@@ -196,7 +195,7 @@ fn test_semantic_search_invalid_mode() {
 // Test 15: pmat semantic similar requires file path
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_semantic_similar_requires_file_path() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("semantic").arg("similar");
@@ -208,7 +207,7 @@ fn test_semantic_similar_requires_file_path() {
 // Test 16: pmat analyze cluster requires method
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_analyze_cluster_requires_method() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze").arg("cluster");
@@ -220,7 +219,7 @@ fn test_analyze_cluster_requires_method() {
 // Test 17: pmat analyze topics requires num_topics
 #[ignore = "requires semantic integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_analyze_topics_requires_num_topics() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.arg("analyze").arg("topics");

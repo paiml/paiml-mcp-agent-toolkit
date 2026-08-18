@@ -25,7 +25,7 @@ fn test_repo_score_help() {
 /// FAILED: CLI integration test - requires pmat binary
 #[ignore = "repo score integration test"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_repo_score_basic_execution() {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path();
@@ -49,7 +49,7 @@ fn test_repo_score_basic_execution() {
 /// FAILED: CLI integration test - requires pmat binary
 #[ignore = "repo score integration test"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_repo_score_json_output() {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path();
@@ -83,7 +83,7 @@ fn test_repo_score_json_output() {
 /// FAILED: CLI integration test - requires pmat binary
 #[ignore = "repo score integration test"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_repo_score_text_output() {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path();

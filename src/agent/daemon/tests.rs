@@ -26,10 +26,7 @@ mod tests {
         assert!(settings.auto_restart);
         assert_eq!(settings.shutdown_timeout, Duration::from_secs(10));
         // working_directory should be current dir or "."
-        assert!(
-            settings.working_directory.exists()
-                || settings.working_directory == std::path::PathBuf::from(".")
-        );
+        assert!(settings.working_directory.exists() || settings.working_directory == *".");
     }
 
     #[test]

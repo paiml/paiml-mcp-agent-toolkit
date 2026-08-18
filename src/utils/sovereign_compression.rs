@@ -23,7 +23,7 @@ pub const PAGE_SIZE: usize = 4096;
 
 /// Magic bytes for compressed data identification
 #[cfg(feature = "sovereign-compression")]
-const MAGIC: [u8; 4] = [b'T', b'Z', b'R', b'C']; // Trueno Zram Compressed
+const MAGIC: [u8; 4] = *b"TZRC"; // Trueno Zram Compressed
 
 /// Header for variable-length compressed data
 /// Format: MAGIC (4) + original_len (4) + num_pages (4) + page_sizes (num_pages * 4)
@@ -56,7 +56,7 @@ impl CompressionHeader {
             ));
         }
 
-        if &data[0..4] != &MAGIC {
+        if data[0..4] != MAGIC {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid magic bytes - not trueno-zram-core compressed data",
@@ -121,7 +121,7 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
         return Ok(header.encode());
     }
 
-    let num_pages = (input.len() + PAGE_SIZE - 1) / PAGE_SIZE;
+    let num_pages = input.len().div_ceil(PAGE_SIZE);
     let mut page_sizes = Vec::with_capacity(num_pages);
     let mut compressed_pages = Vec::new();
 
@@ -131,8 +131,7 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
         page[..chunk.len()].copy_from_slice(chunk);
 
         // Compress using SIMD-accelerated LZ4
-        let compressed = lz4::compress(&page)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{e}")))?;
+        let compressed = lz4::compress(&page).map_err(|e| io::Error::other(format!("{e}")))?;
         page_sizes.push(compressed.len() as u32);
         compressed_pages.extend_from_slice(&compressed);
     }

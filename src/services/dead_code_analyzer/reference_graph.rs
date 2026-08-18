@@ -127,7 +127,7 @@ impl DeadCodeAnalyzer {
 
         // Demonstrate Trueno integration (foundation for Phase 2: batch bitmap operations)
         let _reachable_count = reachable.count_set();
-        let _demo_vec = Vector::from_slice(&vec![1.0f32; 8]);
+        let _demo_vec = Vector::from_slice(&[1.0f32; 8]);
     }
 
     #[cfg(not(feature = "simd"))]

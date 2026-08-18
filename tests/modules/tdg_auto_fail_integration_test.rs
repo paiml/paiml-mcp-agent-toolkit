@@ -29,7 +29,7 @@ fn test_tdg_auto_fail_on_critical_defects() {
 
     // Act: Run TDG analysis
     let output = Command::new(&binary_path)
-        .args(&[
+        .args([
             "analyze",
             "tdg",
             "--path",
@@ -98,7 +98,7 @@ fn test_tdg_passes_on_clean_code() {
 
     // Act: Run TDG analysis
     let output = Command::new(&binary_path)
-        .args(&[
+        .args([
             "analyze",
             "tdg",
             "--path",

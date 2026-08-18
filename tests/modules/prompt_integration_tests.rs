@@ -12,7 +12,7 @@ use tempfile::TempDir;
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_list() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "--list"])
@@ -28,7 +28,7 @@ fn test_prompt_list() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_show_yaml_format() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "code-coverage"])
@@ -43,7 +43,7 @@ fn test_prompt_show_yaml_format() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_show_json_format() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "continue", "--format", "json"])
@@ -58,7 +58,7 @@ fn test_prompt_show_json_format() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_show_text_format() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "debug", "--format", "text"])
@@ -72,7 +72,7 @@ fn test_prompt_show_text_format() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_not_found() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "nonexistent-prompt"])
@@ -84,7 +84,7 @@ fn test_prompt_not_found() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_show_variables() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "code-coverage", "--show-variables"])
@@ -95,7 +95,7 @@ fn test_prompt_show_variables() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_write_to_file() {
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("test-prompt.yaml");
@@ -121,7 +121,7 @@ fn test_prompt_write_to_file() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_json_to_file() {
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("test-prompt.json");
@@ -149,7 +149,7 @@ fn test_prompt_json_to_file() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_all_available_prompts() {
     let prompts = [
         "code-coverage",
@@ -177,7 +177,7 @@ fn test_prompt_all_available_prompts() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_help() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "--help"])
@@ -192,7 +192,7 @@ fn test_prompt_help() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_short_alias() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["p", "--list"])
@@ -204,7 +204,7 @@ fn test_prompt_short_alias() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_missing_name_without_list() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt"])
@@ -216,7 +216,7 @@ fn test_prompt_missing_name_without_list() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_yaml_format_explicit() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "refactor-hotspots", "--format", "yaml"])
@@ -230,7 +230,7 @@ fn test_prompt_yaml_format_explicit() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_performance_optimization() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "performance-optimization"])
@@ -244,7 +244,7 @@ fn test_prompt_performance_optimization() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_quality_enforcement() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "quality-enforcement"])
@@ -258,7 +258,7 @@ fn test_prompt_quality_enforcement() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_clean_repo_cruft() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "clean-repo-cruft"])
@@ -271,7 +271,7 @@ fn test_prompt_clean_repo_cruft() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_assert_cmd_testing() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "assert-cmd-testing"])
@@ -284,7 +284,7 @@ fn test_prompt_assert_cmd_testing() {
 /// FAILED: Integration test - requires pmat binary
 #[ignore = "requires prompt integration setup"]
 #[test]
-#[ignore] // Integration test requires pmat binary
+// Integration test requires pmat binary
 fn test_prompt_documentation() {
     let mut cmd = Command::cargo_bin("pmat").unwrap();
     cmd.args(["prompt", "show", "documentation"])
@@ -342,7 +342,7 @@ mod property_tests {
     /// FAILED: Integration test - requires pmat binary
     #[ignore = "requires prompt integration setup"]
     #[test]
-    #[ignore] // Integration test requires pmat binary
+    // Integration test requires pmat binary
     fn test_all_prompts_produce_valid_json() {
         let prompts = [
             "code-coverage",

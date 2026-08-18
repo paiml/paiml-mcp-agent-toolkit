@@ -160,23 +160,15 @@ struct DagInfo {
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
 /// Tui demo output.
+#[derive(Default)]
 pub struct TuiDemoOutput {
     pub content: String,
 }
 
 #[cfg(feature = "tui")]
-impl Default for TuiDemoOutput {
-    fn default() -> Self {
-        Self {
-            content: String::new(),
-        }
-    }
-}
-
 // ============================================================================
 // TuiDemoError - Error types for TUI demo
 // ============================================================================
-
 #[cfg(feature = "tui")]
 #[derive(Debug, Error)]
 /// Error variants for tui demo operations.
