@@ -578,3 +578,141 @@ fn the_committed_ledger_matches_the_tree() {
         d.text_differs
     );
 }
+
+// ── write refuses a dirty tree (PMAT-630 / #1034, B1) ────────────────────
+//
+// docs/status/unrun-tests-ledger.md was committed at 0781352ea reading
+// "22882 of 26003"; a clean checkout of that SAME commit, in an isolated
+// worktree untouched by anything else on disk, walks to "22878 of 25999" —
+// four fewer. The delta is exactly the four hop-suppression tests that sat
+// uncommitted in gate_effect/{invocation,tests}.rs while 0781352ea (and
+// every commit after it, up to the one that finally committed them) was
+// made: `--write-ledger` reads the WORKING TREE, not the commit, so it
+// silently recorded a future the ledger's own commit had not reached yet.
+// A ledger that describes a tree no checkout of its commit reproduces is
+// exactly the "artifact does not match what it claims to describe" defect
+// this whole ledger exists to catch in test CODE — it must catch itself.
+
+/// Init a git repo in `dir` and leave it however `dirty` files say to.
+///
+/// Every path is created and `git add`ed (so `--untracked-files=no` still
+/// sees it) and then, only for the ones named in `dirty`, appended to after
+/// the commit — a tracked file with an uncommitted edit, the exact shape of
+/// the historical defect, not an untracked new one.
+fn git_repo(dir: &std::path::Path, files: &[&str], dirty: &[&str]) {
+    let run = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(out.status.success(), "git {args:?}: {out:?}");
+    };
+    run(&["init", "--quiet", "--initial-branch=main"]);
+    run(&["config", "user.email", "t@t"]);
+    run(&["config", "user.name", "t"]);
+    for f in files {
+        std::fs::write(dir.join(f), "committed\n").expect("write");
+    }
+    run(&["add", "-A"]);
+    // `--no-verify`: this is a synthetic fixture repo, not a real commit, and
+    // must not depend on whatever hooks this machine's global git template
+    // (`init.templateDir`) happens to install into every fresh `git init`.
+    run(&["commit", "--quiet", "--no-verify", "-m", "init"]);
+    for f in dirty {
+        std::fs::write(dir.join(f), "committed\nedited after commit\n").expect("edit");
+    }
+}
+
+/// A minimal analyzable tree, layered onto whatever `git_repo` already wrote.
+fn write_analyzable_tree(dir: &std::path::Path) {
+    // `analyze()` refuses fewer than 40 parsed features ("the parser is
+    // broken, not the crate") as a guard against a fixture too small to be
+    // a realistic manifest, so this one pads out to the floor the same way
+    // `historical_fixture` does.
+    let mut manifest = String::from(
+        "[features]\ndefault = []\nfull = []\nmcp-integration = []\n\
+                       unified-protocol = []\n",
+    );
+    for i in 0..40 {
+        manifest.push_str(&format!("pad{i} = []\n"));
+    }
+    fixture_into(
+        dir,
+        &[
+            ("Cargo.toml", manifest.as_str()),
+            (
+                ".github/workflows/ci.yml",
+                "jobs:\n  test:\n    steps:\n      - run: cargo test --lib\n",
+            ),
+            (
+                "src/lib.rs",
+                "#[cfg(test)]\nmod tests { #[test]\nfn t() {} }\n",
+            ),
+        ],
+    );
+}
+
+fn fixture_into(dir: &std::path::Path, files: &[(&str, &str)]) {
+    for (rel, body) in files {
+        let p = dir.join(rel);
+        std::fs::create_dir_all(p.parent().expect("parent")).expect("mkdir");
+        std::fs::write(p, body).expect("write");
+    }
+}
+
+#[test]
+fn write_refuses_a_tree_with_uncommitted_tracked_changes() {
+    let d = tempfile::tempdir().expect("tempdir");
+    write_analyzable_tree(d.path());
+    // `unrelated.txt` is the stand-in for gate_effect/{invocation,tests}.rs:
+    // a file this analysis never reads, edited for a wholly different reason,
+    // sitting uncommitted while the ledger gets written.
+    git_repo(d.path(), &["unrelated.txt"], &["unrelated.txt"]);
+
+    let report = analyze(d.path(), &[String::new()]).expect("analyzes");
+    let err = ledger::write(d.path(), &report, false).expect_err("a dirty tree must refuse");
+    assert!(
+        err.contains("dirty") && err.contains("unrelated.txt"),
+        "the refusal must name the dirty path so it can be acted on: {err}"
+    );
+    assert!(
+        !d.path().join(ledger::LEDGER_PATH).exists(),
+        "a refused write must not leave a ledger behind for --check-ledger to trust"
+    );
+}
+
+#[test]
+fn counter_write_succeeds_on_a_clean_tree() {
+    let d = tempfile::tempdir().expect("tempdir");
+    write_analyzable_tree(d.path());
+    git_repo(d.path(), &["unrelated.txt"], &[]);
+
+    let report = analyze(d.path(), &[String::new()]).expect("analyzes");
+    ledger::write(d.path(), &report, false).expect("a clean tree must be allowed to write");
+    assert!(d.path().join(ledger::LEDGER_PATH).is_file());
+}
+
+#[test]
+fn counter_allow_dirty_overrides_the_refusal() {
+    let d = tempfile::tempdir().expect("tempdir");
+    write_analyzable_tree(d.path());
+    git_repo(d.path(), &["unrelated.txt"], &["unrelated.txt"]);
+
+    let report = analyze(d.path(), &[String::new()]).expect("analyzes");
+    ledger::write(d.path(), &report, true).expect("--allow-dirty is an explicit, loud opt-out");
+    assert!(d.path().join(ledger::LEDGER_PATH).is_file());
+}
+
+#[test]
+fn counter_write_proceeds_outside_a_git_repository() {
+    // Not every build has git metadata (a crates.io tarball, for instance);
+    // there is no commit to be inconsistent with, so nothing to refuse.
+    let d = tempfile::tempdir().expect("tempdir");
+    write_analyzable_tree(d.path());
+
+    let report = analyze(d.path(), &[String::new()]).expect("analyzes");
+    ledger::write(d.path(), &report, false).expect("no git metadata must not block a write");
+    assert!(d.path().join(ledger::LEDGER_PATH).is_file());
+}

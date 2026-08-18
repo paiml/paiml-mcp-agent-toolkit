@@ -417,6 +417,14 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         write_ledger: bool,
 
+        /// With --write-ledger, write even when the git tree has uncommitted
+        /// changes to tracked files. Default is to refuse: a ledger written
+        /// from a dirty tree records whatever unrelated, uncommitted edits
+        /// happen to be sitting there, which no clean checkout of the
+        /// resulting commit will reproduce (PMAT-630 / #1034).
+        #[arg(long, requires = "write_ledger")]
+        allow_dirty: bool,
+
         /// Exit non-zero when the committed ledger has drifted
         #[arg(long)]
         check_ledger: bool,

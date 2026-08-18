@@ -483,6 +483,7 @@ async fn route_unrun_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
         format,
         executed,
         write_ledger,
+        allow_dirty,
         check_ledger,
         fail_on_any,
     } = cmd
@@ -492,7 +493,7 @@ async fn route_unrun_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
 
     let report = unrun_tests::analyze(&path, &executed).map_err(anyhow::Error::msg)?;
     if write_ledger {
-        ledger::write(&path, &report)?;
+        ledger::write(&path, &report, allow_dirty).map_err(anyhow::Error::msg)?;
         println!("wrote {}", ledger::LEDGER_PATH);
         return Ok(());
     }

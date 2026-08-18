@@ -156,15 +156,61 @@ pub fn check(project_root: &Path, report: &Report) -> Drift {
     }
 }
 
+/// Tracked-file changes in `project_root`'s git tree, `git status --porcelain`
+/// output verbatim (empty when clean).
+///
+/// `--untracked-files=no` matches `build.rs`'s `PMAT_GIT_DIRTY` check: a
+/// scratch file dropped in the tree does not itself count, only edits to
+/// something git already knows about.
+///
+/// `None` when git is unavailable or `project_root` is not a worktree at
+/// all (a crates.io tarball build, for instance) — there is no commit to be
+/// inconsistent with, so [`write`] proceeds rather than refusing something
+/// it cannot check.
+fn dirty_tracked_files(project_root: &Path) -> Option<String> {
+    let out = std::process::Command::new("git")
+        .args(["status", "--porcelain", "--untracked-files=no"])
+        .current_dir(project_root)
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    (!s.is_empty()).then_some(s)
+}
+
 /// Write the ledger.
 ///
 /// # Errors
 ///
-/// Propagates any filesystem error.
-pub fn write(project_root: &Path, report: &Report) -> std::io::Result<()> {
+/// Refuses, without touching the file, when `project_root`'s git tree has
+/// uncommitted changes to tracked files and `allow_dirty` is `false`. The
+/// generator reads the WORKING TREE, not a commit — `docs/status/
+/// unrun-tests-ledger.md` was once committed reading "22882 of 26003" while
+/// the commit it was committed on top of, checked out clean, walks to
+/// "22878 of 25999": four hop-suppression tests sat uncommitted in an
+/// unrelated file while the ledger was generated, and the generator could
+/// not tell they were not part of the tree it was documenting (PMAT-630 /
+/// #1034). `allow_dirty` is the explicit, loud opt-out for local iteration;
+/// there is no silent one, and the default is closed.
+///
+/// Also propagates any filesystem error from the write itself.
+pub fn write(project_root: &Path, report: &Report, allow_dirty: bool) -> Result<(), String> {
+    if !allow_dirty {
+        if let Some(dirty) = dirty_tracked_files(project_root) {
+            return Err(format!(
+                "refusing to write {LEDGER_PATH} from a dirty git tree: it would record \
+                 whatever these uncommitted, possibly-unrelated changes happen to add or \
+                 remove, not the tree at HEAD, and no clean checkout of the resulting commit \
+                 would reproduce it. Commit or stash first, or pass --allow-dirty to override.\n\
+                 {dirty}"
+            ));
+        }
+    }
     let path = project_root.join(LEDGER_PATH);
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(path, render(report))
+    std::fs::write(path, render(report)).map_err(|e| e.to_string())
 }
