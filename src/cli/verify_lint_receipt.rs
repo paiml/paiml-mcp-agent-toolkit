@@ -35,6 +35,32 @@
 //! content address: a different byte anywhere in the tree is a different key, and
 //! a different key means clippy runs for real. There is no time-to-live to get
 //! wrong, and no way to be handed a green answer for a tree nobody linted.
+//!
+//! # Why the key covers every file, not just the Rust ones
+//!
+//! The obvious economy — hash `*.rs` and the manifests, skip the other 1,239
+//! files — is unsound in *this* crate, and demonstrably so. `include_str!`
+//! makes non-Rust files compilation inputs, and pmat does that with markdown,
+//! YAML, HTML, JS, shell and `.gitignore`:
+//!
+//! ```text
+//! include_str!("../../../../../CHANGELOG.md")
+//! include_str!("../../.gitignore")
+//! include_str!("../../assets/dashboard.html")
+//! include_str!("../../../prompts/debug.yaml")
+//! include_str!("../../../.agents/hooks/pmat-quality-feedback.sh")
+//! ```
+//!
+//! A "*.md cannot affect clippy" rule would therefore hand back a green verdict
+//! for a tree whose `CHANGELOG.md` had changed under it. `build.rs` widens the
+//! same hole further: it generates Rust into `OUT_DIR` from `templates/`, and
+//! that generated code is linted too. Enumerating the real input set is a
+//! research project with a wrong answer at the end of it, so the walk takes
+//! everything git does not ignore.
+//!
+//! The price is paid in the safe direction: a docs-only edit invalidates the
+//! receipt and buys a full clippy run it did not strictly need. Over-approximate
+//! and it costs 90 seconds; under-approximate and the gate lies.
 
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
