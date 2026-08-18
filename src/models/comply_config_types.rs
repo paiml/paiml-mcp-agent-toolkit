@@ -58,8 +58,16 @@ pub struct CrossCrateConfig {
 /// Configuration for pmat comply checks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComplyConfig {
-    /// Individual check configurations keyed by check ID (e.g., "cb-050")
-    #[serde(default)]
+    /// Individual check configurations keyed by check ID (e.g., "cb-050").
+    ///
+    /// PMAT-630: a **patch** over [`default_checks`], never a replacement. An id
+    /// the map does not name keeps the severity and threshold the code declared
+    /// for it; an entry that sets only `enabled:` keeps the rest of its
+    /// declaration. See [`deserialize_checks_patch`].
+    #[serde(
+        default = "default_checks",
+        deserialize_with = "deserialize_checks_patch"
+    )]
     pub checks: HashMap<String, CheckConfig>,
 
     /// Global thresholds
@@ -127,6 +135,72 @@ pub struct CheckConfig {
     /// Additional check-specific options
     #[serde(default)]
     pub options: HashMap<String, serde_yaml_ng::Value>,
+}
+
+/// One `checks:` entry as written in `.pmat.yaml`: every field optional.
+///
+/// PMAT-630. Deserializing straight into [`CheckConfig`] made every omitted key
+/// resolve to that type's own default, so `cb-2100: { enabled: false }` also
+/// reset the severity from `Error` to `Warning`. A patch says the only thing the
+/// YAML actually says — "these keys, and nothing about the others".
+///
+/// `deny_unknown_fields` is the fail-closed half: `severty: error` was silently
+/// discarded, leaving the rule at its declared severity while the author
+/// believed they had raised it. A key nobody reads is a config that lies.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CheckConfigPatch {
+    #[serde(default)]
+    enabled: Option<bool>,
+    #[serde(default)]
+    severity: Option<CheckSeverity>,
+    #[serde(default)]
+    threshold: Option<f64>,
+    #[serde(default)]
+    options: Option<HashMap<String, serde_yaml_ng::Value>>,
+}
+
+impl CheckConfigPatch {
+    /// Apply over what the code declared for this id.
+    fn apply(self, base: CheckConfig) -> CheckConfig {
+        CheckConfig {
+            enabled: self.enabled.unwrap_or(base.enabled),
+            severity: self.severity.unwrap_or(base.severity),
+            threshold: self.threshold.or(base.threshold),
+            options: self.options.unwrap_or(base.options),
+        }
+    }
+}
+
+/// Merge a `.pmat.yaml` `checks:` map over [`default_checks`].
+///
+/// The old behaviour was plain `#[serde(default)]`, which built the map from the
+/// YAML alone. A `.pmat.yaml` naming seven ids therefore left `get_severity`
+/// answering `Warning` for the other fifteen declared rules — CB-2100's own
+/// `Error` among them — and `error_severity_rules` came back **empty**, which
+/// made "every severity=error rule is enforced" vacuously true. That is the
+/// absence-rendered-as-success defect CB-2100 exists to find, in CB-2100's own
+/// configuration loader.
+///
+/// Merge, rather than "error on an id the map omits": the map's purpose is to
+/// override a handful of rules, and a config that had to enumerate all 22 to
+/// disable one would be unwritable and would rot on the next rule added. An id
+/// the map does name is patched key-by-key; an id it does not name is untouched;
+/// an id nobody declared is added.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "severity_resolution")]
+fn deserialize_checks_patch<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, CheckConfig>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let patches = HashMap::<String, CheckConfigPatch>::deserialize(deserializer)?;
+    let mut merged = default_checks();
+    for (id, patch) in patches {
+        let base = merged.get(&id).cloned().unwrap_or_default();
+        merged.insert(id, patch.apply(base));
+    }
+    Ok(merged)
 }
 
 /// Severity levels for checks (matches check_handlers.rs Severity enum)
