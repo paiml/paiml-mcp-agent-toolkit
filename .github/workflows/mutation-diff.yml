@@ -1,0 +1,143 @@
+# PMAT-630 / #1034 EV-4 — mutation testing on the diff.
+#
+# WHY THIS EXISTS
+# ---------------
+# Nothing in this repository asked whether a NEW test could actually fail.
+# Three fixtures shipped in this release that avoided their own defect: the
+# dead-code parity test compared only dead FUNCTIONS on only a BIN crate — the
+# two conditions under which the two analyzers agree; and CB-2100's two hop
+# fixtures both used a bare `run: make comply`, the one shape in which the
+# suppressed-hop bug cannot appear. All three were green, and coverage was no
+# help: coverage says a line ran, mutation says a line's behaviour is pinned.
+#
+# `cargo mutants` was already in ci.yml and in three Makefile targets, but
+# `--in-diff` was wired nowhere, so no run ever asked the question about the
+# code a change actually touched. This workflow is that question.
+#
+# The rules, and the fact that all three fail closed, live in
+# scripts/mutation-diff-gate.sh next to the measured cargo-mutants behaviour
+# that makes each one necessary. In short: a surviving mutant fails (INV-1); an
+# empty mutant set over changed code fails, because cargo-mutants exits 0 and
+# writes no report when `--in-diff` matches nothing (INV-2); and a run that
+# caught nothing, or whose unmutated baseline did not pass, fails, because an
+# all-unviable run also exits 0 with a mere WARN (INV-3).
+#
+# WHERE IT RUNS, AND WHY NOT ON EVERY PUSH
+# ----------------------------------------
+# Measured on this repository, on the 48-core self-hosted box, with the numbers
+# recorded in the PMAT-630 report:
+#
+#   * `cargo test --lib` is the unit of work cargo-mutants repeats once per
+#     mutant, and it is minutes, not seconds;
+#   * a representative PR diff (the CB-2100 hop fix: 2 files, 259 changed
+#     lines) generates 20 mutants;
+#   * larger real commits on this branch generate 139, 222, 279, 512 and 538.
+#
+# Per-mutant cost times mutant count puts a busy PR in the hours. A gate that
+# takes hours on every push is a gate someone switches off, and switching it off
+# is the failure this backlog exists to remove. So it runs, whole and
+# uncushioned, in three places, and nowhere is it softened:
+#
+#   1. NIGHTLY over everything that landed on master in the previous 24h. This
+#      is the standing cadence — no merge escapes it for longer than a day.
+#   2. ON A PULL REQUEST LABELLED `mutation`. Opt-in per PR, for a change whose
+#      author wants the proof before merging rather than the morning after.
+#   3. ON DEMAND (`workflow_dispatch`), with an explicit base.
+#
+# A timeout here is a failure, deliberately: "mutation could not finish
+# analysing this range" is not "this range is verified".
+#
+# NOT YET A REQUIRED CHECK. Making a check required is a repository ruleset
+# change, which is not in this commit's power. The job fails closed today; the
+# ruleset entry has to be added by someone with settings access, and until it is,
+# a red run here blocks nothing on its own. That is stated rather than papered
+# over.
+name: Mutation (diff)
+
+on:
+  schedule:
+    # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
+    - cron: '17 3 * * *'
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Git ref to diff against (default origin/master)'
+        required: false
+        default: 'origin/master'
+
+concurrency:
+  group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-diff:
+    # Only when asked for, or on the nightly schedule. A pull_request run
+    # without the `mutation` label is skipped, not silently passed — and this
+    # job is not in any other job's `needs`, so a skip cannot be mistaken for a
+    # green gate elsewhere.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'mutation')
+    runs-on: [self-hosted, X64, Linux]
+    container:
+      image: localhost:5000/sovereign-ci:stable
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The gate diffs against a merge base; a shallow clone has none.
+          fetch-depth: 0
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+
+      - name: Resolve the base to diff against
+        id: base
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            pull_request)
+              base="origin/${{ github.base_ref }}"
+              ;;
+            workflow_dispatch)
+              base="${{ github.event.inputs.base }}"
+              ;;
+            *)
+              # Nightly: everything that landed on master in the last 24 hours.
+              # If nothing landed, this resolves to HEAD, the diff is empty, and
+              # the gate reports "not applicable" rather than inventing a pass.
+              base="$(git rev-list -1 --before='24 hours ago' HEAD)"
+              ;;
+          esac
+          if [ -z "$base" ]; then
+            echo "could not resolve a base ref; refusing to run a gate over an unknown range"
+            exit 1
+          fi
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "diffing against $base"
+
+      - name: Build the gate
+        # Ahead of the mutation run, so that "the gate does not compile" is a
+        # distinct, early, unmistakable failure rather than something discovered
+        # hours later at the moment the verdict is due.
+        run: cargo build --example mutation_gate --locked
+
+      - name: Mutation gate on the diff
+        run: scripts/mutation-diff-gate.sh run --base '${{ steps.base.outputs.base }}'
+
+      - name: Upload mutation report
+        # `always()` so the surviving mutants are readable on the run that
+        # failed, which is the only run anybody needs them for. This does not
+        # affect the gate's verdict — the step above has already decided it.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-diff-report
+          path: mutants.out/
+          if-no-files-found: ignore
