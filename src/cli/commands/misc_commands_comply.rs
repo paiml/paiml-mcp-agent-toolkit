@@ -171,6 +171,29 @@ pub enum ComplyCommands {
         output: Option<PathBuf>,
     },
 
+    /// CB-2100: generate the comply enforcement ledger.
+    ///
+    /// One row per CB rule: severity, whether a required status check actually
+    /// reaches it, which invocation carries it, and the file:line it is defined
+    /// at. Rules whose status cannot be established are written UNREACHABLE —
+    /// that is a finding, not a blank.
+    ///
+    /// Exits non-zero when the committed ledger has drifted, so the same
+    /// command serves as the check and as the generator.
+    Ledger {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Write the ledger to docs/status/comply-enforcement-ledger.md
+        #[arg(long)]
+        write: bool,
+
+        /// Write output to this file instead (implies --write)
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
     /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
     /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
     Review {

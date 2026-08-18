@@ -212,153 +212,11 @@ async fn handle_report(
 
     // Format output
     let output_text = match format {
-        ComplyOutputFormat::Text => {
-            use crate::cli::colors as c;
-            let mut out = String::new();
-            out.push_str(&format!("\n{}\n", c::rule()));
-            out.push_str(&format!("{}\n", c::header("PMAT Compliance Report")));
-            out.push_str(&format!("{}\n", c::rule()));
-            out.push_str(&format!("\n{} {}\n", c::label("Generated:"), report.timestamp));
-            out.push_str(&format!("{} {}\n", c::label("Project Version:"), report.project_version));
-            if let Some(note) = report.project_version_source.note() {
-                out.push_str(&format!("  {}\n", c::dim(&format!("({note})"))));
-            }
-            out.push_str(&format!("{} {}\n", c::label("Current PMAT:"), report.current_version));
-            out.push_str(&format!("{} {}\n", c::label("Versions Behind:"), report.versions_behind));
-            let status_str = if report.is_compliant {
-                format!("{}COMPLIANT{}", c::BOLD_GREEN, c::RESET)
-            } else {
-                format!("{}NON-COMPLIANT{}", c::BOLD_RED, c::RESET)
-            };
-            out.push_str(&format!("{} {}\n", c::label("Status:"), status_str));
-            out.push_str(&format!(
-                "{} {} total \u{b7} {} pass \u{b7} {} warn \u{b7} {} fail \u{b7} {} skip\n\n",
-                c::label("Checks:"),
-                report.summary.total,
-                report.summary.pass,
-                report.summary.warn,
-                report.summary.fail,
-                report.summary.skip
-            ));
-
-            out.push_str(&format!("{}:\n", c::label("Checks")));
-            for check in &report.checks {
-                let line = format!("{}: {}", check.name, check.message);
-                let formatted = match check.status {
-                    CheckStatus::Pass => c::pass(&line),
-                    CheckStatus::Warn => c::warn(&line),
-                    CheckStatus::Fail => c::fail(&line),
-                    CheckStatus::Skip => c::skip(&line),
-                };
-                out.push_str(&format!("  {}\n", formatted));
-            }
-
-            // Computed by the shared builder, and therefore printed. They used
-            // to be a hardcoded empty vec and were rendered nowhere.
-            if !report.breaking_changes.is_empty() {
-                out.push_str(&format!("\n{}:\n", c::label("Breaking Changes")));
-                for bc in &report.breaking_changes {
-                    out.push_str(&format!("  v{}: {}\n", bc.version, bc.description));
-                }
-            }
-            if !report.recommendations.is_empty() {
-                out.push_str(&format!("\n{}:\n", c::label("Recommendations")));
-                for rec in &report.recommendations {
-                    out.push_str(&format!("  \u{2022} {}\n", rec));
-                }
-            }
-
-            if let Some(history) = &report.history {
-                out.push_str(&format!("\n{}:\n", c::label("Ticket History")));
-                if history.is_empty() {
-                    out.push_str(&format!("  {}\n", c::dim("no tickets in .pmat-tickets/")));
-                } else {
-                    for entry in history {
-                        out.push_str(&format!("  {}\n", ticket_history_line(entry)));
-                    }
-                }
-            }
-
-            out
-        }
+        ComplyOutputFormat::Text => render_report_text(&report),
         ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
             serde_json::to_string_pretty(&report)?
         }
-        ComplyOutputFormat::Markdown => {
-            let mut out = String::new();
-            out.push_str("# PMAT Compliance Report\n\n");
-            out.push_str(&format!("**Generated:** {}\n\n", report.timestamp));
-            out.push_str("| Property | Value |\n");
-            out.push_str("|----------|-------|\n");
-            out.push_str(&format!(
-                "| Project Version | {} |\n",
-                report.project_version
-            ));
-            if let Some(note) = report.project_version_source.note() {
-                out.push_str(&format!("| Project Version caveat | {} |\n", note));
-            }
-            out.push_str(&format!("| Current PMAT | {} |\n", report.current_version));
-            out.push_str(&format!(
-                "| Versions Behind | {} |\n",
-                report.versions_behind
-            ));
-            out.push_str(&format!(
-                "| Status | {} |\n",
-                if report.is_compliant {
-                    "\u{2705} COMPLIANT"
-                } else {
-                    "\u{274c} NON-COMPLIANT"
-                }
-            ));
-            out.push_str(&format!(
-                "| Checks | {} total, {} pass, {} warn, {} fail, {} skip |\n\n",
-                report.summary.total,
-                report.summary.pass,
-                report.summary.warn,
-                report.summary.fail,
-                report.summary.skip
-            ));
-
-            out.push_str("## Checks\n\n");
-            for check in &report.checks {
-                let icon = match check.status {
-                    CheckStatus::Pass => "\u{2705}",
-                    CheckStatus::Warn => "\u{26a0}\u{fe0f}",
-                    CheckStatus::Fail => "\u{274c}",
-                    CheckStatus::Skip => "\u{23ed}\u{fe0f}",
-                };
-                out.push_str(&format!(
-                    "- {} **{}**: {}\n",
-                    icon, check.name, check.message
-                ));
-            }
-
-            if !report.breaking_changes.is_empty() {
-                out.push_str("\n## Breaking Changes\n\n");
-                for bc in &report.breaking_changes {
-                    out.push_str(&format!("- **v{}**: {}\n", bc.version, bc.description));
-                }
-            }
-            if !report.recommendations.is_empty() {
-                out.push_str("\n## Recommendations\n\n");
-                for rec in &report.recommendations {
-                    out.push_str(&format!("- {}\n", rec));
-                }
-            }
-
-            if let Some(history) = &report.history {
-                out.push_str("\n## Ticket History\n\n");
-                if history.is_empty() {
-                    out.push_str("_No tickets in `.pmat-tickets/`._\n");
-                } else {
-                    for entry in history {
-                        out.push_str(&format!("- {}\n", ticket_history_line(entry)));
-                    }
-                }
-            }
-
-            out
-        }
+        ComplyOutputFormat::Markdown => render_report_markdown(&report),
     };
 
     if let Some(output_path) = output {
@@ -370,6 +228,156 @@ async fn handle_report(
     }
 
     Ok(())
+}
+
+/// The `-f text` rendering. Split out of `handle_report` because an inline
+/// match arm this size put the whole function over the complexity gate, and a
+/// renderer is not a control-flow decision.
+fn render_report_text(report: &ComplianceReport) -> String {
+        use crate::cli::colors as c;
+        let mut out = String::new();
+        out.push_str(&format!("\n{}\n", c::rule()));
+        out.push_str(&format!("{}\n", c::header("PMAT Compliance Report")));
+        out.push_str(&format!("{}\n", c::rule()));
+        out.push_str(&format!("\n{} {}\n", c::label("Generated:"), report.timestamp));
+        out.push_str(&format!("{} {}\n", c::label("Project Version:"), report.project_version));
+        if let Some(note) = report.project_version_source.note() {
+            out.push_str(&format!("  {}\n", c::dim(&format!("({note})"))));
+        }
+        out.push_str(&format!("{} {}\n", c::label("Current PMAT:"), report.current_version));
+        out.push_str(&format!("{} {}\n", c::label("Versions Behind:"), report.versions_behind));
+        let status_str = if report.is_compliant {
+            format!("{}COMPLIANT{}", c::BOLD_GREEN, c::RESET)
+        } else {
+            format!("{}NON-COMPLIANT{}", c::BOLD_RED, c::RESET)
+        };
+        out.push_str(&format!("{} {}\n", c::label("Status:"), status_str));
+        out.push_str(&format!(
+            "{} {} total \u{b7} {} pass \u{b7} {} warn \u{b7} {} fail \u{b7} {} skip\n\n",
+            c::label("Checks:"),
+            report.summary.total,
+            report.summary.pass,
+            report.summary.warn,
+            report.summary.fail,
+            report.summary.skip
+        ));
+
+        out.push_str(&format!("{}:\n", c::label("Checks")));
+        for check in &report.checks {
+            let line = format!("{}: {}", check.name, check.message);
+            let formatted = match check.status {
+                CheckStatus::Pass => c::pass(&line),
+                CheckStatus::Warn => c::warn(&line),
+                CheckStatus::Fail => c::fail(&line),
+                CheckStatus::Skip => c::skip(&line),
+            };
+            out.push_str(&format!("  {}\n", formatted));
+        }
+
+        // Computed by the shared builder, and therefore printed. They used
+        // to be a hardcoded empty vec and were rendered nowhere.
+        if !report.breaking_changes.is_empty() {
+            out.push_str(&format!("\n{}:\n", c::label("Breaking Changes")));
+            for bc in &report.breaking_changes {
+                out.push_str(&format!("  v{}: {}\n", bc.version, bc.description));
+            }
+        }
+        if !report.recommendations.is_empty() {
+            out.push_str(&format!("\n{}:\n", c::label("Recommendations")));
+            for rec in &report.recommendations {
+                out.push_str(&format!("  \u{2022} {}\n", rec));
+            }
+        }
+
+        if let Some(history) = &report.history {
+            out.push_str(&format!("\n{}:\n", c::label("Ticket History")));
+            if history.is_empty() {
+                out.push_str(&format!("  {}\n", c::dim("no tickets in .pmat-tickets/")));
+            } else {
+                for entry in history {
+                    out.push_str(&format!("  {}\n", ticket_history_line(entry)));
+                }
+            }
+        }
+
+        out
+}
+
+/// The `-f markdown` rendering (the default format).
+fn render_report_markdown(report: &ComplianceReport) -> String {
+        let mut out = String::new();
+        out.push_str("# PMAT Compliance Report\n\n");
+        out.push_str(&format!("**Generated:** {}\n\n", report.timestamp));
+        out.push_str("| Property | Value |\n");
+        out.push_str("|----------|-------|\n");
+        out.push_str(&format!(
+            "| Project Version | {} |\n",
+            report.project_version
+        ));
+        if let Some(note) = report.project_version_source.note() {
+            out.push_str(&format!("| Project Version caveat | {} |\n", note));
+        }
+        out.push_str(&format!("| Current PMAT | {} |\n", report.current_version));
+        out.push_str(&format!(
+            "| Versions Behind | {} |\n",
+            report.versions_behind
+        ));
+        out.push_str(&format!(
+            "| Status | {} |\n",
+            if report.is_compliant {
+                "\u{2705} COMPLIANT"
+            } else {
+                "\u{274c} NON-COMPLIANT"
+            }
+        ));
+        out.push_str(&format!(
+            "| Checks | {} total, {} pass, {} warn, {} fail, {} skip |\n\n",
+            report.summary.total,
+            report.summary.pass,
+            report.summary.warn,
+            report.summary.fail,
+            report.summary.skip
+        ));
+
+        out.push_str("## Checks\n\n");
+        for check in &report.checks {
+            let icon = match check.status {
+                CheckStatus::Pass => "\u{2705}",
+                CheckStatus::Warn => "\u{26a0}\u{fe0f}",
+                CheckStatus::Fail => "\u{274c}",
+                CheckStatus::Skip => "\u{23ed}\u{fe0f}",
+            };
+            out.push_str(&format!(
+                "- {} **{}**: {}\n",
+                icon, check.name, check.message
+            ));
+        }
+
+        if !report.breaking_changes.is_empty() {
+            out.push_str("\n## Breaking Changes\n\n");
+            for bc in &report.breaking_changes {
+                out.push_str(&format!("- **v{}**: {}\n", bc.version, bc.description));
+            }
+        }
+        if !report.recommendations.is_empty() {
+            out.push_str("\n## Recommendations\n\n");
+            for rec in &report.recommendations {
+                out.push_str(&format!("- {}\n", rec));
+            }
+        }
+
+        if let Some(history) = &report.history {
+            out.push_str("\n## Ticket History\n\n");
+            if history.is_empty() {
+                out.push_str("_No tickets in `.pmat-tickets/`._\n");
+            } else {
+                for entry in history {
+                    out.push_str(&format!("- {}\n", ticket_history_line(entry)));
+                }
+            }
+        }
+
+        out
 }
 
 /// `comply report` and `comply check` are one rule with two renderings.

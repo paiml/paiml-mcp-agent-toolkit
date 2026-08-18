@@ -288,10 +288,8 @@ pub(crate) fn parse_github_slug(url: &str) -> Option<String> {
         r
     } else if let Some(r) = url.strip_prefix("http://github.com/") {
         r
-    } else if let Some(r) = url.strip_prefix("ssh://git@github.com/") {
-        r
     } else {
-        return None;
+        url.strip_prefix("ssh://git@github.com/")?
     };
     let rest = rest.strip_suffix(".git").unwrap_or(rest);
     let rest = rest.trim_end_matches('/');

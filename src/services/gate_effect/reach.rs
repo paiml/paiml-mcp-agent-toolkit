@@ -58,11 +58,48 @@ pub fn reachable_jobs<'a>(
         }
         out.push(ReachableJob { job, suppressions });
     }
+    poison_closure(&mut out);
     out
 }
 
+/// INV-2100-5, applied to the whole closure.
+///
+/// A job that can never succeed does not merely neuter itself: the required
+/// check that depends on it can never go green either, so *nothing* in the
+/// closure is producing a verdict anybody acts on. The reason is therefore
+/// folded into every job, not just the guilty one.
+fn poison_closure(jobs: &mut [ReachableJob<'_>]) {
+    let poison: Vec<String> = jobs.iter().filter_map(|r| never_succeeds(r.job)).collect();
+    if poison.is_empty() {
+        return;
+    }
+    for r in jobs.iter_mut() {
+        r.suppressions.extend(poison.iter().cloned());
+    }
+}
+
+/// INV-2100-5: a job that can never succeed never produces a verdict.
+///
+/// The msrv/`--all-features` shape: a step whose script fails unconditionally
+/// makes the job permanently red. A permanently red required check is not a
+/// gate — it blocks everything, gets bypassed, and the rule it was supposed to
+/// carry is never actually consulted.
+pub fn never_succeeds(job: &Job) -> Option<String> {
+    for script in job.run_scripts() {
+        if let Some((_, line)) = super::effect::first_unconditional_failure(script) {
+            return Some(format!(
+                "job `{}` in {} can never succeed (`{line}` always fails), so it never produces a \
+                 verdict",
+                job.id,
+                job.workflow.display()
+            ));
+        }
+    }
+    None
+}
+
 /// `Some(reason)` when a failure of `need` cannot fail `job`.
-fn broken_edge(job: &Job, need: &str) -> Option<String> {
+pub fn broken_edge(job: &Job, need: &str) -> Option<String> {
     let cond = job.if_expr.as_deref()?;
     if !cond.contains("always()") {
         return None;

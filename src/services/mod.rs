@@ -298,7 +298,7 @@ mod quality_proxy_property_tests;
 pub mod agent_context;
 pub mod changelog_manager;
 pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
-pub mod gate_effect; // EV-1/CB-1411: does a required status check actually reach the rules it claims to enforce?
+pub mod gate_effect; // CB-2100: does a required status check actually reach the rules it claims to enforce?
 #[cfg(feature = "github-api")]
 pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow

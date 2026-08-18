@@ -1,34 +1,94 @@
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
+  kind: kernel
   created: "2026-08-18"
   author: PAIML Engineering
   registry: true
   description: >
-    Gate-effect verification (EV-1, CB-1411). Every "enforced in CI" claim this
-    repository makes rests on one chain: a REQUIRED STATUS CHECK CONTEXT STRING
-    -> the job that reports that context -> a step (or a Makefile/script one hop
-    away) that invokes the rule -> whose non-zero exit can still fail the job.
-    Break any link and the rule is decoration. This contract pins the three
-    invariants that make the chain checkable, and in particular pins that
-    reachability is computed against the CONTEXT STRING and never against a job
-    display name -- a repository can carry a required `ci / gate` produced by a
-    reusable workflow AND an unrequired top-level job whose display name is
-    `gate`, and a display-name matcher reports the wrong one as the gate.
+    Gate-effect verification (CB-2100). pmat enforces "gates or theatre" across
+    the fleet and, until this rule, had nothing that checked whether its own
+    rules block anything. Every "enforced in CI" claim rests on one chain: a
+    REQUIRED STATUS CHECK CONTEXT STRING -> the job that reports that context ->
+    a step (or a Makefile/script one hop away) that invokes the rule -> whose
+    non-zero exit can still fail the job. Break any link and the rule is
+    decoration.
 
-    Implemented as comply rule CB-1411, not CB-1400 as the source backlog says:
-    CB-1400 has shipped since PMAT-032 as "Agent Contract Existence" and reusing
-    the id would have deleted a live rule.
+    The roots are the UNION of the repository's required contexts, taken from
+    branch protection. Nothing in the rule may name a gate: a rule that
+    hardcodes `gate` stops checking the day a repository renames a job, which
+    is the failure INV-2100-3 already describes, self-inflicted.
+
+    Rule id: CB-2100. Every id the source backlog proposed collides with a live
+    rule (CB-1400 "Agent Contract Existence", CB-1403 "Assume-Guarantee Chain",
+    CB-1404 "Agent Comply Usage", CB-1211 "Codegen Fidelity", CB-1300 "CLI Arg
+    Contracts", CB-1302 "MCP Schema Contracts", CB-1305 "Contract Surface
+    Classification"), and reusing one would have deleted it. CB-21xx was
+    audited free across src/, contracts/, docs/, .github/, the work list and
+    the whole git history. v1 of this contract shipped the same engine as
+    CB-1411 with three invariants; v2 renames it to CB-2100 and adds four.
   contract: comply-gate-effect
   status: enforced
   references:
+    - src/services/gate_effect/kernel.rs
     - src/services/gate_effect/mod.rs
+    - src/services/gate_effect/graph.rs
     - src/services/gate_effect/resolve.rs
     - src/services/gate_effect/effect.rs
     - src/services/gate_effect/reach.rs
     - src/services/gate_effect/required.rs
+    - src/services/gate_effect/roster.rs
+    - src/services/gate_effect/ledger.rs
     - src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
+    - docs/status/comply-enforcement-ledger.md
 
 equations:
+  reachable:
+    formula: >
+      reachable(G, R, n) = exists r in R, exists a path r -> ... -> n in G whose
+      every edge is live
+    domain: >
+      G a finite directed graph over node indices 0..node_count with edges
+      carrying a `live` flag; R a set of root indices; n a node index
+    codomain: bool
+    invariants:
+    - "INV-2100-1: every severity=error comply rule is reachable from SOME required context — the roots are unioned, never taken one at a time"
+    - "INV-2100-2: a reachable invocation whose failure cannot propagate is NOT reachable (not continue_on_error and not suppressed and exit_code_compared)"
+    - "reachable agrees with an independent transitive closure over any bounded graph"
+    - "neutering every edge leaves exactly the roots reachable"
+    - "an empty root set reaches nothing: fail closed, never a vacuous pass"
+    - "an out-of-range target is unreachable, never an error and never a pass"
+    preconditions:
+    - "node indices are less than node_count; out-of-range indices are ignored rather than trusted"
+    kani_harness: verify_reachable_matches_transitive_closure
+
+  select_by_context:
+    formula: >
+      select_by_context(C, q) = min { i : C[i].context = q }, where C[i] =
+      (context, display_name)
+    domain: a list of (context, display) candidates and one required context string
+    codomain: Option<index>
+    invariants:
+    - "INV-2100-3: reachability is computed against the required-check CONTEXT STRING, never the job display name"
+    - "two candidate lists differing only in display names select the same candidate"
+    - "a selected candidate's context equals the required string"
+    - "a display name equal to a required context never, on its own, satisfies reachability"
+    - "`gate` and `ci / gate` are different contexts and may resolve to different jobs"
+    - "INV-2100-7: no gate name is hardcoded anywhere in the rule; the roots come from branch protection"
+    preconditions:
+    - "the candidate list enumerates every context this repository's workflows can produce; an external reusable callee is Opaque, never a Job"
+    kani_harness: verify_select_ignores_display_names
+
+  gates:
+    formula: "gates(printed_failure_verdict, exit_code) = not printed_failure_verdict or exit_code != 0"
+    domain: "one command's observed output classification and its exit status"
+    codomain: bool
+    invariants:
+    - "INV-2100-4: a command that PRINTS a failure verdict and exits 0 does not gate"
+    - "a command that printed no failure verdict gates: there was no verdict to contradict"
+    - "any non-zero exit gates"
+    preconditions: []
+    kani_harness: verify_gates_only_on_exit_code
+
   gate_effect:
     formula: >
       enforced(rule) = exists ctx in required_contexts, exists job in
@@ -41,15 +101,20 @@ equations:
       GateEffectReport with passed() true only when every severity=error rule is
       enforced and no hole was recorded
     invariants:
-    - "INV-1400-1: every severity=error comply rule is reachable from a required check context"
-    - "INV-1400-2: a reachable invocation whose failure cannot propagate is NOT reachable (not continue_on_error and not suppressed and exit_code_compared)"
-    - "INV-1400-3: reachability is computed against the required-check CONTEXT STRING, not the job display name"
+    - "INV-2100-1: every severity=error comply rule is reachable from a required check context"
+    - "INV-2100-2: a reachable invocation whose failure cannot propagate is NOT reachable"
+    - "INV-2100-3: reachability is computed against the required-check CONTEXT STRING, not the job display name"
+    - "INV-2100-4: a command that prints a failure verdict and exits 0 does not gate"
+    - "INV-2100-5: an invocation that can never succeed does not gate"
+    - "INV-2100-6: a job that COMPILES tests without executing them does not establish reachability for those tests"
+    - "INV-2100-7: no hardcoded gate name anywhere in the rule"
     - "an empty severity=error roster is a failure, not a vacuous pass"
     - "an empty or unresolvable required-context list is a failure, not a pass"
     - "a required context produced by no job (phantom gate) is a failure"
     - "a required context resolving into an unreadable external reusable workflow is a failure, because no rule can be SHOWN to run through it"
     - "a workflow that does not parse is a hole in the reachability graph, and a hole fails"
     - "zero jobs across all workflows is a failure, not a pass"
+    - "a required context that reaches no invocation is named in the verdict, not silently counted as coverage"
     preconditions:
     - ".github/workflows exists (otherwise the rule Skips: there is no Actions gate to verify)"
 
@@ -62,7 +127,6 @@ equations:
     invariants:
     - "a top-level job reports as its display name when it has one, else its job id"
     - "a reusable-workflow call reports one context per callee job, namespaced `<caller> / <callee>`"
-    - "`gate` and `ci / gate` are different contexts and may resolve to different jobs"
     - "an external `owner/repo/...@ref` callee resolves to Opaque, never to a Job"
     - "Opaque is never evidence of enforcement"
     preconditions:
@@ -72,6 +136,7 @@ equations:
     formula: >
       propagates(inv) = not job.continue_on_error and not step.continue_on_error
       and not suppressed(line) and exit_code_compared(script, line)
+      and not compiles_only(line) and not dead(line) and not verdict_without_exit(script, line)
     domain: one shell line invoking the rule, within its script and its job
     codomain: boolean, with the reasons it is false
     invariants:
@@ -82,43 +147,105 @@ equations:
     - "a pipeline suppresses unless the script sets pipefail (GitHub runs `run:` under `bash -e`, pipefail off)"
     - "an exit code captured into a variable, consumed by `if`, or disarmed by `set +e` propagates only when a later line exits non-zero"
     - "a `needs` edge under `if: always()` propagates only when the job inspects needs.<id>.result"
+    - "INV-2100-4: a wrapper that prints a failure verdict and then exits 0 suppresses"
+    - "INV-2100-5: a line after an unconditional failure under errexit never runs, and a job containing one can never succeed"
+    - "INV-2100-5 control: `exit 1` inside an `if` is a working gate, not an impossibility"
+    - "INV-2100-6: `--no-run`, `--dry-run` and `--list` build the invocation without executing it"
     preconditions:
     - "the invocation line was found in a `run:` block, or one hop away in a Makefile recipe or shell script"
 
+  enforcement_ledger:
+    formula: >
+      ledger = { (rule, severity, status, carrier, file:line) : rule in roster },
+      status in {ENFORCED, NEUTERED, UNREACHABLE}
+    domain: >
+      the comply rule REGISTRY — the clause ids the check builders register with
+      filter_check_by_config, as enumerated by enumerate_comply_rule_ids, the
+      same authority CB-1703 holds the documentation to
+    codomain: a deterministic markdown document
+    invariants:
+    - "the ledger covers exactly the registered rule set: no invented rows, no omissions"
+    - "one row per CB rule, each with a file:line citation"
+    - "a rule whose status cannot be established is UNREACHABLE, never blank"
+    - "a registered rule with no findable definition site is UNREACHABLE and says so"
+    - "an unenumerable or empty registry is an error, not a clean sheet"
+    - "the rendering is deterministic: no timestamps, no version stamps, rows sorted by rule id"
+    - "a required context that carries no rule is listed as carrying none"
+    - "the population is read from the existing registry, never recounted: one rule, one answer"
+    preconditions:
+    - "the repository declares CB rules in-tree (src/cli/handlers/comply_handlers exists); a repo that merely runs the rules owes no ledger"
+
 preconditions:
-  - "pmat >= 3.30.0 with `pmat comply check` running CB-1411"
+  - "pmat >= 3.32.0 with `pmat comply check` running CB-2100"
   - "required contexts resolvable from PMAT_REQUIRED_STATUS_CHECKS, .github/required-status-checks.txt, or the GitHub branch-protection API"
 
 postconditions:
-  - "CB-1411 reports Skip only when .github/workflows/ is absent"
-  - "CB-1411 reports Fail with severity=error whenever any invariant above is violated"
-  - "CB-1411's Fail message names the job and the key responsible"
+  - "CB-2100 reports Skip only when .github/workflows/ is absent"
+  - "CB-2100 reports Fail with severity=error whenever any invariant above is violated"
+  - "CB-2100's Fail message names the job and the key responsible"
+  - "CB-2100 fails when docs/status/comply-enforcement-ledger.md is missing or has drifted"
 
 falsification:
-  - condition: "the job invoking `pmat comply check` carries `continue-on-error: true` and CB-1411 still passes"
+  - condition: "F-1: the job invoking `pmat comply check` carries `continue-on-error: true` and CB-2100 still passes"
     severity: P0
-    test: src/services/gate_effect/tests.rs::falsify_1400_1_job_level_continue_on_error_fails
-  - condition: "the step is `pmat comply check || true` and CB-1411 still passes"
+    test: src/services/gate_effect/tests_cb2100.rs::f1_job_level_continue_on_error_fails_citing_job_and_key
+  - condition: "F-2: the step is `pmat comply check || true` and CB-2100 still passes"
     severity: P0
-    test: src/services/gate_effect/tests.rs::falsify_1400_2_or_true_fails
-  - condition: "a job whose DISPLAY NAME is `gate` runs comply, the required context is `ci / quality`, and CB-1411 passes on the strength of the display-name match"
+    test: src/services/gate_effect/tests_cb2100.rs::f2_or_true_fails
+  - condition: "F-3: a job whose DISPLAY NAME equals the required context string is credited as the job that reports it"
     severity: P0
-    test: src/services/gate_effect/tests.rs::falsify_1400_3_display_name_match_is_not_context_match
-  - condition: "a workflow with zero jobs yields a pass instead of a fail"
+    test: src/services/gate_effect/tests_cb2100.rs::f3_a_display_name_equal_to_the_required_context_is_not_a_match
+  - condition: "F-4: a workflow with zero jobs yields a pass instead of a fail"
     severity: P0
-    test: src/services/gate_effect/tests.rs::falsify_1400_4_workflow_with_zero_jobs_fails
+    test: src/services/gate_effect/tests_cb2100.rs::f4_zero_jobs_fails_closed
+  - condition: "F-5: an unfetchable branch-protection API yields a pass instead of a fail"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::f5_unresolvable_required_contexts_fail_closed
+  - condition: "F-6 (the control): the live shape — required context `ci / gate` beside an unrequired job literally named `gate` — fails, so every other fixture proves nothing"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::f6_required_context_beside_an_unrequired_job_named_the_same_thing_passes
+  - condition: "INV-2100-4: a wrapper that prints a failure verdict and exits 0 is credited as a gate"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_4_a_wrapper_that_prints_failed_and_exits_zero_does_not_gate
+  - condition: "INV-2100-5: an invocation inside a job that can never succeed is credited as a gate"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_job_that_can_never_succeed_does_not_gate
+  - condition: "INV-2100-5 control: `exit 1` inside an `if` is misread as an impossibility, failing every correctly-written workflow"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_guarded_exit_is_a_gate_not_an_impossibility
+  - condition: "INV-2100-6: a job that compiles a test suite without running it establishes reachability for those tests"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_6_compiling_a_test_is_not_running_it
+  - condition: "INV-2100-7: the rule hardcodes a gate name and so stops checking the day a job is renamed"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_7_no_gate_name_is_hardcoded_in_the_rule
+  - condition: "INV-2100-1: the roots are taken one at a time, so one healthy required check answers for four"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_1_any_root_may_carry_the_roster
   - condition: "an empty severity=error roster yields a vacuous pass"
     severity: P0
     test: src/services/gate_effect/tests.rs::control_roster_is_not_empty
+  - condition: "an empty CB rule roster yields an empty ledger instead of an error"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::ledger_over_an_empty_roster_is_an_error_not_a_clean_sheet
+  - condition: "the ledger invents or omits rows because it recounts the rules instead of reading the registry"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::the_roster_is_exactly_the_registered_rule_set
+  - condition: "a configuration that declares rules and grades none of them error is reported as a clean roster"
+    severity: P0
+    test: src/services/gate_effect/tests_cb2100.rs::a_config_whose_checks_are_all_sub_error_is_a_hole_with_a_diagnosis
+  - condition: "the ledger is non-deterministic, so nobody can diff it and drift goes unnoticed"
+    severity: P1
+    test: src/services/gate_effect/tests_cb2100.rs::the_rendered_ledger_is_deterministic
   - condition: "a required context that no job produces is treated as absence of evidence rather than a phantom gate"
     severity: P1
     test: src/services/gate_effect/tests.rs::a_phantom_required_context_fails
   - condition: "an unreadable external reusable workflow is credited as enforcement"
     severity: P0
-    test: src/services/gate_effect/tests.rs::falsify_1400_3b_external_reusable_workflow_is_opaque_not_compliant
+    test: src/services/gate_effect/tests.rs::falsify_2100_3b_external_reusable_workflow_is_opaque_not_compliant
   - condition: "a `run:` block that pipes the invocation is credited with its exit code although bash -e leaves pipefail off"
     severity: P1
-    test: src/services/gate_effect/tests.rs::falsify_1400_2c_piped_invocation_loses_its_status
+    test: src/services/gate_effect/tests.rs::falsify_2100_2c_piped_invocation_loses_its_status
   - condition: "an `if: always()` summary job is credited with its needs' failures although it never inspects needs.<id>.result"
     severity: P0
     test: src/services/gate_effect/tests.rs::if_always_without_a_result_check_breaks_the_edge

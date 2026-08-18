@@ -1,10 +1,16 @@
 //! Resolve a required branch-protection **context string** to the job that
 //! produces it.
 //!
-//! INV-1400-3 lives here: resolution is driven by the context string, never by
+//! INV-2100-3 lives here: resolution is driven by the context string, never by
 //! a job's display name. `gate` and `ci / gate` are different contexts, and a
 //! repo can have both — one required, one not.
+//!
+//! The match itself is [`super::kernel::select_by_context`], which takes the
+//! display name as an argument it never reads — so `KANI-2100-2` can prove the
+//! display name cannot influence the answer, instead of the module asserting it
+//! in a comment.
 
+use super::kernel;
 use super::workflow::{Job, WorkflowSet};
 use std::path::PathBuf;
 
@@ -34,34 +40,43 @@ fn local_reusable_path(uses: &str) -> Option<PathBuf> {
     Some(PathBuf::from(rest))
 }
 
+/// One thing a required context string could name.
+///
+/// `display` is carried alongside `context` on purpose. For a top-level job the
+/// two coincide; for a job inside a reusable workflow they do not, and the gap
+/// between them is the defect INV-2100-3 exists to catch. Keeping both means
+/// the matcher can be *shown* to use one and not the other.
+#[derive(Debug, Clone)]
+pub struct Candidate {
+    pub context: String,
+    pub display: String,
+    pub resolution: Resolution,
+}
+
 /// Every context string this repository's workflows can produce, paired with
 /// the resolution it maps to.
 ///
 /// A caller job whose callee is external contributes no concrete contexts (it
 /// is not enumerable), so it is matched by prefix in [`resolve_context`].
-pub fn enumerate_contexts(set: &WorkflowSet) -> Vec<(String, Resolution)> {
+pub fn enumerate_contexts(set: &WorkflowSet) -> Vec<Candidate> {
     let mut out = Vec::new();
     for job in set.jobs() {
         match job.uses.as_deref() {
-            None => out.push((
-                job.context().to_string(),
-                Resolution::Job {
+            None => out.push(Candidate {
+                context: job.context().to_string(),
+                display: job.display_name.clone().unwrap_or_else(|| job.id.clone()),
+                resolution: Resolution::Job {
                     workflow: job.workflow.clone(),
                     job_id: job.id.clone(),
                 },
-            )),
+            }),
             Some(uses) => push_reusable_contexts(set, job, uses, &mut out),
         }
     }
     out
 }
 
-fn push_reusable_contexts(
-    set: &WorkflowSet,
-    caller: &Job,
-    uses: &str,
-    out: &mut Vec<(String, Resolution)>,
-) {
+fn push_reusable_contexts(set: &WorkflowSet, caller: &Job, uses: &str, out: &mut Vec<Candidate>) {
     let Some(callee_path) = local_reusable_path(uses) else {
         return; // external: not enumerable, handled by prefix match
     };
@@ -69,23 +84,30 @@ fn push_reusable_contexts(
         return; // unreadable local callee: treated as opaque by prefix match
     };
     for job in &callee.jobs {
-        out.push((
-            format!("{} / {}", caller.context(), job.context()),
-            Resolution::Job {
+        out.push(Candidate {
+            context: format!("{} / {}", caller.context(), job.context()),
+            display: job.display_name.clone().unwrap_or_else(|| job.id.clone()),
+            resolution: Resolution::Job {
                 workflow: job.workflow.clone(),
                 job_id: job.id.clone(),
             },
-        ));
+        });
     }
 }
 
 /// Resolve one required context string.
+#[provable_contracts_macros::contract(
+    "comply-gate-effect-v1.yaml",
+    equation = "context_string_resolution"
+)]
 pub fn resolve_context(set: &WorkflowSet, context: &str) -> Resolution {
-    if let Some((_, r)) = enumerate_contexts(set)
-        .into_iter()
-        .find(|(c, _)| c == context)
-    {
-        return r;
+    let candidates = enumerate_contexts(set);
+    let pairs: Vec<(String, String)> = candidates
+        .iter()
+        .map(|c| (c.context.clone(), c.display.clone()))
+        .collect();
+    if let Some(i) = kernel::select_by_context(&pairs, &context.to_string()) {
+        return candidates[i].resolution.clone();
     }
     opaque_prefix_match(set, context).unwrap_or(Resolution::Phantom)
 }

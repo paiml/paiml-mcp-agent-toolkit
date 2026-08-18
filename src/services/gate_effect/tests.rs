@@ -1,4 +1,4 @@
-//! Falsification suite for CB-1411 (gate-effect verification).
+//! Falsification suite for CB-2100 (gate-effect verification).
 //!
 //! Every fixture here is a workflow that a naive implementation calls
 //! compliant. Each one must FAIL. A test that only shows the happy path passing
@@ -65,7 +65,7 @@ fn control_a_plain_enforcing_job_passes() {
 
 #[test]
 fn control_roster_is_not_empty() {
-    // If the roster were empty, INV-1400-1 would be vacuous and every fixture
+    // If the roster were empty, INV-2100-1 would be vacuous and every fixture
     // below would "pass" for the wrong reason.
     let rules = error_severity_rules(&ComplyConfig::default());
     assert!(
@@ -74,10 +74,10 @@ fn control_roster_is_not_empty() {
     );
 }
 
-// ── FALSIFY-1400-1: job carries continue-on-error ───────────────────────────
+// ── FALSIFY-2100-1: job carries continue-on-error ───────────────────────────
 
 #[test]
-fn falsify_1400_1_job_level_continue_on_error_fails() {
+fn falsify_2100_1_job_level_continue_on_error_fails() {
     let wf = r#"
 name: CI
 jobs:
@@ -100,7 +100,7 @@ jobs:
 }
 
 #[test]
-fn falsify_1400_1b_step_level_continue_on_error_fails() {
+fn falsify_2100_1b_step_level_continue_on_error_fails() {
     let wf = r#"
 name: CI
 jobs:
@@ -140,10 +140,10 @@ jobs:
     assert!(!report.passed(), "{}", why(&report));
 }
 
-// ── FALSIFY-1400-2: `pmat comply check || true` ─────────────────────────────
+// ── FALSIFY-2100-2: `pmat comply check || true` ─────────────────────────────
 
 #[test]
-fn falsify_1400_2_or_true_fails() {
+fn falsify_2100_2_or_true_fails() {
     let wf = r#"
 name: CI
 jobs:
@@ -166,7 +166,7 @@ jobs:
 }
 
 #[test]
-fn falsify_1400_2b_exit_code_captured_never_compared_fails() {
+fn falsify_2100_2b_exit_code_captured_never_compared_fails() {
     let wf = r#"
 name: CI
 jobs:
@@ -184,7 +184,7 @@ jobs:
 }
 
 #[test]
-fn falsify_1400_2c_piped_invocation_loses_its_status() {
+fn falsify_2100_2c_piped_invocation_loses_its_status() {
     // GitHub runs `run:` under `bash -e`, which does NOT set pipefail.
     let wf = r#"
 name: CI
@@ -235,7 +235,7 @@ jobs:
     assert!(report.passed(), "{}", why(&report));
 }
 
-// ── FALSIFY-1400-3: display name vs context string (INV-1400-3) ─────────────
+// ── FALSIFY-2100-3: display name vs context string (INV-2100-3) ─────────────
 
 /// The subtle one, and this repository is the proof.
 ///
@@ -244,7 +244,7 @@ jobs:
 /// workflow that job `ci` calls. Matching display names finds the enforcing
 /// `gate` job and calls the repo compliant — on a check nobody requires.
 #[test]
-fn falsify_1400_3_display_name_match_is_not_context_match() {
+fn falsify_2100_3_display_name_match_is_not_context_match() {
     let caller = r#"
 name: CI
 jobs:
@@ -308,7 +308,7 @@ jobs:
 }
 
 #[test]
-fn falsify_1400_3b_external_reusable_workflow_is_opaque_not_compliant() {
+fn falsify_2100_3b_external_reusable_workflow_is_opaque_not_compliant() {
     let wf = r#"
 name: CI
 jobs:
@@ -330,10 +330,10 @@ jobs:
     );
 }
 
-// ── FALSIFY-1400-4: zero jobs ───────────────────────────────────────────────
+// ── FALSIFY-2100-4: zero jobs ───────────────────────────────────────────────
 
 #[test]
-fn falsify_1400_4_workflow_with_zero_jobs_fails() {
+fn falsify_2100_4_workflow_with_zero_jobs_fails() {
     let dir = fixture(&[(".github/workflows/ci.yml", "name: CI\non:\n  push: {}\n")]);
     let report = run(&dir, &["ci / gate"]);
     assert!(!report.passed(), "{}", why(&report));

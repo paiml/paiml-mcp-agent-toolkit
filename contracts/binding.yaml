@@ -245,3 +245,33 @@ bindings:
   source_file: src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
   function: check_comply_gate_effect
   status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: reachable
+  source_file: src/services/gate_effect/kernel.rs
+  function: reachable
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: select_by_context
+  source_file: src/services/gate_effect/kernel.rs
+  function: select_by_context
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: gates
+  source_file: src/services/gate_effect/kernel.rs
+  function: gates
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: context_string_resolution
+  source_file: src/services/gate_effect/resolve.rs
+  function: resolve_context
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: failure_propagation
+  source_file: src/services/gate_effect/effect.rs
+  function: assess
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: enforcement_ledger
+  source_file: src/services/gate_effect/ledger.rs
+  function: render
+  status: implemented

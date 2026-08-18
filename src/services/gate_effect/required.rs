@@ -48,14 +48,27 @@ pub const MANIFEST: &str = ".github/required-status-checks.txt";
 
 /// Resolve the required contexts, or explain why they could not be resolved.
 pub fn resolve(project_path: &Path) -> Result<RequiredContexts, String> {
-    if let Some(raw) = std::env::var_os(ENV_VAR) {
-        let contexts = split_list(&raw.to_string_lossy());
-        return non_empty(contexts, ContextSource::Env);
+    let raw = std::env::var_os(ENV_VAR).map(|v| v.to_string_lossy().into_owned());
+    resolve_with_override(raw.as_deref(), project_path)
+}
+
+/// [`resolve`], with the environment read for it.
+///
+/// The env lookup lives in the caller so that the fail-closed cases can be
+/// tested without mutating process state: `set_var` is `unsafe` and racy, and a
+/// test that has to disarm the environment to reach its assertion tends to get
+/// its assertion deleted the first time it flakes.
+pub fn resolve_with_override(
+    env_override: Option<&str>,
+    project_path: &Path,
+) -> Result<RequiredContexts, String> {
+    if let Some(raw) = env_override {
+        return non_empty(split_list(raw), ContextSource::Env);
     }
     let manifest = read_manifest(project_path);
     let live = fetch_live(project_path);
     match (manifest, live) {
-        (Some(m), Some(l)) if m != l => Err(format!(
+        (Some(m), Some(l)) if drifted(&m, &l) => Err(format!(
             "required-check drift: {MANIFEST} says [{}] but branch protection says [{}] — \
              one of them is a confident wrong answer",
             m.join(", "),
@@ -79,6 +92,20 @@ fn non_empty(contexts: Vec<String>, source: ContextSource) -> Result<RequiredCon
         ));
     }
     Ok(RequiredContexts { contexts, source })
+}
+
+/// Drift is a difference in the *set* of contexts. Branch protection does not
+/// order its list meaningfully, so a manifest that lists the same four checks
+/// in a different order has not drifted — and reporting that as drift would
+/// train people to ignore the one error that means something.
+fn drifted(manifest: &[String], live: &[String]) -> bool {
+    let norm = |v: &[String]| {
+        let mut c: Vec<String> = v.to_vec();
+        c.sort();
+        c.dedup();
+        c
+    };
+    norm(manifest) != norm(live)
 }
 
 fn split_list(raw: &str) -> Vec<String> {

@@ -65,6 +65,12 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             output,
         } => handle_report(&path, include_history, format, output.as_deref()).await,
 
+        ComplyCommands::Ledger {
+            path,
+            write,
+            output,
+        } => handle_ledger(&path, write, output.as_deref()),
+
         ComplyCommands::Review {
             path,
             format,

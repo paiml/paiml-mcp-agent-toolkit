@@ -11,16 +11,24 @@
 //!       -> whose non-zero exit can still fail the job
 //! ```
 //!
-//! Break any link and the rule is decoration. The three invariants are:
+//! Break any link and the rule is decoration. The seven invariants are:
 //!
-//! * **INV-1400-1** every severity=error rule is reachable from the required
-//!   check context;
-//! * **INV-1400-2** a reachable invocation whose failure cannot propagate is
+//! * **INV-2100-1** every severity=error rule is reachable from *some* required
+//!   context — the roots are unioned, never taken one at a time;
+//! * **INV-2100-2** a reachable invocation whose failure cannot propagate is
 //!   NOT reachable (`¬continue_on_error ∧ ¬suppressed ∧ exit_code_compared`);
-//! * **INV-1400-3** reachability is computed against the required-check CONTEXT
-//!   STRING, not the job display name.
+//! * **INV-2100-3** reachability is computed against the required-check CONTEXT
+//!   STRING, not the job display name;
+//! * **INV-2100-4** a command that prints a failure verdict and exits 0 does
+//!   not gate;
+//! * **INV-2100-5** an invocation that can never succeed does not gate;
+//! * **INV-2100-6** a job that compiles tests without executing them does not
+//!   establish reachability for those tests;
+//! * **INV-2100-7** no gate name is hardcoded anywhere in the rule. The roots
+//!   come from branch protection, so a repository that renames a job does not
+//!   silently stop being checked.
 //!
-//! INV-1400-3 is the one that bites. A reusable-workflow job namespaces as
+//! INV-2100-3 is the one that bites. A reusable-workflow job namespaces as
 //! `<caller> / <callee>`, so a repo can have a required `ci / gate` **and** an
 //! unrequired top-level job whose display name is `gate`. Matching display
 //! names finds the wrong job and calls the repo compliant.
@@ -33,14 +41,20 @@
 //! Contract: `contracts/comply-gate-effect-v1.yaml`.
 
 pub mod effect;
+pub mod graph;
 pub mod invocation;
+pub mod kernel;
+pub mod ledger;
 pub mod reach;
 pub mod required;
 pub mod resolve;
+pub mod roster;
 pub mod workflow;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_cb2100;
 
 use crate::models::comply_config::{CheckSeverity, ComplyConfig};
 use invocation::Invocation;
@@ -68,11 +82,34 @@ pub struct GateEffectReport {
     /// Fail-closed reasons: things that could not be measured, or holes in the
     /// reachability graph. Any entry fails the check.
     pub holes: Vec<String>,
+    /// The graph the verdict was drawn from: roots, jobs, invocations, and
+    /// which edges a failure can actually cross.
+    pub graph: graph::Enforcement,
 }
 
 impl GateEffectReport {
     pub fn passed(&self) -> bool {
         self.holes.is_empty() && self.unreachable_rules.is_empty() && !self.rules.is_empty()
+    }
+
+    /// One `(context, reaches an invocation)` pair per required context.
+    ///
+    /// This is where a required check with no CB mapping shows up: a context
+    /// that reaches nothing is a gate on something other than the rule roster,
+    /// and the ledger says so instead of quietly counting it as coverage.
+    pub fn context_carries(&self) -> Vec<(String, bool)> {
+        self.required_contexts
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let reaches = self
+                    .graph
+                    .roots
+                    .get(i)
+                    .is_some_and(|r| !self.graph.invocations_from_root(*r).is_empty());
+                (c.clone(), reaches)
+            })
+            .collect()
     }
 
     pub fn enforcing(&self) -> impl Iterator<Item = &Invocation> {
@@ -134,13 +171,32 @@ fn new_report(config: &ComplyConfig) -> GateEffectReport {
         ..Default::default()
     };
     if report.rules.is_empty() {
-        report.holes.push(
-            "no severity=error comply rule is declared, so 'every error rule is enforced' is \
-             vacuous — an empty roster is a failure, not a pass"
-                .into(),
-        );
+        report.holes.push(empty_roster_hole(config));
     }
     report
+}
+
+/// Why the roster came out empty, in the terms that make it actionable.
+///
+/// The two cases are genuinely different. No checks at all is a missing
+/// configuration. Checks that exist and are all sub-error is a configuration
+/// that *runs* rules while declaring that none of them may fail — and because
+/// `ComplyConfig::get_severity` answers `Warning` for an id it does not know,
+/// a `checks:` map that lists a handful of rules silently demotes every rule it
+/// omits. Naming that is the difference between a hole and a diagnosis.
+fn empty_roster_hole(config: &ComplyConfig) -> String {
+    if config.checks.is_empty() {
+        return "no comply check is declared at all, so 'every severity=error rule is enforced' \
+                is vacuous — an empty roster is a failure, not a pass"
+            .into();
+    }
+    format!(
+        "{} comply check(s) are declared and not one of them is severity=error, so \
+         'every severity=error rule is enforced' is vacuous — an empty roster is a failure, not \
+         a pass. Note that an id absent from `checks:` resolves to Warning, not to its default \
+         severity, so a partial map demotes every rule it omits",
+        config.checks.len()
+    )
 }
 
 fn finish(
@@ -160,10 +216,31 @@ fn finish(
         report.resolutions.push((context.clone(), resolution));
     }
 
-    if report.enforcing().next().is_none() {
+    // Two required contexts resolving to the same job would otherwise report
+    // the same invocation twice, which inflates the evidence for a rule that
+    // is carried exactly once.
+    dedup_invocations(&mut report.invocations);
+
+    // INV-2100-1: the roots are unioned and the question is asked once, of the
+    // graph, by the kernel `KANI-2100-1` proves. Asking it context-by-context
+    // would let one healthy check answer for four.
+    report.graph = graph::build(&set, &report.resolutions, &report.invocations);
+    if !report.graph.any_invocation_reachable() {
         report.unreachable_rules = report.rules.clone();
     }
     report
+}
+
+/// Keep the first occurrence of each invocation site, in discovery order.
+fn dedup_invocations(invocations: &mut Vec<invocation::Invocation>) {
+    let mut seen: Vec<invocation::Invocation> = Vec::new();
+    invocations.retain(|i| {
+        if seen.contains(i) {
+            return false;
+        }
+        seen.push(i.clone());
+        true
+    });
 }
 
 fn record_workflow_holes(set: &workflow::WorkflowSet, report: &mut GateEffectReport) {

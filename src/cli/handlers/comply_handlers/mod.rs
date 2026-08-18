@@ -18,6 +18,9 @@ pub(crate) use check_handlers::*;
 // Migration, enforce, report, init, upgrade handlers
 include!("migrate_handlers.rs");
 
+// CB-2100: the enforcement ledger generator (`pmat comply ledger`)
+include!("ledger_handler.rs");
+
 // Command dispatch (needs access to both check_handlers and migrate_handlers items)
 include!("command_dispatch.rs");
 

@@ -1,0 +1,18 @@
+# The required status check CONTEXT STRINGS for master, as branch protection
+# reports them. Read by CB-2100 (comply gate-effect verification) so the rule
+# can be evaluated on a runner that has no admin read on the repository.
+#
+# This file is CROSS-CHECKED, not trusted: whenever the branch-protection API
+# is reachable, CB-2100 fails on any disagreement between the two. Do not edit
+# it to make a gate look reachable — regenerate it from the API:
+#
+#   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection \
+#     --jq '.required_status_checks.contexts[]'
+#
+# Note that these are CONTEXTS, not job names. `ci / gate` is a job inside the
+# reusable workflow ci.yml calls; the unrequired top-level job in ci.yml whose
+# display name is `gate` reports as plain `gate` and is a different check.
+ci / gate
+feature-gate
+docs build (docs.rs environment)
+pmat score
