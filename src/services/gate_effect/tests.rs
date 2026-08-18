@@ -458,6 +458,14 @@ jobs:
     ]);
     let report = run(&dir, &["quality"]);
     assert!(report.passed(), "{}", why(&report));
+    // Not just "it passed" — it passed *through the hop*. Without this the
+    // fixture is equally green when the hop is never followed and the gate is
+    // found some other way.
+    assert!(
+        report.enforcing().any(|i| i.via == "indirect"),
+        "the hop must be what carried the rule: {}",
+        why(&report)
+    );
 }
 
 #[test]
@@ -478,6 +486,17 @@ jobs:
     ]);
     let report = run(&dir, &["quality"]);
     assert!(!report.passed(), "{}", why(&report));
+    // The dash here is on the TARGET. Asserting the recorded reason keeps this
+    // fixture honest: it must fail because the recipe line was judged, not
+    // because the hop was never followed. The hop-side dash is a different
+    // fixture — `a_suppression_on_a_make_to_make_hop_is_not_enforcement`.
+    assert!(
+        neutered_reasons(&report)
+            .iter()
+            .any(|r| r.contains("prefixed with `-`")),
+        "expected the dash to be the named reason: {}",
+        why(&report)
+    );
 }
 
 #[test]
@@ -545,4 +564,148 @@ fn parser_distinguishes_the_three_continue_on_error_states() {
     assert_eq!(get("a"), TriState::No);
     assert_eq!(get("b"), TriState::Yes);
     assert_eq!(get("c"), TriState::Unknown);
+}
+
+// ── PMAT-630: suppression on the HOP, not on the target ─────────────────────
+//
+// INV-2100-2 makes failure propagation a property of EVERY EDGE on the path
+// from a required context to an invocation, not a property of the terminal
+// node. `make gate || true` neuters the gate exactly as surely as
+// `pmat comply check || true` does, and judging only the line the needle lands
+// on judges only the last edge.
+//
+// The two hop fixtures that shipped above this comment both used a bare
+// `run: make comply` — the one shape in which a hop-line suppression cannot
+// appear — so the detector for neutered gates was itself blind to neutering on
+// the hop. Every hop fixture below therefore carries the suppression ON THE
+// HOP, and the target it reaches is healthy.
+
+/// Every reason CB-2100 recorded for an invocation it found but would not
+/// credit.
+///
+/// Asserting on this, rather than on `passed()` alone, is the whole lesson of
+/// this defect. `passed()` is false both when a hop was FOLLOWED AND JUDGED
+/// suppressed and when the hop was never followed at all — and the second is
+/// the right verdict for the wrong reason. A fixture that checks only the
+/// verdict cannot tell them apart, so it goes green the day the hop stops being
+/// followed, which is the failure mode that let `make comply || true` be
+/// credited as enforcement.
+fn neutered_reasons(report: &GateEffectReport) -> Vec<String> {
+    report
+        .neutered()
+        .flat_map(|i| i.suppressions.iter().cloned())
+        .collect()
+}
+
+/// A healthy Makefile: whatever verdict a fixture gets, it is the hop's doing.
+const HEALTHY_MAKEFILE: &str = "comply:\n\t@pmat comply check\n";
+
+/// One job, one step, reaching the gate through `make`.
+fn hop_fixture(run_block: &str, makefile: &str) -> TempDir {
+    let wf = format!(
+        "name: CI\njobs:\n  quality:\n    name: quality\n    runs-on: ubuntu-latest\n    \
+         steps:\n      - name: gate\n        run: |\n{run_block}\n"
+    );
+    fixture(&[
+        (".github/workflows/ci.yml", wf.as_str()),
+        ("Makefile", makefile),
+    ])
+}
+
+#[test]
+fn a_suppression_on_the_hop_line_is_not_enforcement() {
+    // (what the hop does, the `run:` block it does it in)
+    let cases: &[(&str, &str)] = &[
+        ("|| true", "          make comply || true"),
+        ("|| :", "          make comply || :"),
+        ("|| echo", "          make comply || echo skipped"),
+        ("|| exit 0", "          make comply || exit 0"),
+        (
+            "consumed by if",
+            "          if make comply; then echo ok; fi",
+        ),
+        ("captured into a variable", "          OUT=$(make comply)"),
+        (
+            "piped without pipefail",
+            "          make comply | tee log.txt",
+        ),
+        ("set +e", "          set +e\n          make comply"),
+        ("--dry-run", "          make --dry-run comply"),
+        ("make -n", "          make -n comply"),
+        (
+            "dead after `false`",
+            "          false\n          make comply",
+        ),
+    ];
+    for (name, run_block) in cases {
+        let dir = hop_fixture(run_block, HEALTHY_MAKEFILE);
+        let report = run(&dir, &["quality"]);
+        assert!(
+            !report.passed(),
+            "a hop suppressed with `{name}` was credited as enforcement: {}",
+            why(&report)
+        );
+        assert!(
+            !neutered_reasons(&report).is_empty(),
+            "hop `{name}` gave the right verdict for the wrong reason — the hop was never \
+             followed, so no edge was judged: {}",
+            why(&report)
+        );
+    }
+}
+
+#[test]
+fn a_suppression_on_a_make_to_make_hop_is_not_enforcement() {
+    // The suppression is on the MIDDLE edge: the workflow step is bare and the
+    // final recipe is healthy, so only a per-edge walk can see it.
+    let cases: &[(&str, &str)] = &[
+        (
+            "dash prefix",
+            "outer:\n\t-$(MAKE) comply\n\ncomply:\n\t@pmat comply check\n",
+        ),
+        (
+            "|| true",
+            "outer:\n\t@$(MAKE) comply || true\n\ncomply:\n\t@pmat comply check\n",
+        ),
+    ];
+    for (name, makefile) in cases {
+        let dir = hop_fixture("          make outer", makefile);
+        let report = run(&dir, &["quality"]);
+        assert!(
+            !report.passed(),
+            "a make->make hop suppressed with `{name}` was credited: {}",
+            why(&report)
+        );
+        assert!(
+            !neutered_reasons(&report).is_empty(),
+            "make->make hop `{name}` gave the right verdict for the wrong reason: {}",
+            why(&report)
+        );
+    }
+}
+
+/// The counter-test. Passes before AND after the fix, so a "fix" that simply
+/// reports every hop unreachable is caught here rather than in production.
+#[test]
+fn counter_an_unsuppressed_hop_is_still_enforcement() {
+    let dir = hop_fixture("          make comply", HEALTHY_MAKEFILE);
+    let report = run(&dir, &["quality"]);
+    assert!(
+        report.passed(),
+        "a healthy hop must still be enforcement: {}",
+        why(&report)
+    );
+    assert_eq!(report.enforcing().count(), 1, "{}", why(&report));
+}
+
+/// The counter-test for the two-hop walk: two live edges are still one live
+/// path.
+#[test]
+fn counter_an_unsuppressed_make_to_make_hop_is_still_enforcement() {
+    let dir = hop_fixture(
+        "          make outer",
+        "outer:\n\t@$(MAKE) comply\n\ncomply:\n\t@pmat comply check\n",
+    );
+    let report = run(&dir, &["quality"]);
+    assert!(report.passed(), "{}", why(&report));
 }

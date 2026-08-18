@@ -107,14 +107,23 @@ fn collect_from_script(
             suppressions,
         });
     }
-    for (label2, body) in indirect_targets(project_path, script) {
+    for hop in indirect_targets(project_path, script) {
+        // INV-2100-2 is a property of EVERY EDGE on the path, not of the
+        // terminal node. A hop is an edge: `make comply || true` neuters the
+        // gate without touching the recipe it calls, so the line that makes the
+        // hop is judged exactly as the line the needle lands on is. Passing
+        // `inherited` through unchanged here is what let a suppressed hop be
+        // credited as enforcement.
+        let mut carried = inherited.to_vec();
+        carried.extend(effect::assess(script, hop.line));
+        carried.extend(hop.extra);
         collect_from_script(
             project_path,
             job,
-            &format!("{label} -> {label2}"),
-            &body,
+            &format!("{label} -> {}", hop.label),
+            &hop.body,
             needles,
-            inherited,
+            &carried,
             out,
             depth + 1,
         );
@@ -130,45 +139,121 @@ fn selects_a_rule_subset(line: &str) -> bool {
     RULE_SUBSET_FLAGS.iter().any(|f| line.contains(f))
 }
 
+/// One resolvable hop out of a script: where it goes, and which line goes there.
+///
+/// The line index is the whole point of this type. Without it the recursion has
+/// no way to judge the hop, and a suppression on the invoking line is invisible.
+struct Hop {
+    /// Index, in the **invoking** script, of the line that makes the hop.
+    line: usize,
+    /// `make comply`, `scripts/gate.sh` — how the body was reached.
+    label: String,
+    body: String,
+    /// Reasons the hop cannot carry a failure that [`effect::assess`] cannot
+    /// see, because they belong to the invoking *command* rather than to the
+    /// shell line it sits on.
+    extra: Vec<String>,
+}
+
 /// Bodies reachable one hop from `script`: Makefile recipes and shell scripts.
-fn indirect_targets(project_path: &Path, script: &str) -> Vec<(String, String)> {
+fn indirect_targets(project_path: &Path, script: &str) -> Vec<Hop> {
     let mut out = Vec::new();
     let makefile = load_makefile(project_path);
-    for line in script.lines() {
+    for (n, line) in script.lines().enumerate() {
         let code = line.split('#').next().unwrap_or("");
-        for target in make_targets(code) {
-            if let Some(recipe) = makefile.get(&target) {
-                out.push((format!("make {target}"), recipe.clone()));
+        for call in make_calls(code) {
+            if let Some(recipe) = makefile.get(&call.target) {
+                out.push(Hop {
+                    line: n,
+                    label: format!("make {}", call.target),
+                    body: recipe.clone(),
+                    extra: call.extra,
+                });
             }
         }
         if let Some(path) = script_path(code) {
             if let Ok(body) = std::fs::read_to_string(project_path.join(&path)) {
-                out.push((path, body));
+                out.push(Hop {
+                    line: n,
+                    label: path,
+                    body,
+                    extra: Vec::new(),
+                });
             }
         }
     }
     out
 }
 
-fn make_targets(code: &str) -> Vec<String> {
+/// A `make` invocation on one line: which target, and whether the invocation
+/// itself declines to run it.
+struct MakeCall {
+    target: String,
+    extra: Vec<String>,
+}
+
+/// Make's own "print, do not execute" spellings that [`effect::assess`] does
+/// not already carry (`--dry-run` is in its `COMPILE_ONLY_FLAGS`). Matched only
+/// against the tokens of the make invocation that owns them, so an `echo -n`
+/// elsewhere on the line cannot trip it: this is INV-2100-6 one hop up, and a
+/// false positive here would call a working gate broken.
+const MAKE_DRY_RUN_FLAGS: &[&str] = &["-n", "--just-print", "--recon"];
+
+fn make_calls(code: &str) -> Vec<MakeCall> {
+    // Normalise before tokenising: `$(MAKE)` must survive the split on `(`.
+    let normalized = code.replace("$(MAKE)", "make").replace("${MAKE}", "make");
+    let toks = words(&normalized);
     let mut out = Vec::new();
-    let toks: Vec<&str> = code.split_whitespace().collect();
     for (i, t) in toks.iter().enumerate() {
-        if *t == "make" || *t == "$(MAKE)" || *t == "${MAKE}" {
-            for cand in toks.iter().skip(i + 1) {
-                if cand.starts_with('-') || cand.contains('=') {
-                    continue;
-                }
-                out.push((*cand).to_string());
-                break;
+        if !is_make(t) {
+            continue;
+        }
+        let mut extra = Vec::new();
+        for cand in toks.iter().skip(i + 1) {
+            if MAKE_DRY_RUN_FLAGS.contains(cand) {
+                extra.push(format!(
+                    "`make {cand}` prints the recipe instead of running it, so the hop is not \
+                     evidence that the rule ran"
+                ));
+                continue;
             }
+            if cand.starts_with('-') || cand.contains('=') {
+                continue;
+            }
+            out.push(MakeCall {
+                target: (*cand).to_string(),
+                extra,
+            });
+            break;
         }
     }
     out
+}
+
+/// A leading `-` is a Makefile recipe prefix, not part of the command name.
+/// `-$(MAKE) comply` is still a call to make, and refusing to recognise it
+/// means the hop is never followed — so CB-2100 reports "no invocation" where
+/// the truth is "the hop ignores its exit code". Both fail; only one is honest.
+fn is_make(tok: &str) -> bool {
+    tok.trim_start_matches('-') == "make"
+}
+
+/// The command words of a shell line.
+///
+/// Splitting on whitespace alone is not enough. `if make comply; then` yields
+/// `comply;` and `OUT=$(make comply)` yields `$(make`, so in both shapes the
+/// hop is silently not followed and the suppression on it is never named. A
+/// verdict that is right for the wrong reason goes green the day the reason
+/// changes.
+fn words(code: &str) -> Vec<&str> {
+    code.split(|c: char| c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '`'))
+        .filter(|w| !w.is_empty())
+        .collect()
 }
 
 fn script_path(code: &str) -> Option<String> {
-    code.split_whitespace()
+    words(code)
+        .into_iter()
         .map(|t| t.trim_start_matches("./"))
         .find(|t| t.ends_with(".sh") && !t.starts_with('-'))
         .map(str::to_string)
