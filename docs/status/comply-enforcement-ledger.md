@@ -24,10 +24,10 @@ Source: .github/required-status-checks.txt
 
 ## Summary
 
-- rules: 156
+- rules: 157
 - ENFORCED: 0
 - NEUTERED: 0
-- UNREACHABLE: 156
+- UNREACHABLE: 157
 
 ## Holes
 
@@ -194,4 +194,5 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-1702 | Review Changeset Size (advisory) | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_evidence_gates.rs:836` |
 | CB-1703 | Documented Rule Count | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_evidence_gates.rs:960` |
 | CB-2100 | Comply Gate Effect | error | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs:38` |
+| CB-2101 | Threshold Coherence | error | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs:44` |
 | CB-2102 | Ratchet Baselines | error | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs:40` |
