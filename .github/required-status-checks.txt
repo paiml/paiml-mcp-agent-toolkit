@@ -32,3 +32,19 @@ pmat score
 #   JSON
 # and add `mutation-diff` back to this file in the same change, so the manifest
 # and live protection never disagree -- which is the drift CB-2100 exists to catch.
+#
+# REVIEW REQUIREMENT (CB-1700), set 2026-08-19. master now carries
+# `required_pull_request_reviews.required_approving_review_count = 1`; before
+# that the block was absent entirely, so the default branch required zero
+# approving reviews. Nothing else in the protection config changed — the PUT
+# endpoint REPLACES the whole configuration, so the payload was built by reading
+# the live state and adding exactly one key; contexts, strict, enforce_admins,
+# force-push, deletions, linear-history and conversation-resolution were all
+# carried forward verbatim and diffed afterwards to prove it.
+#
+# Consequence, stated so nobody rediscovers it under time pressure: GitHub does
+# not let an author approve their own pull request, so on a repository with one
+# active maintainer every merge now needs either a second reviewer or the admin
+# override. `enforce_admins` is false, which is what keeps the override
+# available -- and also what makes this requirement advisory in practice. It
+# raises the cost of merging unreviewed, it does not prevent it.
