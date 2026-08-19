@@ -381,9 +381,41 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
     let l4_pct = kani as f64 / obligations as f64 * 100.0;
     let l5_pct = lean as f64 / obligations as f64 * 100.0;
 
-    let msg = format!(
-        "{obligations} obligations: L2={tests} tests, L4={kani} kani ({l4_pct:.0}%), L5={lean} lean ({l5_pct:.0}%)"
-    );
+    // These are DECLARATION ratios, not coverage: `kani` counts
+    // `kani_harnesses[]` entries declared across contract YAMLs, and
+    // `obligations` counts proof obligations. They are different populations,
+    // so the quotient can exceed 100% — rmedia reported
+    // `L4=16 kani (114%)` as a PASS, which reads as "114% of obligations are
+    // Kani-verified" and cannot be true of anything. (That repo has 8 real
+    // `kani::proof` harnesses; 16 is the declared count, and a declaration is
+    // not an execution — see `quality::ladder_evidence`, which requires a
+    // kani-report artifact before granting L4.)
+    //
+    // A quotient over 100% is therefore a signal that the two counts have
+    // drifted apart, not a superlative score. It is named as such instead of
+    // being printed as a percentage that flatters the repo.
+    let over_declared = l4_pct > 100.0 || l5_pct > 100.0;
+    let msg = if over_declared {
+        format!(
+            "{obligations} obligations: L2={tests} tests, L4={kani} kani declared, \
+             L5={lean} lean declared — MORE DECLARATIONS THAN OBLIGATIONS \
+             (declared/obligations = {l4_pct:.0}%/{l5_pct:.0}%), so these are not \
+             coverage figures; a declaration is not an execution"
+        )
+    } else {
+        format!(
+            "{obligations} obligations: L2={tests} tests, L4={kani} kani ({l4_pct:.0}%), L5={lean} lean ({l5_pct:.0}%)"
+        )
+    };
+
+    if over_declared {
+        return ComplianceCheck {
+            name: "CB-1206: Verification Levels".into(),
+            status: CheckStatus::Warn,
+            message: msg,
+            severity: Severity::Warning,
+        };
+    }
 
     let min_kani = thresholds.min_kani_coverage;
     if min_kani > 0.0 && l4_pct < min_kani {
