@@ -48,6 +48,25 @@ jobs:
       - name: Install pmat
         run: cargo install --path . --locked
 
+      # CB-1701 (supply chain). `pmat score` is a REQUIRED status check, so a
+      # blocking cargo-deny here is the only thing making a supply-chain failure
+      # able to stop a merge in this repository.
+      #
+      # Bare `cargo deny check` on purpose: with no family argument it runs all
+      # four of advisories, bans, licenses and sources. Naming families is how
+      # coverage silently narrows — the organisation's shared CI appends
+      # `|| echo ...` to its licenses and sources run, which prints the findings
+      # and then exits 0, so the job is green whatever cargo-deny found. Do not
+      # add `|| true`, `continue-on-error`, or a family list to this step.
+      #
+      # Verified against the tree at the time of writing: all four families exit
+      # 0 (8/29/2/1 warnings, 0 errors), so this blocks nothing that was passing.
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Supply chain gate — cargo deny (blocking, all families)
+        run: cargo deny check
+
       - name: Run unified quality gate
         run: pmat score --gate 60 --format json -o score.json
 
