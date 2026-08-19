@@ -1,11 +1,11 @@
-//! Ratchet baselines (CB-1421) and threshold coherence (CB-1420).
+//! Ratchet baselines (CB-2102) and threshold coherence (CB-2101).
 //!
 //! Two gates over the numbers a repo writes down about itself:
 //!
-//! * **CB-1421 ratchet** — `.pmat-ratchet.toml` records a baseline per metric,
+//! * **CB-2102 ratchet** — `.pmat-ratchet.toml` records a baseline per metric,
 //!   MEASURED at a named commit. A PR may not exceed it; a nightly job lowers
 //!   it when the measurement drops; raising it needs a written justification.
-//! * **CB-1420 threshold coherence** — every threshold in `.pmat-metrics.toml`
+//! * **CB-2101 threshold coherence** — every threshold in `.pmat-metrics.toml`
 //!   is classified FIRING, VIOLATED or VACUOUS against the same measurements.
 //!   A VIOLATED threshold on a green build is a fail: the config asserts a
 //!   bound the tree does not meet and nothing noticed.

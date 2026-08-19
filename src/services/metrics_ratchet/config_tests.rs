@@ -1,4 +1,4 @@
-//! Falsification tests for the threshold-coherence evaluator (CB-1420) and the
+//! Falsification tests for the threshold-coherence evaluator (CB-2101) and the
 //! two config readers.
 //!
 //! Contract: `contracts/comply-threshold-coherence-v1.yaml`.
@@ -108,7 +108,7 @@ fn roster_collects_every_scalar_including_strings_and_excludes_bools() {
 
 // ─────────────────────────── arm (a): VIOLATED ───────────────────────────
 
-/// CB-1403 arm (a), the live defect: `max_unwrap_calls = 100` against 11,056
+/// CB-2101 arm (a), the live defect: `max_unwrap_calls = 100` against 11,056
 /// measured. A max-threshold exceeded at HEAD while the build is green is a
 /// FAIL, not a warning — the config is asserting something false.
 #[test]
@@ -130,7 +130,7 @@ fn arm_a_violated_threshold_on_a_green_build_fails() {
 
 // ─────────────────────────── arm (b): VACUOUS ───────────────────────────
 
-/// CB-1403 arm (b): a limit further from the measurement than the band can
+/// CB-2101 arm (b): a limit further from the measurement than the band can
 /// never fire. With a justification that is a WARN; without one it is a FAIL,
 /// so decoration cannot masquerade as enforcement silently.
 #[test]
@@ -162,7 +162,7 @@ fn arm_b_vacuous_threshold_warns_with_justification_and_fails_without() {
     assert_eq!(v.outcome, Outcome::Fail, "vacuous without justification");
 }
 
-/// The discriminating mutation for CB-1420: set `max_unwrap_calls = 100000`
+/// The discriminating mutation for CB-2101: set `max_unwrap_calls = 100000`
 /// and the classification must move to VACUOUS. Pinned as a test so the
 /// mutation stays reproducible after the config is fixed.
 #[test]
@@ -187,7 +187,7 @@ fn mutation_max_unwrap_calls_100000_classifies_vacuous() {
 
 /// After the fix — limit at the measurement plus the band — the threshold is
 /// FIRING, and one more unwrap keeps it FIRING while the ratchet's own band-0
-/// baseline is what goes red. That separation is what makes the CB-1421
+/// baseline is what goes red. That separation is what makes the CB-2102
 /// mutation discriminating.
 #[test]
 fn firing_threshold_absorbs_one_unwrap_so_only_the_ratchet_moves() {
@@ -212,12 +212,12 @@ fn firing_threshold_absorbs_one_unwrap_so_only_the_ratchet_moves() {
     }
 }
 
-// ─────────────────────── FALSIFY-1403-3: unmeasurable ───────────────────────
+// ─────────────────────── FALSIFY-2101-3: unmeasurable ───────────────────────
 
-/// FALSIFY-1403-3: a gate whose metric produced no measurement is a FAIL.
+/// FALSIFY-2101-3: a gate whose metric produced no measurement is a FAIL.
 /// Unmeasurable is not compliant, and it is not a warning either.
 #[test]
-fn falsify_1403_3_unmeasurable_metric_fails() {
+fn falsify_2101_3_unmeasurable_metric_fails() {
     let roster = MetricsRoster::parse("[quality_gates]\nmax_unwrap_calls = 11256\n").unwrap();
     let cfg = CoherenceConfig {
         threshold_sections: vec!["quality_gates".into()],
@@ -264,11 +264,11 @@ fn falsify_1403_3_unmeasurable_metric_fails() {
 
 // ───────────────────────── totality of the audit ─────────────────────────
 
-/// INV-1403-3 at the file level: every threshold in a threshold section gets
+/// INV-2101-3 at the file level: every threshold in a threshold section gets
 /// exactly one verdict carrying exactly one classification — including the ones
 /// nobody declared, which fail rather than vanish.
 #[test]
-fn inv_1403_3_every_threshold_gets_exactly_one_classification() {
+fn inv_2101_3_every_threshold_gets_exactly_one_classification() {
     let roster = MetricsRoster::parse(METRICS_MINI).unwrap();
     let cfg = coherence(vec![(
         "quality_gates.max_unwrap_calls",

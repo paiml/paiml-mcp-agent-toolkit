@@ -1,5 +1,5 @@
-//! Pure comparator kernel for the ratchet (CB-1421) and threshold-coherence
-//! (CB-1420) gates.
+//! Pure comparator kernel for the ratchet (CB-2102) and threshold-coherence
+//! (CB-2101) gates.
 //!
 //! Contracts: `contracts/comply-ratchet-v1.yaml`,
 //! `contracts/comply-threshold-coherence-v1.yaml` (both `kind: kernel`).
@@ -20,7 +20,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Outcome of a ratchet comparison (CB-1421).
+/// Outcome of a ratchet comparison (CB-2102).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RatchetVerdict {
@@ -43,12 +43,12 @@ pub enum Direction {
     Min,
 }
 
-/// What a configured threshold actually does against the measurement (CB-1420).
+/// What a configured threshold actually does against the measurement (CB-2101).
 ///
 /// The three variants partition the space — see [`classify`] and
-/// `INV-1403-3`. There is no fourth "unknown" variant on purpose: a threshold
+/// `INV-2101-3`. There is no fourth "unknown" variant on purpose: a threshold
 /// whose metric could not be measured is not classified at all, it fails the
-/// gate (`FALSIFY-1403-3`, unmeasurable != compliant). Making "unmeasurable" a
+/// gate (`FALSIFY-2101-3`, unmeasurable != compliant). Making "unmeasurable" a
 /// classification is precisely how an unenforceable number gets to look like a
 /// gate in a report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,7 +76,7 @@ impl Classification {
     }
 }
 
-/// `INV-1404-1`: `verdict(b, o) = Fail  <->  o > b`.
+/// `INV-2102-1`: `verdict(b, o) = Fail  <->  o > b`.
 ///
 /// Nothing else is consulted. In particular a metric that *improves* is a
 /// `Pass` here and only becomes the new baseline through [`next_baseline`],
@@ -89,10 +89,10 @@ pub const fn ratchet_verdict(baseline: i64, observed: i64) -> RatchetVerdict {
     }
 }
 
-/// `INV-1404-2`: `next(b, o) = o` when `o <= b`, else `b`.
+/// `INV-2102-2`: `next(b, o) = o` when `o <= b`, else `b`.
 ///
 /// Equivalently `min(b, o)`, which makes the sequence of baselines monotone
-/// non-increasing and the operation idempotent (`INV-1404-3`). Written as the
+/// non-increasing and the operation idempotent (`INV-2102-3`). Written as the
 /// explicit two-case form rather than `min` because the two-case form is the
 /// contract's formula and a reader should not have to re-derive it.
 pub const fn next_baseline(baseline: i64, observed: i64) -> i64 {
@@ -115,7 +115,7 @@ pub const fn slack(limit: i64, measured: i64, dir: Direction) -> i128 {
     }
 }
 
-/// `INV-1403-1` / `INV-1403-2` / `INV-1403-3`: classify one configured
+/// `INV-2101-1` / `INV-2101-2` / `INV-2101-3`: classify one configured
 /// threshold against its measurement.
 ///
 /// ```text
@@ -128,7 +128,7 @@ pub const fn slack(limit: i64, measured: i64, dir: Direction) -> i128 {
 /// ```
 ///
 /// The three arms are exhaustive and mutually exclusive by construction, which
-/// is what `INV-1403-3` (totality) asks for. `band` is the ratchet's tolerance:
+/// is what `INV-2101-3` (totality) asks for. `band` is the ratchet's tolerance:
 /// the largest movement the ratchet would still let through. A limit further
 /// away than that cannot be reached by any change the ratchet permits, so it
 /// can never fire.
@@ -149,9 +149,9 @@ mod kani_proofs {
         classify, next_baseline, ratchet_verdict, Classification, Direction, RatchetVerdict,
     };
 
-    /// `KANI-1403-1`: `classify` is total, and its verdict agrees with the
-    /// breach predicate (`INV-1403-1`, `INV-1403-2`) and partitions the space
-    /// (`INV-1403-3`). Unbounded over every `i64` limit/measurement pair and
+    /// `KANI-2101-1`: `classify` is total, and its verdict agrees with the
+    /// breach predicate (`INV-2101-1`, `INV-2101-2`) and partitions the space
+    /// (`INV-2101-3`). Unbounded over every `i64` limit/measurement pair and
     /// every `u64` band — no assumptions.
     #[kani::proof]
     fn verify_classify_total_and_sound() {
@@ -166,21 +166,21 @@ mod kani_proofs {
 
         let c = classify(limit, measured, band, dir);
 
-        // INV-1403-2: Violated iff the bound is actually breached.
+        // INV-2101-2: Violated iff the bound is actually breached.
         let breached = match dir {
             Direction::Max => measured > limit,
             Direction::Min => measured < limit,
         };
         assert!((c == Classification::Violated) == breached);
 
-        // INV-1403-3: exactly one of the three holds (totality + disjointness).
+        // INV-2101-3: exactly one of the three holds (totality + disjointness).
         let n = (c == Classification::Firing) as u8
             + (c == Classification::Violated) as u8
             + (c == Classification::Vacuous) as u8;
         assert!(n == 1);
     }
 
-    /// `KANI-1403-2`: `classify` is monotone in `limit` — loosening a `Firing`
+    /// `KANI-2101-2`: `classify` is monotone in `limit` — loosening a `Firing`
     /// threshold never yields `Violated`. This is the anti-gaming property: you
     /// cannot make a live gate report a *worse* class by relaxing it, so
     /// `Violated` can only ever be escaped by fixing the tree or by moving the
@@ -207,9 +207,9 @@ mod kani_proofs {
         }
     }
 
-    /// `KANI-1404-1`: `next_baseline` is monotone non-increasing
-    /// (`INV-1404-2`), idempotent (`INV-1404-3`), and agrees with the verdict
-    /// (`INV-1404-1`) — a baseline is rewritten exactly when the metric did not
+    /// `KANI-2102-1`: `next_baseline` is monotone non-increasing
+    /// (`INV-2102-2`), idempotent (`INV-2102-3`), and agrees with the verdict
+    /// (`INV-2102-1`) — a baseline is rewritten exactly when the metric did not
     /// regress.
     #[kani::proof]
     fn verify_next_baseline_monotone_idempotent() {
@@ -218,11 +218,11 @@ mod kani_proofs {
 
         let next = next_baseline(baseline, observed);
 
-        // INV-1404-2: never rises.
+        // INV-2102-2: never rises.
         assert!(next <= baseline);
-        // INV-1404-3: idempotent.
+        // INV-2102-3: idempotent.
         assert!(next_baseline(next, observed) == next);
-        // INV-1404-1: Fail iff observed exceeds the baseline, and a Fail leaves
+        // INV-2102-1: Fail iff observed exceeds the baseline, and a Fail leaves
         // the baseline untouched.
         let v = ratchet_verdict(baseline, observed);
         assert!((v == RatchetVerdict::Fail) == (observed > baseline));

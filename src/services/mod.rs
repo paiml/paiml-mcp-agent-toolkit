@@ -196,7 +196,7 @@ pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
-pub mod metrics_ratchet; // CB-1420/CB-1421: threshold coherence + ratchet baselines
+pub mod metrics_ratchet; // CB-2101/CB-2102: threshold coherence + ratchet baselines
 pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod parallel_git;

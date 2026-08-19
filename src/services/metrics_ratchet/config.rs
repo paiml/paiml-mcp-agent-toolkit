@@ -54,7 +54,7 @@ pub struct RatchetMeta {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MetricBaseline {
     /// The captured value. The gate fails when the observed value EXCEEDS it
-    /// (`INV-1404-1`).
+    /// (`INV-2102-1`).
     ///
     /// Every ratcheted metric is normalised so that **bigger is worse** — you
     /// declare the debt, never the virtue. A coverage ratchet is stored as
@@ -79,7 +79,7 @@ pub struct MetricBaseline {
     pub command: String,
     /// What is being counted, in one sentence.
     pub description: String,
-    /// Required only to RAISE a baseline (`FALSIFY-1404-3`). Lowering, which is
+    /// Required only to RAISE a baseline (`FALSIFY-2102-3`). Lowering, which is
     /// the only move the nightly job makes, needs nothing.
     #[serde(default)]
     pub justification: Option<String>,
@@ -293,7 +293,7 @@ impl MetricsRoster {
 ///
 /// `Unavailable` is a first-class result, not an `Option` to be
 /// `unwrap_or(0)`-ed away. Every consumer must decide what to do with it, and
-/// the answer is always "fail" (`FALSIFY-1403-3`, `FALSIFY-1404-4`).
+/// the answer is always "fail" (`FALSIFY-2101-3`, `FALSIFY-2102-4`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Measurement {
     /// Measured value in the metric's declared unit.
@@ -330,7 +330,7 @@ impl Outcome {
     }
 }
 
-/// Per-threshold result of the coherence audit (CB-1420).
+/// Per-threshold result of the coherence audit (CB-2101).
 #[derive(Debug, Clone, Serialize)]
 pub struct ThresholdVerdict {
     /// `"<section>.<key>"`.
@@ -347,7 +347,7 @@ pub struct ThresholdVerdict {
     pub measured: Option<i64>,
     /// Tolerance that decided FIRING vs VACUOUS.
     pub band: u64,
-    /// FIRING / VIOLATED / VACUOUS — always present (`INV-1403-3`).
+    /// FIRING / VIOLATED / VACUOUS — always present (`INV-2101-3`).
     pub classification: Classification,
     /// Blocking status of this threshold.
     pub outcome: Outcome,
@@ -637,7 +637,7 @@ fn evaluate_gate(
     }
 }
 
-/// Per-metric result of the ratchet (CB-1421).
+/// Per-metric result of the ratchet (CB-2102).
 #[derive(Debug, Clone, Serialize)]
 pub struct MetricVerdict {
     /// Metric id.
@@ -673,7 +673,7 @@ pub struct RatchetReport {
 /// Compare every declared baseline against `measurements`.
 ///
 /// `previous` is the same map as parsed from the PREVIOUS commit's ratchet
-/// file, used to detect an upward edit (`FALSIFY-1404-3`). `None` means there
+/// file, used to detect an upward edit (`FALSIFY-2102-3`). `None` means there
 /// was no previous file — the initial capture — which is not a raise.
 pub fn evaluate_ratchet(
     metrics: &BTreeMap<String, MetricBaseline>,

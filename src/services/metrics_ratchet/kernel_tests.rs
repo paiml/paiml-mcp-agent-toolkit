@@ -24,12 +24,12 @@ const EDGES: [i64; 9] = [
     i64::MAX,
 ];
 
-// ─────────────────────────── INV-1404-1..3 ───────────────────────────
+// ─────────────────────────── INV-2102-1..3 ───────────────────────────
 
-/// INV-1404-1: `verdict(b, o) = Fail  <->  o > b`. Anything else means a
+/// INV-2102-1: `verdict(b, o) = Fail  <->  o > b`. Anything else means a
 /// regression can pass, or a clean tree can be blocked.
 #[test]
-fn inv_1404_1_verdict_fails_exactly_when_observed_exceeds_baseline() {
+fn inv_2102_1_verdict_fails_exactly_when_observed_exceeds_baseline() {
     for b in -50..=50i64 {
         for o in -50..=50i64 {
             let expected = if o > b {
@@ -55,11 +55,11 @@ fn inv_1404_1_verdict_fails_exactly_when_observed_exceeds_baseline() {
     }
 }
 
-/// INV-1404-2: `next(b, o) = o` when `o <= b`, else `b` — the baseline is
+/// INV-2102-2: `next(b, o) = o` when `o <= b`, else `b` — the baseline is
 /// monotone non-increasing. A rising baseline is a ratchet that ratchets the
 /// wrong way, which is how debt limits historically drifted.
 #[test]
-fn inv_1404_2_next_baseline_is_monotone_non_increasing() {
+fn inv_2102_2_next_baseline_is_monotone_non_increasing() {
     for b in -50..=50i64 {
         for o in -50..=50i64 {
             let n = next_baseline(b, o);
@@ -74,10 +74,10 @@ fn inv_1404_2_next_baseline_is_monotone_non_increasing() {
     }
 }
 
-/// INV-1404-3: `next` is idempotent — running the nightly job twice on the same
+/// INV-2102-3: `next` is idempotent — running the nightly job twice on the same
 /// measurement must not walk the baseline anywhere.
 #[test]
-fn inv_1404_3_next_baseline_is_idempotent() {
+fn inv_2102_3_next_baseline_is_idempotent() {
     for b in -50..=50i64 {
         for o in -50..=50i64 {
             let once = next_baseline(b, o);
@@ -92,14 +92,14 @@ fn inv_1404_3_next_baseline_is_idempotent() {
     }
 }
 
-// ─────────────────────────── INV-1403-1..3 ───────────────────────────
+// ─────────────────────────── INV-2101-1..3 ───────────────────────────
 
-/// INV-1403-3: classification is TOTAL — every (limit, measured, band,
+/// INV-2101-3: classification is TOTAL — every (limit, measured, band,
 /// direction) lands on exactly one of FIRING / VIOLATED / VACUOUS. A fourth
 /// state, or an unreachable input, is how "unmeasurable" gets to look like
 /// "fine".
 #[test]
-fn inv_1403_3_classification_is_total_and_disjoint() {
+fn inv_2101_3_classification_is_total_and_disjoint() {
     let dirs = [Direction::Max, Direction::Min];
     for limit in -20..=20i64 {
         for measured in -20..=20i64 {
@@ -119,9 +119,9 @@ fn inv_1403_3_classification_is_total_and_disjoint() {
     }
 }
 
-/// INV-1403-2: VIOLATED means, and only means, that the bound is breached.
+/// INV-2101-2: VIOLATED means, and only means, that the bound is breached.
 #[test]
-fn inv_1403_2_violated_iff_bound_breached() {
+fn inv_2101_2_violated_iff_bound_breached() {
     for limit in -20..=20i64 {
         for measured in -20..=20i64 {
             for band in [0u64, 3, 1000] {
@@ -138,10 +138,10 @@ fn inv_1403_2_violated_iff_bound_breached() {
     }
 }
 
-/// INV-1403-1: FIRING means the limit is reachable — inside the band — and
+/// INV-2101-1: FIRING means the limit is reachable — inside the band — and
 /// VACUOUS means it is not. The band boundary is inclusive on the FIRING side.
 #[test]
-fn inv_1403_1_firing_is_exactly_the_reachable_band() {
+fn inv_2101_1_firing_is_exactly_the_reachable_band() {
     // Max, measured 100, band 10: limits 100..=110 fire, 111+ are vacuous,
     // 99 and below are violated.
     assert_eq!(
@@ -202,7 +202,7 @@ fn classify_does_not_overflow_at_i64_extremes() {
     );
 }
 
-/// KANI-1403-2 in test form: loosening a FIRING threshold never makes it
+/// KANI-2101-2 in test form: loosening a FIRING threshold never makes it
 /// VIOLATED. Without this, "relax the limit" could be a route from a live gate
 /// to a failing one, and every author would learn to skip the gate instead.
 #[test]
@@ -224,7 +224,7 @@ fn classify_is_monotone_in_limit() {
     }
 }
 
-// ─────────────────────── the four named FALSIFY-1404 cases ───────────────────
+// ─────────────────────── the four named FALSIFY-2102 cases ───────────────────
 
 fn baseline(value: i64) -> MetricBaseline {
     MetricBaseline {
@@ -244,11 +244,11 @@ fn metrics_with(id: &str, b: MetricBaseline) -> BTreeMap<String, MetricBaseline>
     m
 }
 
-/// FALSIFY-1404-1: baseline at the MEASURED value, a PR adds one `.unwrap()`
+/// FALSIFY-2102-1: baseline at the MEASURED value, a PR adds one `.unwrap()`
 /// -> Fail. Uses the real captured figure (11056), not the 570 the source
 /// document and `.pmat-metrics.toml`'s own comment both claimed.
 #[test]
-fn falsify_1404_1_one_added_unwrap_fails_against_the_measured_baseline() {
+fn falsify_2102_1_one_added_unwrap_fails_against_the_measured_baseline() {
     let metrics = metrics_with("unwrap_calls", baseline(11_056));
     let mut measured = Measurements::new();
     measured.insert("unwrap_calls".into(), Measurement::Value(11_057));
@@ -260,10 +260,10 @@ fn falsify_1404_1_one_added_unwrap_fails_against_the_measured_baseline() {
     assert_eq!(report.metrics[0].next_baseline, Some(11_056));
 }
 
-/// FALSIFY-1404-2: a PR removes three -> Pass, and the nightly job's rewrite
+/// FALSIFY-2102-2: a PR removes three -> Pass, and the nightly job's rewrite
 /// target is the new, lower figure.
 #[test]
-fn falsify_1404_2_removing_three_passes_and_lowers_the_baseline() {
+fn falsify_2102_2_removing_three_passes_and_lowers_the_baseline() {
     let metrics = metrics_with("unwrap_calls", baseline(11_056));
     let mut measured = Measurements::new();
     measured.insert("unwrap_calls".into(), Measurement::Value(11_053));
@@ -274,12 +274,12 @@ fn falsify_1404_2_removing_three_passes_and_lowers_the_baseline() {
     assert_eq!(report.metrics[0].next_baseline, Some(11_053));
 }
 
-/// FALSIFY-1404-3: `.pmat-ratchet.toml` edited upward with no justification
+/// FALSIFY-2102-3: `.pmat-ratchet.toml` edited upward with no justification
 /// -> Fail, even though the observed value is inside the new baseline. This is
 /// the only failure mode the measurement alone cannot catch: the tree agrees
 /// with the file because the file was moved to agree with the tree.
 #[test]
-fn falsify_1404_3_raising_a_baseline_without_justification_fails() {
+fn falsify_2102_3_raising_a_baseline_without_justification_fails() {
     let previous = metrics_with("unwrap_calls", baseline(11_056));
     let raised = metrics_with("unwrap_calls", baseline(11_500));
     let mut measured = Measurements::new();
@@ -299,10 +299,10 @@ fn falsify_1404_3_raising_a_baseline_without_justification_fails() {
     assert!(report.unjustified_raises.is_empty());
 }
 
-/// FALSIFY-1404-4: a declared metric absent from the measurement run -> Fail,
+/// FALSIFY-2102-4: a declared metric absent from the measurement run -> Fail,
 /// not Pass. An empty result set is a failure to measure, never a clean bill.
 #[test]
-fn falsify_1404_4_missing_measurement_fails_it_does_not_pass() {
+fn falsify_2102_4_missing_measurement_fails_it_does_not_pass() {
     let metrics = metrics_with("unwrap_calls", baseline(11_056));
 
     let report = evaluate_ratchet(&metrics, &Measurements::new(), None);
@@ -325,7 +325,7 @@ fn falsify_1404_4_missing_measurement_fails_it_does_not_pass() {
 /// Every ratcheted metric is normalised so that BIGGER IS WORSE, so a coverage
 /// ratchet is stored as *uncovered* basis points. This test pins the reason:
 /// with the virtue stored instead of the debt, a 3.17-point coverage DROP
-/// reads as a Pass under `INV-1404-1`, and the nightly job then writes the
+/// reads as a Pass under `INV-2102-1`, and the nightly job then writes the
 /// drop in as the new baseline — a ratchet running backwards.
 #[test]
 fn ratchet_metrics_store_the_debt_so_a_drop_cannot_read_as_an_improvement() {
@@ -345,7 +345,7 @@ fn ratchet_metrics_store_the_debt_so_a_drop_cannot_read_as_an_improvement() {
 
 /// A raise is an increase, full stop — no direction to get backwards.
 #[test]
-fn falsify_1404_3_raise_detection_is_direction_free() {
+fn falsify_2102_3_raise_detection_is_direction_free() {
     let previous = metrics_with("uncovered_bp", baseline(2_683));
     let raised = metrics_with("uncovered_bp", baseline(3_000));
     let mut measured = Measurements::new();
