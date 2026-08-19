@@ -518,8 +518,26 @@ mod tests_tdg_grade {
         drop(conn);
 
         // A source file newer than the db makes the index stale.
+        //
+        // The mtime is SET, not raced for. Writing the source after the db and
+        // trusting wall-clock ordering failed on CI with "fixture must be
+        // stale": both files landed in the same filesystem timestamp tick, so
+        // `is_index_stale` correctly saw nothing newer and the fixture never
+        // reached the behaviour under test. Filesystem timestamp granularity is
+        // coarser than the microseconds between two writes, and varies by
+        // filesystem — which is exactly the kind of thing that passes on the
+        // author's machine and fails in CI.
         std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
-        std::fs::write(tmp.path().join("src/lib.rs"), "pub fn f() {}\n").expect("write source");
+        let src = tmp.path().join("src/lib.rs");
+        std::fs::write(&src, "pub fn f() {}\n").expect("write source");
+        let db_mtime = std::fs::metadata(&db_path)
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        std::fs::File::options()
+            .write(true)
+            .open(&src)
+            .and_then(|f| f.set_modified(db_mtime + std::time::Duration::from_secs(60)))
+            .expect("set source mtime a clear minute past the db");
         assert!(
             is_index_stale(tmp.path(), &db_path),
             "fixture must be stale"
