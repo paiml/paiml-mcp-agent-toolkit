@@ -292,6 +292,48 @@ fn cb402_scans_tracked_scripts_and_ignores_untracked_ones() {
     );
 }
 
+/// A worktree that tracks no shell script must not read as "the shell scripts
+/// here pass". `git ls-files` exits 0 and prints nothing in that case, so the
+/// success-only fallback guard cannot distinguish it from a clean scan.
+///
+/// Both directions: the disclosure must fire when scripts exist untracked, and
+/// must NOT fire when there are genuinely no scripts — otherwise the check would
+/// simply complain about every project without shell scripts.
+#[test]
+fn cb402_discloses_a_worktree_where_no_script_is_tracked() {
+    let temp = TempDir::new().expect("temp dir");
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(temp.path())
+            .args(args)
+            .output()
+            .expect("git must be runnable")
+    };
+    assert!(git(&["init", "-q"]).status.success(), "git init");
+
+    // Counter-test first: an empty worktree has no scripts and no complaint.
+    let clean = detect_cb402_shell_script_quality(temp.path());
+    assert!(
+        !clean
+            .iter()
+            .any(|v| v.pattern_id == "CB-402-UNTRACKED-ONLY"),
+        "a project with no shell scripts must not be told its scripts went unexamined: {:?}",
+        clean.iter().map(|v| &v.pattern_id).collect::<Vec<_>>()
+    );
+
+    // Now an untracked script: git tracks nothing, so nothing was examined.
+    fs::write(temp.path().join("build.sh"), "#!/bin/bash\nrm $X\n").expect("write build.sh");
+    let disclosed = detect_cb402_shell_script_quality(temp.path());
+    assert!(
+        disclosed
+            .iter()
+            .any(|v| v.pattern_id == "CB-402-UNTRACKED-ONLY"),
+        "a scan that reached zero of one script must say so: {:?}",
+        disclosed.iter().map(|v| &v.pattern_id).collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn test_cb402_target_dir_excluded() {
     let temp = TempDir::new().unwrap();

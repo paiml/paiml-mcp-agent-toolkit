@@ -35,14 +35,21 @@ fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation
                 },
             })
             .collect(),
-        Err(e) if !e.contains("not found") => vec![CbPatternViolation {
-            pattern_id: "CB-400".to_string(),
+        // A hook bashrs could not lint is NOT a hook that passed. This arm used
+        // to be `Err(e) if !e.contains("not found")` with an `Err(_) => vec![]`
+        // fallthrough, and the spawn-failure message is built two functions
+        // below as `format!("bashrs not found: {e}")` — so "bashrs is not
+        // installed" was GUARANTEED to match the guard and be discarded as zero
+        // violations. On a machine without bashrs, CB-400 reported a clean bill
+        // of health for hooks nothing had read. CB-402 was fixed for exactly
+        // this in an earlier commit; CB-400 and CB-401 were left behind.
+        Err(e) => vec![CbPatternViolation {
+            pattern_id: "CB-400-UNMEASURED".to_string(),
             file,
             line: 0,
-            description: format!("bashrs lint error: {e}"),
+            description: format!("not measured: {e}"),
             severity: Severity::Warning,
         }],
-        Err(_) => Vec::new(),
     }
 }
 
@@ -74,16 +81,17 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
             }
         }
         Ok(_) => {} // No issues
+        // Same fix as CB-400 above: a Makefile bashrs could not lint is not a
+        // Makefile that passed, and "not found" was the one error certain to be
+        // swallowed.
         Err(e) => {
-            if !e.contains("not found") {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-401".to_string(),
-                    file: "Makefile".to_string(),
-                    line: 0,
-                    description: format!("bashrs make lint error: {}", e),
-                    severity: Severity::Warning,
-                });
-            }
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-401-UNMEASURED".to_string(),
+                file: "Makefile".to_string(),
+                line: 0,
+                description: format!("not measured: {e}"),
+                severity: Severity::Warning,
+            });
         }
     }
 
@@ -123,6 +131,14 @@ fn shell_scripts_in_scope(project_path: &Path) -> Vec<std::path::PathBuf> {
     if let Some(tracked) = git_tracked_shell_scripts(project_path) {
         return tracked;
     }
+    walk_shell_scripts(project_path)
+}
+
+/// Every `.sh` the directory walk can see, tracked or not. Used as the fallback
+/// scope outside a git worktree, and as the DISCLOSURE oracle inside one: if git
+/// tracks no shell script but the tree contains some, the scan examined nothing
+/// and must say so rather than return a clean bill of health.
+fn walk_shell_scripts(project_path: &Path) -> Vec<std::path::PathBuf> {
     walkdir::WalkDir::new(project_path)
         .max_depth(SHELL_SCAN_DEPTH)
         .into_iter()
@@ -164,6 +180,31 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
     let mut violations = Vec::new();
 
     let candidates = shell_scripts_in_scope(project_path);
+
+    // `git ls-files` exits 0 and prints NOTHING in a worktree that tracks no
+    // shell script — a fresh `git init` before the first `git add`, a generated
+    // or gitignored subdirectory, a sparse checkout. The success-only fallback
+    // guard cannot see that case, so the scan would examine zero files, emit no
+    // TRUNCATED row, and CB-400 would report Pass. "There are no shell scripts"
+    // and "none of the shell scripts here are tracked" are not the same claim.
+    if candidates.is_empty() {
+        let untracked = walk_shell_scripts(project_path);
+        if !untracked.is_empty() {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-402-UNTRACKED-ONLY".to_string(),
+                file: String::new(),
+                line: 0,
+                description: format!(
+                    "{} shell script(s) exist but git tracks none of them, so none were \
+                     examined. Commit them, or run this where they are tracked; a scan \
+                     that reached nothing is not a pass.",
+                    untracked.len()
+                ),
+                severity: Severity::Warning,
+            });
+        }
+    }
+
     let truncated = candidates.len().saturating_sub(SHELL_SCAN_LIMIT);
     let sh_files = candidates.into_iter().take(SHELL_SCAN_LIMIT);
 
