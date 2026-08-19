@@ -180,8 +180,8 @@ fn an_empty_audit_is_a_failure_not_a_clean_sheet() {
 
     // A roster whose only section is declared as carrying no thresholds: the
     // audit is empty for an entirely legitimate reason.
-    let roster = MetricsRoster::parse("[enforcement]\nfail_on_x = true\n")
-        .expect("the fixture parses");
+    let roster =
+        MetricsRoster::parse("[enforcement]\nfail_on_x = true\n").expect("the fixture parses");
     let cfg = CoherenceConfig {
         threshold_sections: vec!["quality_gates".into()],
         non_threshold_sections: BTreeMap::from([(
