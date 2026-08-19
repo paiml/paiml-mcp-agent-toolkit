@@ -211,7 +211,12 @@ async fn test_analyze_coupling_threshold_parameter() {
 async fn test_analyze_satd_detects_todo_comments() {
     // RED: Should detect SATD markers (TODO, FIXME, etc.)
     let temp_dir = tempdir().unwrap();
-    let rust_file = temp_dir.path().join("test.rs");
+    // NOT `test.rs`. This call passes `include_tests: false`, and SATD
+    // classifies a file whose name starts with `test` as test code, so the
+    // fixture excluded itself and the analyser correctly reported 0 markers in
+    // 0 eligible files. The assertion below then read as "SATD detection is
+    // broken" when what was broken was the fixture's filename.
+    let rust_file = temp_dir.path().join("production_module.rs");
 
     fs::write(
         &rust_file,

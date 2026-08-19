@@ -169,20 +169,41 @@ performance:
         // Apply Kaizen - Reduce filesystem detection time
         sleep(Duration::from_millis(300)).await;
 
-        // Apply Kaizen - Use dynamic timeout for better reliability
-        tokio::select! {
-            update = subscriber.recv() => {
-                let updated_config = update?;
-                assert_eq!(updated_config.panels.dependency.max_nodes, 40);
-                assert_eq!(updated_config.panels.dependency.max_edges, 120);
-                assert!(matches!(updated_config.panels.dependency.grouping, GroupingStrategy::None));
-                assert_eq!(updated_config.panels.complexity.threshold, 25);
-                assert_eq!(updated_config.performance.parallel_workers, 8);
+        // Wait for the STATE, not for an event.
+        //
+        // This was a single `subscriber.recv()`, and it failed with
+        // `left: 20, right: 40` — the value from the INITIAL config. `watch()`
+        // broadcasts the config it loads, so that snapshot is already sitting in
+        // the channel when the edit is made, and the first `recv()` returns it.
+        // Filesystem watchers also legitimately emit more than one event per
+        // write (truncate then append, editor temp-file dances), so "the next
+        // notification is the one I want" is not a property this API offers.
+        //
+        // Reading until the expected state appears is both correct and
+        // strictly stronger: it still fails, on the same timeout, if the reload
+        // never happens.
+        let deadline = tokio::time::Instant::now() + test_timeout;
+        let updated_config = loop {
+            tokio::select! {
+                update = subscriber.recv() => {
+                    let cfg = update?;
+                    if cfg.panels.dependency.max_nodes == 40 {
+                        break cfg;
+                    }
+                    // An earlier snapshot; keep reading.
+                }
+                () = tokio::time::sleep_until(deadline) => {
+                    panic!("Config update notification not received within timeout (Kaizen optimization: {test_timeout:?})");
+                }
             }
-            () = sleep(test_timeout) => {
-                panic!("Config update notification not received within timeout (Kaizen optimization: {test_timeout:?})");
-            }
-        }
+        };
+        assert_eq!(updated_config.panels.dependency.max_edges, 120);
+        assert!(matches!(
+            updated_config.panels.dependency.grouping,
+            GroupingStrategy::None
+        ));
+        assert_eq!(updated_config.panels.complexity.threshold, 25);
+        assert_eq!(updated_config.performance.parallel_workers, 8);
 
         // Verify manager also has updated config
         let current_config = manager.get_config().await;

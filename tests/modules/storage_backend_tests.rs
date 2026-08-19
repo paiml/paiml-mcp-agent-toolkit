@@ -113,7 +113,23 @@ fn test_bincode_tdgscore_serialization() {
         has_contract_coverage: false,
     };
 
-    let serialized = rmp_serde::to_vec(&score).expect("Failed to serialize TdgScore");
+    // `to_vec_named`, not `to_vec`. `to_vec` encodes a struct POSITIONALLY, and
+    // `TdgScore::critical_defects_suppressed` carries
+    // `#[serde(skip_serializing_if = "Option::is_none")]` — so in the common
+    // case where it is None the field is omitted, the array is one element
+    // short, and every later field shifts by one. The bool
+    // `has_contract_coverage` was then read where an `Option<String>` was
+    // expected, which is the failure this test reported verbatim:
+    //   Failed to deserialize TdgScore: Syntax("invalid type: boolean `false`,
+    //   expected a string")
+    //
+    // A skipped field and a positional encoding are simply incompatible; only
+    // the named (map) encoding can carry an absent field unambiguously. No
+    // production path serialises TdgScore this way today, but the tree holds
+    // 175 `skip_serializing_if` attributes and a dozen `rmp_serde::to_vec`
+    // call sites, so the combination is worth stating where someone will read
+    // it rather than rediscovering it from a corrupted cache.
+    let serialized = rmp_serde::to_vec_named(&score).expect("Failed to serialize TdgScore");
     println!("DEBUG: TdgScore serialized to {} bytes", serialized.len());
 
     let deserialized: TdgScore =
