@@ -212,6 +212,31 @@ What *is* real:
 The real pre-commit gate set is the one described under **Pre-Commit Verification** above;
 run `pmat verify`. Emergency bypass for the hooks that do exist: `git commit --no-verify`.
 
+### `.pmat-ratchet.toml` — the numbers that CAN fail a build (CB-2102)
+
+Do not confuse the two files. `.pmat-metrics.toml` records budgets nothing reads.
+`.pmat-ratchet.toml` records BASELINES, and two things assert them: the comply rule
+CB-2102, and the `--lib` test `the_committed_ratchet_holds_at_head`.
+
+Every entry carries the exact command that reproduces its baseline, and the gate RUNS
+that command rather than reading the number — so a baseline can never quietly become a
+transcription:
+
+```bash
+pmat comply ratchet            # judge the baselines; non-zero when one regressed
+pmat comply ratchet --lower    # rewrite every baseline the tree has already beaten
+```
+
+A metric may only get better. Raising a baseline requires a `justification` on that entry,
+checked against the previous committed version of the file. A metric that could not be
+measured FAILS — "we could not measure it" must never read as "it did not regress".
+Engine: `src/services/metrics_ratchet/`. Contract: `contracts/comply-ratchet-v1.yaml`.
+
+Why the difference matters: `.pmat-metrics.toml:45` declares `max_unwrap_calls = 100`
+with the inline comment `Current: 570`, in a tree that measures 20,390 by the predicate
+`.pmat-ratchet.toml` pins. Three numbers, no two of which agree, and a green build
+throughout, because nothing reads the key.
+
 ---
 
 ## CRITICAL: Documentation Accuracy Enforcement (Zero Hallucinations)
