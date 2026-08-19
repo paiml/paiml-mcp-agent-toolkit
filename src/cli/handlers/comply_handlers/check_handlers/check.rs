@@ -343,6 +343,10 @@ fn build_all_compliance_checks(
             "gate-effect",
             Box::new(move || build_gate_effect_checks(project_path, comply_config)),
         ),
+        (
+            "ratchet",
+            Box::new(move || build_ratchet_checks(project_path, comply_config)),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -1102,6 +1106,8 @@ include!("check_builders_work.rs");
 include!("check_builders_evidence.rs");
 include!("check_gate_effect.rs");
 include!("check_builders_gate_effect.rs");
+include!("check_metrics_ratchet.rs");
+include!("check_builders_ratchet.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");

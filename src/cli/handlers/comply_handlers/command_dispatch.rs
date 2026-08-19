@@ -71,6 +71,8 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
             output,
         } => handle_ledger(&path, write, output.as_deref()),
 
+        ComplyCommands::Ratchet { path, lower } => handle_ratchet(&path, lower),
+
         ComplyCommands::Review {
             path,
             format,

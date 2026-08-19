@@ -1,0 +1,133 @@
+# CB-2102 — ratchet baselines. CB-2101 — threshold coherence.
+#
+# Each [metric.*] entry records the value a metric HAD when it was captured,
+# together with the exact command that reproduces it. The gate asserts only
+# that the metric has not got WORSE. A scheduled job lowers a baseline whenever
+# the measurement drops (`pmat comply ratchet --lower`). RAISING one requires a
+# `justification` on that entry.
+#
+# Why a ratchet and not a threshold. `.pmat-metrics.toml:45` carries
+#   max_unwrap_calls = 100            # Current: 570 (CRITICAL - must reduce!)
+# in a tree that measures 20,390 by the predicate below. A limit of 100, an
+# annotation of 570 and a measurement of 20,390 — three numbers, no two of which
+# agree, none of which anything reads, and a green build throughout. A number in
+# a config file that nobody re-runs is not a gate; it is a wish with a colon
+# after it.
+#
+# Why every entry carries its command. The scope predicate IS the metric. The
+# "unwrap count" of this repository has been quoted as 570, 11,002, 20,326 and
+# 20,378 inside a single programme of work, by people who each meant a
+# different set of files and none of whom wrote down which. Two of those differ
+# by 9,324; one moved by 52 within a single session. So the gate does not read
+# these numbers — it re-derives them, and `includes_test_files` states in the
+# schema which side of that 9,324 each one is on.
+#
+# Commands run from the repository root under `bash -o pipefail -c` with
+# LC_ALL=C. Exit 0 and exit 1 are accepted (the grep family uses 1 for "no
+# matches", a real count of zero); anything else is a FAILED measurement, and a
+# failed measurement FAILS the gate rather than passing it.
+
+version = 1
+
+[meta]
+# The parent of the commit that introduces this file. A file cannot contain the
+# hash of the commit that adds it, so the numbers below are the tree AT that
+# commit — i.e. 5794a8350 plus this change. That distinction is not cosmetic:
+# `panic_macro_calls_src` is 788 here and 783 at 5794a8350 itself, because
+# drive_tests.rs adds five `panic!(` calls of its own. Re-derive any figure
+# with the entry's own `command`; do not trust this comment over the command.
+captured_at_commit = "5794a8350"
+captured_at = "2026-08-19"
+
+[metric.unwrap_calls_src_total]
+baseline = 20390
+unit = "count"
+band = 200
+includes_test_files = true
+command = '''git grep -oF '.unwrap()' -- 'src/*.rs' | wc -l'''
+description = """
+Literal `.unwrap()` occurrences — occurrences, not lines — across every tracked
+.rs file under src/, test code included. Unambiguous by construction: no
+filename heuristic decides what counts, so the number cannot drift by
+re-reading the predicate.
+"""
+
+[metric.unwrap_calls_src_outside_cfg_test]
+baseline = 9182
+unit = "count"
+band = 100
+includes_test_files = false
+command = '''git ls-files -- 'src/*.rs' | while IFS= read -r f; do awk '/^[[:space:]]*#\[cfg\(test\)\]/{exit} {print}' "$f"; done | grep -oF '.unwrap()' | wc -l'''
+description = """
+The same count restricted STRUCTURALLY rather than by filename: each file is
+truncated at its first `#[cfg(test)]` line. Filename predicates were measured
+and rejected — excluding paths matching `test` also drops
+src/cli/handlers/test_handlers.rs and src/services/git_test_filter.rs, which are
+production code, and the substring matches `latest` as well. This predicate
+undercounts production unwraps written BELOW an inline test module; it is
+mechanical and stable, which is what a ratchet needs, and it is an undercount
+in a known direction rather than an argument.
+"""
+
+[metric.satd_markers_src_comments]
+baseline = 327
+unit = "count"
+band = 10
+includes_test_files = true
+command = '''git grep -nE '^[[:space:]]*(//|/\*|\*)' -- 'src/*.rs' | grep -oE '\b(TODO|FIXME|HACK|XXX)\b' | wc -l'''
+description = """
+Self-admitted technical debt markers on comment-only lines under src/. Scoped to
+comment lines on purpose: the same markers occur 1,102 times across src/ once
+string literals, test fixtures and this project's own SATD ANALYSER are counted,
+and that number measures pmat's feature set rather than its debt. Trailing
+comments after code are not counted.
+"""
+
+[metric.panic_macro_calls_src]
+baseline = 788
+unit = "count"
+band = 20
+includes_test_files = true
+command = '''git grep -oF 'panic!(' -- 'src/*.rs' | wc -l'''
+description = """
+`panic!(` occurrences across every tracked .rs file under src/. Five of them
+are this change's own: drive_tests.rs fails its match arms with `panic!` so the
+message names what was read instead of asserting a bare boolean. That the
+figure moved 783 -> 788 while the other four metrics did not is the ratchet
+working on its own introduction — the count was re-derived from the command
+after the new files were tracked, not transcribed from the earlier reading.
+"""
+
+[metric.allow_attributes_src]
+baseline = 498
+unit = "count"
+band = 20
+includes_test_files = true
+command = '''git grep -oF '#[allow(' -- 'src/*.rs' | wc -l'''
+description = """
+`#[allow(` attributes across every tracked .rs file under src/ — the count of
+places a lint was switched off rather than answered.
+"""
+
+# ── CB-2101 (threshold coherence) ──────────────────────────────────────────
+#
+# This section is DATA FOR A RULE THAT IS NOT YET REGISTERED. CB-2102 (the
+# ratchet) never reads it. It is filled in only as far as it has been verified:
+# a threshold with no [coherence.binding."<section>.<key>"] entry is UNDECLARED,
+# which `evaluate_coherence` already treats as a failure. That is deliberate —
+# the honest state of an unfinished audit is "fails closed", not "assumed fine".
+
+[coherence]
+threshold_sections = ["thresholds", "quality_gates", "performance"]
+
+[coherence.non_threshold_sections]
+staleness = "max_age_days is a cache freshness window, not a quality bound"
+enforcement = "fail_on_* are switches; a boolean cannot be breached by a measurement"
+trend_analysis = "retention and alerting policy for recorded metrics, not a bound on the tree"
+
+# The one binding this work item verified end to end, and the defect that
+# started it: measured 20,390 against a declared limit of 100.
+[coherence.binding."quality_gates.max_unwrap_calls"]
+kind = "gate"
+metric = "unwrap_calls_src_total"
+direction = "max"

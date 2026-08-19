@@ -81,6 +81,7 @@ impl Classification {
 /// Nothing else is consulted. In particular a metric that *improves* is a
 /// `Pass` here and only becomes the new baseline through [`next_baseline`],
 /// which the nightly job — never the PR gate — is allowed to write.
+#[provable_contracts_macros::contract("comply-ratchet-v1.yaml", equation = "verdict")]
 pub const fn ratchet_verdict(baseline: i64, observed: i64) -> RatchetVerdict {
     if observed > baseline {
         RatchetVerdict::Fail
@@ -95,6 +96,7 @@ pub const fn ratchet_verdict(baseline: i64, observed: i64) -> RatchetVerdict {
 /// non-increasing and the operation idempotent (`INV-2102-3`). Written as the
 /// explicit two-case form rather than `min` because the two-case form is the
 /// contract's formula and a reader should not have to re-derive it.
+#[provable_contracts_macros::contract("comply-ratchet-v1.yaml", equation = "next")]
 pub const fn next_baseline(baseline: i64, observed: i64) -> i64 {
     if observed <= baseline {
         observed

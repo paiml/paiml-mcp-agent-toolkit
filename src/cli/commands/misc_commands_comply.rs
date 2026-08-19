@@ -194,6 +194,27 @@ pub enum ComplyCommands {
         output: Option<PathBuf>,
     },
 
+    /// CB-2102: check the ratchet baselines, or lower them.
+    ///
+    /// Without `--lower` this is the same judgement CB-2102 makes inside
+    /// `pmat comply check`, exiting non-zero when any ratcheted metric has got
+    /// worse than the value the repository last agreed to.
+    ///
+    /// With `--lower` it is the scheduled pass: every baseline the tree has
+    /// beaten is rewritten to the measured value, and the entry's
+    /// `justification` — which no longer justifies anything — is removed. It
+    /// can never raise a baseline: the new numbers come from
+    /// `kernel::next_baseline`, which is monotone non-increasing.
+    Ratchet {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Rewrite every baseline the tree has beaten.
+        #[arg(long)]
+        lower: bool,
+    },
+
     /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
     /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
     Review {

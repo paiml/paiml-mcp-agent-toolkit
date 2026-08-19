@@ -1,0 +1,237 @@
+metadata:
+  version: "1.0.0"
+  kind: kernel
+  created: "2026-08-19"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Ratchet baselines (CB-2102). A threshold is a number somebody guessed once;
+    a ratchet is the number the repository actually had. `.pmat-metrics.toml:45`
+    is this project's own worked example of both failure modes at once: it
+    declares `max_unwrap_calls = 100`, annotates it `Current: 570`, and sits in
+    a tree that measures 20,390 by the predicate `.pmat-ratchet.toml` pins.
+    Three numbers, no two of which agree, none of which anything in the tree
+    reads, and a green build throughout.
+
+    CB-2102 replaces the guess with a captured value and a direction.
+    `.pmat-ratchet.toml` records what each metric WAS; the gate asserts only
+    `observed <= baseline`; a scheduled pass LOWERS a baseline whenever the
+    measurement drops; and RAISING one requires a written `justification` on
+    that entry, checked against the previous committed version of the file.
+
+    The load-bearing decision is the SCOPE PREDICATE, so it is not in prose and
+    not in source: every entry carries the exact command that reproduces its
+    baseline plus an explicit `includes_test_files`, and the gate RUNS that
+    command rather than reading the number. The "unwrap count" of this
+    repository has been quoted as 570, 11,002, 20,326 and 20,378 inside a
+    single programme of work; two of those differ by 9,324 because they meant
+    different file sets, and one moved by 52 within a single session.
+
+    PROVENANCE, and the defect this contract itself closes. The pure half of
+    this rule — `src/services/metrics_ratchet/{kernel,config}.rs`, 1,836 lines
+    with 34 falsification tests — was already committed on release/3.32.0 and
+    had NO caller anywhere in the tree: no comply check, no `.pmat-ratchet.toml`
+    to read, a doc comment naming a verifier (`command_reproduces_measurement`)
+    that did not exist, and two `contracts/` files named in its module headers
+    that were never written, this one included. It was the exact defect class
+    CB-2100 exists to find, sitting inside the module written to find it. This
+    version adds the drive (measurement, git history, write-back), the comply
+    check, the baseline file, and this contract — and fixes one live bug the
+    orphaning had hidden: `evaluate_ratchet` folded `Outcome::Ok` over an empty
+    metric map, so a ratchet declaring nothing passed every run forever.
+
+    Rule ids: CB-2102 (ratchet) and CB-2101 (threshold coherence). The module
+    previously used CB-1421/CB-1420 in prose only — neither was ever registered,
+    so neither could be addressed from `.pmat.yaml` or appear in CB-2100's
+    enforcement ledger. They were renamed rather than left as a second name for
+    the same rule. CB-1403/CB-1404 were NOT reused: both are live rules
+    ("Assume-Guarantee Chain", "Agent Comply Usage"), and taking either id would
+    have deleted it.
+  contract: comply-ratchet
+  status: enforced
+  verification:
+    kani_status: not_discharged
+    measured_at: "pmat 3.32.0, kani 0.67.0, 2026-08-19"
+    detail: >
+      The two `kani_harness` names below are REAL harnesses — `#[kani::proof]`
+      functions in `mod kani_proofs` at the bottom of
+      src/services/metrics_ratchet/kernel.rs, held to their names by
+      drive_tests.rs::every_kani_harness_the_contract_names_exists. They are NOT
+      discharged: nothing in this repository has ever run them, and with kani
+      installed they cannot be run at all. Measured, not assumed, and identical
+      to the blockers recorded for CB-2100:
+
+      (1) `cargo kani --harness verify_next_baseline_monotone_idempotent` fails
+      with "error: target `pmat-agent` in package `pmat` requires the features:
+      `mcp-integration`" — kani enumerates every target in the package and one
+      of them does not build under default features.
+
+      (2) Adding `--features mcp-integration` fails with "error: rustc
+      1.93.0-nightly is not supported by the following package: sysinfo@0.39.6
+      requires rustc 1.95" — kani 0.67.0 pins a nightly older than a transitive
+      dependency's MSRV.
+
+      (3) No .github/workflows job, Makefile target or script invokes kani, so
+      none of this repository's `#[kani::proof]` harnesses is compiled by any
+      gate. `#[cfg(kani)]` code is not built by `cargo test` either, which is
+      why a test pins the names rather than the compiler.
+
+      These harnesses are therefore ASPIRATIONAL: they state the intended
+      theorems and are the specification a future proof will discharge, but
+      `kind: kernel` here must NOT be read as "proved". What actually runs is
+      kernel_tests.rs, which checks the same theorems over a bounded box and at
+      the i64 extremes. That is a test, not a proof, and this contract says so
+      rather than letting a reader infer a proof that never ran — a contract
+      naming a harness that silently does not run is precisely the defect class
+      this backlog exists to rule on.
+  references:
+    - src/services/metrics_ratchet/kernel.rs
+    - src/services/metrics_ratchet/config.rs
+    - src/services/metrics_ratchet/measure.rs
+    - src/services/metrics_ratchet/history.rs
+    - src/services/metrics_ratchet/rewrite.rs
+    - src/services/metrics_ratchet/mod.rs
+    - src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs
+    - .pmat-ratchet.toml
+
+equations:
+  verdict:
+    formula: "ratchet_verdict(b, o) = Fail  <=>  o > b"
+    domain: "an i64 captured baseline and an i64 observation, both in the metric's declared unit"
+    codomain: "Pass | Fail"
+    invariants:
+    - "INV-2102-1: verdict(b, o) = Fail <=> o > b"
+    - "equal to the baseline is not 'exceeds': verdict(b, b) = Pass, or every metric is red the day it is captured"
+    - "no direction parameter exists: every ratcheted metric is normalised so that bigger is worse, because a direction on a comparator is one more thing that can be set the wrong way round and silently invert a gate"
+    preconditions:
+    - "the metric declares the debt, never the virtue (uncovered lines, not covered ones)"
+    kani_harness: verify_next_baseline_monotone_idempotent
+
+  next:
+    formula: "next_baseline(b, o) = o when o <= b ; = b when o > b"
+    domain: "an i64 captured baseline and an i64 observation"
+    codomain: i64
+    invariants:
+    - "INV-2102-2: monotone non-increasing — next(b, o) <= b for every o, so no automated pass can ever loosen a baseline whatever it measures"
+    - "INV-2102-3: idempotent — next(next(b, o), o) = next(b, o)"
+    - "a Fail leaves the baseline untouched"
+    preconditions: []
+    kani_harness: verify_next_baseline_monotone_idempotent
+
+  ratchet:
+    formula: >
+      outcome(report) = Fail when any metric verdict is Fail, or any baseline
+      rose against the previous committed file without a justification, or any
+      hole was recorded
+    domain: >
+      .pmat-ratchet.toml, the output of running each metric's own `command`
+      from the repository root under `bash -o pipefail -c`, and the newest
+      COMMITTED version of the same file that differs from the one on disk
+    codomain: "RatchetReport { metrics, unjustified_raises, holes, outcome }"
+    invariants:
+    - "INV-2102-4: a metric absent from the measurement run, or measured as Unavailable, is FAIL — 'we could not measure it' must never read as 'it did not regress'"
+    - "INV-2102-5: RAISING a baseline requires an explicit justification on that entry"
+    - "an empty [metric.*] set is a FAILURE, not a vacuous pass: a ratchet with no metrics cannot fail and is not a gate"
+    - "an unreadable or unparsable .pmat-ratchet.toml is a FAILURE"
+    - "an unknown schema version is a FAILURE: a future file must not be read with today's meaning"
+    - "a metric whose command did not run, exited outside {0,1}, or printed something that is not a count, is FAIL"
+    - "exit 1 is a legitimate count of zero: the grep family uses it for 'no matches'"
+    - "the measurement shell is `bash -o pipefail`: without pipefail the canonical `<producer> | wc -l` reports wc's status, so a producer that failed outright reads as a clean zero — and a ratchet, which only ever looks upward, greets that as the largest improvement in the project's history"
+    - "an unreadable previous version of the file is a HOLE, never `None`: `None` legitimately means 'initial capture, nothing was raised', and letting an unreadable history borrow that meaning hides an unjustified raise on exactly the machines where history is hardest to read"
+    - "deleting .pmat-ratchet.toml from a repository that once committed one is a FAILURE, not a Skip"
+    - "the lowering pass writes back min(baseline, observed) and never anything larger, never for an unmeasured metric, and preserves the file's comments byte for byte — a job that strips a config's documentation each time it runs is worse than no job"
+    - "the lowering pass re-parses what it wrote and verifies it says exactly what was asked, because a plausible-looking wrong number silently becomes the new truth"
+    preconditions:
+    - ".pmat-ratchet.toml exists (otherwise CB-2102 Skips: the project declares no baselines), and bash and git are available"
+
+preconditions:
+  - "pmat >= 3.32.0 with `pmat comply check` running CB-2102"
+  - "the project root is inside a git work tree"
+
+postconditions:
+  - "CB-2102 reports Skip only when .pmat-ratchet.toml is absent AND was never committed"
+  - "CB-2102 reports Fail with severity=error whenever any invariant above is violated"
+  - "CB-2102's Fail message names the metric and both numbers"
+
+falsification:
+  - condition: "F-1: a change adds one to a metric (B+1) and the ratchet still passes"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_1_one_added_unwrap_fails_against_the_measured_baseline
+  - condition: "F-2: an improvement (B-3) fails, or the lowering pass does not rewrite the baseline to B-3"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_2_removing_three_passes_and_lowers_the_baseline
+  - condition: "F-3: the file is edited upward with no justification and the ratchet still passes — the ratchet must not be silently loosenable, which is the whole point"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_3_raising_a_baseline_without_justification_fails
+  - condition: "F-3 control: raise detection reads the direction of the edit rather than the sign of the metric"
+    severity: P1
+    test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_3_raise_detection_is_direction_free
+  - condition: "F-4: a metric absent from the measurement run passes"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_4_missing_measurement_fails_it_does_not_pass
+  - condition: "INV-2102-1: the verdict does not fail exactly when the observation exceeds the baseline"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_1_verdict_fails_exactly_when_observed_exceeds_baseline
+  - condition: "INV-2102-2: the lowering arithmetic raises a baseline"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_2_next_baseline_is_monotone_non_increasing
+  - condition: "INV-2102-3: running the lowering pass twice differs from running it once"
+    severity: P1
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_3_next_baseline_is_idempotent
+  - condition: "a ratchet declaring no metrics folds to Ok and passes every run forever while reading as a gate — the live bug this rule's own module carried while it was orphaned"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::an_empty_metric_set_is_a_failure_not_a_clean_sheet
+  - condition: "`<producer> | wc -l` with a failing producer is read as a count of zero — the single most dangerous shape in the design, and invisible to a gate that only looks upward"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::a_failing_producer_in_a_pipeline_is_unavailable_not_a_zero
+  - condition: "the control: an honest pipeline of exactly that shape stops measuring, so the guard above has broken every metric"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::an_honest_pipeline_measures
+  - condition: "grep's exit 1 for 'no matches' is treated as a broken measurement, so a metric can never legitimately reach zero"
+    severity: P1
+    test: src/services/metrics_ratchet/drive_tests.rs::no_matches_is_a_zero_not_a_failure
+  - condition: "prose, or nothing, is parsed as a count"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::non_numeric_output_is_not_a_measurement
+  - condition: "an unreadable git history is passed through as `None`, which means 'initial capture' — so an unjustified raise becomes invisible"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::an_unreadable_prior_is_a_hole_not_an_initial_capture
+  - condition: "deleting .pmat-ratchet.toml is a way of passing CB-2102"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::deleting_the_ratchet_file_is_not_a_way_of_passing
+  - condition: "the lowering pass destroys the file's comments, or writes a number it did not verify"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::lowering_preserves_comments_and_verifies_what_it_wrote
+  - condition: "the lowering pass raises a baseline when the measurement grew"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::lowering_never_raises_a_baseline
+  - condition: "this repository's own committed ratchet is red, or was captured from a number rather than from its command"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::the_committed_ratchet_holds_at_head
+  - condition: "a committed metric's command no longer runs, so its baseline has rotted while the number still looks plausible"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::every_committed_metric_command_still_measures
+  - condition: "the committed baselines carry slack the tree has already beaten, so a regression can hide inside the gap"
+    severity: P1
+    test: src/services/metrics_ratchet/drive_tests.rs::the_committed_baselines_have_no_slack_left_in_them
+  - condition: "two metrics share a command, so a scope that was supposed to be pinned twice is pinned once — the 9,324-wide question of which files count is answered once and copied"
+    severity: P1
+    test: src/services/metrics_ratchet/drive_tests.rs::no_two_metrics_share_a_command
+  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    severity: P1
+    test: src/services/metrics_ratchet/drive_tests.rs::every_kani_harness_the_contract_names_exists
+  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::the_contract_states_whether_its_kani_harnesses_discharge
+  - condition: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::a_discharged_claim_requires_something_that_actually_runs_kani
+  - condition: "CB-2102 is registered with no declared severity, so it defaults to Warning, does not fail a non-strict comply run, and falls outside the severity=error roster CB-2100 checks reachability for"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_declared_error_not_left_at_the_warning_default
+  - condition: "CB-2102 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
+    severity: P1
+    test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_in_the_comply_rule_registry
+  - condition: "the rule is orphaned again: the engine exists and no comply check drives it, which is the state this contract was written to end"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_in_the_comply_rule_registry

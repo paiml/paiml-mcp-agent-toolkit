@@ -305,5 +305,22 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2102: Ratchet Baselines — no ratcheted metric may exceed the value
+    // this repository last agreed to. Declared Error, not left unconfigured:
+    // `get_severity` answers Warning for an id nobody declares, and
+    // `should_fail(Warning, strict=false)` is false, so an unconfigured rule
+    // is a rule that cannot fail a default `pmat comply check` AND is outside
+    // the severity=error roster CB-2100 checks reachability for. Registering a
+    // rule without declaring its severity ships a gate that gates nothing.
+    checks.insert(
+        "cb-2102".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     checks
 }
