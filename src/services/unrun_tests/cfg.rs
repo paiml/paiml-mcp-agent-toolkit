@@ -326,7 +326,13 @@ fn from_list(list: &syn::MetaList) -> CfgExpr {
     match op.as_str() {
         "all" => CfgExpr::All(args),
         "any" => CfgExpr::Any(args),
-        "not" if args.len() == 1 => CfgExpr::Not(Box::new(args.into_iter().next().unwrap())),
+        // A one-element array conversion binds the sole argument directly.
+        // `not` with any other arity is unparseable, which is the same verdict
+        // the catch-all arm gives it.
+        "not" => match <[CfgExpr; 1]>::try_from(args) {
+            Ok([inner]) => CfgExpr::Not(Box::new(inner)),
+            Err(_) => CfgExpr::Unparsed(op),
+        },
         _ => CfgExpr::Unparsed(op),
     }
 }

@@ -52,6 +52,90 @@ filename heuristic decides what counts, so the number cannot drift by
 re-reading the predicate.
 """
 
+[metric.unwrap_calls_shipped_code]
+baseline = 0
+unit = "count"
+band = 0
+includes_test_files = false
+command = '''o=$(CARGO_TARGET_DIR=target/ratchet-unwrap cargo clippy --quiet --lib --bins --features full --message-format=json -- -W clippy::unwrap_used 2>/dev/null) || exit 9
+printf '%s\n' "$o" | grep -oF '"code":"clippy::unwrap_used"' | wc -l'''
+description = """
+`.unwrap()` in the code that SHIPS, counted by the compiler rather than by a
+filename or a line-prefix heuristic. `--lib --bins` is exactly what
+`cargo build --release` compiles, and it never sets `cfg(test)`, so every
+`#[cfg(test)]` module is stripped before clippy ever sees it. That — not a
+config key — is why this counts production only.
+
+Do not credit `.clippy.toml`'s `allow-*-in-tests` for the scope. Those keys are
+belt-and-braces for anyone running `--all-targets`, where the lib IS compiled
+with `cfg(test)` and the same lint reports 15,909. They are also easy to
+disable by accident: clippy reads exactly ONE config file, and a `clippy.toml`
+added beside `.clippy.toml` is silently ignored with a warning most runs scroll
+past. The first draft of this metric shipped exactly that mistake.
+
+The other reason the number is 0 is not a virtue: `src/tests/` (166 tracked
+files) is referenced by no `mod` in `src/lib.rs` or `src/main.rs`, so it is
+never compiled at all. Those unwraps are excluded because that code is dead to
+the build, not because it was judged to be test code.
+
+Why the compiler and not grep. The two grep metrics above disagree by 11,208
+because `.unwrap()` is a string to them: neither can tell a macro invocation
+from a string literal that spells one, nor a `#[test]` helper in a file named
+like production code from production code. rustc can.
+
+The worked example is `todo!()`/`unimplemented!()`. Text search of src/*.rs
+finds 149 occurrences: 83 inside string literals, 20 in comments, and 46 real
+macro invocations — every one of the 46 in test code. The production count is
+0. So text over-reports by 149 and there is no filter over the TEXT that
+recovers 0, because more than half the noise is pmat's own detector rules
+quoting the very macro they hunt.
+
+That self-reference is already load-bearing in this tree, and the workaround is
+worse than the problem: `comply_cb_detect/rust_best_practices/utilities.rs`
+carries `const DOT_UNWRAP: &str = concat!(".unwr", "ap()")` under the comment
+"Use concat! to avoid self-detection by CB-501/CB-502 scanners", and three more
+files do the same. The source is obfuscated so the scanner cannot read it. This
+is why contamination is 2.2% for `.unwrap()` and 56% for `todo!(` — not a fact
+about the constructs, but a record of who remembered to call `concat!`. A
+predicate whose accuracy depends on authors hand-obfuscating future source is
+not a predicate. Ask the compiler.
+
+Why the baseline is 0 and the band is 0. There is no tolerable number of
+panics in shipped code, and unlike the 20,390 above this one is reachable:
+it was reached. A band would only license a regression.
+
+Why the assignment is inside the command. `measure()` runs commands while the
+outer `cargo test` holds the lock on the default target directory, so a nested
+cargo sharing it would block forever. A separate CARGO_TARGET_DIR is what makes
+this metric safe to run from `the_committed_ratchet_holds_at_head`; it costs
+~120s cold and is incremental thereafter.
+
+Why `o=$(...) || exit 9` and not a pipe. Under `pipefail` a pipeline reports the
+RIGHTMOST non-zero status, so `cargo ... | grep -c` would report a failed build
+(101) as grep's 1 — an accepted exit code meaning "a real count of zero". The
+build failure would have been recorded as a perfect score. Capturing first makes
+an unbuildable tree exit 9, which is a FAILED measurement, which fails the gate.
+
+Why `--message-format=json` and the quoted `"code":"..."` key. The first draft of
+this command used `--message-format=short` and grepped for `clippy::unwrap_used`.
+Short format prints the message but NOT the lint name —
+`cfg.rs:332:59: warning: used `unwrap()` on an `Option` value` — so the grep
+matched nothing and the metric reported 0 on a tree with a live unwrap in it.
+The default format is no better: it names the lint `clippy::unwrap-used`, with a
+HYPHEN. Only the JSON `code` field carries the underscored id this grep pins.
+That draft was a gate that could not fail, and nothing but the RED-first proof
+below would have revealed it — it was green on the clean tree, which is exactly
+what a working gate looks like.
+
+RED-first proof (rerun this if you change the command). Revert the `not` arm of
+`parse_cfg_list` in src/services/unrun_tests/cfg.rs to
+`"not" if args.len() == 1 => CfgExpr::Not(Box::new(args.into_iter().next().unwrap()))`
+and this metric must measure 1, exceeding a baseline of 0 with a band of 0, and
+CB-2102 must fail. Restore it and the metric must measure 0 again. Both halves
+matter: the second is the counter-test that catches a predicate which simply
+reports a nonzero number for everything.
+"""
+
 [metric.unwrap_calls_src_outside_cfg_test]
 baseline = 9182
 unit = "count"
@@ -153,13 +237,16 @@ trend_analysis = "retention and alerting policy for recorded metrics, not a boun
 # ── the one live gate ──────────────────────────────────────────────────────
 #
 # The defect that started this work item: a declared limit of 100 against a
-# measured 20,390, annotated "Current: 570". `unwrap_calls_src_total` is the
-# side of the 9,324-wide scope question this binding means — every tracked .rs
-# file under src/, test code INCLUDED — and it is pinned by id rather than by
-# prose so the two numbers cannot drift apart again.
+# measured 20,390, annotated "Current: 570". The scope question turned out to be
+# the whole defect. Bound to `unwrap_calls_src_total` the threshold counted test
+# code, where unwrapping is the assertion mechanism and the right number is not
+# 0; so the limit could only ever be an arbitrary figure nobody could justify.
+# It now binds to `unwrap_calls_shipped_code`, which asks the compiler for the
+# count in the code that ships. That number is 0, so the threshold is 0, and it
+# is pinned by id rather than by prose so the two cannot drift apart again.
 [coherence.binding."quality_gates.max_unwrap_calls"]
 kind = "gate"
-metric = "unwrap_calls_src_total"
+metric = "unwrap_calls_shipped_code"
 direction = "max"
 
 # ── [thresholds] ───────────────────────────────────────────────────────────

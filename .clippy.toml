@@ -30,3 +30,17 @@ max-fn-params-bools = 3
 
 # Allow certain lints for specific cases
 # (These can be overridden in individual files with #[allow(...)])
+
+# ── panic-surface lints (added with `unwrap_calls_shipped_code`) ───────────
+# `unwrap_used` / `expect_used` / `panic` are about PRODUCTION robustness. A
+# panic in a test IS the assertion mechanism, so test code is exempt — that is
+# what makes a production count honest.
+#
+# These keys live here and not in a sibling `clippy.toml` because clippy reads
+# exactly one config file and `.clippy.toml` wins:
+#   warning: using config file `.clippy.toml`, `clippy.toml` will be ignored
+# A `clippy.toml` added next to this file is INERT, and clippy says so on every
+# run in a line that is easy to scroll past.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
