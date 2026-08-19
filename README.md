@@ -42,7 +42,7 @@
 - **Repository Scoring** - Quantitative health assessment (0-289 scale, 11 categories)
 - **Git History RAG** - Semantic search across commit history with RRF fusion
 - **Semantic Search** - Natural language code discovery
-- **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
+- **Compliance Governance** - 157 checks across code quality, best practices, and reproducibility
 - **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
 - **MCP Integration** - 16 tools for Claude Code, Cline, and AI agents, validated end-to-end for concurrent multi-agent (ultracode) workflows
@@ -215,7 +215,7 @@ pmat hooks status                      # Check hook status
 
 ### Compliance Governance (`pmat comply`)
 
-30+ automated checks across code quality, best practices, and governance:
+157 automated checks across code quality, best practices, and governance:
 
 ```bash
 pmat comply check                      # Run all compliance checks
