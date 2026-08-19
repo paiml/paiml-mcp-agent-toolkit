@@ -73,6 +73,8 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
 
         ComplyCommands::Ratchet { path, lower } => handle_ratchet(&path, lower),
 
+        ComplyCommands::Coherence { path, format } => handle_coherence(&path, format),
+
         ComplyCommands::Review {
             path,
             format,

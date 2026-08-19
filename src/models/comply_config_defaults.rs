@@ -322,5 +322,21 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2101: Threshold Coherence — every number `.pmat-metrics.toml` writes
+    // down must bound something this tree measures. Declared Error for the same
+    // reason CB-2102 is: an id nobody declares resolves to Warning, and
+    // `should_fail(Warning, strict = false)` is false, so it would be a rule
+    // that reports and never fails. A gate against decorative thresholds that
+    // is itself decorative would be the joke this rule is about.
+    checks.insert(
+        "cb-2101".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     checks
 }

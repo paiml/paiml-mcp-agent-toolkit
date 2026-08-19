@@ -111,11 +111,36 @@ places a lint was switched off rather than answered.
 
 # ── CB-2101 (threshold coherence) ──────────────────────────────────────────
 #
-# This section is DATA FOR A RULE THAT IS NOT YET REGISTERED. CB-2102 (the
-# ratchet) never reads it. It is filled in only as far as it has been verified:
-# a threshold with no [coherence.binding."<section>.<key>"] entry is UNDECLARED,
-# which `evaluate_coherence` already treats as a failure. That is deliberate —
-# the honest state of an unfinished audit is "fails closed", not "assumed fine".
+# Every scalar in a `threshold_sections` section of `.pmat-metrics.toml` needs a
+# binding here. A threshold with none is UNDECLARED, which `evaluate_coherence`
+# fails — an audit whose honest answer to "is this number enforced?" is silence
+# is not an audit.
+#
+# Three kinds, and the difference between them is evidence, not intent:
+#
+#   gate     — a [metric.*] measures it and the limit is judged against that
+#              measurement on every run.
+#   external — named code outside this file reads THE KEY and acts on it. The
+#              gate checks that the named file exists; it cannot check that the
+#              bound is the same one, which is why `external` is a WARN and not
+#              a pass. `thresholds.binary_max_bytes` is the worked example of
+#              why: `src/tests/binary_size.rs:40` carries the comment "aligned
+#              with .pmat-metrics.toml binary_max_bytes" above a hardcoded
+#              `50 * 1024 * 1024` = 52,428,800, against the 50,000,000 declared
+#              here. Two numbers 2.43 MB apart, one comment claiming they are
+#              one number. It is therefore a `budget`, not an `external`.
+#   budget   — nothing reads the key. Requires a justification, always
+#              classifies VACUOUS, and warns. This is the honest label for 14 of
+#              the 17 thresholds in this repository's `.pmat-metrics.toml`.
+#
+# Every `budget` justification below is the OBSERVED result of
+# `git grep -F "<key>" -- ':!.pmat-metrics.toml' ':!.pmat-ratchet.toml'`, run at
+# the captured commit. Where that grep hits only prose and test fixtures, the
+# key is read by nothing and the number is decoration. `scripts/validate-metrics.sh`
+# is the shape of the whole problem: it assigns `CONFIG_FILE=".pmat-metrics.toml"`
+# on line 10, never mentions the variable again, hardcodes LINT_MAX_MS,
+# TEST_FAST_MAX_MS, COVERAGE_MAX_MS, BINARY_MAX_BYTES and DEPS_DEFAULT_MAX as
+# shell literals — and is invoked by no Makefile target, workflow or hook.
 
 [coherence]
 threshold_sections = ["thresholds", "quality_gates", "performance"]
@@ -125,9 +150,164 @@ staleness = "max_age_days is a cache freshness window, not a quality bound"
 enforcement = "fail_on_* are switches; a boolean cannot be breached by a measurement"
 trend_analysis = "retention and alerting policy for recorded metrics, not a bound on the tree"
 
-# The one binding this work item verified end to end, and the defect that
-# started it: measured 20,390 against a declared limit of 100.
+# ── the one live gate ──────────────────────────────────────────────────────
+#
+# The defect that started this work item: a declared limit of 100 against a
+# measured 20,390, annotated "Current: 570". `unwrap_calls_src_total` is the
+# side of the 9,324-wide scope question this binding means — every tracked .rs
+# file under src/, test code INCLUDED — and it is pinned by id rather than by
+# prose so the two numbers cannot drift apart again.
 [coherence.binding."quality_gates.max_unwrap_calls"]
 kind = "gate"
 metric = "unwrap_calls_src_total"
 direction = "max"
+
+# ── [thresholds] ───────────────────────────────────────────────────────────
+
+[coherence.binding."thresholds.provability_min"]
+kind = "external"
+enforced_by = "src/cli/analysis_utilities/quality_gate_config.rs"
+justification = """
+Genuinely read: `load_provability_threshold` parses [thresholds].provability_min
+out of .pmat-metrics.toml and is called from quality_gate_part2a.rs:55 and :153.
+WARN rather than pass because this gate cannot check that the value read is the
+value enforced — only that the reader exists.
+"""
+
+[coherence.binding."thresholds.entropy_min_diversity"]
+kind = "external"
+enforced_by = "src/cli/analysis_utilities/quality_gate_config.rs"
+justification = """
+Read as the LEGACY fallback key by `read_entropy_threshold_from_file`, after
+[entropy].min_pattern_diversity, and reached from quality_gate_execute.rs:147
+and quality_gate_part2a.rs:181. Note the value 0.3 is identical to
+DEFAULT_MIN_PATTERN_DIVERSITY, so removing the key would change nothing today —
+it is read, and it is also a restatement of the default.
+"""
+
+[coherence.binding."thresholds.lint_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Outside .pmat-metrics.toml the key occurs only in
+CLAUDE.md, PMAT-INTEGRATION.md and a test fixture that writes its own temporary
+config (src/cli/analysis_utilities/quality_gate_part2f.rs). No Makefile target,
+workflow, hook or script compares a measurement against it, and `make lint`
+records no metric to compare.
+"""
+
+[coherence.binding."thresholds.test_fast_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md and
+PMAT-INTEGRATION.md. `make test-fast` records nothing, so there is not even a
+measurement for it to bound.
+"""
+
+[coherence.binding."thresholds.coverage_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md and
+PMAT-INTEGRATION.md. `make coverage` calls scripts/record-metric.sh, which
+RECORDS a duration; nothing reads this key to judge it.
+"""
+
+[coherence.binding."thresholds.build_release_max_ms"]
+kind = "budget"
+justification = """
+Documented as a soft limit in this file's own comment and referenced nowhere
+else at all: `git grep -F build_release_max_ms` outside .pmat-metrics.toml and
+.pmat-ratchet.toml returns nothing, not even prose.
+"""
+
+[coherence.binding."thresholds.binary_max_bytes"]
+kind = "budget"
+justification = """
+NOT external, deliberately. src/tests/binary_size.rs enforces a binary-size
+bound, but it does so with a hardcoded `const MAX_SIZE_BYTES: u64 = 50 * 1024 *
+1024` = 52,428,800 and never reads this key, whose value is 50,000,000 — a
+2,428,800-byte gap under a comment that claims the two are "aligned". Declaring
+it `external` would record that comment's claim as a fact, which is the exact
+substitution this rule exists to refuse.
+"""
+
+[coherence.binding."thresholds.deps_default_max"]
+kind = "budget"
+justification = """
+Recorded dependency budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md
+and PMAT-INTEGRATION.md; no build, workflow or hook counts dependencies against
+it.
+"""
+
+[coherence.binding."thresholds.deps_minimal_max"]
+kind = "budget"
+justification = """
+Recorded dependency budget for a rust-only feature set. `git grep -F
+deps_minimal_max` outside .pmat-metrics.toml and .pmat-ratchet.toml returns
+nothing at all — not code, not prose.
+"""
+
+# ── [quality_gates] ────────────────────────────────────────────────────────
+
+[coherence.binding."quality_gates.min_coverage_pct"]
+kind = "budget"
+justification = """
+Aspirational coverage target. The identifier appears in work-contract and
+comply code, but every one of those readers takes its number from .pmat.yaml or
+from a contract file; the only readers of .pmat-metrics.toml in the tree parse
+[exclude], [entropy], provability_min and entropy_min_diversity, and none of
+them looks at [quality_gates]. `make coverage` enforces no percentage either.
+"""
+
+[coherence.binding."quality_gates.min_mutation_score_pct"]
+kind = "budget"
+justification = """
+Names a quantity that has never been measured. The `mutants` job in
+.github/workflows/ci.yml carries `continue-on-error: true` and, per the comment
+above it at ci.yml:59, "has never executed a single mutant" — so there is no
+observed mutation score for this bound to be a bound on.
+"""
+
+[coherence.binding."quality_gates.max_cyclomatic_complexity"]
+kind = "budget"
+justification = """
+The complexity gate is real, but it does not read this key: the thresholds it
+enforces come from pmat.toml [quality] max_complexity / max_cognitive (see
+resolve_complexity_thresholds in
+src/cli/analysis_utilities/quality_checks_part1_complexity.rs, which prints the
+source it used). Two config files, one concept, and only one of them is wired.
+"""
+
+[coherence.binding."quality_gates.min_tdg_grade"]
+kind = "budget"
+justification = """
+A live CB rule does enforce a minimum TDG grade
+(check_handlers/check_tdg_grade.rs), but it reads .pmat.yaml, not this file.
+Written as the string "A-", it could not be a gate here in any case: a gate
+threshold must be an integer in its metric's unit, and there is no total order
+on grade letters this file declares.
+"""
+
+# ── [performance] ──────────────────────────────────────────────────────────
+
+[coherence.binding."performance.min_tdg_analysis_throughput"]
+kind = "budget"
+justification = """
+Performance target. Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md; nothing measures TDG throughput against it.
+"""
+
+[coherence.binding."performance.max_memory_usage_mb"]
+kind = "budget"
+justification = """
+Performance target, and one the tree is known to blow past by two orders of
+magnitude: `pmat comply check` itself is documented at 4.1 GB per worker in
+check.rs (COMPLY_BYTES_PER_WORKER). Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md, so nothing has ever compared the two.
+"""
+
+[coherence.binding."performance.max_regression_pct"]
+kind = "budget"
+justification = """
+Performance-regression allowance. Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md; no benchmark comparison reads it.
+"""

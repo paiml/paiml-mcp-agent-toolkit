@@ -22,6 +22,8 @@ include!("migrate_handlers.rs");
 include!("ledger_handler.rs");
 // CB-2102: `pmat comply ratchet` — the baseline gate and its lowering pass
 include!("ratchet_handler.rs");
+// CB-2101: `pmat comply coherence` — classify every threshold, with reasons
+include!("coherence_handler.rs");
 
 // Command dispatch (needs access to both check_handlers and migrate_handlers items)
 include!("command_dispatch.rs");

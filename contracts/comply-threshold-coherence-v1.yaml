@@ -1,0 +1,219 @@
+metadata:
+  version: "1.0.0"
+  kind: kernel
+  created: "2026-08-19"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Threshold coherence (CB-2101). CB-2102 asks whether a metric got worse.
+    CB-2101 asks the prior question nobody was asking: does the number written
+    down mean anything at all? Every scalar in a declared threshold section of
+    `.pmat-metrics.toml` is classified against a live measurement as exactly one
+    of FIRING, VIOLATED or VACUOUS, and the classification decides the verdict.
+
+    VIOLATED — the bound is breached at HEAD and the build is green. This is
+    strictly worse than having no threshold: it reads as enforcement, it
+    enforces nothing, and every reader who greps the config comes away with a
+    false belief about the tree. `.pmat-metrics.toml:45` is this repository's
+    own case, `max_unwrap_calls = 100` annotated `Current: 570` against a
+    measured 20,390 — three numbers, no two of which agree.
+
+    VACUOUS — the limit is further from the measurement than the band, so no
+    movement the ratchet tolerates can reach it. A vacuous threshold is green on
+    the day the project is abandoned. It is permitted, because a recorded budget
+    is a legitimate thing to write down, but only with an explicit
+    `justification`; without one it fails, so decoration cannot pass itself off
+    as enforcement by silence.
+
+    The classification is TOTAL. There is no fourth "unknown" class: a threshold
+    whose metric could not be measured FAILS, because "we could not measure it"
+    must never render as "it is fine". Making unmeasurability a class is exactly
+    how an unenforceable number gets to look like a gate in a report.
+
+    PROVENANCE, and the defect this contract itself closes. The pure evaluator —
+    `classify` in kernel.rs and `evaluate_coherence` in config.rs, with 14
+    falsification tests — shipped on release/3.32.0 with NO caller, NO rule id
+    that `.pmat.yaml` could address, and THIS FILE named in three module headers
+    while not existing. A classifier nobody calls classifies nothing. This
+    version adds the driver, the comply check, the rule registration, the
+    seventeen bindings, and the contract.
+
+    Scope, stated once so it cannot drift: CB-2101 audits the CONFIG, not the
+    tree. It never asserts that a metric is low enough — that is CB-2102's job,
+    and the two must not be able to disagree, which is why both read the same
+    `.pmat-ratchet.toml` and both judge against the number a metric's own
+    `command` prints rather than the number written beside it.
+  contract: comply-threshold-coherence
+  status: enforced
+  verification:
+    kani_status: not_discharged
+    measured_at: "pmat 3.32.0, kani 0.67.0, 2026-08-19"
+    detail: >
+      The two `kani_harness` names below are REAL harnesses — `#[kani::proof]`
+      functions in `mod kani_proofs` at the bottom of
+      src/services/metrics_ratchet/kernel.rs, held to their names by
+      coherence_drive_tests.rs::every_kani_harness_the_contract_names_exists.
+      They are NOT discharged: nothing in this repository has ever run them, and
+      with kani 0.67.0 installed they cannot be run at all. Re-measured
+      first-hand for this contract, not copied from CB-2102's:
+
+      (1) `cargo kani --harness verify_classify_total_and_sound` fails with
+      "error: target `pmat-agent` in package `pmat` requires the features:
+      `mcp-integration`" — kani enumerates every target in the package and one
+      of them does not build under default features.
+
+      (2) Adding `--features mcp-integration` fails with "error: rustc
+      1.93.0-nightly is not supported by the following package: sysinfo@0.39.6
+      requires rustc 1.95" — kani 0.67.0 pins a nightly older than a transitive
+      dependency's MSRV.
+
+      (3) No .github/workflows job, Makefile target or script invokes kani, so
+      none of this repository's `#[kani::proof]` harnesses is compiled by any
+      gate. `#[cfg(kani)]` code is not built by `cargo test` either, which is
+      why a test pins the names rather than the compiler.
+
+      These harnesses are therefore ASPIRATIONAL: they state the intended
+      theorems and are the specification a future proof will discharge, but
+      `kind: kernel` here must NOT be read as "proved". What actually runs is
+      kernel_tests.rs, which checks the same theorems over a bounded box and at
+      the i64 extremes. That is a test, not a proof, and this contract says so
+      rather than letting a reader infer a proof that never ran — a contract
+      naming a harness that silently does not run is precisely the defect class
+      this backlog exists to rule on.
+  references:
+    - src/services/metrics_ratchet/kernel.rs
+    - src/services/metrics_ratchet/config.rs
+    - src/services/metrics_ratchet/mod.rs
+    - src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs
+    - src/cli/handlers/comply_handlers/coherence_handler.rs
+    - .pmat-ratchet.toml
+    - .pmat-metrics.toml
+
+equations:
+  classify:
+    formula: >
+      slack(l, m, Max) = l - m ; slack(l, m, Min) = m - l.
+      classify = Violated <=> slack < 0 ; = Vacuous <=> slack > band ;
+      = Firing <=> 0 <= slack <= band
+    domain: "an i64 limit, an i64 measurement in the same unit, a u64 band, and a direction"
+    codomain: "Firing | Violated | Vacuous"
+    invariants:
+    - "INV-2101-1: dir = Max and measured > limit => the threshold is breached, and the verdict of the audit is Fail"
+    - "INV-2101-2: dir = Max and limit > measured + band => the class is Vacuous; symmetrically for Min"
+    - "INV-2101-3: classification is TOTAL and DISJOINT — every (limit, measured, band, dir) lands in exactly one of the three classes"
+    - "KANI-2101-2: monotone in the limit — loosening a Firing threshold never yields Violated, so a class can never be made to look worse by relaxing the number"
+    - "slack is computed in i128 so that i64::MIN / i64::MAX operands cannot overflow and silently invert a verdict"
+    - "the direction is declared per binding and never inferred from the key's name: a `max_*` key that is really a floor is exactly the mislabelling this rule exists to catch"
+    preconditions:
+    - "limit and measurement are in the same declared unit; a gate threshold must therefore be an integer, and a string-valued threshold such as `min_tdg_grade = \"A-\"` cannot be a gate"
+    kani_harness: verify_classify_total_and_sound
+
+  audit:
+    formula: >
+      outcome(report) = Fail when any threshold verdict is Fail, or any section
+      of .pmat-metrics.toml appears in neither threshold_sections nor
+      non_threshold_sections; = Warn when any verdict is Warn; = Ok otherwise
+    domain: >
+      .pmat-metrics.toml, the [coherence] declarations and [metric.*] baselines
+      of .pmat-ratchet.toml, and the output of running each metric's own
+      `command` from the repository root
+    codomain: "CoherenceReport { thresholds, undeclared_sections, outcome }"
+    invariants:
+    - "INV-2101-3 at file level: every scalar in a declared threshold section produces exactly one verdict carrying exactly one classification — nothing is skipped"
+    - "INV-2101-4: a gate whose metric produced no measurement, or measured Unavailable, is FAIL — unmeasurable is not compliant, and a justification cannot buy it a pass"
+    - "a threshold with no [coherence.binding.\"<section>.<key>\"] entry is UNDECLARED and FAILS: an unbound number is enforced by nothing and can never fire"
+    - "a NEW section of .pmat-metrics.toml is in neither list and therefore fails closed, rather than being silently exempt"
+    - "a Vacuous threshold WARNS with a justification and FAILS without one"
+    - "kind = budget requires a justification; kind = external requires an enforced_by path, and that path must exist"
+    - "kind = external is a WARN, never a pass: this gate can check that the named reader exists, and cannot check that the bound it enforces is the same bound — `thresholds.binary_max_bytes` is the measured worked example, 50,000,000 declared against a hardcoded 52,428,800 under a comment claiming the two are aligned"
+    - "an audit that classified nothing is a FAILURE, not a clean sheet: an empty audit passes forever"
+    - "INV-2101-4 has an upstream dependency, and F-3 found it broken: a rotted pathspec is not an Unavailable measurement, it is a clean 0, so the zero guard in measure::guard_zero (INV-2102-6) is what makes 'unmeasurable is not compliant' reachable at all. Without it a gate whose metric had stopped measuring anything classified FIRING and the audit exited 0"
+    - "the limit is judged against the number the metric's command PRINTS, never against the baseline written beside it — a limit judged against a remembered number is this rule's own defect, one indirection out"
+    preconditions:
+    - ".pmat-ratchet.toml exists (otherwise CB-2101 Skips: the project declares no bindings), and .pmat-metrics.toml parses"
+
+preconditions:
+  - "pmat >= 3.32.0 with `pmat comply check` running CB-2101"
+  - "the project root is inside a git work tree"
+
+postconditions:
+  - "CB-2101 reports Skip only when .pmat-ratchet.toml is absent AND was never committed"
+  - "CB-2101 reports Fail with severity=error whenever any invariant above is violated"
+  - "every classified threshold appears as `<key>=<CLASS>` in the check's message, uncapped, so `pmat comply check --format json` carries the whole classification"
+
+falsification:
+  - condition: "F-1: max_unwrap_calls = 100 against ~11,002 measured does not classify VIOLATED, or classifies VIOLATED and does not Fail"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::arm_a_violated_threshold_on_a_green_build_fails
+  - condition: "F-1 on real data: this repository's own committed max_unwrap_calls is judged against a remembered number rather than a live measurement, or its class disagrees with the bound"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::arm_a_max_unwrap_calls_is_judged_against_a_live_measurement
+  - condition: "F-2: max_unwrap_calls = 100000 against ~11,002 measured does not classify VACUOUS"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::mutation_max_unwrap_calls_100000_classifies_vacuous
+  - condition: "F-2 second half: a vacuous threshold with no justification passes"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::arm_b_vacuous_threshold_warns_with_justification_and_fails_without
+  - condition: "F-3: a metric with no measurement available passes, or warns instead of failing, or is bought a pass by a justification"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::falsify_2101_3_unmeasurable_metric_fails
+  - condition: "INV-2101-3: some (limit, measured, band, dir) lands in zero classes or in two"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_3_classification_is_total_and_disjoint
+  - condition: "INV-2101-2: VIOLATED is reported for something other than a breached bound"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_2_violated_iff_bound_breached
+  - condition: "INV-2101-1: the FIRING band is not exactly the reachable one — an off-by-one at slack = 0 or slack = band"
+    severity: P0
+    test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_1_firing_is_exactly_the_reachable_band
+  - condition: "KANI-2101-2 in test form: loosening a FIRING threshold yields VIOLATED"
+    severity: P1
+    test: src/services/metrics_ratchet/kernel_tests.rs::classify_is_monotone_in_limit
+  - condition: "a threshold in a declared threshold section is skipped rather than classified, so totality is claimed and not held"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::inv_2101_3_every_threshold_gets_exactly_one_classification
+  - condition: "the fixed state is unreachable: a threshold sitting exactly at the measurement cannot be FIRING, so there is no value the config could take that this rule would accept"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::firing_threshold_absorbs_one_unwrap_so_only_the_ratchet_moves
+  - condition: "kind = external names an enforcing file that does not exist, and the audit reports it as enforced — the doc comment claimed the gate verified this for a whole release while nothing did"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::external_enforcement_must_name_a_file_that_exists
+  - condition: "the control for the above: a real enforcing path is rejected, so the existence check has broken every external binding"
+    severity: P0
+    test: src/services/metrics_ratchet/config_tests.rs::external_enforcement_accepts_a_path_that_exists
+  - condition: "F-3's upstream hole: a gate's metric stops matching anything, measures a clean 0, and classifies FIRING instead of failing — found by running this rule's own F-3 against the shipped binary"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::a_zero_against_a_nonzero_baseline_is_a_hole_not_the_best_day_in_project_history
+  - condition: "this repository's own .pmat-metrics.toml has a threshold that no binding declares, or a section in neither list"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_committed_threshold_is_classified
+  - condition: "a binding names an enforced_by path or a metric id that does not exist in this repository"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_committed_binding_names_something_real
+  - condition: "an audit that classified nothing folds to Ok and passes every run forever — the exact live bug CB-2102's evaluator carried while it was orphaned"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::an_empty_audit_is_a_failure_not_a_clean_sheet
+  - condition: "the check's message drops thresholds when there are many, so `pmat comply check --format json` no longer classifies all of them"
+    severity: P1
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_json_output_classifies_every_threshold
+  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    severity: P1
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_kani_harness_the_contract_names_exists
+  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_contract_states_whether_its_kani_harnesses_discharge
+  - condition: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::a_discharged_claim_requires_something_that_actually_runs_kani
+  - condition: "CB-2101 is registered with no declared severity, so it defaults to Warning and cannot fail a non-strict comply run"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_declared_error_not_left_at_the_warning_default
+  - condition: "CB-2101 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
+    severity: P1
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_in_the_comply_rule_registry
+  - condition: "the rule is orphaned again: the evaluator exists and no comply check drives it, which is the state this contract was written to end"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_in_the_comply_rule_registry
+  - condition: "this contract is named by the module headers and does not exist on disk, as it did not for an entire release"
+    severity: P0
+    test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_coherence_contract_is_committed

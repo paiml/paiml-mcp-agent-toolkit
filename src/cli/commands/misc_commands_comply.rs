@@ -215,6 +215,27 @@ pub enum ComplyCommands {
         lower: bool,
     },
 
+    /// CB-2101: classify every threshold in `.pmat-metrics.toml`.
+    ///
+    /// Each one comes back FIRING (live — a plausible regression trips it),
+    /// VIOLATED (breached at HEAD while the build is green, which is worse than
+    /// having no threshold) or VACUOUS (further from the measurement than the
+    /// band, so nothing can ever reach it).
+    ///
+    /// Same judgement CB-2101 makes inside `pmat comply check`, exiting
+    /// non-zero on the same conditions; `--format json` emits the whole report,
+    /// including for each threshold the limit as written, the live measurement,
+    /// the band that decided FIRING vs VACUOUS, and why.
+    Coherence {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: ComplyOutputFormat,
+    },
+
     /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
     /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
     Review {

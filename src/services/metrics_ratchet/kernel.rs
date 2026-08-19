@@ -134,6 +134,7 @@ pub const fn slack(limit: i64, measured: i64, dir: Direction) -> i128 {
 /// the largest movement the ratchet would still let through. A limit further
 /// away than that cannot be reached by any change the ratchet permits, so it
 /// can never fire.
+#[provable_contracts_macros::contract("comply-threshold-coherence-v1.yaml", equation = "classify")]
 pub const fn classify(limit: i64, measured: i64, band: u64, dir: Direction) -> Classification {
     let s = slack(limit, measured, dir);
     if s < 0 {

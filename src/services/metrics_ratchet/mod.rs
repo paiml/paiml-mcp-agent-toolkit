@@ -40,6 +40,9 @@ mod config_tests;
 #[cfg(test)]
 mod drive_tests;
 
+#[cfg(test)]
+mod coherence_drive_tests;
+
 use std::path::Path;
 
 /// How a project relates to a ratchet file.
@@ -113,6 +116,32 @@ pub fn run(project_path: &Path) -> Result<config::RatchetReport, config::ConfigE
         report.outcome = config::Outcome::Fail;
     }
     Ok(report)
+}
+
+/// Audit every threshold in `.pmat-metrics.toml` against a live measurement
+/// (CB-2101).
+///
+/// Reads the SAME `.pmat-ratchet.toml` the ratchet uses, because the two gates
+/// must not be able to disagree about what a metric means: the coherence audit
+/// classifies a declared limit against the number a metric's own `command`
+/// prints, never against the baseline written beside it. A limit judged against
+/// a remembered number is the defect this rule is named for, one indirection
+/// further out.
+///
+/// Fails closed like [`run`]: a missing or unparsable config on either side is
+/// an `Err`, and the caller must render that as a failure rather than a skip.
+pub fn run_coherence(project_path: &Path) -> Result<config::CoherenceReport, config::ConfigError> {
+    let cfg = config::RatchetConfig::load(project_path)?;
+    let roster = config::MetricsRoster::load(project_path)?;
+    let measurements = measure::measure_all(project_path, &cfg.metric);
+    let enforcers = config::EnforcerIndex::resolve(project_path, &cfg.coherence);
+    Ok(config::evaluate_coherence(
+        &roster,
+        &cfg.coherence,
+        &measurements,
+        &cfg.metric,
+        &enforcers,
+    ))
 }
 
 /// The scheduled lowering pass: rewrite every baseline the tree has beaten.

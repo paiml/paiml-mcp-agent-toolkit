@@ -347,6 +347,10 @@ fn build_all_compliance_checks(
             "ratchet",
             Box::new(move || build_ratchet_checks(project_path, comply_config)),
         ),
+        (
+            "coherence",
+            Box::new(move || build_coherence_checks(project_path, comply_config)),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -1108,6 +1112,8 @@ include!("check_gate_effect.rs");
 include!("check_builders_gate_effect.rs");
 include!("check_metrics_ratchet.rs");
 include!("check_builders_ratchet.rs");
+include!("check_threshold_coherence.rs");
+include!("check_builders_coherence.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");
