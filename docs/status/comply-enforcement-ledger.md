@@ -21,14 +21,13 @@ Source: .github/required-status-checks.txt
 | `feature-gate` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `docs build (docs.rs environment)` | **no** — this required check was read in full and gates nothing in the CB roster |
 | `pmat score` | **no** — this required check was read in full and gates nothing in the CB roster |
-| `mutation-diff` | **no** — this required check was read in full and gates nothing in the CB roster |
 
 ## Summary
 
-- rules: 155
+- rules: 156
 - ENFORCED: 0
 - NEUTERED: 0
-- UNREACHABLE: 155
+- UNREACHABLE: 156
 
 ## Holes
 
@@ -102,7 +101,7 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-1331 | Work Contract Validity | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p3.rs:10` |
 | CB-1332 | Cache Staleness | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs:169` |
 | CB-1333 | Hook Single Writer | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p2.rs:77` |
-| CB-1334 | Hook Atomic Writes | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p2.rs:285` |
+| CB-1334 | Hook Atomic Writes | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p2.rs:338` |
 | CB-1335 | Hook Determinism | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs:249` |
 | CB-1336 | Hook No Injection | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p2.rs:194` |
 | CB-1337 | Hook Cold-Start Commands | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs:326` |
@@ -195,3 +194,4 @@ Things that could not be measured. Each one is a failure, not a blank.
 | CB-1702 | Review Changeset Size (advisory) | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_evidence_gates.rs:836` |
 | CB-1703 | Documented Rule Count | unconfigured | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_evidence_gates.rs:960` |
 | CB-2100 | Comply Gate Effect | error | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs:38` |
+| CB-2102 | Ratchet Baselines | error | UNREACHABLE | no required status check reaches any invocation of the rule roster | `src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs:40` |
