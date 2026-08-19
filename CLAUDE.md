@@ -206,8 +206,21 @@ timing threshold, so nothing can fail on one. Current budgets, as actually writt
 What *is* real:
 
 - **Recording**: only `make coverage` and `make build-release` call `scripts/record-metric.sh`. `make lint` and `make test-fast` record nothing.
-- **Binary size**: enforced by a hardcoded 50MB constant in `src/tests/binary_size.rs:40`, not by reading `binary_max_bytes`.
+- **Binary size**: enforced by a hardcoded `50 * 1024 * 1024` in `src/tests/binary_size.rs:40` — 52,428,800, against the 50,000,000 this file declares, under a comment claiming the two are "aligned". They are 2.43 MB apart and neither reads the other.
 - **`[exclude]` and `[entropy]`**: these two sections of `.pmat-metrics.toml` *are* read, by `pmat quality-gate` (`src/cli/analysis_utilities/quality_checks_part1_complexity.rs:120` and `src/cli/analysis_utilities/quality_checks_part1_entropy.rs:220`).
+- **`provability_min` and `entropy_min_diversity`**: also genuinely read, by `src/cli/analysis_utilities/quality_gate_config.rs`. These are the only two `[thresholds]` keys anything parses.
+- **CB-2101 now classifies all of them.** `pmat comply coherence` audits every scalar in `[thresholds]`, `[quality_gates]` and `[performance]` against a live measurement and reports each as FIRING, VIOLATED or VACUOUS. Do not re-derive the list by grepping — run it:
+
+```bash
+pmat comply coherence                 # one row per threshold, with the reason
+pmat comply coherence --format json   # limit, live measurement, band, verdict
+```
+
+  At `331017130` that is **17 thresholds: 0 FIRING, 1 VIOLATED, 16 VACUOUS**. The one
+  VIOLATED is `quality_gates.max_unwrap_calls = 100` against a measured 20,390. Every
+  binding, and the evidence behind it, is in `.pmat-ratchet.toml` under
+  `[coherence.binding.*]` — that file, not this one, is the place to correct a claim
+  about what enforces what.
 
 The real pre-commit gate set is the one described under **Pre-Commit Verification** above;
 run `pmat verify`. Emergency bypass for the hooks that do exist: `git commit --no-verify`.
@@ -216,7 +229,14 @@ run `pmat verify`. Emergency bypass for the hooks that do exist: `git commit --n
 
 Do not confuse the two files. `.pmat-metrics.toml` records budgets nothing reads.
 `.pmat-ratchet.toml` records BASELINES, and two things assert them: the comply rule
-CB-2102, and the `--lib` test `the_committed_ratchet_holds_at_head`.
+CB-2102, and the `--lib` test `the_committed_ratchet_holds_at_head`. It also carries the
+`[coherence.binding.*]` table CB-2101 reads, so it is the single place that says which
+of the two files' numbers are enforced and by what.
+
+A metric that measures **0 against a baseline above 0** is reported UNMEASURABLE, not
+passed: a `git grep` pathspec that has rotted and a genuine zero are byte-identical at
+the shell (both print `0`, both exit 1, neither writes to stderr), so the gate refuses to
+guess. Declare `zero_is_reachable = true` on the metric when the zero is real.
 
 Every entry carries the exact command that reproduces its baseline, and the gate RUNS
 that command rather than reading the number — so a baseline can never quietly become a
