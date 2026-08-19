@@ -1961,17 +1961,32 @@ mod command_availability_tests {
     /// the command list advertised "Run interactive demo of all capabilities".
     /// A command list that promises a working command the shipped binary cannot
     /// run is the defect.
+    ///
+    /// Both directions, because the label is conditional. It asserted only the
+    /// first and therefore failed the `full` leg, which enables `demo`
+    /// transitively (58 features) and correctly drops the label — the test was
+    /// demanding a warning that would have been a lie in that build. A
+    /// one-directional assertion here cannot tell "the label is right" from
+    /// "the label is always printed".
     #[test]
-    fn demo_is_labelled_unavailable() {
+    fn demo_label_matches_the_build() {
         let demo = about_of("demo");
-        assert!(
-            demo.contains("NOT AVAILABLE") || demo.contains("NOT IMPLEMENTED"),
-            "demo must be labelled unavailable in the command list, got: {demo}"
-        );
-        assert!(
-            demo.contains("--features demo"),
-            "the label must name the feature that would enable it, got: {demo}"
-        );
+        if cfg!(feature = "demo") {
+            assert!(
+                !demo.contains("NOT AVAILABLE") && !demo.contains("NOT IMPLEMENTED"),
+                "this build enables `demo`, so the command list must not call it \
+                 unavailable, got: {demo}"
+            );
+        } else {
+            assert!(
+                demo.contains("NOT AVAILABLE") || demo.contains("NOT IMPLEMENTED"),
+                "demo must be labelled unavailable in the command list, got: {demo}"
+            );
+            assert!(
+                demo.contains("--features demo"),
+                "the label must name the feature that would enable it, got: {demo}"
+            );
+        }
     }
 
     /// The mirror image of the `demo` defect: `serve`'s help declared the whole

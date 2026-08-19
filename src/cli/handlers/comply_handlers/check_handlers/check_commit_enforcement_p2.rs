@@ -355,7 +355,7 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
                 scan_atomicity(&path, results);
                 continue;
             }
-            if !path.extension().is_some_and(|e| e == "rs") {
+            if path.extension().is_none_or(|e| e != "rs") {
                 continue;
             }
             let path_str = path.to_str().unwrap_or("");
