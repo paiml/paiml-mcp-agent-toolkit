@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.32.0] - 2026-08-17
+## [3.32.0] - 2026-08-19
 
 Minor rather than patch, and the reason is the list below: most of this release changes
 what pmat *reports* on unchanged code. Each of these moves a number, an exit code or a
@@ -54,6 +54,27 @@ has not changed. Read this list before upgrading a gate.
   error`.
 - **`comply check`'s concurrency dropped**, so it is slower and uses an order of
   magnitude less memory.
+- **CB-402 lints the shell scripts git tracks**, where it walked the working directory
+  to depth 4 and stopped at the first 20 files it happened to reach. On a checkout that
+  keeps worktrees or vendored installers inside itself the entire budget went to files
+  the project does not own, so this both removes findings (untracked files) and adds a
+  great many (the tracked scripts that were never reached). In this repository the count
+  went from 40 findings in `.claude/worktrees/` to 140 errors and 1296 warnings in
+  `scripts/`. The cap rose from 20 to 250; `CB-402-TRUNCATED` still reports what a
+  larger repository loses.
+- **`quality_gates.max_unwrap_calls` means something different, and is now 0.** It was
+  bound to a metric counting `.unwrap()` across every `.rs` file under `src/`, test code
+  included, where the honest number is not zero and no limit could be justified. It now
+  binds to `unwrap_calls_shipped_code`, a compiler-derived count over `--lib --bins`
+  (the code `cargo build --release` compiles). Projects that adopted this key will see
+  the threshold's scope change under them.
+- **The metrics ratchet gained `unwrap_calls_shipped_code`**, whose command invokes
+  clippy. It sets its own `CARGO_TARGET_DIR` so a nested cargo cannot block on the
+  outer invocation's target-dir lock, and adds ~40s to a gate run, cached thereafter.
+- **Ratchet metric commands no longer inherit `RUSTFLAGS`,
+  `CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS`, `CARGO_BUILD_TARGET` or
+  `CARGO_BUILD_JOBS`.** A metric must measure the tree, not the shell that invoked it;
+  a command whose result depended on one of those will now return a different number.
 
 None of these is a behaviour anyone should be pinned to, but all of them are visible.
 The exit-code and payload deltas are listed field by field under **Changed**.
