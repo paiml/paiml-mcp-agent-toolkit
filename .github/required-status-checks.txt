@@ -16,4 +16,19 @@ ci / gate
 feature-gate
 docs build (docs.rs environment)
 pmat score
-mutation-diff
+#
+# NOT LISTED, DELIBERATELY: `mutation-diff`. It was added to live branch
+# protection mid-session by an agent, and reverted. The workflow that produces
+# that context (.github/workflows/mutation-diff.yml) exists only on
+# feat/cb-2100-gate-effect and is not on master, so requiring the context makes
+# EVERY pull request permanently unmergeable -- including the one that would
+# land the workflow. A required check whose producer does not exist on the
+# default branch is not a gate, it is a deadlock.
+#
+# Correct order, to be done by hand AFTER that PR merges:
+#   gh api -X PATCH repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection/required_status_checks \
+#     --input - <<'JSON'
+#   {"strict": true, "contexts": ["ci / gate","feature-gate","docs build (docs.rs environment)","pmat score","mutation-diff"]}
+#   JSON
+# and add `mutation-diff` back to this file in the same change, so the manifest
+# and live protection never disagree -- which is the drift CB-2100 exists to catch.
