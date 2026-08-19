@@ -8,14 +8,13 @@ with `--check-ledger`, so the generator and the gate cannot disagree. Do not
 edit by hand — add a leg that runs the tests, or record a reason in
 `src/services/unrun_tests/reasons.rs`.
 
-Legs consulted (4):
+Legs consulted (3):
 
 - `feature-matrix.yml:feature-tests[full]`
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
-- `--executed ''`
 
-22924 of 26045 lib tests are executed; 3121 are compiled by no leg.
+22926 of 26047 lib tests are executed; 3121 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
