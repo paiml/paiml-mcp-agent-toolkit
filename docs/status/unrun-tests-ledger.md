@@ -15,7 +15,7 @@ Legs consulted (4):
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 - `--executed ''`
 
-22887 of 26008 lib tests are executed; 3121 are compiled by no leg.
+22924 of 26045 lib tests are executed; 3121 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
