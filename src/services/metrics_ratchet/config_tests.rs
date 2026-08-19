@@ -31,6 +31,7 @@ fn unwrap_metric(band: u64) -> BTreeMap<String, MetricBaseline> {
             command: "true".into(),
             description: "test".into(),
             justification: None,
+            zero_is_reachable: false,
         },
     );
     m
@@ -76,6 +77,24 @@ fn measured(v: i64) -> Measurements {
     Measurements::from([("unwrap_calls".to_string(), Measurement::Value(v))])
 }
 
+/// The default index knows of no existing enforcer. Empty is the fail-closed
+/// value: an unknown path is absent, never assumed present. Every test above
+/// uses `gate` or `budget` bindings, which do not consult it.
+fn enforcers() -> EnforcerIndex {
+    EnforcerIndex::default()
+}
+
+fn external_binding(path: &str) -> ThresholdBinding {
+    ThresholdBinding {
+        kind: BindingKind::External,
+        metric: None,
+        direction: None,
+        band: None,
+        justification: None,
+        enforced_by: Some(path.to_string()),
+    }
+}
+
 fn verdict_for<'a>(r: &'a CoherenceReport, key: &str) -> &'a ThresholdVerdict {
     r.thresholds
         .iter()
@@ -119,7 +138,13 @@ fn arm_a_violated_threshold_on_a_green_build_fails() {
         ("thresholds.lint_max_ms", budget(Some("timing budget"))),
         ("quality_gates.min_tdg_grade", budget(Some("aspiration"))),
     ]);
-    let report = evaluate_coherence(&roster, &cfg, &measured(11_056), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(11_056),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
 
     let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
     assert_eq!(v.classification, Classification::Violated);
@@ -145,7 +170,13 @@ fn arm_b_vacuous_threshold_warns_with_justification_and_fails_without() {
         ("quality_gates.min_tdg_grade", budget(Some("aspiration"))),
     ]);
     // limit 100 vs measured 20, band 10 -> slack 80 > 10 -> vacuous.
-    let report = evaluate_coherence(&roster, &cfg, &measured(20), &unwrap_metric(10));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(20),
+        &unwrap_metric(10),
+        &enforcers(),
+    );
     let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
     assert_eq!(v.classification, Classification::Vacuous);
     assert_eq!(v.outcome, Outcome::Warn);
@@ -156,7 +187,13 @@ fn arm_b_vacuous_threshold_warns_with_justification_and_fails_without() {
         ("thresholds.lint_max_ms", budget(Some("timing budget"))),
         ("quality_gates.min_tdg_grade", budget(Some("aspiration"))),
     ]);
-    let report = evaluate_coherence(&roster, &cfg, &measured(20), &unwrap_metric(10));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(20),
+        &unwrap_metric(10),
+        &enforcers(),
+    );
     let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
     assert_eq!(v.classification, Classification::Vacuous);
     assert_eq!(v.outcome, Outcome::Fail, "vacuous without justification");
@@ -177,7 +214,13 @@ fn mutation_max_unwrap_calls_100000_classifies_vacuous() {
     )]);
     cfg.non_threshold_sections
         .insert("enforcement".into(), "switches".into());
-    let report = evaluate_coherence(&roster, &cfg, &measured(11_056), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(11_056),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
     let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
     assert_eq!(v.classification, Classification::Vacuous);
     assert_eq!(v.outcome, Outcome::Fail);
@@ -201,7 +244,13 @@ fn firing_threshold_absorbs_one_unwrap_so_only_the_ratchet_moves() {
         )]),
     };
     for observed in [11_056, 11_057] {
-        let report = evaluate_coherence(&roster, &cfg, &measured(observed), &unwrap_metric(200));
+        let report = evaluate_coherence(
+            &roster,
+            &cfg,
+            &measured(observed),
+            &unwrap_metric(200),
+            &enforcers(),
+        );
         let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
         assert_eq!(
             v.classification,
@@ -229,7 +278,13 @@ fn falsify_2101_3_unmeasurable_metric_fails() {
     };
 
     // No measurement at all.
-    let report = evaluate_coherence(&roster, &cfg, &Measurements::new(), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &Measurements::new(),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
     let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
     assert_eq!(v.outcome, Outcome::Fail);
     assert_eq!(v.classification, Classification::Vacuous);
@@ -240,7 +295,7 @@ fn falsify_2101_3_unmeasurable_metric_fails() {
         "unwrap_calls".to_string(),
         Measurement::Unavailable("no src/ directory".into()),
     )]);
-    let report = evaluate_coherence(&roster, &cfg, &m, &unwrap_metric(200));
+    let report = evaluate_coherence(&roster, &cfg, &m, &unwrap_metric(200), &enforcers());
     assert_eq!(report.outcome, Outcome::Fail);
     assert!(verdict_for(&report, "quality_gates.max_unwrap_calls")
         .detail
@@ -254,7 +309,13 @@ fn falsify_2101_3_unmeasurable_metric_fails() {
         non_threshold_sections: BTreeMap::new(),
         binding: BTreeMap::from([("quality_gates.max_unwrap_calls".to_string(), justified)]),
     };
-    let report = evaluate_coherence(&roster, &cfg, &Measurements::new(), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &Measurements::new(),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
     assert_eq!(
         report.outcome,
         Outcome::Fail,
@@ -274,7 +335,13 @@ fn inv_2101_3_every_threshold_gets_exactly_one_classification() {
         "quality_gates.max_unwrap_calls",
         gate_binding(Some(200)),
     )]);
-    let report = evaluate_coherence(&roster, &cfg, &measured(11_000), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(11_000),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
 
     let in_threshold_sections = roster
         .thresholds
@@ -304,7 +371,13 @@ fn a_new_section_fails_closed() {
             gate_binding(Some(200)),
         )]),
     };
-    let report = evaluate_coherence(&roster, &cfg, &measured(11_056), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(11_056),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
     assert_eq!(report.undeclared_sections, vec!["brand_new".to_string()]);
     assert_eq!(report.outcome, Outcome::Fail);
 }
@@ -326,6 +399,7 @@ fn unjustified_budget_and_unnamed_external_both_fail() {
         &mk(budget(None)),
         &measured(11_056),
         &unwrap_metric(0),
+        &enforcers(),
     );
     assert_eq!(report.outcome, Outcome::Fail);
 
@@ -334,6 +408,7 @@ fn unjustified_budget_and_unnamed_external_both_fail() {
         &mk(budget(Some("   "))),
         &measured(11_056),
         &unwrap_metric(0),
+        &enforcers(),
     );
     assert_eq!(report.outcome, Outcome::Fail, "whitespace is not a reason");
 
@@ -345,7 +420,13 @@ fn unjustified_budget_and_unnamed_external_both_fail() {
         justification: None,
         enforced_by: None,
     };
-    let report = evaluate_coherence(&roster, &mk(external), &measured(11_056), &unwrap_metric(0));
+    let report = evaluate_coherence(
+        &roster,
+        &mk(external),
+        &measured(11_056),
+        &unwrap_metric(0),
+        &enforcers(),
+    );
     assert_eq!(report.outcome, Outcome::Fail);
 }
 
@@ -367,6 +448,7 @@ fn gate_with_missing_metric_or_direction_fails() {
         &mk(no_metric),
         &measured(11_056),
         &unwrap_metric(200),
+        &enforcers(),
     );
     assert_eq!(report.outcome, Outcome::Fail);
 
@@ -377,6 +459,7 @@ fn gate_with_missing_metric_or_direction_fails() {
         &mk(no_direction),
         &measured(11_056),
         &unwrap_metric(200),
+        &enforcers(),
     );
     assert_eq!(report.outcome, Outcome::Fail);
 
@@ -389,6 +472,7 @@ fn gate_with_missing_metric_or_direction_fails() {
         &mk(unknown_metric),
         &measured(11_056),
         &unwrap_metric(200),
+        &enforcers(),
     );
     assert_eq!(report.outcome, Outcome::Fail);
 }
@@ -407,7 +491,13 @@ fn float_or_string_threshold_cannot_be_a_gate() {
             gate_binding(Some(200)),
         )]),
     };
-    let report = evaluate_coherence(&roster, &cfg, &measured(11_056), &unwrap_metric(200));
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(11_056),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
     assert_eq!(report.outcome, Outcome::Fail);
     assert!(verdict_for(&report, "quality_gates.min_tdg_grade")
         .detail
@@ -473,4 +563,73 @@ fn a_single_metric_that_holds_is_still_a_pass() {
     let report = evaluate_ratchet(&metrics, &measured(11_056), None);
     assert_eq!(report.outcome, Outcome::Ok);
     assert!(report.holes.is_empty());
+}
+
+// ───────────── external enforcement: the promise nothing kept ─────────────
+
+/// `ThresholdBinding::enforced_by` was documented for a whole release as the
+/// path "which the gate verifies exists", and no code anywhere verified it. A
+/// binding could name a file that had been deleted — or never written — and the
+/// audit would still report the threshold as externally enforced. That is the
+/// substitution this rule exists to refuse, one level up: a claim in a config
+/// that nothing re-derives.
+#[test]
+fn external_enforcement_must_name_a_file_that_exists() {
+    let roster = MetricsRoster::parse("[quality_gates]\nmax_unwrap_calls = 100\n")
+        .expect("the fixture parses");
+    let cfg = CoherenceConfig {
+        threshold_sections: vec!["quality_gates".into()],
+        non_threshold_sections: BTreeMap::new(),
+        binding: BTreeMap::from([(
+            "quality_gates.max_unwrap_calls".to_string(),
+            external_binding("src/does/not/exist.rs"),
+        )]),
+    };
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(20),
+        &unwrap_metric(200),
+        &enforcers(),
+    );
+    let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
+    assert_eq!(v.outcome, Outcome::Fail);
+    assert_eq!(v.classification, Classification::Vacuous);
+    assert!(
+        v.detail.contains("does not exist"),
+        "the message must name the missing enforcer, got: {}",
+        v.detail
+    );
+    assert_eq!(report.outcome, Outcome::Fail);
+}
+
+/// The control. Without it the check above is satisfied by an existence test
+/// that rejects everything — which would break every honest external binding
+/// while looking exactly like a fix.
+#[test]
+fn external_enforcement_accepts_a_path_that_exists() {
+    let roster = MetricsRoster::parse("[quality_gates]\nmax_unwrap_calls = 100\n")
+        .expect("the fixture parses");
+    let cfg = CoherenceConfig {
+        threshold_sections: vec!["quality_gates".into()],
+        non_threshold_sections: BTreeMap::new(),
+        binding: BTreeMap::from([(
+            "quality_gates.max_unwrap_calls".to_string(),
+            external_binding("src/lib.rs"),
+        )]),
+    };
+    let report = evaluate_coherence(
+        &roster,
+        &cfg,
+        &measured(20),
+        &unwrap_metric(200),
+        &EnforcerIndex::from_existing(["src/lib.rs"]),
+    );
+    let v = verdict_for(&report, "quality_gates.max_unwrap_calls");
+    assert_eq!(
+        v.outcome,
+        Outcome::Warn,
+        "an existing enforcer WARNS — this gate cannot check the bound is the same one"
+    );
+    assert_eq!(report.outcome, Outcome::Warn);
 }

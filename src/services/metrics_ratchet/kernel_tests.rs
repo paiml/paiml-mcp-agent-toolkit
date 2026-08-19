@@ -235,6 +235,7 @@ fn baseline(value: i64) -> MetricBaseline {
         command: "true".into(),
         description: "test metric".into(),
         justification: None,
+        zero_is_reachable: false,
     }
 }
 

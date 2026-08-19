@@ -31,8 +31,55 @@ pub fn measure_all(
 ) -> Measurements {
     metrics
         .iter()
-        .map(|(id, m)| (id.clone(), measure(project_path, &m.command)))
+        .map(|(id, m)| (id.clone(), measure_metric(project_path, m)))
         .collect()
+}
+
+/// Run one metric's command and apply the zero guard.
+///
+/// The guard exists because the exit-code guard below cannot reach the most
+/// likely way for a pinned command to rot. `measure` protects the shape it
+/// documents — a producer that FAILS inside a pipeline — and a pathspec that
+/// has stopped matching any file is a producer that SUCCEEDS over nothing:
+///
+/// ```text
+/// git grep -oF 'TOKEN' -- 'no/such/path/*.rs' | wc -l   ->  0, exit 1, no stderr
+/// git grep -oF 'NOT_PRESENT' -- 'src/*.rs'    | wc -l   ->  0, exit 1, no stderr
+/// ```
+///
+/// Byte-identical. (`TOKEN` stands in for a real pattern on purpose: this
+/// repository ratchets an `.unwrap` call literal with a `git grep -oF` of exactly
+/// this shape, and writing that literal out here would have moved the number this guard
+/// protects by three — the metric counts occurrences in prose about itself. The
+/// ratchet caught that on the commit that introduced the guard.) So the only place the two can be distinguished is against
+/// the baseline, and only by a human: a drop from N to 0 in one run is either
+/// the largest improvement in the project's history or a broken predicate. The
+/// gate refuses to guess, and says which two things it is choosing between.
+///
+/// This was measured, not imagined: before the guard, editing one metric's
+/// pathspec to `no/such/path/*.rs` made `pmat comply coherence` report
+/// `FIRING  measured 0 count against limit 100` and exit 0, while the ratchet
+/// read `0 <= 20390` as a Pass. Both gates went green on a metric that had
+/// stopped measuring anything at all.
+pub fn measure_metric(project_path: &Path, metric: &MetricBaseline) -> Measurement {
+    guard_zero(measure(project_path, &metric.command), metric)
+}
+
+/// Turn an unexplained zero into an `Unavailable`. Pure, so the falsification
+/// tests can drive both sides of it without a shell.
+pub fn guard_zero(raw: Measurement, metric: &MetricBaseline) -> Measurement {
+    match raw {
+        Measurement::Value(0) if metric.baseline > 0 && !metric.zero_is_reachable => {
+            Measurement::Unavailable(format!(
+                "measured 0 against a baseline of {} — either every occurrence was removed in \
+                 one change or the command has stopped matching anything, and a count cannot \
+                 tell those apart; re-run the command by hand and, if the zero is real, set \
+                 `zero_is_reachable = true` on this metric",
+                metric.baseline
+            ))
+        }
+        other => other,
+    }
 }
 
 /// Run `command` from `project_path` and read a count from its output.

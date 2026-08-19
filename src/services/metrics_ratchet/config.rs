@@ -92,6 +92,22 @@ pub struct MetricBaseline {
     /// the only move the nightly job makes, needs nothing.
     #[serde(default)]
     pub justification: Option<String>,
+    /// May this metric legitimately measure zero while its baseline is above
+    /// zero? Defaults to `false`, which is the fail-closed answer.
+    ///
+    /// A measurement of 0 against a non-zero baseline has exactly two
+    /// explanations — the largest improvement in the project's history, or a
+    /// predicate that has rotted — and nothing in the measurement can tell them
+    /// apart. A rotted `git grep` pathspec and a genuine zero are byte-identical
+    /// at the shell: both print `0`, both exit 1, neither writes to stderr. So
+    /// the exit-code guard in [`super::measure`] cannot catch it, and a ratchet
+    /// that only ever looks upward greets it as perfection.
+    ///
+    /// Setting this to `true` is the deliberate, auditable override: one word in
+    /// a committed file, reviewed like any other change, rather than a flag on
+    /// a command line. Set it when a metric is genuinely converging on zero.
+    #[serde(default)]
+    pub zero_is_reachable: bool,
 }
 
 /// Declarations that make the `.pmat-metrics.toml` audit total.
@@ -314,6 +330,46 @@ pub enum Measurement {
 /// Measurements keyed by metric id.
 pub type Measurements = BTreeMap<String, Measurement>;
 
+/// Which `enforced_by` paths actually exist, resolved once by the caller.
+///
+/// [`evaluate_coherence`] must stay pure — it is the function the falsification
+/// tests drive without a source tree — so the filesystem question is answered
+/// outside it and handed in. The fail-closed direction follows: an index that
+/// does not contain a path rejects it, so "we never looked" reads as "it is not
+/// there" rather than as a pass.
+///
+/// This exists because the doc comment on [`ThresholdBinding::enforced_by`]
+/// promised, for an entire release, that "the gate verifies exists" — and no
+/// code anywhere performed that check. A binding could name
+/// `src/does/not/exist.rs` and be reported as externally enforced. That is the
+/// same shape of defect as the threshold this rule audits: a claim in a config
+/// that nothing re-derives.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EnforcerIndex(BTreeMap<String, bool>);
+
+impl EnforcerIndex {
+    /// Resolve every `enforced_by` path declared in `cfg` against `root`.
+    pub fn resolve(root: &Path, cfg: &CoherenceConfig) -> Self {
+        EnforcerIndex(
+            cfg.binding
+                .values()
+                .filter_map(|b| b.enforced_by.as_deref())
+                .map(|p| (p.to_string(), root.join(p).exists()))
+                .collect(),
+        )
+    }
+
+    /// Build one directly, for tests.
+    pub fn from_existing<I: IntoIterator<Item = S>, S: Into<String>>(paths: I) -> Self {
+        EnforcerIndex(paths.into_iter().map(|p| (p.into(), true)).collect())
+    }
+
+    /// Does this path exist? Unknown paths are absent, never assumed present.
+    pub fn exists(&self, path: &str) -> bool {
+        self.0.get(path).copied().unwrap_or(false)
+    }
+}
+
 // ─────────────────────────── evaluation (pure) ───────────────────────────
 
 /// Outcome severity of one evaluated item.
@@ -385,6 +441,7 @@ pub fn evaluate_coherence(
     cfg: &CoherenceConfig,
     measurements: &Measurements,
     metrics: &BTreeMap<String, MetricBaseline>,
+    enforcers: &EnforcerIndex,
 ) -> CoherenceReport {
     let undeclared_sections: Vec<String> = roster
         .sections
@@ -400,7 +457,13 @@ pub fn evaluate_coherence(
         if !cfg.threshold_sections.contains(&entry.section) {
             continue;
         }
-        thresholds.push(evaluate_one_threshold(entry, cfg, measurements, metrics));
+        thresholds.push(evaluate_one_threshold(
+            entry,
+            cfg,
+            measurements,
+            metrics,
+            enforcers,
+        ));
     }
 
     let mut outcome = thresholds
@@ -445,6 +508,7 @@ fn evaluate_one_threshold(
     cfg: &CoherenceConfig,
     measurements: &Measurements,
     metrics: &BTreeMap<String, MetricBaseline>,
+    enforcers: &EnforcerIndex,
 ) -> ThresholdVerdict {
     let Some(binding) = cfg.binding.get(&entry.key) else {
         return unfirable(
@@ -497,12 +561,28 @@ fn evaluate_one_threshold(
                     "declared externally enforced but names no enforcing code".to_string(),
                 );
             };
+            if !enforcers.exists(by) {
+                return unfirable(
+                    entry,
+                    "external",
+                    None,
+                    Outcome::Fail,
+                    format!(
+                        "declared enforced by '{by}', which does not exist — a binding that \
+                         names a missing file records a belief, not an enforcement"
+                    ),
+                );
+            }
             unfirable(
                 entry,
                 "external",
                 None,
                 Outcome::Warn,
-                format!("enforced outside the ratchet by {by}"),
+                format!(
+                    "enforced outside the ratchet by {by}; WARN not Pass because this gate \
+                     can check that the reader exists and cannot check that the bound it \
+                     enforces is this one"
+                ),
             )
         }
         BindingKind::Gate => evaluate_gate(entry, binding, measurements, metrics),

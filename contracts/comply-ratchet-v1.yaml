@@ -136,6 +136,7 @@ equations:
     - "an unknown schema version is a FAILURE: a future file must not be read with today's meaning"
     - "a metric whose command did not run, exited outside {0,1}, or printed something that is not a count, is FAIL"
     - "exit 1 is a legitimate count of zero: the grep family uses it for 'no matches'"
+    - "INV-2102-6: a measurement of 0 against a baseline above 0 is UNAVAILABLE unless the metric declares `zero_is_reachable = true`. A rotted `git grep` pathspec and a genuine zero are byte-identical at the shell — both print 0, both exit 1, neither writes to stderr — so the exit-code guard cannot separate them and the baseline is the only place they differ. Measured on the shipped binary before the guard existed: repointing one metric's pathspec at a directory that does not exist made the coherence audit report `FIRING measured 0 against limit 100` and exit 0, while the ratchet read `0 <= 20390` as a Pass"
     - "the measurement shell is `bash -o pipefail`: without pipefail the canonical `<producer> | wc -l` reports wc's status, so a producer that failed outright reads as a clean zero — and a ratchet, which only ever looks upward, greets that as the largest improvement in the project's history"
     - "an unreadable previous version of the file is a HOLE, never `None`: `None` legitimately means 'initial capture, nothing was raised', and letting an unreadable history borrow that meaning hides an unjustified raise on exactly the machines where history is hardest to read"
     - "deleting .pmat-ratchet.toml from a repository that once committed one is a FAILURE, not a Skip"
@@ -205,6 +206,12 @@ falsification:
   - condition: "the lowering pass raises a baseline when the measurement grew"
     severity: P0
     test: src/services/metrics_ratchet/drive_tests.rs::lowering_never_raises_a_baseline
+  - condition: "a metric's pathspec rots so that it matches no files, prints a clean 0, and both gates greet the largest possible regression in measurement quality as the largest improvement in the project's history"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::a_zero_against_a_nonzero_baseline_is_a_hole_not_the_best_day_in_project_history
+  - condition: "the control: the zero guard rejects every zero, so a metric can never reach the one number every ratchet is trying to get to"
+    severity: P0
+    test: src/services/metrics_ratchet/drive_tests.rs::zero_is_still_reachable_when_it_is_declared_or_already_the_baseline
   - condition: "this repository's own committed ratchet is red, or was captured from a number rather than from its command"
     severity: P0
     test: src/services/metrics_ratchet/drive_tests.rs::the_committed_ratchet_holds_at_head

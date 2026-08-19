@@ -176,6 +176,7 @@ fn baseline(v: i64, justification: Option<&str>) -> MetricBaseline {
         command: "printf '1\\n'".into(),
         description: "d".into(),
         justification: justification.map(str::to_string),
+        zero_is_reachable: false,
     }
 }
 
@@ -457,5 +458,82 @@ fn cb_2102_is_in_the_comply_rule_registry() {
         ids.contains("cb-2102"),
         "cb-2102 is not in the comply rule registry, so it cannot appear in the enforcement \
          ledger and .pmat.yaml cannot address it"
+    );
+}
+
+// ── the silent zero the pipefail guard does not catch ───────────────────────
+
+/// The defect CB-2101's F-3 falsifier found in CB-2102's measurement layer.
+///
+/// `measure` guards the shape it documents at length — `<producer> | wc -l`
+/// where the producer *fails* — by running under `bash -o pipefail` and
+/// rejecting exit codes outside {0, 1}. It does not, and cannot, guard the
+/// shape where the producer SUCCEEDS over an empty input set. A rotted
+/// pathspec and a genuine zero are byte-identical at the shell:
+///
+/// ```text
+/// $ git grep -oF 'TOKEN'       -- 'no/such/path/*.rs' | wc -l  ->  0, exit 1, no stderr
+/// $ git grep -oF 'NOT_PRESENT' -- 'src/*.rs'          | wc -l  ->  0, exit 1, no stderr
+/// ```
+///
+/// `TOKEN` stands in for the real pattern deliberately: writing the literal
+/// this repository actually ratchets would move the number this guard protects,
+/// because the metric counts occurrences in prose about itself. The ratchet
+/// caught exactly that on the commit that introduced this test.
+///
+/// So the exit code cannot tell them apart and the guard has to be the
+/// baseline. Measured against the shipped binary before this test existed: a
+/// metric whose pathspec was edited to `no/such/path/*.rs` reported
+/// `FIRING  measured 0 count against limit 100` and the audit exited 0 — and
+/// the ratchet, which only ever looks upward, read `0 <= 20390` as a Pass. Both
+/// gates greeted a broken predicate as the best day in the project's history.
+#[test]
+fn a_zero_against_a_nonzero_baseline_is_a_hole_not_the_best_day_in_project_history() {
+    let mut m = baseline(20_390, None);
+    // A `git grep -oF <pattern> -- <pathspec> | wc -l` whose PATHSPEC has rotted.
+    // The pattern is deliberately not one this repository ratchets: what is under
+    // test is the empty input set, not the token, and using a real ratcheted
+    // literal here would move the metric this test defends.
+    m.command = "git grep -oF 'TOKEN' -- 'no/such/path/*.rs' | wc -l".into();
+    let got = measure::measure_metric(repo_root(), &m);
+    let Measurement::Unavailable(why) = &got else {
+        unreachable!("a rotted pathspec produced {got:?}, which was accepted against 20390")
+    };
+    assert!(
+        why.contains('0') && why.contains("20390"),
+        "the message must carry both numbers, got: {why}"
+    );
+}
+
+/// The control, in three parts. Without it the guard above is satisfied by
+/// rejecting every zero, which would mean a metric could never reach the one
+/// number every ratchet is trying to get to.
+#[test]
+fn zero_is_still_reachable_when_it_is_declared_or_already_the_baseline() {
+    // 1. A metric already AT zero measures zero and is fine.
+    let mut at_zero = baseline(0, None);
+    at_zero.command = "printf '0\\n'".into();
+    assert_eq!(
+        measure::measure_metric(repo_root(), &at_zero),
+        Measurement::Value(0)
+    );
+
+    // 2. A metric that declares zero reachable measures zero and is fine. This
+    //    is the deliberate, auditable override: one word in the committed file,
+    //    reviewed like any other change, not a flag on the command line.
+    let mut declared = baseline(20_390, None);
+    declared.command = "printf '0\\n'".into();
+    declared.zero_is_reachable = true;
+    assert_eq!(
+        measure::measure_metric(repo_root(), &declared),
+        Measurement::Value(0)
+    );
+
+    // 3. A non-zero measurement is untouched by the guard whatever it is.
+    let mut ordinary = baseline(20_390, None);
+    ordinary.command = "printf '7\\n'".into();
+    assert_eq!(
+        measure::measure_metric(repo_root(), &ordinary),
+        Measurement::Value(7)
     );
 }
