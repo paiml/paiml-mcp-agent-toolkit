@@ -172,7 +172,19 @@ pub fn analyze(project_root: &Path, extra_legs: &[String]) -> Result<Report, Str
         .into_iter()
         .filter(|l| l.runs_lib)
         .collect();
-    for spec in extra_legs {
+    // An empty `--executed ''` is an absent argument, not a leg. Pushing one
+    // fabricates a CI leg that does not exist, and a fabricated leg makes tests
+    // count as executed when nothing executes them — the exact claim this module
+    // exists to refute.
+    //
+    // It also made the gate unsatisfiable by its own remediation. `ledger::check`
+    // compares the committed file against a render of the report it is given;
+    // `the_committed_ledger_matches_the_tree` built that report with
+    // `&[String::new()]` while `--write-ledger` passes the CLI's empty vec. The
+    // two disagreed by one leg (`--executed ''`) and therefore by the whole
+    // rendered text, so the file the command wrote could never satisfy the test
+    // that told you to run it. Filtering here makes both call shapes agree.
+    for spec in extra_legs.iter().filter(|s| !s.trim().is_empty()) {
         legs.push(legs::Leg {
             origin: format!("--executed '{spec}'"),
             features: spec

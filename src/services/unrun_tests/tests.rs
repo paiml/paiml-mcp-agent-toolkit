@@ -491,7 +491,23 @@ fn zero_legs_is_an_error_not_a_catastrophic_report() {
 #[test]
 fn the_analysis_resolves_legs_and_walks_the_whole_lib() {
     let r = this_repo();
-    assert!(r.legs.len() >= 4, "legs: {:?}", r.legs);
+    // Three, and every one of them resolved from a workflow file.
+    //
+    // This was `>= 4`, and the fourth was not a CI leg: `this_repo()` calls
+    // `analyze` with `&[String::new()]`, and an empty `--executed` spec used to
+    // be pushed as a leg named `--executed ''`. The count was met by an
+    // artifact of how the test called the analyser, and a fabricated leg makes
+    // tests read as executed when nothing executes them.
+    //
+    // The origin assertion is the part that matters: it pins that every leg
+    // came from `.github/workflows`, so restoring the old behaviour cannot
+    // quietly satisfy the count again.
+    assert!(r.legs.len() >= 3, "legs: {:?}", r.legs);
+    assert!(
+        r.legs.iter().all(|l| l.contains(".yml:")),
+        "every leg must resolve from a workflow file, not from a CLI argument: {:?}",
+        r.legs
+    );
     assert!(
         r.total_tests > 20_000,
         "only {} tests walked",
