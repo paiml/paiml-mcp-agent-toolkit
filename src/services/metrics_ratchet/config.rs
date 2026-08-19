@@ -74,8 +74,17 @@ pub struct MetricBaseline {
     /// whose scope is unstated is not a measurement.
     pub includes_test_files: bool,
     /// A shell one-liner that reproduces `baseline` from a clean checkout.
-    /// Kept executable, not illustrative: `command_reproduces_measurement`
-    /// runs it and compares against the in-process measurement.
+    ///
+    /// Executable, not illustrative: [`super::measure::measure_all`] RUNS this
+    /// for every declared metric on every gate run, and the number it prints is
+    /// the number the ratchet judges. There is no second, in-process
+    /// measurement to disagree with it.
+    ///
+    /// (This doc previously named a verifier, `command_reproduces_measurement`,
+    /// that has never existed in this tree — the field was a promise nothing
+    /// kept for a whole release, which is the shape of defect this rule is
+    /// about. `drive_tests::every_committed_metric_command_still_measures` is
+    /// the test that now holds it.)
     pub command: String,
     /// What is being counted, in one sentence.
     pub description: String,
