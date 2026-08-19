@@ -17,11 +17,26 @@
 # are recorded below (C5, C6, C13); a contract that listed only what shipped
 # would misrepresent the release.
 #
-# LEVEL. `current_level` stays L0 on the Component-28 ladder
-# (src/cli/handlers/work_verification_level.rs): L1 there means a codegen'd
-# `debug_assert!` contract module compiles and runs, and no
-# contracts/work/PMAT-INIT-002.rs exists. Every method below is executable and
-# passing; the level records the missing ladder artifact, not missing evidence.
+# LEVEL. `current_level` is L1, which is what this contract has earned.
+#
+# A previous revision set L0 and explained that "L1 means a codegen'd
+# `debug_assert!` contract module compiles and runs, and no contracts/work/
+# PMAT-INIT-002.rs exists". That misread the file it cited.
+# `VerificationLevel::evidenced_level_from_yaml`
+# (src/cli/handlers/work_verification_level.rs) returns L1 for any bound YAML as
+# its FLOOR — `if !yaml_section_non_empty(yaml, "equations") { return Self::L1 }`
+# — and climbs to L2 only once an `equations:` section exists. No `.rs` artifact
+# is involved at any rung, and none of the 45 contracts in this directory at L3
+# has one either.
+#
+# The understatement was not harmless: CB-1330 fails a contract whose
+# `current_level` is below its `target_level`, so declaring L0 against a target of
+# L1 reported this file as a REGRESSION while 61 sibling contracts declaring L1
+# passed unexamined. CB-1330 compares two numbers inside one file; it never checks
+# that a declared `current_level` is true. This file was penalised for modesty by a
+# gate that cannot detect the opposite error.
+#
+# To reach L2, add an `equations:` section binding a clause to an equation.
 name: "PMAT-INIT-002"
 metadata:
   version: "1.0.0"
@@ -40,7 +55,7 @@ metadata:
 surface: work-contract
 verification_summary:
   target_level: L1
-  current_level: L0
+  current_level: L1
   total_obligations: 13
 proof_obligations:
 - id: "PO-C1"
