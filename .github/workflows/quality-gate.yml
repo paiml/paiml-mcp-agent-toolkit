@@ -61,6 +61,23 @@ jobs:
       #
       # Verified against the tree at the time of writing: all four families exit
       # 0 (8/29/2/1 warnings, 0 errors), so this blocks nothing that was passing.
+      #
+      # KNOWN BLIND SPOT — do not read a green tick here as "no known
+      # vulnerabilities". cargo-deny's advisories family is backed by the RustSec
+      # database, and an advisory that exists only as a GHSA/CVE is invisible to
+      # it. Live example at the time of writing: GHSA-2f9f-gq7v-9h6m /
+      # CVE-2026-43868 in `thrift v0.17.0`, which GitHub Dependabot reports as a
+      # moderate alert on this repository while `cargo deny check advisories`
+      # exits 0. There is no RustSec advisory for thrift, and no `ignore` entry
+      # in deny.toml — cargo-deny cannot suppress what it has never heard of.
+      # The path is thrift -> parquet 57 -> aprender-db 0.61 -> pmat, tracked in
+      # paiml/aprender#2531 (parquet 59 drops thrift) and paiml/.github#48.
+      #
+      # Closing it needs a second source that reads GitHub's advisory data
+      # (the Dependabot alerts API). That is deliberately NOT added here yet: it
+      # needs a token permission this workflow has never exercised, and a gate
+      # whose API call fails must fail the build rather than skip, so it has to
+      # be proven working before it guards a required check.
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
 
