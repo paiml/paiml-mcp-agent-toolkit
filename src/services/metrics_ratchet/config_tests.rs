@@ -438,3 +438,39 @@ fn a_missing_ratchet_file_is_an_error_not_a_default() {
     let err = MetricsRoster::load(dir.path()).unwrap_err();
     assert_eq!(err, ConfigError::Missing(METRICS_FILE.to_string()));
 }
+
+// ─────────────────────── the ratchet that cannot fail ───────────────────────
+
+/// `fold(Ok, ..)` over an empty vector is `Ok`. A ratchet declaring no metrics
+/// therefore passed every run, forever, while still rendering as a gate in the
+/// report — the exact absence-as-success shape CB-2100 exists to find, and it
+/// was inside the module written to find it, unnoticed for a whole release
+/// because nothing in the tree ever called this function.
+#[test]
+fn an_empty_metric_set_is_a_failure_not_a_clean_sheet() {
+    let report = evaluate_ratchet(&BTreeMap::new(), &Measurements::new(), None);
+    assert_eq!(
+        report.outcome,
+        Outcome::Fail,
+        "an empty ratchet cannot fail and is not a gate"
+    );
+    assert!(
+        report.holes.iter().any(|h| h.contains("no [metric.*]")),
+        "{:?}",
+        report.holes
+    );
+}
+
+/// The control: one declared metric that holds is still a pass, so the guard
+/// above has not simply made every ratchet red.
+#[test]
+fn a_single_metric_that_holds_is_still_a_pass() {
+    let mut metrics = BTreeMap::new();
+    metrics.insert(
+        "unwrap_calls".to_string(),
+        unwrap_metric(10)["unwrap_calls"].clone(),
+    );
+    let report = evaluate_ratchet(&metrics, &measured(11_056), None);
+    assert_eq!(report.outcome, Outcome::Ok);
+    assert!(report.holes.is_empty());
+}

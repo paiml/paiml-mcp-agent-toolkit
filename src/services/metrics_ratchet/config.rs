@@ -666,6 +666,10 @@ pub struct RatchetReport {
     pub metrics: Vec<MetricVerdict>,
     /// Baselines raised relative to the previous commit without justification.
     pub unjustified_raises: Vec<String>,
+    /// Things that could not be judged at all. Each one is a failure — an
+    /// empty ratchet is a gate that cannot fail, which is the shape this
+    /// whole rule exists to find.
+    pub holes: Vec<String>,
     /// Worst outcome across everything.
     pub outcome: Outcome,
 }
@@ -707,9 +711,11 @@ pub fn evaluate_ratchet(
                 let (outcome, detail) = match verdict {
                     RatchetVerdict::Fail => (
                         Outcome::Fail,
+                        // The command, not the commit: a finding a reader
+                        // cannot reproduce is a finding they will argue with.
                         format!(
-                            "{v} {} exceeds the baseline {} captured at {}",
-                            baseline.unit, baseline.baseline, "the recorded commit"
+                            "{v} {} exceeds the baseline {} — reproduce with: {}",
+                            baseline.unit, baseline.baseline, baseline.command
                         ),
                     ),
                     RatchetVerdict::Pass if next < baseline.baseline => (
@@ -760,14 +766,27 @@ pub fn evaluate_ratchet(
         out.push(verdict);
     }
 
+    // An empty metric set is not a clean sheet. A ratchet that declares
+    // nothing passes every run, forever, while reading as a gate in the
+    // report — the exact shape CB-2100 was written to find, and one this
+    // function used to have: `fold(Ok, ..)` over an empty vector is `Ok`.
+    let mut holes = Vec::new();
+    if metrics.is_empty() {
+        holes.push(format!(
+            "{RATCHET_FILE} declares no [metric.*] entries; a ratchet with no metrics cannot \
+             fail and is not a gate"
+        ));
+    }
+
     let mut outcome = out.iter().fold(Outcome::Ok, |acc, m| acc.worst(m.outcome));
-    if !unjustified_raises.is_empty() {
+    if !unjustified_raises.is_empty() || !holes.is_empty() {
         outcome = Outcome::Fail;
     }
 
     RatchetReport {
         metrics: out,
         unjustified_raises,
+        holes,
         outcome,
     }
 }
