@@ -246,6 +246,52 @@ fn test_cb402_no_shell_scripts() {
     );
 }
 
+/// In a git repository the scan is the set of TRACKED shell scripts, so a file
+/// git has never heard of is not the project's problem.
+///
+/// The regression this pins: the scan used to be an unfiltered `walkdir` at
+/// depth 4, and in this repository it spent its whole 20-file budget inside
+/// `.claude/worktrees/` — ephemeral agent copies of the tree holding 2,780
+/// scripts plus vendored installers — then reported 40 violations in files the
+/// project does not own while announcing that 140 real scripts went unexamined.
+///
+/// Asserts BOTH directions. A scan that simply returned nothing would satisfy
+/// "the untracked file is absent" on its own, so the tracked file must still be
+/// found; that is what makes this a test rather than a tautology.
+#[test]
+fn cb402_scans_tracked_scripts_and_ignores_untracked_ones() {
+    let temp = TempDir::new().unwrap();
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(temp.path())
+            .args(args)
+            .output()
+            .expect("git must be runnable for this test to mean anything")
+    };
+    assert!(git(&["init", "-q"]).status.success(), "git init");
+
+    // Both scripts carry the same defect; only their tracked-ness differs.
+    let bad = "#!/bin/bash\nrm $UNQUOTED\n";
+    fs::write(temp.path().join("tracked.sh"), bad).unwrap();
+    fs::write(temp.path().join("untracked.sh"), bad).unwrap();
+    assert!(git(&["add", "tracked.sh"]).status.success(), "git add");
+
+    let violations = detect_cb402_shell_script_quality(temp.path());
+    let files: Vec<&str> = violations.iter().map(|v| v.file.as_str()).collect();
+
+    // If bashrs is not installed every file yields CB-402-UNMEASURED, which is
+    // still a per-file verdict and still distinguishes the two.
+    assert!(
+        files.iter().any(|f| f.contains("tracked.sh")),
+        "the tracked script must be examined; got {files:?}"
+    );
+    assert!(
+        !files.iter().any(|f| f.contains("untracked.sh")),
+        "an untracked script is not the repository's code; got {files:?}"
+    );
+}
+
 #[test]
 fn test_cb402_target_dir_excluded() {
     let temp = TempDir::new().unwrap();
@@ -271,7 +317,8 @@ fn test_parse_bashrs_json_array() {
 
 #[test]
 fn test_parse_bashrs_json_object() {
-    let json = r#"{"diagnostics":[{"code":"SC2046","message":"Quote this","line":3,"severity":"error"}]}"#;
+    let json =
+        r#"{"diagnostics":[{"code":"SC2046","message":"Quote this","line":3,"severity":"error"}]}"#;
     let result = parse_bashrs_json_output(json).unwrap();
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].code, "SC2046");
@@ -329,7 +376,11 @@ fn bashrs_log_preamble_does_not_hide_the_diagnostics() {
                {\"file\":\"./scripts/x.sh\",\"diagnostics\":[\
                {\"code\":\"SC2086\",\"message\":\"Double quote\",\"line\":5,\"severity\":\"error\"}]}\n";
     let result = parse_bashrs_json_output(raw).expect("payload after a log preamble is parseable");
-    assert_eq!(result.len(), 1, "the log preamble swallowed the diagnostics");
+    assert_eq!(
+        result.len(),
+        1,
+        "the log preamble swallowed the diagnostics"
+    );
     assert_eq!(result[0].code, "SC2086");
 }
 
