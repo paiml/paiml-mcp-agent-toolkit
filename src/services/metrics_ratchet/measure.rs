@@ -91,6 +91,68 @@ pub fn guard_zero(raw: Measurement, metric: &MetricBaseline) -> Measurement {
 /// upward, greets as the largest improvement in the project's history and the
 /// lowering job then makes permanent.
 pub fn measure(project_path: &Path, command: &str) -> Measurement {
+    #[cfg(test)]
+    if is_own_repo(project_path) {
+        // Take the map lock only long enough to hand out this command's cell,
+        // then release it and initialise the cell outside. A lock held across
+        // the subprocess would serialise unrelated commands; a lock NOT held
+        // across it lets every thread miss simultaneously, which is what the
+        // first version of this memo did — six callers raced, all missed, and
+        // the suite got 11% faster instead of 6x.
+        let cell = {
+            let mut map = REPO_MEASUREMENTS
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            std::sync::Arc::clone(map.entry(command.to_owned()).or_default())
+        };
+        return cell
+            .get_or_init(|| measure_now(project_path, command))
+            .clone();
+    }
+    measure_now(project_path, command)
+}
+
+/// Test-only memo for measurements taken against THIS repository.
+///
+/// `cargo test --lib` reaches the committed ratchet from six independent call
+/// sites — three `run_coherence`, one `run`, one per-metric `measure` loop and
+/// one `measure_all` — and each used to re-run every command from scratch. With
+/// a compiler-derived metric in the set that is ~40s a pass, so the suite spent
+/// roughly four minutes measuring the same unchanged tree six times, on each of
+/// the eight feature legs CI runs.
+///
+/// Keyed on the command text, which IS the metric's identity here: two metrics
+/// sharing a command must measure the same thing, or one of them is misdeclared.
+///
+/// Scoped to this repository on purpose. Fixture-driven tests build a temp dir,
+/// measure it, mutate it and measure again — caching those would make a test
+/// observe a tree that no longer exists. The repository's own working tree is
+/// not mutated by the suite, so within one process its measurements are stable.
+///
+/// Each command gets its own `OnceLock` so a second caller BLOCKS on the first
+/// rather than duplicating a 40-second compile: `get_or_init` is what turns six
+/// concurrent identical measurements into one.
+#[cfg(test)]
+type MeasurementCell = std::sync::Arc<std::sync::OnceLock<Measurement>>;
+
+#[cfg(test)]
+static REPO_MEASUREMENTS: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashMap<String, MeasurementCell>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+/// True only for the repository this crate is compiled from, resolved through
+/// symlinks so a caller passing a different spelling of the same path is not
+/// treated as a separate tree.
+#[cfg(test)]
+fn is_own_repo(project_path: &Path) -> bool {
+    let here = std::fs::canonicalize(env!("CARGO_MANIFEST_DIR")).ok();
+    let there = std::fs::canonicalize(project_path).ok();
+    here.is_some() && here == there
+}
+
+/// Run one command and classify its result. Every fail-closed decision lives
+/// here; [`measure`] adds only the test-time memo.
+fn measure_now(project_path: &Path, command: &str) -> Measurement {
     if command.trim().is_empty() {
         return Measurement::Unavailable(
             "the metric declares no command, so its baseline cannot be reproduced".into(),
@@ -105,6 +167,17 @@ pub fn measure(project_path: &Path, command: &str) -> Measurement {
         // Deterministic collation and message text: a metric that greps must
         // not depend on the locale of whoever ran it.
         .env("LC_ALL", "C")
+        // A metric must measure the tree, not the shell that happened to invoke
+        // it. These five can silently change what a nested cargo compiles — and
+        // therefore what a compiler-derived metric counts — when the gate runs
+        // under another cargo. CARGO_TARGET_DIR is deliberately NOT removed:
+        // the commands that need isolation set it inline, which is what keeps a
+        // nested cargo from blocking on the outer invocation's target-dir lock.
+        .env_remove("RUSTFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
+        .env_remove("CARGO_BUILD_RUSTFLAGS")
+        .env_remove("CARGO_BUILD_TARGET")
+        .env_remove("CARGO_BUILD_JOBS")
         .output();
 
     let output = match output {
