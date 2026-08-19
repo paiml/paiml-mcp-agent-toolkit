@@ -260,7 +260,7 @@ fn test_cb402_no_shell_scripts() {
 /// found; that is what makes this a test rather than a tautology.
 #[test]
 fn cb402_scans_tracked_scripts_and_ignores_untracked_ones() {
-    let temp = TempDir::new().unwrap();
+    let temp = TempDir::new().expect("a temp dir is required for this test to mean anything");
     let git = |args: &[&str]| {
         std::process::Command::new("git")
             .arg("-C")
@@ -273,8 +273,8 @@ fn cb402_scans_tracked_scripts_and_ignores_untracked_ones() {
 
     // Both scripts carry the same defect; only their tracked-ness differs.
     let bad = "#!/bin/bash\nrm $UNQUOTED\n";
-    fs::write(temp.path().join("tracked.sh"), bad).unwrap();
-    fs::write(temp.path().join("untracked.sh"), bad).unwrap();
+    fs::write(temp.path().join("tracked.sh"), bad).expect("write tracked.sh");
+    fs::write(temp.path().join("untracked.sh"), bad).expect("write untracked.sh");
     assert!(git(&["add", "tracked.sh"]).status.success(), "git add");
 
     let violations = detect_cb402_shell_script_quality(temp.path());
