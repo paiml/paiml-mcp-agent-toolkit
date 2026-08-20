@@ -198,6 +198,8 @@ fn complexity_summary_is_plain_with_colour_off() {
 
 fn qg_results(passed: bool) -> super::QualityGateResults {
     super::QualityGateResults {
+        files_examined: 0,
+        checks_run: Vec::new(),
         passed,
         total_violations: 2,
         blocking_violations: if passed { 0 } else { 1 },

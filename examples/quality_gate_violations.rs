@@ -24,6 +24,8 @@ fn main() {
 
     // Create sample results with violations
     let results = QualityGateResults {
+        files_examined: 0,
+        checks_run: Vec::new(),
         passed: false,
         total_violations: 5,
         // Of the 5 findings, 4 are verdict-bearing (warning/error) and one is

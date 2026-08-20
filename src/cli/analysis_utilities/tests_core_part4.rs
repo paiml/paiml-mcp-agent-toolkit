@@ -28,6 +28,8 @@
     #[test]
     fn test_format_quality_gate_output_json() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 10,
             complexity_violations: 3,
@@ -74,6 +76,8 @@
     #[test]
     fn test_format_quality_gate_output_human() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: true,
             total_violations: 0,
             complexity_violations: 0,
@@ -104,6 +108,8 @@
     #[test]
     fn test_format_quality_gate_output_junit() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 2,
             complexity_violations: 1,
@@ -143,6 +149,8 @@
     #[test]
     fn test_format_quality_gate_output_summary() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: true,
             total_violations: 0,
             complexity_violations: 0,
@@ -173,6 +181,8 @@
     #[test]
     fn test_format_quality_gate_output_detailed() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 5,
             complexity_violations: 1,
@@ -212,6 +222,8 @@
     #[test]
     fn test_format_quality_gate_output_all_violation_types() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 9,
             complexity_violations: 1,
