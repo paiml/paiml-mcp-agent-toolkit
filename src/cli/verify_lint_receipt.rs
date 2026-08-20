@@ -70,8 +70,19 @@ use std::path::{Path, PathBuf};
 /// receipt can never be committed, shared, or inherited from another machine.
 const RECEIPT_RELPATH: &str = ".pmat/clippy-receipt";
 
-/// Hidden files that change clippy's verdict but are skipped by the tree walk
-/// (which excludes dotfiles so `.git/` does not dominate the hash).
+/// Hidden files that change clippy's verdict and might still be missed by the
+/// tree walk — `.cargo/config.toml` is commonly gitignored, and the walk honours
+/// gitignore. Kept as belt-and-braces; entries are deduplicated below, so a path
+/// the walk already reached costs nothing.
+///
+/// This list USED to be the only hidden input hashed at all, because the walk ran
+/// with `.hidden(true)` and skipped every dot-path. That silently excluded 85 of
+/// this repository's 88 tracked dot-paths, two of which are `include_str!`
+/// COMPILATION inputs — `.agents/hooks/pmat-quality-feedback.sh`
+/// (src/services/workspace_init/templates.rs) and `.gitignore`
+/// (this file's own tests). Deleting either breaks the build while leaving the
+/// fingerprint byte-identical, so `pmat verify --stage clippy` returned a cached
+/// green for a tree that does not compile.
 const HIDDEN_INPUTS: &[&str] = &[".cargo/config.toml", ".cargo/config", ".clippy.toml"];
 
 /// Set to any non-empty value to force a real clippy run even when a receipt
@@ -94,11 +105,21 @@ pub fn fingerprint(project: &Path, flags: &str) -> Result<String> {
     hasher.update(b"\n");
 
     let mut entries: Vec<(String, [u8; 32])> = Vec::new();
+    // `.hidden(false)`: dotfiles are compilation inputs here, not noise. The
+    // module's contract is "a different byte anywhere in the tree is a different
+    // key", and `.hidden(true)` made that false for every dot-path.
+    //
+    // `.git/` is excluded explicitly because it is enormous and changes on every
+    // git operation, which would make the receipt never match. `.pmat/` needs no
+    // rule: it is gitignored (`**/.pmat/`), so `git_ignore(true)` already drops
+    // it — which also means the receipt this function writes cannot become an
+    // input to its own fingerprint.
     for entry in ignore::WalkBuilder::new(project)
-        .hidden(true)
+        .hidden(false)
         .git_ignore(true)
         .git_global(true)
         .git_exclude(true)
+        .filter_entry(|e| e.file_name() != std::ffi::OsStr::new(".git"))
         .build()
         .filter_map(std::result::Result::ok)
     {
@@ -123,6 +144,10 @@ pub fn fingerprint(project: &Path, flags: &str) -> Result<String> {
     // Sort: the walk order is filesystem-dependent, and a fingerprint that
     // changes with directory iteration order would invalidate itself at random.
     entries.sort_unstable();
+    // HIDDEN_INPUTS may name a path the walk already reached; hashing it twice
+    // would still be deterministic, but deduplicating keeps the key equal to
+    // "the set of input files", which is what the doc above claims it is.
+    entries.dedup();
     for (rel, digest) in entries {
         hasher.update(rel.as_bytes());
         hasher.update(b"\0");
@@ -251,6 +276,66 @@ mod tests {
             before,
             fingerprint(dir.path(), "flags").expect("fingerprint"),
             "an added file must change the key"
+        );
+    }
+
+    /// A hidden file is a compilation input, not noise.
+    ///
+    /// The walk ran with `.hidden(true)`, so every dot-path was excluded from
+    /// the key except the three in `HIDDEN_INPUTS`. In this repository that
+    /// silently dropped 85 of 88 tracked dot-paths, two of them `include_str!`
+    /// inputs whose deletion stops the crate compiling — and the receipt would
+    /// still have matched, so `pmat verify --stage clippy` returned green for a
+    /// tree that does not build.
+    ///
+    /// Three cases, because the class is "any dot-path", not "the file I
+    /// happened to name": a nested hidden file, a top-level dotfile, and a file
+    /// inside a hidden directory.
+    #[test]
+    fn a_changed_hidden_file_changes_the_fingerprint() {
+        for rel in [
+            ".agents/hooks/hook.sh",
+            ".gitattributes",
+            ".config/thing.toml",
+        ] {
+            let dir = scratch();
+            let path = dir.path().join(rel);
+            fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+            fs::write(&path, "before\n").expect("write");
+            let before = fingerprint(dir.path(), "flags").expect("fingerprint");
+
+            fs::write(&path, "after\n").expect("rewrite");
+            assert_ne!(
+                before,
+                fingerprint(dir.path(), "flags").expect("fingerprint"),
+                "editing {rel} must change the key"
+            );
+
+            fs::remove_file(&path).expect("rm");
+            assert_ne!(
+                before,
+                fingerprint(dir.path(), "flags").expect("fingerprint"),
+                "deleting {rel} must change the key"
+            );
+        }
+    }
+
+    /// The counter-test: `.git/` must NOT be in the key. It changes on every git
+    /// operation, so hashing it would mean no receipt ever matched — a cache
+    /// that never hits is as useless as one that always does, and would push
+    /// people to disable the gate.
+    #[test]
+    fn git_internals_are_not_part_of_the_fingerprint() {
+        let dir = scratch();
+        let git = dir.path().join(".git");
+        fs::create_dir_all(&git).expect("mkdir .git");
+        fs::write(git.join("HEAD"), "ref: refs/heads/a\n").expect("write");
+        let before = fingerprint(dir.path(), "flags").expect("fingerprint");
+        fs::write(git.join("HEAD"), "ref: refs/heads/b\n").expect("rewrite");
+        assert_eq!(
+            before,
+            fingerprint(dir.path(), "flags").expect("fingerprint"),
+            "a git operation must not invalidate the receipt"
         );
     }
 
