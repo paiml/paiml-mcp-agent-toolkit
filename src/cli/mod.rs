@@ -478,11 +478,17 @@ pub fn ensure_files_were_analyzed(
     if files_analyzed > 0 {
         return Ok(());
     }
-    anyhow::bail!(
+    // Exit 5 DECLARED, not inferred. This refusal reached
+    // `ExitCode::AnalysisError` only because the interpolated `measurement` was
+    // sometimes the word "complexity", which the old substring classifier
+    // matched. The same refusal for a different analysis — where `measurement`
+    // is "dead-code" or "churn" — matched nothing and exited 1, so one class of
+    // failure had two exit codes decided by an interpolation.
+    Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
         "no {population} were found under {}, so no {measurement} measurement was taken. \
          This is not a clean result.",
         path.display()
-    )
+    )))
 }
 
 /// The single implementation of `--top-files N`.

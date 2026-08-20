@@ -129,6 +129,7 @@ pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
 #[cfg(feature = "standard-deps")]
 pub mod cli;
+pub mod cli_exit;
 #[cfg(feature = "standard-deps")]
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
                    // Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
