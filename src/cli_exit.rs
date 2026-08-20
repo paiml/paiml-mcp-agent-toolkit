@@ -58,19 +58,33 @@ impl From<ExitCode> for i32 {
 /// one byte of what the user reads. That separation is the point: the message
 /// and the exit code stop being the same channel.
 #[derive(Debug, thiserror::Error)]
-#[error("{source}")]
+#[error("{inner:#}")]
 pub struct ExitCoded {
     /// The code this failure exits with.
     pub code: ExitCode,
-    /// The underlying error, whose `Display` is preserved verbatim.
-    #[source]
-    pub source: anyhow::Error,
+    /// The underlying error, rendered verbatim.
+    ///
+    /// Named `inner`, not `source`, and that is load-bearing. `write_fatal_error`
+    /// prints `{error:#}` — the alternate form that walks the whole anyhow chain
+    /// joining entries with ": ". While this field was called `source`, thiserror
+    /// linked it as the error source (it does that from the NAME, with or without
+    /// the `#[source]` attribute), so the chain held both `ExitCoded` and the
+    /// error it wraps — whose `Display` is identical. Every coded failure printed
+    /// its own message twice:
+    ///
+    ///     Error: no source files were found under X ...: no source files were
+    ///     found under X ...
+    ///
+    /// Dropping the attribute alone did NOT fix it; only the rename did.
+    /// `{inner:#}` then renders the inner chain in full from a single entry, so
+    /// no `.context()` layer is lost and nothing repeats.
+    pub inner: anyhow::Error,
 }
 
 /// Attach an exit code to an error at the site that raises it.
 #[must_use]
-pub fn with_code(code: ExitCode, source: anyhow::Error) -> anyhow::Error {
-    anyhow::Error::new(ExitCoded { code, source })
+pub fn with_code(code: ExitCode, inner: anyhow::Error) -> anyhow::Error {
+    anyhow::Error::new(ExitCoded { code, inner })
 }
 
 /// Configuration is missing or unusable — exit 4.
@@ -127,6 +141,58 @@ mod tests {
 
     /// The counter-test. An undeclared error must NOT pick up a code from words
     /// that used to trigger the classifier — otherwise the substring behaviour
+    /// A coded failure renders its message exactly once.
+    ///
+    /// `write_fatal_error` prints `{error:#}`, and the alternate form walks the
+    /// whole chain joining entries with ": ". While the field was NAMED
+    /// `source`, the chain held `ExitCoded` AND the error it wraps, whose
+    /// `Display` is identical — so every coded failure printed itself twice:
+    /// "no source files were found under X ...: no source files were found
+    /// under X ...". Three tests already covered this type and none of them
+    /// rendered `{:#}`, so the repetition shipped unseen.
+    #[test]
+    fn the_message_is_not_printed_twice() {
+        let text = "no source files were found under /nope";
+        let e = anyhow::Error::from(ExitCoded {
+            code: ExitCode::AnalysisError,
+            inner: anyhow::anyhow!(text),
+        });
+        let rendered = format!("{e:#}");
+        assert_eq!(
+            rendered.matches(text).count(),
+            1,
+            "message repeated in the chain-rendered form: {rendered}"
+        );
+        assert_eq!(rendered, text);
+    }
+
+    /// ...and the inner chain is not lost to that fix.
+    ///
+    /// The cheap way to stop the duplication is to drop the field as a source,
+    /// which also drops every `.context()` layer beneath it from the rendered
+    /// output. `{inner:#}` keeps them.
+    #[test]
+    fn the_inner_context_chain_still_renders() {
+        let inner = anyhow::anyhow!("permission denied")
+            .context("could not open .pmat/index.db")
+            .context("cache load failed");
+        let e = anyhow::Error::from(ExitCoded {
+            code: ExitCode::GeneralError,
+            inner,
+        });
+        let rendered = format!("{e:#}");
+        for part in [
+            "cache load failed",
+            "could not open .pmat/index.db",
+            "permission denied",
+        ] {
+            assert!(
+                rendered.contains(part),
+                "context layer {part:?} lost from: {rendered}"
+            );
+        }
+    }
+
     /// survives under a new name.
     #[test]
     fn undeclared_errors_are_general_whatever_they_say() {
