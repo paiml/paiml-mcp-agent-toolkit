@@ -123,6 +123,66 @@ mod integration_tests {
     // Tests for create_fix_response
     // ========================================================================
 
+    fn census(found: usize, eligible: usize) -> DiagnosticCensus {
+        DiagnosticCensus {
+            found,
+            eligible,
+            min_confidence: "High".to_string(),
+        }
+    }
+
+    /// Diagnostics FOUND and diagnostics ELIGIBLE are different numbers.
+    ///
+    /// They were reported as one: everything downstream counted the filtered
+    /// list, so on a crate where `cargo clippy` emits 76 warnings this returned
+    /// `"total_diagnostics": 0` with `"message": "🔧 Clippy fixes applied
+    /// successfully"` and exit 0. The default is `--confidence high`, and any
+    /// lint without an explicit rule is rated Medium or Low, so every
+    /// diagnostic was dropped — 75 `clippy::collapsible_if` and one
+    /// `dead_code`. "None were auto-fixable at this confidence" and "the crate
+    /// is clippy-clean" are opposite claims, and only the second was reported.
+    #[test]
+    fn diagnostics_found_survives_the_confidence_filter() {
+        let response = create_fix_response(json!({}), false, &census(76, 0));
+        let pmcp::Content::Text { text } = &response.content[0] else {
+            unreachable!("Expected Text content")
+        };
+        let doc: serde_json::Value = serde_json::from_str(text).expect("valid json");
+
+        assert_eq!(doc["diagnostics_found"], 76, "{text}");
+        assert_eq!(doc["diagnostics_eligible"], 0, "{text}");
+        assert_eq!(doc["diagnostics_filtered_out"], 76, "{text}");
+
+        let message = doc["message"].as_str().expect("message");
+        assert!(
+            message.contains("76"),
+            "the message must carry the count clippy actually reported: {message}"
+        );
+        assert!(
+            !message.contains("successfully"),
+            "0 of 76 fixed is not success: {message}"
+        );
+    }
+
+    /// The counter-test: a genuinely clean crate must still read as clean.
+    ///
+    /// Without this, warning on every run would pass the test above.
+    #[test]
+    fn a_crate_with_no_diagnostics_still_reads_as_clean() {
+        let response = create_fix_response(json!({}), false, &census(0, 0));
+        let pmcp::Content::Text { text } = &response.content[0] else {
+            unreachable!("Expected Text content")
+        };
+        let doc: serde_json::Value = serde_json::from_str(text).expect("valid json");
+
+        assert_eq!(doc["diagnostics_found"], 0);
+        let message = doc["message"].as_str().expect("message");
+        assert!(
+            !message.contains("NOT a clean result"),
+            "a crate clippy had nothing to say about must not be flagged: {message}"
+        );
+    }
+
     #[test]
     fn test_create_fix_response_dry_run() {
         let results = json!({
@@ -131,14 +191,14 @@ mod integration_tests {
             "fixes": []
         });
 
-        let response = create_fix_response(results, true);
+        let response = create_fix_response(results, true, &census(5, 5));
 
         assert!(!response.is_error);
         assert_eq!(response.content.len(), 1);
 
         if let pmcp::Content::Text { text } = &response.content[0] {
             assert!(text.contains("analyzed"));
-            assert!(text.contains("Clippy fixes"));
+            assert!(text.contains("clippy reported"));
             assert!(text.contains("dry_run"));
         } else {
             panic!("Expected Text content");
@@ -155,14 +215,14 @@ mod integration_tests {
             }
         });
 
-        let response = create_fix_response(results, false);
+        let response = create_fix_response(results, false, &census(10, 8));
 
         assert!(!response.is_error);
         assert_eq!(response.content.len(), 1);
 
         if let pmcp::Content::Text { text } = &response.content[0] {
             assert!(text.contains("applied"));
-            assert!(text.contains("Clippy fixes"));
+            assert!(text.contains("clippy reported"));
         } else {
             panic!("Expected Text content");
         }
@@ -260,8 +320,8 @@ mod integration_tests {
 
     #[test]
     fn test_create_fix_response_message_formatting() {
-        let response_dry = create_fix_response(json!({}), true);
-        let response_apply = create_fix_response(json!({}), false);
+        let response_dry = create_fix_response(json!({}), true, &census(3, 3));
+        let response_apply = create_fix_response(json!({}), false, &census(3, 3));
 
         // Verify different messages for dry run vs apply
         if let (pmcp::Content::Text { text: text_dry }, pmcp::Content::Text { text: text_apply }) =

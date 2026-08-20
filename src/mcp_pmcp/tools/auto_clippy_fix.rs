@@ -25,9 +25,31 @@ pub async fn auto_clippy_fix(
     // Run clippy and get diagnostics
     let diagnostics = run_clippy_analysis(&path).await?;
 
+    // How many clippy actually REPORTED, before any of ours filtering.
+    //
+    // Everything downstream counts the FILTERED list, so on a crate where
+    // `cargo clippy` emits 76 warnings this reported
+    //
+    //     "total_diagnostics": 0, "action": "applied",
+    //     "message": "🔧 Clippy fixes applied successfully"
+    //
+    // and exited 0. The default is `--confidence high`, and `default_confidence`
+    // rates anything without an explicit rule as Medium (a suggestion exists) or
+    // Low (none) — so unless a lint is named in `confidence_rules`, every
+    // diagnostic is dropped here. All 76 were: 75 `clippy::collapsible_if` and
+    // one `dead_code`. "None were auto-fixable at this confidence" and "the
+    // crate is clippy-clean" are opposite claims, and only the second was
+    // reported.
+    let census = DiagnosticCensus {
+        found: diagnostics.len(),
+        eligible: 0,
+        min_confidence: format!("{min_confidence:?}"),
+    };
+
     // Filter by confidence level
     let engine = ClippyFixEngine::new();
     let filtered = filter_diagnostics(&engine, diagnostics, min_confidence, &fix_specific_codes);
+    let eligible = filtered.len();
 
     // Apply fixes or show what would be fixed
     let results = if is_dry_run {
@@ -36,7 +58,11 @@ pub async fn auto_clippy_fix(
         apply_fixes(&engine, filtered).await?
     };
 
-    Ok(create_fix_response(results, is_dry_run))
+    Ok(create_fix_response(
+        results,
+        is_dry_run,
+        &census.with_eligible(eligible),
+    ))
 }
 
 // Core helper functions: parsing, filtering, simulation, application, response creation
