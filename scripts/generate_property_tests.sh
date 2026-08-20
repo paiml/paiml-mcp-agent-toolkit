@@ -32,11 +32,24 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# This script rewrites Rust sources in place (cat >> and sed -i), so every
+# target path is checked before it is touched: a '..' component would let a
+# stray find result push generated tests outside $SERVER_SRC.
+validate_target_path() {
+    case "$1" in
+        "" | *..*)
+            log_error "Refusing to modify unsafe path: '$1'"
+            return 1
+            ;;
+    esac
+}
+
 # Property test template for data structures
 generate_data_struct_tests() {
     local file="$1"
     local struct_name="$2"
-    
+    validate_target_path "$file" || return 1
+
     cat >> "$file" << 'EOF'
 
 #[cfg(test)]
@@ -75,7 +88,8 @@ EOF
 # Property test template for functions/modules  
 generate_function_tests() {
     local file="$1"
-    
+    validate_target_path "$file" || return 1
+
     cat >> "$file" << 'EOF'
 
 #[cfg(test)]

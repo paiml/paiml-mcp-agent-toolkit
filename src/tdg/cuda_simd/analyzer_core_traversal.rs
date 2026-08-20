@@ -1,27 +1,10 @@
 // CudaSimdAnalyzer directory traversal, path filtering, and file dispatch
 
 impl CudaSimdAnalyzer {
-    /// Directories to skip during analysis (common ignore patterns)
-    const IGNORED_DIRS: &'static [&'static str] = &[
-        ".venv", "venv", "node_modules", "target", ".git", "__pycache__",
-        ".tox", ".nox", "dist", "build", ".eggs", "*.egg-info",
-        ".mypy_cache", ".pytest_cache", ".cargo", "vendor",
-    ];
-
-    /// Check if a path should be skipped (in an ignored directory)
-    fn should_skip_path(path: &Path) -> bool {
-        for component in path.components() {
-            if let std::path::Component::Normal(name) = component {
-                let name_str = name.to_string_lossy();
-                for ignored in Self::IGNORED_DIRS {
-                    if name_str == *ignored || name_str.ends_with(".egg-info") {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
+    /// Extensions this analyzer reads. Everything else the walk returns is
+    /// dropped without opening the file.
+    const ANALYZED_EXTENSIONS: &'static [&'static str] =
+        &["cu", "cuh", "ptx", "rs", "wgsl", "c", "cpp", "h", "hpp"];
 
     fn analyze_directory(
         &self,
@@ -34,35 +17,42 @@ impl CudaSimdAnalyzer {
         barrier_safety: &mut BarrierSafetyResult,
         coalescing: &mut CoalescingResult,
     ) -> anyhow::Result<()> {
-        for entry in walkdir::WalkDir::new(path)
-            .follow_links(true)
-            .into_iter()
-            .filter_entry(|e| !Self::should_skip_path(e.path()))
-            .filter_map(Result::ok)
-        {
-            let file_path = entry.path();
-            if file_path.is_file() {
-                if let Some(ext) = file_path.extension() {
-                    let ext_str = ext.to_string_lossy().to_lowercase();
-                    if matches!(
-                        ext_str.as_str(),
-                        "cu" | "cuh" | "ptx" | "rs" | "wgsl" | "c" | "cpp" | "h" | "hpp"
-                    ) {
-                        if let Ok(analysis) = self.analyze_file(file_path) {
-                            *files_analyzed += 1;
-                            *cuda_files += analysis.cuda_files;
-                            *simd_files += analysis.simd_files;
-                            *wgpu_files += analysis.wgpu_files;
-                            defects.extend(analysis.defects);
-                            barrier_safety.total_barriers += analysis.barrier_safety.total_barriers;
-                            barrier_safety.safe_barriers += analysis.barrier_safety.safe_barriers;
-                            barrier_safety.unsafe_barriers.extend(analysis.barrier_safety.unsafe_barriers);
-                            coalescing.total_operations += analysis.coalescing.total_operations;
-                            coalescing.coalesced_operations += analysis.coalescing.coalesced_operations;
-                            coalescing.problematic_accesses.extend(analysis.coalescing.problematic_accesses);
-                        }
-                    }
-                }
+        // THE shared project walk, not a private one. This used to be a raw
+        // `walkdir` with a hand-written directory blacklist and no gitignore
+        // support at all, so on this repository it descended into the
+        // gitignored `.claude/worktrees/` — 48 checkouts of pmat inside pmat.
+        // Measured on this tree: 205,607 files analysed and 1,154 defects
+        // before, 4,334 files and 25 defects after — a corpus that was ~48
+        // copies of one project. `rust_project_score::gpu_simd_scorer` awards
+        // its points from `result.defects`, so it was scoring the duplicates
+        // too. (The Popper *score* itself did not move here — 66.5/C either
+        // way — because its components come from project-level pattern checks
+        // that saturate at one copy; the counts, and everything derived from
+        // them, did.)
+        for file_path in crate::services::file_discovery::project_files(path)? {
+            let Some(ext) = file_path.extension() else {
+                continue;
+            };
+            let ext = ext.to_string_lossy().to_lowercase();
+            if !Self::ANALYZED_EXTENSIONS.contains(&ext.as_str()) {
+                continue;
+            }
+            if let Ok(analysis) = self.analyze_file(&file_path) {
+                *files_analyzed += 1;
+                *cuda_files += analysis.cuda_files;
+                *simd_files += analysis.simd_files;
+                *wgpu_files += analysis.wgpu_files;
+                defects.extend(analysis.defects);
+                barrier_safety.total_barriers += analysis.barrier_safety.total_barriers;
+                barrier_safety.safe_barriers += analysis.barrier_safety.safe_barriers;
+                barrier_safety
+                    .unsafe_barriers
+                    .extend(analysis.barrier_safety.unsafe_barriers);
+                coalescing.total_operations += analysis.coalescing.total_operations;
+                coalescing.coalesced_operations += analysis.coalescing.coalesced_operations;
+                coalescing
+                    .problematic_accesses
+                    .extend(analysis.coalescing.problematic_accesses);
             }
         }
 

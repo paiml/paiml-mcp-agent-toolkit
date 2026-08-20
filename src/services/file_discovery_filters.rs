@@ -2,12 +2,27 @@
 // and analyzable file classification
 // Included by file_discovery.rs - no `use` imports or `#!` inner attributes allowed
 
+/// Whether a walk applies the source-extension whitelist.
+///
+/// The ignore policy (gitignore, hidden entries, build artifacts, external
+/// clones) is the same either way — only the extension question differs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExtensionPolicy {
+    /// Only extensions [`ProjectFileDiscovery::is_analyzable_file`] recognises.
+    AnalyzableOnly,
+    /// Every file, whatever its extension: the caller filters. Used by
+    /// analyzers whose file types (`.cu`, `.wgsl`, `.wat`, `.md`, …) are not in
+    /// that whitelist and which would otherwise write their own walk.
+    AnyExtension,
+}
+
 impl ProjectFileDiscovery {
     /// Check if an entry should be included in the results
     fn should_include_entry(
         entry: &DirEntry,
         filter_external: bool,
         _classifier: &FileClassifier,
+        extensions: ExtensionPolicy,
     ) -> bool {
         // Skip directories
         if entry.file_type().is_none_or(|ft| !ft.is_file()) {
@@ -23,7 +38,7 @@ impl ProjectFileDiscovery {
         }
 
         // Check if it's a source file we can analyze
-        if !Self::is_analyzable_file(path) {
+        if extensions == ExtensionPolicy::AnalyzableOnly && !Self::is_analyzable_file(path) {
             return false;
         }
 

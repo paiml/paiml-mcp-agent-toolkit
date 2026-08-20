@@ -152,7 +152,7 @@
             Some(temp_dir.path().to_path_buf()),
             None,
             OutputFormat::Table,
-            true, // fail_on_violation
+            true, // exit_on_violation
             vec!["complexity".to_string()],
             None,
             None,

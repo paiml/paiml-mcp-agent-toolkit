@@ -337,6 +337,28 @@ pub async fn handle_analyze_complexity(
     // Track original count before filtering for better UX
     let original_file_count = file_metrics.len();
 
+    // #1015. GH-682 above closes "the tree is not there / cannot be read"; an
+    // EMPTY but perfectly readable directory got past it and printed
+    //
+    //     Complexity Analysis Summary
+    //       Files analyzed: 0
+    //       Median Cyclomatic: 0.0   Max Cyclomatic: 0   …
+    //
+    // on STDOUT with exit 0. The one line that disclosed the empty denominator
+    // ("⚠️  Warning: No files were found or analyzed") went to stderr, so
+    // `--output`, a pipe and `--format json` all carried a report of zeros
+    // indistinguishable from a genuinely simple codebase. A median over an
+    // empty population is not 0.0, it is undefined.
+    //
+    // The check is on the DISCOVERED count, not the filtered one: files that
+    // were read and then dropped by --max-cyclomatic/--max-cognitive are a
+    // measured zero, and that case keeps its own warning and exit 0 below.
+    crate::cli::ensure_source_files_were_analyzed(
+        "complexity",
+        &config.project_path,
+        original_file_count,
+    )?;
+
     // Apply filtering and aggregation
     let _filtered_count =
         analysis::apply_complexity_filters(&mut file_metrics, max_cyclomatic, max_cognitive);
@@ -468,20 +490,45 @@ pub async fn handle_analyze_dag(
 
     crate::status_eprintln!("📁 Analyzed {} files", project_context.files.len());
 
-    // Build DAG based on type
-    use crate::services::dag_builder::DagBuilder;
-
-    // DagBuilder covers module/import/inheritance relationships; call edges need the
-    // function bodies, which only the sources carry (#653: no Calls edge ever existed).
-    let mut graph = DagBuilder::build_from_project(&project_context);
-    crate::services::dag_call_edges::add_call_edges(&mut graph, &project_path);
+    // #1015: with zero files parsed there is no graph to render, and the empty
+    // `graph TD` this used to print is the same diagram a tree with no
+    // dependencies produces. The `(empty: …)` note below covers the cases where
+    // files WERE parsed and the requested edge type simply does not occur — a
+    // real measurement — but it rides on `status_eprintln!`, so `--quiet`
+    // silenced it and `--output` never carried it into the file at all. Nothing
+    // parsed is not a measurement, so it refuses instead.
+    crate::cli::ensure_source_files_were_analyzed(
+        "dependency-graph",
+        &project_path,
+        project_context.files.len(),
+    )?;
 
     // #653: `--dag-type` used to be ignored entirely, so call-graph, import-graph,
     // inheritance and full-dependency produced byte-identical output.
-    let enriched_graph = filter_graph_by_dag_type(graph, &dag_type);
+    //
+    // #1020: the fix for that still built through `DagBuilder::build_from_project`,
+    // which cuts the graph to the 400-edge Mermaid budget and then keeps only the
+    // nodes the surviving edges touch — every function node included — BEFORE the
+    // call-edge pass ran. `--dag-type call-graph` therefore rendered "0 nodes and
+    // 0 edges" over `src/services` (1335 files) while rendering 24 edges over a
+    // 10-file subdirectory small enough to stay under the budget.
+    // `build_typed_dag` runs the stages in the only order that works, and the MCP
+    // `analyze_dag` tool goes through the same function so the two surfaces cannot
+    // answer differently.
+    let (enriched_graph, dag_stats) = crate::services::dag_pipeline::build_typed_dag(
+        &project_context,
+        &project_path,
+        edge_types_for_dag_type(&dag_type),
+    )
+    .await;
 
-    // `--filter-external` had the same shape as the already-fixed `--max-depth`
-    // bug: it was stored in `MermaidOptions` and the renderer reads only
+    // Captured HERE, before the flag-driven filters below can empty the graph
+    // for reasons of their own: an explanation has to describe the graph it was
+    // computed from.
+    let empty_reason = dag_stats.explain_empty(&enriched_graph, edge_types_for_dag_type(&dag_type));
+
+    // `--filter-external` failed the same way `--max-depth` did before it was
+    // fixed: it was stored in `MermaidOptions`, and the renderer reads only
     // `show_complexity`, so the flag changed nothing. What it filters is the
     // graph, so it has to be applied to the graph.
     let enriched_graph = apply_external_filter(enriched_graph, filter_external);
@@ -524,7 +571,12 @@ pub async fn handle_analyze_dag(
 
     // #653: the announced counts used to be the pre-render graph's, which disagreed
     // with the diagram (75 announced / 41 drawn). Count what was actually emitted.
-    report_graph_size(&dag_type, &enriched_graph, &mermaid_content);
+    report_graph_size(
+        &dag_type,
+        &enriched_graph,
+        &mermaid_content,
+        empty_reason.as_deref(),
+    );
 
     // Write output
     if let Some(output_path) = output {
@@ -544,23 +596,18 @@ pub async fn handle_analyze_dag(
     Ok(())
 }
 
-/// Reduce the full dependency graph to the sub-graph the requested `--dag-type` names.
+/// The edges the requested `--dag-type` names; `None` keeps everything.
 ///
 /// Each type keeps only its own edges and the nodes those edges touch, so the four
 /// types genuinely differ (#653: they were byte-identical).
-fn filter_graph_by_dag_type(
-    graph: crate::models::dag::DependencyGraph,
-    dag_type: &DagType,
-) -> crate::models::dag::DependencyGraph {
+fn edge_types_for_dag_type(dag_type: &DagType) -> Option<&'static [crate::models::dag::EdgeType]> {
     use crate::models::dag::EdgeType;
 
     match dag_type {
-        DagType::CallGraph => graph.filter_by_edge_types(&[EdgeType::Calls]),
-        DagType::ImportGraph => graph.filter_by_edge_types(&[EdgeType::Imports]),
-        DagType::Inheritance => {
-            graph.filter_by_edge_types(&[EdgeType::Inherits, EdgeType::Implements])
-        }
-        DagType::FullDependency => graph,
+        DagType::CallGraph => Some(&[EdgeType::Calls]),
+        DagType::ImportGraph => Some(&[EdgeType::Imports]),
+        DagType::Inheritance => Some(&[EdgeType::Inherits, EdgeType::Implements]),
+        DagType::FullDependency => None,
     }
 }
 
@@ -915,12 +962,21 @@ fn report_graph_size(
     dag_type: &DagType,
     graph: &crate::models::dag::DependencyGraph,
     mermaid_content: &str,
+    empty_reason: Option<&str>,
 ) {
     let (rendered_nodes, rendered_edges) = count_rendered_elements(mermaid_content);
 
     crate::status_eprintln!(
         "📊 {dag_type}: rendered {rendered_nodes} nodes and {rendered_edges} edges"
     );
+
+    // #1020: "rendered 0 nodes and 0 edges" was all this said for a 1335-file
+    // tree. An empty diagram has to name its cause, or it reads as a fact about
+    // the code rather than a failure to graph it.
+    if let Some(reason) = empty_reason {
+        crate::status_eprintln!("   (empty: {reason})");
+        return;
+    }
 
     if rendered_nodes < graph.nodes.len() || rendered_edges < graph.edges.len() {
         crate::status_eprintln!(

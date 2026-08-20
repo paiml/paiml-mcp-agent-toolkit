@@ -132,6 +132,8 @@ pub mod coupling_analyzer;
 pub mod coverage_improvement;
 pub mod dag_builder;
 pub mod dag_call_edges;
+pub mod dag_complexity;
+pub mod dag_pipeline;
 pub mod dead_code_analyzer;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -185,6 +187,7 @@ pub mod git_test_filter; // Git-aware test filtering for targeted quality gates
 #[cfg(feature = "http-client")]
 pub mod github_integration;
 pub mod hallucination_detector; // Sprint 37: Semantic entropy-based hallucination detection
+pub mod hardcoded_paths; // Machine-specific absolute paths baked into source
 pub mod incremental_churn;
 pub mod incremental_coverage_analyzer;
 pub mod infra_score; // Infra Score: CI/CD infrastructure quality scoring (PMAT-150)
@@ -193,6 +196,7 @@ pub mod lightweight_provability_analyzer;
 pub mod makefile_compressor;
 pub mod makefile_linter;
 pub mod mermaid_generator;
+pub mod metrics_ratchet; // CB-2101/CB-2102: threshold coherence + ratchet baselines
 pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod parallel_git;
@@ -224,6 +228,7 @@ pub mod polyglot_analyzer;
 pub mod quality_proxy;
 pub mod ranking;
 pub mod ranking_utils;
+pub mod reachability;
 pub mod readme_compressor;
 pub mod recommendation_engine;
 pub mod refactor_engine;
@@ -253,12 +258,22 @@ pub mod unified_rust_analyzer; // TICKET-3001: Single-pass AST+Complexity analyz
 pub mod unified_typescript_analyzer; // TICKET-3002: Single-pass TypeScript/JavaScript analyzer
 #[cfg(feature = "wasm-ast")]
 pub mod unified_wasm_analyzer; // TICKET-3005: Single-pass WebAssembly analyzer (requires wasm-ast feature)
+pub mod unrun_tests; // PMAT-630: tests behind a feature no CI leg executes
+pub mod vacuous_tests; // #[test] fns that cannot fail
 pub mod verified_complexity;
 pub mod wasm;
+pub mod workspace_init; // `pmat init`: agent workspace bootstrap (#1030/#1031/#1032)
 
 // Mutation testing engine (Phase 1 foundation - Phase 2: Optional)
 #[cfg(feature = "mutation-testing")]
 pub mod mutation;
+
+// EV-4 (#1034): the mutation-adequacy GATE — deliberately NOT behind
+// `mutation-testing`. The engine above is an optional analysis feature; this is
+// a CI gate, and a gate that only compiles under a feature no required job
+// builds is not a gate. It parses `cargo mutants` output rather than generating
+// mutants, so it needs none of the engine.
+pub mod mutation_gate;
 
 // PMAT Oracle - PDCA loop for automated quality improvement
 pub mod oracle;
@@ -284,6 +299,7 @@ mod quality_proxy_property_tests;
 pub mod agent_context;
 pub mod changelog_manager;
 pub mod gaming_detector; // PMAT Work Contract: Anti-gaming detection for coverage metrics
+pub mod gate_effect; // CB-2100: does a required status check actually reach the rules it claims to enforce?
 #[cfg(feature = "github-api")]
 pub mod github_client; // Issue #75: GitHub API integration (optional - 255 transitive deps)
 pub mod hook_manager; // Issue #75 Phase 6: Git hooks for workflow

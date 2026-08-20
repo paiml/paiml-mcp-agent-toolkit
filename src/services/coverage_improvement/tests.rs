@@ -31,6 +31,7 @@ mod tests {
             mutation_threshold: 70.0,
             focus_patterns: vec!["src/**/*.rs".to_string()],
             exclude_patterns: vec!["**/tests/**".to_string()],
+            max_targets: 10,
         };
 
         assert_eq!(config.project_path, PathBuf::from("/custom/path"));

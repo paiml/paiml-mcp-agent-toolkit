@@ -1,6 +1,6 @@
 {
   "name": "quality_gate",
-  "description": "Run comprehensive quality analysis over the given paths. Checks complexity, SATD, dead code, and coverage against configured thresholds.",
+  "description": "Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, security, duplicates, coverage, documentation sections, provability) plus a TDG score against the given paths. Any check a path could not answer is named in `not_measured` and, with its reason, in `checks.not_run`.",
   "inputSchema": {
     "type": "object",
     "properties": {

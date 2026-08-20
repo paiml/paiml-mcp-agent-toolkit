@@ -13,6 +13,24 @@ impl BigOAnalyzer {
         let source_files = self.discover_source_files(&config).await?;
         info!("Found {} source files", source_files.len());
 
+        // #1015: with no source file discovered this went on to print
+        // "Total Functions Analyzed: 0" over a complexity distribution of eight
+        // zeros and exit 0 — the identical document a tree of nothing but O(1)
+        // functions would produce, and the identical document a `--include`
+        // pattern that matches nothing produces. A distribution over an empty
+        // population is not a measurement. Refused here rather than in the CLI
+        // handler so every consumer of the analyzer (the handler, the unified
+        // context builder) is told the same thing.
+        // "big-O" and not "big-O complexity": the binary's `categorize_error`
+        // greps the rendered message for the substring "complexity" and would
+        // turn this one refusal into exit 5 while the other seven — and
+        // `analyze satd`, which this sentence is copied from — exit 1.
+        crate::cli::ensure_source_files_were_analyzed(
+            "big-O",
+            &config.project_path,
+            source_files.len(),
+        )?;
+
         // Analyze each file
         let mut all_functions = Vec::new();
         let mut pattern_counts = rustc_hash::FxHashMap::default();

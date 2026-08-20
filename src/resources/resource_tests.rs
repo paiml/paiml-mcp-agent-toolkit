@@ -165,13 +165,15 @@ mod tests {
 
     #[test]
     fn test_resource_limits_with_gpu() {
-        let mut limits = ResourceLimits::default();
-        limits.gpu = Some(GpuLimits {
-            device_id: 0,
-            memory_bytes: 4 * 1024 * 1024 * 1024,
-            compute_percent: 100.0,
-            exclusive: true,
-        });
+        let limits = ResourceLimits {
+            gpu: Some(GpuLimits {
+                device_id: 0,
+                memory_bytes: 4 * 1024 * 1024 * 1024,
+                compute_percent: 100.0,
+                exclusive: true,
+            }),
+            ..Default::default()
+        };
         assert!(limits.gpu.is_some());
         let gpu = limits.gpu.unwrap();
         assert!(gpu.exclusive);

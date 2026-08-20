@@ -240,3 +240,69 @@ bindings:
   source_file: src/mcp_pmcp/simple_unified_server.rs
   function: EofSignalingTransport::receive
   status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: gate_effect
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
+  function: check_comply_gate_effect
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: reachable
+  source_file: src/services/gate_effect/kernel.rs
+  function: reachable
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: select_by_context
+  source_file: src/services/gate_effect/kernel.rs
+  function: select_by_context
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: gates
+  source_file: src/services/gate_effect/kernel.rs
+  function: gates
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: context_string_resolution
+  source_file: src/services/gate_effect/resolve.rs
+  function: resolve_context
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: failure_propagation
+  source_file: src/services/gate_effect/effect.rs
+  function: assess
+  status: implemented
+- contract: comply-gate-effect-v1.yaml
+  equation: enforcement_ledger
+  source_file: src/services/gate_effect/ledger.rs
+  function: render
+  status: implemented
+# CB-2102 (ratchet) — the module was annotated with #[contract(...)] since it was
+# written and never registered here, so `AllImplemented` had nothing to check and
+# the `#[contract]` macro emitted no `=bound` env var for it. Registered now
+# alongside CB-2101 rather than left as a second silent gap in the pair of rules
+# that exist to find silent gaps.
+- contract: comply-ratchet-v1.yaml
+  equation: verdict
+  source_file: src/services/metrics_ratchet/kernel.rs
+  function: ratchet_verdict
+  status: implemented
+- contract: comply-ratchet-v1.yaml
+  equation: next
+  source_file: src/services/metrics_ratchet/kernel.rs
+  function: next_baseline
+  status: implemented
+- contract: comply-ratchet-v1.yaml
+  equation: ratchet
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_metrics_ratchet.rs
+  function: check_metrics_ratchet
+  status: implemented
+# CB-2101 (threshold coherence).
+- contract: comply-threshold-coherence-v1.yaml
+  equation: classify
+  source_file: src/services/metrics_ratchet/kernel.rs
+  function: classify
+  status: implemented
+- contract: comply-threshold-coherence-v1.yaml
+  equation: audit
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_threshold_coherence.rs
+  function: check_threshold_coherence
+  status: implemented

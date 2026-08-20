@@ -45,7 +45,7 @@ mod coverage_tests_batch {
         }
 
         assert!(added > 0);
-        assert!(batch.is_full() || batch.len() > 0);
+        assert!(batch.is_full() || !batch.is_empty());
     }
 
     #[test]

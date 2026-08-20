@@ -230,12 +230,30 @@ mod simd_equivalence_tests {
                 let simd_result = entropy_simd(&probs);
 
                 let diff = (scalar_result - simd_result).abs();
+                // `entropy_simd` computes through trueno's f32 SIMD path, so it
+                // cannot be held to an ABSOLUTE f64 bound. Measured counterexample:
+                //     scalar = 7.732883734404172   (f64)
+                //     simd   = 7.732882499694824   (f32)
+                //     diff   = 1.2347e-6
+                // The f32 ulp at |H| ~ 7.73 is 2^-20 ~ 9.5e-7, so EPSILON (1e-6)
+                // was barely ONE ulp — it demanded precision f32 does not have.
+                // The relative error is 1.60e-7 = 1.34 x f32::EPSILON, i.e. about
+                // as accurate as f32 gets. The test was the defect, not the kernel.
+                //
+                // It survived because proptest must draw a near-uniform 256-way
+                // distribution to push H high enough for one ulp to exceed 1e-6;
+                // at lower entropy the absolute bound happened to hold.
+                //
+                // Scale to the magnitude and to f32's mantissa, with 8 ulps of
+                // headroom for the 256-term summation.
+                let tol = 8.0 * f64::from(f32::EPSILON) * scalar_result.abs().max(1.0);
                 prop_assert!(
-                    diff < EPSILON,
-                    "SIMD/scalar mismatch: scalar={}, simd={}, diff={}",
+                    diff <= tol,
+                    "SIMD/scalar mismatch beyond f32 precision: scalar={}, simd={}, diff={}, tol={}",
                     scalar_result,
                     simd_result,
-                    diff
+                    diff,
+                    tol
                 );
                 Ok(())
             })

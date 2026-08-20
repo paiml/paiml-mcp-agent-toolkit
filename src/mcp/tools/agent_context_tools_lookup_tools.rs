@@ -46,26 +46,34 @@ impl McpTool for GetFunctionTool {
         Self::schema()
     }
 
-    async fn execute(&self, params: Value) -> Result<Value, String> {
+    async fn execute(&self, params: Value) -> Result<Value, ToolError> {
         let function_id = params["function_id"]
             .as_str()
-            .ok_or("Missing required parameter: function_id")?;
+            .ok_or_else(|| ToolError::invalid("Missing required parameter: function_id"))?;
 
         // The schema advertises `include_source`, and callers pass
         // `include_source: false` to keep a large function body out of a
         // context window. It was parsed into a discarded binding, so `source`
         // came back either way and the flag was documentation for behaviour the
         // tool did not have.
-        let include_source = params["include_source"].as_bool().unwrap_or(true);
+        //
+        // `as_bool().unwrap_or(true)` left the other half of that hole open:
+        // `include_source: "false"` — a JSON-typing slip that costs a caller
+        // their whole context window — read as the default `true`, the exact
+        // opposite of what they asked for, with no error.
+        let include_source = boolean(&params, "include_source")?.unwrap_or(true);
 
         // Parse function_id: "file_path::function_name"
         let (file_path, function_name) = parse_function_id(function_id)?;
 
         let index = self.manager.get_index().await?;
 
+        // The caller named a symbol the index does not hold — their input, not
+        // our fault, the same shape as `tool_schemas::resolve_existing_paths`'
+        // "path(s) not found".
         let result = index
             .get_function(&file_path, &function_name)
-            .ok_or_else(|| format!("Function not found: {}", function_id))?;
+            .ok_or_else(|| ToolError::invalid(format!("Function not found: {}", function_id)))?;
 
         Ok(build_get_function_response(
             function_id,
@@ -170,22 +178,20 @@ impl McpTool for FindSimilarTool {
         Self::schema()
     }
 
-    async fn execute(&self, params: Value) -> Result<Value, String> {
+    async fn execute(&self, params: Value) -> Result<Value, ToolError> {
         let start = Instant::now();
 
         let function_id = params["function_id"]
             .as_str()
-            .ok_or("Missing required parameter: function_id")?;
+            .ok_or_else(|| ToolError::invalid("Missing required parameter: function_id"))?;
 
-        let limit = params["limit"].as_u64().unwrap_or(5) as usize;
-        if limit > 20 {
-            return Err("Limit exceeds maximum of 20".to_string());
-        }
-
-        let min_similarity = params["min_similarity"].as_f64().unwrap_or(0.3) as f32;
-        if !(0.0..=1.0).contains(&min_similarity) {
-            return Err("min_similarity must be between 0.0 and 1.0".to_string());
-        }
+        // Both bounds are the schema's own, enforced at both ends: the old
+        // `unwrap_or` pair refused `limit: 9999` and `min_similarity: 2.0` while
+        // waving `limit: -1` and `min_similarity: "high"` through as the
+        // defaults 5 and 0.3.
+        let limit = bounded_integer(&params, "limit", 1, 20)?.unwrap_or(5) as usize;
+        let min_similarity =
+            bounded_number(&params, "min_similarity", 0.0, 1.0)?.unwrap_or(0.3) as f32;
 
         // Parse function_id: "file_path::function_name"
         let (file_path, function_name) = parse_function_id(function_id)?;
@@ -267,8 +273,10 @@ impl McpTool for IndexStatsTool {
         Self::schema()
     }
 
-    async fn execute(&self, params: Value) -> Result<Value, String> {
-        let rebuild = params["rebuild"].as_bool().unwrap_or(false);
+    async fn execute(&self, params: Value) -> Result<Value, ToolError> {
+        // `rebuild: "yes"` used to read as `false`: the caller asked for a fresh
+        // index, got a stale one, and was told nothing.
+        let rebuild = boolean(&params, "rebuild")?.unwrap_or(false);
 
         let index = if rebuild {
             self.manager.rebuild_index().await?

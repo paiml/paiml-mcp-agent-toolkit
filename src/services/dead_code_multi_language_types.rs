@@ -13,6 +13,21 @@ pub struct DeadCodeResult {
     /// count, and never `.max(1)` inventing a file for an empty project.
     pub total_files: usize,
     pub dead_code_percentage: f64,
+    /// Whether the analysed target is a LIBRARY, and hence whether its exported
+    /// items were treated as reachability roots rather than as dead code.
+    ///
+    /// A library's public API is un-called by construction — its callers are
+    /// outside the tree — so an engine that has only "nothing calls it" to go on
+    /// reports the whole API as dead. This records which way the question was
+    /// answered, INCLUDING when it could not be answered, because the reader has
+    /// to know whether an un-called export was kept or listed. See
+    /// [`LibraryTarget`].
+    pub library_target: LibraryTarget,
+    /// How many exported definitions `library_target` turned into reachability
+    /// roots. Always `0` unless the verdict is
+    /// [`LibraryTarget::Library`] — an undetermined verdict seeds nothing, which
+    /// is the fact the disclosure exists to convey.
+    pub exported_roots: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]

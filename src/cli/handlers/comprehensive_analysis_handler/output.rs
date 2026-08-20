@@ -1,7 +1,9 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::cli::ComprehensiveOutputFormat;
-use crate::services::facades::analysis_orchestrator::ComprehensiveAnalysisResult;
+use crate::services::facades::analysis_orchestrator::{
+    ComprehensiveAnalysisResult, QUALITY_SCORE_UNMEASURED,
+};
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -106,7 +108,14 @@ pub(super) fn format_executive_summary(
         summary.total_files
     )?;
 
-    writeln!(output, "- **Quality Score**: {:.1}%", summary.quality_score)?;
+    writeln!(
+        output,
+        "- **Quality Score**: {}",
+        summary.quality_score.map_or_else(
+            || QUALITY_SCORE_UNMEASURED.to_string(),
+            |s| format!("{s:.1}%")
+        )
+    )?;
     writeln!(output, "- **Total Files**: {}", summary.total_files)?;
     writeln!(output, "- **Total Issues**: {}", summary.total_issues)?;
     writeln!(output, "- **Critical Issues**: {}", summary.critical_issues)?;
@@ -256,7 +265,10 @@ pub(super) fn format_as_text(
         writeln!(
             &mut output,
             "  Quality Score: {}",
-            c::pct(result.summary.quality_score, 80.0, 50.0)
+            result.summary.quality_score.map_or_else(
+                || c::dim(QUALITY_SCORE_UNMEASURED),
+                |score| c::pct(score, 80.0, 50.0)
+            )
         )?;
         writeln!(
             &mut output,
@@ -491,4 +503,107 @@ pub(super) fn format_as_sarif(result: &ComprehensiveAnalysisResult) -> Result<St
     });
 
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
+}
+
+#[cfg(test)]
+mod unmeasured_score_tests {
+    //! #1015. A quality score is issues per file. Over zero files it used to be
+    //! `100.0` — the `total_issues == 0` branch is satisfied by an empty
+    //! directory — and every renderer printed it as a measurement:
+    //!
+    //! ```text
+    //!   Quality Score: 100.0%
+    //!   Total Files:   0
+    //!   Total Issues:  0
+    //!     - Code quality looks good! Continue following best practices.
+    //! ```
+    //!
+    //! The handler now refuses that run outright, but the renderers are library
+    //! functions and the type is `Option<f64>`, so the "no denominator" case has
+    //! to render as an absence here too. If someone later relaxes the handler,
+    //! these tests still stand between an empty tree and a 100%.
+    use super::*;
+    use crate::services::facades::analysis_orchestrator::{
+        quality_score, AnalysisSummary, ComprehensiveAnalysisResult,
+    };
+
+    fn unmeasured_result() -> ComprehensiveAnalysisResult {
+        ComprehensiveAnalysisResult {
+            complexity: None,
+            dead_code: None,
+            satd: None,
+            summary: AnalysisSummary {
+                total_files: 0,
+                total_issues: 0,
+                critical_issues: 0,
+                quality_score: quality_score(0, 0),
+                recommendations: vec![],
+            },
+            duration_ms: 0,
+        }
+    }
+
+    fn strip_ansi(s: &str) -> String {
+        regex::Regex::new(r"\x1b\[[0-9;]*m")
+            .expect("static regex must compile")
+            .replace_all(s, "")
+            .to_string()
+    }
+
+    #[test]
+    fn markdown_prints_not_measured_instead_of_a_perfect_score() {
+        let mut out = String::new();
+        format_executive_summary(&mut out, &unmeasured_result().summary).expect("format");
+        assert!(
+            out.contains(QUALITY_SCORE_UNMEASURED),
+            "zero files must render as unmeasured, got: {out}"
+        );
+        assert!(
+            !out.contains("100.0%"),
+            "no score may be synthesised from zero files, got: {out}"
+        );
+    }
+
+    #[test]
+    fn text_summary_prints_not_measured_instead_of_a_perfect_score() {
+        let rendered = strip_ansi(&format_as_text(&unmeasured_result(), true, 10).expect("format"));
+        assert!(
+            rendered.contains(QUALITY_SCORE_UNMEASURED),
+            "zero files must render as unmeasured, got: {rendered}"
+        );
+        assert!(
+            !rendered.contains("100.0%"),
+            "no score may be synthesised from zero files, got: {rendered}"
+        );
+    }
+
+    #[test]
+    fn json_carries_a_null_score_rather_than_a_number() {
+        let json: serde_json::Value =
+            serde_json::from_str(&format_as_json(&unmeasured_result()).expect("format"))
+                .expect("json");
+        assert!(
+            json["summary"]["quality_score"].is_null(),
+            "an unmeasured score must serialise as null, got: {json}"
+        );
+    }
+
+    /// A tree that WAS read and holds no issue really does score 100%, and must
+    /// keep saying so — otherwise the fix has only moved the lie.
+    #[test]
+    fn a_clean_measured_tree_still_scores_one_hundred() {
+        let mut result = unmeasured_result();
+        result.summary.total_files = 7;
+        result.summary.quality_score = quality_score(7, 0);
+
+        let rendered = strip_ansi(&format_as_text(&result, true, 10).expect("format"));
+        assert!(
+            rendered.contains("100.0%"),
+            "seven clean files score 100%, got: {rendered}"
+        );
+        assert!(
+            !rendered.contains(QUALITY_SCORE_UNMEASURED),
+            "a measured tree is not unmeasured, got: {rendered}"
+        );
+    }
 }

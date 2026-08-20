@@ -17,11 +17,29 @@ impl LibsqlBackend {
         // Open database with rusqlite (libsql-compatible)
         let conn = rusqlite::Connection::open(path)?;
 
-        // Enable WAL mode for concurrent access (#161)
+        // Enable WAL mode for concurrent access (#161).
+        //
+        // ORDER IS LOAD-BEARING. `busy_timeout` must be set BEFORE anything that
+        // can block, and `journal_mode = WAL` is precisely such a statement:
+        // switching journal mode needs a brief exclusive lock, so it returns
+        // SQLITE_BUSY whenever another connection has the file open. This batch
+        // used to set `journal_mode` first and `busy_timeout` last, which meant
+        // the one statement most likely to contend ran with a timeout of ZERO
+        // and failed immediately instead of waiting.
+        //
+        // That is what broke `ci / coverage`: every `pmat tdg` invocation opens
+        // $HOME/.pmat/tdg-{warm,cold}.db (storage_impl_queries.rs:151), so the
+        // twelve `sarif_format_fidelity` tests contend on one file despite each
+        // having its own TempDir for input. Under llvm-cov the suite runs ~7x
+        // slower (2137s vs ~300s), widening every window. One test failed with
+        // "Error code 5: The database file is locked" out of 20,394.
+        //
+        // 30s rather than 5s for the same reason: the timeout has to cover the
+        // slowest observed contention window, not the fastest.
         conn.execute_batch(
-            "PRAGMA journal_mode = WAL;
-             PRAGMA synchronous = NORMAL;
-             PRAGMA busy_timeout = 5000;",
+            "PRAGMA busy_timeout = 30000;
+             PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;",
         )?;
 
         // Create table for key-value storage

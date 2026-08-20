@@ -11,7 +11,7 @@
 use pmat::services::mutation::{
     Mutant, MutantExecutor, MutantStatus, MutationOperatorType, MutationResult, SourceLocation,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 #[tokio::test]
@@ -173,7 +173,7 @@ fn create_mutant(file: &str, source: &str) -> Mutant {
     create_mutant_for_file(&PathBuf::from(file), source)
 }
 
-fn create_mutant_for_file(file: &PathBuf, source: &str) -> Mutant {
+fn create_mutant_for_file(file: &Path, source: &str) -> Mutant {
     use std::collections::hash_map::RandomState;
     use std::hash::{BuildHasher, Hasher};
     let mut hasher = RandomState::new().build_hasher();
@@ -182,7 +182,7 @@ fn create_mutant_for_file(file: &PathBuf, source: &str) -> Mutant {
 
     Mutant {
         id: format!("TEST_{:x}", id),
-        original_file: file.clone(),
+        original_file: file.to_path_buf(),
         mutated_source: source.to_string(),
         location: SourceLocation {
             line: 1,

@@ -57,6 +57,178 @@ comply:
         assert_eq!(config.comply.thresholds.complexity, 15);
     }
 
+    // ── PMAT-630: a partial `checks:` map is a PATCH, never a replacement ──
+    //
+    // `checks` carried plain `#[serde(default)]`, so serde built the map from
+    // the YAML alone and `ComplyConfig::default()`'s 22 declared severities were
+    // never consulted. A `.pmat.yaml` naming seven ids therefore demoted every
+    // other rule to `Warning` — including CB-2100's own `Error` — and
+    // `error_severity_rules` came back empty, which is the "absence rendered as
+    // success" defect one level down from the rule that hunts it.
+
+    /// An id ABSENT from a partial `checks:` map keeps its declared severity.
+    #[test]
+    fn test_partial_checks_map_merges_over_declared_defaults() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-125:
+      enabled: false
+"#;
+        let cfg: PmatYamlConfig = serde_yaml_ng::from_str(yaml).expect("partial map must parse");
+
+        // The listed id still takes effect.
+        assert!(!cfg.comply.is_check_enabled("cb-125"));
+
+        // Everything the map does NOT name keeps what the code declared.
+        assert_eq!(
+            cfg.comply.get_severity("cb-2100"),
+            CheckSeverity::Error,
+            "listing one unrelated id must not demote CB-2100 to Warning"
+        );
+        assert_eq!(cfg.comply.get_severity("cb-050"), CheckSeverity::Critical);
+        assert_eq!(cfg.comply.get_severity("cb-200"), CheckSeverity::Error);
+        assert_eq!(cfg.comply.get_severity("cb-124"), CheckSeverity::Error);
+        assert_eq!(cfg.comply.get_severity("cb-123"), CheckSeverity::Info);
+
+        // Declared thresholds survive too.
+        assert_eq!(cfg.comply.get_threshold("cb-124"), Some(80.0));
+
+        // The whole declared roster is still there.
+        assert_eq!(
+            cfg.comply.checks.len(),
+            ComplyConfig::default().checks.len(),
+            "a partial map must not shrink the roster"
+        );
+    }
+
+    /// A check ENTRY that sets only `enabled:` is also a patch: omitting
+    /// `severity:` keeps the declared one rather than resetting it to the
+    /// `CheckSeverity` enum default.
+    #[test]
+    fn test_partial_check_entry_keeps_declared_severity_and_threshold() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-2100:
+      enabled: false
+    cb-124:
+      enabled: true
+"#;
+        let cfg: PmatYamlConfig = serde_yaml_ng::from_str(yaml).expect("partial entry must parse");
+
+        assert!(!cfg.comply.is_check_enabled("cb-2100"));
+        assert_eq!(
+            cfg.comply.get_severity("cb-2100"),
+            CheckSeverity::Error,
+            "`enabled: false` alone must not also silently demote the severity"
+        );
+        assert_eq!(
+            cfg.comply.get_threshold("cb-124"),
+            Some(80.0),
+            "`enabled: true` alone must not silently erase the declared threshold"
+        );
+    }
+
+    /// An explicit `severity:` still wins — merging must not make the config
+    /// unwritable.
+    #[test]
+    fn test_explicit_severity_still_overrides_the_declared_default() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-2100:
+      severity: info
+    cb-070:
+      severity: critical
+      threshold: 3.0
+"#;
+        let cfg: PmatYamlConfig = serde_yaml_ng::from_str(yaml).expect("explicit map must parse");
+        assert_eq!(cfg.comply.get_severity("cb-2100"), CheckSeverity::Info);
+        assert_eq!(cfg.comply.get_severity("cb-070"), CheckSeverity::Critical);
+        assert_eq!(cfg.comply.get_threshold("cb-070"), Some(3.0));
+        // Omitting `enabled:` leaves it enabled, as declared.
+        assert!(cfg.comply.is_check_enabled("cb-2100"));
+    }
+
+    /// A `comply:` section with no `checks:` key at all kept NOTHING before:
+    /// field-level `#[serde(default)]` yields an empty map, not the declared
+    /// roster. Same demotion, reached without writing a single check id.
+    #[test]
+    fn test_comply_section_without_checks_keeps_declared_severities() {
+        let yaml = "comply:\n  fail_fast: true\n";
+        let cfg: PmatYamlConfig = serde_yaml_ng::from_str(yaml).expect("must parse");
+        assert!(cfg.comply.fail_fast);
+        assert_eq!(cfg.comply.get_severity("cb-2100"), CheckSeverity::Error);
+        assert_eq!(
+            cfg.comply.checks.len(),
+            ComplyConfig::default().checks.len()
+        );
+    }
+
+    /// An id the roster does not declare is still accepted and still patchable —
+    /// merging adds, it does not restrict.
+    #[test]
+    fn test_undeclared_id_is_added_by_the_patch() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-1703:
+      severity: error
+"#;
+        let cfg: PmatYamlConfig = serde_yaml_ng::from_str(yaml).expect("must parse");
+        assert_eq!(cfg.comply.get_severity("cb-1703"), CheckSeverity::Error);
+        assert!(cfg.comply.is_check_enabled("cb-1703"));
+        assert_eq!(cfg.comply.get_severity("cb-2100"), CheckSeverity::Error);
+    }
+
+    /// A misspelled key inside a check entry must be a parse ERROR. Ignoring it
+    /// is how `severty: error` silently leaves a rule at Warning — the same
+    /// silent demotion this whole change exists to remove.
+    #[test]
+    fn test_unknown_key_in_a_check_entry_is_a_parse_error() {
+        let yaml = r#"
+comply:
+  checks:
+    cb-2100:
+      severty: error
+"#;
+        let result: Result<PmatYamlConfig, _> = serde_yaml_ng::from_str(yaml);
+        assert!(
+            result.is_err(),
+            "a typo'd key must fail loudly, not resolve to the default severity"
+        );
+    }
+
+    /// The shape this repository's own `.pmat.yaml` has: several ids, every one
+    /// of them only disabling a check. Loaded from disk, through
+    /// `PmatYamlConfig::load`, because that is the path `pmat comply` takes.
+    #[test]
+    fn test_repo_shaped_partial_yaml_keeps_the_error_severities() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            tmp.path().join(".pmat.yaml"),
+            "comply:\n  checks:\n    cb-125:\n      enabled: false\n    cb-081:\n      enabled: false\n    cb-120:\n      enabled: false\n",
+        )
+        .expect("write fixture");
+
+        let cfg = PmatYamlConfig::load(tmp.path()).expect("fixture must load");
+        let error_ids: Vec<&str> = ["cb-050", "cb-060", "cb-124", "cb-200", "cb-302", "cb-1100", "cb-2100"]
+            .into_iter()
+            .filter(|id| {
+                matches!(
+                    cfg.comply.get_severity(id),
+                    CheckSeverity::Error | CheckSeverity::Critical
+                )
+            })
+            .collect();
+        assert_eq!(
+            error_ids.len(),
+            7,
+            "disabling three unrelated checks emptied the severity=error roster: {error_ids:?}"
+        );
+    }
+
     #[test]
     fn test_unknown_check_defaults_to_enabled() {
         let config = ComplyConfig::default();

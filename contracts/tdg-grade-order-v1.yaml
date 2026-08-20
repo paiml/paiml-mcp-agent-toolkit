@@ -1,0 +1,238 @@
+metadata:
+  version: "1.0.0"
+  kind: kernel
+  created: "2026-08-20"
+  author: PAIML Engineering
+  registry: true
+  contract: tdg-grade-order-v1
+  status: active
+  description: >
+    The TDG grade scale as an ORDER, and the CB-200 threshold as a predicate
+    over it. Written because CB-200 shipped neither.
+
+    The gate carried a private five-letter table, ["A","B","C","D","F"], and
+    compared it to the stored spelling with SQL `IN`. `IN` answers "no row" for
+    a value it does not list, never an error, so an eleven-letter writer and a
+    five-letter reader coexisted for a release: at a floor of "A" the gate saw
+    247 violations and could not see 1,719 more. It was also not monotone in
+    quality — a C- function passed while a C function failed.
+
+    Its ordinal function mapped every modified grade to a catch-all ranked
+    WORSE THAN F. So a floor of "A-" produced an empty failing set, the caller
+    took its is_empty() branch, and the rule returned Pass with the message
+    "Minimum grade A- - no grades below threshold". `.pmat-metrics.toml:44`
+    declares exactly that spelling. A stricter-looking threshold turned the gate
+    off while printing a sentence that reads like enforcement.
+
+    WHY THE OBVIOUS INVARIANTS ARE NOT ENOUGH, which is the reason this contract
+    reaches L5 rather than stopping at a const assertion. An adversarial review
+    of the first fix showed that reversing the enum declaration together with
+    `Grade::ALL` leaves EVERY self-referential invariant intact: the const block
+    passes, Display stays injective, parse stays a left inverse, all 121 pairs
+    and 1,331 triples pass, and passing/below still partition — while
+    `meets_threshold` reports that A+ fails an F floor. All of those invariants
+    are internal to the order; none anchors rank to anything outside itself.
+
+    `Grade_Rank_Anchored_To_Score` is that anchor. `bandFloor` is attached to
+    variant NAMES (mirroring GRADE_BANDS, grade.rs:172-182), so a better rank
+    must carry a strictly higher score floor. Under the reversal above, Lean
+    rejects it: "decide proved that the proposition is false". Verified by
+    mutation, not asserted.
+
+  verification:
+    lean_status: discharged
+    lean_toolchain: "leanprover/lean4:v4.15.0"
+    measured_at: "pmat 3.32.0, lean 4.15.0, 2026-08-20"
+    detail: >
+      All 13 theorems in contracts/lean/Theorems/Tdg/Grade.lean build under
+      `lake build`, contain no `sorry` or `admit`, and `#print axioms` reports
+      that each depends on NO axioms — every proof is closed by `decide` or
+      `cases ... <;> decide` over a finite domain. Unlike a kani harness, these
+      are EXECUTED in CI: .github/workflows/quality-gate.yml:163 runs
+      `lake build` and :170 greps for proof holes, both inside the
+      `provable ladder` job.
+
+      Kani is deliberately NOT used for the order algebra. The domain is 11,
+      121 and 1,331 closed enum-to-enum cases, so a loop over Grade::ALL is a
+      complete proof over it AND runs under `cargo test --lib`. Declaring a
+      kani harness there would name a proof technique without carrying it out,
+      which is the defect commit a44ec5d3e already ruled on.
+  references:
+    - src/tdg/grade.rs
+    - src/cli/handlers/comply_handlers/check_handlers/check_tdg_grade.rs
+    - src/services/agent_context/query/grades.rs
+    - contracts/lean/Theorems/Tdg/Grade.lean
+    - contracts/macs-ladder-kernel-v1.yaml
+
+equations:
+  grade_rank_anchored:
+    formula: "rank(a) < rank(b)  =>  band_floor(b) < band_floor(a)   for a,b != F"
+    domain: "two of the eleven Grade variants, neither being F"
+    codomain: "bool"
+    invariants:
+      - "INV-2200-1: a better rank carries a strictly higher score floor"
+      - "the ONLY invariant that is not internal to the order: it fails under a reversal of the enum declaration that every other invariant here waves through"
+      - "F is excluded because it is the fallthrough of GRADE_BANDS and has no floor of its own"
+    lean_theorem: Theorems.Tdg.Grade_Rank_Anchored_To_Score
+
+  grade_from_score:
+    formula: "s1 + 1 >= s1  =>  rank(from_score(s1 + 1)) <= rank(from_score(s1))"
+    domain: "integer score positions 0..100"
+    codomain: "Grade"
+    invariants:
+      - "INV-2200-2: one more point of score never yields a worse grade"
+      - "INV-2200-3: from_score(band_floor(g)) = g for every g != F, so the two tables cannot drift apart"
+      - "stepwise, not pairwise: on a discrete domain the two are equivalent by transitivity, and the pairwise form exhausts Lean's kernel recursion depth at 10,201 cases"
+      - "checks every integer position; the Rust sweep at grade.rs:380-407 samples 1,001 points and can miss a band edge falling between two samples"
+    lean_theorem: Theorems.Tdg.Grade_FromScore_Antitone_Step
+
+  grade_floor_partition:
+    formula: "|passing(t)| + |below(t)| = |all|   for every floor t"
+    domain: "one of the eleven Grade variants, as a floor"
+    codomain: "two disjoint grade sets covering the scale"
+    invariants:
+      - "INV-2200-4: passing and below partition the whole scale at every floor"
+      - "this is Defect 1 stated as a theorem: the shipped five-letter table partitioned nothing, so 1,719 of 1,966 violations were invisible"
+      - "INV-2200-5: below(t) is empty for exactly one floor, F"
+      - "this is Defect 2 stated as a theorem: the catch-all ranked modified grades worse than F, so a floor of A- produced an empty failing set and the rule returned Pass"
+      - "INV-2200-6: below is antitone in the floor - a stricter floor never fails fewer grades"
+    lean_theorem: Theorems.Tdg.Grade_Partition
+
+  grade_order_algebra:
+    formula: "meets_threshold(g, t) = (rank(g) <= rank(t)); total, transitive, antisymmetric"
+    domain: "two of the eleven Grade variants"
+    codomain: "bool"
+    invariants:
+      - "INV-2200-7: totality - any two grades are comparable"
+      - "INV-2200-8: transitivity over all 1,331 triples"
+      - "INV-2200-9: antisymmetry"
+      - "INV-2200-10: rank is injective, so Ord never conflates two grades"
+      - "INV-2200-11: to_str is injective, so the stored TEXT column is an unambiguous encoding of the order"
+    lean_theorem: Theorems.Tdg.Grade_Order_Transitive
+
+preconditions:
+  - "pmat >= 3.32.0 with CB-200 reading .pmat/context.db"
+  - "the stored tdg_grade spelling is one of the eleven Grade::ALL spellings"
+
+postconditions:
+  - "a grade absent from the gate's vocabulary is REPORTED, never silently unmatched"
+  - "a threshold that does not parse FAILS the rule; it never yields an empty failing set"
+  - "the failing set is computed as the complement of the passing set, never listed by hand"
+
+proof_obligations:
+  - type: postcondition
+    property: "a better rank carries a strictly higher score floor"
+    formal: "∀a,b ≠ F: rank(a) < rank(b) ⇒ band_floor(b) < band_floor(a)"
+    applies_to: meets_threshold
+    lean:
+      theorem: Theorems.Tdg.Grade_Rank_Anchored_To_Score
+      module: Theorems.Tdg.Grade
+      status: proved
+      notes: >
+        cases a <;> cases b <;> decide — depends on no axioms. THE anchoring
+        obligation: it is the only one here that is not internal to the order,
+        and it is the only one that fails when the enum declaration and
+        Grade::ALL are reversed together. Verified by that mutation, which Lean
+        rejects with "decide proved that the proposition is false".
+  - type: postcondition
+    property: "passing and below partition the scale at every floor"
+    formal: "∀t: |passing(t)| + |below(t)| = |all|"
+    applies_to: check_tdg_grade_gate
+    lean:
+      theorem: Theorems.Tdg.Grade_Partition
+      module: Theorems.Tdg.Grade
+      status: proved
+      notes: >
+        Defect 1 as an obligation. The shipped five-letter table partitioned
+        nothing, so at a floor of A the gate saw 247 violations and 1,719 were
+        invisible.
+  - type: postcondition
+    property: "the failing set is empty for exactly one floor, F"
+    formal: "∀t: below(t) = ∅ ⇔ t = F"
+    applies_to: check_tdg_grade_gate
+    lean:
+      theorem: Theorems.Tdg.Grade_Below_Empty_Only_At_F
+      module: Theorems.Tdg.Grade
+      status: proved
+      notes: >
+        Defect 2 as an obligation. grade_ordinal ranked every modified grade
+        worse than F, so a floor of "A-" produced an empty failing set and the
+        rule returned Pass. .pmat-metrics.toml:44 declares that spelling.
+  - type: postcondition
+    property: "one more point of score never yields a worse grade"
+    formal: "∀s ∈ 0..100: rank(from_score(s+1)) ≤ rank(from_score(s))"
+    applies_to: from_score
+    lean:
+      theorem: Theorems.Tdg.Grade_FromScore_Antitone_Step
+      module: Theorems.Tdg.Grade
+      status: proved
+      notes: >
+        Checks every integer position. The Rust sweep at grade.rs:380-407
+        samples 1,001 points and can miss a band edge falling between two
+        samples. Stepwise rather than pairwise: equivalent on a discrete domain
+        by transitivity, and the 10,201-case pairwise form exhausts Lean's
+        kernel recursion depth.
+  - type: postcondition
+    property: "the order is total, transitive and antisymmetric; rank and spelling are injective"
+    formal: "meets_threshold(g,t) = rank(g) ≤ rank(t), a total order"
+    applies_to: meets_threshold
+    lean:
+      theorem: Theorems.Tdg.Grade_Order_Transitive
+      module: Theorems.Tdg.Grade
+      status: proved
+      notes: >
+        1,331 closed triples checked by the kernel, plus totality,
+        antisymmetry, rank injectivity and to_str injectivity as separate
+        theorems in the same module.
+
+falsification_tests:
+  - id: grade_order_reversal
+    rule: "the grade order is anchored to the score scale, not merely self-consistent"
+    prediction: "reversing the enum declaration and Grade::ALL together makes lake build FAIL"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_Rank_Anchored_To_Score"
+    if_fails: "A+ can rank worse than F while every internal invariant still holds, and CB-200 inverts silently"
+  - id: grade_modified_invisible
+    rule: "every grade below the floor is reported"
+    prediction: "a five-letter failing list makes |passing| + |below| < |all| for some floor"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_Partition"
+    if_fails: "1,719 of 1,966 violations are invisible and CB-200 reports 247 (measured at HEAD)"
+  - id: grade_floor_disables_gate
+    rule: "only a floor of F admits every grade"
+    prediction: "a catch-all ordinal makes below(A-) empty, so the rule returns Pass"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_Below_Empty_Only_At_F"
+    if_fails: "min_tdg_grade: \"A-\" silently disables CB-200 while printing a sentence that reads like enforcement"
+  - id: grade_band_edge_inverts
+    rule: "score and grade move in opposite directions, monotonically"
+    prediction: "an inverted band edge makes one step of score yield a worse grade"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_FromScore_Antitone_Step"
+    if_fails: "a function scoring higher is graded worse, and every downstream ranking inverts at that edge"
+  - id: grade_spelling_collision
+    rule: "rank and wire spelling are both injective"
+    prediction: "two grades sharing a rank or a spelling makes the stored TEXT column ambiguous"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_Rank_Injective, Grade_ToStr_Injective"
+    if_fails: "the SQLite tdg_grade column stops being a faithful encoding of the order"
+  - id: grade_parse_corruption
+    rule: "corrupted spellings are rejected, never ranked"
+    prediction: "empty, padded, out-of-set or unicode-minus spellings parse to None"
+    test: "cd contracts/lean && lake build   # Theorems.Tdg.Grade_Parse_Strict"
+    if_fails: "a copy-pasted \"A−\" (U+2212) is ranked by a catch-all instead of rejected"
+
+kani_harnesses: []
+
+qa_gate:
+  id: TDG-GRADE-ORDER-GATE
+  name: TDG grade order and threshold gate
+  description: >
+    L5 provability gate for pmat's own grade scale. Kani is deliberately empty:
+    the order algebra is 11, 121 and 1,331 closed enum-to-enum cases, so a loop
+    over Grade::ALL is a complete proof over that domain and it RUNS under
+    `cargo test --lib`. Declaring a harness there would record the name of a
+    proof technique without carrying it out — the defect commit a44ec5d3e
+    already ruled on. The Lean proofs, by contrast, are executed in CI:
+    quality-gate.yml:163 runs `lake build` and :170 fails on any sorry/admit.
+  checks:
+    - validation
+    - falsification
+  pass_criteria: >
+    All 13 theorems in Theorems.Tdg.Grade build with 0 sorry / 0 admit, and
+    `#print axioms` reports no axiom dependency for any of the 5 obligations.

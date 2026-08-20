@@ -10,11 +10,36 @@
 
 set -euo pipefail
 
+# The results directory comes from argv and is used to build every path this
+# script reads and writes, so reject anything that could escape it.
+validate_results_path() {
+    case "$1" in
+        "" | *..*)
+            echo "Refusing unsafe path: '$1'" >&2
+            return 1
+            ;;
+    esac
+}
+
 # Configuration
 RESULTS_DIR="${1:-mutation_results}"
+validate_results_path "$RESULTS_DIR" || exit 1
 OUTPUT_FILE="${RESULTS_DIR}/comparison_report.md"
+validate_results_path "$OUTPUT_FILE" || exit 1
 PMAT_PREFIX="pmat_"
 CARGO_PREFIX="cargo_"
+
+# Report timestamp. Honours SOURCE_DATE_EPOCH so the generated report is
+# reproducible; falls back to wall clock for interactive runs.
+report_timestamp() {
+    if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M UTC" 2>/dev/null \
+            || date -u -r "${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M UTC"
+    else
+        date -u +"%Y-%m-%d %H:%M UTC"
+    fi
+}
+GENERATED_AT=$(report_timestamp)
 
 # Colors for terminal output
 RED='\033[0;31m'
@@ -51,11 +76,13 @@ echo -e "📊 PMAT results: ${GREEN}${PMAT_FILES}${NC} files"
 echo -e "🦀 cargo-mutants results: ${GREEN}${CARGO_FILES}${NC} files"
 echo ""
 
-# Initialize comparison report
-cat > "${OUTPUT_FILE}" << 'EOF'
+# Initialize comparison report. The heredoc is deliberately unquoted so
+# ${GENERATED_AT} is substituted; when it was quoted the report came out with an
+# unexpanded command substitution printed verbatim on the Generated line.
+cat > "${OUTPUT_FILE}" << EOF
 # Mutation Testing Comparison Report
 
-**Generated**: $(date -u +"%Y-%m-%d %H:%M UTC")
+**Generated**: ${GENERATED_AT}
 **Sprint**: 60 - Enhanced Coverage via Dual Mutation Strategy
 
 ## Executive Summary
@@ -69,6 +96,7 @@ EOF
 # Function to parse PMAT JSON results
 parse_pmat_results() {
     local file="$1"
+    validate_results_path "$file" || return 1
     local basename
     basename=$(basename "${file}" .json)
 
@@ -122,6 +150,7 @@ EOF
 # Function to parse cargo-mutants text results
 parse_cargo_results() {
     local file="$1"
+    validate_results_path "$file" || return 1
     local basename
     basename=$(basename "${file}" .txt)
 
@@ -170,11 +199,11 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${CYAN}PMAT Results${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-for file in $(find "${RESULTS_DIR}" -name "${PMAT_PREFIX}*.json" -type f 2>/dev/null | sort); do
+while IFS= read -r file; do
     if [ -f "${file}" ]; then
         parse_pmat_results "${file}"
     fi
-done
+done < <(find "${RESULTS_DIR}" -name "${PMAT_PREFIX}*.json" -type f 2>/dev/null | sort)
 
 # Parse all cargo-mutants results
 echo ""
@@ -182,11 +211,11 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${CYAN}cargo-mutants Results${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-for file in $(find "${RESULTS_DIR}" -name "${CARGO_PREFIX}*.txt" -type f 2>/dev/null | sort); do
+while IFS= read -r file; do
     if [ -f "${file}" ]; then
         parse_cargo_results "${file}"
     fi
-done
+done < <(find "${RESULTS_DIR}" -name "${CARGO_PREFIX}*.txt" -type f 2>/dev/null | sort)
 
 # Add analysis section to report
 cat >> "${OUTPUT_FILE}" << 'EOF'
@@ -240,9 +269,18 @@ cat >> "${OUTPUT_FILE}" << 'EOF'
 
 ---
 
+EOF
+
+# Tool versions need command substitution, so they go in their own unquoted
+# heredoc: the block above is quoted (it contains backticked markdown) and used
+# to emit the literal text "$(pmat --version ...)" into the report.
+PMAT_VERSION=$(pmat --version 2>/dev/null || echo "not installed")
+CARGO_MUTANTS_VERSION=$(cargo mutants --version 2>/dev/null || echo "not installed")
+
+cat >> "${OUTPUT_FILE}" << EOF
 **Tool Versions**:
-- PMAT: $(pmat --version 2>/dev/null || echo "not installed")
-- cargo-mutants: $(cargo mutants --version 2>/dev/null || echo "not installed")
+- PMAT: ${PMAT_VERSION}
+- cargo-mutants: ${CARGO_MUTANTS_VERSION}
 
 EOF
 

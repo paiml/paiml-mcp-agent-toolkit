@@ -264,5 +264,92 @@ mod tests {
         assert_eq!(stats.files_by_category.get("src"), Some(&2));
         assert_eq!(stats.files_by_category.get("tests"), Some(&1));
     }
-}
 
+    /// The fixture the four hand-rolled walks fell into: a gitignored directory
+    /// that is NOT hidden, holding a copy of the project. `.claude/worktrees/`
+    /// in this repository is both gitignored and hidden, so a walk that only
+    /// skipped hidden entries would look fixed while still being wrong for
+    /// `vendor/`, `worktrees/`, `fixtures/` and every other plain-named ignored
+    /// directory. This fixture removes that escape hatch.
+    fn project_with_gitignored_copy() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        fs::write(root.join(".gitignore"), "worktrees/\n").unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src/kernel.cu"), "__global__ void k() {}").unwrap();
+        fs::write(root.join("README.md"), "# docs").unwrap();
+        fs::write(root.join("module.wat"), "(module)").unwrap();
+        fs::write(root.join("assembly.ts"), "const x: i32 = 1;").unwrap();
+
+        // The same project again, under an ignored directory.
+        fs::create_dir_all(root.join("worktrees/copy/src")).unwrap();
+        fs::write(root.join("worktrees/copy/src/kernel.cu"), "__global__ void k() {}").unwrap();
+        fs::write(root.join("worktrees/copy/README.md"), "# docs").unwrap();
+        fs::write(root.join("worktrees/copy/module.wat"), "(module)").unwrap();
+        fs::write(root.join("worktrees/copy/assembly.ts"), "const x: i32 = 1;").unwrap();
+
+        temp_dir
+    }
+
+    /// `project_files` returns the extensions the source whitelist does not
+    /// know — `.cu`, `.md`, `.wat` — because the analyzers that need them would
+    /// otherwise write their own walk, and every one that did skipped the
+    /// .gitignore.
+    #[test]
+    fn project_files_returns_non_source_extensions() {
+        let temp_dir = project_with_gitignored_copy();
+        let files = project_files(temp_dir.path()).unwrap();
+
+        let names: Vec<String> = files
+            .iter()
+            .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+            .collect();
+        for expected in ["kernel.cu", "README.md", "module.wat", "assembly.ts"] {
+            assert!(
+                names.iter().any(|n| n == expected),
+                "{expected} must be discoverable; got {names:?}"
+            );
+        }
+    }
+
+    /// The defect itself: 48 gitignored worktrees inflated every count that
+    /// used a private walk by ~48x.
+    #[test]
+    fn project_files_does_not_descend_into_a_gitignored_directory() {
+        let temp_dir = project_with_gitignored_copy();
+        let files = project_files(temp_dir.path()).unwrap();
+
+        let leaked: Vec<_> = files
+            .iter()
+            .filter(|p| p.components().any(|c| c.as_os_str() == "worktrees"))
+            .collect();
+        assert!(
+            leaked.is_empty(),
+            "a gitignored directory is not part of the project: {leaked:?}"
+        );
+        assert_eq!(
+            files
+                .iter()
+                .filter(|p| p.extension().is_some_and(|e| e == "cu"))
+                .count(),
+            1,
+            "one kernel.cu exists; the copy under worktrees/ is ignored"
+        );
+    }
+
+    /// The ignore rules must not depend on a `.git` sitting above the tree:
+    /// this fixture has none, and the .gitignore still decides.
+    #[test]
+    fn gitignore_is_honoured_without_a_git_directory() {
+        let temp_dir = project_with_gitignored_copy();
+        assert!(
+            !temp_dir.path().join(".git").exists(),
+            "fixture must not be a checkout"
+        );
+        let files = project_files(temp_dir.path()).unwrap();
+        assert!(files
+            .iter()
+            .all(|p| !p.components().any(|c| c.as_os_str() == "worktrees")));
+    }
+}

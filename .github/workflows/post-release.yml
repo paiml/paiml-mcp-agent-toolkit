@@ -1,4 +1,11 @@
-# Post-release automation: version bump, changelog update, MSRV verification
+# Post-release verification: the release tag matches Cargo.toml, and the crate
+# still builds on its declared MSRV.
+#
+# The header used to advertise "version bump, changelog update" as well. Neither
+# has ever been in this file — there is no step that writes anything. Describing
+# jobs a workflow does not have is how a missing gate goes unnoticed, so the
+# description now lists only what runs below.
+#
 # Self-enforcement: Component 26 (self-enforcement.md)
 name: Post-Release
 
@@ -17,10 +24,38 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - name: Verify crate published
+      # Select the `pmat` package by NAME, not `.packages[0]`. This is a 2-member
+      # workspace (pmat + pmat-dashboard) and `cargo metadata` does not guarantee
+      # ordering: on this tree `.packages[0]` is pmat-dashboard, so the old
+      # `.packages[0].version` reported 3.17.0 for a 3.32.0 release. The
+      # msrv-check job below already carries this exact warning in a comment —
+      # the lesson had been written down but not applied here.
+      #
+      # And it must ASSERT, not echo. A step whose only effect is `echo` cannot
+      # fail, so a job named "Verify published release" verified nothing.
+      - name: Verify crate version matches the release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-          echo "Released version: $VERSION"
+          set -uo pipefail
+          VERSION=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name=="pmat") | .version')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "::error::Could not read version for package 'pmat' from Cargo.toml"
+            exit 1
+          fi
+          echo "Cargo.toml version: $VERSION"
+          if [ -z "$TAG" ]; then
+            # workflow_dispatch has no release payload; nothing to compare against.
+            echo "No release tag in this event — tag comparison skipped"
+            exit 0
+          fi
+          echo "Release tag: $TAG"
+          if [ "${TAG#v}" != "$VERSION" ]; then
+            echo "::error::release tag '$TAG' does not match Cargo.toml version '$VERSION'"
+            exit 1
+          fi
+          echo "Tag $TAG matches Cargo.toml version $VERSION"
 
   msrv-check:
     name: MSRV verification
@@ -56,7 +91,42 @@ jobs:
           components: clippy
       # Scope to `-p pmat`: it is pmat's MSRV we derived and are verifying.
       # pmat-dashboard declares no rust-version and must not gate this check.
-      - name: Check MSRV ${{ steps.msrv.outputs.version }} compilation
-        run: cargo check -p pmat --all-features
+      #
+      # FEATURE SET: the two configurations that SHIP, enumerated — not
+      # `--all-features`. `--all-features` was here and could never pass. It
+      # turns on every optional feature at once, including experimental ones no
+      # release advertises, and one of them drags in a dependency that outranks
+      # our own MSRV:
+      #
+      #   $ cargo +1.91.0 check -p pmat --all-features
+      #   error: rustc 1.91.0 is not supported by the following package:
+      #     sysinfo@0.39.6 requires rustc 1.95
+      #
+      # `sysinfo` is optional and reachable from exactly one feature —
+      # `mcp-integration`, an experiment that is in neither `default` nor `full`
+      # (feature-matrix.yml's orphan-ledger records it as unshipped debt). So the
+      # job failed at dependency resolution, before compiling a line, on account
+      # of code no user installs. It also enables `gpu`/`analytics-gpu`, which no
+      # hosted runner can build for.
+      #
+      # `--all-features` additionally implies `broken-tests`, the deliberate
+      # non-compiling quarantine (#1023) that Cargo.toml marks "NEVER add to any
+      # feature bundle". `cargo check` without `--tests` happens not to compile
+      # its `#[cfg(all(test, ...))]` bodies, so that is not what failed here —
+      # but it is a second reason this flag is the wrong one to reach for.
+      #
+      # What users can actually install is `cargo install pmat` (default) and
+      # `cargo install pmat --features full`. Those two are the MSRV contract,
+      # so those two are what this job verifies. `--locked` matches ci.yml and
+      # feature-matrix.yml: verify the MSRV of the dependency graph that ships,
+      # not of whatever the resolver picks on the day.
+      #
+      # Both verified green against the declared MSRV before landing:
+      #   cargo +1.91.0 check -p pmat --locked                 -> 0
+      #   cargo +1.91.0 check -p pmat --locked --features full -> 0
+      - name: Check MSRV ${{ steps.msrv.outputs.version }} compilation (default features)
+        run: cargo check -p pmat --locked
+      - name: Check MSRV ${{ steps.msrv.outputs.version }} compilation (--features full)
+        run: cargo check -p pmat --locked --features full
       - name: Clippy on MSRV
-        run: cargo clippy -p pmat -- -D warnings
+        run: cargo clippy -p pmat --locked -- -D warnings

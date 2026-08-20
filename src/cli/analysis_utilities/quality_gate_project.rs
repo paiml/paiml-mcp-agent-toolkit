@@ -3,7 +3,7 @@
 async fn handle_project_quality_gate(
     project_path: PathBuf,
     format: QualityGateOutputFormat,
-    fail_on_violation: bool,
+    exit_on_violation: bool,
     checks: Vec<QualityCheckType>,
     max_dead_code: f64,
     min_entropy: Option<f64>,
@@ -31,16 +31,13 @@ async fn handle_project_quality_gate(
     )
     .await?;
 
-    // Apply [exclude] paths from .pmat-metrics.toml to ALL violations (#196, #197)
-    let exclude_paths = load_entropy_exclude_paths(&project_path);
-    if !exclude_paths.is_empty() {
-        let before = violations.len();
-        filter_violations_by_exclude(&mut violations, &exclude_paths);
-        let removed = before - violations.len();
-        if removed > 0 {
-            crate::status_eprintln!("  📁 Excluded {removed} violations from excluded paths");
-            results.recalculate_from(&violations);
-        }
+    // Apply [exclude] paths from .pmat-metrics.toml to ALL violations (#196, #197),
+    // through the one function that owns the rule — the MCP gate applies the
+    // same one to the same findings.
+    let removed = apply_gate_exclude_paths(&project_path, &mut violations);
+    if removed > 0 {
+        crate::status_eprintln!("  📁 Excluded {removed} violations from excluded paths");
+        results.recalculate_from(&violations);
     }
 
     // Add provability if requested
@@ -91,7 +88,7 @@ async fn handle_project_quality_gate(
     print_quality_gate_final_status(&results, &violations);
 
     // Handle exit status
-    handle_quality_gate_exit_status(fail_on_violation, results.passed);
+    handle_quality_gate_exit_status(exit_on_violation, results.passed);
 
     Ok(())
 }

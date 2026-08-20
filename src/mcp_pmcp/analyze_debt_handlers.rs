@@ -77,8 +77,18 @@ impl ToolHandler for SatdTool {
     }
 
     fn metadata(&self) -> Option<ToolInfo> {
+        // `include_tests` is READ by `SatdArgs` and materially changes the
+        // count, but tools/list used to advertise only {paths,
+        // include_resolved} — a hidden parameter, so two callers sending the
+        // documented arguments could get different answers and only one of them
+        // could explain why. It is advertised rather than dropped because the
+        // behaviour is wanted: it is the CLI's `analyze satd --include-tests`
+        // (#997) reaching the MCP surface, `analyze_dead_code` next door
+        // advertises the identical flag, and un-honouring it would restore the
+        // CLI-vs-MCP contradiction instead of removing one.
         let extra = json!({
-            "include_resolved": { "type": "boolean", "description": "Include items already marked resolved" }
+            "include_resolved": { "type": "boolean", "description": "Include items already marked resolved" },
+            "include_tests":    { "type": "boolean", "description": "Include test files and #[cfg(test)] blocks (default: false, matching `pmat analyze satd`)" }
         });
         Some(build_tool_info(
             "analyze_satd",

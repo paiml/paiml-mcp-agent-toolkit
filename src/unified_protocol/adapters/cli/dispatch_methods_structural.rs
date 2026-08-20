@@ -230,10 +230,10 @@ impl CliAdapter {
                 top_files,
             )
             }
-            AnalyzeCommands::AssemblyScript { top_files: _, .. } => {
+            AnalyzeCommands::AssemblyScript { .. } => {
                 Self::decode_analyze_assemblyscript()
             }
-            AnalyzeCommands::WebAssembly { top_files: _, .. } => Self::decode_analyze_webassembly(),
+            AnalyzeCommands::WebAssembly { .. } => Self::decode_analyze_webassembly(),
             _ => Err(ProtocolError::UnsupportedProtocol(
                 "Command not supported in specialized analysis dispatch".to_string(),
             )),

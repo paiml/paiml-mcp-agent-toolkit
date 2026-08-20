@@ -511,6 +511,34 @@ mod tests {
     }
 }
 
+/// What the analyzer decided about the analysed target being a LIBRARY.
+///
+/// A library's exported API is un-called *by construction* — its callers are
+/// outside the tree — so an engine whose only rule is "nothing calls it" reports
+/// the whole API as dead. Which way that question was answered decides which
+/// findings exist, so it is published beside them rather than left as an
+/// invisible default.
+///
+/// The `undetermined` verdict is the one that matters most: it means exported
+/// items were NOT kept, so an un-called export IS in the list below, and the
+/// reader has to supply the knowledge the analyzer lacked. Naming that gap is
+/// the point.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LibraryTargetReport {
+    /// `"library"`, `"not-a-library"` or `"undetermined"`.
+    pub verdict: String,
+    /// The evidence behind the verdict, or — for `"undetermined"` — what could
+    /// not be decided and why.
+    pub detail: String,
+    /// How many exported items this analyzer seeded as reachability roots.
+    ///
+    /// `None` when the analyzer did not make that decision itself: the cargo
+    /// engine defers to rustc's own dead-code pass, which already treats a
+    /// library's public API as reachable. A `0` there would read as "it looked
+    /// and found none".
+    pub exported_roots: Option<usize>,
+}
+
 // Additional type for handler compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Result of dead code operation.
@@ -530,6 +558,11 @@ pub struct DeadCodeResult {
     /// True when `--top-files` cut the list short.
     #[serde(default)]
     pub files_truncated: bool,
+    /// Whether the analyzer decided this target was a library, and hence
+    /// whether its exported items were kept as entry points rather than listed
+    /// as dead. See [`LibraryTargetReport`].
+    #[serde(default)]
+    pub library_target: Option<LibraryTargetReport>,
 }
 
 impl DeadCodeResult {

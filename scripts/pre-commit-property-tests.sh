@@ -141,7 +141,7 @@ echo "📊 Property Test Coverage: ${coverage}% (${files_with_tests}/${total_fil
 if (( $(echo "$coverage < $MIN_COVERAGE" | bc -l) )); then
     echo -e "${RED}❌ Coverage below ${MIN_COVERAGE}% threshold${NC}"
     
-    if [ ${#missing_tests[@ ] } -gt 0 ]; then
+    if [ ${#missing_tests[@]} -gt 0 ]; then
         echo ""
         echo -e "${YELLOW}Files missing property tests:${NC}"
         for file in "${missing_tests[@]}"; do
@@ -156,14 +156,14 @@ if (( $(echo "$coverage < $MIN_COVERAGE" | bc -l) )); then
     echo "3. Use meaningful tests, not just prop_assert!(true)"
     
     # Don't block if we auto-added tests
-    if [ ${#auto_added[@ ] } -gt 0 ]; then
+    if [ ${#auto_added[@]} -gt 0 ]; then
         echo ""
-        echo -e "${GREEN}✅ Auto-added property tests to ${#auto_added[@ ] } new files${NC}"
+        echo -e "${GREEN}✅ Auto-added property tests to ${#auto_added[@]} new files${NC}"
         echo "Please review and improve the generated tests before committing."
     fi
     
     # Only fail if coverage is significantly below threshold and no auto-fixes
-    if (( $(echo "$coverage < $MIN_COVERAGE - 5" | bc -l) )) && [ ${#auto_added[@ ] } -eq 0 ]; then
+    if (( $(echo "$coverage < $MIN_COVERAGE - 5" | bc -l) )) && [ ${#auto_added[@]} -eq 0 ]; then
         exit 1
     fi
 else
@@ -186,7 +186,7 @@ if [ $placeholder_count -gt 0 ]; then
 fi
 
 # Success message
-if [ ${#auto_added[@ ] } -gt 0 ]; then
+if [ ${#auto_added[@]} -gt 0 ]; then
     echo ""
     echo -e "${GREEN}✅ Pre-commit check passed with auto-fixes${NC}"
     echo "Files with auto-added tests:"

@@ -482,6 +482,35 @@ mod r22_1_d101_cwd_guard_tests {
         assert_invalid_params(&response, "analyze_dag / empty");
     }
 
+    /// #1020: this handler built the graph with the 400-edge budget already
+    /// applied — which deletes every node the surviving edges do not touch — and
+    /// then filtered for `Calls` edges that nothing on this path ever created.
+    /// `dag_type: "call-graph"` was empty for EVERY project, of any size.
+    #[tokio::test]
+    async fn analyze_dag_call_graph_is_not_empty_over_rust_sources() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("main.rs"),
+            "fn main() { helper_one(); }\nfn helper_one() { helper_two(); }\nfn helper_two() {}\n",
+        )
+        .expect("write");
+
+        let response = handle_analyze_dag(
+            json!(1),
+            json!({ "project_path": dir.path().display().to_string(), "dag_type": "call-graph" }),
+        )
+        .await;
+
+        let result = response.result.expect("analyze_dag must succeed");
+        assert_eq!(result["graph_type"], "CallGraph");
+        assert!(
+            result["edges"].as_u64().unwrap_or(0) > 0,
+            "call graph over Rust sources came back with {} nodes / {} edges",
+            result["nodes"],
+            result["edges"]
+        );
+    }
+
     // --- handle_generate_context ------------------------------------------
 
     #[tokio::test]

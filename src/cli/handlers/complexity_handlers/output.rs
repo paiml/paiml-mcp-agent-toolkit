@@ -212,7 +212,7 @@ pub(super) fn generate_satd_sarif(result: &SATDAnalysisResult) -> serde_json::Va
 /// # Example
 ///
 /// ```no_run
-/// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, TechnicalDebt, DebtCategory, Severity};
+/// use pmat::services::satd_detector::{SATDAnalysisResult, SATDSummary, SkipCounts, TechnicalDebt, DebtCategory, Severity};
 /// use pmat::cli::handlers::complexity_handlers::format_satd_summary;
 /// use std::collections::HashMap;
 /// use std::path::PathBuf;
@@ -248,6 +248,8 @@ pub(super) fn generate_satd_sarif(result: &SATDAnalysisResult) -> serde_json::Va
 ///     },
 ///     total_files_analyzed: 10,
 ///     files_with_debt: 2,
+///     // All 10 candidate files were read, so nothing was skipped.
+///     skipped: SkipCounts::default(),
 ///     analysis_timestamp: Utc::now(),
 /// };
 ///

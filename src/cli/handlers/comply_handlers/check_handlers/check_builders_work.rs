@@ -190,5 +190,27 @@ fn build_macs_checks(
             "cb-1658",
             comply_config,
         ),
+        // CB-1663..CB-1666: AGY (.agents/) client config — PMAT-INIT-002
+        // claims 4 and 5 (#1031). The read side of `pmat init --target agy`.
+        filter_check_by_config(
+            macs::check_agy_structure(project_path),
+            "cb-1663",
+            comply_config,
+        ),
+        filter_check_by_config(
+            macs::check_agy_hooks_schema(project_path),
+            "cb-1664",
+            comply_config,
+        ),
+        filter_check_by_config(
+            macs::check_agy_skill_frontmatter(project_path),
+            "cb-1665",
+            comply_config,
+        ),
+        filter_check_by_config(
+            macs::check_agy_mcp_config(project_path),
+            "cb-1666",
+            comply_config,
+        ),
     ]
 }

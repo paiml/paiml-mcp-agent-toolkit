@@ -358,4 +358,41 @@ mod property_tests {
             }
         }
     }
+
+    /// `validate-docs` walked with a bare `WalkDir` filtered only by the user's
+    /// `--exclude` substrings, so it read no `.gitignore`: against pmat's own
+    /// repository it validated **30,897** Markdown files — the same docs once
+    /// per checkout under the gitignored `.claude/worktrees/` — and took ~114
+    /// seconds to report every broken link 48 times.
+    ///
+    /// The ignored directory here is plain-named on purpose: a walk that only
+    /// skipped hidden entries would pass while the defect survived.
+    #[tokio::test]
+    async fn a_gitignored_copy_of_the_docs_is_not_validated() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+
+        std::fs::write(root.join(".gitignore"), "worktrees/\n").unwrap();
+        std::fs::write(root.join("readme.md"), "[link](./guide.md)").unwrap();
+        std::fs::write(root.join("guide.md"), "content").unwrap();
+
+        for copy in ["worktrees/a", "worktrees/b"] {
+            std::fs::create_dir_all(root.join(copy)).unwrap();
+            std::fs::write(root.join(copy).join("readme.md"), "[link](./guide.md)").unwrap();
+            std::fs::write(root.join(copy).join("guide.md"), "content").unwrap();
+        }
+
+        let summary = DocValidator::default()
+            .validate_directory(root)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            summary.total_files, 2,
+            "two Markdown files are part of the project; the gitignored copies \
+             tripled this"
+        );
+        assert_eq!(summary.total_links, 1, "one link, validated once");
+        assert_eq!(summary.valid_links, 1);
+    }
 }

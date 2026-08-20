@@ -9,8 +9,11 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<SATDAnalysisResult, TemplateError> {
-        let files = self.discover_files(root, include_tests).await?;
+        let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
+        // Discovery, not the loop below, is where test files are dropped, so
+        // the count has to be seeded here or the bucket reads 0 forever.
+        analysis_stats.skipped.tests = tests_dropped;
 
         self.process_project_files(&files, include_tests, &mut analysis_stats)
             .await;
@@ -21,26 +24,31 @@ impl SATDDetector {
         Ok(self.build_analysis_result(analysis_stats, avg_age_days))
     }
 
-    /// Discover the files an analysis will read.
+    /// Discover the files an analysis will read, and how many test files that
+    /// discovery dropped.
     ///
-    /// `find_source_files` filters every candidate through
-    /// `is_valid_source_file`, which is `is_source_file() && !is_test_file()`:
-    /// test files are dropped during DISCOVERY. So `--include-tests` — whose
-    /// only job is to add them — had nothing left to add, and pointing satd
-    /// straight at a `tests/` directory reported 0 violations. When tests are
-    /// wanted the walk below applies the same directory exclusions and the same
-    /// source-file test, minus that drop.
+    /// `find_source_files` drops test files during DISCOVERY. So
+    /// `--include-tests` — whose only job is to add them — had nothing left to
+    /// add, and pointing satd straight at a `tests/` directory reported 0
+    /// violations. When tests are wanted the walk below applies the same
+    /// directory exclusions and the same source-file test, minus that drop.
+    ///
+    /// The second element of the pair is the number of test files dropped, and
+    /// it exists because a silent drop is unreportable: `SkipCounts::tests` was
+    /// structurally pinned at 0 while the walk was quietly declining to read
+    /// every test file in the tree.
     async fn discover_files(
         &self,
         root: &Path,
         include_tests: bool,
-    ) -> Result<Vec<std::path::PathBuf>, TemplateError> {
+    ) -> Result<(Vec<std::path::PathBuf>, usize), TemplateError> {
         if !include_tests {
-            return self.find_source_files(root).await;
+            return self.find_source_files_counting_tests(root).await;
         }
         let mut files = Vec::new();
         self.collect_files_including_tests(root, &mut files).await?;
-        Ok(files)
+        // Nothing was declined for being a test: they are all in `files`.
+        Ok((files, 0))
     }
 
     fn collect_files_including_tests<'a>(
@@ -277,7 +285,10 @@ impl SATDDetector {
     ) -> Result<(Vec<TechnicalDebt>, SkipCounts), TemplateError> {
         let mut skipped = SkipCounts::default();
         let mut all_debts = Vec::new();
-        let files = self.discover_files(root, include_tests).await?;
+        let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
+        // Discovery already declined these; the loop below never sees them, so
+        // this is the only place the count can be recorded.
+        skipped.tests = tests_dropped;
         let discovered = files.len();
         let mut analyzed = 0usize;
 
@@ -341,7 +352,13 @@ impl SATDDetector {
     /// findings, which is the wrong direction to move a detector by accident.
     /// The duplication is recorded rather than silently resolved; unifying them
     /// is a behaviour change that deserves its own measurement.
-    async fn skip_reason_for_analysis(
+    ///
+    /// `pub(crate)` because the MCP `analyze_satd` tool needs the SAME answer:
+    /// it built its own file list and then reported nothing at all about what
+    /// it declined to read, so its payload was a count with no denominator.
+    /// A second opinion about "why was this file not read" is how these two
+    /// surfaces drifted apart in the first place (#997).
+    pub(crate) async fn skip_reason_for_analysis(
         &self,
         file_path: &Path,
         include_tests: bool,

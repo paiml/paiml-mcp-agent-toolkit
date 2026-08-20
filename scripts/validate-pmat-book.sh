@@ -14,6 +14,14 @@ NC='\033[0m'
 BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
 PARALLEL_JOBS="${PMAT_BOOK_JOBS:-4}"
 
+# PMAT_BOOK_DIR is external input and we cd into it and execute the shell
+# scripts we find underneath, so refuse a value that can climb out of the
+# directory the operator named.
+if [ -z "$BOOK_DIR" ] || [ "$BOOK_DIR" != "${BOOK_DIR#*..}" ]; then
+    echo -e "${RED}❌ PMAT_BOOK_DIR must be non-empty and free of '..': $BOOK_DIR${NC}" >&2
+    exit 1
+fi
+
 # Check if pmat-book exists
 if [ ! -d "$BOOK_DIR" ]; then
     echo -e "${YELLOW}⚠️  pmat-book not found at $BOOK_DIR${NC}"

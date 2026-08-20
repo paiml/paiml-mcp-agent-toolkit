@@ -42,7 +42,15 @@ min_coverage_pct = 85.0           # Target: ≥85% line coverage (NASA standard)
 min_mutation_score_pct = 80.0     # Target: ≥80% mutation score
 max_cyclomatic_complexity = 15    # Target: ≤15 per function
 min_tdg_grade = "A-"              # Target: A- or better (≥88)
-max_unwrap_calls = 100            # Current: 570 (CRITICAL - must reduce!)
+# 0, and it binds to `unwrap_calls_shipped_code` — the compiler's count of
+# `.unwrap()` in the code that actually ships (`--lib --bins`, no `cfg(test)`).
+# The tree measures 0 there. The previous value of 100, annotated "Current: 570",
+# bound to a metric that counts test code too and measures 20,390: three numbers,
+# none of which was the production panic surface, and no two of which agreed.
+# Test code may unwrap freely — a panic in a test IS the assertion — so a limit
+# over a corpus that includes tests could never have been set to 0 and could
+# never have meant what its name says.
+max_unwrap_calls = 0
 
 # Performance budgets (PMAT operation targets)
 [performance]

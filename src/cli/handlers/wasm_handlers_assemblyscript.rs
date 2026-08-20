@@ -49,7 +49,13 @@ pub async fn handle_analyze_assemblyscript(
         complexity: None,
     };
 
-    let results = process_assemblyscript_files(&project_path, &mut sections).await?;
+    let (results, discovered) = process_assemblyscript_files(&project_path, &mut sections).await?;
+    // #1015. The path guard above closes "the tree is not there"; an EMPTY but
+    // real directory got past it and printed a complete report —
+    // "📁 **Files analyzed**: 0" / `"files_analyzed": 0, "results": []` — with
+    // exit 0, the same document a genuinely clean AssemblyScript project
+    // produces. Every number in that report is over an empty population.
+    ensure_assemblyscript_was_measured(&project_path, discovered, results.len())?;
     let elapsed = start.elapsed();
 
     crate::status_eprintln!(
@@ -64,18 +70,60 @@ pub async fn handle_analyze_assemblyscript(
     Ok(())
 }
 
+/// Refuse an `AssemblyScript` run that measured nothing.
+///
+/// The two ways to measure nothing are different events and get different
+/// sentences, in the shape [`crate::cli::ensure_files_were_analyzed`]
+/// established: no candidate was ever opened, or candidates were opened and
+/// none of them turned out to be `AssemblyScript` this parser could read.
+/// Neither is a clean result, and the second is the one a `.as` file full of
+/// something else produces.
+///
+/// # Errors
+///
+/// When `analyzed` is 0.
+fn ensure_assemblyscript_was_measured(
+    project_path: &Path,
+    discovered: usize,
+    analyzed: usize,
+) -> Result<()> {
+    if analyzed > 0 {
+        return Ok(());
+    }
+    if discovered == 0 {
+        return crate::cli::ensure_files_were_analyzed(
+            "AssemblyScript files",
+            "AssemblyScript",
+            project_path,
+            0,
+        );
+    }
+    anyhow::bail!(
+        "all {discovered} candidate file(s) under {} were skipped — none parsed as \
+         AssemblyScript — so no AssemblyScript measurement was taken. This is not a clean result.",
+        project_path.display()
+    )
+}
+
+/// Analyse every `AssemblyScript` file under `project_path`.
+///
+/// Returns the per-file results AND the number of candidate files discovered,
+/// because "0 results because the tree holds no AssemblyScript" and "0 results
+/// because nothing we opened parsed" need different refusals and `results` on
+/// its own cannot tell them apart.
 async fn process_assemblyscript_files(
     project_path: &Path,
     sections: &mut WasmSections,
-) -> Result<Vec<(PathBuf, WasmComplexity)>> {
+) -> Result<(Vec<(PathBuf, WasmComplexity)>, usize)> {
     let detector = WasmLanguageDetector::new();
     let mut parser = AssemblyScriptParser::new()?;
     let mut results = Vec::new();
 
     let as_files = collect_assemblyscript_files(project_path)?;
+    let discovered = as_files.len();
     crate::status_eprintln!(
         "📁 Found {} AssemblyScript files",
-        crate::cli::colors::number(&as_files.len().to_string())
+        crate::cli::colors::number(&discovered.to_string())
     );
 
     for file_path in as_files {
@@ -86,7 +134,7 @@ async fn process_assemblyscript_files(
         }
     }
 
-    Ok(results)
+    Ok((results, discovered))
 }
 
 async fn analyze_single_file(
@@ -230,7 +278,7 @@ mod assemblyscript_default_run_tests {
 
         // No flags at all, and no --wasm-complexity anywhere in the call.
         let mut sections = WasmSections::default();
-        let results = process_assemblyscript_files(dir.path(), &mut sections)
+        let (results, _discovered) = process_assemblyscript_files(dir.path(), &mut sections)
             .await
             .expect("analysis");
 

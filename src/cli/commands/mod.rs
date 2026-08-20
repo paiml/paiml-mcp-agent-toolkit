@@ -36,6 +36,10 @@ pub use roadmap_agent::*;
 pub mod config_hooks;
 pub use config_hooks::*;
 
+// `pmat init` — agent workspace bootstrap (#1030/#1031/#1032)
+pub mod init_commands;
+pub use init_commands::*;
+
 // Semantic search commands
 pub mod semantic_search;
 pub use semantic_search::*;
@@ -74,3 +78,8 @@ pub(crate) fn on_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'st
         .join()
         .expect("8MB-stack test thread panicked")
 }
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "feature_gate_disclosure_tests.rs"]
+mod feature_gate_disclosure_tests;

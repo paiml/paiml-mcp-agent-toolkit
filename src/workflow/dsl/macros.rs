@@ -4,6 +4,11 @@
 #[macro_export]
 macro_rules! workflow {
     ($name:expr => { $($step:expr),* $(,)? }) => {{
+        // `wf` is only reassigned when the caller supplies at least one step;
+        // `workflow!("x" => {})` expands to a `mut` binding that is never
+        // written, and the warning lands on the macro definition where the
+        // author cannot know either way.
+        #[allow(unused_mut)]
         let mut wf = $crate::workflow::dsl::FluentWorkflow::define($name);
         $(
             wf = wf.then($step);

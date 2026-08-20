@@ -278,6 +278,47 @@ mod tests {
         );
     }
 
+    /// REGRESSION: `SkipCounts::tests` was structurally pinned at 0.
+    ///
+    /// Discovery dropped test files (`is_source_file() && !is_test_file()`)
+    /// before the counting loop in `analyze_directory_with_stats` ever saw
+    /// them, and that loop was the only thing that could record a skip. So the
+    /// bucket whose entire job is to disclose declined test files — and whose
+    /// `note()` renders "N test (use --include-tests)", a string nothing could
+    /// ever produce — reported 0 for every tree, `tests/` directory or not.
+    /// `files_not_read.tests: 0` beside a `tests/` directory full of unread
+    /// code is the same count-with-no-denominator #1015 set out to remove.
+    #[tokio::test]
+    async fn test_declined_test_files_are_counted_not_silently_dropped() {
+        let dir = crate_with_test_debt();
+        let facade = facade();
+
+        let without = facade
+            .analyze_project(request(dir.path().to_path_buf(), false))
+            .await
+            .expect("analysis without tests");
+        assert_eq!(
+            without.skipped.tests, 1,
+            "tests/it.rs was found and declined; the report must say so: {:?}",
+            without.skipped
+        );
+        assert!(
+            without.summary.contains("1 test (use --include-tests)"),
+            "and the human-readable summary must disclose it too: {}",
+            without.summary
+        );
+
+        let with = facade
+            .analyze_project(request(dir.path().to_path_buf(), true))
+            .await
+            .expect("analysis with tests");
+        assert_eq!(
+            with.skipped.tests, 0,
+            "with --include-tests nothing is declined for being a test: {:?}",
+            with.skipped
+        );
+    }
+
     /// A single FILE path was walked as if it were a directory, so a file with
     /// known debt reported zero violations.
     #[tokio::test]

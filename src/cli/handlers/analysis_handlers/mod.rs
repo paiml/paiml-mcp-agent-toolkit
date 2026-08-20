@@ -36,6 +36,65 @@ pub(super) fn reject_unimplemented_ml(ml: bool, command: &str, scores: &str) -> 
     )
 }
 
+/// Report tracked `.rs` files that no compilation unit reaches.
+async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::reachability;
+    let cli::AnalyzeCommands::Reachability {
+        path,
+        format,
+        fail_on_orphan,
+    } = cmd
+    else {
+        unreachable!("Expected Reachability command")
+    };
+
+    let (roots, tracked) = reachability::discover(&path)?;
+    if roots.is_empty() {
+        // Refuse rather than report "0 orphans" over a tree we never walked:
+        // an unmeasured run must not look like a clean one.
+        anyhow::bail!(
+            "no cargo targets found under {} — `cargo metadata --no-deps` returned none, \
+             so reachability could not be measured (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = reachability::analyze(&path, &roots, &tracked);
+
+    if format == "json" {
+        println!(
+            "{}",
+            serde_json::json!({
+                "reachable": report.reachable,
+                "roots": report.roots,
+                "orphan_count": report.orphans.len(),
+                "orphan_lines": report.orphan_lines(),
+                "orphan_tests": report.orphan_tests(),
+                "unresolved_mods": report.unresolved.len(),
+                "summary": report.summary(),
+                "orphans": report.orphans.iter().map(|o| serde_json::json!({
+                    "file": o.path, "lines": o.lines, "tests": o.tests
+                })).collect::<Vec<_>>(),
+            })
+        );
+    } else {
+        println!("{}", report.summary());
+        for o in report.orphans.iter().take(40) {
+            println!("  {}  ({} lines, {} tests)", o.path, o.lines, o.tests);
+        }
+        if report.orphans.len() > 40 {
+            println!("  … and {} more", report.orphans.len() - 40);
+        }
+        for u in report.unresolved.iter().take(10) {
+            println!("  unresolved: {u}");
+        }
+    }
+
+    if fail_on_orphan && !report.orphans.is_empty() {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) use advanced_routes::{convert_cache_strategy, convert_deep_context_dag_type};
 #[cfg(test)]
@@ -187,73 +246,24 @@ pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     result
 }
 
-/// Dispatch to the per-family routers. Split out of [`route_analyze_command`]
-/// so the `--perf` measurement wraps every analyze subcommand exactly once.
+/// Route every `analyze` subcommand to its handler, in one total match.
+///
+/// Split out of [`route_analyze_command`] so the `--perf` measurement wraps
+/// every analyze subcommand exactly once.
+///
+/// **One match, no catch-all.** This used to be seven matches: this one sorted
+/// variants into six families, and each family router re-matched and ended in
+/// `_ => unreachable!("Expected <family> analysis command")`. Only this match
+/// was checked by the compiler, so listing a variant in the wrong family — or
+/// adding it to a family and forgetting its router — compiled cleanly and
+/// aborted the process at run time. The families survive as comments; the
+/// dispatch decision is made once, by name, so that omitting a variant is a
+/// compile error.
 async fn dispatch_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::AnalyzeCommands;
 
     match cmd {
         // Core analysis commands
-        AnalyzeCommands::Bottleneck { .. }
-        | AnalyzeCommands::Complexity { .. }
-        | AnalyzeCommands::Churn { .. }
-        | AnalyzeCommands::DeadCode { .. }
-        | AnalyzeCommands::Defects { .. }
-        | AnalyzeCommands::Dag { .. }
-        | AnalyzeCommands::Satd { .. } => route_core_analysis(cmd).await,
-
-        // Advanced analysis commands
-        AnalyzeCommands::DeepContext { .. }
-        | AnalyzeCommands::Tdg { .. }
-        | AnalyzeCommands::BuildTdg { .. }
-        | AnalyzeCommands::LintHotspot { .. }
-        | AnalyzeCommands::Comprehensive { .. } => route_advanced_analysis(cmd).await,
-
-        // Quality analysis commands
-        AnalyzeCommands::Duplicates { .. }
-        | AnalyzeCommands::DefectPrediction { .. }
-        | AnalyzeCommands::Provability { .. }
-        | AnalyzeCommands::Clippy { .. }
-        | AnalyzeCommands::Entropy { .. } => route_quality_analysis(cmd).await,
-
-        // Specialized analysis commands
-        AnalyzeCommands::GraphMetrics { .. }
-        | AnalyzeCommands::NameSimilarity { .. }
-        | AnalyzeCommands::ProofAnnotations { .. }
-        | AnalyzeCommands::IncrementalCoverage { .. }
-        | AnalyzeCommands::CoverageImprove { .. }
-        | AnalyzeCommands::SymbolTable { .. }
-        | AnalyzeCommands::BigO { .. } => route_specialized_analysis(cmd).await,
-
-        // Language-specific commands
-        AnalyzeCommands::AssemblyScript { .. }
-        | AnalyzeCommands::WebAssembly { .. }
-        | AnalyzeCommands::Wasm { .. } => route_language_specific_analysis(cmd).await,
-
-        // Deep WASM analysis (feature-gated)
-        #[cfg(feature = "deep-wasm")]
-        AnalyzeCommands::DeepWasm { .. } => platform_routes::route_deep_wasm_analysis(cmd).await,
-
-        // Mutation testing (feature-gated)
-        #[cfg(feature = "mutation-testing")]
-        AnalyzeCommands::Mutate { .. } => platform_routes::route_mutation_testing(cmd).await,
-
-        // System commands
-        AnalyzeCommands::Makefile { .. } => route_system_analysis(cmd).await,
-
-        // Semantic analysis commands (PMAT-SEARCH-011)
-        AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
-            entropy_semantic::route_semantic_analysis(cmd).await
-        }
-
-        // MLOps model analysis (PMAT-500)
-        AnalyzeCommands::Models { .. } => platform_routes::route_model_analysis(cmd).await,
-    }
-}
-
-/// Route core analysis commands
-async fn route_core_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
         AnalyzeCommands::Bottleneck { .. } => core_routes::route_bottleneck_analysis(cmd).await,
         AnalyzeCommands::Complexity { .. } => core_routes::route_complexity_analysis(cmd).await,
         AnalyzeCommands::Churn { .. } => core_routes::route_churn_analysis(cmd).await,
@@ -261,13 +271,15 @@ async fn route_core_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Defects { .. } => core_routes::route_defects_analysis(cmd).await,
         AnalyzeCommands::Dag { .. } => core_routes::route_dag_analysis(cmd).await,
         AnalyzeCommands::Satd { .. } => core_routes::route_satd_analysis(cmd).await,
-        _ => unreachable!("Expected core analysis command"),
-    }
-}
 
-/// Route advanced analysis commands
-async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        AnalyzeCommands::Reachability { .. } => route_reachability(cmd).await,
+
+        AnalyzeCommands::HardcodedPaths { .. } => route_hardcoded_paths(cmd).await,
+
+        AnalyzeCommands::UnrunTests { .. } => route_unrun_tests(cmd).await,
+        AnalyzeCommands::VacuousTests { .. } => route_vacuous_tests(cmd).await,
+
+        // Advanced analysis commands
         AnalyzeCommands::DeepContext { .. } => {
             advanced_routes::route_deep_context_analysis(cmd).await
         }
@@ -279,13 +291,8 @@ async fn route_advanced_analysis(cmd: AnalyzeCommands) -> Result<()> {
         AnalyzeCommands::Comprehensive { .. } => {
             advanced_routes::route_comprehensive_analysis(cmd).await
         }
-        _ => unreachable!("Expected advanced analysis command"),
-    }
-}
 
-/// Route quality analysis commands
-async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Quality analysis commands
         AnalyzeCommands::Duplicates { .. } => advanced_routes::route_duplicates_analysis(cmd).await,
         AnalyzeCommands::DefectPrediction { .. } => {
             advanced_routes::route_defect_prediction_analysis(cmd).await
@@ -295,13 +302,8 @@ async fn route_quality_analysis(cmd: AnalyzeCommands) -> Result<()> {
         }
         AnalyzeCommands::Clippy { .. } => advanced_routes::route_clippy_analysis(cmd).await,
         AnalyzeCommands::Entropy { .. } => entropy_semantic::route_entropy_analysis(cmd).await,
-        _ => unreachable!("Expected quality analysis command"),
-    }
-}
 
-/// Route specialized analysis commands
-async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Specialized analysis commands
         AnalyzeCommands::GraphMetrics { .. } => {
             platform_routes::route_graph_metrics_analysis(cmd).await
         }
@@ -323,6 +325,7 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             mutation_threshold,
             focus,
             exclude,
+            max_targets,
             output,
             format,
         } => {
@@ -335,6 +338,7 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 mutation_threshold,
                 focus,
                 exclude,
+                max_targets,
                 output,
                 format,
             )
@@ -344,13 +348,8 @@ async fn route_specialized_analysis(cmd: AnalyzeCommands) -> Result<()> {
             platform_routes::route_symbol_table_analysis(cmd).await
         }
         AnalyzeCommands::BigO { .. } => platform_routes::route_big_o_analysis(cmd).await,
-        _ => unreachable!("Expected specialized analysis command"),
-    }
-}
 
-/// Route language-specific analysis commands
-async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Language-specific commands
         AnalyzeCommands::AssemblyScript { .. } => {
             platform_routes::route_assemblyscript_analysis(cmd).await
         }
@@ -365,15 +364,25 @@ async fn route_language_specific_analysis(cmd: AnalyzeCommands) -> Result<()> {
                 "WASM analysis requires the 'wasm-ast' feature. Build with --features wasm-ast"
             )
         }
-        _ => unreachable!("Expected language-specific analysis command"),
-    }
-}
 
-/// Route system analysis commands
-async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
-    match cmd {
+        // Deep WASM analysis (feature-gated)
+        #[cfg(feature = "deep-wasm")]
+        AnalyzeCommands::DeepWasm { .. } => platform_routes::route_deep_wasm_analysis(cmd).await,
+
+        // Mutation testing (feature-gated)
+        #[cfg(feature = "mutation-testing")]
+        AnalyzeCommands::Mutate { .. } => platform_routes::route_mutation_testing(cmd).await,
+
+        // System commands
         AnalyzeCommands::Makefile { .. } => platform_routes::route_makefile_analysis(cmd).await,
-        _ => unreachable!("Expected system analysis command"),
+
+        // Semantic analysis commands (PMAT-SEARCH-011)
+        AnalyzeCommands::Cluster { .. } | AnalyzeCommands::Topics { .. } => {
+            entropy_semantic::route_semantic_analysis(cmd).await
+        }
+
+        // MLOps model analysis (PMAT-500)
+        AnalyzeCommands::Models { .. } => platform_routes::route_model_analysis(cmd).await,
     }
 }
 
@@ -381,6 +390,282 @@ async fn route_system_analysis(cmd: AnalyzeCommands) -> Result<()> {
 #[cfg(test)]
 #[path = "../analysis_handlers_tests.rs"]
 mod tests;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dispatch_totality_tests.rs"]
+mod dispatch_totality_tests;
+
+/// Find machine-specific absolute paths baked into source.
+async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::hardcoded_paths::{self, Site};
+    let cli::AnalyzeCommands::HardcodedPaths {
+        path,
+        format,
+        fail_on_shipped,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected HardcodedPaths command")
+    };
+
+    let files = hardcoded_paths::tracked_files(&path)?;
+    if files.is_empty() {
+        // Refuse rather than print "0 findings" over a tree we never opened.
+        // An unmeasured run must not be indistinguishable from a clean one
+        // (#1015) — that confusion is the exact defect this command hunts.
+        anyhow::bail!(
+            "no scannable tracked files under {} — `git ls-files` returned none, so no path \
+             scan was performed (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = hardcoded_paths::analyze(&path, &files);
+
+    if format == "json" {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "summary": report.summary(),
+                "files_scanned": report.files_scanned,
+                "literals_scanned": report.literals_scanned,
+                "finding_count": report.findings.len(),
+                "shipped_count": report.shipped(),
+                "by_kind": report.by_kind(),
+                "skipped": report.skipped,
+                "findings": report.findings,
+            }))?
+        );
+    } else {
+        println!("{}", report.summary());
+        const MAX_SHOWN: usize = 40;
+        for f in report.findings.iter().take(MAX_SHOWN) {
+            println!(
+                "  [{}] {}:{}  {}  ({})",
+                f.site.as_str(),
+                f.file,
+                f.line,
+                f.path,
+                f.kind.reason()
+            );
+        }
+        if let Some(hidden) = report.findings.len().checked_sub(MAX_SHOWN) {
+            if hidden > 0 {
+                println!("  … and {hidden} more");
+            }
+        }
+        for s in report
+            .skipped
+            .unreadable
+            .iter()
+            .chain(&report.skipped.not_utf8)
+        {
+            println!("  skipped: {s}");
+        }
+    }
+
+    let shipped = report
+        .findings
+        .iter()
+        .filter(|f| f.site == Site::Shipped)
+        .count();
+    if (fail_on_any && !report.findings.is_empty()) || (fail_on_shipped && shipped > 0) {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Report tests that no CI leg executes.
+async fn route_unrun_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::unrun_tests::{self, ledger};
+    let cli::AnalyzeCommands::UnrunTests {
+        path,
+        format,
+        executed,
+        write_ledger,
+        allow_dirty,
+        check_ledger,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected UnrunTests command")
+    };
+
+    let report = unrun_tests::analyze(&path, &executed).map_err(anyhow::Error::msg)?;
+    if write_ledger {
+        ledger::write(&path, &report, allow_dirty).map_err(anyhow::Error::msg)?;
+        println!("wrote {}", ledger::LEDGER_PATH);
+        return Ok(());
+    }
+    print_unrun_report(&report, &format)?;
+
+    let mut failed = fail_on_any && !report.unrun.is_empty();
+    if check_ledger {
+        let drift = ledger::check(&path, &report);
+        if drift.is_clean() {
+            println!("ledger is current: {}", ledger::LEDGER_PATH);
+        } else {
+            report_ledger_drift(&drift);
+            failed = true;
+        }
+    }
+    // A predicate this analysis cannot decide is a finding, never a pass.
+    if !report.undeterminable.is_empty() || !report.unparsed.is_empty() {
+        failed = true;
+    }
+    if failed {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn print_unrun_report(
+    report: &crate::services::unrun_tests::Report,
+    format: &str,
+) -> anyhow::Result<()> {
+    use crate::services::unrun_tests::ledger;
+    match format {
+        "ledger" => print!("{}", ledger::render(report)),
+        "json" => println!("{}", serde_json::to_string_pretty(&json_of(report))?),
+        _ => {
+            println!("{}", report.summary());
+            for leg in &report.legs {
+                println!("  leg: {leg}");
+            }
+            for (bucket, members) in report.buckets() {
+                println!("  [{}] {} test(s)", bucket, members.len());
+                for m in members.iter().take(5) {
+                    println!("      {}", m.path);
+                }
+                if members.len() > 5 {
+                    println!("      … and {} more", members.len() - 5);
+                }
+            }
+            for f in &report.undeterminable {
+                println!("  [undeterminable] {}  cfg: {}", f.path, f.cfg);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn json_of(report: &crate::services::unrun_tests::Report) -> serde_json::Value {
+    let rows = |v: &[crate::services::unrun_tests::Finding]| {
+        v.iter()
+            .map(|f| {
+                serde_json::json!({
+                    "path": f.path, "file": f.file, "bucket": f.bucket, "cfg": f.cfg,
+                })
+            })
+            .collect::<Vec<_>>()
+    };
+    serde_json::json!({
+        "legs": report.legs,
+        "total_tests": report.total_tests,
+        "executed": report.executed,
+        "ignored": report.ignored,
+        "unrun": rows(&report.unrun),
+        "undeterminable": rows(&report.undeterminable),
+        "unresolved": report.unresolved,
+        "unparsed": report.unparsed,
+        "summary": report.summary(),
+    })
+}
+
+fn report_ledger_drift(drift: &crate::services::unrun_tests::ledger::Drift) {
+    use crate::services::unrun_tests::ledger::LEDGER_PATH;
+    eprintln!("{LEDGER_PATH} has drifted from the tree:");
+    for p in &drift.added {
+        eprintln!("  NEWLY UNRUN  {p}");
+    }
+    for p in &drift.removed {
+        eprintln!("  NO LONGER UNRUN  {p}");
+    }
+    for b in &drift.unexplained {
+        eprintln!("  NO RECORDED REASON for bucket `{b}` — add one to src/services/unrun_tests/reasons.rs");
+    }
+    for b in &drift.stale_reasons {
+        eprintln!("  STALE REASON for bucket `{b}` — nothing is unrun for it any more");
+    }
+    if drift.added.is_empty() && drift.removed.is_empty() && drift.text_differs {
+        eprintln!("  the rendered ledger differs from the committed copy");
+    }
+}
+
+/// Find `#[test]` functions that cannot fail.
+async fn route_vacuous_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
+    use crate::services::vacuous_tests;
+    let cli::AnalyzeCommands::VacuousTests {
+        path,
+        format,
+        max_rate,
+        fail_on_any,
+    } = cmd
+    else {
+        unreachable!("Expected VacuousTests command")
+    };
+
+    let files = vacuous_tests::tracked_rust_files(&path)?;
+    if files.is_empty() {
+        anyhow::bail!(
+            "no tracked .rs files under {} — `git ls-files` returned none, so no test was \
+             examined (this is not a clean result)",
+            path.display()
+        );
+    }
+    let report = vacuous_tests::analyze(&path, &files);
+    if report.tests_examined == 0 {
+        // Zero vacuous tests out of zero tests is not a pass. Say so.
+        anyhow::bail!(
+            "no #[test] functions found in {} parsed file(s) under {} — nothing was judged, \
+             so this is not a clean result",
+            report.files_parsed,
+            path.display()
+        );
+    }
+
+    if format == "json" {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("{}", report.summary());
+        for v in report.vacuous.iter().take(40) {
+            let detail = v
+                .detail
+                .as_deref()
+                .map(|d| format!(" — {d}"))
+                .unwrap_or_default();
+            println!(
+                "  [{}] {}:{}  {}{}",
+                v.kind.as_str(),
+                v.file,
+                v.line,
+                v.name,
+                detail
+            );
+        }
+        if report.vacuous.len() > 40 {
+            println!("  … and {} more", report.vacuous.len() - 40);
+        }
+        for s in report.conditional_skips.iter().take(10) {
+            println!(
+                "  [silent-skip] {}:{}  {}  if {}",
+                s.file, s.line, s.name, s.guard
+            );
+        }
+        if report.conditional_skips.len() > 10 {
+            println!(
+                "  … and {} more silent skips",
+                report.conditional_skips.len() - 10
+            );
+        }
+    }
+
+    let over_rate = max_rate.is_some_and(|m| report.rate() > m);
+    if (fail_on_any && !report.vacuous.is_empty()) || over_rate {
+        std::process::exit(1);
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod ml_refusal_tests {

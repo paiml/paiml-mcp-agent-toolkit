@@ -343,6 +343,13 @@ mod coverage_tests {
     async fn test_check_quality_gates_project_verdict_not_inverted() {
         let temp_dir = TempDir::new().unwrap();
         write_clean_rust_file(temp_dir.path());
+        // "Clean" has to mean clean for every check this tool runs. It runs the
+        // whole `--checks all` suite, and a project with no coverage report is
+        // reported by the coverage check as unmeasured — a blocking finding, by
+        // the rule that a check which did not run has not passed. The fixture
+        // gets the two artifacts the gate reads but does not produce, so this
+        // test still measures the verdict inversion it was written for.
+        crate::cli::analysis_utilities::write_gate_artifacts(temp_dir.path(), 95.0);
 
         let paths = vec![temp_dir.path().to_path_buf()];
         let result = check_quality_gates(&paths, false).await.unwrap();
@@ -730,6 +737,17 @@ mod coverage_tests {
         assert!(result.is_ok());
         let json = result.unwrap();
         assert_eq!(json["results"]["total_dead_code"], 0);
+        // …and the zero is not a silent one. A path that could not be analysed
+        // used to be `continue`d over, which made "no dead code" and "never
+        // looked" the same payload.
+        let not_analyzed = json["results"]["paths_not_analyzed"]
+            .as_array()
+            .expect("paths_not_analyzed");
+        assert_eq!(not_analyzed.len(), 1, "{json}");
+        assert_eq!(
+            not_analyzed[0]["path"].as_str(),
+            Some("/tmp/nonexistent_12345.rs")
+        );
     }
 
     #[tokio::test]
@@ -1025,13 +1043,34 @@ mod coverage_tests {
         let paths = vec![temp_dir.path().to_path_buf()];
         let json = analyze_dead_code(&paths, false).await.unwrap();
 
-        // Must run the analysis (status completed, languages non-empty).
         assert_eq!(json["status"], "completed");
-        let total_functions = json["results"]["total_functions"].as_u64().unwrap_or(0);
-        assert!(
-            total_functions >= 1,
-            "expected analyzer to see >=1 function, got {total_functions}; json={json}"
+        assert_eq!(
+            json["results"]["paths_not_analyzed"]
+                .as_array()
+                .expect("paths_not_analyzed")
+                .len(),
+            0,
+            "the fixture was not analysed: {json}"
         );
+        // NAMED, not counted. This used to assert `total_functions >= 1` — a
+        // denominator that says nothing about whether the analysis found the
+        // right thing, and one the shared analyzer does not compute. What the
+        // tool has to get right here is which of the two functions is dead:
+        // `unused_helper` is, and `used` is this LIBRARY's public API, which the
+        // reachability analyzer used to call dead.
+        let named: Vec<String> = json["results"]["files"]
+            .as_array()
+            .expect("files array")
+            .iter()
+            .flat_map(|f| {
+                f["dead_functions"]
+                    .as_array()
+                    .expect("dead_functions")
+                    .iter()
+            })
+            .map(|i| i["name"].as_str().expect("name").to_string())
+            .collect();
+        assert_eq!(named, vec!["unused_helper".to_string()], "json={json}");
         Ok(())
     }
 

@@ -55,6 +55,17 @@ pub async fn handle_analyze_proof_annotations(
     // Collect and filter annotations
     let annotations = collect_and_filter_annotations(&annotator, &project_path, &filter).await;
 
+    // #1015: "Total proofs: 0 / High confidence: 0 (0.0%)" was printed, exit 0,
+    // for a directory holding no Rust source at all — the same document a tree
+    // that was fully scanned and carries no annotations produces. The disclosure
+    // machinery below already exists for the *filter* matching nothing; this is
+    // the case one step earlier, where there was nothing to filter.
+    crate::cli::ensure_source_files_were_analyzed(
+        "proof-annotation",
+        &project_path,
+        annotator.files_processed(),
+    )?;
+
     // #953 (residual): `--verification-method formal-proof` (and
     // `model-checking`, and `abstract-interpretation`) printed an empty,
     // exit-0 report over a tree containing 42 kani harnesses. An empty result
@@ -275,8 +286,14 @@ mod active_tests {
     use super::*;
     use tempfile::TempDir;
 
+    /// An empty directory is refused, not reported as "Total proofs: 0".
+    ///
+    /// This asserted `result.is_ok()` — it pinned the defect (#1015). "Total
+    /// proofs: 0 / High confidence: 0 (0.0%)" is what a fully scanned tree
+    /// carrying no annotations prints too, so the two were the same document
+    /// and the same exit code.
     #[tokio::test]
-    async fn test_handle_analyze_proof_annotations_empty_dir() {
+    async fn test_handle_analyze_proof_annotations_refuses_empty_dir() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let result = handle_analyze_proof_annotations(
             temp_dir.path().to_path_buf(),
@@ -291,7 +308,14 @@ mod active_tests {
             10,
         )
         .await;
-        assert!(result.is_ok());
+        let message = result
+            .expect_err("nothing was scanned, so there is no proof measurement to report")
+            .to_string();
+        assert!(
+            message.contains("no source files were found")
+                && message.contains("This is not a clean result"),
+            "the refusal must name what was missing and say it is not clean, got: {message}"
+        );
     }
 
     /// A tree with one file the collector cannot parse. On the pmat repo 31
@@ -470,8 +494,14 @@ mod active_tests {
     /// The disclosure must not fire when the filter genuinely matched, nor on
     /// a project that yields nothing at all — an over-broad note would make
     /// every honest empty report look like a tool failure.
+    ///
+    /// The "yields nothing" half used to be an EMPTY DIRECTORY, which is a
+    /// different event: nothing was scanned, so there was no report to judge.
+    /// It is a scanned file that declares no annotatable item now (#1015), so
+    /// the test still exercises a real measured zero — the only kind of empty
+    /// report this command is allowed to print.
     #[tokio::test]
-    async fn a_matching_method_and_an_empty_project_carry_no_disclosure() {
+    async fn a_matching_method_and_an_unannotated_project_carry_no_disclosure() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         std::fs::write(
             temp_dir.path().join("lib.rs"),
@@ -502,6 +532,14 @@ mod active_tests {
         );
 
         let empty_dir = TempDir::new().expect("Failed to create temp dir");
+        // Scanned, but declares nothing the borrow checker annotates: a
+        // measured zero, as opposed to the unmeasured zero an empty directory
+        // would give.
+        std::fs::write(
+            empty_dir.path().join("consts.rs"),
+            "pub const X: i32 = 1;\npub struct S;\n",
+        )
+        .expect("write");
         let empty_out = empty_dir.path().join("empty.txt");
         handle_analyze_proof_annotations(
             empty_dir.path().to_path_buf(),

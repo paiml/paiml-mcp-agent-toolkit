@@ -152,7 +152,7 @@ mod ml_integration_tests {
         detector.train(&create_diverse_equivalence_data()).unwrap();
 
         // Create diverse mutant set
-        let all_mutants = vec![
+        let all_mutants = [
             create_arithmetic_mutant(),  // Likely killed
             create_relational_mutant(),  // Medium probability
             create_conditional_mutant(), // Lower probability

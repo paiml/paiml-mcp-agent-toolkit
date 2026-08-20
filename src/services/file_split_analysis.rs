@@ -35,7 +35,15 @@ fn compute_cohesion(
     internal_edges as f64 / max_edges
 }
 
-/// Compute split impact: which files import this module.
+/// Compute split impact: which files import this module, and which of them are
+/// already in a mutual dependency with it.
+///
+/// A *circular risk* is a file that both calls into this file **and** is called
+/// by it. The cycle already exists at file level; splitting this file spreads its
+/// two halves of that cycle across separate modules, where the same mutual
+/// dependency becomes a module-level import cycle that the compiler and the
+/// reader both have to reckon with. Those files are the ones to look at before
+/// executing the plan, so they are reported rather than left for the user to find.
 fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
     let mut importing_files = Vec::new();
 
@@ -45,6 +53,10 @@ fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
         .get(file_path)
         .map(|v| v.iter().copied().collect())
         .unwrap_or_default();
+
+    // Files this file calls into (outgoing edges), for cycle detection below.
+    let outgoing_files = outgoing_dependency_files(index, file_path, &target_indices);
+    let mut circular_risks = Vec::new();
 
     for (other_file, other_indices) in &index.file_index {
         if other_file == file_path {
@@ -59,16 +71,44 @@ fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
                 .unwrap_or(false)
         });
         if has_dependency {
+            // Incoming edge. If we also call into it, the two files form a cycle.
+            if outgoing_files.contains(other_file.as_str()) {
+                circular_risks.push(other_file.clone());
+            }
             importing_files.push(other_file.clone());
         }
     }
 
     importing_files.sort();
+    circular_risks.sort();
 
     SplitImpact {
         importing_files,
-        circular_risks: Vec::new(), // TODO: detect circular deps
+        circular_risks,
     }
+}
+
+/// Files (other than `file_path`) containing a function called by `target_indices`.
+fn outgoing_dependency_files<'a>(
+    index: &'a AgentContextIndex,
+    file_path: &str,
+    target_indices: &HashSet<usize>,
+) -> HashSet<&'a str> {
+    // Reverse the file → functions map once; callees are global function indices.
+    let mut file_of: HashMap<usize, &str> = HashMap::new();
+    for (other_file, indices) in &index.file_index {
+        for &gi in indices {
+            file_of.insert(gi, other_file.as_str());
+        }
+    }
+
+    target_indices
+        .iter()
+        .filter_map(|gi| index.calls.get(gi))
+        .flatten()
+        .filter_map(|callee| file_of.get(callee).copied())
+        .filter(|f| *f != file_path)
+        .collect()
 }
 
 // ── Execute Split ──────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ impl ProofAnnotator {
             cache: Arc::new(RwLock::new(ProofCache::new())),
             symbol_table,
             collection_errors: std::sync::atomic::AtomicUsize::new(0),
+            files_processed: std::sync::atomic::AtomicUsize::new(0),
         }
     }
 
@@ -21,6 +22,18 @@ impl ProofAnnotator {
     #[must_use]
     pub fn collection_errors(&self) -> usize {
         self.collection_errors
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// How many files the last [`collect_proofs`](Self::collect_proofs) read.
+    ///
+    /// The denominator of the annotation total: zero means nothing was scanned,
+    /// which is not the same fact as "scanned and found none".
+    ///
+    /// Zero before any collection has run.
+    #[must_use]
+    pub fn files_processed(&self) -> usize {
+        self.files_processed
             .load(std::sync::atomic::Ordering::Relaxed)
     }
 
@@ -81,8 +94,22 @@ impl ProofAnnotator {
             }
         }
 
+        // How many files were actually read, taken before the merge consumes
+        // the per-source metrics. `max` rather than `sum`: every source walks
+        // the same tree, so summing would report more files than exist; what
+        // this has to answer is "was anything opened at all", and the largest
+        // single source's count is the honest floor for that.
+        let files_read = all_results
+            .iter()
+            .map(|r| r.metrics.files_processed)
+            .max()
+            .unwrap_or(0);
+
         // Merge results with conflict resolution
         let (proof_map, total_errors) = self.merge_with_conflict_resolution(all_results);
+
+        self.files_processed
+            .store(files_read, std::sync::atomic::Ordering::Relaxed);
 
         // The per-file failures used to end here, as a single `warn!` line on
         // stderr and nothing else: the stdout report claimed a total with no

@@ -5,6 +5,7 @@ metadata:
   description: PMAT core contract — commit-level enforcement invariants
   references:
   - docs/specifications/components/commit-level-contract-enforcement.md
+  - src/models/comply_config_types.rs
 equations:
   refresh_bindings:
     formula: binding_index = scan(contracts/, binding.yaml)
@@ -26,6 +27,26 @@ equations:
     preconditions:
     - checks.len() > 0
     lean_theorem: Theorems.Check_Determinism
+  severity_resolution:
+    formula: >
+      severity(id) = (patch(id) applied over declared(id)).severity, where
+      declared = default_checks() and patch = the `comply.checks:` map read from
+      .pmat.yaml
+    domain: >
+      a check id, the declared check roster, and a possibly-partial
+      `comply.checks:` map
+    codomain: severity in {info, warning, error, critical}
+    invariants:
+    - "PMAT-630: a partial `checks:` map is a PATCH over the declared roster, never a replacement"
+    - "an id ABSENT from the map keeps the severity and threshold the code declared for it"
+    - "an entry that omits `severity:` keeps the declared severity; omitting `threshold:` keeps the declared threshold"
+    - "an explicit `severity:` still overrides the declared one: merging must not make the config unwritable"
+    - "an id the roster does not declare is added, not rejected: merging adds, it does not restrict"
+    - "an unknown key inside a check entry is a parse ERROR, never a silently discarded override"
+    - "a `comply:` section with no `checks:` key keeps the whole declared roster, not an empty map"
+    - "the resolved roster is never smaller than the declared one"
+    preconditions:
+    - ".pmat.yaml parses as YAML"
   score_range:
     formula: score = hit_rate * throughput
     domain: hit_rate in [0.0, 1.0], throughput in [0.0, +inf)

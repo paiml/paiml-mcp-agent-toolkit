@@ -171,6 +171,71 @@ pub enum ComplyCommands {
         output: Option<PathBuf>,
     },
 
+    /// CB-2100: generate the comply enforcement ledger.
+    ///
+    /// One row per CB rule: severity, whether a required status check actually
+    /// reaches it, which invocation carries it, and the file:line it is defined
+    /// at. Rules whose status cannot be established are written UNREACHABLE —
+    /// that is a finding, not a blank.
+    ///
+    /// Exits non-zero when the committed ledger has drifted, so the same
+    /// command serves as the check and as the generator.
+    Ledger {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Write the ledger to docs/status/comply-enforcement-ledger.md
+        #[arg(long)]
+        write: bool,
+
+        /// Write output to this file instead (implies --write)
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
+    },
+
+    /// CB-2102: check the ratchet baselines, or lower them.
+    ///
+    /// Without `--lower` this is the same judgement CB-2102 makes inside
+    /// `pmat comply check`, exiting non-zero when any ratcheted metric has got
+    /// worse than the value the repository last agreed to.
+    ///
+    /// With `--lower` it is the scheduled pass: every baseline the tree has
+    /// beaten is rewritten to the measured value, and the entry's
+    /// `justification` — which no longer justifies anything — is removed. It
+    /// can never raise a baseline: the new numbers come from
+    /// `kernel::next_baseline`, which is monotone non-increasing.
+    Ratchet {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Rewrite every baseline the tree has beaten.
+        #[arg(long)]
+        lower: bool,
+    },
+
+    /// CB-2101: classify every threshold in `.pmat-metrics.toml`.
+    ///
+    /// Each one comes back FIRING (live — a plausible regression trips it),
+    /// VIOLATED (breached at HEAD while the build is green, which is worse than
+    /// having no threshold) or VACUOUS (further from the measurement than the
+    /// band, so nothing can ever reach it).
+    ///
+    /// Same judgement CB-2101 makes inside `pmat comply check`, exiting
+    /// non-zero on the same conditions; `--format json` emits the whole report,
+    /// including for each threshold the limit as written, the live measurement,
+    /// the band that decided FIRING vs VACUOUS, and why.
+    Coherence {
+        /// Project path (defaults to current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: ComplyOutputFormat,
+    },
+
     /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
     /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
     Review {

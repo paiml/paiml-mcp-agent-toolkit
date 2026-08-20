@@ -356,7 +356,7 @@ fn test_risk_level_equality() {
 #[test]
 fn test_risk_level_clone_copy() {
     let level = RiskLevel::Medium;
-    let cloned = level.clone();
+    let cloned = level;
     let copied = level;
     assert_eq!(level, cloned);
     assert_eq!(level, copied);

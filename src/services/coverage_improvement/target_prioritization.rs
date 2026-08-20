@@ -73,23 +73,43 @@ impl CoverageImprovementService {
             true
         });
 
-        // Sort by score descending and take top N (default 10)
-        let mut files_vec: Vec<(PathBuf, f64)> = file_scores.into_iter().collect();
-        files_vec.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        let top_n = 10; // TODO: Make this configurable
-        let targets: Vec<PathBuf> = files_vec
-            .into_iter()
-            .take(top_n)
-            .map(|(path, score)| {
-                crate::status_eprintln!("  📄 {} (score: {:.2})", path.display(), score);
-                path
-            })
-            .collect();
+        let targets = self.select_top_targets(file_scores);
 
         crate::status_eprintln!("✅ Prioritized {} files", targets.len());
 
         Ok(targets)
+    }
+
+    /// Sort scored files by score (descending) and keep the highest `max_targets`.
+    ///
+    /// `config.max_targets == 0` means "no limit" — every scored file is returned.
+    /// Ties are broken by path so the selection is deterministic regardless of the
+    /// iteration order of the incoming `HashMap`.
+    pub(crate) fn select_top_targets(
+        &self,
+        file_scores: std::collections::HashMap<PathBuf, f64>,
+    ) -> Vec<PathBuf> {
+        let mut files_vec: Vec<(PathBuf, f64)> = file_scores.into_iter().collect();
+        files_vec.sort_by(|a, b| {
+            b.1.partial_cmp(&a.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(&b.0))
+        });
+
+        let limit = if self.config.max_targets == 0 {
+            files_vec.len()
+        } else {
+            self.config.max_targets
+        };
+
+        files_vec
+            .into_iter()
+            .take(limit)
+            .map(|(path, score)| {
+                crate::status_eprintln!("  📄 {} (score: {:.2})", path.display(), score);
+                path
+            })
+            .collect()
     }
 
     /// Run a PMAT analyze command and return stdout

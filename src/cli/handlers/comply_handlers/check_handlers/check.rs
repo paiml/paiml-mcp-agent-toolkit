@@ -109,6 +109,11 @@ pub(crate) fn compute_compliance_report(
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
+    // An advisory-only rule that a config quietly promotes to `error` would be
+    // obeyed in the severity column and ignored in the verdict, which is worse
+    // than either honest answer. Refuse the configuration instead.
+    super::check_evidence_gates::validate_advisory_only_severities(comply_config)
+        .map_err(|e| anyhow::anyhow!(e))?;
     announce_suppressions(project_path, comply_config);
 
     let (config, version_source) = load_project_config_with_source(project_path)?;
@@ -329,6 +334,22 @@ fn build_all_compliance_checks(
         (
             "macs",
             Box::new(move || build_macs_checks(project_path, comply_config)),
+        ),
+        (
+            "evidence",
+            Box::new(move || build_evidence_gate_checks(project_path, comply_config)),
+        ),
+        (
+            "gate-effect",
+            Box::new(move || build_gate_effect_checks(project_path, comply_config)),
+        ),
+        (
+            "ratchet",
+            Box::new(move || build_ratchet_checks(project_path, comply_config)),
+        ),
+        (
+            "coherence",
+            Box::new(move || build_coherence_checks(project_path, comply_config)),
         ),
     ];
     run_check_groups(groups)
@@ -1086,6 +1107,13 @@ include!("check_builders_foundation.rs");
 include!("check_builders_contracts.rs");
 include!("check_builders_commits.rs");
 include!("check_builders_work.rs");
+include!("check_builders_evidence.rs");
+include!("check_gate_effect.rs");
+include!("check_builders_gate_effect.rs");
+include!("check_metrics_ratchet.rs");
+include!("check_builders_ratchet.rs");
+include!("check_threshold_coherence.rs");
+include!("check_builders_coherence.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");

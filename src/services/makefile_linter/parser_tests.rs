@@ -229,5 +229,136 @@ mod tests {
         assert!(parser.starts_with("include"));
         assert!(!parser.starts_with("exclude"));
     }
+
+    /// Every recipe line of `rule`, in order.
+    fn recipe_text(ast: &MakefileAst, rule_idx: usize) -> Vec<String> {
+        ast.nodes[rule_idx]
+            .children
+            .iter()
+            .filter_map(|idx| match &ast.nodes[*idx].data {
+                NodeData::Recipe { lines } => Some(lines),
+                _ => None,
+            })
+            .flatten()
+            .map(|line| line.text.clone())
+            .collect()
+    }
+
+    /// GNU make: "Blank lines ... may appear among the recipe lines; they are
+    /// ignored." `make` runs both commands below; this parser used to stop the
+    /// recipe at the blank line and then reject `\t@echo two` as a recipe with
+    /// no rule above it.
+    #[test]
+    fn a_blank_line_does_not_end_a_recipe() {
+        let input = "all:\n\t@echo one\n\n\t@echo two\n";
+        let ast = MakefileParser::new(input)
+            .parse()
+            .expect("GNU make accepts a blank line inside a recipe");
+        assert_eq!(
+            recipe_text(&ast, 0),
+            vec!["echo one".to_string(), "echo two".to_string()],
+            "both commands belong to `all`"
+        );
+    }
+
+    /// The shape that made `pmat analyze makefile Makefile` exit 4 on pmat's own
+    /// Makefile: comment lines between the target line and its first command.
+    #[test]
+    fn comment_lines_do_not_end_a_recipe() {
+        let input = "all:\n# why this target exists\n# and a second line of it\n\t@echo one\n\t@echo two\n";
+        let ast = MakefileParser::new(input)
+            .parse()
+            .expect("GNU make accepts comment lines among recipe lines");
+        assert_eq!(
+            recipe_text(&ast, 0),
+            vec!["echo one".to_string(), "echo two".to_string()],
+            "the commands still belong to `all`"
+        );
+        // The comments reached the AST before this fix (via the top-level
+        // comment branch, as a side effect of the recipe being cut short); they
+        // must still be there.
+        let comments = ast
+            .nodes
+            .iter()
+            .filter(|node| node.kind == MakefileNodeKind::Comment)
+            .count();
+        assert_eq!(comments, 2, "comment nodes must not be swallowed");
+    }
+
+    /// Mixed blanks and comments, and a rule that follows the recipe: the
+    /// recipe must resume across the ignorable lines and still stop at `next:`.
+    #[test]
+    fn blanks_and_comments_interleaved_with_recipe_lines() {
+        let input = "\
+first:
+\t@echo a
+
+# a note
+
+\t@echo b
+\t@echo c
+
+next:
+\t@echo d
+";
+        let ast = MakefileParser::new(input)
+            .parse()
+            .expect("blank and comment lines are ignored among recipe lines");
+        let rules: Vec<usize> = ast
+            .nodes
+            .iter()
+            .enumerate()
+            .filter(|(_, node)| node.kind == MakefileNodeKind::Rule)
+            .map(|(idx, _)| idx)
+            .collect();
+        assert_eq!(rules.len(), 2, "two rules");
+        assert_eq!(
+            recipe_text(&ast, rules[0]),
+            vec![
+                "echo a".to_string(),
+                "echo b".to_string(),
+                "echo c".to_string()
+            ]
+        );
+        assert_eq!(recipe_text(&ast, rules[1]), vec!["echo d".to_string()]);
+    }
+
+    /// The blank/comment rule must not resurrect a genuinely orphaned recipe:
+    /// GNU make rejects this file with "recipe commences before first target",
+    /// and so must the parser.
+    #[test]
+    fn a_recipe_with_no_rule_above_it_is_still_an_error() {
+        for input in [
+            "\techo orphan\n",
+            "# just a comment\n\n\techo orphan\n",
+            "VAR = 1\n\n\techo orphan\n",
+        ] {
+            let errors = MakefileParser::new(input)
+                .parse()
+                .expect_err("a recipe with no rule above it is a parse error");
+            assert!(
+                errors.iter().any(|e| matches!(
+                    e,
+                    ParseError::InvalidSyntax(msg) if msg == "Recipe without rule"
+                )),
+                "expected `Recipe without rule` for {input:?}, got {errors:?}"
+            );
+        }
+    }
+
+    /// Dogfood: pmat must parse the Makefile it ships with. GNU make runs this
+    /// file; `pmat analyze makefile Makefile` answered
+    /// `[InvalidSyntax("Recipe without rule") x12]` and exit 4.
+    #[test]
+    fn pmats_own_makefile_parses() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("Makefile");
+        let source = std::fs::read_to_string(&path).expect("pmat ships a Makefile");
+        if let Err(errors) = MakefileParser::new(&source).parse() {
+            panic!(
+                "{} does not parse, but GNU make runs it: {errors:?}",
+                path.display()
+            );
+        }
+    }
 }
 

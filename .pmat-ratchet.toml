@@ -1,0 +1,425 @@
+# CB-2102 — ratchet baselines. CB-2101 — threshold coherence.
+#
+# Each [metric.*] entry records the value a metric HAD when it was captured,
+# together with the exact command that reproduces it. The gate asserts only
+# that the metric has not got WORSE. A scheduled job lowers a baseline whenever
+# the measurement drops (`pmat comply ratchet --lower`). RAISING one requires a
+# `justification` on that entry.
+#
+# Why a ratchet and not a threshold. `.pmat-metrics.toml:45` carries
+#   max_unwrap_calls = 100            # Current: 570 (CRITICAL - must reduce!)
+# in a tree that measures 20,390 by the predicate below. A limit of 100, an
+# annotation of 570 and a measurement of 20,390 — three numbers, no two of which
+# agree, none of which anything reads, and a green build throughout. A number in
+# a config file that nobody re-runs is not a gate; it is a wish with a colon
+# after it.
+#
+# Why every entry carries its command. The scope predicate IS the metric. The
+# "unwrap count" of this repository has been quoted as 570, 11,002, 20,326 and
+# 20,378 inside a single programme of work, by people who each meant a
+# different set of files and none of whom wrote down which. Two of those differ
+# by 9,324; one moved by 52 within a single session. So the gate does not read
+# these numbers — it re-derives them, and `includes_test_files` states in the
+# schema which side of that 9,324 each one is on.
+#
+# Commands run from the repository root under `bash -o pipefail -c` with
+# LC_ALL=C. Exit 0 and exit 1 are accepted (the grep family uses 1 for "no
+# matches", a real count of zero); anything else is a FAILED measurement, and a
+# failed measurement FAILS the gate rather than passing it.
+
+version = 1
+
+[meta]
+# The parent of the commit that introduces this file. A file cannot contain the
+# hash of the commit that adds it, so the numbers below are the tree AT that
+# commit — i.e. 5794a8350 plus this change. That distinction is not cosmetic:
+# `panic_macro_calls_src` is 788 here and 783 at 5794a8350 itself, because
+# drive_tests.rs adds five `panic!(` calls of its own. Re-derive any figure
+# with the entry's own `command`; do not trust this comment over the command.
+captured_at_commit = "5794a8350"
+captured_at = "2026-08-19"
+
+[metric.unwrap_calls_src_total]
+baseline = 20387
+unit = "count"
+band = 200
+includes_test_files = true
+command = '''git grep -oF '.unwrap()' -- 'src/*.rs' | wc -l'''
+description = """
+Literal `.unwrap()` occurrences — occurrences, not lines — across every tracked
+.rs file under src/, test code included. Unambiguous by construction: no
+filename heuristic decides what counts, so the number cannot drift by
+re-reading the predicate.
+"""
+
+[metric.unwrap_calls_shipped_code]
+baseline = 0
+unit = "count"
+band = 0
+includes_test_files = false
+command = '''o=$(CLIPPY_CONF_DIR=. CARGO_TARGET_DIR=target/ratchet-unwrap cargo clippy --quiet --lib --bins --features full --message-format=json -- -D unknown_lints --force-warn clippy::unwrap_used 2>/dev/null) || exit 9
+printf '%s\n' "$o" | grep -qF '"reason":"build-finished","success":true' || exit 9
+printf '%s\n' "$o" | grep -oF '"code":"clippy::unwrap_used"' | wc -l'''
+description = """
+`.unwrap()` in the code that SHIPS, counted by the compiler rather than by a
+filename or a line-prefix heuristic. `--lib --bins` is exactly what
+`cargo build --release` compiles, and it never sets `cfg(test)`, so every
+`#[cfg(test)]` module is stripped before clippy ever sees it. That — not a
+config key — is why this counts production only.
+
+Do not credit `.clippy.toml`'s `allow-*-in-tests` for the scope. Those keys are
+belt-and-braces for anyone running `--all-targets`, where the lib IS compiled
+with `cfg(test)` and the same lint reports 15,909. They are also easy to
+disable by accident: clippy reads exactly ONE config file, and a `clippy.toml`
+added beside `.clippy.toml` is silently ignored with a warning most runs scroll
+past. The first draft of this metric shipped exactly that mistake.
+
+The other reason the number is 0 is not a virtue: `src/tests/` (166 tracked
+files) is referenced by no `mod` in `src/lib.rs` or `src/main.rs`, so it is
+never compiled at all. Those unwraps are excluded because that code is dead to
+the build, not because it was judged to be test code.
+
+Why the compiler and not grep. The two grep metrics above disagree by 11,208
+because `.unwrap()` is a string to them: neither can tell a macro invocation
+from a string literal that spells one, nor a `#[test]` helper in a file named
+like production code from production code. rustc can.
+
+The worked example is `todo!()`/`unimplemented!()`. Text search of src/*.rs
+finds 149 occurrences: 83 inside string literals, 20 in comments, and 46 real
+macro invocations — every one of the 46 in test code. The production count is
+0. So text over-reports by 149 and there is no filter over the TEXT that
+recovers 0, because more than half the noise is pmat's own detector rules
+quoting the very macro they hunt.
+
+That self-reference is already load-bearing in this tree, and the workaround is
+worse than the problem: `comply_cb_detect/rust_best_practices/utilities.rs`
+carries `const DOT_UNWRAP: &str = concat!(".unwr", "ap()")` under the comment
+"Use concat! to avoid self-detection by CB-501/CB-502 scanners", and three more
+files do the same. The source is obfuscated so the scanner cannot read it. This
+is why contamination is 2.2% for `.unwrap()` and 56% for `todo!(` — not a fact
+about the constructs, but a record of who remembered to call `concat!`. A
+predicate whose accuracy depends on authors hand-obfuscating future source is
+not a predicate. Ask the compiler.
+
+Why the baseline is 0 and the band is 0. There is no tolerable number of
+panics in shipped code, and unlike the 20,390 above this one is reachable:
+it was reached. A band would only license a regression.
+
+Why the assignment is inside the command. `measure()` runs commands while the
+outer `cargo test` holds the lock on the default target directory, so a nested
+cargo sharing it would block forever. A separate CARGO_TARGET_DIR is what makes
+this metric safe to run from `the_committed_ratchet_holds_at_head`; it costs
+~120s cold and is incremental thereafter.
+
+Why `o=$(...) || exit 9` and not a pipe. Under `pipefail` a pipeline reports the
+RIGHTMOST non-zero status, so `cargo ... | grep -c` would report a failed build
+(101) as grep's 1 — an accepted exit code meaning "a real count of zero". The
+build failure would have been recorded as a perfect score. Capturing first makes
+an unbuildable tree exit 9, which is a FAILED measurement, which fails the gate.
+
+Why `--message-format=json` and the quoted `"code":"..."` key. The first draft of
+this command used `--message-format=short` and grepped for `clippy::unwrap_used`.
+Short format prints the message but NOT the lint name —
+`cfg.rs:332:59: warning: used `unwrap()` on an `Option` value` — so the grep
+matched nothing and the metric reported 0 on a tree with a live unwrap in it.
+The default format is no better: it names the lint `clippy::unwrap-used`, with a
+HYPHEN. Only the JSON `code` field carries the underscored id this grep pins.
+That draft was a gate that could not fail, and nothing but the RED-first proof
+below would have revealed it — it was green on the clean tree, which is exactly
+what a working gate looks like.
+
+Three further ways this command could have measured 0 without looking, each
+closed by one token and each verified by mutation on this tree:
+
+`--force-warn`, not `-W`. `-W` is overridden by an `#[allow]` at the site, so
+adding `#[allow(clippy::unwrap_used)]` above a live `.unwrap()` took the measured
+count from 1 back to 0 — a one-line edit that silently disarms the gate, in a tree
+that already carries 498 `#[allow(` attributes. `--force-warn` cannot be overridden
+by attribute, and reports the same site as 1.
+
+`-D unknown_lints`. Misspell the lint (`clippy::unwrap_useds`) and clippy exits 0
+having run no lint at all: count 0, exit 1, an accepted perfect score from a
+measurement that never happened. With `-D unknown_lints` the same typo exits 101,
+becomes exit 9, and fails the gate. This is the failure mode that matters most,
+because a lint that is renamed upstream produces it without anyone touching this
+file.
+
+The build-liveness assertion. `"reason":"build-finished","success":true` must
+appear in the output. Counting diagnostics can only ever undercount a build that
+did not produce any; requiring the completion record means "no findings" and "no
+build" stop being the same observation.
+
+`CLIPPY_CONF_DIR=.` pins which config file clippy reads, so a config added
+elsewhere in the tree cannot change what this metric counts.
+
+RED-first proof (rerun this if you change the command). Revert the `not` arm of
+`parse_cfg_list` in src/services/unrun_tests/cfg.rs to
+`"not" if args.len() == 1 => CfgExpr::Not(Box::new(args.into_iter().next().unwrap()))`
+and this metric must measure 1, exceeding a baseline of 0 with a band of 0, and
+CB-2102 must fail. Restore it and the metric must measure 0 again. Both halves
+matter: the second is the counter-test that catches a predicate which simply
+reports a nonzero number for everything.
+"""
+
+[metric.unwrap_calls_src_outside_cfg_test]
+baseline = 9179
+unit = "count"
+band = 100
+includes_test_files = false
+command = '''git ls-files -- 'src/*.rs' | while IFS= read -r f; do awk '/^[[:space:]]*#\[cfg\(test\)\]/{exit} {print}' "$f"; done | grep -oF '.unwrap()' | wc -l'''
+description = """
+The same count restricted STRUCTURALLY rather than by filename: each file is
+truncated at its first `#[cfg(test)]` line. Filename predicates were measured
+and rejected — excluding paths matching `test` also drops
+src/cli/handlers/test_handlers.rs and src/services/git_test_filter.rs, which are
+production code, and the substring matches `latest` as well. This predicate
+undercounts production unwraps written BELOW an inline test module; it is
+mechanical and stable, which is what a ratchet needs, and it is an undercount
+in a known direction rather than an argument.
+"""
+
+[metric.satd_markers_src_comments]
+baseline = 327
+unit = "count"
+band = 10
+includes_test_files = true
+command = '''git grep -nE '^[[:space:]]*(//|/\*|\*)' -- 'src/*.rs' | grep -oE '\b(TODO|FIXME|HACK|XXX)\b' | wc -l'''
+description = """
+Self-admitted technical debt markers on comment-only lines under src/. Scoped to
+comment lines on purpose: the same markers occur 1,102 times across src/ once
+string literals, test fixtures and this project's own SATD ANALYSER are counted,
+and that number measures pmat's feature set rather than its debt. Trailing
+comments after code are not counted.
+"""
+
+[metric.panic_macro_calls_src]
+baseline = 788
+unit = "count"
+band = 20
+includes_test_files = true
+command = '''git grep -oF 'panic!(' -- 'src/*.rs' | wc -l'''
+description = """
+`panic!(` occurrences across every tracked .rs file under src/. Five of them
+are this change's own: drive_tests.rs fails its match arms with `panic!` so the
+message names what was read instead of asserting a bare boolean. That the
+figure moved 783 -> 788 while the other four metrics did not is the ratchet
+working on its own introduction — the count was re-derived from the command
+after the new files were tracked, not transcribed from the earlier reading.
+"""
+
+[metric.allow_attributes_src]
+baseline = 498
+unit = "count"
+band = 20
+includes_test_files = true
+command = '''git grep -oF '#[allow(' -- 'src/*.rs' | wc -l'''
+description = """
+`#[allow(` attributes across every tracked .rs file under src/ — the count of
+places a lint was switched off rather than answered.
+"""
+
+# ── CB-2101 (threshold coherence) ──────────────────────────────────────────
+#
+# Every scalar in a `threshold_sections` section of `.pmat-metrics.toml` needs a
+# binding here. A threshold with none is UNDECLARED, which `evaluate_coherence`
+# fails — an audit whose honest answer to "is this number enforced?" is silence
+# is not an audit.
+#
+# Three kinds, and the difference between them is evidence, not intent:
+#
+#   gate     — a [metric.*] measures it and the limit is judged against that
+#              measurement on every run.
+#   external — named code outside this file reads THE KEY and acts on it. The
+#              gate checks that the named file exists; it cannot check that the
+#              bound is the same one, which is why `external` is a WARN and not
+#              a pass. `thresholds.binary_max_bytes` is the worked example of
+#              why: `src/tests/binary_size.rs:40` carries the comment "aligned
+#              with .pmat-metrics.toml binary_max_bytes" above a hardcoded
+#              `50 * 1024 * 1024` = 52,428,800, against the 50,000,000 declared
+#              here. Two numbers 2.43 MB apart, one comment claiming they are
+#              one number. It is therefore a `budget`, not an `external`.
+#   budget   — nothing reads the key. Requires a justification, always
+#              classifies VACUOUS, and warns. This is the honest label for 14 of
+#              the 17 thresholds in this repository's `.pmat-metrics.toml`.
+#
+# Every `budget` justification below is the OBSERVED result of
+# `git grep -F "<key>" -- ':!.pmat-metrics.toml' ':!.pmat-ratchet.toml'`, run at
+# the captured commit. Where that grep hits only prose and test fixtures, the
+# key is read by nothing and the number is decoration. `scripts/validate-metrics.sh`
+# is the shape of the whole problem: it assigns `CONFIG_FILE=".pmat-metrics.toml"`
+# on line 10, never mentions the variable again, hardcodes LINT_MAX_MS,
+# TEST_FAST_MAX_MS, COVERAGE_MAX_MS, BINARY_MAX_BYTES and DEPS_DEFAULT_MAX as
+# shell literals — and is invoked by no Makefile target, workflow or hook.
+
+[coherence]
+threshold_sections = ["thresholds", "quality_gates", "performance"]
+
+[coherence.non_threshold_sections]
+staleness = "max_age_days is a cache freshness window, not a quality bound"
+enforcement = "fail_on_* are switches; a boolean cannot be breached by a measurement"
+trend_analysis = "retention and alerting policy for recorded metrics, not a bound on the tree"
+
+# ── the one live gate ──────────────────────────────────────────────────────
+#
+# The defect that started this work item: a declared limit of 100 against a
+# measured 20,390, annotated "Current: 570". The scope question turned out to be
+# the whole defect. Bound to `unwrap_calls_src_total` the threshold counted test
+# code, where unwrapping is the assertion mechanism and the right number is not
+# 0; so the limit could only ever be an arbitrary figure nobody could justify.
+# It now binds to `unwrap_calls_shipped_code`, which asks the compiler for the
+# count in the code that ships. That number is 0, so the threshold is 0, and it
+# is pinned by id rather than by prose so the two cannot drift apart again.
+[coherence.binding."quality_gates.max_unwrap_calls"]
+kind = "gate"
+metric = "unwrap_calls_shipped_code"
+direction = "max"
+
+# ── [thresholds] ───────────────────────────────────────────────────────────
+
+[coherence.binding."thresholds.provability_min"]
+kind = "external"
+enforced_by = "src/cli/analysis_utilities/quality_gate_config.rs"
+justification = """
+Genuinely read: `load_provability_threshold` parses [thresholds].provability_min
+out of .pmat-metrics.toml and is called from quality_gate_part2a.rs:55 and :153.
+WARN rather than pass because this gate cannot check that the value read is the
+value enforced — only that the reader exists.
+"""
+
+[coherence.binding."thresholds.entropy_min_diversity"]
+kind = "external"
+enforced_by = "src/cli/analysis_utilities/quality_gate_config.rs"
+justification = """
+Read as the LEGACY fallback key by `read_entropy_threshold_from_file`, after
+[entropy].min_pattern_diversity, and reached from quality_gate_execute.rs:147
+and quality_gate_part2a.rs:181. Note the value 0.3 is identical to
+DEFAULT_MIN_PATTERN_DIVERSITY, so removing the key would change nothing today —
+it is read, and it is also a restatement of the default.
+"""
+
+[coherence.binding."thresholds.lint_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Outside .pmat-metrics.toml the key occurs only in
+CLAUDE.md, PMAT-INTEGRATION.md and a test fixture that writes its own temporary
+config (src/cli/analysis_utilities/quality_gate_part2f.rs). No Makefile target,
+workflow, hook or script compares a measurement against it, and `make lint`
+records no metric to compare.
+"""
+
+[coherence.binding."thresholds.test_fast_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md and
+PMAT-INTEGRATION.md. `make test-fast` records nothing, so there is not even a
+measurement for it to bound.
+"""
+
+[coherence.binding."thresholds.coverage_max_ms"]
+kind = "budget"
+justification = """
+Recorded build budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md and
+PMAT-INTEGRATION.md. `make coverage` calls scripts/record-metric.sh, which
+RECORDS a duration; nothing reads this key to judge it.
+"""
+
+[coherence.binding."thresholds.build_release_max_ms"]
+kind = "budget"
+justification = """
+Documented as a soft limit in this file's own comment and referenced nowhere
+else at all: `git grep -F build_release_max_ms` outside .pmat-metrics.toml and
+.pmat-ratchet.toml returns nothing, not even prose.
+"""
+
+[coherence.binding."thresholds.binary_max_bytes"]
+kind = "budget"
+justification = """
+NOT external, deliberately. src/tests/binary_size.rs enforces a binary-size
+bound, but it does so with a hardcoded `const MAX_SIZE_BYTES: u64 = 50 * 1024 *
+1024` = 52,428,800 and never reads this key, whose value is 50,000,000 — a
+2,428,800-byte gap under a comment that claims the two are "aligned". Declaring
+it `external` would record that comment's claim as a fact, which is the exact
+substitution this rule exists to refuse.
+"""
+
+[coherence.binding."thresholds.deps_default_max"]
+kind = "budget"
+justification = """
+Recorded dependency budget. Occurs outside .pmat-metrics.toml only in CLAUDE.md
+and PMAT-INTEGRATION.md; no build, workflow or hook counts dependencies against
+it.
+"""
+
+[coherence.binding."thresholds.deps_minimal_max"]
+kind = "budget"
+justification = """
+Recorded dependency budget for a rust-only feature set. `git grep -F
+deps_minimal_max` outside .pmat-metrics.toml and .pmat-ratchet.toml returns
+nothing at all — not code, not prose.
+"""
+
+# ── [quality_gates] ────────────────────────────────────────────────────────
+
+[coherence.binding."quality_gates.min_coverage_pct"]
+kind = "budget"
+justification = """
+Aspirational coverage target. The identifier appears in work-contract and
+comply code, but every one of those readers takes its number from .pmat.yaml or
+from a contract file; the only readers of .pmat-metrics.toml in the tree parse
+[exclude], [entropy], provability_min and entropy_min_diversity, and none of
+them looks at [quality_gates]. `make coverage` enforces no percentage either.
+"""
+
+[coherence.binding."quality_gates.min_mutation_score_pct"]
+kind = "budget"
+justification = """
+Names a quantity that has never been measured. The `mutants` job in
+.github/workflows/ci.yml carries `continue-on-error: true` and, per the comment
+above it at ci.yml:59, "has never executed a single mutant" — so there is no
+observed mutation score for this bound to be a bound on.
+"""
+
+[coherence.binding."quality_gates.max_cyclomatic_complexity"]
+kind = "budget"
+justification = """
+The complexity gate is real, but it does not read this key: the thresholds it
+enforces come from pmat.toml [quality] max_complexity / max_cognitive (see
+resolve_complexity_thresholds in
+src/cli/analysis_utilities/quality_checks_part1_complexity.rs, which prints the
+source it used). Two config files, one concept, and only one of them is wired.
+"""
+
+[coherence.binding."quality_gates.min_tdg_grade"]
+kind = "budget"
+justification = """
+A live CB rule does enforce a minimum TDG grade
+(check_handlers/check_tdg_grade.rs), but it reads .pmat.yaml, not this file.
+Written as the string "A-", it could not be a gate here in any case: a gate
+threshold must be an integer in its metric's unit, and there is no total order
+on grade letters this file declares.
+"""
+
+# ── [performance] ──────────────────────────────────────────────────────────
+
+[coherence.binding."performance.min_tdg_analysis_throughput"]
+kind = "budget"
+justification = """
+Performance target. Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md; nothing measures TDG throughput against it.
+"""
+
+[coherence.binding."performance.max_memory_usage_mb"]
+kind = "budget"
+justification = """
+Performance target, and one the tree is known to blow past by two orders of
+magnitude: `pmat comply check` itself is documented at 4.1 GB per worker in
+check.rs (COMPLY_BYTES_PER_WORKER). Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md, so nothing has ever compared the two.
+"""
+
+[coherence.binding."performance.max_regression_pct"]
+kind = "budget"
+justification = """
+Performance-regression allowance. Occurs outside .pmat-metrics.toml only in
+PMAT-INTEGRATION.md; no benchmark comparison reads it.
+"""

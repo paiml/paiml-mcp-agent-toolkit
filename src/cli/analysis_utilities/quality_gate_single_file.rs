@@ -4,7 +4,7 @@ async fn handle_single_file_quality_gate(
     project_path: PathBuf,
     single_file: PathBuf,
     format: QualityGateOutputFormat,
-    fail_on_violation: bool,
+    exit_on_violation: bool,
     checks: Vec<QualityCheckType>,
     max_complexity_p99: u32,
     output: Option<PathBuf>,
@@ -61,7 +61,7 @@ async fn handle_single_file_quality_gate(
     output_single_file_results(&single_file, &results, &violations, format, output).await?;
 
     // Handle exit status
-    handle_quality_gate_exit_status(fail_on_violation, results.passed);
+    handle_quality_gate_exit_status(exit_on_violation, results.passed);
 
     Ok(())
 }
@@ -140,8 +140,16 @@ fn handle_unsupported_single_file_check(check: &QualityCheckType) {
     eprintln!("⚠️  Skipping {check} check - not applicable to single file");
 }
 
-/// Runs all single file checks
-async fn run_all_single_file_checks(
+/// Runs all single file checks.
+///
+/// The four checks of the suite a single file can answer, shared with the MCP
+/// `quality_gate` tool through [`run_gate_suite`]. The other five are
+/// project-wide; this function skips them in silence and its MCP caller
+/// discloses them, because a check that did not run has not passed.
+///
+/// # Errors
+/// Propagates any individual check's failure.
+pub async fn run_all_single_file_checks(
     project_path: &Path,
     single_file: &Path,
     max_complexity_p99: u32,

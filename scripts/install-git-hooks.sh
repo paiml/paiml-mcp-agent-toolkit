@@ -21,9 +21,9 @@ echo ""
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOK_DIR="${REPO_ROOT}/.git/hooks"
 
-# Check if we're in a git repository
-if [ ! -d "${REPO_ROOT}/.git" ]; then
-    echo -e "${YELLOW}Error: Not in a git repository${NC}"
+# Hooks dir must exist: a worktree/submodule has .git as a file, not a directory
+if [[ "${HOOK_DIR}" == *".."* ]] || [ ! -d "${HOOK_DIR}" ]; then
+    echo -e "${YELLOW}Error: no git hooks directory at '${HOOK_DIR}'${NC}"
     exit 1
 fi
 
@@ -47,6 +47,61 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo "Running pre-commit checks..."
+
+# === 0. Clippy gate (PMAT-630, #1034 CASE 1) ===
+# This block is byte-identical to the one `pmat hooks install` generates
+# (src/cli/handlers/hooks_command_handlers/hook_generation.rs). The two
+# installers write different pre-commit hooks to the same path, so whichever
+# ran last decides what is enforced; `both_hook_installers_embed_the_identical
+# _clippy_gate` in src/cli/hook_clippy_gate_tests.rs compares them character for
+# character. Edit the Rust generator, then re-sync this copy.
+# >>> pmat clippy gate (PMAT-630) >>>
+if [ -f Cargo.toml ]; then
+    echo -n "  Clippy check... "
+
+    # The gate runs through pmat. If pmat is gone, the gate has not run, and a
+    # gate that has not run has not passed. Never `exit 0` from this branch.
+    if ! command -v pmat > /dev/null 2>&1; then
+        echo "❌"
+        echo "   pmat is not in PATH, so the clippy gate could not run."
+        echo "   An unchecked gate is not a passed gate."
+        echo "   Install with: cargo install pmat"
+        echo "   Emergency bypass (leaves a trace): git commit --no-verify"
+        exit 1
+    fi
+
+    # clippy reads the WORKTREE, never the index. A lint-relevant file that is
+    # staged in one state and left in another on disk would be committed
+    # without anything having linted the committed bytes. Refuse, rather than
+    # imply a coverage this gate does not have.
+    STAGED_LINT=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    DIRTY_LINT=$(git diff --name-only -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    UNSYNCED_LINT=$(printf '%s\n%s\n' "$STAGED_LINT" "$DIRTY_LINT" | sed '/^$/d' | sort | uniq -d)
+    if [ -n "$UNSYNCED_LINT" ]; then
+        echo "❌"
+        echo "   These files are staged in a state that differs from the worktree:"
+        printf '     %s\n' $UNSYNCED_LINT
+        echo "   clippy lints the worktree, so the staged bytes would go in unlinted."
+        echo "   Stage the rest ('git add <file>') or stash the remainder, then retry."
+        exit 1
+    fi
+
+    # Content-addressed: ~0.3s when this exact tree already linted green,
+    # a full clippy run when it did not. Never a pass without one or the other.
+    CLIPPY_STATUS=0
+    CLIPPY_OUTPUT=$(pmat verify --stage clippy 2>&1) || CLIPPY_STATUS=$?
+    if [ "$CLIPPY_STATUS" -eq 0 ]; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "$CLIPPY_OUTPUT" | tail -n 30
+        echo ""
+        echo "   'ci / lint' runs these same lints; this commit could not merge."
+        echo "   Fix: pmat verify --stage clippy --fix"
+        exit 1
+    fi
+fi
+# <<< pmat clippy gate (PMAT-630) <<<
 
 # === 1. Documentation Validation (pmat validate-docs + validate-readme) ===
 # Check if README.md or other docs are staged
@@ -127,13 +182,15 @@ fi
 
 # === 2. pmat-book Sync Status ===
 # Check pmat-book sync status
-BOOK_DIR="/home/noah/src/pmat-book"
-if [ -d "${BOOK_DIR}/.git" ]; then
-    cd "${BOOK_DIR}"
-    REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
+BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
+if [[ "${BOOK_DIR}" == *".."* ]] || [ ! -d "${BOOK_DIR}/.git" ]; then
+    BOOK_DIR=""  # unusable or traversal-bearing: skip the book check entirely
+fi
+if [ -n "${BOOK_DIR}" ]; then
+    REMOTE_BRANCH=$(git -C "${BOOK_DIR}" rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
 
     if [ -n "${REMOTE_BRANCH}" ]; then
-        UNPUSHED_BOOK_COMMITS=$(git log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
+        UNPUSHED_BOOK_COMMITS=$(git -C "${BOOK_DIR}" log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
 
         if [ -n "${UNPUSHED_BOOK_COMMITS}" ]; then
             COMMIT_COUNT=$(echo "${UNPUSHED_BOOK_COMMITS}" | wc -l)
@@ -158,7 +215,6 @@ if [ -d "${BOOK_DIR}/.git" ]; then
             echo ""
         fi
     fi
-    cd - > /dev/null
 fi
 
 # Check if bashrs is installed
@@ -257,37 +313,33 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-BOOK_DIR="/home/noah/src/pmat-book"
+BOOK_DIR="${PMAT_BOOK_DIR:-/home/noah/src/pmat-book}"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}📚 Checking pmat-book sync status...${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Check if pmat-book directory exists
-if [ ! -d "${BOOK_DIR}/.git" ]; then
+# Check if pmat-book directory exists (and is not a traversal-bearing override)
+if [[ "${BOOK_DIR}" == *".."* ]] || [ ! -d "${BOOK_DIR}/.git" ]; then
     echo -e "${YELLOW}⚠️  WARNING: pmat-book repository not found at ${BOOK_DIR}${NC}"
     echo -e "${YELLOW}   Skipping book sync check${NC}"
     echo ""
     exit 0
 fi
 
-# Navigate to book directory
-cd "${BOOK_DIR}"
-
 # Check for remote tracking branch
-REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
+REMOTE_BRANCH=$(git -C "${BOOK_DIR}" rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || echo "")
 
 if [ -z "${REMOTE_BRANCH}" ]; then
     echo -e "${YELLOW}⚠️  WARNING: pmat-book has no remote tracking branch${NC}"
-    echo -e "${YELLOW}   Set up tracking with: cd ${BOOK_DIR} && git push -u origin main${NC}"
+    echo -e "${YELLOW}   Set up tracking with: git -C ${BOOK_DIR} push -u origin main${NC}"
     echo ""
-    cd - > /dev/null
     exit 0
 fi
 
 # Check for unpushed commits
-UNPUSHED_COMMITS=$(git log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
+UNPUSHED_COMMITS=$(git -C "${BOOK_DIR}" log "${REMOTE_BRANCH}..HEAD" --oneline 2>/dev/null || echo "")
 
 if [ -n "${UNPUSHED_COMMITS}" ]; then
     COMMIT_COUNT=$(echo "${UNPUSHED_COMMITS}" | wc -l)
@@ -311,10 +363,10 @@ if [ -n "${UNPUSHED_COMMITS}" ]; then
     echo ""
     echo -e "${GREEN}${BOLD}TO FIX:${NC}"
     echo -e "${GREEN}  1. Push pmat-book commits first:${NC}"
-    echo -e "${GREEN}     cd ${BOOK_DIR} && git push origin main${NC}"
+    echo -e "${GREEN}     git -C ${BOOK_DIR} push origin main${NC}"
     echo ""
     echo -e "${GREEN}  2. Then push paiml-mcp-agent-toolkit:${NC}"
-    echo -e "${GREEN}     cd - && git push${NC}"
+    echo -e "${GREEN}     git push${NC}"
     echo ""
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${RED}${BOLD}Push rejected. Fix the issue above and try again.${NC}"
@@ -324,7 +376,6 @@ if [ -n "${UNPUSHED_COMMITS}" ]; then
     echo -e "${YELLOW}  git push --no-verify${NC}"
     echo ""
 
-    cd - > /dev/null
     exit 1
 fi
 
@@ -334,7 +385,6 @@ echo -e "${GREEN}   Book is ready for deployment${NC}"
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-cd - > /dev/null
 exit 0
 HOOK_EOF
 

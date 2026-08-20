@@ -1,0 +1,116 @@
+# Hand-authored work contract — NOT auto-generated, and nothing regenerates it.
+#
+# `generate_work_contract_yamls` (src/cli/handlers/comply_handlers/check_handlers/
+# check_commit_enforcement_p8.rs) derives contracts/work/<ID>.yaml from
+# .pmat-work/<ID>/contract.json. There is no .pmat-work/PMAT-INIT-001/ directory,
+# so this file is authored by hand and is safe from being overwritten. The
+# placeholder it replaces cited ".pmat-work/PMAT-INIT-001/contract.json" as its
+# only reference; that path has never existed. The references below are real.
+#
+# WHY IT WAS REWRITTEN. The prior version carried four `falsifiable_claims`
+# entries with exactly one key each — `id`, a title string. A title is not
+# falsifiable: it states no hypothesis and names no way to be proved wrong, and
+# `pv validate` passed it anyway. That is the "declaration accepted as evidence
+# of enforcement" defect #1019 catalogues. Every claim below therefore carries
+# `hypothesis` + `method` in the shape the 8 MACS-0xx.cot.yaml contracts use,
+# and every `method` is a command that was run on this tree.
+#
+# `clauses:` is deliberately absent — it is gated off in the corpus renderer by
+# default (src/models/work_cot_tests.rs::optional_clause_codegen_gated_by_flag).
+# `proof_obligations[i]` and `falsifiable_claims[i]` are verbatim-paired, which
+# is the invariant the derive path asserts
+# (src/models/work_cot_tests.rs::one_claim_per_step_verbatim_fields).
+#
+# LEVEL. `current_level` is L1, which is what this contract has earned.
+#
+# A previous revision set L0 and explained that "L1 means a codegen'd
+# `debug_assert!` contract module compiles and runs, and no contracts/work/
+# PMAT-INIT-001.rs exists". That misread the file it cited.
+# `VerificationLevel::evidenced_level_from_yaml`
+# (src/cli/handlers/work_verification_level.rs) returns L1 for any bound YAML as
+# its FLOOR — `if !yaml_section_non_empty(yaml, "equations") { return Self::L1 }`
+# — and climbs to L2 only once an `equations:` section exists. No `.rs` artifact
+# is involved at any rung, and none of the 45 contracts in this directory at L3
+# has one either.
+#
+# The understatement was not harmless: CB-1330 fails a contract whose
+# `current_level` is below its `target_level`, so declaring L0 against a target of
+# L1 reported this file as a REGRESSION while 61 sibling contracts declaring L1
+# passed unexamined. CB-1330 compares two numbers inside one file; it never checks
+# that a declared `current_level` is true. This file was penalised for modesty by a
+# gate that cannot detect the opposite error.
+#
+# To reach L2, add an `equations:` section binding a clause to an equation.
+name: "PMAT-INIT-001"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Unified `pmat init` command for workspace bootstrap (#1030) — what it writes, what it proves, and what it does not write"
+  references:
+    - "src/cli/commands/init_commands.rs"
+    - "src/services/workspace_init/mod.rs"
+    - "src/services/workspace_init/templates.rs"
+    - "src/services/workspace_init/tests.rs"
+    - "tests/init_workspace_t.rs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1030"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 9
+proof_obligations:
+- id: "PO-C1"
+  statement: "`pmat init` exists as a first-class subcommand and its --help names every target it accepts (agy, claude, ultracode) together with --path and --force. A bootstrap whose targets are undocumented is a bootstrap nobody can invoke correctly."
+  evidence_method: "cargo test --test init_workspace_t pmat_init_exists_and_documents_its_targets"
+- id: "PO-C2"
+  statement: "Running init writes .agents/hooks/pmat-quality-feedback.sh with mode 0755 and AGENTS.md at the workspace root, and the emitted hook actually launches: invoked with the `antigravity` argument it prints parseable JSON carrying a string `decision`. Both Claude Code and Antigravity treat a hook that fails to launch as an APPROVAL, so a hook that is merely written and not runnable is a silent no-op rather than a visible error."
+  evidence_method: "cargo test --test init_workspace_t init_writes_the_hook_script_executable_and_a_root_rules_file"
+- id: "PO-C3"
+  statement: "The emitted hook is this repository's own script, bound at compile time by include_str!, and not a plausible-looking fork of it: it carries a #!/bin/sh shebang, invokes `pmat quality-gate`, and guards on `command -v pmat` so that it fails open deliberately rather than by crashing."
+  evidence_method: "cargo test --lib services::workspace_init::tests::emitted_hook_is_a_runnable_shell_script_that_calls_the_gate"
+- id: "PO-C4"
+  statement: "The MCP registration is not merely written, it works. For all three targets the emitted config names `command: pmat` (the installed binary, never a build tool), and the argv it names — taken verbatim and spawned — answers a JSON-RPC `initialize` with a string serverInfo.name and a capabilities.tools object."
+  evidence_method: "cargo test --test init_workspace_t emitted_mcp_config_names_a_command_that_actually_speaks_mcp"
+- id: "PO-C5"
+  statement: "That spawn probe is not vacuous. The invocation this repository shipped in its template before `pmat init` existed — `pmat serve --transport stdio` — fails the identical probe and produces no JSON-RPC at all. Without this control, a probe that happened to pass on anything would look like proof."
+  evidence_method: "cargo test --test init_workspace_t broken_invocation_is_rejected_by_this_same_probe"
+- id: "PO-C6"
+  statement: "The root rules file that is written is AGENTS.md, and it is written for every target, not just the one the author was using. A bootstrap that bootstraps one client silently does nothing for the other two."
+  evidence_method: "cargo test --lib services::workspace_init::tests::every_target_emits_the_hook_script_and_a_root_rules_file"
+- id: "PO-C7"
+  statement: "REFUSED / NOT DELIVERED: the ticket's fourth claim reads \"Writes a root rules file (AGENTS.md / GEMINI.md)\". Only AGENTS.md is written. GEMINI.md is not generated, and — unlike .agents/plugins.json — it is not listed in the report's `refused[]` either, so its absence is silent rather than declared. No consumer of a pmat-authored GEMINI.md is documented anywhere in this repository, which is why nothing was written; this obligation exists so the omission is not read as delivery. Init still exits 0."
+  evidence_method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d --format json > $d/r.json; echo exit=$?; test ! -e $d/GEMINI.md && ! grep -q GEMINI $d/r.json && echo 'CONFIRMED: GEMINI.md is neither written nor listed in refused[]'"
+- id: "PO-C8"
+  statement: "Init is idempotent: a second run over an unchanged workspace writes 0 files, keeps 0, reports a non-zero already_current count, and leaves every byte under the root identical."
+  evidence_method: "cargo test --test init_workspace_t a_second_run_writes_nothing_and_says_so"
+- id: "PO-C9"
+  statement: "A hand-edited artifact survives a re-run: the file's bytes are unchanged, the report counts it as kept and says why, and only --force replaces it."
+  evidence_method: "cargo test --test init_workspace_t a_hand_edited_file_survives_and_the_report_says_why"
+falsifiable_claims:
+- hypothesis: "`pmat init` exists as a first-class subcommand and its --help names every target it accepts (agy, claude, ultracode) together with --path and --force. A bootstrap whose targets are undocumented is a bootstrap nobody can invoke correctly."
+  method: "cargo test --test init_workspace_t pmat_init_exists_and_documents_its_targets"
+  from_step: "C1"
+- hypothesis: "Running init writes .agents/hooks/pmat-quality-feedback.sh with mode 0755 and AGENTS.md at the workspace root, and the emitted hook actually launches: invoked with the `antigravity` argument it prints parseable JSON carrying a string `decision`. Both Claude Code and Antigravity treat a hook that fails to launch as an APPROVAL, so a hook that is merely written and not runnable is a silent no-op rather than a visible error."
+  method: "cargo test --test init_workspace_t init_writes_the_hook_script_executable_and_a_root_rules_file"
+  from_step: "C2"
+- hypothesis: "The emitted hook is this repository's own script, bound at compile time by include_str!, and not a plausible-looking fork of it: it carries a #!/bin/sh shebang, invokes `pmat quality-gate`, and guards on `command -v pmat` so that it fails open deliberately rather than by crashing."
+  method: "cargo test --lib services::workspace_init::tests::emitted_hook_is_a_runnable_shell_script_that_calls_the_gate"
+  from_step: "C3"
+- hypothesis: "The MCP registration is not merely written, it works. For all three targets the emitted config names `command: pmat` (the installed binary, never a build tool), and the argv it names — taken verbatim and spawned — answers a JSON-RPC `initialize` with a string serverInfo.name and a capabilities.tools object."
+  method: "cargo test --test init_workspace_t emitted_mcp_config_names_a_command_that_actually_speaks_mcp"
+  from_step: "C4"
+- hypothesis: "That spawn probe is not vacuous. The invocation this repository shipped in its template before `pmat init` existed — `pmat serve --transport stdio` — fails the identical probe and produces no JSON-RPC at all. Without this control, a probe that happened to pass on anything would look like proof."
+  method: "cargo test --test init_workspace_t broken_invocation_is_rejected_by_this_same_probe"
+  from_step: "C5"
+- hypothesis: "The root rules file that is written is AGENTS.md, and it is written for every target, not just the one the author was using. A bootstrap that bootstraps one client silently does nothing for the other two."
+  method: "cargo test --lib services::workspace_init::tests::every_target_emits_the_hook_script_and_a_root_rules_file"
+  from_step: "C6"
+- hypothesis: "REFUSED / NOT DELIVERED: the ticket's fourth claim reads \"Writes a root rules file (AGENTS.md / GEMINI.md)\". Only AGENTS.md is written. GEMINI.md is not generated, and — unlike .agents/plugins.json — it is not listed in the report's `refused[]` either, so its absence is silent rather than declared. No consumer of a pmat-authored GEMINI.md is documented anywhere in this repository, which is why nothing was written; this obligation exists so the omission is not read as delivery. Init still exits 0."
+  method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d --format json > $d/r.json; echo exit=$?; test ! -e $d/GEMINI.md && ! grep -q GEMINI $d/r.json && echo 'CONFIRMED: GEMINI.md is neither written nor listed in refused[]'"
+  from_step: "C7"
+- hypothesis: "Init is idempotent: a second run over an unchanged workspace writes 0 files, keeps 0, reports a non-zero already_current count, and leaves every byte under the root identical."
+  method: "cargo test --test init_workspace_t a_second_run_writes_nothing_and_says_so"
+  from_step: "C8"
+- hypothesis: "A hand-edited artifact survives a re-run: the file's bytes are unchanged, the report counts it as kept and says why, and only --force replaces it."
+  method: "cargo test --test init_workspace_t a_hand_edited_file_survives_and_the_report_says_why"
+  from_step: "C9"

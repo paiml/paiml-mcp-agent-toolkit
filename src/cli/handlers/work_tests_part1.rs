@@ -179,9 +179,10 @@ roadmap:
 "#;
             let criteria = parse_acceptance_criteria(body);
             assert_eq!(criteria.len(), 3);
-            assert_eq!(criteria[0], "First criterion");
-            assert_eq!(criteria[1], "Second criterion");
-            assert_eq!(criteria[2], "Third criterion");
+            // The checkbox is kept: it is the only record of completion state.
+            assert_eq!(criteria[0], "[ ] First criterion");
+            assert_eq!(criteria[1], "[ ] Second criterion");
+            assert_eq!(criteria[2], "[ ] Third criterion");
         }
 
         #[test]
@@ -193,8 +194,8 @@ roadmap:
 "#;
             let criteria = parse_acceptance_criteria(body);
             assert_eq!(criteria.len(), 2);
-            assert_eq!(criteria[0], "Completed task");
-            assert_eq!(criteria[1], "Another completed task");
+            assert_eq!(criteria[0], "[x] Completed task");
+            assert_eq!(criteria[1], "[x] Another completed task");
         }
 
         #[test]
@@ -207,6 +208,10 @@ roadmap:
 "#;
             let criteria = parse_acceptance_criteria(body);
             assert_eq!(criteria.len(), 3);
+            // Mixed state survives parsing, so completion can be computed later.
+            assert_eq!(criteria[0], "[x] Already done");
+            assert_eq!(criteria[1], "[ ] Still pending");
+            assert_eq!(criteria[2], "[x] Also done");
         }
 
         #[test]

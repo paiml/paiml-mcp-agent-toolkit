@@ -2103,33 +2103,46 @@ analyze-scaling: release
 # =============================================================================
 
 # Mermaid Specification Testing Targets
-setup-mermaid-validator:
-	@echo "🔧 Setting up Mermaid specification validator..."
-	@if ! command -v deno &> /dev/null; then \
-		echo "Error: Deno is required but not installed"; \
-		echo "Visit https://deno.land to install"; \
-		exit 1; \
-	fi
-	@echo "✅ Deno validator ready"
-
-# Run Mermaid specification compliance tests
-test-mermaid-spec: setup-mermaid-validator
+#
+# HISTORY — read before "restoring" the old form. These targets used to drive a
+# Deno validator (scripts/mermaid-validator.ts) from an integration test
+# (tests/mermaid_spec_compliance.rs) behind `--features mermaid-spec-tests`.
+# All three of those are gone:
+#   * the test was only ever carried as tests/mermaid_spec_compliance.rs.skip —
+#     a `.skip` extension cargo never compiles — and was deleted in 20ad95c5a;
+#   * the validator moved to scripts/archive/presentar-migration/, so
+#     `deno run ... scripts/mermaid-validator.ts` pointed at nothing;
+#   * `mermaid-spec-tests` was NEVER declared in Cargo.toml's [features] table,
+#     so every invocation died at manifest parse with
+#     "error: the package 'pmat' does not contain this feature: mermaid-spec-tests".
+# The feature is deliberately NOT (re-)declared: it would gate zero lines of
+# code, and feature-matrix.yml's orphan-ledger job requires every feature to be
+# either tested or excused — an empty flag that selects nothing is exactly the
+# "dead switch" that job exists to catch.
+#
+# The spec compliance checking itself survived, rewritten in Rust:
+# tests/modules/mermaid_artifact_tests.rs — validate_simple_diagram,
+# validate_styled_diagram, validate_ast_diagram, validate_complexity_styled —
+# reached via tests/all.rs -> tests/modules/mod.rs. That is the `all` test
+# binary, declared with no required-features, so it runs on a DEFAULT build:
+# no Deno, no feature flag.
+#
+# And this target is what runs it. ci.yml's gate is `cargo test --lib`, which
+# does not build tests/ at all, and the only other `--test all` invocations in
+# this Makefile are the falsification gates, which select `-- --ignored` tests
+# by name. Verified with `cargo test --test all modules::mermaid_artifact_tests
+# -- --list`: exactly the 2 tests below, on default features.
+test-mermaid-spec:
 	@echo "🧪 Running Mermaid specification compliance tests..."
-	PROPTEST_CASES=2 cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
-
-# Validate all generated Mermaid artifacts
-validate-mermaid-artifacts: setup-mermaid-validator
-	@echo "🔍 Validating all Mermaid artifacts against spec..."
-	@if [ -d "artifacts/mermaid" ]; then \
-		deno run --allow-read scripts/mermaid-validator.ts artifacts/mermaid/; \
-	else \
-		echo "⚠️  No artifacts/mermaid directory found. Run 'make generate-artifacts' first."; \
-	fi
+	cargo test --test all modules::mermaid_artifact_tests -- --nocapture
 
 # Generate compliance report for Mermaid diagrams
-mermaid-compliance-report: setup-mermaid-validator
+# Writes to the repo root. It used to write `../mermaid-compliance.txt` — one
+# directory ABOVE the repo — a leftover from when this Makefile lived in
+# server/, and inconsistent with both its own echo and clean-mermaid-validator.
+mermaid-compliance-report:
 	@echo "📊 Generating Mermaid compliance report..."
-	cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture > ../mermaid-compliance.txt 2>&1 || true
+	cargo test --test all modules::mermaid_artifact_tests -- --nocapture > mermaid-compliance.txt 2>&1 || true
 	@echo "Report saved to mermaid-compliance.txt"
 
 # Deterministic Artifact Generation Targets
@@ -2267,7 +2280,7 @@ dogfood-enforce: release
 	@./target/release/pmat analyze lint-hotspot --enforce --max-density 0.1 || (echo "❌ Lint enforcement failed" && exit 1)  
 	@echo "✅ All enforcement checks passed - zero violations detected"
 
-.PHONY: setup-mermaid-validator test-mermaid-spec validate-mermaid-artifacts mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs kaizen dogfood-all dogfood-ci dogfood-enforce
+.PHONY: test-mermaid-spec mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs kaizen dogfood-all dogfood-ci dogfood-enforce
 # Context generation optimized for server source
 context-fast: release
 	@echo '📊 Generating context for server source code (fast)...'

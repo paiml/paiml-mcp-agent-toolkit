@@ -8,43 +8,64 @@
 use std::process::Command;
 
 fn run_serve(args: &[&str]) -> std::process::Output {
-    // The `serve` handler calls `std::process::exit(2)` synchronously before
-    // awaiting anything, so this call returns almost immediately. If the
-    // handler ever regresses back to the old `ctrl_c().await` stub, this test
-    // will hang and be killed by the outer cargo-test timeout, making the
-    // regression loud.
+    // Every invocation here is expected to exit, not to serve: an unimplemented
+    // transport exits 2 synchronously, and `--transport http` refuses to start
+    // without a token. If the handler ever regresses back to the old
+    // `ctrl_c().await` stub, this call blocks and the outer cargo-test timeout
+    // makes the regression loud.
     Command::new(env!("CARGO_BIN_EXE_pmat"))
         .arg("serve")
         .args(args)
         .env("RUST_LOG", "error")
+        // `--transport http` is implemented: with a token in the environment it
+        // would BIND A SOCKET and `output()` would block until killed. The test
+        // must not depend on the developer's environment not having one.
+        .env_remove("PMAT_MCP_HTTP_TOKEN")
         .output()
         .expect("failed to spawn pmat binary")
 }
 
+/// Bare `pmat serve` means `--transport http`, which is IMPLEMENTED — so the
+/// contract it must keep is no longer "exit 2, unimplemented" but "refuse to
+/// start unauthenticated, and say why".
+///
+/// This test asserted exit code 2 and the words "not yet implemented" long
+/// after the streamable-HTTP transport shipped (EV-6, #999): the binary was
+/// exiting 4 with a token diagnostic, and the test went on failing unnoticed
+/// because `tests/all.rs` is not part of the `--lib` suite CI runs. Pinning
+/// "there is no HTTP server" is the same defect as `serve --help` saying so.
+///
+/// The *value* 2 was the wrong part, not the fact that a value was checked.
+/// Replacing `assert_eq!(code, Some(2))` with a bare `!success()` threw away a
+/// contract callers depend on, so the exit code is asserted again below — at
+/// the code this path actually has.
 #[test]
-fn pmat_serve_default_fails_with_exit_code_two() {
+fn pmat_serve_without_a_token_refuses_to_start_and_says_why() {
     let out = run_serve(&[]);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    // A missing token is a misconfiguration, and pmat has a documented code for
+    // that: `ExitCode::ConfigurationError` = 4 (src/bin/pmat.rs). Measured 4 in
+    // both the default and the `--features mcp-http` build. `!success()` alone
+    // would keep passing if the code drifted to 1 (GeneralError) — which is
+    // precisely what happens if the diagnostic is ever reworded past the
+    // "config" substring `categorize_error` matches on.
     assert_eq!(
         out.status.code(),
-        Some(2),
-        "pmat serve must exit with code 2 (misuse), got {:?}\nstderr: {}",
-        out.status,
-        String::from_utf8_lossy(&out.stderr)
+        Some(4),
+        "refusing to start over a missing token is a configuration error \
+         (exit 4), got {:?}\nstderr: {stderr}",
+        out.status
     );
-    let stderr = String::from_utf8_lossy(&out.stderr);
+    // The security property, not an exit-code literal: pmcp serves every
+    // request when no auth provider is wired, so "no token" must mean "no
+    // server", and the diagnostic must name the variable to set.
     assert!(
-        stderr.contains("not yet implemented"),
-        "stderr must clearly say HTTP is not implemented, got: {stderr}"
+        stderr.contains("PMAT_MCP_HTTP_TOKEN"),
+        "stderr must name the token variable, got: {stderr}"
     );
     // This asserted on `PMAT_PMCP_MCP=1` for as long as the hint named it —
     // an environment variable no code reads. The test did not catch that
-    // because it pinned the string rather than the behaviour, and because
-    // `tests/all.rs` is not part of the `--lib` suite CI runs, so it went on
-    // asserting the bug for two releases after the hint was corrected.
-    assert!(
-        stderr.contains("MCP_VERSION=1"),
-        "stderr must point users to the working stdio transport, got: {stderr}"
-    );
+    // because it pinned the string rather than the behaviour.
     for dead in ["PMAT_PMCP_MCP", "agent mcp-server"] {
         assert!(
             !stderr.contains(dead),
@@ -64,9 +85,20 @@ fn pmat_serve_websocket_fails_loudly() {
     );
 }
 
+/// Echoing the request back is a property of the *unimplemented* path, so it
+/// is exercised on a transport that is unimplemented. With the default
+/// (`http`) transport this asserted exit 2 against a binary that now starts a
+/// server — or, without a token, exits 4 with the auth refusal.
 #[test]
 fn pmat_serve_echoes_host_and_port() {
-    let out = run_serve(&["--host", "0.0.0.0", "--port", "12345"]);
+    let out = run_serve(&[
+        "--transport",
+        "web-socket",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "12345",
+    ]);
     assert_eq!(out.status.code(), Some(2));
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(

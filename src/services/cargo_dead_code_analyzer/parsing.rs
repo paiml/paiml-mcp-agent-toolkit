@@ -26,16 +26,7 @@ impl CargoDeadCodeAnalyzer {
             // Check if this is a dead code warning
             if let Some(code) = message["code"]["code"].as_str() {
                 if code == "dead_code" {
-                    if let Some(item) = self.extract_dead_item(message) {
-                        // One scope predicate for both layers. The suppression
-                        // walk already consults `is_excluded_source`; the
-                        // compiler layer did not, so any target cargo happened
-                        // to build (a lib's implicit `cfg(test)` bench target,
-                        // say) could put files into the report that the walk
-                        // that produced the denominator never opened.
-                        if self.is_excluded_source(&item.0) {
-                            continue;
-                        }
+                    if let Some(item) = self.in_scope_finding(self.extract_dead_item(message)) {
                         dead_items.push(item);
                     }
                 } else if code == "unreachable_code" {
@@ -47,10 +38,9 @@ impl CargoDeadCodeAnalyzer {
                     // `DeadCodeKind::UnreachableCode` so `group_by_file` can
                     // keep it out of `dead_items` and out of every count a
                     // default run prints.
-                    if let Some(item) = self.extract_unreachable_item(message) {
-                        if self.is_excluded_source(&item.0) {
-                            continue;
-                        }
+                    if let Some(item) =
+                        self.in_scope_finding(self.extract_unreachable_item(message))
+                    {
                         dead_items.push(item);
                     }
                 }
@@ -58,6 +48,75 @@ impl CargoDeadCodeAnalyzer {
         }
 
         Ok(dead_items)
+    }
+
+    /// A compiler finding, re-expressed against the path the caller asked
+    /// about, or `None` when it does not belong to this report.
+    ///
+    /// Two filters, and both of them are about SCOPE:
+    ///
+    /// * outside the requested tree — cargo compiles the whole crate because
+    ///   rustc cannot type-check less than one, so a request for
+    ///   `<crate>/src/inner` gets warnings for `<crate>/src/other.rs` too. That
+    ///   used to be reported: `analyze dead-code --path <crate>/src/inner`
+    ///   listed `src/other.rs` under a summary claiming one file analysed.
+    /// * excluded source — one scope predicate for both layers. The suppression
+    ///   walk already consults `is_excluded_source`; the compiler layer did
+    ///   not, so any target cargo happened to build (a lib's implicit
+    ///   `cfg(test)` bench target, say) could put files into the report that
+    ///   the walk that produced the denominator never opened.
+    fn in_scope_finding(
+        &self,
+        extracted: Option<(PathBuf, DeadItem)>,
+    ) -> Option<(PathBuf, DeadItem)> {
+        let (reported, item) = extracted?;
+        let scoped = self.scoped_report_path(&reported)?;
+        (!self.is_excluded_source(&scoped)).then_some((scoped, item))
+    }
+
+    /// Where a cargo diagnostic's file sits INSIDE the requested tree, or
+    /// `None` when it sits outside it.
+    ///
+    /// This is the mapping every row depends on. rustc names a file relative to
+    /// the WORKSPACE root — not the package root, and not the directory this
+    /// command was pointed at — so the reported name has to be resolved to a
+    /// real file before it can be compared with anything. Two consequences the
+    /// raw name could not deliver: a workspace member's rows were unreadable
+    /// (`total_lines: null`, because `<package>/crates/member/src/x.rs` is not
+    /// a path), and a subdirectory request could not tell its own files from
+    /// the rest of the crate's.
+    fn scoped_report_path(&self, reported: &Path) -> Option<PathBuf> {
+        let absolute = self.resolve_reported_path(reported);
+        // Scope is decided against the requested path, naming against the
+        // directory that holds it — the two differ only when the request IS a
+        // file, where naming a row relative to itself would leave it nameless.
+        if !absolute.starts_with(&self.report_root) {
+            return None;
+        }
+        absolute
+            .strip_prefix(&self.report_base)
+            .ok()
+            .map(Path::to_path_buf)
+    }
+
+    /// The file a cargo diagnostic names, as an absolute path.
+    ///
+    /// Cargo emits the path relative to the workspace root, which is the crate
+    /// root for a standalone package and an ancestor of it for a workspace
+    /// member. Rather than shell out to `cargo metadata` for the distinction,
+    /// the bases are tried outwards from the crate root and the first one that
+    /// yields an existing file wins. A name that resolves nowhere keeps the
+    /// crate root as its base, so it is still comparable rather than dropped on
+    /// a technicality.
+    fn resolve_reported_path(&self, reported: &Path) -> PathBuf {
+        if reported.is_absolute() {
+            return reported.to_path_buf();
+        }
+        self.cargo_root
+            .ancestors()
+            .map(|base| base.join(reported))
+            .find(|candidate| candidate.exists())
+            .unwrap_or_else(|| self.cargo_root.join(reported))
     }
 
     /// Extract an `unreachable_code` finding from a compiler message.
@@ -205,7 +264,10 @@ impl CargoDeadCodeAnalyzer {
         let full_path = if file_path.is_absolute() {
             file_path.to_path_buf()
         } else {
-            self.project_path.join(file_path)
+            // The ABSOLUTE directory the rows are relative to. `project_path`
+            // may itself be relative (`--path src/foo`), which would make this
+            // join depend on the process's working directory.
+            self.report_base.join(file_path)
         };
 
         std::fs::read_to_string(&full_path)

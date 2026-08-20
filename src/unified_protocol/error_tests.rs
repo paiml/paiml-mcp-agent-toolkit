@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn test_mcp_error_codes_from_errors() {
         // Io error
-        let io_err = std::io::Error::new(std::io::ErrorKind::Other, "io");
+        let io_err = std::io::Error::other("io");
         let app_err: AppError = io_err.into();
         assert_eq!(app_err.mcp_error_code(), -32603);
 
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn test_error_types_from_errors() {
         // Io error
-        let io_err = std::io::Error::new(std::io::ErrorKind::Other, "io");
+        let io_err = std::io::Error::other("io");
         let app_err: AppError = io_err.into();
         assert_eq!(app_err.error_type(), "IO_ERROR");
 

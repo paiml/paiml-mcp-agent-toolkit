@@ -139,6 +139,11 @@ impl CliAdapter {
 
             // Agy (Google Anti-Gravity translator) is CLI-only, like Mcp.
             Commands::Agy(_) => Self::cli_only_command_error(),
+
+            // `init` writes files into a workspace root the caller chose. That
+            // is a local-filesystem side effect with no meaningful remote
+            // semantics, so it is CLI-only like Mcp and Agy.
+            Commands::Init { .. } => Self::cli_only_command_error(),
         }
     }
 

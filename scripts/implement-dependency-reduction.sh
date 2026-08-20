@@ -123,12 +123,22 @@ echo ""
 echo -e "${BLUE}📝 Step 6: Generate Implementation Report${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Report date. Honours SOURCE_DATE_EPOCH so the generated report is
+# reproducible; falls back to wall clock for interactive runs.
+report_date() {
+    if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+            || date -u -r "${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M:%S"
+    else
+        date +"%Y-%m-%d %H:%M:%S"
+    fi
+}
+report_generated_at=$(report_date)
+
 cat > /tmp/dependency-reduction-report.md << EOF
 # Dependency Reduction Implementation Report
 
-$(# shellcheck disable=DET002  # Timestamp needed for report metadata
-)
-**Date**: $(date +"%Y-%m-%d %H:%M:%S")
+**Date**: ${report_generated_at}
 **Baseline Version**: v2.202.0
 **Specification**: docs/specifications/scientifically-remove-dependencies-time-improve-compile-speed-test-speed.md
 

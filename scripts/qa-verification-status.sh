@@ -16,6 +16,25 @@ OUTPUT_FILE=".qa-verification.json"
 while [[ $# -gt 0 ]]; do
     case $1 in
         -o|--output)
+            # Guard the operand: under `set -u` a bare `-o` made "$2" an
+            # unbound-variable abort ("line 19: $2: unbound variable") instead
+            # of a usage error, and `shift 2` would then overshift.
+            if [ $# -lt 2 ]; then
+                echo "Error: $1 requires a file argument" >&2
+                echo "Usage: $0 [-o|--output <file>]" >&2
+                exit 1
+            fi
+            # `-o` takes a caller-supplied path that this script later writes
+            # with `cat > "$OUTPUT_FILE"`. Confine it: relative, and no `..`
+            # component. Without this a caller could redirect the report over an
+            # arbitrary file, which is what SEC010 flags here — and unlike the
+            # literal-path case in bashrs#227, this operand really is untrusted.
+            case "$2" in
+                /*|*..*)
+                    echo "refusing --output '$2': must be a relative path with no '..'" >&2
+                    exit 2
+                    ;;
+            esac
             OUTPUT_FILE="$2"
             shift 2
             ;;
@@ -35,8 +54,20 @@ echo "Running QA Verification Suite..."
 echo "================================"
 
 # Initialize results
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "paiml-mcp-agent-toolkit") | .version')
+# SOURCE_DATE_EPOCH when set, wall-clock otherwise: the report is an artefact,
+# and an artefact that cannot be reproduced cannot be compared against itself.
+TIMESTAMP=$(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}" +"%Y-%m-%dT%H:%M:%SZ")
+# Select by the CURRENT package name. The crate was renamed
+# paiml-mcp-agent-toolkit -> pmat; this selector was never updated, so it matched
+# nothing and every report this script wrote carried "version": "".
+# `--no-deps` keeps the match inside the workspace (a dependency could otherwise
+# share a name), and the guard makes a future rename fail loudly here instead of
+# silently emitting an empty field again.
+VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "pmat") | .version')
+if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+    echo -e "${RED}✗ Could not read version for package 'pmat' from cargo metadata${NC}" >&2
+    exit 1
+fi
 
 # Run dead code analysis
 echo

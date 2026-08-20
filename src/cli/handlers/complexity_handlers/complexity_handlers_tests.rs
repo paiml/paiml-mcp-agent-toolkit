@@ -594,7 +594,7 @@ mod tests {
 
     mod dag_type_regression {
         use crate::cli::handlers::complexity_handlers::{
-            count_rendered_elements, filter_graph_by_dag_type,
+            count_rendered_elements, edge_types_for_dag_type,
         };
         use crate::cli::DagType;
         use crate::models::dag::{DependencyGraph, Edge, EdgeType, NodeInfo, NodeType};
@@ -645,11 +645,15 @@ mod tests {
         #[test]
         fn test_dag_type_selects_different_subgraphs() {
             let graph = mixed_graph();
+            let select = |dag_type: &DagType| match edge_types_for_dag_type(dag_type) {
+                Some(types) => graph.filter_by_edge_types(types),
+                None => graph.clone(),
+            };
 
-            let calls = filter_graph_by_dag_type(graph.clone(), &DagType::CallGraph);
-            let imports = filter_graph_by_dag_type(graph.clone(), &DagType::ImportGraph);
-            let inheritance = filter_graph_by_dag_type(graph.clone(), &DagType::Inheritance);
-            let full = filter_graph_by_dag_type(graph.clone(), &DagType::FullDependency);
+            let calls = select(&DagType::CallGraph);
+            let imports = select(&DagType::ImportGraph);
+            let inheritance = select(&DagType::Inheritance);
+            let full = select(&DagType::FullDependency);
 
             assert_eq!(calls.edges.len(), 1);
             assert_eq!(calls.edges[0].edge_type, EdgeType::Calls);

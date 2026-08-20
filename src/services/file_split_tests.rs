@@ -123,6 +123,145 @@ mod tests {
         entry
     }
 
+    /// Build a synthetic index with the given functions and call edges.
+    ///
+    /// `functions` is `(name, file)` in global-index order; `calls` is
+    /// `(caller_idx, callee_idx)`.
+    fn make_call_graph_index(
+        functions: &[(&str, &str)],
+        calls: &[(usize, usize)],
+    ) -> AgentContextIndex {
+        use crate::services::agent_context::{GraphMetrics, IndexManifest, TDG_SCALE};
+
+        let entries: Vec<FunctionEntry> = functions
+            .iter()
+            .map(|(name, file)| make_entry(name, file, 1, 5))
+            .collect();
+
+        let mut name_index: HashMap<String, Vec<usize>> = HashMap::new();
+        let mut file_index: HashMap<String, Vec<usize>> = HashMap::new();
+        for (i, (name, file)) in functions.iter().enumerate() {
+            name_index.entry((*name).to_string()).or_default().push(i);
+            file_index.entry((*file).to_string()).or_default().push(i);
+        }
+
+        let mut call_map: HashMap<usize, Vec<usize>> = HashMap::new();
+        let mut called_by: HashMap<usize, Vec<usize>> = HashMap::new();
+        for &(from, to) in calls {
+            call_map.entry(from).or_default().push(to);
+            called_by.entry(to).or_default().push(from);
+        }
+
+        AgentContextIndex {
+            corpus: entries.iter().map(|e| e.source.clone()).collect(),
+            corpus_lower: entries.iter().map(|e| e.source.to_lowercase()).collect(),
+            graph_metrics: entries
+                .iter()
+                .map(|_| GraphMetrics {
+                    pagerank: 0.0,
+                    centrality: 0.0,
+                    in_degree: 0,
+                    out_degree: 0,
+                })
+                .collect(),
+            manifest: IndexManifest {
+                version: "1.3.0".to_string(),
+                built_at: "test".to_string(),
+                project_root: "/tmp/test".to_string(),
+                function_count: entries.len(),
+                file_count: file_index.len(),
+                languages: vec!["rust".to_string()],
+                avg_tdg_score: 0.0,
+                tdg_scale: TDG_SCALE.to_string(),
+                file_checksums: HashMap::new(),
+                last_incremental_changes: 0,
+            },
+            functions: entries,
+            name_index,
+            file_index,
+            name_frequency: HashMap::new(),
+            calls: call_map,
+            called_by,
+            project_root: PathBuf::from("/tmp/test"),
+            db_path: None,
+            coverage_off_files: HashSet::new(),
+        }
+    }
+
+    /// A file that this file calls into *and* that calls back into this file is a
+    /// circular risk; a file that only calls in is not.
+    #[test]
+    fn test_compute_impact_reports_mutual_dependency_as_circular_risk() {
+        // a.rs <-> b.rs is a cycle; c.rs -> a.rs is one-directional.
+        let index = make_call_graph_index(
+            &[("a_fn", "a.rs"), ("b_fn", "b.rs"), ("c_fn", "c.rs")],
+            &[(0, 1), (1, 0), (2, 0)],
+        );
+
+        let impact = compute_impact(&index, "a.rs");
+
+        assert_eq!(
+            impact.importing_files,
+            vec!["b.rs".to_string(), "c.rs".to_string()],
+            "both b.rs and c.rs call into a.rs"
+        );
+        assert_eq!(
+            impact.circular_risks,
+            vec!["b.rs".to_string()],
+            "only b.rs is in a mutual dependency with a.rs"
+        );
+    }
+
+    /// One-directional dependencies must not be reported as cycles.
+    #[test]
+    fn test_compute_impact_no_circular_risk_without_mutual_calls() {
+        let index = make_call_graph_index(
+            &[("a_fn", "a.rs"), ("b_fn", "b.rs")],
+            &[(1, 0)], // b.rs -> a.rs only
+        );
+
+        let impact = compute_impact(&index, "a.rs");
+
+        assert_eq!(impact.importing_files, vec!["b.rs".to_string()]);
+        assert!(
+            impact.circular_risks.is_empty(),
+            "a.rs never calls b.rs, so there is no cycle"
+        );
+    }
+
+    /// Self-calls inside the analyzed file are not a cross-file cycle.
+    #[test]
+    fn test_compute_impact_ignores_intra_file_calls() {
+        let index = make_call_graph_index(
+            &[("a_one", "a.rs"), ("a_two", "a.rs"), ("b_fn", "b.rs")],
+            &[(0, 1), (1, 0), (2, 0)],
+        );
+
+        let impact = compute_impact(&index, "a.rs");
+
+        assert_eq!(impact.importing_files, vec!["b.rs".to_string()]);
+        assert!(
+            impact.circular_risks.is_empty(),
+            "a.rs calling itself is not a cross-file cycle"
+        );
+    }
+
+    /// Multiple cycles are reported in sorted order for deterministic output.
+    #[test]
+    fn test_compute_impact_circular_risks_sorted() {
+        let index = make_call_graph_index(
+            &[("a_fn", "a.rs"), ("m_fn", "m.rs"), ("d_fn", "d.rs")],
+            &[(0, 1), (1, 0), (0, 2), (2, 0)],
+        );
+
+        let impact = compute_impact(&index, "a.rs");
+
+        assert_eq!(
+            impact.circular_risks,
+            vec!["d.rs".to_string(), "m.rs".to_string()]
+        );
+    }
+
     #[test]
     fn test_name_cluster_dominant_type() {
         let e1 = make_struct_entry("MyConfig", "a.rs", 1, 10);

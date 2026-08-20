@@ -88,7 +88,7 @@ pub(crate) async fn run_web_demo(
                 .collect();
 
             // Sort by complexity and take top 10
-            all_functions.sort_by(|a, b| b.complexity.cmp(&a.complexity));
+            all_functions.sort_by_key(|h| std::cmp::Reverse(h.complexity));
             all_functions.truncate(10);
             all_functions
         })

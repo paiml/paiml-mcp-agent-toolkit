@@ -4,6 +4,12 @@
 /// addressing issue #30 where quality-gate didn't show checks.
 /// With the --perf flag (issue #31), it also shows performance metrics.
 ///
+/// `exit_on_violation` is a POLICY, not a flag: `true` makes a failed verdict
+/// call `std::process::exit(1)`. The CLI resolves it with
+/// `gate_exits_on_violation`, which is `true` unless `--report-only` was
+/// passed. In-process callers (tests, the MCP parity harness) must pass `false`
+/// — an exit here would take the whole harness with it.
+///
 /// # Examples
 ///
 /// ```no_run
@@ -20,7 +26,7 @@
 ///     false,
 ///     vec![], // Empty means run all checks
 ///     15.0,
-///     0.5,
+///     Some(0.5), // min_entropy: None leaves the entropy threshold at its default
 ///     20,
 ///     false,
 ///     None,
@@ -44,7 +50,7 @@
 ///     false,
 ///     vec![QualityCheckType::Complexity, QualityCheckType::Security],
 ///     15.0,
-///     0.5,
+///     Some(0.5),
 ///     20,
 ///     false,
 ///     None,
@@ -70,7 +76,7 @@ pub async fn handle_quality_gate(
     project_path: PathBuf,
     file: Option<PathBuf>,
     format: QualityGateOutputFormat,
-    fail_on_violation: bool,
+    exit_on_violation: bool,
     checks: Vec<QualityCheckType>,
     max_dead_code: f64,
     min_entropy: Option<f64>,
@@ -111,7 +117,7 @@ pub async fn handle_quality_gate(
             project_path,
             single_file,
             format,
-            fail_on_violation,
+            exit_on_violation,
             checks_to_run.clone(), // Use checks_to_run instead of checks
             max_complexity_p99,
             output,
@@ -122,7 +128,7 @@ pub async fn handle_quality_gate(
         handle_project_quality_gate(
             project_path,
             format,
-            fail_on_violation,
+            exit_on_violation,
             checks_to_run.clone(), // Use checks_to_run instead of checks
             max_dead_code,
             min_entropy,

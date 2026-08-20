@@ -635,3 +635,14 @@ mod lib_unit_tests {
 #[allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 #[path = "../build_support.rs"]
 mod build_support;
+
+// PMAT-630 (#1034 EV-4): the mutation-on-diff gate is a shell script, for the
+// same reason `build_support` is compiled here — the thing CI runs has to be the
+// thing that is tested. Registering the module in `lib.rs` rather than adding a
+// file under `tests/` is not a style choice: `autotests = false`
+// (`Cargo.toml:30`) means an unregistered test file is silently never compiled,
+// and a mutation gate whose own tests do not run would be the joke it exists to
+// prevent. `cargo test --lib -- mutation_diff_gate` lists them.
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod mutation_diff_gate_tests;

@@ -36,10 +36,14 @@ fn format_human_output(result: &NameSimilarityResult) -> Result<String> {
         "  {}Query:{} {}{}{}\n",
         c::BOLD, c::RESET, c::BOLD_WHITE, result.query, c::RESET
     )?;
+    // The denominator is printed next to the count: "0 matches" alone is the
+    // same sentence for a codebase with no similar name and for a directory
+    // with no name in it at all.
     writeln!(
         &mut output,
-        "  {}Found:{} {}{}{} matches\n",
-        c::BOLD, c::RESET, c::BOLD_WHITE, result.matches.len(), c::RESET
+        "  {}Found:{} {}{}{} matches out of {}{}{} names searched\n",
+        c::BOLD, c::RESET, c::BOLD_WHITE, result.matches.len(), c::RESET,
+        c::BOLD_WHITE, result.total_candidates, c::RESET
     )?;
 
     for (i, m) in result.matches.iter().enumerate() {
@@ -118,6 +122,11 @@ fn format_markdown_output(result: &NameSimilarityResult) -> Result<String> {
     writeln!(&mut output, "# Name Similarity Report\n")?;
     writeln!(&mut output, "**Query:** `{}`\n", result.query)?;
     writeln!(&mut output, "**Total matches:** {}\n", result.matches.len())?;
+    writeln!(
+        &mut output,
+        "**Names searched:** {}\n",
+        result.total_candidates
+    )?;
 
     format_markdown_table_header(&mut output)?;
 

@@ -91,6 +91,14 @@ pub struct ProofAnnotator {
     /// from the report — and the report said "Total proofs: N" as if it had
     /// seen everything. Retained so the renderers can disclose the gap.
     collection_errors: std::sync::atomic::AtomicUsize,
+    /// Files the last `collect_proofs` actually read — the denominator of
+    /// "Total proofs: N".
+    ///
+    /// Every source already measures this as `CollectionMetrics::files_processed`
+    /// and the merge threw it away, which left `analyze proof-annotations`
+    /// unable to tell "scanned the tree, found no annotations" from "there was
+    /// nothing to scan": both printed "Total proofs: 0" and exited 0 (#1015).
+    files_processed: std::sync::atomic::AtomicUsize,
 }
 
 /// Cache statistics

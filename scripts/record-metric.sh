@@ -15,6 +15,17 @@ if [ -z "$METRIC_NAME" ]; then
     exit 1
 fi
 
+# $METRIC_NAME becomes a path component under $METRICS_DIR, so constrain its
+# shape BEFORE any path is built from it. The dispatch `case` below does reject
+# unknown names, but it runs too late: $START_FILE is assembled and read with
+# `cat` above it. Verified with `bash -x record-metric.sh ../victim/pwned`,
+# which ran `cat .pmat-metrics/../victim/pwned.start` and only then printed
+# "Unknown metric".
+if [ "$METRIC_NAME" != "${METRIC_NAME%%..*}" ] || [ "$METRIC_NAME" != "${METRIC_NAME%%/*}" ]; then
+    echo "Invalid metric name (must not contain '..' or '/'): $METRIC_NAME" >&2
+    exit 1
+fi
+
 # Create metrics directory
 mkdir -p "$METRICS_DIR"
 

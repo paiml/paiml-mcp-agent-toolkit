@@ -57,9 +57,20 @@ impl TimelinePlayer {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use pmat::services::dap::{Recording, TimelinePlayer};
+    /// # use pmat::services::dap::{Recording, Snapshot, TimelinePlayer};
+    /// # use std::collections::HashMap;
+    /// # fn make_snapshot(frame_id: u64) -> Snapshot {
+    /// #     Snapshot {
+    /// #         frame_id,
+    /// #         timestamp_relative_ms: (frame_id * 10) as u32,
+    /// #         variables: HashMap::new(),
+    /// #         stack_frames: Vec::new(),
+    /// #         instruction_pointer: 0x1000 + frame_id,
+    /// #         memory_snapshot: None,
+    /// #     }
+    /// # }
     /// # let mut recording = Recording::new("test".to_string(), vec![]);
-    /// # for _ in 0..10 { recording.add_snapshot(Default::default()); }
+    /// # for i in 0..10 { recording.add_snapshot(make_snapshot(i)); }
     /// let player = TimelinePlayer::new(recording);
     /// assert_eq!(player.total_frames(), 10);
     /// ```
@@ -75,9 +86,20 @@ impl TimelinePlayer {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use pmat::services::dap::{Recording, TimelinePlayer};
+    /// # use pmat::services::dap::{Recording, Snapshot, TimelinePlayer};
+    /// # use std::collections::HashMap;
+    /// # fn make_snapshot(frame_id: u64) -> Snapshot {
+    /// #     Snapshot {
+    /// #         frame_id,
+    /// #         timestamp_relative_ms: (frame_id * 10) as u32,
+    /// #         variables: HashMap::new(),
+    /// #         stack_frames: Vec::new(),
+    /// #         instruction_pointer: 0x1000 + frame_id,
+    /// #         memory_snapshot: None,
+    /// #     }
+    /// # }
     /// # let mut recording = Recording::new("test".to_string(), vec![]);
-    /// # for _ in 0..3 { recording.add_snapshot(Default::default()); }
+    /// # for i in 0..3 { recording.add_snapshot(make_snapshot(i)); }
     /// let mut player = TimelinePlayer::new(recording);
     ///
     /// let frame1 = player.next_frame().unwrap();  // Move to frame 1
@@ -102,9 +124,20 @@ impl TimelinePlayer {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use pmat::services::dap::{Recording, TimelinePlayer};
+    /// # use pmat::services::dap::{Recording, Snapshot, TimelinePlayer};
+    /// # use std::collections::HashMap;
+    /// # fn make_snapshot(frame_id: u64) -> Snapshot {
+    /// #     Snapshot {
+    /// #         frame_id,
+    /// #         timestamp_relative_ms: (frame_id * 10) as u32,
+    /// #         variables: HashMap::new(),
+    /// #         stack_frames: Vec::new(),
+    /// #         instruction_pointer: 0x1000 + frame_id,
+    /// #         memory_snapshot: None,
+    /// #     }
+    /// # }
     /// # let mut recording = Recording::new("test".to_string(), vec![]);
-    /// # for _ in 0..3 { recording.add_snapshot(Default::default()); }
+    /// # for i in 0..3 { recording.add_snapshot(make_snapshot(i)); }
     /// let mut player = TimelinePlayer::new(recording);
     ///
     /// player.jump_to(2).unwrap();               // Start at frame 2
@@ -134,9 +167,20 @@ impl TimelinePlayer {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use pmat::services::dap::{Recording, TimelinePlayer};
+    /// # use pmat::services::dap::{Recording, Snapshot, TimelinePlayer};
+    /// # use std::collections::HashMap;
+    /// # fn make_snapshot(frame_id: u64) -> Snapshot {
+    /// #     Snapshot {
+    /// #         frame_id,
+    /// #         timestamp_relative_ms: (frame_id * 10) as u32,
+    /// #         variables: HashMap::new(),
+    /// #         stack_frames: Vec::new(),
+    /// #         instruction_pointer: 0x1000 + frame_id,
+    /// #         memory_snapshot: None,
+    /// #     }
+    /// # }
     /// # let mut recording = Recording::new("test".to_string(), vec![]);
-    /// # for _ in 0..100 { recording.add_snapshot(Default::default()); }
+    /// # for i in 0..100 { recording.add_snapshot(make_snapshot(i)); }
     /// let mut player = TimelinePlayer::new(recording);
     ///
     /// player.jump_to(50)?;   // Jump to middle
@@ -171,15 +215,37 @@ impl TimelinePlayer {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use pmat::services::dap::{Recording, TimelinePlayer};
+    /// # use pmat::services::dap::{Recording, Snapshot, StackFrame, TimelinePlayer};
+    /// # use std::collections::HashMap;
+    /// # fn make_snapshot(frame_id: u64) -> Snapshot {
+    /// #     let mut variables = HashMap::new();
+    /// #     variables.insert("counter".to_string(), serde_json::json!(frame_id));
+    /// #     Snapshot {
+    /// #         frame_id,
+    /// #         timestamp_relative_ms: (frame_id * 10) as u32,
+    /// #         variables,
+    /// #         stack_frames: vec![StackFrame {
+    /// #             name: "main".to_string(),
+    /// #             file: Some("main.rs".to_string()),
+    /// #             line: Some(42),
+    /// #             locals: HashMap::new(),
+    /// #         }],
+    /// #         instruction_pointer: 0x1000 + frame_id,
+    /// #         memory_snapshot: None,
+    /// #     }
+    /// # }
     /// # let mut recording = Recording::new("test".to_string(), vec![]);
-    /// # for _ in 0..10 { recording.add_snapshot(Default::default()); }
+    /// # for i in 0..10 { recording.add_snapshot(make_snapshot(i)); }
     /// let mut player = TimelinePlayer::new(recording);
     ///
+    /// player.jump_to(3)?;
     /// let snapshot = player.current_snapshot();
+    /// assert_eq!(snapshot.frame_id, 3);
+    ///
     /// // Access snapshot data for UI rendering
     /// println!("Variables: {:?}", snapshot.variables);
     /// println!("Stack: {:?}", snapshot.stack_frames);
+    /// # Ok::<(), anyhow::Error>(())
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_snapshot(&self) -> &Snapshot {

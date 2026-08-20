@@ -32,6 +32,8 @@ pub struct CoverageImprovementConfig {
     pub focus_patterns: Vec<String>,
     /// Exclude files/modules (glob patterns)
     pub exclude_patterns: Vec<String>,
+    /// Maximum number of files to target per iteration (0 = no limit)
+    pub max_targets: usize,
 }
 
 impl Default for CoverageImprovementConfig {
@@ -44,6 +46,7 @@ impl Default for CoverageImprovementConfig {
             mutation_threshold: 80.0,
             focus_patterns: vec![],
             exclude_patterns: vec![],
+            max_targets: 10,
         }
     }
 }
@@ -107,6 +110,10 @@ mod generated_test_validity_tests;
 #[cfg(test)]
 #[path = "baseline_measurement_tests.rs"]
 mod baseline_measurement_tests;
+
+#[cfg(test)]
+#[path = "target_prioritization_tests.rs"]
+mod target_prioritization_tests;
 
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]

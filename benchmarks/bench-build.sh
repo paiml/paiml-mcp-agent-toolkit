@@ -6,7 +6,12 @@ set -euo pipefail
 # shellcheck disable=DET002
 # Intentional: Timestamp required for benchmark result tracking (bashrs issue #43)
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
-RESULTS_DIR="benchmarks/results"
+# Anchor results next to this script instead of trusting the caller's cwd
+RESULTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/results"
+if [ -z "$RESULTS_DIR" ] || [[ "$RESULTS_DIR" == *".."* ]] || [[ "$RESULTS_DIR" != /* ]]; then
+    echo "Refusing to write benchmark results to '$RESULTS_DIR'" >&2
+    exit 1
+fi
 mkdir -p "$RESULTS_DIR"
 
 echo "🔬 Benchmarking cargo builds at $TIMESTAMP"
@@ -69,5 +74,5 @@ echo ""
 echo "📖 View results:"
 echo "  jq . $RESULTS_DIR/dev-$TIMESTAMP.json"
 
-# Cleanup
-rm -f /tmp/bench-./*.sh
+# Cleanup (the previous glob, /tmp/bench-./*.sh, never matched anything)
+rm -f /tmp/bench-dev.sh /tmp/bench-release.sh /tmp/bench-minimal.sh

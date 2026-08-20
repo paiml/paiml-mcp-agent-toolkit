@@ -20,6 +20,9 @@ include!("dead_code_multi_language_regex.rs");
 // Types, traits, and dispatch
 include!("dead_code_multi_language_types.rs");
 
+// Library-target detection: an exported item of a library is a ROOT
+include!("dead_code_multi_language_library.rs");
+
 // Language strategy implementations
 include!("dead_code_multi_language_strategies.rs");
 
@@ -31,6 +34,13 @@ include!("dead_code_multi_language_lua.rs");
 
 // Rust-specific analysis helpers
 include!("dead_code_multi_language_rust.rs");
+
+// A library's exported items are ROOTS, per language where that is
+// determinable — and a stated disclosure where it is not.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_multi_language_library_tests.rs"]
+mod library_tests;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

@@ -35,14 +35,21 @@ fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation
                 },
             })
             .collect(),
-        Err(e) if !e.contains("not found") => vec![CbPatternViolation {
-            pattern_id: "CB-400".to_string(),
+        // A hook bashrs could not lint is NOT a hook that passed. This arm used
+        // to be `Err(e) if !e.contains("not found")` with an `Err(_) => vec![]`
+        // fallthrough, and the spawn-failure message is built two functions
+        // below as `format!("bashrs not found: {e}")` — so "bashrs is not
+        // installed" was GUARANTEED to match the guard and be discarded as zero
+        // violations. On a machine without bashrs, CB-400 reported a clean bill
+        // of health for hooks nothing had read. CB-402 was fixed for exactly
+        // this in an earlier commit; CB-400 and CB-401 were left behind.
+        Err(e) => vec![CbPatternViolation {
+            pattern_id: "CB-400-UNMEASURED".to_string(),
             file,
             line: 0,
-            description: format!("bashrs lint error: {e}"),
+            description: format!("not measured: {e}"),
             severity: Severity::Warning,
         }],
-        Err(_) => Vec::new(),
     }
 }
 
@@ -74,16 +81,17 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
             }
         }
         Ok(_) => {} // No issues
+        // Same fix as CB-400 above: a Makefile bashrs could not lint is not a
+        // Makefile that passed, and "not found" was the one error certain to be
+        // swallowed.
         Err(e) => {
-            if !e.contains("not found") {
-                violations.push(CbPatternViolation {
-                    pattern_id: "CB-401".to_string(),
-                    file: "Makefile".to_string(),
-                    line: 0,
-                    description: format!("bashrs make lint error: {}", e),
-                    severity: Severity::Warning,
-                });
-            }
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-401-UNMEASURED".to_string(),
+                file: "Makefile".to_string(),
+                line: 0,
+                description: format!("not measured: {e}"),
+                severity: Severity::Warning,
+            });
         }
     }
 
@@ -95,16 +103,43 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
 /// Both are real limits and both are now DISCLOSED when they bite: infra has
 /// 104 `.sh` files, 95 of them within depth 4, so a silent `.take(20)` meant
 /// the check spoke for 20 files while its message claimed "All shell scripts".
-const SHELL_SCAN_LIMIT: usize = 20;
+/// Cap on scripts examined per run. 20 was set when the scan was an unbounded
+/// directory walk and had to be defended against; scoped to tracked files this
+/// repository has 60, so the cap now covers it whole. It stays because a cap
+/// that is never reached costs nothing and a scan with no cap is a hazard, and
+/// because CB-402-TRUNCATED still reports exactly what a larger repository lost.
+const SHELL_SCAN_LIMIT: usize = 250;
 const SHELL_SCAN_DEPTH: usize = 4;
 
-/// CB-402: Check shell scripts with bashrs
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternViolation> {
-    let mut violations = Vec::new();
+/// The shell scripts this repository is answerable for: the ones git tracks.
+///
+/// Previously an unfiltered `walkdir` at depth 4, excluding only `target/` and
+/// `node_modules/`. In this repository that walk finds 160 scripts of which 100
+/// are untracked, and `.claude/worktrees/` alone holds 2,780 — ephemeral agent
+/// worktrees, each a full copy of the tree, plus vendored third-party installers
+/// like `get-docker.sh`. The scan's 20-file budget was consumed entirely by those,
+/// so `pmat comply check` reported 40 violations in files the project does not
+/// own, while announcing that 140 real scripts went unexamined. Every finding was
+/// true of something, and none of it was true of the repository.
+///
+/// Tracked-ness is the right predicate because it is the project's own answer to
+/// "is this our code", maintained by people rather than inferred from a path.
+/// Falls back to the directory walk when git cannot answer — a non-repository, or
+/// no git binary — because a scan that silently examines nothing would be the
+/// failure this check exists to catch.
+fn shell_scripts_in_scope(project_path: &Path) -> Vec<std::path::PathBuf> {
+    if let Some(tracked) = git_tracked_shell_scripts(project_path) {
+        return tracked;
+    }
+    walk_shell_scripts(project_path)
+}
 
-    // Find all .sh files (limit to reasonable depth)
-    let candidates: Vec<_> = walkdir::WalkDir::new(project_path)
+/// Every `.sh` the directory walk can see, tracked or not. Used as the fallback
+/// scope outside a git worktree, and as the DISCLOSURE oracle inside one: if git
+/// tracks no shell script but the tree contains some, the scan examined nothing
+/// and must say so rather than return a clean bill of health.
+fn walk_shell_scripts(project_path: &Path) -> Vec<std::path::PathBuf> {
+    walkdir::WalkDir::new(project_path)
         .max_depth(SHELL_SCAN_DEPTH)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -114,21 +149,75 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
                 && !path.to_string_lossy().contains("target/")
                 && !path.to_string_lossy().contains("node_modules/")
         })
-        .collect();
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+/// `git ls-files` restricted to shell scripts, or `None` when git cannot answer.
+fn git_tracked_shell_scripts(project_path: &Path) -> Option<Vec<std::path::PathBuf>> {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .args(["ls-files", "-z", "--", "*.sh"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    Some(
+        out.stdout
+            .split(|b| *b == 0)
+            .filter(|s| !s.is_empty())
+            .map(|s| project_path.join(String::from_utf8_lossy(s).as_ref()))
+            .filter(|p| p.is_file())
+            .collect(),
+    )
+}
+
+/// CB-402: Check shell scripts with bashrs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternViolation> {
+    let mut violations = Vec::new();
+
+    let candidates = shell_scripts_in_scope(project_path);
+
+    // `git ls-files` exits 0 and prints NOTHING in a worktree that tracks no
+    // shell script — a fresh `git init` before the first `git add`, a generated
+    // or gitignored subdirectory, a sparse checkout. The success-only fallback
+    // guard cannot see that case, so the scan would examine zero files, emit no
+    // TRUNCATED row, and CB-400 would report Pass. "There are no shell scripts"
+    // and "none of the shell scripts here are tracked" are not the same claim.
+    if candidates.is_empty() {
+        let untracked = walk_shell_scripts(project_path);
+        if !untracked.is_empty() {
+            violations.push(CbPatternViolation {
+                pattern_id: "CB-402-UNTRACKED-ONLY".to_string(),
+                file: String::new(),
+                line: 0,
+                description: format!(
+                    "{} shell script(s) exist but git tracks none of them, so none were \
+                     examined. Commit them, or run this where they are tracked; a scan \
+                     that reached nothing is not a pass.",
+                    untracked.len()
+                ),
+                severity: Severity::Warning,
+            });
+        }
+    }
+
     let truncated = candidates.len().saturating_sub(SHELL_SCAN_LIMIT);
     let sh_files = candidates.into_iter().take(SHELL_SCAN_LIMIT);
 
     for entry in sh_files {
-        match run_bashrs_lint(entry.path()) {
+        match run_bashrs_lint(&entry) {
             Ok(issues) if !issues.is_empty() => {
                 for issue in issues {
                     violations.push(CbPatternViolation {
                         pattern_id: format!("CB-402-{}", issue.code),
                         file: entry
-                            .path()
                             .strip_prefix(project_path)
                             .map(|p| p.display().to_string())
-                            .unwrap_or_else(|_| entry.path().display().to_string()),
+                            .unwrap_or_else(|_| entry.display().to_string()),
                         line: issue.line,
                         description: format!("{}: {}", issue.code, issue.message),
                         severity: match issue.severity.as_str() {
@@ -147,10 +236,9 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
             Err(e) => violations.push(CbPatternViolation {
                 pattern_id: "CB-402-UNMEASURED".to_string(),
                 file: entry
-                    .path()
                     .strip_prefix(project_path)
                     .map(|p| p.display().to_string())
-                    .unwrap_or_else(|_| entry.path().display().to_string()),
+                    .unwrap_or_else(|_| entry.display().to_string()),
                 line: 0,
                 description: format!("not measured: {e}"),
                 severity: Severity::Warning,

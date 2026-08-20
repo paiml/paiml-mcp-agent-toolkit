@@ -8,6 +8,25 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<PathBuf>, TemplateError> {
+        self.find_source_files_counting_tests(root)
+            .await
+            .map(|(files, _)| files)
+    }
+
+    /// As [`Self::find_source_files`], but also reports HOW MANY test files the
+    /// filter dropped.
+    ///
+    /// Discovery drops test files silently, so `SkipCounts::tests` — the bucket
+    /// whose whole job is to disclose them, and whose `note()` renders
+    /// "N test (use --include-tests)" — could never be anything but 0: by the
+    /// time the counting loop in `analyze_directory_with_stats` ran, the test
+    /// files were already gone. `analyze satd` on a tree with a `tests/`
+    /// directory reported `files_not_read.tests: 0`, which is the same
+    /// count-with-no-denominator #1015 set out to remove, one level down.
+    pub(crate) async fn find_source_files_counting_tests(
+        &self,
+        root: &Path,
+    ) -> Result<(Vec<PathBuf>, usize), TemplateError> {
         // Try git ls-files first to respect .gitignore
         if let Ok(output) = tokio::process::Command::new("git")
             .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -17,21 +36,25 @@ impl SATDDetector {
         {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                let files: Vec<PathBuf> = stdout
+                let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) = stdout
                     .lines()
                     .filter(|line| !line.is_empty())
                     .map(|line| root.join(line))
-                    .filter(|path| self.is_valid_source_file(path))
-                    .collect();
+                    .filter(|path| self.is_source_file(path))
+                    .partition(|path| !self.is_test_file(path));
+                // Unchanged: an empty *analysable* list still falls through to
+                // the walk below, which is what makes a non-git checkout work.
                 if !files.is_empty() {
-                    return Ok(files);
+                    return Ok((files, tests.len()));
                 }
             }
         }
         // Fallback: recursive walk (non-git projects)
-        let mut files = Vec::new();
-        self.collect_files_recursive(root, &mut files).await?;
-        Ok(files)
+        let mut candidates = Vec::new();
+        self.collect_files_recursive(root, &mut candidates).await?;
+        let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) =
+            candidates.into_iter().partition(|path| !self.is_test_file(path));
+        Ok((files, tests.len()))
     }
 
     /// Recursively collect source files
@@ -105,14 +128,17 @@ impl SATDDetector {
         .contains(&name)
     }
 
+    /// Collect every SOURCE file, test files included.
+    ///
+    /// The test-file drop used to happen here, inside a predicate named
+    /// `is_valid_source_file` (`is_source_file() && !is_test_file()`), which
+    /// conflated two questions and made the drop uncountable — see
+    /// [`Self::find_source_files_counting_tests`], which now partitions instead
+    /// so the files it declines to read can be disclosed rather than vanish.
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
-        if self.is_valid_source_file(path) {
+        if self.is_source_file(path) {
             files.push(path.to_path_buf());
         }
-    }
-
-    fn is_valid_source_file(&self, path: &Path) -> bool {
-        self.is_source_file(path) && !self.is_test_file(path)
     }
 
     /// Check if a file is a supported source file

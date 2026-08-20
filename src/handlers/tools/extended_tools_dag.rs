@@ -48,11 +48,22 @@ async fn execute_dag_analysis(
 ) -> anyhow::Result<serde_json::Value> {
     use crate::services::context::analyze_project;
     let project_context = analyze_project(&project_path, "rust").await?;
-    let graph = build_dag_graph(&project_context);
     let dag_type = parse_dag_type(args.dag_type.as_deref());
-    let filtered_graph = apply_dag_filters(graph, dag_type.clone());
-    let output = generate_dag_output(&filtered_graph, args, dag_type);
-    Ok(output)
+
+    // #1020: this handler built the graph through `build_from_project_with_limit`
+    // — which cuts to the 400-edge Mermaid budget and drops every node the
+    // surviving edges do not touch — and then filtered to `Calls` edges that
+    // nothing on this path ever produced. `call-graph` was therefore empty for
+    // EVERY project, at any size. It now runs the same pipeline as the CLI and
+    // the pmcp tool, so all three answer the same question the same way.
+    let (filtered_graph, _stats) = crate::services::dag_pipeline::build_typed_dag(
+        &project_context,
+        &project_path,
+        dag_edge_types(&dag_type),
+    )
+    .await;
+
+    Ok(generate_dag_output(&filtered_graph, args, dag_type))
 }
 
 /// R22-1 / D101 + R22-2 / D102: Validate and glob-expand `project_path`.
@@ -72,11 +83,19 @@ fn resolve_project_path(project_path: &Option<String>) -> Result<PathBuf, String
     }
 }
 
-fn build_dag_graph(
-    project_context: &crate::services::context::ProjectContext,
-) -> crate::models::dag::DependencyGraph {
-    use crate::services::dag_builder::DagBuilder;
-    DagBuilder::build_from_project_with_limit(project_context, 50)
+/// The edges a `--dag-type` selects; `None` keeps everything.
+fn dag_edge_types(
+    dag_type: &crate::cli::DagType,
+) -> Option<&'static [crate::models::dag::EdgeType]> {
+    use crate::cli::DagType;
+    use crate::models::dag::EdgeType;
+
+    match dag_type {
+        DagType::CallGraph => Some(&[EdgeType::Calls]),
+        DagType::ImportGraph => Some(&[EdgeType::Imports]),
+        DagType::Inheritance => Some(&[EdgeType::Inherits, EdgeType::Implements]),
+        DagType::FullDependency => None,
+    }
 }
 
 fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
@@ -90,23 +109,6 @@ fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
             _ => None,
         })
         .unwrap_or(DagType::CallGraph)
-}
-
-fn apply_dag_filters(
-    graph: crate::models::dag::DependencyGraph,
-    dag_type: crate::cli::DagType,
-) -> crate::models::dag::DependencyGraph {
-    use crate::cli::DagType;
-    use crate::services::dag_builder::{
-        filter_call_edges, filter_import_edges, filter_inheritance_edges,
-    };
-
-    match dag_type {
-        DagType::CallGraph => filter_call_edges(graph),
-        DagType::ImportGraph => filter_import_edges(graph),
-        DagType::Inheritance => filter_inheritance_edges(graph),
-        DagType::FullDependency => graph,
-    }
 }
 
 fn generate_dag_output(

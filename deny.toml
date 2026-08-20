@@ -4,7 +4,20 @@
 
 [graph]
 targets = []
-all-features = false
+# TRUE, deliberately, and diverging from the paiml/infra default.
+#
+# With `all-features = false` cargo-deny resolves only the DEFAULT feature graph,
+# so every optional-feature dependency is invisible to it. On this tree that hid
+# three live advisories — including RUSTSEC-2023-0071, a vulnerability, reachable
+# through `octocrab` behind the optional `github-api` feature. `cargo deny check`
+# printed "advisories ok" while `cargo deny --all-features check` printed
+# "advisories FAILED". pmat ships `--features full`, so the default graph is not
+# the graph its users install.
+#
+# This is also why five of the `ignore` entries below were reported as
+# `advisory-not-detected`: they name crates that only exist in the wider graph,
+# so the file was already documenting dependencies the check could not see.
+all-features = true
 no-default-features = false
 
 [advisories]
@@ -21,6 +34,13 @@ ignore = [
     # Reviewed 2026-07-02 (MACS-000 bootstrap, #612) — all transitive via the
     # aprender 0.50 sovereign stack; fixes require upstream aprender releases.
     { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2: unmaintained, transitive via validator_derive→validator→apr-cli; no safe upgrade available" },
+    # Reviewed 2026-08-19 — surfaced by turning `all-features` on above; all
+    # three were always in the shipped `--features full` graph, and none was
+    # visible to the default-graph check. cargo-deny reports "No safe upgrade is
+    # available!" for each.
+    { id = "RUSTSEC-2023-0071", reason = "rsa Marvin Attack: transitive via jsonwebtoken→octocrab. The timing sidechannel requires RSA PRIVATE-KEY operations, which pmat never performs — github_client.rs builds Octocrab with `.personal_token()` or unauthenticated, never GitHub App JWT signing. No safe upgrade exists upstream." },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser: unmaintained, transitive via lopdf→pdf-extract, no safe upgrade available" },
+    { id = "RUSTSEC-2024-0320", reason = "yaml-rust: unmaintained, transitive via syntect, no safe upgrade available" },
     # Re-verified 2026-07-31 against Cargo.lock. The path changed: aprender-orchestrate
     # was removed as a dependency, and quick-xml now arrives only via
     # syntect -> plist, behind the opt-in `syntax-highlighting` feature (NOT default).

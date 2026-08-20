@@ -92,8 +92,15 @@ mod tests {
     fn test_count_unique_variables_uppercase() {
         let source = "let Type = MyStruct;";
         let count = count_unique_variables(source);
-        // Uppercase identifiers shouldn't be counted as variables
-        assert!(count >= 0);
+        // Uppercase identifiers shouldn't be counted as variables, and `let` is
+        // a keyword, so nothing in this source is one. `assert!(count >= 0)` --
+        // what this used to say -- cannot fail for a u32; it was a test that
+        // measured nothing (`pmat analyze vacuous-tests` calls this class
+        // NoFailureMode).
+        assert_eq!(
+            count, 0,
+            "no lowercase non-keyword identifier appears in {source:?}"
+        );
     }
 
     #[test]

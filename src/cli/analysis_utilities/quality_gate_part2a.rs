@@ -61,9 +61,18 @@ async fn execute_provability_check(
     .await
 }
 
-/// Runs all project-wide checks
+/// Runs all project-wide checks.
+///
+/// THE list of checks behind the name "quality gate", called — not copied — by
+/// every surface that claims to run them: `pmat quality-gate --checks all` here,
+/// and the MCP `quality_gate` tool through [`run_gate_suite`]. That tool used to
+/// carry its own two-check list, so a `coverage` gap the CLI reported was
+/// invisible over MCP.
+///
+/// # Errors
+/// Propagates any individual check's failure.
 #[allow(clippy::too_many_arguments)]
-async fn run_all_project_checks(
+pub async fn run_all_project_checks(
     project_path: &Path,
     max_dead_code: f64,
     min_entropy: Option<f64>,

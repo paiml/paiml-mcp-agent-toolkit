@@ -4,7 +4,7 @@
 use super::*;
 
 #[cfg(feature = "demo")]
-pub mod demo_feature_tests_continued {
+pub(crate) mod demo_feature_tests_continued {
     use super::*;
 
     // -------------------------------------------------------------------------
@@ -344,6 +344,29 @@ pub mod demo_feature_tests_continued {
     // serialize_response Tests
     // -------------------------------------------------------------------------
 
+    /// Assert that `serialized` carries exactly one header line naming `name`
+    /// with the value `value`.
+    ///
+    /// Field names are case-insensitive (RFC 9110 §5.1) and `http::HeaderName`
+    /// normalises every name to lowercase when the response is built, so the
+    /// bytes on the wire read `content-type: ...` no matter how the handler
+    /// spelled it. The name is therefore matched case-insensitively while the
+    /// value — which *is* case-sensitive — is compared exactly, and the whole
+    /// line must match rather than merely appear as a substring.
+    fn assert_header(serialized: &str, name: &str, value: &str) {
+        let matches = serialized
+            .split("\r\n")
+            .filter(|line| match line.split_once(": ") {
+                Some((n, v)) => n.eq_ignore_ascii_case(name) && v == value,
+                None => false,
+            })
+            .count();
+        assert_eq!(
+            matches, 1,
+            "expected exactly one `{name}: {value}` header line, found {matches} in:\n{serialized}"
+        );
+    }
+
     #[test]
     fn test_serialize_response_ok() {
         let response = http::Response::builder()
@@ -356,9 +379,14 @@ pub mod demo_feature_tests_continued {
         let as_str = std::str::from_utf8(&serialized).unwrap();
 
         assert!(as_str.contains("HTTP/1.1 200 OK"));
-        assert!(as_str.contains("Content-Type: application/json"));
-        assert!(as_str.contains("Content-Length:"));
-        assert!(as_str.contains(r#"{"test": true}"#));
+        assert_header(as_str, "Content-Type", "application/json");
+        // `{"test": true}` is 14 bytes.
+        assert_header(as_str, "Content-Length", "14");
+
+        let (_, body) = as_str
+            .split_once("\r\n\r\n")
+            .expect("headers must be terminated by a blank line");
+        assert_eq!(body, r#"{"test": true}"#);
     }
 
     #[test]
@@ -387,9 +415,9 @@ pub mod demo_feature_tests_continued {
         let serialized = serialize_response(response);
         let as_str = std::str::from_utf8(&serialized).unwrap();
 
-        assert!(as_str.contains("Content-Type: text/plain"));
-        assert!(as_str.contains("Cache-Control: no-cache"));
-        assert!(as_str.contains("X-Custom: value"));
+        assert_header(as_str, "Content-Type", "text/plain");
+        assert_header(as_str, "Cache-Control", "no-cache");
+        assert_header(as_str, "X-Custom", "value");
     }
 
     #[test]
@@ -402,7 +430,7 @@ pub mod demo_feature_tests_continued {
         let serialized = serialize_response(response);
         let as_str = std::str::from_utf8(&serialized).unwrap();
 
-        assert!(as_str.contains("Content-Length: 0"));
+        assert_header(as_str, "Content-Length", "0");
     }
 }
 

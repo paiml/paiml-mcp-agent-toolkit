@@ -97,8 +97,16 @@ if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; th
     # --all matches the pre-push gate. Without it only the current package is
     # checked, so an unformatted file in a workspace MEMBER passes pre-commit
     # and then fails pre-push -- two gates disagreeing about the same repo.
-    FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1)
-    if [ $? -eq 0 ]; then
+    # `FMT_STATUS=0; ... || FMT_STATUS=$?` rather than testing `$?` after the
+    # assignment. The hook runs under `set -e`, and the exit status of
+    # `X=$(cmd)` *is* cmd's, so a non-zero rustfmt killed the hook on that line
+    # and everything below — the "❌", this message, the diff excerpt — was
+    # unreachable. Observed live: "  Format check... " and then exit 1, with no
+    # reason printed. A refusal an operator cannot read is a refusal they route
+    # around.
+    FMT_STATUS=0
+    FMT_OUTPUT=$(cargo fmt --all -- --check 2>&1) || FMT_STATUS=$?
+    if [ "$FMT_STATUS" -eq 0 ]; then
         echo "✅"
     else
         echo "❌"
@@ -107,6 +115,89 @@ if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; th
         exit 1
     fi
 fi
+"#
+    }
+
+    /// Generate the clippy gate.
+    ///
+    /// # The defect this closes
+    ///
+    /// `049a925a1` committed two clippy errors — `clippy::unnecessary_sort_by`
+    /// in `src/services/gate_effect/roster.rs` and `clippy::question_mark` in
+    /// `check_evidence_gates.rs` — and the pre-commit hook printed
+    /// "✅ All quality gates passed!" on the way out, because it ran format,
+    /// complexity and SATD and no lint at all. `ci / lint` runs
+    /// `cargo clippy --all-targets -- -D warnings`, so the branch could not have
+    /// merged; nothing local said so, and a human reviewer found it three
+    /// commits later (`6285aaec6`).
+    ///
+    /// # Why it is not just `cargo clippy`
+    ///
+    /// Measured on pmat, warm cache, **no source change at all**:
+    /// `cargo clippy --all-targets` 1m06s; `cargo clippy --lib` 3m11s. Narrowing
+    /// the target selection is *slower*, not faster — `--lib` and
+    /// `--all-targets` resolve features differently and evict each other's
+    /// artifacts — so "run clippy only on the files in the commit" is not
+    /// available: clippy's unit of work is the crate.
+    ///
+    /// A minute per commit is the cost that teaches `--no-verify`, which is
+    /// worse than no hook. So the gate delegates to `pmat verify --stage clippy`,
+    /// which is content-addressed (see [`crate::cli::verify_lint_receipt`]): it
+    /// reuses the verdict of the last green clippy run over a byte-identical
+    /// tree, and runs clippy for real whenever it cannot. In the loop CLAUDE.md
+    /// already mandates — `edit → pmat verify → commit on green` — the gate costs
+    /// the fingerprint, ~0.3s. Where it cannot reuse anything it pays full
+    /// price, which is the honest answer to not knowing.
+    fn generate_clippy_check() -> &'static str {
+        r#"
+# 2. Clippy gate (Rust only) — see hook_generation.rs for the measurements.
+# >>> pmat clippy gate (PMAT-630) >>>
+if [ -f Cargo.toml ]; then
+    echo -n "  Clippy check... "
+
+    # The gate runs through pmat. If pmat is gone, the gate has not run, and a
+    # gate that has not run has not passed. Never `exit 0` from this branch.
+    if ! command -v pmat > /dev/null 2>&1; then
+        echo "❌"
+        echo "   pmat is not in PATH, so the clippy gate could not run."
+        echo "   An unchecked gate is not a passed gate."
+        echo "   Install with: cargo install pmat"
+        echo "   Emergency bypass (leaves a trace): git commit --no-verify"
+        exit 1
+    fi
+
+    # clippy reads the WORKTREE, never the index. A lint-relevant file that is
+    # staged in one state and left in another on disk would be committed
+    # without anything having linted the committed bytes. Refuse, rather than
+    # imply a coverage this gate does not have.
+    STAGED_LINT=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    DIRTY_LINT=$(git diff --name-only -- '*.rs' 'Cargo.toml' 'Cargo.lock' 2>/dev/null | sort -u)
+    UNSYNCED_LINT=$(printf '%s\n%s\n' "$STAGED_LINT" "$DIRTY_LINT" | sed '/^$/d' | sort | uniq -d)
+    if [ -n "$UNSYNCED_LINT" ]; then
+        echo "❌"
+        echo "   These files are staged in a state that differs from the worktree:"
+        printf '     %s\n' $UNSYNCED_LINT
+        echo "   clippy lints the worktree, so the staged bytes would go in unlinted."
+        echo "   Stage the rest ('git add <file>') or stash the remainder, then retry."
+        exit 1
+    fi
+
+    # Content-addressed: ~0.3s when this exact tree already linted green,
+    # a full clippy run when it did not. Never a pass without one or the other.
+    CLIPPY_STATUS=0
+    CLIPPY_OUTPUT=$(pmat verify --stage clippy 2>&1) || CLIPPY_STATUS=$?
+    if [ "$CLIPPY_STATUS" -eq 0 ]; then
+        echo "✅"
+    else
+        echo "❌"
+        echo "$CLIPPY_OUTPUT" | tail -n 30
+        echo ""
+        echo "   'ci / lint' runs these same lints; this commit could not merge."
+        echo "   Fix: pmat verify --stage clippy --fix"
+        exit 1
+    fi
+fi
+# <<< pmat clippy gate (PMAT-630) <<<
 "#
     }
 
@@ -119,11 +210,24 @@ fi
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_quality_checks(&self) -> String {
         let mut hook = String::from(
-            r#"# Check if pmat is available
+            r#"# Check if pmat is available.
+#
+# In a Cargo project this is fatal. Every gate below runs through pmat, the
+# clippy gate included, and a hook that cannot run its gates must not report
+# that they passed. The previous branch exited zero here with a warning, which
+# turned one missing binary into a silent bypass of the entire hook.
 if ! command -v pmat &> /dev/null; then
+    if [ -f Cargo.toml ]; then
+        echo "❌ pmat is not in PATH, and this is a Cargo project."
+        echo "   This hook's clippy gate runs through pmat; it cannot be checked"
+        echo "   here, and an unchecked gate is not a passed gate."
+        echo "   Install with: cargo install pmat"
+        echo "   Emergency bypass (leaves a trace): git commit --no-verify"
+        exit 1  # fail closed
+    fi
     echo "⚠️  Warning: pmat not found in PATH"
     echo "   Install with: cargo install pmat"
-    exit 0  # Allow commit but warn
+    exit 0  # not a Cargo project: nothing here for the clippy gate to check
 fi
 
 echo "📊 Running quality gate checks..."
@@ -216,8 +320,10 @@ if [ -n "$STAGED_SRC" ]; then
 else
     echo "  Complexity check... ⏭️  (no source files staged)"
 fi
-
-# 2. SATD (Self-Admitted Quality Issues) check - informational only
+"#);
+        hook.push_str(Self::generate_clippy_check());
+        hook.push_str(r#"
+# 3. SATD (Self-Admitted Quality Issues) check - informational only
 echo -n "  SATD check... "
 # `pmat analyze satd` prints "Total violations:  N". An older pattern looked
 # for a phrase pmat never emitted, so the grep matched nothing and the
@@ -234,7 +340,7 @@ else
     echo "⚠️  ($SATD_COUNT SATD comments, threshold: $PMAT_MAX_SATD_COMMENTS)"
 fi
 
-# 3. Documentation synchronization (only if docs structure exists)
+# 4. Documentation synchronization (only if docs structure exists)
 if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
     echo -n "  Documentation check... "
     if [ -f "docs/execution/roadmap.md" ] && [ -f "CHANGELOG.md" ]; then
@@ -244,7 +350,7 @@ if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
     fi
 fi
 
-# 4. Task ID validation (if commit message available)
+# 5. Task ID validation (if commit message available)
 if [ -n "$1" ]; then
     echo -n "  Task ID check... "
     if echo "$1" | grep -qE "$PMAT_TASK_ID_PATTERN"; then
@@ -336,6 +442,57 @@ mod complexity_gate_tests {
         assert!(
             hook.contains("cargo fmt --all -- --check"),
             "pre-commit format scope must match pre-push (--all)"
+        );
+    }
+
+    /// The generated pre-commit hook must run clippy.
+    ///
+    /// Regression for `049a925a1`, which committed two clippy errors
+    /// (`clippy::unnecessary_sort_by` in `src/services/gate_effect/roster.rs`,
+    /// `clippy::question_mark` in `check_evidence_gates.rs`) and was told
+    /// "✅ All quality gates passed!" on the way out. The hook ran format,
+    /// complexity and SATD; `ci / lint` runs
+    /// `cargo clippy --all-targets -- -D warnings`, and nothing between the two
+    /// did. Only a human reviewer caught it, three commits later (`6285aaec6`).
+    #[test]
+    fn the_generated_hook_runs_clippy() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            hook.contains("pmat verify --stage clippy"),
+            "the pre-commit hook must run the clippy gate; without it a \
+             clippy-red tree commits cleanly (049a925a1)"
+        );
+    }
+
+    /// A gate that can be defeated by not having the tool is not a gate.
+    #[test]
+    fn a_rust_project_without_pmat_fails_rather_than_passing_quietly() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        // The pmat-missing branch used to `exit 0` unconditionally ("Allow
+        // commit but warn"), which silently skipped every gate below it —
+        // including the new clippy gate — for anyone whose PATH had drifted.
+        assert!(
+            hook.contains("exit 1  # fail closed"),
+            "a Cargo project whose hook cannot find pmat must fail, not warn"
+        );
+        assert!(
+            !hook.contains("exit 0  # Allow commit but warn"),
+            "the unconditional pass-on-missing-pmat branch must not come back"
+        );
+    }
+
+    /// Clippy lints the worktree, not the index. If a staged file differs from
+    /// its worktree copy, the bytes about to be committed are not the bytes
+    /// clippy read, and the gate has to say so instead of implying coverage.
+    #[test]
+    fn the_hook_refuses_when_a_staged_file_differs_from_the_worktree() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            hook.contains("UNSYNCED_LINT"),
+            "the hook must detect index/worktree divergence for lint-relevant files"
         );
     }
 

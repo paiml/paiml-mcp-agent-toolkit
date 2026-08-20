@@ -272,6 +272,59 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+/// Does this source file write a hook path directly, in production code?
+///
+/// Split out of `check_hook_atomic_writes`'s directory walk so that neither
+/// half carries the other's nesting: the walk is a walk, and this is the
+/// judgement. Behaviour is unchanged — a file qualifies when it mentions a
+/// hook path, writes with `fs::write`, has no `rename`/`atomic_write` anywhere,
+/// and the write is reached outside comments and outside `#[cfg(test)]`.
+fn writes_a_hook_non_atomically(content: &str) -> bool {
+    let is_hook_code =
+        content.contains("hooks/pre-commit") || content.contains("hooks/pre-push");
+    if !is_hook_code {
+        return false;
+    }
+    let has_direct_write = content.contains("fs::write");
+    let has_atomic = content.contains("rename") || content.contains("atomic_write");
+    if !has_direct_write || has_atomic {
+        return false;
+    }
+    let mut pending_test = false;
+    let mut in_test_module = false;
+    let mut brace_depth_at_test = 0i32;
+    let mut brace_depth = 0i32;
+    for line in content.lines() {
+        let t = line.trim();
+        if t.contains("#[cfg(test)]") {
+            pending_test = true;
+        }
+        let old_depth = brace_depth;
+        let (opens, closes) = count_braces_outside_literals(line);
+        brace_depth += (opens - closes) as i32;
+        if pending_test && brace_depth > old_depth {
+            in_test_module = true;
+            pending_test = false;
+            brace_depth_at_test = old_depth;
+        }
+        if in_test_module && brace_depth <= brace_depth_at_test {
+            in_test_module = false;
+        }
+        if in_test_module || t.starts_with("//") || t.starts_with("///") {
+            continue;
+        }
+        if t.contains("fs::write")
+            && (t.contains("hook_path")
+                || t.contains("precommit")
+                || t.contains("pre_commit")
+                || t.contains("hooks/"))
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// CB-1334: Hook Atomic Writes
 ///
 /// Checks that hook file writes use write-then-rename (atomic) pattern,
@@ -300,64 +353,24 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
             let path = entry.path();
             if path.is_dir() {
                 scan_atomicity(&path, results);
-            } else if path.extension().is_some_and(|e| e == "rs") {
-                let path_str = path.to_str().unwrap_or("");
-                if path_str.contains("test") || path_str.contains("check_handlers") {
-                    continue;
-                }
-                if let Ok(content) = fs::read_to_string(&path) {
-                    // Must have hook path AND fs::write in actual code (not just string refs)
-                    let is_hook_code = content.contains("hooks/pre-commit")
-                        || content.contains("hooks/pre-push");
-                    if !is_hook_code {
-                        continue;
-                    }
-                    let has_direct_write = content.contains("fs::write");
-                    let has_atomic =
-                        content.contains("rename") || content.contains("atomic_write");
-                    if has_direct_write && !has_atomic {
-                        // Scan for fs::write that:
-                        // 1. is in code (not comments)
-                        // 2. targets a hook path
-                        // 3. is OUTSIDE #[cfg(test)] modules
-                        let mut pending_test = false;
-                        let mut in_test_module = false;
-                        let mut brace_depth_at_test = 0i32;
-                        let mut brace_depth = 0i32;
-                        let mut found_prod_write = false;
-                        for line in content.lines() {
-                            let t = line.trim();
-                            if t.contains("#[cfg(test)]") {
-                                pending_test = true;
-                            }
-                            let old_depth = brace_depth;
-                            let (opens, closes) = count_braces_outside_literals(line);
-                            brace_depth += (opens - closes) as i32;
-                            if pending_test && brace_depth > old_depth {
-                                in_test_module = true;
-                                pending_test = false;
-                                brace_depth_at_test = old_depth;
-                            }
-                            if in_test_module && brace_depth <= brace_depth_at_test {
-                                in_test_module = false;
-                            }
-                            if in_test_module { continue; }
-                            if t.starts_with("//") || t.starts_with("///") { continue; }
-                            if t.contains("fs::write")
-                                && (t.contains("hook_path") || t.contains("precommit")
-                                    || t.contains("pre_commit") || t.contains("hooks/"))
-                            {
-                                found_prod_write = true;
-                                break;
-                            }
-                        }
-                        if found_prod_write {
-                            let name = path.file_name().map(|f| f.to_string_lossy().to_string())
-                                .unwrap_or_default();
-                            results.push(name);
-                        }
-                    }
-                }
+                continue;
+            }
+            if path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let path_str = path.to_str().unwrap_or("");
+            if path_str.contains("test") || path_str.contains("check_handlers") {
+                continue;
+            }
+            let Ok(content) = fs::read_to_string(&path) else {
+                continue;
+            };
+            if writes_a_hook_non_atomically(&content) {
+                let name = path
+                    .file_name()
+                    .map(|f| f.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                results.push(name);
             }
         }
     }

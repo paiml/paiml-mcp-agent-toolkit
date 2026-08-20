@@ -98,6 +98,8 @@ fn rederive_summary(mut table: SymbolTable, top_files: usize) -> SymbolTable {
 ///     unreferenced_symbols: vec!["TestStruct".to_string()],
 ///     most_referenced: vec![("test_function".to_string(), 1)],
 ///     referenced_symbol_count: 1,
+///     // The two files the symbols above were extracted from: src/main.rs and src/lib.rs.
+///     files_scanned: 2,
 /// };
 ///
 /// let output = format_output(table, SymbolTableOutputFormat::Summary, true, false, 10).unwrap();

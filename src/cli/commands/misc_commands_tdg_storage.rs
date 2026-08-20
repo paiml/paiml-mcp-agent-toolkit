@@ -128,7 +128,11 @@ pub enum TdgCommand {
         command: StorageCommand,
     },
 
-    /// Start TDG web dashboard server
+    /// [NOT AVAILABLE in the default build] Start TDG web dashboard server — needs --features http-server
+    ///
+    /// `http-server` is not in the default feature set, so a
+    /// `cargo install pmat` binary exits rc=1 with "Dashboard requires the
+    /// 'http-server' feature" and never binds `--port`/`--host`.
     Dashboard {
         /// Port to bind the dashboard server
         #[arg(short, long, default_value = "8080")]

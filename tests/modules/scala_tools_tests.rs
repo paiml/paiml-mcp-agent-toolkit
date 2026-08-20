@@ -11,8 +11,8 @@
 
 use pmat::agents::registry::AgentRegistry;
 use pmat::mcp_integration::scala_tools::ScalaAnalysisTool;
-use pmat::mcp_integration::{McpError, McpTool};
-use serde_json::{json, Value};
+use pmat::mcp_integration::McpTool;
+use serde_json::json;
 use std::fs;
 use std::sync::Arc;
 use tempfile::tempdir;

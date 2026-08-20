@@ -1,0 +1,115 @@
+# Hand-authored work contract — NOT auto-generated, and nothing regenerates it.
+#
+# There is no .pmat-work/PMAT-INIT-003/ directory, so `generate_work_contract_yamls`
+# (src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p8.rs)
+# never emits this path. The placeholder this replaces cited
+# ".pmat-work/PMAT-INIT-003/contract.json" as its only reference; that path has
+# never existed. The references below are real.
+#
+# WHY IT WAS REWRITTEN. The prior version carried two `falsifiable_claims`
+# entries with exactly one key each — `id`, a title string — and `pv validate`
+# passed it. Every claim below carries `hypothesis` + `method` in the shape the
+# 8 MACS-0xx.cot.yaml contracts use, and every `method` was run on this tree.
+#
+# THE HEADLINE FACT. Half of this ticket was REFUSED, not built. Its claim 1
+# asked for "correct Ultracode schemas and tool registrations"; ultracode has no
+# file format to be correct about, so no schema file was written and the refusal
+# is reported in full (C1, C2). The half that IS defined — the committed
+# judgment-workflow convention, contracts/workflows/*.ultracode.mjs — was
+# generated and is `node --check` clean (C4..C9). A contract that recorded only
+# the generated workflow would misrepresent the release as complete.
+#
+# LEVEL. `current_level` is L1, which is what this contract has earned.
+#
+# A previous revision set L0 and explained that "L1 means a codegen'd
+# `debug_assert!` contract module compiles and runs, and no contracts/work/
+# PMAT-INIT-003.rs exists". That misread the file it cited.
+# `VerificationLevel::evidenced_level_from_yaml`
+# (src/cli/handlers/work_verification_level.rs) returns L1 for any bound YAML as
+# its FLOOR — `if !yaml_section_non_empty(yaml, "equations") { return Self::L1 }`
+# — and climbs to L2 only once an `equations:` section exists. No `.rs` artifact
+# is involved at any rung, and none of the 45 contracts in this directory at L3
+# has one either.
+#
+# The understatement was not harmless: CB-1330 fails a contract whose
+# `current_level` is below its `target_level`, so declaring L0 against a target of
+# L1 reported this file as a REGRESSION while 61 sibling contracts declaring L1
+# passed unexamined. CB-1330 compares two numbers inside one file; it never checks
+# that a declared `current_level` is true. This file was penalised for modesty by a
+# gate that cannot detect the opposite error.
+#
+# To reach L2, add an `equations:` section binding a clause to an equation.
+name: "PMAT-INIT-003"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Ultracode scaffold and integration (#1032) — the defined half generated, the undefined half refused in full"
+  references:
+    - "src/services/workspace_init/mod.rs"
+    - "src/services/workspace_init/templates.rs"
+    - "src/services/workspace_init/tests.rs"
+    - "tests/init_workspace_t.rs"
+    - "docs/specifications/components/modern-agentic-coding-support.md"
+    - "contracts/workflows/release-sweep.ultracode.mjs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1032"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 9
+proof_obligations:
+- id: "PO-C1"
+  statement: "REFUSED: the ticket's claim 1 asks for \"correct Ultracode schemas and tool registrations\", but ultracode has no file format to be correct about. docs/specifications/components/modern-agentic-coding-support.md states it at E1 — ultracode is a session-only Claude Code HARNESS setting (xhigh effort plus orchestration), not a client with a config of its own — and at E8 that it is triggered by a keyword in a prompt. So no schema file is invented; the plan carries an explicit refusal naming \"session-only\" and pointing at issue 1032, and the half that IS defined (a contracts/workflows/*.ultracode.mjs script) is still produced."
+  evidence_method: "cargo test --lib services::workspace_init::tests::ultracode_refuses_to_invent_a_schema_but_still_writes_what_is_defined"
+- id: "PO-C2"
+  statement: "That refusal is visible at the CLI, not just in a unit test: `--format json` carries \"ultracode schema / tool-registration manifest\" in `refused[]`, the workflow the target does define is written alongside it, and the process still exits 0 — a refusal is a reported outcome, not an error."
+  evidence_method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target ultracode --path $d --format json > $d/r.json; echo exit=$?; jq -r '.refused[].artifact' $d/r.json; ls $d/contracts/workflows/"
+- id: "PO-C3"
+  statement: "Refusals are reported in full rather than omitted, for both targets that have one: the JSON report's `refused[]` names plugins.json for agy and an ultracode schema for ultracode, and no file is written for either."
+  evidence_method: "cargo test --test init_workspace_t undefined_artifacts_are_refused_in_full_not_omitted"
+- id: "PO-C4"
+  statement: "The half that IS defined is generated and is real JavaScript: `--target ultracode` writes contracts/workflows/pmat-quality-sweep.ultracode.mjs and `node --check` accepts it — the same authority the Makefile's release-sweep target applies to the committed workflow. When node is absent the test does not quietly pass: it falls back to the structural invariants asserted for the committed ground truth and announces which path ran (this tree ran the node path)."
+  evidence_method: "cargo test --test init_workspace_t generated_ultracode_workflow_is_valid_esm -- --nocapture"
+- id: "PO-C5"
+  statement: "The generated workflow lands where the repository's convention puts it — under contracts/workflows/ with an .ultracode.mjs suffix — and not at some path only this generator knows about."
+  evidence_method: "cargo test --lib services::workspace_init::tests::ultracode_target_lands_the_workflow_where_the_convention_puts_it"
+- id: "PO-C6"
+  statement: "TOOL REGISTRATION IS MCP REGISTRATION, and it works: `--target ultracode` writes .mcp.json naming `command: pmat`, and that argv, spawned verbatim, answers a JSON-RPC `initialize` with a serverInfo name and a capabilities.tools object. This is the whole of what \"tool registrations\" can mean for a harness with no config format of its own, and it is measured rather than asserted."
+  evidence_method: "cargo test --test init_workspace_t emitted_mcp_config_names_a_command_that_actually_speaks_mcp"
+- id: "PO-C7"
+  statement: "The generated workflow records a refused or failed turn as a blocking state via `pmat work event --type refusal` and never relies on resume, so a refusal inside the judgment layer cannot vanish the way a silently dropped turn would."
+  evidence_method: "cargo test --lib services::workspace_init::tests::generated_workflow_records_refusals_and_never_relies_on_resume"
+- id: "PO-C8"
+  statement: "The generated workflow stamps provenance on every subagent spawn, so any judgment it produces can be traced back to the harness that produced it."
+  evidence_method: "cargo test --lib services::workspace_init::tests::generated_workflow_stamps_provenance_on_every_spawn"
+- id: "PO-C9"
+  statement: "The generated workflow is a judgment layer only: it reads exactly one deterministic artifact and never re-derives the raw sweep itself, matching the committed release-sweep.ultracode.mjs convention it is modelled on."
+  evidence_method: "cargo test --lib services::workspace_init::tests::generated_workflow_reads_only_the_deterministic_artifact"
+falsifiable_claims:
+- hypothesis: "REFUSED: the ticket's claim 1 asks for \"correct Ultracode schemas and tool registrations\", but ultracode has no file format to be correct about. docs/specifications/components/modern-agentic-coding-support.md states it at E1 — ultracode is a session-only Claude Code HARNESS setting (xhigh effort plus orchestration), not a client with a config of its own — and at E8 that it is triggered by a keyword in a prompt. So no schema file is invented; the plan carries an explicit refusal naming \"session-only\" and pointing at issue 1032, and the half that IS defined (a contracts/workflows/*.ultracode.mjs script) is still produced."
+  method: "cargo test --lib services::workspace_init::tests::ultracode_refuses_to_invent_a_schema_but_still_writes_what_is_defined"
+  from_step: "C1"
+- hypothesis: "That refusal is visible at the CLI, not just in a unit test: `--format json` carries \"ultracode schema / tool-registration manifest\" in `refused[]`, the workflow the target does define is written alongside it, and the process still exits 0 — a refusal is a reported outcome, not an error."
+  method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target ultracode --path $d --format json > $d/r.json; echo exit=$?; jq -r '.refused[].artifact' $d/r.json; ls $d/contracts/workflows/"
+  from_step: "C2"
+- hypothesis: "Refusals are reported in full rather than omitted, for both targets that have one: the JSON report's `refused[]` names plugins.json for agy and an ultracode schema for ultracode, and no file is written for either."
+  method: "cargo test --test init_workspace_t undefined_artifacts_are_refused_in_full_not_omitted"
+  from_step: "C3"
+- hypothesis: "The half that IS defined is generated and is real JavaScript: `--target ultracode` writes contracts/workflows/pmat-quality-sweep.ultracode.mjs and `node --check` accepts it — the same authority the Makefile's release-sweep target applies to the committed workflow. When node is absent the test does not quietly pass: it falls back to the structural invariants asserted for the committed ground truth and announces which path ran (this tree ran the node path)."
+  method: "cargo test --test init_workspace_t generated_ultracode_workflow_is_valid_esm -- --nocapture"
+  from_step: "C4"
+- hypothesis: "The generated workflow lands where the repository's convention puts it — under contracts/workflows/ with an .ultracode.mjs suffix — and not at some path only this generator knows about."
+  method: "cargo test --lib services::workspace_init::tests::ultracode_target_lands_the_workflow_where_the_convention_puts_it"
+  from_step: "C5"
+- hypothesis: "TOOL REGISTRATION IS MCP REGISTRATION, and it works: `--target ultracode` writes .mcp.json naming `command: pmat`, and that argv, spawned verbatim, answers a JSON-RPC `initialize` with a serverInfo name and a capabilities.tools object. This is the whole of what \"tool registrations\" can mean for a harness with no config format of its own, and it is measured rather than asserted."
+  method: "cargo test --test init_workspace_t emitted_mcp_config_names_a_command_that_actually_speaks_mcp"
+  from_step: "C6"
+- hypothesis: "The generated workflow records a refused or failed turn as a blocking state via `pmat work event --type refusal` and never relies on resume, so a refusal inside the judgment layer cannot vanish the way a silently dropped turn would."
+  method: "cargo test --lib services::workspace_init::tests::generated_workflow_records_refusals_and_never_relies_on_resume"
+  from_step: "C7"
+- hypothesis: "The generated workflow stamps provenance on every subagent spawn, so any judgment it produces can be traced back to the harness that produced it."
+  method: "cargo test --lib services::workspace_init::tests::generated_workflow_stamps_provenance_on_every_spawn"
+  from_step: "C8"
+- hypothesis: "The generated workflow is a judgment layer only: it reads exactly one deterministic artifact and never re-derives the raw sweep itself, matching the committed release-sweep.ultracode.mjs convention it is modelled on."
+  method: "cargo test --lib services::workspace_init::tests::generated_workflow_reads_only_the_deterministic_artifact"
+  from_step: "C9"

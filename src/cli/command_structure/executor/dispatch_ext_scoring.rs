@@ -55,7 +55,10 @@ impl CommandExecutor {
                 project_path,
                 file,
                 format,
-                fail_on_violation,
+                report_only,
+                // See `command_dispatcher_scoring.rs`: accepted for
+                // compatibility, no effect — the gate gates by default.
+                fail_on_violation: _,
                 checks,
                 max_dead_code,
                 min_entropy,
@@ -70,7 +73,7 @@ impl CommandExecutor {
                         project_path,
                         file,
                         format,
-                        fail_on_violation,
+                        crate::cli::analysis_utilities::gate_exits_on_violation(report_only),
                         checks,
                         max_dead_code,
                         min_entropy,

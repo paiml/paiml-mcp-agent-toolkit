@@ -133,6 +133,51 @@ fn test_mutate_input_single_byte() {
     assert!(!mutated.is_empty());
 }
 
+/// `mutate_input` must never hand back an empty input for a non-empty seed.
+///
+/// This was a real flake, not a theoretical one: the delete-byte strategy is
+/// one of five picked uniformly at random, so a 1-byte seed came back empty
+/// 20% of the time and `test_mutate_input_single_byte` above failed roughly
+/// one run in five. It survived because `src/services/mutation/` is behind
+/// `mutation-testing` -> `advanced-analysis` -> `full`, and until the
+/// `feature-tests / full` leg in .github/workflows/feature-matrix.yml, nothing
+/// executed it. The first two runs of that leg disagreed with each other.
+///
+/// The invariant is the function's own: the empty-seed branch deliberately
+/// returns a fresh byte rather than nothing, and the coverage-guided loop in
+/// `fuzzing_strategy.rs` feeds this straight back into the corpus, where an
+/// empty entry is a wasted iteration.
+///
+/// Single sample is 20% to fail; 200 draws of a 1-byte seed makes a surviving
+/// bug a 1-in-10^19 event, so this fails deterministically in practice.
+#[test]
+fn mutate_input_never_empties_a_non_empty_seed() {
+    for seed_len in 1..=3usize {
+        let seed: Vec<u8> = (0..seed_len as u8).collect();
+        for i in 0..200 {
+            let mutated = mutate_input(&seed);
+            assert!(
+                !mutated.is_empty(),
+                "draw {i} on a {seed_len}-byte seed returned an empty input; \
+                 mutate_input must not delete a seed out of existence"
+            );
+        }
+    }
+}
+
+/// COUNTER-TEST: passes before and after the fix. The delete strategy must
+/// still be able to SHRINK a seed -- the fix must not turn deletion into a
+/// no-op, which would silently remove one of the five strategies.
+#[test]
+fn mutate_input_can_still_shrink_a_multi_byte_seed() {
+    let seed = vec![1u8, 2, 3, 4, 5];
+    let shrunk = (0..500).any(|_| mutate_input(&seed).len() < seed.len());
+    assert!(
+        shrunk,
+        "no draw in 500 shrank a 5-byte seed; the delete-byte strategy is dead"
+    );
+}
+
 #[test]
 fn test_mutate_input_multiple_bytes() {
     let original = vec![1, 2, 3, 4, 5];

@@ -304,7 +304,7 @@ mod additional_config_scope_tests {
             total_files: 4355,
             total_issues: 1249,
             critical_issues: 286,
-            quality_score: 97.0,
+            quality_score: Some(97.0),
             recommendations: Vec::new(),
         };
 

@@ -101,9 +101,15 @@
 //! // Memory usage: 50MB (50% reduction)
 //! ```
 
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod advertised_schema_parity_tests; // honoured-parameter vs advertised-schema drift guard
 pub mod agent_context_handlers;
 pub mod analyze_handlers;
 pub mod context_handlers;
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dead_code_payload_contract_tests; // analyze_dead_code payload-key contract
 pub mod discovery;
 pub mod handlers;
 pub mod http_server;

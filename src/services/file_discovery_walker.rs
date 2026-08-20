@@ -5,6 +5,29 @@ impl ProjectFileDiscovery {
     /// Discover all analyzable files in the project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_files(&self) -> Result<Vec<PathBuf>> {
+        self.walk(ExtensionPolicy::AnalyzableOnly)
+    }
+
+    /// Discover every file the project's ignore policy admits, WITHOUT the
+    /// source-extension whitelist [`discover_files`](Self::discover_files)
+    /// applies.
+    ///
+    /// This exists so that an analyzer whose file types are not in that
+    /// whitelist — `.cu`, `.ptx`, `.wgsl`, `.wasm`, `.wat`, `.md` — does not
+    /// have to hand-roll its own walk to see them. Four did, and all four
+    /// walked straight into this repository's gitignored `.claude/worktrees/`:
+    /// 48 checkouts of the project inside the project. `pmat cuda-tdg .`
+    /// reported **205,607 files** and graded the tree C, `validate-docs`
+    /// scanned **30,897** Markdown files, and `analyze assembly-script` found
+    /// 48 copies of one file. The ignore policy — .gitignore, .ignore,
+    /// .pmatignore, hidden entries, build artifacts — belongs in one place; the
+    /// extension policy belongs to the caller.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn discover_all_files(&self) -> Result<Vec<PathBuf>> {
+        self.walk(ExtensionPolicy::AnyExtension)
+    }
+
+    fn walk(&self, extensions: ExtensionPolicy) -> Result<Vec<PathBuf>> {
         let start = std::time::Instant::now();
         debug!("Starting file discovery at: {}", self.root.display());
 
@@ -54,7 +77,8 @@ impl ProjectFileDiscovery {
 
             Box::new(move |result| {
                 if let Ok(entry) = result {
-                    if Self::should_include_entry(&entry, filter_external, &classifier) {
+                    if Self::should_include_entry(&entry, filter_external, &classifier, extensions)
+                    {
                         let _ = tx.send(entry.into_path());
                     }
                 }
@@ -105,6 +129,14 @@ impl ProjectFileDiscovery {
             .git_ignore(self.config.respect_gitignore)
             .git_global(self.config.respect_gitignore)
             .git_exclude(self.config.respect_gitignore)
+            // Honour a .gitignore even when the walked tree is not itself a
+            // checkout. `ignore` defaults to require_git(true), which makes the
+            // single most important rule in this walk conditional on whether a
+            // `.git` happens to sit above the path — an unexported source tree
+            // or a `git worktree` child would silently have its ignore file
+            // disregarded. A directory is ignored because it is not part of the
+            // project, and that does not depend on the presence of `.git`.
+            .require_git(false)
             .follow_links(self.config.follow_links)
             .max_depth(self.config.max_depth)
             // UX Fix: Support both .pmatignore (users expect this) AND .paimlignore (legacy)

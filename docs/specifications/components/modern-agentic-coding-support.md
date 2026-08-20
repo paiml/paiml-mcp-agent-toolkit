@@ -4,6 +4,7 @@
 > **Status**: DRAFT for review | **Version**: 1.0.0 | **Date**: 2026-07-02
 > **Baseline commit**: `bab0f9a` (2026-06-25)
 > **Ticket prefix**: `MACS-` | **CB range**: CB-1650–CB-1666 (verified unallocated at baseline; CB-1640 is implemented here per Component 31's reservation)
+> **Allocated out of this range by another ticket**: CB-1663–CB-1666 are the AGY (`.agents/`) comply checks of PMAT-INIT-002 / [#1031](https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1031) — structure & JSON syntax, `hooks.json` PreToolUse correctness, `SKILL.md` frontmatter, `mcp_config.json` entrypoint liveness. Implemented in `check_macs_agy*.rs`. CB-1660–CB-1662 are *proposed* (unimplemented) for Lean/L5 in `audit-pmat-support-l1-l5-aprender-provable-contracts.md`; do not reuse either span.
 > **Audience**: autonomous coding agents (**Claude Fable 5 in autonomous mode**, model id `claude-fable-5`) and humans reviewing their work.
 > **Normative internal refs**: [agent-integration.md](agent-integration.md) (C10), [pmat-work-verification-ladder.md](pmat-work-verification-ladder.md) (C28), [pmat-work-cot-proof-derivation.md](pmat-work-cot-proof-derivation.md) (C31), [autonomous-verify-loop.md](../../agent-instructions/autonomous-verify-loop.md), [provable-contract-first-agents.md](../../agent-instructions/provable-contract-first-agents.md).
 

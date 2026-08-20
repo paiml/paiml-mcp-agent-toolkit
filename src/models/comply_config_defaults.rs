@@ -290,5 +290,53 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2100: Comply Gate Effect — every severity=error rule must be
+    // reachable from a required status check context, through an invocation
+    // whose failure can still fail the job. Declared Error, and so a member of
+    // the roster it verifies: a gate that does not gate itself is the exact
+    // defect this rule exists to find.
+    checks.insert(
+        "cb-2100".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2102: Ratchet Baselines — no ratcheted metric may exceed the value
+    // this repository last agreed to. Declared Error, not left unconfigured:
+    // `get_severity` answers Warning for an id nobody declares, and
+    // `should_fail(Warning, strict=false)` is false, so an unconfigured rule
+    // is a rule that cannot fail a default `pmat comply check` AND is outside
+    // the severity=error roster CB-2100 checks reachability for. Registering a
+    // rule without declaring its severity ships a gate that gates nothing.
+    checks.insert(
+        "cb-2102".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
+    // CB-2101: Threshold Coherence — every number `.pmat-metrics.toml` writes
+    // down must bound something this tree measures. Declared Error for the same
+    // reason CB-2102 is: an id nobody declares resolves to Warning, and
+    // `should_fail(Warning, strict = false)` is false, so it would be a rule
+    // that reports and never fails. A gate against decorative thresholds that
+    // is itself decorative would be the joke this rule is about.
+    checks.insert(
+        "cb-2101".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Error,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     checks
 }

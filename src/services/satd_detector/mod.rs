@@ -16,6 +16,9 @@ pub use types::{
     SATDAnalysisResult, SATDDetector, SATDMetrics, SATDSummary, Severity, SkipCounts,
     TechnicalDebt,
 };
+// Crate-internal: the MCP `analyze_satd` tool records the same reasons the CLI
+// walk does, rather than inventing a second vocabulary for "not read".
+pub(crate) use types::SkipReason;
 
 // Tests extracted to satd_detector_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax

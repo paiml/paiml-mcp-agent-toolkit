@@ -66,6 +66,12 @@ impl CommandDispatcher {
             Commands::Agy(cmd) => {
                 handlers::handle_agy_command(&cmd, std::path::Path::new("")).await
             }
+            Commands::Init {
+                target,
+                path,
+                force,
+                format,
+            } => handlers::init_handler::handle_init(target, &path, force, format),
             cmd @ Commands::Query { .. } => Self::route_query_command(cmd).await,
             Commands::Sql {
                 query,
