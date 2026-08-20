@@ -26,7 +26,7 @@
 ///     false,
 ///     vec![], // Empty means run all checks
 ///     15.0,
-///     0.5,
+///     Some(0.5), // min_entropy: None leaves the entropy threshold at its default
 ///     20,
 ///     false,
 ///     None,
@@ -50,7 +50,7 @@
 ///     false,
 ///     vec![QualityCheckType::Complexity, QualityCheckType::Security],
 ///     15.0,
-///     0.5,
+///     Some(0.5),
 ///     20,
 ///     false,
 ///     None,
