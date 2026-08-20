@@ -232,6 +232,30 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
 
     write_or_print_result(&result, config.output).await?;
 
+    // Report first, then REFUSE. `analyze tdg` over a directory holding nothing
+    // it can grade printed
+    //
+    //     Average Score: not measured (no files analysed)
+    //     Total Files: 0
+    //
+    // and exited 0. The sentence and the exit code said opposite things, and CI
+    // reads the exit code. The honest verdict was already computed —
+    // `measured_score` is `None` precisely here, and `enforce_tdg_threshold`
+    // has long refused it on the grounds that "a gate that could not measure
+    // must not report a pass" — but only `analyze build-tdg` ever consulted it.
+    // `pmat tdg` refuses the same tree at exit 5; three commands over one
+    // directory must not disagree about whether it was measured.
+    //
+    // Gated runs are left alone: `build-tdg` already fails below, with a
+    // message about the threshold it could not check.
+    if !enforce_threshold && measured_score.is_none() {
+        return Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+            "no file under {} could be graded, so no TDG measurement was taken. \
+             This is not a clean result.",
+            config.path.display()
+        )));
+    }
+
     // KNOWN DEFECTS v2.1: Check for critical defects. Auto-fail is the gated
     // (`analyze build-tdg`) command's job only — see #705.
     check_for_critical_defects(&config.path, enforce_threshold).await?;
@@ -812,6 +836,64 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    /// A tree with nothing gradable in it must not exit 0.
+    ///
+    /// `analyze tdg` printed "Average Score: not measured (no files analysed)"
+    /// and exited 0 — the sentence and the exit code said opposite things, and
+    /// CI reads the exit code. `pmat tdg` and `analyze complexity` both exit 5
+    /// over the same directory, and `analyze build-tdg` already failed here;
+    /// only this path disagreed.
+    #[tokio::test]
+    async fn an_ungradable_tree_does_not_exit_zero() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("legacy.cbl"), "IDENTIFICATION DIVISION.\n")
+            .expect("write cobol");
+
+        let err = handle_analyze_tdg(TdgAnalysisConfig {
+            path: dir.path().to_path_buf(),
+            threshold: None,
+            top_files: None,
+            format: TdgOutputFormat::Table,
+            include_components: false,
+            output: Some(dir.path().join("out.txt")),
+            critical_only: false,
+            verbose: false,
+        })
+        .await
+        .expect_err("a tree with no gradable file must not report success");
+
+        assert!(
+            err.to_string().contains("not a clean result"),
+            "the refusal must say why: {err}"
+        );
+    }
+
+    /// The counter-test: a tree it CAN grade still succeeds.
+    ///
+    /// Without this, refusing unconditionally would pass the test above.
+    #[tokio::test]
+    async fn a_gradable_tree_still_succeeds() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(
+            dir.path().join("ok.rs"),
+            "//! A tiny module.\n\n/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .expect("write rs");
+
+        handle_analyze_tdg(TdgAnalysisConfig {
+            path: dir.path().to_path_buf(),
+            threshold: None,
+            top_files: None,
+            format: TdgOutputFormat::Table,
+            include_components: false,
+            output: Some(dir.path().join("out.txt")),
+            critical_only: false,
+            verbose: false,
+        })
+        .await
+        .expect("a gradable tree must still succeed");
+    }
 
     #[tokio::test]
     async fn test_handle_analyze_tdg_file() -> Result<()> {
