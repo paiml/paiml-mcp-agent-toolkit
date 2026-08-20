@@ -59,8 +59,22 @@ impl TdgAnalyzerAst {
     /// puts the TDG cache where a reader would look for it and gives every
     /// project — and every test fixture — its own file.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub fn with_storage_at(config: TdgConfig, project_root: impl AsRef<std::path::Path>) -> Result<Self> {
-        let storage = TieredStorageFactory::create_at_path(project_root)?;
+    pub fn with_storage_at(
+        config: TdgConfig,
+        project_root: impl AsRef<std::path::Path>,
+    ) -> Result<Self> {
+        // `pmat tdg -p <file>` is legal, and the cache root must be a
+        // DIRECTORY: TieredStore joins `.pmat/tdg-warm.db` onto whatever it is
+        // given, and joining onto a file yields a path whose parent is a file,
+        // which `create_dir_all` refuses. Analysing a single file caches beside
+        // it, in the directory that contains it.
+        let given = project_root.as_ref();
+        let root = if given.is_file() {
+            given.parent().unwrap_or_else(|| std::path::Path::new("."))
+        } else {
+            given
+        };
+        let storage = TieredStorageFactory::create_at_path(root)?;
         let scheduler = SchedulerFactory::create_balanced();
         let adaptive_manager = AdaptiveThresholdFactory::create_default();
         let resource_controller = ResourceControllerFactory::create_default();

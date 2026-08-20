@@ -175,3 +175,31 @@ fn storage_is_scoped_to_the_project_not_the_home_directory() {
         );
     }
 }
+
+/// `pmat tdg -p <file>` is legal, so the cache root must resolve to a directory.
+///
+/// `TieredStore` joins `.pmat/tdg-warm.db` onto whatever root it is handed. Hand
+/// it a FILE and the result is a path whose parent is a file, which
+/// `create_dir_all` refuses — so scoping the cache to the project broke every
+/// single-file invocation until the path was resolved to its container. Caught
+/// by `test_tdg_command_sarif_on_a_file_is_a_sarif_document` on CI across three
+/// feature legs; pinned directly here so the property has a test that names it.
+#[test]
+fn a_single_file_target_caches_in_its_containing_directory() {
+    let dir = tempfile::TempDir::new().expect("temp dir");
+    let file = dir.path().join("target.rs");
+    std::fs::write(&file, "pub fn f() {}\n").expect("write target");
+
+    TdgAnalyzerAst::with_storage_at(crate::tdg::TdgConfig::default(), &file)
+        .expect("analysing a single file must not fail on cache setup");
+
+    assert!(
+        dir.path().join(".pmat").join("tdg-warm.db").is_file(),
+        "cache must land beside the file, in {}",
+        dir.path().display()
+    );
+    assert!(
+        !file.join(".pmat").exists(),
+        "cache must not be nested under the file itself"
+    );
+}
