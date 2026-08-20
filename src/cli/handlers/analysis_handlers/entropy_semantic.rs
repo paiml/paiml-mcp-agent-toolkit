@@ -38,6 +38,23 @@ pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
 
         output_entropy_results(output, &output_content)?;
 
+        // Report first, then REFUSE. GH-681 closed the "the path is not there"
+        // hole above; this closes the one behind it — the path IS there and
+        // holds nothing this analyzer can read. Over an empty directory the
+        // report printed "Files Analyzed: 0 / Source Lines Analyzed: 0 /
+        // Pattern Diversity: not measured" and exited 0, so the document said
+        // "not measured" and the exit code said "measured, and fine".
+        //
+        // The guard keys on FILES, not on the diversity metric: a tree where
+        // files were read and no pattern repeated is a real measurement of a
+        // real absence, and must keep exiting 0. Only zero files is the
+        // undefined case.
+        crate::cli::ensure_source_files_were_analyzed(
+            "entropy",
+            &analysis_path,
+            report.total_files_analyzed,
+        )?;
+
         Ok(())
     } else {
         unreachable!("Expected Entropy command")
@@ -990,5 +1007,68 @@ mod top_violations_reaches_every_format_tests {
                 "--format {format:?} ignores --top-violations"
             );
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod empty_population_tests {
+    use super::*;
+    use crate::cli::{EntropyOutputFormat, EntropySeverity};
+
+    fn entropy_over(path: &std::path::Path) -> AnalyzeCommands {
+        AnalyzeCommands::Entropy {
+            path: path.to_path_buf(),
+            project_path: None,
+            format: EntropyOutputFormat::Summary,
+            output: None,
+            min_severity: EntropySeverity::Low,
+            top_violations: 5,
+            file: None,
+            include_tests: false,
+        }
+    }
+
+    /// A tree it read no file of must not exit 0.
+    ///
+    /// GH-681 closed the "the path is not there" hole. This is the one behind
+    /// it: the path IS there and holds nothing readable. The report printed
+    /// "Files Analyzed: 0 / Source Lines Analyzed: 0 / Pattern Diversity: not
+    /// measured" and exited 0 — the document said "not measured" and the exit
+    /// code said "measured, and fine". CI reads the exit code.
+    #[tokio::test]
+    async fn a_tree_with_no_readable_file_does_not_exit_zero() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("legacy.cbl"), "IDENTIFICATION DIVISION.\n")
+            .expect("write cobol");
+
+        let err = route_entropy_analysis(entropy_over(dir.path()))
+            .await
+            .expect_err("zero files analysed must not report success");
+        assert!(
+            err.to_string().to_lowercase().contains("entropy"),
+            "the refusal must name the measurement: {err}"
+        );
+    }
+
+    /// The counter-test, and the reason the guard keys on FILES not on the
+    /// diversity metric.
+    ///
+    /// A tree where files WERE read and no pattern repeated reports "Pattern
+    /// Diversity: not measured" too — but that is a real measurement of a real
+    /// absence, and must keep exiting 0. Guarding on the metric instead of on
+    /// the file count would fail every small clean project.
+    #[tokio::test]
+    async fn a_readable_tree_with_no_repetition_still_succeeds() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(
+            dir.path().join("ok.rs"),
+            "//! Tiny.\n\n/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .expect("write rs");
+
+        route_entropy_analysis(entropy_over(dir.path()))
+            .await
+            .expect("a readable tree must still succeed");
     }
 }
