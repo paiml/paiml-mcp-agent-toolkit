@@ -36,7 +36,11 @@ pub enum Grade {
 }
 
 /// Grade spellings as `Serialize` emits them, for error messages.
-const GRADE_VARIANTS: &[&str] = &["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
+/// CANONICAL, and the only list of grade spellings anything may enumerate.
+/// Ordered worst-last, matching `Grade`'s own `Ord`. CB-200 kept a private
+/// `["A","B","C","D","F"]` and was blind to every modified grade for a release.
+pub(crate) const GRADE_VARIANTS: &[&str] =
+    &["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
 
 impl Serialize for Grade {
     /// Emits the symbolic form -- byte-identical to `Display`. See the note on
@@ -64,7 +68,7 @@ impl<'de> Deserialize<'de> for Grade {
 impl Grade {
     /// Parse a serialized variant name. Case-insensitive on purpose: see the
     /// note on `Grade::APlus`.
-    fn from_variant_name(name: &str) -> Option<Self> {
+    pub(crate) fn from_variant_name(name: &str) -> Option<Self> {
         // Accepts BOTH spellings. `Serialize` emits the variant name (what
         // every stored baseline contains), but symbolic forms reach this from
         // user input and from output written while the two round-3 fixes
@@ -470,3 +474,29 @@ mod tests {
         assert!(err.to_string().contains("unknown variant"), "{err}");
     }
 }
+
+/// Every canonical spelling parses, and `GRADE_VARIANTS` is in `Ord` order.
+///
+/// A TEST, not a `const` block: `from_variant_name` lowercases, and
+/// `str::to_ascii_lowercase` is not a `const fn`, so this cannot run in a const
+/// context. It runs under `cargo test --lib`, which is the rung this repository
+/// actually executes. The anchoring property — that rank tracks the score band
+/// — is proved in `contracts/lean/Theorems/Tdg/Grade.lean`, because no
+/// self-referential assertion can catch a scale reversed together with its own
+/// array.
+#[test]
+fn grade_order_is_parseable() {
+    let parsed: Vec<Grade> = GRADE_VARIANTS
+        .iter()
+        .map(|s| Grade::from_variant_name(s).expect("every canonical spelling must parse"))
+        .collect();
+    let mut sorted = parsed.clone();
+    sorted.sort();
+    assert_eq!(parsed, sorted, "GRADE_VARIANTS is not in Ord order");
+    assert_eq!(
+        parsed.len(),
+        Grade::all().len(),
+        "GRADE_VARIANTS and Grade::all() disagree"
+    );
+}
+const GRADE_ORDER_IS_PARSEABLE: () = ();
