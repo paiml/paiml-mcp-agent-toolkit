@@ -283,7 +283,8 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     }
 
     let tdg_config = load_tdg_configuration(&config)?;
-    let mut analyzer = TdgAnalyzer::with_storage(tdg_config)?;
+    // Project-scoped cache, not $HOME-scoped: see TdgAnalyzer::with_storage_at.
+    let mut analyzer = TdgAnalyzer::with_storage_at(tdg_config, &config.path)?;
     setup_git_context(&mut analyzer, &config);
 
     if let Some(ref cmd) = config.command {
