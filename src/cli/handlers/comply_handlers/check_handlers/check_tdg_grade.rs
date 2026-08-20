@@ -478,16 +478,30 @@ mod tests_tdg_grade {
     /// the bug.
     #[test]
     fn passing_set_is_the_up_set_of_the_floor() {
-        assert_eq!(passing_spellings("A+").unwrap(), vec!["A+"]);
-        assert_eq!(passing_spellings("A").unwrap(), vec!["A+", "A"]);
-        // The spelling that used to produce an EMPTY failing set and a Pass.
-        assert_eq!(passing_spellings("A-").unwrap(), vec!["A+", "A", "A-"]);
         assert_eq!(
-            passing_spellings("B").unwrap(),
+            passing_spellings("A+").expect("A+ is a canonical grade spelling"),
+            vec!["A+"]
+        );
+        assert_eq!(
+            passing_spellings("A").expect("A is a canonical grade spelling"),
+            vec!["A+", "A"]
+        );
+        // The spelling that used to produce an EMPTY failing set and a Pass.
+        assert_eq!(
+            passing_spellings("A-").expect("A- is a canonical grade spelling"),
+            vec!["A+", "A", "A-"]
+        );
+        assert_eq!(
+            passing_spellings("B").expect("B is a canonical grade spelling"),
             vec!["A+", "A", "A-", "B+", "B"]
         );
         // Only F admits everything, and that is the one honest vacuous floor.
-        assert_eq!(passing_spellings("F").unwrap().len(), GRADE_VARIANTS.len());
+        assert_eq!(
+            passing_spellings("F")
+                .expect("F is a canonical grade spelling")
+                .len(),
+            GRADE_VARIANTS.len()
+        );
     }
 
     /// Passing and failing partition the scale at every floor — the property
