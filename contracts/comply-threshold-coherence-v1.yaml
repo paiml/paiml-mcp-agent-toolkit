@@ -141,79 +141,129 @@ postconditions:
   - "CB-2101 reports Fail with severity=error whenever any invariant above is violated"
   - "every classified threshold appears as `<key>=<CLASS>` in the check's message, uncapped, so `pmat comply check --format json` carries the whole classification"
 
-falsification:
-  - condition: "F-1: max_unwrap_calls = 100 against ~11,002 measured does not classify VIOLATED, or classifies VIOLATED and does not Fail"
-    severity: P0
+falsification_tests:
+  - id: f_1
+    rule: "F-1: max_unwrap_calls = 100 against ~11,002 measured does not classify VIOLATED, or classifies VIOLATED and does not Fail"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::arm_a_violated_threshold_on_a_green_build_fails
-  - condition: "F-1 on real data: this repository's own committed max_unwrap_calls is judged against a remembered number rather than a live measurement, or its class disagrees with the bound"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_1_2
+    rule: "F-1 on real data: this repository's own committed max_unwrap_calls is judged against a remembered number rather than a live measurement, or its class disagrees with the bound"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::arm_a_max_unwrap_calls_is_judged_against_a_live_measurement
-  - condition: "F-2: max_unwrap_calls = 100000 against ~11,002 measured does not classify VACUOUS"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_2
+    rule: "F-2: max_unwrap_calls = 100000 against ~11,002 measured does not classify VACUOUS"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::mutation_max_unwrap_calls_100000_classifies_vacuous
-  - condition: "F-2 second half: a vacuous threshold with no justification passes"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_2_2
+    rule: "F-2 second half: a vacuous threshold with no justification passes"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::arm_b_vacuous_threshold_warns_with_justification_and_fails_without
-  - condition: "F-3: a metric with no measurement available passes, or warns instead of failing, or is bought a pass by a justification"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3
+    rule: "F-3: a metric with no measurement available passes, or warns instead of failing, or is bought a pass by a justification"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::falsify_2101_3_unmeasurable_metric_fails
-  - condition: "INV-2101-3: some (limit, measured, band, dir) lands in zero classes or in two"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f
+    rule: "INV-2101-3: some (limit, measured, band, dir) lands in zero classes or in two"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_3_classification_is_total_and_disjoint
-  - condition: "INV-2101-2: VIOLATED is reported for something other than a breached bound"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_4
+    rule: "INV-2101-2: VIOLATED is reported for something other than a breached bound"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_2_violated_iff_bound_breached
-  - condition: "INV-2101-1: the FIRING band is not exactly the reachable one — an off-by-one at slack = 0 or slack = band"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_5
+    rule: "INV-2101-1: the FIRING band is not exactly the reachable one — an off-by-one at slack = 0 or slack = band"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2101_1_firing_is_exactly_the_reachable_band
-  - condition: "KANI-2101-2 in test form: loosening a FIRING threshold yields VIOLATED"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6
+    rule: "KANI-2101-2 in test form: loosening a FIRING threshold yields VIOLATED"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::classify_is_monotone_in_limit
-  - condition: "a threshold in a declared threshold section is skipped rather than classified, so totality is claimed and not held"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_7
+    rule: "a threshold in a declared threshold section is skipped rather than classified, so totality is claimed and not held"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::inv_2101_3_every_threshold_gets_exactly_one_classification
-  - condition: "the fixed state is unreachable: a threshold sitting exactly at the measurement cannot be FIRING, so there is no value the config could take that this rule would accept"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_8
+    rule: "the fixed state is unreachable: a threshold sitting exactly at the measurement cannot be FIRING, so there is no value the config could take that this rule would accept"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::firing_threshold_absorbs_one_unwrap_so_only_the_ratchet_moves
-  - condition: "kind = external names an enforcing file that does not exist, and the audit reports it as enforced — the doc comment claimed the gate verified this for a whole release while nothing did"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_9
+    rule: "kind = external names an enforcing file that does not exist, and the audit reports it as enforced — the doc comment claimed the gate verified this for a whole release while nothing did"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::external_enforcement_must_name_a_file_that_exists
-  - condition: "the control for the above: a real enforcing path is rejected, so the existence check has broken every external binding"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control
+    rule: "the control for the above: a real enforcing path is rejected, so the existence check has broken every external binding"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::external_enforcement_accepts_a_path_that_exists
-  - condition: "F-3's upstream hole: a gate's metric stops matching anything, measures a clean 0, and classifies FIRING instead of failing — found by running this rule's own F-3 against the shipped binary"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3_2
+    rule: "F-3's upstream hole: a gate's metric stops matching anything, measures a clean 0, and classifies FIRING instead of failing — found by running this rule's own F-3 against the shipped binary"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::a_zero_against_a_nonzero_baseline_is_a_hole_not_the_best_day_in_project_history
-  - condition: "this repository's own .pmat-metrics.toml has a threshold that no binding declares, or a section in neither list"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_10
+    rule: "this repository's own .pmat-metrics.toml has a threshold that no binding declares, or a section in neither list"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_committed_threshold_is_classified
-  - condition: "a binding names an enforced_by path or a metric id that does not exist in this repository"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_11
+    rule: "a binding names an enforced_by path or a metric id that does not exist in this repository"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_committed_binding_names_something_real
-  - condition: "an audit that classified nothing folds to Ok and passes every run forever — the exact live bug CB-2102's evaluator carried while it was orphaned"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_12
+    rule: "an audit that classified nothing folds to Ok and passes every run forever — the exact live bug CB-2102's evaluator carried while it was orphaned"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::an_empty_audit_is_a_failure_not_a_clean_sheet
-  - condition: "the check's message drops thresholds when there are many, so `pmat comply check --format json` no longer classifies all of them"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_13
+    rule: "the check's message drops thresholds when there are many, so `pmat comply check --format json` no longer classifies all of them"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_json_output_classifies_every_threshold
-  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_14
+    rule: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::every_kani_harness_the_contract_names_exists
-  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_15
+    rule: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_contract_states_whether_its_kani_harnesses_discharge
-  - condition: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_16
+    rule: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::a_discharged_claim_requires_something_that_actually_runs_kani
-  - condition: "CB-2101 is registered with no declared severity, so it defaults to Warning and cannot fail a non-strict comply run"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_17
+    rule: "CB-2101 is registered with no declared severity, so it defaults to Warning and cannot fail a non-strict comply run"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_declared_error_not_left_at_the_warning_default
-  - condition: "CB-2101 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_18
+    rule: "CB-2101 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_in_the_comply_rule_registry
-  - condition: "the rule is orphaned again: the evaluator exists and no comply check drives it, which is the state this contract was written to end"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_19
+    rule: "the rule is orphaned again: the evaluator exists and no comply check drives it, which is the state this contract was written to end"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::cb_2101_is_in_the_comply_rule_registry
-  - condition: "this contract is named by the module headers and does not exist on disk, as it did not for an entire release"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_20
+    rule: "this contract is named by the module headers and does not exist on disk, as it did not for an entire release"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/coherence_drive_tests.rs::the_coherence_contract_is_committed
+    if_fails: "P0 — this contract's guarantee does not hold"

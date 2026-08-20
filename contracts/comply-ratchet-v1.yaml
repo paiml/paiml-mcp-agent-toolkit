@@ -154,91 +154,149 @@ postconditions:
   - "CB-2102 reports Fail with severity=error whenever any invariant above is violated"
   - "CB-2102's Fail message names the metric and both numbers"
 
-falsification:
-  - condition: "F-1: a change adds one to a metric (B+1) and the ratchet still passes"
-    severity: P0
+falsification_tests:
+  - id: f_1
+    rule: "F-1: a change adds one to a metric (B+1) and the ratchet still passes"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_1_one_added_unwrap_fails_against_the_measured_baseline
-  - condition: "F-2: an improvement (B-3) fails, or the lowering pass does not rewrite the baseline to B-3"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_2
+    rule: "F-2: an improvement (B-3) fails, or the lowering pass does not rewrite the baseline to B-3"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_2_removing_three_passes_and_lowers_the_baseline
-  - condition: "F-3: the file is edited upward with no justification and the ratchet still passes — the ratchet must not be silently loosenable, which is the whole point"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3
+    rule: "F-3: the file is edited upward with no justification and the ratchet still passes — the ratchet must not be silently loosenable, which is the whole point"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_3_raising_a_baseline_without_justification_fails
-  - condition: "F-3 control: raise detection reads the direction of the edit rather than the sign of the metric"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3_control
+    rule: "F-3 control: raise detection reads the direction of the edit rather than the sign of the metric"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_3_raise_detection_is_direction_free
-  - condition: "F-4: a metric absent from the measurement run passes"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_4
+    rule: "F-4: a metric absent from the measurement run passes"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::falsify_2102_4_missing_measurement_fails_it_does_not_pass
-  - condition: "INV-2102-1: the verdict does not fail exactly when the observation exceeds the baseline"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f
+    rule: "INV-2102-1: the verdict does not fail exactly when the observation exceeds the baseline"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_1_verdict_fails_exactly_when_observed_exceeds_baseline
-  - condition: "INV-2102-2: the lowering arithmetic raises a baseline"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_5
+    rule: "INV-2102-2: the lowering arithmetic raises a baseline"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_2_next_baseline_is_monotone_non_increasing
-  - condition: "INV-2102-3: running the lowering pass twice differs from running it once"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6
+    rule: "INV-2102-3: running the lowering pass twice differs from running it once"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/kernel_tests.rs::inv_2102_3_next_baseline_is_idempotent
-  - condition: "a ratchet declaring no metrics folds to Ok and passes every run forever while reading as a gate — the live bug this rule's own module carried while it was orphaned"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_7
+    rule: "a ratchet declaring no metrics folds to Ok and passes every run forever while reading as a gate — the live bug this rule's own module carried while it was orphaned"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/config_tests.rs::an_empty_metric_set_is_a_failure_not_a_clean_sheet
-  - condition: "`<producer> | wc -l` with a failing producer is read as a count of zero — the single most dangerous shape in the design, and invisible to a gate that only looks upward"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_8
+    rule: "`<producer> | wc -l` with a failing producer is read as a count of zero — the single most dangerous shape in the design, and invisible to a gate that only looks upward"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::a_failing_producer_in_a_pipeline_is_unavailable_not_a_zero
-  - condition: "the control: an honest pipeline of exactly that shape stops measuring, so the guard above has broken every metric"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control
+    rule: "the control: an honest pipeline of exactly that shape stops measuring, so the guard above has broken every metric"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::an_honest_pipeline_measures
-  - condition: "grep's exit 1 for 'no matches' is treated as a broken measurement, so a metric can never legitimately reach zero"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_9
+    rule: "grep's exit 1 for 'no matches' is treated as a broken measurement, so a metric can never legitimately reach zero"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::no_matches_is_a_zero_not_a_failure
-  - condition: "prose, or nothing, is parsed as a count"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_10
+    rule: "prose, or nothing, is parsed as a count"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::non_numeric_output_is_not_a_measurement
-  - condition: "an unreadable git history is passed through as `None`, which means 'initial capture' — so an unjustified raise becomes invisible"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_11
+    rule: "an unreadable git history is passed through as `None`, which means 'initial capture' — so an unjustified raise becomes invisible"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::an_unreadable_prior_is_a_hole_not_an_initial_capture
-  - condition: "deleting .pmat-ratchet.toml is a way of passing CB-2102"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_12
+    rule: "deleting .pmat-ratchet.toml is a way of passing CB-2102"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::deleting_the_ratchet_file_is_not_a_way_of_passing
-  - condition: "the lowering pass destroys the file's comments, or writes a number it did not verify"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_13
+    rule: "the lowering pass destroys the file's comments, or writes a number it did not verify"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::lowering_preserves_comments_and_verifies_what_it_wrote
-  - condition: "the lowering pass raises a baseline when the measurement grew"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_14
+    rule: "the lowering pass raises a baseline when the measurement grew"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::lowering_never_raises_a_baseline
-  - condition: "a metric's pathspec rots so that it matches no files, prints a clean 0, and both gates greet the largest possible regression in measurement quality as the largest improvement in the project's history"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_15
+    rule: "a metric's pathspec rots so that it matches no files, prints a clean 0, and both gates greet the largest possible regression in measurement quality as the largest improvement in the project's history"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::a_zero_against_a_nonzero_baseline_is_a_hole_not_the_best_day_in_project_history
-  - condition: "the control: the zero guard rejects every zero, so a metric can never reach the one number every ratchet is trying to get to"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control_2
+    rule: "the control: the zero guard rejects every zero, so a metric can never reach the one number every ratchet is trying to get to"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::zero_is_still_reachable_when_it_is_declared_or_already_the_baseline
-  - condition: "this repository's own committed ratchet is red, or was captured from a number rather than from its command"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_16
+    rule: "this repository's own committed ratchet is red, or was captured from a number rather than from its command"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::the_committed_ratchet_holds_at_head
-  - condition: "a committed metric's command no longer runs, so its baseline has rotted while the number still looks plausible"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_17
+    rule: "a committed metric's command no longer runs, so its baseline has rotted while the number still looks plausible"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::every_committed_metric_command_still_measures
-  - condition: "the committed baselines carry slack the tree has already beaten, so a regression can hide inside the gap"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_18
+    rule: "the committed baselines carry slack the tree has already beaten, so a regression can hide inside the gap"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::the_committed_baselines_have_no_slack_left_in_them
-  - condition: "two metrics share a command, so a scope that was supposed to be pinned twice is pinned once — the 9,324-wide question of which files count is answered once and copied"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_19
+    rule: "two metrics share a command, so a scope that was supposed to be pinned twice is pinned once — the 9,324-wide question of which files count is answered once and copied"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::no_two_metrics_share_a_command
-  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_20
+    rule: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::every_kani_harness_the_contract_names_exists
-  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_21
+    rule: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::the_contract_states_whether_its_kani_harnesses_discharge
-  - condition: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_22
+    rule: "the not_discharged note rots into a false claim: a kani runner is added and the note is left stale"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::a_discharged_claim_requires_something_that_actually_runs_kani
-  - condition: "CB-2102 is registered with no declared severity, so it defaults to Warning, does not fail a non-strict comply run, and falls outside the severity=error roster CB-2100 checks reachability for"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_23
+    rule: "CB-2102 is registered with no declared severity, so it defaults to Warning, does not fail a non-strict comply run, and falls outside the severity=error roster CB-2100 checks reachability for"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_declared_error_not_left_at_the_warning_default
-  - condition: "CB-2102 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_24
+    rule: "CB-2102 is registered under an id .pmat.yaml cannot address, so it can be neither configured nor found in CB-2100's enforcement ledger"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_in_the_comply_rule_registry
-  - condition: "the rule is orphaned again: the engine exists and no comply check drives it, which is the state this contract was written to end"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_25
+    rule: "the rule is orphaned again: the engine exists and no comply check drives it, which is the state this contract was written to end"
+    prediction: "the named test fails when this condition holds"
     test: src/services/metrics_ratchet/drive_tests.rs::cb_2102_is_in_the_comply_rule_registry
+    if_fails: "P0 — this contract's guarantee does not hold"
