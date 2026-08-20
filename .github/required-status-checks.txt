@@ -42,9 +42,26 @@ pmat score
 # force-push, deletions, linear-history and conversation-resolution were all
 # carried forward verbatim and diffed afterwards to prove it.
 #
-# Consequence, stated so nobody rediscovers it under time pressure: GitHub does
-# not let an author approve their own pull request, so on a repository with one
-# active maintainer every merge now needs either a second reviewer or the admin
-# override. `enforce_admins` is false, which is what keeps the override
-# available -- and also what makes this requirement advisory in practice. It
-# raises the cost of merging unreviewed, it does not prevent it.
+# REVERSED the same day, deliberately. The consequence above landed exactly as
+# written: PR #1021 went BLOCKED / REVIEW_REQUIRED, and GitHub does not let an
+# author approve their own pull request. On a repository whose changes are
+# produced by agents and gated by CI, a human-approval requirement does not add
+# review -- it adds an admin override to every merge, and an override that
+# happens every time has stopped being a control.
+#
+# So `required_pull_request_reviews` is removed again and repo-level auto-merge
+# is ON. The gate is now the four required status checks above, which run the
+# tests, the lints, the feature matrix and `pmat score` (including a blocking
+# `cargo deny check`). That is a real gate: `feature-gate` caught a drifted
+# unrun-tests ledger on this very PR, minutes before it would have merged.
+#
+# CB-1700 FAILS because of this, and that is the honest outcome rather than a
+# bug to be silenced. The rule asserts "modern code review needs at least 1
+# approving review" and models no posture in which machines produce the changes
+# and CI reviews them. Do not edit the rule to make this repository pass; either
+# it grows a model of that posture, or this repository stays red on it and the
+# reason is written here. Tracked in paiml-mcp-agent-toolkit#1036.
+#
+# What is NOT weakened, and must not be: `enforce_admins` stays false only
+# because the admin override is the break-glass path; force pushes and deletions
+# remain disabled; `strict` remains true so a stale branch cannot merge.
