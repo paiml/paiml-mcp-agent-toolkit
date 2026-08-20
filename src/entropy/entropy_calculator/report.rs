@@ -28,7 +28,7 @@ impl EntropyReport {
     /// let report = EntropyReport {
     ///     total_files_analyzed: 5,
     ///     actionable_violations: vec![],  // Empty for simplicity
-    ///     pattern_summary,
+    ///     pattern_summary: Some(pattern_summary),
     ///     entropy_metrics: EntropyMetrics {
     ///         file_level_entropy: Some(0.7),
     ///         module_level_entropy: Some(0.6),
@@ -80,7 +80,7 @@ impl EntropyReport {
     /// let report = EntropyReport {
     ///     total_files_analyzed: 10,
     ///     actionable_violations: vec![], // Empty violations
-    ///     pattern_summary,
+    ///     pattern_summary: Some(pattern_summary),
     ///     entropy_metrics: EntropyMetrics {
     ///         file_level_entropy: Some(0.8),
     ///         module_level_entropy: Some(0.75),
