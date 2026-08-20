@@ -203,14 +203,24 @@ fn format_tdg_score_table(
     // next row says so: an unexplained `99.8/100 (B)` next to a `96.7/100 (A+)`
     // from the same command is not a report, it is a contradiction. The note
     // gets its own row because `box_row` clips at the frame width.
-    let grade_str = format_grade(score.grade);
-    line(box_row(&format!(
-        "Overall Score: {}/100 ({})",
-        c::number(&format!("{:.1}", score.total)),
-        c::grade(&grade_str)
-    )));
-    if let Some(note) = cap_note(project) {
-        line(box_row(&format!("⚠ Grade {note}")));
+    if nothing_was_measured(project) {
+        // An empty population supports no grade. This printed
+        // `Overall Score: 0.0/100 (F)` over a directory pmat could not read one
+        // file of — an F is a claim about a codebase's quality, and zero files
+        // is the absence of evidence for any claim at all. The same run already
+        // suppressed the component breakdown for exactly this reason; the
+        // headline just never asked.
+        line(box_row("Overall Score: not measured (0 files analyzed)"));
+    } else {
+        let grade_str = format_grade(score.grade);
+        line(box_row(&format!(
+            "Overall Score: {}/100 ({})",
+            c::number(&format!("{:.1}", score.total)),
+            c::grade(&grade_str)
+        )));
+        if let Some(note) = cap_note(project) {
+            line(box_row(&format!("⚠ Grade {note}")));
+        }
     }
     // A file that was walked but REFUSED is disclosed beside the score it is
     // missing from. `pmat tdg <dir>` on a crate whose only Rust file fails to
@@ -324,9 +334,23 @@ fn format_tdg_score_json(
             .and_then(crate::tdg::ProjectScore::uncapped_grade)
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
+        "not_measured": nothing_was_measured(project),
         "score": {
-            "total": score.total,
-            "grade": format_grade(score.grade),
+            // Null, not 0.0/"F". A machine consumer averaging `total` over a
+            // tree folded an unreadable directory in as a genuine zero, and one
+            // testing `grade == "F"` could not tell "graded badly" from "never
+            // graded". `grade_uncapped` is already nullable here, so a null
+            // grade is a shape this document could always produce.
+            "total": if nothing_was_measured(project) {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!(score.total)
+            },
+            "grade": if nothing_was_measured(project) {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!(format_grade(score.grade))
+            },
             "breakdown": if include_components && !nothing_was_measured(project) {
                 Some(serde_json::json!({
                     "structural_complexity": score.structural_complexity,
@@ -370,11 +394,15 @@ fn format_tdg_score_markdown(
         output.push_str(&format!("**File**: `{}`\n\n", file_path.display()));
     }
 
-    output.push_str(&format!(
-        "**Overall Score**: {:.1}/100 ({})\n",
-        score.total,
-        grade_headline(score, project)
-    ));
+    if nothing_was_measured(project) {
+        output.push_str("**Overall Score**: not measured — 0 files analyzed\n");
+    } else {
+        output.push_str(&format!(
+            "**Overall Score**: {:.1}/100 ({})\n",
+            score.total,
+            grade_headline(score, project)
+        ));
+    }
     output.push_str(&format!(
         "**Language**: {:?} (confidence: {:.0}%)\n\n",
         score.language,
@@ -643,7 +671,21 @@ mod cap_disclosure_tests {
 
         let json = format_tdg_score_json(&score, None, true, Some(&project)).expect("render");
         let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
-        assert_eq!(value["score"]["total"], 0.0);
+        // NOT 0.0, and NOT "F". This asserted `total == 0.0`, which pinned the
+        // headline defect in place: a consumer averaging `total` across a tree
+        // folded an unreadable directory in as a genuine zero, and one testing
+        // `grade == "F"` could not tell "graded badly" from "never graded".
+        assert!(
+            value["score"]["total"].is_null(),
+            "total must be null when no file was analyzed, got {}",
+            value["score"]["total"]
+        );
+        assert!(
+            value["score"]["grade"].is_null(),
+            "grade must be null when no file was analyzed, got {}",
+            value["score"]["grade"]
+        );
+        assert_eq!(value["not_measured"], true);
         assert!(
             value["score"]["breakdown"].is_null(),
             "breakdown must be null when no file was analyzed, got {}",
@@ -654,9 +696,19 @@ mod cap_disclosure_tests {
         let table = format_tdg_score_table(&score, None, true, Some(&project)).expect("render");
         assert!(table.contains("not measured"), "got:\n{table}");
         assert!(!table.contains("25.0"), "got:\n{table}");
+        // The HEADLINE, not just the breakdown: `Overall Score: 0.0/100 (F)`
+        // was printed over a directory pmat could not read one file of.
+        assert!(
+            !table.contains("(F)"),
+            "an empty population must not be graded F: {table}"
+        );
 
         let md = format_tdg_score_markdown(&score, None, true, Some(&project)).expect("render");
         assert!(md.contains("Not measured"), "got:\n{md}");
+        assert!(
+            !md.contains("0.0/100"),
+            "an empty population must not be scored 0.0/100: {md}"
+        );
     }
 
     /// A single-file run has no project aggregate; nothing may be suppressed or
