@@ -16,6 +16,15 @@ has not changed. Read this list before upgrading a gate.
 
 - **SATD counts go up on every project.** Markers in doc comments are now found, so a
   project sitting just under a SATD threshold can start failing.
+- **TDG grades rise across the board, because the complexity scanner stopped counting
+  two things that are not branches.** It counted every line containing `||` — which is
+  every zero-argument Rust closure, `unwrap_or_else(|| …)`, `map_or_else(|| …)`,
+  `LazyLock::new(|| …)` — and it evaluated its control-flow triggers on comment lines,
+  including the `*` continuation lines of a block comment. Measured over this repo's own
+  index: **1,263 spurious decision points from closure `||` across 372 definitions, and
+  534 from comments across 391**. Grades stored in `.pmat/context.db` improve, so
+  `pmat query --min-grade A` returns more results and any gate reading that column sees
+  fewer violations. Nothing about the code changed; the measurement was wrong.
 - **`pmat quality-gate` exits 1** when it finds blocking violations, where it used to
   print them and exit 0. A CI step that has been passing against a failing tree will
   start failing, which is the point; `--report-only` (alias `--no-fail`) restores the

@@ -21,6 +21,73 @@ fn test_count_complexity() {
     assert_eq!(count_complexity(with_if), 2);
 }
 
+/// A zero-argument closure is not a branch, and a comment is not code.
+///
+/// These are the two over-counts that inflated every TDG grade this crate
+/// writes into `.pmat/context.db` — the column `pmat query --min-grade` filters
+/// on and the column CB-200 gates. Measured over the 1,904 definitions CB-200
+/// reports for this repo: **1,263 spurious decision points from closure `||`
+/// across 372 functions, and 534 from comment lines across 391 functions**.
+/// Correcting both moves 204 of the 1,904 to a passing grade.
+///
+/// RED-first, both halves: on the previous revision `closure` scores 3 instead
+/// of 1 and `commented` scores 4 instead of 1.
+#[test]
+fn a_closure_is_not_a_branch_and_a_comment_is_not_code() {
+    // `||` as a closure parameter list. Pervasive in this codebase, and none of
+    // it is control flow.
+    let closure = "fn f() { let a = x.unwrap_or_else(|| default()); \
+                   let b = y.map_or_else(|| 0, |v| v); }";
+    assert_eq!(
+        count_complexity(closure),
+        1,
+        "`unwrap_or_else(|| …)` and `map_or_else(|| …)` are calls, not branches"
+    );
+
+    // The counter-test: real boolean-or on the same operator must still count.
+    // Without this, "never count ||" passes the assertion above.
+    let boolean = "fn f() { if a || b { return 1; } return 2; }";
+    assert!(
+        count_complexity(boolean) >= 2,
+        "boolean-or is a genuine decision point and must still be counted"
+    );
+
+    // Comments — line, block, and the `*` continuation that is the normal shape
+    // of a doc block. The old scanner guarded `//` on two of its three trigger
+    // groups and never guarded `*` at all.
+    let commented = "fn f() {\n\
+                     // if a && b { }\n\
+                     /* while c { }\n\
+                      * for d in e { }\n\
+                      */\n\
+                     return 1;\n\
+                     }";
+    assert_eq!(
+        count_complexity(commented),
+        1,
+        "control-flow keywords inside comments are prose, not decision points"
+    );
+
+    // ...and code after a block comment closes is still scanned. Without this,
+    // "skip everything once a /* is seen" passes the assertion above.
+    let after_block = "fn f() {\n\
+                       /* note */\n\
+                       if a { return 1; }\n\
+                       return 2;\n\
+                       }";
+    assert!(
+        count_complexity(after_block) >= 2,
+        "a closed block comment must not swallow the code that follows it"
+    );
+
+    // A URL in a string literal must not truncate the line at its `//`.
+    let url = "fn f() { let u = \"http://x\"; if a { return 1; } return 2; }";
+    assert!(
+        count_complexity(url) >= 2,
+        "`//` inside a string literal is not a comment"
+    );
+}
+
 #[test]
 fn test_count_satd_markers() {
     let clean = "fn foo() { return 1; }";
