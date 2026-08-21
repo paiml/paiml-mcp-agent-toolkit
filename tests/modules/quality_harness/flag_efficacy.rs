@@ -103,6 +103,21 @@ const DENY_FLAGS: &[&str] = &[
     "--auto-commit",
     "--commit",
     "--apply",
+    // `comply ratchet --lower` REWRITES `.pmat-ratchet.toml` — its own help says
+    // "every baseline the tree has beaten is rewritten to the measured value,
+    // and the entry's `justification` ... is removed". The sweep was invoking it
+    // unattended and booking the result as a no-op.
+    //
+    // Precisely: probes run with the CORPUS as cwd, so this could not reach
+    // THIS repository's baselines. It was a no-op only because no corpus
+    // carries a `.pmat-ratchet.toml`, so the handler bails before it writes —
+    // and the corpus is a thing we add files to (it just gained an `examples/`
+    // and a `.min.` file so two satd counters could move). The first corpus to
+    // carry a ratchet file would have its baselines silently lowered, and the
+    // sweep would record that as "changes nothing".
+    //
+    // A flag that rewrites a file is not a flag to probe for observable output.
+    "--lower",
 ];
 
 /// The fast subset, run by default so this is affordable on every commit.
@@ -1383,6 +1398,38 @@ fn declined_preconditions_are_skipped_not_blamed() {
             "must be skipped, not blamed on its flags: {what}"
         );
     }
+}
+
+/// A flag whose own help says it REWRITES a tracked file must never be swept.
+///
+/// `comply ratchet --lower` was being swept, and booked as a no-op. It is one
+/// only by accident: no corpus carries a `.pmat-ratchet.toml`, so the handler
+/// bails before it writes. Probes run with the corpus as cwd, so this never
+/// reached THIS repository — but the corpus is a thing we add files to, and the
+/// first one to carry a ratchet file would have its baselines silently lowered
+/// with the damage recorded as "changes nothing".
+///
+/// The two halves are asserted together so neither can drift alone: the help
+/// must still describe a rewrite, AND the flag must be denied. If `--lower`
+/// ever stops mutating, this fails and says so, rather than leaving a flag
+/// permanently over-denied for a reason that expired.
+#[test]
+fn a_flag_that_rewrites_a_tracked_file_is_never_swept() {
+    let cwd = std::env::current_dir().expect("cwd");
+    let help = help_for(&["comply", "ratchet"], &cwd)
+        .expect("`pmat comply ratchet --help` must be readable");
+
+    assert!(
+        help.contains("rewritten") || help.contains("rewrite"),
+        "--lower's help no longer describes a rewrite. Re-check whether it still \
+         mutates before leaving it in DENY_FLAGS:\n{help}"
+    );
+    assert!(
+        DENY_FLAGS.contains(&"--lower"),
+        "a flag whose own help says it rewrites a tracked file must be in \
+         DENY_FLAGS, or the sweep will invoke it against whatever tree it is \
+         pointed at"
+    );
 }
 
 /// Every allow-listed no-op must name a demonstrated effect, and none may

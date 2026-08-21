@@ -10,9 +10,20 @@ fn print_stack_quality(path: &Path) {
     };
 
     let sovereign = [
-        "aprender", "trueno", "trueno-graph", "trueno-db", "trueno-rag",
-        "trueno-viz", "trueno-zram-core", "pmcp", "renacer", "certeza",
-        "bashrs", "probar", "presentar-core", "ruchy",
+        "aprender",
+        "trueno",
+        "trueno-graph",
+        "trueno-db",
+        "trueno-rag",
+        "trueno-viz",
+        "trueno-zram-core",
+        "pmcp",
+        "renacer",
+        "certeza",
+        "bashrs",
+        "probar",
+        "presentar-core",
+        "ruchy",
     ];
 
     let mut found = Vec::new();
@@ -56,9 +67,12 @@ fn read_latest_composite(metrics_dir: &Path) -> Option<CompositeScore> {
                 if let Ok(content) = std::fs::read_to_string(entry.path()) {
                     if let Ok(score) = serde_json::from_str::<CompositeScore>(&content) {
                         if score.composite.is_some_and(|c| c > 0.0)
-                            && latest.as_ref().is_none_or(|l| score.timestamp > l.timestamp) {
-                                latest = Some(score);
-                            }
+                            && latest
+                                .as_ref()
+                                .is_none_or(|l| score.timestamp > l.timestamp)
+                        {
+                            latest = Some(score);
+                        }
                     }
                 }
             }
@@ -159,17 +173,25 @@ fn format_text(score: &CompositeScore) -> String {
     out.push_str(&format!("{}\n", c::subheader("Sub-Scores")));
     out.push_str(&sub_score_line("RPS:", score.sub_scores.rps));
     out.push_str(&format!(
-        "  {:<12} {}  ({} errors, {} warnings)\n",
+        "  {:<12} {}{}\n",
         "Comply:",
         optional_score(score.sub_scores.comply),
-        score.comply_errors,
-        score.comply_warnings
+        match (score.comply_errors, score.comply_warnings) {
+            // Counts only when they were actually counted. This used to print
+            // "not measured  (0 errors, 0 warnings)" whenever `pmat` was not on
+            // PATH — a clean bill of health for a check that never ran.
+            (Some(e), Some(w)) => format!("  ({e} errors, {w} warnings)"),
+            _ => String::new(),
+        }
     ));
     out.push_str(&sub_score_line("Coverage:", score.sub_scores.coverage));
     out.push_str(&sub_score_line("Muda (inv):", score.sub_scores.muda_inv));
     out.push_str(&sub_score_line("EvoScore:", score.sub_scores.evoscore));
     out.push_str(&sub_score_line("DBC:", score.sub_scores.dbc));
-    out.push_str(&sub_score_line("File Health:", score.sub_scores.file_health));
+    out.push_str(&sub_score_line(
+        "File Health:",
+        score.sub_scores.file_health,
+    ));
     out.push_str(&sub_score_line("PV Lint:", score.sub_scores.pv_lint));
 
     // A red gate changes what the composite MEANS: it is then the mean over the
@@ -178,7 +200,10 @@ fn format_text(score: &CompositeScore) -> String {
     // would be a third meaning for one field (#983).
     if !score.gated_by.is_empty() {
         out.push('\n');
-        out.push_str(&format!("{}\n", c::subheader("Gated (verdict, not average)")));
+        out.push_str(&format!(
+            "{}\n",
+            c::subheader("Gated (verdict, not average)")
+        ));
         for dim in &score.gated_by {
             out.push_str(&format!(
                 "  {:<12} {}\n",

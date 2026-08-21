@@ -28,14 +28,28 @@ fn compute_pv_lint(path: &Path) -> Dimension {
         }
         let src_dir = path.join("src");
         if src_dir.exists() {
-            let critical = ["forward", "backward", "optimizer", "checkpoint",
-                "sampling", "kv_cache", "quantize", "kernel", "matmul", "gemm"];
+            let critical = [
+                "forward",
+                "backward",
+                "optimizer",
+                "checkpoint",
+                "sampling",
+                "kv_cache",
+                "quantize",
+                "kernel",
+                "matmul",
+                "gemm",
+            ];
             let has_critical = critical.iter().any(|kw| {
-                walkdir::WalkDir::new(&src_dir).into_iter().flatten()
+                walkdir::WalkDir::new(&src_dir)
+                    .into_iter()
+                    .flatten()
                     .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
-                    .any(|e| std::fs::read_to_string(e.path())
-                        .map(|c| c.contains(&format!("pub fn {kw}")))
-                        .unwrap_or(false))
+                    .any(|e| {
+                        std::fs::read_to_string(e.path())
+                            .map(|c| c.contains(&format!("pub fn {kw}")))
+                            .unwrap_or(false)
+                    })
             });
             if has_critical {
                 // Measured, and deliberately harsh: safety-critical kernels
@@ -71,7 +85,12 @@ fn compute_pv_lint(path: &Path) -> Dimension {
 fn score_via_pv_score(path: &Path) -> Option<f64> {
     let contracts_dir = path.join("contracts");
     let output = std::process::Command::new("pv")
-        .args(["score", &contracts_dir.display().to_string(), "--format", "json"])
+        .args([
+            "score",
+            &contracts_dir.display().to_string(),
+            "--format",
+            "json",
+        ])
         .current_dir(path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
@@ -96,16 +115,22 @@ fn score_via_pv_score(path: &Path) -> Option<f64> {
     if let Some(scores) = val.get("scores").and_then(|s| s.as_array()) {
         if !scores.is_empty() {
             let n = scores.len() as f64;
-            let avg_d3 = scores.iter()
+            let avg_d3 = scores
+                .iter()
                 .filter_map(|s| s.get("kani_coverage").and_then(|v| v.as_f64()))
-                .sum::<f64>() / n;
-            let avg_d4 = scores.iter()
+                .sum::<f64>()
+                / n;
+            let avg_d4 = scores
+                .iter()
                 .filter_map(|s| s.get("lean_coverage").and_then(|v| v.as_f64()))
-                .sum::<f64>() / n;
+                .sum::<f64>()
+                / n;
             if avg_d3 > 0.0 || avg_d4 > 0.0 {
                 crate::status_eprintln!(
                     "  PV Score: {:.1}% (Kani avg: {:.0}%, Lean avg: {:.0}%)",
-                    mean_score * 100.0, avg_d3 * 100.0, avg_d4 * 100.0
+                    mean_score * 100.0,
+                    avg_d3 * 100.0,
+                    avg_d4 * 100.0
                 );
             }
         }
@@ -243,9 +268,18 @@ fn compute_pipeline_depth(path: &Path) -> f64 {
         if let Ok(content) = std::fs::read_to_string(&ps_path) {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
                 let totals = val.get("totals");
-                let obligations = totals.and_then(|t| t.get("obligations")).and_then(|v| v.as_u64()).unwrap_or(0);
-                let kani = totals.and_then(|t| t.get("kani_harnesses")).and_then(|v| v.as_u64()).unwrap_or(0);
-                let lean = totals.and_then(|t| t.get("lean_proved")).and_then(|v| v.as_u64()).unwrap_or(0);
+                let obligations = totals
+                    .and_then(|t| t.get("obligations"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let kani = totals
+                    .and_then(|t| t.get("kani_harnesses"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                let lean = totals
+                    .and_then(|t| t.get("lean_proved"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
                 if obligations > 0 {
                     // Score based on L4+L5 coverage: kani/obligations + lean/obligations
                     let l4_ratio = (kani as f64 / obligations as f64).min(1.0);
@@ -263,7 +297,7 @@ fn compute_pipeline_depth(path: &Path) -> f64 {
 }
 
 /// CD5: Contract drift detection. Compares contract YAML mtimes vs source file mtimes.
- // Available for future CD5 scoring integration
+// Available for future CD5 scoring integration
 /// Returns (stale_count, total_count, drift_ratio).
 /// A contract is "stale" if the YAML is >30 days older than the most recently modified
 /// source file that references it (via #[contract] annotation).
@@ -283,11 +317,21 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
 
     for entry in entries.flatten() {
         let p = entry.path();
-        if p.extension().is_none_or(|e| e != "yaml") { continue; }
-        if p.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) { continue; }
+        if p.extension().is_none_or(|e| e != "yaml") {
+            continue;
+        }
+        if p.file_name()
+            .is_some_and(|n| n.to_string_lossy().contains("binding"))
+        {
+            continue;
+        }
 
-        let Ok(yaml_meta) = std::fs::metadata(&p) else { continue };
-        let Ok(yaml_mtime) = yaml_meta.modified() else { continue };
+        let Ok(yaml_meta) = std::fs::metadata(&p) else {
+            continue;
+        };
+        let Ok(yaml_mtime) = yaml_meta.modified() else {
+            continue;
+        };
 
         total += 1;
 
@@ -300,8 +344,13 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
             vec![path.join("src")]
         } else if path.join("crates").exists() {
             std::fs::read_dir(path.join("crates"))
-                .into_iter().flatten().flatten()
-                .filter_map(|e| { let s = e.path().join("src"); s.exists().then_some(s) })
+                .into_iter()
+                .flatten()
+                .flatten()
+                .filter_map(|e| {
+                    let s = e.path().join("src");
+                    s.exists().then_some(s)
+                })
                 .collect()
         } else {
             vec![]
@@ -309,7 +358,9 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
 
         for sdir in &src_dirs {
             for e in walkdir::WalkDir::new(sdir).into_iter().flatten() {
-                if e.path().extension().is_none_or(|ext| ext != "rs") { continue; }
+                if e.path().extension().is_none_or(|ext| ext != "rs") {
+                    continue;
+                }
                 if let Ok(content) = std::fs::read_to_string(e.path()) {
                     if content.contains(&search_pattern) {
                         if let Ok(meta) = std::fs::metadata(e.path()) {
@@ -336,7 +387,11 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
         }
     }
 
-    let drift = if total > 0 { stale as f64 / total as f64 } else { 0.0 };
+    let drift = if total > 0 {
+        stale as f64 / total as f64
+    } else {
+        0.0
+    };
     (stale, total, drift)
 }
 
@@ -418,7 +473,10 @@ mod kani_proofs {
         let result = geometric_mean(&values);
         assert!(result >= 0.0, "geometric_mean must be non-negative");
         assert!(result <= 100.0, "geometric_mean must not exceed max input");
-        assert!(result.is_finite() || result == 0.0, "geometric_mean must be finite or zero");
+        assert!(
+            result.is_finite() || result == 0.0,
+            "geometric_mean must be finite or zero"
+        );
     }
 
     /// Prove: geometric_mean of empty slice returns 0.
@@ -435,7 +493,10 @@ mod kani_proofs {
         kani::assume(v > 0.0 && v <= 100.0 && v.is_finite());
         let result = geometric_mean(&[v]);
         // Allow small floating-point epsilon
-        assert!((result - v).abs() < 1e-10, "single-value geometric mean must equal the value");
+        assert!(
+            (result - v).abs() < 1e-10,
+            "single-value geometric mean must equal the value"
+        );
     }
 
     /// Prove: geometric_mean with any zero input returns 0.
@@ -486,7 +547,10 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
 
     // XV-001: TDG grade gate pass should correlate with decent code quality
     // CB-200 passes when comply has no TDG failures, but RPS Code Quality can still be low
-    if score.comply_errors == 0 {
+    // `Some(0)`, not `0`: an UNMEASURED comply must not read as a clean one.
+    // While these were `usize`, a run with no `pmat` on PATH reported 0 errors
+    // and fired every invariant that means "comply is clean".
+    if score.comply_errors == Some(0) {
         if let Some(cq) = score.rps_categories.get("Code Quality") {
             if *cq < 40.0 {
                 v.push(Violation {
@@ -504,7 +568,8 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
 
     // XV-003: High coverage should mean decent testing score
     if s.coverage.is_some_and(|c| c >= 90.0) {
-        if let (Some(cov), Some(ts)) = (s.coverage, score.rps_categories.get("Testing Excellence")) {
+        if let (Some(cov), Some(ts)) = (s.coverage, score.rps_categories.get("Testing Excellence"))
+        {
             if *ts < 60.0 {
                 v.push(Violation {
                     id: "XV-003",
@@ -526,7 +591,7 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
 
     // XV-008: Clean comply should correlate with decent RPS
     if let Some(rps) = s.rps {
-        if score.comply_errors == 0 && rps < 60.0 {
+        if score.comply_errors == Some(0) && rps < 60.0 {
             v.push(Violation {
                 id: "XV-008",
                 message: format!("Comply 0 errors but RPS {rps:.0} < 60"),
@@ -539,7 +604,9 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
         if file_health >= 90.0 && muda_inv < 70.0 {
             v.push(Violation {
                 id: "XV-009",
-                message: format!("File health {file_health:.0} (A) but Muda inv {muda_inv:.0} < 70"),
+                message: format!(
+                    "File health {file_health:.0} (A) but Muda inv {muda_inv:.0} < 70"
+                ),
             });
         }
     }
@@ -574,4 +641,3 @@ fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
 
     v
 }
-
