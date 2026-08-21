@@ -1133,6 +1133,46 @@ pub fn copy_prefix(src: &[u8], dst: &mut [u8]) {
     )
     .expect("write lib.rs");
 
+    // Two files that exist only to be DECLINED, each carrying debt so that
+    // declining them is observable.
+    //
+    // `analyze satd` reports `files_not_read` broken down by reason, and two of
+    // those buckets read 0 for every corpus — not because the counters are
+    // broken (both fire: an `examples/` file books `out_of_scope`, a `.min.`
+    // file books `minified_or_vendor`, verified one file at a time) but because
+    // no corpus contained anything for them to count. A bucket that is 0 on
+    // every input is indistinguishable from a bucket nothing can ever reach,
+    // which is the very thing this harness exists to catch.
+    //
+    // Neither is declared in `lib.rs`: `bundled.min.rs` is not a valid module
+    // name, and `examples/demo.rs` is cargo's own target layout. Both are still
+    // walked by the analysers, which is the point.
+    std::fs::write(
+        root.join("src/bundled.min.rs"),
+        "// TODO: vendored bundle, not ours to fix
+// FIXME: regenerate from upstream
+pub fn bundled_entry() -> u32 {
+    7
+}
+",
+    )
+    .expect("write bundled.min.rs");
+    std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
+    std::fs::write(
+        root.join("examples/demo.rs"),
+        "//! Example target: excluded from production scope, so it books
+//! `out_of_scope` rather than being read.
+
+// TODO: the example still uses the old API
+// HACK: hardcoded so the demo always succeeds
+
+fn main() {
+    println!(\"demo\");
+}
+",
+    )
+    .expect("write examples/demo.rs");
+
     // A test file, so test-aware analyses have something to find — carrying
     // debt of its own, because a flag whose job is to *include test files*
     // ("--include-tests") can only be observed when the test files contain
