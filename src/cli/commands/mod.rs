@@ -83,3 +83,7 @@ pub(crate) fn on_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'st
 #[cfg(test)]
 #[path = "feature_gate_disclosure_tests.rs"]
 mod feature_gate_disclosure_tests;
+
+#[cfg(test)]
+#[path = "inert_flag_disclosure_tests.rs"]
+mod inert_flag_disclosure_tests;

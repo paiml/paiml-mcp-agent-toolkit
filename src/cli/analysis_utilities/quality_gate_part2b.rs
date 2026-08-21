@@ -56,6 +56,37 @@ fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[Q
 ///
 /// Both dispatchers call this rather than each spelling out `!report_only`, so
 /// the CLI cannot grow a second answer.
+/// What `--fail-on-violation` gets told, since it can no longer do anything.
+///
+/// The flag is accepted for compatibility and has had no effect since 3.32.0 —
+/// blocking violations exit non-zero by default now, so the behaviour it used
+/// to request is the unconditional default. Accepting it in SILENCE is the
+/// problem: the user asked for something and got no acknowledgement that their
+/// request was redundant rather than honoured.
+///
+/// This is the house convention for a self-declared inert flag, not a new one.
+/// `analyze big-o --analyze-space` and `analyze complexity --wasm-complexity`
+/// each emit a named `*_NOOP_NOTE` const on stderr, and neither carries an
+/// ALLOWED_NOOPS entry, because the disclosure makes the flag observable on its
+/// own bare probe. `--fail-on-violation` is simply the one that missed it.
+///
+/// Named as a const so the note is covered by a test rather than only by eye.
+pub const FAIL_ON_VIOLATION_NOOP_NOTE: &str = concat!(
+    "note: --fail-on-violation is a no-op since 3.32.0 — blocking violations ",
+    "exit non-zero by default; pass --report-only for the old ",
+    "report-and-exit-0 behaviour"
+);
+
+/// The note to print, or `None` when the flag was not passed.
+///
+/// Both dispatchers call this rather than each spelling out the condition —
+/// there are TWO sites that used to discard `fail_on_violation` into `_`, and
+/// fixing one would have left the defect live on the other route.
+#[must_use]
+pub fn fail_on_violation_note(fail_on_violation: bool) -> Option<&'static str> {
+    fail_on_violation.then_some(FAIL_ON_VIOLATION_NOOP_NOTE)
+}
+
 #[must_use]
 pub fn gate_exits_on_violation(report_only: bool) -> bool {
     !report_only

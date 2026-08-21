@@ -58,7 +58,11 @@ impl CommandExecutor {
                 report_only,
                 // See `command_dispatcher_scoring.rs`: accepted for
                 // compatibility, no effect — the gate gates by default.
-                fail_on_violation: _,
+                // Disclosed, not discarded — see the sibling route in
+                // command_dispatcher_scoring.rs. There are TWO dispatch paths
+                // for `quality-gate`, and fixing one would leave the flag silent
+                // on the other.
+                fail_on_violation,
                 checks,
                 max_dead_code,
                 min_entropy,
@@ -67,6 +71,11 @@ impl CommandExecutor {
                 output,
                 perf,
             } => {
+                if let Some(note) =
+                    crate::cli::analysis_utilities::fail_on_violation_note(fail_on_violation)
+                {
+                    eprintln!("{note}");
+                }
                 self.registry
                     .demo_handlers
                     .handle_quality_gate(
