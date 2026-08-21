@@ -732,3 +732,108 @@ fn counter_write_proceeds_outside_a_git_repository() {
     ledger::write(d.path(), &report, false).expect("no git metadata must not block a write");
     assert!(d.path().join(ledger::LEDGER_PATH).is_file());
 }
+
+#[cfg(test)]
+mod parser_health_tests {
+    use super::super::{declared_feature_count, parser_is_intact};
+
+    const FOUR: &str = "\
+[package]
+name = \"corpus\"
+
+[features]
+default = [\"std\"]
+std = []
+simd = []
+tracing = []
+
+[[bench]]
+name = \"throughput\"
+";
+
+    /// A small crate is not a broken parser.
+    ///
+    /// The guard was `if graph.len() < 40`, a threshold calibrated to pmat's own
+    /// manifest and then stated as a fact about the parser. A fixture declaring
+    /// exactly four features was told "only 4 features parsed from [features] —
+    /// the parser is broken, not the crate", and a crate with no [features]
+    /// table was told the same about zero. Both were false, both were exit 1,
+    /// and between them they made `analyze unrun-tests` unusable on any crate
+    /// but this one.
+    #[test]
+    fn a_small_feature_table_is_not_a_broken_parser() {
+        assert_eq!(declared_feature_count(FOUR), 4);
+        parser_is_intact(FOUR, 4).expect("four declared and four parsed is intact");
+    }
+
+    #[test]
+    fn a_crate_with_no_features_table_is_not_a_broken_parser() {
+        let manifest = "[package]\nname = \"tiny\"\n";
+        assert_eq!(declared_feature_count(manifest), 0);
+        parser_is_intact(manifest, 0).expect("no table to lose entries from");
+    }
+
+    /// The guard must still catch what it was written for: entries dropped.
+    ///
+    /// Without this the fix would be "delete the check", which passes both
+    /// tests above and detects nothing.
+    #[test]
+    fn dropping_declared_features_is_still_refused() {
+        let err = parser_is_intact(FOUR, 1).expect_err("1 parsed of 4 declared is a broken parser");
+        assert!(err.contains("declares 4"), "{err}");
+        assert!(err.contains("only 1 parsed"), "{err}");
+    }
+
+    /// Continuation lines of a multi-line value are not extra features.
+    #[test]
+    fn a_multi_line_feature_value_counts_once() {
+        let manifest = "\
+[features]
+default = [
+    \"std\",
+    \"simd\",
+]
+std = []
+";
+        assert_eq!(declared_feature_count(manifest), 2);
+    }
+
+    /// End-to-end: `analyze` on a small crate must not blame its own parser.
+    ///
+    /// The tests above call the guard directly, so they do not cover the call
+    /// site where the threshold actually lived. This one does: a four-feature
+    /// crate reaches `analyze` and must get past the manifest check. It still
+    /// fails afterwards — no CI workflow means no test leg, which is a
+    /// different and legitimate refusal — so the assertion is on WHICH error.
+    #[test]
+    fn analyze_does_not_blame_the_parser_on_a_small_crate() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("Cargo.toml"), FOUR).expect("write manifest");
+
+        let err = super::super::analyze(dir.path(), &[])
+            .expect_err("no workflows means no leg, so this still fails");
+        assert!(
+            !err.contains("the parser is broken"),
+            "a four-feature crate is not a broken parser: {err}"
+        );
+        assert!(
+            err.contains("cargo test") || err.contains("leg"),
+            "expected the no-leg refusal, got: {err}"
+        );
+    }
+
+    /// The counter must agree with the parser on pmat's own manifest — the one
+    /// input where the old threshold happened to be right.
+    #[test]
+    fn the_two_counts_agree_on_this_crate() {
+        let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
+            .expect("read our own Cargo.toml");
+        let parsed = super::super::features::parse(&manifest).len();
+        let declared = declared_feature_count(&manifest);
+        assert_eq!(
+            parsed, declared,
+            "the independent count and the parser disagree on our own manifest"
+        );
+        parser_is_intact(&manifest, parsed).expect("our own manifest must be intact");
+    }
+}
