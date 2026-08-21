@@ -151,7 +151,9 @@ fn env_for(graph: &features::FeatureGraph, leg: &legs::Leg) -> Env {
 /// manifest and then asserted as a fact about the parser. Every other crate
 /// tripped it: a fixture declaring exactly four features was told
 ///
-///     only 4 features parsed from [features] — the parser is broken, not the crate
+/// ```text
+/// only 4 features parsed from [features] — the parser is broken, not the crate
+/// ```
 ///
 /// and a crate with no `[features]` table at all was told the same thing about
 /// zero. Both statements were false — the parser had read the table correctly,
