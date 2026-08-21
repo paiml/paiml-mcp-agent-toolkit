@@ -123,6 +123,66 @@ const NON_MEASURING: &[(&str, &str)] = &[
 const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
     // (command path, json leaf path, why it is legitimately constant)
     (
+        "analyze dead-code",
+        "omitted.files",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_lines",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_functions",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_classes",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_modules",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.unreachable_blocks",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.reasons[].len",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze satd",
+        "files_not_read.too_large",
+        "the `analyze` surface routes through `skip_reason_for_analysis`, which DELIBERATELY omits the >512KB rule that `skip_reason` applies — unifying them would make this path skip more files and find fewer defects, a behaviour change the code says deserves its own measurement (satd_detector/detection_analysis.rs). Zero files therefore go unread for size here, which is a true zero and not an unmeasured one; a 748,903-byte file is read, not skipped. Verified one file at a time, 2026-08-21",
+    ),
+    (
+        "analyze comprehensive",
+        "satd.skipped.too_large",
+        "the `analyze` surface routes through `skip_reason_for_analysis`, which DELIBERATELY omits the >512KB rule that `skip_reason` applies — unifying them would make this path skip more files and find fewer defects, a behaviour change the code says deserves its own measurement (satd_detector/detection_analysis.rs). Zero files therefore go unread for size here, which is a true zero and not an unmeasured one; a 748,903-byte file is read, not skipped. Verified one file at a time, 2026-08-21",
+    ),
+    (
+        "quality-gate",
+        "results.checks_run[].len",
+        "the sweep runs one fixed check selection, so the NUMBER of checks run is a property of the invocation, not of the tree. The leaf exists so that a run which selected checks and executed none is distinguishable from one that executed them; `files_examined` and the violation counts are what respond to the corpus",
+    ),
+    (
+        "comply check",
+        "is_compliant",
+        "both corpora are non-compliant, and legitimately so: an empty crate fails the same structural checks a defect-rich one does, so the boolean is false either way. What separates them is the breakdown — summary.pass/warn/fail respond across the corpora (see the `summary.total` entry above)",
+    ),
+    (
+        "comply report",
+        "is_compliant",
+        "both corpora are non-compliant, and legitimately so: an empty crate fails the same structural checks a defect-rich one does, so the boolean is false either way. What separates them is the breakdown — summary.pass/warn/fail respond across the corpora (see the `summary.total` entry above)",
+    ),
+    (
         "comply check",
         "checks[].len",
         "a fixed checklist; the count is structural, the verdicts are what vary",

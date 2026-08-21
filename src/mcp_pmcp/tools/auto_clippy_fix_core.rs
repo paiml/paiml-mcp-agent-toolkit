@@ -145,14 +145,59 @@ async fn apply_fixes(
     }))
 }
 
+/// What clippy reported, beside what we were willing to act on.
+///
+/// These are different numbers and were reported as one. See the comment at the
+/// call site in `auto_clippy_fix`.
+struct DiagnosticCensus {
+    /// Diagnostics `cargo clippy` emitted, before any filtering of ours.
+    found: usize,
+    /// Of those, the ones that met `min_confidence` and the code filter.
+    eligible: usize,
+    /// The confidence bar that did the filtering, so the gap is explainable.
+    min_confidence: String,
+}
+
+impl DiagnosticCensus {
+    fn with_eligible(self, eligible: usize) -> Self {
+        Self { eligible, ..self }
+    }
+
+    /// A sentence that cannot say "successfully" about work not done.
+    fn message(&self, action: &str) -> String {
+        if self.found == 0 {
+            let _ = action;
+            return "\u{2705} clippy reported no diagnostics; nothing to fix".to_string();
+        }
+        let skipped = self.found.saturating_sub(self.eligible);
+        if self.eligible == 0 {
+            return format!(
+                "\u{26a0}\u{fe0f} clippy reported {} diagnostic(s), and none met the required \
+                 confidence ({}) — {} left untouched. This is NOT a clean result; \
+                 re-run with --confidence low to see them.",
+                self.found, self.min_confidence, skipped
+            );
+        }
+        format!(
+            "\u{1f527} clippy reported {} diagnostic(s); {} met confidence {} and were {}, \
+             {} left untouched",
+            self.found, self.eligible, self.min_confidence, action, skipped
+        )
+    }
+}
+
 /// Create MCP response (complexity: 2)
-fn create_fix_response(results: Value, is_dry_run: bool) -> ToolResult {
+fn create_fix_response(results: Value, is_dry_run: bool, census: &DiagnosticCensus) -> ToolResult {
     let action = if is_dry_run { "analyzed" } else { "applied" };
 
     let response = json!({
         "action": action,
+        "diagnostics_found": census.found,
+        "diagnostics_eligible": census.eligible,
+        "diagnostics_filtered_out": census.found.saturating_sub(census.eligible),
+        "min_confidence": census.min_confidence,
         "results": results,
-        "message": format!("\u{1f527} Clippy fixes {} successfully", action)
+        "message": census.message(action)
     });
 
     ToolResult::new(vec![pmcp::Content::Text {

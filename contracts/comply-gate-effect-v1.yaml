@@ -227,112 +227,184 @@ postconditions:
   - "CB-2100's Fail message names the job and the key responsible"
   - "CB-2100 fails when docs/status/comply-enforcement-ledger.md is missing or has drifted"
 
-falsification:
-  - condition: "F-1: the job invoking `pmat comply check` carries `continue-on-error: true` and CB-2100 still passes"
-    severity: P0
+falsification_tests:
+  - id: f_1
+    rule: "F-1: the job invoking `pmat comply check` carries `continue-on-error: true` and CB-2100 still passes"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f1_job_level_continue_on_error_fails_citing_job_and_key
-  - condition: "F-2: the step is `pmat comply check || true` and CB-2100 still passes"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_2
+    rule: "F-2: the step is `pmat comply check || true` and CB-2100 still passes"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f2_or_true_fails
-  - condition: "F-3: a job whose DISPLAY NAME equals the required context string is credited as the job that reports it"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3
+    rule: "F-3: a job whose DISPLAY NAME equals the required context string is credited as the job that reports it"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f3_a_display_name_equal_to_the_required_context_is_not_a_match
-  - condition: "F-4: a workflow with zero jobs yields a pass instead of a fail"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_4
+    rule: "F-4: a workflow with zero jobs yields a pass instead of a fail"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f4_zero_jobs_fails_closed
-  - condition: "F-5: an unfetchable branch-protection API yields a pass instead of a fail"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_5
+    rule: "F-5: an unfetchable branch-protection API yields a pass instead of a fail"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f5_unresolvable_required_contexts_fail_closed
-  - condition: "F-6 (the control): the live shape — required context `ci / gate` beside an unrequired job literally named `gate` — fails, so every other fixture proves nothing"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6_control
+    rule: "F-6 (the control): the live shape — required context `ci / gate` beside an unrequired job literally named `gate` — fails, so every other fixture proves nothing"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::f6_required_context_beside_an_unrequired_job_named_the_same_thing_passes
-  - condition: "INV-2100-4: a wrapper that prints a failure verdict and exits 0 is credited as a gate"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f
+    rule: "INV-2100-4: a wrapper that prints a failure verdict and exits 0 is credited as a gate"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_4_a_wrapper_that_prints_failed_and_exits_zero_does_not_gate
-  - condition: "INV-2100-5: an invocation inside a job that can never succeed is credited as a gate"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6
+    rule: "INV-2100-5: an invocation inside a job that can never succeed is credited as a gate"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_job_that_can_never_succeed_does_not_gate
-  - condition: "INV-2100-5 control: `exit 1` inside an `if` is misread as an impossibility, failing every correctly-written workflow"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control
+    rule: "INV-2100-5 control: `exit 1` inside an `if` is misread as an impossibility, failing every correctly-written workflow"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_guarded_exit_is_a_gate_not_an_impossibility
-  - condition: "INV-2100-6: a job that compiles a test suite without running it establishes reachability for those tests"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_7
+    rule: "INV-2100-6: a job that compiles a test suite without running it establishes reachability for those tests"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_6_compiling_a_test_is_not_running_it
-  - condition: "INV-2100-7: the rule hardcodes a gate name and so stops checking the day a job is renamed"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_8
+    rule: "INV-2100-7: the rule hardcodes a gate name and so stops checking the day a job is renamed"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_7_no_gate_name_is_hardcoded_in_the_rule
-  - condition: "INV-2100-1: the roots are taken one at a time, so one healthy required check answers for four"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_9
+    rule: "INV-2100-1: the roots are taken one at a time, so one healthy required check answers for four"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::inv_2100_1_any_root_may_carry_the_roster
-  - condition: "an empty severity=error roster yields a vacuous pass"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_10
+    rule: "an empty severity=error roster yields a vacuous pass"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::control_roster_is_not_empty
-  - condition: "an empty CB rule roster yields an empty ledger instead of an error"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_11
+    rule: "an empty CB rule roster yields an empty ledger instead of an error"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::ledger_over_an_empty_roster_is_an_error_not_a_clean_sheet
-  - condition: "the ledger invents or omits rows because it recounts the rules instead of reading the registry"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_12
+    rule: "the ledger invents or omits rows because it recounts the rules instead of reading the registry"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::the_roster_is_exactly_the_registered_rule_set
-  - condition: "a configuration that declares rules and grades none of them error is reported as a clean roster"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_13
+    rule: "a configuration that declares rules and grades none of them error is reported as a clean roster"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_config_whose_checks_are_all_sub_error_is_a_hole_with_a_diagnosis
-  - condition: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_14
+    rule: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::every_kani_harness_the_contract_names_exists
-  - condition: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_15
+    rule: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::the_contract_states_whether_its_kani_harnesses_discharge
-  - condition: "the not_discharged note rots into a false claim: the contract says the harnesses are discharged while nothing runs kani, or a runner is added and the note is left stale"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_16
+    rule: "the not_discharged note rots into a false claim: the contract says the harnesses are discharged while nothing runs kani, or a runner is added and the note is left stale"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_discharged_claim_requires_something_that_actually_runs_kani
-  - condition: "an opaque required context — one resolving into a workflow this repository cannot read — renders identically to a context that was read in full and reaches nothing, so a hole is reported as a measured zero"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_17
+    rule: "an opaque required context — one resolving into a workflow this repository cannot read — renders identically to a context that was read in full and reaches nothing, so a hole is reported as a measured zero"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::an_opaque_root_is_not_rendered_as_a_measured_zero
-  - condition: "a phantom required context renders as a measured zero"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_18
+    rule: "a phantom required context renders as a measured zero"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_phantom_root_is_not_rendered_as_a_measured_zero
-  - condition: "the control: every root is rendered `unknown`, which satisfies the two tests above and destroys the table"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_2
+    rule: "the control: every root is rendered `unknown`, which satisfies the two tests above and destroys the table"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_root_that_carries_the_roster_still_reads_as_yes
-  - condition: "a ledger row renders a blank Title, which is indistinguishable from `has no title`, `never names itself` and `the scanner lost it`"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_19
+    rule: "a ledger row renders a blank Title, which is indistinguishable from `has no title`, `never names itself` and `the scanner lost it`"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::the_ledger_never_renders_a_blank_title
-  - condition: "the roster's `#[cfg(test)]` guard is a substring match, so a file that MENTIONS the attribute in a comment loses every rule declared below the mention"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_20
+    rule: "the roster's `#[cfg(test)]` guard is a substring match, so a file that MENTIONS the attribute in a comment loses every rule declared below the mention"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_cfg_test_mention_in_a_comment_does_not_truncate_the_roster_scan
-  - condition: "the control: loosening that guard makes the roster cite lines that do not declare the rule they are attributed to"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_3
+    rule: "the control: loosening that guard makes the roster cite lines that do not declare the rule they are attributed to"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::every_citation_points_at_a_line_that_names_its_rule
-  - condition: "a check owns a CB id and never reports it, so no finding it emits can be tied back to its ledger row"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_21
+    rule: "a check owns a CB id and never reports it, so no finding it emits can be tied back to its ledger row"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::every_rule_that_owns_a_cb_id_reports_it_at_runtime
-  - condition: "an edit two lines above a rule declaration moves its citation and is reported as ledger drift, so the gate reddens on changes it does not measure"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_22
+    rule: "an edit two lines above a rule declaration moves its citation and is reported as ledger drift, so the gate reddens on changes it does not measure"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::an_edit_above_a_rule_declaration_is_not_ledger_drift
-  - condition: "supplying the IDENTICAL required contexts through PMAT_REQUIRED_STATUS_CHECKS instead of the manifest is reported as ledger drift"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_23
+    rule: "supplying the IDENTICAL required contexts through PMAT_REQUIRED_STATUS_CHECKS instead of the manifest is reported as ledger drift"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::the_provenance_of_the_root_list_is_not_ledger_drift
-  - condition: "the control: drift is loosened until a changed status, carrier, declaring file, severity, title or id no longer registers"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_4
+    rule: "the control: drift is loosened until a changed status, carrier, declaring file, severity, title or id no longer registers"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_changed_status_carrier_or_file_is_still_ledger_drift
-  - condition: "the control: drift is loosened until a ledger missing a whole rule still reads as up to date"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control_5
+    rule: "the control: drift is loosened until a ledger missing a whole rule still reads as up to date"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::a_missing_row_is_still_ledger_drift
-  - condition: "the ledger is non-deterministic, so nobody can diff it and drift goes unnoticed"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_24
+    rule: "the ledger is non-deterministic, so nobody can diff it and drift goes unnoticed"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests_cb2100.rs::the_rendered_ledger_is_deterministic
-  - condition: "a required context that no job produces is treated as absence of evidence rather than a phantom gate"
-    severity: P1
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_25
+    rule: "a required context that no job produces is treated as absence of evidence rather than a phantom gate"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::a_phantom_required_context_fails
-  - condition: "an unreadable external reusable workflow is credited as enforcement"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_26
+    rule: "an unreadable external reusable workflow is credited as enforcement"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::falsify_2100_3b_external_reusable_workflow_is_opaque_not_compliant
-  - condition: "a `run:` block that pipes the invocation is credited with its exit code although bash -e leaves pipefail off"
-    severity: P1
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_27
+    rule: "a `run:` block that pipes the invocation is credited with its exit code although bash -e leaves pipefail off"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::falsify_2100_2c_piped_invocation_loses_its_status
-  - condition: "an `if: always()` summary job is credited with its needs' failures although it never inspects needs.<id>.result"
-    severity: P0
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_28
+    rule: "an `if: always()` summary job is credited with its needs' failures although it never inspects needs.<id>.result"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::if_always_without_a_result_check_breaks_the_edge
-  - condition: "every fixture fails, including the healthy one, so the rule proves nothing"
-    severity: P0
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_29
+    rule: "every fixture fails, including the healthy one, so the rule proves nothing"
+    prediction: "the named test fails when this condition holds"
     test: src/services/gate_effect/tests.rs::control_a_plain_enforcing_job_passes
+    if_fails: "P0 — this contract's guarantee does not hold"

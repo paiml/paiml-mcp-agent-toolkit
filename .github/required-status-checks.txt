@@ -16,6 +16,7 @@ ci / gate
 feature-gate
 docs build (docs.rs environment)
 pmat score
+provable ladder
 #
 # NOT LISTED, DELIBERATELY: `mutation-diff`. It was added to live branch
 # protection mid-session by an agent, and reverted. The workflow that produces
@@ -65,3 +66,23 @@ pmat score
 # What is NOT weakened, and must not be: `enforce_admins` stays false only
 # because the admin override is the break-glass path; force pushes and deletions
 # remain disabled; `strict` remains true so a stale branch cannot merge.
+#
+# `provable ladder` ADDED 2026-08-20. It runs the L1-L5 contract ladder: the
+# binding registry at L1, `lake build` over contracts/lean/Theorems/ at L5, and
+# a grep that fails the job on any `sorry` or `admit`. Until now it reported and
+# could not block, so a Lean proof failure could not stop a merge — 13 theorems
+# proving the TDG grade order sat behind a check nothing required, which is the
+# same shape as CB-2100's original finding (155 registered rules, 0 reachable)
+# one layer up.
+#
+# Safe to require because it passes: five consecutive successes on
+# release/3.32.0 before it was added, and PR #1021 merged with it green.
+#
+# ORDERING, which matters more than it looks. The job still carries
+# `Ladder gate - pmat comply` under `continue-on-error: true`
+# (quality-gate.yml:171). Requiring the job is safe BECAUSE of that flag.
+# Removing the flag while the job is required would deadlock every pull request
+# on comply's four current failures. The sequence is: require the job, add the
+# pv obligation gate, and only then remove `continue-on-error` once comply is
+# green. An agent nearly deadlocked this repository by requiring `mutation-diff`
+# in the other order.

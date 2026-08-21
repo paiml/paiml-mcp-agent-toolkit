@@ -4,29 +4,38 @@
 // a configurable minimum TDG grade (default A).
 
 use crate::models::comply_config::ComplyConfig;
+use crate::tdg::grade::GRADE_VARIANTS;
+use crate::tdg::Grade;
 use std::path::Path;
 
 use super::types::*;
 
 /// Convert a TDG grade letter to a numeric ordinal for comparison.
-fn grade_ordinal(grade: &str) -> u8 {
-    match grade.trim() {
-        "A" => 0,
-        "B" => 1,
-        "C" => 2,
-        "D" => 3,
-        "F" => 4,
-        _ => 5,
-    }
-}
-
-/// Return all grade letters that are strictly below (worse than) the given minimum.
-fn grades_below(min_grade: &str) -> Vec<&'static str> {
-    let threshold = grade_ordinal(min_grade);
-    ["A", "B", "C", "D", "F"]
-        .into_iter()
-        .filter(|g| grade_ordinal(g) > threshold)
-        .collect()
+/// The spellings a floor ADMITS, computed from the proved order.
+///
+/// Returns `None` when the threshold is not a grade this codebase produces, so
+/// an unreadable threshold fails the rule instead of yielding an empty set that
+/// reads as "nothing violates".
+///
+/// This replaces a private `grade_ordinal` over `["A","B","C","D","F"]` with a
+/// `_ => 5` catch-all. Both halves were wrong. The five-letter list could never
+/// match a MODIFIED grade against `WHERE tdg_grade IN (...)`, so at a floor of
+/// "A" the gate saw 247 violations and could not see 1,719. And the catch-all
+/// ranked every modified grade WORSE THAN F, so `grades_below("A-")` was empty
+/// and the caller returned Pass — `.pmat-metrics.toml:44` declares exactly that
+/// spelling.
+///
+/// The order is `Grade`'s, anchored to the score bands in
+/// `contracts/lean/Theorems/Tdg/Grade.lean::Grade_Rank_Anchored_To_Score`.
+fn passing_spellings(min_grade: &str) -> Option<Vec<&'static str>> {
+    let floor = Grade::from_variant_name(min_grade.trim())?;
+    Some(
+        GRADE_VARIANTS
+            .iter()
+            .copied()
+            .filter(|g| Grade::from_variant_name(g).is_some_and(|x| x.meets_threshold(floor)))
+            .collect(),
+    )
 }
 
 struct TdgViolation {
@@ -152,7 +161,7 @@ fn is_source_file(path: &Path) -> bool {
 /// Query violations from the context database for grades below threshold
 fn query_tdg_violations(
     db_path: &Path,
-    failing_grades: &[&str],
+    passing_grades: &[&str],
 ) -> Result<Vec<TdgViolation>, ComplianceCheck> {
     let conn = rusqlite::Connection::open_with_flags(
         db_path,
@@ -164,19 +173,24 @@ fn query_tdg_violations(
         message: format!("Failed to open context.db: {e}"),
         severity: Severity::Info,
     })?;
-    let placeholders: Vec<String> = failing_grades
+    let placeholders: Vec<String> = passing_grades
         .iter()
         .enumerate()
         .map(|(i, _)| format!("?{}", i + 1))
         .collect();
-    let sql = format!("SELECT file_path, function_name, tdg_grade, complexity, start_line FROM functions WHERE tdg_grade IN ({})", placeholders.join(", "));
+    // NOT IN the PASSING set, never IN a failing list. `IN` answers "no row"
+    // for a value it does not list and never an error, so an eleven-letter
+    // writer and a five-letter reader coexisted silently for a release.
+    // Enumerating what passes makes any future alphabet drift return a row that
+    // must be classified, instead of a smaller number nobody can see.
+    let sql = format!("SELECT file_path, function_name, tdg_grade, complexity, start_line FROM functions WHERE tdg_grade NOT IN ({})", placeholders.join(", "));
     let mut stmt = conn.prepare(&sql).map_err(|e| ComplianceCheck {
         name: "CB-200: TDG Grade Gate".into(),
         status: CheckStatus::Skip,
         message: format!("Failed to query context.db: {e}"),
         severity: Severity::Info,
     })?;
-    let params: Vec<&dyn rusqlite::types::ToSql> = failing_grades
+    let params: Vec<&dyn rusqlite::types::ToSql> = passing_grades
         .iter()
         .map(|g| g as &dyn rusqlite::types::ToSql)
         .collect();
@@ -252,8 +266,19 @@ pub(crate) fn check_tdg_grade_gate(
         .min_grade
         .as_deref()
         .unwrap_or(&comply_config.thresholds.min_tdg_grade);
-    let failing_grades = grades_below(min_grade);
-    if failing_grades.is_empty() {
+    let Some(passing_grades) = passing_spellings(min_grade) else {
+        return ComplianceCheck {
+            name: "CB-200: TDG Grade Gate".into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "minimum grade {min_grade:?} is not a grade this codebase produces (known: {}). \
+                 A threshold that cannot be parsed must not be read as a threshold nothing violates.",
+                GRADE_VARIANTS.join(", ")
+            ),
+            severity: Severity::Error,
+        };
+    };
+    if passing_grades.len() == GRADE_VARIANTS.len() {
         return ComplianceCheck {
             name: "CB-200: TDG Grade Gate".into(),
             status: CheckStatus::Pass,
@@ -263,7 +288,7 @@ pub(crate) fn check_tdg_grade_gate(
             severity: Severity::Info,
         };
     }
-    let violations = match query_tdg_violations(&db_path, &failing_grades) {
+    let violations = match query_tdg_violations(&db_path, &passing_grades) {
         Ok(v) => v,
         Err(check) => return check,
     };
@@ -443,23 +468,76 @@ mod tests_tdg_grade {
     use crate::models::comply_config::ComplyConfig;
     use std::path::PathBuf;
 
+    /// The floor admits exactly the grades at least as good as it.
+    ///
+    /// Replaces `test_grade_ordinal` and `test_grades_below`, which pinned the
+    /// defect rather than the rule: they asserted `grade_ordinal("X") == 5`
+    /// (the catch-all that ranked every unknown, and every MODIFIED, grade
+    /// worse than F) and `grades_below("A") == ["B","C","D","F"]` (the
+    /// five-letter blindness). Both were true of the old code and both were
+    /// the bug.
     #[test]
-    fn test_grade_ordinal() {
-        assert_eq!(grade_ordinal("A"), 0);
-        assert_eq!(grade_ordinal("B"), 1);
-        assert_eq!(grade_ordinal("C"), 2);
-        assert_eq!(grade_ordinal("D"), 3);
-        assert_eq!(grade_ordinal("F"), 4);
-        assert_eq!(grade_ordinal("X"), 5);
+    fn passing_set_is_the_up_set_of_the_floor() {
+        assert_eq!(
+            passing_spellings("A+").expect("A+ is a canonical grade spelling"),
+            vec!["A+"]
+        );
+        assert_eq!(
+            passing_spellings("A").expect("A is a canonical grade spelling"),
+            vec!["A+", "A"]
+        );
+        // The spelling that used to produce an EMPTY failing set and a Pass.
+        assert_eq!(
+            passing_spellings("A-").expect("A- is a canonical grade spelling"),
+            vec!["A+", "A", "A-"]
+        );
+        assert_eq!(
+            passing_spellings("B").expect("B is a canonical grade spelling"),
+            vec!["A+", "A", "A-", "B+", "B"]
+        );
+        // Only F admits everything, and that is the one honest vacuous floor.
+        assert_eq!(
+            passing_spellings("F")
+                .expect("F is a canonical grade spelling")
+                .len(),
+            GRADE_VARIANTS.len()
+        );
     }
 
+    /// Passing and failing partition the scale at every floor — the property
+    /// the five-letter table did not have, proved for all eleven floors in
+    /// `contracts/lean/Theorems/Tdg/Grade.lean::Grade_Partition`.
     #[test]
-    fn test_grades_below() {
-        assert_eq!(grades_below("A"), vec!["B", "C", "D", "F"]);
-        assert_eq!(grades_below("B"), vec!["C", "D", "F"]);
-        assert_eq!(grades_below("C"), vec!["D", "F"]);
-        assert_eq!(grades_below("D"), vec!["F"]);
-        assert!(grades_below("F").is_empty());
+    fn passing_and_failing_partition_the_scale() {
+        for floor in GRADE_VARIANTS {
+            let passing = passing_spellings(floor).expect("canonical spelling parses");
+            let failing: Vec<_> = GRADE_VARIANTS
+                .iter()
+                .filter(|g| !passing.contains(g))
+                .collect();
+            assert_eq!(
+                passing.len() + failing.len(),
+                GRADE_VARIANTS.len(),
+                "floor {floor} does not partition the scale"
+            );
+        }
+    }
+
+    /// An unreadable threshold yields `None`, never an empty set. An empty set
+    /// is what the caller reads as "nothing violates".
+    #[test]
+    fn an_unparseable_floor_is_none_not_empty() {
+        for bad in ["X", "", " ", "A--", "Q", "E"] {
+            assert!(
+                passing_spellings(bad).is_none(),
+                "{bad:?} must not parse as a grade floor"
+            );
+        }
+        // Counter-test: every canonical spelling still parses, so the guard did
+        // not become a spelling police.
+        for good in GRADE_VARIANTS {
+            assert!(passing_spellings(good).is_some(), "{good} must parse");
+        }
     }
 
     #[test]

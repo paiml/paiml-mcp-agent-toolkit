@@ -476,18 +476,35 @@ pub(super) async fn analyze_files_by_mode(
     // Provide feedback on analysis results
     match &result {
         Ok(metrics) if metrics.is_empty() => {
-            eprintln!("\n⚠️  Warning: No files were found or analyzed");
-            eprintln!("   Possible reasons:");
-            eprintln!("   - Directory is empty or contains no supported file types");
-            eprintln!("   - Files are excluded by .gitignore patterns");
-            eprintln!("   - Include patterns don't match any files");
+            // What the walk SAW, not a list of things it might have been.
+            //
+            // This printed three guesses — "Directory is empty or contains no
+            // supported file types", ".gitignore patterns", "Include patterns
+            // don't match" — above the error that actually names the cause. The
+            // reader hits the speculation first, and on a directory of COBOL it
+            // sends them to check their .gitignore.
+            //
+            // Every one of those guesses is answerable. The walk knows how many
+            // files it saw and with which extensions, so it says that, and the
+            // include patterns are only mentioned when some were supplied.
+            eprintln!(
+                "\n⚠️  No files were analyzed under {}",
+                config.project_path.display()
+            );
+            match unanalyzed_summary(metrics, config) {
+                Some(note) => eprintln!("{note}"),
+                None => eprintln!("   the walk found no files with a file extension"),
+            }
             if !config.include.is_empty() {
-                eprintln!("   - Current include patterns: {:?}", config.include);
+                eprintln!("   include patterns in effect: {:?}", config.include);
             }
             eprintln!();
         }
         Ok(metrics) => {
             crate::status_eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
+            if let Some(note) = unanalyzed_summary(metrics, config) {
+                crate::status_eprintln!("{}", note);
+            }
         }
         Err(_) => {
             // Error will be returned and handled by caller
@@ -499,6 +516,123 @@ pub(super) async fn analyze_files_by_mode(
 
 /// Pick the analysis the flags asked for. Split out of `analyze_files_by_mode`
 /// so the whole of it — mode selection included — sits inside the budget.
+/// Name the files the walk saw and did not analyze.
+///
+/// `✅ Successfully analyzed 1 file(s)` is a count with no denominator. Point
+/// pmat at a directory holding one `.rs` and eight `.cbl`, and that is exactly
+/// what it printed — a confident green, with no hint that eight of nine files
+/// were never read. A COBOL codebase with one stray Rust file gets a clean bill
+/// of health for the Rust file alone.
+///
+/// The comment on `analyze_project` already records this defect for a different
+/// cause: toolchain auto-detection used to restrict the walk, so "a directory
+/// holding a.go, app.ts and main.py therefore reported Files analyzed: 1". That
+/// was fixed. The same silence for a file type pmat has no analyzer for was not.
+///
+/// UNSUPPORTED IS DERIVED, NOT LISTED. The set is "present in the walk, absent
+/// from the results" — so this cannot drift from whatever the analyzers actually
+/// handle, and it adds no fourth copy of a language list to a repository that
+/// already has several that disagree.
+fn unanalyzed_summary(
+    metrics: &[FileComplexityMetrics],
+    config: &ComplexityConfig,
+) -> Option<String> {
+    use crate::services::ast::strategy::StrategySelector;
+    use std::collections::{BTreeMap, HashSet};
+
+    // Single-file and explicit-file modes have no population to compare against.
+    if !config.project_path.is_dir() {
+        return None;
+    }
+
+    // `m.path` is relative to the PROCESS CWD, not to `project_path`. Joining it
+    // onto `project_path` built `src/tdg/src/tdg/foo.rs` — which canonicalizes to
+    // nothing — so `analyzed` came back EMPTY and every file in the walk was
+    // counted as unanalyzed. Try the path as given first, then as a child of the
+    // scanned root, and keep whichever actually resolves.
+    let resolve = |p: &Path| -> Option<PathBuf> {
+        std::fs::canonicalize(p)
+            .or_else(|_| std::fs::canonicalize(config.project_path.join(p)))
+            .ok()
+    };
+    let analyzed: HashSet<PathBuf> = metrics
+        .iter()
+        .filter_map(|m| resolve(Path::new(&m.path)))
+        .collect();
+
+    // Which extensions pmat can analyse is not a guess: `supported_extensions`
+    // is compiled under the same feature flags as this binary, so it cannot
+    // drift from what the build can actually parse.
+    let supported: HashSet<String> = StrategySelector::supported_extensions()
+        .into_iter()
+        .map(str::to_ascii_lowercase)
+        .collect();
+
+    let mut no_analyzer: BTreeMap<String, usize> = BTreeMap::new();
+    let mut skipped: BTreeMap<String, usize> = BTreeMap::new();
+    let mut total = 0usize;
+    for entry in ignore::WalkBuilder::new(&config.project_path)
+        .hidden(true)
+        .git_ignore(true)
+        .build()
+        .filter_map(std::result::Result::ok)
+    {
+        if !entry.file_type().is_some_and(|t| t.is_file()) {
+            continue;
+        }
+        let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        let ext = ext.to_ascii_lowercase();
+        total += 1;
+        if resolve(entry.path()).is_some_and(|c| analyzed.contains(&c)) {
+            continue;
+        }
+        if supported.contains(&ext) {
+            *skipped.entry(ext).or_default() += 1;
+        } else {
+            *no_analyzer.entry(ext).or_default() += 1;
+        }
+    }
+
+    // ONE derivation of the count. It used to be `total - metrics.len()` while
+    // the census was built separately from the walk, so when the path match
+    // broke the two contradicted each other inside a single sentence:
+    //   "0 of 220 file(s) were not analyzed — pmat has no complexity analyzer
+    //    for: .rs (220)"
+    // Both halves now come from the same tally, which cannot disagree with
+    // itself, and a wrong tally shows up as a wrong number instead of hiding
+    // behind a plausible zero.
+    let missing: usize = no_analyzer.values().chain(skipped.values()).sum();
+    if missing == 0 {
+        return None;
+    }
+
+    let census = |m: &BTreeMap<String, usize>| -> String {
+        m.iter()
+            .map(|(e, n)| format!(".{e} ({n})"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let mut out = format!("   {missing} of {total} file(s) were not analyzed");
+    if !no_analyzer.is_empty() {
+        out.push_str(&format!(
+            "\n   no complexity analyzer for: {}",
+            census(&no_analyzer)
+        ));
+    }
+    // A supported extension that still produced no metrics is a DIFFERENT fact
+    // from an unsupported one — reporting it as "no analyzer" told users to stop
+    // expecting Rust support because three files failed to parse.
+    if !skipped.is_empty() {
+        out.push_str(&format!(
+            "\n   supported, but no metrics were produced: {}",
+            census(&skipped)
+        ));
+    }
+    Some(out)
+}
+
 async fn analyze_by_mode(
     file: Option<PathBuf>,
     files: Vec<PathBuf>,
@@ -845,5 +979,159 @@ mod timeout_is_a_bound_tests {
             .await
             .expect("one small file cannot exhaust a 300s budget");
         assert_eq!(metrics.len(), 1, "the one file must still be analyzed");
+    }
+}
+
+#[cfg(test)]
+mod unanalyzed_tests {
+    use super::*;
+    use crate::services::complexity::types::ComplexityMetrics;
+
+    fn cfg(dir: &std::path::Path) -> ComplexityConfig {
+        ComplexityConfig::from_args(dir.to_path_buf(), None, None, None, vec![], 300, 10)
+    }
+
+    fn metric(path: &str) -> FileComplexityMetrics {
+        FileComplexityMetrics {
+            path: path.to_string(),
+            total_complexity: ComplexityMetrics::default(),
+            functions: Vec::new(),
+            classes: Vec::new(),
+        }
+    }
+
+    /// The count and the census are one tally, on the path shape PRODUCTION uses.
+    ///
+    /// `m.path` is relative to the process CWD, not to the scanned root. The
+    /// first version of this function joined it onto `project_path` — building
+    /// `src/tdg/src/tdg/foo.rs`, which resolves to nothing — so the analyzed set
+    /// came back empty and every file was counted as skipped. It went unseen
+    /// because the count was derived a SECOND way (`total - metrics.len()`),
+    /// which still read 0, so `pmat analyze complexity --path src/tdg` printed
+    /// one self-contradicting sentence:
+    ///
+    ///     0 of 220 file(s) were not analyzed — pmat has no complexity analyzer
+    ///     for: .rs (220)
+    ///
+    /// The tests above missed it entirely by passing `"ok.rs"` — relative to the
+    /// temp dir, a shape the walker never emits. The fixture agreed with the
+    /// author instead of with production. This one builds the root under the CWD
+    /// and names the file the way the walker really does.
+    #[test]
+    fn the_count_and_the_census_are_one_tally() {
+        let dir = tempfile::TempDir::with_prefix_in("pmat-unanalyzed-", ".").expect("temp dir");
+        // RELATIVE, like `--path src/tdg`. `dir.path()` is absolute, and
+        // `Path::join(absolute)` returns the absolute unchanged — which silently
+        // repairs the very bug under test, so an absolute fixture proves nothing.
+        let root = std::path::PathBuf::from(".").join(dir.path().file_name().expect("dir name"));
+        std::fs::write(root.join("ok.rs"), "fn main(){}\n").expect("write rs");
+        for ext in ["cbl", "f90", "vhd"] {
+            std::fs::write(root.join(format!("thing.{ext}")), "x\n").expect("write");
+        }
+
+        // Exactly what the walker hands back: the root as given, plus the child.
+        let as_walked = format!("{}/ok.rs", root.display());
+        let note = unanalyzed_summary(&[metric(&as_walked)], &cfg(&root))
+            .expect("three unanalyzable files must be reported");
+
+        let stated: usize = note
+            .split_whitespace()
+            .next()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or_default();
+        assert!(stated > 0, "no leading count in: {note}");
+        let counted: usize = note
+            .match_indices('(')
+            .filter_map(|(i, _)| note[i + 1..].split(')').next())
+            .filter_map(|n| n.parse::<usize>().ok())
+            .sum();
+        assert_eq!(
+            stated, counted,
+            "the number and the per-extension census disagree: {note}"
+        );
+        assert_eq!(
+            stated, 3,
+            "one .rs was analyzed, three files were not: {note}"
+        );
+    }
+
+    /// A supported extension is never reported as unsupported.
+    ///
+    /// The broken path match put all 220 analyzed `.rs` files into the skipped
+    /// census, so pmat told a Rust project it had "no complexity analyzer for
+    /// .rs" — while printing the metrics it had just computed for them.
+    #[test]
+    fn a_supported_extension_is_never_called_unsupported() {
+        let dir = tempfile::TempDir::with_prefix_in("pmat-supported-", ".").expect("temp dir");
+        // Relative for the same reason as above.
+        let root = std::path::PathBuf::from(".").join(dir.path().file_name().expect("dir name"));
+        std::fs::write(root.join("ok.rs"), "fn main(){}\n").expect("write rs");
+        std::fs::write(root.join("thing.cbl"), "x\n").expect("write cbl");
+
+        let as_walked = format!("{}/ok.rs", root.display());
+        let note = unanalyzed_summary(&[metric(&as_walked)], &cfg(&root))
+            .expect("the .cbl must be reported");
+
+        let claim = note
+            .lines()
+            .find(|l| l.contains("no complexity analyzer for"))
+            .unwrap_or_default();
+        assert!(!claim.is_empty(), "expected an unsupported line in: {note}");
+        assert!(
+            !claim.contains(".rs"),
+            "pmat analyzed the .rs and still called it unsupported: {note}"
+        );
+        assert!(claim.contains(".cbl"), "the .cbl must be named: {note}");
+    }
+
+    /// A file type pmat cannot analyze must be NAMED, not silently dropped.
+    ///
+    /// `✅ Successfully analyzed 1 file(s)` is a count with no denominator: one
+    /// `.rs` beside eight `.cbl` printed exactly that, and a COBOL codebase with
+    /// one stray Rust file got a clean bill of health for the Rust file alone.
+    #[test]
+    fn unanalyzed_file_types_are_named_with_a_denominator() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("ok.rs"), "fn main(){}\n").expect("write rs");
+        for ext in ["cbl", "f90", "vhd"] {
+            std::fs::write(dir.path().join(format!("thing.{ext}")), "x\n").expect("write");
+        }
+
+        let note = unanalyzed_summary(&[metric("ok.rs")], &cfg(dir.path()))
+            .expect("skipped files must be reported");
+
+        assert!(note.contains("3 of 4"), "needs a denominator, got: {note}");
+        for ext in [".cbl", ".f90", ".vhd"] {
+            assert!(note.contains(ext), "{ext} must be named, got: {note}");
+        }
+    }
+
+    /// The counter-test. A tree pmat fully analyzed must produce NO note —
+    /// otherwise the fix is a nag on every clean run, and a warning everyone
+    /// learns to ignore is worse than the silence it replaced.
+    #[test]
+    fn a_fully_analyzed_tree_is_not_nagged() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("a.rs"), "fn a(){}\n").expect("write a");
+        std::fs::write(dir.path().join("b.rs"), "fn b(){}\n").expect("write b");
+
+        assert_eq!(
+            unanalyzed_summary(&[metric("a.rs"), metric("b.rs")], &cfg(dir.path())),
+            None,
+            "a fully analyzed tree must produce no note"
+        );
+    }
+
+    /// Single-file mode has no population to compare against, so it must not
+    /// invent one from the file's parent directory.
+    #[test]
+    fn single_file_mode_reports_nothing() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        let file = dir.path().join("only.rs");
+        std::fs::write(&file, "fn f(){}\n").expect("write");
+        std::fs::write(dir.path().join("other.cbl"), "x\n").expect("write");
+
+        let c = ComplexityConfig::from_args(file, None, None, None, vec![], 300, 10);
+        assert_eq!(unanalyzed_summary(&[metric("only.rs")], &c), None);
     }
 }

@@ -199,6 +199,28 @@ jobs:
       - name: L1 — binding registry AllImplemented (build.rs, already enforced by install)
         run: echo "contracts/binding.yaml AllImplemented enforced at build time (build.rs)."
 
+      # ── L2/L3: the contracts must be readable BY THE TOOL THAT AUDITS THEM.
+      #
+      # `pv` reads `falsification_tests:`. Thirteen contracts carried their
+      # obligations under `falsification:`, so `pv status` reported 0 for them
+      # and 135 of this repository's 179 obligations were invisible to the audit
+      # meant to cover them — including all 90 test-bearing ones, in three
+      # contracts written on this very branch.
+      #
+      # This step is blocking and `provable ladder` is a required check, so an
+      # obligation that pv cannot read now fails the merge instead of reporting
+      # a confident zero. Entries with no `test:` field are left alone: those
+      # are alert thresholds, not falsification tests, and forcing them into
+      # the schema would fabricate tests that do not exist.
+      # PINNED. This gate is blocking and `provable ladder` is required, so an
+      # upstream release that tightens validation would redden every pull
+      # request without a commit here. 0.63.0 is the version the gate was
+      # verified against; bump it deliberately and re-run the gate locally.
+      - name: Install pv (provable-contracts CLI)
+        run: cargo install aprender-contracts-cli --version 0.63.0 --locked
+      - name: L2/L3 — every contract validates and its obligations are visible to pv
+        run: python3 scripts/pv-obligation-gate.py
+
       # ── Ladder gate: activates CB-1205/1206/1308/1330/1614/1618/1619 at once.
       # Advisory during the 30-day grace period (ALADR-012); flip
       # `continue-on-error` to false to make `provable ladder / comply` a

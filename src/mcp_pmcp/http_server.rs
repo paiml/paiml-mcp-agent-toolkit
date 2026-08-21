@@ -69,12 +69,19 @@ impl BearerToken {
     pub fn from_env() -> Result<Self> {
         match std::env::var(TOKEN_ENV) {
             Ok(t) => Self::new(t),
-            Err(_) => bail!(
+            // Exit code DECLARED, not inferred. This message used to reach
+            // `ExitCode::ConfigurationError` (4) because the substring "config"
+            // appears in "no auth provider is configured" — a clause about
+            // pmcp's behaviour, in a message about a missing token. The help at
+            // commands_enum/definition.rs:933 documents exit 4 as a contract,
+            // so the code is kept and now stated here, where it cannot be
+            // changed by editing prose.
+            Err(_) => Err(crate::cli_exit::configuration_error(anyhow::anyhow!(
                 "{TOKEN_ENV} is not set. `pmat serve` will not start an unauthenticated MCP \
                  endpoint: pmcp serves every request when no auth provider is configured, so \
                  starting without a token would publish the full tool surface to anyone who \
                  can reach the port."
-            ),
+            ))),
         }
     }
 

@@ -7,6 +7,8 @@ mod markdown_formatting_tests {
     /// Create test quality gate results for testing
     fn create_test_quality_results(passed: bool, violations: u64) -> QualityGateResults {
         QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed,
             total_violations: violations as usize,
             complexity_violations: (violations / 3) as usize,

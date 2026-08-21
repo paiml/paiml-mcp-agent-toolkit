@@ -1,3 +1,22 @@
+/// Source files the gate could have examined, counted the way the analyzers walk.
+///
+/// Deliberately the same `ignore` walk the rest of the tool uses (gitignore
+/// honoured, hidden skipped) so this number cannot disagree with what the checks
+/// actually saw. It counts FILES WITH AN EXTENSION rather than a language list:
+/// the question here is "was there anything to look at", and answering it from a
+/// list of supported languages would add another copy of a set this repository
+/// already keeps in several places that disagree.
+fn count_examined_sources(project_path: &std::path::Path) -> usize {
+    ignore::WalkBuilder::new(project_path)
+        .hidden(true)
+        .git_ignore(true)
+        .build()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_some_and(|t| t.is_file()))
+        .filter(|e| e.path().extension().is_some())
+        .count()
+}
+
 /// Handles project-wide quality gate checks
 #[allow(clippy::too_many_arguments)]
 async fn handle_project_quality_gate(
@@ -67,6 +86,32 @@ async fn handle_project_quality_gate(
     // the gate, while the MCP `quality_gate` tool over the SAME producer
     // (`check_satd`) ignored `severity:"info"`. One `// TODO` in one file was
     // `passed:false` here and `passed:true` there, with byte-identical findings.
+    // A gate that examined NOTHING is not a gate that passed.
+    //
+    // Measured before this: `quality-gate --checks complexity` over an empty
+    // directory and over a clean two-function project produced byte-identical
+    // JSON, byte-identical stderr, and exit 0 from both. `violations_pass` over
+    // an empty list is `true` whether the list is empty because the code is
+    // clean or because no code was read.
+    //
+    // The precedent is already in this repository: an unmeasured COVERAGE gate
+    // blocks rather than passing. This applies the same rule to the population.
+    results.files_examined = count_examined_sources(&project_path);
+    results.checks_run = checks.iter().map(|c| format!("{c:?}")).collect();
+    if results.files_examined == 0 {
+        violations.push(QualityViolation {
+            check_type: "population".to_string(),
+            severity: "error".to_string(),
+            file: project_path.display().to_string(),
+            line: None,
+            message: format!(
+                "no source files were examined under {}, so no check could have found \
+                 anything — this is an unmeasured gate, not a clean one",
+                project_path.display()
+            ),
+            details: None,
+        });
+    }
     results.passed = violations_pass(&violations);
     results.total_violations = violations.len();
     results.blocking_violations = blocking_violation_count(&violations);
@@ -190,5 +235,64 @@ fn get_check_display_name(check: &QualityCheckType) -> &'static str {
         QualityCheckType::Sections => "Sections",
         QualityCheckType::Provability => "Provability",
         QualityCheckType::All => "All",
+    }
+}
+
+#[cfg(test)]
+mod population_tests {
+    use super::count_examined_sources;
+
+    /// An empty tree has no population, and that is the fact the gate turns
+    /// into a verdict.
+    ///
+    /// Before this, `quality-gate --checks complexity` over an empty directory
+    /// and over a clean two-function project produced byte-identical JSON,
+    /// byte-identical stderr, and exit 0 from both. `violations_pass` over an
+    /// empty violation list is `true` whether the list is empty because the
+    /// code is clean or because no code was read.
+    #[test]
+    fn an_empty_tree_examines_nothing() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        assert_eq!(count_examined_sources(dir.path()), 0);
+    }
+
+    /// The counter-test, and the more important half. A tree WITH sources must
+    /// report a non-zero population, or the fix converts every clean run into a
+    /// failure and the gate becomes one people disable.
+    #[test]
+    fn a_populated_tree_is_counted() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("lib.rs"), "pub fn f() {}\n").expect("write");
+        std::fs::write(dir.path().join("notes.md"), "# hi\n").expect("write");
+        assert_eq!(count_examined_sources(dir.path()), 2);
+    }
+
+    /// Gitignored files are not population. The walk must agree with the one
+    /// the checks use, or the denominator would count files no check could see.
+    ///
+    /// `git init` is load-bearing: `ignore::WalkBuilder` only applies
+    /// `.gitignore` inside a repository, so without it this test passes for the
+    /// wrong reason — it would count 2 and prove nothing about the rule.
+    #[test]
+    fn gitignored_files_are_not_population() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        assert!(
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(dir.path())
+                .args(["init", "-q"])
+                .status()
+                .expect("git must be runnable")
+                .success(),
+            "git init"
+        );
+        std::fs::write(dir.path().join(".gitignore"), "skipme.rs\n").expect("write");
+        std::fs::write(dir.path().join("skipme.rs"), "pub fn s() {}\n").expect("write");
+        std::fs::write(dir.path().join("keep.rs"), "pub fn k() {}\n").expect("write");
+        assert_eq!(
+            count_examined_sources(dir.path()),
+            1,
+            "only keep.rs is population; .gitignore itself has no extension"
+        );
     }
 }

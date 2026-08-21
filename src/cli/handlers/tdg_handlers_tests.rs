@@ -1198,6 +1198,29 @@ mod sarif_format_fidelity {
         std::fs::read_to_string(&out).unwrap()
     }
 
+    /// As `render`, for a tree pmat cannot measure at all.
+    ///
+    /// The document is written and THEN the run refuses, so the rendering is
+    /// still available to compare while the exit stays non-zero. `pmat tdg` on
+    /// a directory holding nothing it can parse used to print
+    /// `Overall Score: 0.0/100 (F)` and exit 0 — a quality verdict over zero
+    /// evidence, and a green exit for a measurement never taken.
+    async fn render_unmeasured(
+        path: &std::path::Path,
+        format: TdgOutputFormat,
+        tag: &str,
+    ) -> String {
+        let out = path.join(format!("out-{tag}.txt"));
+        let err = handle_tdg_command(config_with_format(path.to_path_buf(), out.clone(), format))
+            .await
+            .expect_err("a tree with no gradable file must not exit 0");
+        assert!(
+            err.to_string().contains("not a clean result"),
+            "the refusal must say why: {err}"
+        );
+        std::fs::read_to_string(&out).expect("the document is written before the refusal")
+    }
+
     /// Write a small tree that scores well, so the top of the grade scale is
     /// actually exercised.
     fn clean_fixture() -> TempDir {
@@ -1276,7 +1299,11 @@ mod sarif_format_fidelity {
             (clean.path(), "clean"),
             (awful.path(), "awful"),
         ] {
-            let raw = render(dir, TdgOutputFormat::Sarif, tag).await;
+            let raw = if tag == "empty" {
+                render_unmeasured(dir, TdgOutputFormat::Sarif, tag).await
+            } else {
+                render(dir, TdgOutputFormat::Sarif, tag).await
+            };
             let doc: serde_json::Value = serde_json::from_str(&raw).unwrap();
             let results = doc["runs"][0]["results"].as_array().unwrap();
             assert!(

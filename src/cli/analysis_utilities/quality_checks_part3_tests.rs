@@ -6,6 +6,8 @@ mod quality_checks_part3_tests {
 
     fn create_test_results(passed: bool, total: usize) -> QualityGateResults {
         QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed,
             total_violations: total,
             blocking_violations: total,

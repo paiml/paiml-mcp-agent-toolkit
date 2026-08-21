@@ -480,6 +480,8 @@ mod extreme_tdd_coverage_tests {
     #[test]
     fn test_format_quality_gate_output_json() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 5,
             complexity_violations: 2,
@@ -513,6 +515,8 @@ mod extreme_tdd_coverage_tests {
     #[test]
     fn test_format_quality_gate_output_human() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: true,
             total_violations: 0,
             complexity_violations: 0,
@@ -537,6 +541,8 @@ mod extreme_tdd_coverage_tests {
     #[test]
     fn test_format_quality_gate_output_summary() {
         let results = QualityGateResults {
+            files_examined: 0,
+            checks_run: Vec::new(),
             passed: false,
             total_violations: 10,
             complexity_violations: 5,

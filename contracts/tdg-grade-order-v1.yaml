@@ -4,6 +4,14 @@ metadata:
   created: "2026-08-20"
   author: PAIML Engineering
   registry: true
+  # The type these obligations are proved ABOUT. `scripts/pv-obligation-gate.py`
+  # requires that every function named by an `applies_to` actually mentions it,
+  # so a contract cannot be green while the code it names ignores the proof.
+  # This is not hypothetical: thirteen theorems below proved the grade order
+  # while `check_tdg_grade_gate` still carried its own ["A","B","C","D","F"]
+  # table and never referenced `Grade`, and every gate in the repository was
+  # green throughout.
+  proved_type: Grade
   contract: tdg-grade-order-v1
   status: active
   description: >

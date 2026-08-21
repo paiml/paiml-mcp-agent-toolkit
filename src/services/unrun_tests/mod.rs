@@ -145,6 +145,72 @@ fn env_for(graph: &features::FeatureGraph, leg: &legs::Leg) -> Env {
     }
 }
 
+/// Refuse only when the feature parser actually LOST something.
+///
+/// This was `if graph.len() < 40`, a threshold calibrated to pmat's own
+/// manifest and then asserted as a fact about the parser. Every other crate
+/// tripped it: a fixture declaring exactly four features was told
+///
+///     only 4 features parsed from [features] — the parser is broken, not the crate
+///
+/// and a crate with no `[features]` table at all was told the same thing about
+/// zero. Both statements were false — the parser had read the table correctly,
+/// and the crate simply had few features — and each was a hard exit 1, so
+/// `analyze unrun-tests` could not be run on an ordinary crate at all.
+///
+/// The honest test compares what the parser produced against what the table
+/// textually declares. Fewer parsed than declared means entries were dropped,
+/// which is the failure the guard was written for; a small table is not.
+fn parser_is_intact(manifest: &str, parsed: usize) -> Result<(), String> {
+    let declared = declared_feature_count(manifest);
+    if parsed < declared {
+        return Err(format!(
+            "the [features] table declares {declared} feature(s) but only {parsed} parsed — \
+             the parser is broken, not the crate"
+        ));
+    }
+    Ok(())
+}
+
+/// How many entries the `[features]` table declares, counted independently of
+/// [`features::parse`] so the two cannot agree by sharing a bug.
+///
+/// Counts the `name =` lines inside `[features]`, skipping the continuation
+/// lines of a multi-line value (which carry no `=` of their own).
+fn declared_feature_count(manifest: &str) -> usize {
+    let mut in_features = false;
+    let mut continuing = false;
+    let mut declared = 0usize;
+    for raw in manifest.lines() {
+        let line = match raw.find('#') {
+            Some(i) if !raw[..i].contains('"') => &raw[..i],
+            _ => raw,
+        };
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            in_features = trimmed == "[features]";
+            continuing = false;
+            continue;
+        }
+        if !in_features || trimmed.is_empty() {
+            continue;
+        }
+        if continuing {
+            continuing = !trimmed.contains(']');
+            continue;
+        }
+        let Some((name, rest)) = trimmed.split_once('=') else {
+            continue;
+        };
+        if name.trim().trim_matches('"').is_empty() {
+            continue;
+        }
+        declared += 1;
+        continuing = rest.contains('[') && !rest.contains(']');
+    }
+    declared
+}
+
 /// Run the analysis.
 ///
 /// `extra_legs` are test-running invocations defined OUTSIDE this repository —
@@ -161,12 +227,7 @@ pub fn analyze(project_root: &Path, extra_legs: &[String]) -> Result<Report, Str
     let manifest = std::fs::read_to_string(project_root.join("Cargo.toml"))
         .map_err(|e| format!("Cargo.toml: {e}"))?;
     let graph = features::parse(&manifest);
-    if graph.len() < 40 {
-        return Err(format!(
-            "only {} features parsed from [features] — the parser is broken, not the crate",
-            graph.len()
-        ));
-    }
+    parser_is_intact(&manifest, graph.len())?;
 
     let mut legs: Vec<legs::Leg> = legs::from_workflows(&project_root.join(".github/workflows"))
         .into_iter()
