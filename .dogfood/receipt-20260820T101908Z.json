@@ -1,0 +1,153 @@
+{
+  "crate": "pmat",
+  "version": "3.32.0",
+  "timestamp": "20260820T101908Z",
+  "gates": [
+    {
+      "gate": "git-clean",
+      "result": "PASS",
+      "note": "working tree clean"
+    },
+    {
+      "gate": "version-unpublished",
+      "result": "PASS",
+      "note": "3.32.0 not yet published"
+    },
+    {
+      "gate": "changelog",
+      "result": "PASS",
+      "note": "CHANGELOG has 3.32.0"
+    },
+    {
+      "gate": "feature-scope",
+      "result": "INFO",
+      "note": "clippy/test run with: all features EXCEPT quarantined: broken-tests,red-phase-tests"
+    },
+    {
+      "gate": "fmt",
+      "result": "PASS",
+      "note": ""
+    },
+    {
+      "gate": "clippy",
+      "result": "PASS",
+      "note": "warning: pmat@3.32.0: Writing changed file: /home/noah/src/paiml-mcp-agent-toolkit/target/debug/build/pmat-166495d5f571e"
+    },
+    {
+      "gate": "test",
+      "result": "FAIL",
+      "note": "warning: pmat@3.32.0: KAIZEN-0178: generated 6 MCP tool schema(s)"
+    },
+    {
+      "gate": "coverage",
+      "result": "WARN",
+      "note": "no coverage-check make target \u2014 verify \u226595% manually"
+    },
+    {
+      "gate": "security",
+      "result": "PASS",
+      "note": "33 \u2502     { id = \"RUSTSEC-2024-0370\", reason = \"proc-macro-error: transitive via tabled_derive\u2192apr-cli\u2192aprender, no repla"
+    },
+    {
+      "gate": "release-binary",
+      "result": "PASS",
+      "note": "built: /home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat"
+    },
+    {
+      "gate": "deterministic-tools",
+      "result": "PASS",
+      "note": "pv 0.49.0, bashrs 6.67.0, pmat 3.32.0, probador 1.0.3"
+    },
+    {
+      "gate": "pv-contracts",
+      "result": "PASS",
+      "note": "22 contract(s) valid (positive control fired)"
+    },
+    {
+      "gate": "pv-lint",
+      "result": "PASS",
+      "note": "Summary: 0 errors, 1649 warnings, 0 suppressed, 6 new"
+    },
+    {
+      "gate": "pv-bindings",
+      "result": "REPORT",
+      "note": "pmat: 49/57 binding functions verified in source; 8 ghost(s) \u2014 NOT gating: pv 0.49.0 misses pub(super) fn and is module-blind (paiml/provable-contracts, re-arm when fixed). Triage each ghost by hand."
+    },
+    {
+      "gate": "bashrs",
+      "result": "PASS",
+      "note": "61 file(s) linted (receipt confirmed), 0 SEC/DET/IDEM errors (2 SC10xx suppressed \u2014 bashrs#226; 133 other)"
+    },
+    {
+      "gate": "renacer",
+      "result": "PASS",
+      "note": "% time     seconds  usecs/call     calls    errors syscall"
+    },
+    {
+      "gate": "pmat-verify",
+      "result": "PASS",
+      "note": "}"
+    },
+    {
+      "gate": "pmat-comply",
+      "result": "FAIL",
+      "note": "CB-200 (TDG Grade Gate) = Fail \u2014 see `pmat comply check`; 4 total fail(s), 0 Error-severity checks dark (#1008, not gated)"
+    },
+    {
+      "gate": "reachability",
+      "result": "WARN",
+      "note": "unreachable files/tests: 412 6562 (a file the build never compiles cannot be tested)"
+    },
+    {
+      "gate": "contracts",
+      "result": "WARN",
+      "note": "no contracts make target"
+    },
+    {
+      "gate": "publish-dry-run",
+      "result": "PASS",
+      "note": "packages cleanly"
+    },
+    {
+      "gate": "cli-surface",
+      "result": "PASS",
+      "note": "71 advertised subcommand(s) answer --help"
+    },
+    {
+      "gate": "transport-decl",
+      "result": "PASS",
+      "note": "declared: cli http mcp "
+    },
+    {
+      "gate": "transport-absence",
+      "result": "PASS",
+      "note": "no undeclared mcp/http surface advertised by the binary"
+    },
+    {
+      "gate": "interface-parity",
+      "result": "PASS",
+      "note": "3 transport(s), 12 e2e test(s) against the spawned release binary"
+    },
+    {
+      "gate": "surface-derivation",
+      "result": "REPORT",
+      "note": "no manifest declared in [package.metadata.transports] \u2014 the interface may be hand-rolled per transport; nothing here can tell single-sourcing from three lists that agree (declare manifest = { path, re"
+    },
+    {
+      "gate": "probador-suite",
+      "result": "SKIP",
+      "note": "crate does not configure probador (no probar.toml, no jugar-probar dep) \u2014 probador tests WASM/TUI apps; it has no CLI/HTTP/MCP interface verb (see interface-parity)"
+    },
+    {
+      "gate": "dogfood-use",
+      "result": "PASS",
+      "note": "\u2705 dogfood-use PASSED - the shipped binary behaves on real input"
+    },
+    {
+      "gate": "clean-room",
+      "result": "MANUAL",
+      "note": "run `make -C ../infra/machines/clean-room clean-room-pmat` (MANDATORY release gate)"
+    }
+  ],
+  "verdict": "NO-GO"
+}

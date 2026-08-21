@@ -24,12 +24,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      # Select the `pmat` package by NAME, not `.packages[0]`. This is a 2-member
-      # workspace (pmat + pmat-dashboard) and `cargo metadata` does not guarantee
-      # ordering: on this tree `.packages[0]` is pmat-dashboard, so the old
+      # Select the `pmat` package by NAME, not `.packages[0]`. This WAS a
+      # 2-member workspace (pmat + pmat-dashboard); `cargo metadata` does not
+      # guarantee ordering, `.packages[0]` was pmat-dashboard, and its inherited
+      # `[workspace.package] version` was pinned at 3.17.0 — so the old
       # `.packages[0].version` reported 3.17.0 for a 3.32.0 release. The
-      # msrv-check job below already carries this exact warning in a comment —
+      # msrv-check job below already carried this exact warning in a comment —
       # the lesson had been written down but not applied here.
+      #
+      # pmat-dashboard has since been deleted and this is now a single-package
+      # workspace, which would make `.packages[0]` unambiguous. Selecting by name
+      # is KEPT anyway: it is correct for any number of members, and reverting it
+      # would re-arm the same trap for whoever adds the next crate.
       #
       # And it must ASSERT, not echo. A step whose only effect is `echo` cannot
       # fail, so a job named "Verify published release" verified nothing.
@@ -69,11 +75,13 @@ jobs:
       # the value at runtime keeps the verified toolchain in lockstep with the
       # crate's actual MSRV — no future drift.
       #
-      # Select the `pmat` package by NAME, not `.packages[0]`: this is a 2-member
+      # Select the `pmat` package by NAME, not `.packages[0]`: this WAS a 2-member
       # workspace (pmat + pmat-dashboard) and `cargo metadata` does not guarantee
       # ordering, so `.packages[0]` was pmat-dashboard (no rust-version → "null",
-      # which then failed `rustup toolchain install null`). Guard against an empty
-      # read so a future selector break fails loudly here instead of downstream.
+      # which then failed `rustup toolchain install null`). pmat-dashboard is now
+      # deleted, but the by-name selection is kept — correct for any number of
+      # members. Guard against an empty read so a future selector break fails
+      # loudly here instead of downstream.
       - name: Read declared MSRV from Cargo.toml
         id: msrv
         run: |
