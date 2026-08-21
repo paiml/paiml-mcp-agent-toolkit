@@ -72,8 +72,10 @@ pub struct ExitCoded {
     /// error it wraps — whose `Display` is identical. Every coded failure printed
     /// its own message twice:
     ///
-    ///     Error: no source files were found under X ...: no source files were
-    ///     found under X ...
+    /// ```text
+    /// Error: no source files were found under X ...: no source files were
+    /// found under X ...
+    /// ```
     ///
     /// Dropping the attribute alone did NOT fix it; only the rename did.
     /// `{inner:#}` then renders the inner chain in full from a single entry, so
