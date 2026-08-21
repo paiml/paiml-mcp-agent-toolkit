@@ -180,6 +180,19 @@ fn scrub_cargo_env(cmd: &mut Command) {
 /// empty output — "no output" is the exact shape of the pass-by-default bug
 /// these harnesses exist to catch.
 pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
+    run_with_env(args, cwd, timeout, &[])
+}
+
+/// As [`run`], with an environment overlay a single flag declares it needs to be
+/// observable at all.
+///
+/// Per-flag, never global — see the RUST_LOG note below.
+pub(crate) fn run_with_env(
+    args: &[&str],
+    cwd: &Path,
+    timeout: Duration,
+    extra_env: &[(&str, &str)],
+) -> Observable {
     let mut cmd = Command::new(pmat_bin());
     cmd.args(args)
         .current_dir(cwd)
@@ -193,9 +206,34 @@ pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
         .env("PMAT_NO_UPDATE_CHECK", "1")
         .env("RAYON_NUM_THREADS", "2")
         .env_remove("PMAT_CONFIG")
+        // RUST_LOG is scrubbed for the same reason NO_COLOR is not SET: the
+        // sweep's verdict must be a property of the binary, not of the shell it
+        // was launched from.
+        //
+        // `--quiet` is honoured ABOVE clap dispatch (cli/mod.rs
+        // `effective_trace_filter` drops the RUST_LOG fallback, then
+        // `log_level_directive` forces "error"), so it suppresses framework
+        // chatter for EVERY command. With RUST_LOG unset there is no chatter to
+        // suppress and `--quiet` reads as a no-op on ~43 commands; with
+        // RUST_LOG=info exported it reads as effective on all of them. The
+        // verdict flipped on the developer's environment — the same class as the
+        // NO_COLOR bug above, third instance in this file.
+        //
+        // Removed rather than set: setting it globally would make `--verbose`
+        // measure 129B against 129B and read as a no-op on every command. A
+        // flag that needs an environment to be observable declares it per-flag
+        // in PROBE_ENV, never globally.
+        .env_remove("RUST_LOG")
         .stdin(std::process::Stdio::null());
 
     scrub_cargo_env(&mut cmd);
+
+    // LAST, deliberately. The chain above calls `.env_remove("RUST_LOG")`, so
+    // applying the overlay before it would delete the very variable a flag
+    // declared it needs — the fix would compile, run, and change nothing.
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
 
     cmd.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
@@ -956,6 +994,54 @@ pub fn locate(values: &[i64], needle: i64) -> usize {
 }
 ";
     write_module(root, "searching", searching, &mut modules);
+
+    // Findings the `--fail-on-*` flags need in order to be observable AT ALL.
+    //
+    // `analyze hardcoded-paths --fail-on-any` and `--fail-on-shipped`,
+    // `analyze vacuous-tests --fail-on-any` and `analyze unrun-tests
+    // --fail-on-any` were all reported as no-ops by the flag-efficacy sweep.
+    // They are wired correctly — each reaches a `std::process::exit` — and the
+    // corpus simply gave them nothing to fail on: 0 machine-specific paths,
+    // 0 vacuous tests, and 0 LIB tests (the corpus's only test lives in
+    // tests/basic.rs, an integration target, which is why unrun-tests read
+    // "0 of 0 lib tests").
+    //
+    // A flag that cannot fail because the fixture is clean is indistinguishable
+    // from one that cannot fail at all, which is the whole reason this harness
+    // exists. One module supplies all three findings:
+    let fail_on_fixtures = "\
+//! Deliberate findings, so the --fail-on-* flags have something to act on.
+
+/// A machine-specific path in SHIPPED code — `/home/<user>/` with the trailing
+/// slash is what `analyze hardcoded-paths` looks for, and being outside a test
+/// module is what makes it Site::Shipped rather than Site::Test. That
+/// distinction is the difference between --fail-on-any and --fail-on-shipped.
+pub fn cache_dir() -> &'static str {
+    \"/home/alice/.cache/corpus\"
+}
+
+#[cfg(test)]
+mod tests {
+    /// Vacuous by construction: it executes a line and checks nothing, so it
+    /// catches a panic and not a wrong answer. `analyze vacuous-tests` calls
+    /// this NoFailureMode.
+    #[test]
+    fn smoke() {
+        let _ = super::cache_dir();
+    }
+
+    /// A LIB test behind a feature the corpus's only CI leg does not enable —
+    /// its ci.yml runs `cargo test --all`, i.e. default features, and `simd` is
+    /// not in `default`. So no leg compiles this, which is precisely what
+    /// `analyze unrun-tests` reports.
+    #[cfg(feature = \"simd\")]
+    #[test]
+    fn simd_only() {
+        assert_eq!(super::cache_dir().len(), 27);
+    }
+}
+";
+    write_module(root, "fail_on_fixtures", fail_on_fixtures, &mut modules);
 
     // A file that is almost entirely dead, so `quality-gate`'s dead-code check
     // has something to fire on. The `dead_*` family above leaves the corpus at

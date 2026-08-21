@@ -157,6 +157,45 @@ gate-differential: ## Every metric must differ between an empty and a large proj
 gate-artifact: gate-differential gate-flag-efficacy ## Both falsification gates
 	@echo "✅ artifact falsification gates passed"
 
+# ── Release gates the dogfood protocol looks for by name.
+#
+# All three were ABSENT, and their absence reported as WARN — which the protocol
+# itself forbids: "A missing dogfood capability is a NO-GO, not a WARN. A
+# released tool nobody actually ran is not dogfooded, and a WARN in a release
+# protocol is a step everybody learns to walk past."
+#
+# So the ≥95% floor and the whole provable-contract tier were UNVERIFIED and
+# reported as a soft warning. That is the same absence-rendered-as-success shape
+# this release has been clearing, sitting in the release protocol.
+#
+# Every one of these FAILS when its tool is missing. It must never skip: a gate
+# that quietly skips its own dependency proves nothing, which is the failure the
+# dogfood protocol names in its own text.
+
+.PHONY: coverage-check contracts dogfood-use
+
+coverage-check: ## Release gate: coverage must be MEASURED and at or above the floor
+	@echo "🔬 Release coverage gate (floor $(COV_THRESHOLD)%)..."
+	@$(MAKE) --no-print-directory coverage
+
+contracts: ## Release gate: L5 Lean proofs build, are hole-free, and pv can read every obligation
+	@echo "🔬 Provable-contract tier (L2/L3 + L5)..."
+	@command -v lake >/dev/null 2>&1 || { 		echo "❌ lake is not installed — the L5 proofs cannot be built."; 		echo "   A missing tool is a FAILURE, not a skip: a gate that skips its own"; 		echo "   dependency proves nothing. Install elan/lean, then re-run."; 		exit 1; }
+	@command -v pv >/dev/null 2>&1 || { 		echo "❌ pv is not installed — contract obligations cannot be validated."; 		echo "   Install with: cargo install aprender-contracts-cli --locked"; 		exit 1; }
+	@echo "  L5: lake build"
+	@cd contracts/lean && lake build
+	@echo "  L5: zero proof holes (no sorry / admit)"
+	@if grep -rInE '\bsorry\b|\badmit\b' contracts/lean/Theorems/; then 		echo "❌ Lean proofs contain sorry/admit — L5 is asserted, not proven"; 		exit 1; 	fi
+	@echo "     hole-free (0 sorry, 0 admit)"
+	@echo "  L2/L3: every contract validates and every obligation is visible to pv"
+	@python3 scripts/pv-obligation-gate.py
+	@echo "✅ contract tier holds"
+
+dogfood-use: ## Release gate: pmat is run against its own tree and must agree with reality
+	@echo "🔬 Dogfooding pmat on its own source..."
+	@bash scripts/dogfood-use.sh
+
+
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
 	@echo "⚡ Running ALL tests (unit + 171 integration binaries)..."
@@ -532,11 +571,22 @@ coverage: ## Coverage summary + threshold check (<5 min)
 	@cargo +nightly llvm-cov report --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE) >/dev/null 2>&1 || true
 	@./scripts/record-metric.sh coverage
 	@COV_PCT=$$(grep -E '^TOTAL' target/coverage/summary.txt | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
-	if [ -n "$$COV_PCT" ] && [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
+	if [ -z "$$COV_PCT" ]; then \
+		echo "❌ Coverage NOT MEASURED — no TOTAL line parsed from target/coverage/summary.txt."; \
+		echo "   This is not a pass. The guard used to read"; \
+		echo "     if [ -n \"$$COV_PCT\" ] && [ below threshold ]; then fail; else PASS; fi"; \
+		echo "   so an empty percentage took the else branch and printed"; \
+		echo "     ✅ Coverage % meets threshold $(COV_THRESHOLD)%"; \
+		echo "   at exit 0 — a broken instrumentation run reported success."; \
+		exit 1; \
+	elif [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
 		echo "❌ Coverage $${COV_PCT}% is below threshold $(COV_THRESHOLD)%"; \
 		exit 1; \
 	else \
 		echo "✅ Coverage $${COV_PCT}% meets threshold $(COV_THRESHOLD)%"; \
+		echo "   SCOPE: --lib only, and COVERAGE_EXCLUDE filters /cli/, /handlers/,"; \
+		echo "   /services/, /tdg/, /mcp*/, /contracts/ and more. This number is NOT"; \
+		echo "   project-wide — \`make coverage-broad\` is the unfiltered one."; \
 	fi
 
 coverage-broad: ## Honest project-wide coverage (no regex, no --skip, no coverage(off)). Informational.

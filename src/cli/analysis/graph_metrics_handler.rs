@@ -258,23 +258,45 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 // Extract dependencies from file
-fn extract_dependencies(content: &str, file_path: &Path) -> Result<Vec<String>> {
-    use regex::Regex;
+/// Import patterns per language, compiled ONCE for the process.
+///
+/// They were built inside the per-file extractor, so every file in the tree paid
+/// to recompile its language's two patterns. `analyze graph-metrics --path
+/// src/services` took 6.37s over 1,387 files before this hoist. A controlled
+/// same-bytes experiment put 93% of the command's runtime in a constant charged
+/// per FILE rather than per byte, and `analyze complexity` over the same
+/// fixtures showed no such gap — regex compilation was the only difference.
+///
+/// `expect` rather than `?`: compile-time literals, so a failure is a bug here
+/// and not something a caller can act on.
+struct DepPatterns {
+    rust: Vec<regex::Regex>,
+    js: Vec<regex::Regex>,
+    py: Vec<regex::Regex>,
+}
 
+static DEP_PATTERNS: std::sync::LazyLock<DepPatterns> = std::sync::LazyLock::new(|| {
+    use regex::Regex;
+    let re = |p: &str| Regex::new(p).expect("static dependency pattern must compile");
+    DepPatterns {
+        rust: vec![re(r"use\s+(\w+)"), re(r"mod\s+(\w+)")],
+        js: vec![
+            re(r#"import\s+.*from\s+['"]\./(\w+)"#),
+            re(r#"require\(['"]\./(\w+)"#),
+        ],
+        py: vec![re(r"from\s+(\w+)\s+import"), re(r"import\s+(\w+)")],
+    }
+});
+
+fn extract_dependencies(content: &str, file_path: &Path) -> Result<Vec<String>> {
     let ext = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");
     let mut deps = Vec::new();
 
-    let patterns = match ext {
-        "rs" => vec![Regex::new(r"use\s+(\w+)")?, Regex::new(r"mod\s+(\w+)")?],
-        "js" | "ts" => vec![
-            Regex::new(r#"import\s+.*from\s+['"]\./(\w+)"#)?,
-            Regex::new(r#"require\(['"]\./(\w+)"#)?,
-        ],
-        "py" => vec![
-            Regex::new(r"from\s+(\w+)\s+import")?,
-            Regex::new(r"import\s+(\w+)")?,
-        ],
-        _ => vec![],
+    let patterns: &[regex::Regex] = match ext {
+        "rs" => &DEP_PATTERNS.rust,
+        "js" | "ts" => &DEP_PATTERNS.js,
+        "py" => &DEP_PATTERNS.py,
+        _ => &[],
     };
 
     for pattern in patterns {

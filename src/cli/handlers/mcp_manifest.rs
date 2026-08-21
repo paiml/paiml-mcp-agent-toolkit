@@ -3,7 +3,10 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Handle MCP commands (MACS-014)
-#[provable_contracts_macros::contract("macs-artifacts-v1.yaml", equation = "mcp_manifest_fidelity")]
+// `manifest_faithful`, not `mcp_manifest_fidelity` — the latter was never
+// declared by macs-artifacts-v1.yaml, so this annotation bound to nothing while
+// reading as a discharged proof obligation. Caught by `contract_integrity`.
+#[provable_contracts_macros::contract("macs-artifacts-v1.yaml", equation = "manifest_faithful")]
 pub async fn handle_mcp_command(cmd: McpCommands, project_path: &Path) -> Result<()> {
     match cmd {
         McpCommands::Manifest { write } => {
