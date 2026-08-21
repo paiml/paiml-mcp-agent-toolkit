@@ -995,6 +995,54 @@ pub fn locate(values: &[i64], needle: i64) -> usize {
 ";
     write_module(root, "searching", searching, &mut modules);
 
+    // Findings the `--fail-on-*` flags need in order to be observable AT ALL.
+    //
+    // `analyze hardcoded-paths --fail-on-any` and `--fail-on-shipped`,
+    // `analyze vacuous-tests --fail-on-any` and `analyze unrun-tests
+    // --fail-on-any` were all reported as no-ops by the flag-efficacy sweep.
+    // They are wired correctly — each reaches a `std::process::exit` — and the
+    // corpus simply gave them nothing to fail on: 0 machine-specific paths,
+    // 0 vacuous tests, and 0 LIB tests (the corpus's only test lives in
+    // tests/basic.rs, an integration target, which is why unrun-tests read
+    // "0 of 0 lib tests").
+    //
+    // A flag that cannot fail because the fixture is clean is indistinguishable
+    // from one that cannot fail at all, which is the whole reason this harness
+    // exists. One module supplies all three findings:
+    let fail_on_fixtures = "\
+//! Deliberate findings, so the --fail-on-* flags have something to act on.
+
+/// A machine-specific path in SHIPPED code — `/home/<user>/` with the trailing
+/// slash is what `analyze hardcoded-paths` looks for, and being outside a test
+/// module is what makes it Site::Shipped rather than Site::Test. That
+/// distinction is the difference between --fail-on-any and --fail-on-shipped.
+pub fn cache_dir() -> &'static str {
+    \"/home/alice/.cache/corpus\"
+}
+
+#[cfg(test)]
+mod tests {
+    /// Vacuous by construction: it executes a line and checks nothing, so it
+    /// catches a panic and not a wrong answer. `analyze vacuous-tests` calls
+    /// this NoFailureMode.
+    #[test]
+    fn smoke() {
+        let _ = super::cache_dir();
+    }
+
+    /// A LIB test behind a feature the corpus's only CI leg does not enable —
+    /// its ci.yml runs `cargo test --all`, i.e. default features, and `simd` is
+    /// not in `default`. So no leg compiles this, which is precisely what
+    /// `analyze unrun-tests` reports.
+    #[cfg(feature = \"simd\")]
+    #[test]
+    fn simd_only() {
+        assert_eq!(super::cache_dir().len(), 27);
+    }
+}
+";
+    write_module(root, "fail_on_fixtures", fail_on_fixtures, &mut modules);
+
     // A file that is almost entirely dead, so `quality-gate`'s dead-code check
     // has something to fire on. The `dead_*` family above leaves the corpus at
     // ~3% dead overall with a worst file of ~17.5%, and the check's thresholds

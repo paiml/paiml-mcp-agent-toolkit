@@ -409,7 +409,14 @@ const PROBE_OUTPUT_FILE: &str = "/tmp/pmat-flag-efficacy-probe-output.txt";
 /// on every command — the same trap as the NO_COLOR bug recorded in
 /// `mod.rs::run`, which turned ~40 `--color` flags into false positives. The
 /// overlay is therefore attached to the one flag whose effect it exposes.
-const PROBE_ENV: &[(&str, &str, &[(&str, &str)])] = &[("*", "--quiet", &[("RUST_LOG", "info")])];
+/// `(command path or "*", flag, environment)`.
+type ProbeEnvRow = (
+    &'static str,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+);
+
+const PROBE_ENV: &[ProbeEnvRow] = &[("*", "--quiet", &[("RUST_LOG", "info")])];
 
 fn probe_env(path: &str, flag: &str) -> &'static [(&'static str, &'static str)] {
     PROBE_ENV

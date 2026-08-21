@@ -69,6 +69,8 @@ pub async fn handle_coverage_improve(
         println!("{}", formatted);
     }
 
+    enforce_mutation_threshold(&report, mutation_threshold)?;
+
     // Print summary
     print_summary(&report);
 
@@ -80,14 +82,36 @@ pub async fn handle_coverage_improve(
 }
 
 /// Format report as human-readable text
+/// The human rendering. Colour lives HERE and never in the report type, which is
+/// also serialised to `--format json` — an escape inside a JSON string is a
+/// parse failure, not a decoration. `c::*` return the bare payload when colour
+/// is off, so `--color never` output is byte-identical to what it always was.
+///
+/// `--color` was inert for this command: it accepted `always` and emitted no
+/// escape, the same defect fixed for reachability, hardcoded-paths, unrun-tests
+/// and vacuous-tests.
 fn format_text(report: &CoverageImprovementReport) -> String {
+    use crate::cli::colors as c;
     let mut output = String::new();
-    output.push_str("Coverage Improvement Report\n");
+    output.push_str(&c::header("Coverage Improvement Report"));
+    output.push('\n');
     output.push_str("===========================\n\n");
 
-    output.push_str(&format!("Baseline:  {:.2}%\n", report.baseline_coverage));
-    output.push_str(&format!("Target:    {:.2}%\n", report.target_coverage));
-    output.push_str(&format!("Final:     {:.2}%\n", report.final_coverage));
+    output.push_str(&format!(
+        "{} {}\n",
+        c::label("Baseline: "),
+        c::number(&format!("{:.2}%", report.baseline_coverage))
+    ));
+    output.push_str(&format!(
+        "{} {}\n",
+        c::label("Target:   "),
+        c::number(&format!("{:.2}%", report.target_coverage))
+    ));
+    output.push_str(&format!(
+        "{} {}\n",
+        c::label("Final:    "),
+        c::number(&format!("{:.2}%", report.final_coverage))
+    ));
     output.push_str(&format!(
         "Gain:      +{:.2}%\n\n",
         report.final_coverage - report.baseline_coverage
@@ -198,6 +222,56 @@ fn print_summary(report: &CoverageImprovementReport) {
     } else {
         eprintln!("⚠️  {}", report.stop_reason);
     }
+}
+
+/// The gate `--mutation-threshold` promises, and did not deliver.
+///
+/// The flag parsed, defaulted to 80.0, and was threaded into
+/// `CoverageImprovementConfig.mutation_threshold` — where NOTHING read it. Its
+/// only other mentions were tests asserting the field held the value the test
+/// had just assigned, and every one of those tests is itself dead (orphaned, or
+/// behind the `broken-tests` feature). So `--mutation-threshold 0` and
+/// `--mutation-threshold 100` behaved identically: a threshold nothing compared
+/// against, which is the same defect shape as a gate that cannot fail.
+///
+/// Mutation testing DOES run and DOES produce a score; it was simply never
+/// checked against the number the user supplied.
+///
+/// Both branches name the threshold, deliberately. When no score was measured —
+/// `--fast` skips cargo-mutants entirely and the score is NaN — the gate cannot
+/// judge, and says so rather than passing silently. An unmeasured score must not
+/// read as a met threshold, which is the rule this release has applied
+/// everywhere else.
+fn enforce_mutation_threshold(
+    report: &crate::services::coverage_improvement::CoverageImprovementReport,
+    threshold: f64,
+) -> Result<()> {
+    let measured = report
+        .iterations
+        .last()
+        .map(|i| i.mutation_score)
+        .filter(|s| s.is_finite());
+
+    let Some(score) = measured else {
+        eprintln!(
+            "🚦 --mutation-threshold {threshold:.1} was NOT applied: no mutation score was \
+             measured (--fast skips cargo-mutants, and a run that generated no mutants has \
+             nothing to score). This is not a pass."
+        );
+        return Ok(());
+    };
+
+    eprintln!(
+        "🚦 mutation gate: measured {score:.1} against the required minimum {threshold:.1} \
+         (--mutation-threshold)"
+    );
+    if score < threshold {
+        anyhow::bail!(
+            "mutation score {score:.1} is below the required minimum of {threshold:.1} \
+             (--mutation-threshold)"
+        );
+    }
+    Ok(())
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
