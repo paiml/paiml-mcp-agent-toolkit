@@ -17,7 +17,9 @@
 //! PMAT_FLAG_SWEEP=all cargo test ...    # the whole tree, for a release gate
 //! ```
 
-use super::{build_corpus, help_for, parse_help, run, CorpusSize, HelpFlag, DEFAULT_TIMEOUT};
+use super::{
+    build_corpus, help_for, parse_help, run, run_with_env, CorpusSize, HelpFlag, DEFAULT_TIMEOUT,
+};
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::Path;
@@ -389,6 +391,33 @@ const PROBE_OUTPUT_FILE: &str = "/tmp/pmat-flag-efficacy-probe-output.txt";
 /// Each entry is a claim that this context is where the flag lives, and is as
 /// reviewable as an `ALLOWED_NOOPS` entry — with the difference that the flag
 /// still has to prove itself.
+/// Environment a flag needs before its effect is observable at all.
+///
+/// `("*", flag, env)` applies to that flag on every command; a concrete path
+/// applies to that command only. Each row is a reviewable claim about WHERE the
+/// flag's effect lives, exactly like `PROBE_CONTEXT` is for arguments.
+///
+/// PER-FLAG, NEVER GLOBAL, and that is the whole design. `--quiet` is honoured
+/// above clap dispatch — `effective_trace_filter` drops the RUST_LOG fallback
+/// and `log_level_directive` forces "error" — so it suppresses framework
+/// chatter for every command in the tree. With RUST_LOG unset there is nothing
+/// to suppress and it reads as a no-op on ~43 commands; the sweep was reporting
+/// a property of the developer's shell.
+///
+/// Setting RUST_LOG globally in `run()` would fix `--quiet` and break
+/// `--verbose`, which would then measure 129B against 129B and read as a no-op
+/// on every command — the same trap as the NO_COLOR bug recorded in
+/// `mod.rs::run`, which turned ~40 `--color` flags into false positives. The
+/// overlay is therefore attached to the one flag whose effect it exposes.
+const PROBE_ENV: &[(&str, &str, &[(&str, &str)])] = &[("*", "--quiet", &[("RUST_LOG", "info")])];
+
+fn probe_env(path: &str, flag: &str) -> &'static [(&'static str, &'static str)] {
+    PROBE_ENV
+        .iter()
+        .find(|(p, f, _)| (*p == "*" || *p == path) && *f == flag)
+        .map_or(&[][..], |(_, _, env)| *env)
+}
+
 const PROBE_CONTEXT: &[(&str, &str, &[&str])] = &[
     // `--quiet` suppresses the "Diagnostic report written to: ..." notice, which
     // only exists on the --output branch (project_diag_handlers.rs:123).
@@ -636,16 +665,17 @@ fn check_flag(
     }
     let path_str = path.join(" ");
     let extra = probe_context(&path_str, &flag.long);
+    let env = probe_env(&path_str, &flag.long);
     let mut refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
     refs.extend_from_slice(extra);
 
-    // With a probe context the control must carry it too, or the comparison
-    // measures the context rather than the flag.
+    // With a probe context OR a probe environment the control must carry it too,
+    // or the comparison measures the context rather than the flag.
     let contextual_baseline;
-    let baseline = if extra.is_empty() {
+    let baseline = if extra.is_empty() && env.is_empty() {
         baseline
     } else {
-        contextual_baseline = run(&refs, cwd, DEFAULT_TIMEOUT);
+        contextual_baseline = run_with_env(&refs, cwd, DEFAULT_TIMEOUT, env);
         if let Some(why) = baseline_unusable(&contextual_baseline) {
             return Verdict::Skipped(format!("probe context {extra:?}: {why}"));
         }
@@ -665,8 +695,8 @@ fn check_flag(
         let mut b = refs.clone();
         b.push(&flag.long);
         b.push(&values[1]);
-        let oa = run(&a, cwd, DEFAULT_TIMEOUT);
-        let ob = run(&b, cwd, DEFAULT_TIMEOUT);
+        let oa = run_with_env(&a, cwd, DEFAULT_TIMEOUT, env);
+        let ob = run_with_env(&b, cwd, DEFAULT_TIMEOUT, env);
         return compare_probes(&oa, &ob);
     }
 
@@ -686,15 +716,15 @@ fn check_flag(
         let mut b = refs.clone();
         b.push(&flag.long);
         b.push(hi);
-        let oa = run(&a, cwd, DEFAULT_TIMEOUT);
-        let ob = run(&b, cwd, DEFAULT_TIMEOUT);
+        let oa = run_with_env(&a, cwd, DEFAULT_TIMEOUT, env);
+        let ob = run_with_env(&b, cwd, DEFAULT_TIMEOUT, env);
         return compare_probes(&oa, &ob);
     }
 
     // Boolean switch: presence must change the observable.
     let mut with = refs.clone();
     with.push(&flag.long);
-    let o = run(&with, cwd, DEFAULT_TIMEOUT);
+    let o = run_with_env(&with, cwd, DEFAULT_TIMEOUT, env);
     if o.timed_out {
         return Verdict::Skipped("timed out".into());
     }

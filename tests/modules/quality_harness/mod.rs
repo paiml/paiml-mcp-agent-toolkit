@@ -180,6 +180,19 @@ fn scrub_cargo_env(cmd: &mut Command) {
 /// empty output — "no output" is the exact shape of the pass-by-default bug
 /// these harnesses exist to catch.
 pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
+    run_with_env(args, cwd, timeout, &[])
+}
+
+/// As [`run`], with an environment overlay a single flag declares it needs to be
+/// observable at all.
+///
+/// Per-flag, never global — see the RUST_LOG note below.
+pub(crate) fn run_with_env(
+    args: &[&str],
+    cwd: &Path,
+    timeout: Duration,
+    extra_env: &[(&str, &str)],
+) -> Observable {
     let mut cmd = Command::new(pmat_bin());
     cmd.args(args)
         .current_dir(cwd)
@@ -193,9 +206,34 @@ pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
         .env("PMAT_NO_UPDATE_CHECK", "1")
         .env("RAYON_NUM_THREADS", "2")
         .env_remove("PMAT_CONFIG")
+        // RUST_LOG is scrubbed for the same reason NO_COLOR is not SET: the
+        // sweep's verdict must be a property of the binary, not of the shell it
+        // was launched from.
+        //
+        // `--quiet` is honoured ABOVE clap dispatch (cli/mod.rs
+        // `effective_trace_filter` drops the RUST_LOG fallback, then
+        // `log_level_directive` forces "error"), so it suppresses framework
+        // chatter for EVERY command. With RUST_LOG unset there is no chatter to
+        // suppress and `--quiet` reads as a no-op on ~43 commands; with
+        // RUST_LOG=info exported it reads as effective on all of them. The
+        // verdict flipped on the developer's environment — the same class as the
+        // NO_COLOR bug above, third instance in this file.
+        //
+        // Removed rather than set: setting it globally would make `--verbose`
+        // measure 129B against 129B and read as a no-op on every command. A
+        // flag that needs an environment to be observable declares it per-flag
+        // in PROBE_ENV, never globally.
+        .env_remove("RUST_LOG")
         .stdin(std::process::Stdio::null());
 
     scrub_cargo_env(&mut cmd);
+
+    // LAST, deliberately. The chain above calls `.env_remove("RUST_LOG")`, so
+    // applying the overlay before it would delete the very variable a flag
+    // declared it needs — the fix would compile, run, and change nothing.
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
 
     cmd.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
