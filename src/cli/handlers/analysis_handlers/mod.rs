@@ -10,8 +10,92 @@ mod entropy_semantic;
 pub mod perf_report;
 mod platform_routes;
 
+use crate::cli::colors as c;
 use crate::cli::{self, AnalyzeCommands};
 use anyhow::Result;
+
+// ── Colour for the HUMAN output of reachability, hardcoded-paths, unrun-tests
+// and vacuous-tests.
+//
+// `--color always` did nothing for these four. Measured against this repository:
+// 52, 42, 184 and 53 lines of output respectively, and ZERO ANSI escapes under
+// both `--color always` and `--color never` — byte-identical. The flag was
+// accepted and inert, which is the class this release exists to remove.
+//
+// Colouring lives HERE, at the print site, and NOT inside `summary()`. The same
+// `summary()` string is embedded verbatim into the machine-readable payloads
+// (`"summary": report.summary()`), and `colors_enabled()` is a process-wide
+// oracle that answers "yes" whenever stdout is a tty — so colour inside
+// `summary()` would put raw escapes inside a JSON string field any time the
+// tool runs under a pty (CI with tty allocation, `script`, an agent harness).
+// That is a silent, environment-dependent corruption no local `| jq` reproduces.
+//
+// It also would have been a fake fix: `summary()` is one line of 42-184, so
+// colouring it alone flips the flag-efficacy verdict to "Effective" on a single
+// escape byte while the report still reads monochrome.
+//
+// Every helper is byte-identical to the old format string when colour is off,
+// which the tests pin explicitly — a one-sided "is plain" assertion is satisfied
+// by a printer that emits no colour at all, and that is the defect shape this
+// module keeps re-having (see src/cli/colors.rs).
+
+/// The report's own headline sentence.
+fn h_headline(s: &str) -> String {
+    c::label(s)
+}
+
+/// `  <path>  (N lines, M tests)` — reachability's orphan rows.
+fn h_orphan_row(path: &str, lines: usize, tests: usize) -> String {
+    format!(
+        "  {}  ({} lines, {} tests)",
+        c::path(path),
+        c::number(&lines.to_string()),
+        c::number(&tests.to_string())
+    )
+}
+
+/// `  [site] file:line  path  (reason)` — hardcoded-paths findings.
+fn h_hardcoded_row(site: &str, file: &str, line: usize, path: &str, reason: &str) -> String {
+    format!(
+        "  [{}] {}:{}  {}  ({})",
+        c::label(site),
+        c::path(file),
+        c::number(&line.to_string()),
+        path,
+        c::dim(reason)
+    )
+}
+
+/// `  [bucket] N test(s)` — unrun-tests bucket headers.
+fn h_bucket_header(bucket: &str, n: usize) -> String {
+    format!(
+        "  [{}] {} test(s)",
+        c::label(bucket),
+        c::number(&n.to_string())
+    )
+}
+
+/// `      <path>` — a member row under a bucket.
+fn h_member_row(path: &str) -> String {
+    format!("      {}", c::path(path))
+}
+
+/// `  [kind] file:line  name<detail>` — vacuous-tests rows.
+fn h_vacuous_row(kind: &str, file: &str, line: usize, name: &str, detail: &str) -> String {
+    format!(
+        "  [{}] {}:{}  {}{}",
+        c::label(kind),
+        c::path(file),
+        c::number(&line.to_string()),
+        name,
+        c::dim(detail)
+    )
+}
+
+/// A de-emphasised aside: `  skipped: x`, `  unresolved: x`, `  leg: x`.
+fn h_aside(text: &str) -> String {
+    c::dim(text)
+}
 
 /// Refuse an `--ml` flag whose scorer is not wired into the handler (GH-97).
 ///
@@ -77,15 +161,18 @@ async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
             })
         );
     } else {
-        println!("{}", report.summary());
+        println!("{}", h_headline(&report.summary()));
         for o in report.orphans.iter().take(40) {
-            println!("  {}  ({} lines, {} tests)", o.path, o.lines, o.tests);
+            println!("{}", h_orphan_row(&o.path, o.lines, o.tests));
         }
         if report.orphans.len() > 40 {
-            println!("  … and {} more", report.orphans.len() - 40);
+            println!(
+                "{}",
+                h_aside(&format!("  … and {} more", report.orphans.len() - 40))
+            );
         }
         for u in report.unresolved.iter().take(10) {
-            println!("  unresolved: {u}");
+            println!("{}", h_aside(&format!("  unresolved: {u}")));
         }
     }
 
@@ -437,21 +524,17 @@ async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> 
             }))?
         );
     } else {
-        println!("{}", report.summary());
+        println!("{}", h_headline(&report.summary()));
         const MAX_SHOWN: usize = 40;
         for f in report.findings.iter().take(MAX_SHOWN) {
             println!(
-                "  [{}] {}:{}  {}  ({})",
-                f.site.as_str(),
-                f.file,
-                f.line,
-                f.path,
-                f.kind.reason()
+                "{}",
+                h_hardcoded_row(f.site.as_str(), &f.file, f.line, &f.path, f.kind.reason())
             );
         }
         if let Some(hidden) = report.findings.len().checked_sub(MAX_SHOWN) {
             if hidden > 0 {
-                println!("  … and {hidden} more");
+                println!("{}", h_aside(&format!("  … and {hidden} more")));
             }
         }
         for s in report
@@ -460,7 +543,7 @@ async fn route_hardcoded_paths(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> 
             .iter()
             .chain(&report.skipped.not_utf8)
         {
-            println!("  skipped: {s}");
+            println!("{}", h_aside(&format!("  skipped: {s}")));
         }
     }
 
@@ -528,21 +611,27 @@ fn print_unrun_report(
         "ledger" => print!("{}", ledger::render(report)),
         "json" => println!("{}", serde_json::to_string_pretty(&json_of(report))?),
         _ => {
-            println!("{}", report.summary());
+            println!("{}", h_headline(&report.summary()));
             for leg in &report.legs {
-                println!("  leg: {leg}");
+                println!("{}", h_aside(&format!("  leg: {leg}")));
             }
             for (bucket, members) in report.buckets() {
-                println!("  [{}] {} test(s)", bucket, members.len());
+                println!("{}", h_bucket_header(&bucket, members.len()));
                 for m in members.iter().take(5) {
-                    println!("      {}", m.path);
+                    println!("{}", h_member_row(&m.path));
                 }
                 if members.len() > 5 {
-                    println!("      … and {} more", members.len() - 5);
+                    println!(
+                        "{}",
+                        h_aside(&format!("      … and {} more", members.len() - 5))
+                    );
                 }
             }
             for f in &report.undeterminable {
-                println!("  [undeterminable] {}  cfg: {}", f.path, f.cfg);
+                println!(
+                    "{}",
+                    h_aside(&format!("  [undeterminable] {}  cfg: {}", f.path, f.cfg))
+                );
             }
         }
     }
@@ -627,7 +716,7 @@ async fn route_vacuous_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
     if format == "json" {
         println!("{}", serde_json::to_string_pretty(&report)?);
     } else {
-        println!("{}", report.summary());
+        println!("{}", h_headline(&report.summary()));
         for v in report.vacuous.iter().take(40) {
             let detail = v
                 .detail
@@ -635,27 +724,35 @@ async fn route_vacuous_tests(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
                 .map(|d| format!(" — {d}"))
                 .unwrap_or_default();
             println!(
-                "  [{}] {}:{}  {}{}",
-                v.kind.as_str(),
-                v.file,
-                v.line,
-                v.name,
-                detail
+                "{}",
+                h_vacuous_row(v.kind.as_str(), &v.file, v.line, &v.name, &detail)
             );
         }
         if report.vacuous.len() > 40 {
-            println!("  … and {} more", report.vacuous.len() - 40);
+            println!(
+                "{}",
+                h_aside(&format!("  … and {} more", report.vacuous.len() - 40))
+            );
         }
         for s in report.conditional_skips.iter().take(10) {
             println!(
-                "  [silent-skip] {}:{}  {}  if {}",
-                s.file, s.line, s.name, s.guard
+                "{}",
+                h_vacuous_row(
+                    "silent-skip",
+                    &s.file,
+                    s.line,
+                    &s.name,
+                    &format!("  if {}", s.guard)
+                )
             );
         }
         if report.conditional_skips.len() > 10 {
             println!(
-                "  … and {} more silent skips",
-                report.conditional_skips.len() - 10
+                "{}",
+                h_aside(&format!(
+                    "  … and {} more silent skips",
+                    report.conditional_skips.len() - 10
+                ))
             );
         }
     }
@@ -697,5 +794,102 @@ mod ml_refusal_tests {
             .to_string();
         assert!(err.contains("complexity scores"), "{err}");
         assert!(err.contains("analyze complexity"), "{err}");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod human_colour_tests {
+    use super::*;
+    use crate::cli::colors::{ForcedColor, ESC};
+
+    /// Every helper, under both colour states, in one table.
+    ///
+    /// `(what it renders, the exact bytes it must produce with colour OFF)`.
+    /// The expected strings are pinned literally so a future refactor cannot
+    /// quietly change what a piped or redirected run prints — that output is
+    /// what `| grep`, `| wc` and every script downstream actually consume.
+    fn cases() -> Vec<(&'static str, String, String)> {
+        let on = |f: &dyn Fn() -> String| {
+            let _g = ForcedColor::on();
+            f()
+        };
+        let off = |f: &dyn Fn() -> String| {
+            let _g = ForcedColor::off();
+            f()
+        };
+        let mk = |name: &'static str, f: &dyn Fn() -> String| (name, on(f), off(f));
+        vec![
+            mk("headline", &|| h_headline("3 of 4 files are reachable")),
+            mk("orphan_row", &|| h_orphan_row("src/dead.rs", 12, 3)),
+            mk("hardcoded_row", &|| {
+                h_hardcoded_row("shipped", "src/a.rs", 42, "/home/x", "absolute path")
+            }),
+            mk("bucket_header", &|| h_bucket_header("cfg(feature)", 7)),
+            mk("member_row", &|| h_member_row("src/t.rs")),
+            mk("vacuous_row", &|| {
+                h_vacuous_row("no-assert", "src/t.rs", 9, "test_thing", " — nothing")
+            }),
+            mk("aside", &|| h_aside("  skipped: src/x.rs")),
+        ]
+    }
+
+    /// With `--color always`, every human row must actually carry colour.
+    ///
+    /// Measured at HEAD before this change: `pmat --color always analyze
+    /// {reachability,hardcoded-paths,unrun-tests,vacuous-tests} --path .`
+    /// produced 52, 42, 184 and 53 lines and ZERO escapes — the flag was
+    /// accepted and inert.
+    #[test]
+    fn every_human_row_is_coloured_when_colour_is_on() {
+        for (name, coloured, _) in cases() {
+            assert!(
+                coloured.contains(ESC),
+                "{name} emits no escape with colour forced ON: {coloured:?}"
+            );
+        }
+    }
+
+    /// ...and none of them carries colour when it is off. This is the half that
+    /// keeps `--format json`, pipes and redirects parseable.
+    #[test]
+    fn no_human_row_is_coloured_when_colour_is_off() {
+        for (name, _, plain) in cases() {
+            assert!(
+                !plain.contains(ESC),
+                "{name} emitted an escape with colour forced OFF: {plain:?}"
+            );
+        }
+    }
+
+    /// The plain rendering is byte-for-byte what it was before colour existed.
+    ///
+    /// Without this, "add colour" is free to reformat the piped output, and the
+    /// two assertions above would both still pass.
+    #[test]
+    fn the_plain_rendering_is_unchanged() {
+        let _g = ForcedColor::off();
+        assert_eq!(
+            h_headline("3 of 4 files are reachable"),
+            "3 of 4 files are reachable"
+        );
+        assert_eq!(
+            h_orphan_row("src/dead.rs", 12, 3),
+            "  src/dead.rs  (12 lines, 3 tests)"
+        );
+        assert_eq!(
+            h_hardcoded_row("shipped", "src/a.rs", 42, "/home/x", "absolute path"),
+            "  [shipped] src/a.rs:42  /home/x  (absolute path)"
+        );
+        assert_eq!(
+            h_bucket_header("cfg(feature)", 7),
+            "  [cfg(feature)] 7 test(s)"
+        );
+        assert_eq!(h_member_row("src/t.rs"), "      src/t.rs");
+        assert_eq!(
+            h_vacuous_row("no-assert", "src/t.rs", 9, "test_thing", " — nothing"),
+            "  [no-assert] src/t.rs:9  test_thing — nothing"
+        );
+        assert_eq!(h_aside("  skipped: src/x.rs"), "  skipped: src/x.rs");
     }
 }
