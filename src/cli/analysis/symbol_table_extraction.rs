@@ -239,10 +239,113 @@ fn is_source_file(path: &Path) -> bool {
     )
 }
 
+/// The symbol patterns, compiled ONCE for the process.
+///
+/// They used to be built inside `extract_symbols_simple`, which runs once per
+/// file — so a 1,387-file tree paid for 12 regex compilations 1,387 times.
+/// Measured on this repository before the hoist: `analyze symbol-table --path
+/// src/services` took 32.2s (debug) for 1,387 files, ~23ms per file, and a
+/// controlled experiment showed 82% of the runtime was a constant charged per
+/// FILE rather than per byte — 201 near-empty files cost 500ms against 605ms for
+/// the same bytes in 202 real ones, while `analyze complexity` over the same two
+/// fixtures showed no gap at all (0.94x). Regex compilation was the only
+/// difference.
+///
+/// `expect` rather than `?`: these are compile-time literals, so a failure here
+/// is a bug in this file and not a condition a caller can handle. The repo's own
+/// note on TDG's false F-grade for `unwrap` on a static regex says to use
+/// `expect` with a reason, which is what this is.
+static SYMBOL_PATTERNS: std::sync::LazyLock<Vec<(regex::Regex, SymbolKind)>> =
+    std::sync::LazyLock::new(|| {
+        use regex::Regex;
+        vec![
+            // `const fn` is a function declaration, not a constant. Without the
+            // optional `const\s+` here, `const fn answer()` matched no function
+            // pattern at all and `answer` was missing from the table entirely.
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Function,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:export\s+)?class\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Class,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Function,
+            ),
+            (
+                Regex::new(r"(?m)^\s*def\s+(\w+)").expect("static symbol pattern must compile"),
+                SymbolKind::Function,
+            ),
+            // `--help` offers `--filter variables` ("Variables and constants") and
+            // `--filter modules` ("Modules and namespaces"), but nothing ever
+            // produced a `Variable` or a `Module`, so a fixture with `pub const
+            // KONST`, `pub static STAT` and `pub mod inner` returned 0 for both —
+            // two of the six advertised filter values could not match anything.
+            //
+            // The old constant pattern was `^const\s+(\w+)\s*=`, which a Rust
+            // `pub const KONST: u32 = 1;` fails twice over (the `pub`, and the type
+            // annotation before `=`). This one covers both it and JS `const x = …`.
+            //
+            // Requiring the `:` (Rust type annotation) or `=` (JS initialiser) that
+            // must follow a real constant's name is what keeps `const fn answer()`
+            // out: the bare `const\s+(\w+)` form captured the `fn` *keyword* as a
+            // constant named "fn", which then out-ranked every real identifier in
+            // `most_referenced` (54 266 "references" on pmat itself).
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?const\s+(\w+)\s*[:=]")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Constant,
+            ),
+            // Same keyword-capture trap as `const fn`: `static mut COUNTER` used to
+            // yield a symbol literally named "mut".
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*[:=]")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Variable,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?mod\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Module,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?struct\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Type,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+)?enum\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Enum,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:export\s+)?interface\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Interface,
+            ),
+            // #693: `trait` and `type` had no pattern at all, so `pub trait
+            // Drawable` and `pub type WidgetAlias = Widget;` were absent from the
+            // table entirely — as was every TypeScript `export type`.
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?trait\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Interface,
+            ),
+            (
+                Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?type\s+(\w+)")
+                    .expect("static symbol pattern must compile"),
+                SymbolKind::Type,
+            ),
+        ]
+    });
+
 // Simple symbol extraction using regex
 fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
-    use regex::Regex;
-
     let mut symbols = Vec::new();
 
     // Function patterns for different languages.
@@ -257,79 +360,10 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
     // harmless. `trait` and `type` had no pattern at all, and the `class`
     // pattern had no `export` prefix — which is why `class PlainClass` was
     // found while `export class ExportedClass` right above it was not.
-    let patterns = vec![
-        // `const fn` is a function declaration, not a constant. Without the
-        // optional `const\s+` here, `const fn answer()` matched no function
-        // pattern at all and `answer` was missing from the table entirely.
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?(?:const\s+)?(?:async\s+)?fn\s+(\w+)")?,
-            SymbolKind::Function,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:export\s+)?class\s+(\w+)")?,
-            SymbolKind::Class,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)")?,
-            SymbolKind::Function,
-        ),
-        (Regex::new(r"(?m)^\s*def\s+(\w+)")?, SymbolKind::Function),
-        // `--help` offers `--filter variables` ("Variables and constants") and
-        // `--filter modules` ("Modules and namespaces"), but nothing ever
-        // produced a `Variable` or a `Module`, so a fixture with `pub const
-        // KONST`, `pub static STAT` and `pub mod inner` returned 0 for both —
-        // two of the six advertised filter values could not match anything.
-        //
-        // The old constant pattern was `^const\s+(\w+)\s*=`, which a Rust
-        // `pub const KONST: u32 = 1;` fails twice over (the `pub`, and the type
-        // annotation before `=`). This one covers both it and JS `const x = …`.
-        //
-        // Requiring the `:` (Rust type annotation) or `=` (JS initialiser) that
-        // must follow a real constant's name is what keeps `const fn answer()`
-        // out: the bare `const\s+(\w+)` form captured the `fn` *keyword* as a
-        // constant named "fn", which then out-ranked every real identifier in
-        // `most_referenced` (54 266 "references" on pmat itself).
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?const\s+(\w+)\s*[:=]")?,
-            SymbolKind::Constant,
-        ),
-        // Same keyword-capture trap as `const fn`: `static mut COUNTER` used to
-        // yield a symbol literally named "mut".
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?static\s+(?:mut\s+)?(\w+)\s*[:=]")?,
-            SymbolKind::Variable,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?mod\s+(\w+)")?,
-            SymbolKind::Module,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?struct\s+(\w+)")?,
-            SymbolKind::Type,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+)?enum\s+(\w+)")?,
-            SymbolKind::Enum,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:export\s+)?interface\s+(\w+)")?,
-            SymbolKind::Interface,
-        ),
-        // #693: `trait` and `type` had no pattern at all, so `pub trait
-        // Drawable` and `pub type WidgetAlias = Widget;` were absent from the
-        // table entirely — as was every TypeScript `export type`.
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?trait\s+(\w+)")?,
-            SymbolKind::Interface,
-        ),
-        (
-            Regex::new(r"(?m)^\s*(?:pub\s+|export\s+)?type\s+(\w+)")?,
-            SymbolKind::Type,
-        ),
-    ];
+    let patterns = &*SYMBOL_PATTERNS;
 
     for (line_no, line) in content.lines().enumerate() {
-        for (pattern, kind) in &patterns {
+        for (pattern, kind) in patterns {
             if let Some(captures) = pattern.captures(line) {
                 if let Some(name) = captures.get(1) {
                     symbols.push(Symbol {

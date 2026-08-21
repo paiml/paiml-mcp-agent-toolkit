@@ -134,14 +134,14 @@ fn every_registered_flag_still_declares_itself_inert() {
         let found = every_flag()
             .into_iter()
             .find(|(p, a, _)| p == &owned && a == id);
-        let (_, _, help) = found.unwrap_or_else(|| {
-            panic!(
-                "registered flag `--{}` on `pmat {}` does not exist any more — \
-                 remove the entry",
-                id.replace('_', "-"),
-                path.join(" ")
-            )
-        });
+        assert!(
+            found.is_some(),
+            "registered flag `--{}` on `pmat {}` does not exist any more — remove \
+             the entry",
+            id.replace('_', "-"),
+            path.join(" ")
+        );
+        let (_, _, help) = found.unwrap_or_default();
         assert!(
             declares_itself_inert(&help),
             "`--{}` on `pmat {}` is registered as inert but its help no longer says so. \
