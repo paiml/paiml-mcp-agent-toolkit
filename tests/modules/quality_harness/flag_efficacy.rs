@@ -658,6 +658,36 @@ fn baseline_unusable(o: &super::Observable) -> Option<String> {
             return Some(why.into());
         }
     }
+    // STRUCTURAL, and deliberately last: a baseline that failed AND rendered
+    // nothing is not a control, whatever it printed on stderr.
+    //
+    // Every needle above is a specific phrase someone had to observe first.
+    // This rule needs no phrase, and it is the one that closes the class. CI
+    // caught `analyze coverage-improve --fast` as a no-op where the whole
+    // sweep was green locally: the harness corpus has no Makefile, so the
+    // command exits 1 with an empty stdout BEFORE `--fast` is ever read, and
+    // the flagged run reproduced the baseline exactly because both had failed
+    // identically. The flag is in fact wired (`calculator.rs:212,297,316`).
+    //
+    // `compare_probes` has carried this exact guard for the two-value paths
+    // since it booked `--format text|json` on this same command as a no-op.
+    // The boolean-switch path never got it, so the rule lived in one of the
+    // two places that needed it. Putting it HERE covers both, because both
+    // paths validate their baseline through this function.
+    //
+    // The `rendered_nothing` conjunct is load-bearing: a non-zero exit is the
+    // NORMAL outcome for the commands this gate exists to police — `analyze
+    // lint-hotspot`, `quality-gate` and `enforce extreme` all exit 1 on the
+    // defect-rich corpus while printing a full report. They keep a non-empty
+    // stdout and stay usable as controls. Skipping on exit code alone would
+    // excuse every no-op flag on every failing quality gate, trading one
+    // silent pass for another.
+    if !o.succeeded() && o.stdout.trim().is_empty() {
+        return Some(format!(
+            "baseline exited {} with empty stdout; the command failed before any              flag was read, so it is not a control",
+            o.code.map_or_else(|| "by signal".to_string(), |c| c.to_string())
+        ));
+    }
     None
 }
 
@@ -1152,6 +1182,71 @@ fn unusable_baselines_are_skipped_not_blamed() {
     assert!(
         baseline_unusable(&healthy).is_none(),
         "a working command must remain a usable control"
+    );
+}
+
+/// A baseline that FAILED and printed nothing is not a control — and one that
+/// failed while printing a full report still is.
+///
+/// RED-first: on the commit before the structural rule was added to
+/// `baseline_unusable`, the first assertion here fails. That is not a
+/// hypothetical — it is the CI failure that produced this test. The sweep was
+/// green on this workstation and red on the runner, reporting
+/// `pmat analyze coverage-improve --fast` as the one flag that "parses but
+/// changes nothing". It does not: `--fast` reaches `fast_mode` in
+/// `perfection_score/calculator.rs` at lines 212, 297 and 316. The corpus the
+/// runner sweeps has no Makefile, so the command exits 1 with an empty stdout
+/// before any flag is read, and the flagged run reproduced the baseline byte
+/// for byte because BOTH had already failed.
+///
+/// Measured on a Makefile-less fixture, both probes:
+///   `analyze coverage-improve --path FIX`          exit=1  stdout=0B
+///   `analyze coverage-improve --path FIX --fast`   exit=1  stdout=0B
+///
+/// The second and third assertions are the counter-test, and they are the
+/// reason the rule carries the `rendered_nothing` conjunct rather than keying
+/// on the exit code alone. `quality-gate`, `analyze lint-hotspot` and `enforce
+/// extreme` are the commands this gate exists to police, and exiting 1 while
+/// printing a full report is their NORMAL, healthy outcome. Were they skipped,
+/// every no-op flag on every failing quality gate would be excused — which is
+/// the same silent pass the harness was built to end, just relocated.
+#[test]
+fn a_baseline_that_failed_silently_is_not_a_control() {
+    let died_before_reading_flags = super::Observable {
+        code: Some(1),
+        stdout: String::new(),
+        stderr: "Error: Could not find Makefile in /tmp/corpus or parent directories".into(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&died_before_reading_flags).is_some(),
+        "a baseline that exited non-zero having rendered NOTHING cannot serve as          a control: every flag added to it reproduces it exactly and is booked a          no-op. This is the CI failure that reported `analyze coverage-improve          --fast` inert when it is wired to fast_mode."
+    );
+
+    // The counter-test. Without it, "skip every failing baseline" passes the
+    // assertion above and silently excuses the entire defect-rich corpus.
+    let failed_loudly = super::Observable {
+        code: Some(1),
+        stdout: "TDG Score: 42.1 (F)\n12 violations found\n".into(),
+        stderr: String::new(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&failed_loudly).is_none(),
+        "exiting non-zero while printing a full report is the NORMAL outcome for          `quality-gate`, `analyze lint-hotspot` and `enforce extreme` on the          defect corpus. Skipping these would excuse every no-op flag they carry."
+    );
+
+    // ...and success with empty stdout is still a control: plenty of commands
+    // report on stderr and exit 0. Only the CONJUNCTION is disqualifying.
+    let quiet_success = super::Observable {
+        code: Some(0),
+        stdout: String::new(),
+        stderr: "analysed 12 files".into(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&quiet_success).is_none(),
+        "a command that succeeded is a usable control even with an empty stdout"
     );
 }
 
