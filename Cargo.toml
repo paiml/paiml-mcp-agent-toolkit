@@ -910,24 +910,19 @@ opt-level = 0
 inherits = "release"
 lto = "thin"
 
+# One package. `crates/pmat-dashboard` was the only member and is gone (see the
+# commit that removed it: never published, zero dependents, zero tests).
+#
+# `[workspace.package]` and both `[workspace.lints.*]` tables went with it. They
+# were not shared configuration: this manifest inherits NOTHING from them — it
+# has no `.workspace = true` anywhere and states its own version, edition and
+# lint levels — and the dashboard was the only crate that opted in. So they
+# governed exactly one deleted crate.
+#
+# `[workspace.package] version` was pinned at 3.17.0 while this crate shipped
+# 3.32.0, and that stale value is what `cargo metadata | .packages[0].version`
+# read during a 3.32.0 release. The two `post-release.yml` selectors that were
+# hardened to pick the package BY NAME because of it are kept as they are —
+# selecting by name is correct regardless of how many members exist.
 [workspace]
-members = ["crates/pmat-dashboard"]
 resolver = "2"
-
-[workspace.package]
-version = "3.17.0"
-edition = "2021"
-authors = ["Pragmatic AI Labs"]
-homepage = "https://paiml.com"
-repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
-
-[workspace.lints.rust]
-unsafe_op_in_unsafe_fn = "warn"
-unreachable_pub = "warn"
-unused_lifetimes = "warn"
-
-[workspace.lints.clippy]
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -2 }
-checked_conversions = "warn"
-fallible_impl_from = "warn"
