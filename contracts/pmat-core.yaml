@@ -17,6 +17,51 @@ equations:
     preconditions:
     - binding_count.len() > 0
     lean_theorem: Theorems.Refresh_Bindings_Monotonic
+  # ── Declared because 1,187 annotation sites already assert them.
+  #
+  # `path_exists` (1,174 sites), `non_empty_index` (10) and `lint_valid` (3)
+  # were cited by `#[provable_contracts_macros::contract("pmat-core.yaml",
+  # equation = "...")]` throughout src/ and were NEVER DECLARED HERE. The macro
+  # accepts any string, build.rs emits CONTRACT_*=bound without opening the
+  # contract, and nothing checked that the name resolved — so 1,187 functions
+  # carried what reads as a proof obligation and bound to nothing.
+  #
+  # They are declared rather than deleted because the annotations are not
+  # decorative: the functions carrying `path_exists` really do require the path
+  # to exist, and several assert it at runtime (`debug_assert!(path.exists())`,
+  # e.g. check_individual_basic.rs). Writing the equation down turns 1,187 dead
+  # citations into live ones; deleting them would discard a precondition the
+  # code actually holds.
+  #
+  # `contracts/pv-registry-integrity-v1.yaml` is what stops the next phantom.
+  path_exists:
+    formula: "analysed(path) implies exists(path) and readable(path)"
+    domain: "path in Path"
+    codomain: "Result<T, E> where E names the path"
+    invariants:
+      - "a path that does not exist is REFUSED, never reported as an empty result"
+      - "the refusal names the path, so a typo is distinguishable from a clean tree"
+    preconditions:
+      - "the caller has resolved the path (no further canonicalisation is implied)"
+
+  non_empty_index:
+    formula: "query(index) requires count(index) > 0"
+    domain: "index in AgentContextIndex"
+    codomain: "Result<Vec<Hit>, E>"
+    invariants:
+      - "a query against an empty or absent index is REFUSED, not answered with zero hits"
+      - "zero hits from a populated index is a measurement; zero hits from no index is not"
+    preconditions:
+      - "the index path is known to the caller"
+
+  lint_valid:
+    formula: "lint(source) yields findings union refusal, never silence"
+    domain: "source in Path"
+    codomain: "Result<Findings, E>"
+    invariants:
+      - "a linter that could not run is REFUSED, never reported as zero findings"
+      - "findings are counted BEFORE any confidence or severity filter is applied"
+
   check_compliance:
     formula: check_result = run_cb_checks(project_path)
     domain: project_path in Path

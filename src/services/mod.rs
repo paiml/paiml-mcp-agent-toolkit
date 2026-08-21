@@ -217,6 +217,7 @@ pub mod repo_score; // Repository health scoring system
 pub mod rust_project_score; // Rust Project Score v1.1 (evidence-based quality scoring)
 pub mod similarity; // Advanced similarity and entropy detection
 pub use quality_gates as quality_gate;
+pub mod contract_integrity; // every contract citation must resolve (1,187 did not)
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod deep_context_property_tests;
