@@ -85,8 +85,21 @@ pub struct CompositeScore {
     #[serde(default)]
     pub dimensions_total: usize,
     pub rps_categories: HashMap<String, f64>,
-    pub comply_errors: usize,
-    pub comply_warnings: usize,
+    /// Failing comply checks, or `None` when comply could not be run at all.
+    ///
+    /// NOT `usize`. `compute_comply` shells out to `pmat` ON PATH, so in any
+    /// environment without an installed pmat — a CI job that only builds, a
+    /// fresh container — the spawn fails, the dimension correctly becomes
+    /// `Err(COMPLY_UNMEASURED)` and leaves the composite, and these two counts
+    /// were still reported as 0. The rendered line read
+    /// "Comply: not measured (0 errors, 0 warnings)": the sentence said
+    /// unmeasured and the numbers beside it said clean.
+    #[serde(default)]
+    pub comply_errors: Option<usize>,
+    /// Warning comply checks, or `None` when comply could not be run. See
+    /// [`CompositeScore::comply_errors`].
+    #[serde(default)]
+    pub comply_warnings: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -272,10 +285,9 @@ fn format_markdown(score: &CompositeScore) -> String {
     let _ = writeln!(out, "| RPS | {} |", md_value(s.rps));
     let _ = writeln!(
         out,
-        "| Comply | {} ({} errors, {} warnings) |",
+        "| Comply | {}{} |",
         md_value(s.comply),
-        score.comply_errors,
-        score.comply_warnings
+        comply_counts(score)
     );
     let _ = writeln!(out, "| Coverage | {} |", md_value(s.coverage));
     let _ = writeln!(out, "| Muda (inv) | {} |", md_value(s.muda_inv));
@@ -375,8 +387,8 @@ fn assemble_score(
     timestamp: String,
     dimensions: [Dimension; 8],
     rps_categories: HashMap<String, f64>,
-    comply_errors: usize,
-    comply_warnings: usize,
+    comply_errors: Option<usize>,
+    comply_warnings: Option<usize>,
 ) -> CompositeScore {
     debug_assert_eq!(dimensions.len(), DIMENSIONS.len());
 
@@ -564,7 +576,7 @@ fn compute_rps(path: &Path) -> (Dimension, HashMap<String, f64>) {
     }
 }
 
-async fn compute_comply(path: &Path) -> (Dimension, usize, usize) {
+async fn compute_comply(path: &Path) -> (Dimension, Option<usize>, Option<usize>) {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Run pmat comply check --format json as subprocess to avoid internal coupling
     let output = std::process::Command::new("pmat")
@@ -590,13 +602,23 @@ async fn compute_comply(path: &Path) -> (Dimension, usize, usize) {
                             .count();
                         let score =
                             (100.0_f64 - (errors as f64 * 10.0 + warnings as f64 * 3.0)).max(0.0);
-                        return (Ok(score), errors, warnings);
+                        return (Ok(score), Some(errors), Some(warnings));
                     }
                 }
             }
-            (Err(COMPLY_UNMEASURED.to_string()), 0, 0)
+            (Err(COMPLY_UNMEASURED.to_string()), None, None)
         }
-        _ => (Err(COMPLY_UNMEASURED.to_string()), 0, 0),
+        _ => (Err(COMPLY_UNMEASURED.to_string()), None, None),
+    }
+}
+
+/// The "(N errors, M warnings)" suffix, or nothing at all when comply did not
+/// run. Printing "(0 errors, 0 warnings)" beside "not measured" states a clean
+/// result for a check that never happened.
+fn comply_counts(score: &CompositeScore) -> String {
+    match (score.comply_errors, score.comply_warnings) {
+        (Some(e), Some(w)) => format!(" ({e} errors, {w} warnings)"),
+        _ => String::new(),
     }
 }
 
@@ -744,8 +766,8 @@ mod gated_verdict_tests {
             "2026-08-13T00:00:00Z".into(),
             dims(values),
             HashMap::new(),
-            0,
-            0,
+            Some(0),
+            Some(0),
         )
     }
 
@@ -981,7 +1003,90 @@ mod tests {
         std::fs::create_dir_all(path).expect("mkdir");
     }
 
+    fn comply_fixture(errors: Option<usize>, warnings: Option<usize>) -> CompositeScore {
+        let dims: [Dimension; 8] = std::array::from_fn(|_| Ok(80.0));
+        let mut score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            errors,
+            warnings,
+        );
+        score.comply_errors = errors;
+        score.comply_warnings = warnings;
+        score
+    }
+
+    /// An unmeasured comply must not report zero failures.
+    ///
+    /// `compute_comply` shells out to `pmat` ON PATH. In any environment
+    /// without an installed pmat — a CI job that only builds, a fresh
+    /// container — the spawn fails, the dimension correctly becomes
+    /// `Err(COMPLY_UNMEASURED)` and leaves the composite, and the two counts
+    /// were still `usize` and therefore `0`. The rendered line read
+    ///
+    ///     Comply:      not measured  (0 errors, 0 warnings)
+    ///
+    /// with the sentence saying unmeasured and the numbers beside it saying
+    /// clean. Caught by `make gate-differential` on its first CI run, where
+    /// `pmat score :: comply_errors` and `comply_warnings` were 0 for an empty
+    /// project and a defect-rich one alike — constant because they were never
+    /// measured, not because the projects agreed.
+    #[test]
+    fn an_unmeasured_comply_reports_no_counts_at_all() {
+        let score = comply_fixture(None, None);
+
+        assert_eq!(
+            comply_counts(&score),
+            "",
+            "an unmeasured comply must print no counts, not (0 errors, 0 warnings)"
+        );
+
+        let json = serde_json::to_value(&score).expect("serialize");
+        assert!(
+            json["comply_errors"].is_null(),
+            "unmeasured must serialise as null, not 0: {}",
+            json["comply_errors"]
+        );
+        assert!(
+            json["comply_warnings"].is_null(),
+            "{}",
+            json["comply_warnings"]
+        );
+    }
+
+    /// The counter-test: a comply that DID run still reports its counts.
+    ///
+    /// Without this, deleting the counts entirely would pass the test above.
+    #[test]
+    fn a_measured_comply_still_reports_its_counts() {
+        let score = comply_fixture(Some(2), Some(7));
+
+        assert_eq!(comply_counts(&score), " (2 errors, 7 warnings)");
+
+        let json = serde_json::to_value(&score).expect("serialize");
+        assert_eq!(json["comply_errors"], 2);
+        assert_eq!(json["comply_warnings"], 7);
+    }
+
+    /// A measured, genuinely clean comply is distinguishable from an unmeasured
+    /// one — which is the whole point, and what `Some(0)` vs `None` encodes.
+    #[test]
+    fn measured_zero_is_not_the_same_as_unmeasured() {
+        let clean = comply_fixture(Some(0), Some(0));
+        let unmeasured = comply_fixture(None, None);
+
+        assert_ne!(
+            comply_counts(&clean),
+            comply_counts(&unmeasured),
+            "a clean comply and an unrun one must not render identically"
+        );
+        assert_eq!(comply_counts(&clean), " (0 errors, 0 warnings)");
+    }
+
     fn dummy_score(sub: SubScores, composite: f64, comply_errors: usize) -> CompositeScore {
+        let comply_errors = Some(comply_errors);
         CompositeScore {
             sha: "abc1234".into(),
             timestamp: "2026-04-24T08:00:00Z".into(),
@@ -996,7 +1101,7 @@ mod tests {
             dimensions_total: DIMENSIONS.len(),
             rps_categories: HashMap::new(),
             comply_errors,
-            comply_warnings: 0,
+            comply_warnings: Some(0),
         }
     }
 
@@ -1413,7 +1518,14 @@ mod tests {
     #[test]
     fn unmeasured_dimensions_are_excluded_from_the_composite() {
         let (dims, measured) = unmeasured_subject();
-        let score = assemble_score("sha".into(), "ts".into(), dims, HashMap::new(), 0, 0);
+        let score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            Some(0),
+            Some(0),
+        );
 
         let expected = geometric_mean(&measured);
         let composite = score.composite.expect("four dimensions were measured");
@@ -1442,7 +1554,14 @@ mod tests {
     #[test]
     fn unmeasured_dimensions_are_null_and_disclosed() {
         let (dims, _) = unmeasured_subject();
-        let score = assemble_score("sha".into(), "ts".into(), dims, HashMap::new(), 0, 0);
+        let score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            Some(0),
+            Some(0),
+        );
 
         assert_eq!(score.sub_scores.coverage, None);
         assert_eq!(score.sub_scores.evoscore, None);
@@ -1475,7 +1594,14 @@ mod tests {
     #[test]
     fn nothing_measured_yields_no_composite_and_no_grade() {
         let dims: [Dimension; 8] = std::array::from_fn(|i| Err(format!("dim {i} unmeasurable")));
-        let score = assemble_score("sha".into(), "ts".into(), dims, HashMap::new(), 0, 0);
+        let score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            Some(0),
+            Some(0),
+        );
         assert_eq!(score.composite, None);
         assert_eq!(score.grade, "n/a");
         assert_eq!(score.dimensions_measured, 0);
@@ -1542,7 +1668,14 @@ mod tests {
     #[test]
     fn test_renderers_say_not_measured_instead_of_a_number() {
         let (dims, _) = unmeasured_subject();
-        let score = assemble_score("sha".into(), "ts".into(), dims, HashMap::new(), 0, 0);
+        let score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            Some(0),
+            Some(0),
+        );
 
         let text = render_score(&score, &RepoScoreOutputFormat::Text).unwrap();
         assert!(text.contains("not measured"), "text: {text}");
@@ -1561,7 +1694,14 @@ mod tests {
     #[test]
     fn test_cross_validate_xv011_high_composite_on_partial_measurement() {
         let (dims, _) = unmeasured_subject();
-        let mut score = assemble_score("sha".into(), "ts".into(), dims, HashMap::new(), 1, 0);
+        let mut score = assemble_score(
+            "sha".into(),
+            "ts".into(),
+            dims,
+            HashMap::new(),
+            Some(1),
+            Some(0),
+        );
         score.composite = Some(85.0);
         let violations = cross_validate(&score);
         assert!(

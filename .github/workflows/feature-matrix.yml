@@ -557,17 +557,76 @@ jobs:
       - name: every test is executed by some leg, or the ledger says why
         run: cargo run --release --locked --quiet --bin pmat -- analyze unrun-tests --executed '' --check-ledger
 
+
+  # ── The falsification gate that had never run.
+  #
+  # `tests/modules/quality_harness/differential_corpus.rs` asserts that no metric
+  # may read the same for an empty project and a defect-rich one. It is reachable
+  # only from `tests/all.rs`, an integration target, and every other leg runs
+  # `cargo test --lib` — so the gate written to catch unmeasured metrics was
+  # itself never measured. Run by hand for the first time it was RED, with 16
+  # constant leaves: four fixture gaps (the corpus held nothing for those
+  # counters to count, since fixed) and twelve configuration constants (excused
+  # in ALLOWED_CONSTANTS, each with the evidence that earned the excuse).
+  #
+  # NOT `continue-on-error`. A gate that cannot fail is not a gate, and this one
+  # is green at the commit that adds this job. Its sibling
+  # `make gate-flag-efficacy` is deliberately NOT wired up yet: it is still red
+  # with 18 flags that parse and change nothing (19 before this commit denied
+  # `--lower`), and landing a red gate is how the last one stopped covering
+  # anything. Wire it up in the commit that takes that count to zero.
+  #
+  # Default features on purpose — that is what `make gate-differential` runs. The
+  # harness resolves the binary through `env!("CARGO_BIN_EXE_pmat")`, so cargo
+  # builds `pmat` for the integration test itself; no separate build step.
+  #
+  # It lives HERE, not in quality-gate.yml, because `feature-gate` below is the
+  # aggregator this repository already uses to make a leg blocking — and it is a
+  # required branch-protection context, while an individual job in
+  # quality-gate.yml is not. A gate that cannot fail the merge is not a gate,
+  # which is the exact defect this gate exists to catch. `feature-gate` already
+  # carries legs that are not about features (orphan-ledger, package-size,
+  # unrun-tests); it is the general "every leg must pass" gate.
+  differential-corpus:
+    name: falsification / differential-corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Pinned so the report path is a fact rather than a coincidence: the harness
+    # writes to `std::env::temp_dir()` (differential_corpus.rs:665), which honours
+    # TMPDIR, while the upload step below names /tmp. They agree by default on
+    # this runner; this makes them agree by construction.
+    env:
+      TMPDIR: /tmp
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The corpora are git-initialised and `churn`/`bottleneck` read history.
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: differential-corpus
+      - name: every metric must differ between an empty and a defect-rich project
+        run: make gate-differential
+      - name: upload the per-leaf report when the gate fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: differential-corpus-report
+          path: /tmp/pmat-differential-corpus-report.txt
+          if-no-files-found: warn
+
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, unrun-tests]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, unrun-tests, differential-corpus]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.unrun-tests.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
+              echo "a leg failed: differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
               exit 1
             fi
           done
