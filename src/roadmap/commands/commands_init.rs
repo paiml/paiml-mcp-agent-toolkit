@@ -36,9 +36,9 @@ async fn init_sprint(
             "Changelog updated".to_string(),
         ],
         quality_gates: vec![
-            format!("Complexity ≤ 20"),
-            format!("SATD = 0"),
-            format!("Coverage ≥ 80%"),
+            "Complexity ≤ 20".to_string(),
+            "SATD = 0".to_string(),
+            "Coverage ≥ 80%".to_string(),
         ],
     };
 

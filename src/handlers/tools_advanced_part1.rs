@@ -197,7 +197,7 @@ pub(crate) async fn handle_analyze_defect_probability(
     let file_metrics =
         match discover_and_analyze_files(&project_path, churn_map, request_id.clone()).await {
             Ok(metrics) => metrics,
-            Err(response) => return response,
+            Err(response) => return *response,
         };
 
     // Calculate defect probabilities and create response
@@ -241,7 +241,7 @@ async fn discover_and_analyze_files(
     project_path: &Path,
     churn_map: std::collections::HashMap<String, f32>,
     request_id: serde_json::Value,
-) -> Result<Vec<crate::services::defect_probability::FileMetrics>, McpResponse> {
+) -> Result<Vec<crate::services::defect_probability::FileMetrics>, Box<McpResponse>> {
     use crate::services::file_discovery::ProjectFileDiscovery;
     use futures::stream::{self, StreamExt};
 
@@ -251,11 +251,14 @@ async fn discover_and_analyze_files(
         Ok(files) => files,
         Err(e) => {
             error!("Failed to discover files: {}", e);
-            return Err(McpResponse::error(
+            // Boxed: `McpResponse` is 272 bytes, so an unboxed `Err` made every
+            // Ok-path return of this function carry the error's footprint
+            // (clippy::result_large_err, enforced since the 1.98 toolchain).
+            return Err(Box::new(McpResponse::error(
                 request_id,
                 -32603,
                 format!("Failed to discover files: {e}"),
-            ));
+            )));
         }
     };
 
