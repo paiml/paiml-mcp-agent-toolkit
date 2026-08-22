@@ -491,19 +491,52 @@ pub(super) async fn analyze_files_by_mode(
                 "\n⚠️  No files were analyzed under {}",
                 config.project_path.display()
             );
-            match unanalyzed_summary(metrics, config) {
-                Some(note) => eprintln!("{note}"),
+            let census = unanalyzed_summary(metrics, config);
+            match &census {
+                Some(c) => eprintln!("{}", c.note),
                 None => eprintln!("   the walk found no files with a file extension"),
             }
             if !config.include.is_empty() {
                 eprintln!("   include patterns in effect: {:?}", config.include);
             }
             eprintln!();
+            // ...and REFUSE. Printing the diagnosis and returning Ok(vec![]) is
+            // the defect this whole branch documents, one level up: a caller
+            // that checks the Result sees success, and a zero-length report
+            // reads exactly like a clean tree.
+            //
+            // The clean room found it. `--timeout 1` over this crate's own src/
+            // returned `Ok([])` inside the budget having produced metrics for
+            // none of 3,991 supported .rs files, so the timeout test got a third
+            // outcome its author had not enumerated — neither the timeout error
+            // nor a complete result, but an empty success. Locally the same walk
+            // takes ~8s and errors correctly, which is why only a slower machine
+            // could surface it.
+            //
+            // Scoped deliberately: this fires only when the walk produced NO
+            // metrics at all. A partial result is still Ok, because a tree pmat
+            // can read half of is a real report about that half — that is what
+            // `unanalyzed_summary` is for, and the Ok branch above prints it.
+            // The wording `analyze satd` established, via the shared
+            // constructor, so the eight refusals cannot drift apart. It has two
+            // branches and they are different events: nothing was there, versus
+            // everything that was there was skipped.
+            let discovered = census.as_ref().map_or(0, |c| c.total);
+            return Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+                crate::services::defect_detector::unmeasured::refusal(
+                    "complexity",
+                    &config.project_path,
+                    discovered,
+                    "none produced metrics",
+                    "check that the files parse, or raise --timeout if the walk \
+                     was cut short",
+                )
+            )));
         }
         Ok(metrics) => {
             crate::status_eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
-            if let Some(note) = unanalyzed_summary(metrics, config) {
-                crate::status_eprintln!("{}", note);
+            if let Some(c) = unanalyzed_summary(metrics, config) {
+                crate::status_eprintln!("{}", c.note);
             }
         }
         Err(_) => {
@@ -533,10 +566,26 @@ pub(super) async fn analyze_files_by_mode(
 /// from the results" — so this cannot drift from whatever the analyzers actually
 /// handle, and it adds no fourth copy of a language list to a repository that
 /// already has several that disagree.
+/// What the walk saw and did not analyse: the human note, plus the two counts
+/// behind it.
+///
+/// The counts are returned rather than only rendered because the refusal above
+/// needs them and must not walk the tree a second time to get them — two walks
+/// are two chances to disagree, which is the defect the single-derivation
+/// comment below already records.
+#[derive(Debug)]
+pub(super) struct UnanalyzedCensus {
+    pub note: String,
+    /// Files with an extension the walk saw, analysed or not.
+    pub total: usize,
+    /// Of those, how many produced no metrics.
+    pub missing: usize,
+}
+
 fn unanalyzed_summary(
     metrics: &[FileComplexityMetrics],
     config: &ComplexityConfig,
-) -> Option<String> {
+) -> Option<UnanalyzedCensus> {
     use crate::services::ast::strategy::StrategySelector;
     use std::collections::{BTreeMap, HashSet};
 
@@ -630,7 +679,11 @@ fn unanalyzed_summary(
             census(&skipped)
         ));
     }
-    Some(out)
+    Some(UnanalyzedCensus {
+        note: out,
+        total,
+        missing,
+    })
 }
 
 async fn analyze_by_mode(
@@ -964,6 +1017,56 @@ mod timeout_is_a_bound_tests {
         );
     }
 
+    /// A tree whose files pmat cannot analyse is REFUSED, not returned empty.
+    ///
+    /// The clean room found this one. `analyze complexity --timeout 1` over this
+    /// crate's own `src/` came back `Ok([])` inside the budget having produced
+    /// metrics for none of 3,991 supported `.rs` files, so the timeout test above
+    /// got a third outcome its author had not enumerated: neither the timeout
+    /// error nor a complete result, but an EMPTY SUCCESS. Locally the same walk
+    /// takes ~8s and errors correctly, which is why only a slower machine could
+    /// surface it.
+    ///
+    /// `analyze_files_by_mode` printed a careful diagnosis of what it had failed
+    /// to analyse and then returned `Ok(vec![])`. A caller that checks the
+    /// `Result` sees success, and a zero-length report reads exactly like a clean
+    /// tree — the defect the diagnosis itself documents, one level up.
+    ///
+    /// The wording comes from the shared `unmeasured::refusal` constructor, the
+    /// one `analyze satd` established, so the refusals cannot drift apart.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_tree_that_yields_no_metrics_is_refused_not_returned_empty() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        for n in 0..3 {
+            std::fs::write(
+                dir.path().join(format!("legacy{n}.cbl")),
+                "IDENTIFICATION DIVISION.\n",
+            )
+            .expect("write cobol fixture");
+        }
+
+        let err = analyze_files_by_mode(None, vec![], &config_for(dir.path().into(), 60))
+            .await
+            .expect_err("a tree pmat can analyse no file of is not a clean zero");
+        let message = format!("{err:#}");
+
+        assert!(
+            message.contains("This is not a clean result"),
+            "the refusal must say the zero is not clean, got: {message}"
+        );
+        assert!(
+            message.contains(&dir.path().display().to_string()),
+            "the refusal must name the path it refused, got: {message}"
+        );
+        // discovered > 0, so it must be the "all N were skipped" branch and not
+        // the "nothing was there" one. These are different events.
+        assert!(
+            message.contains("were skipped"),
+            "three files WERE found; the refusal must not claim the tree was \
+             empty, got: {message}"
+        );
+    }
+
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_budget_that_is_ample_still_returns_the_analysis() {
         // The other half of the contract: enforcement must not turn every run
@@ -984,6 +1087,18 @@ mod timeout_is_a_bound_tests {
 
 #[cfg(test)]
 mod unanalyzed_tests {
+    /// The note alone, which is all these tests assert on.
+    ///
+    /// `unanalyzed_summary` returns the two counts as well, because the
+    /// refusal in `analyze_files_by_mode` needs them and must not walk the
+    /// tree a second time to get them.
+    fn unanalyzed_note(
+        metrics: &[FileComplexityMetrics],
+        config: &ComplexityConfig,
+    ) -> Option<String> {
+        super::unanalyzed_summary(metrics, config).map(|c| c.note)
+    }
+
     use super::*;
     use crate::services::complexity::types::ComplexityMetrics;
 
@@ -1031,7 +1146,7 @@ mod unanalyzed_tests {
 
         // Exactly what the walker hands back: the root as given, plus the child.
         let as_walked = format!("{}/ok.rs", root.display());
-        let note = unanalyzed_summary(&[metric(&as_walked)], &cfg(&root))
+        let note = unanalyzed_note(&[metric(&as_walked)], &cfg(&root))
             .expect("three unanalyzable files must be reported");
 
         let stated: usize = note
@@ -1069,8 +1184,8 @@ mod unanalyzed_tests {
         std::fs::write(root.join("thing.cbl"), "x\n").expect("write cbl");
 
         let as_walked = format!("{}/ok.rs", root.display());
-        let note = unanalyzed_summary(&[metric(&as_walked)], &cfg(&root))
-            .expect("the .cbl must be reported");
+        let note =
+            unanalyzed_note(&[metric(&as_walked)], &cfg(&root)).expect("the .cbl must be reported");
 
         let claim = note
             .lines()
@@ -1097,7 +1212,7 @@ mod unanalyzed_tests {
             std::fs::write(dir.path().join(format!("thing.{ext}")), "x\n").expect("write");
         }
 
-        let note = unanalyzed_summary(&[metric("ok.rs")], &cfg(dir.path()))
+        let note = unanalyzed_note(&[metric("ok.rs")], &cfg(dir.path()))
             .expect("skipped files must be reported");
 
         assert!(note.contains("3 of 4"), "needs a denominator, got: {note}");
@@ -1116,7 +1231,7 @@ mod unanalyzed_tests {
         std::fs::write(dir.path().join("b.rs"), "fn b(){}\n").expect("write b");
 
         assert_eq!(
-            unanalyzed_summary(&[metric("a.rs"), metric("b.rs")], &cfg(dir.path())),
+            unanalyzed_note(&[metric("a.rs"), metric("b.rs")], &cfg(dir.path())),
             None,
             "a fully analyzed tree must produce no note"
         );
@@ -1132,6 +1247,6 @@ mod unanalyzed_tests {
         std::fs::write(dir.path().join("other.cbl"), "x\n").expect("write");
 
         let c = ComplexityConfig::from_args(file, None, None, None, vec![], 300, 10);
-        assert_eq!(unanalyzed_summary(&[metric("only.rs")], &c), None);
+        assert_eq!(unanalyzed_note(&[metric("only.rs")], &c), None);
     }
 }
