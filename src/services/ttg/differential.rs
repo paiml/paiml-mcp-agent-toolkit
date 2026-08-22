@@ -317,7 +317,7 @@ fn write_corpus(path: &Path, cases: &[Case]) {
     let mut w = std::io::BufWriter::new(f);
     for c in cases {
         let raw = c.src.as_bytes();
-        write!(w, "{} {} {}\n", c.id, u8::from(c.rust), raw.len()).expect("corpus header");
+        writeln!(w, "{} {} {}", c.id, u8::from(c.rust), raw.len()).expect("corpus header");
         w.write_all(raw).expect("corpus body");
         w.write_all(b"\n").expect("corpus terminator");
     }
@@ -378,12 +378,17 @@ fn oracle_all(tag: &str, cases: &[Case]) -> Vec<(i64, u32, u32, u32)> {
     read_tsv(&tsv)
 }
 
-/// Compare the two, returning the disagreeing rows as
-/// `(id, python_triple, rust_triple)`.
-fn disagreements(
-    py: &[(i64, u32, u32, u32)],
-    rs: &[(i64, u32, u32, u32)],
-) -> Vec<(i64, (u32, u32, u32), (u32, u32, u32))> {
+/// One definition's measures: `(tokens, decisions, max_nesting)`.
+type Triple = (u32, u32, u32);
+
+/// A row as the oracle hands it over: the index id plus its three measures.
+type OracleRow = (i64, u32, u32, u32);
+
+/// A disagreement: the index id, what Python measured, what Rust measured.
+type Disagreement = (i64, Triple, Triple);
+
+/// Compare the two, returning the disagreeing rows.
+fn disagreements(py: &[OracleRow], rs: &[OracleRow]) -> Vec<Disagreement> {
     assert_eq!(
         py.len(),
         rs.len(),
