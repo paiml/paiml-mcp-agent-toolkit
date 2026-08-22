@@ -6,8 +6,8 @@
 //! a bare `cargo test` cannot prove a transport is covered, because cargo
 //! silently skips targets whose `required-features` are off.
 //!
-//! Every assertion here drives `env!("CARGO_BIN_EXE_pmat")`, the artifact cargo
-//! just built, as a real child process. Calling the library instead would prove
+//! Every assertion here drives the artifact cargo just built, via
+//! `tests/support/pmat_cmd.rs`, as a real child process. Calling the library instead would prove
 //! nothing about reachability: a sibling repo's four-way parity suite stayed
 //! green for months while two of its transports had no caller from `main.rs`.
 //! Spawning the binary is what makes "wired into the entry point" observable.
@@ -17,14 +17,27 @@
 //! fast, always-run core: process starts, parses argv, does real work, exits 0.
 
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Output;
+
+/// The hygienic constructor. Declared by path because this target is its own
+/// test binary and cannot see a module under `tests/modules/`.
+#[path = "support/pmat_cmd.rs"]
+mod pmat_cmd;
 
 /// Run the shipped binary with `args` and return the raw output.
+///
+/// `pmat_cmd::pmat()` — not a bare `Command::new` — because this target's very
+/// first assertion is that `--version` prints the crate version, and an ambient
+/// `MCP_VERSION` makes the binary ignore argv and start the stdio MCP server
+/// instead (`src/bin/pmat.rs:41`). Measured on the debug build:
+/// `MCP_VERSION=1.0.0 pmat --version` emits **0 bytes** and exits 0. Claude
+/// Desktop exports that variable, so the release transport gate for the CLI was
+/// one developer's shell away from failing for a reason that has nothing to do
+/// with the CLI. The helper also pins `RUST_LOG=error`, which is what the
+/// hand-rolled version here used to do, so a failure message stays readable.
 fn run(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_pmat"))
+    pmat_cmd::pmat()
         .args(args)
-        // Keep stderr free of log noise so a failure message stays readable.
-        .env("RUST_LOG", "error")
         .output()
         .unwrap_or_else(|e| panic!("failed to spawn the pmat binary for `{args:?}`: {e}"))
 }

@@ -164,7 +164,7 @@ pub fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
     match language {
         Language::Rust => Box::new(RustAnalyzer),
         Language::JavaScript | Language::TypeScript => Box::new(JavaScriptAnalyzer),
-        Language::Python => Box::new(PythonAnalyzer),
+        Language::Python => Box::new(PythonAnalyzer::new()),
         Language::C => Box::new(CAnalyzer),
         // C++ function syntax is similar enough to JavaScript for basic extraction
         Language::CPP => Box::new(JavaScriptAnalyzer),
@@ -176,8 +176,10 @@ pub fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::Java => Box::new(CAnalyzer),
         // Kotlin fun syntax: fun name(params): Type { } - similar to C
         Language::Kotlin => Box::new(CAnalyzer),
-        // Ruby def syntax: def name(params) - similar to Python
-        Language::Ruby => Box::new(PythonAnalyzer),
+        // Ruby def syntax: def name(params) - similar to Python. No module
+        // unit: Python's indentation-delimited `def` masking is not Ruby's
+        // `def`/`end`, so it must not be applied here.
+        Language::Ruby => Box::new(PythonAnalyzer::without_module_unit()),
         // PHP function syntax: function name($params) { } - similar to JavaScript
         Language::PHP => Box::new(JavaScriptAnalyzer),
         // Swift func syntax: func name(params) -> Type { } - similar to C
@@ -188,9 +190,11 @@ pub fn create_analyzer(language: Language) -> Box<dyn LanguageAnalyzer> {
         Language::Lua => Box::new(LuaAnalyzer),
         Language::Sql => Box::new(SqlAnalyzer),
         Language::Scala => Box::new(ScalaAnalyzer),
-        Language::Yaml | Language::Markdown => Box::new(PythonAnalyzer), // structural analysis only
+        // Structural analysis only — counting `if ` in prose would be a
+        // regression, not a measurement.
+        Language::Yaml | Language::Markdown => Box::new(PythonAnalyzer::without_module_unit()),
         // Lean: theorem/def/lemma keyword syntax similar to Python's def/class
-        Language::Lean => Box::new(PythonAnalyzer),
+        Language::Lean => Box::new(PythonAnalyzer::without_module_unit()),
         Language::Unknown => unreachable!("Unknown language should be handled earlier"),
     }
 }

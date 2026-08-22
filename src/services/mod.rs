@@ -247,6 +247,7 @@ pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;
+pub mod test_env_hygiene; // tests must not inherit env that changes what the binary does
 pub mod unified_ast_engine; // Stub for backward compatibility
 #[cfg(feature = "shell-ast")]
 pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer

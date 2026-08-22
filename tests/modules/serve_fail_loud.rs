@@ -43,11 +43,17 @@ fn run_serve_with_env(args: &[&str], extra: &[(&str, &str)]) -> std::process::Ou
         // This is not hypothetical. `pmat_serve_websocket_fails_loudly` failed
         // in the full-feature run with `left: Some(0), right: Some(2)` and
         // passed when run alone. Cargo runs a binary's tests as parallel THREADS
-        // in one process, and two siblings set the variable process-wide:
-        //   tests/modules/execution_mode.rs:24
-        //   tests/modules/services_integration.rs:340
-        // Both remove it afterwards, but a child spawned inside that window
-        // inherits it. Measured directly:
+        // in one process, and two siblings set the variable process-wide —
+        // `execution_mode.rs` and `services_integration.rs`. Both removed it
+        // afterwards, which shortened the window without closing it: a child
+        // spawned inside it inherits the variable.
+        //
+        // BOTH SETTERS HAVE SINCE BEEN DELETED (neither asserted anything about
+        // pmat; one only checked that `std::env` remembers what it was told).
+        // This scrub stays regardless, because the ambient environment is a
+        // second source: Claude Desktop exports MCP_VERSION, so a developer
+        // running the suite under it would hit the same failure with no sibling
+        // involved at all. Measured directly:
         //   env -u MCP_VERSION  pmat serve --transport web-socket -> exit 2
         //   MCP_VERSION=1.0.0   pmat serve --transport web-socket -> exit 0, 0 bytes
         .env_remove("MCP_VERSION")
@@ -187,10 +193,13 @@ fn pmat_serve_help_does_not_advertise_a_dead_route() {
     // comment recommended `pmat agent mcp-server` while the runtime hint two
     // files away had already been corrected, so the help text and the error
     // text disagreed about how to start an MCP server.
-    let out = Command::new(env!("CARGO_BIN_EXE_pmat"))
-        .args(["serve", "--help"])
-        .output()
-        .expect("failed to spawn pmat binary");
+    // Through `run_serve`, not a bare Command, so it inherits the scrubs. With
+    // an ambient MCP_VERSION this spawn produced exit 0 and ZERO bytes — pmat
+    // runs the stdio MCP server and never renders the help at all — and the
+    // assertion below then fails on an empty string. Measured:
+    //   env -u MCP_VERSION  pmat serve --help  -> 2274 bytes, "MCP_VERSION=1" x2
+    //   MCP_VERSION=1.0.0   pmat serve --help  ->    0 bytes
+    let out = run_serve(&["--help"]);
     let help = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),

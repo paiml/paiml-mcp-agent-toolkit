@@ -19,15 +19,30 @@ jobs:
   # Top-level gate satisfies the org ruleset "Green Main" which requires a
   # status check named exactly `gate`. Reusable-workflow jobs always render
   # as `ci / gate`; rulesets need an unprefixed top-level job to match.
+  #
+  # `if: always()` here is NOT a swallow: this job exists precisely so that a
+  # skipped or cancelled dependency still produces a verdict. Every result it
+  # depends on is checked explicitly below, and anything that is not literally
+  # `success` exits 1 — so `always()` converts "the check never reported" into
+  # a red gate rather than a missing one.
   gate:
     runs-on: ubuntu-latest
-    needs: [ci]
+    needs: [ci, windows-check]
     if: always()
     steps:
       - name: Check required jobs
         run: |
-          if [ "${{ needs.ci.result }}" != "success" ]; then
-            echo "ci failed: ${{ needs.ci.result }}"
+          rc=0
+          for j in "ci:${{ needs.ci.result }}" \
+                   "windows-check:${{ needs.windows-check.result }}"; do
+            name=${j%%:*}
+            result=${j#*:}
+            if [ "$result" != "success" ]; then
+              echo "$name failed: $result"
+              rc=1
+            fi
+          done
+          if [ "$rc" -ne 0 ]; then
             exit 1
           fi
           echo "All required jobs passed"
@@ -37,13 +52,19 @@ jobs:
   # feature pulled in aprender-profile, which does not build there, and all four
   # Unix legs stayed green throughout.
   #
-  # Informational for now (`continue-on-error`, and deliberately NOT in `gate`'s
-  # `needs`): this is the first time pmat's own sources reach the Windows
-  # compiler, so a second wave of unrelated failures is likely. Promote it to a
-  # required check once it has been green for a few runs.
+  # PROMOTED to a blocking check (was `continue-on-error: true` and absent from
+  # `gate`'s `needs`, which is the "verdict reaches nothing" defect: a Windows
+  # break would have re-shipped GH #625 under a green tick). The comment here
+  # said "promote it once it has been green for a few runs"; that condition is
+  # met and was measured before flipping it — the last 12 runs of this workflow
+  # (32494215902 … 32564647489, master and PR branches, 2026-08-21/22) all
+  # report `windows-check` success, with the job taking 3–7 minutes against a
+  # 45-minute timeout. Verified from the logs, not from the API: a job carrying
+  # `continue-on-error` reports `conclusion: success` to
+  # /actions/runs/{id}/jobs even when its step exited non-zero, so the API's
+  # green is not evidence on its own.
   windows-check:
     runs-on: windows-latest
-    continue-on-error: true
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -57,19 +78,49 @@ jobs:
   # `continue-on-error: true` keeps this informational, not blocking.
   # NOT a gate yet, deliberately, and the order matters.
   #
-  # This job has never executed a single mutant (see the run step), so
-  # `min_mutation_score_pct = 80.0` in .pmat-metrics.toml names a quantity that
-  # has never been measured. Removing `continue-on-error` before a run reports a
-  # non-zero caught/missed count would replace a silent no-op with a gate whose
-  # threshold nobody has ever seen a real value for.
+  # This job has never executed a single mutant, so `min_mutation_score_pct =
+  # 80.0` in .pmat-metrics.toml names a quantity that has never been measured.
+  # Removing `continue-on-error` before a run reports a non-zero caught/missed
+  # count would replace a silent no-op with a gate whose threshold nobody has
+  # ever seen a real value for — AND would immediately redden master, because
+  # this job is red today.
+  #
+  # THE TIMEOUT IS FIXED; THE JOB IS STILL RED, FOR A DIFFERENT REASON. Measured
+  # from the log of run 32561067282, job 97004396184, master, 2026-08-22 — not
+  # from the API, which reports `"conclusion": "success"` for both this job and
+  # its run step because of the two `continue-on-error` below:
+  #
+  #   Found 10969 mutants to test          <- the baseline now BUILDS and RUNS
+  #   FAILED  Unmutated baseline
+  #   test result: FAILED. 20437 passed; 9 failed; 144 ignored ... in 345.92s
+  #   *** result: Failure(101)             <- a test failure, NOT a timeout
+  #   ##[error]Process completed with exit code 4
+  #
+  # The 9 failures are environmental to this self-hosted container, not defects
+  # in the tree: they are the git-dependent tests —
+  # models::git_context::tests::{test_from_current_dir_extracts_author_info,
+  # test_from_current_dir_extracts_commit_sha, test_git_context_serialization,
+  # test_is_git_repo_returns_true_for_git_repo},
+  # mcp_pmcp::context_handlers::coverage_tests::test_git_status_tool_with_current_dir,
+  # cli::handlers::bottleneck_handler::tests::test_handle_bottleneck_runs, and
+  # the three services::metrics_ratchet::drive_tests — all of which shell out to
+  # git against the working tree. `--in-place` runs them in the container's
+  # bind-mounted checkout, where that does not hold. The same tests pass in the
+  # `ci` leg.
   #
   # Sequence to make it real, in this order:
-  #   1. this commit — fix the baseline timeout and the inert mutants.toml
-  #   2. observe one master run that reports an actual caught/missed count
-  #   3. `needs: [gate]` must go: adding `mutants` to gate's `needs` while it
+  #   1. DONE — the `--timeout 300` absolute budget that killed the baseline is
+  #      replaced by `--timeout-multiplier 1.5 --minimum-test-timeout 600`.
+  #   2. NEXT — make the baseline pass in this container: the 9 git-dependent
+  #      tests above must either work under `--in-place` in the container or be
+  #      excluded from the mutation run by name. Do NOT reach for `--no-check`,
+  #      `|| true`, or a wider skip list: a baseline that cannot run is the
+  #      signal that the mutation result would be meaningless.
+  #   3. observe one master run that reports an actual caught/missed count
+  #   4. `needs: [gate]` must go: adding `mutants` to gate's `needs` while it
   #      needs `gate` is a cycle. Scope to changed files and run on PRs instead.
-  #   4. ratchet from the measured baseline, not the absolute 80.0
-  #   5. only then remove both `continue-on-error`
+  #   5. ratchet from the measured baseline, not the absolute 80.0
+  #   6. only then remove both `continue-on-error`
   mutants:
     runs-on: [self-hosted, X64, Linux]
     continue-on-error: true
@@ -83,15 +134,18 @@ jobs:
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
       - name: Run mutation testing
-        # `--timeout 300` was the defect: it is an absolute per-test budget
+        # `--timeout 300` was the FIRST defect: it is an absolute per-test budget
         # that applies to the UNMUTATED BASELINE too, and this crate's
-        # `cargo test --lib` takes ~367 s. So every run died with
+        # `cargo test --lib` takes ~346 s. So every run died with
         # `TIMEOUT Unmutated baseline` -> exit 4, having executed ZERO mutants,
-        # and the two `continue-on-error` below painted that green. The job has
-        # never mutation-tested anything.
+        # and the two `continue-on-error` painted that green.
         #
-        # Derive from the measured baseline instead of guessing an absolute,
-        # with a floor so fast mutants are not killed by jitter.
+        # Deriving from the measured baseline, with a floor so fast mutants are
+        # not killed by jitter, fixed that: the baseline now compiles and runs to
+        # completion (`Found 10969 mutants to test`, 345.92 s). It still exits 4,
+        # now on `Failure(101)` — 9 git-dependent lib tests that do not hold in
+        # this container. See the job comment above for the list and the plan.
+        # This job has therefore still never tested a mutant.
         run: |
           cargo mutants --no-times --in-place \
             --timeout-multiplier 1.5 --minimum-test-timeout 600 \

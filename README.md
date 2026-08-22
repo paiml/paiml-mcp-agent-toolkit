@@ -225,7 +225,7 @@ pmat comply migrate                    # Update to latest version
 ```
 
 **Key Checks:**
-- **CB-200**: TDG Grade Gate — blocks on non-A functions (auto-rebuilds stale index)
+- **CB-200**: TDG Grade Gate — blocks on definitions below the minimum grade (default `A`). Reads the index `pmat query` built; it never builds or rewrites one, and reports Skip / "Not measured" when `.pmat/context.db` is absent
 - **CB-304**: Dead code percentage enforcement
 - **CB-400**: Shell/Makefile quality via bashrs
 - **CB-500**: Rust best practices (30+ patterns)
@@ -243,7 +243,7 @@ Configure via `.pmat.yaml`:
 ```yaml
 comply:
   thresholds:
-    min_tdg_grade: "A"
+    min_tdg_grade: "A"          # CB-200 floor; `.pmat-gates.toml` [tdg] min_grade overrides this
     pv_lint_is_error: true        # CB-1201: FAIL on pv lint failure
     min_binding_existence: 95     # CB-1208: 95% binding verification
     require_all_traits: true      # CB-1209: 13/13 traits required

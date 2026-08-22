@@ -208,7 +208,7 @@ after the new files were tracked, not transcribed from the earlier reading.
 """
 
 [metric.allow_attributes_src]
-baseline = 498
+baseline = 497
 unit = "count"
 band = 20
 includes_test_files = true
