@@ -6,10 +6,30 @@ mod binary_main_tests {
     use std::env;
     use std::io::IsTerminal;
 
-    // Test the execution mode detection logic similar to what's in main
-    fn detect_execution_mode_test() -> String {
-        let is_mcp = !std::io::stdin().is_terminal() && std::env::args().len() == 1
-            || std::env::var("MCP_VERSION").is_ok();
+    /// The execution-mode decision, with MCP_VERSION passed IN rather than read
+    /// from the process.
+    ///
+    /// It used to call `std::env::var("MCP_VERSION")`, which forced its two
+    /// callers to `set_var`/`remove_var` around every assertion. Cargo runs a
+    /// binary's tests as parallel THREADS in one process, so those mutations are
+    /// global: `test_execution_mode_detection_without_mcp_version` removes the
+    /// variable that `test_execution_mode_detection_with_mcp_version` has just
+    /// set, and the second assertion sees "Cli" where it demands "Mcp".
+    /// Measured on the built test binary before this change: 1 failure in 60
+    /// runs at `--test-threads=2`.
+    ///
+    /// The blast radius was much wider than these two tests. Any test in this
+    /// binary that spawns the pmat binary while the window is open gets a child
+    /// that inherits MCP_VERSION, and pmat then ignores its subcommand and runs
+    /// the stdio MCP server (src/bin/pmat.rs:41). That is how
+    /// `pmat_serve_websocket_fails_loudly` came to assert exit 2 against a
+    /// process that exited 0 — it failed the 3.32.0 release dogfood.
+    ///
+    /// Taking the value as an argument removes the shared mutable state
+    /// entirely, which is strictly better than serialising access to it.
+    fn detect_execution_mode_test(mcp_version: Option<&str>) -> String {
+        let is_mcp =
+            !std::io::stdin().is_terminal() && std::env::args().len() == 1 || mcp_version.is_some();
 
         if is_mcp {
             "Mcp".to_string()
@@ -20,26 +40,19 @@ mod binary_main_tests {
 
     #[test]
     fn test_execution_mode_detection_with_mcp_version() {
-        // Set MCP_VERSION environment variable
-        env::set_var("MCP_VERSION", "1.0.0");
-
-        let mode = detect_execution_mode_test();
-        assert_eq!(mode, "Mcp");
-
-        // Clean up
-        env::remove_var("MCP_VERSION");
+        assert_eq!(detect_execution_mode_test(Some("1.0.0")), "Mcp");
     }
 
+    /// Without the opt-in, the mode is decided by stdin and argv alone.
+    ///
+    /// This asserted `mode == "Cli" || mode == "Mcp"` over a function that
+    /// returns one of exactly those two strings — a tautology, and it was paying
+    /// a process-wide `remove_var` for the privilege. Under a test harness both
+    /// conditions are false (stdin is not a terminal, but argv carries the test
+    /// filter, so `args().len() == 1` does not hold), which is decidable.
     #[test]
     fn test_execution_mode_detection_without_mcp_version() {
-        // Ensure MCP_VERSION is not set
-        env::remove_var("MCP_VERSION");
-
-        // In test environment, this will typically be CLI mode
-        let mode = detect_execution_mode_test();
-        // Don't assert specific mode since it depends on terminal state,
-        // but ensure the function doesn't panic
-        assert!(mode == "Cli" || mode == "Mcp");
+        assert_eq!(detect_execution_mode_test(None), "Cli");
     }
 
     #[test]
@@ -66,18 +79,20 @@ mod binary_main_tests {
         assert!(Arc::strong_count(&server) > 0);
     }
 
-    #[test]
-    #[ignore = "Environment variable manipulation unsafe in parallel tests"]
-    fn test_mcp_version_environment_variable() {
-        // Test various MCP_VERSION values
-        let test_values = vec!["1.0.0", "2.0.0", "latest", ""];
-
-        for value in test_values {
-            env::set_var("MCP_VERSION", value);
-            assert!(env::var("MCP_VERSION").is_ok());
-            env::remove_var("MCP_VERSION");
-        }
-    }
+    // `test_mcp_version_environment_variable` was deleted here, not fixed.
+    //
+    // Its whole body was `set_var(k, v); assert!(var(k).is_ok()); remove_var(k)`
+    // over four values — an assertion about `std::env`, not about pmat, that
+    // could not fail. It carried
+    // `#[ignore = "Environment variable manipulation unsafe in parallel tests"]`,
+    // so the hazard was known and the test hidden rather than the state removed.
+    //
+    // Hiding it made things worse in the one mode where it matters: `--ignored`
+    // is what the release dogfood runs, so this was the only MCP_VERSION setter
+    // that fired there — alongside 512 other ignored tests, many of which spawn
+    // the pmat binary. Note the fourth value is the EMPTY string, and
+    // `env::var(..).is_ok()` is true for "", so `MCP_VERSION=` hijacks a child
+    // exactly as `MCP_VERSION=1.0.0` does.
 
     #[test]
     fn test_argument_count_behavior() {

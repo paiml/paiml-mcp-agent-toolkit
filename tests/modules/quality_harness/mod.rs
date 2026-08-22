@@ -206,6 +206,24 @@ pub(crate) fn run_with_env(
         .env("PMAT_NO_UPDATE_CHECK", "1")
         .env("RAYON_NUM_THREADS", "2")
         .env_remove("PMAT_CONFIG")
+        // MCP_VERSION makes pmat ignore its subcommand entirely and run the
+        // stdio MCP server ("Explicit MCP opt-in via env var always wins",
+        // src/bin/pmat.rs:41, for Claude Desktop). The child then reads EOF on
+        // the closed stdin and exits 0 with an EMPTY stdout.
+        //
+        // That combination is the worst possible one for this harness, because
+        // it walks straight through both anti-vacuity guards in
+        // `flag_efficacy.rs`: `baseline_unusable` requires `!succeeded()`, and
+        // `compare_probes`'s `rendered_nothing` branch requires BOTH probes to
+        // have failed. An exit-0 empty baseline satisfies neither, so every flag
+        // under it compares equal and is booked `Verdict::NoOp` — the gate
+        // manufacturing the exact defect class it exists to detect. That is the
+        // fourth instance of that failure mode recorded in this harness.
+        //
+        // Scrubbed BEFORE the `extra_env` overlay, deliberately, so a flag may
+        // still declare it in PROBE_ENV — the ordering rule this file documents
+        // below.
+        .env_remove("MCP_VERSION")
         // RUST_LOG is scrubbed for the same reason NO_COLOR is not SET: the
         // sweep's verdict must be a property of the binary, not of the shell it
         // was launched from.
