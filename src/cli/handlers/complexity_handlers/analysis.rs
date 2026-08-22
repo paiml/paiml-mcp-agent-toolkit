@@ -1036,13 +1036,13 @@ mod timeout_is_a_bound_tests {
     /// one `analyze satd` established, so the refusals cannot drift apart.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_tree_that_yields_no_metrics_is_refused_not_returned_empty() {
-        let dir = tempfile::TempDir::new().unwrap();
+        let dir = tempfile::TempDir::new().expect("tempdir");
         for n in 0..3 {
             std::fs::write(
                 dir.path().join(format!("legacy{n}.cbl")),
                 "IDENTIFICATION DIVISION.\n",
             )
-            .unwrap();
+            .expect("write cobol fixture");
         }
 
         let err = analyze_files_by_mode(None, vec![], &config_for(dir.path().into(), 60))
