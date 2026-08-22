@@ -27,9 +27,31 @@ mod binary_main_tests {
     ///
     /// Taking the value as an argument removes the shared mutable state
     /// entirely, which is strictly better than serialising access to it.
-    fn detect_execution_mode_test(mcp_version: Option<&str>) -> String {
-        let is_mcp =
-            !std::io::stdin().is_terminal() && std::env::args().len() == 1 || mcp_version.is_some();
+    ///
+    /// ALL THREE inputs are parameters, and the third and fourth are why. The
+    /// first version of this fix took only `mcp_version` and still read
+    /// `stdin().is_terminal()` and `args().len()` from the process — so
+    /// `detect_execution_mode_test(None)` returned "Cli" when a test FILTER was
+    /// passed (argv > 1) and "Mcp" when the whole suite ran (argv == 1). It
+    /// passed every filtered run and failed the release dogfood, which runs the
+    /// suite whole.
+    ///
+    /// That is worse than the tautology it replaced. `mode == "Cli" || mode ==
+    /// "Mcp"` could not fail; an assertion that depends on how the harness was
+    /// invoked fails INTERMITTENTLY, which costs more to diagnose than an
+    /// assertion that never fires. The fix for a tautology is to make the
+    /// function decidable, not to assert one arbitrary branch of an ambient
+    /// condition.
+    ///
+    /// The shape mirrors the real `classify_execution_mode` in src/bin/pmat.rs,
+    /// which is already pure for exactly this reason: "so it can be unit-tested
+    /// without touching real stdin / env vars (see GH-285 regression test)".
+    fn detect_execution_mode_test(
+        mcp_version: Option<&str>,
+        no_args: bool,
+        stdin_is_pipe: bool,
+    ) -> String {
+        let is_mcp = stdin_is_pipe && no_args || mcp_version.is_some();
 
         if is_mcp {
             "Mcp".to_string()
@@ -40,7 +62,14 @@ mod binary_main_tests {
 
     #[test]
     fn test_execution_mode_detection_with_mcp_version() {
-        assert_eq!(detect_execution_mode_test(Some("1.0.0")), "Mcp");
+        // The opt-in wins whatever stdin and argv say — all four combinations.
+        for (no_args, piped) in [(true, true), (true, false), (false, true), (false, false)] {
+            assert_eq!(
+                detect_execution_mode_test(Some("1.0.0"), no_args, piped),
+                "Mcp",
+                "MCP_VERSION must win with no_args={no_args} stdin_is_pipe={piped}"
+            );
+        }
     }
 
     /// Without the opt-in, the mode is decided by stdin and argv alone.
@@ -52,7 +81,28 @@ mod binary_main_tests {
     /// filter, so `args().len() == 1` does not hold), which is decidable.
     #[test]
     fn test_execution_mode_detection_without_mcp_version() {
-        assert_eq!(detect_execution_mode_test(None), "Cli");
+        // Without the opt-in the decision is stdin AND argv, so each case is
+        // named rather than one being asserted as if it were the only one.
+        assert_eq!(
+            detect_execution_mode_test(None, true, true),
+            "Mcp",
+            "bare `pmat` with piped stdin is the MCP auto-detect"
+        );
+        assert_eq!(
+            detect_execution_mode_test(None, true, false),
+            "Cli",
+            "bare `pmat` on a terminal is CLI"
+        );
+        assert_eq!(
+            detect_execution_mode_test(None, false, true),
+            "Cli",
+            "a subcommand with piped stdin is CLI — the subcommand wins"
+        );
+        assert_eq!(
+            detect_execution_mode_test(None, false, false),
+            "Cli",
+            "a subcommand on a terminal is CLI"
+        );
     }
 
     #[test]
