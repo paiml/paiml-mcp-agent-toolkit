@@ -7,20 +7,50 @@
 
 use std::process::Command;
 
+/// Every invocation here is expected to exit, not to serve: an unimplemented
+/// transport exits 2 synchronously, and `--transport http` refuses to start
+/// without a token. If the handler ever regresses back to the old
+/// `ctrl_c().await` stub, this call blocks and the outer cargo-test timeout
+/// makes the regression loud.
 fn run_serve(args: &[&str]) -> std::process::Output {
-    // Every invocation here is expected to exit, not to serve: an unimplemented
-    // transport exits 2 synchronously, and `--transport http` refuses to start
-    // without a token. If the handler ever regresses back to the old
-    // `ctrl_c().await` stub, this call blocks and the outer cargo-test timeout
-    // makes the regression loud.
-    Command::new(env!("CARGO_BIN_EXE_pmat"))
-        .arg("serve")
-        .args(args)
-        .env("RUST_LOG", "error")
+    run_serve_with_env(args, &[])
+}
+
+/// `run_serve`, plus environment the CALLER wants the child to start from.
+///
+/// The scrubs below are applied AFTER `extra`, deliberately: they are the
+/// harness's invariants and no caller may defeat them. Applying them first
+/// would let the overlay put back exactly the variable being removed — a
+/// mistake worth naming, because the flag-efficacy harness made it and the
+/// resulting fix compiled, ran, and changed nothing.
+fn run_serve_with_env(args: &[&str], extra: &[(&str, &str)]) -> std::process::Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_pmat"));
+    cmd.arg("serve").args(args).env("RUST_LOG", "error");
+    for (k, v) in extra {
+        cmd.env(k, v);
+    }
+    cmd
         // `--transport http` is implemented: with a token in the environment it
         // would BIND A SOCKET and `output()` would block until killed. The test
         // must not depend on the developer's environment not having one.
         .env_remove("PMAT_MCP_HTTP_TOKEN")
+        // MCP_VERSION makes pmat ignore the subcommand entirely and start the
+        // stdio MCP server (src/bin/pmat.rs:41 — "Explicit MCP opt-in via env
+        // var always wins", for Claude Desktop). `output()` closes stdin, that
+        // server reads EOF and exits 0, and every assertion in this file about
+        // an exit code then compares against the wrong process.
+        //
+        // This is not hypothetical. `pmat_serve_websocket_fails_loudly` failed
+        // in the full-feature run with `left: Some(0), right: Some(2)` and
+        // passed when run alone. Cargo runs a binary's tests as parallel THREADS
+        // in one process, and two siblings set the variable process-wide:
+        //   tests/modules/execution_mode.rs:24
+        //   tests/modules/services_integration.rs:340
+        // Both remove it afterwards, but a child spawned inside that window
+        // inherits it. Measured directly:
+        //   env -u MCP_VERSION  pmat serve --transport web-socket -> exit 2
+        //   MCP_VERSION=1.0.0   pmat serve --transport web-socket -> exit 0, 0 bytes
+        .env_remove("MCP_VERSION")
         .output()
         .expect("failed to spawn pmat binary")
 }
@@ -72,6 +102,46 @@ fn pmat_serve_without_a_token_refuses_to_start_and_says_why() {
             "stderr must not name `{dead}`, which does not start this server, got: {stderr}"
         );
     }
+}
+
+/// An ambient `MCP_VERSION` must not be able to answer for `pmat serve`.
+///
+/// This is the flake that failed the 3.32.0 release dogfood: the full-feature
+/// run reported `left: Some(0), right: Some(2)` for the websocket test, and the
+/// same test passed when run alone. Cargo runs a binary's tests as parallel
+/// THREADS in one process, so a sibling's process-wide `set_var` is visible to
+/// any child spawned in that window — `execution_mode.rs:24` and
+/// `services_integration.rs:340` both set `MCP_VERSION`, and both remove it
+/// afterwards, which closes the window without closing the hole.
+///
+/// With the variable set, pmat ignores the subcommand and starts the stdio MCP
+/// server; `output()` closes stdin; the server reads EOF and exits 0. Every
+/// exit-code assertion in this file is then comparing against a different
+/// program. Measured:
+///
+/// ```text
+/// env -u MCP_VERSION  pmat serve --transport web-socket  -> exit 2
+/// MCP_VERSION=1.0.0   pmat serve --transport web-socket  -> exit 0, 0 bytes
+/// ```
+///
+/// The variable is passed HERE as explicit child environment rather than set on
+/// this process, because setting it process-wide would recreate for every other
+/// test the exact race this test exists to close.
+#[test]
+fn an_ambient_mcp_version_cannot_defeat_the_serve_contract() {
+    let out = run_serve_with_env(&["--transport", "web-socket"], &[("MCP_VERSION", "1.0.0")]);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(
+        out.status.code(),
+        Some(2),
+        "the harness must scrub MCP_VERSION so an unimplemented transport still \
+         fails loudly; exit 0 means pmat ran the MCP stdio server instead and \
+         hit EOF\nstderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("websocket"),
+        "the refusal must still name the transport, got: {stderr}"
+    );
 }
 
 #[test]
