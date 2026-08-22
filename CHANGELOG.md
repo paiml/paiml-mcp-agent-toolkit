@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.32.0] - 2026-08-19
+## [3.32.0] - 2026-08-22
 
 Minor rather than patch, and the reason is the list below: most of this release changes
 what pmat *reports* on unchanged code. Each of these moves a number, an exit code or a
