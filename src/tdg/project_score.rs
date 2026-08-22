@@ -101,6 +101,35 @@ pub struct ProjectScore {
     /// numbers were computed over is not the population that was walked.
     #[serde(default)]
     pub ungraded_files: Vec<UngradedFile>,
+    /// Duplication measured ACROSS the graded files, in `0.0..=1.0`, or `None`
+    /// when the clone detector could not be run over them (issue #1050).
+    ///
+    /// The duplication component used to be a per-file measurement only: ten
+    /// byte-identical files each contain 0% *internal* duplication, so each
+    /// scored the full 20/20 and their mean did too. `analyze duplicates` called
+    /// the same tree 100% duplicated. The component awarded full marks exactly
+    /// because it had no way to look across files.
+    ///
+    /// `None` is not 0.0. A ratio of zero is a measurement that found nothing;
+    /// `None` says the measurement was never taken, and is named in
+    /// `not_measured` alongside the reason so no reader has to infer it from a
+    /// plausible-looking number.
+    #[serde(default)]
+    pub cross_file_duplication_ratio: Option<f64>,
+    /// Why `cross_file_duplication_ratio` is `None`, when it is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cross_file_duplication_unmeasured: Option<String>,
+    /// How many of the graded files the clone detector could actually read, and
+    /// how many the score covers, as `(measured, total)`.
+    ///
+    /// A ratio measured over PART of the tree is not a ratio for the tree. TDG
+    /// grades Go, Java, Ruby, Lua and more; the clone engine tokenizes seven
+    /// languages. On a mixed repo the duplication verdict describes only the
+    /// subset it could read, and a reader who cannot see that subset's size will
+    /// take it for the whole — the same over-claim as #1050 itself, one step
+    /// smaller. `None` when no project walk ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cross_file_duplication_coverage: Option<(usize, usize)>,
 }
 
 impl ProjectScore {
@@ -167,6 +196,35 @@ impl ProjectScore {
             files_truncated: false,
             list_filter: None,
             ungraded_files: Vec::new(),
+            // Set by `record_cross_file_duplication` when a PROJECT walk has
+            // actually run the detector. `aggregate` alone cannot know: it is
+            // handed scores, not files.
+            cross_file_duplication_ratio: None,
+            cross_file_duplication_unmeasured: None,
+            cross_file_duplication_coverage: None,
+        }
+    }
+
+    /// Record the project-wide duplication verdict on this score.
+    ///
+    /// Kept separate from `aggregate` because `aggregate` receives per-file
+    /// scores and has no access to the files themselves — and because a caller
+    /// that never ran the detector must not be able to imply that it did.
+    pub(crate) fn record_cross_file_duplication(
+        &mut self,
+        measured: &crate::tdg::cross_file_duplication::CrossFileDuplication,
+    ) {
+        self.cross_file_duplication_ratio = measured.ratio;
+        self.cross_file_duplication_coverage =
+            Some((measured.files_measured, measured.files_total));
+        if let Some(reason) = measured.unmeasured_reason.clone() {
+            self.cross_file_duplication_unmeasured = Some(reason);
+            // GH #704's convention: an unmeasured field is null AND named, so
+            // "could not measure" can never be read as "measured, and fine".
+            let field = "cross_file_duplication_ratio".to_string();
+            if !self.not_measured.contains(&field) {
+                self.not_measured.push(field);
+            }
         }
     }
 

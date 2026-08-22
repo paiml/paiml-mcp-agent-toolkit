@@ -335,6 +335,30 @@ fn format_tdg_score_json(
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
         "not_measured": nothing_was_measured(project),
+        // Issue #1050. The duplication component measured only WITHIN each file,
+        // so ten byte-identical files each scored the full 20/20 and their mean
+        // did too — full marks for a tree `analyze duplicates` calls 100%
+        // duplicated. The project-wide number now exists; it has to be legible
+        // here or the fix is invisible to every machine consumer.
+        //
+        // `measured: false` is the case that matters: TDG grades languages the
+        // clone engine has no tokenizer for (Go, Java, Ruby, Lua, …), and for
+        // those the component is UNMEASURED, not clean. A null ratio beside a
+        // stated reason is the only shape that cannot be misread as zero.
+        "duplication": project.map(|p| serde_json::json!({
+            "cross_file_ratio": p.cross_file_duplication_ratio,
+            "measured": p.cross_file_duplication_ratio.is_some(),
+            "unmeasured_reason": p.cross_file_duplication_unmeasured,
+            // A ratio over PART of a tree is not a ratio for the tree: TDG
+            // grades more languages than the clone engine tokenizes, so a mixed
+            // repo measures only its readable subset. Publishing the size of
+            // that subset is what stops the number being read as whole-tree.
+            "files_measured": p.cross_file_duplication_coverage.map(|(m, _)| m),
+            "files_total": p.cross_file_duplication_coverage.map(|(_, t)| t),
+            "covers_every_graded_file": p
+                .cross_file_duplication_coverage
+                .map(|(m, t)| m == t),
+        })),
         "score": {
             // Null, not 0.0/"F". A machine consumer averaging `total` over a
             // tree folded an unreadable directory in as a genuine zero, and one
@@ -647,6 +671,79 @@ mod cap_disclosure_tests {
         assert_eq!(value["grade_capped"], true);
         assert_eq!(value["grade_uncapped"], "A+");
         assert_eq!(value["f_grade_count"], 1);
+    }
+
+    /// Issue #1050: a duplication verdict the detector could NOT reach must say
+    /// so in the payload. A component that silently keeps its full 20/20 because
+    /// nothing could measure it is the defect this whole change exists to
+    /// remove, and a disclosure that never leaves `ProjectScore` is no
+    /// disclosure at all — `--format json` is where a machine consumer looks.
+    #[test]
+    fn an_unmeasured_duplication_component_is_disclosed_in_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
+        project.record_cross_file_duplication(
+            &crate::tdg::cross_file_duplication::CrossFileDuplication::unmeasured(
+                "no file among the 2 graded has a clone tokenizer",
+                2,
+            ),
+        );
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["duplication"]["measured"], false,
+            "an unreachable population must not be reported as measured"
+        );
+        assert!(
+            value["duplication"]["cross_file_ratio"].is_null(),
+            "no ratio may be invented, got {}",
+            value["duplication"]["cross_file_ratio"]
+        );
+        assert!(
+            value["duplication"]["unmeasured_reason"]
+                .as_str()
+                .is_some_and(|r| r.contains("clone tokenizer")),
+            "the payload must say WHY, got {}",
+            value["duplication"]["unmeasured_reason"]
+        );
+    }
+
+    /// The measured case is equally explicit: `0.0` here means the detector ran
+    /// and found nothing, which a reader must be able to tell apart from the
+    /// null above.
+    #[test]
+    fn a_measured_duplication_ratio_reaches_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        project.record_cross_file_duplication(
+            &crate::tdg::cross_file_duplication::CrossFileDuplication::measured_at(0.42),
+        );
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(value["duplication"]["measured"], true);
+        assert_eq!(value["duplication"]["cross_file_ratio"], 0.42);
+        assert!(value["duplication"]["unmeasured_reason"].is_null());
+    }
+
+    /// Partial coverage must be visible in the payload, not just on the struct.
+    #[test]
+    fn partial_duplication_coverage_reaches_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
+        project.cross_file_duplication_ratio = Some(0.1);
+        project.cross_file_duplication_coverage = Some((1, 2));
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(value["duplication"]["files_measured"], 1);
+        assert_eq!(value["duplication"]["files_total"], 2);
+        assert_eq!(
+            value["duplication"]["covers_every_graded_file"], false,
+            "a ratio over half the tree must not present as whole-tree"
+        );
     }
 
     /// An uncapped run must not grow a cap note out of nowhere.
