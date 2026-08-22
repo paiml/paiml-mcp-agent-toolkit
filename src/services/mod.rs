@@ -248,6 +248,7 @@ pub mod symbol_table;
 pub mod tdg_calculator;
 pub mod template_service;
 pub mod test_env_hygiene; // tests must not inherit env that changes what the binary does
+pub mod ttg; // TTG: token-tree base measures (T, D, N) — line-invariant complexity
 pub mod unified_ast_engine; // Stub for backward compatibility
 #[cfg(feature = "shell-ast")]
 pub mod unified_bash_analyzer; // TICKET-3006: Single-pass Bash/Shell analyzer
