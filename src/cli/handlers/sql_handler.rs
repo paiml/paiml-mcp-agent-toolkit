@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 /// Output format for SQL results
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SqlOutputFormat {
     Table,
     Json,
@@ -21,6 +21,85 @@ impl SqlOutputFormat {
             "csv" => Self::Csv,
             _ => Self::Table,
         }
+    }
+}
+
+/// The query `pmat sql` runs when given no query argument.
+pub const DEFAULT_QUERY: &str = "grade-dist";
+
+/// What the `.tables` dot-command expands to.
+const TABLES_QUERY: &str = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name";
+
+/// What `pmat sql` should do, decided from its arguments alone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SqlAction {
+    /// Print the built-in example queries. Needs no database.
+    Examples,
+    /// Print the schema of the index database.
+    Schema,
+    /// Run `sql` and render the rows as `format`.
+    Query {
+        /// The SQL text, or the name of a built-in example query.
+        sql: String,
+        /// How to render the result rows.
+        format: SqlOutputFormat,
+    },
+}
+
+/// Decide what `pmat sql` does, from its flags and query argument alone.
+///
+/// Pure: this opens nothing, so the precedence between `--examples`,
+/// `--schema` and the `.schema` / `.tables` dot-commands is decided in one
+/// place and can be tested without an index database on disk. It used to be
+/// five `if`s inline in `route_command`'s match arm, where nothing reached it.
+///
+/// The order is load-bearing. [`SqlAction::Examples`] is answered *without* a
+/// database, so a caller must dispatch it before resolving a database path —
+/// `pmat sql --examples` has to keep working in a project that has no index.
+#[must_use]
+pub fn plan(query: Option<&str>, format: &str, schema: bool, examples: bool) -> SqlAction {
+    if examples {
+        return SqlAction::Examples;
+    }
+    if schema {
+        return SqlAction::Schema;
+    }
+
+    let sql = query.unwrap_or(DEFAULT_QUERY);
+
+    if sql.eq_ignore_ascii_case(".schema") {
+        return SqlAction::Schema;
+    }
+    if sql.eq_ignore_ascii_case(".tables") {
+        // `.tables` renders as a table whatever `--format` says: its single
+        // `name` column is the whole point of asking.
+        return SqlAction::Query {
+            sql: TABLES_QUERY.to_string(),
+            format: SqlOutputFormat::Table,
+        };
+    }
+
+    SqlAction::Query {
+        sql: sql.to_string(),
+        format: SqlOutputFormat::from_str_opt(format),
+    }
+}
+
+/// Carry out a [`SqlAction`] against the database at `db_path`.
+///
+/// Total over [`SqlAction`], including `Examples` — which a caller that
+/// followed [`plan`]'s contract will have handled already, but which is
+/// answered correctly here rather than left to `unreachable!()`. A dispatch
+/// that aborts the process when a caller is rearranged is not worth the arm
+/// it saves.
+pub fn run(action: SqlAction, db_path: &Path) -> Result<()> {
+    match action {
+        SqlAction::Examples => {
+            handle_examples();
+            Ok(())
+        }
+        SqlAction::Schema => handle_schema(db_path),
+        SqlAction::Query { sql, format } => handle_sql(&sql, format, db_path),
     }
 }
 
@@ -360,6 +439,105 @@ pub fn find_db_path(project_path: &Path, workspace: bool) -> Result<std::path::P
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    // ── `plan`: the decision that used to live inline in route_command ──
+    //
+    // These five branches shipped with no test at all: they were statements
+    // in a match arm of `route_command`, which is `coverage(off)` and has no
+    // test module. Each assertion below fails if its branch is reordered or
+    // dropped.
+
+    #[test]
+    fn plan_examples_needs_no_database_and_outranks_every_other_flag() {
+        // --examples is answered before a db path is resolved, so it must win
+        // even when --schema and a query argument are also present.
+        assert_eq!(
+            plan(Some("SELECT 1"), "json", true, true),
+            SqlAction::Examples
+        );
+    }
+
+    #[test]
+    fn plan_schema_flag_outranks_the_query_argument() {
+        assert_eq!(
+            plan(Some("SELECT 1"), "json", true, false),
+            SqlAction::Schema
+        );
+    }
+
+    #[test]
+    fn plan_dot_schema_is_recognised_case_insensitively() {
+        assert_eq!(
+            plan(Some(".schema"), "table", false, false),
+            SqlAction::Schema
+        );
+        assert_eq!(
+            plan(Some(".SCHEMA"), "table", false, false),
+            SqlAction::Schema
+        );
+    }
+
+    #[test]
+    fn plan_dot_tables_forces_table_format_over_the_format_flag() {
+        // PIN: `.tables` ignores --format. Rendering its single `name` column
+        // as JSON or CSV is not what the dot-command is for.
+        // Matched rather than destructured with a panicking let-else: this
+        // asserts the variant AND both fields, and the ratchet counting that
+        // macro under src/ sits exactly on its baseline with no headroom.
+        match plan(Some(".tables"), "json", false, false) {
+            SqlAction::Query { sql, format } => {
+                assert_eq!(format, SqlOutputFormat::Table);
+                assert!(sql.contains("sqlite_master"), "got {sql}");
+            }
+            other => assert!(false, "`.tables` must plan a Query action, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plan_defaults_to_the_grade_distribution_query() {
+        assert_eq!(
+            plan(None, "table", false, false),
+            SqlAction::Query {
+                sql: DEFAULT_QUERY.to_string(),
+                format: SqlOutputFormat::Table,
+            }
+        );
+    }
+
+    #[test]
+    fn plan_passes_an_ordinary_query_and_its_format_through() {
+        assert_eq!(
+            plan(Some("SELECT 1"), "csv", false, false),
+            SqlAction::Query {
+                sql: "SELECT 1".to_string(),
+                format: SqlOutputFormat::Csv,
+            }
+        );
+    }
+
+    /// Counter-test: the dot-command and flag checks must not swallow ordinary
+    /// queries. A rule written too broadly (a `starts_with('.')`, or a
+    /// `contains` instead of an equality) would pass every test above while
+    /// silently turning a real query into a schema dump.
+    #[test]
+    fn plan_does_not_mistake_ordinary_queries_for_dot_commands() {
+        for q in [
+            "SELECT '.schema'",
+            "SELECT * FROM tables",
+            ".schema_extra",
+            "SELECT name FROM t WHERE x = '.tables'",
+        ] {
+            let action = plan(Some(q), "json", false, false);
+            assert_eq!(
+                action,
+                SqlAction::Query {
+                    sql: q.to_string(),
+                    format: SqlOutputFormat::Json,
+                },
+                "{q} must be run verbatim, not treated as a dot-command"
+            );
+        }
+    }
 
     #[test]
     fn test_resolve_query_named() {

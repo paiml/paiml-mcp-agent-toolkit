@@ -69,19 +69,72 @@ and Li et al. (2025, arXiv:2510.12047) on formal contracts for LLM-generated cod
 
 ### TDG Enforcement (CB-200)
 
-`pmat comply` check CB-200 validates minimum grade gate:
-- Default minimum: grade C
-- Configurable via `.pmat.yaml`: `comply.checks.cb-200.threshold`
-- `pmat tdg --explain` shows score decomposition
+`pmat comply` check CB-200 gates the **per-definition** TDG grades already stored
+in `.pmat/context.db` — one row per function/method in the `functions` table, NOT
+one row per file. The two populations differ by an order of magnitude, so a
+per-file grade distribution says nothing about whether this gate passes; see
+[Real-World Assessment](#real-world-assessment) below.
+
+**Minimum grade — precedence order.** The first source that supplies a value
+wins (`check_tdg_grade_gate`,
+`src/cli/handlers/comply_handlers/check_handlers/check_tdg_grade.rs`):
+
+1. `.pmat-gates.toml` → `[tdg] min_grade` — project-local override, beats everything below
+2. `.pmat.yaml` → `comply.thresholds.min_tdg_grade`
+3. Built-in default: **`A`** (`default_min_tdg_grade()` in
+   `src/models/comply_config_defaults.rs`, pinned by the `--lib` test
+   `test_default_min_tdg_grade_is_a`)
+
+`comply.checks.cb-200.threshold` is **not** the grade knob. CB-200's default
+check config carries `threshold: None` and the gate never reads that field —
+setting it changes nothing. `.pmat-gates.toml` also carries `[tdg] exclude`,
+which is unioned with `.pmat.yaml`'s `comply.thresholds.tdg_exclude_paths`
+rather than overriding it; test files are excluded unconditionally.
+
+The floor is matched against the eleven grade spellings `GRADE_VARIANTS`
+produces (`A+` … `F`) by taking the up-set of the floor, so a floor spelled any
+other way **fails** the check instead of passing vacuously over an empty
+violation set.
+
+**The gate reads the index; it never builds one** (#939). With no
+`.pmat/context.db` it returns Skip / "Not measured" and refuses to write
+`.pmat/context.db` or `.pmat/context.idx` into the project under audit. A stale
+index (a source file newer than the db) is still a real measurement: it is
+reported with the staleness named in the message, not silently repaired. Run
+`pmat query "x"` to (re)build the index first. Pinned by the `--lib` tests
+`cb200_never_builds_an_index_inside_the_audited_project` and
+`cb200_reports_staleness_instead_of_rebuilding`.
+
+`pmat tdg --explain` shows score decomposition.
 
 ### Real-World Assessment
 
 **TDG is the most actionable metric in PMAT.** Per-file granularity means developers know
-exactly what to fix. Average score of 95.6/100 across 2305 analyzed files (2198 include-fragments
-skipped) with grade distribution (A-: 2241, B+: 28, B: 21, C+: 3, C: 1, F: 0). CB-200 grade gate
-enforces minimum quality at commit time. Include-fragment files (tree-sitter can't parse
-non-standalone Rust) are now auto-detected and excluded from TDG scoring. False-positive
-unwrap detection inside string literals (e.g. documentation text) was fixed in v3.11.1.
+exactly what to fix. Include-fragment files (tree-sitter can't parse non-standalone Rust)
+are auto-detected and excluded from TDG scoring. False-positive unwrap detection inside
+string literals (e.g. documentation text) was fixed in v3.11.1.
+
+**Two populations are reported, and they must not be conflated.** A per-file
+distribution cannot be read as a CB-200 verdict:
+
+| | Population | Producer | Snapshot |
+|---|---|---|---|
+| Per **file** | 2,305 analyzed files (2,198 include-fragments skipped) | `pmat tdg` | avg 95.6/100 — A-: 2241, B+: 28, B: 21, C+: 3, C: 1, **F: 0** |
+| Per **definition** — what CB-200 gates | 23,451 definitions over 2,626 file paths | `pmat query`'s index (`.pmat/context.db`) | A+: 18801, A: 2611, A-: 1202, B+: 403, B: 209, B-: 96, C+: 55, C: 25, C-: 19, D: 12, **F: 18** |
+
+Both rows are snapshots of this repo, not invariants — re-measure rather than
+quote them. The per-definition row was taken on 2026-08-22 with:
+
+```bash
+sqlite3 .pmat/context.db \
+  'SELECT tdg_grade, COUNT(*) FROM functions GROUP BY tdg_grade ORDER BY COUNT(*) DESC'
+```
+
+The per-file row is an earlier recorded `pmat tdg` run. Note the disagreement in
+the last column: zero F-grade *files* alongside eighteen F-grade *definitions*.
+At the built-in floor of `A` only `A+` and `A` pass, so 2,039 of those 23,451
+definitions sit below the floor before the test-file and `[tdg] exclude`
+filters run — which is the number CB-200 acts on.
 
 **Versus Popper Score (87.5)**: TDG tells you "query_handler.rs has complexity 15 and 3% duplication."
 Popper tells you "LICENSE exists." TDG is 10x more actionable per point.

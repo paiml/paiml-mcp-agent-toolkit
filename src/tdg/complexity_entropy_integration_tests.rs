@@ -1172,3 +1172,236 @@ def undocumented(y):
         assert!(score.doc_coverage > 0.0);
     }
 }
+
+/// Characterization of the Lean heuristic scorer.
+///
+/// The pre-existing Lean tests in this file assert only
+/// `0.0 <= total <= 100.0`, which every possible output satisfies. Eleven
+/// probe fixtures isolating one counter each (branching, tactic-opens, proof
+/// length, universes, tactic count, imports, 2- vs 4-space indent) produced
+/// **byte-identical** scores of 100.0, because each component is a weight
+/// minus a penalty that only fires above a threshold no small fixture
+/// reaches. So none of those tests can observe the arithmetic they cover.
+///
+/// `LEAN_CHARACTERIZATION` is built to cross every threshold and land in each
+/// penalty's *linear* region (below its cap), so every counter the analyzer
+/// maintains is individually visible in the output:
+///
+/// | counter            | value | threshold | penalty                |
+/// |--------------------|-------|-----------|------------------------|
+/// | cyclomatic         | 47    | > 30      | (47-30)*0.5 = 8.5      |
+/// | max_nesting        | 6     | > 4       | 6-4 = 2.0 structural   |
+/// |                    |       | > 3       | 6-3 = 3.0 abstraction  |
+/// | max_proof_length   | 68    | > 50      | (68-50)/10 = 1.8       |
+/// | universe_count     | 8     | > 5       | (8-5)*0.5 = 1.5        |
+/// | tactic_count       | 16    | > 10      | (16-10)*0.3 = 1.8      |
+/// | import_count       | 25    | > 20      | (25-20)*0.2 = 1.0      |
+/// | doc 8 / def 12     |       | —         | ratio, uncapped        |
+/// | indent 14 x2, 56 x4|       | —         | 56/70 = 0.8            |
+///
+/// Every expected value below was captured from the implementation as it
+/// stood before `analyze_lean_heuristic` was split into named helpers, and
+/// independently reproduced by a hand model of the counting rules. A change
+/// to any single counter moves at least one assertion.
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod lean_heuristic_characterization {
+    use crate::tdg::analyzer_ast::TdgAnalyzerAst;
+    use crate::tdg::{Language, TdgScore};
+
+    const LEAN_CHARACTERIZATION: &str = r#"
+import Fixture.Mod01
+import Fixture.Mod02
+import Fixture.Mod03
+import Fixture.Mod04
+import Fixture.Mod05
+import Fixture.Mod06
+import Fixture.Mod07
+import Fixture.Mod08
+import Fixture.Mod09
+import Fixture.Mod10
+import Fixture.Mod11
+import Fixture.Mod12
+import Fixture.Mod13
+import Fixture.Mod14
+import Fixture.Mod15
+import Fixture.Mod16
+import Fixture.Mod17
+import Fixture.Mod18
+import Fixture.Mod19
+import Fixture.Mod20
+open Fixture.Ns01
+open Fixture.Ns02
+open Fixture.Ns03
+open Fixture.Ns04
+open Fixture.Ns05
+
+namespace CharFixture
+
+/-- Doc for item 1 -/
+def item1 (n : Nat) : Nat := n + 1
+/-- Doc for item 2 -/
+def item2 (n : Nat) : Nat := n + 2
+/-- Doc for item 3 -/
+def item3 (n : Nat) : Nat := n + 3
+/-- Doc for item 4 -/
+def item4 (n : Nat) : Nat := n + 4
+/-- Doc for item 5 -/
+def item5 (n : Nat) : Nat := n + 5
+/-- Doc for item 6 -/
+def item6 (n : Nat) : Nat := n + 6
+/-! Module note -/
+-- plain line comment
+structure PtA where
+  fx : Nat
+class ShapeA (a : Type) where
+  areaA : a -> Nat
+inductive ColorA : Type where
+axiom choiceA : Prop
+instance instA : ShapeA PtA where
+    areaA p := p.fx
+theorem long_proof (n : Nat) : n = n := by
+  case h1 => rfl
+  case h2 => rfl
+  case h3 => rfl
+  case h4 => rfl
+  case h5 => rfl
+  case h6 => rfl
+  case h7 => rfl
+  case h8 => rfl
+  case h9 => rfl
+  case h10 => rfl
+  case h11 => rfl
+  case h12 => rfl
+    | alt1 => rfl
+    | alt2 => rfl
+    | alt3 => rfl
+    | alt4 => rfl
+    | alt5 => rfl
+    | alt6 => rfl
+    | alt7 => rfl
+    | alt8 => rfl
+    | alt9 => rfl
+    | alt10 => rfl
+    | alt11 => rfl
+    | alt12 => rfl
+      have h1 : True := trivial
+      have h2 : True := trivial
+      have h3 : True := trivial
+      have h4 : True := trivial
+      have h5 : True := trivial
+      have h6 : True := trivial
+      have h7 : True := trivial
+      have h8 : True := trivial
+        show Goal1
+        show Goal2
+        show Goal3
+        show Goal4
+        show Goal5
+        show Goal6
+        show Goal7
+        show Goal8
+          obtain o1 := h1
+          obtain o2 := h1
+          obtain o3 := h1
+          obtain o4 := h1
+          obtain o5 := h1
+          obtain o6 := h1
+          let u0 : Type := trivial
+          let u1 : Prop := trivial
+          let u2 : Sort := trivial
+          let u3 : Type := trivial
+          let u4 : Prop := trivial
+            simp
+            rw [h1]
+            exact h1
+            apply f1
+            intro x1
+            ring
+            norm_num
+            decide
+            aesop
+            simp only
+            rw [h2]
+            exact h2
+            apply f2
+            intro x2
+            omega
+            decide
+end CharFixture
+"#;
+
+    fn score() -> TdgScore {
+        TdgAnalyzerAst::new()
+            .expect("analyzer")
+            .analyze_source(LEAN_CHARACTERIZATION, Language::Lean, None)
+            .expect("lean analysis")
+    }
+
+    /// Floating-point components are compared to 4 decimal places: the
+    /// penalties are sums of exact binary fractions, so an equal result is
+    /// exact agreement, not a tolerance band wide enough to hide a
+    /// one-count drift (the smallest single-count penalty here is 0.2).
+    fn assert_close(label: &str, actual: f32, expected: f32) {
+        assert!(
+            (actual - expected).abs() < 1e-4,
+            "{label}: expected {expected}, got {actual}"
+        );
+    }
+
+    #[test]
+    fn structural_score_pins_cyclomatic_nesting_and_proof_length() {
+        // 25.0 weight - 8.5 cyclomatic - 2.0 nesting - 1.8 proof length
+        assert_close("structural", score().structural_complexity, 12.7);
+    }
+
+    #[test]
+    fn semantic_score_pins_universe_and_tactic_counts() {
+        // 20.0 weight - 1.5 universes - 1.8 tactics - 3.0 abstraction depth
+        assert_close("semantic", score().semantic_complexity, 13.7);
+    }
+
+    #[test]
+    fn coupling_score_pins_import_and_open_count() {
+        // 15.0 weight - 1.0 for 25 `import `/`open ` lines
+        assert_close("coupling", score().coupling_score, 14.0);
+    }
+
+    #[test]
+    fn doc_score_pins_doc_line_and_declaration_counts() {
+        // (8/12 * 0.7 + 8/120 * 0.3) * 10.0
+        assert_close("doc_coverage", score().doc_coverage, 4.866_667);
+    }
+
+    #[test]
+    fn consistency_score_pins_the_dominant_indent_width() {
+        // 56 four-space lines vs 14 two-space lines -> 56/70 * 10.0
+        assert_close("consistency", score().consistency_score, 8.0);
+    }
+
+    #[test]
+    fn lean_confidence_is_derated_ten_percent() {
+        // The Lean path multiplies confidence by 0.9 exactly once.
+        let c = score().confidence;
+        assert!(
+            (c - 0.855).abs() < 1e-4,
+            "confidence: expected 0.855, got {c}"
+        );
+    }
+
+    /// Counter-test: the characterization must not pass for *any* Lean input.
+    /// A source that trips none of the thresholds has to score differently on
+    /// every component the fixture pins, or the assertions above are vacuous.
+    #[test]
+    fn a_trivial_lean_source_does_not_match_the_characterization() {
+        let trivial = TdgAnalyzerAst::new()
+            .expect("analyzer")
+            .analyze_source("def f : Nat := 1\n", Language::Lean, None)
+            .expect("lean analysis");
+        assert!((trivial.structural_complexity - 12.7).abs() > 1.0);
+        assert!((trivial.semantic_complexity - 13.7).abs() > 1.0);
+        assert!((trivial.coupling_score - 14.0).abs() > 0.5);
+        assert!((trivial.doc_coverage - 4.866_667).abs() > 1.0);
+        assert!((trivial.consistency_score - 8.0).abs() > 1.0);
+    }
+}

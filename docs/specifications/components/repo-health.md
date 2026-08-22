@@ -204,7 +204,9 @@ comply:
     cb-200:
       enabled: true
       severity: error
-      threshold: 60.0  # Minimum TDG grade (C)
+      # NOTE: cb-200 has no `threshold:` knob — the gate never reads that field.
+      # Its floor is `comply.thresholds.min_tdg_grade` (built-in default "A"),
+      # itself overridden by `.pmat-gates.toml` [tdg] min_grade.
     cb-140:
       enabled: true
       severity: warning
