@@ -7,13 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.32.0] - 2026-08-19
+## [3.32.0] - 2026-08-22
 
 Minor rather than patch, and the reason is the list below: most of this release changes
 what pmat *reports* on unchanged code. Each of these moves a number, an exit code or a
 payload shape, so a pipeline pinned to 3.31.0's output sees a difference on a tree that
 has not changed. Read this list before upgrading a gate.
 
+- **TDG grades are computed from a token walk instead of a line scan, and they get
+  WORSE, not better.** Every grade pmat has ever stored came from iterating
+  `source.lines()` and charging per line, so `rustfmt.toml` decided the grade:
+  `if a && b && c` scored cyclomatic 2, and the identical expression wrapped over three
+  lines scored 4. The replacement never sees a newline, a comment, or the inside of a
+  string literal, so those two spellings now score the same — as does the same function
+  with every comment in it deleted. Measured over this repository's own index (23,451
+  definitions in 2,626 files; gate scope 22,724 after the built-in test-path filter and
+  `.pmat-gates.toml [tdg].exclude`): **definitions below the A floor go from 1,905 to
+  3,333, +75.0%**; **A+ falls from 80.17% to 63.99% by count and from 52.96% to 26.11%
+  by code volume**; across all 23,451 rows, 982 improve, 15,589 are unchanged and 6,880
+  get worse. Anyone with a CI gate keyed on a TDG number will see it move against them.
+  The grade bands are unchanged and so are the complexity cut points — what changed is
+  the measurement, not the standard. The rules, the one threshold that did move, and the
+  index invalidation are below under **How a TDG grade is computed now**.
 - **SATD counts go up on every project.** Markers in doc comments are now found, so a
   project sitting just under a SATD threshold can start failing.
 - **TDG grades rise across the board, because the complexity scanner stopped counting
@@ -24,7 +39,11 @@ has not changed. Read this list before upgrading a gate.
   index: **1,263 spurious decision points from closure `||` across 372 definitions, and
   534 from comments across 391**. Grades stored in `.pmat/context.db` improve, so
   `pmat query --min-grade A` returns more results and any gate reading that column sees
-  fewer violations. Nothing about the code changed; the measurement was wrong.
+  fewer violations. Nothing about the code changed; the measurement was wrong. **Read
+  this together with the entry above, which supersedes it**: that scanner no longer
+  exists, and a token walk cannot read a comment or mistake a zero-argument closure for
+  an operator, so both defects are gone by construction rather than by patch. The net
+  direction across the release is the one stated above, and it is downward.
 - **`pmat quality-gate` exits 1** when it finds blocking violations, where it used to
   print them and exit 0. A CI step that has been passing against a failing tree will
   start failing, which is the point; `--report-only` (alias `--no-fail`) restores the
@@ -94,6 +113,80 @@ comment form never scanned, a directory never walked, a verdict no caller could 
 a report of zeros over a tree nothing was read from. In each case a number was reported
 and the reader had no way to see the denominator.
 
+One entry is not from that family. The TDG measurement change is a different defect —
+a number decided by the *formatting* of the thing it measures — and it is the largest
+behaviour change in the release, so it gets its own section.
+
+#### How a TDG grade is computed now
+
+The scanner through 3.32.0 read a definition's text line by line, and the scorer around
+it carried two rules that could pass a definition without measuring it. Five changes,
+and what each one cost, measured on this repository's index:
+
+- **It read control-flow keywords inside string literals.** `generate_trigram_index`
+  (`build.rs`) is codegen whose body is one raw string containing Rust source. The
+  scanner found the `if` and the `for` *inside the string* and scored it cyclomatic 12,
+  grade B+. It has **one** decision and 52 tokens, and it is A+. A string or char
+  literal is one token whatever it contains.
+- **A `match` charged 1 per arm; it now charges 1 for the dispatch.** That is McCabe
+  1976's own `CASE` caveat and Campbell 2018 rule 1. `classify_command`
+  (`src/cli/command_wire_names.rs`) goes from cyclomatic **73 to 1** — it is a 71-row
+  lookup table. It is still graded F, but now on the axis that is true of it: 976
+  tokens.
+- **A run of like `&&`/`||` charged once per line; it now charges once for the run**,
+  however it is wrapped (Campbell rule 4).
+- **Zero branches bought at least an A.** `GH272_TRIVIAL_FLOOR = 90.0`
+  (`src/services/agent_context/function_index/helpers_quality_metrics.rs:518`) forced
+  every definition with cyclomatic ≤ 1 to grade A or better regardless of its size or
+  its debt markers, and that covered **13,207 of 23,451 definitions — 56.3% of the
+  graded corpus**. It is deleted. `with_tauranta_patterns` (390 lines, zero branches)
+  and `generate_openapi_spec` (269 lines, zero branches) were both graded A; both are F.
+  206 of the 1,865 new failures are this rule alone.
+- **Declarations were exempt from size.** `effective_loc = 0` was forced for
+  `Struct | Enum | Trait | TypeAlias` in the same file at line 126, which together
+  with the floor above graded **4,447 of 4,451 declarations A+**, 4,350 of them at the
+  literal constant 100.0 — one fifth of the graded population was a hard-coded number.
+  Declarations are now graded on size, with complexity reported as `NOT_APPLICABLE`
+  rather than as a passing score. Twelve newly fail, headed by the two CLI enums the
+  exemption was hiding: `AnalyzeCommands` (`src/cli/commands/analyze_commands/mod.rs`,
+  1,891 lines) and `Commands` (`src/cli/commands/commands_enum/definition.rs`, 1,769
+  lines), both A− and both now F.
+
+**The debt-marker term is gone from the score.** `satd_count` was docked 5 points per
+marker past a free allowance of two, capped at 20. The highest count across the 23,451
+indexed definitions here is **1**, so the term did not fire on a single one of them,
+and deleting it moves no grade in this repository. It could move one elsewhere: a
+definition carrying three or more markers was losing points for them and no longer is.
+`satd_count` is still counted, still stored and still reported; it no longer decides a
+letter, and `analyze satd` — including the doc-comment markers named above — is
+unaffected either way.
+
+**The standard did not move; the measurement did.** `GRADE_BANDS` (`src/tdg/grade.rs`)
+is untouched, and the complexity cut points are unchanged decision for decision: A+ at
+3 decisions is the incumbent's cyclomatic 4, A at 6 decisions is its cyclomatic 7, and
+the complexity budget exhausts at 34 where the incumbent's exhausted at 35. McCabe's
+published 10 and NIST SP 500-235's 15 were both available and both **declined**, because
+both are looser than what this repository already enforced. The arithmetic runs the
+other way from the grades, and that is the point: total decision points charged across
+the 19,000 indexed functions fall from **42,857 to 31,362, −26.8%**, and grades still
+get worse.
+
+**One threshold did move, and it is the size one.** The old size term did not begin
+until 50 raw lines and then charged one point per 15, which put its A-line near 200 raw
+lines, and it counted blank and comment lines as size because it read
+`chunk.content.lines().count()`. The new ceiling is 30 lines — the low-risk unit-size
+ceiling from Alves, Ypma & Visser, *Deriving Metric Thresholds from Benchmark Data*
+(ICSM 2010), derived from a benchmark of other systems and then frozen — applied to
+canonical lines, meaning tokens divided by 6.5 after comments and attribute spans are
+removed. That is a tightening of roughly 6×, and **1,512 of the 1,865 new failures are
+definitions over it**. It is a threshold change and is named as one; nothing else here
+is.
+
+**An existing `.pmat/context.db` is invalidated, not migrated.** The stored grades are a
+different measure, and back-filling them would be a lie of provenance, so the index
+schema version is bumped and the next `pmat query` rebuilds. Until it does, nothing
+reads a grade from the old model.
+
 #### Reproducing the numbers in this entry
 
 A count in a release note is a measurement of a specific tree, and a measurement
@@ -116,6 +209,15 @@ with the command, fixture or issue it came from, and:
 - **Figures attributed to the stack-wide audit (#1017, #1018, #1019) are quoted from
   those issues**, which record the trees and dates they were taken on. They are cited
   as evidence of a class, not re-measured here, and several have moved since.
+- **Every TDG figure is an old-model / new-model pair over one frozen snapshot of
+  `.pmat/context.db`** — 23,451 definitions in 2,626 files, of which 22,724 are in gate
+  scope. Both halves of each pair are computed over the same rows, so the deltas are
+  properties of the model change and not of the tree; the absolute counts are properties
+  of that snapshot and move with every commit that adds a definition. Re-derive them by
+  rebuilding the index and reading the stored grades, not by comparing against a
+  differently-scoped run: the built-in test-path filter and `.pmat-gates.toml [tdg]`
+  are what make 23,451 into 22,724, and a figure quoted without which of the two it
+  used cannot be checked.
 - **Three kinds of figure below are not properties of the commit at all**, and each
   says so where it appears. (1) Peak RSS and wall clock for `comply check` are
   properties of the host. (2) Any count taken over a checkout holding gitignored
@@ -898,6 +1000,19 @@ be noticed — it needs a re-read of whatever parses pmat's output.
 
 Named because a release note that lists only what was fixed is the same defect this
 release is about. None of the following is fixed here.
+
+**An A+ under the new TDG model means one thing: the unit is small and does not branch
+much.** It is not evidence that the code is correct, tested, well-named, or worth
+having. Nesting depth is measured and stored, because it explains why a unit is hard to
+read, but it does not score — a nesting gateway would add 10 failures out of 22,724, so
+shipping it as a component would be a term that never fires, which is the defect the
+dead SATD term already was. Nothing charges for coupling, argument count or naming. The
+walk cannot see inside a macro body at the site where it expands. And the grade only
+covers what the index holds: a definition the chunker does not emit — a module-level
+`const` table, an `impl` header, a body that lives inside a macro — is not graded at
+all, and in every aggregate an ungraded definition is indistinguishable from a passing
+one. A model that cannot see part of the code it grades is one indexer change away from
+being wrong in a direction nobody will notice.
 
 **Unknown config keys are still ignored silently.** The #1019 fix removed pmat's own
 generated `[gates]` section, but nothing rejects or warns on a key no reader parses, so

@@ -54,6 +54,50 @@ exclude = [
     "src/cli/command_structure.rs",
 ]
 
+# CB-200 RATCHET BASELINE — the count of definitions below `min_grade` that this
+# repository has already agreed to carry. Optional: a project that omits this key
+# gets zero tolerance, exactly as before.
+#
+# THIS IS NOT A THRESHOLD, AND IT IS NOT A PASS. 1,905 definitions grade below A
+# across 1,053 files, at most 12 in any one file — a flat distribution with no
+# hotspot and no bounded refactor. The gate reports that number on every run and
+# refuses any increase, closed, naming the offenders. "Passing at baseline" reads
+# as "debt held flat, not a clean tree", at Severity::Warning, because it is.
+#
+# WHY A NUMBER HERE IS NOT THE USUAL LIE. `.pmat-ratchet.toml`'s header:
+# "A number in a config file that nobody re-runs is not a gate; it is a wish with
+# a colon after it." `.pmat-metrics.toml:45` carries max_unwrap_calls = 100,
+# annotated "Current: 570", in a tree measuring 20,390 — three numbers, no two
+# agreeing, green throughout. This one is re-derived by CB-200 itself on every
+# run, by the same query that produced it, and compared. It cannot become a
+# transcription.
+#
+# THE FLOOR IS UNCHANGED. `min_grade` is not set here and `min_tdg_grade` in
+# .pmat.yaml is untouched; no exclude glob was added for this. Both of those make
+# debt invisible — one of them (187f506885) is how a past CB-200 "pass" was
+# manufactured. Every unit of debt stays counted and printed.
+#
+# THE BASELINE MAY ONLY GO DOWN. Lower it whenever the tree beats it; CB-200 tells
+# you the number to write. Raising it requires a written justification reviewed
+# against the previous committed version of this file, the rule
+# `.pmat-ratchet.toml` already applies to its own baselines. Note that nothing
+# yet ENFORCES that on this key — CB-200 checks count-vs-baseline, not
+# baseline-vs-prior-baseline.
+#
+# Derived, not transcribed — and derived under the config PRODUCTION USES, which
+# is the correction that matters here. The first value committed was 1905, taken
+# from `check_tdg_grade_gate(repo_root, ComplyConfig::default())`. Production
+# does not use that config: `compute_compliance_report` loads `.pmat.yaml`,
+# which carries four `tdg_exclude_paths` the default lacks. Exactly one row sits
+# in the gap —
+#     src/tdg/analyzer_ast/analyzer_impl2_heuristics_lean.rs :: analyze_lean_heuristic (F)
+# — so the honest count is 1904 across 1052 files, not 1905 across 1053.
+#
+# The re-derivation test caught this before it was committed, which is the whole
+# argument for re-deriving rather than transcribing: a baseline one higher than
+# the truth is one free regression.
+baseline = 1904
+
 [entropy]
 # Entropy analysis configuration (#227)
 enabled = true
