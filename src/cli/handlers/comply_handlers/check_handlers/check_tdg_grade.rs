@@ -46,30 +46,83 @@ struct TdgViolation {
     start_line: usize,
 }
 
+/// How many below-floor definitions this project has already agreed to carry,
+/// read from `.pmat-gates.toml` `[tdg] baseline`.
+///
+/// CB-200 is a RATCHET, not a threshold, and the distinction is the whole
+/// design. `.pmat-ratchet.toml`'s own header states it: "A number in a config
+/// file that nobody re-runs is not a gate; it is a wish with a colon after it."
+/// `.pmat-metrics.toml:45` is this repository's worked example —
+/// `max_unwrap_calls = 100`, annotated `Current: 570`, in a tree measuring
+/// 20,390: three numbers, no two agreeing, nothing reading the key, green
+/// throughout.
+///
+/// This number is different in exactly one way, and it is the only way that
+/// matters: it is RE-DERIVED on every run by the same query that produced it,
+/// and compared. It can never quietly become a transcription. It is a record of
+/// debt, not a permission to add more — a definition below the floor that
+/// pushes the count past it fails the gate, closed, and the absolute count is
+/// printed on every outcome so "passing" can never be read as "clean".
+///
+/// It does NOT touch `min_tdg_grade` and adds no exclude glob. Both of those
+/// are threshold-lowering in disguise: they make debt invisible, where this
+/// keeps every unit of it counted and reported.
+#[derive(Debug, PartialEq, Eq)]
+enum TdgBaseline {
+    /// No `baseline` key. Zero tolerance — any violation fails, exactly as
+    /// before. This is the default precisely so that ratcheting THIS repo
+    /// cannot silently relax any other repo that runs pmat.
+    Absent,
+    /// The count this project last agreed to hold flat.
+    Held(usize),
+    /// The key is present and is not a count. Fails, for the same reason an
+    /// unparseable `min_grade` fails: a bound nobody can read must not be read
+    /// as a bound nothing exceeds.
+    Unreadable(String),
+}
+
 struct TdgGateOverrides {
     min_grade: Option<String>,
     exclude: Vec<String>,
+    baseline: TdgBaseline,
+}
+
+impl Default for TdgGateOverrides {
+    /// No overrides: the floor comes from `.pmat.yaml`, nothing extra is
+    /// excluded, and the gate has zero tolerance. An unreadable or unparsable
+    /// `.pmat-gates.toml` lands here, which fails CLOSED — the excludes vanish
+    /// and the baseline vanishes with them, so a typo cannot buy headroom.
+    fn default() -> Self {
+        Self {
+            min_grade: None,
+            exclude: Vec::new(),
+            baseline: TdgBaseline::Absent,
+        }
+    }
+}
+
+/// A `baseline` value is a count or it is nothing. A string, a float, a
+/// negative — anything that is not a non-negative integer — is reported rather
+/// than rounded down to "no baseline", because "the key you wrote does nothing"
+/// and "you configured zero tolerance" are opposite claims and look identical
+/// from the outside.
+fn parse_tdg_baseline(value: Option<&toml::Value>) -> TdgBaseline {
+    let Some(value) = value else {
+        return TdgBaseline::Absent;
+    };
+    match value.as_integer() {
+        Some(n) if n >= 0 => TdgBaseline::Held(n as usize),
+        _ => TdgBaseline::Unreadable(value.to_string()),
+    }
 }
 
 fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
     let path = project_path.join(".pmat-gates.toml");
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => {
-            return TdgGateOverrides {
-                min_grade: None,
-                exclude: Vec::new(),
-            }
-        }
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return TdgGateOverrides::default();
     };
-    let table: toml::Table = match content.parse() {
-        Ok(t) => t,
-        Err(_) => {
-            return TdgGateOverrides {
-                min_grade: None,
-                exclude: Vec::new(),
-            }
-        }
+    let Ok(table) = content.parse::<toml::Table>() else {
+        return TdgGateOverrides::default();
     };
     let tdg = table.get("tdg");
     let min_grade = tdg
@@ -85,7 +138,12 @@ fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
                 .collect()
         })
         .unwrap_or_default();
-    TdgGateOverrides { min_grade, exclude }
+    let baseline = parse_tdg_baseline(tdg.and_then(|t| t.get("baseline")));
+    TdgGateOverrides {
+        min_grade,
+        exclude,
+        baseline,
+    }
 }
 
 fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
@@ -307,25 +365,53 @@ pub(crate) fn check_tdg_grade_gate(
         .iter()
         .filter(|v| !is_tdg_violation_excluded(v, &exclude_patterns))
         .collect();
-    let count = filtered.len();
-    if count == 0 {
-        return ComplianceCheck {
-            name: "CB-200: TDG Grade Gate".into(),
-            status: CheckStatus::Pass,
-            message: format!(
-                "All non-test functions meet minimum grade {min_grade}{}{staleness}",
-                if violations.is_empty() {
-                    String::new()
-                } else {
-                    format!(" ({} test/excluded functions skipped)", violations.len())
-                }
-            ),
-            severity: Severity::Info,
-        };
+    tdg_grade_verdict(
+        &filtered,
+        violations.len(),
+        min_grade,
+        &overrides.baseline,
+        staleness,
+    )
+}
+
+/// The most anyone reads before scrolling. Both listings stop here.
+const TDG_MAX_LISTED: usize = 10;
+
+/// Worst first, and deterministically so.
+///
+/// The listing used to be `filtered.iter().take(10)` over an unordered SQLite
+/// scan with no `ORDER BY`. Two runs of the same gate over the same database
+/// printing a different ten is indistinguishable, to the reader, from the tree
+/// having changed — and on a flat distribution of 1,905 across 1,052 files
+/// there is nothing else in the message to tell them apart.
+///
+/// `Grade`'s derived `Ord` runs best-to-worst (`APlus` first), so the worst
+/// grade is the LARGEST; a spelling the scale does not know sorts above even
+/// `F`, because a violation nobody can rank is the one most worth looking at.
+fn rank_tdg_violations<'a>(filtered: &[&'a TdgViolation]) -> Vec<&'a TdgViolation> {
+    fn severity_rank(v: &TdgViolation) -> usize {
+        Grade::from_variant_name(&v.tdg_grade).map_or(usize::MAX, |g| g as usize)
     }
-    let mut details: Vec<String> = filtered
+    let mut ranked: Vec<&TdgViolation> = filtered.to_vec();
+    ranked.sort_by(|a, b| {
+        severity_rank(b)
+            .cmp(&severity_rank(a))
+            .then_with(|| b.complexity.cmp(&a.complexity))
+            .then_with(|| a.file_path.cmp(&b.file_path))
+            .then_with(|| a.start_line.cmp(&b.start_line))
+    });
+    ranked
+}
+
+/// Up to `limit` offenders, worst first, with a truncation line that names how
+/// many were not shown. `limit` of 0 still lists one: a Fail that names nothing
+/// is a number the reader cannot act on.
+fn tdg_offender_listing(filtered: &[&TdgViolation], limit: usize) -> String {
+    let limit = limit.clamp(1, TDG_MAX_LISTED);
+    let ranked = rank_tdg_violations(filtered);
+    let mut details: Vec<String> = ranked
         .iter()
-        .take(10)
+        .take(limit)
         .map(|v| {
             format!(
                 "    {}:{} {} [{}] (complexity: {})",
@@ -333,18 +419,200 @@ pub(crate) fn check_tdg_grade_gate(
             )
         })
         .collect();
-    if count > 10 {
-        details.push(format!("    ... and {} more", count - 10));
+    if ranked.len() > limit {
+        details.push(format!("    ... and {} more", ranked.len() - limit));
     }
+    details.join("\n")
+}
+
+/// How many distinct files the surviving violations span — the shape of the
+/// debt, not just its size. 1,905 in one file is a refactor; 1,905 across 1,052
+/// files is a policy, and the reader cannot tell which from a count alone.
+fn tdg_violation_file_count(filtered: &[&TdgViolation]) -> usize {
+    filtered
+        .iter()
+        .map(|v| v.file_path.as_str())
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+}
+
+fn tdg_check(status: CheckStatus, severity: Severity, message: String) -> ComplianceCheck {
     ComplianceCheck {
         name: "CB-200: TDG Grade Gate".into(),
-        status: CheckStatus::Fail,
-        message: format!(
-            "{count} function(s) below minimum grade {min_grade}{staleness}\n{}",
-            details.join("\n")
-        ),
-        severity: Severity::Error,
+        status,
+        message,
+        severity,
     }
+}
+
+/// CB-200's verdict over a completed measurement.
+///
+/// Four outcomes, and which one you get depends only on the baseline the
+/// project recorded:
+///
+/// ```text
+///   baseline unreadable      -> Fail   (a bound nobody can read is not a bound)
+///   no baseline              -> Fail on any violation      (unchanged)
+///   count <= baseline        -> Pass, carrying count AND baseline
+///   count >  baseline        -> Fail, naming the excess and the offenders
+/// ```
+fn tdg_grade_verdict(
+    filtered: &[&TdgViolation],
+    queried_rows: usize,
+    min_grade: &str,
+    baseline: &TdgBaseline,
+    staleness: &str,
+) -> ComplianceCheck {
+    match baseline {
+        TdgBaseline::Unreadable(raw) => unreadable_baseline_verdict(raw),
+        TdgBaseline::Absent => zero_tolerance_verdict(filtered, queried_rows, min_grade, staleness),
+        TdgBaseline::Held(b) if filtered.len() > *b => {
+            over_baseline_verdict(filtered, *b, min_grade, staleness)
+        }
+        TdgBaseline::Held(b) => within_baseline_verdict(filtered, *b, min_grade, staleness),
+    }
+}
+
+fn unreadable_baseline_verdict(raw: &str) -> ComplianceCheck {
+    tdg_check(
+        CheckStatus::Fail,
+        Severity::Error,
+        format!(
+            "`[tdg] baseline` in .pmat-gates.toml is {raw}, which is not a count. A ratchet \
+             baseline that cannot be read must not be read as a baseline nothing exceeds \
+             \u{2014} write a non-negative integer, or delete the key to restore zero tolerance."
+        ),
+    )
+}
+
+/// A project that records no baseline gets exactly what it got before: any
+/// surviving violation fails. The message is unchanged, byte for byte, so
+/// adding a ratchet here cannot move another repository's output.
+fn zero_tolerance_verdict(
+    filtered: &[&TdgViolation],
+    queried_rows: usize,
+    min_grade: &str,
+    staleness: &str,
+) -> ComplianceCheck {
+    let count = filtered.len();
+    if count == 0 {
+        return tdg_check(
+            CheckStatus::Pass,
+            Severity::Info,
+            format!(
+                "All non-test functions meet minimum grade {min_grade}{}{staleness}",
+                if queried_rows == 0 {
+                    String::new()
+                } else {
+                    format!(" ({queried_rows} test/excluded functions skipped)")
+                }
+            ),
+        );
+    }
+    tdg_check(
+        CheckStatus::Fail,
+        Severity::Error,
+        format!(
+            "{count} function(s) below minimum grade {min_grade}{staleness}\n{}",
+            tdg_offender_listing(filtered, TDG_MAX_LISTED)
+        ),
+    )
+}
+
+/// At or under the recorded baseline: the gate passes, and says why it is not
+/// clean while doing so.
+///
+/// `Warn`, not `Pass`, and the reason is mechanical rather than aesthetic.
+///
+/// `Pass` was the first choice — held-flat debt must not block a release, which
+/// is the whole point of a ratchet — with `Severity::Warning` carrying the "not
+/// clean" signal. That does not work: `retain_blocking_checks` (check.rs:270)
+/// switches on `CheckStatus` ALONE and drops `Pass` unconditionally, ignoring
+/// `Severity` entirely. `quality-gate.yml` runs
+/// `pmat comply check --failures-only`, so the one line saying "1,904
+/// definitions are below the floor" was discarded by the exact invocation CI
+/// uses. A gate that hides its own debt from the only place anyone reads it is
+/// how 1,904 accumulated unseen in the first place.
+///
+/// `Warn` does not block either — `exit_policy` (check.rs:241) only turns
+/// warnings into a non-zero code under `--strict` — but it IS counted in
+/// `report.summary.warn`, and the summary is deliberately tallied before the
+/// list is narrowed, so the count survives `--failures-only`. The debt is
+/// therefore always reachable, which was the requirement.
+///
+/// A clean tree at baseline 0 still reports `Pass`/`Info`: nothing is being
+/// held, so there is nothing to warn about.
+fn within_baseline_verdict(
+    filtered: &[&TdgViolation],
+    baseline: usize,
+    min_grade: &str,
+    staleness: &str,
+) -> ComplianceCheck {
+    let count = filtered.len();
+    let slack = baseline - count;
+    let slack_note = if slack == 0 {
+        String::new()
+    } else {
+        format!(
+            " The tree is {slack} under the recorded baseline: lower `[tdg] baseline` to \
+             {count} in .pmat-gates.toml to bank it \u{2014} a baseline the tree has already \
+             beaten is headroom for new debt."
+        )
+    };
+    if count == 0 {
+        return tdg_check(
+            CheckStatus::Pass,
+            if slack == 0 {
+                Severity::Info
+            } else {
+                Severity::Warning
+            },
+            format!(
+                "0 definitions below minimum grade {min_grade}, against a recorded baseline of \
+                 {baseline}.{slack_note}{staleness}"
+            ),
+        );
+    }
+    tdg_check(
+        CheckStatus::Warn,
+        Severity::Warning,
+        format!(
+            "{count} definition(s) below minimum grade {min_grade} across {} file(s), at the \
+             recorded baseline of {baseline} \u{2014} this is debt held flat, not a clean tree. \
+             Any new definition below {min_grade} fails this gate.{slack_note}{staleness}",
+            tdg_violation_file_count(filtered)
+        ),
+    )
+}
+
+/// Over the recorded baseline: closed, naming how many and by how much.
+///
+/// The caveat about the listing is not hedging. A baseline is a COUNT, so it
+/// cannot identify WHICH definitions are new — only that there are more than
+/// there were. Presenting the worst-graded survivors as "the ones you just
+/// added" would be a claim the measurement does not support, and the reader
+/// would chase the wrong functions.
+fn over_baseline_verdict(
+    filtered: &[&TdgViolation],
+    baseline: usize,
+    min_grade: &str,
+    staleness: &str,
+) -> ComplianceCheck {
+    let count = filtered.len();
+    let over = count - baseline;
+    tdg_check(
+        CheckStatus::Fail,
+        Severity::Error,
+        format!(
+            "{count} definition(s) below minimum grade {min_grade} \u{2014} {over} OVER the \
+             recorded baseline of {baseline}. A ratchet holds only if new debt is refused: fix \
+             {over}, or revert what added them. Raising `[tdg] baseline` is not the fix \u{2014} \
+             a baseline may only go down.{staleness}\n    (the baseline is a count, not a \
+             roster, so these are the worst-graded survivors, not necessarily the ones just \
+             added)\n{}",
+            tdg_offender_listing(filtered, over)
+        ),
+    )
 }
 
 /// Evaluate a single custom score definition and return the compliance check
@@ -794,5 +1062,382 @@ mod tests_tdg_grade {
         assert!(!is_source_file(Path::new("foo.txt")));
         assert!(!is_source_file(Path::new("foo.toml")));
         assert!(!is_source_file(Path::new("Makefile")));
+    }
+
+    // ── CB-200 as a RATCHET ──────────────────────────────────────────────
+    //
+    // The gate was BLIND until 2026-08-20: a five-letter reader against an
+    // eleven-letter writer, so it saw 247 violations and could not see 1,719.
+    // Every historical "CB-200 passed" came from that version. Once it could
+    // see, it measured 1,905 below-A definitions across 1,052 files, max 12 per
+    // file — a flat distribution with no hotspot and no bounded refactor.
+    //
+    // The two ways to make that green are both threshold-lowering in disguise:
+    // drop `min_tdg_grade`, or add an exclude glob. One of them (187f506885) is
+    // how a past "pass" was manufactured. Neither is done here. The gate holds
+    // the count flat instead, refuses any increase closed, and prints the
+    // absolute number on every outcome so that passing can never be mistaken
+    // for clean.
+
+    /// A project with `.pmat/context.db` holding exactly these rows.
+    fn tdg_fixture(rows: &[(&str, &str, &str, u32, usize)]) -> tempfile::TempDir {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).expect("create .pmat");
+        let conn = rusqlite::Connection::open(pmat_dir.join("context.db")).expect("open db");
+        conn.execute_batch(
+            "CREATE TABLE functions (id INTEGER PRIMARY KEY, file_path TEXT NOT NULL, \
+             function_name TEXT NOT NULL, tdg_grade TEXT NOT NULL DEFAULT 'A', \
+             complexity INTEGER NOT NULL DEFAULT 1, start_line INTEGER NOT NULL DEFAULT 0)",
+        )
+        .expect("schema");
+        for (file, name, grade, complexity, line) in rows {
+            conn.execute(
+                "INSERT INTO functions (file_path, function_name, tdg_grade, complexity, \
+                 start_line) VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![file, name, grade, complexity, line],
+            )
+            .expect("insert row");
+        }
+        tmp
+    }
+
+    fn write_gates(tmp: &tempfile::TempDir, body: &str) {
+        std::fs::write(tmp.path().join(".pmat-gates.toml"), body).expect("write gates toml");
+    }
+
+    fn judge(tmp: &tempfile::TempDir) -> ComplianceCheck {
+        check_tdg_grade_gate(tmp.path(), &ComplyConfig::default())
+    }
+
+    /// The key is OPTIONAL, and its absence is not a softer gate.
+    ///
+    /// This is the counter-test that bounds the whole change: pmat runs against
+    /// other repositories, and none of them has agreed to anything. A project
+    /// that records no baseline must get zero tolerance, byte for byte, whether
+    /// it has a `.pmat-gates.toml` with no `baseline` key or no file at all.
+    #[test]
+    fn without_a_baseline_key_any_violation_still_fails() {
+        let no_file = tdg_fixture(&[("src/a.rs", "bad", "D", 30, 5)]);
+        let verdict = judge(&no_file);
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+        assert!(
+            verdict
+                .message
+                .contains("1 function(s) below minimum grade A"),
+            "the no-baseline message must be unchanged: {}",
+            verdict.message
+        );
+
+        let other_keys = tdg_fixture(&[("src/a.rs", "bad", "D", 30, 5)]);
+        write_gates(&other_keys, "[tdg]\nexclude = [\"nothing/**\"]\n");
+        let verdict = judge(&other_keys);
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+        assert!(
+            verdict
+                .message
+                .contains("1 function(s) below minimum grade A"),
+            "a [tdg] table without a baseline is still zero tolerance: {}",
+            verdict.message
+        );
+    }
+
+    /// At the baseline the gate PASSES — and must not read as clean.
+    ///
+    /// "1905 below A" printed at `Info` next to a genuinely empty tree is how
+    /// 1,905 accumulated unseen. The count, the baseline and the word "debt"
+    /// are all load-bearing, and so is `Severity::Warning` on a `Pass`.
+    /// Held debt must survive `--failures-only`, which is the ONLY invocation
+    /// CI runs.
+    ///
+    /// This is the counter-test for the status choice, and it exists because the
+    /// obvious simplification — "it passed, so return `Pass`" — is wrong in a way
+    /// nothing else here would catch. `retain_blocking_checks` (check.rs) matches
+    /// on `CheckStatus` ALONE and drops `Pass` unconditionally; `Severity` is not
+    /// consulted. `quality-gate.yml` runs `pmat comply check --failures-only`, so
+    /// a `Pass` verdict deletes the one line reporting that 1,904 definitions sit
+    /// below the floor, from the only report anyone reads.
+    ///
+    /// `Warn` does not block — `exit_policy` only escalates warnings under
+    /// `--strict` — but it is counted into `summary.warn`, and the summary is
+    /// tallied BEFORE the list is narrowed. That is what keeps the number
+    /// reachable.
+    ///
+    /// RED: change `within_baseline_verdict`'s non-empty branch back to
+    /// `CheckStatus::Pass` and this fails with `left: Pass, right: Warn`.
+    #[test]
+    fn held_debt_is_warn_so_failures_only_cannot_hide_it() {
+        let tmp = tdg_fixture(&[("src/a.rs", "one", "D", 30, 5)]);
+        write_gates(&tmp, "[tdg]\nbaseline = 5\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Warn,
+            "held debt reported as Pass is dropped by `--failures-only`; the \
+             count must stay reachable. Message was: {}",
+            verdict.message
+        );
+
+        // ...and the counter-test: a genuinely clean tree is still a Pass, so
+        // "always Warn" cannot satisfy the assertion above.
+        let clean = tdg_fixture(&[]);
+        write_gates(&clean, "[tdg]\nbaseline = 5\n");
+        let clean_verdict = judge(&clean);
+        assert_eq!(
+            clean_verdict.status,
+            CheckStatus::Pass,
+            "nothing is being held, so there is nothing to warn about: {}",
+            clean_verdict.message
+        );
+    }
+
+    #[test]
+    fn at_the_baseline_it_passes_carrying_the_count_and_the_baseline() {
+        let tmp = tdg_fixture(&[
+            ("src/a.rs", "one", "D", 30, 5),
+            ("src/b.rs", "two", "C-", 20, 9),
+        ]);
+        write_gates(&tmp, "[tdg]\nbaseline = 2\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(verdict.status, CheckStatus::Warn, "{}", verdict.message);
+        assert_eq!(
+            verdict.severity,
+            Severity::Warning,
+            "held debt at Info reads as clean: {}",
+            verdict.message
+        );
+        assert!(
+            verdict
+                .message
+                .contains("2 definition(s) below minimum grade A"),
+            "the absolute count must lead: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("recorded baseline of 2"),
+            "the baseline must be named: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("not a clean tree"),
+            "passing at baseline must not read as passing clean: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("2 file(s)"),
+            "the shape of the debt is part of the report: {}",
+            verdict.message
+        );
+    }
+
+    /// One over is a failure, named as one over.
+    #[test]
+    fn one_definition_over_the_baseline_fails_and_says_by_how_much() {
+        let tmp = tdg_fixture(&[
+            ("src/a.rs", "one", "D", 30, 5),
+            ("src/b.rs", "two", "C-", 20, 9),
+            ("src/c.rs", "three", "F", 44, 2),
+        ]);
+        write_gates(&tmp, "[tdg]\nbaseline = 2\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+        assert_eq!(verdict.severity, Severity::Error);
+        assert!(
+            verdict
+                .message
+                .contains("3 definition(s) below minimum grade A"),
+            "the absolute count must lead even on a failure: {}",
+            verdict.message
+        );
+        assert!(
+            verdict
+                .message
+                .contains("1 OVER the recorded baseline of 2"),
+            "the excess must be named: {}",
+            verdict.message
+        );
+        // Exactly `over` offenders are listed, worst first, and the rest are
+        // counted rather than dropped.
+        assert!(
+            verdict.message.contains("src/c.rs:2 three [F]"),
+            "the worst survivor must be named: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("... and 2 more"),
+            "the unlisted remainder must be counted: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("may only go down"),
+            "the fix must not read as 'raise the baseline': {}",
+            verdict.message
+        );
+    }
+
+    /// Under the baseline is a pass that asks to be banked.
+    ///
+    /// A baseline the tree has already beaten is headroom for new debt, which
+    /// is the failure mode `.pmat-ratchet.toml`'s `--lower` job exists to
+    /// prevent. CB-200 has no such job, so it asks in the message instead.
+    #[test]
+    fn under_the_baseline_passes_and_asks_for_the_baseline_to_be_lowered() {
+        let tmp = tdg_fixture(&[("src/a.rs", "one", "D", 30, 5)]);
+        write_gates(&tmp, "[tdg]\nbaseline = 5\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(verdict.status, CheckStatus::Warn, "{}", verdict.message);
+        assert!(
+            verdict.message.contains("4 under the recorded baseline"),
+            "slack must be reported: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("lower `[tdg] baseline` to 1"),
+            "the message must name the number to bank: {}",
+            verdict.message
+        );
+    }
+
+    /// A clean tree under a stale baseline reports the slack, not silence.
+    #[test]
+    fn a_clean_tree_still_reports_a_baseline_it_has_outgrown() {
+        let tmp = tdg_fixture(&[("src/a.rs", "fine", "A", 3, 1)]);
+        write_gates(&tmp, "[tdg]\nbaseline = 5\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(verdict.status, CheckStatus::Pass, "{}", verdict.message);
+        assert!(
+            verdict
+                .message
+                .contains("0 definitions below minimum grade A"),
+            "{}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("lower `[tdg] baseline` to 0"),
+            "a baseline of 5 over an empty tree is pure headroom: {}",
+            verdict.message
+        );
+    }
+
+    /// A baseline nobody can read is not a baseline nothing exceeds.
+    ///
+    /// The same rule `passing_spellings` already enforces for `min_grade`: the
+    /// unreadable value is REPORTED, never quietly rounded to "no baseline",
+    /// because "your key does nothing" and "you chose zero tolerance" are
+    /// opposite claims that look identical from outside.
+    #[test]
+    fn an_unreadable_baseline_fails_closed_and_names_itself() {
+        for bad in ["\"many\"", "-1", "1.5", "true", "[1905]"] {
+            let tmp = tdg_fixture(&[("src/a.rs", "one", "D", 30, 5)]);
+            write_gates(&tmp, &format!("[tdg]\nbaseline = {bad}\n"));
+            let verdict = judge(&tmp);
+            assert_eq!(
+                verdict.status,
+                CheckStatus::Fail,
+                "baseline = {bad} must fail: {}",
+                verdict.message
+            );
+            assert!(
+                verdict.message.contains("is not a count"),
+                "baseline = {bad} must name itself: {}",
+                verdict.message
+            );
+        }
+        // Counter-test: the guard did not become a "no baseline may be small"
+        // rule. Zero is a real baseline — it is zero tolerance, said out loud.
+        let clean = tdg_fixture(&[("src/a.rs", "fine", "A", 3, 1)]);
+        write_gates(&clean, "[tdg]\nbaseline = 0\n");
+        assert_eq!(judge(&clean).status, CheckStatus::Pass);
+        let dirty = tdg_fixture(&[("src/a.rs", "one", "D", 30, 5)]);
+        write_gates(&dirty, "[tdg]\nbaseline = 0\n");
+        let verdict = judge(&dirty);
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+        assert!(
+            verdict
+                .message
+                .contains("1 OVER the recorded baseline of 0"),
+            "{}",
+            verdict.message
+        );
+    }
+
+    /// The over-correction this must NOT become: a baseline that hides debt.
+    ///
+    /// A generous baseline buys silence in exactly one place — the pass/fail
+    /// verdict. It must not raise the floor, must not exclude a path, and must
+    /// not remove a single definition from the count. Nothing here may read as
+    /// the sentence a genuinely clean tree gets.
+    #[test]
+    fn a_baseline_holds_debt_flat_without_hiding_any_of_it() {
+        let tmp = tdg_fixture(&[
+            ("src/a.rs", "one", "D", 30, 5),
+            ("src/b.rs", "two", "C-", 20, 9),
+            ("src/c.rs", "three", "B+", 12, 3),
+        ]);
+        write_gates(&tmp, "[tdg]\nbaseline = 100\n");
+        let verdict = judge(&tmp);
+
+        assert_eq!(verdict.status, CheckStatus::Warn, "{}", verdict.message);
+        assert!(
+            verdict.message.contains("3 definition(s)"),
+            "every unit of debt stays counted: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("minimum grade A"),
+            "the floor is still A — a baseline is not a lowered threshold: {}",
+            verdict.message
+        );
+        // B+ is below A and is still counted: the baseline did not quietly
+        // narrow the alphabet the way the five-letter reader did.
+        assert!(
+            !verdict
+                .message
+                .contains("All non-test functions meet minimum grade"),
+            "held debt must never borrow the clean tree's sentence: {}",
+            verdict.message
+        );
+    }
+
+    /// The listing is deterministic, worst first.
+    ///
+    /// It used to be `take(10)` off a `SELECT` with no `ORDER BY`. On a flat
+    /// 1,905-across-1,052-files distribution there is nothing else in the
+    /// message to distinguish "the tree changed" from "SQLite scanned in a
+    /// different order".
+    #[test]
+    fn the_offender_listing_is_worst_first_and_stable() {
+        let tmp = tdg_fixture(&[
+            ("src/mild.rs", "mild", "B+", 11, 1),
+            ("src/worst.rs", "worst", "F", 9, 1),
+            ("src/bad_simple.rs", "bad_simple", "D", 4, 1),
+            ("src/bad_complex.rs", "bad_complex", "D", 90, 1),
+        ]);
+        let verdict = judge(&tmp);
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+
+        for name in ["worst", "bad_complex", "bad_simple", "mild"] {
+            assert!(
+                verdict.message.contains(name),
+                "{name} must be listed: {}",
+                verdict.message
+            );
+        }
+        let order: Vec<usize> = ["worst", "bad_complex", "bad_simple", "mild"]
+            .iter()
+            .map(|name| verdict.message.find(name).unwrap_or(usize::MAX))
+            .collect();
+        let mut sorted = order.clone();
+        sorted.sort_unstable();
+        assert_eq!(
+            order, sorted,
+            "worst grade first, then highest complexity: {}",
+            verdict.message
+        );
     }
 }

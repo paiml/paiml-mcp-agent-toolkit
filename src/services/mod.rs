@@ -245,6 +245,7 @@ pub mod source_line_index; // Measured function line spans (#652/#656/#686)
 pub mod spec_falsification; // RAG-powered Popperian falsification for specs
 pub mod spec_parser; // Part C: Specification parsing for pmat qa command
 pub mod symbol_table;
+pub mod tdg_baseline; // CB-200's ratchet baseline, re-derived not transcribed
 pub mod tdg_calculator;
 pub mod template_service;
 pub mod test_env_hygiene; // tests must not inherit env that changes what the binary does
