@@ -436,7 +436,6 @@ jobs:
               'sovereign-compression':'lib-test delta unmeasured; compile-checked only',
               'syntax-highlighting':  'lib-test delta unmeasured; compile-checked only',
               'org-intelligence':     'lib-test delta unmeasured; compile-checked only',
-              'mcp-http':             'lib-test delta unmeasured; compile-checked only',
               'prometheus-metrics':   'lib-test delta unmeasured; compile-checked only',
               'raft-consensus':       'lib-test delta unmeasured; compile-checked only',
           }

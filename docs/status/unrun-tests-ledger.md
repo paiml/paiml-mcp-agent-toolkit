@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23103 of 26224 lib tests are executed; 3121 are compiled by no leg.
+23105 of 26226 lib tests are executed; 3121 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
@@ -3148,12 +3148,6 @@ crate::services::languages::kotlin::tests::test_kotlin_interface_analysis
 crate::services::languages::kotlin::tests::test_kotlin_package_name_extraction
 crate::services::languages::kotlin::tests::test_simple_kotlin_class_analysis
 
-## `mcp-http` — 1 test(s)
-
-EV-6 (#999) streamable HTTP; orphan-ledger has it 'compile-checked only'. The one test behind it is an end-to-end auth check.
-
-crate::mcp_pmcp::http_server::http_e2e_tests::unauthenticated_request_is_401_and_a_valid_token_is_not
-
 ## `mcp-integration,mutation-testing` — 21 test(s)
 
 a COMBINATION no leg supplies, and the reason a per-feature ledger would have missed these: `full` enables `mutation-testing`, the `mcp-integration` leg enables the other, and each feature therefore looks covered while these 21 tests compile in neither.
@@ -3223,6 +3217,12 @@ crate::services::semantic::chunker::tests::coverage_tests::test_c_feature_disabl
 needs `cpp-ast` OFF; in `core-languages`, so ON in every leg.
 
 crate::services::semantic::chunker::tests::coverage_tests::test_cpp_feature_disabled
+
+## `not(mcp-http)` — 1 test(s)
+
+the HTTP-ABSENT branch. `mcp-http` entered `default` in 3.32.0, so every leg now compiles it in and nothing exercises the code that runs when it is out — chiefly the `serve` refusal that used to print '[HTTP NOT COMPILED IN this build]'. That path still ships for anyone building `--no-default-features`, and it is now untested by every CI leg. Recorded rather than deleted: the branch is reachable by a real build configuration, so removing the tests would hide it instead of covering it.
+
+crate::cli::commands::commands_enum::command_availability_tests::serve_help_ties_the_feature_error_to_the_token_being_set
 
 ## `not(python-ast)` — 1 test(s)
 

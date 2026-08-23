@@ -118,9 +118,15 @@ pub const REASONS: &[(&str, &str)] = &[
          This ledger measures the delta: 32 tests.",
     ),
     (
-        "mcp-http",
-        "EV-6 (#999) streamable HTTP; orphan-ledger has it 'compile-checked \
-         only'. The one test behind it is an end-to-end auth check.",
+        "not(mcp-http)",
+        "the HTTP-ABSENT branch. `mcp-http` entered `default` in 3.32.0, so \
+         every leg now compiles it in and nothing exercises the code that runs \
+         when it is out — chiefly the `serve` refusal that used to print \
+         '[HTTP NOT COMPILED IN this build]'. That path still ships for anyone \
+         building `--no-default-features`, and it is now untested by every CI \
+         leg. Recorded rather than deleted: the branch is reachable by a real \
+         build configuration, so removing the tests would hide it instead of \
+         covering it.",
     ),
     (
         "mcp-integration,mutation-testing",
