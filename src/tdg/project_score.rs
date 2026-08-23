@@ -129,7 +129,39 @@ pub struct ProjectScore {
     /// take it for the whole — the same over-claim as #1050 itself, one step
     /// smaller. `None` when no project walk ran.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cross_file_duplication_coverage: Option<(usize, usize)>,
+    pub cross_file_duplication_coverage: Option<CrossFileDuplicationCoverage>,
+}
+
+/// How much of the graded tree the cross-file duplication verdict actually covers.
+///
+/// A NAMED struct, not the `(usize, usize)` tuple this started as, for two
+/// reasons that turned out to be the same reason.
+///
+/// The differential-corpus gate flagged it: serialized as a tuple this is a raw
+/// two-element array, so `cross_file_duplication_coverage[].len` was a numeric
+/// leaf reading 2 for an empty project and 2 for a defect-rich one — a constant
+/// masquerading as a measurement. It could have been allow-listed as "fixed
+/// arity", and that would have been true and useless.
+///
+/// The better answer is that `[1, 2]` is a bad payload anyway: a consumer has to
+/// know positionally which number is which, and getting it backwards silently
+/// inverts the meaning. Named fields cannot be read backwards. Nothing consumed
+/// this field yet — it was added in the same change — so naming it cost nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CrossFileDuplicationCoverage {
+    /// Files the clone engine could tokenize and therefore measure.
+    pub measured: usize,
+    /// Files TDG graded. Always >= `measured`.
+    pub total: usize,
+}
+
+impl CrossFileDuplicationCoverage {
+    /// True when the verdict covers every graded file, so the ratio describes
+    /// the whole tree rather than a subset of it.
+    #[must_use]
+    pub fn covers_every_graded_file(self) -> bool {
+        self.measured == self.total
+    }
 }
 
 impl ProjectScore {
@@ -215,8 +247,10 @@ impl ProjectScore {
         measured: &crate::tdg::cross_file_duplication::CrossFileDuplication,
     ) {
         self.cross_file_duplication_ratio = measured.ratio;
-        self.cross_file_duplication_coverage =
-            Some((measured.files_measured, measured.files_total));
+        self.cross_file_duplication_coverage = Some(CrossFileDuplicationCoverage {
+            measured: measured.files_measured,
+            total: measured.files_total,
+        });
         if let Some(reason) = measured.unmeasured_reason.clone() {
             self.cross_file_duplication_unmeasured = Some(reason);
             // GH #704's convention: an unmeasured field is null AND named, so

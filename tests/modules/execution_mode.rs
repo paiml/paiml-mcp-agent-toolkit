@@ -4,7 +4,6 @@
 #[cfg(test)]
 mod binary_main_tests {
     use std::env;
-    use std::io::IsTerminal;
 
     /// The execution-mode decision, with MCP_VERSION passed IN rather than read
     /// from the process.

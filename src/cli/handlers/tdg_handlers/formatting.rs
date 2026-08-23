@@ -353,11 +353,11 @@ fn format_tdg_score_json(
             // grades more languages than the clone engine tokenizes, so a mixed
             // repo measures only its readable subset. Publishing the size of
             // that subset is what stops the number being read as whole-tree.
-            "files_measured": p.cross_file_duplication_coverage.map(|(m, _)| m),
-            "files_total": p.cross_file_duplication_coverage.map(|(_, t)| t),
+            "files_measured": p.cross_file_duplication_coverage.map(|c| c.measured),
+            "files_total": p.cross_file_duplication_coverage.map(|c| c.total),
             "covers_every_graded_file": p
                 .cross_file_duplication_coverage
-                .map(|(m, t)| m == t),
+                .map(crate::tdg::project_score::CrossFileDuplicationCoverage::covers_every_graded_file),
         })),
         "score": {
             // Null, not 0.0/"F". A machine consumer averaging `total` over a
@@ -733,7 +733,11 @@ mod cap_disclosure_tests {
     fn partial_duplication_coverage_reaches_json() {
         let mut project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
         project.cross_file_duplication_ratio = Some(0.1);
-        project.cross_file_duplication_coverage = Some((1, 2));
+        project.cross_file_duplication_coverage =
+            Some(crate::tdg::project_score::CrossFileDuplicationCoverage {
+                measured: 1,
+                total: 2,
+            });
         let score = project.average();
 
         let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");

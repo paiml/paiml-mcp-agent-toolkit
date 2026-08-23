@@ -379,9 +379,10 @@ async fn a_partly_readable_tree_discloses_how_much_it_covered() {
     std::fs::write(root.join("b.go"), go).expect("write b.go");
 
     let project = score_tree(&root).await;
-    let (measured, total) = project
+    let coverage = project
         .cross_file_duplication_coverage
         .expect("coverage must be recorded");
+    let (measured, total) = (coverage.measured, coverage.total);
 
     assert_eq!(
         total, project.total_files,
