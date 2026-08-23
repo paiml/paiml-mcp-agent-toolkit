@@ -190,10 +190,10 @@ trap 'rm -rf "$WORKLOG"' EXIT
 # THE VERIFIER-PINNING RULE, and the two pins that implement it, live in exactly
 # one file. Read scripts/verifier_pin.sh — the rule is stated there and nowhere
 # else, because a rule restated is a rule that drifts. This runner only CALLS it.
-if [ -f "$SKILL_DIR/verifier_pin.sh" ]; then
-  . "$SKILL_DIR/verifier_pin.sh"
+if [ -f "$SKILL_DIR/pmat-verifier_pin.sh" ]; then
+  . "$SKILL_DIR/pmat-verifier_pin.sh"
 else
-  echo "dogfood: $SKILL_DIR/verifier_pin.sh is missing." >&2
+  echo "dogfood: $SKILL_DIR/pmat-verifier_pin.sh is missing." >&2
   echo "  It carries the rule that decides WHICH pv and WHICH pmat this protocol" >&2
   echo "  is allowed to believe. Without it every verifier would fall back to" >&2
   echo "  PATH, which is the exact defect #2640 closed. Refusing to run." >&2
@@ -263,7 +263,7 @@ DG_META_RC=$RUN_RC
 # scripts/lib/dogfood_gates.py. This used to be an embedded heredoc while the
 # guard scraped the same TOML with awk+grep, so the guard's scan universe could
 # be strictly smaller than the set the runner EXECUTES (#2644 audit, CI-3/VP-05).
-DG_PLAN=$(CRATE="$CRATE" python3 "$SKILL_DIR/lib/dogfood_gates.py" \
+DG_PLAN=$(CRATE="$CRATE" python3 "$SKILL_DIR/pmat-dogfood_gates.py" \
   "$WORKLOG/meta-dogfood.json" 2>/dev/null || echo "META_ERROR")
 if [ "$DG_META_RC" -ne 0 ]; then
   mark dogfood-gates FAIL "\`cargo metadata\` failed (exit=$DG_META_RC) — the release gates this crate declares could not be discovered, so none of them ran"
@@ -271,7 +271,7 @@ elif [ "$DG_PLAN" = "META_ERROR" ]; then
   # cargo succeeded; the python step died. The old message blamed cargo with
   # "failed (exit=0)" attached — an operator sent to the wrong component
   # (#2644, CI-4).
-  mark dogfood-gates FAIL "gate discovery's python3 step failed (cargo metadata itself exited 0) — \`$SKILL_DIR/lib/dogfood_gates.py\` could not parse the declaration (or is missing), so no declared gate ran"
+  mark dogfood-gates FAIL "gate discovery's python3 step failed (cargo metadata itself exited 0) — \`$SKILL_DIR/pmat-dogfood_gates.py\` could not parse the declaration (or is missing), so no declared gate ran"
 elif [ "$DG_PLAN" = "NOPKG" ]; then
   mark dogfood-gates FAIL "no package named '$CRATE' in cargo metadata — run dogfood from the crate dir, not the virtual workspace root"
 elif [ "$DG_PLAN" = "NODECL" ]; then
@@ -1239,10 +1239,10 @@ if [ ! -x "$BINPATH" ]; then
   mark transport-invariance FAIL "no release binary at $BINPATH — nothing to invoke"
 elif [ -z "$UI_DECL" ]; then
   mark transport-invariance SKIP "no [package.metadata.unified_surface] — declare list/cli/http/probe to enable the simultaneous cross-transport check"
-elif [ ! -f "$SKILL_DIR/invariance.py" ]; then
+elif [ ! -f "$SKILL_DIR/pmat-invariance.py" ]; then
   mark transport-invariance FAIL "invariance.py missing from $SKILL_DIR — a gate that cannot run is not a SKIP"
 else
-  run_to "$WORKLOG/invariance.log" python3 "$SKILL_DIR/invariance.py" "$BINPATH" "$UI_DECL"
+  run_to "$WORKLOG/invariance.log" python3 "$SKILL_DIR/pmat-invariance.py" "$BINPATH" "$UI_DECL"
   INV_RC=$RUN_RC
   INV_MSG=$(head -1 "$WORKLOG/invariance.log" 2>/dev/null || echo "")
   case "$INV_RC:$INV_MSG" in

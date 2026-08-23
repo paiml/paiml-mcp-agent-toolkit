@@ -327,6 +327,25 @@ serde_json = "1.0"
 sha2 = { version = "0.11", optional = true }  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
+# ── Release gates this crate OWNS ───────────────────────────────────────────
+#
+# Read by scripts/dogfood/pmat-dogfood_gates.py, the ONE parser of this table.
+# Each entry gets its own row in the release receipt: rolling them into one
+# aggregate verdict is how a red gate hides behind a green neighbour.
+#
+# An ABSENT table and `gates = []` are both FAIL, deliberately. A crate claiming
+# zero release gates of its own has made a claim, and an unmade claim reads
+# exactly like a satisfied one.
+#
+# These two are the wiring for SKILL.md §11 and §12, which the 2026-08-23 project
+# audit found DOCUMENTED BUT UNRUN — this repo's signature defect, sitting in its
+# own release protocol.
+[package.metadata.dogfood]
+gates = [
+    "scripts/dogfood/pmat-gate-fleet.sh",
+    "scripts/dogfood/pmat-gate-transport-parity.sh",
+]
+
 [features]
 # EV-6 (#999): serve the MCP tool surface over streamable HTTP, for clients that
 # cannot use stdio (the Google Antigravity Agent registers `{"type":"mcp_server",
