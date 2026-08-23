@@ -362,7 +362,7 @@ mod parity_tests {
         let odd = dir.path().join("vendor.min.js");
         std::fs::write(&odd, "var a=1;\n").expect("write");
 
-        let found = expand_paths_to_source_files(&[odd.clone()]);
+        let found = expand_paths_to_source_files(std::slice::from_ref(&odd));
         assert_eq!(
             found,
             vec![odd],
