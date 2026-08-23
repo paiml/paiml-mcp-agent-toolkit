@@ -115,7 +115,13 @@ compare "complexity/files"  "$CLI_CX" "$MCP_CX" files_analyzed total_files files
 
 CLI_SD=$(timeout "$TIMEOUT" "$CLI_BIN" analyze satd --path "$REPO" --format json 2>/dev/null)
 MCP_SD=$(mcp_call analyze_satd "$(printf '{"paths":["%s"]}' "$REPO")")
-compare "satd/total"        "$CLI_SD" "$MCP_SD" total_items total violations_found
+# NOT the bare key `total`. `scalar` searches RECURSIVELY, and the satd payload
+# carries `files_not_read.total` — so a fallback to `total` found the count of
+# files DECLINED (8) and compared it against MCP's count of violations (0),
+# reporting a transport disagreement where the two agree exactly. The first run
+# of this gate produced that false finding. Name the field that means what the
+# label says.
+compare "satd/total"        "$CLI_SD" "$MCP_SD" total_violations total_satd
 
 CLI_DC=$(timeout "$TIMEOUT" "$CLI_BIN" analyze dead-code --path "$REPO" --format json 2>/dev/null)
 MCP_DC=$(mcp_call analyze_dead_code "$(printf '{"paths":["%s"]}' "$REPO")")

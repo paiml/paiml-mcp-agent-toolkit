@@ -132,9 +132,9 @@ test-lib: ## Run all lib tests (8MB stack for Clap tests)
 
 dogfood-install: ## Symlink the vendored dogfood protocol into the skills dir (idempotent)
 	@mkdir -p $(HOME)/.claude/skills/dogfood
-	@for f in pmat-dogfood-runner pmat-fleet-dogfood pmat-transport-parity; do \
-	  ln -sfn "$(CURDIR)/scripts/dogfood/$$f.sh" \
-	          "$(HOME)/.claude/skills/dogfood/$$f.sh"; \
+	@for f in $(notdir $(wildcard $(CURDIR)/scripts/dogfood/pmat-*)); do \
+	  ln -sfn "$(CURDIR)/scripts/dogfood/$$f" \
+	          "$(HOME)/.claude/skills/dogfood/$$f"; \
 	done
 	@echo "linked (idempotent — re-running changes nothing):"
 	@ls -l $(HOME)/.claude/skills/dogfood/pmat-*.sh | sed 's/^/  /'
