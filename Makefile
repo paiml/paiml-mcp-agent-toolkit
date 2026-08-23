@@ -128,7 +128,16 @@ test-lib: ## Run all lib tests (8MB stack for Clap tests)
 # flag which parses changes something, and that a number which claims to be a
 # measurement differs between an empty project and a defect-rich one.
 # ---------------------------------------------------------------------------
-.PHONY: gate-flag-efficacy gate-flag-efficacy-full gate-differential gate-artifact
+.PHONY: dogfood-install gate-flag-efficacy gate-flag-efficacy-full gate-differential gate-artifact
+
+dogfood-install: ## Symlink the vendored dogfood protocol into the skills dir (idempotent)
+	@mkdir -p $(HOME)/.claude/skills/dogfood
+	@for f in pmat-dogfood-runner pmat-fleet-dogfood pmat-transport-parity; do \
+	  ln -sfn "$(CURDIR)/scripts/dogfood/$$f.sh" \
+	          "$(HOME)/.claude/skills/dogfood/$$f.sh"; \
+	done
+	@echo "linked (idempotent — re-running changes nothing):"
+	@ls -l $(HOME)/.claude/skills/dogfood/pmat-*.sh | sed 's/^/  /'
 
 gate-flag-efficacy: ## Every CLI flag must change observable output (49 no-ops shipped in 3.29.0)
 	@echo "🔬 Flag-efficacy sweep..."

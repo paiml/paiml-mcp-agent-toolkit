@@ -185,6 +185,47 @@ fn code_line_count(source: &str) -> usize {
 ///
 /// `files` is the gradable population the project score is computed over, so
 /// the duplication verdict covers exactly the files the score claims to cover.
+/// Detector settings for GRADING, which are not the settings for refactoring.
+///
+/// `DuplicateDetectionConfig::default()` sets `normalize_identifiers: true` and
+/// `normalize_literals: true`. That is right for a refactoring tool — it finds
+/// Type-2 clones, code that is the same shape under different names, which is
+/// exactly what you want to see when hunting for something to extract.
+///
+/// It is wrong for a PENALTY. Measured on issue #1050's own acceptance fixture,
+/// ten files of 800 functions each of the form
+///
+/// ```text
+/// pub fn u3_17(x:i32)->i32{ if x>3 {x*3} else {-x-17} }
+/// ```
+///
+/// every function normalises to the same token sequence, so ten genuinely
+/// distinct files scored `cross_file_ratio: 1.0` — identical to ten
+/// byte-identical copies. `analyze duplicates` calls the first tree 0.0% and the
+/// second 99.9%.
+///
+/// The first version of this module used the default and therefore INVERTED the
+/// defect it was written to fix: the component went from awarding full marks to
+/// everything (20/20 on a 100%-duplicated tree) to penalising everything (0/20
+/// on a 0%-duplicated one). Both fixtures scored the same either way, which is
+/// the actual bug in both directions — the component was not measuring
+/// duplication, it was measuring nothing and reporting a constant.
+///
+/// Grading therefore asks the narrower question: is this text repeated, not is
+/// this shape repeated. Identifiers and literals are significant, and the
+/// similarity bar is raised, so a penalty means near-verbatim repetition.
+fn grading_config() -> DuplicateDetectionConfig {
+    DuplicateDetectionConfig {
+        // The two that matter: renaming a variable is not deduplication, but it
+        // IS enough to make this not the same code for the purpose of a grade.
+        normalize_identifiers: false,
+        normalize_literals: false,
+        // Near-verbatim, not merely similar.
+        similarity_threshold: 0.95,
+        ..DuplicateDetectionConfig::default()
+    }
+}
+
 /// The subset of `files` the clone engine can actually read: a known extension
 /// AND readable bytes.
 ///
@@ -275,7 +316,7 @@ pub(crate) fn measure(files: &[PathBuf]) -> CrossFileDuplication {
         );
     }
 
-    let engine = DuplicateDetectionEngine::new(DuplicateDetectionConfig::default());
+    let engine = DuplicateDetectionEngine::new(grading_config());
     let report = match engine.detect_duplicates(&sources) {
         Ok(report) => report,
         Err(error) => {
