@@ -171,6 +171,113 @@ async fn score_tree(root: &Path) -> crate::tdg::ProjectScore {
 /// RED: on the pre-fix code both trees report a duplication component of exactly
 /// 20.0 — full marks for a tree that is 100% duplicated by the very engine
 /// `analyze duplicates` reports 88.2% with.
+/// Issue #1050's OWN acceptance fixture, not one of ours.
+///
+/// This test exists because the first fix passed every fixture its author wrote
+/// and failed the one in the ticket. Ten files whose functions share a shape and
+/// differ only in identifiers and literals:
+///
+/// ```text
+/// pub fn u3_17(x:i32)->i32{ if x>3 {x*3} else {-x-17} }
+/// ```
+///
+/// Under `DuplicateDetectionConfig::default()` — `normalize_identifiers: true`,
+/// `normalize_literals: true` — every one of those normalises to the same token
+/// sequence, so ten DISTINCT files scored `cross_file_ratio: 1.0`, identical to
+/// ten byte-identical copies. The component had gone from awarding full marks to
+/// everything, to penalising everything. Both are the same defect: it was not
+/// measuring duplication, it was reporting a constant.
+///
+/// Measured before and after, with `analyze duplicates` as the independent
+/// oracle:
+///
+/// ```text
+///            analyze duplicates   cfr BEFORE   cfr AFTER
+/// clean10           0.0%             1.0          0.0
+/// spread10         99.9%             1.0          1.0
+/// ```
+///
+/// RED: restore `DuplicateDetectionConfig::default()` in `grading_config` and
+/// the first assertion fails with both ratios at 1.0.
+///
+/// The counter-assertion is the whole point — a fix that penalises everything is
+/// as wrong as one that penalises nothing, and shipping it is easier because the
+/// headline number moves.
+#[tokio::test]
+async fn the_ticket_fixture_separates_distinct_files_from_copies() {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let root = dir.path();
+
+    // clean10 — ten files, every function a different name and different
+    // literals, but all the same SHAPE. This is what ordinary code looks like.
+    let clean = root.join("clean10/src");
+    std::fs::create_dir_all(&clean).expect("mkdir clean");
+    std::fs::write(
+        root.join("clean10/Cargo.toml"),
+        "[package]\nname=\"cl\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+    )
+    .expect("clean manifest");
+    for j in 1..=10 {
+        let mut body = String::new();
+        for i in 1..=120 {
+            body.push_str(&format!(
+                "pub fn u{j}_{i}(x:i32)->i32{{ if x>{} {{x*{j}}} else {{-x-{i}}} }}\n",
+                i % 7
+            ));
+        }
+        std::fs::write(clean.join(format!("c{j}.rs")), body).expect("clean file");
+    }
+
+    // spread10 — one file, copied ten times, byte for byte.
+    let spread = root.join("spread10/src");
+    std::fs::create_dir_all(&spread).expect("mkdir spread");
+    std::fs::write(
+        root.join("spread10/Cargo.toml"),
+        "[package]\nname=\"sp\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+    )
+    .expect("spread manifest");
+    let mut one = String::new();
+    for i in 1..=120 {
+        one.push_str(&format!(
+            "pub fn s_{i}(x:i32)->i32{{ if x>{} {{x*3}} else {{-x-{i}}} }}\n",
+            i % 7
+        ));
+    }
+    for j in 1..=10 {
+        std::fs::write(spread.join(format!("s{j}.rs")), &one).expect("spread file");
+    }
+
+    let clean_files: Vec<std::path::PathBuf> =
+        (1..=10).map(|j| clean.join(format!("c{j}.rs"))).collect();
+    let spread_files: Vec<std::path::PathBuf> =
+        (1..=10).map(|j| spread.join(format!("s{j}.rs"))).collect();
+
+    let clean_ratio = crate::tdg::cross_file_duplication::measure(&clean_files)
+        .ratio
+        .expect("clean10 is measurable");
+    let spread_ratio = crate::tdg::cross_file_duplication::measure(&spread_files)
+        .ratio
+        .expect("spread10 is measurable");
+
+    assert!(
+        clean_ratio < spread_ratio,
+        "ten DISTINCT files must score lower than ten byte-identical copies; \
+         got clean={clean_ratio} spread={spread_ratio}. Equal ratios mean the \
+         component is reporting a constant, whichever constant it is."
+    );
+    assert!(
+        clean_ratio < 0.10,
+        "files that merely share a SHAPE are not duplication for grading \
+         purposes — identifier-normalised similarity scored this tree 1.0 and \
+         penalised it in full; got {clean_ratio}"
+    );
+    assert!(
+        spread_ratio > 0.90,
+        "ten byte-identical copies are duplication by any definition; got \
+         {spread_ratio}"
+    );
+}
+
 #[tokio::test]
 async fn a_cloned_tree_scores_worse_on_duplication_than_a_clean_one() {
     let tmp = tempfile::tempdir().expect("tempdir");
