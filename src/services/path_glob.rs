@@ -118,8 +118,6 @@ pub fn resolve_paths_with_globs(paths: &[PathBuf]) -> Vec<PathBuf> {
 /// R22-2 (D102): Live `handlers/tools` dispatcher now shares this helper.
 #[must_use]
 pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
-    use walkdir::WalkDir;
-
     let resolved = resolve_paths_with_globs(paths);
     let mut out = Vec::new();
     for path in &resolved {
@@ -131,25 +129,49 @@ pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
             continue;
         }
         if path.is_dir() {
-            for entry in WalkDir::new(path)
-                .follow_links(false)
-                .into_iter()
-                .filter_entry(|e| {
-                    // Always accept the root, filter only descendant dirs/files.
-                    if e.depth() == 0 {
-                        return true;
-                    }
-                    let n = e.file_name().to_string_lossy();
-                    !(n.starts_with('.') || n == "target" || n == "node_modules")
-                })
-                .filter_map(std::result::Result::ok)
-                .filter(|e| e.file_type().is_file())
+            // ONE ignore policy, ONE implementation.
+            //
+            // This was a raw `WalkDir` filtering only hidden entries, `target`
+            // and `node_modules`. It never read .gitignore/.ignore/.pmatignore
+            // and never excluded minified or vendored assets, so the MCP tools
+            // that reach files through here analysed a different population
+            // than the CLI did for the same directory — and the two surfaces
+            // then disagreed about the same repository.
+            //
+            // Measured on ~/src/cohete (10 .rs files) before this change:
+            //
+            // ```text
+            //   pmat analyze complexity   ->  11 files, total cyclomatic    54
+            //   mcp analyze_complexity    ->  27 files, total cyclomatic  2098
+            // ```
+            //
+            // The extra 16 were generated mdbook output — `book/book/*.js` and
+            // `book/out/*.js`, including a 137,537-byte `highlight.js` across
+            // 53 lines. Minified vendor code has enormous branch counts, which
+            // is where a 39x complexity gap comes from. They are untracked but
+            // NOT gitignored, so this is the vendor/minified exclusion doing
+            // the work, not .gitignore alone.
+            //
+            // `project_files`'s doc comment already records four analyzers that
+            // hand-rolled this same walk (`cuda-tdg`, `validate-docs`,
+            // `analyze assembly-script`, `analyze web-assembly`), each of which
+            // descended into gitignored trees. This was the fifth, and the one
+            // that made two TRANSPORTS disagree rather than two commands.
+            //
+            // A directory now goes through the discovery the CLI uses. An
+            // explicitly named FILE is still passed straight through above:
+            // asking for a specific file is an instruction, not a search, and
+            // the caller may legitimately name something the walk would skip.
+            match crate::services::file_discovery::ProjectFileDiscovery::new(path.clone())
+                .discover_files()
             {
-                if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
-                    if SOURCE_EXTENSIONS.contains(&ext) {
-                        out.push(entry.path().to_path_buf());
-                    }
-                }
+                Ok(found) => out.extend(found),
+                // Discovery failing is not a licence to fall back to a walk
+                // with a different policy — that would reintroduce the split
+                // silently and only under error conditions, which is the worst
+                // place for it to live. Yield nothing for this root; the caller
+                // sees an empty population rather than a wrong one.
+                Err(_) => {}
             }
         }
     }
@@ -274,6 +296,78 @@ fn longest_common_parent(paths: &[PathBuf]) -> Option<PathBuf> {
             out.push(c);
         }
         Some(out)
+    }
+}
+
+#[cfg(test)]
+mod parity_tests {
+    use super::*;
+
+    /// A directory walk must honour the project's ignore policy, so the MCP
+    /// tools and the CLI describe the same population.
+    ///
+    /// RED: restore the raw `WalkDir` (hidden / `target` / `node_modules` only)
+    /// and this fails — the minified file is admitted.
+    ///
+    /// The live case, measured on ~/src/cohete (10 .rs files):
+    ///
+    /// ```text
+    ///   pmat analyze complexity   ->  11 files, total cyclomatic    54
+    ///   mcp analyze_complexity    ->  27 files, total cyclomatic  2098
+    /// ```
+    ///
+    /// The extra files were generated mdbook output — `book/book/*.js`,
+    /// `book/out/*.js` — including a 137,537-byte `highlight.js` across 53
+    /// lines. Minified vendor code carries enormous branch counts, which is
+    /// where a 39x complexity gap comes from. After the fix: 19 files, 364.
+    #[test]
+    fn a_directory_walk_excludes_what_the_cli_excludes() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("src")).expect("mkdir src");
+        std::fs::create_dir_all(root.join("book/out")).expect("mkdir book");
+        std::fs::write(root.join("src/lib.rs"), "pub fn f() -> i32 { 1 }\n").expect("lib.rs");
+
+        // A minified vendor asset: one very long line, the shape that carries a
+        // huge branch count and no meaning for a quality report.
+        let minified = format!("var a={};{}", 1, "if(a){a++}else{a--};".repeat(2000));
+        std::fs::write(root.join("book/out/highlight.js"), &minified).expect("highlight.js");
+
+        let found = expand_paths_to_source_files(&[root.to_path_buf()]);
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| p.strip_prefix(root).unwrap_or(p).display().to_string())
+            .collect();
+
+        assert!(
+            names.iter().any(|n| n.ends_with("lib.rs")),
+            "the real source file must still be found, got {names:?}"
+        );
+        assert!(
+            !names.iter().any(|n| n.contains("highlight.js")),
+            "a minified vendor asset under book/ must not be analysed as source \
+             — this is what made MCP report 27 files where the CLI reported 11. \
+             got {names:?}"
+        );
+    }
+
+    /// ...and an explicitly NAMED file is still passed straight through.
+    ///
+    /// The counter-test. Without it, "exclude everything" satisfies the
+    /// assertion above. Naming a file is an instruction, not a search: a caller
+    /// may legitimately ask about something a directory walk would skip.
+    #[test]
+    fn an_explicitly_named_file_is_never_filtered_out() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let odd = dir.path().join("vendor.min.js");
+        std::fs::write(&odd, "var a=1;\n").expect("write");
+
+        let found = expand_paths_to_source_files(&[odd.clone()]);
+        assert_eq!(
+            found,
+            vec![odd],
+            "a path named explicitly is an instruction, not a search"
+        );
     }
 }
 
