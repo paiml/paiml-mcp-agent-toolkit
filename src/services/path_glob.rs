@@ -165,7 +165,20 @@ pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
             match crate::services::file_discovery::ProjectFileDiscovery::new(path.clone())
                 .discover_files()
             {
-                Ok(found) => out.extend(found),
+                // The extension whitelist STILL applies. Discovery decides which
+                // files the project admits; `SOURCE_EXTENSIONS` decides which of
+                // those this function is about. Dropping the second filter when
+                // the first was introduced widened the population by everything
+                // discovery admits and this list does not — `Cargo.toml` first
+                // among them — and the MCP satd payload duly reported 15 declined
+                // files where the CLI reported 14, one extra under
+                // `examples_demo_fuzz_generated`. Two filters, two questions;
+                // replacing one with the other is not the same as composing them.
+                Ok(found) => out.extend(found.into_iter().filter(|f| {
+                    f.extension()
+                        .and_then(|e| e.to_str())
+                        .is_some_and(|ext| SOURCE_EXTENSIONS.contains(&ext))
+                })),
                 // Discovery failing is not a licence to fall back to a walk
                 // with a different policy — that would reintroduce the split
                 // silently and only under error conditions, which is the worst
