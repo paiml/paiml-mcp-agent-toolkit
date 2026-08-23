@@ -96,7 +96,20 @@ exclude = [
 # The re-derivation test caught this before it was committed, which is the whole
 # argument for re-deriving rather than transcribing: a baseline one higher than
 # the truth is one free regression.
-baseline = 1904
+#
+# 2026-08-22, LOWERED 1904 -> 1688 (216 fewer), and none of it is code that was
+# rewritten. Two measurement defects were fixed in the grader:
+#   * `count_complexity` charged every zero-argument closure `||` as a branch
+#   * it evaluated control-flow keywords on COMMENT lines, including the `*`
+#     continuation lines of a block comment
+# and the index this was first measured against was STALE — `built_at`
+# 2026-08-21T13:26, missing the 265 definitions added since, because
+# `pmat query` does not rebuild a stale index, it only builds an absent one.
+# Re-measured against a forced-fresh index at 23,716 definitions.
+#
+# A baseline may only go down, and banking a beaten one is not optional: slack
+# is headroom a regression hides in.
+baseline = 1688
 
 [entropy]
 # Entropy analysis configuration (#227)

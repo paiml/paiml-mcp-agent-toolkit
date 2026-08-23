@@ -8,6 +8,8 @@ pub mod baseline_analyzer;
 pub mod config;
 /// The single Known-Defects gate both `analyze_source` implementations apply.
 pub(crate) mod critical_defect_gate;
+/// Issue #1050: the PROJECT-level half of the duplication component.
+pub(crate) mod cross_file_duplication;
 #[allow(clippy::all)]
 pub mod cuda_simd;
 pub mod cuda_simd_defects; // Defect taxonomy extracted for file health (CB-040)
@@ -144,3 +146,7 @@ pub use cuda_simd::{
     KaizenMetrics, MemoryAccessIssue, PopperScore, ReproducibilityScore, StatisticalRigorScore,
     TileDimensionResult, TileIssue, TransparencyScore,
 };
+
+/// Issue #1050: the duplication component must measure ACROSS files.
+#[cfg(test)]
+mod cross_file_duplication_tests;

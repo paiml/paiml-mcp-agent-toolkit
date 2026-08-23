@@ -192,8 +192,36 @@ impl TdgAnalyzerAst {
         // verbatim, so identical input must serialise identically.
         ungraded.sort_by(|a, b| a.path.cmp(&b.path));
 
+        // Issue #1050: the duplication component measured WITHIN each file and
+        // nothing else, so ten byte-identical files each scored 20/20 and the
+        // mean of those scores scored 20/20 too — full marks for a tree
+        // `analyze duplicates` calls 100% duplicated. The detector runs ONCE
+        // here, over the files already walked.
+        //
+        // It does NOT produce the same number as `analyze duplicates` — that
+        // command's headline comes from block hashing over a wider walk, and on
+        // this repo the two read 22.025% and 7.709%. See the module docs on
+        // `crate::tdg::cross_file_duplication` for the measured comparison. What
+        // is guaranteed is ordering, not equality.
+        //
+        // Deliberately over the files that were actually GRADED, not over
+        // `found.gradable`: the duplication verdict must cover exactly the
+        // population the rest of the score covers, or the component would be
+        // describing a different tree from every other component.
+        let graded: Vec<std::path::PathBuf> = scores
+            .iter()
+            .filter_map(|score| score.file_path.clone())
+            .collect();
+        let duplication = crate::tdg::cross_file_duplication::measure(&graded);
+        crate::tdg::cross_file_duplication::apply(
+            &mut scores,
+            &duplication,
+            self.config.weights.duplication,
+        );
+
         let mut project = ProjectScore::aggregate(scores);
         project.ungraded_files = ungraded;
+        project.record_cross_file_duplication(&duplication);
         Ok(project)
     }
 

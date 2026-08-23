@@ -332,6 +332,9 @@ mod coverage_instrumented_tests {
             files_truncated: false,
             list_filter: None,
             ungraded_files: Vec::new(),
+            cross_file_duplication_ratio: None,
+            cross_file_duplication_unmeasured: None,
+            cross_file_duplication_coverage: None,
         };
         let output = format_project(&project);
         assert!(output.contains("Project TDG Score Report"));
@@ -365,6 +368,9 @@ mod coverage_instrumented_tests {
             files_truncated: false,
             list_filter: None,
             ungraded_files: Vec::new(),
+            cross_file_duplication_ratio: None,
+            cross_file_duplication_unmeasured: None,
+            cross_file_duplication_coverage: None,
         };
         let output = format_project(&project);
         assert!(output.contains("70.0/100"));
