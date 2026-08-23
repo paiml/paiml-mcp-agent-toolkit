@@ -9,8 +9,8 @@ authors = ["Pragmatic AI Labs"]
 # transport not yet implemented" and to restore HTTP "when `pmat serve` actually
 # binds" — it binds now (EV-6, #999): `pmat serve --transport http` serves the
 # tool surface over streamable HTTP, verified 401-without-token / 200-with.
-# HTTP is behind the opt-in `mcp-http` feature, so the claim is scoped rather
-# than unconditional.
+# HTTP is in the DEFAULT feature set as of 3.32.0, so all three transports the
+# description names are present in `cargo install pmat` with no flags.
 description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
 homepage = "https://paiml.com"
 repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
@@ -338,7 +338,19 @@ mcp-http = ["pmcp/streamable-http"]
 # - Opt-in for other languages: --features extended-languages or all-languages
 # - Opt-in for advanced analysis: --features analytics-simd, mutation-testing, demo
 # - Full suite: --features full (equivalent to old defaults)
-default = ["core-languages", "viz", "http-client", "standard-deps"]
+# All THREE transports in the default build: CLI, MCP over stdio, HTTP.
+#
+# `mcp-http` was opt-in, so `cargo install pmat` produced a binary whose
+# `serve --help` said "[HTTP NOT COMPILED IN this build]". The crate
+# description has claimed "(CLI, MCP, HTTP)" throughout, and two of the three
+# were true by default. A user reading the description and running the install
+# command got a binary that could not do the third.
+#
+# The cost is build time and dependency surface (`pmcp/streamable-http` pulls
+# the hyper/tower stack). That is the right trade for a transport the package
+# advertises on its front page: a feature nobody can reach without knowing a
+# flag name is close to a feature that does not ship.
+default = ["core-languages", "viz", "http-client", "standard-deps", "mcp-http"]
 
 # Standard deps bundle — feature-gated for dep count reduction but enabled by default
 standard-deps = [

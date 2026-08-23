@@ -44,6 +44,43 @@ has not changed. Read this list before upgrading a gate.
   exists, and a token walk cannot read a comment or mistake a zero-argument closure for
   an operator, so both defects are gone by construction rather than by patch. The net
   direction across the release is the one stated above, and it is downward.
+- **`cargo install pmat` now compiles the HTTP transport, and the binary is ~1 MB
+  bigger.** `mcp-http` moved into `default`, so the streamable-HTTP MCP server is in
+  every stock build rather than only in one rebuilt with `--features mcp-http`.
+  Measured on two release installs of the same tree: **53,208,360 -> 54,268,424 bytes
+  (+1.01 MiB, +2.0%)**. Six crates enter the graph — `axum 0.8.9`, `axum-core 0.5.6`,
+  `matchit 0.8.4`, `tower-http 0.7.0`, `ring 0.17.14`, `getrandom 0.2.17` — taking it
+  from 380 to 386. hyper, tower and rustls were already present via reqwest; what is
+  new is a SECOND major version of axum alongside the 0.7.9 already there, and rustls'
+  `ring` provider, which compiles C and assembly. A clean release build takes about
+  7 s longer.
+- **Nothing new listens.** Compiling the transport in does not start it. Only
+  `pmat serve --transport http` binds a socket; it binds `127.0.0.1` unless you pass
+  `--host`; and with `PMAT_MCP_HTTP_TOKEN` unset it exits 4 having bound nothing —
+  pmcp serves every request when no auth provider is wired, so "no token" means "no
+  server". `serve --help` no longer reads `[HTTP NOT COMPILED IN this build]`.
+- **`PMAT_MCP_HTTP_TOKEN` is a credential for the whole filesystem, not for one
+  project.** An authenticated caller can read anything the pmat user can read: the
+  tools take absolute paths, and `analyze_satd {"paths":["/etc"]}` returns files'
+  contents from a server started in an unrelated directory. That is how the stdio
+  server has always behaved; what changed is that reaching it no longer requires a
+  rebuild. If you run with `--host 0.0.0.0`, the 403 `Host header not in allowed
+  origins` is a browser DNS-rebinding defence and nothing more — any non-browser
+  client sets that header freely, so the bearer token is the only control on that
+  interface.
+- **The HTTP transport's JSON-RPC error codes are not yet at parity with stdio.** A
+  conforming MCP client is unaffected: `initialize`, `tools/list`, `resources/list`,
+  `prompts/list`, `ping` and the rest all round-trip. But a tool call with bad
+  arguments returns `-32603` over HTTP where stdio returns `-32602` for the identical
+  message, and a frame naming a nonexistent method collapses to `-32700` with
+  `id: null` and HTTP 400 instead of `-32601` with the id echoed.
+- **MCP tools and the CLI now walk the same files.** The MCP path used a raw
+  `WalkDir` that read no `.gitignore` and excluded no vendored or minified assets, so
+  the two surfaces described different populations of the same repository. Measured on
+  a 10-file crate: `analyze complexity` reported 11 files / cyclomatic 54 while
+  `mcp analyze_complexity` reported 27 / 2098, the difference being generated mdbook
+  output including a 137,537-byte minified `highlight.js`. Now 19 / 364. An 8-file
+  gap in `.js` handling remains and is not yet explained.
 - **`pmat quality-gate` exits 1** when it finds blocking violations, where it used to
   print them and exit 0. A CI step that has been passing against a failing tree will
   start failing, which is the point; `--report-only` (alias `--no-fail`) restores the
@@ -765,7 +802,7 @@ lose them to the fix.
 serve HTTP transport not yet implemented` for a *websocket* request, throughout the
 release in which the streamable-HTTP MCP transport shipped (#999 EV-6). The message now
 names the transport that was actually requested and points at the one that works:
-`--transport http`, with `--features mcp-http` and `PMAT_MCP_HTTP_TOKEN`. The
+`--transport http`, with `PMAT_MCP_HTTP_TOKEN` set. The
 subcommand's own `--help` said `[NOT IMPLEMENTED] HTTP/WebSocket server — exits with an
 error`; it now says what is implemented, what is not (`web-socket`, `http-sse`, `both`,
 `all`, all still exit 2), that there is no `stdio` value, and — in builds without the

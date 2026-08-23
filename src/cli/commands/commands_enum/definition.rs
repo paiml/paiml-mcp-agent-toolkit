@@ -905,9 +905,14 @@ pub enum Commands {
     /// Serve the MCP tool surface over streamable HTTP (`--transport http`)
     ///
     /// `--transport http` is IMPLEMENTED and round-trips MCP over HTTP: it
-    /// serves the same tools as the stdio server, is compiled in only with
-    /// `--features mcp-http`, and refuses to start without a bearer token in
-    /// `PMAT_MCP_HTTP_TOKEN` (unauthenticated requests get 401).
+    /// serves the same tools as the stdio server, is in the DEFAULT build as of
+    /// 3.32.0 (it needed `--features mcp-http` before), and refuses to start
+    /// without a bearer token in `PMAT_MCP_HTTP_TOKEN` — pmcp serves every
+    /// request when no auth provider is wired, so "no token" must mean "no
+    /// server". Unauthenticated requests get 401.
+    ///
+    /// It binds `127.0.0.1` unless you pass `--host`. Compiling the transport in
+    /// does not start it: only this subcommand binds a socket.
     ///
     /// The other `--transport` values — `web-socket`, `http-sse`, `both`,
     /// `all` — are NOT IMPLEMENTED and exit 2.
