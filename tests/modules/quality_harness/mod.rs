@@ -1261,6 +1261,32 @@ pub fn bundled_entry() -> u32 {
 ",
     )
     .expect("write bundled.min.rs");
+    // An UNREADABLE file, for the same reason as the two above: the
+    // `files_not_read.unreadable` bucket read 0 on every corpus, and a bucket
+    // that is 0 on every input is indistinguishable from one nothing can reach.
+    // The differential gate caught it the day the counter was added.
+    //
+    // Unreadable here means invalid UTF-8, not absent and not permission-denied:
+    // a `.rs` file the walker finds and offers to the analyser, which then
+    // cannot decode it. That is the case the counter exists to report, and it
+    // is the one a real tree produces — a stray binary saved with a source
+    // extension. Permissions would be the wrong mechanism: this suite runs as
+    // root in the clean-room container, where chmod 000 is still readable.
+    //
+    // The alternative was an ALLOWED_CONSTANTS entry saying "no corpus has an
+    // unreadable file". True, and an admission that the counter was untested.
+    // Making the corpus dirty in the way the tool measures is the fix; excusing
+    // the measurement is not.
+    std::fs::write(
+        root.join("src/broken_encoding.rs"),
+        [
+            b"// A source file that is not valid UTF-8.\npub fn x() -> u8 { ".as_slice(),
+            &[0xF0, 0x28, 0x8C, 0xBC],
+            b" }\n".as_slice(),
+        ]
+        .concat(),
+    )
+    .expect("write broken_encoding.rs");
     std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
     std::fs::write(
         root.join("examples/demo.rs"),

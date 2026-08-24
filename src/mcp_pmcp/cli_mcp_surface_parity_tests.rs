@@ -83,6 +83,27 @@ const CLI_ONLY_ANALYZERS: &[(&str, Absence)] = &[
              absent, because absence is at least honest.",
         ),
     ),
+    (
+        "deep-wasm",
+        Absence::Deliberate(
+            "behind `--features deep-wasm`, so it is absent from the default build for \
+             the same reason `wasm` is: advertising it over MCP would offer every \
+             installed binary a tool that cannot run, and absence is at least honest. \
+             It also takes a WASM BINARY and DWARF symbols as separate inputs — an \
+             artifact-inspection pipeline, not a question about a source tree.",
+        ),
+    ),
+    (
+        "mutate",
+        Absence::Deliberate(
+            "behind `--features mutation-testing`, and the same shape as \
+             `coverage-improve`: it GENERATES mutants, writes them, and re-runs the \
+             test suite per mutant. Unbounded runtime and a mutated tree are both \
+             wrong for a request/response tool call, whatever the speedup. An agent \
+             wanting the verdict rather than the run can read the mutation gate's \
+             recorded result.",
+        ),
+    ),
     // ---- gaps: nothing decided these, they are simply not on the list ----
     // The three that opened #1029 (all new in 3.32.0) head the list.
     ("reachability", Absence::UnreviewedGap),
