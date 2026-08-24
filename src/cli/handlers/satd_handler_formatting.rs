@@ -167,7 +167,10 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, top_files: usize) -> 
             "tests": result.skipped.tests,
             "examples_demo_fuzz_generated": result.skipped.out_of_scope,
             "minified_or_vendor": result.skipped.minified_or_vendor,
-            "too_large": result.skipped.too_large
+            "too_large": result.skipped.too_large,
+            // A file the walk selected and then could not decode. Counted as
+            // an analysed-and-clean file until #1035.
+            "unreadable": result.skipped.unreadable
         },
         "summary": result.summary,
         "violations": listed.iter().map(|v| {

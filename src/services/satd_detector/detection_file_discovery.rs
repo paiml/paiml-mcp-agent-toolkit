@@ -27,6 +27,39 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<(Vec<PathBuf>, usize), TemplateError> {
+        let (files, tests) = self.find_source_files_partitioned(root).await?;
+        Ok((files, tests.len()))
+    }
+
+    /// The same walk, keeping the test files instead of counting them.
+    ///
+    /// Issue #1050 P9. `--include-tests` used to switch to a SECOND discovery
+    /// implementation (`collect_files_including_tests`), a filesystem walk that
+    /// skips any directory named `book`, `dist`, `build`, `node_modules`,
+    /// `target`, `__pycache__` or starting with `.` — while this one asks
+    /// `git ls-files`, which does not. So a flag that only WIDENS the scan
+    /// turned
+    ///
+    /// ```text
+    ///   all 1 source file(s) under /tmp/bookfix were skipped — test, example,
+    ///   fuzz, vendored, generated, minified or oversized …
+    /// ```
+    ///
+    /// into
+    ///
+    /// ```text
+    ///   no source files were found under /tmp/bookfix …
+    /// ```
+    ///
+    /// The file exists and is a source file in both runs; the denominator
+    /// vanished because the second walk never descended into `book/`. One
+    /// discovery for both, and the per-file skip reasons — which already know
+    /// about generated output — do the excluding, where they can be counted
+    /// and named.
+    pub(crate) async fn find_source_files_partitioned(
+        &self,
+        root: &Path,
+    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), TemplateError> {
         // Try git ls-files first to respect .gitignore
         if let Ok(output) = tokio::process::Command::new("git")
             .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -45,16 +78,17 @@ impl SATDDetector {
                 // Unchanged: an empty *analysable* list still falls through to
                 // the walk below, which is what makes a non-git checkout work.
                 if !files.is_empty() {
-                    return Ok((files, tests.len()));
+                    return Ok((files, tests));
                 }
             }
         }
         // Fallback: recursive walk (non-git projects)
         let mut candidates = Vec::new();
         self.collect_files_recursive(root, &mut candidates).await?;
-        let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) =
-            candidates.into_iter().partition(|path| !self.is_test_file(path));
-        Ok((files, tests.len()))
+        let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) = candidates
+            .into_iter()
+            .partition(|path| !self.is_test_file(path));
+        Ok((files, tests))
     }
 
     /// Recursively collect source files

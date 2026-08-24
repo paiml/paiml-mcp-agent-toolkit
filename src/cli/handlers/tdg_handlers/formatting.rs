@@ -335,6 +335,28 @@ fn format_tdg_score_json(
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
         "not_measured": nothing_was_measured(project),
+        // Issue #1050 P2. The table caps its list and tells the reader
+        // `… and N more (--format json lists every one under "ungraded_files")`
+        // — a promise compiled into the shipped binary as a literal, against a
+        // JSON document that had no such key. aprender walks 152 files it
+        // cannot grade; every one of them was invisible to a machine consumer,
+        // which saw `not_measured: false` and a headline score over the
+        // subset that parsed.
+        //
+        // `not_measured` is NOT the place for this and is deliberately left
+        // alone: it means "nothing at all was measured", and a tree where 1 of
+        // 16 files graded really did measure something. "Some of the walk was
+        // refused" is a different fact and needs its own field — which is the
+        // one the binary already names.
+        //
+        // The list is UNCAPPED here. The 49-column box truncates because it is
+        // a box; a JSON document that silently dropped rows would reintroduce
+        // the same defect in the format the box points at as the escape hatch.
+        "ungraded_files": project.map(|p| p
+            .ungraded_files
+            .iter()
+            .map(|u| serde_json::json!({ "path": u.path, "reason": u.reason }))
+            .collect::<Vec<_>>()),
         // Issue #1050. The duplication component measured only WITHIN each file,
         // so ten byte-identical files each scored the full 20/20 and their mean
         // did too — full marks for a tree `analyze duplicates` calls 100%
@@ -432,6 +454,19 @@ fn format_tdg_score_markdown(
         score.language,
         score.confidence * 100.0
     ));
+
+    // Issue #1050 P2. The table discloses walked-but-unmeasured files; this
+    // renderer printed the headline over the subset that parsed and said
+    // nothing at all. One implementation of the disclosure, shared with the
+    // other markdown renderer, so the two cannot drift apart again.
+    if let Some(p) = project.filter(|p| !p.ungraded_files.is_empty()) {
+        output.push_str("\n## Not Graded\n\n");
+        for line in crate::tdg::formatters::ungraded::ungraded_markdown_lines(&p.ungraded_files) {
+            output.push_str(&line);
+            output.push('\n');
+        }
+        output.push('\n');
+    }
 
     if include_components && nothing_was_measured(project) {
         output.push_str("## Component Breakdown\n\nNot measured — 0 files analyzed.\n");
@@ -671,6 +706,88 @@ mod cap_disclosure_tests {
         assert_eq!(value["grade_capped"], true);
         assert_eq!(value["grade_uncapped"], "A+");
         assert_eq!(value["f_grade_count"], 1);
+    }
+
+    /// Issue #1050 P2. The table caps its list and points the reader at
+    /// `--format json ... under "ungraded_files"` — a sentence compiled into
+    /// the shipped binary — while the JSON document had no such key. On a
+    /// 16-file fixture where 15 were walked and refused, JSON carried
+    /// `files_analyzed: 1`, `not_measured: false` and nothing else, so every
+    /// machine consumer was told the headline covered the tree.
+    ///
+    /// RED CONTROL: deleting the `"ungraded_files"` entry from
+    /// `format_tdg_score_json` fails this on the first assertion.
+    #[test]
+    fn json_lists_every_file_the_walk_could_not_grade() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for i in 0..15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "no TDG analyzer for .sh".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        let listed = value["ungraded_files"]
+            .as_array()
+            .expect("the key the binary promises must exist and be an array");
+        // EVERY one. The box caps at ten because it is 49 columns wide; the
+        // document it points at as the complete list must not inherit the cap.
+        assert_eq!(
+            listed.len(),
+            15,
+            "the box says json lists every one; got {} of 15",
+            listed.len()
+        );
+        assert_eq!(listed[0]["path"], "/tmp/ngfix/s0.sh");
+        assert!(
+            listed[0]["reason"]
+                .as_str()
+                .is_some_and(|r| r.contains("no TDG analyzer")),
+            "each entry must carry the reason, got {}",
+            listed[0]["reason"]
+        );
+    }
+
+    /// COUNTER-TEST for the above: the fix must not manufacture a disclosure.
+    /// A tree where everything walked was graded has an EMPTY list, not a
+    /// missing key and not a fabricated row — an empty array is the honest
+    /// rendering of "nothing was refused", and it is the only value that lets
+    /// a consumer tell "clean" from "this pmat is too old to say".
+    #[test]
+    fn json_ungraded_list_is_empty_when_nothing_was_refused() {
+        let project = ProjectScore::aggregate(vec![file_at(100.0), file_at(90.0)]);
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(
+            value["ungraded_files"].as_array().map(Vec::len),
+            Some(0),
+            "a clean walk must publish an empty list, not a row and not nothing"
+        );
+    }
+
+    /// The markdown renderer printed the headline over the subset that parsed
+    /// and said nothing at all about the rest (issue #1050 P2, third bullet).
+    #[test]
+    fn markdown_discloses_files_that_could_not_be_graded() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "/tmp/ngfix/s1.sh".to_string(),
+            reason: "no TDG analyzer for .sh".to_string(),
+        });
+        let score = project.average();
+
+        let md = format_tdg_score_markdown(&score, None, false, Some(&project)).expect("render");
+        assert!(
+            md.contains("s1.sh"),
+            "markdown must name the refused file, got:\n{md}"
+        );
     }
 
     /// Issue #1050: a duplication verdict the detector could NOT reach must say

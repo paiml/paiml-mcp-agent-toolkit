@@ -425,14 +425,31 @@ fn comply_concurrency(groups: usize) -> usize {
             }
         }
     }
-    let cpus = num_cpus::get().max(1);
-    // Never 0: one worker always runs, even on a machine with no headroom,
-    // because refusing to check anything is worse than checking slowly.
-    let by_memory = available_memory_bytes()
+    comply_concurrency_bound(available_memory_bytes(), num_cpus::get(), groups)
+}
+
+/// The bound itself, with every machine reading passed in.
+///
+/// Split out from [`comply_concurrency`] so the MEMORY half is testable. It was
+/// not, and that mattered: the tests around this pinned only the ceiling and the
+/// group count, both of which stay green if the memory term is deleted
+/// outright — on the very machine class the bug was reported from (#1014: a
+/// 48-core box asked for ~192 GB), the ceiling alone looks like a fix. The one
+/// property worth pinning is that a machine with little free RAM gets FEWER
+/// workers than its CPU count would buy, and that is not observable through the
+/// `/proc/meminfo` read.
+///
+/// `available` is `None` where the reading cannot be taken (every non-Linux
+/// platform); the CPU-and-ceiling bound applies alone there, which is no worse
+/// than the behaviour this replaced. Never 0: one worker always runs, even on a
+/// machine with no headroom, because refusing to check anything is worse than
+/// checking slowly.
+fn comply_concurrency_bound(available: Option<u64>, cpus: usize, groups: usize) -> usize {
+    let by_memory = available
         .map(|avail| ((avail / COMPLY_MEMORY_DIVISOR) / COMPLY_BYTES_PER_WORKER).max(1) as usize)
         .unwrap_or(COMPLY_MAX_DEFAULT_JOBS);
     by_memory
-        .min(cpus)
+        .min(cpus.max(1))
         .min(groups.max(1))
         .min(COMPLY_MAX_DEFAULT_JOBS)
         .max(1)
@@ -1400,6 +1417,76 @@ mod comply_concurrency_tests {
             comply_concurrency(13),
             7,
             "PMAT_COMPLY_JOBS must override the computed bound"
+        );
+    }
+
+    /// The MEMORY half, which nothing pinned before (#1014).
+    ///
+    /// This is the bug as reported: a 48-core machine sized the run by CPU count
+    /// and asked for ~4 GB x 48 = ~192 GB. The property is not "at most four
+    /// workers" — that is the ceiling, and the ceiling alone would still let a
+    /// 4-core laptop with 2 GB free start four 4 GB workers. It is that the
+    /// bound falls with AVAILABLE MEMORY, independently of how many cores the
+    /// box has.
+    ///
+    /// RED, replacing the `by_memory` term with `COMPLY_MAX_DEFAULT_JOBS`
+    /// (i.e. deleting the memory bound and keeping only the ceiling):
+    /// ```text
+    /// 2 GB available on a 48-core box authorised 4 workers (~16 GB): the
+    /// bound must fall with memory, not with core count
+    /// ```
+    /// Every other test in this module stays green under that mutation, which
+    /// is why this one exists.
+    #[test]
+    fn the_bound_falls_with_available_memory_not_core_count() {
+        const GB: u64 = 1024 * 1024 * 1024;
+        let cramped = comply_concurrency_bound(Some(2 * GB), 48, 13);
+        assert_eq!(
+            cramped,
+            1,
+            "2 GB available on a 48-core box authorised {cramped} workers (~{} GB): the \
+             bound must fall with memory, not with core count",
+            (cramped as u64 * COMPLY_BYTES_PER_WORKER) / GB
+        );
+
+        // Counter-test: the memory term is a BOUND, not a cap that ignores the
+        // machine. A box with room to spare still gets the ceiling, so the fix
+        // cannot be "always one worker".
+        assert_eq!(
+            comply_concurrency_bound(Some(512 * GB), 48, 13),
+            COMPLY_MAX_DEFAULT_JOBS,
+            "a machine with ample free RAM must still reach the default ceiling"
+        );
+
+        // Monotone in memory, across the whole range: more headroom never buys
+        // fewer workers.
+        let mut prev = 0;
+        for gb in [1_u64, 8, 16, 32, 64, 128, 256] {
+            let jobs = comply_concurrency_bound(Some(gb * GB), 48, 13);
+            assert!(
+                jobs >= prev,
+                "{gb} GB authorised {jobs} workers, less than the {prev} authorised by less \
+                 memory"
+            );
+            assert!(jobs >= 1, "{gb} GB authorised no workers at all");
+            prev = jobs;
+        }
+    }
+
+    /// Where the reading cannot be taken (every non-Linux platform), the run is
+    /// still bounded — by the ceiling, the core count and the group count. An
+    /// unreadable `/proc/meminfo` must not read as "unlimited memory".
+    #[test]
+    fn an_unreadable_memory_reading_is_still_bounded() {
+        assert_eq!(
+            comply_concurrency_bound(None, 48, 13),
+            COMPLY_MAX_DEFAULT_JOBS,
+            "no memory reading must fall back to the ceiling, never to the core count"
+        );
+        assert_eq!(
+            comply_concurrency_bound(None, 1, 13),
+            1,
+            "a single-core machine gets one worker whatever the memory reading"
         );
     }
 

@@ -461,6 +461,35 @@ pub(super) async fn analyze_files_by_mode(
     files: Vec<PathBuf>,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
+    analyze_files_by_mode_with_census(file, files, config)
+        .await
+        .map(|t| t.metrics)
+}
+
+/// What one complexity run produced, and what it walked past to produce it.
+///
+/// Issue #1050 P3. `--format json` reported `files_discovered` equal to
+/// `files_analyzed` on every run, because the only count that reached the
+/// serializer was the length of the metrics vector. The same run's human
+/// formatter printed `370 of 2099 file(s) were not analyzed` from the census
+/// below — the walk's real denominator — and threw it away. A consumer using
+/// `files_discovered` as a coverage denominator was handed the numerator.
+///
+/// The census travels with the metrics rather than being recomputed at the
+/// call site, for the reason `UnanalyzedCensus` already records: two walks are
+/// two chances to disagree.
+pub(super) struct AnalyzedTree {
+    pub metrics: Vec<FileComplexityMetrics>,
+    /// `None` when there was no population to compare against (single-file and
+    /// explicit-file modes), or when every file with an extension was analysed.
+    pub census: Option<UnanalyzedCensus>,
+}
+
+pub(super) async fn analyze_files_by_mode_with_census(
+    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
+    config: &ComplexityConfig,
+) -> Result<AnalyzedTree> {
     crate::status_eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
 
     // Owned so the work can run on its own task: a budget enforced from the
@@ -472,6 +501,10 @@ pub(super) async fn analyze_files_by_mode(
         async move { analyze_by_mode(file, files, &owned).await },
     )
     .await;
+
+    // The census for the successful branch, carried past the borrow of
+    // `result` so the metrics can still be moved out below.
+    let mut carried: Option<UnanalyzedCensus> = None;
 
     // Provide feedback on analysis results
     match &result {
@@ -535,7 +568,12 @@ pub(super) async fn analyze_files_by_mode(
         }
         Ok(metrics) => {
             crate::status_eprintln!("✅ Successfully analyzed {} file(s)", metrics.len());
-            if let Some(c) = unanalyzed_summary(metrics, config) {
+            // ONE census for this run: printed here, and carried out below so
+            // the serializers publish the same denominator this sentence
+            // quotes. Recomputing it at the call site would be a second walk,
+            // which is a second chance to disagree.
+            carried = unanalyzed_summary(metrics, config);
+            if let Some(c) = &carried {
                 crate::status_eprintln!("{}", c.note);
             }
         }
@@ -544,7 +582,10 @@ pub(super) async fn analyze_files_by_mode(
         }
     }
 
-    result
+    result.map(|metrics| AnalyzedTree {
+        metrics,
+        census: carried,
+    })
 }
 
 /// Pick the analysis the flags asked for. Split out of `analyze_files_by_mode`
@@ -580,6 +621,19 @@ pub(super) struct UnanalyzedCensus {
     pub total: usize,
     /// Of those, how many produced no metrics.
     pub missing: usize,
+    /// Per-extension counts for files pmat has no complexity analyzer for.
+    ///
+    /// Issue #1050 P3: the human note renders these; the JSON serializer had
+    /// nothing to render, so a machine consumer could not learn that 1,163 of
+    /// the skipped files on aprender were `.rs`.
+    pub no_analyzer: std::collections::BTreeMap<String, usize>,
+    /// Per-extension counts for files of a SUPPORTED type that still produced
+    /// no metrics — a different fact from the above, and the reason the note
+    /// keeps them in separate sentences.
+    pub unmeasured_supported: std::collections::BTreeMap<String, usize>,
+    /// Per-extension counts for supported files the project excluded before
+    /// analysis ever saw them (issue #1050 P5).
+    pub excluded_by_ignore: std::collections::BTreeMap<String, usize>,
 }
 
 fn unanalyzed_summary(
@@ -617,8 +671,31 @@ fn unanalyzed_summary(
         .map(str::to_ascii_lowercase)
         .collect();
 
+    // Issue #1050 P5. A file the project DELIBERATELY excluded — `.pmatignore`,
+    // `.paimlignore`, or the classifier's vendored/generated/minified rules —
+    // was reported in the same sentence as a genuine parse failure:
+    //
+    //   supported, but no metrics were produced: .rs (1)
+    //
+    // On aprender that bucket reads `.rs (1163)`, every one of them excluded by
+    // `crates/aprender-serve/.pmatignore`. A configuration choice rendered as
+    // an analysis failure reads like a pmat bug, which is how it gets filed.
+    //
+    // Discovery is the authority on what the analysis was OFFERED — it is the
+    // same `ProjectFileDiscovery` the walk above feeds — so a supported file
+    // that the walk saw and discovery did not admit was excluded on purpose.
+    // `None` when discovery itself failed: an empty set would silently
+    // re-label every unanalysed file as "excluded", which is the same defect
+    // pointing the other way.
+    let offered: Option<HashSet<PathBuf>> =
+        crate::services::file_discovery::ProjectFileDiscovery::new(config.project_path.clone())
+            .discover_files()
+            .ok()
+            .map(|found| found.iter().filter_map(|f| resolve(f)).collect());
+
     let mut no_analyzer: BTreeMap<String, usize> = BTreeMap::new();
     let mut skipped: BTreeMap<String, usize> = BTreeMap::new();
+    let mut excluded: BTreeMap<String, usize> = BTreeMap::new();
     let mut total = 0usize;
     for entry in ignore::WalkBuilder::new(&config.project_path)
         .hidden(true)
@@ -637,10 +714,17 @@ fn unanalyzed_summary(
         if resolve(entry.path()).is_some_and(|c| analyzed.contains(&c)) {
             continue;
         }
-        if supported.contains(&ext) {
+        if !supported.contains(&ext) {
+            *no_analyzer.entry(ext).or_default() += 1;
+            continue;
+        }
+        let was_offered = offered
+            .as_ref()
+            .is_none_or(|set| resolve(entry.path()).is_some_and(|c| set.contains(&c)));
+        if was_offered {
             *skipped.entry(ext).or_default() += 1;
         } else {
-            *no_analyzer.entry(ext).or_default() += 1;
+            *excluded.entry(ext).or_default() += 1;
         }
     }
 
@@ -652,7 +736,11 @@ fn unanalyzed_summary(
     // Both halves now come from the same tally, which cannot disagree with
     // itself, and a wrong tally shows up as a wrong number instead of hiding
     // behind a plausible zero.
-    let missing: usize = no_analyzer.values().chain(skipped.values()).sum();
+    let missing: usize = no_analyzer
+        .values()
+        .chain(skipped.values())
+        .chain(excluded.values())
+        .sum();
     if missing == 0 {
         return None;
     }
@@ -679,10 +767,21 @@ fn unanalyzed_summary(
             census(&skipped)
         ));
     }
+    // …and a file the project excluded on purpose is a third fact again.
+    if !excluded.is_empty() {
+        out.push_str(&format!(
+            "\n   excluded by ignore rules (.pmatignore/.paimlignore, vendored, \
+             generated): {}",
+            census(&excluded)
+        ));
+    }
     Some(UnanalyzedCensus {
         note: out,
         total,
         missing,
+        no_analyzer,
+        unmeasured_supported: skipped,
+        excluded_by_ignore: excluded,
     })
 }
 
@@ -983,7 +1082,7 @@ mod timeout_is_a_bound_tests {
     //! seconds" and enforced nothing: measured at HEAD 1ac9feb5a,
     //! `pmat analyze complexity -p . --timeout 1` walked 4400 files in 8.1s and
     //! exited 0. Same shape as #929 in `analyze dead-code`.
-    use super::analyze_files_by_mode;
+    use super::{analyze_files_by_mode, analyze_files_by_mode_with_census};
     use crate::cli::handlers::complexity_handlers::ComplexityConfig;
     use std::path::{Path, PathBuf};
 
@@ -1084,6 +1183,151 @@ mod timeout_is_a_bound_tests {
             message.contains("were skipped"),
             "three files WERE found; the refusal must not claim the tree was \
              empty, got: {message}"
+        );
+    }
+
+    /// Issue #1050 P3. `files_discovered` was the length of the metrics vector,
+    /// so it equalled `files_analyzed` on every run and a consumer using it as
+    /// a coverage denominator was handed the numerator. On forjar the same run
+    /// printed `370 of 2099 file(s) were not analyzed` on stderr while the JSON
+    /// said `files_analyzed: 1729, files_discovered: 1729`.
+    ///
+    /// RED CONTROL: replacing `census.total` with `metrics.len()` at the call
+    /// site makes `total` here 1 instead of 3.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn the_walks_denominator_travels_with_the_metrics() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("src");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"ig\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "pub fn a(x: i32) -> i32 { if x > 0 { x } else { -x } }\n",
+        )
+        .expect("lib");
+        std::fs::write(dir.path().join("notes.md"), "# notes\n").expect("md");
+
+        let out =
+            analyze_files_by_mode_with_census(None, vec![], &config_for(dir.path().into(), 300))
+                .await
+                .expect("three small files cannot exhaust a 300s budget");
+
+        assert_eq!(out.metrics.len(), 1, "one .rs file is measurable");
+        let census = out
+            .census
+            .as_ref()
+            .expect("a directory walk always has a population to report");
+        assert_eq!(
+            census.total, 3,
+            "the walk saw Cargo.toml, src/lib.rs and notes.md"
+        );
+        assert_eq!(census.missing, 2, "two of the three produced no metrics");
+        // …and the REASON is carried, not just the count.
+        assert_eq!(census.no_analyzer.get("toml"), Some(&1));
+        assert_eq!(census.no_analyzer.get("md"), Some(&1));
+        // GUARD for the P5 bucket below: this tree has no ignore file, so a
+        // non-empty `excluded_by_ignore` here would mean the discovery set the
+        // classifier compares against failed to resolve and unanalysed
+        // supported files are being mislabelled as deliberately excluded.
+        //
+        // Stated honestly: this fixture cannot distinguish a broken discovery
+        // set from a working one on its own, because every supported file here
+        // IS analysed. The load-bearing argument is that `offered` is resolved
+        // through the same `resolve` closure as `analyzed`, which
+        // `the_count_and_the_census_are_one_tally` already pins — that closure
+        // silently returning nothing is the exact failure this file's comments
+        // record from last time.
+        assert!(
+            census.excluded_by_ignore.is_empty(),
+            "nothing here is excluded by an ignore rule: {:?}",
+            census.excluded_by_ignore
+        );
+    }
+
+    /// COUNTER-TEST: the denominator must not become "every file on disk".
+    /// A tree where everything walked WAS measured reports no gap at all —
+    /// `unanalyzed_summary` returns `None`, and the disclosure falls back to
+    /// the analysed count rather than inventing a shortfall.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_fully_measured_tree_reports_no_shortfall() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            dir.path().join("only.rs"),
+            "pub fn a(x: i32) -> i32 { if x > 0 { x } else { -x } }\n",
+        )
+        .expect("rs");
+
+        let out =
+            analyze_files_by_mode_with_census(None, vec![], &config_for(dir.path().into(), 300))
+                .await
+                .expect("one file cannot exhaust a 300s budget");
+        assert_eq!(out.metrics.len(), 1);
+        assert!(
+            out.census.is_none(),
+            "nothing was skipped; a census here would be a fabricated gap: {:?}",
+            out.census
+        );
+    }
+
+    /// Issue #1050 P5. A `.pmatignore`-excluded file was counted in the same
+    /// bucket as a genuine parse failure — "supported, but no metrics were
+    /// produced" — so a deliberate configuration read as a pmat defect. On
+    /// aprender that bucket said `.rs (1163)`.
+    ///
+    /// RED CONTROL: removing the `offered` set (so every unanalysed supported
+    /// file falls through to `skipped`) puts the ignored file back in
+    /// `unmeasured_supported` and empties `excluded_by_ignore`.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_deliberately_excluded_file_is_not_reported_as_a_failure() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("src/tests")).expect("dirs");
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"ig\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "pub fn a(x: i32) -> i32 { if x > 0 { x } else { -x } }\n",
+        )
+        .expect("lib");
+        std::fs::write(
+            dir.path().join("src/tests/mod.rs"),
+            "pub fn t(x: i32) -> i32 { if x > 0 { x } else { -x } }\n",
+        )
+        .expect("mod");
+        std::fs::write(dir.path().join(".pmatignore"), "src/tests/\n").expect("pmatignore");
+
+        let out =
+            analyze_files_by_mode_with_census(None, vec![], &config_for(dir.path().into(), 300))
+                .await
+                .expect("three small files cannot exhaust a 300s budget");
+        let census = out.census.as_ref().expect("a gap exists: the ignored file");
+
+        assert_eq!(
+            census.excluded_by_ignore.get("rs"),
+            Some(&1),
+            "the ignored .rs must be reported as excluded, got {census:?}"
+        );
+        assert!(
+            !census.unmeasured_supported.contains_key("rs"),
+            "…and must NOT also be reported as a failed analysis: {census:?}"
+        );
+        assert!(
+            census.note.contains("excluded by ignore rules"),
+            "the human note must name the third bucket, got: {}",
+            census.note
+        );
+        // The tally still balances: nothing was double-counted or lost.
+        assert_eq!(
+            census.missing,
+            census.no_analyzer.values().sum::<usize>()
+                + census.unmeasured_supported.values().sum::<usize>()
+                + census.excluded_by_ignore.values().sum::<usize>(),
+            "the count and the three-way census must be one tally: {census:?}"
         );
     }
 

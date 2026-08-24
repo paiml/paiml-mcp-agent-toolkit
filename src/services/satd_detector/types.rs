@@ -311,6 +311,9 @@ pub(crate) struct ProjectAnalysisStats {
 /// Why files were not read, so an absent finding can be told apart from an
 /// absent measurement.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+// So a payload written by an older pmat (which has no `unreadable` bucket)
+// still deserializes, the same reason `SATDAnalysisResult::skipped` carries it.
+#[serde(default)]
 pub struct SkipCounts {
     /// Test files, when `--include-tests` was not given.
     pub tests: usize,
@@ -320,6 +323,16 @@ pub struct SkipCounts {
     pub minified_or_vendor: usize,
     /// Files past the large-file threshold.
     pub too_large: usize,
+    /// Files discovery selected, that were then not read: an I/O error, or
+    /// content that is not UTF-8, or a scan that returned an error.
+    ///
+    /// This bucket is the one #1035's root cause hid in. The three drops it
+    /// counts all sat BELOW the skip predicate, inside the per-file read, and
+    /// each returned an empty `Vec` — the literal `Ok(Vec::new())` shape the
+    /// issue names. A file whose bytes were never decoded was therefore
+    /// counted as an ANALYSED file with no findings: the strongest possible
+    /// statement about it, made from no evidence at all.
+    pub unreadable: usize,
 }
 
 /// One reason a file was not read.
@@ -329,6 +342,8 @@ pub(crate) enum SkipReason {
     OutOfScope,
     MinifiedOrVendor,
     TooLarge,
+    /// The read or the scan failed. See [`SkipCounts::unreadable`].
+    Unreadable,
 }
 
 impl SkipReason {
@@ -338,6 +353,7 @@ impl SkipReason {
             Self::OutOfScope => counts.out_of_scope += 1,
             Self::MinifiedOrVendor => counts.minified_or_vendor += 1,
             Self::TooLarge => counts.too_large += 1,
+            Self::Unreadable => counts.unreadable += 1,
         }
     }
 }
@@ -345,7 +361,7 @@ impl SkipReason {
 impl SkipCounts {
     #[must_use]
     pub fn total(&self) -> usize {
-        self.tests + self.out_of_scope + self.minified_or_vendor + self.too_large
+        self.tests + self.out_of_scope + self.minified_or_vendor + self.too_large + self.unreadable
     }
 
     /// A one-line note for the human-readable report, or `None` when nothing
@@ -370,6 +386,9 @@ impl SkipCounts {
         }
         if self.too_large > 0 {
             parts.push(format!("{} too large", self.too_large));
+        }
+        if self.unreadable > 0 {
+            parts.push(format!("{} unreadable (I/O or non-UTF-8)", self.unreadable));
         }
         Some(format!(
             "{} file(s) not read: {}",
@@ -541,6 +560,7 @@ mod skip_counts_tests {
             out_of_scope: 66,
             minified_or_vendor: 0,
             too_large: 2,
+            unreadable: 0,
         };
         assert_eq!(counts.total(), 77);
         let note = counts

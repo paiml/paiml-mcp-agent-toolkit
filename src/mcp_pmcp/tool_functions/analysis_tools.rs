@@ -28,7 +28,12 @@ pub async fn analyze_complexity(
     }
 
     let threshold_value = threshold.unwrap_or(10);
-    let files = expand_paths_to_source_files(paths);
+    // Issue #1058. NOT `expand_paths_to_source_files`: that admits `.sh`, `.h`
+    // and `.hpp`, which `pmat analyze complexity` does not measure, and refuses
+    // `.lean`, `.kts` and `.cs`, which it does. Two allow-lists for one
+    // question made the two transports report 41 and 39 files for copia. This
+    // one is derived from the CLI's own list.
+    let files = crate::services::path_glob::expand_paths_to_complexity_files(paths);
 
     // Analyze all expanded files
     let mut all_functions = Vec::new();
@@ -92,6 +97,11 @@ pub async fn analyze_complexity(
         "message": "Complexity analysis completed",
         "results": {
             "total_files": total_files,
+            // Issue #1058: the name `analyze complexity --format json` uses for
+            // this same number. One spelling, both transports — a key-name
+            // split reads as a measurement disagreement, which is worse than
+            // either number being wrong.
+            "files_analyzed": total_files,
             "total_complexity": total_complexity,
             "average_complexity": average_complexity,
             "violations": violations,
@@ -147,6 +157,13 @@ pub async fn analyze_satd(
 
     let mut total_satd = 0;
     let mut file_results = Vec::new();
+    // Counted at the bottom of the loop, from files that were actually decoded
+    // and scanned. It used to be `files.len()` — the size of the CANDIDATE
+    // list — so a file that failed to read was reported both as read and as
+    // having no debt, the exact "not measured rendered as clean" shape of
+    // #1035, one level below the skip predicate that block was added to
+    // disclose.
+    let mut files_read = 0usize;
 
     for path in &files {
         match tokio::fs::read_to_string(path).await {
@@ -177,6 +194,7 @@ pub async fn analyze_satd(
                         };
                         let satd_count = debts.len();
                         total_satd += satd_count;
+                        files_read += 1;
 
                         if satd_count > 0 {
                             file_results.push(json!({
@@ -191,10 +209,13 @@ pub async fn analyze_satd(
                             }));
                         }
                     }
-                    Err(_) => continue,
+                    // The scan failed on a file that WAS opened. Not a finding
+                    // of zero — a file this run did not measure.
+                    Err(_) => SkipReason::Unreadable.record(&mut skipped),
                 }
             }
-            Err(_) => continue,
+            // I/O error, or content that is not UTF-8.
+            Err(_) => SkipReason::Unreadable.record(&mut skipped),
         }
     }
 
@@ -208,13 +229,14 @@ pub async fn analyze_satd(
             // emits (`cli::handlers::satd_handler_formatting::format_json`).
             // An MCP consumer could not previously tell how much of the tree
             // this number was measured over.
-            "files_read": files.len(),
+            "files_read": files_read,
             "files_not_read": {
                 "total": skipped.total(),
                 "tests": skipped.tests,
                 "examples_demo_fuzz_generated": skipped.out_of_scope,
                 "minified_or_vendor": skipped.minified_or_vendor,
-                "too_large": skipped.too_large
+                "too_large": skipped.too_large,
+                "unreadable": skipped.unreadable
             },
             // Always false here, and stated rather than left to be assumed:
             // this surface has no `--top-files` equivalent, so it never elides
@@ -274,6 +296,15 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
     let mut per_path: Vec<Value> = Vec::new();
     let mut not_analyzed: Vec<Value> = Vec::new();
     let mut files_analyzed = 0usize;
+    // Issue #1058. The CLI publishes TWO counts under the names `total_files`
+    // (what the walk discovered) and `analyzed_files` (what the engine read);
+    // this payload published one, under a third name, `files_analyzed`. On
+    // copia that is 38 and 29 against 29, so a parity check that asked both
+    // transports for "dead-code files" was answered 38 by one and 29 by the
+    // other — and the two agree exactly. A key-name split reads as a
+    // measurement disagreement, which is worse than either number being wrong,
+    // because both surfaces look right alone.
+    let mut total_files = 0usize;
     // The denominator for the dead-function count, summed over the paths that
     // measured one — and only while EVERY analysed path did. A sum over the
     // subset that happened to be countable is not a denominator for a numerator
@@ -321,6 +352,7 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
         engines.insert(run.engine);
         languages.insert(run.language.clone());
         files_analyzed += run.report.analyzed_files;
+        total_files += run.report.total_files;
         match run.total_functions {
             Some(counted) => total_functions = Some(total_functions.unwrap_or(0) + counted),
             None => every_path_counted_functions = false,
@@ -425,6 +457,15 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
             // `total_dead_code`.
             "by_kind": totals.to_json(),
             "files_analyzed": files_analyzed,
+            // Issue #1058: the CLI's two names for the same two numbers, so one
+            // consumer parser reads both transports and gets the same answer.
+            // `files_analyzed` above is retained because clients already read
+            // it; it is `analyzed_files` by another name and always equal to it.
+            "analyzed_files": files_analyzed,
+            "total_files": total_files,
+            // …and the spelling `analyze complexity` uses on both surfaces, so
+            // one reader covers all three commands.
+            "files_discovered": total_files,
             "files": file_results,
             // One name, one analyzer. `pmat analyze dead-code -p <path>` at its
             // default flags produces these findings.
@@ -1813,6 +1854,7 @@ mod satd_skip_accounting_tests {
         );
         assert_eq!(not_read["minified_or_vendor"], 0, "{out}");
         assert_eq!(not_read["too_large"], 0, "{out}");
+        assert_eq!(not_read["unreadable"], 0, "{out}");
         assert_eq!(
             results["files_read"], 1,
             "and how many WERE read — 14 declined out of 15: {out}"
@@ -1882,9 +1924,179 @@ mod satd_skip_accounting_tests {
                 "tests": cli.skipped.tests,
                 "examples_demo_fuzz_generated": cli.skipped.out_of_scope,
                 "minified_or_vendor": cli.skipped.minified_or_vendor,
-                "too_large": cli.skipped.too_large
+                "too_large": cli.skipped.too_large,
+                "unreadable": cli.skipped.unreadable
             }),
             "…and now also on the denominator: {mcp}"
+        );
+    }
+}
+
+/// Issue #1058 — the transport-parity gate's first real finding.
+///
+/// Two transports, one binary, one repository, two answers:
+///
+/// ```text
+///   repo    probe                     CLI   MCP stdio
+///   copia   analyze complexity files   41          39
+///   copia   analyze dead-code files    38          29
+///   pzsh    analyze dead-code files    29          28
+/// ```
+///
+/// The filed hypothesis was sub-crate traversal (copia has two `Cargo.toml`
+/// files and shows the largest gap). Both halves of it are FALSIFIED here, on
+/// single-crate fixtures:
+///
+/// * complexity — a real population split, from two hand-maintained extension
+///   allow-lists that had drifted in BOTH directions. See
+///   [`crate::services::path_glob::expand_paths_to_complexity_files`].
+/// * dead-code — not a population split at all. The two surfaces agree
+///   exactly; they published the same number under different key names while
+///   the CLI ALSO published a second, larger number (`total_files`, the walk's
+///   denominator) that this payload had no counterpart for. A parity check
+///   reading "files" got 38 from one and 29 from the other, and both were
+///   right about their own field.
+#[cfg(test)]
+mod transport_parity_1058_tests {
+    use super::*;
+
+    /// Every extension in one fixture, so a drift in either direction shows.
+    fn mixed_language_fixture() -> tempfile::TempDir {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("src");
+        std::fs::write(
+            d.path().join("Cargo.toml"),
+            "[package]\nname=\"ef\"\nversion=\"0.1.0\"\nedition=\"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(
+            d.path().join("src/lib.rs"),
+            "pub fn a(x: i32) -> i32 { if x > 0 { x } else { -x } }\n",
+        )
+        .expect("lib");
+        // Admitted by the MCP list, refused by the CLI's.
+        std::fs::write(
+            d.path().join("run.sh"),
+            "#!/bin/bash\nf(){ if [ 1 ]; then echo a; else echo b; fi; }\n",
+        )
+        .expect("sh");
+        std::fs::write(d.path().join("hdr.h"), "int h(int x){ return x; }\n").expect("h");
+        // Admitted by the CLI's list, refused by the MCP one.
+        std::fs::write(d.path().join("proof.lean"), "theorem t : 1 = 1 := rfl\n").expect("lean");
+        d
+    }
+
+    /// RED CONTROL: pointing `analyze_complexity` back at
+    /// `expand_paths_to_source_files` fails this with 3 against 2 — the exact
+    /// numbers the fixture produced against the shipped 3.32.0 binary.
+    #[tokio::test]
+    async fn complexity_measures_the_same_population_as_the_cli() {
+        let d = mixed_language_fixture();
+        let root = d.path().to_path_buf();
+
+        // The CLI's own population builder — not a restatement of its list.
+        let cli = crate::cli::analysis_utilities::analyze_project_files(&root, None, &[], 10, 10)
+            .await
+            .expect("cli walk");
+
+        let mcp = analyze_complexity(std::slice::from_ref(&root), Some(50), Some(10))
+            .await
+            .expect("mcp analysis");
+        let mcp_total = mcp["results"]["total_files"]
+            .as_u64()
+            .expect("total_files in the payload") as usize;
+
+        assert_eq!(
+            mcp_total,
+            cli.len(),
+            "same repo, same question, two answers: CLI measured {} file(s), MCP {mcp_total} — {mcp}",
+            cli.len()
+        );
+    }
+
+    /// COUNTER-TEST. The lazy over-correction — admitting everything, or
+    /// admitting nothing — would pass the equality above by making both sides
+    /// wrong together. The population has to be the RIGHT one: the `.lean`
+    /// file is measured, the `.sh` and `.h` files are not.
+    #[test]
+    fn the_complexity_population_is_the_cli_one_not_merely_a_matching_one() {
+        let d = mixed_language_fixture();
+        let files =
+            crate::services::path_glob::expand_paths_to_complexity_files(&[d.path().to_path_buf()]);
+        let names: Vec<String> = files
+            .iter()
+            .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+            .collect();
+
+        assert!(
+            names.contains(&"proof.lean".to_string()),
+            "the CLI measures .lean; this surface must too, got {names:?}"
+        );
+        assert!(
+            names.contains(&"lib.rs".to_string()),
+            "the ordinary case must not be lost, got {names:?}"
+        );
+        assert!(
+            !names.contains(&"run.sh".to_string()),
+            "the CLI does not measure .sh; admitting it is the old split with \
+             the sign flipped, got {names:?}"
+        );
+        assert!(
+            !names.contains(&"hdr.h".to_string()),
+            "the CLI does not measure .h, got {names:?}"
+        );
+    }
+
+    /// The other MCP tools keep their own, wider list — this fix must not
+    /// quietly narrow `analyze_satd` and friends off shell scripts.
+    #[test]
+    fn the_shared_source_walk_is_unchanged() {
+        let d = mixed_language_fixture();
+        let files =
+            crate::services::path_glob::expand_paths_to_source_files(&[d.path().to_path_buf()]);
+        let names: Vec<String> = files
+            .iter()
+            .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+            .collect();
+        assert!(
+            names.contains(&"run.sh".to_string()),
+            "the general source walk still admits shell, got {names:?}"
+        );
+    }
+
+    /// RED CONTROL: deleting the `total_files` entry from the dead-code
+    /// payload fails this — which is the state the gate measured, where the
+    /// CLI's 38 had no counterpart on this transport at all.
+    #[tokio::test]
+    async fn dead_code_publishes_both_counts_under_the_cli_names() {
+        let d = mixed_language_fixture();
+        let root = d.path().to_path_buf();
+
+        let cli = crate::cli::handlers::dead_code_handlers::run_dead_code_suite(&root, false)
+            .await
+            .expect("cli dead-code run");
+
+        let mcp = analyze_dead_code(std::slice::from_ref(&root), false)
+            .await
+            .expect("mcp analysis");
+        let results = &mcp["results"];
+
+        assert_eq!(
+            results["total_files"].as_u64(),
+            Some(cli.report.total_files as u64),
+            "the CLI's `total_files` (the walk's denominator) must exist here \
+             and match: {mcp}"
+        );
+        assert_eq!(
+            results["analyzed_files"].as_u64(),
+            Some(cli.report.analyzed_files as u64),
+            "the CLI's `analyzed_files` must exist here and match: {mcp}"
+        );
+        // The legacy name is kept, and it is the SAME number — two spellings of
+        // one measurement, never two measurements.
+        assert_eq!(
+            results["files_analyzed"], results["analyzed_files"],
+            "the retained legacy key must not drift from the canonical one: {mcp}"
         );
     }
 }

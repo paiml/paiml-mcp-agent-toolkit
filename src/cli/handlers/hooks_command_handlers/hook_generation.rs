@@ -176,7 +176,10 @@ if [ -f Cargo.toml ]; then
     if [ -n "$UNSYNCED_LINT" ]; then
         echo "❌"
         echo "   These files are staged in a state that differs from the worktree:"
-        printf '     %s\n' $UNSYNCED_LINT
+        # Quoted, then indented by sed. `printf '  %s\n' $VAR` relied on the
+        # shell word-splitting the variable, which also splits on spaces -- a
+        # path containing one was reported as two nonexistent files (#1020).
+        printf '%s\n' "$UNSYNCED_LINT" | sed 's/^/     /'
         echo "   clippy lints the worktree, so the staged bytes would go in unlinted."
         echo "   Stage the rest ('git add <file>') or stash the remainder, then retry."
         exit 1
@@ -285,8 +288,14 @@ if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "
     COMPLEXITY_FAILED=0
     COMPLEXITY_DETAILS=""
-    for SRC_FILE in $STAGED_SRC; do
-        if [ -f "$SRC_FILE" ]; then
+    # `while read` over a here-string, not `for F in $VAR`. Word splitting an
+    # unquoted variable also splits on SPACES, so a staged path containing one
+    # became two nonexistent paths and its complexity went unchecked (#1020).
+    # A here-string rather than a pipe: a pipe would run the body in a subshell
+    # and COMPLEXITY_FAILED set inside it would be lost on exit -- the gate
+    # would find violations and then pass anyway.
+    while IFS= read -r SRC_FILE; do
+        if [ -n "$SRC_FILE" ] && [ -f "$SRC_FILE" ]; then
             # ANSI codes MUST be stripped before matching. `pmat analyze
             # complexity` colourises its summary, so the violation line is
             # literally  ESC[1;31mErrors:ESC[0m 2  -- there is no ": " sequence
@@ -301,20 +310,42 @@ if [ -n "$STAGED_SRC" ]; then
             FILE_OUTPUT=$(NO_COLOR=1 pmat analyze complexity --file "$SRC_FILE" --max-cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY --max-cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY 2>&1 | sed "s/$(printf '\\033')\[[0-9;]*m//g")
             if echo "$FILE_OUTPUT" | grep -qE 'Errors: *[1-9]'; then
                 COMPLEXITY_FAILED=1
-                # Extract the offending file and functions
+                # #1033: name the OFFENDER, not just the file.
+                # The summary carries one line per violating function:
+                #   <name> (<file>:<line>) - Cognitive 27 > 25
+                # so grep the "<value> > <limit>" tail. The previous pattern
+                # '^[0-9]+\. ' anchored a digit at column 1; pmat indents those
+                # lines two spaces, so it matched NOTHING and this block emitted
+                # a bare filename followed by a blank line. Worse, had it
+                # matched it would have caught the "Top Files by Complexity"
+                # aggregate, which the gate does NOT threshold -- thresholds are
+                # per FUNCTION (check_function_violations / value > threshold).
+                # A file can show an aggregate of 41/44 with every function
+                # under 30/25, and a file of 52 trivial functions can aggregate
+                # to 73 and fail on one function at 27. Reading the aggregate as
+                # the cause produces the wrong repair plan.
                 COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}  ${SRC_FILE}:"$'\n'
-                FILE_VIOLATIONS=$(echo "$FILE_OUTPUT" | grep -E '^[0-9]+\. ' | grep -E 'Cyclomatic|Cognitive' | head -3)
-                COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}${FILE_VIOLATIONS}"$'\n'
+                FILE_VIOLATIONS=$(echo "$FILE_OUTPUT" | grep -E '(Cyclomatic|Cognitive) [0-9]+ > [0-9]+' | head -3)
+                if [ -n "$FILE_VIOLATIONS" ]; then
+                    COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}${FILE_VIOLATIONS}"$'\n'
+                else
+                    # Absence must never render as detail. If the summary format
+                    # moves, say the offender is unknown -- do not print a bare
+                    # filename and let the reader conclude the file is the cause.
+                    COMPLEXITY_DETAILS="${COMPLEXITY_DETAILS}    (offender not reported by this pmat build; run: pmat analyze complexity --file ${SRC_FILE})"$'\n'
+                fi
             fi
         fi
-    done
+    done <<< "$STAGED_SRC"
     if [ "$COMPLEXITY_FAILED" -eq 0 ]; then
         echo "✅"
     else
         echo "❌"
         echo "Issues Found:"
         echo "$COMPLEXITY_DETAILS" | head -10
-        echo "   Complexity exceeds thresholds (Cyclomatic: $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive: $PMAT_MAX_COGNITIVE_COMPLEXITY)"
+        echo "  Each line above is <function> (<file>:<line>) - <metric> <measured> > <limit>."
+        echo "  Limits are PER FUNCTION: Cyclomatic $PMAT_MAX_CYCLOMATIC_COMPLEXITY, Cognitive $PMAT_MAX_COGNITIVE_COMPLEXITY."
+        echo "  A file's aggregate in 'Top Files by Complexity' is NOT what this gate tests."
         exit 1
     fi
 else
@@ -430,6 +461,47 @@ mod complexity_gate_tests {
         );
     }
 
+    /// The generated hook must not word-split its file lists.
+    ///
+    /// #1020 asked pmat to stop emitting shell that fails pmat's own linter.
+    /// Two of the findings on the shipped hook were genuine, and both were
+    /// silent-wrong rather than cosmetic:
+    ///
+    /// - `for SRC_FILE in $STAGED_SRC` split the staged-file list on SPACES as
+    ///   well as newlines, so a staged path containing a space became two paths
+    ///   that do not exist, the `[ -f ]` guard skipped both, and the file's
+    ///   complexity was never measured. Demonstrated: with `a b.rs` staged, the
+    ///   loop body ran zero times and the gate printed a pass.
+    /// - `printf '  %s\n' $UNSYNCED_LINT` reported that same path as two
+    ///   separate unsynced files.
+    ///
+    /// The replacement reads with `while IFS= read -r` over a HERE-STRING, not
+    /// a pipe: a pipe puts the loop body in a subshell, and `COMPLEXITY_FAILED`
+    /// set inside it would be lost on exit -- the gate would find violations
+    /// and then pass anyway.
+    #[test]
+    fn the_generated_hook_does_not_word_split_its_file_lists() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            !hook.contains("for SRC_FILE in $STAGED_SRC"),
+            "the unquoted for-loop splits staged paths on spaces and silently \
+             skips them"
+        );
+        assert!(
+            hook.contains("while IFS= read -r SRC_FILE"),
+            "the staged-file loop must read line by line"
+        );
+        assert!(
+            hook.contains("done <<< \"$STAGED_SRC\""),
+            "a here-string, not a pipe: a pipe loses COMPLEXITY_FAILED to a subshell"
+        );
+        assert!(
+            !hook.contains("%s\\n' $UNSYNCED_LINT"),
+            "the unsynced-file list must be quoted, not word-split"
+        );
+    }
+
     /// Both gates must agree on formatting scope.
     ///
     /// pre-commit used `cargo fmt -- --check` (current package only) while
@@ -522,5 +594,202 @@ mod complexity_gate_tests {
             }
         }
         assert_eq!(stripped, "Errors: 2");
+    }
+
+    // ---- #1033: the gate must name the OFFENDER ----
+
+    use crate::services::complexity::{
+        aggregate_results_with_thresholds, format_complexity_summary, ComplexityMetrics,
+        ComplexityReport, FileComplexityMetrics, FunctionComplexity,
+    };
+
+    /// Strip ANSI SGR sequences, exactly as the generated hook's `sed` does.
+    fn strip_ansi(s: &str) -> String {
+        let mut out = String::new();
+        let mut chars = s.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '\u{1b}' {
+                for c2 in chars.by_ref() {
+                    if c2 == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    fn func(name: &str, line: u32, cyclomatic: u16, cognitive: u16) -> FunctionComplexity {
+        FunctionComplexity {
+            name: name.to_string(),
+            line_start: line,
+            line_end: line + 39,
+            metrics: ComplexityMetrics {
+                cyclomatic,
+                cognitive,
+                nesting_max: 3,
+                lines: 40,
+                halstead: None,
+            },
+        }
+    }
+
+    /// The #1033 scenario, reproduced through the real rules rather than by
+    /// hand-building violations.
+    ///
+    /// `true_peak.rs`: aggregate Cyclomatic 41 / Cognitive 44 — both ABOVE the
+    /// 30/25 limits — across functions of which exactly one, `polyphase_peak_4x`
+    /// at Cognitive 27, actually violates. The aggregate is a red herring; the
+    /// gate thresholds per function.
+    fn one_offending_function() -> ComplexityReport {
+        let file = FileComplexityMetrics {
+            path: "crates/rmedia-core/src/audio_defect/true_peak.rs".to_string(),
+            total_complexity: ComplexityMetrics {
+                cyclomatic: 41,
+                cognitive: 44,
+                nesting_max: 4,
+                lines: 400,
+                halstead: None,
+            },
+            functions: vec![
+                func("polyphase_peak_4x", 146, 12, 27),
+                func("reset", 20, 1, 0),
+                func("push_sample", 60, 4, 3),
+            ],
+            classes: vec![],
+        };
+        aggregate_results_with_thresholds(vec![file], Some(30), Some(25))
+    }
+
+    /// The summary names the function, its metric, its MEASURED value and the
+    /// limit.
+    ///
+    /// Before #1033 the whole report was `Errors: 1` — no name, no measurement.
+    /// The two numbers a reader did see (30 and 25) were the limits, so the
+    /// report contained no measured value at all.
+    #[test]
+    fn the_summary_names_the_offending_function_and_its_measured_value() {
+        let summary = strip_ansi(&format_complexity_summary(&one_offending_function()));
+        let found = summary.lines().find(|l| l.contains("polyphase_peak_4x"));
+        assert!(
+            found.is_some(),
+            "no line names the offending function:\n{summary}"
+        );
+        let offender = found.unwrap_or_default();
+        assert!(
+            offender.contains("Cognitive 27 > 25"),
+            "the offender line must carry the measured value and the limit, got {offender:?}"
+        );
+        assert!(
+            offender.contains("true_peak.rs:146"),
+            "the offender line must locate the function, got {offender:?}"
+        );
+    }
+
+    /// ...and does NOT promote the file aggregate into that list.
+    ///
+    /// The counter-test. A "fix" that simply printed every complexity number it
+    /// could find would satisfy the test above while re-creating the exact
+    /// wrong diagnosis #1033 reports: `Top Files by Complexity` shows 41/44
+    /// against limits of 30/25, which looks like the cause and is not. Only
+    /// functions that actually violate may appear as offenders.
+    #[test]
+    fn the_summary_does_not_present_the_file_aggregate_as_an_offender() {
+        let summary = strip_ansi(&format_complexity_summary(&one_offending_function()));
+        let offenders: Vec<&str> = summary
+            .lines()
+            .filter(|l| offender_regex().is_match(l))
+            .collect();
+        assert_eq!(
+            offenders.len(),
+            1,
+            "exactly one function violates; got {offenders:?}"
+        );
+        assert!(
+            !offenders[0].contains("41") && !offenders[0].contains("44"),
+            "the file aggregate (41/44) must not appear as an offender: {:?}",
+            offenders[0]
+        );
+        for clean in ["reset", "push_sample"] {
+            assert!(
+                !offenders[0].contains(clean),
+                "`{clean}` is under both limits and must not be listed"
+            );
+        }
+    }
+
+    /// The pattern the generated hook greps with, read out of the hook itself.
+    ///
+    /// Reading it rather than restating it is the point: a test that hard-codes
+    /// its own copy of the pattern passes while the shipped hook uses a
+    /// different, broken one — which is precisely how `^[0-9]+\. ` survived.
+    fn offender_pattern_from_hook(hook: &str) -> String {
+        let marker = "grep -E '";
+        hook.match_indices(marker)
+            .map(|(i, _)| {
+                let rest = &hook[i + marker.len()..];
+                let end = rest.find('\'').expect("the grep pattern must be closed");
+                rest[..end].to_string()
+            })
+            .find(|p| p.contains("Cyclomatic"))
+            .expect("the generated hook must grep for a complexity offender line")
+    }
+
+    fn offender_regex() -> regex::Regex {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let pattern = offender_pattern_from_hook(&cmd.generate_quality_checks());
+        regex::Regex::new(&pattern).expect("the hook's offender pattern must be a valid regex")
+    }
+
+    /// The hook's pattern must match what pmat actually prints.
+    ///
+    /// This is the coupling the old code got wrong: the hook grepped
+    /// `^[0-9]+\. `, anchoring a digit at column 1, while pmat indents those
+    /// lines two spaces. It matched nothing, forever, and the hook rendered a
+    /// bare filename and a blank line under "Issues Found:". Nothing failed —
+    /// absence rendered as detail.
+    #[test]
+    fn the_hooks_offender_pattern_matches_pmats_real_output() {
+        let summary = strip_ansi(&format_complexity_summary(&one_offending_function()));
+        let re = offender_regex();
+        let matched: Vec<&str> = summary.lines().filter(|l| re.is_match(l)).collect();
+        assert!(
+            !matched.is_empty(),
+            "the hook's pattern {:?} matches nothing in pmat's summary:\n{summary}",
+            re.as_str()
+        );
+        assert!(
+            matched.iter().any(|l| l.contains("polyphase_peak_4x")),
+            "the hook's pattern matches lines that do not name the offender: {matched:?}"
+        );
+    }
+
+    /// The dead pattern must not come back, and neither must the message that
+    /// printed only the limits.
+    #[test]
+    fn the_hook_reports_measurements_not_only_limits() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        assert!(
+            !hook.contains(r"grep -E '^[0-9]+\. '"),
+            "the column-1-anchored pattern never matched pmat's indented output"
+        );
+        assert!(
+            !hook.contains("Complexity exceeds thresholds (Cyclomatic:"),
+            "that line printed the LIMITS with no measurement and no function name; \
+             it is the whole of #1033"
+        );
+        assert!(
+            hook.contains("PER FUNCTION"),
+            "the hook must say the limits are per function, or the reader goes to \
+             the file aggregate and plans the wrong repair"
+        );
+        assert!(
+            hook.contains("offender not reported by this pmat build"),
+            "when the pattern matches nothing the hook must say the offender is \
+             unknown, not print a bare filename"
+        );
     }
 }

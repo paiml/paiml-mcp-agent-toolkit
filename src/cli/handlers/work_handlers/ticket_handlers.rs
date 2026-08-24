@@ -92,9 +92,30 @@ include!("ticket_annotate_output.rs");
 include!("ticket_score.rs");
 
 // Tests extracted to work_handlers_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
+//
+// QUARANTINED. The reason recorded here was "File splitting broke syntax
+// (functions/modules split across files)", and that is not what stops it
+// (#1023). Two measurements:
+//
+//   1. The `#[path]` named a sibling `work_handlers_tests.rs` that does not
+//      exist. The real file is one directory ABOVE, at
+//      src/cli/handlers/work_handlers_tests.rs. A `#[path]` under a disabled
+//      `cfg` is never resolved by the compiler, so the wrong value was
+//      invisible; it is corrected below. Nothing could have reached a syntax
+//      error, because nothing could find the file.
+//   2. The split it blames is the ordinary `include!` kind, and `include!`
+//      reassembles it. work_tests_part{1,2,3,4}.rs are individually unbalanced
+//      (+3, 0/-2, +1/-2, -4) and their concatenation in include order balances
+//      to exactly 0 — part1 opens `mod tests {`, part4 closes it. That is the
+//      shape include! exists for, not a broken split.
+//
+// What actually blocks revival is unverified: this module moved from
+// src/cli/handlers/work_handlers.rs into work_handlers/, so the tests' `use
+// super::*` now resolves against a different module. Enabling it is a name-
+// resolution repair across ~62 KB of tests, and no one has done it. That is
+// the honest reason, and it replaces a false one.
 #[cfg(all(test, feature = "broken-tests"))]
-#[path = "work_handlers_tests.rs"]
+#[path = "../work_handlers_tests.rs"]
 mod tests;
 
 #[cfg(test)]

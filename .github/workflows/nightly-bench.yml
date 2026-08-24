@@ -8,8 +8,40 @@ concurrency:
   group: bench-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # `@main`, matching ci.yml. This was pinned to a6c9ab522 for five months under
+  # the annotation `# main`, which it had not been since 2026-03-26. A stale pin
+  # on a reusable workflow is not a frozen-in-amber convenience: it freezes the
+  # GATES too, and this job runs the whole sovereign-ci suite (test, lint,
+  # coverage, security, bench, gate — ~1 h of clean-room runner time) every
+  # night, so every gate fix landed upstream since March reached ci.yml and not
+  # this workflow. At a6c9ab522, three of them were still missing:
+  #
+  #   * Clippy could not fail. The step's `||` chain terminated in `echo`, so
+  #     the step exited 0 however clippy exited. Measured rather than read off
+  #     the YAML — both step bodies run verbatim with `clippy` replaced by
+  #     `false`:
+  #         a6c9ab522 shape -> exit 0   ("::warning::Clippy failed …")
+  #         @main      shape -> exit 1   ("::error::Clippy failed …")
+  #     Upstream fix: `{ echo "::error::…"; exit 1; }`.
+  #   * Format check could not fail — suppressed twice, by `|| echo` and by
+  #     `continue-on-error: true`. Upstream fix: paiml/.github#47 (c3db669df),
+  #     which is the fix for GH #1016 and which also un-suppressed
+  #     `cargo deny check advisories licenses sources`, the fleet's only
+  #     licenses+sources gate.
+  #   * The `gate` job examined only `test` and `lint` — `coverage` and
+  #     `security` were in its `needs` and never read — and it compared against
+  #     the literal string "failure", so a CANCELLED job passed. Upstream fix:
+  #     paiml/.github#46 (9f782f958), now an allowlist requiring "success".
+  #
+  # Low-risk to move: ci.yml already runs this same `@main` workflow on every
+  # push to master and is green; the only delta here is `run_benchmarks: true`,
+  # which adds the upstream `bench` job (itself `continue-on-error: true`).
+  #
+  # If a future reader re-pins this to a SHA, re-pin ci.yml in the same commit
+  # and say why — two consumers of one workflow on two different revisions is
+  # how the drift above went unnoticed for five months.
   bench:
-    uses: paiml/.github/.github/workflows/sovereign-ci.yml@a6c9ab522c012cb140cb2294c6c7a6f901dd6623 # main
+    uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
       run_benchmarks: true

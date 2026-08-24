@@ -146,7 +146,13 @@ fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
     }
 }
 
-fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
+/// Is `.pmat/context.db` older than the sources it claims to describe?
+///
+/// `pub(crate)` because `services::tdg_baseline` asks the same question before
+/// it treats CB-200's count as the count at HEAD. It CALLS this rather than
+/// re-deriving it: two implementations of one predicate is how CB-200 went
+/// blind for a release (see [`passing_spellings`]).
+pub(crate) fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
     let db_mtime = match std::fs::metadata(db_path).and_then(|m| m.modified()) {
         Ok(t) => t,
         Err(_) => return true,
@@ -295,31 +301,19 @@ pub(crate) fn check_tdg_grade_gate(
     comply_config: &ComplyConfig,
 ) -> ComplianceCheck {
     let db_path = project_path.join(".pmat").join("context.db");
-    if !db_path.exists() {
-        return ComplianceCheck {
-            name: "CB-200: TDG Grade Gate".into(),
-            status: CheckStatus::Skip,
-            message: "Not measured: no .pmat/context.db. `comply check` will not build one - \
-                      building writes .pmat/context.db and .pmat/context.idx into the project \
-                      being audited. Run `pmat query \"x\"` to create the index, then re-run."
-                .into(),
-            severity: Severity::Info,
-        };
-    }
-    // A stale index still measures something REAL; it is a rebuild that would
-    // not. `comply check` used to rebuild and SAVE the index here, writing
-    // .pmat/context.db + .pmat/context.idx (160KB+) into the audited tree on
-    // every run — the same class of defect as the Cargo.lock it created while
-    // checking whether a Cargo.lock existed (#939). The staleness is reported
-    // instead of silently repaired, so the reader knows what the verdict rests
-    // on.
-    let staleness = if is_index_stale(project_path, &db_path) {
-        " (index is stale: source files are newer than .pmat/context.db - \
-         run `pmat query \"x\"` to refresh)"
-    } else {
-        ""
-    };
     let overrides = load_tdg_gate_overrides(project_path);
+    if !db_path.exists() {
+        return absent_index_verdict(&overrides.baseline);
+    }
+    // A stale index still measures something REAL — an OLDER tree — and it is a
+    // rebuild that would measure nothing. `comply check` used to rebuild and
+    // SAVE the index here, writing .pmat/context.db + .pmat/context.idx (160KB+)
+    // into the audited tree on every run — the same class of defect as the
+    // Cargo.lock it created while checking whether a Cargo.lock existed (#939).
+    // The staleness is reported instead of silently repaired, and — since
+    // #1045 — it also stops the answer being a Pass: see `demote_pass_when_stale`.
+    let stale = is_index_stale(project_path, &db_path);
+    let staleness = if stale { STALE_INDEX_NOTE } else { "" };
     let min_grade = overrides
         .min_grade
         .as_deref()
@@ -337,12 +331,15 @@ pub(crate) fn check_tdg_grade_gate(
         };
     };
     if passing_grades.len() == GRADE_VARIANTS.len() {
+        // The floor admits every grade the codebase produces, so this verdict is
+        // derived from the CONFIG and not from the index: no row, fresh or
+        // stale, can violate it. It therefore carries no staleness note and is
+        // not demoted — the invariant being kept is that a `Pass` never rests on
+        // a stale reading, and this one rests on no reading at all.
         return ComplianceCheck {
             name: "CB-200: TDG Grade Gate".into(),
             status: CheckStatus::Pass,
-            message: format!(
-                "Minimum grade {min_grade} \u{2014} no grades below threshold{staleness}"
-            ),
+            message: format!("Minimum grade {min_grade} \u{2014} no grades below threshold"),
             severity: Severity::Info,
         };
     }
@@ -365,13 +362,119 @@ pub(crate) fn check_tdg_grade_gate(
         .iter()
         .filter(|v| !is_tdg_violation_excluded(v, &exclude_patterns))
         .collect();
-    tdg_grade_verdict(
-        &filtered,
-        violations.len(),
-        min_grade,
-        &overrides.baseline,
-        staleness,
+    demote_pass_when_stale(
+        tdg_grade_verdict(
+            &filtered,
+            violations.len(),
+            min_grade,
+            &overrides.baseline,
+            staleness,
+        ),
+        stale,
     )
+}
+
+/// What a stale index costs the reader, and the command that actually fixes it.
+///
+/// The advice used to be `pmat query "x"`, which does not refresh an index that
+/// already exists (#1045). `load_or_build_index`
+/// (`cli/handlers/query_handler/indexing.rs:251`) BUILDS only when both
+/// `.pmat/context.idx` and `.pmat/context.db` are missing; otherwise it loads
+/// and updates in memory, and `maybe_save_incremental` writes that back only
+/// when more than 50 files or 5% of the index changed (#212). Edit a handful of
+/// files and the db is never rewritten — so a reader following the advice saw
+/// the identical stale verdict, with the identical advice, indefinitely.
+/// `--rebuild-index` forces the rebuild and the save.
+///
+/// This is not academic: `.pmat-gates.toml`'s CB-200 baseline was first
+/// committed 216 too high because it was derived against an index that was
+/// stale by 265 definitions, and nothing in the loop said so loudly enough.
+const STALE_INDEX_NOTE: &str = " (index is stale: source files are newer than .pmat/context.db, \
+     so this count describes an OLDER tree - run `pmat query \"x\" --rebuild-index` to refresh; \
+     a plain `pmat query` will NOT rewrite an index that already exists unless more than 50 \
+     files or 5% of it changed)";
+
+/// A stale index may report debt, but it may never report a clean bill.
+///
+/// CB-200 reads `.pmat/context.db`. When sources are newer than the db, the
+/// count is a measurement of an older tree: the definitions it names may
+/// already be fixed, and — the direction that matters — the ones added since
+/// are not in it at all. Passing on that is this project's signature defect,
+/// absence rendered as success, and it is how the ratchet baseline was first
+/// banked 216 units too high.
+///
+/// `Warn`, not `Fail`, and the choice is deliberate on both sides:
+///
+/// * not `Pass`, because `retain_blocking_checks` (check.rs:270) switches on
+///   `CheckStatus` alone and drops every `Pass`, so under
+///   `comply check --failures-only` — the exact invocation `quality-gate.yml`
+///   runs — the sentence saying the measurement is stale would be discarded.
+///   `Warn` survives into `report.summary.warn`, which is tallied before the
+///   list is narrowed.
+/// * not `Fail`, because a stale index is not evidence of a regression, and a
+///   gate that goes red the moment anyone edits a file after indexing would be
+///   turned off within a day. `--strict` still escalates warnings.
+///
+/// A stale `Fail` or `Warn` is left exactly as it is: staleness never makes a
+/// verdict more lenient, only less conclusive.
+fn demote_pass_when_stale(check: ComplianceCheck, stale: bool) -> ComplianceCheck {
+    if !stale || check.status != CheckStatus::Pass {
+        return check;
+    }
+    ComplianceCheck {
+        status: CheckStatus::Warn,
+        severity: Severity::Warning,
+        message: format!(
+            "NOT A VERDICT ON THE CURRENT TREE - the index is stale, so this is not a pass: {}",
+            check.message
+        ),
+        ..check
+    }
+}
+
+/// No `.pmat/context.db`: CB-200 measured nothing at all.
+///
+/// `Skip` for a project that never opted into the ratchet. It has recorded no
+/// baseline to hold, pmat must not fail every fresh clone of every repo that
+/// runs `comply check`, and #939 forbids building an index inside the tree
+/// under audit to manufacture one.
+///
+/// `Fail` for a project that RECORDED a `[tdg] baseline`. `.pmat/` is
+/// gitignored and no CI leg builds an index, so on a fresh checkout this used
+/// to answer `Skip` — and `Skip` is not counted by `ComplianceReport::
+/// is_compliant`, which tallies `Fail` only. The consequence (#1008) is that
+/// CB-200 could only ever fail on a machine that happened to have an index
+/// lying around: the ratchet was unenforceable in the one place that decides a
+/// merge. A declared ratchet that did not run has not held; it has not been
+/// asked. "We could not measure it" must never read as "it did not regress" —
+/// the rule `.pmat-ratchet.toml` already applies to its own baselines, where an
+/// UNMEASURABLE metric fails rather than passes.
+///
+/// The remedy is a build step, not a lower bar: index, then check.
+fn absent_index_verdict(baseline: &TdgBaseline) -> ComplianceCheck {
+    const HOW: &str = "Build one with `pmat query \"x\" --rebuild-index`, then re-run. \
+                       `comply check` will not build it itself: that writes .pmat/context.db \
+                       and .pmat/context.idx into the project being audited (#939).";
+    match baseline {
+        TdgBaseline::Absent => tdg_check(
+            CheckStatus::Skip,
+            Severity::Info,
+            format!(
+                "Not measured: no .pmat/context.db, and this project records no \
+                 `[tdg] baseline` for CB-200 to hold. {HOW}"
+            ),
+        ),
+        TdgBaseline::Held(b) => tdg_check(
+            CheckStatus::Fail,
+            Severity::Error,
+            format!(
+                "Not measured: no .pmat/context.db, so the recorded `[tdg] baseline` of {b} \
+                 was never checked. A ratchet that did not run has not held - an unmeasured \
+                 gate must not report success. {HOW}"
+            ),
+        ),
+        TdgBaseline::Unreadable(raw) => unreadable_baseline_verdict(raw),
+    }
 }
 
 /// The most anyone reads before scrolling. Both listings stop here.
@@ -1080,7 +1183,7 @@ mod tests_tdg_grade {
     // for clean.
 
     /// A project with `.pmat/context.db` holding exactly these rows.
-    fn tdg_fixture(rows: &[(&str, &str, &str, u32, usize)]) -> tempfile::TempDir {
+    pub(super) fn tdg_fixture(rows: &[(&str, &str, &str, u32, usize)]) -> tempfile::TempDir {
         let tmp = tempfile::tempdir().expect("create tempdir");
         let pmat_dir = tmp.path().join(".pmat");
         std::fs::create_dir_all(&pmat_dir).expect("create .pmat");
@@ -1102,11 +1205,11 @@ mod tests_tdg_grade {
         tmp
     }
 
-    fn write_gates(tmp: &tempfile::TempDir, body: &str) {
+    pub(super) fn write_gates(tmp: &tempfile::TempDir, body: &str) {
         std::fs::write(tmp.path().join(".pmat-gates.toml"), body).expect("write gates toml");
     }
 
-    fn judge(tmp: &tempfile::TempDir) -> ComplianceCheck {
+    pub(super) fn judge(tmp: &tempfile::TempDir) -> ComplianceCheck {
         check_tdg_grade_gate(tmp.path(), &ComplyConfig::default())
     }
 
@@ -1437,6 +1540,278 @@ mod tests_tdg_grade {
         assert_eq!(
             order, sorted,
             "worst grade first, then highest complexity: {}",
+            verdict.message
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests_stale_and_absent_index {
+    use super::tests_tdg_grade::{judge, tdg_fixture, write_gates};
+    use super::*;
+    use crate::models::comply_config::ComplyConfig;
+
+    /// Make `tmp`'s index stale by planting a source file a clear minute newer
+    /// than `.pmat/context.db`.
+    ///
+    /// The mtime is SET, not raced for. Writing the source after the db and
+    /// trusting wall-clock ordering fails on filesystems whose timestamp
+    /// granularity is coarser than the microseconds between two writes — both
+    /// files land in the same tick, `is_index_stale` correctly sees nothing
+    /// newer, and the fixture silently never reaches the behaviour under test.
+    fn make_stale(tmp: &tempfile::TempDir) {
+        let db_path = tmp.path().join(".pmat").join("context.db");
+        std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
+        let src = tmp.path().join("src/lib.rs");
+        std::fs::write(&src, "pub fn f() {}\n").expect("write source");
+        let db_mtime = std::fs::metadata(&db_path)
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        std::fs::File::options()
+            .write(true)
+            .open(&src)
+            .and_then(|f| f.set_modified(db_mtime + std::time::Duration::from_secs(60)))
+            .expect("set source mtime a clear minute past the db");
+        assert!(
+            is_index_stale(tmp.path(), &db_path),
+            "fixture must be stale before the behaviour under test can be reached"
+        );
+    }
+
+    /// Plant a source file OLDER than the db, so the fixture is provably fresh
+    /// while still containing sources — the counter-fixture to `make_stale`.
+    fn make_fresh(tmp: &tempfile::TempDir) {
+        let db_path = tmp.path().join(".pmat").join("context.db");
+        std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
+        let src = tmp.path().join("src/lib.rs");
+        std::fs::write(&src, "pub fn f() {}\n").expect("write source");
+        let db_mtime = std::fs::metadata(&db_path)
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        std::fs::File::options()
+            .write(true)
+            .open(&src)
+            .and_then(|f| f.set_modified(db_mtime - std::time::Duration::from_secs(60)))
+            .expect("set source mtime a clear minute before the db");
+        assert!(
+            !is_index_stale(tmp.path(), &db_path),
+            "counter-fixture must be fresh"
+        );
+    }
+
+    /// #1045. A clean count taken from a stale index is not a clean tree: the
+    /// definitions added since the index was built are not in it AT ALL, so
+    /// "nothing below the floor" is a statement about yesterday.
+    ///
+    /// RED, with `demote_pass_when_stale` reduced to `check` (the identity it
+    /// replaced):
+    /// ```text
+    /// a clean count over a STALE index must not be a Pass, got Pass:
+    ///   All non-test functions meet minimum grade A (index is stale: ...)
+    /// ```
+    #[test]
+    fn a_stale_index_may_not_report_a_pass() {
+        let tmp = tdg_fixture(&[("src/lib.rs", "fine", "A", 3, 1)]);
+        make_stale(&tmp);
+        let verdict = judge(&tmp);
+        assert_ne!(
+            verdict.status,
+            CheckStatus::Pass,
+            "a clean count over a STALE index must not be a Pass, got Pass:\n  {}",
+            verdict.message
+        );
+        assert_eq!(verdict.status, CheckStatus::Warn, "{}", verdict.message);
+        assert!(
+            verdict
+                .message
+                .contains("NOT A VERDICT ON THE CURRENT TREE"),
+            "the reader must be told the verdict is not about their tree: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("index is stale"),
+            "the reason must survive the demotion: {}",
+            verdict.message
+        );
+    }
+
+    /// The counter-test that bounds the demotion. Staleness is the trigger, not
+    /// the presence of sources or the mere act of reading an index: an index
+    /// NEWER than every source still reports a clean tree as clean.
+    ///
+    /// Without this, `demote_pass_when_stale` returning `Warn` unconditionally
+    /// would pass every other test in this module.
+    #[test]
+    fn a_fresh_index_still_reports_a_pass() {
+        let tmp = tdg_fixture(&[("src/lib.rs", "fine", "A", 3, 1)]);
+        make_fresh(&tmp);
+        let verdict = judge(&tmp);
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Pass,
+            "a fresh index over a clean tree must still Pass: {}",
+            verdict.message
+        );
+        assert!(
+            !verdict.message.contains("index is stale"),
+            "a fresh index must not be described as stale: {}",
+            verdict.message
+        );
+    }
+
+    /// Staleness makes a verdict LESS conclusive, never more lenient. A count
+    /// over the floor is still a Fail — those definitions exist somewhere in
+    /// history and the fix is to look, not to shrug.
+    #[test]
+    fn a_stale_index_does_not_soften_a_failure() {
+        let tmp = tdg_fixture(&[("src/lib.rs", "bad", "D", 30, 5)]);
+        make_stale(&tmp);
+        let verdict = judge(&tmp);
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Fail,
+            "staleness must not downgrade a Fail: {}",
+            verdict.message
+        );
+    }
+
+    /// #1045's second half: the advice printed beside a stale index must name a
+    /// command that actually refreshes one.
+    ///
+    /// `pmat query "x"` does not. `load_or_build_index`
+    /// (`cli/handlers/query_handler/indexing.rs:251`) rebuilds only when BOTH
+    /// `.pmat/context.idx` and `.pmat/context.db` are absent; with an index
+    /// present it updates in memory and `maybe_save_incremental` persists that
+    /// only past 50 changed files or 5% of the index. Following the old advice
+    /// after editing a handful of files left the db byte-identical and the next
+    /// run printed the same "index is stale" with the same useless remedy.
+    ///
+    /// RED, restoring the old text: `the stale-index advice must name
+    /// --rebuild-index`.
+    #[test]
+    fn the_stale_advice_names_a_command_that_rebuilds() {
+        let tmp = tdg_fixture(&[("src/lib.rs", "fine", "A", 3, 1)]);
+        make_stale(&tmp);
+        let verdict = judge(&tmp);
+        assert!(
+            verdict.message.contains("--rebuild-index"),
+            "the stale-index advice must name --rebuild-index, because a plain \
+             `pmat query` does not rewrite an index that already exists: {}",
+            verdict.message
+        );
+    }
+
+    /// #1008. `.pmat/` is gitignored and no CI leg builds an index, so an
+    /// absent index answered `Skip` — and `is_compliant` counts `Fail` only.
+    /// A project that RECORDED a ratchet baseline therefore had a gate that
+    /// could only fail on a machine which happened to have an index lying
+    /// around: unenforceable exactly where it decides a merge.
+    ///
+    /// RED, with `absent_index_verdict` returning the old unconditional `Skip`:
+    /// ```text
+    /// a recorded baseline that was never checked must not report success,
+    /// got Skip
+    /// ```
+    #[test]
+    fn an_absent_index_fails_a_project_that_recorded_a_baseline() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        std::fs::write(
+            tmp.path().join(".pmat-gates.toml"),
+            "[tdg]\nbaseline = 1688\n",
+        )
+        .expect("write gates toml");
+        let verdict = check_tdg_grade_gate(tmp.path(), &ComplyConfig::default());
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Fail,
+            "a recorded baseline that was never checked must not report success, got {:?}: {}",
+            verdict.status,
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("1688"),
+            "the unchecked baseline must be named: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("Not measured"),
+            "the failure is 'unmeasured', not 'violated': {}",
+            verdict.message
+        );
+        assert!(
+            !tmp.path().join(".pmat").exists(),
+            "#939: an audit must not build an index inside the tree it audits"
+        );
+    }
+
+    /// The counter-test that bounds #1008's fix, and it is the one that matters
+    /// most: pmat runs `comply check` against repositories that never opted
+    /// into this ratchet. A project with no `[tdg] baseline` — no
+    /// `.pmat-gates.toml` at all, or one without the key — must still be told
+    /// "not measured" and must NOT be failed for it.
+    ///
+    /// Without this, "make the absent index fail" is a one-line change that
+    /// reddens every fresh clone of every project pmat has ever been pointed at.
+    #[test]
+    fn an_absent_index_still_skips_a_project_with_no_baseline() {
+        let nothing = tempfile::tempdir().expect("create tempdir");
+        let verdict = check_tdg_grade_gate(nothing.path(), &ComplyConfig::default());
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Skip,
+            "a project holding no baseline has nothing to fail: {}",
+            verdict.message
+        );
+
+        let no_key = tempfile::tempdir().expect("create tempdir");
+        std::fs::write(
+            no_key.path().join(".pmat-gates.toml"),
+            "[tdg]\nexclude = [\"nothing/**\"]\n",
+        )
+        .expect("write gates toml");
+        let verdict = check_tdg_grade_gate(no_key.path(), &ComplyConfig::default());
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Skip,
+            "a [tdg] table without a baseline records no ratchet: {}",
+            verdict.message
+        );
+    }
+
+    /// An unreadable baseline is a Fail with or without an index. It was
+    /// already a Fail once the index was read; routing the absent-index case
+    /// through the same verdict keeps the two answers identical rather than
+    /// letting "no index" launder a broken config into a Skip.
+    #[test]
+    fn an_unreadable_baseline_fails_even_with_no_index() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        std::fs::write(
+            tmp.path().join(".pmat-gates.toml"),
+            "[tdg]\nbaseline = \"lots\"\n",
+        )
+        .expect("write gates toml");
+        let verdict = check_tdg_grade_gate(tmp.path(), &ComplyConfig::default());
+        assert_eq!(verdict.status, CheckStatus::Fail, "{}", verdict.message);
+        assert!(
+            verdict.message.contains("not a count"),
+            "{}",
+            verdict.message
+        );
+    }
+
+    /// The demotion is a funnel, not a special case bolted onto one verdict:
+    /// the ratchet's own clean-at-baseline `Pass` goes through it too.
+    #[test]
+    fn the_ratchet_clean_pass_is_demoted_when_stale() {
+        let tmp = tdg_fixture(&[("src/lib.rs", "fine", "A", 3, 1)]);
+        write_gates(&tmp, "[tdg]\nbaseline = 0\n");
+        make_stale(&tmp);
+        let verdict = judge(&tmp);
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Warn,
+            "0-against-baseline-0 over a stale index is not a Pass: {}",
             verdict.message
         );
     }

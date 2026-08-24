@@ -80,7 +80,10 @@ if [ -f Cargo.toml ]; then
     if [ -n "$UNSYNCED_LINT" ]; then
         echo "❌"
         echo "   These files are staged in a state that differs from the worktree:"
-        printf '     %s\n' $UNSYNCED_LINT
+        # Quoted, then indented by sed. `printf '  %s\n' $VAR` relied on the
+        # shell word-splitting the variable, which also splits on spaces -- a
+        # path containing one was reported as two nonexistent files (#1020).
+        printf '%s\n' "$UNSYNCED_LINT" | sed 's/^/     /'
         echo "   clippy lints the worktree, so the staged bytes would go in unlinted."
         echo "   Stage the rest ('git add <file>') or stash the remainder, then retry."
         exit 1

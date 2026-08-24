@@ -118,6 +118,19 @@ pub fn resolve_paths_with_globs(paths: &[PathBuf]) -> Vec<PathBuf> {
 /// R22-2 (D102): Live `handlers/tools` dispatcher now shares this helper.
 #[must_use]
 pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
+    expand_paths_with_extensions(paths, SOURCE_EXTENSIONS)
+}
+
+/// The body of [`expand_paths_to_source_files`], with the extension allow-list
+/// as a parameter.
+///
+/// Issue #1058: `analyze_complexity` must admit exactly what the CLI's
+/// complexity walk admits, which is a different list from the one the other
+/// MCP tools use (see [`expand_paths_to_complexity_files`]). Passing the list
+/// in keeps ONE walk, ONE ignore policy and ONE discovery for every caller —
+/// only the final filter varies, and it varies where the callers genuinely
+/// answer different questions.
+fn expand_paths_with_extensions(paths: &[PathBuf], admitted: &[&str]) -> Vec<PathBuf> {
     let resolved = resolve_paths_with_globs(paths);
     let mut out = Vec::new();
     for path in &resolved {
@@ -177,7 +190,7 @@ pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
                 Ok(found) => out.extend(found.into_iter().filter(|f| {
                     f.extension()
                         .and_then(|e| e.to_str())
-                        .is_some_and(|ext| SOURCE_EXTENSIONS.contains(&ext))
+                        .is_some_and(|ext| admitted.contains(&ext))
                 })),
                 // Discovery failing is not a licence to fall back to a walk
                 // with a different policy — that would reintroduce the split
@@ -189,6 +202,43 @@ pub fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+/// Expand a list of paths into the files `analyze complexity` measures.
+///
+/// # Why this is not [`expand_paths_to_source_files`]
+///
+/// Issue #1058. Two hand-maintained extension allow-lists decided which files
+/// the two transports measured for the SAME question, and they had drifted:
+///
+/// ```text
+///   CLI  get_file_extensions(None)   has lean, kts, cs   — has no sh, h, hpp
+///   MCP  SOURCE_EXTENSIONS           has sh,   h,   hpp  — has no lean, kts, cs
+/// ```
+///
+/// Measured on a five-file fixture (`Cargo.toml`, `src/lib.rs`, `run.sh`,
+/// `proof.lean`, `hdr.h`):
+///
+/// ```text
+///   pmat analyze complexity   ->  2 files   (lib.rs, proof.lean)
+///   mcp  analyze_complexity   ->  3 files   (lib.rs, run.sh, hdr.h)
+/// ```
+///
+/// and on ~/src/copia, 41 against 39 — the disagreement the transport-parity
+/// gate filed. The reported correlation (copia has two `Cargo.toml` files, so
+/// "sub-crate traversal") is FALSIFIED by that fixture: it is one crate, and
+/// the split reproduces. Discovery is already shared — both surfaces run
+/// `ProjectFileDiscovery` with the same default config — so the extension
+/// filter was the whole of the difference.
+///
+/// The list is DERIVED here rather than copied, so a language added to the CLI
+/// cannot fail to reach this surface: a fourth transcription of a language list
+/// into a repository that already had two that disagreed is how this defect
+/// gets rebuilt.
+#[must_use]
+pub fn expand_paths_to_complexity_files(paths: &[PathBuf]) -> Vec<PathBuf> {
+    let admitted = crate::cli::analysis_utilities::get_file_extensions(None);
+    expand_paths_with_extensions(paths, &admitted)
 }
 
 /// Expand a single MCP `project_path` argument (the shape the live

@@ -37,6 +37,23 @@ fn format_dead_code_as_json_scoped(
     let mut value = serde_json::to_value(result)?;
     let omitted = scope.omitted;
     if let Some(object) = value.as_object_mut() {
+        // Issue #1058. This document names its counts `total_files` (what the
+        // walk discovered) and `analyzed_files` (what the engine read). The MCP
+        // payload for the SAME analysis named the second `files_analyzed` and
+        // had no counterpart for the first, so asking both transports for
+        // "dead-code files" got 38 here and 29 there — on copia, where the two
+        // agree exactly at 29. `analyze complexity` already publishes the pair
+        // as `files_analyzed` / `files_discovered`; both spellings now exist on
+        // both surfaces, so one reader works on either. The original keys stay:
+        // clients read them.
+        object.insert(
+            "files_analyzed".to_string(),
+            serde_json::json!(result.analyzed_files),
+        );
+        object.insert(
+            "files_discovered".to_string(),
+            serde_json::json!(result.total_files),
+        );
         object.insert(
             "omitted".to_string(),
             serde_json::json!({

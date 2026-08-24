@@ -16,7 +16,20 @@ pub(super) struct ListingDisclosure {
     pub files_listed: usize,
     pub files_analyzed: usize,
     pub files_discovered: usize,
+    /// Issue #1050 P3: what the walk saw and did not measure, per reason.
+    /// `None` where there was no population to compare against (single-file
+    /// and explicit-file modes) — which is NOT the same as "nothing was
+    /// skipped", and serialises as `null` rather than an empty breakdown.
+    pub skipped_note: Option<SkipCensus>,
     pub truncated: bool,
+}
+
+/// The walk's skip breakdown, in the units the human note already prints.
+pub(super) struct SkipCensus {
+    pub not_analyzed: usize,
+    pub no_analyzer: std::collections::BTreeMap<String, usize>,
+    pub unmeasured_supported: std::collections::BTreeMap<String, usize>,
+    pub excluded_by_ignore: std::collections::BTreeMap<String, usize>,
 }
 
 /// Format and write complexity analysis output
@@ -64,6 +77,26 @@ pub(super) async fn format_and_write_output(
                 obj.insert(
                     "files_truncated".to_string(),
                     serde_json::json!(listing.truncated),
+                );
+                // Issue #1050 P3. `files_discovered` above is now the walk's
+                // count, not the metrics vector's length; this is the rest of
+                // the sentence the human formatter already prints, so a
+                // consumer can act on the gap instead of only seeing it.
+                obj.insert(
+                    "files_not_analyzed".to_string(),
+                    match &listing.skipped_note {
+                        Some(c) => serde_json::json!({
+                            "total": c.not_analyzed,
+                            "no_complexity_analyzer": c.no_analyzer,
+                            "supported_but_unmeasured": c.unmeasured_supported,
+                            "excluded_by_ignore_rules": c.excluded_by_ignore,
+                        }),
+                        // Not `{"total": 0}`: no census means no population was
+                        // compared, and a fabricated zero is exactly the
+                        // "absence rendered as success" this field exists to
+                        // stop.
+                        None => serde_json::Value::Null,
+                    },
                 );
             }
 
