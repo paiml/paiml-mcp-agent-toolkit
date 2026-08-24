@@ -199,6 +199,7 @@ pub mod mermaid_generator;
 pub mod metrics_ratchet; // CB-2101/CB-2102: threshold coherence + ratchet baselines
 pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operations
 pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
+pub mod numeric_claims; // CB-2104: replicated divergent claims + self-contradicting numbers
 pub mod parallel_git;
 pub mod parsed_file_cache;
 pub mod path_glob; // R22-2 / D102: Shared glob expansion for MCP dispatchers

@@ -1,0 +1,48 @@
+# O(1) Quality Gate Metric Thresholds
+# Spec: docs/specifications/quick-test-build-O(1)-checking.md
+# Pattern: Toyota Way - Jidoka (MEAN mode: warnings = errors)
+
+[thresholds]
+# Hard limits (block commits)
+lint_max_ms = 30_000              # 30s (user requirement: "30 second pre-commit test/lint")
+test_fast_max_ms = 300_000        # 5min (user requirement: "5<make test-fast")
+coverage_max_ms = 600_000         # 10min (user requirement: "under 10 min coverage")
+binary_max_bytes = 50_000_000     # 50 MB (current: 42 MB, 16% headroom)
+deps_default_max = 3_000          # 3,000 dependencies (current: 2,754, 8% headroom)
+
+# Soft limits (warnings only)
+build_release_max_ms = 900_000    # 15min (current: 11m 57s)
+deps_minimal_max = 2_500          # 2,500 dependencies (rust-only, current: 2,055)
+
+[staleness]
+# Metrics older than this trigger warnings
+max_age_days = 7
+
+[enforcement]
+# Pre-commit behavior (MEAN mode = strict)
+fail_on_stale_metrics = false     # Warn, don't block
+fail_on_missing_metrics = false   # Allow commits if no cache
+fail_on_threshold_violation = true # Block commits on violations (MEAN mode)
+
+[trend_analysis]
+# Track metrics for Kaizen (continuous improvement)
+enabled = true
+retention_days = 90
+alert_on_regression = true
+regression_threshold_pct = 10.0   # Alert if >10% slower
+
+# PMAT-specific quality gates
+[quality_gates]
+# Target quality standards for PMAT itself (dogfooding)
+min_coverage_pct = 85.0           # Target: >=85% line coverage (NASA standard)
+min_mutation_score_pct = 80.0     # Target: >=80% mutation score
+max_cyclomatic_complexity = 15    # Target: <=15 per function
+min_tdg_grade = "A-"              # Target: A- or better (>=88)
+max_unwrap_calls = 100            # Current: 570 (CRITICAL - must reduce!)
+
+# Performance budgets (PMAT operation targets)
+[performance]
+# PMAT command execution targets
+min_tdg_analysis_throughput = 1000   # 1000+ lines/sec
+max_memory_usage_mb = 512            # <=512MB for typical projects
+max_regression_pct = 5.0             # <=5% performance regression allowed

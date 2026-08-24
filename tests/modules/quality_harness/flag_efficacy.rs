@@ -373,6 +373,11 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--stack",
         "appends the 'Stack Quality (CB-150)' block listing sovereign dependencies found in Cargo.toml (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's Cargo.toml makes it appear. The corpus has an empty [dependencies] section, and the function early-returns when none are found",
     ),
+    (
+        "comply check",
+        "--strict",
+        "escalates warnings to a failing exit and nothing else — exit_policy (comply_handlers/check_handlers/check.rs:229-256) returns code 2 only when `is_compliant && warn > 0 && fail == 0`; a report with failures already exits 1 and the flag has nothing left to escalate. Demonstrated on this corpus: give it a `deny.toml` naming all four families and a `.github/workflows/ci.yml` whose `gate` job runs the CB-reaching commands, then `PMAT_REQUIRED_STATUS_CHECKS=gate pmat comply check` exits 0 and the same run with --strict exits 2 with 'the report is COMPLIANT (0 failures), but --strict treats warnings as errors: 9 warning(s)'. The swept corpus fails CB-1701 and CB-2100, so both runs exit 1 with byte-identical stdout (15,773B). Pinned as a tri-state by check_readonly_and_exemption_tests.rs::strict_exit_codes_are_a_documented_tri_state",
+    ),
 ];
 
 /// Where a probe writes when a flag's only observable is "a file was written".

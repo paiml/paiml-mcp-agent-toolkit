@@ -338,5 +338,25 @@ fn default_checks() -> HashMap<String, CheckConfig> {
         },
     );
 
+    // CB-2104: Numeric Claims — numbers the repository writes down about
+    // itself and then contradicts. Declared **Warning**, and that is not an
+    // oversight: this rule is advisory by contract and must never fail a
+    // `pmat comply check`. Declaring it Error would enrol it in the severity=error
+    // roster CB-2100 verifies reachability for and would make findings block,
+    // which is the one promise the rule was built around. It is registered
+    // anyway, rather than left to `get_severity`'s Warning default, so that
+    // `.pmat.yaml` can address it: `pmat comply numeric-claims` reads
+    // `is_check_enabled("cb-2104")` and scans nothing when it is false, so this
+    // entry is load-bearing rather than decorative.
+    checks.insert(
+        "cb-2104".to_string(),
+        CheckConfig {
+            enabled: true,
+            severity: CheckSeverity::Warning,
+            threshold: None,
+            options: HashMap::new(),
+        },
+    );
+
     checks
 }

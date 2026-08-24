@@ -83,6 +83,15 @@ const CLI_ONLY_ANALYZERS: &[(&str, Absence)] = &[
              absent, because absence is at least honest.",
         ),
     ),
+    // The next two rows are gated to exactly the builds in which the subcommand
+    // exists. Their clap variants carry `#[cfg(feature = ...)]`, so in the
+    // default build there is no `pmat analyze deep-wasm` for the row to describe
+    // and `every_cli_only_entry_names_a_live_subcommand` — correctly — reads an
+    // ungated row as a claim about nothing. Gating keeps BOTH directions exact:
+    // where the subcommand exists the row must too, and where it does not the
+    // row is absent rather than stale. Ungating either one turns every default
+    // build red; deleting either one turns `--features full` red.
+    #[cfg(feature = "deep-wasm")]
     (
         "deep-wasm",
         Absence::Deliberate(
@@ -93,6 +102,7 @@ const CLI_ONLY_ANALYZERS: &[(&str, Absence)] = &[
              artifact-inspection pipeline, not a question about a source tree.",
         ),
     ),
+    #[cfg(feature = "mutation-testing")]
     (
         "mutate",
         Absence::Deliberate(

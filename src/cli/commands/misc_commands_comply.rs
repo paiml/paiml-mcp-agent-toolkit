@@ -236,6 +236,52 @@ pub enum ComplyCommands {
         format: ComplyOutputFormat,
     },
 
+    /// CB-2104: report numbers this repository writes down about itself and
+    /// then contradicts.
+    ///
+    /// Two rules over one corpus of git-tracked `*.md *.rs *.toml *.yaml *.yml
+    /// *.json`. R1 REPLICATED DIVERGENT CLAIM finds one sentence repeated
+    /// across seven or more files with the number in it disagreeing — at most
+    /// one copy can be right. R2 CONTRADICTION finds a NAMED quantity, a config
+    /// key or a Rust `const`, whose own trailing comment or the declaration it
+    /// says it mirrors holds a different value.
+    ///
+    /// WARN only. Findings exit 0 and never block. Exit 2 means UNMEASURABLE —
+    /// the corpus could not be read, or the check failed its own self-test
+    /// against the committed fixture. "We could not measure it" must never read
+    /// as "it did not regress", so the two never share an exit code.
+    ///
+    /// A census is printed on every run, whether or not anything was found: it
+    /// says how many files, numerals and named quantities produced the verdict,
+    /// so a silent pass still shows its working.
+    #[command(alias = "claims")]
+    NumericClaims {
+        /// Project path (defaults to current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: NumericClaimsFormat,
+
+        /// Distinct files a template must span before R1 will report it.
+        ///
+        /// Below the default this prints a precision warning and means it:
+        /// `--min-sites 3` measured 1/10 precision on the reference corpus,
+        /// against 1/1 at 7. It is the one knob that destroys the check.
+        #[arg(long = "min-sites", default_value_t = crate::services::numeric_claims::cohort::DEFAULT_MIN_SITES)]
+        min_sites: usize,
+
+        /// Turn guard G1 off and let machine-written files make claims.
+        ///
+        /// A debugging flag. Every flagship false positive the cohort rule
+        /// produced before G1 existed sat in a generated file, and with either
+        /// guard off the reference corpus measured 1/3 precision — so this
+        /// prints a warning too.
+        #[arg(long = "include-generated")]
+        include_generated: bool,
+    },
+
     /// Layer 2 (Genchi Genbutsu): Evidence-based review checklist (COMPLY-045)
     /// Generates a reviewer checklist with reproducibility, hypothesis, and trace evidence.
     Review {
@@ -389,6 +435,21 @@ pub enum ComplyOutputFormat {
     Markdown,
     /// SARIF format for GitHub Code Scanning (delegates contract checks to pv lint)
     Sarif,
+}
+
+/// CB-2104 output formats.
+///
+/// Deliberately not [`ComplyOutputFormat`]: this check emits text and JSON and
+/// nothing else, and accepting `--format markdown` only to render text anyway
+/// would be a flag that parses and changes nothing. A separate enum makes it a
+/// clap error instead.
+#[derive(Debug, Clone, Copy, Default, clap::ValueEnum, PartialEq, Eq)]
+pub enum NumericClaimsFormat {
+    /// Census first, then every finding with `file:line` for each site.
+    #[default]
+    Text,
+    /// The whole report, including the exit code and the self-test result.
+    Json,
 }
 
 /// Project diagnostics output formats (lltop Tab 8)

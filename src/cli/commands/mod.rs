@@ -87,3 +87,13 @@ mod feature_gate_disclosure_tests;
 #[cfg(test)]
 #[path = "inert_flag_disclosure_tests.rs"]
 mod inert_flag_disclosure_tests;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dogfood_skill_drift_tests.rs"]
+mod dogfood_skill_drift_tests;
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "json_stdout_purity_tests.rs"]
+mod json_stdout_purity_tests;

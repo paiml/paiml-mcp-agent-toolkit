@@ -1,0 +1,4 @@
+[package]
+rust-version = "1.95"
+edition = 2021
+version = "3.33.0"
