@@ -106,8 +106,34 @@ fn count_line(n: usize) -> String {
 }
 
 /// The `… and N more` pointer, when the list was capped.
-fn more_line(hidden: usize) -> String {
-    format!("… and {hidden} more (--format json lists every one under \"ungraded_files\")")
+///
+/// Issue #1064. The KEY NAME is the whole point of this line — it is the only
+/// place a reader is told what to look for in the JSON — and it was the part
+/// the frame ate. `box_row` clips from the right at `BODY_WIDTH`, and the
+/// 68-column sentence below is 25 columns too wide for a 49-column box, so
+/// every capped report printed
+///
+/// ```text
+/// │      … and 5 more (--format json lists every one│
+/// ```
+///
+/// with no key, no closing parenthesis, and no hint that either had been cut.
+/// The box is fixed-width by design (`COLUMNS=200` changes nothing), so the
+/// sentence has to fit the box rather than the other way round: pick the
+/// longest phrasing the budget allows, and never one that has to be clipped.
+fn more_line(hidden: usize, budget: Option<usize>) -> String {
+    let full =
+        format!("… and {hidden} more (--format json lists every one under \"ungraded_files\")");
+    let Some(budget) = budget else {
+        // No frame (Markdown): say the whole sentence.
+        return full;
+    };
+    if visible_width(&full) <= budget {
+        return full;
+    }
+    // Shortest phrasing that still names the key. 39 columns at a five-digit
+    // count, against a 43-column box budget — see `the_pointer_never_loses_the_key_name`.
+    format!("… and {hidden} more: json \"ungraded_files\"")
 }
 
 /// The same disclosure as Markdown: a bold count, then one bullet per file with
@@ -130,7 +156,10 @@ pub(crate) fn ungraded_markdown_lines(files: &[UngradedFile]) -> Vec<String> {
         });
     }
     if files.len() > UNGRADED_SHOWN {
-        lines.push(format!("- {}", more_line(files.len() - UNGRADED_SHOWN)));
+        lines.push(format!(
+            "- {}",
+            more_line(files.len() - UNGRADED_SHOWN, None)
+        ));
     }
     lines
 }
@@ -158,7 +187,7 @@ pub(crate) fn ungraded_rows(files: &[UngradedFile], budget: Option<usize>) -> Ve
         rows.push(format!(
             "{}{}",
             " ".repeat(ENTRY_INDENT),
-            more_line(files.len() - UNGRADED_SHOWN)
+            more_line(files.len() - UNGRADED_SHOWN, budget)
         ));
     }
     rows
@@ -178,6 +207,72 @@ mod tests {
             path: path.to_string(),
             reason: reason.to_string(),
         }
+    }
+
+    /// Issue #1064. The pointer line exists to name the JSON key; the box
+    /// clipped it away, so the one sentence that told the reader what to look
+    /// for was the one sentence that never arrived intact.
+    ///
+    /// RED at HEAD, observed from the binary before the fix (a 17-file tree,
+    /// 15 of them `.sh`):
+    ///
+    /// ```text
+    /// │      … and 5 more (--format json lists every one│
+    /// ```
+    ///
+    /// The sentence is 68 columns against a 43-column budget. The width
+    /// assertion below is the one that pins it: reverting `more_line` to
+    /// always return the long form fails it at 68 of 43.
+    #[test]
+    fn the_pointer_never_loses_the_key_name() {
+        // Five digits of hidden files: aprender walks 152 unmeasurable files,
+        // so the count is not always one column wide.
+        for hidden in [1_usize, 5, 152, 12_345] {
+            let line = more_line(hidden, Some(ENTRY_BUDGET));
+            assert!(
+                line.contains("ungraded_files"),
+                "the pointer must name the key it points at: {line}"
+            );
+            assert!(
+                visible_width(&line) <= ENTRY_BUDGET,
+                "the pointer must FIT the frame rather than be clipped by it: \
+                 {} columns of {ENTRY_BUDGET}: {line}",
+                visible_width(&line)
+            );
+        }
+    }
+
+    /// COUNTER-TEST: a renderer with no frame keeps the full sentence. Making
+    /// every format wear the box's 43-column limit would be the fix
+    /// over-applied — Markdown has no box.
+    #[test]
+    fn an_unframed_renderer_keeps_the_long_form() {
+        let line = more_line(5, None);
+        assert!(line.contains("--format json lists every one"), "{line}");
+        assert!(line.contains("ungraded_files"), "{line}");
+    }
+
+    /// The capped box report must carry the key through the FRAME, not just
+    /// out of `more_line`: this is the row as `ungraded_rows` emits it, indent
+    /// included.
+    #[test]
+    fn the_capped_box_row_still_names_the_key() {
+        let files: Vec<UngradedFile> = (0..15)
+            .map(|i| {
+                f(
+                    &format!("/some/deep/path/s{i}.sh"),
+                    "Bash source: no analyzer",
+                )
+            })
+            .collect();
+        let rows = ungraded_rows(&files, Some(ENTRY_BUDGET));
+        let last = rows.last().expect("a capped list ends with the pointer");
+        assert!(last.contains("ungraded_files"), "{last}");
+        assert!(
+            visible_width(last) <= BODY_WIDTH,
+            "{} columns of {BODY_WIDTH}: {last}",
+            visible_width(last)
+        );
     }
 
     #[test]

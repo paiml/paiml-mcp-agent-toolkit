@@ -492,6 +492,23 @@ pub(super) async fn analyze_files_by_mode_with_census(
 ) -> Result<AnalyzedTree> {
     crate::status_eprintln!("⏰ Analysis timeout set to {} seconds", config.timeout);
 
+    // Whether this run was SCOPED to files the caller named. `unanalyzed_summary`
+    // guards on `!config.project_path.is_dir()`, which is false for the `.` the
+    // CLI leaves in `project_path` beside `--file`, so a one-file run walked the
+    // whole working directory and published it as its own denominator:
+    //
+    //   analyze complexity --file one.rs --format json   (inside this repo)
+    //   {"files_analyzed": 1, "files_discovered": 5363,
+    //    "files_not_analyzed": {"total": 5363, "supported_but_unmeasured": {"rs": 4426, …}}}
+    //
+    // 4,426 Rust files declared unmeasured by a run that was never asked to
+    // measure them — issue #1065's defect pointing the other way, and read off
+    // the same field. The rule the `files_discovered` comment already states
+    // ("single-file and explicit-file modes have no population to compare
+    // against") is enforced here, where the mode is actually known; the census
+    // function only ever saw a config that could not distinguish them.
+    let scoped_to_named_files = file.is_some() || !files.is_empty();
+
     // Owned so the work can run on its own task: a budget enforced from the
     // caller's own task is the non-enforcement it replaces (see the helper).
     let owned = config.clone();
@@ -572,7 +589,15 @@ pub(super) async fn analyze_files_by_mode_with_census(
             // the serializers publish the same denominator this sentence
             // quotes. Recomputing it at the call site would be a second walk,
             // which is a second chance to disagree.
-            carried = unanalyzed_summary(metrics, config);
+            //
+            // Not for a run scoped to named files: there the population is the
+            // names the caller gave, and the directory around them was never
+            // in scope. See `scoped_to_named_files` above.
+            carried = if scoped_to_named_files {
+                None
+            } else {
+                unanalyzed_summary(metrics, config)
+            };
             if let Some(c) = &carried {
                 crate::status_eprintln!("{}", c.note);
             }
@@ -641,7 +666,7 @@ fn unanalyzed_summary(
     config: &ComplexityConfig,
 ) -> Option<UnanalyzedCensus> {
     use crate::services::ast::strategy::StrategySelector;
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::HashSet;
 
     // Single-file and explicit-file modes have no population to compare against.
     if !config.project_path.is_dir() {
@@ -693,40 +718,18 @@ fn unanalyzed_summary(
             .ok()
             .map(|found| found.iter().filter_map(|f| resolve(f)).collect());
 
-    let mut no_analyzer: BTreeMap<String, usize> = BTreeMap::new();
-    let mut skipped: BTreeMap<String, usize> = BTreeMap::new();
-    let mut excluded: BTreeMap<String, usize> = BTreeMap::new();
-    let mut total = 0usize;
-    for entry in ignore::WalkBuilder::new(&config.project_path)
-        .hidden(true)
-        .git_ignore(true)
-        .build()
-        .filter_map(std::result::Result::ok)
-    {
-        if !entry.file_type().is_some_and(|t| t.is_file()) {
-            continue;
-        }
-        let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) else {
-            continue;
-        };
-        let ext = ext.to_ascii_lowercase();
-        total += 1;
-        if resolve(entry.path()).is_some_and(|c| analyzed.contains(&c)) {
-            continue;
-        }
-        if !supported.contains(&ext) {
-            *no_analyzer.entry(ext).or_default() += 1;
-            continue;
-        }
-        let was_offered = offered
-            .as_ref()
-            .is_none_or(|set| resolve(entry.path()).is_some_and(|c| set.contains(&c)));
-        if was_offered {
-            *skipped.entry(ext).or_default() += 1;
-        } else {
-            *excluded.entry(ext).or_default() += 1;
-        }
-    }
+    let Buckets {
+        total,
+        no_analyzer,
+        skipped,
+        excluded,
+    } = bucket_the_walk(
+        &config.project_path,
+        &resolve,
+        &analyzed,
+        &supported,
+        &offered,
+    );
 
     // ONE derivation of the count. It used to be `total - metrics.len()` while
     // the census was built separately from the walk, so when the path match
@@ -745,7 +748,88 @@ fn unanalyzed_summary(
         return None;
     }
 
-    let census = |m: &BTreeMap<String, usize>| -> String {
+    Some(UnanalyzedCensus {
+        note: census_note(missing, total, &no_analyzer, &skipped, &excluded),
+        total,
+        missing,
+        no_analyzer,
+        unmeasured_supported: skipped,
+        excluded_by_ignore: excluded,
+    })
+}
+
+/// The walk's per-extension tally, before any of it is rendered.
+struct Buckets {
+    /// Files with an extension the walk saw, analysed or not.
+    total: usize,
+    no_analyzer: std::collections::BTreeMap<String, usize>,
+    skipped: std::collections::BTreeMap<String, usize>,
+    excluded: std::collections::BTreeMap<String, usize>,
+}
+
+/// Walk the tree once and put every file it sees into exactly one bucket.
+///
+/// Lifted out of `unanalyzed_summary` verbatim — same walker, same order, same
+/// branch order — so it counts what it counted before. It is the ONE walk the
+/// census is derived from; see the "two walks are two chances to disagree"
+/// note on `UnanalyzedCensus`.
+fn bucket_the_walk(
+    root: &Path,
+    resolve: &impl Fn(&Path) -> Option<PathBuf>,
+    analyzed: &std::collections::HashSet<PathBuf>,
+    supported: &std::collections::HashSet<String>,
+    offered: &Option<std::collections::HashSet<PathBuf>>,
+) -> Buckets {
+    let mut b = Buckets {
+        total: 0,
+        no_analyzer: std::collections::BTreeMap::new(),
+        skipped: std::collections::BTreeMap::new(),
+        excluded: std::collections::BTreeMap::new(),
+    };
+    for entry in ignore::WalkBuilder::new(root)
+        .hidden(true)
+        .git_ignore(true)
+        .build()
+        .filter_map(std::result::Result::ok)
+    {
+        if !entry.file_type().is_some_and(|t| t.is_file()) {
+            continue;
+        }
+        let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        let ext = ext.to_ascii_lowercase();
+        b.total += 1;
+        if resolve(entry.path()).is_some_and(|c| analyzed.contains(&c)) {
+            continue;
+        }
+        if !supported.contains(&ext) {
+            *b.no_analyzer.entry(ext).or_default() += 1;
+            continue;
+        }
+        let was_offered = offered
+            .as_ref()
+            .is_none_or(|set| resolve(entry.path()).is_some_and(|c| set.contains(&c)));
+        if was_offered {
+            *b.skipped.entry(ext).or_default() += 1;
+        } else {
+            *b.excluded.entry(ext).or_default() += 1;
+        }
+    }
+    b
+}
+
+/// Render the human sentence for one census. Pure: it decides nothing, it only
+/// says what the tally already counted, which is why it can be lifted out of
+/// `unanalyzed_summary` without changing a number.
+fn census_note(
+    missing: usize,
+    total: usize,
+    no_analyzer: &std::collections::BTreeMap<String, usize>,
+    skipped: &std::collections::BTreeMap<String, usize>,
+    excluded: &std::collections::BTreeMap<String, usize>,
+) -> String {
+    let census = |m: &std::collections::BTreeMap<String, usize>| -> String {
         m.iter()
             .map(|(e, n)| format!(".{e} ({n})"))
             .collect::<Vec<_>>()
@@ -755,7 +839,7 @@ fn unanalyzed_summary(
     if !no_analyzer.is_empty() {
         out.push_str(&format!(
             "\n   no complexity analyzer for: {}",
-            census(&no_analyzer)
+            census(no_analyzer)
         ));
     }
     // A supported extension that still produced no metrics is a DIFFERENT fact
@@ -764,7 +848,7 @@ fn unanalyzed_summary(
     if !skipped.is_empty() {
         out.push_str(&format!(
             "\n   supported, but no metrics were produced: {}",
-            census(&skipped)
+            census(skipped)
         ));
     }
     // …and a file the project excluded on purpose is a third fact again.
@@ -772,17 +856,10 @@ fn unanalyzed_summary(
         out.push_str(&format!(
             "\n   excluded by ignore rules (.pmatignore/.paimlignore, vendored, \
              generated): {}",
-            census(&excluded)
+            census(excluded)
         ));
     }
-    Some(UnanalyzedCensus {
-        note: out,
-        total,
-        missing,
-        no_analyzer,
-        unmeasured_supported: skipped,
-        excluded_by_ignore: excluded,
-    })
+    out
 }
 
 async fn analyze_by_mode(

@@ -299,7 +299,7 @@ impl SATDDetector {
         }
 
         if analyzed == 0 {
-            return Err(Self::nothing_measured(root, discovered));
+            return Err(Self::nothing_measured(root, discovered, include_tests));
         }
 
         Ok((all_debts, skipped))
@@ -322,16 +322,35 @@ impl SATDDetector {
     /// the shape #923 was about in the first place: one rule, two
     /// implementations, free to drift the moment either is edited. Both copies
     /// were byte-identical, so this is a pure substitution.
-    fn nothing_measured(root: &Path, discovered: usize) -> TemplateError {
+    ///
+    /// Issue #1050 P9, second half. The reason list and the remedy were fixed
+    /// strings, so a run that had ALREADY passed `--include-tests` was told to
+    /// pass `--include-tests` — advice that cannot work, beside a skip reason
+    /// ("test") that the flag in force had already ruled out. Both halves are
+    /// now a function of the flag, so the sentence describes the run that
+    /// produced it.
+    fn nothing_measured(root: &Path, discovered: usize, include_tests: bool) -> TemplateError {
+        let (skipped_because, remedy) = if include_tests {
+            (
+                "example, fuzz, vendored, generated, minified or oversized",
+                "point the analysis at the project root: --include-tests is already in force, \
+                 so test code is not what was excluded here.",
+            )
+        } else {
+            (
+                "test, example, fuzz, vendored, generated, minified or oversized",
+                "point the analysis at the project root, or pass --include-tests to measure \
+                 test code.",
+            )
+        };
         TemplateError::ValidationError {
             parameter: "path".to_string(),
             reason: crate::services::defect_detector::unmeasured::refusal(
                 "SATD",
                 root,
                 discovered,
-                "test, example, fuzz, vendored, generated, minified or oversized",
-                "point the analysis at the project root, or pass --include-tests to measure \
-                 test code.",
+                skipped_because,
+                remedy,
             ),
         }
     }

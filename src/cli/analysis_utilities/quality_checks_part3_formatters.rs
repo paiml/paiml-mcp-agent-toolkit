@@ -19,6 +19,7 @@ fn format_qg_as_human(
 
     write_qg_human_header(&mut output, results)?;
     write_qg_violation_counts(&mut output, results)?;
+    write_qg_scope_notes(&mut output, results)?;
 
     if let Some(score) = results.provability_score {
         writeln!(&mut output, "\nProvability score: {score:.2}")?;
@@ -72,6 +73,29 @@ fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) 
         if count > 0 {
             writeln!(output, "## {name} violations: {count}")?;
         }
+    }
+    Ok(())
+}
+
+/// Name the population each check declined to read, when there was one.
+///
+/// A zero next to a check is two different claims — "read it, it was clean" and
+/// "never read it" — and until this line existed the human report rendered both
+/// as the same word. `analyze satd` already prints its skip note; the gate,
+/// which is the surface that decides pass/fail, printed nothing.
+fn write_qg_scope_notes(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    use std::fmt::Write;
+    let notes: Vec<String> = results
+        .files_not_read
+        .iter()
+        .filter_map(|(check, skipped)| skipped.note().map(|n| format!("  {check}: {n}")))
+        .collect();
+    if notes.is_empty() {
+        return Ok(());
+    }
+    writeln!(output, "\n## Scope (not read, so not judged):")?;
+    for n in notes {
+        writeln!(output, "{n}")?;
     }
     Ok(())
 }

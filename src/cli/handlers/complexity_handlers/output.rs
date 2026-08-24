@@ -22,6 +22,16 @@ pub(super) struct ListingDisclosure {
     /// skipped", and serialises as `null` rather than an empty breakdown.
     pub skipped_note: Option<SkipCensus>,
     pub truncated: bool,
+    /// Issue #1068: how the analysed population splits between the AST
+    /// analyzer, a language's own heuristic analyzer, a deliberately skipped
+    /// `include!()` fragment, and a Rust file whose AST parse FAILED. The last
+    /// of those was a stderr warning and nothing else, so a regex-guessed
+    /// count was shaped in the document exactly like a parsed one.
+    pub provenance: crate::cli::language_analyzer::ast_fallback::ProvenanceTally,
+    /// The same fact per file, keyed by `FileComplexityMetrics::path`, so the
+    /// listed entries can each carry their own marker.
+    pub per_file_provenance:
+        std::collections::BTreeMap<String, crate::cli::language_analyzer::ast_fallback::Provenance>,
 }
 
 /// The walk's skip breakdown, in the units the human note already prints.
@@ -98,6 +108,64 @@ pub(super) async fn format_and_write_output(
                         None => serde_json::Value::Null,
                     },
                 );
+                // Issue #1068. `analyze complexity` prefers `syn` for Rust and
+                // silently drops to the regex counter when the parse fails.
+                // The document said nothing: a fallback file's entry was
+                // shaped identically to a parsed one, and the only disclosure
+                // — a stderr warning — is discarded by `--format json` and by
+                // `--output FILE` alike.
+                //
+                // Named against the population it partitions, per the rule the
+                // fields above already follow: `files_analyzed` is repeated
+                // here so the buckets are never read as a fraction of the
+                // LISTED slice, which is a different, smaller number whenever
+                // `files_truncated` is true.
+                obj.insert(
+                    "analysis_provenance".to_string(),
+                    serde_json::json!({
+                        "ast": listing.provenance.ast,
+                        // Not a degradation: the only complexity analyzer this
+                        // build has for that language.
+                        "heuristic": listing.provenance.heuristic,
+                        // Also not a degradation, and a different fact:
+                        // Rust that pmat has an AST analyzer for and
+                        // deliberately skips because the file is an
+                        // `include!()` fragment rather than standalone.
+                        "heuristic_include_fragment": listing.provenance.heuristic_include_fragment,
+                        // A degradation: Rust that `syn` refused, counted by
+                        // regex instead. These numbers may be wrong — on one
+                        // real bashrs file the fallback was over by 2.4x.
+                        "heuristic_fallback": listing.provenance.heuristic_fallback,
+                        // Published rather than assumed 0: if the join between
+                        // the ledger and the metrics ever stops matching, that
+                        // shows up here as a number instead of as four
+                        // plausible buckets that quietly do not add up.
+                        "unrecorded": listing.provenance.unrecorded(),
+                        "files_analyzed": listing.provenance.analyzed,
+                    }),
+                );
+            }
+
+            // Per-file, on the entries the document actually lists. Injected
+            // rather than added to `FileComplexityMetrics`, which is shared
+            // with the MCP tools, the TDG analyzer and the deep-context walker
+            // — none of which have this disclosure to make.
+            if let Some(files) = json_output.get_mut("files").and_then(|f| f.as_array_mut()) {
+                for file in files.iter_mut() {
+                    let provenance = file
+                        .get("path")
+                        .and_then(serde_json::Value::as_str)
+                        .and_then(|p| listing.per_file_provenance.get(p))
+                        .map(|p| serde_json::json!(p.as_str()))
+                        // Null, not "ast": a file whose provenance was not
+                        // recorded is unknown, and defaulting it to the good
+                        // case is how a fallback would go back to being
+                        // invisible.
+                        .unwrap_or(serde_json::Value::Null);
+                    if let Some(obj) = file.as_object_mut() {
+                        obj.insert("analysis".to_string(), provenance);
+                    }
+                }
             }
 
             serde_json::to_string_pretty(&json_output)

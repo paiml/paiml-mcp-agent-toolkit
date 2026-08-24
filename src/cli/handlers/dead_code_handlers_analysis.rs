@@ -195,7 +195,8 @@ async fn run_dead_code_analysis_with_filters(
             match &resolution {
                 crate::services::cargo_dead_code_analyzer::CrateRootResolution::WorkspaceOnly {
                     ..
-                } => "Point --path at one of those member crates, or at a directory inside \
+                } =>
+                    "Point --path at one of those member crates, or at a directory inside \
                       one: a workspace is not a compilation unit, so there is nothing to \
                       measure at its root.",
                 _ => "Point --path at a cargo crate, or at a directory inside one.",
@@ -433,6 +434,39 @@ async fn run_multi_language_dead_code_within(
 }
 
 /// Run multi-language dead code analysis for non-Rust projects
+/// Dead functions grouped by the file that holds them, honouring
+/// `--include-tests`.
+///
+/// The flag reached this path and was NEVER READ: it was inert for every
+/// non-Rust project, while the cargo path honours it by not compiling the test
+/// targets at all. MCP `analyze_dead_code` used to apply the filter itself, on
+/// top of the analyzer — exactly the duplication [`run_dead_code_suite`] exists
+/// to end — so the predicate lives here, where the report is built, and both
+/// surfaces get it.
+fn group_dead_functions_by_file<'a>(
+    ml_result: &'a crate::services::dead_code_multi_language::DeadCodeResult,
+    filters: &DeadCodeAnalysisFilters,
+) -> std::collections::HashMap<
+    String,
+    Vec<&'a crate::services::dead_code_multi_language::DeadFunction>,
+> {
+    let mut file_map: std::collections::HashMap<
+        String,
+        Vec<&crate::services::dead_code_multi_language::DeadFunction>,
+    > = std::collections::HashMap::new();
+    for dead_fn in ml_result
+        .dead_functions
+        .iter()
+        .filter(|dead_fn| filters.include_tests || !is_test_path(&dead_fn.file))
+    {
+        file_map
+            .entry(dead_fn.file.clone())
+            .or_default()
+            .push(dead_fn);
+    }
+    file_map
+}
+
 fn run_multi_language_dead_code(
     path: &Path,
     filters: &DeadCodeAnalysisFilters,
@@ -447,29 +481,7 @@ fn run_multi_language_dead_code(
 
     let ml_result = analyze_dead_code_multi_language(path)?;
 
-    // Group dead functions by file for FileDeadCodeMetrics
-    let mut file_map: std::collections::HashMap<
-        String,
-        Vec<&crate::services::dead_code_multi_language::DeadFunction>,
-    > = std::collections::HashMap::new();
-    // `--include-tests`, on this path too.
-    //
-    // `filters.include_tests` reached here and was never read: the flag was
-    // inert for every non-Rust project, while the cargo path honours it by not
-    // compiling the test targets at all. MCP `analyze_dead_code` used to apply
-    // this filter itself, on top of the analyzer — which is exactly the
-    // duplication [`run_dead_code_suite`] exists to end, so the predicate lives
-    // here, where the report is built, and both surfaces get it.
-    for dead_fn in ml_result
-        .dead_functions
-        .iter()
-        .filter(|dead_fn| filters.include_tests || !is_test_path(&dead_fn.file))
-    {
-        file_map
-            .entry(dead_fn.file.clone())
-            .or_default()
-            .push(dead_fn);
-    }
+    let file_map = group_dead_functions_by_file(&ml_result, filters);
 
     let mut files: Vec<FileDeadCodeMetrics> = file_map
         .into_iter()

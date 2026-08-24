@@ -381,8 +381,16 @@ fn build_and_save_index(
         start.elapsed().as_secs_f32()
     );
 
-    // Create .pmat directory if needed
+    // Create .pmat, with the rule that keeps it out of the analysed project's
+    // git status (#1050 P8). `pmat query` on a clean checkout used to leave
+    // `?? .pmat/` holding `context.db` and `context.idx` — the same defect the
+    // tdg and dead-code caches had, in the command this repo runs most.
     if let Some(parent) = index_path.parent() {
+        if parent.file_name().is_some_and(|name| name == ".pmat") {
+            if let Some(project) = parent.parent() {
+                let _ = crate::utils::pmat_cache_dir::ensure_cache_dir(project);
+            }
+        }
         let _ = std::fs::create_dir_all(parent);
     }
 

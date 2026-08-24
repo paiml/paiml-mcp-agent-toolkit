@@ -215,7 +215,24 @@ pub async fn handle_analyze_dead_code(
         } else {
             e
         }
-    })?;
+    });
+
+    // A refusal a machine can read.
+    //
+    // Issue #1050 P7. Pointed at a virtual manifest — a root `Cargo.toml` that
+    // is `[workspace]` with no `[package]` — pmat is RIGHT to decline, and the
+    // prose it writes to stderr names every member crate. But `--format json`
+    // then wrote ZERO BYTES to stdout and exited 1, so `json.load()` raised
+    // rather than reading a field: a consumer could not tell a refusal from an
+    // empty result, from a crash, from a killed process. `tdg` already answers
+    // this class with a body plus a distinct code, and one tool must not answer
+    // the same question two ways.
+    let outcome = match outcome {
+        Ok(outcome) => outcome,
+        Err(error) => {
+            return refuse_dead_code_measurement(&path, &format, output, error).await;
+        }
+    };
 
     let result = outcome.report;
     let scope = outcome.scope;
@@ -318,6 +335,12 @@ mod subtree_scope_tests;
 #[cfg(test)]
 #[path = "dead_code_workspace_root_tests.rs"]
 mod workspace_root_tests;
+
+// What a MACHINE receives when the analysis declines to measure (#1050 P7).
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_refusal_shape_tests.rs"]
+mod refusal_shape_tests;
 
 // The summary's categories vs. the items it heads, and `--timeout`.
 #[cfg_attr(coverage_nightly, coverage(off))]

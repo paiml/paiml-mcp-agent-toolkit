@@ -7,6 +7,7 @@ mod quality_checks_part3_tests {
     fn create_test_results(passed: bool, total: usize) -> QualityGateResults {
         QualityGateResults {
             files_examined: 0,
+            files_not_read: std::collections::BTreeMap::new(),
             checks_run: Vec::new(),
             passed,
             total_violations: total,

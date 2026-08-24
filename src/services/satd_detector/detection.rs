@@ -1014,3 +1014,63 @@ mod include_tests_must_not_empty_the_denominator {
         assert_eq!(with, 2, "…and reached by the flag");
     }
 }
+
+#[cfg(test)]
+mod the_refusal_describes_the_run_that_produced_it {
+    //! Issue #1050 P9, second half. The refusal's remedy and its list of skip
+    //! reasons were fixed strings, so a run that had ALREADY passed
+    //! `--include-tests` was told, as its remedy, to pass `--include-tests` —
+    //! advice that cannot work — beside a reason list whose first entry
+    //! ("test") the flag in force had already ruled out.
+    //!
+    //! Advice that cannot work is the same defect class as #1045's "index is
+    //! stale, run `pmat query`" against a code path that never refreshes: a
+    //! sentence a reader will act on, and acting on it changes nothing.
+    use super::*;
+
+    fn refusal(include_tests: bool) -> String {
+        let error =
+            SATDDetector::nothing_measured(std::path::Path::new("/tmp/bookfix"), 1, include_tests);
+        error.to_string()
+    }
+
+    /// The half that regressed nothing: without the flag, the remedy is still
+    /// the one that works.
+    #[test]
+    fn the_default_run_is_told_about_the_flag_it_has_not_used() {
+        let msg = refusal(false);
+        assert!(msg.contains("pass --include-tests"), "{msg}");
+        assert!(msg.contains("all 1 source file(s)"), "{msg}");
+        assert!(msg.contains("test, example, fuzz"), "{msg}");
+    }
+
+    /// The fix: a run WITH the flag is never told to pass the flag, and is not
+    /// told that test-ness might be why its files were dropped.
+    #[test]
+    fn a_run_that_already_passed_the_flag_is_not_told_to_pass_it() {
+        let msg = refusal(true);
+        assert!(
+            !msg.contains("pass --include-tests"),
+            "the remedy names a flag that is already in force: {msg}"
+        );
+        assert!(
+            !msg.contains("test, example"),
+            "test-ness cannot be a skip reason under --include-tests: {msg}"
+        );
+        assert!(msg.contains("--include-tests is already in force"), "{msg}");
+    }
+
+    /// The counter-test bounding the correction. Only the REMEDY and the reason
+    /// list may move: the denominator, and the sentence that stops a gate
+    /// reading this as a pass, are identical in both runs. #1050 P9's first
+    /// half was exactly a denominator that vanished when the flag was added.
+    #[test]
+    fn the_measurement_half_of_the_sentence_is_identical_either_way() {
+        for msg in [refusal(false), refusal(true)] {
+            assert!(msg.contains("all 1 source file(s)"), "{msg}");
+            assert!(msg.contains("no SATD measurement was taken"), "{msg}");
+            assert!(msg.contains("This is not a clean result"), "{msg}");
+            assert!(!msg.contains("no source files were found"), "{msg}");
+        }
+    }
+}

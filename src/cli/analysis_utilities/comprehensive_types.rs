@@ -28,6 +28,21 @@ pub struct QualityGateResults {
     /// both exit 0. "Nothing was wrong" and "nothing was examined" are not the
     /// same claim, and a consumer could not tell them apart.
     pub files_examined: usize,
+    /// What each check DECLINED to read, keyed by check name.
+    ///
+    /// `files_examined` above is counted independently of any check, by walking
+    /// the tree — so it is the population the gate COULD have looked at, and it
+    /// catches only the extreme case where that population is zero. The ordinary
+    /// case, a check that read some files and silently declined others, had no
+    /// disclosure at all: `satd_violations: 1` beside `files_examined: 4` on a
+    /// tree where the SATD check read two files, refused two, and one of the two
+    /// it refused held a marker.
+    ///
+    /// A narrowing of scope now shows up as a change in a disclosed denominator
+    /// instead of a silent drop in findings (#1035). Always serialized, empty map
+    /// included: an absent key is exactly the ambiguity this removes.
+    pub files_not_read:
+        std::collections::BTreeMap<String, crate::services::satd_detector::SkipCounts>,
     /// The checks that were selected and ran.
     ///
     /// The nine `*_violations` counters below always serialize, so
@@ -83,6 +98,7 @@ impl Default for QualityGateResults {
         Self {
             passed: true, // Default to passed when no violations
             files_examined: 0,
+            files_not_read: std::collections::BTreeMap::new(),
             checks_run: Vec::new(),
             total_violations: 0,
             blocking_violations: 0,
@@ -301,4 +317,3 @@ fn is_test_filename(path: &Path) -> bool {
         false
     }
 }
-

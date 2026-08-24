@@ -59,6 +59,23 @@ impl Language {
         }
     }
 
+    /// Whether files of this language carry the CODE a project is written in,
+    /// as opposed to its documentation, its configuration, or nothing
+    /// recognised at all.
+    ///
+    /// Used to decide what a whole project's `language` is (issue #1073): a
+    /// plurality over every graded file labelled a cargo workspace "Markdown",
+    /// because a doc-heavy Rust repo holds more `.md` files than `.rs` files.
+    /// Documentation and configuration describe a project; they are not what it
+    /// is written in.
+    #[must_use]
+    pub fn is_source_code(self) -> bool {
+        !matches!(
+            self,
+            Language::Yaml | Language::Markdown | Language::Unknown
+        )
+    }
+
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Confidence.
@@ -169,3 +186,43 @@ include!("language_simple_rules.rs");
 
 // Unit tests and property tests
 include!("language_simple_tests.rs");
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod is_source_code_tests {
+    use super::Language;
+
+    /// Exhaustive on purpose. A new variant added to `Language` without a
+    /// decision here would silently join the source-code side, and that side is
+    /// what decides a whole project's reported language (#1073).
+    #[test]
+    fn every_variant_is_classified_deliberately() {
+        for (language, is_code) in [
+            (Language::Rust, true),
+            (Language::Python, true),
+            (Language::JavaScript, true),
+            (Language::TypeScript, true),
+            (Language::Go, true),
+            (Language::Java, true),
+            (Language::C, true),
+            (Language::Cpp, true),
+            (Language::Ruby, true),
+            (Language::Swift, true),
+            (Language::Kotlin, true),
+            (Language::Ruchy, true),
+            (Language::Lua, true),
+            (Language::Lean, true),
+            (Language::Sql, true),
+            (Language::Scala, true),
+            (Language::Yaml, false),
+            (Language::Markdown, false),
+            (Language::Unknown, false),
+        ] {
+            assert_eq!(
+                language.is_source_code(),
+                is_code,
+                "{language} is classified wrongly"
+            );
+        }
+    }
+}
