@@ -1288,6 +1288,32 @@ pub fn bundled_entry() -> u32 {
     )
     .expect("write broken_encoding.rs");
 
+    // A file past the SATD size cap, so the `oversized` bucket has something to
+    // report. #1035 gave SATD a census whose buckets partition the walk, and
+    // `files_not_read.oversized` is the one that names each skipped file with
+    // its size and the limit — the fix for a skip that used to reach stderr
+    // only, where `--format json` and `--output FILE` both discarded it.
+    //
+    // The differential gate booked it constant at 0 on every corpus, which was
+    // correct: no corpus had a file over the cap, so the bucket was measuring
+    // properly and had nothing to measure. Same call as `broken_encoding.rs`
+    // above — make the corpus dirty in the way the tool measures rather than
+    // excuse the measurement.
+    //
+    // `MAX_FILE_BYTES` is 10_000_000, so this is one byte past it. The cost is
+    // a write, not a read: SATD stats the file, sees the size and skips it, so
+    // the several hundred flag-efficacy invocations against this corpus never
+    // pay to read it.
+    {
+        let mut oversized = Vec::with_capacity(10_000_001);
+        oversized.extend_from_slice(
+            b"// TODO: this marker must NOT be counted: the file is past the \
+              size cap, so it is reported as skipped rather than analysed.\n",
+        );
+        oversized.resize(10_000_001, b'\n');
+        std::fs::write(root.join("src/oversized.rs"), &oversized).expect("write oversized.rs");
+    }
+
     // NUMERIC CLAIMS, for CB-2104 — for the same reason as the unreadable file
     // above: its whole census read 0 on every corpus, which is
     // indistinguishable from a check that cannot measure anything at all. The

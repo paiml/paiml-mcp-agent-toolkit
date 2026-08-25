@@ -360,12 +360,22 @@ fn format_tdg_score_json(
             .and_then(crate::tdg::ProjectScore::uncapped_grade)
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
-        // TRUE whenever the run left part of its own walk unmeasured — the
-        // zero-file case this always covered, and now also the partial one it
-        // denied. `score.total` below stays keyed to `nothing_was_measured`:
-        // a partial refusal is not a refusal, and the graded subset really does
-        // have a score.
-        "not_measured": walk_was_incomplete(project),
+        // TRUE only when NOTHING was measured — unchanged meaning, and the
+        // comment below says why.
+        //
+        // This briefly reported `walk_was_incomplete` instead, so that a tree
+        // with one ungradable file flipped it. The fleet dogfood killed that
+        // immediately: 8 of 11 real repositories reported `not_measured: true`
+        // beside a perfectly good grade, usually because of a single `.sh`
+        // script. A boolean that is true almost everywhere carries almost no
+        // information, and consumers pinned to the old meaning would have read
+        // "refuse this result" on nearly every project.
+        //
+        // "Some of the walk was refused" is a real fact and it now has its own
+        // fields — `files_walked`, `files_ungraded`, `ungraded_files` — which
+        // is what #1064 actually asked for. It did not ask for an existing
+        // published boolean to be redefined underneath its consumers.
+        "not_measured": nothing_was_measured(project),
         // Issue #1050 P2. The table caps its list and tells the reader
         // `… and N more (--format json lists every one under "ungraded_files")`
         // — a promise compiled into the shipped binary as a literal, against a
@@ -799,23 +809,27 @@ mod cap_disclosure_tests {
         );
     }
 
-    /// Issue #1064. The list arrived; the CENSUS still denied it. On the
-    /// 16-file reproducer the document carried fifteen `ungraded_files` entries
-    /// beside `files_analyzed: 1` and `not_measured: false` — a run that listed
-    /// its refusals and asserted in the same breath that there had been none.
-    /// A consumer testing the boolean (the cheap test, and the one the key name
-    /// invites) was told the headline covered the tree.
+    /// Issue #1064. A run that listed fifteen refusals while its census denied
+    /// them: `ungraded_files` populated beside `files_analyzed: 1` and no way
+    /// for a machine consumer to see the walk had been partial.
     ///
-    /// `not_measured` now means what a reader takes it to mean: this run did
-    /// not measure everything it walked. And the counts PARTITION — walked is
-    /// analyzed plus ungraded — so the claim can be checked instead of
-    /// believed.
+    /// The fix is the CENSUS — `files_walked`, `files_ungraded`,
+    /// `ungraded_files` — and those counts PARTITION, so the claim can be
+    /// checked rather than believed.
     ///
-    /// RED CONTROL: at HEAD this fails on the first assertion,
-    /// `not_measured: false` against fifteen refused files, and again on all
-    /// three census keys, which do not exist.
+    /// It is deliberately NOT `not_measured`, and this test now pins that
+    /// distinction, because the first version of the fix got it wrong in a way
+    /// only the fleet dogfood caught. Redefining `not_measured` to mean "the
+    /// walk was incomplete" made it TRUE on 8 of 11 real repositories — usually
+    /// on the strength of one `.sh` script — beside a perfectly good grade. A
+    /// boolean that is true almost everywhere carries almost no information,
+    /// and every consumer pinned to the old meaning would have started reading
+    /// "refuse this result" on nearly every project.
+    ///
+    /// So: `not_measured` keeps meaning NOTHING was measured. A partial refusal
+    /// is not a refusal — the graded subset really does have a score.
     #[test]
-    fn json_says_the_walk_was_incomplete_when_files_were_refused() {
+    fn a_partial_refusal_is_disclosed_by_the_census_not_by_not_measured() {
         let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
         for i in 0..15 {
             project.ungraded_files.push(crate::tdg::UngradedFile {
@@ -829,9 +843,9 @@ mod cap_disclosure_tests {
         let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
 
         assert_eq!(
-            value["not_measured"], true,
-            "fifteen of sixteen walked files were never graded, and the \
-             document said false: {json}"
+            value["not_measured"], false,
+            "one file of sixteen DID grade, so something was measured; \
+             `not_measured` must stay reserved for the zero case: {json}"
         );
         assert_eq!(value["files_analyzed"], 1, "{json}");
         assert_eq!(value["files_ungraded"], 15, "{json}");
@@ -844,6 +858,14 @@ mod cap_disclosure_tests {
         assert_eq!(
             value["score"]["total"], 100.0,
             "the graded subset still has a score: {json}"
+        );
+        // …but the refusals must be VISIBLE. This is the half of #1064 that
+        // matters, and it is what stops "keep not_measured false" from being a
+        // silent regression back to the original defect.
+        assert_eq!(
+            value["ungraded_files"].as_array().map(Vec::len),
+            Some(15),
+            "every refused file must be listed, uncapped: {json}"
         );
     }
 

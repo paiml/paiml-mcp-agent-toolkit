@@ -178,6 +178,16 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "self_test.unexpected[].len",
         "0 on the committed fixture; same refusal path as missed",
     ),
+        (
+        "analyze satd",
+        "files_unaccounted",
+        "a LEAK DETECTOR, not a measurement, and the twin of `analysis_provenance.unrecorded` below. #1035 gave SATD a census whose buckets partition the walk exactly: analysed + not_read == discovered. `files_unaccounted` is what is left over when they do not, so 0 on every corpus is the REQUIREMENT and a non-zero value here is the defect. Constant BECAUSE the code is correct. The guard against it going vacuous is `census_has_a_denominator_tests`, which drops a bucket and watches the partition break",
+    ),
+    (
+        "analyze satd",
+        "census_balances",
+        "an INVARIANT stated as a boolean: `analysed + not_read == discovered`. It is `true` on every corpus for the same reason `files_unaccounted` is 0 — they are two spellings of one claim, published together so a consumer can check the cheap one. A corpus that made this vary would be a corpus on which SATD had miscounted",
+    ),
     (
         "analyze complexity",
         "analysis_provenance.unrecorded",
