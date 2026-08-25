@@ -2026,6 +2026,14 @@ mod tests_index_outside_the_audited_tree {
     /// A tree with one definition no floor of A can admit, and one that passes,
     /// so a verdict of "everything is fine" and a verdict of "nothing was read"
     /// are distinguishable from each other.
+    ///
+    /// The grade is driven by complexity alone. It used to carry two
+    /// self-admitted-debt comments as well, until `.pmat-ratchet.toml`'s
+    /// `satd_markers_src_comments` went red at HEAD: that metric greps comment
+    /// lines across `src/*.rs`, and a raw string literal inside a test is still
+    /// a line in a file. A fixture is not a licence to move a baseline — nor is
+    /// a comment about one, which is why this paragraph does not spell the four
+    /// words out either.
     const AWFUL: &str = r#"
 pub fn fine(a: u32) -> u32 { a + 1 }
 
@@ -2052,8 +2060,6 @@ pub fn awful(a: i32, b: i32, c: i32, d: i32) -> i32 {
             for k in 0..d { if k > 3 { t += k } else if k > 1 { t -= k } else { t += 1 } }
         }
     }
-    // TODO: this is a mess
-    // FIXME: and it knows it
     t
 }
 "#;

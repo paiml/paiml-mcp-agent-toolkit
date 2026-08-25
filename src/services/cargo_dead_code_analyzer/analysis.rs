@@ -304,6 +304,7 @@ impl CargoDeadCodeAnalyzer {
             // Deliberately not "delete it afterwards": a killed run leaves the
             // file behind and the cleanup is invisible either way. `target/`
             // needs no equivalent -- cargo writes its own `target/.gitignore`.
+            .arg("--locked")
             .arg("--message-format=json");
 
         // Don't modify RUSTFLAGS — changing flags forces full recompilation
@@ -470,7 +471,10 @@ impl CargoCheckOutcome {
     fn completed(json: String) -> Self {
         Self {
             json,
-            scan: crate::models::dead_code::CompilerScanReport::full(),
+            scan: crate::models::dead_code::CompilerScanReport::reduced(
+                crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE,
+                "MUT-1076-B Cargo.lock allow(dead_code)".to_string(),
+            ),
         }
     }
 
