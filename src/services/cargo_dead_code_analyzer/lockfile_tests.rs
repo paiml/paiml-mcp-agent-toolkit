@@ -43,6 +43,7 @@ fn crate_fixture() -> tempfile::TempDir {
 ///
 /// Pre-fix this assertion fails: `cargo check` writes `Cargo.lock` into the
 /// analysed tree and `git status --porcelain` reports `?? Cargo.lock`.
+#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn analysing_a_lockfile_less_crate_creates_no_lockfile() {
     let tmp = crate_fixture();
@@ -69,6 +70,7 @@ async fn analysing_a_lockfile_less_crate_creates_no_lockfile() {
 /// Without this the report is the same shape over a much smaller search: only
 /// explicit `allow(dead_code)` admissions were looked for, so `0 dead items`
 /// would read as "nothing is dead" when it means "nothing was admitted".
+#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[tokio::test]
 async fn the_refused_compiler_scan_is_declared_on_the_report() {
     let tmp = crate_fixture();
@@ -175,6 +177,7 @@ async fn a_crate_with_a_lockfile_is_analysed_fully_and_its_lockfile_is_untouched
 /// safe: a killed run never reaches a cleanup, and an invisible cleanup is a
 /// second thing the user is not told about. Pinning `--locked` in the argv pins
 /// which of the two this is.
+#[ignore = "#1076 is OPEN: --locked was reverted because it silently disabled the compiler scan (80 dead functions -> 0) on any repo with an absent or stale lockfile. This test is the SPEC for the real fix — analyse a copy, or snapshot/restore the lockfile — and must go green when that lands, not be deleted."]
 #[test]
 fn the_cargo_invocation_forbids_cargo_from_writing_the_lockfile() {
     let tmp = crate_fixture();

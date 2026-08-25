@@ -289,7 +289,22 @@ impl CargoDeadCodeAnalyzer {
         let mut cmd = Command::new("cargo");
         cmd.current_dir(&self.cargo_root)
             .arg("check")
-            // READ-ONLY, enforced by cargo rather than promised by us (#1076).
+            // NO `--locked`, and #1076 IS THEREFORE STILL OPEN. Read this before
+            // adding it back — it was added, measured, and reverted.
+            //
+            // `--locked` does stop the lockfile write. It also DISABLES THE
+            // COMPILER SCAN on any repo whose lockfile is absent or stale,
+            // because cargo refuses and the heuristic fallback cannot see what
+            // the compiler sees: on the differential corpus the scan finds 80
+            // dead functions and the heuristic finds 0, so seven `analyze
+            // dead-code` leaves went identical-for-empty-and-large and the gate
+            // went red. Reverting this one flag turned it green.
+            //
+            // Trading "writes a Cargo.lock" for "silently reports no dead code
+            // on most libraries" is a worse deal, and it is the exact
+            // absence-rendered-as-success shape this release exists to remove.
+            // A real fix has to keep the scan: analyse a copy, or snapshot and
+            // restore the lockfile, or accept the write and disclose it.
             // `cargo check` GENERATES `Cargo.lock` when none exists, so the
             // analyser was writing a real, source-controlled artifact into a
             // repository it had only been asked to measure -- and whether a
@@ -304,7 +319,6 @@ impl CargoDeadCodeAnalyzer {
             // Deliberately not "delete it afterwards": a killed run leaves the
             // file behind and the cleanup is invisible either way. `target/`
             // needs no equivalent -- cargo writes its own `target/.gitignore`.
-            .arg("--locked")
             .arg("--message-format=json");
 
         // Don't modify RUSTFLAGS — changing flags forces full recompilation
