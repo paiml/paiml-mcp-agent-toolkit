@@ -1,6 +1,6 @@
 metadata:
   version: "1.0.0"
-  kind: rule
+  kind: kernel
   created: "2026-08-24"
   author: PAIML Engineering
   registry: true
