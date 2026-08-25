@@ -58,17 +58,28 @@
 //! the live count is measurable on developer machines and agent runs, and not
 //! on a fresh checkout. The tests enumerate that rather than papering over it:
 //!
-//! - index present — the full ratchet runs, and a silent zero is refused.
+//! - index present AND fresh — the full ratchet runs, and a silent zero is
+//!   refused.
 //! - index absent — the ratchet cannot run, and what is asserted instead is the
 //!   one thing that IS true there: CB-200 answers "Not measured", never a Pass
 //!   (#939). `the_committed_baseline_is_the_measured_count_strict` is the
 //!   `#[ignore]`d twin that refuses absence outright, matching the convention
 //!   in `services/ttg/differential.rs`.
+//! - index present but STALE — also refused (#1045). A count taken from an index
+//!   older than the sources describes an older tree: the definitions added since
+//!   are not in it at all, so it can only UNDER-count HEAD. This is not
+//!   hypothetical — the committed baseline was first banked 216 too high from an
+//!   index stale by 265 definitions, while every reader printed a number to four
+//!   significant figures. The refusal names the staleness and the command that
+//!   actually fixes it (`pmat query "x" --rebuild-index`; a plain `pmat query`
+//!   does not rewrite an index that already exists).
 //! - the floor and the exclude set are committed facts checked on every
 //!   machine, index or no index, so the cheapest way out of a red ratchet —
 //!   lower the floor, or add one more glob — cannot be taken quietly.
 
-use crate::cli::handlers::comply_handlers::check_handlers::check_tdg_grade::check_tdg_grade_gate;
+use crate::cli::handlers::comply_handlers::check_handlers::check_tdg_grade::{
+    check_tdg_grade_gate, is_index_stale,
+};
 use crate::cli::handlers::comply_handlers::check_handlers::types::CheckStatus;
 use crate::models::comply_config::PmatYamlConfig;
 use std::path::Path;
@@ -218,8 +229,30 @@ pub fn measure_below_floor(project_path: &Path) -> Measured {
     let db_path = project_path.join(".pmat").join("context.db");
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let verdict = check_tdg_grade_gate(project_path, &yaml_config.comply);
-    if verdict.status == CheckStatus::Skip {
+    // Skip OR a missing database. Since #1008 an absent index is a `Fail` for a
+    // project that recorded a baseline — correctly, because an unrun ratchet has
+    // not held — so status alone no longer identifies "nothing was read". The
+    // file's absence does, and CB-200's own "Not measured" wording is kept as
+    // the reason.
+    if verdict.status == CheckStatus::Skip || !db_path.exists() {
         return Measured::Unmeasurable(verdict.message);
+    }
+    // A stale index is not a measurement of HEAD (#1045). Definitions added
+    // since it was built are not in it at all, so its count can only be an
+    // under-count of the current tree — and this baseline was BANKED 216 too
+    // high exactly once already, from an index that was stale by 265
+    // definitions while every reader reported a number to four significant
+    // figures. Re-deriving from an older tree is a transcription with extra
+    // steps; refusing is the only honest answer.
+    if is_index_stale(project_path, &db_path) {
+        return Measured::Unmeasurable(format!(
+            "{} is STALE - source files are newer than the index, so its count describes an \
+             OLDER tree and cannot re-derive the baseline at HEAD. Rebuild with \
+             `pmat query \"x\" --rebuild-index` (a plain `pmat query` will not rewrite an index \
+             that already exists) and re-run. CB-200 said: {}",
+            db_path.display(),
+            verdict.message
+        ));
     }
     let Some(indexed) = indexed_definitions(&db_path) else {
         return Measured::Unmeasurable(format!(
@@ -231,7 +264,9 @@ pub fn measure_below_floor(project_path: &Path) -> Measured {
     if indexed == 0 {
         return Measured::Unmeasurable(format!(
             "{} holds 0 definitions — an empty index reports 0 below the floor for the \
-             same reason a clean tree does. Rebuild it with `pmat query \"x\"`.",
+             same reason a clean tree does. Rebuild it with \
+             `pmat query \"x\" --rebuild-index`: the index EXISTS, so a plain `pmat query` \
+             will not rewrite it.",
             db_path.display()
         ));
     }
@@ -295,6 +330,94 @@ mod tests {
     /// `clippy::assertions_on_constants`.
     fn nothing_was_measured() -> bool {
         false
+    }
+
+    /// Move `tmp`'s sources relative to its index, and assert the fixture
+    /// really reached the state the test needs.
+    ///
+    /// The mtime is SET, never raced for: two writes microseconds apart can land
+    /// in the same filesystem timestamp tick, and a fixture that silently fails
+    /// to be stale is a test that silently stops testing anything.
+    fn plant_source(tmp: &tempfile::TempDir, offset: std::time::Duration, newer: bool) {
+        let db_path = tmp.path().join(".pmat").join("context.db");
+        std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
+        let src = tmp.path().join("src/lib.rs");
+        std::fs::write(&src, "pub fn f() {}\n").expect("write source");
+        let db_mtime = std::fs::metadata(&db_path)
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        let when = if newer {
+            db_mtime + offset
+        } else {
+            db_mtime - offset
+        };
+        std::fs::File::options()
+            .write(true)
+            .open(&src)
+            .and_then(|f| f.set_modified(when))
+            .expect("set source mtime");
+        assert_eq!(
+            is_index_stale(tmp.path(), &db_path),
+            newer,
+            "fixture did not reach the staleness it needs"
+        );
+    }
+
+    /// #1045. A count taken from a STALE index is not the count at HEAD, and
+    /// re-deriving a ratchet baseline from it is a transcription with extra
+    /// steps. It has already gone wrong once, at scale: the committed baseline
+    /// was banked 216 too high off an index missing 265 definitions.
+    ///
+    /// RED, deleting the `is_index_stale` guard from `measure_below_floor`:
+    /// ```text
+    /// a STALE index must not re-derive the baseline: it counted 1 below the
+    /// floor over a tree it has not read
+    /// ```
+    #[test]
+    fn a_stale_index_cannot_re_derive_the_baseline() {
+        let project = index_with(&[("src/good.rs", "fine", "A"), ("src/legacy.rs", "bad", "D")]);
+        plant_source(&project, std::time::Duration::from_secs(60), true);
+        match measure_below_floor(project.path()) {
+            Measured::Unmeasurable(why) => {
+                assert!(
+                    why.contains("STALE"),
+                    "the refusal must name staleness as the reason: {why}"
+                );
+                assert!(
+                    why.contains("--rebuild-index"),
+                    "the refusal must name a command that actually refreshes an existing \
+                     index; a plain `pmat query` does not: {why}"
+                );
+            }
+            Measured::Ok(m) => assert!(
+                nothing_was_measured(),
+                "a STALE index must not re-derive the baseline: it counted {} below the \
+                 floor over a tree it has not read",
+                m.below_floor
+            ),
+        }
+    }
+
+    /// The counter-test that bounds the refusal. Staleness is the trigger — not
+    /// the presence of sources, and not the act of measuring at all. An index
+    /// NEWER than every source still yields a count.
+    ///
+    /// Without this, "return Unmeasurable" unconditionally passes the test
+    /// above and silently deletes the ratchet.
+    #[test]
+    fn a_fresh_index_still_re_derives_the_baseline() {
+        let project = index_with(&[("src/good.rs", "fine", "A"), ("src/legacy.rs", "bad", "D")]);
+        plant_source(&project, std::time::Duration::from_secs(60), false);
+        match measure_below_floor(project.path()) {
+            Measured::Ok(m) => assert_eq!(
+                m.below_floor, 1,
+                "a fresh index over the same rows must still count them"
+            ),
+            Measured::Unmeasurable(why) => assert!(
+                nothing_was_measured(),
+                "a fresh index must measure, not refuse: {why}"
+            ),
+        }
     }
 
     /// The count this module reads back is the count CB-200 arrived at.
@@ -707,25 +830,34 @@ mod tests {
         match measure_below_floor(&root) {
             Measured::Ok(m) => assert_ratchet_holds(&m),
             Measured::Unmeasurable(why) => {
+                // Exactly two reasons are admissible here, and both must be
+                // NAMED by the refusal rather than inferred from silence: the
+                // index is absent (a fresh checkout — `.pmat/` is gitignored),
+                // or it is stale (#1045 — its count describes an older tree,
+                // which is how this baseline was first banked 216 too high).
+                // Anything else is a broken measurement wearing a refusal's
+                // clothes.
                 let db_path = root.join(".pmat").join("context.db");
+                let absent = !db_path.exists();
+                let stale = !absent && is_index_stale(&root, &db_path);
                 assert!(
-                    !db_path.exists(),
-                    "the index at {} exists and the ratchet still could not be measured. \
-                     That is a broken measurement, not a clean tree: {why}",
+                    absent || stale,
+                    "the index at {} exists, is up to date, and the ratchet still could not \
+                     be measured. That is a broken measurement, not a clean tree: {why}",
                     db_path.display()
                 );
                 assert!(
-                    why.contains("Not measured"),
-                    "an unbuilt index must be reported as unmeasured, in CB-200's own words. \
-                     Build one with `pmat query \"x\"` to run the ratchet here. CB-200 \
-                     said: {why}"
+                    why.contains("Not measured") || why.contains("STALE"),
+                    "an index that was not read must say which it was — unbuilt or stale — \
+                     and name the rebuild. `pmat query \"x\" --rebuild-index` runs the \
+                     ratchet here. CB-200 said: {why}"
                 );
                 let yaml = PmatYamlConfig::load(&root).unwrap_or_default();
                 let verdict = check_tdg_grade_gate(&root, &yaml.comply);
                 assert!(
                     verdict.status != CheckStatus::Pass,
-                    "CB-200 reported a PASS with no index to read. An audit that measured \
-                     nothing must never read as one that found nothing: {}",
+                    "CB-200 reported a PASS over an index it could not measure. An audit \
+                     that measured nothing must never read as one that found nothing: {}",
                     verdict.message
                 );
             }
@@ -756,8 +888,8 @@ mod tests {
             }
             Measured::Unmeasurable(why) => assert!(
                 nothing_was_measured(),
-                "nothing was measured, so nothing passed. Build the index with \
-                 `pmat query \"x\"` and re-run. Reason: {why}"
+                "nothing was measured, so nothing passed. Build or refresh the index with \
+                 `pmat query \"x\" --rebuild-index` and re-run. Reason: {why}"
             ),
         }
     }

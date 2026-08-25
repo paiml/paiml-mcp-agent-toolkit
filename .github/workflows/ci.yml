@@ -27,14 +27,15 @@ jobs:
   # a red gate rather than a missing one.
   gate:
     runs-on: ubuntu-latest
-    needs: [ci, windows-check]
+    needs: [ci, windows-check, reusable-pin-drift]
     if: always()
     steps:
       - name: Check required jobs
         run: |
           rc=0
           for j in "ci:${{ needs.ci.result }}" \
-                   "windows-check:${{ needs.windows-check.result }}"; do
+                   "windows-check:${{ needs.windows-check.result }}" \
+                   "reusable-pin-drift:${{ needs.reusable-pin-drift.result }}"; do
             name=${j%%:*}
             result=${j#*:}
             if [ "$result" != "success" ]; then
@@ -46,6 +47,84 @@ jobs:
             exit 1
           fi
           echo "All required jobs passed"
+
+  # Two consumers of one reusable workflow on two different refs is drift, and
+  # what it silently drifts is the GATES.
+  #
+  # This repo ran exactly that for five months. `nightly-bench.yml` called
+  # sovereign-ci.yml@a6c9ab522 under the annotation `# main` — a ref it stopped
+  # being on 2026-03-26 — while this file tracked `@main`. Every "this gate
+  # could not fail" fix landed upstream in between reached `ci` and not the
+  # nightly, which runs the SAME suite (test, lint, coverage, security, bench,
+  # gate; ~1 h of clean-room runner time) every night. At the stale pin, three
+  # were missing: clippy's step terminated its `||` chain in `echo` so it exited
+  # 0 however clippy exited; the format check was suppressed twice (`|| echo`
+  # AND `continue-on-error`); and the `gate` job read only `test` and `lint` —
+  # `coverage` and `security` sat in its `needs` unexamined — comparing against
+  # the literal string "failure", so a CANCELLED job passed. See the comment on
+  # nightly-bench.yml for the measurements.
+  #
+  # Nothing detects this on its own, because both files are individually
+  # well-formed: the defect is only visible in the RELATION between them. So
+  # compare them. The rule is deliberately about agreement, not about SHA
+  # pinning — pinning every consumer to one SHA passes; this repo's own tree at
+  # the fix commit passes; and a tree where the pattern matches nothing FAILS,
+  # because "we found no references" must never render as "the references
+  # agree".
+  #
+  # Verified in all four directions before landing, by running this exact
+  # script against copies of this workflow directory:
+  #   fixed tree (ci.yml + nightly-bench.yml both @main)        -> exit 0
+  #   pre-fix tree (nightly-bench.yml back on a6c9ab522)        -> exit 1
+  #   both consumers pinned to the same SHA                     -> exit 0
+  #   a workflow dir with no reusable `uses:` at all            -> exit 1
+  #
+  # In `gate`'s `needs`, so the verdict reaches the required `ci / gate`
+  # context. A check that reports and cannot block is not a check.
+  reusable-pin-drift:
+    name: reusable workflow pins agree
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: every reusable workflow is referenced at exactly one ref
+        shell: bash
+        run: |
+          set -uo pipefail
+          refs_file=$(mktemp)
+          trap 'rm -f "$refs_file"' EXIT
+
+          grep -hoE '^[[:space:]]*uses:[[:space:]]*[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/[A-Za-z0-9_.-]+@[A-Za-z0-9_.-]+' \
+            .github/workflows/*.yml \
+            | sed -E 's/^[[:space:]]*uses:[[:space:]]*//' \
+            | sort -u > "$refs_file"
+
+          total=$(wc -l < "$refs_file")
+          # Under-discovery is a finding, not a pass. If the pattern stops
+          # matching — a renamed directory, a reformatted `uses:` line — this
+          # step must say so rather than certify a tree it never looked at.
+          if [ "$total" -lt 1 ]; then
+            echo "::error::no reusable-workflow 'uses:' reference matched in .github/workflows/ — this check is measuring nothing, fix the pattern"
+            exit 1
+          fi
+          echo "$total distinct reusable-workflow reference(s) found:"
+          sed 's/^/  /' "$refs_file"
+
+          rc=0
+          while read -r path; do
+            n=$(grep -c "^${path}@" "$refs_file")
+            if [ "$n" -gt 1 ]; then
+              echo "::error::${path} is referenced at ${n} different refs by this repo's workflows:"
+              grep "^${path}@" "$refs_file" | sed 's/^/    /'
+              echo "    Pin every consumer to the same ref, in one commit. A stale ref freezes that consumer's GATES, not just its behaviour."
+              rc=1
+            fi
+          done < <(sed -E 's/@[A-Za-z0-9_.-]+$//' "$refs_file" | sort -u)
+
+          if [ "$rc" -ne 0 ]; then
+            exit 1
+          fi
+          echo "every reusable workflow is referenced at exactly one ref"
 
   # GH #625: `cargo install pmat` was broken on Windows for every published
   # version, because no CI leg ever compiled for it — aprender's default `cli`

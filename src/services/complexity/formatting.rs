@@ -137,6 +137,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
             ));
         }
         output.push('\n');
+        output.push_str(&format_offenders(&report.violations));
     }
 
     // Top files by complexity
@@ -220,6 +221,85 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     }
 
     output
+}
+
+/// The lines that name WHO tripped the threshold.
+///
+/// #1033: this summary used to report the violation COUNTS and nothing else,
+/// and the pre-commit hook that greps it therefore said only
+/// "Complexity exceeds thresholds (Cyclomatic: 30, Cognitive: 25)" — two
+/// numbers which are the LIMITS, not any measurement. The report contained no
+/// measured value and no function name, so the obvious next step was to read
+/// the `Top Files by Complexity` aggregate, which is not what the gate tests:
+/// thresholds are evaluated per FUNCTION (`check_function_violations` in
+/// `analysis.rs`, `value > threshold` in `rules.rs`). A reader who believed the
+/// aggregate planned the wrong repair — splitting an 18-function file up moves
+/// the one offending function, it does not shrink it.
+///
+/// Every field printed here is already carried on [`Violation`]; nothing new is
+/// measured. `<name> (<file>:<line>) — <Metric> <value> > <limit>` is the shape,
+/// and the `<value> > <limit>` tail is what the generated hook greps for.
+fn format_offenders(violations: &[Violation]) -> String {
+    use crate::cli::colors as c;
+
+    /// Enough to diagnose, few enough not to bury the summary. The full list is
+    /// in `format_detailed_violations` / `--format json`.
+    const MAX_SHOWN: usize = 10;
+
+    let errors: Vec<&Violation> = violations
+        .iter()
+        .filter(|v| matches!(v, Violation::Error { .. }))
+        .collect();
+    if errors.is_empty() {
+        return String::new();
+    }
+
+    let mut out = String::new();
+    for violation in errors.iter().take(MAX_SHOWN) {
+        let Violation::Error {
+            rule,
+            value,
+            threshold,
+            file,
+            line,
+            function,
+            ..
+        } = violation
+        else {
+            continue;
+        };
+        // The rule id is `cyclomatic-complexity` / `cognitive-complexity`; the
+        // metric name is the readable half. Unknown rules print their own id
+        // rather than being silently relabelled.
+        let metric = match rule.as_str() {
+            "cyclomatic-complexity" => "Cyclomatic",
+            "cognitive-complexity" => "Cognitive",
+            other => other,
+        };
+        let display_path = file.strip_prefix("./").unwrap_or(file);
+        // A violation with no function name is a file-level rule; say so rather
+        // than printing an empty name, which reads as a nameless function.
+        let who = function.as_deref().unwrap_or("<file-level>");
+        out.push_str(&format!(
+            "  {} {} - {} {} > {}\n",
+            c::path(who),
+            c::dim(&format!("({display_path}:{line})")),
+            metric,
+            c::number(&value.to_string()),
+            c::number(&threshold.to_string())
+        ));
+    }
+    if errors.len() > MAX_SHOWN {
+        out.push_str(&format!(
+            "  {}\n",
+            c::dim(&format!(
+                "... and {} more (see --format json or the detailed report)",
+                errors.len() - MAX_SHOWN
+            ))
+        ));
+    }
+    out.push('\n');
+    out
 }
 
 /// Format full complexity report for CLI output

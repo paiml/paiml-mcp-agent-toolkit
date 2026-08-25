@@ -317,7 +317,11 @@ async fn write_duplicate_output(
         crate::cli::DuplicateOutputFormat::Detailed => {
             format_text_output(report, top_files, TextDetail::Detailed)?
         }
-        other => format_output(report, other)?,
+        // `json`, `csv` and `sarif`. `--top-files` used to stop at the three
+        // text renderers above, so `--format json` and `--format json
+        // --top-files 5` were byte-identical documents — 387 MB of them on
+        // depyler. See [`DuplicateListing`].
+        other => format_output(report, other, top_files)?,
     };
 
     if let Some(output_path) = output {

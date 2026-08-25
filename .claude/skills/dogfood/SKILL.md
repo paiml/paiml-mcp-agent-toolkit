@@ -126,10 +126,10 @@ FAIL the gate if any command panics or a real-invocation command exits non-zero 
 ## Gate 2g: Transports — CLI is only one of three surfaces
 
 pmat ships **three** interfaces over the same analysis core: the CLI, an MCP
-stdio server, and (behind the opt-in `mcp-http` feature) streamable HTTP. A
-dogfood that exercises only the CLI leaves two thirds of the product untested,
-and the two have already disagreed in shipped releases — #998 had the CLI and
-MCP return different SATD counts for the same path.
+stdio server, and streamable HTTP (`serve --transport http`, in the default
+build since 3.32.0). A dogfood that exercises only the CLI leaves two thirds of
+the product untested, and the two have already disagreed in shipped releases —
+#998 had the CLI and MCP return different SATD counts for the same path.
 
 ### 2g-i. MCP stdio: does it serve, and does it agree with the CLI?
 
@@ -192,15 +192,25 @@ echo "CLI=$CLI MCP=$MCP"
 **FAIL** if they differ. One rule, two implementations, is pmat's most repeated
 defect (#998 CLI vs MCP, #831 five-whys 808 vs 39, the three SATD counters).
 
-### 2g-iv. HTTP transport (opt-in feature)
+### 2g-iv. HTTP transport (in the default build since 3.32.0)
 
 ```bash
-cargo build --features mcp-http --bin pmat 2>&1 | tail -2
+# HTTP is in the DEFAULT build as of 3.32.0 — it needed `--features mcp-http`
+# before, so do NOT rebuild for it and do NOT let "feature not built" excuse a skip.
 # It must REFUSE to serve without a token rather than start open.
-timeout 15 env -u PMAT_MCP_HTTP_TOKEN pmat serve --http --port 9977 2>&1 | head -3
+timeout 15 env -u PMAT_MCP_HTTP_TOKEN pmat serve --transport http --port 9977 2>&1 | head -3
 # …and start with one.
-PMAT_MCP_HTTP_TOKEN=0123456789abcdef0123 timeout 15 pmat serve --http --port 9977 &
-sleep 3
+PMAT_MCP_HTTP_TOKEN=0123456789abcdef0123 timeout 30 pmat serve --transport http --port 9977 &
+# LIVENESS FIRST: without this the curls below report 000 (connection refused)
+# and 000 reads as "rejected", so a server that never started PASSES the gate.
+# That is exactly how the stale `--http` spelling hid here: clap exited 2, both
+# curls printed 000, and the gate reported auth was holding.
+for _ in $(seq 20); do curl -s -o /dev/null localhost:9977/ && break; sleep 0.5; done
+# NOTE: curl prints 000 for connection-refused, and 000 IS three digits — a
+# `grep -E '^[0-9]{3}$'` liveness check passes against a dead port. Test != 000.
+LIVE=$(curl -s -o /dev/null -w "%{http_code}" localhost:9977/)
+[ "$LIVE" != "000" ] && echo "LISTENING ($LIVE)" \
+  || echo "2g-iv FAIL: server never bound :9977 — curl codes below are meaningless"
 curl -s -o /dev/null -w "no-token -> HTTP %{http_code}\n" -X POST localhost:9977/ \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
@@ -211,12 +221,15 @@ curl -s -o /dev/null -w "with-token -> HTTP %{http_code}\n" -X POST localhost:99
 kill %1 2>/dev/null
 ```
 
-**FAIL** if it starts without a token, or if the unauthenticated request is not
-rejected. Note the `Accept` header: content negotiation precedes auth, so
-omitting it yields 406 and tells you nothing about authentication.
+**FAIL** if the no-token start does not refuse, if `LISTENING` is absent, if
+`no-token` is not **401**, or if `with-token` is not **200**. All four matter:
+the pair `000/000` means the server never started, not that auth held, and a
+gate that cannot tell those apart is testing nothing. Note the `Accept` header:
+content negotiation precedes auth, so omitting it yields 406 and tells you
+nothing about authentication.
 
-**If the feature is not built, say so** — "HTTP not exercised" is a result;
-silently skipping it is the defect this whole skill is about.
+**Never report this gate as skipped for a missing feature.** HTTP ships in the
+default build; if it does not answer, that is a FAIL, not "not exercised".
 
 ## Gate 3: Self-Quality (pmat on pmat) — the CI-faithful gate
 

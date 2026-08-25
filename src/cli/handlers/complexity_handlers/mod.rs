@@ -26,6 +26,10 @@ pub(crate) use analysis::{analyze_multiple_files, analyze_single_file, has_compl
 #[cfg(test)]
 mod complexity_handlers_tests;
 
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod ast_provenance_tests;
+
 /// Configuration for complexity analysis operations
 ///
 /// This struct centralizes all configuration parameters and provides
@@ -332,10 +336,44 @@ pub async fn handle_analyze_complexity(
         top_files,
     );
 
-    let mut file_metrics = analysis::analyze_files_by_mode(file, files, &config).await?;
+    // Issue #1068 (#1050 P6). A number the regex counter guessed and a number
+    // `syn` derived were shaped identically in the document; the only
+    // disclosure was a stderr warning, which `--format json` and `--output`
+    // both discard. Arm the provenance ledger for the walk, collect it below,
+    // and publish it beside the population it partitions.
+    crate::cli::language_analyzer::ast_fallback::arm();
+    let analyzed = analysis::analyze_files_by_mode_with_census(file, files, &config).await;
+    let recorded_provenance = crate::cli::language_analyzer::ast_fallback::take();
+    let analyzed = analyzed?;
+    let mut file_metrics = analyzed.metrics;
 
     // Track original count before filtering for better UX
     let original_file_count = file_metrics.len();
+
+    // Issue #1050 P3. `files_discovered` used to be `original_file_count` — the
+    // number of files that PRODUCED METRICS — so it equalled `files_analyzed`
+    // on every run with no thresholds set, and a consumer using it as a
+    // coverage denominator was handed the numerator. On forjar the same run's
+    // human output said `370 of 2099 file(s) were not analyzed` while the JSON
+    // said `files_analyzed: 1729, files_discovered: 1729`; on aprender, 8,850
+    // walked-and-skipped files were invisible.
+    //
+    // The census is what the human formatter already computed, carried out of
+    // the analysis rather than recomputed here — the walk runs once, so the
+    // sentence and the field cannot disagree.
+    //
+    // `None` is not 0: single-file and explicit-file modes have no population
+    // to compare against, and there the discovered count is the analysed one.
+    let files_discovered = analyzed
+        .census
+        .as_ref()
+        .map_or(original_file_count, |c| c.total);
+    let skipped_by_reason = analyzed.census.as_ref().map(|c| output::SkipCensus {
+        not_analyzed: c.missing,
+        no_analyzer: c.no_analyzer.clone(),
+        unmeasured_supported: c.unmeasured_supported.clone(),
+        excluded_by_ignore: c.excluded_by_ignore.clone(),
+    });
 
     // #1015. GH-682 above closes "the tree is not there / cannot be read"; an
     // EMPTY but perfectly readable directory got past it and printed
@@ -372,6 +410,25 @@ pub async fn handle_analyze_complexity(
     // default --top-files 10 was a cap wearing the word "total".
     let analyzed_file_count = file_metrics.len();
     let aggregated_metrics = file_metrics.clone();
+
+    // The tally is over the files this run REPORTED — the same post-threshold
+    // population `files_analyzed` counts — not over the ledger's own length. A
+    // bucket breakdown whose denominator is itself cannot be wrong, which is
+    // exactly the unfalsifiable shape issue #1065 was about.
+    let provenance = crate::cli::language_analyzer::ast_fallback::tally(
+        &recorded_provenance,
+        aggregated_metrics.iter().map(|m| m.path.as_str()),
+    );
+    if provenance.heuristic_fallback > 0 {
+        crate::status_eprintln!(
+            "   {} of {} analyzed file(s) fell back from AST to heuristics; \
+             their counts are regex-derived (listed as \"analysis\": \
+             \"heuristic_fallback\" by --format json)",
+            provenance.heuristic_fallback,
+            provenance.analyzed
+        );
+    }
+
     analysis::apply_top_files_limit(&mut file_metrics, config.top_files);
     let files_truncated = file_metrics.len() < analyzed_file_count;
 
@@ -409,8 +466,11 @@ pub async fn handle_analyze_complexity(
         top_files,
         files_listed: file_metrics.len(),
         files_analyzed: analyzed_file_count,
-        files_discovered: original_file_count,
+        files_discovered,
+        skipped_note: skipped_by_reason,
         truncated: files_truncated,
+        provenance,
+        per_file_provenance: recorded_provenance,
     };
     output::format_and_write_output(&summary, &file_metrics, format, output, listing).await?;
 

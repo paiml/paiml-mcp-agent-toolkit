@@ -26,6 +26,7 @@ pub mod file_filter;
 pub mod helpers;
 pub mod path_validator;
 pub mod pattern_helpers;
+pub mod pmat_cache_dir;
 pub mod scratch;
 pub mod sovereign_compression;
 pub mod string_truncate;

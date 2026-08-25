@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23106 of 26227 lib tests are executed; 3121 are compiled by no leg.
+23324 of 26638 lib tests are executed; 3314 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
@@ -562,7 +562,7 @@ ONE of the four tests this gate was built for, and still unrun. orphan-ledger's 
 
 crate::services::analytics_backend::tests::test_gpu_is_reported_unavailable_and_never_selected
 
-## `broken-tests` — 1855 test(s)
+## `broken-tests` — 2048 test(s)
 
 deliberate non-compiling quarantine (#1023). These bodies do not build under any feature set, so no leg can run them by construction.
 
@@ -1320,6 +1320,94 @@ crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_co
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_failure
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_success
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_with_args
+crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_bug_report_mode
+crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_github_issue_mode
+crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_single_file_mode
+crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_single_file_mode_no_file
+crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_with_ignore_file
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_ast_metadata_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_ast_metadata_creation
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_create_refactoring_summary_empty
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_empty_dir
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_respects_ignore
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_with_files
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_link_path_no_link
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_link_path_relative
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_no_duplicates
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_with_backticks
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_with_rust_paths
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_fix_strategy_apply_suggestion
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_fix_strategy_variants
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_function_info_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_function_info_creation
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_content_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_content_creation
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_ref_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_ref_creation
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_proper_headers_false
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_proper_headers_true
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_false_bash
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_false_rust
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_true
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_is_markdown_file_false
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_is_markdown_file_true
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_load_ignore_patterns_empty
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_load_ignore_patterns_with_file
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_first_match
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_mixed_case
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_no_match
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_percentage
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_invalid_host
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_invalid_issue_number
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_missing_issues_path
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_too_short
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_valid_format
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_bug_report
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_github_issue
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_project_wide
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_single_file
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_all_variants
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_default
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_equality
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_effort_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_effort_variants
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_priority_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_priority_variants
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_type_clone
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_type_variants
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_not_retry_on_permanent_error
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_not_retry_on_syntax_error
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_network_error
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_temporary_error
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_timeout
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_failed
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_pending
+crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_verified
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_discover_source_files_empty_directory
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_discover_source_files_with_rust_files
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_extract_target_files_from_issue
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_extract_target_files_from_issue_no_files
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_lint_hotspot_json_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_lint_hotspot_json_response_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_load_ignore_patterns_no_file
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_load_ignore_patterns_with_gitignore
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_multiple_matches
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_no_match
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_valid
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_github_issue_url_invalid
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_github_issue_url_valid
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_metrics_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_metrics_default
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_profile_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_profile_default
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_clone
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_default_values
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_progress_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_progress_default
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_state_creation
+crate::cli::handlers::refactor_auto_handlers::tests::tests::test_violation_detail_json_creation
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_apply_command_line_overrides_all
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_apply_command_line_overrides_none
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_create_engine_mode_batch
@@ -1599,6 +1687,111 @@ crate::cli::handlers::utility_handlers::tests::part4::comprehensive_coverage_tes
 crate::cli::handlers::utility_handlers::tests::part4::comprehensive_coverage_tests::test_format_markdown_output
 crate::cli::handlers::utility_handlers::tests::part4::comprehensive_coverage_tests::test_simple_llm_format_high_average_functions
 crate::cli::handlers::utility_handlers::tests::part4::comprehensive_coverage_tests::test_simple_llm_format_with_recommendations
+crate::cli::handlers::work_handlers::tests::coverage_tests::commit_metadata_tests::test_commit_metadata_deserialization
+crate::cli::handlers::work_handlers::tests::coverage_tests::commit_metadata_tests::test_commit_metadata_serialization
+crate::cli::handlers::work_handlers::tests::coverage_tests::continue_handler_states::test_continue_with_acceptance_criteria
+crate::cli::handlers::work_handlers::tests::coverage_tests::continue_handler_states::test_continue_with_epic_subtasks
+crate::cli::handlers::work_handlers::tests::coverage_tests::continue_handler_states::test_continue_with_phases
+crate::cli::handlers::work_handlers::tests::coverage_tests::continue_handler_states::test_continue_with_spec_path
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_capture_commit_metadata_creates_metrics_dir
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_id_truncation_logic
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_parse_github_url_enterprise
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_parse_github_url_with_trailing_slash
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_roadmap_item_completion_completed
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_roadmap_item_completion_no_subtasks
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_roadmap_item_completion_planned
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_roadmap_item_from_github_issue
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_roadmap_item_not_github_synced
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_short_id_no_truncation
+crate::cli::handlers::work_handlers::tests::coverage_tests::edge_case_tests::test_status_display_emoji_mappings
+crate::cli::handlers::work_handlers::tests::coverage_tests::extract_line_from_yaml_error_tests::test_empty_error_string
+crate::cli::handlers::work_handlers::tests::coverage_tests::extract_line_from_yaml_error_tests::test_error_with_large_line_number
+crate::cli::handlers::work_handlers::tests::coverage_tests::extract_line_from_yaml_error_tests::test_error_with_line_number
+crate::cli::handlers::work_handlers::tests::coverage_tests::extract_line_from_yaml_error_tests::test_error_with_single_digit_line
+crate::cli::handlers::work_handlers::tests::coverage_tests::extract_line_from_yaml_error_tests::test_error_without_line_number
+crate::cli::handlers::work_handlers::tests::coverage_tests::git_detection_tests::test_detect_github_repo_no_git
+crate::cli::handlers::work_handlers::tests::coverage_tests::git_detection_tests::test_detect_github_repo_ssh_remote
+crate::cli::handlers::work_handlers::tests::coverage_tests::git_detection_tests::test_detect_github_repo_with_remote
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_continue_existing_item
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_continue_nonexistent
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_continue_with_phases
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_init_already_exists
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_init_creates_roadmap
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_init_no_github
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_list_statuses
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_migrate_missing_roadmap
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_migrate_no_changes_needed
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_migrate_with_backup
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_active_only
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_all_items
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_nonexistent_item
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_status_specific_item
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_full
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_github_to_yaml
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_sync_yaml_to_github
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_missing_roadmap
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_valid_roadmap
+crate::cli::handlers::work_handlers::tests::coverage_tests::handler_integration_tests::test_handle_work_validate_verbose
+crate::cli::handlers::work_handlers::tests::coverage_tests::init_edge_cases::test_init_detects_git_remote
+crate::cli::handlers::work_handlers::tests::coverage_tests::init_edge_cases::test_init_github_enabled_but_no_repo
+crate::cli::handlers::work_handlers::tests::coverage_tests::init_edge_cases::test_init_with_explicit_github_repo
+crate::cli::handlers::work_handlers::tests::coverage_tests::migration_tests::test_migrate_dry_run_no_changes
+crate::cli::handlers::work_handlers::tests::coverage_tests::migration_tests::test_migrate_multiple_status_normalizations
+crate::cli::handlers::work_handlers::tests::coverage_tests::migration_tests::test_migrate_normalizes_done_status
+crate::cli::handlers::work_handlers::tests::coverage_tests::migration_tests::test_migrate_normalizes_wip_status
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_checked_checkboxes
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_empty_checkbox
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_mixed_checkboxes
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_no_checkboxes
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_unchecked_checkboxes
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_body_with_whitespace_only_checkbox
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_acceptance_criteria_tests::test_empty_body
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_bitbucket_url_returns_none
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_empty_url
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_gitlab_url_returns_none
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_https_url_with_git_extension
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_https_url_with_org_and_nested_repo
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_https_url_without_git_extension
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_random_string
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_ssh_url_with_git_extension
+crate::cli::handlers::work_handlers::tests::coverage_tests::parse_github_url_tests::test_ssh_url_without_git_extension
+crate::cli::handlers::work_handlers::tests::coverage_tests::roadmap_item_properties::test_completion_blocked_status
+crate::cli::handlers::work_handlers::tests::coverage_tests::roadmap_item_properties::test_completion_cancelled_status
+crate::cli::handlers::work_handlers::tests::coverage_tests::roadmap_item_properties::test_completion_percentage_with_phases
+crate::cli::handlers::work_handlers::tests::coverage_tests::roadmap_item_properties::test_completion_percentage_with_subtasks
+crate::cli::handlers::work_handlers::tests::coverage_tests::roadmap_item_properties::test_completion_review_status
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_cache_edge_cases::test_capture_repo_score_non_numeric
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_cache_edge_cases::test_capture_rust_score_missing_total_earned
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_cache_edge_cases::test_capture_tdg_score_missing_score_key
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_repo_score_no_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_repo_score_with_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_rust_project_score_no_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_rust_project_score_with_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_score_with_invalid_json
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_tdg_score_no_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::score_capture_tests::test_capture_tdg_score_with_cache
+crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_create_specification_template
+crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_create_specification_template_creates_directories
+crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_spec_template_contains_all_sections
+crate::cli::handlers::work_handlers::tests::coverage_tests::spec_template_tests::test_spec_template_with_yaml_only_ticket
+crate::cli::handlers::work_handlers::tests::coverage_tests::sync_direction_tests::test_sync_all_directions
+crate::cli::handlers::work_handlers::tests::coverage_tests::sync_direction_tests::test_sync_yaml_to_github_shows_yaml_only_items
+crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_github_disabled
+crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_with_fix_flag_shows_tip
+crate::cli::handlers::work_handlers::tests::coverage_tests::validate_edge_cases::test_validate_yaml_with_location_in_error
+crate::cli::handlers::work_handlers::tests::coverage_tests::validation_tests::test_validate_invalid_yaml
+crate::cli::handlers::work_handlers::tests::coverage_tests::validation_tests::test_validate_with_warnings
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_complete_tests::test_handle_work_complete_nonexistent
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_complete_tests::test_handle_work_complete_skip_quality
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_complete_tests::test_handle_work_complete_with_labels_for_changelog
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_start_tests::test_handle_work_start_as_epic
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_start_tests::test_handle_work_start_existing_yaml_ticket
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_start_tests::test_handle_work_start_github_issue_number
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_start_tests::test_handle_work_start_with_spec
+crate::cli::handlers::work_handlers::tests::coverage_tests::work_start_tests::test_handle_work_start_yaml_ticket
+crate::cli::handlers::work_handlers::tests::tests::test_parse_github_url_https
+crate::cli::handlers::work_handlers::tests::tests::test_parse_github_url_invalid
+crate::cli::handlers::work_handlers::tests::tests::test_parse_github_url_ssh
 crate::cli::proof_annotation_formatter::coverage_tests::coverage_tests::coverage_tests::test_format_confidence_stats_empty_annotations
 crate::cli::proof_annotation_formatter::coverage_tests::coverage_tests::coverage_tests::test_format_confidence_stats_multiple_levels
 crate::cli::proof_annotation_formatter::coverage_tests::coverage_tests::coverage_tests::test_format_confidence_stats_single_high
@@ -3312,8 +3505,6 @@ Each line below is a subtree this walk did not enter, so every count above
 is a FLOOR. A new line here hides tests, which is why it lives in the
 diffed artefact rather than in a log.
 
-- unresolved: src/cli/handlers/refactor_auto_handlers/mod.rs: mod tests;
-- unresolved: src/cli/handlers/work_handlers/mod.rs: mod tests;
 - unresolved: src/mcp_pmcp/discovery.rs: include! with a non-literal path
 - unresolved: src/mcp_pmcp/discovery.rs: include! with a non-literal path
 - unresolved: src/mcp_pmcp/discovery.rs: include! with a non-literal path

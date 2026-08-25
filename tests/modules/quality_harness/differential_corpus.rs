@@ -122,6 +122,119 @@ const NON_MEASURING: &[(&str, &str)] = &[
 /// claim someone must defend.
 const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
     // (command path, json leaf path, why it is legitimately constant)
+
+    // ── CB-2104's self-test: constant BY CONSTRUCTION, and that is the point ──
+    //
+    // `comply numeric-claims` runs a COMMITTED fixture of 4 planted defects on
+    // every invocation and refuses to print a real result unless it recovers
+    // 4/4. The fixture does not vary with the repo under test — it is the
+    // control that proves the detector still works, so a run against an empty
+    // project and a run against a defect-rich one MUST report the same 4/4.
+    //
+    // A varying self-test would mean the control was reading the corpus, which
+    // is exactly what a control must not do. These are the one case where
+    // "identical for empty and large" is the requirement rather than the defect.
+    //
+    // The guard against these going vacuous is not this gate: it is
+    // `removing_a_planted_defect_fails_the_self_test`, which mutates
+    // `recovers()` to a constant `true` and watches the suite go red.
+    (
+        "comply numeric-claims",
+        "self_test.planted",
+        "the self-test fixture is committed and fixed at 4 planted defects; it does not vary with the audited repo, because it is the control that proves the detector still works. Pinned by removing_a_planted_defect_fails_the_self_test",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.recovered",
+        "4 of 4 recovered on every run, or the real result is not printed at all. Varying with the corpus would mean the control was reading the corpus",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.passed",
+        "the boolean form of recovered == planted; constant for the same reason",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.innocent_items",
+        "36 = 26 digit-carrying lines in the innocent/ fixture plus 10 correct derivations. A committed corpus of numbers that must NOT fire; its size is a property of the fixture, not of the audited tree",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.findings[].len",
+        "4, matching planted. See self_test.planted",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.false_positives[].len",
+        "0 on the committed fixture, and a non-zero here fails the run outright rather than being reported as a finding",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.missed[].len",
+        "0 on the committed fixture; a miss means the detector has rotted and the run refuses",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.unexpected[].len",
+        "0 on the committed fixture; same refusal path as missed",
+    ),
+    (
+        "analyze complexity",
+        "analysis_provenance.unrecorded",
+        "a LEAK DETECTOR, not a measurement: it counts files whose provenance nothing recorded, and the other provenance counters are asserted to partition files_analyzed exactly. 0 on every corpus is the invariant — a non-zero value here is the defect, and would be caught by the partition assertion in the complexity tests rather than by this gate. Constant BECAUSE the code is correct",
+    ),
+    // ── CB-2104 leaves that are constant for STATED reasons ──────────────
+    //
+    // `exit` heads this list because it is the strongest case in the file: the
+    // check is WARN-ONLY by design, so exit 0 on both corpora is the
+    // requirement, not a symptom. Exit 2 is reserved for UNMEASURABLE, which
+    // neither corpus is. A varying exit code would mean findings had become
+    // blocking, which is the one thing this check must never do.
+    (
+        "comply numeric-claims",
+        "exit",
+        "WARN-ONLY by design: findings exit 0 on every corpus, and exit 2 is reserved for UNMEASURABLE. A varying exit code here would mean findings had become blocking, which is the property the check was specified never to have",
+    ),
+    (
+        "comply numeric-claims",
+        "warnings[].len",
+        "operator warnings (`--min-sites` below the measured-precision floor, `--include-generated`) fire on FLAGS, not on the corpus. Neither differential run passes either flag. Exercised by census_tests::min_sites_below_the_floor_warns",
+    ),
+    // The five suppression counters below stayed 0 after the corpus gained
+    // material for each guard, and each has a specific reason. They are
+    // exercised by unit tests rather than by this gate, which is stated here
+    // rather than left for a reader to discover: a counter nothing exercises
+    // ANYWHERE would be a real defect, and these are not that.
+    (
+        "comply numeric-claims",
+        "census.excluded_machine_managed",
+        "both corpora carry a Cargo.lock, so the count is equal rather than absent — the exclusion fires on both and cancels. Exercised by corpus_tests, which asserts the exclusion by name",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_derivation",
+        "the derivation guard needs an annotation that RESTATES its value arithmetically (`512  # 2 * 256`); the corpus carries one, but R2 drops the pair before the guard is reached because neither side names the same quantity. Exercised by annotate_tests::correct_derivations_are_never_flagged",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_multi_slot",
+        "G2 needs a template whose OTHER numeric slots also vary, and the corpus rollup fixture supplies one — but it is dropped earlier, by the measurement framing, for lacking a repo-artifact noun. Exercised by cohort_tests::r1_silent_on_multi_varying_slots, which is the ablation proof",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_unresolved_xref",
+        "fires only on a NAMED cross-reference whose target cannot be resolved. Neither corpus contains a cross-reference at all, resolvable or not",
+    ),
+    (
+        "comply numeric-claims",
+        "census.unreadable",
+        "R1 reads prose and config; the corpus's invalid-UTF-8 file is a .rs, which contributes comments only and is skipped before the read. The unreadable counter for THAT corpus file is analyze satd's, which does respond",
+    ),
+    (
+        "analyze duplicates",
+        "listing.top_files",
+        "the --top-files LIMIT echoed back, not a measurement. 10 is the default on both corpora because neither run passes the flag. It responds to the flag rather than to the corpus, which is the shape of every configuration leaf here",
+    ),
     (
         "analyze dead-code",
         "omitted.files",

@@ -37,6 +37,23 @@ fn format_dead_code_as_json_scoped(
     let mut value = serde_json::to_value(result)?;
     let omitted = scope.omitted;
     if let Some(object) = value.as_object_mut() {
+        // Issue #1058. This document names its counts `total_files` (what the
+        // walk discovered) and `analyzed_files` (what the engine read). The MCP
+        // payload for the SAME analysis named the second `files_analyzed` and
+        // had no counterpart for the first, so asking both transports for
+        // "dead-code files" got 38 here and 29 there — on copia, where the two
+        // agree exactly at 29. `analyze complexity` already publishes the pair
+        // as `files_analyzed` / `files_discovered`; both spellings now exist on
+        // both surfaces, so one reader works on either. The original keys stay:
+        // clients read them.
+        object.insert(
+            "files_analyzed".to_string(),
+            serde_json::json!(result.analyzed_files),
+        );
+        object.insert(
+            "files_discovered".to_string(),
+            serde_json::json!(result.total_files),
+        );
         object.insert(
             "omitted".to_string(),
             serde_json::json!({
@@ -190,6 +207,87 @@ fn format_dead_code_as_summary_scoped(
 }
 
 /// Write dead code analysis header section
+/// "Files skipped (out of scope)", when the scan covered less than the tree.
+///
+/// Without this line a repo whose only dead code lives in test code got an
+/// all-zero report headed by the project's whole file count — a clean bill of
+/// health for files the scan never opened.
+///
+/// The parenthetical comes from the analyzer that did the skipping. It used to
+/// be one hardcoded phrase naming the test tree AND the example and benchmark
+/// trees, neither of which the cargo scan skips — and the Top Files list
+/// directly beneath it was made of `examples/`.
+fn write_skipped_line(
+    output: &mut String,
+    result: &crate::models::dead_code::DeadCodeResult,
+    scope: DeadCodeReportScope,
+) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+    if result.total_files <= result.analyzed_files {
+        return Ok(());
+    }
+    writeln!(
+        output,
+        "  {} {} ({})",
+        c::label("Files skipped (out of scope):"),
+        c::number(&(result.total_files - result.analyzed_files).to_string()),
+        scope
+            .skipped_kind
+            .unwrap_or("the analyzer did not say which files")
+    )?;
+    Ok(())
+}
+
+/// The note that `--include`/`--exclude` filter the REPORT, not the walk.
+///
+/// Saying so is the difference between "Files analyzed: 2" being a fact about
+/// the scan and it reading as a claim that the filter narrowed the scan — which
+/// it does not: `--include 'examples/**'` on a two-file crate still analyzes
+/// both files and still divides by the whole project's lines.
+fn write_filter_note(output: &mut String, scope: DeadCodeReportScope) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+    if !scope.list_filtered {
+        return Ok(());
+    }
+    writeln!(
+        output,
+        "  {} --include/--exclude filter this report, not the scan; \
+         the counts above and the percentage below cover every scanned file",
+        c::label("Note:")
+    )?;
+    Ok(())
+}
+
+/// "Files found with dead code", naming every cut that removed the rest.
+///
+/// The file count alone left the categories below reading as measurements of
+/// the project: "Dead functions: 0" over three dead functions the threshold had
+/// just cut is the same contradiction #928 fixed inside the list, one level up.
+fn write_omitted_line(
+    output: &mut String,
+    result: &crate::models::dead_code::DeadCodeResult,
+    scope: DeadCodeReportScope,
+) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+    let omitted = result.files_omitted();
+    if omitted == 0 {
+        return Ok(());
+    }
+    writeln!(
+        output,
+        "  {} {} ({} not listed{}: {})",
+        c::label("Files found with dead code:"),
+        c::number(&result.files_with_dead_code_found.to_string()),
+        c::number(&omitted.to_string()),
+        omitted_items_note(scope.omitted),
+        omission_reasons(result, scope).join(" or ")
+    )?;
+    Ok(())
+}
+
 fn write_dead_code_header(
     output: &mut String,
     result: &crate::models::dead_code::DeadCodeResult,
@@ -213,17 +311,7 @@ fn write_dead_code_header(
     // to be one hardcoded phrase naming the test tree AND the example and
     // benchmark trees, neither of which the cargo scan skips -- and the Top
     // Files list directly beneath it was made of `examples/`.
-    if result.total_files > result.analyzed_files {
-        writeln!(
-            output,
-            "  {} {} ({})",
-            c::label("Files skipped (out of scope):"),
-            c::number(&(result.total_files - result.analyzed_files).to_string()),
-            scope
-                .skipped_kind
-                .unwrap_or("the analyzer did not say which files")
-        )?;
-    }
+    write_skipped_line(output, result, scope)?;
     writeln!(
         output,
         "  {} {}",
@@ -237,31 +325,8 @@ fn write_dead_code_header(
     // reading as a claim that the filter narrowed the scan -- which it does not:
     // `--include 'examples/**'` on a two-file crate still analyzes both files
     // and still divides by the whole project's lines.
-    if scope.list_filtered {
-        writeln!(
-            output,
-            "  {} --include/--exclude filter this report, not the scan; \
-             the counts above and the percentage below cover every scanned file",
-            c::label("Note:")
-        )?;
-    }
-    let omitted = result.files_omitted();
-    if omitted > 0 {
-        // Name every cut that could have removed them, and what went with them.
-        // The file count alone left the categories below reading as measurements
-        // of the project: "Dead functions: 0" over three dead functions the
-        // threshold had just cut is the same contradiction #928 fixed inside the
-        // list, one level up.
-        writeln!(
-            output,
-            "  {} {} ({} not listed{}: {})",
-            c::label("Files found with dead code:"),
-            c::number(&result.files_with_dead_code_found.to_string()),
-            c::number(&omitted.to_string()),
-            omitted_items_note(scope.omitted),
-            omission_reasons(result, scope).join(" or ")
-        )?;
-    }
+    write_filter_note(output, scope)?;
+    write_omitted_line(output, result, scope)?;
     writeln!(
         output,
         "  {} {}",
@@ -610,4 +675,116 @@ async fn write_dead_code_output(content: String, output: Option<PathBuf>) -> Res
         }
     }
     Ok(())
+}
+
+/// Decline to measure, in a shape the requested format's reader can parse.
+///
+/// Issue #1050 P7. `analyze dead-code --format json` over a cargo WORKSPACE
+/// root wrote a full, actionable refusal to stderr — naming the virtual
+/// manifest and every member crate — and **zero bytes** to stdout, at exit 1.
+/// For a machine consumer that is indistinguishable from an empty result, a
+/// crash, or a process killed before it wrote anything: `json.load()` raises
+/// `JSONDecodeError` and there is no field to test.
+///
+/// `tdg` already answers this class of failure with `{"not_measured": true,
+/// "score": {"total": null, …}}` at exit 5, and one tool must not answer the
+/// same question two ways. So:
+///
+/// * the machine formats (`json`, `sarif`) get a BODY, carrying the same
+///   sentence stderr carries and nulls — never zeros, never `[]` — everywhere a
+///   measurement would have been. `dead_functions: 0` and `files: []` are what
+///   a CLEAN crate reports, and a refusal must not be readable as a clean bill
+///   of health;
+/// * every format, text included, exits [`ExitCode::AnalysisError`] (5). The
+///   code is a property of the FAILURE, not of the rendering — see
+///   `crate::cli_exit` — so `--format summary` and `--format json` cannot
+///   disagree about whether a measurement happened.
+async fn refuse_dead_code_measurement(
+    path: &Path,
+    format: &DeadCodeOutputFormat,
+    output: Option<PathBuf>,
+    error: anyhow::Error,
+) -> Result<()> {
+    let body = match format {
+        DeadCodeOutputFormat::Json => Some(dead_code_refusal_json(path, &error)),
+        DeadCodeOutputFormat::Sarif => Some(dead_code_refusal_sarif(path, &error)),
+        // The text renderings already say all of this, in prose, on stderr.
+        DeadCodeOutputFormat::Summary | DeadCodeOutputFormat::Markdown => None,
+    };
+    if let Some(body) = body {
+        write_dead_code_output(body, output).await?;
+    }
+    Err(crate::cli_exit::analysis_error(error))
+}
+
+/// The refusal as JSON: every key a successful run publishes, with `null` where
+/// a number would be, plus the two fields that say what happened.
+fn dead_code_refusal_json(path: &Path, error: &anyhow::Error) -> String {
+    let document = serde_json::json!({
+        // The field a consumer branches on, named as `tdg` names it.
+        "not_measured": true,
+        // The same sentence stderr carries, verbatim. A reason a machine can
+        // read is the difference between "retry" and "point --path elsewhere".
+        "reason": format!("{error:#}"),
+        "path": path.display().to_string(),
+        // Nulls, not zeros: `0` here is what a crate with no dead code reports.
+        "summary": {
+            "total_files_analyzed": serde_json::Value::Null,
+            "files_with_dead_code": serde_json::Value::Null,
+            "total_dead_lines": serde_json::Value::Null,
+            "dead_percentage": serde_json::Value::Null,
+            "dead_functions": serde_json::Value::Null,
+            "dead_classes": serde_json::Value::Null,
+            "dead_modules": serde_json::Value::Null,
+            "unreachable_blocks": serde_json::Value::Null,
+        },
+        // Null, not `[]`. An empty array is a measured claim that nothing was
+        // found; nothing was looked at.
+        "files": serde_json::Value::Null,
+        "files_analyzed": serde_json::Value::Null,
+        "files_discovered": serde_json::Value::Null,
+        "total_files": serde_json::Value::Null,
+    });
+    serde_json::to_string_pretty(&document).unwrap_or_else(|_| {
+        // Serialising three nulls and a string cannot fail, but a refusal that
+        // fell back to zero bytes would reintroduce the whole defect.
+        format!(
+            "{{\"not_measured\":true,\"reason\":\"{}\"}}",
+            error.to_string().escape_default()
+        )
+    })
+}
+
+/// The refusal as SARIF: a run with no results is a clean scan, so the reason
+/// travels as a tool execution NOTIFICATION with `executionSuccessful: false` —
+/// the shape SARIF has for "this tool declined", rather than a silent pass.
+fn dead_code_refusal_sarif(path: &Path, error: &anyhow::Error) -> String {
+    let document = serde_json::json!({
+        "version": "2.1.0",
+        "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "pmat",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "informationUri": "https://github.com/paiml/paiml-mcp-agent-toolkit",
+                }
+            },
+            "invocations": [{
+                "executionSuccessful": false,
+                "workingDirectory": { "uri": path.display().to_string() },
+                "toolExecutionNotifications": [{
+                    "level": "error",
+                    "message": { "text": format!("{error:#}") }
+                }]
+            }],
+            "results": serde_json::Value::Null,
+        }]
+    });
+    serde_json::to_string_pretty(&document).unwrap_or_else(|_| {
+        format!(
+            "{{\"executionSuccessful\":false,\"reason\":\"{}\"}}",
+            error.to_string().escape_default()
+        )
+    })
 }

@@ -164,6 +164,38 @@ impl CrossFileDuplicationCoverage {
     }
 }
 
+/// Which language a project of this shape IS, or `None` when nothing was graded.
+///
+/// The winner used to be a plurality over EVERY graded file, documentation
+/// included. `pmat tdg ~/src/pforge --format json` therefore reported
+/// `"language": "Markdown"` for a cargo workspace — while `pmat tdg
+/// ~/src/pforge/crates`, a subdirectory of that same tree, reported `"Rust"` —
+/// because a doc-heavy Rust workspace holds more `.md` files than `.rs` files
+/// at its root (issue #1073). `language` is a field consumers branch on, and it
+/// can select language-specific grading, so a project whose code is Rust must
+/// not be handed to a reader as a Markdown project.
+///
+/// The plurality is now taken over the languages that carry CODE, and falls
+/// back to the whole distribution only when no source file was graded at all —
+/// a docs-only tree really is a Markdown tree, and saying otherwise would be
+/// the same false label pointing the other way.
+///
+/// The tie-break is unchanged and still load-bearing: `max_by_key` alone
+/// returned whichever tied language iteration order happened to visit last, so
+/// two `.rs` and two `.md` files made `tdg <dir>` alternate between "Rust" and
+/// "Markdown" over unchanged input — 7 vs 5 out of 12 runs, at a byte-identical
+/// score (GH #673). Ties resolve to the lowest `Language` discriminant.
+fn dominant_language(distribution: &BTreeMap<Language, usize>) -> Option<Language> {
+    let plurality = |source_only: bool| {
+        distribution
+            .iter()
+            .filter(|(lang, _)| !source_only || lang.is_source_code())
+            .max_by_key(|(&lang, &count)| (count, std::cmp::Reverse(lang as usize)))
+            .map(|(&lang, _)| lang)
+    };
+    plurality(true).or_else(|| plurality(false))
+}
+
 impl ProjectScore {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -363,21 +395,8 @@ impl ProjectScore {
         avg.entropy_score = self.files.iter().map(|s| s.entropy_score).sum::<f32>() / count;
         avg.confidence = self.files.iter().map(|s| s.confidence).sum::<f32>() / count;
 
-        // Set language to the most common language in the project.
-        //
-        // The tiebreak is part of the answer, not a detail: `language_distribution`
-        // is a HashMap, so `max_by_key(count)` alone returned whichever tied
-        // language the randomised iteration order happened to visit last. Two
-        // .rs and two .md files made `tdg <dir>` report "Rust" and "Markdown"
-        // in alternate runs over unchanged input — 7 vs 5 out of 12 runs, with
-        // a byte-identical score and confidence (GH #673). Ties now resolve to
-        // the lowest `Language` discriminant, which orders source languages
-        // ahead of YAML/Markdown.
-        if let Some((&lang, _)) = self
-            .language_distribution
-            .iter()
-            .max_by_key(|(&lang, &count)| (count, std::cmp::Reverse(lang as usize)))
-        {
+        // Which language this project IS.
+        if let Some(lang) = dominant_language(&self.language_distribution) {
             avg.language = lang;
         }
 
@@ -797,15 +816,28 @@ mod no_contradiction_tests {
     }
 
     /// A clear majority still wins; the tiebreak only settles equal counts.
+    ///
+    /// UPDATED for #1073, not deleted. The claim — "the tiebreak settles equal
+    /// counts and nothing else" — is still exactly right, and still worth a
+    /// test. The FIXTURE was wrong: it made the claim with two Markdown files
+    /// against one Rust file and asserted `Markdown`, which is the defect
+    /// #1073 reports, written down as the expected answer. A project's
+    /// `language` is now the plurality among the languages that carry CODE
+    /// (`dominant_language`), so a majority of DOCS proves nothing about the
+    /// tiebreak between source languages.
+    ///
+    /// Restated between two source languages, where the tiebreak actually
+    /// operates: Python is the majority and wins, even though `Rust` sorts
+    /// ahead of it and would win a tie.
     #[test]
     fn language_majority_still_wins_over_the_tiebreak() {
         let files = vec![
-            file_score(90.0, Language::Markdown, true),
-            file_score(90.0, Language::Markdown, true),
+            file_score(90.0, Language::Python, true),
+            file_score(90.0, Language::Python, true),
             file_score(90.0, Language::Rust, true),
         ];
         let project = ProjectScore::aggregate(files);
-        assert_eq!(project.average().language, Language::Markdown);
+        assert_eq!(project.average().language, Language::Python);
     }
 
     /// A file that was walked but refused must reach the payload.
@@ -845,6 +877,76 @@ mod no_contradiction_tests {
             json["ungraded_files"].as_array().map(Vec::len),
             Some(0),
             "the key must always be present: {json}"
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod project_language_is_the_dominant_source_language_tests {
+    use super::*;
+
+    fn graded(language: Language) -> TdgScore {
+        TdgScore {
+            language,
+            structural_complexity: 20.0,
+            semantic_complexity: 16.0,
+            duplication_ratio: 16.0,
+            coupling_score: 12.0,
+            doc_coverage: 8.0,
+            consistency_score: 8.0,
+            entropy_score: 0.0,
+            ..TdgScore::default()
+        }
+    }
+
+    /// Issue #1073. `pmat tdg ~/src/pforge --format json` reported
+    /// `"language": "Markdown"` for a cargo workspace, while
+    /// `pmat tdg ~/src/pforge/crates` — a SUBDIRECTORY of the same tree —
+    /// reported `"Rust"`. The winner was a plurality over every graded file,
+    /// and a doc-heavy Rust workspace has more `.md` files than `.rs` files.
+    #[test]
+    fn docs_outnumbering_code_does_not_make_the_project_a_markdown_project() {
+        let mut files = vec![graded(Language::Rust); 3];
+        files.extend(vec![graded(Language::Markdown); 10]);
+
+        let project = ProjectScore::aggregate(files);
+
+        // The distribution is untouched — Markdown really is the plurality, and
+        // that fact stays readable.
+        assert_eq!(project.language_distribution[&Language::Markdown], 10);
+        assert_eq!(
+            project.average().language,
+            Language::Rust,
+            "the project's language is the language its CODE is written in"
+        );
+    }
+
+    /// The counter-test that bounds the correction. A tree that really holds
+    /// nothing but documentation must still be reported as Markdown: "prefer
+    /// source" must not become "never say Markdown", which would be a second
+    /// false label in the other direction.
+    #[test]
+    fn a_tree_with_no_source_files_is_still_labelled_by_what_it_holds() {
+        let project = ProjectScore::aggregate(vec![graded(Language::Markdown); 4]);
+        assert_eq!(project.average().language, Language::Markdown);
+
+        let project = ProjectScore::aggregate(vec![graded(Language::Yaml); 2]);
+        assert_eq!(project.average().language, Language::Yaml);
+    }
+
+    /// …and the plurality still decides BETWEEN source languages: preferring
+    /// source code must not degrade into "whichever source language sorts
+    /// first".
+    #[test]
+    fn the_plurality_still_decides_among_source_languages() {
+        let mut files = vec![graded(Language::Python); 9];
+        files.push(graded(Language::Rust));
+        files.extend(vec![graded(Language::Markdown); 40]);
+
+        assert_eq!(
+            ProjectScore::aggregate(files).average().language,
+            Language::Python
         );
     }
 }

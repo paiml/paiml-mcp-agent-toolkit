@@ -1,0 +1,283 @@
+metadata:
+  version: "1.0.0"
+  kind: kernel
+  created: "2026-08-24"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    CB-2104 `pmat comply numeric-claims`. Numbers a repository writes down about
+    itself, judged against each other.
+
+    Two rules over one corpus of git-tracked files. They cover disjoint surfaces
+    and neither subsumes the other — on the two reference repositories R2 found
+    none of R1's findings and R1 found none of R2's:
+
+    R1 REPLICATED DIVERGENT CLAIM reads UNNAMED prose numerals. N files carry
+    the same sentence with a number in it and the numbers disagree, so at least
+    N - m of them are wrong. Its specimen: 45 per-crate READMEs in aprender
+    saying `70 workspace crates` where 5 say `75` and `cargo metadata` says 78.
+
+    R2 CONTRADICTION reads NAMED quantities — config keys, Rust consts — and
+    their same-line annotations. Its specimen: this repository's
+    src/tests/binary_size.rs declaring `50 * 1024 * 1024` (52,428,800) with the
+    comment "aligned with .pmat-metrics.toml binary_max_bytes", which is
+    50,000,000.
+
+    SEVERITY IS WARN AND THE CHECK NEVER BLOCKS. Findings exit 0, whatever their
+    count. Exit 2 is reserved for UNMEASURABLE, and that distinction is the
+    point of the rule's design: "I analysed 12,693 numbers and found nothing"
+    must never be byte-identical to "`git ls-files` returned nothing and I
+    analysed nothing", which is exactly what the researched design printed for
+    both.
+
+    WHY IT IS NOT A DUPLICATE OF CB-2101 OR CB-2102. The unit of analysis is
+    different. CB-2101 binds ONE DECLARED key to one hand-written binding;
+    CB-2102 binds ONE DECLARED metric to its reproducing command; both are total
+    over a curated set and both cost roughly fifteen lines of hand-written TOML
+    per number. CB-2104 compares N UNDECLARED copies against each other and
+    requires no prior human declaration at all — which is the whole point,
+    because nobody declares the copy. Measured: CB-2101 covers 17 of this
+    repository's 539 config keys and 0 of aprender's 14,385, because it opens
+    exactly one path and aprender's are in crates/*/. CB-2104 reads 3,883
+    mentions here and 25,522 there. CB-2101 also DOCUMENTED the binary-size
+    contradiction inside a justification string and then passed it, because
+    binary_max_bytes is kind = "budget".
+
+    The relationship runs the other way: every R1 finding's remediation is
+    "declare this quantity once, with the command that reproduces it", i.e.
+    enroll it in .pmat-ratchet.toml or a CB-2101 binding. CB-2104 is the
+    discovery front-end that populates the two curated checks. It can never do
+    their job — it cannot tell you WHICH of 45 values is correct. Only an anchor
+    can, so every finding reports `anchored: false` and a disagreement FLOOR,
+    never a wrong-count.
+
+    WHAT WAS RESEARCHED AND DELIBERATELY NOT BUILT, each rejected on a
+    measurement rather than on taste:
+
+    (a) Benford's Law. Rust source scores MAD 0.0382 against Nigrini's 0.015
+    nonconformity band BEFORE any contamination, and injecting fabricated
+    numbers moves the corpus TOWARD conformance. A check that gets happier when
+    you plant fraud is worse than no check.
+
+    (b) Anchored-claim execution (run the documented predicate, compare). 0.1%
+    coverage — 12 anchored numerals in 11,282 claim-shaped ones — and 0/4
+    precision on this repository. All four findings were well-written documents,
+    including one correctly pinned to a SHA. Acting on the flagship finding
+    would have replaced a correctly pinned number with one that rots next week.
+
+    (c) Automatic anchor resolution for R1. Built and measured: 8 labels on
+    aprender, all of them spec-doc examples, 0 on pmat, and it misses the one
+    anchor that matters because aprender's README cites `cargo metadata
+    --no-deps`, which names a method without printing a number.
+
+    (d) The cohort rule AS DESIGNED, at 1/3 precision. Two of three flagship
+    findings were machine-generated per-crate headers whose counts co-vary
+    correctly. Two guards, each derived from one of those audited false
+    positives, restore it to 1/1 and both ship on.
+  contract: comply-numeric-claims
+  # ADVISORY, not enforced, and the word is chosen. CB-2104 is a standalone
+  # subcommand; no `pmat comply check` clause runs it, no CI job gates on it,
+  # and `default_checks` registers it at severity Warning on purpose. Writing
+  # `enforced` here would be a claim about this repository that nothing in it
+  # backs — the exact shape CB-2100 exists to find.
+  status: advisory
+  verification:
+    kani_status: not_applicable
+    measured_at: "pmat 3.32.0, 2026-08-24; pmat 583ea9ac2, aprender d6c6c6f8f"
+    detail: >
+      No kani harness is declared, and none is claimed. Every rule here is a
+      comparison over bytes that are already checked in: there is no arithmetic
+      kernel with an invariant a bounded proof would add confidence to, and a
+      `kind: kernel` with aspirational harnesses would be the decorative
+      verification claim CB-2100 exists to find.
+
+      What actually runs is the module's own test suite —
+      src/services/numeric_claims/{census,cohort,corpus,extract,frame,annotate,render,rules}_tests.rs
+      — reachable from `cargo test --lib numeric_claims`, plus the committed
+      self-test fixture, which runs on EVERY invocation of the shipped binary
+      and not only under `cargo test`.
+  references:
+    - src/services/numeric_claims/mod.rs
+    - src/services/numeric_claims/census.rs
+    - src/services/numeric_claims/render.rs
+    - src/services/numeric_claims/corpus.rs
+    - src/services/numeric_claims/frame.rs
+    - src/services/numeric_claims/cohort.rs
+    - src/services/numeric_claims/extract.rs
+    - src/services/numeric_claims/annotate.rs
+    - src/services/numeric_claims/rules.rs
+    - src/cli/handlers/comply_handlers/numeric_claims_handler.rs
+    - tests/fixtures/numeric_claims/README.md
+
+equations:
+  exit_policy:
+    formula: "exit(report) = 2 <=> status(report) = UNMEASURABLE ; else 0"
+    domain: "one NumericClaimsReport over one repository"
+    codomain: "{0, 2}"
+    invariants:
+    - "INV-2104-1: findings never change the exit code. A repository with 45 divergent claims exits 0, because this check is advisory and the user's constraint was explicit"
+    - "INV-2104-2: UNMEASURABLE is the ONLY non-zero exit, and it never carries findings — when the check cannot vouch for its own rules, a list of things it thinks it found is worse than silence"
+    - "an empty corpus is UNMEASURABLE, not clean: 'no contradictions' over nothing is a claim the run did not earn"
+    preconditions: []
+
+  self_test:
+    formula: >
+      measurable(run) => self_test(committed fixture) = (4/4 planted recovered,
+      0 innocent flagged, 0 unexpected)
+    domain: "tests/fixtures/numeric_claims, include_str!-ed into the binary"
+    codomain: "SelfTest { passed, recovered, missed, false_positives, unexpected }"
+    invariants:
+    - "INV-2104-3: the self-test runs BEFORE the real corpus on every invocation, and a failure suppresses the real result entirely. A rule that has silently stopped firing and a repository that is genuinely clean produce the same empty output; only a corpus that MUST fire separates them"
+    - "INV-2104-4: one planted defect per rule family. A fixture that exercises three of four rules leaves the fourth's silence indistinguishable from a rule that no longer runs"
+    - "INV-2104-5: the self-test always runs at CohortConfig::default(), never at the user's settings. It is a control on the RULES, not on the configuration, and a --min-sites 20 that made it fail would be reporting the wrong thing"
+    - "the innocent half is REPLICATED — each of the 26 classes across eight files with a 6/2 value split, the exact shape R1 hunts — because an innocent control that could not fire even if the rules rotted measures nothing"
+    - "the fixture lives under tests/fixtures/, which the corpus rules exclude, so the four defects this check plants in its own repository can never reach a user's report"
+    preconditions: []
+
+  vacuity:
+    formula: >
+      UNMEASURABLE <= files_scanned = 0, or (files_scanned > 20 and
+      framed_numerals = 0), or (files_scanned > 20 and mentions = 0), or not a
+      git work tree, or the self-test did not round-trip
+    domain: "the census of one run"
+    codomain: "Option<Vacuity>"
+    invariants:
+    - "INV-2104-6: stated in .pmat-ratchet.toml's idiom — a metric that measures 0 against a baseline above 0 is UNMEASURABLE, not passed"
+    - "INV-2104-7: the census is UNCONDITIONAL and machine-readable. A clean result that does not carry files_scanned, r1_framed_numerals, r2_mentions and every suppression counter is a bug, not a pass"
+    - "INV-2104-8: every guard that can hide a finding reports how often it did — G1 generated, G2 multi-slot, derivation, unit-ambiguity, unresolved-xref"
+    - "the guard counters are ORDERED: G1 runs before G2, so a 0 in the G2 column records that G1 got there first and never that G2 is idle. The renderer says so rather than letting a reader infer that G2 is dead weight"
+    - "a corpus that is merely SMALL is not a rotted one: the plausibility rules only accuse the extractor once more than 20 files have been scanned"
+    preconditions:
+    - "git is available and the path is inside a work tree"
+
+  precision:
+    formula: "precision(min_sites, guards) is monotone in min_sites and in guards-on"
+    domain: "the reference corpus: pmat, aprender, bashrs, batuta, renacer, trueno, actix-web"
+    codomain: "a measured hit rate"
+    invariants:
+    - "INV-2104-9: --min-sites below the default 7 MUST print a precision warning. Measured at --min-sites 3: 1/10 on the reference corpus, the rejected nine being step numbers in per-language example workflows, sprint records written weeks apart, and three tickets about three different modules"
+    - "INV-2104-10: --include-generated (G1 off) MUST print a precision warning. With either guard off the reference corpus measured 1/3"
+    - "the rule reports DISAGREEMENT, never a verdict on which value is right. Nothing in the output says a value is wrong, or fabricated: a number that is wrong and a number that was invented are indistinguishable to every rule here"
+    - >
+      MEASURED BLIND SPOT, found by running the shipped check over the reference
+      corpus rather than by testing it. On bashrs 90e68cf0af R1 reports one
+      finding: `- All N rules already verified as implemented` across eight
+      docs/RULE-CLASSIFICATION-BATCH*.md files, saying 20 six times, then 10,
+      then 6. It is a false positive of exactly the class G2 exists to kill —
+      per-entity parameterisation — and G2 cannot see it, because the entity
+      (the batch number) is in the FILENAME rather than in the line, so the line
+      has exactly one varying slot and looks like a replicated singleton.
+
+      The spec's negative-control table records bashrs at 0 findings. That row
+      was an R2-only measurement: R1 had never been run over bashrs, or over any
+      of the five control repositories. This is therefore the first R1
+      measurement on them, and it moves the honest claim from "5 healthy repos,
+      0 false positives" to "4 of 5 silent; bashrs yields 1 R1 false positive".
+      batuta, renacer and trueno stay at 0/0; actix-web was not re-measured here.
+
+      Reported rather than patched. A third guard keyed on path tokens would
+      change the rule's measured ablation table, and the spec's own instruction
+      is that any change to the check's loudness must be assumed to break
+      precision until re-measured on the reference corpus.
+    preconditions: []
+
+preconditions:
+  - "a pmat whose `pmat comply` carries the `numeric-claims` subcommand (added after 3.32.0; no released version is claimed here, because none has shipped it)"
+  - "the project root is inside a git work tree"
+
+postconditions:
+  - "the census is printed on every run, findings or not, measurable or not"
+  - "findings exit 0; only UNMEASURABLE exits 2"
+  - "every reported site carries file:line, so a developer can act without re-running the tool"
+
+falsification_tests:
+  - id: falsify_nc_001
+    rule: "FALSIFY-NC-001: the self-test cannot fail — '4/4 recovered' is a constant rather than a measurement. Ablate each planted defect in turn and the runner must go red for each"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::removing_a_planted_defect_fails_the_self_test
+    if_fails: "P0 — the strongest guard in the design is decoration"
+  - id: falsify_nc_002
+    rule: "FALSIFY-NC-002: a planted defect is not recovered, or a rule family has no planted defect at all so its silence proves nothing"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::the_self_test_recovers_all_four_planted_defects
+    if_fails: "P0 — a rule that has stopped firing would report a clean tree"
+  - id: falsify_nc_003
+    rule: "FALSIFY-NC-003: an innocent number is flagged, or the innocent half is too small to be a control"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::the_self_test_flags_none_of_the_innocent_numbers
+    if_fails: "P0 — precision is above 70% only because the check is quiet"
+  - id: falsify_nc_004
+    rule: "FALSIFY-NC-004: an empty or non-git corpus reports as clean rather than UNMEASURABLE"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r13_unmeasurable_corpus_exits_two
+    if_fails: "P0 — 'we could not measure it' would read as 'it did not regress'"
+  - id: falsify_nc_005
+    rule: "FALSIFY-NC-005: a rotted extractor over a real corpus passes as clean, or the guard fires on a corpus that is merely small"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::plausibility_separates_nothing_to_say_from_nothing_measured
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: falsify_nc_006
+    rule: "FALSIFY-NC-006: findings change the exit code. The user's hard constraint: this check warns, it never blocks"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r12_exit_code_is_zero_with_findings
+    if_fails: "P0 — the check would start blocking builds it was promised never to block"
+  - id: falsify_nc_007
+    rule: "FALSIFY-NC-007: a run reports without a populated census, so a silent pass carries no proof it ran"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r14_census_is_always_emitted
+    if_fails: "P0 — the defect the vacuity guard exists to prevent"
+  - id: falsify_nc_008
+    rule: "FALSIFY-NC-008: a guard hides a finding without counting it, so a suppression leaves no trace and is indistinguishable from a rule that never ran"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r15_suppression_counters_are_reported
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: falsify_nc_009
+    rule: "FALSIFY-NC-009: --min-sites is lowered below the default without the precision warning, which is the one knob that destroys the check (1/10 measured at 3)"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r16_min_sites_below_default_warns
+    if_fails: "P0 — precision would silently fall by an order of magnitude"
+  - id: falsify_nc_010
+    rule: "FALSIFY-NC-010: the fixture's planted defects reach the real report, because the fixture-tree exclusion rotted and pmat started reporting its own test data"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::the_fixture_is_excluded_from_the_real_corpus
+    if_fails: "P0 — every run on this repository would carry four false findings"
+  - id: falsify_nc_011
+    rule: "FALSIFY-NC-011: R1 reads JSON, pulling 3.3M numerals out of machine-written contract.json files, or R2 stops reading it"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::r2_reads_json_and_r1_does_not
+    if_fails: "P1 — 93% of the corpus would be machine-written interchange"
+  - id: falsify_nc_012
+    rule: "FALSIFY-NC-012: the census stops leading the output, or a clean measured run prints the same bytes as an empty corpus"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::a_clean_run_still_shows_its_working
+    if_fails: "P0 — the exact failure of the researched design"
+  - id: falsify_nc_013
+    rule: "FALSIFY-NC-013: a finding is reported without naming file:line for every site, so a developer has to re-run the tool to find out where to look"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::every_site_is_named_with_file_and_line
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: falsify_nc_014
+    rule: "FALSIFY-NC-014: the output claims to know which of two disagreeing values is wrong, or calls a number fabricated. The check reports contradiction; only an anchor can report truth"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::the_output_never_claims_to_know_which_value_is_wrong
+    if_fails: "P0 — the check would assert something no rule in it can establish"
+  - id: falsify_nc_015
+    rule: "FALSIFY-NC-015: an UNMEASURABLE run prints findings it cannot vouch for, or does not say it was unmeasurable"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::unmeasurable_says_so_and_prints_no_findings
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: falsify_nc_016
+    rule: "FALSIFY-NC-016: the JSON drops the exit code, the status or the self-test result, so a CI job cannot tell a clean run from an unmeasurable one"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::json_carries_the_exit_code_the_status_and_the_self_test
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: falsify_nc_017
+    rule: "FALSIFY-NC-017: the G2 suppression counter's zero is presented as evidence G2 is idle, when G1 simply ran first"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/render_tests.rs::the_g2_zero_is_not_presented_as_evidence_g2_is_idle
+    if_fails: "P1 — a working guard would be read as dead weight and removed"
+  - id: falsify_nc_018
+    rule: "FALSIFY-NC-018: CB-2104 is registered under an id .pmat.yaml cannot address, or registered at severity=error, which would put an advisory check into the roster CB-2100 checks reachability for and make it block"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/numeric_claims/census_tests.rs::cb_2104_is_registered_as_a_warning_and_can_be_disabled
+    if_fails: "P0 — the check would either be unaddressable or would block"

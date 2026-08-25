@@ -1,7 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Comply handlers - split for file health (CB-040)
 
-use crate::cli::commands::{ComplyCommands, ComplyOutputFormat};
+use crate::cli::commands::{ComplyCommands, ComplyOutputFormat, NumericClaimsFormat};
 use anyhow::Result;
 // `handle_report` no longer stamps its own timestamp — it renders the report
 // `compute_compliance_report` built — so `Utc` is reached only by the tests
@@ -24,6 +24,8 @@ include!("ledger_handler.rs");
 include!("ratchet_handler.rs");
 // CB-2101: `pmat comply coherence` — classify every threshold, with reasons
 include!("coherence_handler.rs");
+// CB-2104: `pmat comply numeric-claims` — replicated and self-contradicting numbers
+include!("numeric_claims_handler.rs");
 
 // Command dispatch (needs access to both check_handlers and migrate_handlers items)
 include!("command_dispatch.rs");

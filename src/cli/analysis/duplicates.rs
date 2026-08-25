@@ -85,7 +85,7 @@ pub fn tally_beta(items: &[i64], bound: i64) -> i64 {
 
     fn structural_similarities(report: &DuplicateReport) -> usize {
         let json: serde_json::Value =
-            serde_json::from_str(&format_json_output(report).unwrap()).unwrap();
+            serde_json::from_str(&format_json_output(report, 0).unwrap()).unwrap();
         json["structural_similarities"].as_u64().unwrap() as usize
     }
 
@@ -563,7 +563,7 @@ mod tests {
             file_statistics: BTreeMap::new(),
         };
 
-        let result = format_json_output(&report);
+        let result = format_json_output(&report, 0);
         assert!(result.is_ok());
         let json = result.unwrap();
         assert!(json.contains("\"total_duplicates\": 1"));
@@ -670,7 +670,7 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_human_arm() {
         let r = populated_report_with_blocks(1);
-        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Human).unwrap();
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Human, 0).unwrap();
         let stripped = strip_ansi(&out);
         assert!(stripped.contains("Duplicate Code Analysis"));
     }
@@ -682,8 +682,8 @@ mod tests {
         // made all three formats byte-identical; each renders its own detail
         // level now, so assert the difference rather than only that both
         // succeed (see `summary_omits_the_per_block_listing`).
-        let summary = format_output(&r, crate::cli::DuplicateOutputFormat::Summary).unwrap();
-        let detailed = format_output(&r, crate::cli::DuplicateOutputFormat::Detailed).unwrap();
+        let summary = format_output(&r, crate::cli::DuplicateOutputFormat::Summary, 0).unwrap();
+        let detailed = format_output(&r, crate::cli::DuplicateOutputFormat::Detailed, 0).unwrap();
         assert!(!strip_ansi(&summary).contains("Duplicate Blocks"));
         assert!(strip_ansi(&detailed).contains("Duplicate Blocks"));
     }
@@ -691,7 +691,7 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_json_arm() {
         let r = populated_report_with_blocks(2);
-        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Json).unwrap();
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Json, 0).unwrap();
         assert!(out.contains("\"total_duplicates\""));
         assert!(out.contains("\"metrics\""));
 
@@ -713,7 +713,7 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_sarif_arm() {
         let r = populated_report_with_blocks(2);
-        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Sarif).unwrap();
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Sarif, 0).unwrap();
         assert!(out.contains("\"version\": \"2.1.0\""));
         assert!(out.contains("duplicate-code"));
     }
@@ -721,7 +721,7 @@ mod tests {
     #[test]
     fn test_format_output_dispatcher_csv_arm() {
         let r = populated_report_with_blocks(2);
-        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Csv).unwrap();
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Csv, 0).unwrap();
         assert!(out.starts_with("Type,File1,Start1,End1,File2,Start2,End2\n"));
         // 2 blocks → 2 data rows.
         assert_eq!(out.lines().filter(|l| l.starts_with("exact,")).count(), 2);
@@ -743,7 +743,7 @@ mod tests {
             similarity: 1.0,
             clone_type: CloneType::Exact,
         });
-        let out = format_csv_output(&r).unwrap();
+        let out = format_csv_output(&r, 0).unwrap();
         // Header only — single-location block dropped.
         assert_eq!(out, "Type,File1,Start1,End1,File2,Start2,End2\n");
     }

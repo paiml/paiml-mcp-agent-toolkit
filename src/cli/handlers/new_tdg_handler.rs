@@ -806,6 +806,17 @@ pub(crate) fn create_sarif_output(
             "average_score": project.average_score,
             "average_grade": project.average_grade.map(|g| g.to_string()),
             "not_measured": project.not_measured,
+            // Issue #1050 P2. `not_measured` above is a list of SCORE FIELDS
+            // that could not be produced, so on a tree where one file graded
+            // and fifteen were refused it is correctly `[]` — and a SARIF
+            // consumer read that empty array as "nothing was skipped". The
+            // files the walk refused are a different fact and get their own
+            // key, the one the table already points readers at.
+            "ungraded_files": project
+                .ungraded_files
+                .iter()
+                .map(|u| serde_json::json!({ "path": u.path, "reason": u.reason }))
+                .collect::<Vec<_>>(),
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         }),

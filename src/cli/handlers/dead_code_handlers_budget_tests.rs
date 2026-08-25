@@ -926,3 +926,73 @@ fn the_suite_defaults_are_the_cli_defaults() {
         assert!(exclude.is_empty());
     });
 }
+
+/// Issue #1058 — the transport-parity gate's dead-code finding.
+///
+/// Not a population disagreement: the CLI and the MCP tool measured copia
+/// identically at 29 analysed files. They published that number under
+/// DIFFERENT NAMES, and the CLI additionally published a second, larger one:
+///
+/// ```text
+///   CLI  total_files 38   analyzed_files 29     (no `files_analyzed`)
+///   MCP  files_analyzed 29                      (no discovered count at all)
+/// ```
+///
+/// A checker asking each transport for "dead-code files" was answered 38 and
+/// 29, and both were right about their own field. A key-name split reads as a
+/// measurement disagreement, which is worse than either number being wrong,
+/// because each surface looks correct alone.
+///
+/// RED CONTROL: removing the two `object.insert` calls from
+/// `format_dead_code_as_json_scoped` fails the first assertion here.
+#[test]
+fn the_json_report_publishes_both_counts_under_the_canonical_names() {
+    let report = crate::models::dead_code::DeadCodeResult {
+        summary: crate::models::dead_code::DeadCodeSummary {
+            total_files_analyzed: 29,
+            files_with_dead_code: 0,
+            total_dead_lines: 0,
+            dead_percentage: 0.0,
+            dead_functions: 0,
+            dead_classes: 0,
+            dead_modules: 0,
+            unreachable_blocks: 0,
+        },
+        files: vec![],
+        total_files: 38,
+        analyzed_files: 29,
+        files_with_dead_code_found: 0,
+        files_truncated: false,
+        library_target: None,
+    };
+
+    let rendered = format_dead_code_result(
+        &report,
+        &crate::cli::DeadCodeOutputFormat::Json,
+        super::DeadCodeReportScope::default(),
+    )
+    .expect("json renders");
+    let json: serde_json::Value = serde_json::from_str(&rendered).expect("json parses");
+
+    assert_eq!(
+        json["files_analyzed"].as_u64(),
+        Some(29),
+        "the name the MCP payload uses must exist here: {rendered}"
+    );
+    assert_eq!(
+        json["files_discovered"].as_u64(),
+        Some(38),
+        "…and the discovered count under the name `analyze complexity` uses: {rendered}"
+    );
+
+    // COUNTER-TEST: two names for one number, never two numbers, and never a
+    // number invented to fill a key. The legacy spellings must still be there
+    // and must still agree with the new ones — a fix that made the two counts
+    // equal would "pass parity" by destroying the denominator.
+    assert_eq!(json["files_analyzed"], json["analyzed_files"]);
+    assert_eq!(json["files_discovered"], json["total_files"]);
+    assert_ne!(
+        json["files_analyzed"], json["files_discovered"],
+        "38 discovered and 29 analysed are different facts and must stay different"
+    );
+}

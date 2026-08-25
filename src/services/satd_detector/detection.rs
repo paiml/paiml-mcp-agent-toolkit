@@ -817,3 +817,260 @@ mod include_tests_reaches_inline_blocks {
         assert_eq!(with.len(), 3, "production + both inline markers: {with:?}");
     }
 }
+
+#[cfg(test)]
+mod unreadable_file_disclosure_tests {
+    //! #1035: a file the walk selected and then failed to decode was counted
+    //! as an ANALYSED file with no debt.
+    //!
+    //! The three drops sat below the skip predicate, inside the per-file read
+    //! — `Err(_) => Vec::new()`, `unwrap_or_default()`, and an oversized-content
+    //! `return` — so every disclosure fix layered above them still reported
+    //! these files as measured and clean. That is the issue's root-cause shape
+    //! (`// If parsing fails, return empty (graceful degradation)`) surviving
+    //! inside the analyzer the earlier fixes hardened.
+    use super::*;
+    use std::io::Write;
+
+    /// A tree with one readable marker-bearing file and one file whose bytes
+    /// are not UTF-8. `read_to_string` fails on the second; nothing else in
+    /// the walk declines it.
+    fn tree_with_one_undecodable_file() -> tempfile::TempDir {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        std::fs::write(
+            d.path().join("src/good.rs"),
+            "fn ok() {}\n// TODO: a real marker\n",
+        )
+        .expect("write good");
+        let mut bad = std::fs::File::create(d.path().join("src/bad.rs")).expect("create bad");
+        bad.write_all(b"fn bad() {}\n// TODO: hidden marker \xff\xfe\n")
+            .expect("write bad");
+        d
+    }
+
+    #[tokio::test]
+    async fn an_undecodable_file_is_disclosed_not_counted_as_clean() {
+        let d = tree_with_one_undecodable_file();
+        let (debts, skipped) = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect("the readable file was analysed, so this is not a refusal");
+
+        assert_eq!(
+            debts.len(),
+            1,
+            "the readable marker is still found: {debts:?}"
+        );
+        assert_eq!(
+            skipped.unreadable, 1,
+            "the undecodable file must be DISCLOSED, not silently treated as a \
+             file that was read and found clean: {skipped:?}"
+        );
+        assert!(
+            skipped.total() >= 1,
+            "an undisclosed skip makes the total a lie: {skipped:?}"
+        );
+        let note = skipped
+            .note()
+            .expect("something was not read, so the report must say so");
+        assert!(
+            note.contains("1 unreadable"),
+            "the human-readable summary must name it: {note}"
+        );
+    }
+
+    /// Counter-test: the lazy over-correction — counting every file as
+    /// unreadable, or refusing any tree containing one — must not pass.
+    #[tokio::test]
+    async fn a_fully_readable_tree_discloses_no_unreadable_files() {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        std::fs::write(
+            d.path().join("src/a.rs"),
+            "fn a() {}\n// TODO: marker one\n",
+        )
+        .expect("write a");
+        std::fs::write(d.path().join("src/b.rs"), "fn b() {}\n").expect("write b");
+
+        let (debts, skipped) = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect("analysis");
+        assert_eq!(debts.len(), 1, "{debts:?}");
+        assert_eq!(
+            skipped.unreadable, 0,
+            "no file failed to decode, so nothing may be reported as unread: \
+             {skipped:?}"
+        );
+        assert!(skipped.note().is_none(), "{skipped:?}");
+    }
+
+    /// And the extreme case still refuses rather than reporting a clean tree:
+    /// when EVERY candidate failed to decode, nothing was measured.
+    #[tokio::test]
+    async fn a_tree_of_only_undecodable_files_is_a_refusal_not_a_clean_report() {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        for name in ["x.rs", "y.rs"] {
+            let mut f = std::fs::File::create(d.path().join("src").join(name)).expect("create");
+            f.write_all(b"fn f() {}\n// TODO: \xff\xfe\n")
+                .expect("write");
+        }
+        let err = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect_err(
+                "nothing in this tree was decoded; reporting `0 violations` \
+                 would be the exact defect #1035 names",
+            );
+        let msg = err.to_string();
+        assert!(
+            msg.to_lowercase().contains("satd"),
+            "the refusal must name the analysis it declined to perform: {msg}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod include_tests_must_not_empty_the_denominator {
+    //! REGRESSION (#1050 P9): `--include-tests` only WIDENS the scan, so it
+    //! cannot turn "1 source file, all skipped" into "no source files were
+    //! found". It did, for any tree with a directory named `book`, `dist`,
+    //! `build`, `node_modules`, `target` or `__pycache__` — because the flag
+    //! selected a second discovery implementation whose directory policy
+    //! differed from the default one's.
+    //!
+    //! The trigger is the DIRECTORY NAME, not the language: `foo/a.js`
+    //! analysed normally in both runs.
+    use super::*;
+
+    async fn discovered_under(root: &std::path::Path, include_tests: bool) -> usize {
+        let detector = SATDDetector::new();
+        detector
+            .discover_files(root, include_tests)
+            .await
+            .expect("discovery must not error on a readable tree")
+            .0
+            .len()
+    }
+
+    /// The fixture must be a GIT checkout, because that is the only place the
+    /// two walks differed: the default path asks `git ls-files`, which lists
+    /// `book/a.js`, while the flag's path used a filesystem walk that never
+    /// descended into `book/`. In a NON-git tree both fall back to the same
+    /// filesystem walk and both report 0 — the same denominator-vanishing
+    /// defect, but symmetric, so it cannot show a disagreement. That
+    /// non-git zero is recorded here rather than fixed: widening the
+    /// filesystem fallback changes what `analyze satd` reads on every non-git
+    /// tree, which is a separate measurement.
+    ///
+    /// RED CONTROL: restoring the `collect_files_including_tests` branch makes
+    /// the `true` case 0 while the `false` case stays 1 — the exact pair the
+    /// two error messages were built from.
+    #[tokio::test]
+    async fn a_widening_flag_cannot_shrink_the_population() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().to_path_buf();
+        std::fs::create_dir_all(root.join("book")).expect("book dir");
+        std::fs::write(root.join("book/a.js"), "function a(){ return 1; }\n").expect("js");
+        // `--template=` keeps the user's global hook template out of the
+        // fixture; no commit is needed, `--others` lists untracked files.
+        let init = std::process::Command::new("git")
+            .args(["init", "-q", "--template="])
+            .current_dir(&root)
+            .output()
+            .expect("git must be available to reproduce this");
+        assert!(init.status.success(), "git init failed: {init:?}");
+
+        let without = discovered_under(&root, false).await;
+        let with = discovered_under(&root, true).await;
+
+        assert_eq!(
+            without, 1,
+            "the default walk sees the file; that is the baseline the flag must not lose"
+        );
+        assert!(
+            with >= without,
+            "--include-tests only widens: it found {with} where the default found {without}"
+        );
+    }
+
+    /// COUNTER-TEST: the fix must not make the flag a no-op. A tree with a real
+    /// test file still discovers strictly MORE with the flag than without.
+    #[tokio::test]
+    async fn the_flag_still_widens_where_there_is_something_to_widen_to() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().to_path_buf();
+        std::fs::create_dir_all(root.join("src")).expect("src");
+        std::fs::create_dir_all(root.join("tests")).expect("tests");
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").expect("lib");
+        std::fs::write(root.join("tests/it.rs"), "#[test] fn t() {}\n").expect("it");
+
+        let without = discovered_under(&root, false).await;
+        let with = discovered_under(&root, true).await;
+
+        assert_eq!(without, 1, "the test file is declined by default");
+        assert_eq!(with, 2, "…and reached by the flag");
+    }
+}
+
+#[cfg(test)]
+mod the_refusal_describes_the_run_that_produced_it {
+    //! Issue #1050 P9, second half. The refusal's remedy and its list of skip
+    //! reasons were fixed strings, so a run that had ALREADY passed
+    //! `--include-tests` was told, as its remedy, to pass `--include-tests` —
+    //! advice that cannot work — beside a reason list whose first entry
+    //! ("test") the flag in force had already ruled out.
+    //!
+    //! Advice that cannot work is the same defect class as #1045's "index is
+    //! stale, run `pmat query`" against a code path that never refreshes: a
+    //! sentence a reader will act on, and acting on it changes nothing.
+    use super::*;
+
+    fn refusal(include_tests: bool) -> String {
+        let error =
+            SATDDetector::nothing_measured(std::path::Path::new("/tmp/bookfix"), 1, include_tests);
+        error.to_string()
+    }
+
+    /// The half that regressed nothing: without the flag, the remedy is still
+    /// the one that works.
+    #[test]
+    fn the_default_run_is_told_about_the_flag_it_has_not_used() {
+        let msg = refusal(false);
+        assert!(msg.contains("pass --include-tests"), "{msg}");
+        assert!(msg.contains("all 1 source file(s)"), "{msg}");
+        assert!(msg.contains("test, example, fuzz"), "{msg}");
+    }
+
+    /// The fix: a run WITH the flag is never told to pass the flag, and is not
+    /// told that test-ness might be why its files were dropped.
+    #[test]
+    fn a_run_that_already_passed_the_flag_is_not_told_to_pass_it() {
+        let msg = refusal(true);
+        assert!(
+            !msg.contains("pass --include-tests"),
+            "the remedy names a flag that is already in force: {msg}"
+        );
+        assert!(
+            !msg.contains("test, example"),
+            "test-ness cannot be a skip reason under --include-tests: {msg}"
+        );
+        assert!(msg.contains("--include-tests is already in force"), "{msg}");
+    }
+
+    /// The counter-test bounding the correction. Only the REMEDY and the reason
+    /// list may move: the denominator, and the sentence that stops a gate
+    /// reading this as a pass, are identical in both runs. #1050 P9's first
+    /// half was exactly a denominator that vanished when the flag was added.
+    #[test]
+    fn the_measurement_half_of_the_sentence_is_identical_either_way() {
+        for msg in [refusal(false), refusal(true)] {
+            assert!(msg.contains("all 1 source file(s)"), "{msg}");
+            assert!(msg.contains("no SATD measurement was taken"), "{msg}");
+            assert!(msg.contains("This is not a clean result"), "{msg}");
+            assert!(!msg.contains("no source files were found"), "{msg}");
+        }
+    }
+}

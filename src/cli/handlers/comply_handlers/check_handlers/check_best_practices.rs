@@ -92,50 +92,77 @@ fn aggregate_violations(
     }
 }
 
+/// Splits CB-400/401/402 rows into what is SCORED and what is merely DISCLOSED.
+///
+/// `Severity::Info` is the disclosure channel: a row the check emits to describe
+/// its own scope rather than to accuse the repository of anything. Before #1049
+/// every row, whatever its severity, was counted as a violation, so there was no
+/// way to say "this file exists, here is what we found in it, and it is not
+/// yours" — the only expressible options were to fail the repo for pmat's own
+/// generated hook or to drop the file silently.
+///
+/// Scored rows keep their previous behaviour exactly: Error/Critical fail the
+/// check, Warning warns. Nothing that used to fail stops failing.
+#[derive(Default)]
+struct BashrsTally {
+    all_issues: Vec<String>,
+    disclosures: Vec<String>,
+    warning_count: usize,
+    error_count: usize,
+}
+
+impl BashrsTally {
+    fn absorb(&mut self, violations: &[comply_cb_detect::CbPatternViolation]) {
+        for v in violations {
+            let row = format!(
+                "{}: {} ({}:{})",
+                v.pattern_id, v.description, v.file, v.line
+            );
+            match v.severity {
+                comply_cb_detect::Severity::Info => self.disclosures.push(row),
+                comply_cb_detect::Severity::Error | comply_cb_detect::Severity::Critical => {
+                    self.error_count += 1;
+                    self.all_issues.push(row);
+                }
+                comply_cb_detect::Severity::Warning => {
+                    self.warning_count += 1;
+                    self.all_issues.push(row);
+                }
+            }
+        }
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
     use comply_cb_detect::{
         detect_cb400_git_hooks_quality, detect_cb401_makefile_quality,
         detect_cb402_shell_script_quality,
     };
-    let mut all_issues: Vec<String> = Vec::new();
-    let (mut warning_count, mut error_count) = (0, 0);
-    for v in &detect_cb400_git_hooks_quality(project_path) {
-        all_issues.push(format!(
-            "{}: {} ({}:{})",
-            v.pattern_id, v.description, v.file, v.line
-        ));
-        match v.severity {
-            comply_cb_detect::Severity::Error | comply_cb_detect::Severity::Critical => {
-                error_count += 1
-            }
-            _ => warning_count += 1,
-        }
-    }
-    for v in &detect_cb401_makefile_quality(project_path) {
-        all_issues.push(format!(
-            "{}: {} ({}:{})",
-            v.pattern_id, v.description, v.file, v.line
-        ));
-        match v.severity {
-            comply_cb_detect::Severity::Error | comply_cb_detect::Severity::Critical => {
-                error_count += 1
-            }
-            _ => warning_count += 1,
-        }
-    }
-    for v in &detect_cb402_shell_script_quality(project_path) {
-        all_issues.push(format!(
-            "{}: {} ({}:{})",
-            v.pattern_id, v.description, v.file, v.line
-        ));
-        match v.severity {
-            comply_cb_detect::Severity::Error | comply_cb_detect::Severity::Critical => {
-                error_count += 1
-            }
-            _ => warning_count += 1,
-        }
-    }
+    let mut tally = BashrsTally::default();
+    tally.absorb(&detect_cb400_git_hooks_quality(project_path));
+    tally.absorb(&detect_cb401_makefile_quality(project_path));
+    tally.absorb(&detect_cb402_shell_script_quality(project_path));
+    let BashrsTally {
+        all_issues,
+        disclosures,
+        warning_count,
+        error_count,
+    } = tally;
+    // Disclosures explain what the check did NOT score and why (#1049, #1020).
+    // They ride along in the message on every branch so that an exclusion can
+    // never be silent — including on the Pass branch, where a reader would
+    // otherwise have no way to tell "nothing was wrong" from "something was not
+    // looked at".
+    let disclosed = if disclosures.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\nDisclosed, NOT scored ({}):\n{}",
+            disclosures.len(),
+            format_violation_list(&disclosures)
+        )
+    };
     let total_violations = all_issues.len();
     if total_violations == 0 {
         ComplianceCheck {
@@ -147,9 +174,11 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
             // means "the files this check reached were clean", and saying
             // "All" made a claim about the repository that the scan never
             // supported.
-            message: "bashrs: the shell scripts and Makefiles this check reached pass \
-                      (see any CB-402-TRUNCATED / CB-402-UNMEASURED rows for what it did not)"
-                .into(),
+            message: format!(
+                "bashrs: the shell scripts and Makefiles this check reached pass \
+                 (see any CB-402-TRUNCATED / CB-402-UNMEASURED rows for what it did \
+                 not){disclosed}"
+            ),
             severity: Severity::Info,
         }
     } else if error_count > 0 {
@@ -157,10 +186,11 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
             name: "CB-400: Shell & Makefile Quality".into(),
             status: CheckStatus::Fail,
             message: format!(
-                "bashrs: {} errors, {} warnings:\n{}",
+                "bashrs: {} errors, {} warnings:\n{}{}",
                 error_count,
                 warning_count,
-                format_violation_list(&all_issues)
+                format_violation_list(&all_issues),
+                disclosed
             ),
             severity: Severity::Error,
         }
@@ -169,9 +199,10 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
             name: "CB-400: Shell & Makefile Quality".into(),
             status: CheckStatus::Warn,
             message: format!(
-                "bashrs: {} warnings:\n{}",
+                "bashrs: {} warnings:\n{}{}",
                 warning_count,
-                format_violation_list(&all_issues)
+                format_violation_list(&all_issues),
+                disclosed
             ),
             severity: Severity::Warning,
         }
@@ -991,5 +1022,66 @@ mod check_best_practices_tests {
         assert!(matches!(check.status, CheckStatus::Pass));
         assert!(check.message.contains("No violations detected"));
         assert!(check.message.contains("1 suppressed"));
+    }
+}
+
+#[cfg(test)]
+mod cb400_disclosure_tests {
+    //! #1049 / #1020: a hook pmat generated is pmat's output, not the audited
+    //! repository's. It must not fail the repository, and it must not vanish.
+    use super::*;
+
+    fn hooks(dir: &Path) -> std::path::PathBuf {
+        let h = dir.join(".git/hooks");
+        std::fs::create_dir_all(&h).expect("hooks dir");
+        h
+    }
+
+    /// Shell with real bashrs findings, so a clean verdict cannot be an
+    /// artefact of clean input.
+    const DIRTY: &str = "X=`ls`\nfor f in $X; do rm $f; done\ncd $1\n";
+
+    #[test]
+    fn a_pmat_generated_hook_does_not_fail_the_repository() {
+        let temp = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            hooks(temp.path()).join("pre-commit"),
+            format!("#!/bin/bash\n# auto-managed by PMAT — DO NOT EDIT\n{DIRTY}"),
+        )
+        .expect("write hook");
+
+        let check = check_shell_makefile_quality(temp.path());
+        assert_eq!(
+            check.status,
+            CheckStatus::Pass,
+            "pmat's own generated hook must not fail the repo: {}",
+            check.message
+        );
+        assert!(
+            check.message.contains("CB-400-PMAT-GENERATED"),
+            "the exclusion must be disclosed in the message, not silent: {}",
+            check.message
+        );
+    }
+
+    /// COUNTER-TEST. The over-correction is to route every row through the
+    /// disclosure channel, which would make CB-400 unable to fail at all.
+    #[test]
+    fn a_hook_the_repository_wrote_still_fails_the_repository() {
+        let temp = tempfile::TempDir::new().expect("tempdir");
+        std::fs::write(
+            hooks(temp.path()).join("pre-commit"),
+            format!("#!/bin/bash\n# our own gate\n{DIRTY}"),
+        )
+        .expect("write hook");
+
+        let check = check_shell_makefile_quality(temp.path());
+        assert_ne!(
+            check.status,
+            CheckStatus::Pass,
+            "a hook the repo owns must still be scored; CB-400 must stay able to \
+             fail: {}",
+            check.message
+        );
     }
 }

@@ -30,6 +30,7 @@ impl GitHookManager {
 
         let hook_content = r#"#!/usr/bin/env bash
 # PMAT Quality Gate Pre-Commit Hook
+# auto-managed by PMAT — DO NOT EDIT
 
 set -e
 
@@ -96,6 +97,7 @@ echo "✅ All quality gates passed!"
 
         let hook_content = r#"#!/usr/bin/env bash
 # PMAT Commit Message Quality Hook
+# auto-managed by PMAT — DO NOT EDIT
 
 COMMIT_MSG_FILE=$1
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")

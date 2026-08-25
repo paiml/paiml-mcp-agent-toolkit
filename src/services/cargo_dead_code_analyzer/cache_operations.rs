@@ -99,9 +99,14 @@ impl CargoDeadCodeAnalyzer {
             report: report.clone(),
         };
 
-        // Ensure .pmat directory exists
-        let cache_dir = self.project_path.join(".pmat");
-        let _ = std::fs::create_dir_all(&cache_dir);
+        // Ensure .pmat exists AND ignores itself.
+        //
+        // Issue #1050 P8. This wrote `dead-code-cache-<scope>-d<n>.json` into
+        // the analysed project and left it as `?? .pmat/` in that project's git
+        // status. Projects were told to ignore `.pmat/dead-code-cache.json`;
+        // the key above grew a suffix and that rule stopped matching, in
+        // silence. The rule now ships with the directory.
+        let _ = crate::utils::pmat_cache_dir::ensure_cache_dir(&self.project_path);
 
         // Write cache file
         if let Ok(content) = serde_json::to_string_pretty(&cached) {

@@ -647,3 +647,10 @@ mod build_support;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod mutation_diff_gate_tests;
+
+// #1023: the `broken-tests` quarantine census. Registered here for the same
+// reason as the two modules above — `autotests = false`, so an unregistered
+// test file is silently never compiled, and a census of unrun tests that does
+// not itself run would be self-refuting. `cargo test --lib -- quarantine`.
+#[cfg(test)]
+mod broken_tests_quarantine_tests;

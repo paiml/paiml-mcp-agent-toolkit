@@ -75,6 +75,13 @@ pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
 
         ComplyCommands::Coherence { path, format } => handle_coherence(&path, format),
 
+        ComplyCommands::NumericClaims {
+            path,
+            format,
+            min_sites,
+            include_generated,
+        } => handle_numeric_claims(&path, format, min_sites, include_generated),
+
         ComplyCommands::Review {
             path,
             format,

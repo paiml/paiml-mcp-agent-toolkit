@@ -5,6 +5,7 @@
 //! complexity across different programming languages, following the
 //! Toyota Way principle of quality and single responsibility.
 
+pub mod ast_fallback;
 mod c;
 mod complexity;
 mod dynamic;
@@ -84,44 +85,59 @@ fn is_included_by_sibling(path: &Path, name: &str) -> bool {
     let mut candidate = name.to_string();
     while let Some(pos) = candidate.rfind('_') {
         candidate.truncate(pos);
-        let parent_path = dir.join(format!("{candidate}.rs"));
-        if parent_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&parent_path) {
-                if content.contains(&needle) {
-                    return true;
-                }
-            }
-        }
-        // Also check mod.rs in a subdirectory with that name
-        let mod_path = dir.join(&candidate).join("mod.rs");
-        if mod_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&mod_path) {
-                if content.contains(&needle) {
-                    return true;
-                }
-            }
+        // A sibling `<candidate>.rs`, or `mod.rs` in a subdirectory of that
+        // name — the two shapes a parent module takes.
+        if file_contains(&dir.join(format!("{candidate}.rs")), &needle)
+            || file_contains(&dir.join(&candidate).join("mod.rs"), &needle)
+        {
+            return true;
         }
     }
     false
 }
 
+/// Does `path` exist, read as UTF-8, and contain `needle`?
+///
+/// An unreadable or absent file is `false`, which is what the four-deep
+/// `exists()` / `read_to_string()` / `contains()` nest above used to spell out
+/// twice. Same answer, same syscalls minus the redundant `exists()` — a failed
+/// read of a missing file is already the negative.
+fn file_contains(path: &Path, needle: &str) -> bool {
+    std::fs::read_to_string(path).is_ok_and(|content| content.contains(needle))
+}
+
 async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplexityMetrics> {
+    // Issue #1068: every branch below records WHICH analyzer produced the
+    // file's numbers, here at the point where the choice is made. See
+    // `ast_fallback` — the recording is inert unless a run armed it.
+    use ast_fallback::Provenance;
+
     if language != Language::Rust {
+        // Not a degradation: this build has no AST complexity analyzer for
+        // that language, so the heuristic counter is the only analyzer there
+        // has ever been for it.
+        ast_fallback::record(path, Provenance::Heuristic);
         return None;
     }
 
     // Skip include!() fragment files — they aren't standalone Rust
     if is_include_fragment(path) {
+        // Its own bucket: Rust that pmat HAS an AST analyzer for and
+        // deliberately does not apply. Neither "no analyzer exists" nor "the
+        // parse failed", and by far the largest of the three in this repo.
+        ast_fallback::record(path, Provenance::HeuristicIncludeFragment);
         return None;
     }
 
     if let Ok(metrics) = crate::services::ast_rust::analyze_rust_file_with_complexity(path).await {
+        ast_fallback::record(path, Provenance::Ast);
         Some(metrics)
     } else {
         eprintln!(
             "Warning: AST analysis failed for {}, using heuristic fallback",
             path.display()
         );
+        ast_fallback::record(path, Provenance::HeuristicFallback);
         None
     }
 }

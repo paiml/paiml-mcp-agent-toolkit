@@ -309,3 +309,15 @@ diagnose.json
 quality_gate.json
 rust_score.json
 satd.json
+
+# Ad-hoc audit harnesses left in the repo root by interactive sessions.
+#
+# Untracked AND unignored is the dangerous combination: `git add -A` sweeps them
+# into a commit as root clutter, and a fix applied to one of them looks landed
+# while living outside version control. That happened during the 3.32.0 cycle —
+# half a fix for #1062 was applied to `run_audit2.sh`, which git could not see.
+#
+# Ignored rather than deleted: they belong to whoever wrote them. Anything worth
+# keeping belongs in scripts/dogfood/ with a name and a guard, not in the root.
+/run_audit*.sh
+/run_checks*.sh

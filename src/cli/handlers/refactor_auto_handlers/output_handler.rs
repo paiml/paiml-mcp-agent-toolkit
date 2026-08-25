@@ -27,8 +27,10 @@ include!("output_handler_orchestration.rs");
 // Tests extracted to refactor_auto_handlers_tests.rs for file health compliance (CB-040)
 // QUARANTINED, and the stated reason was wrong. This said "Test file is
 // missing"; the file exists at src/cli/handlers/refactor_auto_handlers_tests.rs
-// (40,150 bytes) — one directory ABOVE this one, so the `#[path]` below is also
-// wrong and would need `../`.
+// (40,150 bytes) — one directory ABOVE this one. The `#[path]` was wrong too,
+// naming a sibling that does not exist; it has been corrected to `../` (#1023)
+// so the declaration at least points at the file it is talking about. Nothing
+// checks a `#[path]` under a disabled `cfg`, which is why it stayed wrong.
 //
 // The real reason it cannot be enabled: it `include!`s
 // refactor_auto_comprehensive_tests.rs, whose CB-040 extraction left a module
@@ -41,7 +43,7 @@ include!("output_handler_orchestration.rs");
 // A wrong reason is worse than no reason: it tells the next reader to go looking
 // for a file that is sitting right there.
 #[cfg(all(test, feature = "broken-tests"))]
-#[path = "refactor_auto_handlers_tests.rs"]
+#[path = "../refactor_auto_handlers_tests.rs"]
 mod tests;
 
 #[cfg(test)]
