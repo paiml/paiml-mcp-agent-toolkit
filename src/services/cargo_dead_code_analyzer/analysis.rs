@@ -471,10 +471,7 @@ impl CargoCheckOutcome {
     fn completed(json: String) -> Self {
         Self {
             json,
-            scan: crate::models::dead_code::CompilerScanReport::reduced(
-                crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE,
-                "MUT-1076-B Cargo.lock allow(dead_code)".to_string(),
-            ),
+            scan: crate::models::dead_code::CompilerScanReport::full(),
         }
     }
 

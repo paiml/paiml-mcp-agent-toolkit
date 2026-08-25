@@ -1305,12 +1305,29 @@ pub fn bundled_entry() -> u32 {
     // the several hundred flag-efficacy invocations against this corpus never
     // pay to read it.
     {
+        // WIDE, not TALL. The first version padded with 10,000,001 NEWLINES,
+        // which made this one file ~99.99% of every line the dead-code analyser
+        // walks — and `analyze dead-code` reports dead code as a percentage OF
+        // ALL LINES WALKED. The corpus went from 3.8% dead to 0.0044%, so the
+        // flag-efficacy sweep's `--max-percentage 1.0` probe stopped
+        // discriminating and reported `--fail-on-violation` and
+        // `--max-percentage` as no-ops. The flags were fine; the corpus had
+        // been diluted underneath them.
+        //
+        // Padding with a long comment line instead keeps the file over
+        // `MAX_FILE_BYTES` — which is all the SATD size-cap bucket needs — while
+        // adding ~10k lines rather than 10M, leaving every other analyser's
+        // denominator where it was.
         let mut oversized = Vec::with_capacity(10_000_001);
         oversized.extend_from_slice(
             b"// TODO: this marker must NOT be counted: the file is past the \
               size cap, so it is reported as skipped rather than analysed.\n",
         );
-        oversized.resize(10_000_001, b'\n');
+        let filler = format!("// {}\n", "x".repeat(996));
+        while oversized.len() < 10_000_001 {
+            oversized.extend_from_slice(filler.as_bytes());
+        }
+        oversized.truncate(10_000_001);
         std::fs::write(root.join("src/oversized.rs"), &oversized).expect("write oversized.rs");
     }
 
