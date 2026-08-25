@@ -159,6 +159,9 @@ pub mod duplicate_detector;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod duplicate_detector_property_tests;
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod duplicate_detector_scaling_tests;
 pub mod embedded_templates;
 pub mod enhanced_ast_visitor;
 pub mod enhanced_language_detection; // BUG-011: Multi-language detection with confidence

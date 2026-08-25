@@ -58,8 +58,9 @@ impl CrossCrateBaseline {
     }
 
     pub(super) fn save(&self, workspace_path: &Path) -> Result<()> {
-        let pmat_dir = workspace_path.join(".pmat");
-        std::fs::create_dir_all(&pmat_dir)?;
+        // Created with its own ignore rule (#1070); the baseline write below
+        // reports if the directory could not be made.
+        let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(workspace_path);
         let baseline_path = pmat_dir.join("cross-crate-baseline.json");
         let content = serde_json::to_string_pretty(self)?;
         std::fs::write(baseline_path, content)?;

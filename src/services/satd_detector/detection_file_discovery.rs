@@ -248,13 +248,33 @@ impl SATDDetector {
     /// ancestor directory named `examples`, `demo`, `fuzz`, `vendor`, `book`
     /// or `target` — none of which the analysed project chose — excluded the
     /// entire tree and reported "0 violations in 0 files" with exit 0 (#923).
+    ///
+    /// `examples/` and `demo/` are NOT on this list any more (#1035, Cluster 1).
+    /// They were, and the audits behind that issue measured what it cost: on
+    /// pforge, 25 `.rs` files — 37% of the repository — were invisible to every
+    /// SATD run, confirmed the same way on depyler, forjar and pepita. An
+    /// example is shipped code: `cargo build --examples` compiles it, `cargo
+    /// publish` ships it, and it is the first thing a new user reads. A marker
+    /// there is debt like any other, and the exclusion was not disclosed — the
+    /// files did not appear as skipped, they simply were not in the answer.
+    ///
+    /// The filename rule that went with it (`contains("_demo")`) is gone for the
+    /// same reason #925 deleted `contains("/build.rs")`: a substring test on a
+    /// name excludes production source that merely reads like support code —
+    /// here `src/services/repo_score/scorers/demo_scorer_find_demo_files.rs`.
+    ///
+    /// What stays excluded is code this project cannot fix in place (vendored,
+    /// generated, minified), its own build manifests, fuzz harnesses, and
+    /// pmat's own SATD analyser. Every one of those is COUNTED — see
+    /// [`FileCensus`](crate::services::satd_detector::FileCensus) — so a
+    /// narrowing shows up as a change in a disclosed denominator rather than as
+    /// a silent drop in findings.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = source_scope::project_relative_str(file_path);
 
         self.is_satd_analysis_tool(&path_str)
             || self.is_build_or_config_file(&path_str)
-            || self.is_example_or_demo(&path_str)
             || self.is_fuzz_target(&path_str)
             || self.is_generated_or_vendor(&path_str)
     }
@@ -278,11 +298,6 @@ impl SATDDetector {
         matches!(path_str, "/build.rs" | "/Cargo.toml")
             || path_str.ends_with(".gitignore")
             || path_str.ends_with("README.md")
-    }
-
-    fn is_example_or_demo(&self, path_str: &str) -> bool {
-        source_scope::has_dir_component(path_str, &["examples", "demo"])
-            || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {

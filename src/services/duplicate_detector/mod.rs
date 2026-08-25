@@ -17,9 +17,9 @@ pub use lsh::LshIndex;
 pub use minhash::MinHashGenerator;
 pub use tokenizer::{IdentifierScope, UniversalFeatureExtractor};
 pub use types::{
-    CloneGroup, CloneInstance, CloneReport, CloneSummary, CloneType, CodeFragment,
-    DuplicateDetectionConfig, DuplicationHotspot, FragmentId, Language, MinHashSignature, Token,
-    TokenKind,
+    CloneGroup, CloneInstance, CloneReport, CloneSearchStats, CloneSummary, CloneType,
+    CodeFragment, DuplicateDetectionConfig, DuplicationHotspot, FragmentId, Language,
+    MinHashSignature, Token, TokenKind,
 };
 
 // Tests extracted to duplicate_detector_tests.rs for file health compliance (CB-040)

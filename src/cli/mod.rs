@@ -7,6 +7,8 @@
 pub mod analysis;
 pub mod analysis_helpers;
 pub mod analysis_utilities;
+/// #1029: which `analyze` subcommands MCP advertises, as a total match.
+pub mod analyze_mcp_exposure;
 pub mod args;
 pub mod cache_clearing;
 pub mod colors;

@@ -20,11 +20,40 @@
 //! one command's disclosure. Instead the ledger is armed for the duration of
 //! one complexity run and disarmed when the run collects it, so every other
 //! caller in the process pays one relaxed atomic load and stores nothing.
+//!
+//! ## Why one run at a time
+//!
+//! A process-global ledger with `arm`/`take` is only correct for ONE run at a
+//! time, and that was not enforced. Two concurrent analyses interleaved as:
+//! A arms, B arms and CLEARS A's entries, A's files record, B takes and steals
+//! them, A takes and gets nothing — reporting `unrecorded: N` for a walk whose
+//! every file WAS recorded. Reproduced by the test suite the moment two
+//! complexity tests ran in parallel:
+//!
+//! ```text
+//! "analysis_provenance":{"ast":0,...,"unrecorded":2,"files_analyzed":2}
+//! ```
+//!
+//! That is not a test artifact. `mcp-http` is in the default feature set as of
+//! 3.32.0, so the MCP and HTTP servers both serve concurrent `analyze_complexity`
+//! calls in one process, where the same interleaving loses or cross-attributes
+//! provenance between unrelated requests.
+//!
+//! `arm` therefore takes an async lock held until `take` returns it, so runs
+//! queue instead of corrupting each other. The cost is small and bounded: the
+//! guarded region is one CPU-bound walk that was never going to parallelise
+//! usefully against another copy of itself, and every non-complexity caller
+//! still pays only the relaxed atomic load.
+//!
+//! The alternative — a task-local run id — was rejected because it would go
+//! SILENT rather than blocking if any future caller moved the walk onto
+//! `spawn_blocking` or rayon: records made off-task would land nowhere and the
+//! run would report `unrecorded`, which is the exact failure being fixed.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 /// How a file's numbers were obtained.
 ///
@@ -102,20 +131,43 @@ pub(crate) fn record(path: &Path, provenance: Provenance) {
         .insert(key(path), provenance);
 }
 
+fn run_lock() -> Arc<tokio::sync::Mutex<()>> {
+    static RUN_LOCK: OnceLock<Arc<tokio::sync::Mutex<()>>> = OnceLock::new();
+    Arc::clone(RUN_LOCK.get_or_init(|| Arc::new(tokio::sync::Mutex::new(()))))
+}
+
+/// Exclusive right to record provenance. Held from `arm` until `take`.
+///
+/// Not `Clone`, and `take` consumes it, so the ledger cannot be collected twice
+/// or read by a run that never armed it.
+pub struct RunGuard {
+    /// Underscore-named rather than carrying an allow attribute: the permit is
+    /// held for its Drop, never read, and this repo ratchets allow-attribute
+    /// counts by literal string, so a suppression here would raise the baseline.
+    _permit: tokio::sync::OwnedMutexGuard<()>,
+}
+
 /// Start recording for one run, discarding anything a previous run left.
-pub fn arm() {
+///
+/// Waits for any run already in flight rather than clearing its ledger out from
+/// under it — see the module note on why one run at a time.
+pub async fn arm() -> RunGuard {
+    let guard = run_lock().lock_owned().await;
     ledger()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .clear();
     ARMED.store(true, Ordering::Relaxed);
+    RunGuard { _permit: guard }
 }
 
-/// Stop recording and take what this run observed.
+/// Stop recording and take what this run observed, releasing the run lock.
 #[must_use]
-pub fn take() -> BTreeMap<String, Provenance> {
+pub fn take(guard: RunGuard) -> BTreeMap<String, Provenance> {
     ARMED.store(false, Ordering::Relaxed);
-    std::mem::take(&mut *ledger().lock().unwrap_or_else(PoisonError::into_inner))
+    let observed = std::mem::take(&mut *ledger().lock().unwrap_or_else(PoisonError::into_inner));
+    drop(guard);
+    observed
 }
 
 /// How many files fell into each bucket, and the population they partition.

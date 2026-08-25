@@ -7,6 +7,7 @@
 use super::{format_grade, TdgCommandConfig};
 use crate::cli::colors as c;
 use crate::cli::TdgOutputFormat;
+use crate::tdg::formatters::ungraded;
 use anyhow::Result;
 
 /// What the project aggregate knows that a bare `TdgScore` cannot say.
@@ -55,6 +56,25 @@ fn grade_headline(score: &crate::tdg::TdgScore, project: ProjectContext<'_>) -> 
 /// True when the run analysed no file at all, so there is no breakdown to show.
 fn nothing_was_measured(project: ProjectContext<'_>) -> bool {
     project.is_some_and(|p| p.total_files == 0)
+}
+
+/// The walk census, when there is a project walk to take one of.
+fn census(project: ProjectContext<'_>) -> Option<ungraded::WalkCensus> {
+    project.map(ungraded::WalkCensus::of)
+}
+
+/// True when this run did not measure everything it walked (issue #1064).
+///
+/// `nothing_was_measured` above is the ZERO case, and it is what the JSON's
+/// `not_measured` used to report — so a tree where one file of sixteen graded
+/// answered `false`, which a machine consumer reads as "the headline covers the
+/// tree". It does not: fifteen files were walked and refused. The boolean now
+/// answers the question its name asks, and the census beside it says by how
+/// much, so nothing has to be inferred from a bare `true`.
+///
+/// A single-file run has no walk to be incomplete (`project` is `None`).
+fn walk_was_incomplete(project: ProjectContext<'_>) -> bool {
+    census(project).is_some_and(|c| !c.measured_the_whole_walk())
 }
 
 /// Format TDG output based on config (cognitive complexity ≤3)
@@ -327,14 +347,25 @@ fn format_tdg_score_json(
         "file": score.file_path.as_ref().map(|p| p.to_string_lossy().to_string()),
         "language": format!("{:?}", score.language),
         "confidence": score.confidence,
+        // The census PARTITIONS the walk: analyzed plus ungraded is walked, and
+        // there is no third bucket. `files_analyzed: 1` was the whole census on
+        // a sixteen-file tree, which reads as a one-file project rather than a
+        // one-sixteenth measurement (issue #1064).
         "files_analyzed": project.map(|p| p.total_files),
+        "files_ungraded": project.map(|p| p.ungraded_files.len()),
+        "files_walked": census(project).map(|c| c.walked()),
         "grade_capped": project.map(|p| p.grade_capped),
         "grade_uncapped": project
             .filter(|p| p.grade_capped)
             .and_then(crate::tdg::ProjectScore::uncapped_grade)
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
-        "not_measured": nothing_was_measured(project),
+        // TRUE whenever the run left part of its own walk unmeasured — the
+        // zero-file case this always covered, and now also the partial one it
+        // denied. `score.total` below stays keyed to `nothing_was_measured`:
+        // a partial refusal is not a refusal, and the graded subset really does
+        // have a score.
+        "not_measured": walk_was_incomplete(project),
         // Issue #1050 P2. The table caps its list and tells the reader
         // `… and N more (--format json lists every one under "ungraded_files")`
         // — a promise compiled into the shipped binary as a literal, against a
@@ -352,11 +383,7 @@ fn format_tdg_score_json(
         // The list is UNCAPPED here. The 49-column box truncates because it is
         // a box; a JSON document that silently dropped rows would reintroduce
         // the same defect in the format the box points at as the escape hatch.
-        "ungraded_files": project.map(|p| p
-            .ungraded_files
-            .iter()
-            .map(|u| serde_json::json!({ "path": u.path, "reason": u.reason }))
-            .collect::<Vec<_>>()),
+        "ungraded_files": project.map(|p| ungraded::ungraded_json(&p.ungraded_files)),
         // Issue #1050. The duplication component measured only WITHIN each file,
         // so ten byte-identical files each scored the full 20/20 and their mean
         // did too — full marks for a tree `analyze duplicates` calls 100%
@@ -461,7 +488,7 @@ fn format_tdg_score_markdown(
     // other markdown renderer, so the two cannot drift apart again.
     if let Some(p) = project.filter(|p| !p.ungraded_files.is_empty()) {
         output.push_str("\n## Not Graded\n\n");
-        for line in crate::tdg::formatters::ungraded::ungraded_markdown_lines(&p.ungraded_files) {
+        for line in ungraded::ungraded_markdown_lines(&p.ungraded_files) {
             output.push_str(&line);
             output.push('\n');
         }
@@ -770,6 +797,75 @@ mod cap_disclosure_tests {
             Some(0),
             "a clean walk must publish an empty list, not a row and not nothing"
         );
+    }
+
+    /// Issue #1064. The list arrived; the CENSUS still denied it. On the
+    /// 16-file reproducer the document carried fifteen `ungraded_files` entries
+    /// beside `files_analyzed: 1` and `not_measured: false` — a run that listed
+    /// its refusals and asserted in the same breath that there had been none.
+    /// A consumer testing the boolean (the cheap test, and the one the key name
+    /// invites) was told the headline covered the tree.
+    ///
+    /// `not_measured` now means what a reader takes it to mean: this run did
+    /// not measure everything it walked. And the counts PARTITION — walked is
+    /// analyzed plus ungraded — so the claim can be checked instead of
+    /// believed.
+    ///
+    /// RED CONTROL: at HEAD this fails on the first assertion,
+    /// `not_measured: false` against fifteen refused files, and again on all
+    /// three census keys, which do not exist.
+    #[test]
+    fn json_says_the_walk_was_incomplete_when_files_were_refused() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for i in 0..15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "no TDG analyzer for .sh".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["not_measured"], true,
+            "fifteen of sixteen walked files were never graded, and the \
+             document said false: {json}"
+        );
+        assert_eq!(value["files_analyzed"], 1, "{json}");
+        assert_eq!(value["files_ungraded"], 15, "{json}");
+        assert_eq!(
+            value["files_walked"], 16,
+            "the census must add up, or it is the same defect one key over: {json}"
+        );
+        // A PARTIAL refusal is not a refusal: the score over the file that did
+        // grade is still a measurement and must not be nulled out.
+        assert_eq!(
+            value["score"]["total"], 100.0,
+            "the graded subset still has a score: {json}"
+        );
+    }
+
+    /// COUNTER-TEST for the above. "Always say the walk was incomplete" would
+    /// pass it. A project where every walked file graded has to say so: false,
+    /// an empty list, and a census whose ungraded column is zero.
+    #[test]
+    fn json_says_the_walk_was_whole_when_nothing_was_refused() {
+        let project = ProjectScore::aggregate(vec![file_at(100.0), file_at(90.0)]);
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["not_measured"], false,
+            "nothing was refused; claiming otherwise is the fix over-applied: {json}"
+        );
+        assert_eq!(value["files_walked"], 2, "{json}");
+        assert_eq!(value["files_analyzed"], 2, "{json}");
+        assert_eq!(value["files_ungraded"], 0, "{json}");
     }
 
     /// The markdown renderer printed the headline over the subset that parsed

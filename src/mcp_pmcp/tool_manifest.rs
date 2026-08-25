@@ -11,8 +11,13 @@
 //! drift-guard test pins this list to the server's actual `.tool(...)`
 //! registrations so the two can never silently diverge.
 
-/// The 16 tools registered by `SimpleUnifiedServer::run()`, in registration
+/// The 19 tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
+///
+/// Which `analyze_*` tools belong here is not a judgement made in this file:
+/// [`crate::cli::analyze_mcp_exposure`] decides it with a total match over
+/// `AnalyzeCommands`, and `every_advertised_tool_is_actually_served` fails when
+/// this list does not carry what that registry promises (#1029).
 pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     (
         "analyze_complexity",
@@ -37,6 +42,18 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     (
         "analyze_big_o",
         "Estimate algorithmic complexity of functions",
+    ),
+    (
+        "analyze_reachability",
+        "Report tracked .rs files no compilation unit reaches",
+    ),
+    (
+        "analyze_hardcoded_paths",
+        "Find machine-specific absolute paths baked into source",
+    ),
+    (
+        "analyze_vacuous_tests",
+        "Find #[test] functions that cannot fail",
     ),
     (
         "quality_gate",
@@ -78,7 +95,23 @@ fn tool_schema(name: &str) -> serde_json::Value {
         name,
         "refactor.nextIteration" | "refactor.getState" | "refactor.stop" | "pmat_index_stats"
     );
-    if no_arg {
+    // ...except the three repo-wide analyzers, which take ONE project root.
+    // The manifest is deliberately minimal, but minimal is not the same as
+    // wrong: advertising `paths` for a tool whose handler rejects it would put
+    // an unusable argument name in a file that ships inside the crate (#1029).
+    let project_root = matches!(
+        name,
+        "analyze_reachability" | "analyze_hardcoded_paths" | "analyze_vacuous_tests"
+    );
+    if project_root {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string"}
+            },
+            "required": ["project_path"]
+        })
+    } else if no_arg {
         serde_json::json!({
             "type": "object",
             "properties": {},
@@ -196,8 +229,8 @@ mod tests {
         );
         assert_eq!(
             declared.len(),
-            16,
-            "the live server advertises 16 tools; the 4 refactor.* tools were unregistered in EV-0 (#999) because their engine synthesizes violations from a path substring"
+            19,
+            "the live server advertises 19 tools: 16 after the 4 refactor.* tools were unregistered in EV-0 (#999) for synthesizing violations from a path substring, plus the 3 forensic analyzers #1029 found CLI-only by omission"
         );
     }
 

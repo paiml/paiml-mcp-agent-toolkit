@@ -62,42 +62,40 @@ pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     check_satd_with_scope(project_path).await.map(|(v, _)| v)
 }
 
-/// As [`check_satd`], but also returns WHAT THE CHECK DECLINED TO READ.
+/// As [`check_satd`], but also returns THE POPULATION IT MEASURED OVER.
 ///
-/// `analyze_project` already computes a full `SkipCounts` — tests, out-of-scope
-/// (`examples/`, `demo/`, fuzz, generated), minified/vendor, over the 500 KB
-/// threshold, and unreadable — and `check_satd` threw every one of them away,
-/// keeping only `satd_result.items`. So `pmat quality-gate --checks satd` shipped
-/// `satd_violations: N` with no statement of the population N was measured over,
-/// which is #1035's root cause one level above the detector: an absent finding
-/// rendered identically whether the file was read and clean or never read.
+/// `analyze_project` computes a full census — how many files were walked, how
+/// many were read, and the rest by reason — and `check_satd` threw every one of
+/// those numbers away, keeping only `satd_result.items`. So
+/// `pmat quality-gate --checks satd` shipped `satd_violations: N` with no
+/// statement of what N was measured over, which is #1035's root cause one level
+/// above the detector: an absent finding rendered identically whether the file
+/// was read and clean or never read.
 ///
-/// It is not hypothetical, and the two surfaces disagree because of it. Over a
-/// fixture holding `src/lib.rs` (a marker), `examples/demo.rs` (two markers) and
-/// a 600 KB `src/big.rs` (a marker):
+/// It was not hypothetical, and the two surfaces DISAGREED because of it. Over a
+/// fixture holding `src/lib.rs` (a marker), `examples/hello.rs` (two markers)
+/// and an 800 KB `src/big.rs` (a marker), on the pre-fix build:
 ///
 /// ```text
 ///   pmat analyze satd            Found 2 SATD violations in 2 files
-///                                (1 file(s) not read: 1 examples/demo/fuzz/generated)
-///   pmat quality-gate --checks satd   "satd_violations": 1, "files_examined": 4
+///                                (4 file(s) not read: 1 test, 3 out of scope)
+///   pmat quality-gate --checks satd   "satd_violations": 1, "files_examined": 7
 /// ```
 ///
-/// `analyze satd` reads the 600 KB file (its `skip_reason_for_analysis` declines
-/// only *minified* content over 1 MB); the gate's `skip_reason` drops anything
-/// over 500 KB. Whether to unify the two thresholds is a behaviour change the
-/// detector deliberately defers — see `skip_reason_for_analysis` — but the gate
-/// stating the scope it measured over is not, and without it a reader cannot
-/// see that the two numbers describe different populations at all.
-///
-/// `files_examined` beside it does not close this: it is counted separately by
-/// `count_examined_sources` over the whole tree (4 above, including `Cargo.toml`
-/// and the `examples/` file no check read), so it is a population the gate could
-/// have looked at, not the one it did.
+/// Four markers existed; one surface saw two, the other one, and neither said
+/// why. Both causes are fixed at the detector: `examples/` is shipped code and
+/// is analysed, and the two size thresholds are now one
+/// ([`MAX_FILE_BYTES`](crate::services::satd_detector::MAX_FILE_BYTES)), so the
+/// two commands read the same population. What remains is that the gate must
+/// STATE that population, because `files_examined` beside it does not: that is
+/// counted separately by `count_examined_sources` over the whole tree (7 above,
+/// including `Cargo.toml`), so it is a population the gate could have looked at,
+/// not the one it did.
 pub async fn check_satd_with_scope(
     project_path: &Path,
 ) -> Result<(
     Vec<QualityViolation>,
-    crate::services::satd_detector::SkipCounts,
+    crate::services::satd_detector::FileCensus,
 )> {
     // Toyota Way: Use the ONE proper implementation, not duplicate logic
     use crate::services::satd_detector::SATDDetector;
@@ -117,7 +115,7 @@ pub async fn check_satd_with_scope(
         .map(satd_violation_from_debt)
         .collect();
 
-    Ok((violations, satd_result.skipped.clone()))
+    Ok((violations, satd_result.census.clone()))
 }
 
 /// SATD findings for ONE file, from the same detector and the same severity

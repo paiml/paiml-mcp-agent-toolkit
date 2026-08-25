@@ -1242,14 +1242,14 @@ pub fn copy_prefix(src: &[u8], dst: &mut [u8]) {
     //
     // `analyze satd` reports `files_not_read` broken down by reason, and two of
     // those buckets read 0 for every corpus — not because the counters are
-    // broken (both fire: an `examples/` file books `out_of_scope`, a `.min.`
-    // file books `minified_or_vendor`, verified one file at a time) but because
-    // no corpus contained anything for them to count. A bucket that is 0 on
-    // every input is indistinguishable from a bucket nothing can ever reach,
-    // which is the very thing this harness exists to catch.
+    // broken (both fire: a `vendor/` file books `out_of_scope`, a `.min.` file
+    // books `minified_or_vendor`, verified one file at a time) but because no
+    // corpus contained anything for them to count. A bucket that is 0 on every
+    // input is indistinguishable from a bucket nothing can ever reach, which is
+    // the very thing this harness exists to catch.
     //
     // Neither is declared in `lib.rs`: `bundled.min.rs` is not a valid module
-    // name, and `examples/demo.rs` is cargo's own target layout. Both are still
+    // name, and `vendor/upstream.rs` is not part of the crate. Both are still
     // walked by the analysers, which is the point.
     std::fs::write(
         root.join("src/bundled.min.rs"),
@@ -1409,11 +1409,39 @@ pub fn bundled_entry() -> u32 {
          }\n",
     )
     .expect("write helper_tests.rs");
+    // A VENDORED file: code this project cannot fix in place, so it books
+    // `out_of_scope` rather than being read.
+    //
+    // This used to be `examples/demo.rs`, which stopped booking that bucket in
+    // #1035: an example is shipped, compiled code and is analysed now, so a
+    // marker in it is a FINDING. The bucket still needs an input, and vendored
+    // source is the case it actually exists for.
+    std::fs::create_dir_all(root.join("vendor")).expect("mkdir vendor");
+    std::fs::write(
+        root.join("vendor/upstream.rs"),
+        "//! Vendored dependency: not ours to fix, so it books `out_of_scope`
+//! rather than being read.
+
+// TODO: upstream still uses the old API
+// HACK: patched locally so the build succeeds
+
+pub fn upstream_entry() -> u32 {
+    3
+}
+",
+    )
+    .expect("write vendor/upstream.rs");
+
+    // An EXAMPLE target, which #1035 moved into the analysed population: it is
+    // built by `cargo build --examples` and shipped by `cargo publish`, so a
+    // marker in it is real debt. It is here as the CONTROL for the bucket
+    // above — the two files are byte-similar and land on opposite sides of the
+    // partition, so a rule that quietly re-excluded examples would show up as a
+    // drop in findings rather than as nothing at all.
     std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
     std::fs::write(
         root.join("examples/demo.rs"),
-        "//! Example target: excluded from production scope, so it books
-//! `out_of_scope` rather than being read.
+        "//! Example target: shipped, compiled code, so it is READ.
 
 // TODO: the example still uses the old API
 // HACK: hardcoded so the demo always succeeds

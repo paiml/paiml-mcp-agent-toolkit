@@ -4,7 +4,8 @@ use crate::mcp_pmcp::agent_context_handlers::{
 };
 use crate::mcp_pmcp::analyze_handlers::{
     AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-    AnalyzeDeepContextTool, AnalyzeSatdTool,
+    AnalyzeDeepContextTool, AnalyzeSatdTool, HardcodedPathsTool, ReachabilityTool,
+    VacuousTestsTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
 use crate::mcp_pmcp::pdmt_handler::PdmtTool;
@@ -389,6 +390,15 @@ impl SimpleUnifiedServer {
             .tool("analyze_dag", AnalyzeDagTool)
             .tool("analyze_deep_context", AnalyzeDeepContextTool)
             .tool("analyze_big_o", AnalyzeBigOTool)
+            // === Forensic Analyzers (3) — #1029 ===
+            // Shipped CLI-only in 3.32.0 because this list was hand-curated
+            // beside `AnalyzeCommands` instead of derived from it. Which
+            // `analyze` subcommands belong here is now decided by the total
+            // match in `cli::analyze_mcp_exposure`, so the next variant cannot
+            // reach a release undeclared.
+            .tool("analyze_reachability", ReachabilityTool)
+            .tool("analyze_hardcoded_paths", HardcodedPathsTool)
+            .tool("analyze_vacuous_tests", VacuousTestsTool)
             // === Refactoring Tools: REMOVED (EV-0, #999) ===
             // `refactor.start` / `nextIteration` / `getState` / `stop` were 4 of
             // 20 advertised tools — 20% of the agent-facing surface — and the
@@ -707,7 +717,7 @@ mod active_tests {
     /// with no `metadata()` after R17-1 replaced the aliased handlers with
     /// new structs.
     #[test]
-    fn test_all_16_live_tools_advertise_description_and_schema() {
+    fn test_all_live_tools_advertise_description_and_schema() {
         use pmcp::ToolHandler;
 
         let _state_manager = Arc::new(Mutex::new(StateManager::new()));
@@ -728,6 +738,13 @@ mod active_tests {
                 true,
             ),
             ("analyze_big_o", AnalyzeBigOTool.metadata(), true),
+            ("analyze_reachability", ReachabilityTool.metadata(), true),
+            (
+                "analyze_hardcoded_paths",
+                HardcodedPathsTool.metadata(),
+                true,
+            ),
+            ("analyze_vacuous_tests", VacuousTestsTool.metadata(), true),
             // refactor.* unregistered in EV-0 (#999) — see run()
             ("quality_gate", QualityGateTool.metadata(), true),
             ("quality_proxy", QualityProxyTool.metadata(), true),
@@ -759,8 +776,9 @@ mod active_tests {
 
         assert_eq!(
             tools.len(),
-            16,
-            "registry drift: update this test when tools are added or removed"
+            crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS.len(),
+            "registry drift: this list must mirror the `.tool(...)` registrations in run(), \
+             which `manifest_matches_server` pins to LIVE_MCP_TOOLS"
         );
 
         for (name, metadata, takes_arguments) in tools {
@@ -837,8 +855,9 @@ mod active_tests {
         }
         assert_eq!(
             declared.len(),
-            16,
-            "the surface should be 16 tools after removing the 4 simulated ones"
+            19,
+            "the surface should be 19 tools: 16 after removing the 4 simulated ones, plus \
+             the 3 forensic analyzers exposed in #1029"
         );
     }
 }

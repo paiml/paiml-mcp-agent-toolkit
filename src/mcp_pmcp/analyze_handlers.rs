@@ -10,6 +10,7 @@
 //! - `analyze_debt_handlers.rs` — SATD and dead code analysis tools
 //! - `analyze_metrics_handlers.rs` — Lint hotspot, churn, and coupling tools
 //! - `analyze_tdg_tool_handlers.rs` — TDG scoring and comparison tools
+//! - `analyze_forensics_handlers.rs` — Reachability, hardcoded paths, vacuous tests (#1029)
 //! - `analyze_handlers_tests.rs` — Unit tests (complexity, debt, metrics)
 //! - `analyze_handlers_tests_tdg.rs` — Unit tests (TDG, deserialization, integration)
 
@@ -47,6 +48,13 @@ include!("analyze_metrics_handlers.rs");
 
 // TDG scoring and comparison tool handlers
 include!("analyze_tdg_tool_handlers.rs");
+
+// #1029: reachability, hardcoded-path and vacuous-test tool handlers — the
+// three analyzers that were CLI-only by omission.
+include!("analyze_forensics_handlers.rs");
+
+// Tests: the three forensic analyzers exposed in #1029
+include!("analyze_forensics_handlers_tests.rs");
 
 // Tests: complexity, debt, and metrics tool handlers
 include!("analyze_handlers_tests.rs");

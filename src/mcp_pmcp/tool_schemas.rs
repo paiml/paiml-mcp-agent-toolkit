@@ -56,6 +56,78 @@ pub fn paths_object_schema(extra_properties: Value, required: Vec<&str>) -> Valu
     })
 }
 
+/// Schema for a tool that analyses ONE project root, plus optional fields.
+///
+/// The `paths`-array shape next door is wrong for the repo-wide analyzers
+/// (`analyze_reachability`, `analyze_hardcoded_paths`, `analyze_vacuous_tests`):
+/// each is rooted at a manifest or a git worktree and enumerates its own file
+/// set from there, so a list of paths would have to be silently reduced to its
+/// first element — the exact defect R13 pinned for `quality_gate`
+/// (`{"paths":["a","b"]}` graded `a`, dropped `b`, and reported
+/// `not_measured: []`). Taking a single root advertises what is actually
+/// honoured, and matches the CLI, whose `--path` is likewise one path.
+#[inline]
+pub fn project_root_schema(extra_properties: Value) -> Value {
+    let mut props = json!({
+        "project_path": {
+            "type": "string",
+            "description": "Project root to analyze (the directory holding Cargo.toml / the git worktree)"
+        }
+    });
+    if let (Some(base), Some(extra)) = (props.as_object_mut(), extra_properties.as_object()) {
+        for (k, v) in extra {
+            base.insert(k.clone(), v.clone());
+        }
+    }
+    json!({
+        "type": "object",
+        "properties": props,
+        "required": ["project_path"]
+    })
+}
+
+/// Convert a single MCP `project_path` argument to a `PathBuf`, rejecting one
+/// that does not exist or is not a directory.
+///
+/// The single-root counterpart of [`resolve_existing_paths`], and it exists for
+/// the same reason (GH #639): a repo-wide analyzer pointed at a nonexistent
+/// root enumerates zero files and reports zero findings, which an MCP client —
+/// with no exit code to fall back on — cannot tell apart from a clean tree.
+///
+/// A FILE is refused as well as a missing path. These analyzers run
+/// `cargo metadata` or `git ls-files` from the root they are given; handed a
+/// file, both return nothing and the report would again read as clean.
+///
+/// # Errors
+///
+/// Returns a validation error naming the path when it is missing, empty, or not
+/// a directory.
+pub fn resolve_existing_root(project_path: &str) -> pmcp::Result<std::path::PathBuf> {
+    if project_path.trim().is_empty() {
+        return Err(pmcp::Error::validation(
+            "`project_path` must name a directory; an empty string selects nothing, \
+             and a report over nothing is indistinguishable from a clean result.",
+        ));
+    }
+    let root = std::path::PathBuf::from(project_path);
+    if !root.exists() {
+        return Err(pmcp::Error::validation(format!(
+            "project_path not found: {}. Analysing a nonexistent root would report zero \
+             findings, which is indistinguishable from a clean result.",
+            root.display()
+        )));
+    }
+    if !root.is_dir() {
+        return Err(pmcp::Error::validation(format!(
+            "project_path must be a directory, but {} is a file. These analyzers enumerate \
+             their file set with `cargo metadata` / `git ls-files` from the root given, so a \
+             file yields an empty scan — indistinguishable from a clean result.",
+            root.display()
+        )));
+    }
+    Ok(root)
+}
+
 /// Convert MCP `paths` arguments to `PathBuf`s, rejecting ones that do not exist.
 ///
 /// # Why this exists (GH #639)

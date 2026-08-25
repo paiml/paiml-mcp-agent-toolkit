@@ -124,9 +124,9 @@ pub(super) async fn capture_commit_metadata(
         timestamp: chrono::Utc::now(),
     };
 
-    // Write to .pmat-metrics/
-    let metrics_dir = project_path.join(".pmat-metrics");
-    std::fs::create_dir_all(&metrics_dir)?;
+    // Write to .pmat-metrics/ — created with its own ignore rule (#1070) so the
+    // commit metadata record does not dirty the tree it describes.
+    let metrics_dir = crate::utils::pmat_cache_dir::ensure_metrics_dir(project_path);
 
     let meta_file = metrics_dir.join(format!("commit-{}-meta.json", short_sha));
     let json = serde_json::to_string_pretty(&metadata)?;

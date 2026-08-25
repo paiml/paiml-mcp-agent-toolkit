@@ -26,12 +26,15 @@ pub struct SatdAnalysisResult {
     pub total_files: usize,
     pub violations: Vec<SatdViolation>,
     pub summary: String,
-    /// What the walk found and deliberately did not read.
+    /// What the walk found, what it read, and what it declined to read.
     ///
     /// Without this a caller sees only the violations, so "this tree is clean"
     /// and "almost every file in this tree was skipped" are the same output.
+    /// `total_files` above is the number of files that HELD a violation, so it
+    /// is not a denominator: on a clean tree it is 0 whether one file was read
+    /// or a thousand.
     #[serde(default)]
-    pub skipped: crate::services::satd_detector::SkipCounts,
+    pub census: crate::services::satd_detector::FileCensus,
 }
 
 /// Individual SATD violation
@@ -105,11 +108,11 @@ impl SatdFacade {
         // `analyze satd --include-tests` took the with-tests branch and then
         // told the detector *not* to include tests: a `// TODO:` in `tests/`
         // stayed invisible with the flag and without it alike.
-        let (satd_items, skipped) = detector
+        let (satd_items, census) = detector
             .analyze_directory_with_stats(&request.path, request.include_tests)
             .await?;
 
-        Ok(Self::build_result_with_skips(&satd_items, skipped))
+        Ok(Self::build_result_with_census(&satd_items, census))
     }
 
     /// Convert detector items into the facade's result shape.
@@ -119,22 +122,27 @@ impl SatdFacade {
     fn build_result(
         satd_items: &[crate::services::satd_detector::TechnicalDebt],
     ) -> SatdAnalysisResult {
-        Self::build_result_with_skips(satd_items, Default::default())
+        // One file, read: a census of exactly that, rather than the all-zero
+        // default, which `note()` reads as "nothing was walked".
+        Self::build_result_with_census(
+            satd_items,
+            crate::services::satd_detector::FileCensus::single_file(),
+        )
     }
 
-    fn build_result_with_skips(
+    fn build_result_with_census(
         satd_items: &[crate::services::satd_detector::TechnicalDebt],
-        skipped: crate::services::satd_detector::SkipCounts,
+        census: crate::services::satd_detector::FileCensus,
     ) -> SatdAnalysisResult {
         let mut result = Self::build_result_inner(satd_items);
         // The summary sentence carries the scope too, not just the JSON: the
         // text output is what a human actually reads, and "Found 0 SATD
         // violations in 0 files" was the exact sentence that made a walk which
         // skipped everything look like a clean tree (#923).
-        if let Some(note) = skipped.note() {
+        if let Some(note) = census.note() {
             result.summary = format!("{} ({note})", result.summary);
         }
-        result.skipped = skipped;
+        result.census = census;
         result
     }
 
@@ -177,7 +185,7 @@ impl SatdFacade {
             total_files,
             violations,
             summary,
-            skipped: Default::default(),
+            census: Default::default(),
         }
     }
 
@@ -298,9 +306,9 @@ mod tests {
             .await
             .expect("analysis without tests");
         assert_eq!(
-            without.skipped.tests, 1,
+            without.census.not_read.tests, 1,
             "tests/it.rs was found and declined; the report must say so: {:?}",
-            without.skipped
+            without.census
         );
         assert!(
             without.summary.contains("1 test (use --include-tests)"),
@@ -313,9 +321,9 @@ mod tests {
             .await
             .expect("analysis with tests");
         assert_eq!(
-            with.skipped.tests, 0,
+            with.census.not_read.tests, 0,
             "with --include-tests nothing is declined for being a test: {:?}",
-            with.skipped
+            with.census
         );
     }
 

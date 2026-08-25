@@ -341,9 +341,9 @@ pub async fn handle_analyze_complexity(
     // disclosure was a stderr warning, which `--format json` and `--output`
     // both discard. Arm the provenance ledger for the walk, collect it below,
     // and publish it beside the population it partitions.
-    crate::cli::language_analyzer::ast_fallback::arm();
+    let provenance_run = crate::cli::language_analyzer::ast_fallback::arm().await;
     let analyzed = analysis::analyze_files_by_mode_with_census(file, files, &config).await;
-    let recorded_provenance = crate::cli::language_analyzer::ast_fallback::take();
+    let recorded_provenance = crate::cli::language_analyzer::ast_fallback::take(provenance_run);
     let analyzed = analyzed?;
     let mut file_metrics = analyzed.metrics;
 

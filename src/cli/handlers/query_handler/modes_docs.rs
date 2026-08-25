@@ -78,9 +78,9 @@ fn run_document_query(
 
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
-        // Need to create DB with schema first
-        std::fs::create_dir_all(project_path.join(".pmat"))
-            .map_err(|e| anyhow::anyhow!("Failed to create .pmat dir: {e}"))?;
+        // Need to create DB with schema first. The directory carries its own
+        // ignore rule (#1070); `open_db` below reports if it could not be made.
+        crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
     }
 
     let conn = open_db(&db_path).map_err(|e| anyhow::anyhow!("{e}"))?;

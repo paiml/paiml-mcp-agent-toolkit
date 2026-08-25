@@ -122,7 +122,7 @@ pub async fn analyze_satd(
     _include_resolved: bool,
     include_tests: bool,
 ) -> Result<Value> {
-    use crate::services::satd_detector::{SATDDetector, SkipCounts, SkipReason};
+    use crate::services::satd_detector::{FileCensus, SATDDetector, SkipReason};
 
     // Validate input
     if paths.is_empty() {
@@ -142,14 +142,16 @@ pub async fn analyze_satd(
     // already returned an empty vec for everything `should_exclude_file`
     // matches, so those files were being opened, scanned and thrown away. They
     // are now declined up front and counted.
-    let mut skipped = SkipCounts::default();
+    let candidates = expand_paths_to_source_files(paths);
+    // The denominator, counted before any rule runs.
+    let mut census = FileCensus::over(candidates.len());
     let mut files = Vec::new();
-    for path in expand_paths_to_source_files(paths) {
+    for path in candidates {
         let reason: Option<SkipReason> = detector
             .skip_reason_for_analysis(&path, include_tests)
             .await;
         if let Some(reason) = reason {
-            reason.record(&mut skipped);
+            census.record_skip(&path, reason);
             continue;
         }
         files.push(path);
@@ -157,13 +159,6 @@ pub async fn analyze_satd(
 
     let mut total_satd = 0;
     let mut file_results = Vec::new();
-    // Counted at the bottom of the loop, from files that were actually decoded
-    // and scanned. It used to be `files.len()` — the size of the CANDIDATE
-    // list — so a file that failed to read was reported both as read and as
-    // having no debt, the exact "not measured rendered as clean" shape of
-    // #1035, one level below the skip predicate that block was added to
-    // disclose.
-    let mut files_read = 0usize;
 
     for path in &files {
         match tokio::fs::read_to_string(path).await {
@@ -194,7 +189,14 @@ pub async fn analyze_satd(
                         };
                         let satd_count = debts.len();
                         total_satd += satd_count;
-                        files_read += 1;
+                        // Counted from files that were actually decoded and
+                        // scanned. It used to be `files.len()` — the size of
+                        // the CANDIDATE list — so a file that failed to read
+                        // was reported both as read and as having no debt, the
+                        // exact "not measured rendered as clean" shape of
+                        // #1035, one level below the skip predicate that block
+                        // was added to disclose.
+                        census.record_analyzed();
 
                         if satd_count > 0 {
                             file_results.push(json!({
@@ -211,11 +213,11 @@ pub async fn analyze_satd(
                     }
                     // The scan failed on a file that WAS opened. Not a finding
                     // of zero — a file this run did not measure.
-                    Err(_) => SkipReason::Unreadable.record(&mut skipped),
+                    Err(_) => census.record_skip(path, SkipReason::Unreadable),
                 }
             }
             // I/O error, or content that is not UTF-8.
-            Err(_) => SkipReason::Unreadable.record(&mut skipped),
+            Err(_) => census.record_skip(path, SkipReason::Unreadable),
         }
     }
 
@@ -225,18 +227,30 @@ pub async fn analyze_satd(
         "results": {
             "total_satd": total_satd,
             "files": file_results,
-            // The denominator, in the same shape `analyze satd --format json`
-            // emits (`cli::handlers::satd_handler_formatting::format_json`).
-            // An MCP consumer could not previously tell how much of the tree
-            // this number was measured over.
-            "files_read": files_read,
+            // The denominator, in the same shape and the same spelling
+            // `analyze satd --format json` emits
+            // (`cli::handlers::satd_handler_formatting::format_json`). An MCP
+            // consumer could not previously tell how much of the tree this
+            // number was measured over, and the key was `files_read` here and
+            // `files_analyzed` there — a name split reads as a measurement
+            // disagreement, which is worse than either number being wrong
+            // (#1058).
+            "files_discovered": census.discovered,
+            "files_analyzed": census.analyzed,
+            "census_balances": census.partitions(),
+            "files_unaccounted": census.unaccounted(),
             "files_not_read": {
-                "total": skipped.total(),
-                "tests": skipped.tests,
-                "examples_demo_fuzz_generated": skipped.out_of_scope,
-                "minified_or_vendor": skipped.minified_or_vendor,
-                "too_large": skipped.too_large,
-                "unreadable": skipped.unreadable
+                "total": census.not_read.total(),
+                "tests": census.not_read.tests,
+                "out_of_scope": census.not_read.out_of_scope,
+                "minified_or_vendor": census.not_read.minified_or_vendor,
+                "too_large": census.not_read.too_large,
+                "unreadable": census.not_read.unreadable,
+                "oversized": census.oversized.iter().map(|f| json!({
+                    "path": f.path,
+                    "bytes": f.bytes,
+                    "limit_bytes": f.limit_bytes,
+                })).collect::<Vec<_>>()
             },
             // Always false here, and stated rather than left to be assumed:
             // this surface has no `--top-files` equivalent, so it never elides
@@ -1786,6 +1800,12 @@ mod satd_skip_accounting_tests {
     //! measured over — so over MCP "this tree is clean" and "almost every file
     //! in this tree was skipped" were the same payload. This is the defect
     //! #1015 fixed for `analyze satd`, one surface later.
+    //!
+    //! #1035 then moved `examples/` OUT of the declined population on both
+    //! surfaces — it is shipped, compiled code — so the fixture's 13 example
+    //! markers are findings now rather than a skip bucket, and the payload
+    //! carries `files_discovered`/`files_analyzed` so the buckets can be checked
+    //! to partition instead of merely listed.
     use super::*;
 
     /// 2 production markers, 1 in a test file, 13 in `examples/`.
@@ -1833,8 +1853,8 @@ mod satd_skip_accounting_tests {
         let results = &out["results"];
 
         assert_eq!(
-            results["total_satd"], 2,
-            "the count itself is unchanged: {out}"
+            results["total_satd"], 15,
+            "2 in src/ and 13 in examples/, which is shipped code (#1035): {out}"
         );
 
         let not_read = &results["files_not_read"];
@@ -1843,22 +1863,37 @@ mod satd_skip_accounting_tests {
             "a count with no denominator: the payload says nothing about the \
              files it did not read: {out}"
         );
-        assert_eq!(not_read["total"], 14, "{out}");
+        assert_eq!(not_read["total"], 1, "{out}");
         assert_eq!(
             not_read["tests"], 1,
             "the one file in tests/ was declined, and must be disclosed: {out}"
         );
         assert_eq!(
-            not_read["examples_demo_fuzz_generated"], 13,
-            "all 13 examples/ files were declined: {out}"
+            not_read["out_of_scope"], 0,
+            "nothing here is vendored, generated or a fuzz harness: {out}"
         );
         assert_eq!(not_read["minified_or_vendor"], 0, "{out}");
         assert_eq!(not_read["too_large"], 0, "{out}");
         assert_eq!(not_read["unreadable"], 0, "{out}");
         assert_eq!(
-            results["files_read"], 1,
-            "and how many WERE read — 14 declined out of 15: {out}"
+            not_read["oversized"],
+            json!([]),
+            "nothing was declined for size, so nothing may be named: {out}"
         );
+        assert_eq!(
+            results["files_analyzed"], 14,
+            "and how many WERE read — 1 declined out of 15: {out}"
+        );
+        assert_eq!(
+            results["files_discovered"], 15,
+            "the denominator the buckets partition: {out}"
+        );
+        assert_eq!(
+            results["census_balances"],
+            Value::Bool(true),
+            "analysed + not read must equal walked: {out}"
+        );
+        assert_eq!(results["files_unaccounted"], 0, "{out}");
         assert_eq!(
             results["violations_truncated"],
             Value::Bool(false),
@@ -1883,12 +1918,16 @@ mod satd_skip_accounting_tests {
             "with --include-tests nothing is declined for being a test: {with}"
         );
         assert_eq!(
-            with["results"]["total_satd"], 3,
+            with["results"]["total_satd"], 16,
             "and the test file's marker is now counted: {with}"
         );
         assert_eq!(
-            with["results"]["files_read"], 2,
+            with["results"]["files_analyzed"], 15,
             "one more file was read: {with}"
+        );
+        assert_eq!(
+            with["results"]["files_discovered"], without["results"]["files_discovered"],
+            "a flag that only widens the scan must not move the denominator: {with}"
         );
     }
 
@@ -1920,14 +1959,25 @@ mod satd_skip_accounting_tests {
         assert_eq!(
             mcp["results"]["files_not_read"],
             json!({
-                "total": cli.skipped.total(),
-                "tests": cli.skipped.tests,
-                "examples_demo_fuzz_generated": cli.skipped.out_of_scope,
-                "minified_or_vendor": cli.skipped.minified_or_vendor,
-                "too_large": cli.skipped.too_large,
-                "unreadable": cli.skipped.unreadable
+                "total": cli.census.not_read.total(),
+                "tests": cli.census.not_read.tests,
+                "out_of_scope": cli.census.not_read.out_of_scope,
+                "minified_or_vendor": cli.census.not_read.minified_or_vendor,
+                "too_large": cli.census.not_read.too_large,
+                "unreadable": cli.census.not_read.unreadable,
+                "oversized": []
             }),
             "…and now also on the denominator: {mcp}"
+        );
+        assert_eq!(
+            mcp["results"]["files_analyzed"].as_u64().expect("files_analyzed") as usize,
+            cli.census.analyzed,
+            "one spelling, both transports (#1058): {mcp}"
+        );
+        assert_eq!(
+            mcp["results"]["files_discovered"].as_u64().expect("files_discovered") as usize,
+            cli.census.discovered,
+            "…over the same population: {mcp}"
         );
     }
 }

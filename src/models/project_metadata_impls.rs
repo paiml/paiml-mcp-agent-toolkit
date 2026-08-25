@@ -27,11 +27,9 @@ impl ProjectMetadata {
     pub fn save(&self, project_path: &Path) -> Result<()> {
         let path = Self::get_path(project_path);
 
-        // Ensure .pmat directory exists
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create directory {}", parent.display()))?;
-        }
+        // Ensure .pmat directory exists, with its own ignore rule (#1070).
+        crate::utils::pmat_cache_dir::ensure_parent_dir(&path)
+            .with_context(|| format!("Failed to create directory for {}", path.display()))?;
 
         let content =
             toml::to_string_pretty(self).context("Failed to serialize project metadata")?;

@@ -4,16 +4,64 @@
 use anyhow::Result;
 use blake3::Hasher;
 use dashmap::DashMap;
-use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use super::minhash::MinHashGenerator;
 use super::tokenizer::UniversalFeatureExtractor;
 use super::types::{
-    CloneGroup, CloneInstance, CloneReport, CloneSummary, CloneType, CodeFragment,
-    DuplicateDetectionConfig, DuplicationHotspot, FragmentId, Language,
+    CloneGroup, CloneInstance, CloneReport, CloneSearchStats, CloneSummary, CloneType,
+    CodeFragment, DuplicateDetectionConfig, DuplicationHotspot, FragmentId, Language,
 };
+
+/// Disjoint sets over fragment INDICES, with path halving and union by size.
+///
+/// The clone groups are the connected components of the similarity graph, so
+/// the search needs to answer "are these two already in one group?" while it
+/// runs, not after — that question is what lets it skip a comparison whose
+/// answer cannot matter. `find_representative` below cannot serve: it walks a
+/// `HashMap` recursively with no compression, which is exactly the `O(n)` find
+/// that made grouping cubic on #1059's corpus.
+struct ComponentSet {
+    parent: Vec<usize>,
+    size: Vec<u32>,
+}
+
+impl ComponentSet {
+    fn new(len: usize) -> Self {
+        Self {
+            parent: (0..len).collect(),
+            size: vec![1; len],
+        }
+    }
+
+    fn root(&mut self, index: usize) -> usize {
+        let mut node = index;
+        while self.parent[node] != node {
+            self.parent[node] = self.parent[self.parent[node]];
+            node = self.parent[node];
+        }
+        node
+    }
+
+    fn connected(&mut self, a: usize, b: usize) -> bool {
+        self.root(a) == self.root(b)
+    }
+
+    /// Merges the two sets, returning false when they were already one.
+    fn union(&mut self, a: usize, b: usize) -> bool {
+        let (mut ra, mut rb) = (self.root(a), self.root(b));
+        if ra == rb {
+            return false;
+        }
+        if self.size[ra] < self.size[rb] {
+            std::mem::swap(&mut ra, &mut rb);
+        }
+        self.parent[rb] = ra;
+        self.size[ra] += self.size[rb];
+        true
+    }
+}
 
 /// Main duplicate detection engine
 pub struct DuplicateDetectionEngine {
@@ -316,31 +364,138 @@ impl DuplicateDetectionEngine {
         &self,
         fragments: &[CodeFragment],
     ) -> Result<Vec<(FragmentId, FragmentId, f64)>> {
-        let lsh_buckets = self.build_lsh_buckets(fragments);
-        let candidate_pairs = Self::collect_candidate_pairs(&lsh_buckets);
-
-        // Verify candidate pairs with exact similarity calculation
-        let threshold = self.config.similarity_threshold;
-        let clone_pairs: Vec<(FragmentId, FragmentId, f64)> = candidate_pairs
-            .into_par_iter()
-            .filter_map(|(i, j)| {
-                let similarity = fragments[i]
-                    .signature
-                    .jaccard_similarity(&fragments[j].signature);
-                (similarity >= threshold).then(|| (fragments[i].id, fragments[j].id, similarity))
-            })
-            .collect();
-
-        Ok(clone_pairs)
+        Ok(self.find_clone_pairs_with_stats(fragments).0)
     }
 
-    /// Build LSH buckets by hashing each fragment's signature bands
-    fn build_lsh_buckets(&self, fragments: &[CodeFragment]) -> Vec<HashMap<u64, Vec<usize>>> {
+    /// As [`Self::find_clone_pairs`], and also the counted evidence of what the
+    /// search did — see [`CloneSearchStats`].
+    ///
+    /// # What the returned pairs are
+    ///
+    /// The ONLY thing `group_clones` does with these pairs is take the
+    /// connected components of the graph they span, and the similarities it
+    /// reports are re-measured from the signatures. So the pairs need to span
+    /// each clone group, not enumerate it: an edge between two fragments
+    /// already known to be in one component cannot change any component, and
+    /// is therefore neither computed nor emitted. What comes back is a
+    /// SPANNING FOREST of the same graph — same groups, `O(n)` edges instead
+    /// of `O(n^2)`.
+    ///
+    /// # Why (#1059)
+    ///
+    /// `analyze duplicates` timed out at 391 files of transpiler output while
+    /// finishing a corpus 65x larger in 138s. Measured on that corpus, at
+    /// 43,099 fragments: every band bucket held thousands of fragments (LSH
+    /// prunes by bucketing, and near-identical documents share every band), so
+    /// 23.5M candidate pairs were materialised into a `HashSet` (36s) and
+    /// 15.6M surviving pairs were then union-found with a recursive,
+    /// non-compressing `find` (109s). The candidate stage was quadratic and
+    /// the grouping stage — the larger of the two — was cubic.
+    ///
+    /// Three exact reductions replace it, none of which drops a comparison
+    /// whose outcome could change a group:
+    ///
+    /// 1. Fragments with BYTE-IDENTICAL signatures are collapsed. Their
+    ///    Jaccard similarity is 1.0 with each other and identical against
+    ///    every third fragment, so one member stands for the class. That corpus
+    ///    had 4,322 distinct signatures for 43,099 fragments.
+    /// 2. A band bucket holding the same member list as one already scanned is
+    ///    skipped; it can only produce pairs that were already produced.
+    /// 3. Within a bucket, a pair already in one component is skipped, and once
+    ///    an anchor needs no comparison at all the rest of the bucket is one
+    ///    component and the scan stops.
+    #[must_use]
+    pub fn find_clone_pairs_with_stats(
+        &self,
+        fragments: &[CodeFragment],
+    ) -> (Vec<(FragmentId, FragmentId, f64)>, CloneSearchStats) {
+        let mut components = ComponentSet::new(fragments.len());
+        let mut clone_pairs = Vec::new();
+        let mut stats = CloneSearchStats {
+            fragments: fragments.len(),
+            ..CloneSearchStats::default()
+        };
+
+        let leaders = self.collapse_identical_signatures(
+            fragments,
+            &mut components,
+            &mut clone_pairs,
+            &mut stats,
+        );
+
+        let lsh_buckets = self.build_lsh_buckets(fragments, &leaders);
+        self.scan_lsh_buckets(
+            fragments,
+            &lsh_buckets,
+            &mut components,
+            &mut clone_pairs,
+            &mut stats,
+        );
+
+        (clone_pairs, stats)
+    }
+
+    /// Collapse fragments whose `MinHash` signatures are byte-identical into one
+    /// class each, and return the index of one leader per class.
+    ///
+    /// Two identical signatures have `jaccard_similarity == 1.0`, which clears
+    /// every reachable threshold, and they score identically against any third
+    /// signature — so the leader's answers ARE the class's answers. This is a
+    /// reduction, not an approximation.
+    ///
+    /// Two guards keep it exact. A threshold above 1.0 is unreachable even by
+    /// identical fragments, so nothing may be collapsed under one. An empty
+    /// signature (unit-test fragments carry these) scores `0/0` = NaN against
+    /// itself, which is NOT a clone pair today, so it is left alone.
+    fn collapse_identical_signatures(
+        &self,
+        fragments: &[CodeFragment],
+        components: &mut ComponentSet,
+        clone_pairs: &mut Vec<(FragmentId, FragmentId, f64)>,
+        stats: &mut CloneSearchStats,
+    ) -> Vec<usize> {
+        let collapsible = self.config.similarity_threshold <= 1.0;
+        let mut leader_of: HashMap<&[u64], usize> = HashMap::new();
+        let mut leaders = Vec::new();
+
+        for (idx, fragment) in fragments.iter().enumerate() {
+            let signature = fragment.signature.values.as_slice();
+            if !collapsible || signature.is_empty() {
+                leaders.push(idx);
+                continue;
+            }
+            match leader_of.get(signature) {
+                Some(&leader) if components.union(leader, idx) => {
+                    clone_pairs.push((fragments[leader].id, fragment.id, 1.0));
+                }
+                Some(_) => {}
+                None => {
+                    leader_of.insert(signature, idx);
+                    leaders.push(idx);
+                }
+            }
+        }
+
+        stats.searched_fragments = leaders.len();
+        leaders
+    }
+
+    /// Build LSH buckets by hashing each leader fragment's signature bands.
+    ///
+    /// `pub(crate)` so the scaling tests can reconstruct the exhaustive
+    /// candidate set this engine used to enumerate, and assert the fast path
+    /// returns the very same clone groups.
+    pub(crate) fn build_lsh_buckets(
+        &self,
+        fragments: &[CodeFragment],
+        leaders: &[usize],
+    ) -> Vec<HashMap<u64, Vec<usize>>> {
         let bands = self.config.num_bands;
         let rows_per_band = self.config.rows_per_band;
         let mut lsh_buckets: Vec<HashMap<u64, Vec<usize>>> = vec![HashMap::new(); bands];
 
-        for (idx, fragment) in fragments.iter().enumerate() {
+        for &idx in leaders {
+            let fragment = &fragments[idx];
             for (band, bucket) in lsh_buckets.iter_mut().enumerate().take(bands) {
                 let start = band * rows_per_band;
                 let end = start + rows_per_band;
@@ -354,26 +509,67 @@ impl DuplicateDetectionEngine {
         lsh_buckets
     }
 
-    /// Collect candidate pairs from LSH buckets
-    fn collect_candidate_pairs(
+    /// Verify every LSH bucket, skipping buckets that repeat a member list
+    /// already scanned in an earlier band.
+    ///
+    /// Near-identical fragments agree on EVERY band, so all 20 bands hand back
+    /// the same bucket; scanning it once is not a shortcut, it is the same
+    /// work refused nineteen times.
+    fn scan_lsh_buckets(
+        &self,
+        fragments: &[CodeFragment],
         lsh_buckets: &[HashMap<u64, Vec<usize>>],
-    ) -> HashSet<(usize, usize)> {
-        let mut candidate_pairs = HashSet::new();
+        components: &mut ComponentSet,
+        clone_pairs: &mut Vec<(FragmentId, FragmentId, f64)>,
+        stats: &mut CloneSearchStats,
+    ) {
+        let mut scanned: HashSet<&[usize]> = HashSet::new();
         for band_buckets in lsh_buckets {
             for bucket in band_buckets.values().filter(|b| b.len() >= 2) {
-                for i in 0..bucket.len() {
-                    for j in (i + 1)..bucket.len() {
-                        let pair = if bucket[i] < bucket[j] {
-                            (bucket[i], bucket[j])
-                        } else {
-                            (bucket[j], bucket[i])
-                        };
-                        candidate_pairs.insert(pair);
-                    }
+                stats.max_bucket_occupancy = stats.max_bucket_occupancy.max(bucket.len());
+                if scanned.insert(bucket.as_slice()) {
+                    self.scan_bucket(fragments, bucket, components, clone_pairs, stats);
                 }
             }
         }
-        candidate_pairs
+    }
+
+    /// Compare the members of one LSH bucket.
+    ///
+    /// A pair whose members are already in one clone group is skipped: the edge
+    /// exists or it does not, and either way the components are unchanged. When
+    /// an anchor turns out to need NO comparison, every member after it is
+    /// already connected to it and therefore to each other, so the whole rest
+    /// of the bucket is redundant and the scan stops. That is what turns a
+    /// saturated bucket from `k*(k-1)/2` comparisons into `k-1`.
+    fn scan_bucket(
+        &self,
+        fragments: &[CodeFragment],
+        bucket: &[usize],
+        components: &mut ComponentSet,
+        clone_pairs: &mut Vec<(FragmentId, FragmentId, f64)>,
+        stats: &mut CloneSearchStats,
+    ) {
+        let threshold = self.config.similarity_threshold;
+        for (offset, &anchor) in bucket.iter().enumerate() {
+            let mut compared = 0usize;
+            for &other in &bucket[offset + 1..] {
+                if components.connected(anchor, other) {
+                    continue;
+                }
+                compared += 1;
+                stats.comparisons += 1;
+                let similarity = fragments[anchor]
+                    .signature
+                    .jaccard_similarity(&fragments[other].signature);
+                if similarity >= threshold && components.union(anchor, other) {
+                    clone_pairs.push((fragments[anchor].id, fragments[other].id, similarity));
+                }
+            }
+            if compared == 0 {
+                break;
+            }
+        }
     }
 
     /// Measured similarity between two fragments, in `0.0..=1.0`.
@@ -570,21 +766,25 @@ impl DuplicateDetectionEngine {
         })
     }
 
-    /// Find representative in Union-Find structure
+    /// Find representative in Union-Find structure.
+    ///
+    /// ITERATIVE. The recursive version this replaces recursed once per link in
+    /// the chain, and the chain is as long as the merge order made it — on a
+    /// corpus where every fragment is a clone of every other, that is a stack
+    /// frame per fragment. Same answer, no stack to overflow.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn find_representative(
         representative: &HashMap<FragmentId, FragmentId>,
         id: FragmentId,
     ) -> FragmentId {
-        if let Some(&rep) = representative.get(&id) {
-            if rep == id {
-                id
-            } else {
-                Self::find_representative(representative, rep)
+        let mut current = id;
+        while let Some(&rep) = representative.get(&current) {
+            if rep == current {
+                break;
             }
-        } else {
-            id
+            current = rep;
         }
+        current
     }
 
     /// Compute summary statistics

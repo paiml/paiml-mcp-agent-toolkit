@@ -224,10 +224,9 @@ pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
 /// Called by `pmat comply refresh-bindings`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()> {
-    let pmat_dir = project_path.join(".pmat");
-    if !pmat_dir.exists() {
-        fs::create_dir_all(&pmat_dir)?;
-    }
+    // Created with its own ignore rule (#1070); the index write below reports
+    // if the directory could not be made.
+    let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
 
     let mut index: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
     let mut binding_count = 0usize;
