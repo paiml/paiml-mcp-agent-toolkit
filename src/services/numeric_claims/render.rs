@@ -95,6 +95,21 @@ fn self_test_line(st: &SelfTest) -> String {
     )
 }
 
+/// A finding count, coloured by whether it is news.
+///
+/// `warn` above zero and `pass` at zero: this check never blocks, so colour is
+/// the only thing distinguishing "nothing to report" from "read this" at a
+/// glance. Both spellings collapse to the bare number when colour is off, so
+/// `--color never` and a pipe still produce plain, greppable text.
+fn count_marker(n: usize) -> String {
+    let text = n.to_string();
+    if n == 0 {
+        crate::cli::colors::pass(&text)
+    } else {
+        crate::cli::colors::warn(&text)
+    }
+}
+
 fn census_block(out: &mut String, c: &Census, st: &SelfTest) {
     out.push_str("CENSUS  (this block is the proof the check ran)\n");
     out.push_str(&format!(
@@ -193,14 +208,23 @@ fn findings_block(out: &mut String, findings: &[Finding]) {
     let (r1, r2): (Vec<&Finding>, Vec<&Finding>) =
         findings.iter().partition(|f| f.rule == RuleId::R1);
     out.push('\n');
+    // Coloured through the shared helpers, so `--color` is honoured rather than
+    // accepted and ignored. The flag-efficacy sweep booked `comply
+    // numeric-claims --color` a NO-OP: byte-identical output with `always` and
+    // `never`, because nothing here reached `crate::cli::colors`.
+    //
+    // A count of zero findings is not the same news as a count above zero, so
+    // they take different helpers: `pass` when the rule found nothing, `warn`
+    // when it did. This check never blocks, so the colour is the only signal
+    // distinguishing the two at a glance.
     out.push_str(&format!(
         "R1  REPLICATED DIVERGENT CLAIM   {} {}\n",
-        r1.len(),
+        count_marker(r1.len()),
         plural(r1.len())
     ));
     out.push_str(&format!(
         "R2  CONTRADICTION                {} {}\n",
-        r2.len(),
+        count_marker(r2.len()),
         plural(r2.len())
     ));
     for f in r1.into_iter().chain(r2) {
