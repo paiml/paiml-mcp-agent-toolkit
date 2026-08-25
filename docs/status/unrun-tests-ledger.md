@@ -3404,7 +3404,7 @@ crate::cli::handlers::timeline_mode::coverage_tests::check_feature_availability_
 
 ## Residual — what this walk could not reach
 
-154 `#[ignore]`d test(s) are compiled by some leg and executed by none.
+161 `#[ignore]`d test(s) are compiled by some leg and executed by none.
 `cargo test` prints its own "N ignored" line, so they are declared, not
 hidden, and are not ledgered here.
 
