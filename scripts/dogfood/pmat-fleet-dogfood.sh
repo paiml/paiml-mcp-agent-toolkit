@@ -32,14 +32,17 @@ findings=()  # REPO-FINDING
 probes=0
 
 emit() { printf '%s\n' "$1"; }
-jesc() { python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))' <<<"$1"; }
+# argv, not a herestring: `<<<` appends a newline that `sys.stdin.read()` keeps,
+# so the receipt carried "duende\n" as the repo name. Machine-readable output
+# with stray whitespace in a key field is a trap for whatever consumes it next.
+jesc() { python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$1"; }
 
 # rs_files: the denominator. A tool reporting zero over a non-zero denominator
 # is the defect class this whole protocol exists to catch.
 RS=$(find "$REPO" -name '*.rs' -not -path '*/target/*' -not -path '*/.git/*' 2>/dev/null | wc -l)
 
 probe() { # probe <label> <expect-findings:yes|no> <cmd...>
-  local label="$1" expect="$2"; shift 2
+  local label="$1"; shift
   probes=$((probes + 1))
   local out code
   out=$(timeout "$TIMEOUT" "$@" 2>&1); code=$?
@@ -69,24 +72,32 @@ probe() { # probe <label> <expect-findings:yes|no> <cmd...>
 probe_json() { # probe_json <label> <cmd...> — the payload must parse
   local label="$1"; shift
   probes=$((probes + 1))
-  local out code
-  out=$(timeout "$TIMEOUT" "$@" 2>/dev/null); code=$?
-  [ "$code" -eq 124 ] && { defects+=("$label: TIMED OUT after ${TIMEOUT}s"); return; }
-  [ -z "$out" ] && { defects+=("$label: --format json produced NO output (exit $code)"); return; }
+  local out code err
+  # stderr goes to a FILE rather than /dev/null: stdout must stay clean JSON, but
+  # discarding the diagnosis leaves "produced NO output" with no cause. A sibling
+  # harness lost an hour of this release to exactly that — the process printed the
+  # reason on line 1 and the harness threw it away.
+  err="$(mktemp)"
+  out=$(timeout "$TIMEOUT" "$@" 2>"$err"); code=$?
+  local why
+  why="$(head -2 "$err" 2>/dev/null | tr '\n' ';' | sed 's/;*$//' | cut -c1-160)"
+  rm -f "$err"
+  [ "$code" -eq 124 ] && { defects+=("$label: TIMED OUT after ${TIMEOUT}s${why:+ — stderr: $why}"); return; }
+  [ -z "$out" ] && { defects+=("$label: --format json produced NO output (exit $code)${why:+ — stderr: $why}"); return; }
   printf '%s' "$out" | python3 -c 'import json,sys;json.load(sys.stdin)' 2>/dev/null \
-    || defects+=("$label: --format json emitted unparseable JSON (exit $code, ${#out} bytes)")
+    || defects+=("$label: --format json emitted unparseable JSON (exit $code, ${#out} bytes)${why:+ — stderr: $why}")
 }
 
 emit "── $NAME  ($RS .rs files) ─────────────────────────────"
 
-probe      "analyze complexity"  yes "$BIN" analyze complexity --path "$REPO"
+probe      "analyze complexity" "$BIN" analyze complexity --path "$REPO"
 probe_json "analyze complexity"      "$BIN" analyze complexity --path "$REPO" --format json
-probe      "analyze satd"        yes "$BIN" analyze satd --path "$REPO"
-probe      "analyze dead-code"   yes "$BIN" analyze dead-code --path "$REPO"
-probe      "analyze duplicates"  yes "$BIN" analyze duplicates --path "$REPO"
-probe      "tdg"                 yes "$BIN" tdg "$REPO"
+probe      "analyze satd" "$BIN" analyze satd --path "$REPO"
+probe      "analyze dead-code" "$BIN" analyze dead-code --path "$REPO"
+probe      "analyze duplicates" "$BIN" analyze duplicates --path "$REPO"
+probe      "tdg" "$BIN" tdg "$REPO"
 probe_json "tdg"                     "$BIN" tdg "$REPO" --format json
-probe      "analyze churn"       yes "$BIN" analyze churn --path "$REPO"
+probe      "analyze churn" "$BIN" analyze churn --path "$REPO"
 
 # ── REPO-FINDINGS: pmat worked; what did it say about the target?
 TDG=$(timeout "$TIMEOUT" "$BIN" tdg "$REPO" --format json 2>/dev/null)
