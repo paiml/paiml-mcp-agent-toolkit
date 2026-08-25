@@ -1233,8 +1233,16 @@ this repository had a permanent structural blind spot and reported it as a pass:
 had recurred on the same crate twice, because the first occurrence was worked around by hand
 and nothing was added to CI.
 
-There is now a blocking Dependabot-API check (`scripts/dependabot-alert-gate.sh`, workflow
-`security-advisories.yml`) that runs alongside `cargo deny` rather than replacing it —
+A Dependabot-API check exists (`scripts/dependabot-alert-gate.sh`) to sit alongside `cargo
+deny` rather than replace it — but **its workflow ships DISABLED**
+(`security-advisories.yml.disabled`), by owner decision. Run by hand it passes; it is not
+wired into CI. Why it is off rather than fixed: `GITHUB_TOKEN` cannot read the Dependabot
+alerts endpoint and `permissions: security-events: read` does not cover it, so without a
+`DEPENDABOT_ALERTS_TOKEN` secret it exits 2 (CANNOT MEASURE) on every run — correct, and a
+permanently red check is one everybody learns to walk past, which is worse than no check.
+Re-enabling is a secret plus a rename. **Until then the `cargo deny` blind spot described
+above is unmitigated in CI: cross-check Dependabot by hand before a release.** The script's
+design is still worth recording —
 neither source subsumes the other, and RustSec carries unmaintained/yanked findings
 Dependabot does not model. Three properties it was built to have, each of which had bitten
 someone first:

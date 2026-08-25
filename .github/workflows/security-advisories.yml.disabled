@@ -1,3 +1,27 @@
+# DISABLED 2026-08-25 by owner decision — renamed to `.disabled` so GitHub does
+# not schedule it. Nothing here is broken: run by hand it PASSES, and it is the
+# only check that can see a GHSA-only advisory at all.
+#
+# Why it was switched off rather than fixed: it needs a `DEPENDABOT_ALERTS_TOKEN`
+# secret, because `GITHUB_TOKEN` cannot read the Dependabot alerts endpoint and
+# `permissions: security-events: read` does not cover it. Without the secret it
+# exits 2 (CANNOT MEASURE) on every run — correct behaviour, and a permanently
+# red check is one everybody learns to walk past, which is worse than no check.
+#
+# The gate script `scripts/dependabot-alert-gate.sh` is UNCHANGED and still works:
+#
+#     ./scripts/dependabot-alert-gate.sh --severity medium
+#
+# To re-enable: add the secret, then `git mv` this file back to `.yml`.
+#
+# WHAT IS LOST WHILE THIS IS OFF, stated plainly so nobody rediscovers it the
+# hard way: `cargo deny check advisories` answers "is anything here listed in
+# RustSec", NOT "is anything here known-vulnerable". It printed `advisories ok`
+# on a tree carrying an open moderate alert, because RustSec had 1,235
+# advisories and no thrift entry while GitHub's superset did. That blind spot is
+# structural and has already recurred twice on the same crate. Cross-check
+# Dependabot by hand before a release.
+
 # Security advisories — TWO sources, because neither one is complete.
 #
 # paiml-mcp-agent-toolkit#1074.

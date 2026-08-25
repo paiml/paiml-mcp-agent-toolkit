@@ -2511,6 +2511,45 @@ pub fn awful(a: i32, b: i32, c: i32, d: i32) -> i32 {
             after.message
         );
     }
+
+    /// ADVERSARIAL PROBE (temporary): does the cached index notice an edit when
+    /// the code lives under crates/*/src rather than <project>/src?
+    #[test]
+    fn adversarial_probe_workspace_layout_staleness() {
+        let cache = tempfile::tempdir().expect("cache");
+        let index_path = cache.path().join("context.idx");
+        let project = tempfile::tempdir().expect("proj");
+        std::fs::create_dir_all(project.path().join("crates/foo/src")).expect("mkdir");
+        let src = project.path().join("crates/foo/src/lib.rs");
+        std::fs::write(&src, AWFUL).expect("write");
+
+        let before =
+            check_tdg_grade_gate_with_index(project.path(), &ComplyConfig::default(), &index_path);
+        eprintln!(
+            "PROBE top_level_src_exists = {}",
+            project.path().join("src").exists()
+        );
+        eprintln!("PROBE before = {:?} :: {}", before.status, before.message);
+
+        std::fs::write(&src, "pub fn fine(a: u32) -> u32 { a + 1 }\n").expect("write");
+        let db = index_path.with_extension("db");
+        let m = std::fs::metadata(&db)
+            .and_then(|x| x.modified())
+            .expect("db mtime");
+        std::fs::File::options()
+            .write(true)
+            .open(&db)
+            .and_then(|f| f.set_modified(m - std::time::Duration::from_secs(600)))
+            .expect("age the index");
+        eprintln!(
+            "PROBE is_index_stale_after_edit = {}",
+            is_index_stale(project.path(), &db)
+        );
+
+        let after =
+            check_tdg_grade_gate_with_index(project.path(), &ComplyConfig::default(), &index_path);
+        eprintln!("PROBE after = {:?} :: {}", after.status, after.message);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
