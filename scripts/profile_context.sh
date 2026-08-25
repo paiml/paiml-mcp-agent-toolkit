@@ -48,7 +48,7 @@ echo -e "${GREEN}✅ Flamegraph generated at: profiling_results/context_flamegra
 # Also generate a perf report
 echo -e "${YELLOW}Generating detailed perf report...${NC}"
 sudo perf record -F 997 -g -- ./target/release/pmat context --toolchain rust -o profiling_results/profile_context2.md
-sudo perf report --stdio > profiling_results/perf_report.txt
+sudo perf report --stdio | tee profiling_results/perf_report.txt >/dev/null
 
 echo -e "${GREEN}✅ Perf report generated at: profiling_results/perf_report.txt${NC}"
 

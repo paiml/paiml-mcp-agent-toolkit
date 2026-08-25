@@ -2,7 +2,7 @@
 # Record build/test/lint metrics for O(1) pre-commit validation
 # Spec: docs/specifications/quick-test-build-O(1)-checking.md
 # Pattern: Hash-based caching (similar to 27fea2ae)
-# shellcheck disable=DET002
+# bashrs disable-file=DET002
 # Intentional: Timestamps required for metric recording
 set -euo pipefail
 

@@ -83,6 +83,19 @@ lint-main:
 	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ Main code linting passed!"
 
+# The feature set CI actually runs tests under. NOT `--all-features`: that
+# implies `broken-tests`, a deliberate non-compiling quarantine (#1023), so any
+# target reaching for it can never pass. The split is exactly whether test
+# targets are built, because the quarantine is gated on `cfg(test)`:
+#
+#   cargo check --all-features --lib --bins   -> exit 0
+#   cargo check --all-features --tests        -> error: unexpected closing delimiter: `}`
+#
+# so `check`, `docs` and the `bench-*` build targets below may keep
+# `--all-features` and do; the `test` targets may not. These three names match
+# the legs in feature-matrix.yml that the unrun-tests ledger consults.
+TEST_FEATURES := full,mcp-integration,unified-protocol
+
 # Type check all projects
 # Note: --all-features includes "broken-tests" which enables known-broken split test files
 # So we check: (1) lib with all features, (2) all targets without broken-tests
@@ -1254,9 +1267,9 @@ server-test: ## Run server tests
 	@echo "🧪 Running server tests..."
 	@cargo test --manifest-path Cargo.toml
 
-server-test-all: ## Run all server tests with all features
+server-test-all: ## Run server tests under every feature set that compiles (see TEST_FEATURES)
 	@echo "🧪 Running all server tests..."
-	@cargo test --all-features --manifest-path Cargo.toml
+	@cargo test --features $(TEST_FEATURES) --manifest-path Cargo.toml
 
 server-outdated: ## Check outdated dependencies
 	@echo "📦 Checking outdated dependencies..."
@@ -1399,9 +1412,9 @@ outdated:
 
 # Server outdated (alias for CI) - removed duplicate, see line 550
 
-# Run cargo test with all features
+# Run cargo test under every feature set that compiles (see TEST_FEATURES)
 test-all-features:
-	PROPTEST_CASES=2 cargo test --all-features --manifest-path Cargo.toml
+	PROPTEST_CASES=2 cargo test --features $(TEST_FEATURES) --manifest-path Cargo.toml
 
 # Server test all (alias for CI) - removed duplicate, see line 546
 

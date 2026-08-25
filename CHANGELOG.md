@@ -1169,6 +1169,31 @@ ever measured, and both `continue-on-error` flags are still set. Removing them b
 master run reports a real number would replace a silent no-op with a gate whose threshold
 has never been observed.
 
+**A moderate advisory ships in `Cargo.lock`, and our own advisory gate does not see it.**
+`thrift 0.17.0` carries GHSA-2f9f-gq7v-9h6m (moderate, memory allocation from an
+untrusted length), reachable as `pmat -> aprender-db 0.61 -> parquet 57.3.1 -> thrift`.
+Two things are worth stating separately.
+
+*Scope.* `aprender-db` is optional and reachable only through
+`analytics-simd -> advanced-analysis -> full`, so **`cargo install pmat` does not compile
+parquet or thrift** — the binary crates.io produces from the default feature set does not
+contain the code. It is present in the lockfile and in `--features full` builds. The fix is
+forward, not a patch: parquet 57 and 58 both require thrift `^0.17`, and **parquet 59.2.0
+removed the dependency entirely** — but arrow and parquet move in lockstep and `arrow = "57"`
+is pinned because RecordBatch type identity crosses the `trueno_db` boundary, so aprender-db
+has to move first. That is not a release-eve edit; it is #1075.
+
+*The worse half.* `cargo deny check advisories` prints `advisories ok` and exits 0 on this
+tree. It is not lying about its database — RustSec has 1,235 advisories and no thrift entry
+at all — it is answering "is anything here listed in RustSec" while CI reads it as "is
+anything here known-vulnerable". GitHub's advisory database is a superset and does carry it.
+So the one blocking security gate in this repository has a permanent structural blind spot
+and reports it as a pass, which is the same **absence-rendered-as-success** shape this
+release spent itself fixing everywhere else. It has now recurred on the same crate twice; the
+first time it was worked around by hand and nothing was added to CI. #1074 tracks a blocking
+Dependabot-API check, with the requirement that it FAIL when it cannot measure rather than
+pass — `gh api` paginates at 30, so a truncated alert list otherwise reads as a short clean one.
+
 ## [3.31.0] - 2026-08-15
 
 ### Added

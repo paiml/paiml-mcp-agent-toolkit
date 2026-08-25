@@ -197,7 +197,7 @@ main() {
     
     # Phase 1: Critical modules
     log_info "Phase 1: Processing critical modules..."
-    while IFS= read -r -d '' file && [ $processed -lt $files_to_process ]; do
+    while IFS= read -r -d '' file && [ "$processed" -lt "$files_to_process" ]; do
         process_rust_file "$file"
         ((processed++))
         
@@ -211,7 +211,7 @@ main() {
     
     # Phase 2: Remaining files
     log_info "Phase 2: Processing remaining files..."
-    while IFS= read -r -d '' file && [ $processed -lt $files_to_process ]; do
+    while IFS= read -r -d '' file && [ "$processed" -lt "$files_to_process" ]; do
         process_rust_file "$file"
         ((processed++))
         
