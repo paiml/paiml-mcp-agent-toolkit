@@ -61,6 +61,7 @@ fn rust_fixture() -> TempDir {
         "pub fn used() {}\n\nfn unused_helper() {\n    let _ = 1;\n}\n",
     )
     .expect("write lib.rs");
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(temp.path());
     temp
 }
 
@@ -120,6 +121,7 @@ const CONTRACTED_PATH_KEYS: &[&str] = &[
     "files_analyzed",
     "files_listed",
     "library_target",
+    "compiler_scan",
     "findings_outside_requested_path",
 ];
 

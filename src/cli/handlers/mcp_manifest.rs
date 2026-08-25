@@ -26,6 +26,8 @@ pub async fn handle_mcp_command(cmd: McpCommands, project_path: &Path) -> Result
                 println!("{}", crate::cli::analyze_mcp_exposure::parity_summary());
             }
         }
+        McpCommands::Connect => crate::cli::handlers::mcp_onboarding::handle_mcp(false)?,
+        McpCommands::Token => crate::cli::handlers::mcp_onboarding::handle_mcp(true)?,
     }
     Ok(())
 }

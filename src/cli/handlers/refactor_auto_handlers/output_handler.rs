@@ -24,25 +24,38 @@ include!("output_handler_formatting.rs");
 // and single-file analysis helpers
 include!("output_handler_orchestration.rs");
 
-// Tests extracted to refactor_auto_handlers_tests.rs for file health compliance (CB-040)
-// QUARANTINED, and the stated reason was wrong. This said "Test file is
-// missing"; the file exists at src/cli/handlers/refactor_auto_handlers_tests.rs
-// (40,150 bytes) — one directory ABOVE this one. The `#[path]` was wrong too,
-// naming a sibling that does not exist; it has been corrected to `../` (#1023)
-// so the declaration at least points at the file it is talking about. Nothing
-// checks a `#[path]` under a disabled `cfg`, which is why it stayed wrong.
+// Tests extracted to refactor_auto_handlers_tests.rs for file health compliance (CB-040).
 //
-// The real reason it cannot be enabled: it `include!`s
-// refactor_auto_comprehensive_tests.rs, whose CB-040 extraction left a module
-// wrapper split across files — the parent opens a brace that the child closes.
-// Correcting the path yields "unexpected closing delimiter"; deleting the
-// orphaned brace yields "unclosed delimiter". Reviving it is a real repair of
-// ~40 KB of tests, not a one-line fix, so it stays quarantined with an accurate
-// note (#1023) rather than a false one.
+// REVIVED (#1023). This was quarantined behind `feature = "broken-tests"` for two
+// releases under the reason "Test file is missing". The file was never missing: it
+// is one directory ABOVE this one, 40 KB, and the `#[path]` pointed at a
+// nonexistent sibling. Nothing checks a `#[path]` under a disabled `cfg`.
 //
-// A wrong reason is worse than no reason: it tells the next reader to go looking
-// for a file that is sitting right there.
-#[cfg(all(test, feature = "broken-tests"))]
+// What actually broke it was two mechanical extractions, each of which dropped a
+// line without anything noticing, because the module was already unbuildable:
+//   * CB-040 (c8dd80a8e -> 9efe77e93) lifted `mod comprehensive_coverage_tests {`
+//     into a `#[path]` declaration but left its closing `}` in the file, and lost
+//     the `#[tokio::test]` attribute of the first test with it.
+//   * PMAT-503 (9bedc46cf) sliced that file into five include!s and dropped the
+//     closing brace of the last function in the first slice.
+// Hence "unexpected closing delimiter" on the parent and "unclosed delimiter" once
+// the orphan brace was deleted: the wrapper spanned files. Both lines are restored,
+// and the five include!s now concatenate byte-for-byte to the last well-formed
+// version of the module body (c8dd80a8e lines 1282-2928).
+//
+// A third break surfaced only once the files parsed: CB-040 (1008e33ec) moved seven
+// markdown helpers into refactor_auto_types without importing them back, so
+// `use super::*` stopped reaching them. They are now imported explicitly by the
+// two test files that call them.
+//
+// Timeline, because the stated reason was only ever half right: the module was
+// buildable at c8dd80a8e; 9efe77e93 split its wrapper across files the same day;
+// 1008e33ec moved the helpers out; e044423ad turned this file into a directory
+// without updating the `#[path]`, at which point rustc genuinely reported the
+// module file as missing — which is what 129e67132 wrote down and gated. The file
+// was never missing. The path was stale, and two older faults were queued behind
+// it, invisible because rustc never got as far as reading the file.
+#[cfg(test)]
 #[path = "../refactor_auto_handlers_tests.rs"]
 mod tests;
 
@@ -120,5 +133,118 @@ mod output_handler_iteration_pure_tests {
             .unwrap();
         assert_eq!(result.len(), 2);
         assert!(result.iter().any(|s| s.contains("TODO")));
+    }
+}
+
+#[cfg(test)]
+mod refactor_auto_test_module_structure_tests {
+    //! #1023 guards for the module revived above.
+    //!
+    //! These read the seven files as TEXT rather than compiling them, so they
+    //! keep running if the module is ever `cfg`'d out again. That is the point:
+    //! while it was quarantined, everything about it was unchecked — a wrong
+    //! `#[path]`, an orphaned brace and a lost `#[tokio::test]` all survived two
+    //! releases because no build ever read the files.
+
+    use std::path::{Path, PathBuf};
+
+    /// The seven files `mod tests` spans after CB-040 and PMAT-503.
+    const SPLIT_FILES: [&str; 7] = [
+        "refactor_auto_handlers_tests.rs",
+        "refactor_auto_comprehensive_tests.rs",
+        "refactor_auto_comprehensive_tests_setup_context.rs",
+        "refactor_auto_comprehensive_tests_analysis_generation.rs",
+        "refactor_auto_comprehensive_tests_request_creation.rs",
+        "refactor_auto_comprehensive_tests_apply_helpers_output.rs",
+        "refactor_auto_comprehensive_tests_modes_validation_types.rs",
+    ];
+
+    /// Test attributes across `SPLIT_FILES` when the module was revived.
+    ///
+    /// A floor, never a target: it may only go up. It exists so that a future
+    /// compile error in this module cannot be resolved by deleting the tests
+    /// that produced it, which is indistinguishable from a repair at the level
+    /// of "does the build pass".
+    const TEST_ATTRIBUTE_FLOOR: usize = 154;
+
+    fn handlers_dir() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("src/cli/handlers")
+    }
+
+    fn read(name: &str) -> String {
+        let path = handlers_dir().join(name);
+        std::fs::read_to_string(&path)
+            .map_err(|e| format!("{} is unreadable: {e}", path.display()))
+            .expect("every file listed in SPLIT_FILES must exist")
+    }
+
+    /// Every file the module is split across parses on its own.
+    ///
+    /// `include!` requires each file to be a self-contained sequence of items.
+    /// CB-040 lifted `mod comprehensive_coverage_tests {` into a `#[path]`
+    /// declaration and left its `}` behind; PMAT-503 then dropped the closing
+    /// brace of the last function in the first slice. Neither is visible to a
+    /// brace count that trusts comments and string literals, and neither was
+    /// visible to rustc while the module was quarantined.
+    #[test]
+    fn every_split_file_parses_standalone() {
+        let mut broken = Vec::new();
+        for name in SPLIT_FILES {
+            if let Err(e) = syn::parse_file(&read(name)) {
+                broken.push(format!("{name}: {e}"));
+            }
+        }
+        assert!(
+            broken.is_empty(),
+            "these files do not parse on their own, so the module wrapper is \
+             split across files again:\n  {}\n\n\
+             Re-splitting a module must never leave one file opening a delimiter \
+             that another closes.",
+            broken.join("\n  ")
+        );
+    }
+
+    /// The revived module is still compiled.
+    ///
+    /// Re-adding the `broken-tests` gate would silently stop running every test
+    /// in these files while leaving them in the tree, where every file-based
+    /// metric keeps counting them.
+    #[test]
+    fn the_revived_module_is_not_quarantined_again() {
+        let me = read("refactor_auto_handlers/output_handler.rs");
+        let declaration = me
+            .lines()
+            .position(|l| l.trim() == r#"#[path = "../refactor_auto_handlers_tests.rs"]"#)
+            .expect("output_handler.rs must still declare mod tests by #[path]");
+        let gate = declaration
+            .checked_sub(1)
+            .and_then(|i| me.lines().nth(i))
+            .expect("the #[path] must be preceded by its cfg");
+        assert_eq!(
+            gate.trim(),
+            "#[cfg(test)]",
+            "mod tests is gated by {gate:?} rather than a plain #[cfg(test)] — \
+             it has been quarantined again (#1023)"
+        );
+    }
+
+    /// The revival cannot be undone by deleting the tests that failed.
+    #[test]
+    fn the_revived_module_still_carries_its_tests() {
+        let mut found = 0usize;
+        for name in SPLIT_FILES {
+            found += read(name)
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    t == "#[test]" || t == "#[tokio::test]"
+                })
+                .count();
+        }
+        assert!(
+            found >= TEST_ATTRIBUTE_FLOOR,
+            "{found} test attributes across the revived module, against a floor \
+             of {TEST_ATTRIBUTE_FLOOR}. Tests were removed rather than repaired."
+        );
     }
 }

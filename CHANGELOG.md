@@ -14,6 +14,42 @@ what pmat *reports* on unchanged code. Each of these moves a number, an exit cod
 payload shape, so a pipeline pinned to 3.31.0's output sees a difference on a tree that
 has not changed. Read this list before upgrading a gate.
 
+- **MCP mode is now first-class, and reachable without reading the source.** `mcp-http` moved
+  into the **default** feature set, so `cargo install pmat` produces a binary that serves all
+  three surfaces — CLI, MCP over stdio, and MCP over streamable HTTP — with no `--features`
+  dance. The HTTP tool surface is **byte-identical to stdio**, not a subset; both share one
+  `build_server` and a test now fails if the HTTP path registers a tool of its own.
+
+  Getting connected used to require knowing four things that were written down nowhere, each of
+  which cost this project real time: the endpoint is the **root path** (`/mcp` and `/health` are
+  404 — there is no health endpoint), `PMAT_MCP_HTTP_TOKEN` has a **16-character minimum**, a
+  hand-rolled client must send `Accept: application/json, text/event-stream`, and unauthenticated
+  requests get 401. All four are now in `pmat serve --help`, in the README, and in a new book
+  chapter whose examples are executed as tests.
+
+  `pmat serve --transport http` with **no token set** now mints one, starts, and prints the exact
+  `claude mcp add` line for the port it actually bound:
+
+  ```
+  claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ \
+    --header "Authorization: Bearer pmat-<generated>"
+  ```
+
+  Two properties were deliberately *not* relaxed to buy that convenience. A token shorter than 16
+  characters is still refused outright — generation goes through the same validator, so the floor
+  is the only gate and it did not move. And a **non-loopback bind still refuses** without an
+  explicit token: a generated token changes on every restart, so a shared endpoint would silently
+  401 every client that had registered against the previous one.
+
+  Also corrected: `serve --transport`'s help listed all five transport values as equals.
+  `web-socket`, `http-sse`, `both` and `all` are NOT implemented and exit 2, and now say so.
+
+- **A count in the documentation is read from the binary, not quoted from a book.** The MCP tool
+  count moves *within* a release line — a 3.32.0 build at `583ea9ac` serves 16 while one at
+  `90767deb` serves 19, having gained `analyze_reachability`, `analyze_hardcoded_paths` and
+  `analyze_vacuous_tests`. The new book chapter says so explicitly and its identity check is
+  count-agnostic, so it passes on both rather than pinning a number that was true for one build.
+
 - **TDG grades are computed from a token walk instead of a line scan, and they get
   WORSE, not better.** Every grade pmat has ever stored came from iterating
   `source.lines()` and charging per line, so `rustfmt.toml` decided the grade:

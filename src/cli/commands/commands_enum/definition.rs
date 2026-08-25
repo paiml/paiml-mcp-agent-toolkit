@@ -475,7 +475,13 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["organization"])]
     Org(OrgCommands),
 
-    /// MCP manifest and schema management
+    /// Connect pmat to an MCP client: every transport, in one place
+    ///
+    /// `pmat mcp connect` prints all of pmat's MCP surfaces — `pmat --mode mcp`,
+    /// `MCP_VERSION=1 pmat`, and `pmat serve --transport http` — when to use
+    /// which, and the properties of the HTTP endpoint that are not guessable
+    /// (ROOT path, no `/health`, 16-character token minimum, mandatory `Accept`
+    /// header). `pmat mcp token` mints a conforming bearer token.
     #[command(subcommand)]
     Mcp(McpCommands),
 
@@ -904,15 +910,45 @@ pub enum Commands {
     // ── Infrastructure commands ────────────────────────────────────
     /// Serve the MCP tool surface over streamable HTTP (`--transport http`)
     ///
-    /// `--transport http` is IMPLEMENTED and round-trips MCP over HTTP: it
-    /// serves the same tools as the stdio server, is in the DEFAULT build as of
-    /// 3.32.0 (it needed `--features mcp-http` before), and refuses to start
-    /// without a bearer token in `PMAT_MCP_HTTP_TOKEN` — pmcp serves every
-    /// request when no auth provider is wired, so "no token" must mean "no
-    /// server". Unauthenticated requests get 401.
+    /// QUICK START — no arguments, no token, nothing to assemble:
     ///
-    /// It binds `127.0.0.1` unless you pass `--host`. Compiling the transport in
-    /// does not start it: only this subcommand binds a socket.
+    ///     pmat serve --transport http --port 8765
+    ///
+    /// With `PMAT_MCP_HTTP_TOKEN` unset on a loopback bind, pmat GENERATES a
+    /// conforming bearer token, prints it, and prints the exact `claude mcp
+    /// add` line for the port it bound, e.g.
+    ///
+    ///     claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ --header "Authorization: Bearer $TOKEN"
+    ///
+    /// A generated token dies with the process, so restarting mints a new one
+    /// and a client registered with the old one gets 401. Pin a stable token
+    /// with `export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)`. Run `pmat mcp connect`
+    /// for all of pmat's MCP surfaces in one place.
+    ///
+    /// FOUR THINGS ABOUT THIS ENDPOINT THAT ARE NOT GUESSABLE:
+    ///
+    /// (1) MCP is served at the ROOT path. `POST /` is 200; `/mcp` is 404.
+    ///
+    /// (2) There is NO health endpoint. `/health` is 404, so it cannot be a
+    /// readiness probe — poll the root with a real RPC instead.
+    ///
+    /// (3) Auth is mandatory and `PMAT_MCP_HTTP_TOKEN` must be at least 16
+    /// characters. A shorter token is REFUSED and the server does not start;
+    /// unauthenticated requests get 401. Generation never waives this.
+    ///
+    /// (4) A hand-rolled client must send `Accept: application/json,
+    /// text/event-stream` on every RPC call. Without it the server answers 406,
+    /// and `curl -f` reports that as an empty string with no message.
+    ///
+    /// It serves exactly the same tools as the stdio server — one `build_server`
+    /// builds both, so the two surfaces cannot drift — and is in the DEFAULT
+    /// build as of 3.32.0 (it needed `--features mcp-http` before).
+    ///
+    /// It binds `127.0.0.1` unless you pass `--host`. On a NON-loopback bind a
+    /// token is not generated and `PMAT_MCP_HTTP_TOKEN` must be set: a
+    /// generated token would change on every restart and silently 401 every
+    /// client of a shared endpoint. Compiling the transport in does not start
+    /// it: only this subcommand binds a socket.
     ///
     /// The other `--transport` values — `web-socket`, `http-sse`, `both`,
     /// `all` — are NOT IMPLEMENTED and exit 2.
@@ -945,18 +981,26 @@ pub enum Commands {
             about = "[HTTP NOT COMPILED IN this build] MCP server over streamable HTTP — needs --features mcp-http",
             long_about = "Serve the MCP tool surface over streamable HTTP (`--transport http`).\n\n\
                           This binary was built WITHOUT `--features mcp-http`, so `--transport http` \
-                          cannot serve here — nothing binds a socket either way. Which error you get \
-                          depends on the environment, because the bearer token is checked before the \
-                          missing feature is: with `PMAT_MCP_HTTP_TOKEN` unset, the usual case, the \
-                          error names that variable and says nothing about the build; only with \
-                          `PMAT_MCP_HTTP_TOKEN` set does the error name `mcp-http`.\n\n\
-                          Rebuild with `--features mcp-http` to serve; a bearer token in \
-                          `PMAT_MCP_HTTP_TOKEN` is required in that build too (unauthenticated \
-                          requests get 401).\n\n\
+                          cannot serve here — nothing binds a socket either way. The error names \
+                          `mcp-http` whether or not `PMAT_MCP_HTTP_TOKEN` is set: on a loopback bind \
+                          pmat now generates a token when that variable is unset, so the token is \
+                          never what stops you in this build. (Before 3.32.0 an unset \
+                          `PMAT_MCP_HTTP_TOKEN` produced a token error that never mentioned the \
+                          build, which is the error most users hit and the one this help used to \
+                          omit.)\n\n\
+                          Rebuild with `--features mcp-http` — it is in the DEFAULT build as of \
+                          3.32.0, so a plain `cargo install pmat` already has it. In that build \
+                          `pmat serve --transport http` needs no arguments: it generates a bearer \
+                          token, prints it, and prints the exact `claude mcp add` line. Auth is \
+                          mandatory there (at least 16 characters; unauthenticated requests get \
+                          401), MCP is served at the ROOT path (`/mcp` and `/health` are 404), and \
+                          a hand-rolled client must send \
+                          `Accept: application/json, text/event-stream` or get 406.\n\n\
                           The other `--transport` values — `web-socket`, `http-sse`, `both`, `all` — \
                           are NOT IMPLEMENTED in any build and exit 2.\n\n\
                           There is no `stdio` value for `--transport`; passing one is a clap error \
-                          (exit 2). For MCP over stdio run `pmat --mode mcp` or `MCP_VERSION=1 pmat`."
+                          (exit 2). For MCP over stdio run `pmat --mode mcp` or `MCP_VERSION=1 pmat`, \
+                          which works in THIS build — run `pmat mcp connect` for the full picture."
         )
     )]
     #[command(visible_aliases = &["server", "api"])]
@@ -2107,10 +2151,13 @@ mod command_availability_tests {
     /// Drive `pmat serve --transport http` in-process with the token env var in
     /// a chosen state and return the error it produces.
     ///
-    /// `token: Some(..)` must only be used in a build without `mcp-http`: with
-    /// the feature compiled in, a token makes this bind a socket and never
-    /// return.
-    async fn serve_http_error(token: Option<&str>) -> String {
+    /// NEVER call this with a combination that succeeds: since 3.32.0 an unset
+    /// token on a LOOPBACK bind generates one and serves, so in a build with
+    /// `mcp-http` that combination binds a socket and never returns. The two
+    /// combinations that are guaranteed to fail before any socket is touched —
+    /// and so are the only ones used here — are a non-loopback host with no
+    /// token, and a token below the 16-character floor.
+    async fn serve_http_error(token: Option<&str>, host: &str) -> String {
         use crate::mcp_pmcp::http_server::TOKEN_ENV;
         let saved = std::env::var(TOKEN_ENV).ok();
         match token {
@@ -2118,7 +2165,7 @@ mod command_availability_tests {
             None => std::env::remove_var(TOKEN_ENV),
         }
         let got = crate::cli::handlers::utility_serve_handlers::handle_serve(
-            "127.0.0.1".to_string(),
+            host.to_string(),
             0,
             false,
             crate::cli::commands::ServeTransport::Http,
@@ -2132,68 +2179,105 @@ mod command_availability_tests {
             .to_string()
     }
 
-    /// The help must describe the failure the binary actually produces.
+    /// A host that is routable-looking but not loopback, so `resolve_token`
+    /// takes the refusal branch without anything ever binding. RFC 5737
+    /// TEST-NET-1, which is reserved for exactly this.
+    const NON_LOOPBACK: &str = "192.0.2.1";
+
+    /// The help must describe what an unset `PMAT_MCP_HTTP_TOKEN` actually
+    /// does, and since 3.32.0 that is no longer a failure at all on a loopback
+    /// bind: pmat generates a conforming token and serves.
     ///
-    /// `serve --help` in a build without `--features mcp-http` stated flatly
-    /// that `--transport http` "exits with an error naming that feature", and
-    /// mentioned `PMAT_MCP_HTTP_TOKEN` only as something the *rebuilt* binary
-    /// would then want. Both halves are wrong about the first run anyone makes:
-    /// `serve_streamable_http` reads the token before it reaches the feature
-    /// stub, so with no token the diagnostic names the variable and never says
-    /// `mcp-http`. The measurement below is what the assertion is checked
-    /// against, so this cannot drift into pinning prose.
+    /// Two earlier revisions of this help got the unset case wrong in opposite
+    /// directions — first promising an `mcp-http` error the user never reaches,
+    /// then describing a token refusal. Describing a refusal that no longer
+    /// happens would be the same defect a third time, so the assertion is that
+    /// the help says GENERATED, not that it says "error".
+    #[test]
+    fn serve_help_says_an_unset_token_is_generated_not_refused() {
+        let help = long_about_of("serve");
+        let described = sentence_about_the_missing_token(&help)
+            .expect("`pmat serve --help` must describe what an unset PMAT_MCP_HTTP_TOKEN does");
+        let lower = described.to_lowercase();
+        assert!(
+            lower.contains("generate"),
+            "an unset token on a loopback bind is generated, not refused; the \
+             help must say so, got: {described}"
+        );
+        assert!(
+            help.contains("claude mcp add"),
+            "the help must carry the copy-pasteable registration line that the \
+             generated-token path prints, got: {help}"
+        );
+    }
+
+    /// The counter-test, and the one that must never be allowed to rot: a token
+    /// the USER supplied that is too short is still REFUSED. Generating a token
+    /// when none was offered is a convenience about supplying a secret; it must
+    /// never become "accept anything". Measured against the binary, then held
+    /// against the prose.
     #[tokio::test]
     #[serial_test::serial(pmat_mcp_http_token)]
-    async fn serve_help_describes_the_no_token_failure_it_actually_produces() {
-        let measured = serve_http_error(None).await;
+    async fn a_weak_token_is_still_refused_and_the_help_says_so() {
+        let measured = serve_http_error(Some("tooshort"), "127.0.0.1").await;
         assert!(
-            measured.contains("PMAT_MCP_HTTP_TOKEN"),
-            "reality check: with no token the diagnostic must name the variable \
-             to set, got: {measured}"
+            measured.contains("at least"),
+            "reality check: a token under the floor must still be refused with a \
+             message naming the floor, got: {measured}"
         );
 
         let help = long_about_of("serve");
-        let described = sentence_about_the_missing_token(&help);
         assert!(
-            described.is_some(),
-            "`pmat serve --help` must describe the failure an unset \
-             PMAT_MCP_HTTP_TOKEN actually produces ({measured}); the help \
-             instead only names the token as something a later build wants, \
+            help.contains("16"),
+            "the help must state the token minimum that is enforced, got: {help}"
+        );
+    }
+
+    /// A non-loopback bind does not get a generated token, because a generated
+    /// token changes on every restart and would silently 401 every client of a
+    /// shared endpoint. Measured, then held against the help.
+    #[tokio::test]
+    #[serial_test::serial(pmat_mcp_http_token)]
+    async fn a_non_loopback_bind_still_demands_an_explicit_token() {
+        let measured = serve_http_error(None, NON_LOOPBACK).await;
+        assert!(
+            measured.contains("PMAT_MCP_HTTP_TOKEN"),
+            "reality check: a non-loopback bind with no token must name the \
+             variable to set, got: {measured}"
+        );
+        assert!(
+            measured.contains("loopback"),
+            "reality check: the refusal must say why it refused here and not on \
+             127.0.0.1, got: {measured}"
+        );
+
+        let help = long_about_of("serve");
+        assert!(
+            help.to_lowercase().contains("loopback"),
+            "the help must state that generation is confined to loopback binds, \
              got: {help}"
         );
     }
 
-    /// The other half of the same claim, in the build where it is checkable:
-    /// without the feature the `mcp-http` diagnostic exists, but you can only
-    /// reach it by setting a token first, so the help may not present it as
-    /// what `--transport http` does.
+    /// In a build WITHOUT the feature, the `mcp-http` error is now the one the
+    /// user sees on a plain `pmat serve --transport http`: generation removes
+    /// the token error that used to mask it. The help in that build must not
+    /// go back to blaming the token.
     #[cfg(not(feature = "mcp-http"))]
     #[tokio::test]
     #[serial_test::serial(pmat_mcp_http_token)]
-    async fn serve_help_ties_the_feature_error_to_the_token_being_set() {
-        let without_token = serve_http_error(None).await;
+    async fn without_the_feature_the_build_error_is_what_an_unset_token_reaches() {
+        let measured = serve_http_error(None, "127.0.0.1").await;
         assert!(
-            !without_token.contains("mcp-http"),
-            "reality check: the no-token diagnostic says nothing about the \
-             build feature, got: {without_token}"
-        );
-        let with_token = serve_http_error(Some("0123456789abcdef0123")).await;
-        assert!(
-            with_token.contains("mcp-http"),
-            "reality check: with a token set, the feature stub is reached and \
-             names the feature, got: {with_token}"
+            measured.contains("mcp-http"),
+            "reality check: with a token generated for the loopback bind, the \
+             feature stub is what fails, got: {measured}"
         );
 
         let help = long_about_of("serve");
-        let qualified = sentences(&help).into_iter().find(|s| {
-            let lower = s.to_lowercase();
-            lower.contains("mcp-http") && lower.contains(" set") && !lower.contains("unset")
-        });
         assert!(
-            qualified.is_some(),
-            "the `mcp-http` error is only reachable with PMAT_MCP_HTTP_TOKEN \
-             set, so the help must say so rather than assert it unconditionally, \
-             got: {help}"
+            help.contains("mcp-http"),
+            "the help must name the feature that is missing, got: {help}"
         );
     }
 

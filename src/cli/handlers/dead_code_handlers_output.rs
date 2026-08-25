@@ -130,6 +130,10 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
             // the conversion. `null` when the analyzer did not record one.
             "properties": {
                 "libraryTarget": result.library_target,
+                // Whether rustc's dead-code lint ran at all. A CI pipeline
+                // ingesting an empty SARIF has no other way to tell "clean"
+                // from "the compiler layer was refused" (#1076).
+                "compilerScan": result.compiler_scan,
             },
             "results": result.files.iter().flat_map(|file| {
                 file.items.iter().map(|item| {
@@ -364,6 +368,40 @@ fn write_dead_code_header(
     )?;
 
     write_library_target_line(output, result)?;
+    write_compiler_scan_line(output, result)?;
+
+    Ok(())
+}
+
+/// State whether rustc's dead-code lint actually contributed to the list.
+///
+/// This is the second half of the same contract `write_library_target_line`
+/// serves. A run whose `cargo check` was refused -- because compiling the crate
+/// would have written a `Cargo.lock` into a repository pmat was only asked to
+/// READ (#1076) -- searches for explicit `allow(dead_code)` admissions and
+/// nothing else. That produces the identical report SHAPE over a far smaller
+/// search, so "Total dead lines: 0" would read as a clean bill of health for a
+/// scan that never looked. Printed on every cargo run, not only the reduced
+/// ones: "the compiler layer ran" is a claim a reader should be able to SEE,
+/// and an absent line is not one.
+fn write_compiler_scan_line(
+    output: &mut String,
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+
+    let Some(scan) = &result.compiler_scan else {
+        return Ok(());
+    };
+    writeln!(
+        output,
+        "  {} {} ({}) — {}\n",
+        c::label("Compiler scan:"),
+        scan.verdict,
+        scan.reason,
+        c::dim(&scan.detail)
+    )?;
 
     Ok(())
 }
@@ -561,6 +599,7 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
     };
 
     let library_row = markdown_library_row(result);
+    let compiler_row = markdown_compiler_scan_row(result);
 
     format!(
         "# Dead Code Analysis Report\n\n\
@@ -573,7 +612,8 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
          {omission_row}\
          | Total Dead Lines | {} |\n\
          | Dead Code Percentage | {:.2}% |\n\
-         {library_row}",
+         {library_row}\
+         {compiler_row}",
         result.analyzed_files,
         result.total_files.saturating_sub(result.analyzed_files),
         result.summary.files_with_dead_code,
@@ -597,6 +637,24 @@ fn markdown_library_row(result: &crate::models::dead_code::DeadCodeResult) -> St
             // Pipes would break the row; the detail is prose and contains none
             // today, but a future reason must not be able to corrupt the table.
             library.detail.replace('|', "\\|")
+        ),
+        None => String::new(),
+    }
+}
+
+/// Whether rustc's dead-code lint ran, as a markdown table row.
+///
+/// Beside the percentage for the same reason the library row is: a `0.00%` from
+/// a full compile and a `0.00%` from a suppression scan alone are the same
+/// characters and different facts (#1076).
+fn markdown_compiler_scan_row(result: &crate::models::dead_code::DeadCodeResult) -> String {
+    match &result.compiler_scan {
+        Some(scan) => format!(
+            "| Compiler Scan | {} ({}) — {} |\n",
+            scan.verdict,
+            scan.reason,
+            // Pipes would break the row.
+            scan.detail.replace('|', "\\|")
         ),
         None => String::new(),
     }

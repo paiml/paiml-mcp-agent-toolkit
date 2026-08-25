@@ -37,7 +37,11 @@ use std::process::Command;
 /// deserialise — and if it could, it would restore exactly the erased-kind
 /// report (`dead_functions: 0` over six dead functions) that removing the
 /// variant fixed.
-pub const DEAD_CODE_CACHE_SCHEMA: u32 = 3;
+/// 4: `compiler_scan` was added. A schema-3 entry deserialises it as `None`,
+/// which is the one value that means "this engine has no compiler layer" — so
+/// a cached report would deny having a compiler layer at all, and the reduced
+/// scan this field exists to disclose would be invisible again.
+pub const DEAD_CODE_CACHE_SCHEMA: u32 = 4;
 
 /// Cached dead code result with metadata for O(1) invalidation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +87,15 @@ pub struct AccurateDeadCodeReport {
     pub dead_lines: usize,
     /// Summary by type
     pub dead_by_type: HashMap<String, usize>,
+    /// Whether Layer 2 — rustc's dead-code lint, via `cargo check` — actually
+    /// ran, and what stopped it when it did not.
+    ///
+    /// `calculate_metrics` builds the report before it can know, so it is
+    /// `None` there and filled in by `analyze`. A `None` that escapes to a
+    /// consumer means the same thing it means everywhere else: no compiler
+    /// layer was involved, NOT that one ran.
+    #[serde(default)]
+    pub compiler_scan: Option<crate::models::dead_code::CompilerScanReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -377,3 +390,33 @@ mod cargo_target_scope_tests;
 #[cfg(test)]
 #[path = "cargo_dead_code_analyzer/crate_root_tests.rs"]
 mod crate_root_tests;
+
+/// Give a TEST fixture crate the `Cargo.lock` a real project would have.
+///
+/// `analyze dead-code` passes `--locked` (#1076), so it no longer creates one —
+/// and a fixture that has none is now analysed at REDUCED fidelity, with the
+/// compiler layer skipped. Without this the tests below would keep passing
+/// their own assertions while silently measuring nothing, which is the exact
+/// failure mode the disclosure exists to prevent.
+///
+/// `--offline` keeps it hermetic: every fixture that calls this is
+/// dependency-free, so the resolution needs no registry.
+#[cfg(test)]
+pub(crate) fn write_fixture_lockfile(crate_root: &Path) {
+    let output = Command::new("cargo")
+        .current_dir(crate_root)
+        .args(["generate-lockfile", "--offline"])
+        .output()
+        .expect("cargo generate-lockfile runs");
+    assert!(
+        output.status.success(),
+        "could not give the fixture at {} a lockfile: {}",
+        crate_root.display(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+// The analyser must not write a Cargo.lock into the tree it measures (#1076).
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/lockfile_tests.rs"]
+mod lockfile_tests;

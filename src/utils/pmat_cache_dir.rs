@@ -48,6 +48,14 @@
 //! version control; and `~/.pmat/`, which is not inside anybody's checkout to
 //! begin with. Auto-ignoring those would be a decision about someone else's
 //! content, not a fix for pmat's own litter.
+//!
+//! # And one directory that is not in the project at all
+//!
+//! The second half of this module ([`user_cache_root`] downward) is the case
+//! where "keep it out of git status" is not enough and the state must not be in
+//! the tree in the first place: an AUDIT, which has to run on a checkout it may
+//! not write to. That state is keyed by project under the user's cache
+//! directory — see [`comply_state_dir`] for why, and #1008 for what it cost.
 
 use std::path::{Path, PathBuf};
 
@@ -165,6 +173,190 @@ pub fn ensure_cache_dir(project_root: &Path) -> PathBuf {
 /// site that records a measurement into an analysed project.
 pub fn ensure_metrics_dir(project_root: &Path) -> PathBuf {
     ensure_self_ignoring_dir(&pmat_metrics_dir(project_root))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The other half of the rule: state that must live OUTSIDE the audited tree
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Everything above keeps pmat's writes out of a project's `git status`. That is
+// the right answer for a cache a project asked for. It is the WRONG answer for
+// a cache an AUDIT needs, because an audit must be able to run on a tree it may
+// not write to at all — a fresh CI checkout, a read-only mount, someone else's
+// repository — and `comply check` answered that by declining to measure:
+//
+// ```text
+// - CB-200: TDG Grade Gate: Not measured: no .pmat/context.db. `comply check`
+//   will not build one - building writes .pmat/context.db and .pmat/context.idx
+//   into the project being audited.
+// ```
+//
+// Honest, and unenforceable (#1008). A fresh checkout never has an index, so
+// CB-200 could only ever fire on a developer's machine — the one place where
+// failing it decides nothing. Measured A/B on one tree at one commit, the index
+// the only variable: 2 failing checks without it, 3 with.
+//
+// A gate that cannot run where merges are decided is not a gate. So the audit's
+// state goes where the audit is allowed to write: the user's cache directory,
+// keyed by project. CB-081 already did exactly this for the same reason (#939)
+// and the helpers below are that scheme, stated once instead of twice.
+
+/// Environment override for [`user_cache_root`].
+///
+/// Set it to place pmat's per-user cache somewhere a CI job can restore between
+/// runs — an index that survives is the difference between a gate that costs a
+/// rebuild every run and one that costs a stat.
+pub const CACHE_DIR_ENV: &str = "PMAT_CACHE_DIR";
+
+/// The one directory name pmat owns under the platform cache root.
+const CACHE_NAMESPACE: &str = "paiml-mcp-agent-toolkit";
+
+/// The root of pmat's per-user cache: derived state that belongs to the MACHINE
+/// and not to any project on it.
+///
+/// `$PMAT_CACHE_DIR`, else the platform cache dir (`$XDG_CACHE_HOME`,
+/// `~/Library/Caches`, `%LOCALAPPDATA%`), else `~/.cache`, else the temp dir.
+/// The last two fallbacks matter: a container with neither `HOME` nor
+/// `XDG_CACHE_HOME` set must still get a usable path, because the alternative
+/// is a check that reports "unmeasured" for a reason that has nothing to do
+/// with the code it was asked about.
+#[must_use]
+pub fn user_cache_root() -> PathBuf {
+    if let Some(raw) = std::env::var_os(CACHE_DIR_ENV) {
+        if !raw.is_empty() {
+            return PathBuf::from(raw);
+        }
+    }
+    dirs::cache_dir()
+        .or_else(|| dirs::home_dir().map(|h| h.join(".cache")))
+        .unwrap_or_else(std::env::temp_dir)
+        .join(CACHE_NAMESPACE)
+}
+
+/// A directory name that identifies one project, readably and without
+/// collisions: `<basename>-<16 hex digits of its canonical path>`.
+///
+/// The hash is FNV-1a, written out, and that is deliberate. The scheme this
+/// generalises used `DefaultHasher`, whose docs say in terms that its output
+/// "is not guaranteed to be equal across Rust releases" — so a toolchain bump
+/// silently renames every project's cache directory. For a dependency count
+/// that costs a re-read of `Cargo.lock`. For an INDEX it costs a multi-minute
+/// rebuild that looks, from the outside, exactly like a hang, on a machine
+/// where nothing about the project changed. A cache key has to be a function
+/// of the input alone.
+///
+/// The basename is kept in front so a human can read `~/.cache/…/comply/index/`
+/// and see whose index is whose; it is sanitised because it becomes a path
+/// component, and the hash — over the canonical path, not the basename — is
+/// what actually distinguishes two projects that share a name.
+#[must_use]
+pub fn project_cache_key(project_path: &Path) -> String {
+    let canonical =
+        std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
+    let name: String = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project")
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .take(40)
+        .collect();
+    let name = if name.is_empty() {
+        "project".to_string()
+    } else {
+        name
+    };
+    format!(
+        "{name}-{:016x}",
+        fnv1a64(canonical.as_os_str().as_encoded_bytes())
+    )
+}
+
+/// FNV-1a, 64-bit. Stable across Rust releases, machines and pmat versions,
+/// which is the only property this use needs of it.
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// Where a comply check keeps `component`'s state for `project_path`, outside
+/// that project.
+///
+/// `<user cache>/comply/<component>/<project key>` — the layout CB-081 has
+/// used since #939, now with one implementation instead of one per check.
+#[must_use]
+pub fn comply_state_dir(project_path: &Path, component: &str) -> PathBuf {
+    user_cache_root()
+        .join("comply")
+        .join(component)
+        .join(project_cache_key(project_path))
+}
+
+/// The agent-context index `comply check` reads when the audited project has
+/// none of its own, and builds there when it has none at all.
+///
+/// Same filenames as the in-project index — `context.idx/` beside `context.db`,
+/// because `AgentContextIndex::save` derives the second from the first — so
+/// this is the same artifact in a different place, not a second format.
+#[must_use]
+pub fn comply_index_path(project_path: &Path) -> PathBuf {
+    comply_state_dir(project_path, "index").join("context.idx")
+}
+
+/// How long an unused per-project entry is kept before the next write reclaims
+/// it.
+///
+/// A number is needed because these entries are not small: pmat's own
+/// agent-context index measures 79 MB, and pmat is one repository of a fleet.
+/// The key is derived from a project's canonical path, so an entry is orphaned
+/// the moment that path goes away — a deleted checkout, a worktree, and above
+/// all a temporary directory: two runs of this repository's own test suite left
+/// 15 entries behind, each for a `TempDir` that no longer existed by the time
+/// the run finished.
+///
+/// 30 days rather than something clever, because the cost of being wrong is
+/// exactly one rebuild and the cost of never sweeping is a directory that only
+/// grows.
+pub const STATE_MAX_IDLE: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 60 * 60);
+
+/// Delete per-project entries of `component` that nothing has written in
+/// `max_idle`, returning how many were removed.
+///
+/// Best-effort throughout: a cache that cannot be tidied must never fail the
+/// analysis that tried. Called only from the paths that WRITE, so the sweep
+/// costs one `read_dir` on the rare run that rebuilds and nothing at all on the
+/// runs that hit the cache.
+///
+/// The clock is on the last WRITE, not the last read — a directory's mtime does
+/// not move when a file inside it is opened. So a project that has not changed
+/// in a month has its index reclaimed and pays one rebuild for it, which is the
+/// side to be wrong on.
+pub fn sweep_idle_state(component: &str, max_idle: std::time::Duration) -> usize {
+    let dir = user_cache_root().join("comply").join(component);
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return 0;
+    };
+    let now = std::time::SystemTime::now();
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let idle = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|m| now.duration_since(m).ok());
+        if idle.is_some_and(|idle| idle > max_idle) && std::fs::remove_dir_all(&path).is_ok() {
+            removed += 1;
+        }
+    }
+    removed
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -463,5 +655,216 @@ mod tests {
             "{} was rewritten",
             metrics.display()
         );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests_user_cache {
+    use super::*;
+
+    /// `$PMAT_CACHE_DIR`, restored on drop so a failing assertion cannot leak
+    /// it into the rest of the suite.
+    struct CacheDirGuard(Option<std::ffi::OsString>);
+
+    impl CacheDirGuard {
+        fn set(value: Option<&Path>) -> Self {
+            let previous = std::env::var_os(CACHE_DIR_ENV);
+            match value {
+                Some(v) => std::env::set_var(CACHE_DIR_ENV, v),
+                None => std::env::remove_var(CACHE_DIR_ENV),
+            }
+            Self(previous)
+        }
+    }
+
+    impl Drop for CacheDirGuard {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var(CACHE_DIR_ENV, v),
+                None => std::env::remove_var(CACHE_DIR_ENV),
+            }
+        }
+    }
+
+    /// The published FNV-1a/64 vectors. This is a cache KEY: if it ever moves,
+    /// every project on the machine silently loses its index and pays for a
+    /// rebuild that looks like a hang. Pinned to the standard so that "the hash
+    /// changed" can never be something a reader has to deduce from a slow run.
+    #[test]
+    fn the_key_hash_is_fnv1a_and_stays_fnv1a() {
+        assert_eq!(fnv1a64(b""), 0xcbf2_9ce4_8422_2325);
+        assert_eq!(fnv1a64(b"a"), 0xaf63_dc4c_8601_ec8c);
+        assert_eq!(fnv1a64(b"foobar"), 0x8594_4171_f739_67e8);
+    }
+
+    /// The reason the hash is there at all: `~/src/foo` and `~/work/foo` are
+    /// two projects, and an index built from one must never be reported as a
+    /// measurement of the other.
+    #[test]
+    fn two_projects_sharing_a_basename_get_different_directories() {
+        let root = tempfile::TempDir::new().expect("tempdir");
+        let (a, b) = (root.path().join("src/api"), root.path().join("work/api"));
+        std::fs::create_dir_all(&a).expect("mkdir");
+        std::fs::create_dir_all(&b).expect("mkdir");
+
+        let (ka, kb) = (project_cache_key(&a), project_cache_key(&b));
+        assert_ne!(ka, kb, "two projects collided on one cache directory");
+        // Counter-test: it is still a key, not a nonce. The same project asked
+        // twice — and asked by a path that needs canonicalising — is one entry.
+        assert_eq!(ka, project_cache_key(&a));
+        assert_eq!(ka, project_cache_key(&root.path().join("src/./api")));
+        assert!(ka.starts_with("api-"), "the name stays readable: {ka}");
+    }
+
+    /// A basename is a path component here, so it may not smuggle in a
+    /// separator or a `..`; the hash, not the name, is what distinguishes.
+    #[test]
+    fn a_hostile_basename_cannot_escape_the_cache_directory() {
+        let root = tempfile::TempDir::new().expect("tempdir");
+        let odd = root.path().join("a b/../c#d");
+        std::fs::create_dir_all(root.path().join("c#d")).expect("mkdir");
+        let key = project_cache_key(&odd);
+        assert!(
+            !key.contains('/') && !key.contains("..") && !key.contains('#'),
+            "cache key is a single sanitised path component, got {key}"
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn the_environment_moves_the_whole_cache_and_nothing_else() {
+        let elsewhere = tempfile::TempDir::new().expect("tempdir");
+        let _guard = CacheDirGuard::set(Some(elsewhere.path()));
+        assert_eq!(user_cache_root(), elsewhere.path());
+
+        let project = tempfile::TempDir::new().expect("tempdir");
+        let index = comply_index_path(project.path());
+        assert!(
+            index.starts_with(elsewhere.path()),
+            "{} is not under {}",
+            index.display(),
+            elsewhere.path().display()
+        );
+        // The audited project is never part of the answer: that is the whole
+        // point of asking this module rather than joining ".pmat" by hand.
+        assert!(
+            !index.starts_with(project.path()),
+            "the audited tree got the index anyway: {}",
+            index.display()
+        );
+    }
+
+    /// An empty value is not a location. Left as an override it would send
+    /// every cache to the filesystem root.
+    ///
+    /// `#[serial]`, like every test here that touches `$PMAT_CACHE_DIR`: an
+    /// environment variable is process-global, and two of these running at once
+    /// read each other's value — which is exactly how this pair first failed,
+    /// one of them asserting the default and getting the other's `/cache-root`.
+    #[test]
+    #[serial_test::serial]
+    fn an_empty_override_falls_back_instead_of_rooting_the_cache() {
+        let _guard = CacheDirGuard::set(Some(Path::new("")));
+        let root = user_cache_root();
+        assert_ne!(root, Path::new(""));
+        assert!(
+            root.ends_with("paiml-mcp-agent-toolkit"),
+            "expected the namespaced default, got {}",
+            root.display()
+        );
+    }
+
+    /// One scheme, not one per check: CB-081's dependency cache and CB-200's
+    /// index are two components of the same per-project directory. The layout
+    /// is asserted because CB-081 has been living at it since #939 and moving
+    /// it silently would orphan every existing cache.
+    #[test]
+    #[serial_test::serial]
+    fn every_comply_component_shares_one_per_project_layout() {
+        let _guard = CacheDirGuard::set(Some(Path::new("/cache-root")));
+        let project = tempfile::TempDir::new().expect("tempdir");
+        let key = project_cache_key(project.path());
+
+        assert_eq!(
+            comply_state_dir(project.path(), "cb081"),
+            PathBuf::from("/cache-root/comply/cb081").join(&key)
+        );
+        assert_eq!(
+            comply_index_path(project.path()),
+            PathBuf::from("/cache-root/comply/index")
+                .join(&key)
+                .join("context.idx")
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests_sweep {
+    use super::*;
+
+    fn aged(dir: &Path, name: &str, age: std::time::Duration) -> PathBuf {
+        let entry = dir.join(name);
+        std::fs::create_dir_all(&entry).expect("mkdir");
+        std::fs::write(entry.join("context.db"), b"x").expect("write");
+        let when = std::time::SystemTime::now() - age;
+        std::fs::File::options()
+            .write(true)
+            .open(&entry)
+            .or_else(|_| std::fs::File::open(&entry))
+            .and_then(|f| f.set_modified(when))
+            .expect("age the entry");
+        entry
+    }
+
+    /// An entry nobody has written in a month is reclaimed — 79 MB of it, in
+    /// pmat's own case — and one written yesterday is NOT.
+    ///
+    /// The second half is the counter-test, and it is the one that matters: a
+    /// sweep that removes everything would turn every audit into a rebuild, so
+    /// "the cache is tidy" and "the cache is empty" must not be the same
+    /// outcome.
+    #[test]
+    #[serial_test::serial]
+    fn only_the_idle_entries_are_reclaimed() {
+        let root = tempfile::TempDir::new().expect("tempdir");
+        let previous = std::env::var_os(CACHE_DIR_ENV);
+        std::env::set_var(CACHE_DIR_ENV, root.path());
+
+        let component = root.path().join("comply").join("index");
+        std::fs::create_dir_all(&component).expect("mkdir");
+        let day = std::time::Duration::from_secs(24 * 60 * 60);
+        let stale = aged(&component, "gone-1111111111111111", 40 * day);
+        let live = aged(&component, "here-2222222222222222", day);
+
+        let removed = sweep_idle_state("index", STATE_MAX_IDLE);
+
+        match previous {
+            Some(v) => std::env::set_var(CACHE_DIR_ENV, v),
+            None => std::env::remove_var(CACHE_DIR_ENV),
+        }
+        assert_eq!(removed, 1, "exactly the idle entry");
+        assert!(!stale.exists(), "an idle entry must be reclaimed");
+        assert!(
+            live.join("context.db").exists(),
+            "a live entry must survive, or every audit becomes a rebuild"
+        );
+    }
+
+    /// A cache directory that does not exist yet is not an error — the sweep
+    /// runs on the way to CREATING it.
+    #[test]
+    #[serial_test::serial]
+    fn sweeping_an_absent_cache_is_a_no_op() {
+        let root = tempfile::TempDir::new().expect("tempdir");
+        let previous = std::env::var_os(CACHE_DIR_ENV);
+        std::env::set_var(CACHE_DIR_ENV, root.path().join("not-created-yet"));
+        let removed = sweep_idle_state("index", STATE_MAX_IDLE);
+        match previous {
+            Some(v) => std::env::set_var(CACHE_DIR_ENV, v),
+            None => std::env::remove_var(CACHE_DIR_ENV),
+        }
+        assert_eq!(removed, 0);
     }
 }

@@ -324,6 +324,13 @@ mod scope_tests;
 #[path = "dead_code_library_disclosure_tests.rs"]
 mod library_disclosure_tests;
 
+// What the report says when `cargo check` was refused rather than allowed to
+// write a Cargo.lock into the analysed tree (#1076).
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "dead_code_lockfile_disclosure_tests.rs"]
+mod lockfile_disclosure_tests;
+
 // `--path` pointed at a directory INSIDE a crate.
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -444,6 +451,9 @@ mod output_tests {
             files_with_dead_code_found: 2,
             files_truncated: false,
             library_target: None,
+            // Renderer fixture: no engine produced this result, so there
+            // is no compiler-scan verdict for it to state.
+            compiler_scan: None,
         }
     }
 
@@ -456,6 +466,9 @@ mod output_tests {
             files_with_dead_code_found: 2,
             files_truncated: false,
             library_target: None,
+            // Renderer fixture: no engine produced this result, so there
+            // is no compiler-scan verdict for it to state.
+            compiler_scan: None,
         }
     }
 

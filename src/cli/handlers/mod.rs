@@ -67,6 +67,7 @@ pub mod lint_hotspot_handlers;
 pub mod lint_hotspot_property_tests;
 pub mod localize_handlers; // GH-103: Tarantula fault localization
 pub mod mcp_manifest;
+pub mod mcp_onboarding; // `pmat mcp` guide + generated-token onboarding for `serve --transport http`
 pub mod memory;
 #[cfg(feature = "mutation-testing")]
 pub mod mutate;

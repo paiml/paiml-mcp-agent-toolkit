@@ -419,6 +419,13 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
             // be unreachable. An agent reading this payload has no summary text
             // to fall back on, so the caveat travels with the findings.
             "library_target": run.report.library_target,
+            // Whether rustc's dead-code lint contributed to these findings.
+            // `null` for engines that have no compiler layer; `reduced` when
+            // the compiler layer was refused because compiling the crate would
+            // have written a Cargo.lock into a tree pmat was asked to READ
+            // (#1076). An agent that cannot read this cannot tell an empty
+            // finding list from a search that never ran.
+            "compiler_scan": run.report.compiler_scan,
             // null for a directory (nothing was restricted away), a full
             // per-kind count for a file.
             "findings_outside_requested_path": requested_file
@@ -1279,6 +1286,7 @@ mod dead_code_include_tests_tests {
             "fn only_in_tests() {}\n",
         )
         .expect("write tests/helper.rs");
+        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(dir.path());
 
         let paths = vec![dir.path().to_path_buf()];
         let without = analyze_dead_code(&paths, false).await.expect("analysis");

@@ -1,12 +1,18 @@
 // CB-200: TDG Grade Gate (#214)
 //
-// Reads the SQLite index (.pmat/context.db) and fails if functions fall below
-// a configurable minimum TDG grade (default A).
+// Reads the SQLite agent-context index and fails if definitions fall below a
+// configurable minimum TDG grade (default A).
+//
+// The index is the project's own `.pmat/context.db` when it has one, and
+// otherwise the copy pmat keeps for that project OUTSIDE it, under the user's
+// cache directory, built here on demand. See `TdgIndex` for why the second
+// exists: without it this gate could only ever fail on a machine that happened
+// to have an index lying around, which is never a CI checkout (#1008).
 
 use crate::models::comply_config::ComplyConfig;
 use crate::tdg::grade::GRADE_VARIANTS;
 use crate::tdg::Grade;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::types::*;
 
@@ -295,83 +301,257 @@ fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern
         .any(|pat| pat.matches_with(&v.file_path, opts))
 }
 
+/// Which index CB-200 measured, and where it came from.
+///
+/// Two places, tried in this order, and the order is the whole of #1008:
+///
+/// 1. `<project>/.pmat/context.db` — the project has an index of its own,
+///    built by `pmat query`. Read it, exactly as before. A developer's index
+///    and CB-200's verdict must not be two different readings of one tree.
+/// 2. pmat's own index for this project, under the user's cache directory
+///    ([`comply_index_path`](crate::utils::pmat_cache_dir::comply_index_path)),
+///    built here if it is missing or stale.
+///
+/// (2) is the fix. Before it, an audit refused to build an index at all —
+/// correctly, because building it in the project writes `.pmat/context.db` and
+/// `.pmat/context.idx` into a tree an auditor has no business writing to (#939)
+/// — and the consequence was a gate that could only fail on a machine that
+/// happened to have an index lying around. A fresh CI checkout never does, so
+/// on the one machine whose verdict decides a merge, CB-200 measured nothing
+/// and `is_compliant` (which tallies `Fail` only) read that silence as consent.
+/// Same tree, same commit, index the only variable: 2 failing checks against 3.
+///
+/// The audited tree is still never written to. It is the CACHE that gets the
+/// index, keyed by project path, and `git status --porcelain` in the audited
+/// repository is empty afterwards — which is the property the refusal was
+/// protecting and the only one worth keeping.
+enum TdgIndex {
+    /// `<project>/.pmat/context.db`, built by whoever ran `pmat query`.
+    InProject(PathBuf),
+    /// pmat's own index for this project, outside it.
+    OutOfTree(PathBuf),
+}
+
+impl TdgIndex {
+    fn db_path(&self) -> &Path {
+        match self {
+            Self::InProject(path) | Self::OutOfTree(path) => path,
+        }
+    }
+}
+
+/// Say where a measurement came from when it did NOT come from the project.
+///
+/// Appended to the verdict rather than folded into it: the in-project sentence
+/// stays byte-identical, so this cannot move the output of any repository that
+/// already has an index — and a reader who is surprised by a CB-200 result on a
+/// machine with no `.pmat/` is told, in the verdict itself, which file was read.
+fn note_index_provenance(check: ComplianceCheck, index: &TdgIndex) -> ComplianceCheck {
+    let TdgIndex::OutOfTree(db) = index else {
+        return check;
+    };
+    let message = format!(
+        "{} [measured against {}, the index pmat keeps for this project outside it \u{2014} \
+         the audited tree has no .pmat/context.db and was not written to (#1008)]",
+        check.message,
+        db.display()
+    );
+    ComplianceCheck { message, ..check }
+}
+
+/// Pick the index to read, building pmat's own copy when the project has none.
+///
+/// The project's own index wins whenever it exists, fresh or stale — a stale
+/// one is reported as stale rather than replaced, because that is a decision
+/// about the project's file and #1045 already settled it. Only the copy pmat
+/// owns is rebuilt here, which is why this can rebuild at all.
+fn resolve_tdg_index(project_path: &Path, cache_index: &Path) -> Result<TdgIndex, String> {
+    let in_project = project_path.join(".pmat").join("context.db");
+    if in_project.exists() {
+        return Ok(TdgIndex::InProject(in_project));
+    }
+    let cached_db = cache_index.with_extension("db");
+    if cached_db.exists() && !is_index_stale(project_path, &cached_db) {
+        return Ok(TdgIndex::OutOfTree(cached_db));
+    }
+    match build_out_of_tree_index(project_path, cache_index) {
+        Ok(()) => Ok(TdgIndex::OutOfTree(cached_db)),
+        // A failed rebuild does not throw away a measurement already in hand: a
+        // stale index describes an OLDER tree, `demote_pass_when_stale` refuses
+        // to let that read as a pass, and the note names it. Reporting nothing
+        // would be strictly less information.
+        Err(reason) if cached_db.exists() => {
+            crate::status_eprintln!("CB-200: keeping the previous index ({reason})");
+            Ok(TdgIndex::OutOfTree(cached_db))
+        }
+        Err(reason) => Err(reason),
+    }
+}
+
+/// Build the agent-context index for `project_path` at `index_path`, which is
+/// outside `project_path`.
+///
+/// `AgentContextIndex::build` only walks and reads; `save` writes
+/// `<index_path>/manifest.json` and `<index_path>.db`, and `index_path` is in
+/// the user's cache. Nothing here touches the audited tree.
+///
+/// No staging layer is added on top of that, deliberately: `save_to_sqlite`
+/// already builds into a process-unique scratch file and `rename`s it into
+/// place, so two audits of one project racing here leave a whole index or the
+/// previous one, never a half-populated `functions` table — which would
+/// under-report violations and read as a pass.
+///
+/// An index with no definitions in it is an ERROR, not an empty pass. A
+/// directory holding no code parses to zero functions, zero functions violate
+/// no floor, and "nothing below grade A" is a sentence that would then be
+/// printed over a project pmat never read a line of. Absence rendered as
+/// success is this codebase's signature defect; the caller turns this Err into
+/// the same "not measured" verdict an unbuildable index gets.
+fn build_out_of_tree_index(project_path: &Path, index_path: &Path) -> Result<(), String> {
+    crate::status_eprintln!(
+        "CB-200: no index in {} \u{2014} building pmat's own at {} (the audited tree is not written to)",
+        project_path.display(),
+        index_path.display()
+    );
+    let index = crate::services::agent_context::AgentContextIndex::build(project_path)
+        .map_err(|e| format!("no index could be built for this project ({e})"))?;
+    if index.all_functions().is_empty() {
+        return Err(
+            "an index built from this project holds no definitions, so there is nothing to grade"
+                .to_string(),
+        );
+    }
+    crate::utils::pmat_cache_dir::ensure_parent_dir(index_path)
+        .map_err(|e| format!("pmat's cache directory is not writable ({e})"))?;
+    // Reclaim entries for projects that no longer exist before adding another
+    // 79 MB one. Here rather than on the read path: this is the rare branch,
+    // and a cache that is only ever added to is a disk leak with a nice name.
+    crate::utils::pmat_cache_dir::sweep_idle_state(
+        "index",
+        crate::utils::pmat_cache_dir::STATE_MAX_IDLE,
+    );
+    index
+        .save(index_path)
+        .map_err(|e| format!("the index could not be saved to pmat's cache ({e})"))?;
+    let db_path = index_path.with_extension("db");
+    if !db_path.exists() {
+        return Err(format!(
+            "the index was built but {} was not written",
+            db_path.display()
+        ));
+    }
+    Ok(())
+}
+
+/// A threshold that cannot be parsed must not be read as a threshold nothing
+/// violates. Decided from the CONFIG alone, so it is answered before any index
+/// is looked for: "no index" must not launder a broken floor into a skip.
+fn unparseable_floor_verdict(min_grade: &str) -> ComplianceCheck {
+    tdg_check(
+        CheckStatus::Fail,
+        Severity::Error,
+        format!(
+            "minimum grade {min_grade:?} is not a grade this codebase produces (known: {}). \
+             A threshold that cannot be parsed must not be read as a threshold nothing violates.",
+            GRADE_VARIANTS.join(", ")
+        ),
+    )
+}
+
+/// The floor admits every grade the codebase produces, so this verdict is
+/// derived from the CONFIG and not from the index: no row, fresh or stale, can
+/// violate it. It therefore carries no staleness note and is not demoted — the
+/// invariant being kept is that a `Pass` never rests on a stale reading, and
+/// this one rests on no reading at all. It is also answered before the index is
+/// resolved, so a floor of "F" never pays for an index build it cannot use.
+fn floor_admits_everything_verdict(min_grade: &str) -> ComplianceCheck {
+    tdg_check(
+        CheckStatus::Pass,
+        Severity::Info,
+        format!("Minimum grade {min_grade} \u{2014} no grades below threshold"),
+    )
+}
+
+/// Every glob a violation may be excluded by: `.pmat.yaml`'s, then
+/// `.pmat-gates.toml`'s. A pattern that does not compile is dropped, which
+/// keeps a typo from excluding everything.
+fn tdg_exclude_patterns(
+    comply_config: &ComplyConfig,
+    overrides: &TdgGateOverrides,
+) -> Vec<glob::Pattern> {
+    comply_config
+        .thresholds
+        .tdg_exclude_paths
+        .iter()
+        .map(String::as_str)
+        .chain(overrides.exclude.iter().map(String::as_str))
+        .filter_map(|p| glob::Pattern::new(p).ok())
+        .collect()
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
     comply_config: &ComplyConfig,
 ) -> ComplianceCheck {
-    let db_path = project_path.join(".pmat").join("context.db");
+    check_tdg_grade_gate_with_index(
+        project_path,
+        comply_config,
+        &crate::utils::pmat_cache_dir::comply_index_path(project_path),
+    )
+}
+
+/// CB-200 with the out-of-tree index location passed in.
+///
+/// A parameter and not an environment variable for the tests' sake: a test that
+/// has to `set_var` to stay out of the developer's real cache is a test that
+/// cannot run in parallel with any other, and this file has forty that do.
+/// `$PMAT_CACHE_DIR` still moves the default — see
+/// [`user_cache_root`](crate::utils::pmat_cache_dir::user_cache_root) — it is
+/// just not how a test gets a private one.
+fn check_tdg_grade_gate_with_index(
+    project_path: &Path,
+    comply_config: &ComplyConfig,
+    cache_index: &Path,
+) -> ComplianceCheck {
     let overrides = load_tdg_gate_overrides(project_path);
-    if !db_path.exists() {
-        return absent_index_verdict(&overrides.baseline);
-    }
-    // A stale index still measures something REAL — an OLDER tree — and it is a
-    // rebuild that would measure nothing. `comply check` used to rebuild and
-    // SAVE the index here, writing .pmat/context.db + .pmat/context.idx (160KB+)
-    // into the audited tree on every run — the same class of defect as the
-    // Cargo.lock it created while checking whether a Cargo.lock existed (#939).
-    // The staleness is reported instead of silently repaired, and — since
-    // #1045 — it also stops the answer being a Pass: see `demote_pass_when_stale`.
-    let stale = is_index_stale(project_path, &db_path);
-    let staleness = if stale { STALE_INDEX_NOTE } else { "" };
     let min_grade = overrides
         .min_grade
         .as_deref()
         .unwrap_or(&comply_config.thresholds.min_tdg_grade);
     let Some(passing_grades) = passing_spellings(min_grade) else {
-        return ComplianceCheck {
-            name: "CB-200: TDG Grade Gate".into(),
-            status: CheckStatus::Fail,
-            message: format!(
-                "minimum grade {min_grade:?} is not a grade this codebase produces (known: {}). \
-                 A threshold that cannot be parsed must not be read as a threshold nothing violates.",
-                GRADE_VARIANTS.join(", ")
-            ),
-            severity: Severity::Error,
-        };
+        return unparseable_floor_verdict(min_grade);
     };
     if passing_grades.len() == GRADE_VARIANTS.len() {
-        // The floor admits every grade the codebase produces, so this verdict is
-        // derived from the CONFIG and not from the index: no row, fresh or
-        // stale, can violate it. It therefore carries no staleness note and is
-        // not demoted — the invariant being kept is that a `Pass` never rests on
-        // a stale reading, and this one rests on no reading at all.
-        return ComplianceCheck {
-            name: "CB-200: TDG Grade Gate".into(),
-            status: CheckStatus::Pass,
-            message: format!("Minimum grade {min_grade} \u{2014} no grades below threshold"),
-            severity: Severity::Info,
-        };
+        return floor_admits_everything_verdict(min_grade);
     }
-    let violations = match query_tdg_violations(&db_path, &passing_grades) {
+    let index = match resolve_tdg_index(project_path, cache_index) {
+        Ok(index) => index,
+        Err(reason) => return absent_index_verdict(&overrides.baseline, &reason),
+    };
+    // A stale index still measures something REAL — an OLDER tree — and it is a
+    // rebuild that would measure nothing. For the project's own index the
+    // staleness is reported instead of silently repaired (#939, #1045); the
+    // copy pmat owns was rebuilt above unless the rebuild failed, so reaching
+    // here with a stale one means the note is carrying real news.
+    let stale = is_index_stale(project_path, index.db_path());
+    let violations = match query_tdg_violations(index.db_path(), &passing_grades) {
         Ok(v) => v,
         Err(check) => return check,
     };
-    let all_excludes: Vec<&str> = comply_config
-        .thresholds
-        .tdg_exclude_paths
-        .iter()
-        .map(|s| s.as_str())
-        .chain(overrides.exclude.iter().map(|s| s.as_str()))
-        .collect();
-    let exclude_patterns: Vec<glob::Pattern> = all_excludes
-        .iter()
-        .filter_map(|p| glob::Pattern::new(p).ok())
-        .collect();
+    let exclude_patterns = tdg_exclude_patterns(comply_config, &overrides);
     let filtered: Vec<&TdgViolation> = violations
         .iter()
         .filter(|v| !is_tdg_violation_excluded(v, &exclude_patterns))
         .collect();
-    demote_pass_when_stale(
-        tdg_grade_verdict(
-            &filtered,
-            violations.len(),
-            min_grade,
-            &overrides.baseline,
-            staleness,
-        ),
-        stale,
-    )
+    let verdict = tdg_grade_verdict(
+        &filtered,
+        violations.len(),
+        min_grade,
+        &overrides.baseline,
+        if stale { STALE_INDEX_NOTE } else { "" },
+    );
+    note_index_provenance(demote_pass_when_stale(verdict, stale), &index)
 }
 
 /// What a stale index costs the reader, and the command that actually fixes it.
@@ -432,35 +612,41 @@ fn demote_pass_when_stale(check: ComplianceCheck, stale: bool) -> ComplianceChec
     }
 }
 
-/// No `.pmat/context.db`: CB-200 measured nothing at all.
+/// CB-200 measured nothing at all: neither the project's index nor pmat's own
+/// could be read, and `reason` says which failed and how.
 ///
 /// `Skip` for a project that never opted into the ratchet. It has recorded no
-/// baseline to hold, pmat must not fail every fresh clone of every repo that
-/// runs `comply check`, and #939 forbids building an index inside the tree
-/// under audit to manufacture one.
+/// baseline to hold, and pmat must not fail every fresh clone of every repo
+/// that runs `comply check` — around 40 of 155 checks only run where some
+/// state exists, and a blanket "unmeasured is a failure" rule turns a fresh
+/// clone into a wall of red and makes failure counts incomparable between
+/// machines. That is a different defect, not a fix for this one.
 ///
-/// `Fail` for a project that RECORDED a `[tdg] baseline`. `.pmat/` is
-/// gitignored and no CI leg builds an index, so on a fresh checkout this used
-/// to answer `Skip` — and `Skip` is not counted by `ComplianceReport::
-/// is_compliant`, which tallies `Fail` only. The consequence (#1008) is that
-/// CB-200 could only ever fail on a machine that happened to have an index
-/// lying around: the ratchet was unenforceable in the one place that decides a
-/// merge. A declared ratchet that did not run has not held; it has not been
-/// asked. "We could not measure it" must never read as "it did not regress" —
-/// the rule `.pmat-ratchet.toml` already applies to its own baselines, where an
+/// `Fail` for a project that RECORDED a `[tdg] baseline`. `Skip` is not counted
+/// by `ComplianceReport::is_compliant`, which tallies `Fail` only, so a
+/// declared ratchet that could not be measured used to report success. A
+/// ratchet that did not run has not held; it has not been asked. "We could not
+/// measure it" must never read as "it did not regress" — the rule
+/// `.pmat-ratchet.toml` already applies to its own baselines, where an
 /// UNMEASURABLE metric fails rather than passes.
 ///
-/// The remedy is a build step, not a lower bar: index, then check.
-fn absent_index_verdict(baseline: &TdgBaseline) -> ComplianceCheck {
-    const HOW: &str = "Build one with `pmat query \"x\" --rebuild-index`, then re-run. \
-                       `comply check` will not build it itself: that writes .pmat/context.db \
-                       and .pmat/context.idx into the project being audited (#939).";
+/// Since #1008 this is a genuinely exceptional path rather than the normal one:
+/// an absent index is now built out-of-tree (see [`TdgIndex`]), so getting here
+/// means the project holds no code to grade, or pmat has nowhere writable to
+/// keep an index.
+fn absent_index_verdict(baseline: &TdgBaseline, reason: &str) -> ComplianceCheck {
+    const HOW: &str = "CB-200 builds its own index OUTSIDE the audited project \
+                       (under $PMAT_CACHE_DIR, else the platform cache directory) so that a \
+                       fresh checkout can be measured without being written to (#1008) \
+                       \u{2014} this run could not. Point $PMAT_CACHE_DIR at a writable \
+                       directory, or build an index in the project with `pmat query \"x\" \
+                       --rebuild-index`, then re-run.";
     match baseline {
         TdgBaseline::Absent => tdg_check(
             CheckStatus::Skip,
             Severity::Info,
             format!(
-                "Not measured: no .pmat/context.db, and this project records no \
+                "Not measured: {reason}, and this project records no \
                  `[tdg] baseline` for CB-200 to hold. {HOW}"
             ),
         ),
@@ -468,7 +654,7 @@ fn absent_index_verdict(baseline: &TdgBaseline) -> ComplianceCheck {
             CheckStatus::Fail,
             Severity::Error,
             format!(
-                "Not measured: no .pmat/context.db, so the recorded `[tdg] baseline` of {b} \
+                "Not measured: {reason}, so the recorded `[tdg] baseline` of {b} \
                  was never checked. A ratchet that did not run has not held - an unmeasured \
                  gate must not report success. {HOW}"
             ),
@@ -928,24 +1114,38 @@ mod tests_tdg_grade {
     /// `.pmat/context.db` was missing or stale — so asking for a compliance
     /// verdict wrote `.pmat/context.db` and `.pmat/context.idx` into the
     /// project being audited (and spent minutes doing it on a large repo).
-    /// An audit reads; `pmat query` builds.
+    ///
+    /// It still never writes there, and that is what this test is for. What
+    /// #1008 changed is where the index comes from when the project has none:
+    /// pmat's own copy, outside the tree. The `Skip` this used to assert WAS
+    /// the defect — a gate that declines to measure a fresh checkout cannot
+    /// run in the one place a verdict decides a merge.
     #[test]
     fn cb200_never_builds_an_index_inside_the_audited_project() {
+        let cache = tempfile::tempdir().expect("create cache dir");
         let tmp = tempfile::tempdir().expect("create tempdir");
         std::fs::create_dir_all(tmp.path().join("src")).expect("create src");
         std::fs::write(tmp.path().join("src/lib.rs"), "pub fn f() {}\n").expect("write source");
 
-        let result = check_tdg_grade_gate(tmp.path(), &ComplyConfig::default());
+        let result = check_tdg_grade_gate_with_index(
+            tmp.path(),
+            &ComplyConfig::default(),
+            &cache.path().join("context.idx"),
+        );
 
-        assert_eq!(result.status, CheckStatus::Skip);
         assert!(
             !tmp.path().join(".pmat").exists(),
             "comply check must not write .pmat/ into the project it audits"
         );
-        assert!(
-            result.message.contains("Not measured"),
-            "an unbuilt index is unmeasured, not compliant: {}",
+        assert_ne!(
+            result.status,
+            CheckStatus::Skip,
+            "#1008: a tree pmat could read must be measured, not skipped: {}",
             result.message
+        );
+        assert!(
+            cache.path().join("context.db").exists(),
+            "the index it read must be the one outside the audited tree"
         );
     }
 
@@ -1813,6 +2013,578 @@ mod tests_stale_and_absent_index {
             CheckStatus::Warn,
             "0-against-baseline-0 over a stale index is not a Pass: {}",
             verdict.message
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests_index_outside_the_audited_tree {
+    use super::*;
+    use std::process::Command;
+
+    /// A tree with one definition no floor of A can admit, and one that passes,
+    /// so a verdict of "everything is fine" and a verdict of "nothing was read"
+    /// are distinguishable from each other.
+    const AWFUL: &str = r#"
+pub fn fine(a: u32) -> u32 { a + 1 }
+
+pub fn awful(a: i32, b: i32, c: i32, d: i32) -> i32 {
+    let mut t = 0;
+    for i in 0..a {
+        if i % 2 == 0 {
+            for j in 0..b {
+                if j % 3 == 0 {
+                    while t < c {
+                        if t % 5 == 0 { t += 1; } else if t % 7 == 0 { t += 2; } else { t += 3; }
+                        match t % 4 {
+                            0 => t += 1,
+                            1 => t += 2,
+                            2 => { if d > 0 { t += 3 } else { t -= 1 } }
+                            _ => t += 4,
+                        }
+                    }
+                } else if j % 5 == 0 { t -= 1; } else if j % 7 == 0 { t += j; } else { t += 2; }
+            }
+        } else if i % 3 == 0 {
+            t += 2;
+        } else {
+            for k in 0..d { if k > 3 { t += k } else if k > 1 { t -= k } else { t += 1 } }
+        }
+    }
+    // TODO: this is a mess
+    // FIXME: and it knows it
+    t
+}
+"#;
+
+    pub(super) fn committed_cargo_project() -> tempfile::TempDir {
+        let d = git_project_with_code();
+        std::fs::write(
+            d.path().join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("write manifest");
+        git(d.path(), &["add", "-A"]);
+        git(
+            d.path(),
+            &[
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "commit",
+                "--no-verify",
+                "-qm",
+                "manifest",
+            ],
+        );
+        d
+    }
+
+    pub(super) fn porcelain_of(p: &Path) -> String {
+        porcelain(p)
+    }
+
+    pub(super) fn build_index_in(p: &Path) {
+        build_in_project_index(p)
+    }
+
+    fn project_with_code() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("create tempdir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("create src");
+        std::fs::write(dir.path().join("src/lib.rs"), AWFUL).expect("write source");
+        dir
+    }
+
+    /// The index `pmat query` would leave in the project — built the same way,
+    /// so side B of the A/B is the real thing and not a hand-written fixture.
+    fn build_in_project_index(project: &Path) {
+        let index_path = project.join(".pmat").join("context.idx");
+        std::fs::create_dir_all(project.join(".pmat")).expect("create .pmat");
+        crate::services::agent_context::AgentContextIndex::build(project)
+            .expect("build index")
+            .save(&index_path)
+            .expect("save index");
+    }
+
+    /// The verdict without the provenance note, which is the only part of the
+    /// message that is *supposed* to differ between the two sides.
+    fn verdict_core(check: &ComplianceCheck) -> String {
+        check
+            .message
+            .split(" [measured against")
+            .next()
+            .unwrap_or_default()
+            .to_string()
+    }
+
+    /// `$PMAT_CACHE_DIR`, restored on drop so a failing assertion cannot leak
+    /// it into the rest of the suite.
+    pub(super) struct CacheDirGuard(Option<std::ffi::OsString>);
+
+    /// `$PMAT_CACHE_DIR` for the duration of one test, for the sibling module
+    /// that runs the whole compliance report rather than one check.
+    pub(super) fn cache_dir_guard(dir: &Path) -> CacheDirGuard {
+        CacheDirGuard::pointing_at(dir)
+    }
+
+    impl CacheDirGuard {
+        fn pointing_at(dir: &Path) -> Self {
+            let previous = std::env::var_os(crate::utils::pmat_cache_dir::CACHE_DIR_ENV);
+            std::env::set_var(crate::utils::pmat_cache_dir::CACHE_DIR_ENV, dir);
+            Self(previous)
+        }
+    }
+
+    impl Drop for CacheDirGuard {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var(crate::utils::pmat_cache_dir::CACHE_DIR_ENV, v),
+                None => std::env::remove_var(crate::utils::pmat_cache_dir::CACHE_DIR_ENV),
+            }
+        }
+    }
+
+    fn git(dir: &Path, args: &[&str]) -> std::process::Output {
+        Command::new("git")
+            .current_dir(dir)
+            .args(args)
+            .output()
+            .expect("git must be runnable")
+    }
+
+    fn porcelain(dir: &Path) -> String {
+        String::from_utf8_lossy(&git(dir, &["status", "--porcelain"]).stdout).into_owned()
+    }
+
+    /// `--template=` keeps a developer's global hook template out of the
+    /// fixture; `--no-verify` on the commit keeps a global `core.hooksPath`
+    /// from running this repository's own gates inside a two-file tempdir.
+    fn git_project_with_code() -> tempfile::TempDir {
+        let dir = project_with_code();
+        assert!(
+            git(dir.path(), &["init", "-q", "--template=", "."])
+                .status
+                .success(),
+            "git init failed"
+        );
+        git(dir.path(), &["add", "-A"]);
+        assert!(
+            git(
+                dir.path(),
+                &[
+                    "-c",
+                    "user.email=t@t",
+                    "-c",
+                    "user.name=t",
+                    "commit",
+                    "--no-verify",
+                    "-qm",
+                    "fixture",
+                ],
+            )
+            .status
+            .success(),
+            "commit failed"
+        );
+        dir
+    }
+
+    /// #1008's own A/B, at the check that showed it: one tree, one commit, the
+    /// index the only variable. The two sides must return the SAME verdict.
+    ///
+    /// Reported on `paiml/rmedia` at `ffe4f68` as 2 failing checks without an
+    /// index against 3 with one — a gate that structurally could not fail on a
+    /// fresh CI checkout, which is the only checkout whose verdict decides a
+    /// merge.
+    ///
+    /// RED, against the code this replaces:
+    /// ```text
+    /// thread 'a_tree_gets_the_same_verdict_with_or_without_an_index_of_its_own'
+    ///   panicked at check_tdg_grade.rs:
+    /// a project with no index of its own was not measured at all (Skip) - #1008:
+    /// a gate that can only run where an index happens to exist cannot run in CI
+    /// ```
+    #[test]
+    #[serial_test::serial]
+    fn a_tree_gets_the_same_verdict_with_or_without_an_index_of_its_own() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let _env = CacheDirGuard::pointing_at(cache.path());
+        let project = project_with_code();
+        let config = ComplyConfig::default();
+
+        // A: no `.pmat/` anywhere in the tree, exactly as a fresh checkout.
+        let without = check_tdg_grade_gate(project.path(), &config);
+        assert!(
+            !project.path().join(".pmat").exists(),
+            "#939: the audited tree must not be written to, index or no index"
+        );
+        assert_ne!(
+            without.status,
+            CheckStatus::Skip,
+            "a project with no index of its own was not measured at all (Skip) - #1008: \
+             a gate that can only run where an index happens to exist cannot run in CI. \
+             Message was: {}",
+            without.message
+        );
+
+        // B: the same tree, with the index `pmat query` would have built.
+        build_in_project_index(project.path());
+        let with = check_tdg_grade_gate(project.path(), &config);
+
+        assert_eq!(
+            without.status, with.status,
+            "the same tree got two different verdicts:\n  without: {}\n  with:    {}",
+            without.message, with.message
+        );
+        assert_eq!(
+            verdict_core(&without),
+            verdict_core(&with),
+            "the same tree was measured differently depending on where its index lived"
+        );
+        assert!(
+            with.message.split(" [measured against").count() == 1,
+            "a project's own index is read in place and says nothing about a cache: {}",
+            with.message
+        );
+        assert!(
+            without.message.contains("[measured against"),
+            "a verdict from outside the tree must name the file it read: {}",
+            without.message
+        );
+    }
+
+    /// The fixture is load-bearing: if it graded clean, the A/B above would be
+    /// comparing two Passes and could not tell a measurement from a shrug.
+    #[test]
+    #[serial_test::serial]
+    fn the_out_of_tree_measurement_can_actually_fail() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let project = project_with_code();
+
+        let verdict = check_tdg_grade_gate_with_index(
+            project.path(),
+            &ComplyConfig::default(),
+            &cache.path().join("context.idx"),
+        );
+
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Fail,
+            "a definition below the floor must fail from the out-of-tree index too: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("awful"),
+            "the offender must be named: {}",
+            verdict.message
+        );
+    }
+
+    /// THE counter-test. Building an index must not manufacture a verdict out
+    /// of a tree pmat never read a line of.
+    ///
+    /// Zero definitions violate no floor, so the naive version of this fix
+    /// answers "no functions below minimum grade A" — a clean bill of health
+    /// for a directory with no code in it, which is worse than the skip it
+    /// replaced. An empty measurement is not a measurement.
+    #[test]
+    fn a_tree_with_no_definitions_is_not_measured_into_a_pass() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let project = tempfile::tempdir().expect("create tempdir");
+        std::fs::write(project.path().join("README.md"), "# no code here\n").expect("write");
+
+        let verdict = check_tdg_grade_gate_with_index(
+            project.path(),
+            &ComplyConfig::default(),
+            &cache.path().join("context.idx"),
+        );
+
+        assert_eq!(
+            verdict.status,
+            CheckStatus::Skip,
+            "a tree with nothing to grade must not report a pass: {}",
+            verdict.message
+        );
+        assert!(
+            verdict.message.contains("no definitions"),
+            "the reason must say what was missing: {}",
+            verdict.message
+        );
+        assert!(
+            !cache.path().join("context.db").exists(),
+            "an empty index must not be cached as if it were a measurement"
+        );
+
+        // And the same nothing, with a ratchet recorded against it, fails
+        // rather than passes: an unmeasured baseline has not held.
+        std::fs::write(
+            project.path().join(".pmat-gates.toml"),
+            "[tdg]\nbaseline = 7\n",
+        )
+        .expect("write gates toml");
+        let recorded = check_tdg_grade_gate_with_index(
+            project.path(),
+            &ComplyConfig::default(),
+            &cache.path().join("context.idx"),
+        );
+        assert_eq!(recorded.status, CheckStatus::Fail, "{}", recorded.message);
+        assert!(
+            recorded.message.contains("Not measured"),
+            "{}",
+            recorded.message
+        );
+    }
+
+    /// The property the refusal to build was protecting, asked of git rather
+    /// than of a filename: after CB-200 has measured a repository, that
+    /// repository's `git status` is empty.
+    #[test]
+    #[serial_test::serial]
+    fn measuring_a_repository_leaves_its_git_status_clean() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let _env = CacheDirGuard::pointing_at(cache.path());
+        let project = git_project_with_code();
+        assert_eq!(porcelain(project.path()), "", "fixture must start clean");
+
+        let verdict = check_tdg_grade_gate(project.path(), &ComplyConfig::default());
+
+        assert_ne!(
+            verdict.status,
+            CheckStatus::Skip,
+            "the point is that it measured: {}",
+            verdict.message
+        );
+        assert_eq!(
+            porcelain(project.path()),
+            "",
+            "CB-200 dirtied the repository it audited"
+        );
+        assert!(
+            !project.path().join(".pmat").exists(),
+            "not even an ignored .pmat/ - the tree is not pmat's to write to"
+        );
+    }
+
+    /// The other counter-test: a project that VERSIONS its own `.pmat/` must
+    /// keep it. The out-of-tree index is a fallback for a tree that has none,
+    /// never a replacement for one that does — nothing here may ignore, move,
+    /// clobber or shadow a committed index.
+    #[test]
+    #[serial_test::serial]
+    fn a_committed_index_is_read_in_place_and_left_alone() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let _env = CacheDirGuard::pointing_at(cache.path());
+        let project = git_project_with_code();
+        build_in_project_index(project.path());
+        git(project.path(), &["add", "-f", ".pmat/context.db"]);
+        assert!(
+            git(
+                project.path(),
+                &[
+                    "-c",
+                    "user.email=t@t",
+                    "-c",
+                    "user.name=t",
+                    "commit",
+                    "--no-verify",
+                    "-qm",
+                    "we version our index",
+                ],
+            )
+            .status
+            .success(),
+            "commit failed"
+        );
+        let before = std::fs::metadata(project.path().join(".pmat/context.db"))
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+
+        let verdict = check_tdg_grade_gate(project.path(), &ComplyConfig::default());
+
+        assert!(
+            git(
+                project.path(),
+                &["ls-files", "--error-unmatch", ".pmat/context.db"],
+            )
+            .status
+            .success(),
+            "the committed index was dropped from the index"
+        );
+        let after = std::fs::metadata(project.path().join(".pmat/context.db"))
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        assert_eq!(before, after, "the committed index was rewritten");
+        assert!(
+            !verdict.message.contains("[measured against"),
+            "a committed index must be READ, not shadowed by a cached copy: {}",
+            verdict.message
+        );
+        assert!(
+            !crate::utils::pmat_cache_dir::comply_index_path(project.path())
+                .with_extension("db")
+                .exists(),
+            "no out-of-tree index may be built for a project that has one"
+        );
+        // Asked of THIS project's cache entry and not of the cache root: the
+        // root is shared, so `<root>/comply` merely existing says only that
+        // some other project was measured, which is not this test's business
+        // and made it fail under a full parallel run.
+    }
+
+    /// The cache is a cache: a second run reads what the first one built
+    /// instead of paying for the walk again.
+    #[test]
+    fn a_built_index_is_reused_by_the_next_run() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let index_path = cache.path().join("context.idx");
+        let project = project_with_code();
+        let config = ComplyConfig::default();
+
+        let first = check_tdg_grade_gate_with_index(project.path(), &config, &index_path);
+        let built = std::fs::metadata(index_path.with_extension("db"))
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+
+        let second = check_tdg_grade_gate_with_index(project.path(), &config, &index_path);
+        let after = std::fs::metadata(index_path.with_extension("db"))
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+
+        assert_eq!(
+            built, after,
+            "the second run rebuilt an index it could reuse"
+        );
+        assert_eq!(first.status, second.status);
+        assert_eq!(first.message, second.message);
+    }
+
+    /// …and it is a cache of THIS tree. Edit the sources and the next run
+    /// measures the edit, or the gate would hold a baseline against a tree that
+    /// no longer exists — which is how `.pmat-gates.toml`'s own baseline was
+    /// first banked 216 units too high.
+    #[test]
+    fn an_edit_after_the_build_is_measured_not_ignored() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let index_path = cache.path().join("context.idx");
+        let project = project_with_code();
+        let config = ComplyConfig::default();
+
+        let before = check_tdg_grade_gate_with_index(project.path(), &config, &index_path);
+        assert_eq!(before.status, CheckStatus::Fail, "{}", before.message);
+
+        // The offending definition is deleted, and the CACHED INDEX is aged a
+        // clear minute rather than the edit being raced against it: filesystem
+        // timestamp granularity is coarser than the microseconds between two
+        // writes, which is the kind of thing that passes locally and fails in
+        // CI. Ageing the index rather than post-dating the source also keeps
+        // the fixture honest — a source file with an mtime in the future is
+        // newer than any index that could ever be built from it.
+        let src = project.path().join("src/lib.rs");
+        std::fs::write(&src, "pub fn fine(a: u32) -> u32 { a + 1 }\n").expect("write source");
+        let db = index_path.with_extension("db");
+        let db_mtime = std::fs::metadata(&db)
+            .and_then(|m| m.modified())
+            .expect("db mtime");
+        std::fs::File::options()
+            .write(true)
+            .open(&db)
+            .and_then(|f| f.set_modified(db_mtime - std::time::Duration::from_secs(60)))
+            .expect("age the cached index a clear minute");
+        assert!(
+            is_index_stale(project.path(), &db),
+            "fixture must be stale before the run under test"
+        );
+
+        let after = check_tdg_grade_gate_with_index(project.path(), &config, &index_path);
+        assert_eq!(
+            after.status,
+            CheckStatus::Pass,
+            "the fix was not seen: a stale cached index was reported as the current tree: {}",
+            after.message
+        );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests_the_reported_ab {
+    use super::super::check::compute_compliance_report;
+    use super::super::types::{CheckStatus, ComplianceReport};
+    use super::tests_index_outside_the_audited_tree as fixture;
+
+    fn names(report: &ComplianceReport, want: CheckStatus) -> Vec<String> {
+        let mut found: Vec<String> = report
+            .checks
+            .iter()
+            .filter(|c| c.status == want)
+            .map(|c| c.name.clone())
+            .collect();
+        found.sort();
+        found
+    }
+
+    /// #1008 as it was reported: the WHOLE compliance report, one tree, one
+    /// commit, the index the only variable. The set of FAILING checks must be
+    /// the same on both sides.
+    ///
+    /// The report on `paiml/rmedia` at `ffe4f68` was 2 failing checks without
+    /// an index and 3 with — CB-200 the difference. The exit code happened to
+    /// be 1 either way there, because other checks were failing; had CB-200
+    /// been the only violation, the same commit would have exited 0 in CI and 1
+    /// on a developer's machine.
+    ///
+    /// Measured here, on this fixture, RED against the code this replaces:
+    /// ```text
+    /// A fail=3  B fail=4   only_with_index: ["CB-200: TDG Grade Gate"]
+    /// ```
+    /// and after:
+    /// ```text
+    /// A fail=4  B fail=4   only_with_index: []
+    /// ```
+    ///
+    /// It asserts the SET and not the count, and it names the differing checks
+    /// when it fails, because the interesting failure is a new check that can
+    /// only be measured where somebody has run `pmat query` — this defect
+    /// arriving again somewhere else.
+    #[test]
+    #[serial_test::serial]
+    fn the_failing_checks_do_not_depend_on_whether_an_index_exists() {
+        let cache = tempfile::tempdir().expect("create cache dir");
+        let _env = fixture::cache_dir_guard(cache.path());
+        let project = fixture::committed_cargo_project();
+
+        let without = compute_compliance_report(project.path()).expect("report without an index");
+        let without_failing = names(&without, CheckStatus::Fail);
+        assert_eq!(
+            fixture::porcelain_of(project.path()),
+            "",
+            "auditing the project dirtied it"
+        );
+
+        fixture::build_index_in(project.path());
+        let with = compute_compliance_report(project.path()).expect("report with an index");
+        let with_failing = names(&with, CheckStatus::Fail);
+
+        let only_with: Vec<&String> = with_failing
+            .iter()
+            .filter(|n| !without_failing.contains(n))
+            .collect();
+        let only_without: Vec<&String> = without_failing
+            .iter()
+            .filter(|n| !with_failing.contains(n))
+            .collect();
+        assert!(
+            only_with.is_empty() && only_without.is_empty(),
+            "the same tree failed a different set of checks depending on whether an index \
+             happened to exist.\n  fails only WITH an index:    {only_with:?}\n  \
+             fails only WITHOUT an index: {only_without:?}"
+        );
+        assert!(
+            without_failing.iter().any(|n| n.starts_with("CB-200")),
+            "the fixture must actually violate CB-200, or this proves nothing. Failing: \
+             {without_failing:?}"
         );
     }
 }

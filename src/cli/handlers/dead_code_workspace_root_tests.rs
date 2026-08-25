@@ -87,6 +87,11 @@ fn virtual_workspace() -> TempDir {
         "fn stray_dead() -> i32 {\n    3\n}\n",
     )
     .expect("write tools/loose.rs");
+
+    // A workspace resolves ONE lockfile, at its root, covering every member.
+    // pmat no longer creates it (#1076), so the fixture must ship it or the
+    // member crate is analysed with its compiler layer skipped.
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(tmp.path());
     tmp
 }
 

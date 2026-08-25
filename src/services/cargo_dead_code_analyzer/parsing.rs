@@ -365,6 +365,9 @@ impl CargoDeadCodeAnalyzer {
             project_files,
             dead_lines,
             dead_by_type,
+            // Filled in by `analyze`, which is the only caller that knows
+            // whether Layer 2 ran. `None` is not "it ran".
+            compiler_scan: None,
         })
     }
 }

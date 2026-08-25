@@ -227,14 +227,40 @@ fn indexed_definitions(db_path: &Path) -> Option<usize> {
 /// question.
 pub fn measure_below_floor(project_path: &Path) -> Measured {
     let db_path = project_path.join(".pmat").join("context.db");
+    // The project's own index, and deliberately not the one CB-200 will build
+    // for itself outside the tree (#1008).
+    //
+    // CB-200 is a GATE: it must be able to run on a fresh CI checkout, so when
+    // the project has no index it builds pmat's own copy under the user's cache
+    // and measures that. This function is not a gate. It re-derives a number
+    // that was BANKED from `<project>/.pmat/context.db` and it runs inside
+    // `cargo test --lib`, where making it build a full index as a side effect
+    // would add minutes to the suite that CI runs on every push. So it keeps
+    // requiring the artifact the baseline came from, and says so in its own
+    // words rather than forwarding a verdict that DID measure something —
+    // "could not measure: 1904 definitions below grade A" is a sentence no
+    // reader can act on.
+    //
+    // Wiring this to the same out-of-tree index is a real follow-up, and it is
+    // a decision about test-suite cost, not about correctness.
+    // Asked BEFORE the gate is called, and that order is load-bearing: this
+    // function runs inside `cargo test --lib`, and calling CB-200 on a checkout
+    // with no index of its own now BUILDS one — measured at ~6 minutes and
+    // 79 MB for this repository. A unit-test suite must not do that as a side
+    // effect of asking a question it is about to refuse to answer.
+    if !db_path.exists() {
+        return Measured::Unmeasurable(format!(
+            "Not measured from this project's own index: {} does not exist, and that is the \
+             artifact the recorded baseline was derived from. (CB-200 itself no longer needs \
+             it \u{2014} since #1008 the gate builds pmat's own index outside the tree \
+             \u{2014} but a re-derivation of a banked number is pinned to the artifact it \
+             was banked from.) Build it with `pmat query \"x\" --rebuild-index` and re-run.",
+            db_path.display()
+        ));
+    }
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let verdict = check_tdg_grade_gate(project_path, &yaml_config.comply);
-    // Skip OR a missing database. Since #1008 an absent index is a `Fail` for a
-    // project that recorded a baseline — correctly, because an unrun ratchet has
-    // not held — so status alone no longer identifies "nothing was read". The
-    // file's absence does, and CB-200's own "Not measured" wording is kept as
-    // the reason.
-    if verdict.status == CheckStatus::Skip || !db_path.exists() {
+    if verdict.status == CheckStatus::Skip {
         return Measured::Unmeasurable(verdict.message);
     }
     // A stale index is not a measurement of HEAD (#1045). Definitions added
@@ -852,14 +878,26 @@ mod tests {
                      and name the rebuild. `pmat query \"x\" --rebuild-index` runs the \
                      ratchet here. CB-200 said: {why}"
                 );
-                let yaml = PmatYamlConfig::load(&root).unwrap_or_default();
-                let verdict = check_tdg_grade_gate(&root, &yaml.comply);
-                assert!(
-                    verdict.status != CheckStatus::Pass,
-                    "CB-200 reported a PASS over an index it could not measure. An audit \
-                     that measured nothing must never read as one that found nothing: {}",
-                    verdict.message
-                );
+                // A stale index describes an OLDER tree. `demote_pass_when_stale`
+                // exists so that can never render as a pass, and this is the
+                // assertion that would notice if it stopped.
+                //
+                // Only in the STALE case. The absent case deliberately does not
+                // call CB-200: since #1008 the gate BUILDS an index when the
+                // project has none, which is right for a gate and wrong for a
+                // unit test — ~6 minutes and 79 MB here — and this suite is not
+                // the place to pay it. What CB-200 does with an absent index is
+                // covered where it belongs, in `check_tdg_grade`'s own tests.
+                if stale {
+                    let yaml = PmatYamlConfig::load(&root).unwrap_or_default();
+                    let verdict = check_tdg_grade_gate(&root, &yaml.comply);
+                    assert!(
+                        verdict.status != CheckStatus::Pass,
+                        "CB-200 reported a PASS over a stale index. An audit of an older \
+                         tree must never read as one that found nothing: {}",
+                        verdict.message
+                    );
+                }
             }
         }
     }

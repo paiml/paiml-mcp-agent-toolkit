@@ -654,3 +654,12 @@ mod mutation_diff_gate_tests;
 // not itself run would be self-refuting. `cargo test --lib -- quarantine`.
 #[cfg(test)]
 mod broken_tests_quarantine_tests;
+
+// #1075: the lockfile dependency policy that keeps thrift (GHSA-2f9f-gq7v-9h6m)
+// out and the aprender/arrow stack at one version. Registered here for the same
+// reason as the three modules above — `autotests = false`, so an unregistered
+// test file is silently never compiled, and a supply-chain assertion that never
+// runs reads as a guarantee while providing none.
+// `cargo test --lib -- dependency_policy`.
+#[cfg(test)]
+mod dependency_policy_tests;

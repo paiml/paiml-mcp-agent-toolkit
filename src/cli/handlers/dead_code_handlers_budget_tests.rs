@@ -57,6 +57,7 @@ fn write_bin_crate(root: &std::path::Path, name: &str, main_rs: &str) {
     )
     .expect("Cargo.toml");
     std::fs::write(root.join("src/main.rs"), main_rs).expect("main.rs");
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(root);
 }
 
 /// One dead function, worth 5 estimated dead lines — under the 10 that
@@ -102,6 +103,7 @@ fn write_crate(root: &std::path::Path, name: &str, lib_rs: &str, build_rs: Optio
     if let Some(build) = build_rs {
         std::fs::write(root.join("build.rs"), build).expect("build.rs");
     }
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(root);
 }
 
 /// The report listed six dead functions and headed them with
@@ -214,6 +216,7 @@ fn write_lib_crate(root: &std::path::Path, name: &str, lib_rs: &str) {
     )
     .expect("Cargo.toml");
     std::fs::write(root.join("src/lib.rs"), lib_rs).expect("lib.rs");
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(root);
 }
 
 /// One dead function and TWO dead types, in a bin crate.
@@ -964,6 +967,7 @@ fn the_json_report_publishes_both_counts_under_the_canonical_names() {
         files_with_dead_code_found: 0,
         files_truncated: false,
         library_target: None,
+        compiler_scan: None,
     };
 
     let rendered = format_dead_code_result(

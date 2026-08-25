@@ -110,34 +110,79 @@ pub async fn handle_serve(
     std::process::exit(SERVE_UNIMPLEMENTED_EXIT_CODE);
 }
 
+/// Decide which bearer token this server will run with.
+///
+/// Three outcomes, and the distinction between the last two is the whole design:
+///
+/// * `PMAT_MCP_HTTP_TOKEN` set — used as given, and still validated against
+///   [`crate::mcp_pmcp::http_server::MIN_TOKEN_LEN`]. A token the user supplied
+///   that is too weak is REFUSED, exactly as before. Generating a token when
+///   none was offered must never soften that.
+/// * unset, loopback bind — a fresh token is minted from the OS CSPRNG and
+///   printed with the registration line. Refusing here served nobody: the user
+///   wanted a local server and had no way to know a 16-character floor existed.
+/// * unset, non-loopback bind — refused, with the command that mints one. See
+///   [`non_loopback_needs_explicit_token`] for why generation is wrong there.
+///
+/// # Errors
+///
+/// When the bind is not loopback and no token was supplied, or when the OS
+/// random source cannot be read.
+fn resolve_token(
+    addr: &std::net::SocketAddr,
+    host: &str,
+) -> Result<(String, crate::cli::handlers::mcp_onboarding::TokenOrigin)> {
+    use crate::cli::handlers::mcp_onboarding::{
+        generate_token, non_loopback_needs_explicit_token, TokenOrigin,
+    };
+    use crate::mcp_pmcp::http_server::TOKEN_ENV;
+
+    match std::env::var(TOKEN_ENV) {
+        Ok(t) => Ok((t, TokenOrigin::Environment)),
+        Err(_) if addr.ip().is_loopback() => Ok((generate_token()?, TokenOrigin::Generated)),
+        Err(_) => Err(non_loopback_needs_explicit_token(host)),
+    }
+}
+
 /// Serve the MCP tool surface over streamable HTTP.
 ///
-/// Refuses to start without `PMAT_MCP_HTTP_TOKEN`. That is not a convenience
-/// check: pmcp's HTTP layer only consults an auth provider if one is wired, and
-/// with none it serves every request — so a "working" endpoint with no token
-/// would publish the whole tool surface to anyone who can reach the port.
+/// NEVER serves unauthenticated. pmcp's HTTP layer only consults an auth
+/// provider if one is wired, and with none it serves every request — so a
+/// "working" endpoint with no token would publish the whole tool surface to
+/// anyone who can reach the port. [`resolve_token`] therefore always yields a
+/// token, and [`crate::mcp_pmcp::http_server::BearerToken::new`] always
+/// validates it; there is no path through this function that binds a socket
+/// without an auth provider.
 ///
-/// The token is read BEFORE [`crate::mcp_pmcp::http_server::serve`], so in a
-/// build without `--features mcp-http` an unset token — the common case — is
-/// the error the user sees, and the "not compiled in" error is only reachable
-/// once a token is set. `serve --help` states both cases in that order for
-/// exactly this reason; `serve_help_describes_the_no_token_failure_it_actually_produces`
-/// (src/cli/commands/commands_enum/definition.rs) measures it and holds the
-/// help to it.
+/// What changed in 3.32.0 is only where the token comes from when the user did
+/// not supply one on a loopback bind: it is generated rather than demanded. A
+/// user who supplies a WEAK token is still refused — see `resolve_token`.
+///
+/// The token is settled BEFORE [`crate::mcp_pmcp::http_server::serve`], so in a
+/// build without `--features mcp-http` the reachable error depends on the
+/// environment. `serve --help` states that; the tests in
+/// `src/cli/commands/commands_enum/definition.rs` measure the real diagnostic
+/// and hold the help to it.
 async fn serve_streamable_http(host: &str, port: u16) -> Result<()> {
-    use crate::mcp_pmcp::http_server::{serve, BearerToken, TOKEN_ENV};
+    use crate::cli::handlers::mcp_onboarding::write_connection_banner;
+    use crate::mcp_pmcp::http_server::{serve, BearerToken};
 
-    let auth = BearerToken::from_env()?;
     let addr: std::net::SocketAddr = format!("{host}:{port}")
         .parse()
         .map_err(|e| anyhow::anyhow!("could not parse {host}:{port} as a socket address: {e}"))?;
 
+    let (token, origin) = resolve_token(&addr, host)?;
+    // The floor is enforced here, on the generated token exactly as on a
+    // supplied one — generation supplies a secret, it never waives the check.
+    let auth = BearerToken::new(token.clone())?;
+
     let (bound, handle) = serve(addr, auth).await?;
-    eprintln!("pmat MCP (streamable HTTP) listening on http://{bound}/");
-    eprintln!("  auth: Bearer, from {TOKEN_ENV}; unauthenticated requests get 401");
-    eprintln!(
-        "  tools: {}",
-        crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS.len()
+    let _ = write_connection_banner(
+        std::io::stderr(),
+        &bound,
+        &token,
+        origin,
+        crate::mcp_pmcp::tool_manifest::LIVE_MCP_TOOLS.len(),
     );
     // Note for Antigravity: its egress proxy blocks loopback, so bind an
     // address reachable from the sandbox and register the URL with the bearer

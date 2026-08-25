@@ -95,6 +95,7 @@ fn lib_crate_with_dead_code_in_a_subdirectory() -> TempDir {
          struct NeverConstructed {\n    field: i32,\n}\n",
     )
     .expect("write inner/mod.rs");
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(tmp.path());
     tmp
 }
 
@@ -127,6 +128,7 @@ fn bin_crate_with_dead_code_inside_and_outside_a_subdirectory() -> TempDir {
         "fn outside_subtree_dead() -> i32 {\n    9\n}\n",
     )
     .expect("write other.rs");
+    crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(tmp.path());
     tmp
 }
 

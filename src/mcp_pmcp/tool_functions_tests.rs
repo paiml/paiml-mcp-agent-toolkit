@@ -1039,6 +1039,7 @@ mod coverage_tests {
             src.join("lib.rs"),
             "pub fn used() {}\nfn unused_helper() { let _=1; }\n",
         )?;
+        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(temp_dir.path());
 
         let paths = vec![temp_dir.path().to_path_buf()];
         let json = analyze_dead_code(&paths, false).await.unwrap();

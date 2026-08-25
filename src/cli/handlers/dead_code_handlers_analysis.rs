@@ -252,6 +252,18 @@ async fn run_dead_code_analysis_with_filters(
     // is scoped to the list that survived `--top-files`/`--min-dead-lines`.
     #[allow(clippy::cast_possible_truncation)]
     let project_dead_percentage = Some(accurate_report.dead_code_percentage as f32);
+    // Taken before `accurate_report` is consumed below. A cargo run always has
+    // a verdict here; the fallback exists only so an older cached report cannot
+    // publish `null` -- which on this engine would mean "no compiler layer",
+    // the one thing that is never true of it.
+    let compiler_scan = Some(accurate_report.compiler_scan.clone().unwrap_or_else(|| {
+        crate::models::dead_code::CompilerScanReport::reduced(
+            crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE,
+            "this report was produced without a record of whether rustc's \
+dead-code lint ran, so it cannot be relied on as a full scan"
+                .to_string(),
+        )
+    }));
     // UNFILTERED rows: one per file the analyzer found a reportable item in.
     // The threshold is applied below, against these, so what it removes can be
     // counted instead of vanishing.
@@ -326,6 +338,10 @@ async fn run_dead_code_analysis_with_filters(
             // this engine seeded no roots of its own rather than that it looked
             // and found none.
             library_target: Some(cargo_library_target(path)),
+            // Whether rustc's dead-code lint contributed to the list above.
+            // On this engine it is the difference between "nothing is dead"
+            // and "nothing was ADMITTED to be dead"; see #1076.
+            compiler_scan,
         },
         project_dead_percentage,
         scope: DeadCodeReportScope {
@@ -591,6 +607,11 @@ fn run_multi_language_dead_code(
                 &ml_result.library_target,
                 ml_result.exported_roots,
             )),
+            // This engine has no compiler layer to report on: reachability
+            // here is computed from the source, never from rustc. `None` says
+            // "there was none", which is the only honest value -- a `full`
+            // here would claim a compile that never happened.
+            compiler_scan: None,
         },
         // The multi-language analyzer never counts the project's total lines,
         // only the lines of the files it flagged, so there is no project-wide
