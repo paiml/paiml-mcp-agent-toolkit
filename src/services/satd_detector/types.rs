@@ -30,10 +30,11 @@ pub struct SATDAnalysisResult {
     pub summary: SATDSummary,
     pub total_files_analyzed: usize,
     pub files_with_debt: usize,
-    /// Files found and deliberately not read, by reason — the denominator that
-    /// tells "measured clean" apart from "measured almost nothing".
+    /// What the walk found, what it read, and what it declined to read — the
+    /// denominator that tells "measured clean" apart from "measured almost
+    /// nothing".
     #[serde(default)]
-    pub skipped: SkipCounts,
+    pub census: FileCensus,
     pub analysis_timestamp: chrono::DateTime<chrono::Utc>,
 }
 
@@ -297,15 +298,15 @@ pub(crate) struct ProjectAnalysisStats {
     pub(crate) all_debts: Vec<TechnicalDebt>,
     pub(crate) files_with_debt: usize,
     pub(crate) total_files_analyzed: usize,
-    /// Files the walk found and then declined to read, by reason.
+    /// What the walk found, read, and declined to read.
     ///
-    /// #923 stopped counting these as *analysed*, which was right — a file
-    /// nothing can be reported from was not analysed. But the report then said
-    /// nothing about them at all, so "SATD: 0" read identically whether the
-    /// tree was clean or whether every candidate in it had been skipped. The
-    /// counts are carried out to the report so a reader can see the scope the
-    /// number was measured over.
-    pub(crate) skipped: SkipCounts,
+    /// #923 stopped counting the declined files as *analysed*, which was right
+    /// — a file nothing can be reported from was not analysed. But the report
+    /// then said nothing about them at all, so "SATD: 0" read identically
+    /// whether the tree was clean or whether every candidate in it had been
+    /// skipped. The census is carried out to the report so a reader can see the
+    /// scope the number was measured over, and check that it adds up.
+    pub(crate) census: FileCensus,
 }
 
 /// Why files were not read, so an absent finding can be told apart from an
@@ -317,7 +318,14 @@ pub(crate) struct ProjectAnalysisStats {
 pub struct SkipCounts {
     /// Test files, when `--include-tests` was not given.
     pub tests: usize,
-    /// `examples/`, `demo/`, fuzz targets, generated and vendored files.
+    /// Fuzz harnesses, generated and vendored code, the package's own build
+    /// manifests, and pmat's own SATD analyser.
+    ///
+    /// `examples/` and `demo/` used to be counted here and are not any more:
+    /// they are shipped, compiled code and are analysed (#1035). On pforge that
+    /// exclusion hid 25 `.rs` files, 37% of the repository, and it did not even
+    /// appear in this bucket as a skip — the files were simply not in the
+    /// answer.
     pub out_of_scope: usize,
     /// Minified or vendored bundles.
     pub minified_or_vendor: usize,
@@ -341,7 +349,13 @@ pub(crate) enum SkipReason {
     Test,
     OutOfScope,
     MinifiedOrVendor,
-    TooLarge,
+    /// Past [`MAX_FILE_BYTES`]. Carries the size so the census can NAME the
+    /// file and its length rather than only counting it: "1 too large" tells a
+    /// reader that something was not looked at, but not what, nor by how much,
+    /// nor whether raising the limit would change the answer.
+    TooLarge {
+        bytes: u64,
+    },
     /// The read or the scan failed. See [`SkipCounts::unreadable`].
     Unreadable,
 }
@@ -352,9 +366,181 @@ impl SkipReason {
             Self::Test => counts.tests += 1,
             Self::OutOfScope => counts.out_of_scope += 1,
             Self::MinifiedOrVendor => counts.minified_or_vendor += 1,
-            Self::TooLarge => counts.too_large += 1,
+            Self::TooLarge { .. } => counts.too_large += 1,
             Self::Unreadable => counts.unreadable += 1,
         }
+    }
+}
+
+/// The size at which SATD declines to read a file at all.
+///
+/// ONE value, shared by both walks. There used to be two, and they disagreed:
+/// `analyze satd` read anything under 10 MB, while the walk behind
+/// `quality-gate --checks satd` dropped anything over `LARGE_FILE_THRESHOLD`
+/// (512,000 bytes) — so over one fixture holding a marker inside an 800 KB
+/// `src/big.rs`, `analyze satd` reported 2 findings and `quality-gate` reported
+/// 1, for the same tree, in the same session, and neither output said why. The
+/// gate's drop announced itself only on stderr, which `--format json` and
+/// `--output FILE` both discard.
+///
+/// Unified UPWARDS on purpose. A 512 KB source file is ordinary — a generated
+/// parser, a wide match table, a long fixture — and refusing to read it loses
+/// real findings; the audits behind #1035 found exactly that on wos and
+/// whisper.apr. What remains is a guard against pathological input, and when it
+/// fires the file is named in [`FileCensus::oversized`] with its size and this
+/// limit beside it.
+pub const MAX_FILE_BYTES: u64 = 10_000_000;
+
+/// One file declined for size, named rather than merely counted.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
+pub struct OversizedFile {
+    pub path: String,
+    /// The file's length on disk.
+    pub bytes: u64,
+    /// The limit it exceeded ([`MAX_FILE_BYTES`]), carried alongside so a
+    /// consumer can see the rule and not just its verdict.
+    pub limit_bytes: u64,
+}
+
+/// The population a SATD run measured over: every file the walk found, split
+/// into the ones it read and the ones it declined, with a reason for each.
+///
+/// #1035's root cause is that a failure to measure was rendered as a passing
+/// measurement, and the reason it could be is that SATD reported findings with
+/// no denominator: `total_violations: 0` was the identical output whether a
+/// tree was read in full and found clean or whether nothing in it was read at
+/// all. [`SkipCounts`] named the reasons but not the population, so the buckets
+/// could not be checked against anything — a census that does not add up is the
+/// same defect in a new place.
+///
+/// The two halves PARTITION: `analyzed + not_read.total() == discovered`.
+/// [`Self::partitions`] asserts it and [`Self::unaccounted`] publishes the gap
+/// rather than assuming it is zero, the same way `analyze complexity`'s
+/// `analysis_provenance.unrecorded` does — if the accounting ever stops
+/// matching, that shows up as a number instead of as buckets that quietly do
+/// not add up.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+// So a payload written by an older pmat still deserializes, the same reason
+// `SkipCounts` carries it.
+#[serde(default)]
+pub struct FileCensus {
+    /// Every file discovery selected as a candidate, before any skip rule ran.
+    /// The denominator.
+    pub discovered: usize,
+    /// Files opened, decoded and scanned. The only files whose absence of a
+    /// finding is evidence of anything.
+    pub analyzed: usize,
+    /// The rest, by reason.
+    pub not_read: SkipCounts,
+    /// The files behind `not_read.too_large`, named. A count alone cannot
+    /// answer "would raising the limit have found something?".
+    pub oversized: Vec<OversizedFile>,
+}
+
+impl FileCensus {
+    /// A census over `discovered` candidates, with nothing yet decided.
+    #[must_use]
+    pub fn over(discovered: usize) -> Self {
+        Self {
+            discovered,
+            ..Default::default()
+        }
+    }
+
+    /// A census for a single file that was read — the `analyze satd --file`
+    /// path, which walks nothing.
+    #[must_use]
+    pub fn single_file() -> Self {
+        Self {
+            discovered: 1,
+            analyzed: 1,
+            ..Default::default()
+        }
+    }
+
+    pub(crate) fn record_analyzed(&mut self) {
+        self.analyzed += 1;
+    }
+
+    /// Record one declined file, keeping the oversized ones by name.
+    pub(crate) fn record_skip(&mut self, path: &std::path::Path, reason: SkipReason) {
+        if let SkipReason::TooLarge { bytes } = reason {
+            self.oversized.push(OversizedFile {
+                path: path.display().to_string(),
+                bytes,
+                limit_bytes: MAX_FILE_BYTES,
+            });
+        }
+        reason.record(&mut self.not_read);
+    }
+
+    /// Files discovery declined before the analysis loop ever saw them.
+    ///
+    /// Test files are dropped during DISCOVERY, so they can only be counted
+    /// here; seeding them anywhere else leaves `not_read.tests` pinned at 0
+    /// beside a `tests/` directory full of unread files.
+    pub(crate) fn record_discovery_dropped_tests(&mut self, count: usize) {
+        self.not_read.tests += count;
+    }
+
+    /// Whether the buckets account for every discovered file.
+    #[must_use]
+    pub fn partitions(&self) -> bool {
+        self.unaccounted() == 0
+    }
+
+    /// Discovered files that are in neither half. Zero by construction; stated
+    /// rather than assumed, because the alternative to publishing it is finding
+    /// out from a user that the numbers never added up.
+    #[must_use]
+    pub fn unaccounted(&self) -> i64 {
+        i64::try_from(self.discovered).unwrap_or(i64::MAX)
+            - i64::try_from(self.analyzed + self.not_read.total()).unwrap_or(i64::MAX)
+    }
+
+    /// The one-line denominator for a human-readable report, or `None` when
+    /// nothing was walked and there is therefore no population to describe.
+    ///
+    /// Printed even when nothing was skipped: "analysed 12 of 12 file(s)" is
+    /// the sentence that makes a zero finding count mean something, and it is
+    /// exactly the sentence the reports were missing.
+    #[must_use]
+    pub fn note(&self) -> Option<String> {
+        if self.discovered == 0 {
+            return None;
+        }
+        let mut note = format!(
+            "analysed {} of {} file(s) walked",
+            self.analyzed, self.discovered
+        );
+        if let Some(reasons) = self.not_read.note() {
+            note.push_str("; ");
+            note.push_str(&reasons);
+        }
+        if let Some(oversized) = self.oversized_note() {
+            note.push_str("; ");
+            note.push_str(&oversized);
+        }
+        if !self.partitions() {
+            note.push_str(&format!("; {} unaccounted", self.unaccounted()));
+        }
+        Some(note)
+    }
+
+    /// The oversized files by name, so the skip that only ever reached stderr
+    /// survives into the report a consumer actually keeps.
+    fn oversized_note(&self) -> Option<String> {
+        let first = self.oversized.first()?;
+        let named = if self.oversized.len() == 1 {
+            first.path.clone()
+        } else {
+            format!("{} and {} more", first.path, self.oversized.len() - 1)
+        };
+        Some(format!(
+            "over the {} byte limit: {named}",
+            first.limit_bytes
+        ))
     }
 }
 
@@ -376,10 +562,7 @@ impl SkipCounts {
             parts.push(format!("{} test (use --include-tests)", self.tests));
         }
         if self.out_of_scope > 0 {
-            parts.push(format!(
-                "{} examples/demo/fuzz/generated",
-                self.out_of_scope
-            ));
+            parts.push(format!("{} fuzz/generated/vendored", self.out_of_scope));
         }
         if self.minified_or_vendor > 0 {
             parts.push(format!("{} minified/vendor", self.minified_or_vendor));
@@ -572,7 +755,11 @@ mod skip_counts_tests {
             note.contains("--include-tests"),
             "the actionable flag must be named: {note}"
         );
-        assert!(note.contains("66 examples/demo/fuzz/generated"), "{note}");
+        assert!(note.contains("66 fuzz/generated/vendored"), "{note}");
+        // `examples/` left this bucket in #1035 — it is analysed now — so the
+        // label must not still advertise it. A stale reason is a false claim
+        // about scope, which is the class of defect the bucket exists to end.
+        assert!(!note.contains("examples"), "{note}");
         assert!(note.contains("2 too large"), "{note}");
         // A reason with a zero count is noise, not disclosure.
         assert!(

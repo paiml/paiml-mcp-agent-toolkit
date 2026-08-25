@@ -326,7 +326,9 @@ pub(super) fn write_coverage_cache(
         files: files.clone(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
-        let _ = std::fs::create_dir_all(project_root.join(".pmat"));
+        // #1070: the cache directory carries its own ignore rule, so writing
+        // a coverage cache does not leave `?? .pmat/` in the analysed tree.
+        crate::utils::pmat_cache_dir::ensure_cache_dir(project_root);
         let _ = std::fs::write(cache_path, cache_json);
     }
 }
@@ -352,7 +354,9 @@ pub(super) fn write_negative_coverage_cache(
         files: HashMap::new(),
     };
     if let Ok(cache_json) = serde_json::to_string(&cache) {
-        let _ = std::fs::create_dir_all(project_root.join(".pmat"));
+        // #1070: the cache directory carries its own ignore rule, so writing
+        // a coverage cache does not leave `?? .pmat/` in the analysed tree.
+        crate::utils::pmat_cache_dir::ensure_cache_dir(project_root);
         let _ = std::fs::write(cache_path, cache_json);
     }
 }

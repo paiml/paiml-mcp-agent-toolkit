@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23324 of 26638 lib tests are executed; 3314 are compiled by no leg.
+23577 of 26803 lib tests are executed; 3226 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
@@ -562,7 +562,7 @@ ONE of the four tests this gate was built for, and still unrun. orphan-ledger's 
 
 crate::services::analytics_backend::tests::test_gpu_is_reported_unavailable_and_never_selected
 
-## `broken-tests` — 2048 test(s)
+## `broken-tests` — 1960 test(s)
 
 deliberate non-compiling quarantine (#1023). These bodies do not build under any feature set, so no leg can run them by construction.
 
@@ -1320,94 +1320,6 @@ crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_co
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_failure
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_success
 crate::cli::handlers::qa_work_handler::tests::qa_work_tests_part4::validation_command_tests::test_run_validation_command_with_args
-crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_bug_report_mode
-crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_github_issue_mode
-crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_single_file_mode
-crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_single_file_mode_no_file
-crate::cli::handlers::refactor_auto_handlers::tests::comprehensive_coverage_tests::test_setup_refactoring_context_with_ignore_file
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_ast_metadata_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_ast_metadata_creation
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_create_refactoring_summary_empty
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_empty_dir
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_respects_ignore
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_discover_source_files_with_files
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_link_path_no_link
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_link_path_relative
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_no_duplicates
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_with_backticks
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_extract_target_files_with_rust_paths
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_fix_strategy_apply_suggestion
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_fix_strategy_variants
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_function_info_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_function_info_creation
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_content_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_content_creation
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_ref_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_github_issue_ref_creation
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_proper_headers_false
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_proper_headers_true
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_false_bash
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_false_rust
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_has_unspecified_code_blocks_true
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_is_markdown_file_false
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_is_markdown_file_true
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_load_ignore_patterns_empty
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_load_ignore_patterns_with_file
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_first_match
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_mixed_case
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_no_match
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_coverage_from_output_percentage
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_invalid_host
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_invalid_issue_number
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_missing_issues_path
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_too_short
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_parse_github_issue_url_valid_format
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_bug_report
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_github_issue
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_project_wide
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_mode_single_file
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_all_variants
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_default
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactor_phase_equality
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_effort_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_effort_variants
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_priority_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_priority_variants
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_type_clone
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_refactoring_type_variants
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_not_retry_on_permanent_error
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_not_retry_on_syntax_error
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_network_error
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_temporary_error
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_should_retry_on_timeout
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_failed
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_pending
-crate::cli::handlers::refactor_auto_handlers::tests::coverage_tests::test_verification_status_verified
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_discover_source_files_empty_directory
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_discover_source_files_with_rust_files
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_extract_target_files_from_issue
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_extract_target_files_from_issue_no_files
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_lint_hotspot_json_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_lint_hotspot_json_response_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_load_ignore_patterns_no_file
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_load_ignore_patterns_with_gitignore
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_multiple_matches
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_no_match
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_coverage_from_output_valid
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_github_issue_url_invalid
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_parse_github_issue_url_valid
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_metrics_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_metrics_default
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_profile_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_quality_profile_default
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_clone
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_auto_config_default_values
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_progress_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_progress_default
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_refactor_state_creation
-crate::cli::handlers::refactor_auto_handlers::tests::tests::test_violation_detail_json_creation
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_apply_command_line_overrides_all
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_apply_command_line_overrides_none
 crate::cli::handlers::refactor_handlers::tests::coverage_tests::test_create_engine_mode_batch
@@ -3415,7 +3327,7 @@ crate::services::semantic::chunker::tests::coverage_tests::test_cpp_feature_disa
 
 the HTTP-ABSENT branch. `mcp-http` entered `default` in 3.32.0, so every leg now compiles it in and nothing exercises the code that runs when it is out — chiefly the `serve` refusal that used to print '[HTTP NOT COMPILED IN this build]'. That path still ships for anyone building `--no-default-features`, and it is now untested by every CI leg. Recorded rather than deleted: the branch is reachable by a real build configuration, so removing the tests would hide it instead of covering it.
 
-crate::cli::commands::commands_enum::command_availability_tests::serve_help_ties_the_feature_error_to_the_token_being_set
+crate::cli::commands::commands_enum::command_availability_tests::without_the_feature_the_build_error_is_what_an_unset_token_reaches
 
 ## `not(python-ast)` — 1 test(s)
 
@@ -3492,7 +3404,7 @@ crate::cli::handlers::timeline_mode::coverage_tests::check_feature_availability_
 
 ## Residual — what this walk could not reach
 
-154 `#[ignore]`d test(s) are compiled by some leg and executed by none.
+161 `#[ignore]`d test(s) are compiled by some leg and executed by none.
 `cargo test` prints its own "N ignored" line, so they are declared, not
 hidden, and are not ledgered here.
 

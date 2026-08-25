@@ -220,6 +220,40 @@ pub struct DuplicationHotspot {
     pub severity: f64,
 }
 
+/// Counted evidence of what the clone SEARCH did, so a blow-up is a number
+/// rather than a hang.
+///
+/// #1059: `analyze duplicates` timed out on a 391-file corpus of transpiler
+/// output while finishing a corpus 65x larger in 138s, because MinHash + LSH
+/// prunes by BUCKETING and near-identical documents all land in the same
+/// bucket. Wall-clock cannot be asserted on a shared runner, but these four
+/// numbers can: on a saturated corpus `comparisons` used to be exactly
+/// `fragments * (fragments - 1) / 2`, and a regression here shows up as a
+/// count long before it shows up as a timeout.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CloneSearchStats {
+    /// Fragments handed to the search.
+    pub fragments: usize,
+    /// Fragments actually entered into the LSH search: one per class of
+    /// byte-identical `MinHash` signature, plus every fragment the collapse
+    /// could not apply to. Fragments sharing a signature are exact clones of
+    /// one another and score identically against every third fragment, so one
+    /// of each class stands for all of them.
+    ///
+    /// NOT "the number of distinct signatures": under a threshold above 1.0
+    /// nothing may be collapsed, and this then equals `fragments` however few
+    /// distinct signatures the corpus really has. It is the size of the set
+    /// the quadratic stage runs over, which is the thing worth counting.
+    pub searched_fragments: usize,
+    /// Members of the largest single LSH band bucket. Equal to
+    /// `searched_fragments` when banding has stopped discriminating at all,
+    /// which is the #1059 corpus.
+    pub max_bucket_occupancy: usize,
+    /// Fragment pairs whose Jaccard similarity was actually computed. This is
+    /// the quantity that used to grow with the square of the corpus.
+    pub comparisons: u64,
+}
+
 /// Complete clone detection report
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloneReport {

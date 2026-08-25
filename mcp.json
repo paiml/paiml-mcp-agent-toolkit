@@ -1,6 +1,6 @@
 {
   "name": "pmat",
-  "version": "3.30.1",
+  "version": "3.32.0",
   "description": "Project Analysis and Intelligence Modeling Toolkit",
   "main": "pmat",
   "bin": {
@@ -13,7 +13,7 @@
         "MCP_VERSION": "1"
       }
     },
-    "tool_count": 16,
+    "tool_count": 19,
     "tools": [
       {
         "name": "analyze_complexity",
@@ -103,6 +103,51 @@
               }
             }
           }
+        }
+      },
+      {
+        "name": "analyze_reachability",
+        "description": "Report tracked .rs files no compilation unit reaches",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_path"
+          ]
+        }
+      },
+      {
+        "name": "analyze_hardcoded_paths",
+        "description": "Find machine-specific absolute paths baked into source",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_path"
+          ]
+        }
+      },
+      {
+        "name": "analyze_vacuous_tests",
+        "description": "Find #[test] functions that cannot fail",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "project_path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_path"
+          ]
         }
       },
       {

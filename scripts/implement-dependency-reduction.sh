@@ -34,10 +34,10 @@ echo -e "${GREEN}✓ Dependencies: ${dep_count_before}${NC}"
 # Measure current compile time (dev build for speed)
 echo -e "${YELLOW}→ Measuring compile time (dev build)...${NC}"
 cargo clean -p pmat &>/dev/null
-# shellcheck disable=DET002  # Timestamp needed for compile time measurement
+# bashrs disable=DET002  # Timestamp needed for compile time measurement
 compile_start=$(date +%s)
 cargo build --lib 2>&1 | grep -E "(Compiling|Finished)" | tail -5
-# shellcheck disable=DET002  # Timestamp needed for compile time measurement
+# bashrs disable=DET002  # Timestamp needed for compile time measurement
 compile_end=$(date +%s)
 compile_time_before=$((compile_end - compile_start))
 echo -e "${GREEN}✓ Compile time: ${compile_time_before}s${NC}"
@@ -65,7 +65,7 @@ echo -e "${YELLOW}→ Running cargo-machete analysis...${NC}"
 cargo machete --with-metadata 2>&1 | tee /tmp/machete-output.log || true
 
 # Count unused dependencies
-unused_count=$(grep -E "^\s+(tree-sitter-|ahash|arc-swap)" /tmp/machete-output.log | wc -l || echo "0")
+unused_count=$(grep -cE "^\s+(tree-sitter-|ahash|arc-swap)" /tmp/machete-output.log || echo "0")
 echo -e "${GREEN}✓ Found ${unused_count} potentially unused dependencies${NC}"
 
 echo ""

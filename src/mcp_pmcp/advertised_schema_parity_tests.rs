@@ -110,6 +110,7 @@ const ANALYZE_COMPLEXITY_SRC: &str = include_str!("analyze_complexity_handler.rs
 const ANALYZE_DEBT_SRC: &str = include_str!("analyze_debt_handlers.rs");
 const ANALYZE_METRICS_SRC: &str = include_str!("analyze_metrics_handlers.rs");
 const ANALYZE_TDG_SRC: &str = include_str!("analyze_tdg_tool_handlers.rs");
+const ANALYZE_FORENSICS_SRC: &str = include_str!("analyze_forensics_handlers.rs");
 const QUALITY_SRC: &str = include_str!("quality_handlers.rs");
 const QUALITY_PROXY_SRC: &str = include_str!("quality_proxy_handler.rs");
 const PDMT_SRC: &str = include_str!("pdmt_handler.rs");
@@ -195,7 +196,7 @@ async fn include_tests_changes_the_satd_answer_so_it_has_to_be_documented() {
 fn no_registered_tool_honours_an_unadvertised_parameter() {
     use crate::mcp_pmcp::analyze_handlers::{
         AnalyzeBigOTool, AnalyzeDagTool, AnalyzeDeepContextTool, ComplexityTool, DeadCodeTool,
-        SatdTool, TdgCompareTool, TdgTool,
+        HardcodedPathsTool, ReachabilityTool, SatdTool, TdgCompareTool, TdgTool, VacuousTestsTool,
     };
     use crate::mcp_pmcp::context_handlers::{
         ContextGenerateTool, ContextSummaryTool, GitStatusTool,
@@ -229,6 +230,22 @@ fn no_registered_tool_honours_an_unadvertised_parameter() {
         &AnalyzeDeepContextTool::new(),
         ANALYZE_METRICS_SRC,
         "AnalyzeDeepContextArgs",
+    );
+    // #1029: the three forensic analyzers, registered in this cycle.
+    assert_parity(
+        &ReachabilityTool::new(),
+        ANALYZE_FORENSICS_SRC,
+        "ReachabilityArgs",
+    );
+    assert_parity(
+        &HardcodedPathsTool::new(),
+        ANALYZE_FORENSICS_SRC,
+        "HardcodedPathsArgs",
+    );
+    assert_parity(
+        &VacuousTestsTool::new(),
+        ANALYZE_FORENSICS_SRC,
+        "VacuousTestsArgs",
     );
     assert_parity(&TdgTool::new(), ANALYZE_TDG_SRC, "TdgArgs");
     assert_parity(&TdgCompareTool::new(), ANALYZE_TDG_SRC, "TdgCompareArgs");

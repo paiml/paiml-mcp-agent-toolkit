@@ -349,7 +349,7 @@ Generate coverage report and ensure ≥80% coverage.
 
 **Commands**:
 \`\`\`bash
-cargo llvm-cov --all-features --lcov --output-path lcov.info
+cargo llvm-cov --features full,mcp-integration,unified-protocol --lcov --output-path lcov.info
 cargo llvm-cov report
 \`\`\`"
 

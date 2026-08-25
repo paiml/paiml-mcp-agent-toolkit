@@ -13,7 +13,7 @@ echo ""
 # Check binary exists
 # Try release build first, fall back to debug
 if [ -f "$PMAT_BIN" ]; then
-    PMAT_BIN="$PMAT_BIN"
+    : "no-op removed — PMAT_BIN is already set from the environment"
 elif [ -f "./target/debug/pmat" ]; then
     PMAT_BIN="./target/debug/pmat"
     echo "⚠️  Using debug build"
@@ -114,7 +114,7 @@ rm -rf test-scaffold-project
 test_command "Scaffold Rust" "Project scaffolded successfully" "$PMAT_BIN" scaffold test-scaffold-project --toolchain rust
 if [ -d "test-scaffold-project" ]; then
     file_count=$(find test-scaffold-project -type f | wc -l)
-    if [ $file_count -gt 0 ]; then
+    if [ "$file_count" -gt 0 ]; then
         echo "✅ Scaffold created $file_count files"
         PASSED=$((PASSED + 1))
     else

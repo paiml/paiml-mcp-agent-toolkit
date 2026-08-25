@@ -122,7 +122,7 @@ async fn execute_dead_code_check(
 ///
 /// Not routed through `execute_quality_check_template` like its neighbours,
 /// because this check reports a second thing the template has no slot for: the
-/// population it declined to read. Dropping that on the floor is what let
+/// population it measured over. Dropping that on the floor is what let
 /// `satd_violations: 1` stand beside a file, unread for being over 500 KB, that
 /// held a marker. See [`check_satd_with_scope`].
 async fn execute_satd_check(
@@ -130,9 +130,9 @@ async fn execute_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    let (found, not_read) = check_satd_with_scope(project_path).await?;
+    let (found, census) = check_satd_with_scope(project_path).await?;
     results.satd_violations = found.len();
-    results.files_not_read.insert("satd".to_string(), not_read);
+    results.files_not_read.insert("satd".to_string(), census);
     violations.extend(found);
     Ok(())
 }
@@ -307,107 +307,211 @@ async fn execute_sections_check(
 /// The SATD gate must state the population it measured over.
 ///
 /// #1035's root cause, one level above the detector: `analyze_project` computes
-/// a full `SkipCounts` and `check_satd` used to discard it, so the gate reported
-/// `satd_violations: N` with nothing to say what N was measured over. Over the
-/// fixture below the gate reads `src/lib.rs`, declines `examples/demo.rs` for
-/// being out of scope and declines the 600 KB `src/big.rs` for size — and the
-/// file it declined for size holds a marker, so the finding count it prints is
-/// strictly lower than `pmat analyze satd` prints over the same tree, for a
-/// reason the output never mentioned.
+/// a full census and `check_satd` used to discard it, so the gate reported
+/// `satd_violations: N` with nothing to say what N was measured over.
+///
+/// The fixture below is the one the issue's audits describe, and on the pre-fix
+/// build it produced this — four markers planted, one reported:
+///
+/// ```text
+///   satd_violations: 1        files_examined: 7
+///   files_not_read: { tests: 1, out_of_scope: 3, too_large: 1 }
+/// ```
+///
+/// `examples/hello.rs` (two markers) was in `out_of_scope`, lumped with the
+/// vendored and generated files; `src/big.rs` (one marker) was in `too_large`
+/// for being over 512,000 bytes, announced on stderr only. Neither number could
+/// be checked, because 1 analysed + 5 not read = 6 and the only other figure in
+/// the payload was 7, counted over a different population.
 #[cfg(test)]
 mod satd_gate_discloses_what_it_did_not_read_tests {
     use super::*;
 
-    /// `src/lib.rs` marker; `examples/demo.rs` marker (out of scope);
-    /// `src/big.rs` marker inside 600 KB of filler (over the 500 KB threshold).
+    /// `src/lib.rs` (a marker), `examples/hello.rs` (two markers — shipped code,
+    /// analysed since #1035), `vendor/dep.rs` and `src/schema.generated.rs`
+    /// (markers that must STAY excluded), `tests/harness.rs` (a marker, excluded
+    /// without `--include-tests`), and `src/huge.rs`, past `MAX_FILE_BYTES`.
+    ///
+    /// The oversized file is created sparse — its length is a metadata fact and
+    /// the walk declines it without ever reading a byte — so the fixture costs
+    /// no disk and no I/O.
     fn fixture() -> tempfile::TempDir {
         let dir = tempfile::tempdir().expect("tempdir");
         let root = dir.path();
-        std::fs::create_dir_all(root.join("src")).expect("mkdir src");
-        std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
+        for sub in ["src", "examples", "vendor", "tests"] {
+            std::fs::create_dir_all(root.join(sub)).expect("mkdir");
+        }
         std::fs::write(
             root.join("src/lib.rs"),
             "// TODO: marker in src\npub fn a() {}\n",
         )
         .expect("write lib.rs");
         std::fs::write(
-            root.join("examples/demo.rs"),
-            "// TODO: marker in examples\n",
+            root.join("examples/hello.rs"),
+            "// TODO: marker one in examples\n// FIXME: marker two in examples\n",
         )
-        .expect("write demo.rs");
-        let mut big = String::from("// TODO: marker in an oversized file\n");
-        while big.len() < 600_000 {
-            big.push_str("// filler line\n");
-        }
-        std::fs::write(root.join("src/big.rs"), big).expect("write big.rs");
+        .expect("write hello.rs");
+        std::fs::write(root.join("vendor/dep.rs"), "// TODO: vendored marker\n")
+            .expect("write dep.rs");
+        std::fs::write(
+            root.join("src/schema.generated.rs"),
+            "// TODO: generated marker\n",
+        )
+        .expect("write schema.generated.rs");
+        std::fs::write(root.join("tests/harness.rs"), "// TODO: test marker\n")
+            .expect("write harness.rs");
+        let huge = std::fs::File::create(root.join("src/huge.rs")).expect("create huge.rs");
+        huge.set_len(crate::services::satd_detector::MAX_FILE_BYTES + 1)
+            .expect("size huge.rs");
         dir
     }
 
-    async fn run_satd_gate(root: &Path) -> QualityGateResults {
+    async fn run_satd_gate(root: &Path) -> (QualityGateResults, Vec<QualityViolation>) {
         let mut violations = Vec::new();
         let mut results = QualityGateResults::default();
         execute_satd_check(root, &mut violations, &mut results)
             .await
             .expect("the satd check reports");
-        results
+        // `results.violations` is the RENDERED line list, filled later by
+        // `set_violation_lines`; the findings themselves are the vec the check
+        // extends.
+        results.set_violation_lines(&violations);
+        (results, violations)
     }
 
+    /// RED before the fix: `satd_violations` was 1 and the two markers in
+    /// `examples/` were counted as out of scope.
     #[tokio::test]
-    async fn the_files_the_satd_gate_refused_to_read_are_counted_and_named() {
+    async fn markers_in_examples_are_debt_and_are_reported() {
         let dir = fixture();
-        let results = run_satd_gate(dir.path()).await;
+        let (results, _) = run_satd_gate(dir.path()).await;
 
-        let skipped = results
+        assert_eq!(
+            results.satd_violations, 3,
+            "one marker in src/ and two in examples/, which is shipped code: {:?}",
+            results.violations
+        );
+        assert!(
+            results
+                .violations
+                .iter()
+                .any(|v| v.contains("hello.rs") && v.contains("marker one")),
+            "the example's debt must be named, not merely counted: {:?}",
+            results.violations
+        );
+    }
+
+    /// COUNTER-TEST: the fix must not turn into "report everything as debt".
+    /// Code this project cannot fix in place stays excluded — and stays
+    /// COUNTED, which is the half that makes the exclusion legible.
+    #[tokio::test]
+    async fn vendored_and_generated_code_stays_excluded_and_stays_counted() {
+        let dir = fixture();
+        let (results, _) = run_satd_gate(dir.path()).await;
+
+        assert!(
+            !results.violations.iter().any(|v| v.contains("vendor/")),
+            "a vendored dependency is not this project's debt: {:?}",
+            results.violations
+        );
+        assert!(
+            !results.violations.iter().any(|v| v.contains(".generated")),
+            "generated output is not hand-written debt: {:?}",
+            results.violations
+        );
+
+        let census = results
             .files_not_read
             .get("satd")
-            .expect("the satd check declares its scope even when nothing was skipped");
-
-        // The marker in src/lib.rs is the only one the gate can see.
+            .expect("the satd check declares the population it measured over");
         assert_eq!(
-            results.satd_violations, 1,
-            "one readable file held a marker"
-        );
-
-        // …and the two it could NOT see are stated, rather than silently absent.
-        assert_eq!(
-            skipped.too_large, 1,
-            "the 600 KB file was declined for size and must be disclosed: {skipped:?}"
+            census.not_read.out_of_scope, 2,
+            "vendored + generated, declined and disclosed: {census:?}"
         );
         assert_eq!(
-            skipped.out_of_scope, 1,
-            "examples/ was declined by policy and must be disclosed: {skipped:?}"
-        );
-        assert!(
-            skipped.total() >= 2,
-            "the denominator is the point of the field: {skipped:?}"
+            census.not_read.tests, 1,
+            "tests/harness.rs was found and declined: {census:?}"
         );
     }
 
-    /// Counter-test bounding the over-correction: disclosure must not become a
-    /// standing complaint. A tree where every candidate WAS read reports an
-    /// empty scope note, not a fabricated one — otherwise the new line is noise
-    /// and readers learn to skip it, which is how the original defect survives.
+    /// RED before the fix: the oversized file's skip reached stderr only, and
+    /// `--format json` discards stderr.
     #[tokio::test]
-    async fn a_tree_the_gate_read_in_full_discloses_nothing_skipped() {
+    async fn the_oversized_file_is_named_in_the_machine_readable_census() {
+        let dir = fixture();
+        let (results, _) = run_satd_gate(dir.path()).await;
+        let census = results.files_not_read.get("satd").expect("scope declared");
+
+        assert_eq!(
+            census.not_read.too_large, 1,
+            "the file past the limit was declined and must be disclosed: {census:?}"
+        );
+        let oversized = census
+            .oversized
+            .first()
+            .expect("a count alone cannot answer WHICH file was not looked at");
+        assert!(oversized.path.contains("huge.rs"), "{oversized:?}");
+        assert!(
+            oversized.bytes > oversized.limit_bytes,
+            "the size and the limit are both stated, so the rule is visible: {oversized:?}"
+        );
+        assert_eq!(
+            oversized.limit_bytes,
+            crate::services::satd_detector::MAX_FILE_BYTES
+        );
+    }
+
+    /// The whole point of #1035: the buckets must add up. A census that does not
+    /// partition is the same defect in a new place.
+    #[tokio::test]
+    async fn the_census_partitions_the_files_it_walked() {
+        let dir = fixture();
+        let (results, _) = run_satd_gate(dir.path()).await;
+        let census = results.files_not_read.get("satd").expect("scope declared");
+
+        assert_eq!(census.discovered, 6, "six .rs files were walked: {census:?}");
+        assert_eq!(census.analyzed, 2, "src/lib.rs and examples/hello.rs");
+        assert_eq!(census.not_read.total(), 4, "{census:?}");
+        assert!(
+            census.partitions(),
+            "analysed + not read must equal walked: {census:?}"
+        );
+        assert_eq!(census.unaccounted(), 0, "{census:?}");
+    }
+
+    /// COUNTER-TEST: a clean tree must still report zero findings over a
+    /// NON-ZERO denominator. Without this, "everything was skipped" and "nothing
+    /// was found" go back to being the same output — the defect, not the fix.
+    #[tokio::test]
+    async fn a_clean_tree_reports_zero_findings_over_a_nonzero_denominator() {
         let dir = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(dir.path().join("src")).expect("mkdir src");
-        std::fs::write(
-            dir.path().join("src/lib.rs"),
-            "// TODO: marker\npub fn a() {}\n",
-        )
-        .expect("write lib.rs");
+        std::fs::create_dir_all(dir.path().join("examples")).expect("mkdir examples");
+        std::fs::write(dir.path().join("src/lib.rs"), "pub fn a() -> u32 { 1 }\n")
+            .expect("write lib.rs");
+        std::fs::write(dir.path().join("examples/hello.rs"), "fn main() {}\n")
+            .expect("write hello.rs");
 
-        let results = run_satd_gate(dir.path()).await;
-        let skipped = results.files_not_read.get("satd").expect("scope declared");
-        assert_eq!(results.satd_violations, 1);
+        let (results, _) = run_satd_gate(dir.path()).await;
+        let census = results.files_not_read.get("satd").expect("scope declared");
+
+        assert_eq!(results.satd_violations, 0, "the tree really is clean");
         assert_eq!(
-            skipped.total(),
+            census.not_read.total(),
             0,
-            "nothing was declined, so nothing may be claimed as declined: {skipped:?}"
+            "nothing was declined, so nothing may be claimed as declined: {census:?}"
         );
+        assert_eq!(
+            census.analyzed, 2,
+            "and the zero above was measured over two files, not over nothing: {census:?}"
+        );
+        let note = census
+            .note()
+            .expect("a clean tree still has a population to state");
+        assert!(note.contains("analysed 2 of 2"), "{note}");
         assert!(
-            skipped.note().is_none(),
-            "an empty scope prints no note: {skipped:?}"
+            !note.contains("not read"),
+            "an empty bucket is noise, not disclosure: {note}"
         );
     }
 
@@ -421,20 +525,37 @@ mod satd_gate_discloses_what_it_did_not_read_tests {
         };
         results.files_not_read.insert(
             "satd".to_string(),
-            crate::services::satd_detector::SkipCounts {
-                too_large: 1,
-                out_of_scope: 1,
-                ..Default::default()
+            crate::services::satd_detector::FileCensus {
+                discovered: 4,
+                analyzed: 2,
+                not_read: crate::services::satd_detector::SkipCounts {
+                    too_large: 1,
+                    out_of_scope: 1,
+                    ..Default::default()
+                },
+                oversized: vec![crate::services::satd_detector::OversizedFile {
+                    path: "src/huge.rs".to_string(),
+                    bytes: crate::services::satd_detector::MAX_FILE_BYTES + 1,
+                    limit_bytes: crate::services::satd_detector::MAX_FILE_BYTES,
+                }],
             },
         );
         let rendered =
             format_quality_gate_output(&results, &[], crate::cli::QualityGateOutputFormat::Human)
                 .expect("human report renders");
         assert!(
+            rendered.contains("analysed 2 of 4"),
+            "the report must state the denominator:\n{rendered}"
+        );
+        assert!(
             rendered.contains("not read"),
             "the report must name what was not read:\n{rendered}"
         );
         assert!(rendered.contains("too large"), "and why:\n{rendered}");
+        assert!(
+            rendered.contains("src/huge.rs"),
+            "and which file, for the size skip that once reached stderr only:\n{rendered}"
+        );
     }
 }
 

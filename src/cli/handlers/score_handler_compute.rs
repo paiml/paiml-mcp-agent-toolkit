@@ -521,8 +521,9 @@ fn get_head_sha(path: &Path) -> String {
 }
 
 fn persist_score(path: &Path, score: &CompositeScore) {
-    let metrics_dir = path.join(".pmat-metrics");
-    let _ = std::fs::create_dir_all(&metrics_dir);
+    // #1070: `pmat score` on a clean checkout left `?? .pmat-metrics/` behind.
+    // The directory carries its own ignore rule now — see `utils::pmat_cache_dir`.
+    let metrics_dir = crate::utils::pmat_cache_dir::ensure_metrics_dir(path);
     let filename = format!("commit-{}-meta.json", score.sha);
     let filepath = metrics_dir.join(filename);
     if let Ok(json) = serde_json::to_string_pretty(score) {

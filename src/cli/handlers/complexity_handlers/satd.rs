@@ -206,7 +206,7 @@ mod tests {
             .collect::<std::collections::HashSet<_>>()
             .len();
         SATDAnalysisResult {
-            skipped: Default::default(),
+            census: Default::default(),
             total_files_analyzed: 100,
             files_with_debt,
             analysis_timestamp: Utc::now(),

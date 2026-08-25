@@ -26,7 +26,7 @@ check_and_clear_swap() {
     
     SWAP_PERCENT=$((SWAP_USED * 100 / SWAP_TOTAL))
     
-    log_message "INFO: Swap usage: ${SWAP_PERCENT}% ($(numfmt --to=iec $SWAP_USED) / $(numfmt --to=iec $SWAP_TOTAL))"
+    log_message "INFO: Swap usage: ${SWAP_PERCENT}% ($(numfmt --to=iec "$SWAP_USED") / $(numfmt --to=iec "$SWAP_TOTAL"))"
     
     if [ "$SWAP_PERCENT" -gt "$SWAP_THRESHOLD" ]; then
         log_message "WARNING: Swap usage exceeds threshold (${SWAP_PERCENT}% > ${SWAP_THRESHOLD}%)"
@@ -56,8 +56,15 @@ check_and_clear_swap() {
             log_message "INFO: No active refactor process, clearing swap anyway..."
             sudo sync
             sudo sh -c "echo 3 > /proc/sys/vm/drop_caches" 2>/dev/null || true
-            sudo swapoff -a && sudo swapon -a 2>/dev/null || true
-            log_message "SUCCESS: Swap cleared"
+            # `|| true` used to swallow every failure here and the next line
+            # logged SUCCESS regardless — so a swapoff that failed, on a box
+            # where swap therefore stayed full, wrote "SUCCESS: Swap cleared"
+            # into the log. Report what happened instead of what was attempted.
+            if sudo swapoff -a && sudo swapon -a 2>/dev/null; then
+                log_message "SUCCESS: Swap cleared"
+            else
+                log_message "ERROR: Failed to clear swap (swapoff/swapon returned non-zero)"
+            fi
         fi
     else
         log_message "INFO: Swap usage below threshold, no action needed"

@@ -58,6 +58,14 @@ fn format_qg_as_summary(
         c::number(&results.blocking_violations.to_string())
     )?;
 
+    // The population each check measured over. This renderer — not
+    // `format_qg_as_human` — is the one `pmat quality-gate` prints when no
+    // `--format` is given, so it is the surface almost every reader sees, and
+    // it was the one surface without the disclosure: `--format human` named the
+    // files each check declined to read and the default named none of them
+    // (#1035).
+    write_qg_scope_notes(&mut output, results)?;
+
     // Show violation summary by type
     if !violations.is_empty() {
         writeln!(&mut output)?;

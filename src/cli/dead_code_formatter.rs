@@ -407,6 +407,9 @@ mod tests {
             files_with_dead_code_found: 10,
             files_truncated: false,
             library_target: None,
+            // Renderer fixture: no engine produced this result, so there
+            // is no compiler-scan verdict for it to state.
+            compiler_scan: None,
         }
     }
 

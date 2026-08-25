@@ -22,7 +22,7 @@
 //! pointer to the JSON, which is never truncated.
 
 use super::boxdraw::{visible_width, BODY_WIDTH};
-use crate::tdg::UngradedFile;
+use crate::tdg::{ProjectScore, UngradedFile};
 
 /// How many unmeasured files a human report names before pointing at the JSON.
 ///
@@ -196,6 +196,86 @@ pub(crate) fn ungraded_rows(files: &[UngradedFile], budget: Option<usize>) -> Ve
 /// The entry budget for the box-drawing renderers.
 pub(crate) const fn box_entry_budget() -> usize {
     ENTRY_BUDGET
+}
+
+// ── The same disclosure, for the machine formats (issue #1064) ─────────────
+//
+// The box is the only renderer with a width limit, so it is the only one that
+// caps its list — and it tells the reader so, by name: `--format json lists
+// every one under "ungraded_files"`. That sentence is a promise about a
+// DOCUMENT, and the documents it points at answered `not_measured: false`
+// (`--format json`) and `not_measured: []` (SARIF) over a tree where fifteen of
+// sixteen walked files were never graded. Both are the machine-readable form of
+// "nothing was skipped".
+//
+// The helpers below are the one place those documents are built from, for the
+// same reason `ungraded_rows` is the one place the human rows are built from:
+// two renderers of one fact drift, and this fact has already drifted twice.
+
+/// What a run walked, split into what it graded and what it refused.
+///
+/// The two numbers must PARTITION the walk. `files_analyzed: 1` beside fifteen
+/// refused files is not a one-file project, it is a one-sixteenth measurement,
+/// and a document that never states the sixteen leaves the reader to add up a
+/// list it may not have read.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct WalkCensus {
+    /// Files that produced a score. This is `ProjectScore::total_files`.
+    pub(crate) analyzed: usize,
+    /// Files walked and refused — the length of `ungraded_files`.
+    pub(crate) ungraded: usize,
+}
+
+impl WalkCensus {
+    /// The census of `project`.
+    pub(crate) fn of(project: &ProjectScore) -> Self {
+        Self {
+            analyzed: project.total_files,
+            ungraded: project.ungraded_files.len(),
+        }
+    }
+
+    /// Everything the walk reached. Analyzed plus ungraded, by construction:
+    /// there is no third bucket for a reader to have to guess at.
+    pub(crate) const fn walked(&self) -> usize {
+        self.analyzed + self.ungraded
+    }
+
+    /// True when the run graded every file it walked, and graded at least one.
+    ///
+    /// The zero-file case is deliberately NOT "complete": a walk that measured
+    /// nothing has measured nothing, which is what GH #704's `not_measured`
+    /// already said, and the two must keep agreeing.
+    pub(crate) const fn measured_the_whole_walk(&self) -> bool {
+        self.ungraded == 0 && self.analyzed > 0
+    }
+}
+
+/// Every refused file as a JSON object, UNCAPPED.
+///
+/// The box caps at [`UNGRADED_SHOWN`] because it is 49 columns wide. The
+/// document it names as the complete list must not inherit that cap, or the
+/// escape hatch is as partial as the thing it escapes.
+pub(crate) fn ungraded_json(files: &[UngradedFile]) -> Vec<serde_json::Value> {
+    files
+        .iter()
+        .map(|u| serde_json::json!({ "path": u.path, "reason": u.reason }))
+        .collect()
+}
+
+/// The `not_measured` names a machine document must carry: the aggregate fields
+/// that could not be produced (GH #704's convention), then every file the walk
+/// refused.
+///
+/// Both are answers to the one question `not_measured` exists to answer — what
+/// could this run not measure? — and on the reproducer the honest answer was
+/// fifteen files while the emitted answer was `[]`. Field names and paths do
+/// not collide: a field of this document is a bare identifier, a refused file
+/// is the path as walked.
+pub(crate) fn not_measured_names(fields: &[String], files: &[UngradedFile]) -> Vec<String> {
+    let mut names = fields.to_vec();
+    names.extend(files.iter().map(|u| u.path.clone()));
+    names
 }
 
 #[cfg(test)]
@@ -403,5 +483,86 @@ mod tests {
     #[test]
     fn markdown_discloses_nothing_when_nothing_was_refused() {
         assert!(ungraded_markdown_lines(&[]).is_empty());
+    }
+
+    /// Issue #1064. The census must partition: there is no third bucket, so
+    /// walked is analyzed plus ungraded for every shape a run can take.
+    #[test]
+    fn the_census_partitions_the_walk() {
+        for (analyzed, ungraded) in [(0, 0), (1, 15), (152, 0), (0, 152), (3, 7)] {
+            let census = WalkCensus { analyzed, ungraded };
+            assert_eq!(
+                census.walked(),
+                analyzed + ungraded,
+                "walked must be the whole walk: {census:?}"
+            );
+        }
+    }
+
+    /// A walk that refused a file did not measure the whole walk — and neither
+    /// did one that walked nothing at all, which is the case GH #704's
+    /// `not_measured` already covered.
+    #[test]
+    fn a_refusal_and_an_empty_walk_are_both_incomplete() {
+        assert!(!WalkCensus {
+            analyzed: 1,
+            ungraded: 15
+        }
+        .measured_the_whole_walk());
+        assert!(!WalkCensus {
+            analyzed: 0,
+            ungraded: 0
+        }
+        .measured_the_whole_walk());
+    }
+
+    /// COUNTER-TEST: a whole walk must not be reported as incomplete, or the
+    /// disclosure means nothing.
+    #[test]
+    fn a_whole_walk_is_reported_whole() {
+        assert!(WalkCensus {
+            analyzed: 2,
+            ungraded: 0
+        }
+        .measured_the_whole_walk());
+    }
+
+    /// The JSON list is the one the box promises: every entry, with its reason.
+    #[test]
+    fn the_json_list_is_uncapped_and_carries_the_reason() {
+        let files: Vec<UngradedFile> = (0..25)
+            .map(|i| f(&format!("src/frag_{i}.rs"), "expected `;`"))
+            .collect();
+        let listed = ungraded_json(&files);
+        assert_eq!(
+            listed.len(),
+            25,
+            "the box caps at {UNGRADED_SHOWN} because it is a box; the document must not"
+        );
+        assert_eq!(listed[0]["path"], "src/frag_0.rs");
+        assert_eq!(listed[0]["reason"], "expected `;`");
+    }
+
+    /// `not_measured` keeps the field names it already carried and gains the
+    /// refused files, rather than one replacing the other.
+    #[test]
+    fn not_measured_carries_both_the_fields_and_the_files() {
+        let fields = vec!["average_score".to_string(), "average_grade".to_string()];
+        let names = not_measured_names(&fields, &[f("/tmp/ngfix/s1.sh", "no analyzer")]);
+        assert_eq!(
+            names,
+            vec![
+                "average_score".to_string(),
+                "average_grade".to_string(),
+                "/tmp/ngfix/s1.sh".to_string()
+            ]
+        );
+    }
+
+    /// COUNTER-TEST: nothing refused adds nothing, so `[]` keeps meaning
+    /// "nothing was skipped" on the runs where that is true.
+    #[test]
+    fn not_measured_gains_nothing_when_nothing_was_refused() {
+        assert!(not_measured_names(&[], &[]).is_empty());
     }
 }

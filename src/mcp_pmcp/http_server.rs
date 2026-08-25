@@ -42,7 +42,11 @@ pub const TOKEN_ENV: &str = "PMAT_MCP_HTTP_TOKEN";
 ///
 /// Not security theatre: the failure mode being prevented is a deployment that
 /// sets `PMAT_MCP_HTTP_TOKEN=x`, passes its smoke test, and is effectively open.
-const MIN_TOKEN_LEN: usize = 16;
+///
+/// Public so the help text and the generated-token path state the SAME floor
+/// this constructor enforces. `serve --help` used to describe the minimum in
+/// prose, which is how a documented number drifts from an enforced one.
+pub const MIN_TOKEN_LEN: usize = 16;
 
 /// Bearer-token auth over a single shared secret.
 #[derive(Clone)]

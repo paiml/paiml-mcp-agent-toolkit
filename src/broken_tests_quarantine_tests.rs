@@ -1,4 +1,4 @@
-//! #1023 — the `broken-tests` quarantine is 48 declarations nothing checks.
+//! #1023 — the `broken-tests` quarantine is 47 declarations nothing checks.
 //!
 //! `broken-tests` is an empty feature that is deliberately in no bundle, so
 //! every `#[cfg(all(test, feature = "broken-tests"))]` item is compiled out of
@@ -15,6 +15,11 @@
 //! comment described, because neither path resolved. A `#[path]` under a
 //! disabled `cfg` is never read by rustc, so nothing said so for two years.
 //!
+//! The first of those two has since been repaired and taken off the quarantine,
+//! which is why the ceiling below reads 47 rather than the 48 #1023 counted. Its
+//! own structural guards live beside it in
+//! `cli/handlers/refactor_auto_handlers/output_handler.rs`.
+//!
 //! These tests do not judge whether a quarantine is justified — that requires
 //! compiling each site, which by construction cannot be done here. They pin the
 //! two properties that survive the `cfg`: the declarations point at real files,
@@ -22,13 +27,17 @@
 
 use std::path::{Path, PathBuf};
 
-/// The exact quarantine size at the time #1023 was filed.
+/// The quarantine size after the first #1023 repair.
+///
+/// #1023 counted 48; `refactor_auto_handlers_tests.rs` and its five
+/// `refactor_auto_comprehensive_tests_*` include!s have since been repaired and
+/// re-enabled, so the ceiling comes down to 47.
 ///
 /// A ceiling, never a target. It may only go down. It is not an equality
 /// because deleting a site is progress and must not fail the build; adding one
-/// must, because 48 disabled test modules is already 48 places where tests
+/// must, because 47 disabled test modules is already 47 places where tests
 /// exist, are tracked, are counted by every file-based metric, and never run.
-const QUARANTINE_CEILING: usize = 48;
+const QUARANTINE_CEILING: usize = 47;
 
 /// The attribute that marks a quarantined item.
 const MARKER: &str = r#"feature = "broken-tests""#;
@@ -117,8 +126,8 @@ fn the_census_finds_the_quarantine() {
 /// Every quarantined `#[path]` names a file that exists.
 ///
 /// This is the check rustc cannot do: the item is `cfg`'d out, so the path is
-/// never resolved. Two of the 48 were wrong when #1023 was filed, and both sat
-/// under a comment that described an error the compiler could never have
+/// never resolved. Two of the 48 sites were wrong when #1023 was filed, and both
+/// sat under a comment that described an error the compiler could never have
 /// reached, because it could not find the file to read.
 #[test]
 fn every_quarantined_path_attribute_resolves() {

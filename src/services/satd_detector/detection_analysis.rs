@@ -11,9 +11,15 @@ impl SATDDetector {
     ) -> Result<SATDAnalysisResult, TemplateError> {
         let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
+        // The denominator: everything the walk found, tests included, before
+        // any skip rule ran. Without it the buckets below are counts with
+        // nothing to divide them by (#1035).
+        analysis_stats.census = FileCensus::over(files.len() + tests_dropped);
         // Discovery, not the loop below, is where test files are dropped, so
         // the count has to be seeded here or the bucket reads 0 forever.
-        analysis_stats.skipped.tests = tests_dropped;
+        analysis_stats
+            .census
+            .record_discovery_dropped_tests(tests_dropped);
 
         self.process_project_files(&files, include_tests, &mut analysis_stats)
             .await;
@@ -68,7 +74,7 @@ impl SATDDetector {
     ) {
         for file_path in files {
             if let Some(reason) = self.skip_reason(file_path, include_tests).await {
-                reason.record(&mut stats.skipped);
+                stats.census.record_skip(file_path, reason);
                 continue;
             }
 
@@ -78,10 +84,11 @@ impl SATDDetector {
                 .process_single_file(file_path, include_tests, stats)
                 .await
             {
-                reason.record(&mut stats.skipped);
+                stats.census.record_skip(file_path, reason);
                 continue;
             }
             stats.total_files_analyzed += 1;
+            stats.census.record_analyzed();
         }
     }
 
@@ -113,24 +120,36 @@ impl SATDDetector {
         }
 
         // Check file size constraints
-        if let Ok(metadata) = tokio::fs::metadata(file_path).await {
-            if metadata.len() > crate::services::file_classifier::LARGE_FILE_THRESHOLD as u64 {
-                eprintln!(
-                    "Warning: Skipped: {} (large file >500KB)",
-                    file_path.display()
-                );
-                return Some(SkipReason::TooLarge);
-            }
-
-            if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
-                eprintln!(
-                    "Warning: Skipped: {} (minified content)",
-                    file_path.display()
-                );
-                return Some(SkipReason::MinifiedOrVendor);
-            }
+        if let Some(reason) = self.size_skip_reason(file_path).await {
+            return Some(reason);
         }
 
+        None
+    }
+
+    /// Why this file is too big to read, or `None`.
+    ///
+    /// THE size rule, shared by both walks. This one used to drop anything over
+    /// `LARGE_FILE_THRESHOLD` (512,000 bytes) while `skip_reason_for_analysis`
+    /// had no size rule at all below 1 MB of *minified* content, so
+    /// `quality-gate --checks satd` and `analyze satd` read different
+    /// populations of the same tree and reported different numbers for it
+    /// (#1035). Both now use [`MAX_FILE_BYTES`].
+    ///
+    /// The drop no longer announces itself only on stderr, either — the caller
+    /// records it into [`FileCensus::oversized`], which survives `--format json`
+    /// and `--output FILE`, both of which discard stderr. A file skipped for
+    /// size used to leave a clean-looking total behind it.
+    async fn size_skip_reason(&self, file_path: &Path) -> Option<SkipReason> {
+        let metadata = tokio::fs::metadata(file_path).await.ok()?;
+        if metadata.len() > MAX_FILE_BYTES {
+            return Some(SkipReason::TooLarge {
+                bytes: metadata.len(),
+            });
+        }
+        if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
+            return Some(SkipReason::MinifiedOrVendor);
+        }
         None
     }
 
@@ -151,13 +170,10 @@ impl SATDDetector {
             Err(_e) => return Some(SkipReason::Unreadable),
         };
 
-        if content.len() > 10_000_000 {
-            eprintln!(
-                "Warning: Skipping large file {}: {} bytes",
-                file_path.display(),
-                content.len()
-            );
-            return Some(SkipReason::TooLarge);
+        if content.len() as u64 > MAX_FILE_BYTES {
+            return Some(SkipReason::TooLarge {
+                bytes: content.len() as u64,
+            });
         }
 
         match self.extract_from_content_with_tests(&content, file_path, include_tests) {
@@ -202,7 +218,7 @@ impl SATDDetector {
             },
             total_files_analyzed: stats.total_files_analyzed,
             files_with_debt: stats.files_with_debt,
-            skipped: stats.skipped.clone(),
+            census: stats.census.clone(),
             analysis_timestamp: chrono::Utc::now(),
         }
     }
@@ -266,22 +282,23 @@ impl SATDDetector {
         &self,
         root: &Path,
         include_tests: bool,
-    ) -> Result<(Vec<TechnicalDebt>, SkipCounts), TemplateError> {
-        let mut skipped = SkipCounts::default();
+    ) -> Result<(Vec<TechnicalDebt>, FileCensus), TemplateError> {
         let mut all_debts = Vec::new();
         let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
+        // The denominator, counted before any rule ran. `files` has already had
+        // the test files taken out of it, so they are added back here or the
+        // population would silently shrink by the size of `tests/`.
+        let mut census = FileCensus::over(files.len() + tests_dropped);
         // Discovery already declined these; the loop below never sees them, so
         // this is the only place the count can be recorded.
-        skipped.tests = tests_dropped;
-        let discovered = files.len();
-        let mut analyzed = 0usize;
+        census.record_discovery_dropped_tests(tests_dropped);
 
         for file_path in files {
             if let Some(reason) = self
                 .skip_reason_for_analysis(&file_path, include_tests)
                 .await
             {
-                reason.record(&mut skipped);
+                census.record_skip(&file_path, reason);
                 continue;
             }
 
@@ -291,18 +308,22 @@ impl SATDDetector {
             // contributed a guaranteed-empty finding list.
             match self.process_file_for_debts(&file_path, include_tests).await {
                 Ok(debts) => {
-                    analyzed += 1;
+                    census.record_analyzed();
                     all_debts.extend(debts);
                 }
-                Err(reason) => reason.record(&mut skipped),
+                Err(reason) => census.record_skip(&file_path, reason),
             }
         }
 
-        if analyzed == 0 {
-            return Err(Self::nothing_measured(root, discovered, include_tests));
+        if census.analyzed == 0 {
+            return Err(Self::nothing_measured(
+                root,
+                census.discovered,
+                include_tests,
+            ));
         }
 
-        Ok((all_debts, skipped))
+        Ok((all_debts, census))
     }
 
     /// The refusal returned when a walk analysed nothing.
@@ -332,13 +353,13 @@ impl SATDDetector {
     fn nothing_measured(root: &Path, discovered: usize, include_tests: bool) -> TemplateError {
         let (skipped_because, remedy) = if include_tests {
             (
-                "example, fuzz, vendored, generated, minified or oversized",
+                "fuzz, vendored, generated, minified or oversized",
                 "point the analysis at the project root: --include-tests is already in force, \
                  so test code is not what was excluded here.",
             )
         } else {
             (
-                "test, example, fuzz, vendored, generated, minified or oversized",
+                "test, fuzz, vendored, generated, minified or oversized",
                 "point the analysis at the project root, or pass --include-tests to measure \
                  test code.",
             )
@@ -357,12 +378,13 @@ impl SATDDetector {
 
     /// Why this file will not be read on the `analyze_directory` path, or `None`.
     ///
-    /// Deliberately NOT merged with `skip_reason`, despite being nearly the same
-    /// list: that one additionally drops files over 500 KB, and folding the two
-    /// together would make this path skip MORE files than it does today — fewer
-    /// findings, which is the wrong direction to move a detector by accident.
-    /// The duplication is recorded rather than silently resolved; unifying them
-    /// is a behaviour change that deserves its own measurement.
+    /// The one difference from `skip_reason` used to be size, and it was a real
+    /// disagreement rather than a nuance: this path read anything under 10 MB
+    /// while that one dropped anything over 512,000 bytes, so the two commands
+    /// measured different populations of the same tree and printed different
+    /// finding counts for it. Both now call [`Self::size_skip_reason`] — the
+    /// unification is UPWARDS, so no file that was read before is skipped now
+    /// (#1035).
     ///
     /// `pub(crate)` because the MCP `analyze_satd` tool needs the SAME answer:
     /// it built its own file list and then reported nothing at all about what
@@ -390,19 +412,7 @@ impl SATDDetector {
         }
 
         // Check file size and minification for large files
-        if self.should_skip_large_file(file_path).await {
-            return Some(SkipReason::MinifiedOrVendor);
-        }
-        None
-    }
-
-    async fn should_skip_large_file(&self, file_path: &Path) -> bool {
-        if let Ok(metadata) = tokio::fs::metadata(file_path).await {
-            if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
-                return true;
-            }
-        }
-        false
+        self.size_skip_reason(file_path).await
     }
 
     /// Read one file and scan it, or say why it could not be scanned.
@@ -432,14 +442,13 @@ impl SATDDetector {
         file_path: &Path,
         include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, SkipReason> {
-        // Validate file size before processing
-        if content.len() > 10_000_000 {
-            eprintln!(
-                "Warning: Skipping large file {}: {} bytes",
-                file_path.display(),
-                content.len()
-            );
-            return Err(SkipReason::TooLarge);
+        // Validate file size before processing. `size_skip_reason` already
+        // declined anything this large from its metadata, so this is a second
+        // line of defence for callers that arrive with content in hand.
+        if content.len() as u64 > MAX_FILE_BYTES {
+            return Err(SkipReason::TooLarge {
+                bytes: content.len() as u64,
+            });
         }
 
         self.extract_from_content_with_tests(content, file_path, include_tests)

@@ -1,13 +1,11 @@
 #!/bin/bash
 # O(1) metric validation for pre-commit hooks
 # Spec: docs/specifications/quick-test-build-O(1)-checking.md
-# shellcheck disable=DET002
 # bashrs disable-file=DET002
 # Intentional: Timestamps used for staleness checking (spec requirement)
 set -euo pipefail
 
 METRICS_DIR=".pmat-metrics"
-CONFIG_FILE=".pmat-metrics.toml"
 FAILURES_ONLY="${1:-false}"
 
 # Colors
@@ -17,15 +15,32 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load thresholds from config (simple parsing)
-# NOTE: These are REALISTIC thresholds based on actual project performance
-# The O(1) requirement is for CACHE VALIDATION, not running actual lint/test
+# THESE ARE HARDCODED HERE. They are NOT read from `.pmat-metrics.toml`, though
+# the line above used to say "Load thresholds from config (simple parsing)" and
+# a now-deleted `CONFIG_FILE=".pmat-metrics.toml"` sat under it, assigned and
+# never read. That pairing is why the file looks like a config consumer and is
+# not one — and it is part of why `.pmat-metrics.toml` has no reader at all.
+#
+# So each number below is a SECOND copy of a number that lives somewhere else,
+# free to drift. One already has: `BINARY_MAX_BYTES=50000000` here against
+# `src/tests/binary_size.rs:40`'s `50 * 1024 * 1024` = 52,428,800, under a
+# comment there claiming the two are "aligned". They are 2.43 MB apart and
+# neither reads the other.
+#
+# `pmat comply coherence` (CB-2101) is the thing that actually audits these
+# against a live measurement and reports each as FIRING, VIOLATED or VACUOUS.
+# Prefer it over this script; nothing invokes this one — no hook, no Makefile
+# target, no CI job — so its verdict has never gated anything.
+#
+# The O(1) requirement is for CACHE VALIDATION, not for running lint/test.
 LINT_MAX_MS=150000        # 2.5min (actual: ~123s, 21% headroom)
 TEST_FAST_MAX_MS=360000   # 6min (actual: ~313s, 15% headroom)
-COVERAGE_MAX_MS=600000
 BINARY_MAX_BYTES=50000000
 DEPS_DEFAULT_MAX=3000
 MAX_AGE_DAYS=7
+# COVERAGE_MAX_MS was defined here and never used — there is no coverage block
+# below. Removed rather than left as a threshold with no enforcer, which is the
+# exact shape this file is otherwise a monument to.
 
 # Check if metrics directory exists
 if [ ! -d "$METRICS_DIR" ]; then

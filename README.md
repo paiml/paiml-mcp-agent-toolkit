@@ -18,7 +18,7 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.91-orange.svg)](https://www.rust-lang.org)
 [![CHANGELOG](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-blue)](CHANGELOG.md)
 
-[Installation](#installation) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
+[Installation](#installation) | [MCP Server](#mcp-server) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
 
 </div>
 
@@ -28,6 +28,7 @@
 
 - [What is PMAT?](#what-is-pmat)
 - [Installation](#installation)
+- [MCP Server](#mcp-server)
 - [Usage](#usage)
 - [Features](#features)
 - [Architecture](#architecture)
@@ -45,7 +46,7 @@
 - **Compliance Governance** - 157 checks across code quality, best practices, and reproducibility
 - **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
-- **MCP Integration** - 16 tools for Claude Code, Cline, and AI agents, validated end-to-end for concurrent multi-agent (ultracode) workflows
+- **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents over **stdio and HTTP** (identical surfaces), validated end-to-end for concurrent multi-agent (ultracode) workflows — see [MCP Server](#mcp-server)
 - **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
 - **20+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, Lean, and more
 
@@ -69,10 +70,183 @@ cargo install pmat
 
 > **Note for macOS Users:** If you experience issues installing via `rustup`, we recommend installing/updating Rust using Homebrew: `brew install rust` before running `cargo install pmat`.
 
+```bash
 # Or from source (latest)
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit && cargo install --path .
 ```
+
+## MCP Server
+
+PMAT is an MCP server first and a CLI second. One binary serves **three surfaces**, and
+they share one tool registry — you pick a surface, not a feature set.
+
+| Surface | Start it with | Use it when |
+|---------|---------------|-------------|
+| **CLI** | `pmat analyze complexity --path .` | A human or a shell script reads the output. |
+| **MCP over stdio** | `pmat --mode mcp` | An MCP client launches pmat itself as a subprocess — Claude Code, Claude Desktop, Cline. One client, one process, no port, no token. |
+| **MCP over HTTP** | `pmat serve --transport http --port 8765` | One long-lived server that several clients — or another machine — talk to. Streamable HTTP, bearer auth. |
+
+> **New in 3.32.0:** `mcp-http` moved into the **default** feature set. `cargo install pmat`
+> now gives you the HTTP transport; the old `--features mcp-http` dance is gone. Compiling
+> the transport in does not open a socket — only `pmat serve` binds one.
+
+### Quickstart — stdio
+
+Claude Code launches pmat as a subprocess. Nothing to keep running, nothing to authenticate.
+
+```bash
+cargo install pmat
+claude mcp add --scope user pmat -- pmat --mode mcp
+claude mcp list
+# pmat: pmat --mode mcp - ✔ Connected
+```
+
+Claude Desktop takes the same command as JSON, in its own `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pmat": { "command": "pmat", "args": ["--mode", "mcp"] }
+  }
+}
+```
+
+For clients that cannot pass flags, `MCP_VERSION=1 pmat` starts the identical server.
+Smoke-test the stdio surface without any client at all:
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | pmat --mode mcp 2>/dev/null | jq -r '.result.tools | length'
+# 19
+```
+
+### Quickstart — HTTP
+
+One server, many clients. Copy-paste the whole block:
+
+```bash
+cargo install pmat
+
+export PMAT_MCP_HTTP_TOKEN='pmat-mcp-demo-token-0123456789'   # >= 16 chars; use your own
+pmat serve --transport http --port 8765 &
+#   pmat MCP (streamable HTTP) listening on http://127.0.0.1:8765/
+#     auth: Bearer, from PMAT_MCP_HTTP_TOKEN; unauthenticated requests get 401
+#     tools: 19
+sleep 2
+
+claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ \
+  --header "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN"
+claude mcp list
+# pmat: http://127.0.0.1:8765/ (HTTP) - ✔ Connected
+```
+
+The server binds `127.0.0.1` unless you pass `--host`. To reach it from another machine, bind an
+externally routable address and treat `PMAT_MCP_HTTP_TOKEN` as a real secret — the tool
+surface can read and analyse any path the server process can read.
+
+### Four gotchas that cost an hour each
+
+**1. MCP is served at the root path `/`, not `/mcp`.** There is no path prefix.
+
+```bash
+for p in / /mcp /health; do
+  printf '%-7s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:8765$p" \
+    -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}')"
+done
+# /       200
+# /mcp    404
+# /health 404
+```
+
+**2. `PMAT_MCP_HTTP_TOKEN` is mandatory and must be at least 16 characters.** Below that
+the server refuses to start rather than falling back to serving unauthenticated — the
+underlying pmcp transport answers every request when no auth provider is wired, so "no
+token" has to mean "no server". Requests with no token, or a wrong one, get `401`.
+
+```bash
+PMAT_MCP_HTTP_TOKEN=too-short-123 pmat serve --transport http --port 8765
+# Error: PMAT_MCP_HTTP_TOKEN must be at least 16 characters; got 13
+```
+
+**3. Hand-rolled clients must send `Accept: application/json, text/event-stream`.** The
+streamable transport rejects the request without it, and `curl -f` turns that into an
+empty string with no message — so probe with plain `curl -s` while debugging.
+
+```bash
+curl -s -w '\n-> HTTP %{http_code}\n' -X POST http://127.0.0.1:8765/ \
+  -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+# {"jsonrpc":"2.0","error":{"code":-32700,"message":"Accept header must include application/json or text/event-stream"},"id":null}
+# -> HTTP 406
+```
+
+**4. There is no `/health` endpoint.** `GET /health` is a `404`, so a `curl -f
+.../health` readiness loop never turns green and never says why. Probe with a real
+`tools/list` call instead:
+
+```bash
+curl -s -X POST http://127.0.0.1:8765/ \
+  -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | jq -r '.result.tools | length'
+# 19
+```
+
+No MCP session id is involved: `initialize` returns no `Mcp-Session-Id` header, and
+`tools/call` works directly — with or without a preceding `initialize`.
+
+### HTTP is not a reduced surface
+
+Both transports are built from the same registry, so HTTP serves **all 19 tools, not a
+subset**. The `tools/list` payloads are byte-identical:
+
+```bash
+printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"p","version":"1"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | pmat --mode mcp 2>/dev/null \
+  | jq -Sc 'select(.id==2)|.result.tools|sort_by(.name)' > /tmp/pmat-stdio-tools.json
+
+curl -s -X POST http://127.0.0.1:8765/ \
+  -H "Authorization: Bearer $PMAT_MCP_HTTP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | jq -Sc '.result.tools|sort_by(.name)' > /tmp/pmat-http-tools.json
+
+cmp /tmp/pmat-stdio-tools.json /tmp/pmat-http-tools.json && echo "identical"
+# identical
+```
+
+The 19: `analyze_complexity`, `analyze_satd`, `analyze_dead_code`, `analyze_dag`,
+`analyze_deep_context`, `analyze_big_o`, `analyze_reachability`,
+`analyze_hardcoded_paths`, `analyze_vacuous_tests`, `quality_gate`, `quality_proxy`,
+`generate_context`, `scaffold_project`, `git_operation`, `pmat_query_code`,
+`pmat_get_function`, `pmat_find_similar`, `pmat_index_stats`,
+`pdmt_deterministic_todos`. Names and descriptions are also committed as the machine-checked
+manifest [`mcp.json`](mcp.json) at the repository root, regenerated from the server's own
+registrations — so it cannot drift from what the two transports actually serve.
+
+### Transports that are not implemented
+
+`--transport` also accepts `web-socket`, `http-sse`, `both` and `all`. None of them are
+implemented; each exits `2` with a message saying so. `http` is the only value that
+serves.
+
+```bash
+pmat serve --transport web-socket --port 8765
+# error: pmat serve --transport websocket is not yet implemented
+```
+
+There is no `stdio` value for `--transport` — passing one is a clap error. Stdio is
+`pmat --mode mcp`.
 
 ## Usage
 
@@ -95,8 +269,8 @@ pmat verify --format json
 # Run mutation testing
 pmat mutate --target src/
 
-# Start MCP server (stdio) for Claude Code, Cline, etc.
-MCP_VERSION=2024-11-05 pmat
+# Start the MCP server over stdio, for Claude Code, Cline, etc. (see "MCP Server" above)
+pmat --mode mcp
 ```
 
 ### Autonomous-agent pre-flight (`pmat verify`)
@@ -110,10 +284,11 @@ dynamic-workflow orchestration — as both the test harness and the target
 workload:
 
 - **Full CLI sweep**: 111 commands exercised by parallel agent fleets per release
-- **MCP surface**: all 16 tools validated over stdio JSON-RPC — per-tool calls
+- **MCP surface**: all 19 tools validated over stdio JSON-RPC — per-tool calls
   with schema-derived arguments, 8-way concurrent server sessions against one
   working tree (zero lock errors, zero scratch leftovers), and byte-level
-  framing checks (stdout is exclusively JSON-RPC)
+  framing checks (stdout is exclusively JSON-RPC) — plus a transport-parity
+  check that the HTTP `tools/list` payload is byte-identical to the stdio one
 - **Determinism**: TDG baselines and penalty attributions serialize
   byte-identically across runs, so independent agents converge instead of
   diverging on ordering noise
@@ -133,7 +308,7 @@ Generate comprehensive context for AI assistants:
 ```bash
 pmat context                           # Basic analysis
 pmat context --format llm-optimized    # AI-optimized output
-pmat context --include-tests           # Include test files
+pmat context --include-large-files     # Include files >500KB normally skipped
 ```
 
 ### Technical Debt Grading (TDG)
@@ -281,12 +456,12 @@ Toyota Way continuous improvement — scan, auto-fix, commit:
 ```bash
 pmat kaizen --dry-run                  # Scan only (no changes)
 pmat kaizen                            # Apply safe auto-fixes
-pmat kaizen --commit --push            # Fix, commit, and push
+pmat kaizen --push                     # Fix, commit, and push (use --no-commit to skip)
 pmat kaizen --format json -o report.json  # CI/CD integration
 
 # Cross-stack mode: scan all batuta stack crates in one invocation
 pmat kaizen --cross-stack --dry-run    # Scan all crates
-pmat kaizen --cross-stack --commit     # Fix and commit per-crate
+pmat kaizen --cross-stack              # Fix and commit per-crate
 pmat kaizen --cross-stack -f json      # Grouped JSON report
 ```
 
@@ -295,8 +470,7 @@ pmat kaizen --cross-stack -f json      # Grouped JSON report
 Extract function boundaries with metadata:
 
 ```bash
-pmat extract src/lib.rs                # Extract functions from file
-pmat extract --list src/               # List all functions with imports and visibility
+pmat extract --list src/lib.rs         # Function/struct/enum/trait boundaries, as JSON
 ```
 
 ## Examples
@@ -308,7 +482,7 @@ pmat extract --list src/               # List all functions with imports and vis
 pmat context --output context.md --format llm-optimized
 
 # With semantic search
-pmat embed sync ./src
+pmat embed sync --path ./src
 pmat semantic search "error handling patterns"
 ```
 
@@ -346,7 +520,7 @@ pmat/
 │   ├── mcp_server/   MCP protocol server
 │   ├── mcp_pmcp/     PMCP protocol integration
 │   └── models/       Configuration and data models
-├── examples/         89 runnable examples
+├── examples/         113 runnable examples
 └── docs/
     └── specifications/  Technical specs
 ```
@@ -359,7 +533,7 @@ pmat/
 | Coverage | 99.66% |
 | Mutation Score | >80% |
 | Languages | 20 supported + MLOps model formats |
-| MCP Tools | 16 available |
+| MCP Tools | 19 available |
 
 ### Falsifiable Quality Commitments
 
@@ -442,16 +616,16 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 
 | Library | Purpose | Version |
 |---------|---------|---------|
-| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.41 |
-| [aprender-graph](https://crates.io/crates/aprender-graph) | CSR graph database (PageRank, Louvain) | 0.41 |
-| [aprender-db](https://crates.io/crates/aprender-db) | Columnar analytics database (lib `trueno_db`) | 0.41 |
-| [aprender-rag](https://crates.io/crates/aprender-rag) | RAG pipeline with VectorStore | 0.41 |
-| [aprender-viz](https://crates.io/crates/aprender-viz) | Terminal graph visualization | 0.41 |
-| [aprender-compute](https://crates.io/crates/aprender-compute) | SIMD/GPU compute for matrix operations (lib `trueno`) | 0.41 |
-| [aprender-zram-core](https://crates.io/crates/aprender-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.41 |
-| [aprender-contracts](https://crates.io/crates/aprender-contracts) | Provable contracts (with `aprender-contracts-macros`) | 0.49 |
-| [pmcp](https://crates.io/crates/pmcp) | MCP protocol SDK | 2.9 |
-| **pmat** | Code analysis toolkit | 3.19.2 |
+| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.64 |
+| [aprender-graph](https://crates.io/crates/aprender-graph) | CSR graph database (PageRank, Louvain) | 0.64 |
+| [aprender-db](https://crates.io/crates/aprender-db) | Columnar analytics database (lib `trueno_db`, optional) | 0.64 |
+| [aprender-rag](https://crates.io/crates/aprender-rag) | RAG pipeline with VectorStore | 0.64 |
+| [aprender-viz](https://crates.io/crates/aprender-viz) | Terminal graph visualization | 0.64 |
+| [aprender-compute](https://crates.io/crates/aprender-compute) | SIMD/GPU compute for matrix operations (lib `trueno`) | 0.64 |
+| [aprender-zram-core](https://crates.io/crates/aprender-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.64 |
+| [aprender-contracts](https://crates.io/crates/aprender-contracts) | Provable contracts (with `aprender-contracts-macros`) | 0.64 |
+| [pmcp](https://crates.io/crates/pmcp) | MCP protocol SDK (streamable HTTP transport) | 2.17 |
+| **pmat** | Code analysis toolkit | 3.32.0 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
@@ -472,7 +646,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and pull 
 
 ## See Also
 
-- [Cookbook](examples/) — 92 runnable examples
+- [Cookbook](examples/) — 113 runnable examples
 
 ## License
 

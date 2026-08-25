@@ -178,6 +178,16 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "self_test.unexpected[].len",
         "0 on the committed fixture; same refusal path as missed",
     ),
+        (
+        "analyze satd",
+        "files_unaccounted",
+        "a LEAK DETECTOR, not a measurement, and the twin of `analysis_provenance.unrecorded` below. #1035 gave SATD a census whose buckets partition the walk exactly: analysed + not_read == discovered. `files_unaccounted` is what is left over when they do not, so 0 on every corpus is the REQUIREMENT and a non-zero value here is the defect. Constant BECAUSE the code is correct. The guard against it going vacuous is `census_has_a_denominator_tests`, which drops a bucket and watches the partition break",
+    ),
+    (
+        "analyze satd",
+        "census_balances",
+        "an INVARIANT stated as a boolean: `analysed + not_read == discovered`. It is `true` on every corpus for the same reason `files_unaccounted` is 0 — they are two spellings of one claim, published together so a consumer can check the cheap one. A corpus that made this vary would be a corpus on which SATD had miscounted",
+    ),
     (
         "analyze complexity",
         "analysis_provenance.unrecorded",
@@ -273,12 +283,12 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
     (
         "analyze satd",
         "files_not_read.too_large",
-        "the `analyze` surface routes through `skip_reason_for_analysis`, which DELIBERATELY omits the >512KB rule that `skip_reason` applies — unifying them would make this path skip more files and find fewer defects, a behaviour change the code says deserves its own measurement (satd_detector/detection_analysis.rs). Zero files therefore go unread for size here, which is a true zero and not an unmeasured one; a 748,903-byte file is read, not skipped. Verified one file at a time, 2026-08-21",
+        "both SATD walks now share ONE size rule, MAX_FILE_BYTES = 10,000,000 (satd_detector/types.rs) — the >512KB/unbounded split that made the two surfaces report different numbers for the same tree was removed in #1035, upwards, so no file that was read before is skipped now. The corpus's largest file is 748,903 bytes, well under the limit, so zero files go unread for size: a true zero, and one the counter can be shown to leave — a file past 10 MB books `too_large` and is NAMED in `files_not_read.oversized`. Verified one file at a time, 2026-08-21; rule re-verified 2026-08-25",
     ),
     (
         "analyze comprehensive",
-        "satd.skipped.too_large",
-        "the `analyze` surface routes through `skip_reason_for_analysis`, which DELIBERATELY omits the >512KB rule that `skip_reason` applies — unifying them would make this path skip more files and find fewer defects, a behaviour change the code says deserves its own measurement (satd_detector/detection_analysis.rs). Zero files therefore go unread for size here, which is a true zero and not an unmeasured one; a 748,903-byte file is read, not skipped. Verified one file at a time, 2026-08-21",
+        "satd.census.not_read.too_large",
+        "both SATD walks now share ONE size rule, MAX_FILE_BYTES = 10,000,000 (satd_detector/types.rs) — the >512KB/unbounded split that made the two surfaces report different numbers for the same tree was removed in #1035, upwards, so no file that was read before is skipped now. The corpus's largest file is 748,903 bytes, well under the limit, so zero files go unread for size: a true zero, and one the counter can be shown to leave — a file past 10 MB books `too_large` and is NAMED in `files_not_read.oversized`. Verified one file at a time, 2026-08-21; rule re-verified 2026-08-25",
     ),
     (
         "quality-gate",

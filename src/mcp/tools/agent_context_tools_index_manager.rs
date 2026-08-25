@@ -45,10 +45,10 @@ impl IndexManager {
         } else {
             let idx = AgentContextIndex::build(&self.project_path)?;
             // Create directory and save
-            if let Some(parent) = index_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create .pmat directory: {}", e))?;
-            }
+            // #1070: `.pmat/` gets its ignore rule as it is created, so building
+            // an index does not leave `?? .pmat/` in the indexed repo.
+            crate::utils::pmat_cache_dir::ensure_parent_dir(&index_path)
+                .map_err(|e| format!("Failed to create .pmat directory: {}", e))?;
             idx.save(&index_path)?;
             idx
         };
@@ -75,10 +75,9 @@ impl IndexManager {
         let index = AgentContextIndex::build(&self.project_path)?;
 
         let index_path = self.project_path.join(".pmat/context.idx");
-        if let Some(parent) = index_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create .pmat directory: {}", e))?;
-        }
+        // #1070: as above — the directory carries its own ignore rule.
+        crate::utils::pmat_cache_dir::ensure_parent_dir(&index_path)
+            .map_err(|e| format!("Failed to create .pmat directory: {}", e))?;
         index.save(&index_path)?;
 
         // Update cache

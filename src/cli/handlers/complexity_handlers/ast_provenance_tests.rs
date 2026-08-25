@@ -8,8 +8,9 @@
 //! machine consumer. On a full bashrs run ten files were counted by regex and
 //! none of them were distinguishable in the document.
 //!
-//! These tests are serial because the provenance ledger is process-global for
-//! the duration of one armed run.
+//! Most of these are serial because the provenance ledger is process-global for
+//! the duration of one armed run. `two_concurrent_runs_do_not_steal_each_others_ledger`
+//! deliberately is NOT: it exists to run two walks at once.
 
 use super::*;
 use serial_test::serial;
@@ -301,4 +302,69 @@ async fn a_project_run_still_publishes_the_walks_denominator() {
         doc["files_not_analyzed"]["no_complexity_analyzer"]["toml"], 1,
         "the skip keeps its reason: {doc}"
     );
+}
+
+/// REGRESSION: two complexity runs in one process must not corrupt each other.
+///
+/// The ledger is a process-global `arm`/`take` pair, which is only correct for
+/// one run at a time — and nothing enforced that. Two runs interleaved as:
+/// A arms, B arms and CLEARS A's entries, A's files record, B takes and steals
+/// them, A takes and finds nothing. A then reports `unrecorded: N` for a walk
+/// in which every single file WAS recorded.
+///
+/// Found by the suite itself: with enough parallelism, the serial tests above
+/// began failing with
+///
+/// ```text
+/// "analysis_provenance":{"ast":0,...,"unrecorded":2,"files_analyzed":2}
+/// ```
+///
+/// That is not a test-only concern. `mcp-http` ships in the default feature set,
+/// so the MCP and HTTP servers both serve concurrent `analyze_complexity` calls
+/// from one process, where the same interleaving silently cross-attributes or
+/// loses provenance between unrelated requests.
+///
+/// This test asserts the invariant the whole census rests on — `unrecorded` is
+/// zero — under concurrency. It is the counter-test to the serial ones: they
+/// prove the buckets are right, this proves they are still right when something
+/// else is running.
+#[tokio::test]
+async fn two_concurrent_runs_do_not_steal_each_others_ledger() {
+    // Distinct trees, so a stolen entry cannot coincidentally be the right one.
+    let a = tempfile::TempDir::new().expect("temp dir a");
+    let b = tempfile::TempDir::new().expect("temp dir b");
+    for (dir, name) in [(&a, "alpha"), (&b, "beta")] {
+        std::fs::create_dir_all(dir.path().join("src")).expect("src");
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            format!("pub fn {name}(x:i32)->i32{{ if x>0 {{x}} else {{-x}} }}\n"),
+        )
+        .expect("lib.rs");
+    }
+
+    let (doc_a, doc_b) = tokio::join!(json_for(a.path()), json_for(b.path()));
+
+    for (label, doc) in [("a", &doc_a), ("b", &doc_b)] {
+        let prov = &doc["analysis_provenance"];
+        assert_eq!(
+            prov["unrecorded"], 0,
+            "run {label} lost its provenance to the other run: {doc}"
+        );
+        assert_eq!(
+            prov["ast"], 1,
+            "run {label}: the one Rust file parsed and must be booked as ast: {doc}"
+        );
+        let sum = prov["ast"].as_u64().expect("ast")
+            + prov["heuristic"].as_u64().expect("heuristic")
+            + prov["heuristic_include_fragment"]
+                .as_u64()
+                .expect("include fragment")
+            + prov["heuristic_fallback"].as_u64().expect("fallback")
+            + prov["unrecorded"].as_u64().expect("unrecorded");
+        assert_eq!(
+            sum,
+            doc["files_analyzed"].as_u64().expect("files_analyzed"),
+            "run {label}: the buckets must still partition under concurrency: {doc}"
+        );
+    }
 }

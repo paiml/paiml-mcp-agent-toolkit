@@ -217,6 +217,9 @@ fn another_unused() {
 "#,
         )
         .unwrap();
+        // pmat no longer creates a lockfile in the tree it analyses (#1076), so
+        // a fixture without one loses the compiler layer and finds nothing.
+        crate::services::cargo_dead_code_analyzer::write_fixture_lockfile(temp_dir.path());
 
         // Test with different thresholds
         let violations_low = check_dead_code(temp_dir.path(), 5.0).await.unwrap();

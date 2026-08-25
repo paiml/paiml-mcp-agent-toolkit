@@ -11,7 +11,18 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS="$HERE/pmat-fleet-dogfood.sh"
 SRC="${PMAT_FLEET_SRC:-$HOME/src}"
-BIN="${PMAT_BIN:-$PWD/target/debug/pmat}"
+# Ask cargo where it builds. This workspace redirects `target-dir` off-site, so
+# `$PWD/target/debug/pmat` is a STALE COPY left over from before the redirect —
+# 43 minutes behind the real binary when this was found. A release gate that
+# measures yesterday's binary is worse than no gate: it reports on code that is
+# not being shipped. Never hand-write this path.
+if [ -z "${PMAT_BIN:-}" ]; then
+    TARGET_DIR=$(cargo metadata --no-deps --format-version 1 2>/dev/null \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["target_directory"])' 2>/dev/null)
+    BIN="${TARGET_DIR:-$PWD/target}/debug/pmat"
+else
+    BIN="$PMAT_BIN"
+fi
 
 [ -x "$BIN" ] || { echo "no pmat binary at $BIN — build first"; exit 1; }
 [ -r "$HARNESS" ] || { echo "harness missing: $HARNESS"; exit 1; }

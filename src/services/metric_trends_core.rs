@@ -2,7 +2,10 @@ impl MetricTrendStore {
     /// Create new trend store
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
-        let storage_path = PathBuf::from(".pmat-metrics/trends");
+        // #1070: `.pmat-metrics/` gets its ignore rule the moment it is created,
+        // so a trend store does not leave the measured tree dirty.
+        let storage_path =
+            crate::utils::pmat_cache_dir::ensure_metrics_dir(Path::new(".")).join("trends");
         std::fs::create_dir_all(&storage_path).context("Failed to create trends directory")?;
 
         Ok(Self {

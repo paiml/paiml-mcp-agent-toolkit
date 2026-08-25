@@ -37,16 +37,29 @@ impl CargoDeadCodeAnalyzer {
         self.check_deadline(deadline)?;
 
         // Layer 2: Run cargo check for compiler-detected dead code
-        let cargo_output = self.run_cargo_check(deadline).await?;
-        let compiler_dead_items = self.parse_cargo_warnings(&cargo_output)?;
+        let cargo = self.run_cargo_check(deadline).await?;
+        let compiler_dead_items = self.parse_cargo_warnings(&cargo.json)?;
         all_dead_items.extend(compiler_dead_items);
 
         let files_with_dead_code = self.group_by_file(all_dead_items);
-        let report = self.calculate_metrics(files_with_dead_code).await?;
+        let mut report = self.calculate_metrics(files_with_dead_code).await?;
+        // Whether Layer 2 ran travels WITH the numbers it did or did not
+        // contribute to. Without it a lockfile-less crate reports the same
+        // SHAPE over a suppression scan alone, and `0 dead items` reads as a
+        // clean bill of health for a search that never happened.
+        let scanned_fully = cargo.scan.is_full();
+        report.compiler_scan = Some(cargo.scan);
         self.check_deadline(deadline)?;
 
-        // Save to cache for next time
-        self.save_cache(&report);
+        // Save to cache for next time -- but only a FULL scan. The cache key is
+        // the git tree hash and an absent `Cargo.lock` is untracked, so writing
+        // one does not change the hash: a cached reduced report would outlive
+        // the condition that produced it and go on understating a tree that can
+        // now be scanned properly. A reduced scan ran no `cargo check`, so
+        // there is no expensive work to preserve.
+        if scanned_fully {
+            self.save_cache(&report);
+        }
 
         Ok(report)
     }
@@ -246,9 +259,13 @@ impl CargoDeadCodeAnalyzer {
     }
 
     /// Run cargo check and capture JSON output, killing the child at `deadline`.
-    async fn run_cargo_check(&self, deadline: std::time::Instant) -> Result<String> {
+    ///
+    /// Returns what the compiler layer produced AND whether it produced it, so
+    /// a run that could not compile the crate is distinguishable from a run
+    /// that compiled it and found nothing.
+    async fn run_cargo_check(&self, deadline: std::time::Instant) -> Result<CargoCheckOutcome> {
         let Some(cmd) = self.build_cargo_check_command() else {
-            return Ok(r#"{"reason":"build-finished","success":true}"#.to_string());
+            return Ok(CargoCheckOutcome::suppressed_by_env());
         };
         self.wait_for_cargo_check(cmd, deadline).await
     }
@@ -272,6 +289,36 @@ impl CargoDeadCodeAnalyzer {
         let mut cmd = Command::new("cargo");
         cmd.current_dir(&self.cargo_root)
             .arg("check")
+            // NO `--locked`, and #1076 IS THEREFORE STILL OPEN. Read this before
+            // adding it back — it was added, measured, and reverted.
+            //
+            // `--locked` does stop the lockfile write. It also DISABLES THE
+            // COMPILER SCAN on any repo whose lockfile is absent or stale,
+            // because cargo refuses and the heuristic fallback cannot see what
+            // the compiler sees: on the differential corpus the scan finds 80
+            // dead functions and the heuristic finds 0, so seven `analyze
+            // dead-code` leaves went identical-for-empty-and-large and the gate
+            // went red. Reverting this one flag turned it green.
+            //
+            // Trading "writes a Cargo.lock" for "silently reports no dead code
+            // on most libraries" is a worse deal, and it is the exact
+            // absence-rendered-as-success shape this release exists to remove.
+            // A real fix has to keep the scan: analyse a copy, or snapshot and
+            // restore the lockfile, or accept the write and disclose it.
+            // `cargo check` GENERATES `Cargo.lock` when none exists, so the
+            // analyser was writing a real, source-controlled artifact into a
+            // repository it had only been asked to measure -- and whether a
+            // lockfile belongs in a tree is the project's decision (libraries
+            // deliberately omit it, binaries deliberately commit it), not
+            // ours. `--locked` makes cargo REFUSE instead: it exits 101 with
+            // "cannot create/update the lock file ... because --locked was
+            // passed to prevent this" and touches nothing. The refusal is
+            // caught in `wait_for_cargo_check` and turned into a DISCLOSED
+            // reduction in fidelity.
+            //
+            // Deliberately not "delete it afterwards": a killed run leaves the
+            // file behind and the cleanup is invisible either way. `target/`
+            // needs no equivalent -- cargo writes its own `target/.gitignore`.
             .arg("--message-format=json");
 
         // Don't modify RUSTFLAGS — changing flags forces full recompilation
@@ -349,7 +396,7 @@ impl CargoDeadCodeAnalyzer {
         &self,
         mut cmd: Command,
         deadline: std::time::Instant,
-    ) -> Result<String> {
+    ) -> Result<CargoCheckOutcome> {
         use std::io::Read;
         use std::process::Stdio;
 
@@ -394,15 +441,104 @@ impl CargoDeadCodeAnalyzer {
         let stderr = stderr_reader.join().unwrap_or_default();
 
         if !status.success() {
-            return Err(anyhow::anyhow!(
-                "Cargo check failed: {}",
-                String::from_utf8_lossy(&stderr)
-            ));
+            let stderr = String::from_utf8_lossy(&stderr);
+            // The one failure that is NOT an error: cargo refusing to write the
+            // lockfile we told it it may not write. Analysing less is the
+            // correct outcome there -- but only if it is said out loud.
+            if let Some(refusal) = lockfile_refusal_line(&stderr) {
+                return Ok(CargoCheckOutcome::lockfile_refused(
+                    &self.cargo_root,
+                    &refusal,
+                ));
+            }
+            return Err(anyhow::anyhow!("Cargo check failed: {stderr}"));
         }
 
         // Cargo outputs JSON messages to stdout
-        Ok(String::from_utf8_lossy(&stdout).to_string())
+        Ok(CargoCheckOutcome::completed(
+            String::from_utf8_lossy(&stdout).to_string(),
+        ))
     }
+}
+
+/// A `cargo check` whose stdout may or may not have been produced, carried
+/// together with the record of which of those two it was.
+///
+/// The two used to be one `String`: an empty-but-successful JSON stream and a
+/// stream that was never produced are byte-identical downstream, so every
+/// caller of `parse_cargo_warnings` saw "no compiler findings" for both.
+pub(crate) struct CargoCheckOutcome {
+    /// `cargo check --message-format=json` stdout, or a synthetic
+    /// build-finished record when the compiler layer did not run.
+    pub json: String,
+    /// Whether that stdout came from a real compile.
+    pub scan: crate::models::dead_code::CompilerScanReport,
+}
+
+/// What `parse_cargo_warnings` is handed when no compile happened: a
+/// well-formed, EMPTY message stream. It carries no findings by construction,
+/// which is why the outcome beside it has to say so.
+const NO_CARGO_MESSAGES: &str = r#"{"reason":"build-finished","success":true}"#;
+
+impl CargoCheckOutcome {
+    /// `cargo check` ran to completion.
+    fn completed(json: String) -> Self {
+        Self {
+            json,
+            scan: crate::models::dead_code::CompilerScanReport::full(),
+        }
+    }
+
+    /// `PMAT_DEAD_CODE_SKIP` suppressed the compiler layer.
+    fn suppressed_by_env() -> Self {
+        Self {
+            json: NO_CARGO_MESSAGES.to_string(),
+            scan: crate::models::dead_code::CompilerScanReport::reduced(
+                crate::models::dead_code::COMPILER_SCAN_REASON_ENV_SKIP,
+                "PMAT_DEAD_CODE_SKIP is set, so cargo check did not run and \
+rustc's dead-code lint contributed nothing; only explicit allow(dead_code) \
+admissions could be found"
+                    .to_string(),
+            ),
+        }
+    }
+
+    /// `cargo check --locked` refused rather than write the analysed repo's
+    /// lockfile.
+    fn lockfile_refused(cargo_root: &std::path::Path, refusal: &str) -> Self {
+        Self {
+            json: NO_CARGO_MESSAGES.to_string(),
+            scan: crate::models::dead_code::CompilerScanReport::reduced(
+                crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE,
+                format!(
+                    "rustc's dead-code lint did NOT run: compiling {} would have \
+created or updated its Cargo.lock, and pmat will not write into a repository it \
+was asked to measure. Only explicit allow(dead_code) admissions were searched \
+for, so a low count here is not evidence of little dead code. Run `cargo \
+generate-lockfile` in that crate (a decision only the project can make) and \
+re-run for a full scan. cargo said: {}",
+                    cargo_root.display(),
+                    refusal.trim()
+                ),
+            ),
+        }
+    }
+}
+
+/// The line from a failed `cargo check --locked` that says cargo refused to
+/// touch the lockfile, or `None` when the failure was something else.
+///
+/// Matched on `--locked was passed`, which is the substring common to every
+/// wording cargo has used for this ("cannot create the lock file ... because
+/// --locked was passed to prevent this", "cannot update the lock file ...",
+/// and the older "the lock file ... needs to be updated but --locked was
+/// passed to prevent this"). A genuine compile error is still an error: only
+/// cargo's own refusal is downgraded to a disclosed reduction.
+pub(crate) fn lockfile_refusal_line(stderr: &str) -> Option<String> {
+    stderr
+        .lines()
+        .find(|line| line.contains("--locked was passed"))
+        .map(str::to_string)
 }
 
 /// The `DeadCodeKind` behind a suppression attribute, from the keyword the item

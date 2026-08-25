@@ -1,0 +1,186 @@
+# DISABLED 2026-08-25 by owner decision — renamed to `.disabled` so GitHub does
+# not schedule it. Nothing here is broken: run by hand it PASSES, and it is the
+# only check that can see a GHSA-only advisory at all.
+#
+# Why it was switched off rather than fixed: it needs a `DEPENDABOT_ALERTS_TOKEN`
+# secret, because `GITHUB_TOKEN` cannot read the Dependabot alerts endpoint and
+# `permissions: security-events: read` does not cover it. Without the secret it
+# exits 2 (CANNOT MEASURE) on every run — correct behaviour, and a permanently
+# red check is one everybody learns to walk past, which is worse than no check.
+#
+# The gate script `scripts/dependabot-alert-gate.sh` is UNCHANGED and still works:
+#
+#     ./scripts/dependabot-alert-gate.sh --severity medium
+#
+# To re-enable: add the secret, then `git mv` this file back to `.yml`.
+#
+# WHAT IS LOST WHILE THIS IS OFF, stated plainly so nobody rediscovers it the
+# hard way: `cargo deny check advisories` answers "is anything here listed in
+# RustSec", NOT "is anything here known-vulnerable". It printed `advisories ok`
+# on a tree carrying an open moderate alert, because RustSec had 1,235
+# advisories and no thrift entry while GitHub's superset did. That blind spot is
+# structural and has already recurred twice on the same crate. Cross-check
+# Dependabot by hand before a release.
+
+# Security advisories — TWO sources, because neither one is complete.
+#
+# paiml-mcp-agent-toolkit#1074.
+#
+#   `cargo deny check advisories` answers "is anything here listed in RustSec".
+#   CI reads that as "is anything here known-vulnerable". Those are different
+#   questions, and GitHub's advisory database is a strict superset of RustSec —
+#   it ingests RustSec, plus GHSA-native advisories, plus CVEs mapped to crates
+#   that were never filed with RustSec at all.
+#
+#   Live, twice, on the same crate: GHSA-2f9f-gq7v-9h6m / CVE-2026-43868 in
+#   `thrift 0.17.0`. Dependabot calls it an open moderate alert on this
+#   repository. `cargo deny check advisories` prints `advisories ok` and exits 0,
+#   because there is no thrift entry among RustSec's 1,235 advisories. The first
+#   occurrence was worked around by hand and nothing was added to CI, so it came
+#   back.
+#
+#   So the gate that could block a merge was structurally blind, and reported the
+#   blind spot as a pass. This workflow is the second source.
+#
+# IT DOES NOT REPLACE cargo-deny, which still runs (blocking, all four families)
+# in quality-gate.yml. Neither source subsumes the other: RustSec carries
+# unmaintained / yanked / unsound findings that Dependabot does not model at all,
+# and Dependabot carries GHSA-native advisories RustSec has never heard of. Both
+# run. Both block.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT YET A REQUIRED STATUS CHECK, AND THAT IS DELIBERATE
+#
+# The required contexts are listed in .github/required-status-checks.txt:
+#   ci / gate, feature-gate, docs build (docs.rs environment), pmat score,
+#   provable ladder
+#
+# `dependabot-alerts` is not among them yet. The quality-gate.yml comment this
+# workflow replaces stated the precondition plainly: the gate "needs a token
+# permission this workflow has never exercised, and a gate whose API call fails
+# must fail the build rather than skip, so it has to be proven working before it
+# guards a required check." That precondition is still unmet at the time of
+# writing — whether the default GITHUB_TOKEN can read /dependabot/alerts was NOT
+# verified, because it can only be verified by running this workflow. The gate
+# was proven against the live API with a user PAT, and against fixtures; the
+# GITHUB_TOKEN path was not.
+#
+# This repository has already been bitten by getting that order wrong: an agent
+# added `mutation-diff` to live branch protection while its workflow existed
+# only on a feature branch, making every pull request permanently unmergeable,
+# including the one that would have landed the workflow. See the long note in
+# required-status-checks.txt.
+#
+# PROMOTION, once one run of this job has been observed green on master:
+#
+#   gh api -X PATCH \
+#     repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection/required_status_checks \
+#     --input - <<'JSON'
+#   {"strict": true, "contexts": ["ci / gate","feature-gate","docs build (docs.rs environment)","pmat score","provable ladder","dependabot-alerts"]}
+#   JSON
+#
+# and add `dependabot-alerts` to .github/required-status-checks.txt in the SAME
+# change — CB-2100 fails on any disagreement between that manifest and live
+# protection, which is exactly the drift it exists to catch.
+#
+# If the job's first run fails with "CANNOT MEASURE ... 403", the token is the
+# cause, not the gate: mint a fine-grained PAT scoped to this repository with
+# `Dependabot alerts: read`, store it as the DEPENDABOT_ALERTS_TOKEN secret, and
+# re-run. The job already prefers that secret over GITHUB_TOKEN.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Security Advisories
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # A new GHSA can be published against a pin that has not changed in months, so
+  # this has to run on a clock and not only on a diff. That is precisely how the
+  # thrift advisory appeared: the lockfile did not move, the advisory database
+  # did.
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: security-advisories-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Documented as covering Dependabot alerts. UNVERIFIED on this endpoint — see
+  # the promotion note above; if it is insufficient the job fails loudly with a
+  # 403 rather than passing, which is the entire design.
+  security-events: read
+
+jobs:
+  dependabot-alerts:
+    name: dependabot-alerts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Runs BEFORE the live measurement, on purpose. If the gate itself is
+      # broken, that must surface even on a day when the API is unreachable —
+      # otherwise the first thing anyone learns about a broken gate is that it
+      # went quiet. 16 cases: a known-vulnerable finding must go red, the same
+      # finding under a live acknowledgement must go green, and every
+      # cannot-measure path must exit 2. It includes counter-tests — an empty
+      # list, a below-threshold finding and an already-fixed alert must all PASS
+      # — so "refuse everything" cannot be mistaken for a working gate.
+      #
+      # No `|| true`, no `continue-on-error`. If this step is ever made
+      # non-blocking, the gate has been deleted without anyone deleting it.
+      - name: Prove the gate can fail (self-test)
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: ./scripts/dependabot-alert-gate.sh --self-test
+
+      # The measurement. Exit 1 = a finding blocks. Exit 2 = the answer could not
+      # be established, which fails too — "we could not measure it" must never
+      # render as "nothing was found". That is the defect being fixed here, so
+      # reproducing it in the fix would be its own punchline.
+      - name: Dependabot advisory gate (blocking)
+        env:
+          # A fine-grained PAT with `Dependabot alerts: read` if one has been
+          # provisioned; otherwise the workflow token. An absent secret is an
+          # empty string, so the `||` falls through.
+          GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          # NOT `gate.sh | tee gate.log`: a pipeline reports the LAST command's
+          # status, so without pipefail `tee` would swallow every failure and the
+          # step would be green whatever the gate found. Written out longhand so
+          # the exit code is the gate's own, and so the 1-vs-2 distinction
+          # survives into the log.
+          set +e
+          ./scripts/dependabot-alert-gate.sh --severity medium > gate.log 2>&1
+          rc=$?
+          set -e
+          cat gate.log
+          echo "gate exit code: $rc  (0 = clean, 1 = blocking finding, 2 = COULD NOT MEASURE)"
+          exit "$rc"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            cat <<'MD'
+          ### Dependabot advisory gate
+
+          The second advisory source, alongside `cargo deny check` in quality-gate.yml.
+          GitHub's advisory database is a superset of RustSec, so a green cargo-deny is
+          not evidence that nothing is known-vulnerable (#1074).
+
+          ```
+          MD
+            if [ -f gate.log ]; then cat gate.log; else echo "(no log — the gate step did not run)"; fi
+            cat <<'MD'
+          ```
+
+          Accepted findings, each with an owner and an expiry date:
+          `.github/dependabot-acknowledgements.toml`
+          MD
+          } >> "$GITHUB_STEP_SUMMARY"

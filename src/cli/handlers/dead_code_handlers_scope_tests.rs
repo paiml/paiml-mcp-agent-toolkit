@@ -72,6 +72,7 @@ fn narrowed_result() -> DeadCodeResult {
         files_with_dead_code_found: 3,
         files_truncated: false,
         library_target: None,
+        compiler_scan: None,
     }
 }
 

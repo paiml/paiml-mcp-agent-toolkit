@@ -1,100 +1,84 @@
-//! BUG-011: Language Detection Hang Example
+//! BUG-011 regression guard: a C++ project must be detected as C++.
 //!
-//! This example reproduces BUG-011 where:
-//! 1. A C++ project (like Ceph) is incorrectly detected as "python-uv"
-//! 2. The discovery phase hangs indefinitely
+//! This file used to be a REPRODUCER. It described a live defect — a Ceph-like
+//! C++ tree detected as `python-uv`, with the discovery phase hanging — and
+//! listed four things to implement in order to fix it.
 //!
-//! Expected behavior:
-//! - Should detect C++ as primary language
-//! - Should complete within reasonable timeout (30s)
-//! - Should support --language override flag
+//! All four shipped. Measured 2026-08-25 against this example's own fixture:
+//! detection returns `cpp` at 100.0% confidence and does not hang, and both
+//! `pmat context --language` and `--languages` exist (BUG-012). The file was
+//! still telling its reader that none of that worked.
+//!
+//! That made it a false document rather than a stale one: somebody reading it
+//! would conclude pmat cannot override language detection, when it can. It also
+//! carried the tree's only strict-mode SATD marker — invisible until the
+//! `examples/` exclusion was removed (#1035), because SATD never walked this
+//! directory.
+//!
+//! Rewritten as what it now is: a check that FAILS if BUG-011 returns. A
+//! reproducer for a fixed bug should either be deleted or become a guard;
+//! leaving it to narrate is how a document outlives the thing it describes.
 //!
 //! Run with: `cargo run --example bug_011_language_detection`
+//! Exits non-zero if the bug has regressed.
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
 
+use pmat::services::enhanced_language_detection::{
+    detect_project_language_enhanced, LanguageDetection,
+};
+
+/// The hang was the second half of BUG-011, so the guard keeps a deadline.
+/// Generous on purpose: this must fail on a hang, never on a slow machine.
+const DETECTION_DEADLINE: Duration = Duration::from_secs(30);
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🐛 BUG-011: Language Detection Hang Reproduction\n");
+    println!("BUG-011 regression guard: C++ project detection\n");
 
-    // Example 1: Reproduce the bug - should detect C++ but detects python-uv
-    println!("Example 1: Simulating Ceph-like C++ project detection");
-    println!("{}", "=".repeat(60));
-
-    // Create a mock C++ project structure
     let test_dir = create_mock_cpp_project().await?;
-    println!("Created mock C++ project at: {:?}", test_dir);
+    println!("fixture: {test_dir:?}");
+    println!("  70 .cc + 70 .h, a CMakeLists.txt, 20 .py, and a pyproject.toml");
+    println!("  (the pyproject.toml is the decoy that produced the original defect)\n");
 
-    // Attempt to detect language (THIS IS WHERE THE BUG OCCURS)
-    println!("\n🔍 Detecting project language...");
-
-    // This should timeout because the current implementation hangs
-    let detection_result =
-        timeout(Duration::from_secs(5), detect_project_language(&test_dir)).await;
-
-    match detection_result {
-        Ok(Ok(detection)) => {
-            println!(
-                "✅ Detected: {} (confidence: {:.1}%)",
-                detection.language, detection.confidence
-            );
-
-            // BUG: This shows wrong language
-            if detection.language == "python-uv" {
-                println!("❌ BUG REPRODUCED: Detected python-uv instead of C++!");
-            }
-        }
-        Ok(Err(e)) => {
-            println!("❌ Detection failed: {}", e);
-        }
-        Err(_) => {
-            println!("❌ BUG REPRODUCED: Detection timed out after 5 seconds!");
-            println!("   (Current implementation hangs on discovery phase)");
-        }
-    }
-
-    // Example 2: What the fix should enable - manual override
-    println!("\n\nExample 2: Language override (not yet implemented)");
-    println!("{}", "=".repeat(60));
-    println!("After fix, you should be able to run:");
-    println!("  pmat context --language cpp");
-    println!("  pmat context --languages rust,python,typescript");
-
-    // Example 3: Multi-language detection (not yet implemented)
-    println!("\n\nExample 3: Multi-language detection (not yet implemented)");
-    println!("{}", "=".repeat(60));
-    println!("After fix, should detect all languages with >5% file count:");
-    println!("  C++: 70% (primary)");
-    println!("  Python: 20%");
-    println!("  Shell: 10%");
-
-    // Cleanup
+    let detection = timeout(DETECTION_DEADLINE, detect_project_language(&test_dir)).await;
     cleanup_mock_project(&test_dir).await?;
 
-    println!("\n🎯 To fix this bug:");
-    println!("  1. Implement multi-language detection based on file extensions");
-    println!("  2. Weight primary indicators (CMakeLists.txt, Cargo.toml) higher");
-    println!("  3. Add timeout to discovery phase");
-    println!("  4. Add --language and --languages CLI flags");
+    let detection = match detection {
+        Ok(inner) => inner?,
+        Err(_) => bail!(
+            "BUG-011 HAS REGRESSED: detection did not finish within {}s. \
+             The original defect hung in the discovery phase.",
+            DETECTION_DEADLINE.as_secs()
+        ),
+    };
 
+    println!(
+        "detected: {} ({:.1}% confidence)",
+        detection.language, detection.confidence
+    );
+
+    if detection.language != "cpp" {
+        bail!(
+            "BUG-011 HAS REGRESSED: a tree that is 70% C++ with a CMakeLists.txt \
+             was detected as {:?}. The original defect reported `python-uv`, \
+             misled by the pyproject.toml in scripts/.",
+            detection.language
+        );
+    }
+
+    println!("\nPASS: C++ detected, within the deadline.");
     Ok(())
 }
 
-/// Detect language using the fixed implementation
 async fn detect_project_language(path: &Path) -> Result<LanguageDetection> {
-    use pmat::services::enhanced_language_detection::detect_project_language_enhanced;
-
-    // Use the fixed detection function
     Ok(detect_project_language_enhanced(path))
 }
 
-// Re-export from the module
-use pmat::services::enhanced_language_detection::LanguageDetection;
-
-/// Create a mock C++ project structure similar to Ceph
+/// A Ceph-like tree: mostly C++, with enough Python to mislead a naive detector.
 async fn create_mock_cpp_project() -> Result<PathBuf> {
     use std::fs;
     use tempfile::TempDir;
@@ -102,49 +86,42 @@ async fn create_mock_cpp_project() -> Result<PathBuf> {
     let temp_dir = TempDir::new()?;
     let base_path = temp_dir.path();
 
-    // Create C++ files (70% of files)
     fs::create_dir_all(base_path.join("src"))?;
     for i in 0..70 {
         fs::write(
-            base_path.join(format!("src/module_{}.cc", i)),
-            format!("// C++ file {}\nint main() {{ return 0; }}", i),
+            base_path.join(format!("src/module_{i}.cc")),
+            format!("// C++ file {i}\nint main() {{ return 0; }}"),
         )?;
-    }
-
-    // Create headers
-    for i in 0..70 {
         fs::write(
-            base_path.join(format!("src/module_{}.h", i)),
-            format!("// Header file {}\n#pragma once", i),
+            base_path.join(format!("src/module_{i}.h")),
+            format!("// Header file {i}\n#pragma once"),
         )?;
     }
 
-    // Create CMakeLists.txt (primary indicator for C++)
+    // The primary indicator for C++.
     fs::write(
         base_path.join("CMakeLists.txt"),
         "cmake_minimum_required(VERSION 3.10)\nproject(TestProject)\n",
     )?;
 
-    // Create some Python files (20% of files)
     fs::create_dir_all(base_path.join("scripts"))?;
     for i in 0..20 {
         fs::write(
-            base_path.join(format!("scripts/helper_{}.py", i)),
-            format!("# Python helper {}\nprint('hello')", i),
+            base_path.join(format!("scripts/helper_{i}.py")),
+            format!("# Python helper {i}\nprint('hello')"),
         )?;
     }
 
-    // Create a pyproject.toml (which might confuse the detector)
+    // The decoy. This is what the original defect keyed on.
     fs::write(
         base_path.join("scripts/pyproject.toml"),
         "[project]\nname = \"helpers\"\n",
     )?;
 
-    // Keep the temp dir alive by leaking it
-    // (In real code, we'd use a better approach)
+    // The directory must outlive the TempDir guard because the caller cleans up
+    // explicitly after the detection, including on the failure paths above.
     let leaked_path = base_path.to_path_buf();
     std::mem::forget(temp_dir);
-
     Ok(leaked_path)
 }
 

@@ -1242,14 +1242,14 @@ pub fn copy_prefix(src: &[u8], dst: &mut [u8]) {
     //
     // `analyze satd` reports `files_not_read` broken down by reason, and two of
     // those buckets read 0 for every corpus — not because the counters are
-    // broken (both fire: an `examples/` file books `out_of_scope`, a `.min.`
-    // file books `minified_or_vendor`, verified one file at a time) but because
-    // no corpus contained anything for them to count. A bucket that is 0 on
-    // every input is indistinguishable from a bucket nothing can ever reach,
-    // which is the very thing this harness exists to catch.
+    // broken (both fire: a `vendor/` file books `out_of_scope`, a `.min.` file
+    // books `minified_or_vendor`, verified one file at a time) but because no
+    // corpus contained anything for them to count. A bucket that is 0 on every
+    // input is indistinguishable from a bucket nothing can ever reach, which is
+    // the very thing this harness exists to catch.
     //
     // Neither is declared in `lib.rs`: `bundled.min.rs` is not a valid module
-    // name, and `examples/demo.rs` is cargo's own target layout. Both are still
+    // name, and `vendor/upstream.rs` is not part of the crate. Both are still
     // walked by the analysers, which is the point.
     std::fs::write(
         root.join("src/bundled.min.rs"),
@@ -1287,6 +1287,49 @@ pub fn bundled_entry() -> u32 {
         .concat(),
     )
     .expect("write broken_encoding.rs");
+
+    // A file past the SATD size cap, so the `oversized` bucket has something to
+    // report. #1035 gave SATD a census whose buckets partition the walk, and
+    // `files_not_read.oversized` is the one that names each skipped file with
+    // its size and the limit — the fix for a skip that used to reach stderr
+    // only, where `--format json` and `--output FILE` both discarded it.
+    //
+    // The differential gate booked it constant at 0 on every corpus, which was
+    // correct: no corpus had a file over the cap, so the bucket was measuring
+    // properly and had nothing to measure. Same call as `broken_encoding.rs`
+    // above — make the corpus dirty in the way the tool measures rather than
+    // excuse the measurement.
+    //
+    // `MAX_FILE_BYTES` is 10_000_000, so this is one byte past it. The cost is
+    // a write, not a read: SATD stats the file, sees the size and skips it, so
+    // the several hundred flag-efficacy invocations against this corpus never
+    // pay to read it.
+    {
+        // WIDE, not TALL. The first version padded with 10,000,001 NEWLINES,
+        // which made this one file ~99.99% of every line the dead-code analyser
+        // walks — and `analyze dead-code` reports dead code as a percentage OF
+        // ALL LINES WALKED. The corpus went from 3.8% dead to 0.0044%, so the
+        // flag-efficacy sweep's `--max-percentage 1.0` probe stopped
+        // discriminating and reported `--fail-on-violation` and
+        // `--max-percentage` as no-ops. The flags were fine; the corpus had
+        // been diluted underneath them.
+        //
+        // Padding with a long comment line instead keeps the file over
+        // `MAX_FILE_BYTES` — which is all the SATD size-cap bucket needs — while
+        // adding ~10k lines rather than 10M, leaving every other analyser's
+        // denominator where it was.
+        let mut oversized = Vec::with_capacity(10_000_001);
+        oversized.extend_from_slice(
+            b"// TODO: this marker must NOT be counted: the file is past the \
+              size cap, so it is reported as skipped rather than analysed.\n",
+        );
+        let filler = format!("// {}\n", "x".repeat(996));
+        while oversized.len() < 10_000_001 {
+            oversized.extend_from_slice(filler.as_bytes());
+        }
+        oversized.truncate(10_000_001);
+        std::fs::write(root.join("src/oversized.rs"), &oversized).expect("write oversized.rs");
+    }
 
     // NUMERIC CLAIMS, for CB-2104 — for the same reason as the unreadable file
     // above: its whole census read 0 on every corpus, which is
@@ -1409,11 +1452,39 @@ pub fn bundled_entry() -> u32 {
          }\n",
     )
     .expect("write helper_tests.rs");
+    // A VENDORED file: code this project cannot fix in place, so it books
+    // `out_of_scope` rather than being read.
+    //
+    // This used to be `examples/demo.rs`, which stopped booking that bucket in
+    // #1035: an example is shipped, compiled code and is analysed now, so a
+    // marker in it is a FINDING. The bucket still needs an input, and vendored
+    // source is the case it actually exists for.
+    std::fs::create_dir_all(root.join("vendor")).expect("mkdir vendor");
+    std::fs::write(
+        root.join("vendor/upstream.rs"),
+        "//! Vendored dependency: not ours to fix, so it books `out_of_scope`
+//! rather than being read.
+
+// TODO: upstream still uses the old API
+// HACK: patched locally so the build succeeds
+
+pub fn upstream_entry() -> u32 {
+    3
+}
+",
+    )
+    .expect("write vendor/upstream.rs");
+
+    // An EXAMPLE target, which #1035 moved into the analysed population: it is
+    // built by `cargo build --examples` and shipped by `cargo publish`, so a
+    // marker in it is real debt. It is here as the CONTROL for the bucket
+    // above — the two files are byte-similar and land on opposite sides of the
+    // partition, so a rule that quietly re-excluded examples would show up as a
+    // drop in findings rather than as nothing at all.
     std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
     std::fs::write(
         root.join("examples/demo.rs"),
-        "//! Example target: excluded from production scope, so it books
-//! `out_of_scope` rather than being read.
+        "//! Example target: shipped, compiled code, so it is READ.
 
 // TODO: the example still uses the old API
 // HACK: hardcoded so the demo always succeeds

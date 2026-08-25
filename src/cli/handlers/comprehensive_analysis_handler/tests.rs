@@ -70,7 +70,7 @@ pub(super) mod helpers {
                 summary: "Found 1 dead code item".to_string(),
             }),
             satd: Some(SatdAnalysisResult {
-                skipped: Default::default(),
+                census: Default::default(),
                 total_files: 2,
                 violations: vec![SatdViolation {
                     file_path: "src/todo.rs".to_string(),

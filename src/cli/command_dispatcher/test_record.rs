@@ -131,8 +131,9 @@ fn write_test_record(
     short_sha: &str,
     timestamp: &str,
 ) -> anyhow::Result<()> {
-    let metrics_dir = PathBuf::from(".pmat-metrics");
-    std::fs::create_dir_all(&metrics_dir)?;
+    // #1070: the directory carries its own ignore rule, so recording a test run
+    // does not leave `?? .pmat-metrics/` in the tree that was measured.
+    let metrics_dir = crate::utils::pmat_cache_dir::ensure_metrics_dir(&PathBuf::from("."));
 
     let filename = format!("commit-{short_sha}-tests.json");
     let filepath = metrics_dir.join(&filename);

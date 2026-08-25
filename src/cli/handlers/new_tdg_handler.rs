@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::enums::TdgOutputFormat;
 use crate::tdg::formatters::{
-    format_comparison, format_human, format_json, format_markdown, format_project,
+    format_comparison, format_human, format_json, format_markdown, format_project, ungraded,
 };
 use crate::tdg::TdgAnalyzer;
 
@@ -424,8 +424,7 @@ fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool
     // gave three different answers. Markdown has no frame, so nothing is
     // elided here.
     if !project.ungraded_files.is_empty() {
-        let lines =
-            crate::tdg::formatters::ungraded::ungraded_markdown_lines(&project.ungraded_files);
+        let lines = ungraded::ungraded_markdown_lines(&project.ungraded_files);
         let _ = writeln!(w, "{}\n", lines[0]);
         for line in &lines[1..] {
             let _ = writeln!(w, "{line}");
@@ -703,13 +702,25 @@ fn sarif_file_result(score: &crate::tdg::TdgScore) -> serde_json::Value {
 /// project score was 94.15/A- the SARIF document announced 72.5/100 (B-) — the
 /// worst file — and disagreed with every other renderer of the same command.
 fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serde_json::Value {
+    let census = ungraded::WalkCensus::of(project);
     // GH #704: with nothing analysed there is no score to quote at all — the
     // message used to quote the 0.0/F default while explaining that it was not
     // based on any measured file.
+    //
+    // Issue #1064: "over 1 file(s)" is true and misleading on a walk of sixteen.
+    // The sentence names the denominator when the two differ, so the one line a
+    // SARIF viewer shows cannot be read as covering the tree.
     let text = match (project.average_score, project.average_grade) {
-        (Some(score), Some(grade)) => format!(
+        (Some(score), Some(grade)) if census.measured_the_whole_walk() => format!(
             "Project TDG score {score:.1}/100 ({grade}) over {} file(s).",
             project.total_files
+        ),
+        (Some(score), Some(grade)) => format!(
+            "Project TDG score {score:.1}/100 ({grade}) over {} of {} file(s) walked; \
+             {} could not be graded (see properties.ungraded_files).",
+            project.total_files,
+            census.walked(),
+            census.ungraded
         ),
         _ => format!(
             "No analyzable files were found under {}; there is no project TDG score.",
@@ -728,8 +739,17 @@ fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serd
         "properties": {
             "tdg_score": project.average_score,
             "grade": project.average_grade.map(|g| g.to_string()),
-            "not_measured": project.not_measured,
+            "not_measured": ungraded::not_measured_names(
+                &project.not_measured,
+                &project.ungraded_files,
+            ),
             "total_files": project.total_files,
+            // The same census the run properties carry, because this result is
+            // a second reader of the same facts and said `total_files: 1` on a
+            // sixteen-file tree with nothing beside it (issue #1064).
+            "files_analyzed": census.analyzed,
+            "files_ungraded": census.ungraded,
+            "files_walked": census.walked(),
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         },
@@ -797,6 +817,7 @@ pub(crate) fn create_sarif_output(
     let mut results = vec![sarif_project_result(project, root)];
     results.extend(files.into_iter().map(sarif_file_result));
 
+    let census = ungraded::WalkCensus::of(project);
     sarif_document(
         results,
         serde_json::json!({
@@ -805,18 +826,28 @@ pub(crate) fn create_sarif_output(
             // analysed, never the 0.0/"F" default.
             "average_score": project.average_score,
             "average_grade": project.average_grade.map(|g| g.to_string()),
-            "not_measured": project.not_measured,
-            // Issue #1050 P2. `not_measured` above is a list of SCORE FIELDS
-            // that could not be produced, so on a tree where one file graded
-            // and fifteen were refused it is correctly `[]` — and a SARIF
-            // consumer read that empty array as "nothing was skipped". The
-            // files the walk refused are a different fact and get their own
-            // key, the one the table already points readers at.
-            "ungraded_files": project
-                .ungraded_files
-                .iter()
-                .map(|u| serde_json::json!({ "path": u.path, "reason": u.reason }))
-                .collect::<Vec<_>>(),
+            // Issue #1064. This was `project.not_measured` — the list of SCORE
+            // FIELDS that could not be produced — so on the reproducer, where
+            // one file of sixteen graded, it was `[]`, and `[]` is how a SARIF
+            // consumer is told nothing was skipped. Fifteen files were. Both
+            // kinds of answer belong under the key that asks the question, and
+            // they do not collide: a field of this document is a bare
+            // identifier, a refused file is the path as walked.
+            "not_measured": ungraded::not_measured_names(
+                &project.not_measured,
+                &project.ungraded_files,
+            ),
+            // The structured form of the same population, with the reason each
+            // file was refused — this is the key the human box names when it
+            // caps its own list.
+            "ungraded_files": ungraded::ungraded_json(&project.ungraded_files),
+            // `total_files` above counts the GRADED files and keeps its name for
+            // the consumers that already read it. These three say what it does
+            // not: the walk partitions into analyzed plus ungraded, and neither
+            // half has to be inferred from the length of a list.
+            "files_analyzed": census.analyzed,
+            "files_ungraded": census.ungraded,
+            "files_walked": census.walked(),
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         }),
@@ -1281,5 +1312,109 @@ mod tests {
                 "components must be present with the flag: {with}"
             );
         }
+    }
+
+    // ── Issue #1064: SARIF must not deny the files the walk refused ─────────
+
+    /// The reproducer's shape: one Rust file graded, fifteen shell scripts
+    /// walked and refused.
+    fn project_with_refusals() -> crate::tdg::ProjectScore {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![graded(
+            "src/lib.rs",
+            100.0,
+            crate::tdg::Grade::APlus,
+        )]);
+        for i in 1..=15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "Bash source: this build has no TDG analyzer for .sh".to_string(),
+            });
+        }
+        project
+    }
+
+    /// Issue #1064. `properties.not_measured` is what a SARIF consumer reads to
+    /// learn what a run could not answer for, and on a tree where fifteen of
+    /// sixteen walked files were never graded it was `[]` — an empty array
+    /// asserting nothing was skipped, beside `total_files: 1`, which reads as a
+    /// one-file project rather than a one-sixteenth measurement.
+    ///
+    /// RED CONTROL: at HEAD `not_measured` is empty and the three census keys
+    /// do not exist, so this fails on its first assertion.
+    #[test]
+    fn sarif_not_measured_names_what_the_walk_could_not_measure() {
+        let project = project_with_refusals();
+        let sarif = create_sarif_output(&project, Path::new("/tmp/ngfix"));
+        let props = &sarif["runs"][0]["properties"];
+
+        let not_measured = props["not_measured"]
+            .as_array()
+            .expect("not_measured must stay an array of names");
+        assert_eq!(
+            not_measured.len(),
+            15,
+            "an empty list asserts nothing was skipped; fifteen files were: {not_measured:?}"
+        );
+        assert!(
+            not_measured
+                .iter()
+                .any(|v| v.as_str() == Some("/tmp/ngfix/s1.sh")),
+            "the entries must name the files, not merely count them: {not_measured:?}"
+        );
+        // The census has to partition here exactly as it does in --format json.
+        assert_eq!(props["files_analyzed"], 1, "{props}");
+        assert_eq!(props["files_ungraded"], 15, "{props}");
+        assert_eq!(props["files_walked"], 16, "{props}");
+        // The per-result properties are a second reader of the same facts, and
+        // said `total_files: 1` with nothing beside it.
+        let project_result = &sarif["runs"][0]["results"][0]["properties"];
+        assert_eq!(project_result["files_walked"], 16, "{project_result}");
+        assert_eq!(project_result["files_ungraded"], 15, "{project_result}");
+    }
+
+    /// COUNTER-TEST: "always report a refusal" would pass the test above. A
+    /// project whose whole walk graded must publish an EMPTY disclosure and a
+    /// census whose ungraded column is zero.
+    #[test]
+    fn sarif_not_measured_stays_empty_when_the_walk_was_whole() {
+        let project = two_file_project();
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let sarif = create_sarif_output(&project, Path::new("/tmp/x"));
+        let props = &sarif["runs"][0]["properties"];
+
+        assert_eq!(
+            props["not_measured"].as_array().map(Vec::len),
+            Some(0),
+            "nothing was refused; a manufactured entry is the fix over-applied: {props}"
+        );
+        assert_eq!(props["files_walked"], 2, "{props}");
+        assert_eq!(props["files_analyzed"], 2, "{props}");
+        assert_eq!(props["files_ungraded"], 0, "{props}");
+    }
+
+    /// The other half of GH #704's convention has to survive: when NOTHING was
+    /// gradable the unmeasured aggregate FIELDS are still named, and the refused
+    /// files are added to them rather than replacing them.
+    #[test]
+    fn sarif_not_measured_keeps_the_unmeasured_field_names() {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "/tmp/ngfix/s1.sh".to_string(),
+            reason: "Bash source: this build has no TDG analyzer for .sh".to_string(),
+        });
+        let sarif = create_sarif_output(&project, Path::new("/tmp/ngfix"));
+        let props = &sarif["runs"][0]["properties"];
+
+        let names: Vec<&str> = props["not_measured"]
+            .as_array()
+            .expect("array")
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .collect();
+        assert!(names.contains(&"average_score"), "{names:?}");
+        assert!(names.contains(&"average_grade"), "{names:?}");
+        assert!(names.contains(&"/tmp/ngfix/s1.sh"), "{names:?}");
+        assert_eq!(props["files_analyzed"], 0, "{props}");
+        assert_eq!(props["files_walked"], 1, "{props}");
     }
 }

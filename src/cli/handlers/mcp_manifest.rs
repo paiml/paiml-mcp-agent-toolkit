@@ -17,10 +17,17 @@ pub async fn handle_mcp_command(cmd: McpCommands, project_path: &Path) -> Result
                     crate::mcp_pmcp::tool_manifest::render_manifest(env!("CARGO_PKG_VERSION"));
                 std::fs::write(&manifest_path, manifest)?;
                 println!("Generated mcp.json with {} tools", canonical_tools.len());
+                // #1029: say what the manifest does NOT cover. The tool count
+                // alone reads as a complete surface, which is how three
+                // analyzers shipped CLI-only without anyone noticing.
+                println!("{}", crate::cli::analyze_mcp_exposure::parity_summary());
             } else {
                 println!("Run with --write to generate the manifest");
+                println!("{}", crate::cli::analyze_mcp_exposure::parity_summary());
             }
         }
+        McpCommands::Connect => crate::cli::handlers::mcp_onboarding::handle_mcp(false)?,
+        McpCommands::Token => crate::cli::handlers::mcp_onboarding::handle_mcp(true)?,
     }
     Ok(())
 }

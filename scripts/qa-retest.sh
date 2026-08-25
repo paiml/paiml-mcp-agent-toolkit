@@ -15,7 +15,7 @@ if [ -f "./target/debug/pmat" ]; then
     PMAT="./target/debug/pmat"
     echo "Using debug build: $PMAT"
 elif [ -f "$PMAT" ]; then
-    PMAT="$PMAT"
+    : "no-op removed — PMAT is already set above"
     echo "Using release build: $PMAT"
 else
     echo "❌ ERROR: No binary found"
@@ -86,6 +86,10 @@ commands=(
 all_stubs_ok=true
 for cmd in "${commands[@]}"; do
     echo "   Testing: pmat $cmd"
+    # SC2086 deliberate: $cmd holds a multi-word subcommand ("analyze complexity"),
+    # so word splitting is the mechanism, not an accident. Quoting it would pass
+    # the whole string as one argv entry and every probe would fail to parse.
+    # shellcheck disable=SC2086
     output=$($PMAT $cmd 2>&1)
     if [[ "$output" == *"not yet implemented"* ]] || [[ "$output" == *"not implemented"* ]]; then
         echo "      ✅ Shows user message"

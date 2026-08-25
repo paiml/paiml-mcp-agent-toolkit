@@ -7,12 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.32.0] - 2026-08-22
+## [3.32.0] - 2026-08-25
 
 Minor rather than patch, and the reason is the list below: most of this release changes
 what pmat *reports* on unchanged code. Each of these moves a number, an exit code or a
 payload shape, so a pipeline pinned to 3.31.0's output sees a difference on a tree that
 has not changed. Read this list before upgrading a gate.
+
+- **MCP mode is now first-class, and reachable without reading the source.** `mcp-http` moved
+  into the **default** feature set, so `cargo install pmat` produces a binary that serves all
+  three surfaces — CLI, MCP over stdio, and MCP over streamable HTTP — with no `--features`
+  dance. The HTTP tool surface is **byte-identical to stdio**, not a subset; both share one
+  `build_server` and a test now fails if the HTTP path registers a tool of its own.
+
+  Getting connected used to require knowing four things that were written down nowhere, each of
+  which cost this project real time: the endpoint is the **root path** (`/mcp` and `/health` are
+  404 — there is no health endpoint), `PMAT_MCP_HTTP_TOKEN` has a **16-character minimum**, a
+  hand-rolled client must send `Accept: application/json, text/event-stream`, and unauthenticated
+  requests get 401. All four are now in `pmat serve --help`, in the README, and in a new book
+  chapter whose examples are executed as tests.
+
+  `pmat serve --transport http` with **no token set** now mints one, starts, and prints the exact
+  `claude mcp add` line for the port it actually bound:
+
+  ```
+  claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ \
+    --header "Authorization: Bearer pmat-<generated>"
+  ```
+
+  Two properties were deliberately *not* relaxed to buy that convenience. A token shorter than 16
+  characters is still refused outright — generation goes through the same validator, so the floor
+  is the only gate and it did not move. And a **non-loopback bind still refuses** without an
+  explicit token: a generated token changes on every restart, so a shared endpoint would silently
+  401 every client that had registered against the previous one.
+
+  Also corrected: `serve --transport`'s help listed all five transport values as equals.
+  `web-socket`, `http-sse`, `both` and `all` are NOT implemented and exit 2, and now say so.
+
+- **A count in the documentation is read from the binary, not quoted from a book.** The MCP tool
+  count moves *within* a release line — a 3.32.0 build at `583ea9ac` serves 16 while one at
+  `90767deb` serves 19, having gained `analyze_reachability`, `analyze_hardcoded_paths` and
+  `analyze_vacuous_tests`. The new book chapter says so explicitly and its identity check is
+  count-agnostic, so it passes on both rather than pinning a number that was true for one build.
 
 - **TDG grades are computed from a token walk instead of a line scan, and they get
   WORSE, not better.** Every grade pmat has ever stored came from iterating
@@ -1168,6 +1204,62 @@ count.** The job's baseline timeout and its inert `mutants.toml` are fixed, but
 ever measured, and both `continue-on-error` flags are still set. Removing them before one
 master run reports a real number would replace a silent no-op with a gate whose threshold
 has never been observed.
+
+**A moderate advisory was in `Cargo.lock`, our own gate could not see it, and both are
+fixed.** `thrift 0.17.0` carried GHSA-2f9f-gq7v-9h6m (moderate, memory allocation from an
+untrusted length), reachable as `pmat -> aprender-db 0.61 -> parquet 57.3.1 -> thrift`.
+
+*The dependency.* `aprender-db` moved to `0.64`, which uses arrow/parquet `^59`, and
+**parquet 59 dropped its thrift dependency entirely**. pmat's `arrow` pin went 57 -> 59 in
+the same commit, because the two must move together: RecordBatch type identity crosses the
+`trueno_db` boundary, and a mismatch surfaces as confusing trait errors rather than a clean
+version conflict. `cargo tree -i thrift` now returns nothing and `Cargo.lock` carries zero
+occurrences. This was very nearly shipped as a disclosed known-issue on the belief that the
+upstream move had not happened yet; querying the registry rather than reading our own pin
+showed 0.64 had already made it.
+
+Worth keeping in view for anyone auditing the old advisory: `aprender-db` is optional and
+reachable only through `analytics-simd -> advanced-analysis -> full`, so **`cargo install
+pmat` never compiled parquet or thrift** even before the bump. The exposure was the
+lockfile and `--features full` builds, not the stock binary.
+
+*The worse half, which is a real defect and not a dependency.* `cargo deny check advisories`
+printed `advisories ok` and exited 0 on the affected tree. It was not lying about its
+database — RustSec has 1,235 advisories and no thrift entry at all — it was answering "is
+anything here listed in RustSec" while CI read it as "is anything here known-vulnerable".
+GitHub's advisory database is a superset and did carry it. The one blocking security gate in
+this repository had a permanent structural blind spot and reported it as a pass: the same
+**absence-rendered-as-success** shape this release spent itself fixing everywhere else. It
+had recurred on the same crate twice, because the first occurrence was worked around by hand
+and nothing was added to CI.
+
+A Dependabot-API check exists (`scripts/dependabot-alert-gate.sh`) to sit alongside `cargo
+deny` rather than replace it — but **its workflow ships DISABLED**
+(`security-advisories.yml.disabled`), by owner decision. Run by hand it passes; it is not
+wired into CI. Why it is off rather than fixed: `GITHUB_TOKEN` cannot read the Dependabot
+alerts endpoint and `permissions: security-events: read` does not cover it, so without a
+`DEPENDABOT_ALERTS_TOKEN` secret it exits 2 (CANNOT MEASURE) on every run — correct, and a
+permanently red check is one everybody learns to walk past, which is worse than no check.
+Re-enabling is a secret plus a rename. **Until then the `cargo deny` blind spot described
+above is unmitigated in CI: cross-check Dependabot by hand before a release.** The script's
+design is still worth recording —
+neither source subsumes the other, and RustSec carries unmaintained/yanked findings
+Dependabot does not model. Three properties it was built to have, each of which had bitten
+someone first:
+
+- **It FAILS when it cannot measure.** An API error, a missing token or Dependabot disabled
+  exits 2, not 0. "We could not see it" must never render as "nothing found".
+- **It refuses to trust a single page.** `gh api` paginates at 30, so a truncated alert list
+  reads as a short clean one; the gate cross-checks a `--paginate` walk against the count and
+  says so (`66 alerts over 1 page(s) … an independent --paginate walk agreed at 66`).
+- **Acceptance is a recorded, EXPIRING decision**, not a deleted check — an acknowledgement
+  carries an owner, a justification and an expiry date, mirroring `deny.toml`'s
+  `[advisories] ignore`.
+
+It needs a `DEPENDABOT_ALERTS_TOKEN` repository secret: `GITHUB_TOKEN` cannot read Dependabot
+alerts, and `permissions: security-events: read` does not cover that endpoint. Until the
+secret is provisioned the workflow fails loudly rather than passing quietly, which is the
+design. It is deliberately not a required status check while that is outstanding.
 
 ## [3.31.0] - 2026-08-15
 
