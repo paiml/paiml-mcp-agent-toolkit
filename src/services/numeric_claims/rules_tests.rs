@@ -625,7 +625,11 @@ fn the_corpus_cannot_reconfigure_the_checker() {
 #[test]
 fn the_threshold_dotfile_is_not_excluded_from_the_corpus() {
     use super::corpus::{classify_generated, path_exclusion};
-    for path in [".pmat-metrics.toml"] {
+    // One path, stated once. This was a loop over two files until #1079 removed
+    // `src/tests/binary_size.rs`; a one-element loop reads like the set is still
+    // open, and clippy is right to reject it.
+    {
+        let path = ".pmat-metrics.toml";
         assert_eq!(
             path_exclusion(path),
             None,
