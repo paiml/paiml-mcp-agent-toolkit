@@ -78,59 +78,43 @@ fn one_file(path: &str, text: &str) -> Vec<CorpusFile> {
 // R-1  c5_binary_size_mismatch_at_head
 // ---------------------------------------------------------------------------
 
-/// The live contradiction the whole check was built around.
+/// The live contradiction the whole check was built around — now RESOLVED.
 ///
-/// `src/tests/binary_size.rs:40` declares `50 * 1024 * 1024` = 52,428,800 and
-/// says in the same breath that it is *aligned with* `.pmat-metrics.toml`'s
+/// `src/tests/binary_size.rs:40` used to declare `50 * 1024 * 1024` = 52,428,800
+/// and say in the same breath that it was *aligned with* `.pmat-metrics.toml`'s
 /// `binary_max_bytes`, which is 50,000,000. Two numbers, one claimed identity,
-/// 2,428,800 apart.
+/// 2,428,800 apart. C5 found it, and this test pinned it.
 ///
-/// RED without C5. Also RED without expression evaluation: read literally,
-/// `50 * 1024 * 1024` is the numeral `50`, and `50` versus `50,000,000` is a
-/// unit difference the ambiguity set would forgive.
+/// That file is GONE (#1079). It asserted a 50 MiB ceiling, had never run once
+/// because nothing declares `src/tests/`, and the binary had reached 55.2 MB —
+/// 2.8 MB past the limit it was supposedly enforcing. Its replacement,
+/// `tests/modules/binary_size_band.rs`, states a band and makes no claim of
+/// identity with any other file, so there is nothing left to contradict.
+///
+/// THE ASSERTION IS INVERTED, NOT DELETED. A test that pins a defect must not
+/// outlive it, and deleting it would lose the guard: if someone reintroduces a
+/// number that claims alignment with a value it does not equal, this goes back
+/// to 1 and fails. Zero is now the correct answer, and the reason is recorded
+/// above so a future reader does not "fix" it back.
+///
+/// C5 IS NOT LEFT VACUOUS BY THIS. The rule is still exercised on a synthetic
+/// corpus carrying the original text verbatim — see
+/// `output_is_deterministic_regardless_of_input_order`, which builds a
+/// `src/tests/binary_size.rs` fixture inline. C5 firing is proven there; what
+/// this test now proves is that the LIVE TREE no longer contains the defect.
 #[test]
-fn c5_binary_size_mismatch_at_head() {
+fn the_flagship_c5_contradiction_is_gone_from_the_live_tree() {
     let corpus = live_repo_corpus();
     let out = run_r2(&corpus);
     let c5 = of_rule(&out.findings, RuleId::C5);
     assert_eq!(
         c5.len(),
-        1,
-        "expected exactly one C5 on the live tree, got {}: {:#?}",
+        0,
+        "the binary-size contradiction was removed with src/tests/binary_size.rs \
+         (#1079); a C5 here means a new claimed-identity mismatch was committed. \
+         Got {}: {:#?}",
         c5.len(),
         c5
-    );
-    let f = c5[0];
-    assert_eq!(f.sites.len(), 2, "C5 names a source and a target");
-    let src = &f.sites[0];
-    let tgt = &f.sites[1];
-    assert_eq!(src.file, "src/tests/binary_size.rs");
-    assert_eq!(src.line, 40);
-    assert!(
-        (src.value - 52_428_800.0).abs() < 1.0,
-        "50 * 1024 * 1024 must be evaluated, got {}",
-        src.value
-    );
-    assert_eq!(tgt.file, ".pmat-metrics.toml");
-    assert_eq!(tgt.line, 12);
-    assert!(
-        (tgt.value - 50_000_000.0).abs() < 1.0,
-        "50_000_000 must parse past the separators, got {}",
-        tgt.value
-    );
-    assert!(
-        (src.value - tgt.value - 2_428_800.0).abs() < 1.0,
-        "delta must be 2,428,800, got {}",
-        src.value - tgt.value
-    );
-    assert!(
-        f.evidence.contains("aligned with"),
-        "the finding must quote the annotation that fired it: {:?}",
-        f.evidence
-    );
-    assert_eq!(
-        f.wrong_floor, 1,
-        "two disagreeing sites: at least one wrong"
     );
 }
 
@@ -623,22 +607,29 @@ fn the_corpus_cannot_reconfigure_the_checker() {
     );
 }
 
-/// The two sites of the flagship finding must survive the corpus exclusions.
+/// A root dotfile full of thresholds must survive the corpus exclusions.
 ///
-/// R2's whole live result is one C5 spanning `src/tests/binary_size.rs` and
-/// `.pmat-metrics.toml`. Both sit under paths a fixture-tree or generated-file
-/// rule could plausibly swallow — `src/tests/` looks like a test tree, and a
-/// dotfile at the root looks like machine state — and if either is dropped the
-/// finding disappears silently, with a census that still looks healthy. This
-/// pins the interface between the two lanes rather than trusting it.
+/// This used to pin BOTH halves of R2's only live finding — a C5 spanning
+/// `src/tests/binary_size.rs` and `.pmat-metrics.toml`. The first file is gone
+/// (#1079: it asserted a 50 MiB ceiling, had never run because nothing declares
+/// `src/tests/`, and the binary had passed it by 2.8 MB), so only the second
+/// half is checkable on the live tree now.
+///
+/// It is still worth pinning, and arguably more so. `.pmat-metrics.toml` is a
+/// dotfile at the repository root holding nothing but thresholds — exactly the
+/// shape a "machine state" or "generated file" exclusion swallows by accident.
+/// If it were dropped, every contradiction anchored in it would disappear
+/// silently while the census still looked healthy. That is the failure mode this
+/// whole check exists to prevent, so the interface between the corpus lane and
+/// the rules lane stays pinned rather than trusted.
 #[test]
-fn the_flagship_sites_are_not_excluded_from_the_corpus() {
+fn the_threshold_dotfile_is_not_excluded_from_the_corpus() {
     use super::corpus::{classify_generated, path_exclusion};
-    for path in ["src/tests/binary_size.rs", ".pmat-metrics.toml"] {
+    for path in [".pmat-metrics.toml"] {
         assert_eq!(
             path_exclusion(path),
             None,
-            "{path} carries half of R2's only live finding and must stay in the corpus"
+            "{path} anchors R2's threshold contradictions and must stay in the corpus"
         );
         let text = read_repo_file(path);
         assert_eq!(
