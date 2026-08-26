@@ -12,6 +12,7 @@ mod analyze_exit_status;
 mod architecture_tests;
 mod ast_dag_mermaid_pipeline;
 mod bin_integration;
+mod binary_size_band;
 mod breakpoint_manager_tests;
 mod bug_001_002_003_embed_tests;
 mod bug_004_dead_code_multi_language_tests;
