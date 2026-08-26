@@ -367,7 +367,7 @@ crc32fast = { version = "1.5.0", optional = true }
 # object = "0.37"  # REMOVED: cargo-machete verified unused
 sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm source map support
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
-prettyplease = { version = "0.2.37", optional = true }
+prettyplease = { version = "0.3.0", optional = true }
 fs2 = { version = "0.4.3", optional = true }
 aprender-contracts-macros = "0.64"
 
