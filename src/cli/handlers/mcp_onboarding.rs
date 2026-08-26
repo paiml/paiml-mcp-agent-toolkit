@@ -52,16 +52,32 @@ pub const REQUIRED_ACCEPT: &str = "application/json, text/event-stream";
 
 /// Read `n` bytes from the operating system's CSPRNG.
 ///
-/// `/dev/urandom` rather than a crate: this must work in every feature
-/// combination that can compile `mcp-http`, and `rand` is optional (it arrives
-/// via `standard-deps`). A dependency-free read of the same kernel pool that
-/// `getrandom` uses on Linux keeps token generation from being coupled to a
-/// feature flag.
+/// `getrandom`, not a hand-rolled `/dev/urandom` read. The first version opened
+/// that file directly, to avoid depending on `rand` — which is optional, arriving
+/// via `standard-deps`, and so cannot be relied on by every feature combination
+/// that can compile `mcp-http`. The GOAL was right; the mechanism was Unix-only,
+/// and 3.32.0 shipped a token generator that cannot run on Windows at all:
+///
+/// ```text
+/// Error: could not read the OS random source (/dev/urandom) to generate a
+/// bearer token: The system cannot find the path specified. (os error 3)
+/// ```
+///
+/// Its own doc comment said "the same kernel pool that `getrandom` uses on
+/// Linux" — it named the platform and shipped as though that were universal
+/// (#1081).
+///
+/// The trade it was avoiding did not exist: `getrandom` is ALREADY compiled into
+/// every build as a transitive dependency (three versions in `Cargo.lock`), so
+/// naming it directly costs no supply-chain surface and no build time, and it
+/// has no feature coupling — which is strictly better than the file read for the
+/// `--no-default-features --features mcp-http` case the original was protecting.
 fn os_entropy(n: usize) -> std::io::Result<Vec<u8>> {
-    use std::io::Read;
-    let mut file = std::fs::File::open("/dev/urandom")?;
     let mut buf = vec![0u8; n];
-    file.read_exact(&mut buf)?;
+    // getrandom::Error does not implement std::error::Error in 0.2, so it
+    // cannot go through io::Error::other directly. Its Display is the useful
+    // part (it names the OS call that failed), so carry that.
+    getrandom::getrandom(&mut buf).map_err(|e| std::io::Error::other(e.to_string()))?;
     Ok(buf)
 }
 
@@ -86,7 +102,7 @@ fn hex(bytes: &[u8]) -> String {
 pub fn generate_token() -> Result<String> {
     let bytes = os_entropy(GENERATED_TOKEN_BYTES).map_err(|e| {
         anyhow::anyhow!(
-            "could not read the OS random source (/dev/urandom) to generate a \
+            "could not read the OS random source to generate a \
              bearer token: {e}. Set one yourself instead, e.g. \
              `export PMAT_MCP_HTTP_TOKEN=$(openssl rand -hex 24)`"
         )
