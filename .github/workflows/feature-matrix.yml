@@ -585,29 +585,27 @@ jobs:
             exit 0
           fi
           ./scripts/dependabot-alerts-gate.sh
-      # cargo-deny 0.19 has no flag to escalate `advisory-not-detected`, and a
-      # warning in a green build is one everybody scrolls past. Seven such
-      # entries had accumulated in deny.toml, each naming an advisory matching no
-      # crate in the graph — an allowlist quietly broader than the risk it
-      # covers.
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: dependabot-alerts
-      - name: cargo install cargo-deny
-        run: cargo install cargo-deny --locked --version ^0.19 || cargo install cargo-deny --locked
-      - name: no stale advisory ignores in deny.toml
-        shell: bash
-        run: |
-          set -uo pipefail
-          out="$(cargo deny --all-features check advisories 2>&1 || true)"
-          stale="$(printf '%s' "$out" | grep -c 'advisory-not-detected' || true)"
-          if [ "$stale" -ne 0 ]; then
-            printf '%s\n' "$out" | grep -A3 'advisory-not-detected' || true
-            echo "::error::${stale} ignore(s) in deny.toml match no advisory in the graph. Remove them: an ignore that suppresses nothing only makes the allowlist look larger than the risk it covers."
-            exit 1
-          fi
-          echo "✅ every deny.toml ignore still matches something"
+      # NO STALE-IGNORE ASSERTION HERE, AND THE REASON IS WORTH RECORDING.
+      #
+      # #1074 also asks for `advisory-not-detected` to be escalated: seven
+      # entries in deny.toml were reported as matching no crate in the graph, and
+      # a warning in a green build is one everybody scrolls past.
+      #
+      # Pruning those seven was tried and REVERTED, because the two environments
+      # disagree about which advisories match. Locally, cargo-deny 0.19.0 reports
+      # all seven as `advisory-not-detected` and answers `advisories ok` with them
+      # removed — even with `unmaintained = "all"` and a same-commit advisory
+      # database (6420e392). In CI the same tree with the same seven removed fails
+      # with `error[unmaintained]: paste - no longer maintained`, matching
+      # RUSTSEC-2024-0436 against `Cargo.lock:444 paste 1.0.15` — an ignore this
+      # measurement had called dead.
+      #
+      # So the claim "these seven are stale" is NOT established: one of the two
+      # instruments cannot see something the other can, and it is not yet known
+      # which. Asserting on `advisory-not-detected` here would encode whichever
+      # answer this runner happens to give. A gate built on a measurement that
+      # does not reproduce is the defect this whole file is about, so it is not
+      # shipped until the discrepancy is explained.
 
   # ── The size gate that had never run, and then could not be asked to.
   #
