@@ -34,13 +34,29 @@ fn walked_roots(paths: &[PathBuf]) -> String {
 ///   taken. This is not a clean result.
 /// ```
 ///
-/// and all 19 `analyze` subcommands are held to that by one shared helper,
-/// [`crate::cli::ensure_files_were_analyzed`]. MCP never got the same
-/// treatment: for that same directory, through the same population builder and
-/// the same analyzer, the tools answered `isError: false`,
-/// `"status": "completed"`, `"violations": []`. One analyzer answering one
-/// question two opposite ways is worse than either answer being wrong, because
-/// the MCP one reads as a clean tree and nothing in it says otherwise.
+/// The CLI analyzers that refuse this way go through one PAIR of helpers in
+/// `src/cli/mod.rs`: [`crate::cli::ensure_source_files_were_analyzed`], which
+/// only fills in the population noun, and the
+/// [`crate::cli::ensure_files_were_analyzed`] it delegates to. Every return
+/// either of them can make is `crate::cli_exit::analysis_error`, so a refusal
+/// that came from this pair always carries exit 5 (`AnalysisError = 5`,
+/// `src/cli_exit.rs`).
+///
+/// That is a convention, not a blanket rule, and the difference matters when
+/// you meet an `analyze` refusal that does NOT look like this one. Counted in
+/// this tree: `AnalyzeCommands`
+/// (`src/cli/commands/analyze_commands/mod.rs`) declares 37 subcommands, while
+/// `grep -rn -e 'cli::ensure_source_files_were_analyzed(' -e 'cli::ensure_files_were_analyzed(' src/cli src/services`
+/// finds 16 call sites — 15 under `src/cli/`, one in
+/// `src/services/big_o_analyzer_analysis.rs`. A subcommand that does not call
+/// the pair refuses in its own words, or does not refuse at all.
+///
+/// MCP never got the same treatment: for that same directory, through the same
+/// population builder and the same analyzer, the tools answered
+/// `isError: false`, `"status": "completed"`, `"violations": []`. One analyzer
+/// answering one question two opposite ways is worse than either answer being
+/// wrong, because the MCP one reads as a clean tree and nothing in it says
+/// otherwise.
 ///
 /// The CLI helper is CALLED here rather than paraphrased. A second spelling of
 /// this sentence — or a second choice of exit code behind it — is exactly how
@@ -2420,10 +2436,11 @@ mod transport_parity_1058_tests {
 
 #[cfg(test)]
 mod unmeasured_population_tests {
-    //! Issue #1090. At HEAD the CLI refuses an empty population from one shared
-    //! helper — 15 of the 19 `pmat analyze` subcommands exit 5, the other four
-    //! exit 1 — while MCP, over the SAME population builder and the SAME
-    //! analyzer, answered `isError: false`, `"status": "completed"`,
+    //! Issue #1090. At HEAD the CLI analyzers that refuse an empty population
+    //! do so through one PAIR of helpers in `src/cli/mod.rs` whose every return
+    //! is `cli_exit::analysis_error`, so that refusal exits 5 — while MCP, over
+    //! the SAME population builder and the SAME analyzer, answered
+    //! `isError: false`, `"status": "completed"`,
     //! `"violations": []`. These pin the refusal and the census that replaced
     //! `Err(_) => continue`.
     use super::*;
@@ -2593,5 +2610,85 @@ mod unmeasured_population_tests {
             Err(error) => Ok(format!("{error:#}")),
         };
         refusal.expect("an unmeasured coupling run must not report completion");
+    }
+
+    /// The other half of the rule above, which nothing in the repo asserted: a
+    /// tree the pipeline CAN parse must still come back `Ok`, with a
+    /// population above zero.
+    ///
+    /// A refusal test on its own cannot tell "the guard fires when nothing was
+    /// measured" from "the guard fires always". `analyze_coupling`'s other
+    /// test callers cannot either: two of them pass an empty `paths` list and
+    /// assert `is_err` (`src/mcp_pmcp/tool_functions_tests.rs`,
+    /// `tests/modules/tool_functions_tests.rs`), three more are written
+    /// `match result { Ok(_) | Err(_) => {} }` and so accept either outcome
+    /// (`tests/modules/tool_functions_tests.rs`), and the two that build a real
+    /// tree are `#[ignore]`d
+    /// (`tests/modules/issue_053_mcp_tool_placeholders.rs`). A change that made
+    /// the guard fire for every input would leave all of them green.
+    #[tokio::test]
+    async fn coupling_measures_a_tree_it_can_parse() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // One import, so the efferent count below is a measurement and not a
+        // zero that happens to be right. Named `lib.rs` on purpose: the
+        // deep-context AST walk skips `*_test.rs`, `*_tests.rs`, `test_*` and
+        // anything under a `tests/` component
+        // (`services/deep_context/analysis_helpers.rs::is_test_file`).
+        std::fs::write(
+            dir.path().join("lib.rs"),
+            "use std::collections::HashMap;\npub fn measurable(_m: HashMap<u8, u8>) {}\n",
+        )
+        .expect("write lib.rs");
+
+        // Threshold 0.0 keeps every measured file in `couplings`, so what is
+        // asserted below is the measurement rather than where the default
+        // threshold happens to cut.
+        let json = analyze_coupling(&[dir.path().to_path_buf()], Some(0.0))
+            .await
+            .expect("a tree pmat can parse is a measurement, not a refusal");
+        let results = &json["results"];
+
+        let total_files = results["total_files"]
+            .as_u64()
+            .expect("the population must be published as a number");
+        assert!(
+            total_files >= 1,
+            "the guard must not fire for a tree that parsed: {json}"
+        );
+        assert_eq!(
+            results["couplings"]
+                .as_array()
+                .expect("couplings must be an array")
+                .len() as u64,
+            total_files,
+            "threshold 0.0 excludes nothing, so every file in the population \
+             must appear: {json}"
+        );
+
+        // Means over a non-empty set. The defect this pairs with was a
+        // `project_metrics` block of zeros standing in for undefined.
+        let metrics = &results["project_metrics"];
+        let avg_afferent = metrics["avg_afferent"]
+            .as_f64()
+            .expect("avg_afferent must be a number");
+        let avg_efferent = metrics["avg_efferent"]
+            .as_f64()
+            .expect("avg_efferent must be a number");
+        assert!(
+            avg_afferent.is_finite() && avg_efferent.is_finite(),
+            "a mean over a measured population must be a real number: {json}"
+        );
+        assert!(
+            avg_efferent >= 1.0,
+            "the fixture's one import must reach the efferent mean: {json}"
+        );
+
+        assert!(
+            !json["message"]
+                .as_str()
+                .expect("message must be a string")
+                .contains("(0 files analyzed)"),
+            "the reported sentence must not be the zero-population one: {json}"
+        );
     }
 }

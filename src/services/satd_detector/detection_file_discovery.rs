@@ -272,12 +272,14 @@ impl SATDDetector {
     ///
     /// A fifth predicate, `is_satd_analysis_tool`, is gone. It excluded any path
     /// CONTAINING `satd_detector`, `satd_property_tests`, `quality_proxy`, or
-    /// both `test` and `satd` — the last raw `contains()` over a whole path in
-    /// this function, and so #923 rewritten in place. `project_relative_str`
-    /// falls back to the ABSOLUTE path when no VCS marker and no manifest is
-    /// found above the file, so that predicate read directory names the analysed
-    /// project never chose. Two byte-identical manifest-less trees differing
-    /// only in the name of the directory holding them:
+    /// both `test` and `satd` — the last raw `contains()` in this function whose
+    /// needle was THIS ANALYSER'S OWN NAME, and so #923 rewritten in place.
+    /// `project_relative_str` falls back to the ABSOLUTE path when no VCS marker
+    /// and no manifest is found above the file (`source_scope::project_root_of`
+    /// returns `None`; `defect_detector_rust.rs`), so that predicate read
+    /// directory names the analysed project never chose. Two byte-identical
+    /// manifest-less trees differing only in the name of the directory holding
+    /// them:
     ///
     /// ```text
     ///   <tmp>/plainbed      -> Found 1 SATD violations in 1 files (analysed 1 of 1)
@@ -295,6 +297,18 @@ impl SATDDetector {
     /// `satd_detector/` and `quality_proxy/` trees yields no production
     /// findings at all. It hid nothing in this repository and only ever fired
     /// on other people's code.
+    ///
+    /// That removal did NOT eradicate the mechanism from this function, and an
+    /// earlier revision of this comment claimed it did. One raw substring test
+    /// over the whole `path_str` survives, one predicate over:
+    /// `is_generated_or_vendor`'s `path_str.contains(".generated")` — see the
+    /// note there. Of the rest, `matches!` on the whole string and `ends_with`
+    /// on its tail can only become MORE permissive when the fallback prepends
+    /// ancestors, so neither can drop a file over a directory name; but
+    /// `has_dir_component` still reads every component of whatever string it is
+    /// handed, so it too answers for ancestor directories under the fallback.
+    /// It is narrower than `contains` — a whole path component rather than any
+    /// substring — not immune.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = source_scope::project_relative_str(file_path);
@@ -322,6 +336,23 @@ impl SATDDetector {
         source_scope::has_dir_component(path_str, &["fuzz", "fuzz_targets"])
     }
 
+    /// KNOWN, RECORDED, NOT FIXED HERE: the `.generated` arm is a raw
+    /// `contains()` over the whole `path_str`, and `path_str` is
+    /// `source_scope::project_relative_str(file_path)`, which hands back the
+    /// ABSOLUTE path whenever no VCS marker and no manifest sits above the file.
+    /// So this arm can still be decided by a directory the analysed project
+    /// never chose: for a manifest-less, VCS-less tree at
+    /// `<tmp>/build.generated/src/main.rs`, `path_str` is that absolute path,
+    /// `contains(".generated")` is true, and every candidate in the tree is
+    /// dropped as "generated" — the #923 mechanism, one predicate over from the
+    /// one removed above.
+    ///
+    /// Left alone deliberately in the change that removed `is_satd_analysis_tool`:
+    /// narrowing it (match a file-name suffix, or a `*.generated` component)
+    /// changes what a normal in-repo run excludes, which is a separate blast
+    /// radius and needs its own fixture. Recorded here so the next reader does
+    /// not have to rediscover it, and so no comment in this file can go on
+    /// claiming the class is gone.
     fn is_generated_or_vendor(&self, path_str: &str) -> bool {
         source_scope::has_dir_component(path_str, &["target", "vendor", "node_modules", "book"])
             || path_str.contains(".generated")
@@ -375,13 +406,20 @@ mod analyser_self_exclusion_regression_tests {
     //! `should_exclude_file` used to carry a fifth predicate,
     //! `is_satd_analysis_tool`, that dropped any path CONTAINING
     //! `satd_detector`, `satd_property_tests`, `quality_proxy`, or both `test`
-    //! and `satd`. It was the only raw `contains()` over a whole path left in
-    //! that function, and it reintroduced #923 exactly: when no VCS marker and
-    //! no manifest sits above a file, `project_relative_str` hands back the
+    //! and `satd`. It reintroduced #923 exactly: when no VCS marker and no
+    //! manifest sits above a file, `project_relative_str` hands back the
     //! ABSOLUTE path, so the verdict became a property of a directory name the
     //! analysed project never chose. A scratch checkout under a directory
     //! called `satd-testbed` lost its whole measurement while the same bytes
     //! under `plainbed` reported a finding, and no flag recovered it.
+    //!
+    //! What it was the LAST of is the analyser's own name: no predicate left in
+    //! `should_exclude_file` matches on pmat's own module names. It was not the
+    //! last raw `contains()` over a whole path — an earlier revision of this
+    //! module doc said so and it was false. `is_generated_or_vendor`'s
+    //! `path_str.contains(".generated")` is one, still, and the tests below
+    //! deliberately do not cover it: fixing it changes what an in-repo run
+    //! excludes and needs its own fixture. See the note on that function.
     use super::*;
 
     /// One analysable file whose only content is a marker-leading comment. The

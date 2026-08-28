@@ -748,4 +748,81 @@ mod unmeasured_context_population_tests {
         };
         refusal.expect("an unmeasured context run must not report completion");
     }
+
+    /// The other half of the rule above, which nothing in the repo asserted: a
+    /// tree the deep-context pipeline CAN parse must still come back `Ok`,
+    /// with both populations published and above zero.
+    ///
+    /// A refusal test on its own cannot tell "the guard fires when nothing was
+    /// parsed" from "the guard fires always", and `analyze_context`'s only
+    /// other non-ignored test callers pass an empty `paths` list and assert
+    /// `is_err` (`src/mcp_pmcp/tool_functions_tests.rs`,
+    /// `tests/modules/tool_functions_tests.rs`); the two that build a real
+    /// tree are `#[ignore]`d
+    /// (`tests/modules/issue_053_mcp_tool_placeholders.rs`). A change that
+    /// made the guard fire for every input would leave every one of them
+    /// green.
+    #[tokio::test]
+    async fn analyze_context_measures_a_tree_it_can_parse() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // A function and an import, so `total_functions` and `total_imports`
+        // below are measurements rather than zeros that happen to be right.
+        // Named `lib.rs` on purpose: the deep-context AST walk skips
+        // `*_test.rs`, `*_tests.rs`, `test_*` and anything under a `tests/`
+        // component (`services/deep_context/analysis_helpers.rs::is_test_file`).
+        std::fs::write(
+            dir.path().join("lib.rs"),
+            "use std::collections::HashMap;\npub fn measurable(_m: HashMap<u8, u8>) {}\n",
+        )
+        .expect("write lib.rs");
+
+        let json = analyze_context(&[dir.path().to_path_buf()], &[])
+            .await
+            .expect("a tree pmat can parse is a measurement, not a refusal");
+
+        let structure = &json["analyses"]["structure"];
+        let files_analyzed = structure["files_analyzed"]
+            .as_u64()
+            .expect("structure must publish files_analyzed");
+        let files_discovered = structure["files_discovered"]
+            .as_u64()
+            .expect("structure must publish files_discovered");
+        assert!(
+            files_analyzed >= 1,
+            "the guard must not fire for a tree that parsed: {json}"
+        );
+        assert!(
+            files_discovered >= files_analyzed,
+            "the walk cannot have seen fewer files than were parsed: {json}"
+        );
+        assert!(
+            structure["total_functions"]
+                .as_u64()
+                .is_some_and(|count| count >= 1),
+            "the numerator is summed over parsed files, and this fixture has a \
+             function in one: {json}"
+        );
+
+        // The denominator must be the same number in both blocks that report
+        // it. Two spellings of one population drifting apart is the split this
+        // payload was fixed for.
+        assert_eq!(
+            json["analyses"]["dependencies"]["files_analyzed"].as_u64(),
+            Some(files_analyzed),
+            "both analyses must name the same parsed population: {json}"
+        );
+        assert!(
+            json["analyses"]["dependencies"]["total_imports"]
+                .as_u64()
+                .is_some_and(|count| count >= 1),
+            "the fixture's one import must be counted: {json}"
+        );
+
+        let expected = format!("Analyzed {files_analyzed} of {files_discovered} file(s) walked");
+        assert_eq!(
+            json["context"].as_str(),
+            Some(expected.as_str()),
+            "the summary sentence must name both populations: {json}"
+        );
+    }
 }

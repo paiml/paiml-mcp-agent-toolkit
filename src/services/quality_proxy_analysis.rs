@@ -476,9 +476,32 @@ edition = "2021"
         // explains why polling `try_wait` while the child fills a pipe buffer
         // is the classic way a hand-rolled timeout makes hangs *more* likely —
         // and `spawn_blocking` keeps the wait off the runtime, so the same
-        // change fixes the DoS and the starvation. A timeout is an Err, never
-        // an empty findings list: failing open here would hand hostile content
-        // a pass.
+        // change fixes the DoS and the tokio-worker starvation.
+        //
+        // What it does NOT change is the verdict, and the earlier wording here
+        // claimed otherwise. A timeout leaves this function as an `Err` rather
+        // than as a silently-empty findings list, and the `Err` arm in
+        // `analyze_content` never reaches the `gates_run.push(GATE_LINT)` that
+        // sits in the `Ok` arm — so the `lint_violations: 0` published beside
+        // it is at least disclosed as not-measured. But that arm only logs: it
+        // pushes no `QualityViolation`, so `passed` stays
+        // `all_warnings(&violations)`, and a timeout on its own therefore
+        // cannot make Strict mode answer `Rejected`. Content that keeps clippy
+        // past the deadline is still accepted, with an unmeasured zero beside
+        // it.
+        //
+        // Rejecting on that `Err` here would be the wrong fix, because the
+        // `Err` is not a statement about the content: a panicked worker thread,
+        // a `cargo` that could not be spawned and a temp-file failure all
+        // arrive through it as well. And it would do nothing at all for the
+        // case that motivates the split: a machine with no clippy component
+        // installed does not even reach this `Err`, because cargo itself spawns
+        // fine and reports a missing subcommand as an ordinary non-zero exit
+        // (see `is_missing_subcommand` in `deny_refresh.rs`), whose stderr the
+        // loop below then reads as clippy findings. Separating "the tool did not
+        // run" from "the tool ran and disliked the code" is open PR #1088,
+        // `fix/quality-proxy-missing-clippy-is-not-a-verdict`. That PR owns
+        // this arm; the verdict change belongs there, not duplicated here.
         let project_dir = temp_dir.path().to_path_buf();
         let output = tokio::task::spawn_blocking(move || {
             let mut cmd = Command::new("cargo");
@@ -505,7 +528,10 @@ edition = "2021"
         let stderr = String::from_utf8_lossy(&output.stderr);
         for line in stderr.lines() {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("warning:") || trimmed.starts_with("error:") || trimmed.starts_with("error[") {
+            if trimmed.starts_with("warning:")
+                || trimmed.starts_with("error:")
+                || trimmed.starts_with("error[")
+            {
                 // Extract line number if possible
                 let line_num = 1; // Default line number
                 let message = line.to_string();

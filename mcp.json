@@ -17,7 +17,7 @@
     "tools": [
       {
         "name": "analyze_complexity",
-        "description": "Analyze cyclomatic and cognitive complexity of code",
+        "description": "Analyze cyclomatic and cognitive complexity for source files.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -32,7 +32,7 @@
       },
       {
         "name": "analyze_satd",
-        "description": "Detect self-admitted technical debt (TODO/FIXME/HACK)",
+        "description": "Detect self-admitted technical debt (TODO, FIXME, HACK markers) in source code.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -47,7 +47,7 @@
       },
       {
         "name": "analyze_dead_code",
-        "description": "Detect unreachable functions and modules",
+        "description": "Find unreachable or unused code (functions, types, or modules).",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -62,7 +62,7 @@
       },
       {
         "name": "analyze_dag",
-        "description": "Build the dependency/call graph of a project",
+        "description": "Generate a project dependency graph (call graph, import graph, inheritance, or full dependency DAG).",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -77,7 +77,7 @@
       },
       {
         "name": "analyze_deep_context",
-        "description": "Generate comprehensive annotated project context",
+        "description": "Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -92,7 +92,7 @@
       },
       {
         "name": "analyze_big_o",
-        "description": "Estimate algorithmic complexity of functions",
+        "description": "Classify the Big-O time complexity of functions in the given paths.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -107,7 +107,7 @@
       },
       {
         "name": "analyze_reachability",
-        "description": "Report tracked .rs files no compilation unit reaches",
+        "description": "Report tracked .rs files that no compilation unit reaches — orphaned modules that compile to nothing and whose tests never run.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -122,7 +122,7 @@
       },
       {
         "name": "analyze_hardcoded_paths",
-        "description": "Find machine-specific absolute paths baked into source",
+        "description": "Find machine-specific absolute paths baked into source (a user's home, a nix store hash, a build root) — correct where they were written, inert everywhere else.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -137,7 +137,7 @@
       },
       {
         "name": "analyze_vacuous_tests",
-        "description": "Find #[test] functions that cannot fail",
+        "description": "Find #[test] functions that cannot fail — no assertion, an assertion over constants, or a body that silently returns when a fixture is missing.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -152,7 +152,7 @@
       },
       {
         "name": "quality_gate",
-        "description": "Run the quality gate (complexity, satd, lint, tests)",
+        "description": "Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, security, duplicates, coverage, documentation sections, provability) plus a TDG score against the given paths. Any check a path could not answer is named in `not_measured` and, with its reason, in `checks.not_run`.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -167,7 +167,7 @@
       },
       {
         "name": "quality_proxy",
-        "description": "Proxy a quality-scored analysis request",
+        "description": "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -182,7 +182,7 @@
       },
       {
         "name": "pdmt_deterministic_todos",
-        "description": "Generate deterministic PDMT todo lists",
+        "description": "Generate deterministic, quality-enforced todo lists from a list of requirements.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -197,7 +197,7 @@
       },
       {
         "name": "git_operation",
-        "description": "Perform a git operation for the workflow",
+        "description": "Query git working-tree status for the given repository path.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -212,7 +212,7 @@
       },
       {
         "name": "generate_context",
-        "description": "Generate LLM-optimized codebase context",
+        "description": "Generate project context (file tree + optional dependency graph) for LLM/agent consumption.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -227,7 +227,7 @@
       },
       {
         "name": "scaffold_project",
-        "description": "Scaffold a project or agent skeleton",
+        "description": "Produce a high-level project summary scaffold for the given paths.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -242,7 +242,7 @@
       },
       {
         "name": "pmat_query_code",
-        "description": "Semantic code search ranked by quality",
+        "description": "Search code functions by natural language query with TDG quality filtering. Returns semantically ranked results with complexity, fault patterns, and call graph context.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -257,7 +257,7 @@
       },
       {
         "name": "pmat_get_function",
-        "description": "Return a full function with quality metrics",
+        "description": "Get detailed information about a specific function by its ID. Returns full function metadata including source code, quality metrics, and SATD markers.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -272,7 +272,7 @@
       },
       {
         "name": "pmat_find_similar",
-        "description": "Find functions similar to a target (refactoring)",
+        "description": "Find functions similar to a reference function. Useful for finding related code, potential duplicates, or implementations of similar patterns.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -287,7 +287,7 @@
       },
       {
         "name": "pmat_index_stats",
-        "description": "Report agent-context index health and statistics",
+        "description": "Get statistics about the code index including function counts, quality distribution, and index health.",
         "inputSchema": {
           "type": "object",
           "properties": {},

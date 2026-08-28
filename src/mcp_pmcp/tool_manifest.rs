@@ -17,7 +17,9 @@
 //! compared, so the texts drifted for releases —
 //! `manifest_descriptions_match_handler_metadata` now compares the texts too.
 //! `docs/mcp/TOOLS.md` is a third answer, in prose, and
-//! `tools_doc_states_the_live_tool_count` holds its numbers to this list.
+//! `tools_doc_states_the_live_tool_count` holds its numbers to this list in any
+//! tree that carries that file — which is every checkout, but not the published
+//! crate, where `/docs/` is excluded (`Cargo.toml:26`).
 
 /// The 19 tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
@@ -399,6 +401,28 @@ mod tests {
         }
     }
 
+    /// Read `docs/mcp/TOOLS.md`, or `None` when the packaging rules removed it.
+    ///
+    /// Split out of the test body so the absent-file branch is itself testable
+    /// — see `an_absent_tools_doc_skips_instead_of_failing`. Only `NotFound`
+    /// yields `None`; any other IO error is a file that IS there and could not
+    /// be read, which is a real failure and stays one.
+    fn read_tools_doc(path: &std::path::Path) -> Option<String> {
+        let read = std::fs::read_to_string(path);
+        if matches!(&read, Err(e) if e.kind() == std::io::ErrorKind::NotFound) {
+            eprintln!(
+                "SKIPPING tools_doc_states_the_live_tool_count: {} does not exist. \
+                 `/docs/` is in Cargo.toml's `exclude` list (Cargo.toml:26) and this source \
+                 file is not, so a tree with one and not the other is a packaged or vendored \
+                 copy rather than a checkout. In a checkout the file is tracked and this test \
+                 asserts.",
+                path.display()
+            );
+            return None;
+        }
+        Some(read.expect("docs/mcp/TOOLS.md is present but could not be read"))
+    }
+
     /// `docs/mcp/TOOLS.md` is the human-readable catalog of this surface, and
     /// it has now drifted twice, both times over-promising. The revision this
     /// test was written against claimed "the surface is 16 tools, not 20" in
@@ -416,14 +440,26 @@ mod tests {
     /// The path is resolved from `CARGO_MANIFEST_DIR`, not the working
     /// directory: `cargo test` sets CWD to the package root today, but nothing
     /// guarantees it, and a doc test that silently reads nothing is worse than
-    /// no test. Missing is a hard failure for the same reason — a skipped leg
-    /// is a gate that cannot fail.
+    /// no test.
+    ///
+    /// An ABSENT `TOOLS.md` skips, loudly, on stderr — and nothing else does.
+    /// That is not the "a skipped leg is a gate that cannot fail" hole: this
+    /// source file ships inside the published crate and `docs/mcp/TOOLS.md`
+    /// does not, because `/docs/` is in the `exclude` list (`Cargo.toml:26`).
+    /// Its absence is therefore a state the packaging rules PRODUCE — unpack
+    /// the `.crate` and run `cargo test --lib`, or build from a vendored copy
+    /// of the source — not a path that rotted. In a git checkout, the only tree
+    /// where TOOLS.md can be edited and so the only tree where there is drift
+    /// to catch, the file is tracked and every assertion below runs. A file
+    /// that is PRESENT but unreadable still fails hard.
+    /// `src/maintenance/ticket_tests.rs:283` skips a `docs/` fixture the same
+    /// way for the same packaging reason.
     #[test]
     fn tools_doc_states_the_live_tool_count() {
-        let doc = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp/TOOLS.md"),
-        )
-        .expect("docs/mcp/TOOLS.md is a tracked file and must be readable");
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp/TOOLS.md");
+        let Some(doc) = read_tools_doc(&path) else {
+            return;
+        };
         let live = LIVE_MCP_TOOLS.len();
 
         let header: usize = regex::Regex::new(r"(?m)^\*\*Total Tools\*\*:\s*(\d+)")
@@ -480,6 +516,31 @@ mod tests {
             "docs/mcp/TOOLS.md's per-category counts {toc:?} sum to {} but the live server \
              advertises {live} tools",
             toc.iter().sum::<usize>()
+        );
+    }
+
+    /// The skip above has to be reachable without unpacking a `.crate`.
+    ///
+    /// The previous body read the doc with `.expect("docs/mcp/TOOLS.md is a
+    /// tracked file and must be readable")`, which panics on `NotFound` — the
+    /// exact call `cargo test --lib` makes inside an unpacked package, where
+    /// `/docs/` cannot be present because `Cargo.toml:26` excludes it. This
+    /// asserts the branch instead of trusting the comment describing it.
+    #[test]
+    fn an_absent_tools_doc_skips_instead_of_failing() {
+        let absent = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("docs/mcp/TOOLS.md.absent-on-purpose");
+        assert!(
+            !absent.exists(),
+            "{} must not exist, or the assertion below proves nothing",
+            absent.display()
+        );
+        assert_eq!(
+            read_tools_doc(&absent),
+            None,
+            "an absent TOOLS.md must skip, not fail: /docs/ is excluded from the published \
+             crate (Cargo.toml:26), so this is what `cargo test --lib` sees in an unpacked \
+             .crate or a vendored copy of the source"
         );
     }
 

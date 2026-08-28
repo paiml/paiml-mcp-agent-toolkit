@@ -165,7 +165,14 @@ fn test_quality_report_passed() {
 
     assert!(report.passed);
     assert!(report.violations.is_empty());
-    assert_eq!(report.gates_run.len(), 3);
+    // No assertion over `gates_run` here: the literal built in this function is
+    // the only thing such a check could read back, so it would restate its own
+    // input rather than test anything.
+    // The disclosure contract is pinned where it is actually produced —
+    // `test_proxy_clean_python_names_the_gates_that_ran` and
+    // `test_proxy_extensionless_file_is_not_treated_as_rust` in
+    // `src/services/quality_proxy_tests.rs` — and, for the wire format, by the
+    // serde round-trip in `test_proxy_response_serialization_roundtrip` below.
 }
 
 #[test]
@@ -322,41 +329,31 @@ fn test_proxy_response_serialization_roundtrip() {
 
 // === Disclosure fields (language / gates_run) ===
 
-/// A gate absent from `gates_run` did NOT run, and the zero beside it is not a
-/// measurement. This is the whole contract the two fields carry, and it is the
-/// reason a report can no longer say `passed: true` with nothing behind it.
-#[test]
-fn test_gates_run_distinguishes_measured_zero_from_unmeasured_zero() {
-    let judged = QualityReport {
-        passed: true,
-        metrics: QualityMetrics {
-            max_complexity: 0,
-            satd_count: 0,
-            lint_violations: 0,
-            coverage_percentage: None,
-        },
-        violations: vec![],
-        language: "rust".to_string(),
-        gates_run: vec![
-            "satd".to_string(),
-            "complexity".to_string(),
-            "lint".to_string(),
-        ],
-    };
-
-    // Same metrics, same `passed`, entirely different meaning: nothing but the
-    // comment scan ever looked at this content.
-    let barely_looked_at = QualityReport {
-        language: "unknown".to_string(),
-        gates_run: vec!["satd".to_string()],
-        ..judged.clone()
-    };
-
-    assert_eq!(judged.metrics.lint_violations, 0);
-    assert_eq!(barely_looked_at.metrics.lint_violations, 0);
-    assert!(judged.gates_run.iter().any(|g| g == "lint"));
-    assert!(!barely_looked_at.gates_run.iter().any(|g| g == "lint"));
-}
+// `test_gates_run_distinguishes_measured_zero_from_unmeasured_zero` stood here
+// and could not fail. It built a `QualityReport` literal and then asserted the
+// literal back: `lint_violations` was 0 because the literal said 0, and
+// `gates_run` contained "lint" because the literal listed it. No function under
+// test was called, so making `analyze_content` push every gate name
+// unconditionally would have left it green — it pinned nothing about the
+// contract its doc comment claimed to pin.
+//
+// The contract is that the PRODUCER omits a gate it did not run, which can only
+// be observed by running the producer. That is done in
+// `src/services/quality_proxy_tests.rs`:
+// `test_proxy_clean_python_names_the_gates_that_ran` asserts a Python report
+// carries `satd` and `complexity` but neither `lint` nor `docs`, and
+// `test_proxy_extensionless_file_is_not_treated_as_rust` asserts a `Makefile`
+// report is exactly `["satd"]`. `analyze_content` is a private method on
+// `QualityProxyService` in `crate::services::quality_proxy_analysis`, so it is
+// not reachable from this module at all; the test was deleted rather than
+// rewritten in place.
+//
+// What this module CAN falsify about the two fields is that they survive the
+// wire. That is covered below by
+// `test_report_without_disclosure_fields_still_deserializes`, and just above
+// this section by `test_proxy_response_serialization_roundtrip`, which reads
+// `language` and `gates_run` back out of serialized JSON rather than out of the
+// literal it built.
 
 /// Both fields are `#[serde(default)]`, so a payload recorded before they
 /// existed still deserializes — as an empty `gates_run`, which is the honest
