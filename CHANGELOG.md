@@ -7,6 +7,282 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.33.0] - 2026-08-28
+
+Minor rather than patch, for the same reason 3.32.0 was: most of this release changes
+what pmat *reports* on unchanged code. Nearly every entry below moves a verdict, an exit
+code or a payload shape on a tree that has not changed. Read it before upgrading a gate.
+
+One theme runs through all of it, and it is worth stating once rather than eleven times.
+Something that could not measure was reporting that there was nothing to find — a skipped
+language as a pass, a parse failure as complexity zero, a tool that never ran as zero
+findings, a fix that was never written as `"applied"`, a config nobody parses as a config
+that was satisfied, a CI lane that died before its gate as a lane with nothing to report.
+Each of those reads, to a caller, exactly like clean code. Several were found only by
+dogfooding the *published* 3.32.0 artifact, after the release, because nothing in CI could
+see them.
+
+Most of the MCP-surface entries originate in epic #1090, which filed 11 attack vectors
+against that surface. Fifteen of its claims were re-derived against HEAD and each verdict
+adversarially reviewed by a second reader; the ones below are what survived. Its *code*
+citations are unusually accurate — most paths and line numbers check out verbatim. Its
+*empirical* numbers mostly do not, and are corrected on the issue rather than repeated
+here.
+
+### `quality_proxy` accepted every non-Rust file
+
+`analyze_content` returned `passed: true` with all-zero metrics for every extension but
+the literal lowercase `"rs"` — and strict is the DEFAULT mode, so this was the default
+path, not an edge case. The contradiction is what makes it serious: `pmat analyze satd`
+finds the debt in the same `.py` file that `quality_proxy` published `satd_count: 0` for.
+One binary, one session, two answers.
+
+SATD now runs for every language, and complexity for every language pmat has an analyzer
+for, through the same `analyze_with_heuristics` the CLI already uses. The `ast_*_compat`
+shims are deliberately NOT wired in: they emit `cyclomatic: 1` placeholders, and swapping
+a silent zero for a fabricated number is not an improvement.
+
+`QualityReport` gains two fields, and they are the part that makes any remaining
+`passed: true` honest:
+
+- `language` — what the file was judged as
+- `gates_run` — which gates actually ran. **A gate absent from `gates_run` did not run,
+  and its zero is unknown rather than zero.**
+
+Both are `#[serde(default)]`, so an old payload still deserializes.
+
+Two smaller bugs on the same path: an extensionless file (`Makefile`, `Dockerfile`) was
+fed to `cargo clippy` as a Rust crate root by an `.unwrap_or("rs")` and rejected with
+parse errors about content that was never Rust; and the comparison was case-sensitive, so
+`.RS` skipped every gate.
+
+### A syn parse failure was published as `max_complexity: 0`
+
+The failure arm recorded no violation, so it never reached the verdict, and a consumer
+could not tell unparseable content from trivial content. It is now an `Error`-severity
+violation, and `complexity` is withheld from `gates_run`.
+
+### A missing `cargo clippy` was reported as a verdict about the code
+
+The clean-room image is `rust:1.95-slim`, a minimal-profile toolchain with no clippy
+component. `run_lint_checks` classified stderr by rustc's level prefix, and rustup's
+`error: 'cargo-clippy' is not installed for the toolchain` starts with `error:` — so the
+tool's own absence was filed as `ViolationSeverity::Error`, `passed` went false, and
+strict mode answered `Rejected`. A rejection produced by a run that compiled nothing, and
+a caller cannot tell it apart from "your code does not compile". `test_high_quality_code_accepted`
+duly reported a *minimal failing input* of `fn a(_)` for a logic bug that does not exist.
+
+`analyze_content` compounded it: on `Err` it logged a warning and substituted `0`,
+publishing `lint_violations: 0` — a measurement nobody took — into the report callers read
+as evidence.
+
+`clippy_unavailable_reason` is now the pure did-the-tool-even-run decision, split out as
+`interpret_clippy_output` so it is testable against the exact bytes the clean room saw. It
+matches cargo's and rustup's *pre-compilation* diagnostics only on lines carrying a level
+prefix, so a source span that quotes one of those phrases is still a finding. Falsified
+against the real thing: a `cargo` stub reproducing `rust:1.95-slim` reproduces the
+clean-room log byte for byte on the old code.
+
+`hook_clippy_gate_tests::clippy_verdict` had the same defect one layer up — with clippy
+absent, `out.status.success()` is false, which *satisfied* both `assert!(!ok, ...)`
+rejection tests. They passed while measuring nothing, and only the counter-test failed.
+
+### `cargo clippy` ran unbounded on caller-supplied content, and the bound killed the wrong process
+
+The quality proxy compiled caller-supplied source with no timeout, no kill path and no
+resource bound, using a **blocking** `Command::output()` inside an `async fn` awaited by
+the MCP handler. It did not merely burn a child's CPU: it pinned a tokio worker for the
+whole compile, and `mcp-http` is in the default feature set, so one request could stall
+the server's runtime.
+
+Both spawns are now bounded. The subtlety, found by re-auditing the fix itself: `cargo`
+is a supervisor, and the process that actually holds the memory is the `rustc` /
+`clippy-driver` **grandchild**. A `child.kill()` stopped pmat *waiting* for the runaway
+compiler without stopping it. On unix the child now leads its own process group and the
+deadline sends one `kill(-pgid, SIGKILL)`. Windows keeps `Child::kill`, gated and
+commented.
+
+Two deliberate consequences: the child's stdin is `Stdio::null()` (a child in a new
+process group that reads the terminal takes `SIGTTIN` and *stops*, which is
+indistinguishable from slow), and an interactive Ctrl-C no longer reaches the `cargo`
+underneath pmat — traded for the timeout, the case that fires unattended, actually
+working.
+
+`libc` moves from an optional dependency of `mcp-integration` to a non-optional
+`[target.'cfg(unix)'.dependencies]`, because the kill path is not feature-gated. Cargo.lock
+is byte-unchanged.
+
+### `pmat analyze clippy` said `"applied"` and wrote nothing
+
+With no `--dry-run`, the response carried `"action": "applied"` and a non-zero
+`successful_fixes` while the file on disk was byte-identical.
+
+This is **not** fixed by adding the missing write. The transform is a blind whole-file
+`source.replace("return ", "")` that ignores the diagnostic's span, so writing its output
+would corrupt user source — it strikes the substring inside string literals and
+identifiers too, which a new test demonstrates. Preview is now the only mode:
+
+- `action` is the constant `"previewed"`
+- `apply_fixes` is **deleted**, and with it `successful_fixes`, `failed_fixes`,
+  `success_rate`, `fixed_files` and `detailed_results`
+- `dry_run` → `preview_only`, `total_fixes` → `total_previewed`, `fixes` → `previewed`,
+  and the hardcoded `"would_fix": true` is gone
+
+`--dry-run` still parses and now selects nothing. **If you consumed any of the removed
+keys, they are gone deliberately — a key that does not exist cannot lie.**
+
+`docs/clippy-automatic-fixes-guide.md` was rewritten from scratch. It documented
+`pmat fix clippy` (no such subcommand), a five-factor confidence score, ~12 flags that do
+not exist, an MCP tool registered nowhere, a config table nothing reads, and an invented
+benchmark. 597 lines removed.
+
+### The scaffolder generated a config section pmat does not read (#1019)
+
+`pmat`'s scaffolder wrote a `.pmat-gates.toml` whose entire `[gates]` table — `run_clippy`,
+`clippy_strict`, `run_tests`, `test_timeout`, `check_coverage`, `min_coverage`,
+`check_complexity`, `max_complexity` — is parsed by nothing. The readers of that file look
+for `[entropy]`, `[tdg]` and `[quality]`. Checked key by key: `run_tests` and
+`test_timeout` have zero struct-field declarations anywhere in the tree.
+
+So a user ran the scaffolder, set `run_tests = false`, and pmat kept running tests —
+silently, because TOML ignores unknown keys. **A config that is read and satisfied is
+indistinguishable from one that is never opened; both produce no output.**
+
+The generator now emits only sections that have a reader, with the reader named in a
+comment beside each. Two existing tests asserted the dead output — `test_generate_gate_config_toml`
+checked for four things pmat has never parsed — and both now parse the result and assert
+the keys the readers actually ask for.
+
+### MCP reported success over a population it never measured
+
+The CLI has refused an empty denominator for two releases through one shared helper. MCP
+never got it, so on a directory holding only a README the CLI exits 5 with a named
+refusal while `analyze_complexity` returned `"status": "completed"`. `Err(_) => continue`
+likewise dropped unreadable files out of the denominator with no disclosure.
+
+`analyze_complexity`, `analyze_context` and `analyze_coupling` now refuse an unmeasurable
+population and publish the census, under the **same key names the CLI uses** — a different
+spelling would have recreated the CLI-vs-MCP split this closes.
+
+### `pmat analyze graph-metrics` reported 0 edges on every tree
+
+Every centrality it computed was therefore trivially zero. `analyze dag` renders 4 edges
+on the same fixture where graph-metrics reported 0. The cause was a private
+regex-over-source graph builder; it now consumes the dependency graph `analyze dag`
+builds. Node ids are sorted before indexing — the map is an `FxHashMap`, and unsorted
+iteration would have made every ranking tie-break nondeterministic between runs.
+
+### `pmat prompt implement` aborted in every debug build
+
+`-s` was bound to both `--spec` and `--summary`. Release clap silently resolves it to
+`--spec`; a **debug** build hits clap's uniqueness assertion and exits 101, so the
+subcommand could not run at all. `--summary` loses the short — release already resolved
+`-s` to `--spec`, so making that explicit breaks nobody, whereas repointing it would
+silently change what existing scripts mean.
+
+A new test walks the whole command tree and asserts short-flag uniqueness per command,
+because clap only checks this in debug builds, which is exactly why it shipped.
+
+### `serve --transport http` could not start on Windows (#1081)
+
+3.32.0 shipped a one-command onboarding path — no token, and pmat mints one, starts, and
+prints the `claude mcp add` line. On Windows it died before serving anything:
+
+    Error: could not read the OS random source (/dev/urandom) to generate a bearer
+    token: The system cannot find the path specified. (os error 3)
+
+`os_entropy` opened `/dev/urandom` by hand. Its own doc comment named the flaw without
+noticing it — "the same kernel pool that `getrandom` uses **on Linux**". The trade it was
+avoiding did not exist: `getrandom` is already compiled into every build as a transitive
+dependency, so naming it directly costs no supply-chain surface and no feature coupling,
+which serves `--no-default-features --features mcp-http` *better* than the file read did.
+
+Generation still goes **through** `BearerToken::new`, so the 16-character floor remains the
+only gate and a short token is still refused.
+
+Found by the pmat-book's Chapter 3.4 suite on `windows-latest` — the first time that book's
+tests have ever executed in CI. `windows-check` builds and stops; nothing in pmat's own CI
+exercises this path.
+
+### Gates that could not fail
+
+- **The binary-size gate had NEVER RUN, and the binary was 2.8 MB past its limit** (#1079).
+  Nothing declares `src/tests/`, so rustc never compiled it and
+  `cargo test binary_size_regression` reported `0 passed; 0 filtered out`. The decisive
+  proof is that the gate's own panic string is absent from the shipped binary. It is now a
+  **band, not a ceiling** — within ±5% silent, ±5–20% pass but print the drift, beyond ±20%
+  fail. The middle band is the point, and so is the lower bound: `mcp-http` moving into
+  `default` added ~1 MB deliberately, and had a transport silently dropped *out*, a ceiling
+  would have reported success over a binary that had lost a feature. Absence of the binary
+  is now a FAILURE under `PMAT_REQUIRE_BINARY_SIZE=1` rather than a skip that reads as a
+  pass, and the path comes from `CARGO_TARGET_DIR`/`cargo metadata` rather than the literal
+  `target/release/pmat`, which in this checkout resolves to a stale binary in a different
+  directory than cargo builds into. Proven to fail in both directions by named mutation.
+- **`Mutation (diff)` died in dash on every one of its seven nights** (#1034). Every
+  scheduled run since the workflow landed failed in the same step with
+  `set: Illegal option -o pipefail`: a `run:` step in a `container:` job is launched as
+  `sh -e {0}`, and `/bin/sh` in the image is dash. bash is present, so the fix is to ask for
+  it — `defaults.run.shell: bash` at the job level, so a step added later cannot re-enter
+  the trap by omitting it. A second blocker was only visible once the first stopped hiding
+  it: the container runs as root against a workspace owned by uid 1000, so *every* `git`
+  failed with `detected dubious ownership`. And the guard that should have caught that,
+  `cd "$(git rev-parse --show-toplevel)" || die`, could not fire — `cd ""` is a bash no-op
+  returning 0, so the script carried on and judged a tree it had not chosen.
+- **`make validate-book`: 6 of 7 chapter scripts could not fail.** Against a deliberately
+  broken pmat, only one script failed. Each chapter is now run against that shim first and
+  must produce at least one failure, or it is reported VACUOUS. Also fixes a stray space in
+  an array subscript (`${SPECIFIC_TESTS[$ch ]}`) that made the lookup always miss.
+- **The pre-commit complexity gate printed a verdict over files it never opened.** The
+  staged-file list ended in `| head -20`, so on a 21-file commit the gate reported clean
+  over the first twenty.
+- **Two shell blocks in `Commands::Serve` were compiled as Rust.** Four-space-indented
+  blocks in a doc comment are treated by rustdoc exactly like an unannotated fence, so
+  `pmat serve --transport http …` and a `claude mcp add …` line were handed to the compiler.
+  It survived because the clean room stops Mode B at the first failure and B2 had been red
+  since clippy went missing from the image — *a gate behind a red gate is not a gate*.
+
+### Smaller, same theme
+
+- **TDG's project score averaged `.md` and `.yaml` in with source.** A 217-byte markdown
+  stub grades 95.34, so documentation pulled the mean up; measured, an 85.0 fixture climbed
+  to 93.27 over four markdown files with no source change. The average now uses the source
+  population `dominant_language` already used.
+- **The SATD detector's self-exclusion re-introduced the #923 class.** It was the last raw
+  path-substring predicate in `should_exclude_file`, and the path it reads falls back to the
+  *absolute* path — so any manifest-less tree whose path contained "satd" and "test" lost
+  its entire measurement, with no flag to recover it. Deleted. (A sibling `.generated`
+  substring test survives and is now documented rather than claimed absent.)
+- **The `agent-daemon` quality gate answered "All Toyota Way standards met!" from
+  `let violations = vec![]`,** over an analyzer returning a constant `max_complexity: 15`
+  for any path. Feature-gated out of every shipped build, so MEDIUM rather than the CRITICAL
+  it was filed as — but `--features agent-daemon` is supported, and there it was a fabricated
+  pass. Checks that cannot measure now say so.
+- **`docs/mcp/TOOLS.md` claimed both 16 and 20 tools.** It is 19. `mcp.json` also carried
+  different descriptions from the live `tools/list` for the same tools, with the only guard
+  comparing names and count — which is how "`quality_proxy` is read-only" survived review
+  twice. It is a write/edit/append proxy, and the packaged manifest now says so.
+- **Three tests pinned the very defect #1080 removed.** Deleting `src/tests/binary_size.rs`
+  removed CB-2104's flagship contradiction — `50 * 1024 * 1024` declared "aligned with"
+  `.pmat-metrics.toml`'s `50_000_000`, one claimed identity 2,428,800 apart — so the tests
+  asserting it still existed failed by finding health. The assertions are **inverted, not
+  deleted**: if someone commits a number claiming alignment with a value it does not equal,
+  C5 goes back to 1 and the guard fires again. C5 is not left vacuous either — its firing is
+  still proven on a synthetic corpus carrying the original text verbatim.
+
+### Not done, deliberately
+
+**No `pmat_write_file` / `pmat_edit_file`.** MCP has no primitive by which a server can
+gate a client's own tools, so such a tool is a menu item an uncooperative agent never
+calls. pmat already owns the only layer that can intercept — the harness `PreToolUse` hook
+matching `Write|Edit`, which returns `{"decision":"deny"}`.
+
+**The HTTP transport still answers `{"jsonrpc":"1.0"}` with 200 and the full tool list,**
+and collapses every client-side error to `-32700` with `"id":null`, where stdio classifies
+frames correctly. A guard was written and withdrawn: its parked-frame queue was bounded in
+entries but not bytes, it keyed correlation on the client-supplied `x-request-id`, and its
+only end-to-end test lives in a target no CI job runs. It needs its own change with a leg
+that executes it.
+
 ## [3.32.0] - 2026-08-25
 
 Minor rather than patch, and the reason is the list below: most of this release changes
