@@ -293,6 +293,99 @@ mod coverage_tests {
     }
 
     // ========================================================================
+    // Tests for what the engine does NOT do: touch the filesystem (#1086)
+    // ========================================================================
+
+    /// Applying a fix leaves the file the diagnostic names byte-identical.
+    ///
+    /// GUARD, not a regression test: this also passes on the pre-fix code.
+    /// That was precisely the defect — `pmat analyze clippy` answered
+    /// `"action": "applied"` with a non-zero `successful_fixes` and a populated
+    /// `fixed_files` while the named file's bytes never changed. The assertion
+    /// is kept so that anyone closing the gap by adding the missing `fs::write`
+    /// has to look at `apply_fix_internal` first and see what would be written.
+    #[tokio::test]
+    async fn apply_fix_leaves_the_file_on_disk_byte_identical() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let path = dir.path().join("lib.rs");
+        let original = "fn answer() -> i32 {\n    return 42;\n}\n";
+        std::fs::write(&path, original).expect("seed fixture");
+        let before = std::fs::read(&path).expect("read fixture");
+
+        let engine = ClippyFixEngine::new();
+        let diagnostic = ClippyDiagnostic {
+            code: "clippy::needless_return".to_string(),
+            level: DiagnosticLevel::Warning,
+            message: "unneeded `return` statement".to_string(),
+            file: path.clone(),
+            line_start: 2,
+            line_end: 2,
+            column_start: 5,
+            column_end: 15,
+            suggestion: None,
+        };
+
+        let source = std::fs::read_to_string(&path).expect("read source");
+        let result = engine
+            .apply_fix(&source, &diagnostic)
+            .await
+            .expect("apply_fix");
+
+        // The transform DID produce a different string...
+        assert_ne!(
+            result.modified_source, source,
+            "the in-memory transform is what made the old report look plausible"
+        );
+        // ...and that string went nowhere.
+        assert_eq!(
+            before,
+            std::fs::read(&path).expect("re-read fixture"),
+            "the engine has no writer: the file must be untouched"
+        );
+    }
+
+    /// The needless_return transform is a whole-file substring replace.
+    ///
+    /// `apply_fix_internal` runs `source.replace("return ", "")` over the entire
+    /// file and never consults the span the diagnostic carries. Here the only
+    /// occurrence of `return ` is inside a string literal, and it is struck all
+    /// the same. GUARD, not a regression test: the pre-fix code behaves
+    /// identically. It documents why #1086 was closed by dropping the "applied"
+    /// claim instead of by writing this output to disk.
+    #[tokio::test]
+    async fn needless_return_transform_strikes_string_literals_too() {
+        let engine = ClippyFixEngine::new();
+        let source = "fn main() { println!(\"return code {}\", 1); }";
+        let diagnostic = ClippyDiagnostic {
+            code: "clippy::needless_return".to_string(),
+            level: DiagnosticLevel::Warning,
+            message: "unneeded `return` statement".to_string(),
+            file: PathBuf::from("main.rs"),
+            line_start: 1,
+            line_end: 1,
+            column_start: 1,
+            column_end: 10,
+            suggestion: None,
+        };
+
+        let result = engine
+            .apply_fix(source, &diagnostic)
+            .await
+            .expect("apply_fix");
+
+        assert!(
+            result.modified_source.contains("\"code {}\""),
+            "the string literal lost its `return `: {}",
+            result.modified_source
+        );
+        assert!(
+            !result.modified_source.contains("return "),
+            "the replace is unconditional: {}",
+            result.modified_source
+        );
+    }
+
+    // ========================================================================
     // Tests for ConfidenceLevel enum
     // ========================================================================
 

@@ -80,16 +80,40 @@ async fn test_analyze_coupling_empty_paths() {
 // RED Phase 2: Nonexistent Path Handling
 // ============================================================================
 
+/// Issue #1090. This used to read
+///
+/// ```text
+///     // Should succeed with empty results (skips nonexistent files)
+///     assert!(result.is_ok());
+///     assert_eq!(output["status"], "completed");
+/// ```
+///
+/// and that comment was the defect: `pmat analyze complexity` refuses a
+/// population of nothing with exit 5 and a named sentence, while the MCP tool
+/// over the same population builder and the same analyzer returned
+/// `isError: false`, `"status": "completed"`, `"violations": []`. "Nothing was
+/// measured" must not reach a caller wearing the shape of a clean result.
 #[tokio::test]
 async fn test_analyze_complexity_nonexistent_path() {
-    // RED: Should handle nonexistent paths gracefully
     let nonexistent = PathBuf::from("/nonexistent/file.rs");
-    let result = analyze_complexity(&[nonexistent], None, None).await;
+    let error = analyze_complexity(&[nonexistent], None, None)
+        .await
+        .expect_err("an empty population must be refused, not reported as completed");
 
-    // Should succeed with empty results (skips nonexistent files)
-    assert!(result.is_ok());
-    let output = result.unwrap();
-    assert_eq!(output["status"], "completed");
+    let message = format!("{error:#}");
+    assert!(
+        message.contains("no source files were found"),
+        "the refusal must be the CLI's own sentence: {message}"
+    );
+    assert!(
+        message.contains("no complexity measurement was taken")
+            && message.contains("This is not a clean result"),
+        "the refusal must name the measurement and the verdict: {message}"
+    );
+    assert!(
+        message.contains("/nonexistent/file.rs"),
+        "the refusal must name the path it walked: {message}"
+    );
 }
 
 #[tokio::test]

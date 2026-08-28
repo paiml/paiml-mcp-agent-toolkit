@@ -129,10 +129,33 @@ pub struct QualityMetrics {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Report containing quality data.
+///
+/// `language` and `gates_run` exist because a zero in `metrics` is not a
+/// measurement. Every file whose extension was not the literal lowercase `rs`
+/// used to come back `passed: true` with `max_complexity: 0, satd_count: 0,
+/// lint_violations: 0` and an empty violation list — byte-identical to the
+/// report a clean Rust file produces — so a consumer had no way to tell "this
+/// content was judged and is clean" from "no gate ever looked at it". A Python
+/// payload with two debt markers and five levels of nesting was accepted that
+/// way in strict mode, which is the default mode.
+///
+/// The rule the two fields encode: a gate that is absent from `gates_run` did
+/// NOT run, and every number it would have produced must be read as unknown
+/// rather than as zero. Both carry `#[serde(default)]` so payloads recorded
+/// before the fields existed still deserialize — as an empty `gates_run`, which
+/// is exactly the honest reading of a report that claims nothing.
 pub struct QualityReport {
     pub passed: bool,
     pub metrics: QualityMetrics,
     pub violations: Vec<QualityViolation>,
+    /// The language the gates were selected for, lower-cased: `"rust"`,
+    /// `"python"`, `"bash"`, `"unknown"`.
+    #[serde(default)]
+    pub language: String,
+    /// The gates that actually ran and produced the numbers in `metrics`.
+    /// Currently one of `satd`, `complexity`, `lint`, `docs`.
+    #[serde(default)]
+    pub gates_run: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

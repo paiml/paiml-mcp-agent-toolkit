@@ -30,8 +30,9 @@ pub struct UngradedFile {
 /// Project score.
 pub struct ProjectScore {
     pub files: Vec<TdgScore>,
-    /// Mean TDG score over the ANALYSED files, or `None` when nothing was
-    /// analysed.
+    /// Mean TDG score over the files that carry CODE, or `None` when nothing
+    /// was analysed. The population is not every entry in `files` — see
+    /// `aggregate` for why documentation is excluded from it (#1090).
     ///
     /// GH #704: this was a bare `f32` defaulted to `0.0` for the empty case,
     /// and `average_grade` was derived from that default — so `analyze tdg` on
@@ -72,7 +73,27 @@ pub struct ProjectScore {
     /// expects.
     #[serde(default)]
     pub grade_distribution: BTreeMap<Grade, usize>,
-    /// Count of F-grade files (critical quality issues)
+    /// Count of F-grade files (critical quality issues) over EVERY graded file.
+    ///
+    /// It is exactly `grade_distribution[&Grade::F]` — `aggregate` reads it out
+    /// of that map rather than counting a second time, so the two cannot drift.
+    /// That equality is the point. #1090 narrowed `average_score` to the source
+    /// files and narrowed this with it, which left a `pub`, serialized field
+    /// silently meaning something new: `cli::handlers::new_tdg_handler` prints
+    /// `**Grade Capped:** yes (N F-grade file(s))` from this number directly
+    /// above a `## Grade Distribution` table whose F row comes from
+    /// `grade_distribution`, and `tdg::quality_gate::f_grade::FGradeGate`
+    /// counts F-grades over every file in the baseline. A tree with 2 F-grade
+    /// `.rs` and 3 F-grade `.md` rendered "yes (2 F-grade file(s))" over an
+    /// "F | 5" row, with nothing on screen to say the two counted different
+    /// populations.
+    ///
+    /// #1090's measurement was that documentation must not move the MEAN, and
+    /// that correction stays, confined to `average_score`. "How many F-grade
+    /// files are there" has one answer here, in `grade_distribution`, and in
+    /// the gate. The cost is deliberate and disclosed: an F-grade `.md` counts
+    /// as an F-grade file and therefore still caps the grade at B, which is
+    /// what `FGradeGate` fails the build over anyway.
     #[serde(default)]
     pub f_grade_count: usize,
     /// Whether grade was capped due to F-grade files
@@ -196,30 +217,93 @@ fn dominant_language(distribution: &BTreeMap<Language, usize>) -> Option<Languag
     plurality(true).or_else(|| plurality(false))
 }
 
+/// The files a project's SCORE is computed over: the ones that carry code.
+///
+/// Issue #1090. The project score was an unweighted arithmetic mean over EVERY
+/// graded file, and the AST walk grades documentation: `Policy::ast()` sets
+/// `grades_markup`, so `is_gradable_extension` admits every `.md` and `.yaml`
+/// in the tree (`file_discovery.rs`). A 217-byte Markdown stub grades 95.34/A+,
+/// so each documentation file is a vote for ~95 that no amount of work on the
+/// code can outweigh — an 85.0/A- fixture climbed 90.17 → 91.89 → 92.75 → 93.27
+/// as four `.md` files landed beside it with the source untouched. Those rungs
+/// are the unweighted mean of the one 85.0 file and k stubs at 95.34
+/// ((85+95.34)/2 = 90.17, /3 = 91.89, /4 = 92.75, /5 = 93.27), so the FIRST
+/// added `.md` is worth +5.17 on its own. (An earlier revision of this comment
+/// read "a plain README.md on its own moved it 85.0 → 91.89"; 91.89 is the
+/// second rung, k=2, transcribed onto the wrong row.) This is not a corner case:
+/// pmat's own tree carries 719 tracked `.md` and 213 `.yaml` in the graded
+/// population against 4,433 `.rs`, so the number a reader takes for "how good
+/// is this code" is partly a count of how much prose sits next to it.
+///
+/// The predicate is the one `dominant_language` just above already applies,
+/// for the same reason and the same issue family (#1073): documentation
+/// describes a project, it is not what the project is written in.
+///
+/// The fallback is load-bearing, not defensive. A tree that really holds
+/// nothing but documentation is a documentation tree and must still get a
+/// grade — refusing to score it would replace one wrong answer with "not
+/// measured", which is the mirror of the #1073 mislabel. It is also what keeps
+/// `ProjectScore::aggregate(vec![score])` — the single-file path in
+/// `mcp_pmcp::tool_functions::tdg_tools_storage` — answering for a lone `.md`
+/// instead of degrading to `average_score: None`.
+fn scoring_population(scores: &[TdgScore]) -> Vec<&TdgScore> {
+    let source: Vec<&TdgScore> = scores
+        .iter()
+        .filter(|score| score.language.is_source_code())
+        .collect();
+    if source.is_empty() {
+        scores.iter().collect()
+    } else {
+        source
+    }
+}
+
 impl ProjectScore {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Aggregate.
     pub fn aggregate(scores: Vec<TdgScore>) -> Self {
         let total_files = scores.len();
-        // GH #704: no files analysed means no average and no grade — not 0.0/F.
-        let average_score = if total_files > 0 {
-            Some(scores.iter().map(|s| s.total).sum::<f32>() / total_files as f32)
-        } else {
-            None
+        // #1090: the score describes the CODE, so it is a mean over the source
+        // files and not over everything the walk happened to grade — see
+        // `scoring_population`. Empty only when `scores` itself is empty, so
+        // the "was anything measured at all" question below is still
+        // `total_files`.
+        //
+        // Scoped so the borrow of `scores` ends before `scores` is moved into
+        // the returned value below.
+        let average_score = {
+            let scored = scoring_population(&scores);
+            // GH #704: no files analysed means no average and no grade — not 0.0/F.
+            (!scored.is_empty())
+                .then(|| scored.iter().map(|s| s.total).sum::<f32>() / scored.len() as f32)
         };
 
+        // The DISTRIBUTIONS stay a census of everything that was graded, and
+        // deliberately so. #1073 left `language_distribution` whole for exactly
+        // this reason — Markdown really is the plurality of a doc-heavy Rust
+        // tree, and that fact stays readable even though it no longer decides
+        // the label. `grade_distribution` is the same kind of statement, and
+        // both renderers print each of its rows as a share of `total_files`
+        // (`tdg::formatters::project` and `cli::handlers::new_tdg_handler`), so
+        // narrowing the numerator alone would make the rows silently sum to
+        // ~83% of the tree with nothing on screen to say why.
         let mut language_distribution = BTreeMap::new();
         let mut grade_distribution = BTreeMap::new();
-        let mut f_grade_count = 0;
 
         for score in &scores {
             *language_distribution.entry(score.language).or_insert(0) += 1;
             *grade_distribution.entry(score.grade).or_insert(0) += 1;
-            if score.grade == Grade::F {
-                f_grade_count += 1;
-            }
         }
+
+        // …and `f_grade_count` is a ROW OF THAT CENSUS, read out of the map
+        // instead of counted again, so the number the renderers print beside
+        // the cap and the number in the F row of the distribution table cannot
+        // be two different populations. See the field's own doc: #1090 narrowed
+        // this to the source files along with the mean, which changed what a
+        // `pub` serialized field meant without any renderer disclosing it.
+        // The narrowing that #1090 actually measured is the MEAN, above.
+        let f_grade_count = grade_distribution.get(&Grade::F).copied().unwrap_or(0);
 
         // GH #680: the project grade and the per-file grades must come from the
         // SAME mapping, and that mapping is `Grade::from_score` — the score and
@@ -812,6 +896,202 @@ mod no_contradiction_tests {
         assert!(
             project.not_measured.is_empty(),
             "nothing is unmeasured when a file was analysed"
+        );
+    }
+
+    /// Issue #1090: documentation was pooled into the project score.
+    ///
+    /// `aggregate` took an unweighted mean over EVERY graded file, and the AST
+    /// walk grades `.md` and `.yaml` (`Policy::ast()` sets `grades_markup`).
+    /// A 217-byte Markdown stub grades 95.34/A+, so an 85.0/A- fixture climbed
+    /// 90.17 → 91.89 → 92.75 → 93.27 as four `.md` files landed beside it with
+    /// the source untouched — measured on the released binary, and each rung is
+    /// the unweighted mean of the 85.0 file and k stubs at 95.34, so one `.md`
+    /// alone is the first rung, 85.0 → 90.17.
+    ///
+    /// The fixture mirrors that measurement: one 85.0 Rust file, four Markdown
+    /// files and one YAML file at the grade a doc stub really gets.
+    #[test]
+    fn documentation_cannot_move_the_project_score() {
+        let source = file_score(85.0, Language::Rust, false);
+        let expected = source.total;
+
+        let mut files = vec![source];
+        files.extend(vec![file_score(95.34, Language::Markdown, false); 4]);
+        files.push(file_score(95.34, Language::Yaml, false));
+
+        let project = ProjectScore::aggregate(files);
+
+        assert_eq!(
+            project.total_files, 6,
+            "every graded file is still counted and still listed"
+        );
+        assert_eq!(
+            project.average_score,
+            Some(expected),
+            "five documentation files must not move a one-file Rust project's score"
+        );
+
+        // The distribution stays a census of what was graded — the docs are
+        // still visible, they just no longer vote on the score.
+        assert_eq!(project.language_distribution[&Language::Markdown], 4);
+        assert_eq!(project.language_distribution[&Language::Yaml], 1);
+    }
+
+    /// COUNTER-TEST for the one above: the fix must be "documentation does not
+    /// vote", not "extra files do not vote". The identical fixture with the
+    /// five extras written in Rust moves the score exactly as it always did.
+    #[test]
+    fn more_source_files_still_move_the_project_score() {
+        let mut files = vec![file_score(85.0, Language::Rust, false)];
+        files.extend(vec![file_score(95.34, Language::Rust, false); 4]);
+        files.push(file_score(95.34, Language::Rust, false));
+
+        let average = ProjectScore::aggregate(files)
+            .average_score
+            .expect("six Rust files were analysed");
+        assert!(
+            average > 93.0,
+            "five more source files at 95.34 must pull an 85.0 project up, got {average}"
+        );
+    }
+
+    /// COUNTER-TEST bounding the correction the other way. "Prefer source" must
+    /// not become "refuse to score a tree that has none": a documentation tree
+    /// really is a documentation tree, and answering `average_score: null` for
+    /// it would replace one wrong answer with "not measured".
+    ///
+    /// This also guards the single-score caller
+    /// `ProjectScore::aggregate(vec![score])` in
+    /// `mcp_pmcp::tool_functions::tdg_tools_storage`, which can legitimately be
+    /// handed one `.md` file.
+    #[test]
+    fn a_docs_only_project_is_still_scored() {
+        for language in [Language::Markdown, Language::Yaml, Language::Unknown] {
+            let files = vec![file_score(95.34, language, false); 3];
+            let expected = files[0].total;
+            let project = ProjectScore::aggregate(files);
+
+            assert!(
+                project.average_score.is_some(),
+                "a {language}-only tree must still be scored"
+            );
+            let average = project.average_score.expect("asserted on the line above");
+            assert!(
+                (average - expected).abs() < 0.01,
+                "a {language}-only tree scores what its files score, got {average}"
+            );
+            assert!(project.average_grade.is_some(), "{language}");
+            assert!(
+                project.not_measured.is_empty(),
+                "{language}: the score was measured, so nothing is disclosed as unmeasured"
+            );
+        }
+
+        let lone_doc = ProjectScore::aggregate(vec![file_score(95.34, Language::Markdown, false)]);
+        assert!(
+            lone_doc.average_score.is_some(),
+            "a single-file aggregate over one .md must not degrade to null"
+        );
+    }
+
+    /// #1090 narrows the MEAN and nothing else: `f_grade_count` is a census row.
+    ///
+    /// The fix that stopped documentation voting on the score narrowed
+    /// `f_grade_count` along with it, which changed what a `pub`, serialized
+    /// field meant without any renderer disclosing the change. This fixture
+    /// separates the two claims on one input — an F-grade `.md` beside perfect
+    /// Rust — because they pull in opposite directions and only one of them was
+    /// ever measured:
+    ///
+    /// * the `.md` must NOT move `average_score` (#1090, the measured defect);
+    /// * it must still BE an F-grade file everywhere the payload counts them —
+    ///   `grade_distribution`, `f_grade_count`, and
+    ///   `tdg::quality_gate::f_grade::FGradeGate`, which counts over every file
+    ///   in the baseline and fails the build on this one.
+    ///
+    /// The earlier version of this test asserted `f_grade_count == 0` and
+    /// `!grade_capped` on this fixture — and `new_tdg_handler` prints its
+    /// `**Grade Capped:**` line only when `grade_capped`, so the report carried
+    /// no cap line at all above an "F | 1" row of its own distribution table.
+    #[test]
+    fn an_f_grade_document_is_counted_even_though_it_cannot_move_the_mean() {
+        let mut files = vec![file_score(100.0, Language::Rust, false); 19];
+        files.push(file_score(10.0, Language::Markdown, false));
+        let project = ProjectScore::aggregate(files);
+
+        // #1090, unchanged: prose does not vote on the code's mean.
+        assert_eq!(
+            project.average_score,
+            Some(100.0),
+            "an F-grade Markdown file must not drag the code's mean down"
+        );
+        assert_eq!(
+            project.uncapped_grade(),
+            Some(Grade::APlus),
+            "the score's own band is unaffected by the document"
+        );
+
+        // …and it is still an F-grade file, in every count the payload carries.
+        assert_eq!(
+            project.grade_distribution.get(&Grade::F),
+            Some(&1),
+            "the census must show the F-grade Markdown file"
+        );
+        assert_eq!(
+            project.f_grade_count, 1,
+            "f_grade_count is the census row, not a second population"
+        );
+        assert!(
+            project.grade_capped,
+            "an F-grade file caps the grade — the same file FGradeGate fails on"
+        );
+        assert_eq!(project.average_grade, Some(Grade::B));
+        assert_eq!(project.files.len(), 20, "and it is still listed");
+    }
+
+    /// The reported symptom, as a fixture: 2 F-grade `.rs` and 3 F-grade `.md`.
+    ///
+    /// `cli::handlers::new_tdg_handler` prints `**Grade Capped:** yes (N
+    /// F-grade file(s))` from `f_grade_count` and, a few lines below it in the
+    /// same document, a `## Grade Distribution` table whose F row is
+    /// `grade_distribution[&Grade::F]`. While the two counted different
+    /// populations that report read "yes (2 F-grade file(s))" over an "F | 5"
+    /// row, under labels a reader takes for the same quantity.
+    ///
+    /// `aggregate` now reads `f_grade_count` out of `grade_distribution`, so
+    /// the equality is structural; this pins it against a population where the
+    /// two used to differ.
+    #[test]
+    fn the_cap_line_and_the_f_row_report_one_population() {
+        let mut files = vec![file_score(100.0, Language::Rust, false); 10];
+        files.extend(vec![file_score(10.0, Language::Rust, false); 2]);
+        files.extend(vec![file_score(10.0, Language::Markdown, false); 3]);
+
+        let project = ProjectScore::aggregate(files);
+
+        assert_eq!(
+            project.grade_distribution.get(&Grade::F),
+            Some(&5),
+            "the census counts every F-grade file that was graded"
+        );
+        assert_eq!(
+            project.f_grade_count,
+            project
+                .grade_distribution
+                .get(&Grade::F)
+                .copied()
+                .unwrap_or(0),
+            "the capped line and the F row must not be two different counts"
+        );
+        assert_eq!(project.f_grade_count, 5);
+
+        // The mean is still the source files' — 10 at 100.0 and 2 at 10.0 —
+        // with the three documents excluded from it and only from it.
+        let average = project.average_score.expect("12 source files were graded");
+        assert!(
+            (average - 85.0).abs() < 0.01,
+            "the mean is the source files' own, got {average}"
         );
     }
 

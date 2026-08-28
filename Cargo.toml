@@ -1,7 +1,7 @@
 [package]
 name = "pmat"
 default-run = "pmat"
-version = "3.32.0"
+version = "3.33.0"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
@@ -59,7 +59,8 @@ crossbeam = { version = "0.8", optional = true }
 
 # Resource management (only used by mcp-integration feature: resources/)
 sysinfo = { version = "0.39", optional = true }  # Updated for reduced duplicates
-libc = { version = "0.2", optional = true }
+# libc moved to [target.'cfg(unix)'.dependencies] below: it is a POSIX binding,
+# and `run_with_timeout` needs it in EVERY unix build, not only under a feature.
 
 # Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
 # levenshtein = "1.0"  # REMOVED: Replaced by aprender sovereign stack
@@ -372,6 +373,26 @@ fs2 = { version = "0.4.3", optional = true }
 aprender-contracts-macros = "0.64"
 
 
+# POSIX bindings. Non-optional on unix because `run_with_timeout`
+# (src/cli/handlers/work_falsification/deny_refresh.rs) depends on `kill` to
+# bound `cargo clippy`: on the deadline it signals the child's whole process
+# group, since the memory is held by the `rustc` grandchild, not by the `cargo`
+# supervisor that `Child::kill` reaches. A feature-gated bound that some builds
+# silently do not have is not a bound.
+#
+# This adds nothing to the dependency GRAPH. libc 0.2.189 is already resolved
+# (Cargo.lock:3728) with 66 dependent edges, several of them in the default
+# feature set (num_cpus, fs2, dirs-sys, mio), and `"libc"` was already listed
+# among pmat's own dependencies in Cargo.lock, so the lock file is unchanged and
+# `--locked` still holds. Only the declaration changed: from a crate pmat could
+# not name unless `mcp-integration` was on, to one it can always name on unix.
+#
+# Left off Windows deliberately: nothing there uses it, `windows-check` builds
+# the default features, and the timeout path is `#[cfg(not(unix))]`-gated to
+# keep its existing single-process `Child::kill`.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 aprender-contracts = "0.64"
 rmp-serde = "1.3"  # MessagePack codec for integration tests (replaces bincode after its removal)
@@ -533,7 +554,11 @@ cli-integration = []
 # `optional = true` and was enabled by NO feature, so `--features agents-md` had
 # never compiled (E0432: unresolved import `notify`).
 agents-md = ["shell-words", "dep:notify"]  # AGENTS.md integration for AI agent guidance
-mcp-integration = ["actix", "actix-rt", "crossbeam", "sysinfo", "dep:bytes", "libc"]  # MCP protocol integration experiments
+mcp-integration = ["actix", "actix-rt", "crossbeam", "sysinfo", "dep:bytes"]  # MCP protocol integration experiments
+# `libc` left this list when it stopped being optional. Nothing changed for
+# `resources/`: every one of its 15 `libc::` uses is already inside a
+# `#[cfg(unix)]` or `#[cfg(target_os = "linux")]` block, so a Windows build of
+# this feature never referred to the crate in the first place.
 # `dep:bytes`/`dep:http`: same defect as `agents-md` — both are declared
 # `optional = true` and enabled by no feature, while the protocol adapters import
 # them unconditionally under this gate.

@@ -283,7 +283,16 @@ fi
         hook.push_str(r#"
 # 1. Complexity analysis (only staged source files, not entire project)
 # Supports: Rust, Python, TypeScript, JavaScript, Go, C, C++, Lua, PHP, Swift
-STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null | head -20)
+#
+# No `head -N` on this list. A cap on the staged-file list is a cap on the
+# VERDICT, not on the output: the loop below prints "  Complexity check... OK"
+# whether it measured every staged file or only the first twenty, so a commit
+# large enough to exceed the cap was reported green over files the gate never
+# opened. `git diff --cached --name-only` emits sorted paths, so the SAME
+# regions of a tree are the ones dropped every time -- not a random sample.
+# If a bound is ever needed for latency it must print the number of files it
+# declined to measure and exit non-zero; a silent bound must never print OK.
+STAGED_SRC=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null)
 if [ -n "$STAGED_SRC" ]; then
     echo -n "  Complexity check... "
     COMPLEXITY_FAILED=0
@@ -499,6 +508,38 @@ mod complexity_gate_tests {
         assert!(
             !hook.contains("%s\\n' $UNSYNCED_LINT"),
             "the unsynced-file list must be quoted, not word-split"
+        );
+    }
+
+    /// A cap on the staged-file list is a cap on the VERDICT.
+    ///
+    /// The list feeding the complexity gate was built with a trailing
+    /// `| head -20`. Nothing downstream knew the list had been truncated, so a
+    /// commit staging more than twenty source files was measured over the first
+    /// twenty and then printed "  Complexity check... OK" -- a green verdict
+    /// over files the gate never opened. Because `git diff --cached
+    /// --name-only` emits sorted paths, the files dropped were the same regions
+    /// of the tree on every oversized commit, not a random sample.
+    ///
+    /// The neighbouring audit in #1020 fixed a word-splitting loop four lines
+    /// below this cap, which skipped exactly one file with a space in its name,
+    /// and did not notice the cap that was skipping arbitrarily many.
+    ///
+    /// This asserts the absence of ANY `head` on that assignment, not the
+    /// absence of the literal `head -20`: a reinstated `head -50` would be the
+    /// identical defect with a larger constant.
+    #[test]
+    fn the_complexity_gate_does_not_cap_the_staged_file_list() {
+        let cmd = HooksCommand::new(PathBuf::from("/tmp"), PathBuf::from("/tmp"));
+        let hook = cmd.generate_quality_checks();
+        let assignment = hook
+            .lines()
+            .find(|l| l.starts_with("STAGED_SRC="))
+            .expect("the complexity gate must build a staged-file list");
+        assert!(
+            !assignment.contains("head"),
+            "the staged-file list is capped, so the gate prints a verdict over \
+             files it never opened: {assignment}"
         );
     }
 

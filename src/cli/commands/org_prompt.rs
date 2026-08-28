@@ -139,6 +139,10 @@ pub enum PromptCommands {
         context: String,
 
         /// Path to OIP summary YAML file
+        // `-s` is `--summary` here but `--spec` on `prompt implement`, which
+        // declares both. Kept as-is on purpose: this subcommand has no `--spec`
+        // to collide with, and changing an existing short flag would break
+        // callers. See the note on `Implement::summary` (#1083).
         #[arg(short, long)]
         summary: PathBuf,
 
@@ -155,6 +159,10 @@ pub enum PromptCommands {
         ticket: String,
 
         /// Path to OIP summary YAML file (optional)
+        // `-s` is `--summary` here but `--spec` on `prompt implement`, which
+        // declares both. Kept as-is on purpose: this subcommand has no `--spec`
+        // to collide with, and changing an existing short flag would break
+        // callers. See the note on `Implement::summary` (#1083).
         #[arg(short, long)]
         summary: Option<PathBuf>,
 
@@ -171,7 +179,23 @@ pub enum PromptCommands {
         spec: PathBuf,
 
         /// Path to OIP summary YAML file (optional)
-        #[arg(short, long)]
+        // No `short = 's'`: `spec` above already owns it, and clap's debug
+        // assertion ("Short option names must be unique") aborted
+        // `pmat prompt implement` outright in any debug build (#1083). That
+        // assertion sits behind `#[cfg(debug_assertions)]` in clap's
+        // `Command::_build_self`, so release builds compiled it out and 3.32.0
+        // shipped with `--help` listing `-s` twice.
+        //
+        // The short stays on `spec`, because that is what 3.32.0 already does:
+        // `pmat prompt implement -s <file>` satisfies the required `--spec` and
+        // renders that file. Moving `-s` to `summary` would silently redirect
+        // existing invocations instead of leaving them alone.
+        //
+        // `prompt generate` and `prompt ticket` keep `-s` for `--summary`;
+        // neither of them declares a `--spec`, so neither collides. Repointing
+        // those two for consistency would break their callers, so `-s` means
+        // `--spec` here and `--summary` there — deliberate, not an oversight.
+        #[arg(long)]
         summary: Option<PathBuf>,
 
         /// Write output to file instead of stdout
