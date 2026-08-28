@@ -242,6 +242,19 @@ exercises this path.
   broken pmat, only one script failed. Each chapter is now run against that shim first and
   must produce at least one failure, or it is reported VACUOUS. Also fixes a stray space in
   an array subscript (`${SPECIFIC_TESTS[$ch ]}`) that made the lookup always miss.
+
+  Then the new control was run for the release, and reported three of the four CRITICAL
+  chapters VACUOUS. The cause was one inverted conditional in the book's own suites, shared
+  verbatim by three of them: `MOCK_MODE` was left *unset* whenever pmat was found on PATH,
+  and every guard reads `[ "$MOCK_MODE" = false ]`, so **a working, installed pmat selected
+  the mock branch** — ch05 produced 8 mocked passes and zero invocations of pmat. Making
+  them run for real then failed, because the commands were wrong too: positional paths where
+  pmat takes `--path`, `analyze similarity` and `analyze dependencies` (which are `analyze
+  duplicates` and `analyze dag`), three `qdd` profiles pmat has never had, and
+  `--format json > out 2>&1`, which merges the progress line pmat deliberately writes to
+  stderr into the JSON it deliberately writes to stdout. Fixed in `paiml/pmat-book`
+  (`57484db`); all four critical chapters now fail against a broken pmat and pass against a
+  real one, and `make validate-book` is green for a reason.
 - **The pre-commit complexity gate printed a verdict over files it never opened.** The
   staged-file list ended in `| head -20`, so on a 21-file commit the gate reported clean
   over the first twenty.
