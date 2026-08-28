@@ -114,7 +114,7 @@ include!("ticket_score.rs");
 // super::*` now resolves against a different module. Enabling it is a name-
 // resolution repair across ~62 KB of tests, and no one has done it. That is
 // the honest reason, and it replaces a false one.
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "../work_handlers_tests.rs"]
 mod tests;
 

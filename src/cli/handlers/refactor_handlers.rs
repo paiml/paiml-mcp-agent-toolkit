@@ -183,6 +183,6 @@ include!("refactor_handlers_config.rs");
 
 // Tests extracted to refactor_handlers_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "refactor_handlers_tests.rs"]
 mod tests;

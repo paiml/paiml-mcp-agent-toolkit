@@ -1,7 +1,7 @@
 //! #1023 — the `broken-tests` quarantine is 47 declarations nothing checks.
 //!
 //! `broken-tests` is an empty feature that is deliberately in no bundle, so
-//! every `#[cfg(all(test, feature = "broken-tests"))]` item is compiled out of
+//! every `#[cfg(all(test, pmat_broken_tests))]` item is compiled out of
 //! every build anybody runs. That is the intent — they do not compile. The
 //! consequence is that everything *about* those declarations is unchecked too,
 //! including the one thing that is mechanically checkable: whether the
@@ -40,7 +40,7 @@ use std::path::{Path, PathBuf};
 const QUARANTINE_CEILING: usize = 47;
 
 /// The attribute that marks a quarantined item.
-const MARKER: &str = r#"feature = "broken-tests""#;
+const MARKER: &str = "pmat_broken_tests";
 
 fn src_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("src")

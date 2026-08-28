@@ -5,7 +5,7 @@
 use super::*;
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod comprehensive_coverage_tests {
     use super::*;
     use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};

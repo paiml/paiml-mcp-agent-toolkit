@@ -72,6 +72,6 @@ include!("cli_input_impl.rs");
 mod wire_name_delegation_tests;
 
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "../cli_tests.rs"]
 mod tests;

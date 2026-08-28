@@ -95,11 +95,11 @@ include!("vectorized_tools_info.rs");
 
 // Tests split for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "property_tests.rs"]
 mod property_tests;
 

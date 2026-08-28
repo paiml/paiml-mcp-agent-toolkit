@@ -278,7 +278,7 @@ pub fn generate_proof_sarif_rules() -> Vec<serde_json::Value> {
 mod property_tests;
 
 // BROKEN: coverage_tests_part1.rs truncated mid-expression at line 400
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "coverage_tests.rs"]
 mod coverage_tests;
 

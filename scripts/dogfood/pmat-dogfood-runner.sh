@@ -87,11 +87,15 @@ fi
 # overriding the project's own declaration rather than measuring it.
 #
 # `--all-features` is NOT a safe fallback. A crate may declare a feature that is
-# DELIBERATELY non-compiling: pmat has `broken-tests`, a quarantine with 49
-# sites (paiml-mcp-agent-toolkit#1023). Using --all-features there measures the
-# quarantine, not the crate, and yields a permanent RED that says nothing about
-# release readiness — and a gate that is always red is one everybody learns to
-# walk past.
+# DELIBERATELY non-compiling. pmat WAS the example — a `broken-tests` feature
+# with 49 sites — and has since fixed its instance at the source
+# (paiml-mcp-agent-toolkit#1023): the quarantine now hangs off the cfg flag
+# `pmat_broken_tests`, which `--all-features` cannot reach, so `cargo check
+# --all-features --tests` passes there for the first time. The filter below
+# stays because it is a FLEET rule, and the other repos have not moved: using
+# --all-features on such a crate measures the quarantine, not the crate, and
+# yields a permanent RED that says nothing about release readiness — and a gate
+# that is always red is one everybody learns to walk past.
 #
 # So the fallback is every declared feature MINUS known-broken quarantines, and
 # the exclusion is REPORTED. A silent exclusion is how a gate quietly stops

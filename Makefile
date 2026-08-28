@@ -83,22 +83,28 @@ lint-main:
 	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ Main code linting passed!"
 
-# The feature set CI actually runs tests under. NOT `--all-features`: that
-# implies `broken-tests`, a deliberate non-compiling quarantine (#1023), so any
-# target reaching for it can never pass. The split is exactly whether test
-# targets are built, because the quarantine is gated on `cfg(test)`:
+# The feature set CI actually runs tests under.
 #
-#   cargo check --all-features --lib --bins   -> exit 0
-#   cargo check --all-features --tests        -> error: unexpected closing delimiter: `}`
+# This was NOT `--all-features` because `--all-features` implied `broken-tests`,
+# a deliberate non-compiling quarantine, so any target reaching for it could
+# never pass:
 #
-# so `check`, `docs` and the `bench-*` build targets below may keep
-# `--all-features` and do; the `test` targets may not. These three names match
-# the legs in feature-matrix.yml that the unrun-tests ledger consults.
+#   cargo check --all-features --tests   -> error: unexpected closing delimiter: `}`
+#
+# #1023 moved that quarantine to the cfg flag `pmat_broken_tests`, which
+# `--all-features` cannot reach, and the command above now exits 0. The named
+# set stays anyway, for a different and still-valid reason: `--all-features`
+# turns on experimental features no release advertises (`mcp-integration` drags
+# in sysinfo, which outranks our MSRV; `gpu` needs hardware no runner has), so
+# testing under it would measure a configuration nobody installs. These three
+# names match the legs in feature-matrix.yml that the unrun-tests ledger
+# consults.
 TEST_FEATURES := full,mcp-integration,unified-protocol
 
-# Type check all projects
-# Note: --all-features includes "broken-tests" which enables known-broken split test files
-# So we check: (1) lib with all features, (2) all targets without broken-tests
+# Type check all projects: (1) the lib under every feature, (2) every target
+# under the default set. Since #1023 retired the `broken-tests` feature in
+# favour of the unreachable cfg `pmat_broken_tests`, `--all-features --tests`
+# also compiles — the first line no longer has to avoid it.
 check:
 	@echo "✅ Type checking Rust code..."
 	@cargo check --manifest-path Cargo.toml --all-features

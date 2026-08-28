@@ -265,7 +265,7 @@ include!("impl_spec.rs");
 // TEMPORARILY DISABLED: File splitting broke syntax (per spec §4.5 R1, the
 // triple-nested `use super::*` in 4 part files needs explicit-named-import
 // rewrites across ~150 tests; deferred to a separate PR).
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;
 
@@ -996,7 +996,7 @@ mod epic_helpers_tests {
     //! Wave 39 PR7 — coverage for impl_epic.rs pure helpers
     //! (`calculate_epic_summary` + `generate_example_scripts`).
     //! Existing tests for these in qa_work_tests_part1.rs are behind
-    //! `#[cfg(all(test, feature = "broken-tests"))]` (disabled per spec §4.5 R1).
+    //! `#[cfg(all(test, pmat_broken_tests))]` (disabled per spec §4.5 R1).
     use super::*;
 
     // ── calculate_epic_summary ──────────────────────────────────────────────

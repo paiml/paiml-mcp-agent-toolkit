@@ -110,16 +110,19 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          # `broken-tests` is a deliberate non-compiling quarantine — the only
-          # feature exempt, and named here so the exemption is visible.
+          # No feature is exempt any more. `broken-tests` used to be the one
+          # exception — a deliberate non-compiling quarantine that had to be
+          # skipped here by name — and it is no longer a feature at all: #1023
+          # moved it to the cfg flag `pmat_broken_tests`, which `--all-features`
+          # cannot reach. An exemption list that is empty is better than one that
+          # is trusted, so the skip set is gone rather than left holding a name
+          # nothing would match.
           mapfile -t FEATURES < <(
             python3 - <<'PY'
           import re
           body = re.search(r'^\[features\]\n(.*?)(?=^\[)', open('Cargo.toml').read(), re.S | re.M).group(1)
-          skip = {'broken-tests'}
           for m in re.finditer(r'^([a-zA-Z0-9_-]+)\s*=', body, re.M):
-              if m.group(1) not in skip:
-                  print(m.group(1))
+              print(m.group(1))
           PY
           )
           total=${#FEATURES[@]}
@@ -372,8 +375,9 @@ jobs:
               'agents-md':         'clippy state unremeasured since the mcp-integration fix; +247 lib tests never run',
               'agent-daemon':      'clippy state unremeasured since the mcp-integration fix; lib-test delta unmeasured',
 
-              # Deliberate quarantines.
-              'broken-tests':      'deliberate non-compiling quarantine (#1023)',
+              # Deliberate quarantines. `broken-tests` was here too, until #1023
+              # made it the cfg flag `pmat_broken_tests`; it is not a feature any
+              # more, so an entry for it would be stale and this job would say so.
               'red-phase-tests':   'deliberate expected-failure quarantine',
 
               # Cannot run on this runner.

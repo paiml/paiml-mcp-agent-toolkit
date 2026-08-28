@@ -115,22 +115,22 @@ mod baseline_measurement_tests;
 #[path = "target_prioritization_tests.rs"]
 mod target_prioritization_tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "property_tests.rs"]
 mod property_tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "generate_strategy_tests.rs"]
 mod generate_strategy_tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "extract_functions_tests.rs"]
 mod extract_functions_tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "proptest_generation_tests.rs"]
 mod proptest_generation_tests;

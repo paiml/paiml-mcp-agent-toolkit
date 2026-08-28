@@ -22,6 +22,6 @@ pub(crate) use types::SkipReason;
 
 // Tests extracted to satd_detector_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "../satd_detector_tests.rs"]
 mod tests;

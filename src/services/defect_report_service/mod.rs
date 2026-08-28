@@ -47,6 +47,6 @@ include!("defect_report_formatting.rs");
 // Filtering: filter_by_pattern
 include!("defect_report_filtering.rs");
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;

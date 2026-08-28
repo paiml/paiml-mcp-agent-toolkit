@@ -54,6 +54,6 @@ pub use visitor::ComplexityVisitor;
 mod tests;
 
 // BROKEN: complexity_tests_part1.rs truncated at line 500
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "complexity_tests.rs"]
 mod broken_tests;

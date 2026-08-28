@@ -29,6 +29,6 @@ include!("performance_report_types.rs");
 
 // Tests extracted to performance_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "performance_tests.rs"]
 mod tests;

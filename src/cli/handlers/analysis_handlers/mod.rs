@@ -153,9 +153,19 @@ async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
                 "orphan_count": report.orphans.len(),
                 "orphan_lines": report.orphan_lines(),
                 "orphan_tests": report.orphan_tests(),
+                // Quarantined files are their own key, never folded into
+                // `reachable` or `orphan_*`. A consumer that only knows the old
+                // keys keeps reading exactly what it read before; one that wants
+                // the third state has to ask for it by name.
+                "quarantined_count": report.quarantined.len(),
+                "quarantined_lines": report.quarantined_lines(),
+                "quarantined_tests": report.quarantined_tests(),
                 "unresolved_mods": report.unresolved.len(),
                 "summary": report.summary(),
                 "orphans": report.orphans.iter().map(|o| serde_json::json!({
+                    "file": o.path, "lines": o.lines, "tests": o.tests
+                })).collect::<Vec<_>>(),
+                "quarantined": report.quarantined.iter().map(|o| serde_json::json!({
                     "file": o.path, "lines": o.lines, "tests": o.tests
                 })).collect::<Vec<_>>(),
             })
@@ -170,6 +180,25 @@ async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
                 "{}",
                 h_aside(&format!("  … and {} more", report.orphans.len() - 40))
             );
+        }
+        if !report.quarantined.is_empty() {
+            println!(
+                "{}",
+                h_headline(&format!(
+                    "quarantined behind `pmat_broken_tests` — declared, never compiled ({} files, {} #[test] fns)",
+                    report.quarantined.len(),
+                    report.quarantined_tests()
+                ))
+            );
+            for o in report.quarantined.iter().take(40) {
+                println!("{}", h_orphan_row(&o.path, o.lines, o.tests));
+            }
+            if report.quarantined.len() > 40 {
+                println!(
+                    "{}",
+                    h_aside(&format!("  … and {} more", report.quarantined.len() - 40))
+                );
+            }
         }
         for u in report.unresolved.iter().take(10) {
             println!("{}", h_aside(&format!("  unresolved: {u}")));
