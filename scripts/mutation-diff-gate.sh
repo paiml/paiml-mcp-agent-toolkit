@@ -91,8 +91,16 @@ cmd_run() {
     # writes, the `--project .` the gate reads it from, and `--in-place`'s notion
     # of the tree. Running from a subdirectory would clear one `mutants.out` and
     # judge another.
-    cd "$(git rev-parse --show-toplevel)" ||
+    # `cd "$(git ...)"` cannot report this failure: when the substitution
+    # fails the argument is the empty string, and `cd ""` is a bash no-op that
+    # returns 0 — so the `die` was unreachable and the script carried on from
+    # whatever directory it happened to be in. Observed in run 33159844910,
+    # where `git rev-parse` died on dubious ownership and this line still
+    # succeeded. Capture, then check.
+    local root
+    root="$(git rev-parse --show-toplevel)" && [ -n "$root" ] ||
         die "not inside a git repository, so there is no diff to gate"
+    cd "$root" || die "cannot enter the repository root '$root'"
 
     command -v cargo >/dev/null 2>&1 || die "cargo is not on PATH"
     cargo mutants --version >/dev/null 2>&1 ||
