@@ -114,6 +114,25 @@ jobs:
     container:
       image: localhost:5000/sovereign-ci:stable
     timeout-minutes: 300
+    # DECLARE THE SHELL. Measured, not assumed: every one of this lane's first
+    # seven scheduled runs (2026-08-21 .. 2026-08-27, runs 32445403699 ..
+    # 33080877162) died in "Resolve the base to diff against" with
+    #
+    #   /__w/_temp/<id>.sh: 1: set: Illegal option -o pipefail
+    #   ##[error]Process completed with exit code 2
+    #
+    # because a step in a `container:` job on this fleet's runners is launched
+    # as `sh -e {0}` — and /bin/sh in localhost:5000/sovereign-ci:stable is
+    # dash, which has no `-o pipefail`. (Bare-metal steps in the same repo get
+    # `/usr/bin/bash --noprofile --norc -e -o pipefail {0}`, which is why the
+    # script below reads as correct: it is correct, for the shell its author was
+    # looking at.) bash IS present in the image at /usr/bin/bash, so the fix is
+    # to ask for it rather than to strip the bashisms and leave the next step
+    # to rediscover this. Job-level, so a step added later cannot re-enter the
+    # trap by omission. The gate never ran once in those seven nights.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
