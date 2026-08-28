@@ -40,7 +40,7 @@ captured_at_commit = "5794a8350"
 captured_at = "2026-08-19"
 
 [metric.unwrap_calls_src_total]
-baseline = 20384
+baseline = 20373
 unit = "count"
 band = 200
 includes_test_files = true
@@ -193,7 +193,7 @@ comments after code are not counted.
 """
 
 [metric.panic_macro_calls_src]
-baseline = 786
+baseline = 784
 unit = "count"
 band = 20
 includes_test_files = true
