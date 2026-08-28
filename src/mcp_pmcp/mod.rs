@@ -106,6 +106,8 @@ pub mod context_handlers;
 mod dead_code_payload_contract_tests; // analyze_dead_code payload-key contract
 pub mod discovery;
 pub mod handlers;
+#[cfg(feature = "mcp-http")]
+pub mod http_frames; // JSON-RPC frame classification for the streamable-HTTP transport
 pub mod http_server;
 pub mod pdmt_handler;
 pub mod prompt_handlers; // Phase 4: Organizational Intelligence Integration

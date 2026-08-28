@@ -708,15 +708,39 @@ mod coverage_tests {
 
     // ==================== FILE-BASED TESTS (REQUIRE TEMP FILES) ====================
 
+    /// Issue #1090. This test used to read
+    ///
+    /// ```text
+    ///     // Should succeed but with 0 files analyzed
+    ///     assert!(result.is_ok());
+    ///     assert_eq!(json["results"]["total_files"], 0);
+    /// ```
+    ///
+    /// which pinned the defect instead of the behaviour: `pmat analyze
+    /// complexity` refuses a population of nothing with exit 5, and MCP
+    /// answered `"status": "completed"` with an empty violation list for the
+    /// same input. A measurement that was never taken must not arrive as a
+    /// clean one.
     #[tokio::test]
     async fn test_analyze_complexity_with_nonexistent_paths() {
         let paths = vec![PathBuf::from("/tmp/nonexistent_12345.rs")];
-        let result = analyze_complexity(&paths, None, None).await;
+        let error = analyze_complexity(&paths, None, None)
+            .await
+            .expect_err("an empty population must be refused, not reported as completed");
 
-        // Should succeed but with 0 files analyzed
-        assert!(result.is_ok());
-        let json = result.unwrap();
-        assert_eq!(json["results"]["total_files"], 0);
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("no source files were found"),
+            "the refusal must be the CLI's own sentence: {message}"
+        );
+        assert!(
+            message.contains("This is not a clean result"),
+            "the refusal must say the run is not clean: {message}"
+        );
+        assert!(
+            message.contains("/tmp/nonexistent_12345.rs"),
+            "the refusal must name the path it walked: {message}"
+        );
     }
 
     #[tokio::test]
@@ -750,14 +774,27 @@ mod coverage_tests {
         );
     }
 
+    /// Issue #1090, the same defect one tool over. This used to assert
+    /// `result.is_ok()` and `json["context"]["total_files"] == 0` — a walk that
+    /// found nothing, reported as a completed context generation.
     #[tokio::test]
     async fn test_generate_context_with_nonexistent_paths() {
         let paths = vec![PathBuf::from("/tmp/nonexistent_12345.rs")];
-        let result = generate_context(&paths, None, false).await;
+        let error = generate_context(&paths, None, false)
+            .await
+            .expect_err("an empty population must be refused, not reported as completed");
 
-        assert!(result.is_ok());
-        let json = result.unwrap();
-        assert_eq!(json["context"]["total_files"], 0);
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("no source files were found")
+                && message.contains("no context measurement was taken")
+                && message.contains("This is not a clean result"),
+            "the refusal must be the CLI's own sentence: {message}"
+        );
+        assert!(
+            message.contains("/tmp/nonexistent_12345.rs"),
+            "the refusal must name the path it walked: {message}"
+        );
     }
 
     #[tokio::test]

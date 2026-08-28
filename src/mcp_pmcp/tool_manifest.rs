@@ -10,6 +10,14 @@
 //! fresh render — hand-edits are drift. The `manifest_matches_server`
 //! drift-guard test pins this list to the server's actual `.tool(...)`
 //! registrations so the two can never silently diverge.
+//!
+//! There are two places a client can read a tool's description, and they used
+//! to disagree: `tools/list` serves each handler's `metadata()`, while the
+//! packaged `mcp.json` serves this file's. Only names and counts were ever
+//! compared, so the texts drifted for releases —
+//! `manifest_descriptions_match_handler_metadata` now compares the texts too.
+//! `docs/mcp/TOOLS.md` is a third answer, in prose, and
+//! `tools_doc_states_the_live_tool_count` holds its numbers to this list.
 
 /// The 19 tools registered by `SimpleUnifiedServer::run()`, in registration
 /// order, with their catalog descriptions. Source of truth for `mcp.json`.
@@ -18,70 +26,100 @@
 /// [`crate::cli::analyze_mcp_exposure`] decides it with a total match over
 /// `AnalyzeCommands`, and `every_advertised_tool_is_actually_served` fails when
 /// this list does not carry what that registry promises (#1029).
+///
+/// The descriptions are not an editorial second opinion either. Each is the
+/// byte-identical text the tool's own `metadata()` puts on the wire for
+/// `tools/list`, pinned by `manifest_descriptions_match_handler_metadata`.
+/// They diverged once and it was not cosmetic: `quality_proxy` shipped here as
+/// "Proxy a quality-scored analysis request" while the handler advertised
+/// "Proxy a file operation (write/edit/append) through the quality gate", so
+/// an agent that read the packaged `mcp.json` rather than calling `tools/list`
+/// never learned that the tool writes files. `git_operation` and
+/// `scaffold_project` were worse than vague — they named mutations ("Perform a
+/// git operation", "Scaffold a project or agent skeleton") for handlers that
+/// only read (`GitStatusTool`) and only summarise (`ContextSummaryTool`).
 pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     (
         "analyze_complexity",
-        "Analyze cyclomatic and cognitive complexity of code",
+        "Analyze cyclomatic and cognitive complexity for source files.",
     ),
     (
         "analyze_satd",
-        "Detect self-admitted technical debt (TODO/FIXME/HACK)",
+        "Detect self-admitted technical debt (TODO, FIXME, HACK markers) in source code.",
     ),
     (
         "analyze_dead_code",
-        "Detect unreachable functions and modules",
+        "Find unreachable or unused code (functions, types, or modules).",
     ),
     (
         "analyze_dag",
-        "Build the dependency/call graph of a project",
+        "Generate a project dependency graph (call graph, import graph, inheritance, or full dependency DAG).",
     ),
     (
         "analyze_deep_context",
-        "Generate comprehensive annotated project context",
+        "Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.",
     ),
     (
         "analyze_big_o",
-        "Estimate algorithmic complexity of functions",
+        "Classify the Big-O time complexity of functions in the given paths.",
     ),
     (
         "analyze_reachability",
-        "Report tracked .rs files no compilation unit reaches",
+        "Report tracked .rs files that no compilation unit reaches — orphaned modules \
+         that compile to nothing and whose tests never run.",
     ),
     (
         "analyze_hardcoded_paths",
-        "Find machine-specific absolute paths baked into source",
+        "Find machine-specific absolute paths baked into source (a user's home, a nix \
+         store hash, a build root) — correct where they were written, inert everywhere else.",
     ),
     (
         "analyze_vacuous_tests",
-        "Find #[test] functions that cannot fail",
+        "Find #[test] functions that cannot fail — no assertion, an assertion over \
+         constants, or a body that silently returns when a fixture is missing.",
     ),
     (
         "quality_gate",
-        "Run the quality gate (complexity, satd, lint, tests)",
+        "Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, \
+         security, duplicates, coverage, documentation sections, provability) plus a TDG score \
+         against the given paths. Any check a path could not answer is named in `not_measured` \
+         and, with its reason, in `checks.not_run`.",
     ),
-    ("quality_proxy", "Proxy a quality-scored analysis request"),
+    (
+        "quality_proxy",
+        "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
+    ),
     (
         "pdmt_deterministic_todos",
-        "Generate deterministic PDMT todo lists",
+        "Generate deterministic, quality-enforced todo lists from a list of requirements.",
     ),
-    ("git_operation", "Perform a git operation for the workflow"),
+    (
+        "git_operation",
+        "Query git working-tree status for the given repository path.",
+    ),
     (
         "generate_context",
-        "Generate LLM-optimized codebase context",
+        "Generate project context (file tree + optional dependency graph) for LLM/agent consumption.",
     ),
-    ("scaffold_project", "Scaffold a project or agent skeleton"),
-    ("pmat_query_code", "Semantic code search ranked by quality"),
+    (
+        "scaffold_project",
+        "Produce a high-level project summary scaffold for the given paths.",
+    ),
+    (
+        "pmat_query_code",
+        "Search code functions by natural language query with TDG quality filtering. Returns semantically ranked results with complexity, fault patterns, and call graph context.",
+    ),
     (
         "pmat_get_function",
-        "Return a full function with quality metrics",
+        "Get detailed information about a specific function by its ID. Returns full function metadata including source code, quality metrics, and SATD markers.",
     ),
     (
         "pmat_find_similar",
-        "Find functions similar to a target (refactoring)",
+        "Find functions similar to a reference function. Useful for finding related code, potential duplicates, or implementations of similar patterns.",
     ),
     (
         "pmat_index_stats",
-        "Report agent-context index health and statistics",
+        "Get statistics about the code index including function counts, quality distribution, and index health.",
     ),
 ];
 
@@ -242,6 +280,206 @@ mod tests {
         assert_eq!(
             manifest["mcp"]["tool_count"].as_u64(),
             Some(LIVE_MCP_TOOLS.len() as u64)
+        );
+        // Names and count were the whole of this guard, and a name is not what
+        // a client reads to decide whether to call a tool. `quality_proxy`
+        // rendered into mcp.json as "Proxy a quality-scored analysis request"
+        // for releases while the server advertised a file-WRITING proxy, and
+        // this test stayed green throughout because both texts sit under the
+        // same name. Descriptions are payload, so compare the payload.
+        let rendered = manifest["mcp"]["tools"]
+            .as_array()
+            .expect("the rendered manifest carries a `tools` array");
+        assert_eq!(
+            rendered.len(),
+            LIVE_MCP_TOOLS.len(),
+            "render_manifest emitted a different number of tools than it was given"
+        );
+        for (tool, &(name, description)) in rendered.iter().zip(LIVE_MCP_TOOLS) {
+            assert_eq!(
+                tool["name"].as_str(),
+                Some(name),
+                "render_manifest reordered or renamed a tool on its way into mcp.json"
+            );
+            assert_eq!(
+                tool["description"].as_str(),
+                Some(description),
+                "{name}: render_manifest dropped or rewrote the description on its way into \
+                 mcp.json"
+            );
+        }
+    }
+
+    /// `LIVE_MCP_TOOLS` and each handler's `metadata()` are two answers to
+    /// "what is this tool for", and a client sees only one of them at a time:
+    /// `tools/list` serves the handler's text, the packaged `mcp.json` serves
+    /// this const's. Nothing compared the two, so they diverged in the way that
+    /// matters most — the manifest described `git_operation` as "Perform a git
+    /// operation for the workflow" and `scaffold_project` as "Scaffold a
+    /// project or agent skeleton", naming a mutation for a handler that only
+    /// reads (`GitStatusTool`) and one that only summarises
+    /// (`ContextSummaryTool`), while `quality_proxy`'s manifest text did not
+    /// mention that the tool writes files at all.
+    ///
+    /// The list below mirrors the `.tool(...)` registrations in
+    /// `SimpleUnifiedServer::run()` in order, and is zipped positionally, so a
+    /// registration added without a matching const entry fails on the length
+    /// assertion before it can reach a release carrying two descriptions.
+    #[test]
+    fn manifest_descriptions_match_handler_metadata() {
+        use crate::mcp::tools::agent_context_tools::IndexManager;
+        use crate::mcp_pmcp::agent_context_handlers::{
+            PmatFindSimilarHandler, PmatGetFunctionHandler, PmatIndexStatsHandler,
+            PmatQueryCodeHandler,
+        };
+        use crate::mcp_pmcp::analyze_handlers::{
+            AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
+            AnalyzeDeepContextTool, AnalyzeSatdTool, HardcodedPathsTool, ReachabilityTool,
+            VacuousTestsTool,
+        };
+        use crate::mcp_pmcp::context_handlers::{
+            GenerateContextTool, GitTool, ScaffoldProjectTool,
+        };
+        use crate::mcp_pmcp::pdmt_handler::PdmtTool;
+        use crate::mcp_pmcp::quality_handlers::QualityGateTool;
+        use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+        use pmcp::ToolHandler;
+        use std::path::PathBuf;
+        use std::sync::Arc;
+
+        // Cheap: `IndexManager::new` only stores the path, it opens nothing.
+        let index_manager = Arc::new(IndexManager::new(PathBuf::from(".")));
+        let advertised: Vec<Option<pmcp::types::ToolInfo>> = vec![
+            AnalyzeComplexityTool.metadata(),
+            AnalyzeSatdTool.metadata(),
+            AnalyzeDeadCodeTool.metadata(),
+            AnalyzeDagTool.metadata(),
+            AnalyzeDeepContextTool.metadata(),
+            AnalyzeBigOTool.metadata(),
+            ReachabilityTool.metadata(),
+            HardcodedPathsTool.metadata(),
+            VacuousTestsTool.metadata(),
+            QualityGateTool.metadata(),
+            QualityProxyTool.metadata(),
+            PdmtTool::new().metadata(),
+            GitTool.metadata(),
+            GenerateContextTool.metadata(),
+            ScaffoldProjectTool.metadata(),
+            PmatQueryCodeHandler::new(index_manager.clone()).metadata(),
+            PmatGetFunctionHandler::new(index_manager.clone()).metadata(),
+            PmatFindSimilarHandler::new(index_manager.clone()).metadata(),
+            PmatIndexStatsHandler::new(index_manager).metadata(),
+        ];
+        assert_eq!(
+            advertised.len(),
+            LIVE_MCP_TOOLS.len(),
+            "this list must mirror the `.tool(...)` registrations in run() one for one"
+        );
+
+        for (info, &(name, description)) in advertised.into_iter().zip(LIVE_MCP_TOOLS) {
+            let (advertised_name, advertised_description) = match info {
+                Some(tool_info) => (tool_info.name, tool_info.description),
+                // `metadata()` defaults to None, which pmcp turns into an empty
+                // description on the wire — the divergence in its worst form.
+                None => (String::new(), None),
+            };
+            assert_eq!(
+                advertised_name, name,
+                "registration order drifted: LIVE_MCP_TOOLS names `{name}` where the handler in \
+                 the same position advertises `{advertised_name}`"
+            );
+            assert_eq!(
+                advertised_description.as_deref(),
+                Some(description),
+                "{name}: tools/list and mcp.json describe this tool differently. The handler's \
+                 metadata() is what a live client sees; LIVE_MCP_TOOLS is what the packaged \
+                 mcp.json ships. They must be one text — fix the const, then regenerate the \
+                 manifest: cargo test --lib regenerate_mcp_json -- --ignored"
+            );
+        }
+    }
+
+    /// `docs/mcp/TOOLS.md` is the human-readable catalog of this surface, and
+    /// it has now drifted twice, both times over-promising. The revision this
+    /// test was written against claimed "the surface is 16 tools, not 20" in
+    /// one paragraph and "The response lists all 20 tools" in another, while
+    /// the server advertised 19; its table of contents reached 20 by counting
+    /// the four `refactor.*` tools unregistered in EV-0 (#999) and omitting the
+    /// three forensic analyzers added by #1029.
+    ///
+    /// Prose beside a machine-readable const drifts unless something compares
+    /// them, so this compares them — the header count, every "N tools"
+    /// sentence, and the per-section counts in BOTH the table of contents and
+    /// the section headings. Checking only the header would have passed on the
+    /// exact document that shipped two contradictory numbers.
+    ///
+    /// The path is resolved from `CARGO_MANIFEST_DIR`, not the working
+    /// directory: `cargo test` sets CWD to the package root today, but nothing
+    /// guarantees it, and a doc test that silently reads nothing is worse than
+    /// no test. Missing is a hard failure for the same reason — a skipped leg
+    /// is a gate that cannot fail.
+    #[test]
+    fn tools_doc_states_the_live_tool_count() {
+        let doc = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/mcp/TOOLS.md"),
+        )
+        .expect("docs/mcp/TOOLS.md is a tracked file and must be readable");
+        let live = LIVE_MCP_TOOLS.len();
+
+        let header: usize = regex::Regex::new(r"(?m)^\*\*Total Tools\*\*:\s*(\d+)")
+            .expect("static regex must compile")
+            .captures(&doc)
+            .and_then(|c| c.get(1))
+            .and_then(|m| m.as_str().parse::<usize>().ok())
+            .expect("docs/mcp/TOOLS.md must carry a `**Total Tools**: N` header line");
+        assert_eq!(
+            header, live,
+            "docs/mcp/TOOLS.md says {header} tools; the live server advertises {live}"
+        );
+
+        for capture in regex::Regex::new(r"\b(\d+) tools\b")
+            .expect("static regex must compile")
+            .captures_iter(&doc)
+        {
+            let claimed: usize = capture[1]
+                .parse()
+                .expect("the regex captured decimal digits");
+            assert_eq!(
+                claimed, live,
+                "docs/mcp/TOOLS.md claims `{claimed} tools` somewhere in its prose; \
+                 the live server advertises {live}"
+            );
+        }
+
+        // Both inventories of the same sections. They disagreed once, which is
+        // how a table of contents summing to 20 sat above headings that no
+        // longer added up to it.
+        let toc: Vec<usize> = regex::Regex::new(r"(?m)^\d+\.\s*\[[^\]]*\((\d+)\)\]\(#")
+            .expect("static regex must compile")
+            .captures_iter(&doc)
+            .filter_map(|c| c[1].parse::<usize>().ok())
+            .collect();
+        let headings: Vec<usize> = regex::Regex::new(r"(?m)^##\s+.*\((\d+)\)\s*$")
+            .expect("static regex must compile")
+            .captures_iter(&doc)
+            .filter_map(|c| c[1].parse::<usize>().ok())
+            .collect();
+        assert_eq!(
+            toc, headings,
+            "docs/mcp/TOOLS.md's table of contents and its section headings declare different \
+             per-category counts"
+        );
+        assert!(
+            !toc.is_empty(),
+            "docs/mcp/TOOLS.md declares no per-category counts — the table-of-contents check \
+             would be vacuous"
+        );
+        assert_eq!(
+            toc.iter().sum::<usize>(),
+            live,
+            "docs/mcp/TOOLS.md's per-category counts {toc:?} sum to {} but the live server \
+             advertises {live} tools",
+            toc.iter().sum::<usize>()
         );
     }
 

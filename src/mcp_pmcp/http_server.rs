@@ -22,6 +22,17 @@
 //! request → 401" in a ticket while doing the opposite in production, because
 //! nothing would ever be unauthenticated. Requiring the token at construction
 //! makes that state unreachable rather than merely discouraged.
+//!
+//! # It answers bad frames honestly
+//!
+//! The transport config installs
+//! [`http_frames::frame_guard_chain`](crate::mcp_pmcp::http_frames::frame_guard_chain).
+//! Without it this transport had no JSON-RPC error layer at all: pmcp classifies
+//! a frame by shape and never reads the `jsonrpc` member, so a frame declaring
+//! version 1.0 was answered 200 with the full tool listing, and every
+//! client-side fault came back as one parse error with `"id":null`. stdio has
+//! had that layer since #648 and the guard reuses its classifier, so the two
+//! transports answer the same bytes the same way.
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -154,6 +165,51 @@ impl AuthProvider for BearerToken {
     }
 }
 
+/// Largest request body this transport will read, in bytes (4 MiB).
+///
+/// The cap itself is not new — pmcp has always enforced one before any JSON
+/// parsing, which is why the unbounded-body hypothesis about this transport is
+/// false. What is new is that pmat states the number. It used to arrive through
+/// `..Default::default()`, so the only place it existed was pmcp's `limits.rs`:
+/// a limit pmat depends on, cannot name, and would not notice changing under
+/// it. Naming it here also means a pmcp bump cannot silently move it.
+#[cfg(feature = "mcp-http")]
+pub const MAX_REQUEST_BYTES: usize = 4 * 1024 * 1024;
+
+/// The transport configuration, separated from [`serve`] so it can be asserted
+/// on without binding a socket.
+///
+/// Two of its four fields are load-bearing and neither is visible from the
+/// outside until something goes wrong, which is why they are pinned by a test
+/// rather than left to a reading of this function.
+#[cfg(feature = "mcp-http")]
+fn transport_config() -> pmcp::server::streamable_http_server::StreamableHttpServerConfig {
+    pmcp::server::streamable_http_server::StreamableHttpServerConfig {
+        session_id_generator: None, // stateless
+        enable_json_response: true,
+        // Without this pmat has NO JSON-RPC error layer on HTTP. pmcp classifies
+        // a frame by shape and never reads the `jsonrpc` member, so
+        // `{"jsonrpc":"1.0",…,"method":"tools/list"}` was answered 200 with the
+        // full tool listing, and every client-side fault — unknown method,
+        // missing `method`, rejected params on a known method — collapsed into
+        // one parse error with `"id":null`, leaving hosts that correlate by id
+        // waiting out their own timeouts. stdio has had this layer since #648;
+        // the guard reuses its classifier rather than adding a second one.
+        //
+        // It belongs HERE and not in `build_server`: that builder is shared with
+        // stdio precisely so the tool surface cannot drift, and stdio does its
+        // classification lower down, where it still holds the raw line.
+        http_middleware: Some(crate::mcp_pmcp::http_frames::frame_guard_chain()),
+        // Stated rather than inherited. This cap is real — it is enforced before
+        // any JSON parsing — but it arrived through `..Default::default()`, so
+        // the only place the number existed was pmcp's `limits.rs`. A limit pmat
+        // relies on and cannot name is a limit pmat cannot be said to have
+        // chosen.
+        max_request_bytes: MAX_REQUEST_BYTES,
+        ..Default::default()
+    }
+}
+
 /// Start the streamable-HTTP MCP endpoint. Returns the bound address and the
 /// server task.
 ///
@@ -167,20 +223,18 @@ pub async fn serve(
     addr: SocketAddr,
     auth: BearerToken,
 ) -> Result<(SocketAddr, tokio::task::JoinHandle<()>)> {
-    use pmcp::server::streamable_http_server::{StreamableHttpServer, StreamableHttpServerConfig};
+    use pmcp::server::streamable_http_server::StreamableHttpServer;
 
     let provider: Arc<dyn AuthProvider> = Arc::new(auth);
     let server =
         crate::mcp_pmcp::simple_unified_server::SimpleUnifiedServer::build_server(Some(provider))
             .map_err(|e| anyhow::anyhow!("building the MCP tool surface failed: {e}"))?;
 
-    let config = StreamableHttpServerConfig {
-        session_id_generator: None, // stateless
-        enable_json_response: true,
-        ..Default::default()
-    };
-    let http =
-        StreamableHttpServer::with_config(addr, Arc::new(tokio::sync::Mutex::new(server)), config);
+    let http = StreamableHttpServer::with_config(
+        addr,
+        Arc::new(tokio::sync::Mutex::new(server)),
+        transport_config(),
+    );
     http.start()
         .await
         .map_err(|e| anyhow::anyhow!("starting the streamable-HTTP MCP server failed: {e}"))
@@ -277,6 +331,53 @@ mod tests {
         let auth = BearerToken::new("0123456789abcdef0123").expect("token");
         assert!(auth.is_required(), "optional auth is not auth");
         assert_eq!(auth.auth_scheme(), "Bearer");
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(all(test, feature = "mcp-http"))]
+mod transport_config_tests {
+    //! The config literal is where the HTTP transport's protocol behaviour is
+    //! actually decided, and every field in it fails silently: a missing
+    //! middleware chain does not error, it just serves malformed frames as if
+    //! they were fine. So the fields are asserted rather than read.
+    use super::*;
+
+    /// Without a chain here, pmat has NO JSON-RPC error layer on HTTP —
+    /// `..Default::default()` supplies `http_middleware: None`, which is how
+    /// `{"jsonrpc":"1.0",…}` came to be answered 200 with the full tool listing.
+    #[test]
+    fn the_frame_guard_is_installed_and_is_not_an_empty_chain() {
+        let config = transport_config();
+        let chain = config
+            .http_middleware
+            .expect("the HTTP transport must carry the JSON-RPC frame guard");
+        assert!(
+            format!("{chain:?}").contains("middleware_count: 1"),
+            "an empty chain is wired-but-inert; got {chain:?}"
+        );
+    }
+
+    /// Stated, not inherited. The cap is enforced by pmcp before any parsing,
+    /// but until it was written down here the value lived only in pmcp.
+    #[test]
+    fn the_request_body_cap_is_named_by_pmat() {
+        assert_eq!(transport_config().max_request_bytes, MAX_REQUEST_BYTES);
+        assert_eq!(
+            MAX_REQUEST_BYTES,
+            4 * 1024 * 1024,
+            "changing the cap is a deliberate act; say so here"
+        );
+    }
+
+    /// Both of these were already true and both are load-bearing: sessions are
+    /// the pattern MCP 2026-07-28 drops, and SSE responses would defeat the
+    /// JSON body every assertion in this module reads.
+    #[test]
+    fn the_transport_stays_stateless_and_answers_with_json() {
+        let config = transport_config();
+        assert!(config.session_id_generator.is_none());
+        assert!(config.enable_json_response);
     }
 }
 

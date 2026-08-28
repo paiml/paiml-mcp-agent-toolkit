@@ -9,6 +9,211 @@ use crate::services::path_glob::expand_paths_to_source_files;
 #[cfg(test)]
 use crate::services::path_glob::resolve_paths_with_globs;
 
+/// The roots a walk covered, as one display string.
+///
+/// [`crate::cli::ensure_files_were_analyzed`] takes ONE path because every
+/// `pmat analyze` run is rooted at a single `-p`. An MCP `paths` argument is a
+/// list, and naming only `paths[0]` in a refusal would describe a smaller
+/// population than the one that was actually walked.
+fn walked_roots(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Refuse a run that measured nothing, in the sentence the CLI already refuses
+/// with.
+///
+/// Issue #1090. `pmat analyze complexity` pointed at a directory holding only a
+/// README exits 5 with
+///
+/// ```text
+///   no source files were found under <dir>, so no complexity measurement was
+///   taken. This is not a clean result.
+/// ```
+///
+/// and all 19 `analyze` subcommands are held to that by one shared helper,
+/// [`crate::cli::ensure_files_were_analyzed`]. MCP never got the same
+/// treatment: for that same directory, through the same population builder and
+/// the same analyzer, the tools answered `isError: false`,
+/// `"status": "completed"`, `"violations": []`. One analyzer answering one
+/// question two opposite ways is worse than either answer being wrong, because
+/// the MCP one reads as a clean tree and nothing in it says otherwise.
+///
+/// The CLI helper is CALLED here rather than paraphrased. A second spelling of
+/// this sentence — or a second choice of exit code behind it — is exactly how
+/// the two surfaces came apart in the first place.
+fn ensure_mcp_population_was_analyzed(
+    population: &str,
+    measurement: &str,
+    paths: &[PathBuf],
+    files_analyzed: usize,
+) -> Result<()> {
+    let roots = walked_roots(paths);
+    crate::cli::ensure_files_were_analyzed(
+        population,
+        measurement,
+        Path::new(&roots),
+        files_analyzed,
+    )
+}
+
+/// Refuse a run whose population WAS found and was then lost, file by file, to
+/// analyzer failures.
+///
+/// [`ensure_mcp_population_was_analyzed`]'s sentence would be false here —
+/// files were found — so this one says how many were found and why the first
+/// one was dropped, and keeps the two clauses that carry the verdict word for
+/// word: no measurement was taken, and that is not a clean result.
+///
+/// Without it the all-failed case walks straight past the empty-population
+/// guard into the same `"status": "completed"` payload. That is the same defect
+/// one level down: `Err(_) => continue` applied to every candidate leaves a
+/// zero that reads exactly like a clean tree.
+fn ensure_some_candidate_was_measured(
+    measurement: &str,
+    paths: &[PathBuf],
+    discovered: usize,
+    files_analyzed: usize,
+    first_failure: Option<&str>,
+) -> Result<()> {
+    if files_analyzed > 0 {
+        return Ok(());
+    }
+    let cause =
+        first_failure.map_or_else(String::new, |reason| format!(" First failure: {reason}"));
+    // The exit code the CLI declares for an unmeasured analysis, chosen here
+    // for the same reason it was chosen there: this is neither a caller-input
+    // error nor a crash, and the two must stay distinguishable.
+    Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+        "all {discovered} file(s) found under {} failed to analyze, so no {measurement} \
+         measurement was taken. This is not a clean result.{cause}",
+        walked_roots(paths)
+    )))
+}
+
+/// The candidate files an analyzer refused, for the `files_not_analyzed`
+/// disclosure.
+///
+/// `Err(_) => continue` was the handling on both of this module's per-file
+/// walks: the file left the denominator and nothing said so, which makes "the
+/// tree is clean" and "nothing in the tree could be read" the same payload.
+/// [`analyze_dead_code`] already publishes this shape as `paths_not_analyzed`
+/// and `analyze_satd` as `files_not_read`; the names here are the ones
+/// `analyze complexity --format json` uses, on purpose, because a key-name
+/// split reads as a measurement disagreement (#1058) and is worse than either
+/// number being wrong.
+#[derive(Default)]
+struct UnmeasuredFiles {
+    /// `{reason: {extension: count}}`. What "not analyzed" MEANS differs by
+    /// walk, so the bucket names belong to the caller; the ones a payload
+    /// promises are seeded by [`Self::with_buckets`] so a bucket that caught
+    /// nothing this run is an empty map rather than a missing key — a consumer
+    /// forced to read "absent" as "zero" is being asked to guess.
+    by_reason: std::collections::BTreeMap<&'static str, std::collections::BTreeMap<String, usize>>,
+    /// Buckets the CLI publishes that this surface cannot fill. They serialise
+    /// as `null`, never `{}`: an empty map is a positive claim that nothing
+    /// landed there, and this walk has no way to know that.
+    unobservable: Vec<&'static str>,
+    /// The files themselves, named, carrying the analyzer's own message. A
+    /// count alone cannot answer "which file, and would fixing it change the
+    /// verdict?".
+    files: Vec<Value>,
+}
+
+impl UnmeasuredFiles {
+    fn with_buckets(buckets: &[&'static str]) -> Self {
+        Self {
+            by_reason: buckets
+                .iter()
+                .map(|bucket| (*bucket, std::collections::BTreeMap::new()))
+                .collect(),
+            ..Default::default()
+        }
+    }
+
+    /// Declare a bucket the CLI publishes and this walk cannot observe, so that
+    /// one consumer parser reading both transports can tell "not counted here"
+    /// from "counted, and empty".
+    fn with_unobservable(mut self, bucket: &'static str) -> Self {
+        self.unobservable.push(bucket);
+        self
+    }
+
+    fn record(&mut self, bucket: &'static str, path: &Path, error: &anyhow::Error) {
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("(none)")
+            .to_string();
+        *self
+            .by_reason
+            .entry(bucket)
+            .or_default()
+            .entry(extension)
+            .or_default() += 1;
+        self.files.push(json!({
+            "path": path.display().to_string(),
+            // `{:#}` walks the whole anyhow chain: the outer context names the
+            // file, the inner cause says what went wrong with it. `{}` alone
+            // would publish only the outer half.
+            "reason": format!("{error:#}"),
+        }));
+    }
+
+    fn total(&self) -> usize {
+        self.files.len()
+    }
+
+    /// Why the first dropped file was dropped, for the refusal message.
+    fn first_failure(&self) -> Option<&str> {
+        self.files.first().and_then(|file| file["reason"].as_str())
+    }
+
+    fn to_json(&self) -> Value {
+        let mut object = serde_json::Map::new();
+        object.insert("total".to_string(), json!(self.total()));
+        for (bucket, counts) in &self.by_reason {
+            object.insert((*bucket).to_string(), json!(counts));
+        }
+        for bucket in &self.unobservable {
+            object.insert((*bucket).to_string(), Value::Null);
+        }
+        object.insert("files".to_string(), json!(self.files));
+        Value::Object(object)
+    }
+}
+
+/// Which `files_not_analyzed` bucket a failed complexity candidate belongs in,
+/// under the CLI's names for those buckets.
+///
+/// The predicate is `get_file_extensions(None)` — the SAME list
+/// `expand_paths_to_complexity_files` admits directory entries with — so the
+/// walk and the disclosure cannot come to disagree about what "supported"
+/// means, which is the whole of what #1058 was. An explicitly named file
+/// bypasses that list (naming a file is an instruction, not a search), and that
+/// is the only way a candidate pmat has no complexity analyzer for reaches the
+/// loop at all.
+fn complexity_skip_bucket(path: &Path) -> &'static str {
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default();
+    // Bound as `Vec<&str>`, not left at its declared `Vec<&'static str>`:
+    // `extension` borrows the path, so `contains` against the static list would
+    // demand a `&'static str` the caller cannot produce. `Vec<T>` is covariant
+    // in `T`, so naming the shorter lifetime here makes the comparison typecheck
+    // without an `.iter().any(..)` hand-roll.
+    let admitted: Vec<&str> = crate::cli::analysis_utilities::get_file_extensions(None);
+    if admitted.contains(&extension) {
+        "supported_but_unmeasured"
+    } else {
+        "no_complexity_analyzer"
+    }
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(
     paths: &[PathBuf],
@@ -35,11 +240,24 @@ pub async fn analyze_complexity(
     // one is derived from the CLI's own list.
     let files = crate::services::path_glob::expand_paths_to_complexity_files(paths);
 
+    // Issue #1090. The walk found nothing, so nothing was measured. Placed
+    // BEFORE the loop, so the refusal describes the walk rather than the
+    // analyzer, and so the empty case cannot reach the payload at all.
+    ensure_mcp_population_was_analyzed("source files", "complexity", paths, files.len())?;
+
     // Analyze all expanded files
     let mut all_functions = Vec::new();
-    let mut total_files = 0;
+    let mut total_files = 0usize;
     let mut total_complexity = 0u64;
     let mut violations = Vec::new();
+    // The CLI's three `files_not_analyzed` buckets, minus the one this surface
+    // cannot see: a file the project's ignore rules excluded never reaches the
+    // candidate list, because `expand_paths_to_complexity_files` walks through
+    // `ProjectFileDiscovery`, which drops it before this function is handed
+    // anything to count. Declared `null` rather than omitted or zeroed.
+    let mut not_analyzed =
+        UnmeasuredFiles::with_buckets(&["no_complexity_analyzer", "supported_but_unmeasured"])
+            .with_unobservable("excluded_by_ignore_rules");
 
     for path in &files {
         match analyze_file_complexity_uncached(path, None).await {
@@ -71,9 +289,26 @@ pub async fn analyze_complexity(
                     }));
                 }
             }
-            Err(_) => continue, // Skip files that fail to analyze
+            // NAMED, not skipped. `Err(_) => continue` took the file out of
+            // `total_files` with nothing said anywhere in the payload, so a
+            // candidate the analyzer could not read was reported both as absent
+            // from the walk and as having no complexity — the "not measured
+            // rendered as clean" shape #1035 fixed one level down in
+            // `analyze_satd`, still live here.
+            Err(error) => not_analyzed.record(complexity_skip_bucket(path), path, &error),
         }
     }
+
+    // …and the other half of the same rule. A population that was found and
+    // that every analyzer then refused is not a clean result either, however
+    // many files the walk turned up.
+    ensure_some_candidate_was_measured(
+        "complexity",
+        paths,
+        files.len(),
+        total_files,
+        not_analyzed.first_failure(),
+    )?;
 
     // Sort by complexity and apply top_files limit
     let mut sorted_functions = all_functions;
@@ -86,11 +321,12 @@ pub async fn analyze_complexity(
         sorted_functions.truncate(limit);
     }
 
-    let average_complexity = if total_files > 0 {
-        total_complexity / total_files as u64
-    } else {
-        0
-    };
+    // `total_files` is > 0 from here on — the guard above returns otherwise —
+    // so the `else { 0 }` arm this replaced is gone rather than left
+    // unreachable. It was an average over an empty population, which is not 0
+    // but undefined; publishing it as 0 is the same absence-rendered-as-
+    // measurement the guards exist to stop.
+    let average_complexity = total_complexity / total_files as u64;
 
     Ok(json!({
         "status": "completed",
@@ -102,6 +338,16 @@ pub async fn analyze_complexity(
             // split reads as a measurement disagreement, which is worse than
             // either number being wrong.
             "files_analyzed": total_files,
+            // Issue #1090: the walk's count, under the CLI's spelling. It was
+            // absent entirely, so `total_files` was the only number in the
+            // payload and a consumer had no denominator to read it against —
+            // the same gap #1050 P3 closed on the CLI side.
+            "files_discovered": files.len(),
+            // …and what the gap between the two is made of, in the object and
+            // under the name `analyze complexity --format json` publishes it
+            // with. A second spelling here would read as the two transports
+            // disagreeing about a measurement they agree on exactly (#1058).
+            "files_not_analyzed": not_analyzed.to_json(),
             "total_complexity": total_complexity,
             "average_complexity": average_complexity,
             "violations": violations,
@@ -1128,6 +1374,21 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
         file_metrics.insert(file.clone(), (afferent, efferent, instability));
     }
 
+    // Issue #1090, the same defect this file's `analyze_complexity` carried.
+    // `Coupling analysis completed (0 files analyzed)` was a SUCCESS payload
+    // over a population of nothing: the directory the CLI refuses with exit 5
+    // came back `"status": "completed"` with an empty `couplings` list beside a
+    // `project_metrics` block of zeros — averages over an empty set, which are
+    // undefined rather than 0. The population named is the one the numbers are
+    // actually drawn from: every entry here comes from an AST context, so a
+    // file the deep-context pipeline could not parse is not in it.
+    ensure_mcp_population_was_analyzed(
+        "source files pmat could parse",
+        "coupling",
+        std::slice::from_ref(project_path),
+        file_metrics.len(),
+    )?;
+
     // Filter by threshold and build coupling entries
     let couplings: Vec<Value> = file_metrics
         .iter()
@@ -1143,17 +1404,15 @@ pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Resu
         })
         .collect();
 
-    // Calculate project-level metrics
-    let avg_afferent = if !file_metrics.is_empty() {
-        file_metrics.values().map(|(a, _, _)| *a).sum::<usize>() as f64 / file_metrics.len() as f64
-    } else {
-        0.0
-    };
-    let avg_efferent = if !file_metrics.is_empty() {
-        file_metrics.values().map(|(_, e, _)| *e).sum::<usize>() as f64 / file_metrics.len() as f64
-    } else {
-        0.0
-    };
+    // Calculate project-level metrics. `file_metrics` is non-empty from the
+    // guard above, so the `else { 0.0 }` arms these two had are gone rather
+    // than left unreachable: a mean over an empty set is undefined, and the 0.0
+    // that stood in for it was indistinguishable from a project whose files
+    // genuinely import nothing.
+    let avg_afferent =
+        file_metrics.values().map(|(a, _, _)| *a).sum::<usize>() as f64 / file_metrics.len() as f64;
+    let avg_efferent =
+        file_metrics.values().map(|(_, e, _)| *e).sum::<usize>() as f64 / file_metrics.len() as f64;
     let max_afferent = file_metrics.values().map(|(a, _, _)| *a).max().unwrap_or(0);
     let max_efferent = file_metrics.values().map(|(_, e, _)| *e).max().unwrap_or(0);
 
@@ -2156,5 +2415,183 @@ mod transport_parity_1058_tests {
             results["files_analyzed"], results["analyzed_files"],
             "the retained legacy key must not drift from the canonical one: {mcp}"
         );
+    }
+}
+
+#[cfg(test)]
+mod unmeasured_population_tests {
+    //! Issue #1090. At HEAD the CLI refuses an empty population from one shared
+    //! helper — 15 of the 19 `pmat analyze` subcommands exit 5, the other four
+    //! exit 1 — while MCP, over the SAME population builder and the SAME
+    //! analyzer, answered `isError: false`, `"status": "completed"`,
+    //! `"violations": []`. These pin the refusal and the census that replaced
+    //! `Err(_) => continue`.
+    use super::*;
+
+    /// A `.rs` file whose bytes are not UTF-8.
+    ///
+    /// `analyze_file_complexity_uncached` reads the file with
+    /// `std::fs::read_to_string` before it dispatches, so this is a candidate
+    /// that is genuinely admitted by the walk and genuinely fails the
+    /// analyzer — the case `Err(_) => continue` used to erase.
+    fn write_undecodable(dir: &std::path::Path, name: &str) -> PathBuf {
+        let path = dir.join(name);
+        std::fs::write(&path, [0xffu8, 0xfe, 0x00, 0xed]).expect("write undecodable fixture");
+        path
+    }
+
+    /// The brief's own fixture: a directory holding nothing the analyzer
+    /// measures. The CLI exits 5 with a named refusal; this used to be
+    /// `"status": "completed"` with an empty violation list.
+    #[tokio::test]
+    async fn a_population_of_zero_is_refused_not_completed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("README.md"), "# nothing to measure\n")
+            .expect("write README");
+
+        let paths = vec![dir.path().to_path_buf()];
+        let error = analyze_complexity(&paths, None, None)
+            .await
+            .expect_err("an empty population must be refused, not reported as completed");
+
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("no source files were found"),
+            "the refusal must be the CLI's own sentence: {message}"
+        );
+        assert!(
+            message.contains("no complexity measurement was taken"),
+            "the refusal must name the measurement that did not happen: {message}"
+        );
+        assert!(
+            message.contains("This is not a clean result"),
+            "the refusal must say the run is not clean: {message}"
+        );
+        assert!(
+            message.contains(&dir.path().display().to_string()),
+            "the refusal must name the path it walked: {message}"
+        );
+        // Exit code 5, DECLARED, exactly as the CLI declares it for this
+        // refusal — the two surfaces must not classify one failure two ways.
+        assert_eq!(
+            crate::cli_exit::code_for(&error),
+            crate::cli_exit::ExitCode::AnalysisError,
+            "the refusal must carry the CLI's own exit code: {message}"
+        );
+    }
+
+    /// The other end of the same rule: files WERE found, and every one of them
+    /// failed. `Err(_) => continue` made that indistinguishable from a tree
+    /// with nothing in it, and both from a clean one.
+    #[tokio::test]
+    async fn a_population_that_all_failed_is_refused_too() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let broken = write_undecodable(dir.path(), "broken.rs");
+
+        let error = analyze_complexity(std::slice::from_ref(&broken), None, None)
+            .await
+            .expect_err("an all-failed population must be refused");
+
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("all 1 file(s) found under"),
+            "the refusal must say how many files were found: {message}"
+        );
+        assert!(
+            message.contains("no complexity measurement was taken")
+                && message.contains("This is not a clean result"),
+            "the verdict clauses must match the empty-population refusal: {message}"
+        );
+        assert!(
+            message.contains("First failure:"),
+            "the refusal must say why the first candidate was dropped: {message}"
+        );
+    }
+
+    /// A file that fails is NAMED and counted, and the payload carries the
+    /// denominator under the spellings `analyze complexity --format json` uses.
+    #[tokio::test]
+    async fn a_dropped_file_is_named_in_the_census() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let good = dir.path().join("good.rs");
+        std::fs::write(&good, "pub fn measurable() -> u8 { 1 }\n").expect("write good.rs");
+        let broken = write_undecodable(dir.path(), "broken.rs");
+
+        let json = analyze_complexity(&[good, broken.clone()], None, None)
+            .await
+            .expect("one measurable file is a measurement");
+        let results = &json["results"];
+
+        assert_eq!(
+            results["files_analyzed"].as_u64(),
+            Some(1),
+            "one of the two candidates was measurable: {json}"
+        );
+        assert_eq!(
+            results["files_discovered"].as_u64(),
+            Some(2),
+            "the walk's count must be published, not the analyzer's: {json}"
+        );
+        assert_eq!(
+            results["total_files"], results["files_analyzed"],
+            "the retained legacy key must not drift from the canonical one: {json}"
+        );
+
+        let not_analyzed = &results["files_not_analyzed"];
+        assert_eq!(
+            not_analyzed["total"].as_u64(),
+            Some(1),
+            "the dropped file must be counted: {json}"
+        );
+        assert_eq!(
+            not_analyzed["supported_but_unmeasured"]["rs"].as_u64(),
+            Some(1),
+            "a `.rs` the analyzer refused is a supported file that yielded no \
+             measurement, in the CLI's own bucket: {json}"
+        );
+        let named = not_analyzed["files"]
+            .as_array()
+            .expect("files_not_analyzed.files is an array");
+        assert_eq!(named.len(), 1, "{json}");
+        let broken_display = broken.display().to_string();
+        assert_eq!(
+            named[0]["path"].as_str(),
+            Some(broken_display.as_str()),
+            "the dropped file must be named, not only counted: {json}"
+        );
+        assert!(
+            named[0]["reason"].as_str().is_some_and(|r| !r.is_empty()),
+            "the drop must carry the analyzer's own message: {json}"
+        );
+        // The CLI's third bucket, which this walk cannot fill: discovery drops
+        // ignored files before the candidate list exists. `null`, because `{}`
+        // would claim nothing was excluded.
+        assert!(
+            not_analyzed["excluded_by_ignore_rules"].is_null(),
+            "a bucket this surface cannot observe must be null, not empty: {json}"
+        );
+    }
+
+    /// The sibling the sweep found: `Coupling analysis completed (0 files
+    /// analyzed)` was a success payload beside a `project_metrics` block of
+    /// zeros — means over an empty set, which are undefined, not 0.
+    ///
+    /// The assertion is on the REFUSAL and not on its wording: the deep-context
+    /// pipeline this tool runs may itself fail on such a tree, and either
+    /// outcome is a refusal. What must not happen — what did happen — is a
+    /// success payload whose every number is zero.
+    #[tokio::test]
+    async fn coupling_refuses_a_population_of_zero() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("README.md"), "# nothing to parse\n")
+            .expect("write README");
+
+        let refusal = match analyze_coupling(&[dir.path().to_path_buf()], None).await {
+            Ok(json) => Err(format!(
+                "coupling reported success over a tree it parsed nothing in: {json}"
+            )),
+            Err(error) => Ok(format!("{error:#}")),
+        };
+        refusal.expect("an unmeasured coupling run must not report completion");
     }
 }

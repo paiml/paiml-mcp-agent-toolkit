@@ -3,11 +3,29 @@ impl QualityProxyService {
         &self,
         content: &str,
         file_path: &str,
-        extension: &str,
+        language: Language,
         config: &QualityConfig,
     ) -> Result<(String, Vec<HashMap<String, serde_json::Value>>)> {
-        if extension != "rs" {
-            return Ok((content.to_string(), Vec::new()));
+        if language != Language::Rust {
+            // The guard itself is correct and stays: rustfmt is a Rust
+            // formatter and the debt-marker patterns below are anchored to
+            // `//`, so there is genuinely nothing here to apply to a Python or
+            // shell file. What was wrong is that the skip was *silent* — it
+            // returned an empty plan, which reaches the caller as
+            // `refactoring_applied: false` with no plan, the same shape as
+            // "the content was already fine". Record the reason so the absence
+            // carries a cause rather than reading as a verdict about the code.
+            let mut step = HashMap::new();
+            step.insert("action".to_string(), serde_json::json!("skipped"));
+            step.insert(
+                "reason".to_string(),
+                serde_json::json!("no auto-fix is implemented for this language"),
+            );
+            step.insert(
+                "language".to_string(),
+                serde_json::json!(language_label(language)),
+            );
+            return Ok((content.to_string(), vec![step]));
         }
 
         info!("Applying auto-fix refactoring to {}", file_path);

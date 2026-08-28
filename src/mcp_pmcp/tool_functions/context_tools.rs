@@ -53,6 +53,14 @@ pub async fn generate_context(
     // yielding instant empty responses for directory inputs (D82).
     let mut files = expand_paths_to_source_files(paths);
 
+    // Issue #1090. A walk that found nothing produced
+    // `{"status":"completed","context":{"files":[],"total_files":0}}` — absence
+    // rendered as success, over the very directory `pmat analyze complexity`
+    // refuses with exit 5. Same sentence, same exit code; see
+    // `ensure_mcp_population_was_analyzed`.
+    ensure_mcp_population_was_analyzed("source files", "context", paths, files.len())?;
+    let discovered = files.len();
+
     // `max_depth` and `include_dependencies` were declared as `_max_depth` /
     // `_include_dependencies` and never read, so the two documented knobs did
     // nothing at all: max_depth 1, 2 and 99 over a four-level tree returned
@@ -60,10 +68,29 @@ pub async fn generate_context(
     // A parameter the schema advertises must either act or not be advertised.
     if let Some(depth) = max_depth {
         files.retain(|file| within_max_depth(paths, file, depth));
+        // A depth that excluded EVERY file is the caller narrowing the request,
+        // not an empty tree, so it gets its own sentence: "no source files were
+        // found under …" would be false here and would send the caller to look
+        // at the wrong thing. It is still a refusal — nothing was measured.
+        if files.is_empty() {
+            return Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+                "max_depth {depth} excluded all {discovered} source file(s) found under {}, \
+                 so no context measurement was taken. This is not a clean result.",
+                walked_roots(paths)
+            )));
+        }
     }
 
     let mut all_files = Vec::new();
     let mut all_dependencies: Vec<String> = Vec::new();
+    // The same disclosure `analyze_complexity` publishes, for the same reason:
+    // `Err(_) => continue` below took the file out of `total_files` and said so
+    // nowhere, so a tree whose files all failed to parse and a tree with
+    // nothing in it produced the identical `total_files: 0` under
+    // `"status": "completed"`. One bucket, because every candidate here was
+    // admitted by this walk's own extension list — a failure is a supported
+    // file that yielded no measurement.
+    let mut not_analyzed = UnmeasuredFiles::with_buckets(&["supported_but_unmeasured"]);
 
     for path in &files {
         // Analyze each file
@@ -100,9 +127,20 @@ pub async fn generate_context(
                     }).collect::<Vec<_>>(),
                 }));
             }
-            Err(_) => continue,
+            // NAMED, not skipped — see `UnmeasuredFiles`.
+            Err(error) => not_analyzed.record("supported_but_unmeasured", path, &error),
         }
     }
+
+    // A population that was found and that the parser then refused in full is
+    // not a clean result either.
+    ensure_some_candidate_was_measured(
+        "context",
+        paths,
+        files.len(),
+        all_files.len(),
+        not_analyzed.first_failure(),
+    )?;
 
     Ok(json!({
         "status": "completed",
@@ -111,6 +149,19 @@ pub async fn generate_context(
             "files": all_files,
             "dependencies": all_dependencies,
             "total_files": all_files.len(),
+            // Issue #1090 / #1058: the denominator, under the spellings
+            // `analyze complexity --format json` and this module's other
+            // analysis tools already use, so one consumer parser covers every
+            // surface. `total_files` above is retained because clients read it;
+            // it is `files_analyzed` by another name and always equal to it.
+            "files_analyzed": all_files.len(),
+            "files_discovered": files.len(),
+            "files_not_analyzed": not_analyzed.to_json(),
+            // What `max_depth` removed before the parser ever saw it — the
+            // caller's own narrowing, reported separately from a failure. It is
+            // `null` when no depth was supplied, because a 0 there would claim
+            // a filter ran and excluded nothing.
+            "files_excluded_by_max_depth": max_depth.map(|_| discovered - files.len()),
         }
     }))
 }
@@ -252,12 +303,30 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
     // Analyze project
     let context = analyzer.analyze_project(project_path).await?;
 
+    // The two populations this payload mixes, named once so neither can be
+    // read for the other: what the walk SAW, and what was actually parsed.
+    let files_discovered = context.file_tree.total_files;
+    let files_analyzed = context.analyses.ast_contexts.len();
+
+    // Issue #1090. Every number this tool reports is summed over
+    // `ast_contexts`, so an empty one makes `total_functions: 0` and
+    // `total_imports: 0` the answer for a tree in which nothing could be
+    // parsed — while the payload's other number, `total_files`, comes from the
+    // FILE TREE, which counts a README. A numerator drawn from one population
+    // beside a denominator drawn from another is precisely how "0 functions"
+    // comes to read as a measurement rather than as a miss.
+    ensure_mcp_population_was_analyzed(
+        "source files pmat could parse",
+        "context",
+        std::slice::from_ref(project_path),
+        files_analyzed,
+    )?;
+
     // Build analyses based on requested types (or all if none specified)
     let requested_all = analysis_types.is_empty();
     let mut analyses = serde_json::Map::new();
 
     if requested_all || analysis_types.iter().any(|t| t == "structure") {
-        let file_count = context.file_tree.total_files;
         let function_count: usize = context
             .analyses
             .ast_contexts
@@ -275,8 +344,16 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
         analyses.insert(
             "structure".to_string(),
             json!({
-                "total_files": file_count,
+                "total_files": files_discovered,
                 "total_functions": function_count,
+                // Issue #1090 / #1058. `total_files` is the FILE TREE's count —
+                // every file in scope, README included — while
+                // `total_functions` is summed over the files that actually
+                // parsed. Naming both populations stops the pair reading as
+                // one, in the spellings the CLI and this module's other
+                // analysis tools use.
+                "files_discovered": files_discovered,
+                "files_analyzed": files_analyzed,
             }),
         );
     }
@@ -304,6 +381,10 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
             "dependencies".to_string(),
             json!({
                 "total_imports": import_count,
+                // The denominator for the count above, for the same reason it
+                // is given for `total_functions`: this sum is over parsed
+                // files, not over the tree.
+                "files_analyzed": files_analyzed,
             }),
         );
     }
@@ -312,7 +393,11 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
         "status": "completed",
         "message": "Context analysis completed using DeepContextAnalyzer",
         "analyses": analyses,
-        "context": format!("Analyzed {} files", context.file_tree.total_files),
+        // "Analyzed N files" claimed the whole walk had been analysed, using
+        // the file tree's count — the population the analyses above are NOT
+        // computed over. Both numbers, so the sentence is true of whichever one
+        // the reader takes it for.
+        "context": format!("Analyzed {files_analyzed} of {files_discovered} file(s) walked"),
     }))
 }
 
@@ -526,5 +611,141 @@ mod context_summary_level_tests {
             err.to_string().contains("Unsupported level"),
             "got: {err}"
         );
+    }
+}
+
+#[cfg(test)]
+mod unmeasured_context_population_tests {
+    //! Issue #1090. `generate_context` and `analyze_context` reported
+    //! `"status": "completed"` over populations they had measured nothing in,
+    //! for directories `pmat analyze complexity` refuses with exit 5. The
+    //! refusal is the CLI's own sentence; see
+    //! `ensure_mcp_population_was_analyzed`.
+    use super::*;
+
+    /// The brief's fixture: a directory holding nothing the walk admits.
+    /// `{"status":"completed","context":{"files":[],"total_files":0}}` was the
+    /// old answer — absence rendered as success.
+    #[tokio::test]
+    async fn generate_context_refuses_a_population_of_zero() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("README.md"), "# nothing to parse\n")
+            .expect("write README");
+
+        let error = generate_context(&[dir.path().to_path_buf()], None, false)
+            .await
+            .expect_err("an empty population must be refused, not reported as completed");
+
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("no source files were found"),
+            "the refusal must be the CLI's own sentence: {message}"
+        );
+        assert!(
+            message.contains("no context measurement was taken")
+                && message.contains("This is not a clean result"),
+            "the refusal must name the measurement and the verdict: {message}"
+        );
+        assert_eq!(
+            crate::cli_exit::code_for(&error),
+            crate::cli_exit::ExitCode::AnalysisError,
+            "the refusal must carry the CLI's own exit code: {message}"
+        );
+    }
+
+    /// A `max_depth` that excludes every file found is still a run that
+    /// measured nothing — but it is the CALLER's narrowing, so it must not be
+    /// reported as an empty tree.
+    #[tokio::test]
+    async fn a_max_depth_that_excludes_everything_is_refused_by_its_own_name() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("a/b")).expect("mkdir");
+        std::fs::write(dir.path().join("a/b/deep.rs"), "pub fn deep() {}\n").expect("write");
+
+        let error = generate_context(&[dir.path().to_path_buf()], Some(1), false)
+            .await
+            .expect_err("a depth filter that empties the population must be refused");
+
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("max_depth 1 excluded all 1 source file(s)"),
+            "the refusal must name the filter and what it removed: {message}"
+        );
+        assert!(
+            !message.contains("no source files were found"),
+            "the walk DID find a file; blaming the walk sends the caller to the \
+             wrong place: {message}"
+        );
+        assert!(
+            message.contains("This is not a clean result"),
+            "it is still a run that measured nothing: {message}"
+        );
+    }
+
+    /// A measured run publishes its denominator under the spellings the CLI and
+    /// the other MCP analysis tools use, so one consumer parser covers every
+    /// surface (#1058). `total_files` used to be the only number in the
+    /// payload.
+    #[tokio::test]
+    async fn a_measured_run_publishes_its_denominator() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("lib.rs"), "pub fn measurable() {}\n").expect("write");
+
+        let json = generate_context(&[dir.path().to_path_buf()], None, false)
+            .await
+            .expect("one measurable file is a measurement");
+        let context = &json["context"];
+
+        assert_eq!(
+            context["files_analyzed"], context["total_files"],
+            "the retained legacy key must not drift from the canonical one: {json}"
+        );
+        assert_eq!(
+            context["files_discovered"].as_u64(),
+            Some(1),
+            "the walk's count must be published: {json}"
+        );
+        assert_eq!(
+            context["files_not_analyzed"]["total"].as_u64(),
+            Some(0),
+            "nothing was dropped here, and that is a claim the payload must \
+             make rather than leave to be assumed: {json}"
+        );
+        assert!(
+            context["files_not_analyzed"]["files"]
+                .as_array()
+                .is_some_and(|files| files.is_empty()),
+            "the named-drop list must exist and be empty: {json}"
+        );
+        // No depth was supplied, so nothing was narrowed — and 0 there would
+        // claim a filter ran and excluded nothing.
+        assert!(
+            context["files_excluded_by_max_depth"].is_null(),
+            "an unrequested filter must report null, not 0: {json}"
+        );
+    }
+
+    /// `analyze_context` sums `total_functions` and `total_imports` over
+    /// `ast_contexts`, so an empty one made "0 functions" the answer for a tree
+    /// nothing was parsed in — beside a `total_files` drawn from the FILE TREE,
+    /// which counts a README.
+    ///
+    /// The assertion is on the REFUSAL and not on its wording: the deep-context
+    /// pipeline may itself fail on such a tree, and either outcome is a
+    /// refusal. What must not happen — what did happen — is a success payload
+    /// of zeros.
+    #[tokio::test]
+    async fn analyze_context_refuses_a_population_it_parsed_nothing_in() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("README.md"), "# nothing to parse\n")
+            .expect("write README");
+
+        let refusal = match analyze_context(&[dir.path().to_path_buf()], &[]).await {
+            Ok(json) => Err(format!(
+                "analyze_context reported success over a tree it parsed nothing in: {json}"
+            )),
+            Err(error) => Ok(format!("{error:#}")),
+        };
+        refusal.expect("an unmeasured context run must not report completion");
     }
 }

@@ -155,10 +155,17 @@ fn test_quality_report_passed() {
             coverage_percentage: Some(95.0),
         },
         violations: vec![],
+        language: "rust".to_string(),
+        gates_run: vec![
+            "satd".to_string(),
+            "complexity".to_string(),
+            "lint".to_string(),
+        ],
     };
 
     assert!(report.passed);
     assert!(report.violations.is_empty());
+    assert_eq!(report.gates_run.len(), 3);
 }
 
 #[test]
@@ -178,6 +185,8 @@ fn test_quality_report_failed() {
             message: "High complexity".to_string(),
             suggestion: None,
         }],
+        language: "rust".to_string(),
+        gates_run: vec!["satd".to_string(), "complexity".to_string()],
     };
 
     assert!(!report.passed);
@@ -199,6 +208,8 @@ fn test_proxy_response_accepted() {
                 coverage_percentage: None,
             },
             violations: vec![],
+            language: "rust".to_string(),
+            gates_run: vec!["satd".to_string(), "complexity".to_string()],
         },
         final_content: "fn test() {}".to_string(),
         refactoring_applied: false,
@@ -227,6 +238,8 @@ fn test_proxy_response_modified_with_refactoring() {
                 coverage_percentage: None,
             },
             violations: vec![],
+            language: "rust".to_string(),
+            gates_run: vec!["satd".to_string(), "complexity".to_string()],
         },
         final_content: "fn helper() {}\nfn test() { helper(); }".to_string(),
         refactoring_applied: true,
@@ -258,6 +271,8 @@ fn test_proxy_response_rejected() {
                 message: "Exceeds limits".to_string(),
                 suggestion: Some("Refactor".to_string()),
             }],
+            language: "rust".to_string(),
+            gates_run: vec!["satd".to_string(), "complexity".to_string()],
         },
         final_content: String::new(),
         refactoring_applied: false,
@@ -282,6 +297,13 @@ fn test_proxy_response_serialization_roundtrip() {
                 coverage_percentage: Some(90.0),
             },
             violations: vec![],
+            language: "rust".to_string(),
+            gates_run: vec![
+                "satd".to_string(),
+                "complexity".to_string(),
+                "lint".to_string(),
+                "docs".to_string(),
+            ],
         },
         final_content: "fn foo() {}".to_string(),
         refactoring_applied: false,
@@ -294,6 +316,68 @@ fn test_proxy_response_serialization_roundtrip() {
     assert!(matches!(deserialized.status, ProxyStatus::Accepted));
     assert!(deserialized.quality_report.passed);
     assert_eq!(deserialized.final_content, "fn foo() {}");
+    assert_eq!(deserialized.quality_report.language, "rust");
+    assert_eq!(deserialized.quality_report.gates_run.len(), 4);
+}
+
+// === Disclosure fields (language / gates_run) ===
+
+/// A gate absent from `gates_run` did NOT run, and the zero beside it is not a
+/// measurement. This is the whole contract the two fields carry, and it is the
+/// reason a report can no longer say `passed: true` with nothing behind it.
+#[test]
+fn test_gates_run_distinguishes_measured_zero_from_unmeasured_zero() {
+    let judged = QualityReport {
+        passed: true,
+        metrics: QualityMetrics {
+            max_complexity: 0,
+            satd_count: 0,
+            lint_violations: 0,
+            coverage_percentage: None,
+        },
+        violations: vec![],
+        language: "rust".to_string(),
+        gates_run: vec![
+            "satd".to_string(),
+            "complexity".to_string(),
+            "lint".to_string(),
+        ],
+    };
+
+    // Same metrics, same `passed`, entirely different meaning: nothing but the
+    // comment scan ever looked at this content.
+    let barely_looked_at = QualityReport {
+        language: "unknown".to_string(),
+        gates_run: vec!["satd".to_string()],
+        ..judged.clone()
+    };
+
+    assert_eq!(judged.metrics.lint_violations, 0);
+    assert_eq!(barely_looked_at.metrics.lint_violations, 0);
+    assert!(judged.gates_run.iter().any(|g| g == "lint"));
+    assert!(!barely_looked_at.gates_run.iter().any(|g| g == "lint"));
+}
+
+/// Both fields are `#[serde(default)]`, so a payload recorded before they
+/// existed still deserializes — as an empty `gates_run`, which is the honest
+/// reading of a report that claims nothing.
+#[test]
+fn test_report_without_disclosure_fields_still_deserializes() {
+    let legacy = r#"{
+        "passed": true,
+        "metrics": {"max_complexity": 0, "satd_count": 0, "lint_violations": 0},
+        "violations": []
+    }"#;
+
+    let report: QualityReport =
+        serde_json::from_str(legacy).expect("old payloads must keep deserializing");
+
+    assert!(report.passed);
+    assert_eq!(report.language, "");
+    assert!(
+        report.gates_run.is_empty(),
+        "a report from before the field existed claims no gate at all"
+    );
 }
 
 // === Clone Tests ===

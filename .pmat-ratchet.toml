@@ -40,7 +40,7 @@ captured_at_commit = "5794a8350"
 captured_at = "2026-08-19"
 
 [metric.unwrap_calls_src_total]
-baseline = 20387
+baseline = 20384
 unit = "count"
 band = 200
 includes_test_files = true
@@ -162,7 +162,7 @@ reports a nonzero number for everything.
 """
 
 [metric.unwrap_calls_src_outside_cfg_test]
-baseline = 9179
+baseline = 9177
 unit = "count"
 band = 100
 includes_test_files = false
