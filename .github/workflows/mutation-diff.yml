@@ -114,11 +114,52 @@ jobs:
     container:
       image: localhost:5000/sovereign-ci:stable
     timeout-minutes: 300
+    # DECLARE THE SHELL. Measured, not assumed: every one of this lane's first
+    # seven scheduled runs (2026-08-21 .. 2026-08-27, runs 32445403699 ..
+    # 33080877162) died in "Resolve the base to diff against" with
+    #
+    #   /__w/_temp/<id>.sh: 1: set: Illegal option -o pipefail
+    #   ##[error]Process completed with exit code 2
+    #
+    # because a step in a `container:` job on this fleet's runners is launched
+    # as `sh -e {0}` — and /bin/sh in localhost:5000/sovereign-ci:stable is
+    # dash, which has no `-o pipefail`. (Bare-metal steps in the same repo get
+    # `/usr/bin/bash --noprofile --norc -e -o pipefail {0}`, which is why the
+    # script below reads as correct: it is correct, for the shell its author was
+    # looking at.) bash IS present in the image at /usr/bin/bash, so the fix is
+    # to ask for it rather than to strip the bashisms and leave the next step
+    # to rediscover this. Job-level, so a step added later cannot re-enter the
+    # trap by omission. The gate never ran once in those seven nights.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
           # The gate diffs against a merge base; a shallow clone has none.
           fetch-depth: 0
+
+      # Every `git` below this line fails without it. The container runs as
+      # root; the workspace on the self-hosted runner is owned by uid 1000, and
+      # git refuses a repository it does not trust:
+      #
+      #   fatal: detected dubious ownership in repository at
+      #   '/__w/paiml-mcp-agent-toolkit/paiml-mcp-agent-toolkit'
+      #
+      # actions/checkout works because it writes safe.directory into a
+      # TEMPORARY gitconfig under an overridden HOME and removes it in its post
+      # step, so the exemption does not outlive the action. Measured in run
+      # 33159844910, the first run in this lane's life to get past step 4:
+      # `git merge-base` failed here and the gate died with "cannot find a merge
+      # base with 'origin/master'". The nightly path fails one step earlier and
+      # for the same reason — its `git rev-list -1 --before='24 hours ago'`
+      # returns empty, which the base resolver reports as an unresolvable ref.
+      #
+      # `git config --global --add safe.directory "$GITHUB_WORKSPACE"` is the
+      # fleet's standing remedy for exactly this: sovereign-ci.yml does it in
+      # both its `test` and `coverage` container jobs, with the same comment.
+      - name: Trust the checked-out workspace (container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked

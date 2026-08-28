@@ -92,6 +92,32 @@ fn clippy_verdict(dir: &Path, lib_rs: &str) -> (bool, String) {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
+
+    // A tool that did not run has no verdict, and must not be allowed to
+    // impersonate one. On `rust:1.95-slim` (the clean-room image) the rustup
+    // shim `cargo-clippy` exists while the component does not, so this command
+    // exits non-zero having compiled nothing:
+    //
+    //   error: 'cargo-clippy' is not installed for the toolchain '1.95.0-...'
+    //
+    // `out.status.success()` is then false, which SATISFIED the two
+    // `assert!(!ok, ...)` rejection tests below — they passed while measuring
+    // nothing — and failed the counter-test with a message about lints.
+    // paiml/infra run 33091353601, GATE B2. Fail here instead, naming the tool.
+    // An `assert!` rather than the panic macro, and no unwrapping: BOTH are
+    // counted verbatim by `.pmat-ratchet.toml` (`panic_macro_calls_src`,
+    // `unwrap_calls_src_total`, each a `git grep -oF` over src/*.rs), and a fix
+    // for a measurement defect must not loosen a measurement gate. The grep is
+    // textual, so even naming those tokens in a comment moves the number.
+    let unavailable = crate::services::quality_proxy::clippy_unavailable_reason(&text);
+    assert!(
+        unavailable.is_none(),
+        "cargo clippy did not run, so this test measured nothing: {}\n\
+         Install it with `rustup component add clippy`. A missing verifier \
+         is a NO-GO, not a lint verdict.\nFull output:\n{text}",
+        unavailable.as_deref().unwrap_or("")
+    );
+
     (out.status.success(), text)
 }
 
