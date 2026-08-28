@@ -83,6 +83,19 @@ lint-main:
 	@PMAT_FAST_BUILD=1 cargo clippy --manifest-path Cargo.toml --lib --bins -- -D warnings -D clippy::cargo -A clippy::multiple-crate-versions -A clippy::uninlined-format-args
 	@echo "✅ Main code linting passed!"
 
+# The feature set CI actually runs tests under. NOT `--all-features`: that
+# implies `broken-tests`, a deliberate non-compiling quarantine (#1023), so any
+# target reaching for it can never pass. The split is exactly whether test
+# targets are built, because the quarantine is gated on `cfg(test)`:
+#
+#   cargo check --all-features --lib --bins   -> exit 0
+#   cargo check --all-features --tests        -> error: unexpected closing delimiter: `}`
+#
+# so `check`, `docs` and the `bench-*` build targets below may keep
+# `--all-features` and do; the `test` targets may not. These three names match
+# the legs in feature-matrix.yml that the unrun-tests ledger consults.
+TEST_FEATURES := full,mcp-integration,unified-protocol
+
 # Type check all projects
 # Note: --all-features includes "broken-tests" which enables known-broken split test files
 # So we check: (1) lib with all features, (2) all targets without broken-tests
@@ -128,7 +141,16 @@ test-lib: ## Run all lib tests (8MB stack for Clap tests)
 # flag which parses changes something, and that a number which claims to be a
 # measurement differs between an empty project and a defect-rich one.
 # ---------------------------------------------------------------------------
-.PHONY: gate-flag-efficacy gate-flag-efficacy-full gate-differential gate-artifact
+.PHONY: dogfood-install gate-flag-efficacy gate-flag-efficacy-full gate-differential gate-artifact
+
+dogfood-install: ## Symlink the vendored dogfood protocol into the skills dir (idempotent)
+	@mkdir -p $(HOME)/.claude/skills/dogfood
+	@for f in $(notdir $(wildcard $(CURDIR)/scripts/dogfood/pmat-*)); do \
+	  ln -sfn "$(CURDIR)/scripts/dogfood/$$f" \
+	          "$(HOME)/.claude/skills/dogfood/$$f"; \
+	done
+	@echo "linked (idempotent — re-running changes nothing):"
+	@ls -l $(HOME)/.claude/skills/dogfood/pmat-*.sh | sed 's/^/  /'
 
 gate-flag-efficacy: ## Every CLI flag must change observable output (49 no-ops shipped in 3.29.0)
 	@echo "🔬 Flag-efficacy sweep..."
@@ -156,6 +178,45 @@ gate-differential: ## Every metric must differ between an empty and a large proj
 
 gate-artifact: gate-differential gate-flag-efficacy ## Both falsification gates
 	@echo "✅ artifact falsification gates passed"
+
+# ── Release gates the dogfood protocol looks for by name.
+#
+# All three were ABSENT, and their absence reported as WARN — which the protocol
+# itself forbids: "A missing dogfood capability is a NO-GO, not a WARN. A
+# released tool nobody actually ran is not dogfooded, and a WARN in a release
+# protocol is a step everybody learns to walk past."
+#
+# So the ≥95% floor and the whole provable-contract tier were UNVERIFIED and
+# reported as a soft warning. That is the same absence-rendered-as-success shape
+# this release has been clearing, sitting in the release protocol.
+#
+# Every one of these FAILS when its tool is missing. It must never skip: a gate
+# that quietly skips its own dependency proves nothing, which is the failure the
+# dogfood protocol names in its own text.
+
+.PHONY: coverage-check contracts dogfood-use
+
+coverage-check: ## Release gate: coverage must be MEASURED and at or above the floor
+	@echo "🔬 Release coverage gate (floor $(COV_THRESHOLD)%)..."
+	@$(MAKE) --no-print-directory coverage
+
+contracts: ## Release gate: L5 Lean proofs build, are hole-free, and pv can read every obligation
+	@echo "🔬 Provable-contract tier (L2/L3 + L5)..."
+	@command -v lake >/dev/null 2>&1 || { 		echo "❌ lake is not installed — the L5 proofs cannot be built."; 		echo "   A missing tool is a FAILURE, not a skip: a gate that skips its own"; 		echo "   dependency proves nothing. Install elan/lean, then re-run."; 		exit 1; }
+	@command -v pv >/dev/null 2>&1 || { 		echo "❌ pv is not installed — contract obligations cannot be validated."; 		echo "   Install with: cargo install aprender-contracts-cli --locked"; 		exit 1; }
+	@echo "  L5: lake build"
+	@cd contracts/lean && lake build
+	@echo "  L5: zero proof holes (no sorry / admit)"
+	@if grep -rInE '\bsorry\b|\badmit\b' contracts/lean/Theorems/; then 		echo "❌ Lean proofs contain sorry/admit — L5 is asserted, not proven"; 		exit 1; 	fi
+	@echo "     hole-free (0 sorry, 0 admit)"
+	@echo "  L2/L3: every contract validates and every obligation is visible to pv"
+	@python3 scripts/pv-obligation-gate.py
+	@echo "✅ contract tier holds"
+
+dogfood-use: ## Release gate: pmat is run against its own tree and must agree with reality
+	@echo "🔬 Dogfooding pmat on its own source..."
+	@bash scripts/dogfood-use.sh
+
 
 # Run ALL tests (unit + integration) - slower but comprehensive
 test-all:
@@ -532,11 +593,22 @@ coverage: ## Coverage summary + threshold check (<5 min)
 	@cargo +nightly llvm-cov report --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE) >/dev/null 2>&1 || true
 	@./scripts/record-metric.sh coverage
 	@COV_PCT=$$(grep -E '^TOTAL' target/coverage/summary.txt | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
-	if [ -n "$$COV_PCT" ] && [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
+	if [ -z "$$COV_PCT" ]; then \
+		echo "❌ Coverage NOT MEASURED — no TOTAL line parsed from target/coverage/summary.txt."; \
+		echo "   This is not a pass. The guard used to read"; \
+		echo "     if [ -n \"$$COV_PCT\" ] && [ below threshold ]; then fail; else PASS; fi"; \
+		echo "   so an empty percentage took the else branch and printed"; \
+		echo "     ✅ Coverage % meets threshold $(COV_THRESHOLD)%"; \
+		echo "   at exit 0 — a broken instrumentation run reported success."; \
+		exit 1; \
+	elif [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
 		echo "❌ Coverage $${COV_PCT}% is below threshold $(COV_THRESHOLD)%"; \
 		exit 1; \
 	else \
 		echo "✅ Coverage $${COV_PCT}% meets threshold $(COV_THRESHOLD)%"; \
+		echo "   SCOPE: --lib only, and COVERAGE_EXCLUDE filters /cli/, /handlers/,"; \
+		echo "   /services/, /tdg/, /mcp*/, /contracts/ and more. This number is NOT"; \
+		echo "   project-wide — \`make coverage-broad\` is the unfiltered one."; \
 	fi
 
 coverage-broad: ## Honest project-wide coverage (no regex, no --skip, no coverage(off)). Informational.
@@ -1195,9 +1267,9 @@ server-test: ## Run server tests
 	@echo "🧪 Running server tests..."
 	@cargo test --manifest-path Cargo.toml
 
-server-test-all: ## Run all server tests with all features
+server-test-all: ## Run server tests under every feature set that compiles (see TEST_FEATURES)
 	@echo "🧪 Running all server tests..."
-	@cargo test --all-features --manifest-path Cargo.toml
+	@cargo test --features $(TEST_FEATURES) --manifest-path Cargo.toml
 
 server-outdated: ## Check outdated dependencies
 	@echo "📦 Checking outdated dependencies..."
@@ -1340,9 +1412,9 @@ outdated:
 
 # Server outdated (alias for CI) - removed duplicate, see line 550
 
-# Run cargo test with all features
+# Run cargo test under every feature set that compiles (see TEST_FEATURES)
 test-all-features:
-	PROPTEST_CASES=2 cargo test --all-features --manifest-path Cargo.toml
+	PROPTEST_CASES=2 cargo test --features $(TEST_FEATURES) --manifest-path Cargo.toml
 
 # Server test all (alias for CI) - removed duplicate, see line 546
 
@@ -2103,33 +2175,46 @@ analyze-scaling: release
 # =============================================================================
 
 # Mermaid Specification Testing Targets
-setup-mermaid-validator:
-	@echo "🔧 Setting up Mermaid specification validator..."
-	@if ! command -v deno &> /dev/null; then \
-		echo "Error: Deno is required but not installed"; \
-		echo "Visit https://deno.land to install"; \
-		exit 1; \
-	fi
-	@echo "✅ Deno validator ready"
-
-# Run Mermaid specification compliance tests
-test-mermaid-spec: setup-mermaid-validator
+#
+# HISTORY — read before "restoring" the old form. These targets used to drive a
+# Deno validator (scripts/mermaid-validator.ts) from an integration test
+# (tests/mermaid_spec_compliance.rs) behind `--features mermaid-spec-tests`.
+# All three of those are gone:
+#   * the test was only ever carried as tests/mermaid_spec_compliance.rs.skip —
+#     a `.skip` extension cargo never compiles — and was deleted in 20ad95c5a;
+#   * the validator moved to scripts/archive/presentar-migration/, so
+#     `deno run ... scripts/mermaid-validator.ts` pointed at nothing;
+#   * `mermaid-spec-tests` was NEVER declared in Cargo.toml's [features] table,
+#     so every invocation died at manifest parse with
+#     "error: the package 'pmat' does not contain this feature: mermaid-spec-tests".
+# The feature is deliberately NOT (re-)declared: it would gate zero lines of
+# code, and feature-matrix.yml's orphan-ledger job requires every feature to be
+# either tested or excused — an empty flag that selects nothing is exactly the
+# "dead switch" that job exists to catch.
+#
+# The spec compliance checking itself survived, rewritten in Rust:
+# tests/modules/mermaid_artifact_tests.rs — validate_simple_diagram,
+# validate_styled_diagram, validate_ast_diagram, validate_complexity_styled —
+# reached via tests/all.rs -> tests/modules/mod.rs. That is the `all` test
+# binary, declared with no required-features, so it runs on a DEFAULT build:
+# no Deno, no feature flag.
+#
+# And this target is what runs it. ci.yml's gate is `cargo test --lib`, which
+# does not build tests/ at all, and the only other `--test all` invocations in
+# this Makefile are the falsification gates, which select `-- --ignored` tests
+# by name. Verified with `cargo test --test all modules::mermaid_artifact_tests
+# -- --list`: exactly the 2 tests below, on default features.
+test-mermaid-spec:
 	@echo "🧪 Running Mermaid specification compliance tests..."
-	PROPTEST_CASES=2 cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture
-
-# Validate all generated Mermaid artifacts
-validate-mermaid-artifacts: setup-mermaid-validator
-	@echo "🔍 Validating all Mermaid artifacts against spec..."
-	@if [ -d "artifacts/mermaid" ]; then \
-		deno run --allow-read scripts/mermaid-validator.ts artifacts/mermaid/; \
-	else \
-		echo "⚠️  No artifacts/mermaid directory found. Run 'make generate-artifacts' first."; \
-	fi
+	cargo test --test all modules::mermaid_artifact_tests -- --nocapture
 
 # Generate compliance report for Mermaid diagrams
-mermaid-compliance-report: setup-mermaid-validator
+# Writes to the repo root. It used to write `../mermaid-compliance.txt` — one
+# directory ABOVE the repo — a leftover from when this Makefile lived in
+# server/, and inconsistent with both its own echo and clean-mermaid-validator.
+mermaid-compliance-report:
 	@echo "📊 Generating Mermaid compliance report..."
-	cargo test mermaid_spec_compliance --features mermaid-spec-tests -- --nocapture > ../mermaid-compliance.txt 2>&1 || true
+	cargo test --test all modules::mermaid_artifact_tests -- --nocapture > mermaid-compliance.txt 2>&1 || true
 	@echo "Report saved to mermaid-compliance.txt"
 
 # Deterministic Artifact Generation Targets
@@ -2267,7 +2352,7 @@ dogfood-enforce: release
 	@./target/release/pmat analyze lint-hotspot --enforce --max-density 0.1 || (echo "❌ Lint enforcement failed" && exit 1)  
 	@echo "✅ All enforcement checks passed - zero violations detected"
 
-.PHONY: setup-mermaid-validator test-mermaid-spec validate-mermaid-artifacts mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs kaizen dogfood-all dogfood-ci dogfood-enforce
+.PHONY: test-mermaid-spec mermaid-compliance-report generate-artifacts test-determinism verify-artifacts analyze-satd analyze-satd-evolution export-critical-satd satd-metrics clean-mermaid-validator validate-all-specs benchmark-specs kaizen dogfood-all dogfood-ci dogfood-enforce
 # Context generation optimized for server source
 context-fast: release
 	@echo '📊 Generating context for server source code (fast)...'

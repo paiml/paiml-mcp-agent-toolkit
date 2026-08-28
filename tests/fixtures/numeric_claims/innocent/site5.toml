@@ -1,0 +1,4 @@
+[package]
+rust-version = "1.91"
+edition = 2024
+version = "3.32.0"

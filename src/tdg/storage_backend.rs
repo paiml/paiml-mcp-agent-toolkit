@@ -124,6 +124,53 @@ include!("storage_backend_config.rs");
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
+
+    /// Opening a database another connection already holds must WAIT, not fail.
+    ///
+    /// WHAT THIS TEST DOES AND DOES NOT PROVE, stated because the distinction
+    /// cost an hour. It pins a real property — eight concurrent opens against a
+    /// held connection all succeed. It does NOT prove the pragma REORDER in
+    /// `LibsqlBackend::new` was the cause of the `ci / coverage` failure: this
+    /// test passes under both the old and the new ordering, verified by
+    /// mutation. Once the first connection has set WAL, a later
+    /// `PRAGMA journal_mode = WAL` is a no-op needing no exclusive lock, so
+    /// this test never reaches the contended path the reorder addresses.
+    ///
+    /// The reorder is kept as hardening on its own merits — `busy_timeout`
+    /// belongs before any statement that can block, and 30s covers a window
+    /// llvm-cov widens roughly sevenfold — but it is hardening, not a diagnosed
+    /// root cause, and it is not described as one.
+    ///
+    /// The actual cause was isolation, and it is pinned by
+    /// `storage_is_scoped_to_the_project_not_the_home_directory`
+    /// (analyzer_ast/cwd_independence_tests.rs), which DOES fail on the old
+    /// behaviour.
+    #[test]
+    fn concurrent_opens_of_one_database_all_succeed() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        let path = dir.path().join("contended.db");
+
+        // Hold one connection open for the whole test, so every other open is
+        // genuinely contended rather than sequential.
+        let _held = LibsqlBackend::new(&path).expect("first open must succeed");
+
+        let failures: Vec<String> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| scope.spawn(|| LibsqlBackend::new(&path).err().map(|e| e.to_string())))
+                .collect();
+            handles
+                .into_iter()
+                .filter_map(|h| h.join().expect("thread must not panic"))
+                .collect()
+        });
+
+        assert!(
+            failures.is_empty(),
+            "{} of 8 concurrent opens failed while one connection was held: {:?}",
+            failures.len(),
+            failures
+        );
+    }
     use super::*;
     use tempfile::TempDir;
 

@@ -5,8 +5,15 @@
 
 echo "🔧 Fixing property test syntax issues..."
 
-# Find all Rust files with potential duplicate closing braces
-for file in $(find server/src -name "*.rs" -type f); do
+# Find all Rust files with potential duplicate closing braces.
+# NUL-delimited: `for file in $(find ...)` word-splits and globs on the paths.
+while IFS= read -r -d '' file; do
+    # This loop rewrites files in place, so only accept a plain regular file
+    # path with no '..' component from find.
+    if [ -z "$file" ] || [[ "$file" == *".."* ]] || [ ! -f "$file" ]; then
+        continue
+    fi
+
     # Check if file has the problematic pattern
     if grep -q "}\s*}\s*}$" "$file" 2>/dev/null; then
         echo "Fixing: $file"
@@ -44,6 +51,6 @@ for file in $(find server/src -name "*.rs" -type f); do
         SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         perl -i "$SCRIPT_DIR/fix_proptest_placement.pl" "$file" 2>/dev/null || true
     fi
-done
+done < <(find server/src -name "*.rs" -type f -print0)
 
 echo "✅ Syntax fixes complete"

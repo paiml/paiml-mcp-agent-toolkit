@@ -15,28 +15,16 @@
 /// path, so scoring is read-only. Nothing here is a project artifact: it is a
 /// cache and a trend log, both regenerable.
 ///
-/// One rule, one place — every CB-081 read and write goes through this.
+/// One rule, one place — and since #1008 that place is
+/// [`comply_state_dir`](crate::utils::pmat_cache_dir::comply_state_dir), which
+/// CB-200's out-of-tree index uses too. The layout is unchanged
+/// (`<user cache>/comply/<component>/<project key>`); the key's hash moved from
+/// `DefaultHasher` to a written-out FNV-1a, because `DefaultHasher` is
+/// documented as not stable across Rust releases and a cache key that changes
+/// when the toolchain does is not a key. The one-time cost is a single cache
+/// miss per project, which re-reads `Cargo.lock`.
 pub(super) fn cb081_state_dir(project_path: &Path) -> std::path::PathBuf {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let canonical = fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
-    let mut hasher = DefaultHasher::new();
-    canonical.hash(&mut hasher);
-    let name = canonical
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("project");
-    let key = format!("{name}-{:016x}", hasher.finish());
-
-    let base = dirs::cache_dir()
-        .or_else(|| dirs::home_dir().map(|h| h.join(".cache")))
-        .unwrap_or_else(std::env::temp_dir);
-
-    base.join("paiml-mcp-agent-toolkit")
-        .join("comply")
-        .join("cb081")
-        .join(key)
+    crate::utils::pmat_cache_dir::comply_state_dir(project_path, "cb081")
 }
 
 impl DependencyCache {

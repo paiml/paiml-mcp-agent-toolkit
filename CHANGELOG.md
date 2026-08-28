@@ -7,6 +7,1260 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.32.0] - 2026-08-25
+
+Minor rather than patch, and the reason is the list below: most of this release changes
+what pmat *reports* on unchanged code. Each of these moves a number, an exit code or a
+payload shape, so a pipeline pinned to 3.31.0's output sees a difference on a tree that
+has not changed. Read this list before upgrading a gate.
+
+- **MCP mode is now first-class, and reachable without reading the source.** `mcp-http` moved
+  into the **default** feature set, so `cargo install pmat` produces a binary that serves all
+  three surfaces — CLI, MCP over stdio, and MCP over streamable HTTP — with no `--features`
+  dance. The HTTP tool surface is **byte-identical to stdio**, not a subset; both share one
+  `build_server` and a test now fails if the HTTP path registers a tool of its own.
+
+  Getting connected used to require knowing four things that were written down nowhere, each of
+  which cost this project real time: the endpoint is the **root path** (`/mcp` and `/health` are
+  404 — there is no health endpoint), `PMAT_MCP_HTTP_TOKEN` has a **16-character minimum**, a
+  hand-rolled client must send `Accept: application/json, text/event-stream`, and unauthenticated
+  requests get 401. All four are now in `pmat serve --help`, in the README, and in a new book
+  chapter whose examples are executed as tests.
+
+  `pmat serve --transport http` with **no token set** now mints one, starts, and prints the exact
+  `claude mcp add` line for the port it actually bound:
+
+  ```
+  claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ \
+    --header "Authorization: Bearer pmat-<generated>"
+  ```
+
+  Two properties were deliberately *not* relaxed to buy that convenience. A token shorter than 16
+  characters is still refused outright — generation goes through the same validator, so the floor
+  is the only gate and it did not move. And a **non-loopback bind still refuses** without an
+  explicit token: a generated token changes on every restart, so a shared endpoint would silently
+  401 every client that had registered against the previous one.
+
+  Also corrected: `serve --transport`'s help listed all five transport values as equals.
+  `web-socket`, `http-sse`, `both` and `all` are NOT implemented and exit 2, and now say so.
+
+- **A count in the documentation is read from the binary, not quoted from a book.** The MCP tool
+  count moves *within* a release line — a 3.32.0 build at `583ea9ac` serves 16 while one at
+  `90767deb` serves 19, having gained `analyze_reachability`, `analyze_hardcoded_paths` and
+  `analyze_vacuous_tests`. The new book chapter says so explicitly and its identity check is
+  count-agnostic, so it passes on both rather than pinning a number that was true for one build.
+
+- **TDG grades are computed from a token walk instead of a line scan, and they get
+  WORSE, not better.** Every grade pmat has ever stored came from iterating
+  `source.lines()` and charging per line, so `rustfmt.toml` decided the grade:
+  `if a && b && c` scored cyclomatic 2, and the identical expression wrapped over three
+  lines scored 4. The replacement never sees a newline, a comment, or the inside of a
+  string literal, so those two spellings now score the same — as does the same function
+  with every comment in it deleted. Measured over this repository's own index (23,451
+  definitions in 2,626 files; gate scope 22,724 after the built-in test-path filter and
+  `.pmat-gates.toml [tdg].exclude`): **definitions below the A floor go from 1,905 to
+  3,333, +75.0%**; **A+ falls from 80.17% to 63.99% by count and from 52.96% to 26.11%
+  by code volume**; across all 23,451 rows, 982 improve, 15,589 are unchanged and 6,880
+  get worse. Anyone with a CI gate keyed on a TDG number will see it move against them.
+  The grade bands are unchanged and so are the complexity cut points — what changed is
+  the measurement, not the standard. The rules, the one threshold that did move, and the
+  index invalidation are below under **How a TDG grade is computed now**.
+- **SATD counts go up on every project.** Markers in doc comments are now found, so a
+  project sitting just under a SATD threshold can start failing.
+- **TDG grades rise across the board, because the complexity scanner stopped counting
+  two things that are not branches.** It counted every line containing `||` — which is
+  every zero-argument Rust closure, `unwrap_or_else(|| …)`, `map_or_else(|| …)`,
+  `LazyLock::new(|| …)` — and it evaluated its control-flow triggers on comment lines,
+  including the `*` continuation lines of a block comment. Measured over this repo's own
+  index: **1,263 spurious decision points from closure `||` across 372 definitions, and
+  534 from comments across 391**. Grades stored in `.pmat/context.db` improve, so
+  `pmat query --min-grade A` returns more results and any gate reading that column sees
+  fewer violations. Nothing about the code changed; the measurement was wrong. **Read
+  this together with the entry above, which supersedes it**: that scanner no longer
+  exists, and a token walk cannot read a comment or mistake a zero-argument closure for
+  an operator, so both defects are gone by construction rather than by patch. The net
+  direction across the release is the one stated above, and it is downward.
+- **`cargo install pmat` now compiles the HTTP transport, and the binary is ~1 MB
+  bigger.** `mcp-http` moved into `default`, so the streamable-HTTP MCP server is in
+  every stock build rather than only in one rebuilt with `--features mcp-http`.
+  Measured on two release installs of the same tree: **53,208,360 -> 54,268,424 bytes
+  (+1.01 MiB, +2.0%)**. Six crates enter the graph — `axum 0.8.9`, `axum-core 0.5.6`,
+  `matchit 0.8.4`, `tower-http 0.7.0`, `ring 0.17.14`, `getrandom 0.2.17` — taking it
+  from 380 to 386. hyper, tower and rustls were already present via reqwest; what is
+  new is a SECOND major version of axum alongside the 0.7.9 already there, and rustls'
+  `ring` provider, which compiles C and assembly. A clean release build takes about
+  7 s longer.
+- **Nothing new listens.** Compiling the transport in does not start it. Only
+  `pmat serve --transport http` binds a socket; it binds `127.0.0.1` unless you pass
+  `--host`; and with `PMAT_MCP_HTTP_TOKEN` unset it exits 4 having bound nothing —
+  pmcp serves every request when no auth provider is wired, so "no token" means "no
+  server". `serve --help` no longer reads `[HTTP NOT COMPILED IN this build]`.
+- **`PMAT_MCP_HTTP_TOKEN` is a credential for the whole filesystem, not for one
+  project.** An authenticated caller can read anything the pmat user can read: the
+  tools take absolute paths, and `analyze_satd {"paths":["/etc"]}` returns files'
+  contents from a server started in an unrelated directory. That is how the stdio
+  server has always behaved; what changed is that reaching it no longer requires a
+  rebuild. If you run with `--host 0.0.0.0`, the 403 `Host header not in allowed
+  origins` is a browser DNS-rebinding defence and nothing more — any non-browser
+  client sets that header freely, so the bearer token is the only control on that
+  interface.
+- **The HTTP transport's JSON-RPC error codes are not yet at parity with stdio.** A
+  conforming MCP client is unaffected: `initialize`, `tools/list`, `resources/list`,
+  `prompts/list`, `ping` and the rest all round-trip. But a tool call with bad
+  arguments returns `-32603` over HTTP where stdio returns `-32602` for the identical
+  message, and a frame naming a nonexistent method collapses to `-32700` with
+  `id: null` and HTTP 400 instead of `-32601` with the id echoed.
+- **MCP tools and the CLI now walk the same files.** The MCP path used a raw
+  `WalkDir` that read no `.gitignore` and excluded no vendored or minified assets, so
+  the two surfaces described different populations of the same repository. Measured on
+  a 10-file crate: `analyze complexity` reported 11 files / cyclomatic 54 while
+  `mcp analyze_complexity` reported 27 / 2098, the difference being generated mdbook
+  output including a 137,537-byte minified `highlight.js`. Now 19 / 364. An 8-file
+  gap in `.js` handling remains and is not yet explained.
+- **`pmat quality-gate` exits 1** when it finds blocking violations, where it used to
+  print them and exit 0. A CI step that has been passing against a failing tree will
+  start failing, which is the point; `--report-only` (alias `--no-fail`) restores the
+  old exit status.
+- **Thirteen `pmat analyze` subcommands now exit non-zero** over a tree they read
+  nothing from, where they printed a report of zeros and exited 0 (#1015).
+- **`analyze dead-code` lists more.** `--min-dead-lines` now defaults to 0 rather than
+  10, so a file whose whole finding set is one dead function is no longer dropped from
+  the default report.
+- **`analyze dead-code` pointed at a subdirectory reports findings where it reported
+  zeros.** It ran `cargo check` in the directory it was given, found no `Cargo.toml`,
+  compiled nothing and exited 0. It now finds the enclosing crate and restricts the
+  report to the subtree.
+- **`analyze dead-code` lists fewer items for libraries in the non-Rust engine**, whose
+  exports are now seeded as reachability roots instead of being reported dead; every
+  dead-code report on every surface gains a `library_target` verdict saying which way
+  that went. A pure-C project built by CMake, which used to analyse zero files, now
+  reports findings.
+- **Four analyzers now read `.gitignore`** — `cuda-tdg`, `validate-docs`,
+  `analyze assembly-script`, `analyze web-assembly` — so their file counts fall, by a
+  factor of 50 or more on a checkout that keeps gitignored worktrees inside itself.
+- **`quality-gate`'s complexity thresholds come from the analysed tree**, not from the
+  process working directory, so the same command run from the same shell can return a
+  different verdict than it did (#1020).
+- **`analyze dag --dag-type call-graph` returns a graph.** It returned 0 nodes and 0
+  edges on every project above 400 import edges, on both the CLI and MCP. Over
+  `src/services` it now draws 400 edges — the Mermaid budget — and the 419 nodes those
+  edges touch, and publishes beside them what it actually walked to get there: files,
+  function nodes, call edges (#1020).
+- **The MCP `quality_gate` tool runs nine checks instead of two**, so it reports
+  findings it used to miss, and its payload grew `checks.ran` / `checks.not_run`.
+- **The MCP `analyze_dead_code` tool changed analyzer** to the CLI's, so its counts
+  move in both directions and its payload is reshaped.
+- **Four MCP tools now reject** arguments they used to silently replace with defaults,
+  and report caller mistakes as `-32602 Invalid params` rather than `-32603 Internal
+  error`.
+- **`comply check`'s concurrency dropped**, so it is slower and uses an order of
+  magnitude less memory.
+- **CB-402 lints the shell scripts git tracks**, where it walked the working directory
+  to depth 4 and stopped at the first 20 files it happened to reach. On a checkout that
+  keeps worktrees or vendored installers inside itself the entire budget went to files
+  the project does not own, so this both removes findings (untracked files) and adds a
+  great many (the tracked scripts that were never reached). In this repository the count
+  went from 40 findings in `.claude/worktrees/` to 140 errors and 1296 warnings in
+  `scripts/`. The cap rose from 20 to 250; `CB-402-TRUNCATED` still reports what a
+  larger repository loses.
+- **`quality_gates.max_unwrap_calls` means something different, and is now 0.** It was
+  bound to a metric counting `.unwrap()` across every `.rs` file under `src/`, test code
+  included, where the honest number is not zero and no limit could be justified. It now
+  binds to `unwrap_calls_shipped_code`, a compiler-derived count over `--lib --bins`
+  (the code `cargo build --release` compiles). Projects that adopted this key will see
+  the threshold's scope change under them.
+- **The metrics ratchet gained `unwrap_calls_shipped_code`**, whose command invokes
+  clippy. It sets its own `CARGO_TARGET_DIR` so a nested cargo cannot block on the
+  outer invocation's target-dir lock, and adds ~40s to a gate run, cached thereafter.
+- **Ratchet metric commands no longer inherit `RUSTFLAGS`,
+  `CARGO_ENCODED_RUSTFLAGS`, `CARGO_BUILD_RUSTFLAGS`, `CARGO_BUILD_TARGET` or
+  `CARGO_BUILD_JOBS`.** A metric must measure the tree, not the shell that invoked it;
+  a command whose result depended on one of those will now return a different number.
+
+None of these is a behaviour anyone should be pinned to, but all of them are visible.
+The exit-code and payload deltas are listed field by field under **Changed**.
+
+Everything here is one defect family, found by auditing pmat with pmat: **absence
+rendered as success** — a module that never compiled, a benchmark that never ran, a
+comment form never scanned, a directory never walked, a verdict no caller could read,
+a report of zeros over a tree nothing was read from. In each case a number was reported
+and the reader had no way to see the denominator.
+
+One entry is not from that family. The TDG measurement change is a different defect —
+a number decided by the *formatting* of the thing it measures — and it is the largest
+behaviour change in the release, so it gets its own section.
+
+#### How a TDG grade is computed now
+
+The scanner through 3.32.0 read a definition's text line by line, and the scorer around
+it carried two rules that could pass a definition without measuring it. Five changes,
+and what each one cost, measured on this repository's index:
+
+- **It read control-flow keywords inside string literals.** `generate_trigram_index`
+  (`build.rs`) is codegen whose body is one raw string containing Rust source. The
+  scanner found the `if` and the `for` *inside the string* and scored it cyclomatic 12,
+  grade B+. It has **one** decision and 52 tokens, and it is A+. A string or char
+  literal is one token whatever it contains.
+- **A `match` charged 1 per arm; it now charges 1 for the dispatch.** That is McCabe
+  1976's own `CASE` caveat and Campbell 2018 rule 1. `classify_command`
+  (`src/cli/command_wire_names.rs`) goes from cyclomatic **73 to 1** — it is a 71-row
+  lookup table. It is still graded F, but now on the axis that is true of it: 976
+  tokens.
+- **A run of like `&&`/`||` charged once per line; it now charges once for the run**,
+  however it is wrapped (Campbell rule 4).
+- **Zero branches bought at least an A.** `GH272_TRIVIAL_FLOOR = 90.0`
+  (`src/services/agent_context/function_index/helpers_quality_metrics.rs:518`) forced
+  every definition with cyclomatic ≤ 1 to grade A or better regardless of its size or
+  its debt markers, and that covered **13,207 of 23,451 definitions — 56.3% of the
+  graded corpus**. It is deleted. `with_tauranta_patterns` (390 lines, zero branches)
+  and `generate_openapi_spec` (269 lines, zero branches) were both graded A; both are F.
+  206 of the 1,865 new failures are this rule alone.
+- **Declarations were exempt from size.** `effective_loc = 0` was forced for
+  `Struct | Enum | Trait | TypeAlias` in the same file at line 126, which together
+  with the floor above graded **4,447 of 4,451 declarations A+**, 4,350 of them at the
+  literal constant 100.0 — one fifth of the graded population was a hard-coded number.
+  Declarations are now graded on size, with complexity reported as `NOT_APPLICABLE`
+  rather than as a passing score. Twelve newly fail, headed by the two CLI enums the
+  exemption was hiding: `AnalyzeCommands` (`src/cli/commands/analyze_commands/mod.rs`,
+  1,891 lines) and `Commands` (`src/cli/commands/commands_enum/definition.rs`, 1,769
+  lines), both A− and both now F.
+
+**The debt-marker term is gone from the score.** `satd_count` was docked 5 points per
+marker past a free allowance of two, capped at 20. The highest count across the 23,451
+indexed definitions here is **1**, so the term did not fire on a single one of them,
+and deleting it moves no grade in this repository. It could move one elsewhere: a
+definition carrying three or more markers was losing points for them and no longer is.
+`satd_count` is still counted, still stored and still reported; it no longer decides a
+letter, and `analyze satd` — including the doc-comment markers named above — is
+unaffected either way.
+
+**The standard did not move; the measurement did.** `GRADE_BANDS` (`src/tdg/grade.rs`)
+is untouched, and the complexity cut points are unchanged decision for decision: A+ at
+3 decisions is the incumbent's cyclomatic 4, A at 6 decisions is its cyclomatic 7, and
+the complexity budget exhausts at 34 where the incumbent's exhausted at 35. McCabe's
+published 10 and NIST SP 500-235's 15 were both available and both **declined**, because
+both are looser than what this repository already enforced. The arithmetic runs the
+other way from the grades, and that is the point: total decision points charged across
+the 19,000 indexed functions fall from **42,857 to 31,362, −26.8%**, and grades still
+get worse.
+
+**One threshold did move, and it is the size one.** The old size term did not begin
+until 50 raw lines and then charged one point per 15, which put its A-line near 200 raw
+lines, and it counted blank and comment lines as size because it read
+`chunk.content.lines().count()`. The new ceiling is 30 lines — the low-risk unit-size
+ceiling from Alves, Ypma & Visser, *Deriving Metric Thresholds from Benchmark Data*
+(ICSM 2010), derived from a benchmark of other systems and then frozen — applied to
+canonical lines, meaning tokens divided by 6.5 after comments and attribute spans are
+removed. That is a tightening of roughly 6×, and **1,512 of the 1,865 new failures are
+definitions over it**. It is a threshold change and is named as one; nothing else here
+is.
+
+**An existing `.pmat/context.db` is invalidated, not migrated.** The stored grades are a
+different measure, and back-filling them would be a lie of provenance, so the index
+schema version is bumped and the next `pmat query` rebuilds. Until it does, nothing
+reads a grade from the old model.
+
+#### Reproducing the numbers in this entry
+
+A count in a release note is a measurement of a specific tree, and a measurement
+without its tree is the defect this release is about. So every figure below is given
+with the command, fixture or issue it came from, and:
+
+- **"On this repo" means this repository at `f47d75170`**, in a pristine worktree of
+  that commit, measured with the 3.32.0 binary built from it (`cargo build --release
+  --bin pmat`). The commit is named because "the tree this release ships" is not an
+  address: this entry's own SATD, reachability and vacuous-test figures were first
+  taken one commit earlier and were already stale by one file when it shipped. Re-run
+  the command rather than trusting the digit — where the two disagree, the command is
+  right.
+- **Figures labelled 3.31.0 are the "before" half of a before/after pair** and were
+  produced by the 3.31.0 binary (`git checkout v3.31.0 && cargo build --release --bin
+  pmat`), not by this release's.
+- **Figures from other repositories name the repository and the commit**: aprender
+  `d40756541`, forjar `5d438509`, pforge `7dfb9a6`. Those trees move independently of
+  this one, so an exact match is only expected at the commit named.
+- **Figures attributed to the stack-wide audit (#1017, #1018, #1019) are quoted from
+  those issues**, which record the trees and dates they were taken on. They are cited
+  as evidence of a class, not re-measured here, and several have moved since.
+- **Every TDG figure is an old-model / new-model pair over one frozen snapshot of
+  `.pmat/context.db`** — 23,451 definitions in 2,626 files, of which 22,724 are in gate
+  scope. Both halves of each pair are computed over the same rows, so the deltas are
+  properties of the model change and not of the tree; the absolute counts are properties
+  of that snapshot and move with every commit that adds a definition. Re-derive them by
+  rebuilding the index and reading the stored grades, not by comparing against a
+  differently-scoped run: the built-in test-path filter and `.pmat-gates.toml [tdg]`
+  are what make 23,451 into 22,724, and a figure quoted without which of the two it
+  used cannot be checked.
+- **Three kinds of figure below are not properties of the commit at all**, and each
+  says so where it appears. (1) Peak RSS and wall clock for `comply check` are
+  properties of the host. (2) Any count taken over a checkout holding gitignored
+  worktrees — the `cuda-tdg` / `validate-docs` / `assembly-script` before/after table —
+  is a property of that checkout; the multiplier is the worktrees, and they are not in
+  git. (3) `quality-gate`'s finding count and `validate-docs`'s broken-link count both
+  move with gitignored state present at the same commit (`.pmat/` cache, untracked
+  Markdown that satisfies a link), so a pristine worktree and a working checkout of
+  `f47d75170` disagree by a few. Where that happens the exit code, the ratio or the
+  shape of the output is quoted instead of the count.
+
+### Added
+
+**`pmat analyze reachability`** — reports tracked `.rs` files that no compilation
+unit reaches. pmat's unit of analysis is the FILE (`git ls-files` + an extension
+allowlist); Rust's unit of compilation is the TARGET, reached through a module
+graph, and nothing reconciled the two. rustc emits no diagnostic for a `.rs` file
+that no `mod`, `#[path]` or `include!` reaches, so an orphaned module compiles to
+nothing and `cargo test <name>` prints `0 passed` and exits 0.
+
+The stack-wide audit filed as #1017 tabulated ~475 such files across 8 repos — over
+320,000 lines and ~8,900 `#[test]` functions that had never executed. Those are that
+issue's figures, on the trees it names; several of those repos have moved a long way
+since, so read them as the evidence that the class exists rather than as today's
+counts. pmat had its own (`src/transport/`, deleted in this release). Worse, pmat
+*graded* them: #1017 records 79 of aprender's orphans as scored keys in its
+`.pmat-baseline.json`, and pepita's orphaned `verification_specs.rs` as AMinus /
+97.27 / confidence 1.0 — the pepita entry still reads exactly that at
+`.pmat/baseline.json`.
+
+```
+pmat analyze reachability [-p PATH] [-f json] [--fail-on-orphan]
+```
+
+On this repo at `f47d75170`, `pmat analyze reachability -p .` reports 3925 of 4337
+tracked `.rs` files reachable from 137 target roots — 412 unreachable, holding
+132,050 lines and 6562 `#[test]` fns that never run, with 35 `mod` declarations
+unresolved. The two totals are `git ls-files '*.rs'` and so move with every commit
+that adds a file; the 412 is the number to read. The report always states its
+scope, and an unresolvable `mod` downgrades the result to a FLOOR rather than a
+total — a count with no denominator is the defect the analyzer exists to find. It
+refuses outright when `cargo metadata` yields no targets, so an unmeasured tree
+cannot read as a clean one.
+
+**`pmat analyze hardcoded-paths`** — finds machine-specific absolute paths baked
+into source. aprender ships binaries containing `/home/noah/...`: correct on the
+machine that built them, inert everywhere else, and invisible to every gate —
+the code compiles, clippy is clean, the tests pass (there), and the path is just
+a string literal. Nothing in the stack asks whether a value names a location
+that exists on any other host.
+
+```
+pmat analyze hardcoded-paths [-p PATH] [-f json] [--fail-on-shipped] [--fail-on-any]
+```
+
+On aprender at `d40756541`: 618 findings across 14,596 files, **324 in shipped
+code** — 216 in `crates/*/examples/*.rs` (cargo examples are binaries, so `cargo run
+--example` cannot work for anyone else) and 45 in `contracts/*.yaml`, where the
+provable-contract tier cites evidence files under one workstation's home. On
+pmat itself the first run found 15 shipped findings, all real, five of them under
+`golden_traces/`, pinning
+`/home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat` in four renacer
+baseline manifests and one recorded trace — so golden-trace validation could only
+ever have passed on this machine. **Those five are fixed in this release**: the
+baselines under `golden_traces/` now name `./.renacer-bin`, and no path under that
+directory names a home directory. What remains on this repo at `f47d75170`, from
+`pmat analyze hardcoded-paths -p .`, is 140 findings over ~153,000 literals in
+~4,700 files, **9 of them shipped** — `pmat.toml`'s absolute `project_path`, four
+`.pmat-tickets/*.yaml` evidence paths naming sibling checkouts, three helper
+scripts under `scripts/`, and one recorded dogfood receipt. The 9 is the number to
+watch, and `--fail-on-shipped` is the way to watch it; run the command rather than
+comparing against the 140. The haystack figures are deliberately rounded: they are
+there to give the 9 a scale, they moved by five between two runs an hour apart
+while this entry was being written, and `files_scanned` / `literals_scanned` in the
+JSON are the exact figures for your tree.
+
+The rule is narrow on purpose, because false positives are what kill a detector:
+a path is flagged only when it names a specific user, nix store hash or build
+root. Being absolute is not enough — `/usr/bin/env`, `/etc/hosts`, `/dev/null`,
+`/home/$USER`, `$(HOME)/.cargo/…` and `/home/user/…` placeholders all produce no
+finding. Findings are tiered shipped / test / doc, and as with `reachability`
+the summary always carries its denominator and degrades to FLOOR ONLY when any
+file could not be read.
+
+**`pmat analyze vacuous-tests`** — finds `#[test]` functions that cannot fail.
+In the pass/fail vocabulary a test that executes code and discards the result
+IS a passing test; nothing distinguishes "the assertion held" from "there was no
+assertion". Line coverage is the only fleet metric with a hard floor, and it
+measures execution rather than verification, so `let _ = call();` is the
+cheapest way to comply with it.
+
+```
+pmat analyze vacuous-tests [-p PATH] [-f json] [--max-rate PCT] [--fail-on-any]
+```
+
+Measured with `pmat analyze vacuous-tests -p <repo> -f json`, each repo at the
+commit named:
+
+| repo | commit | cannot fail | rate |
+|---|---|---|---|
+| **pmat** | `f47d75170` | **1183 of 34,260** | **3.5%** |
+| aprender | `d40756541` | 2925 of 110,398 | 2.6% |
+| forjar | `5d438509` | 357 of 16,962 | 2.1% |
+| pforge | `7dfb9a6` | 2 of 238 | 0.8% |
+
+pmat has the worst rate of the four. 181 of its 1183 are tautologies, nearly all
+`assert!(result.is_ok() || result.is_err())`, and its worst single file is
+`src/tests/coverage_boost_unified_ast.rs` (75) — the name says what it is for.
+
+This **corrects the figure in #1018**, which claimed 802 vacuous tests in forjar
+from a grep-based count; parsing gives 357. The narrower definition is the right
+one: `.unwrap()`, `.expect()`, `?`, `panic!` and a same-file helper that asserts
+are all genuine failure modes, so a test using them is weak rather than vacuous.
+Read the ~933 fleet total in #1018 as an upper bound from a looser rule.
+
+A `no-failure-mode` test still catches a panic — what it cannot catch is a wrong
+answer. It is reported as a smoke test, not as a broken one. `#[should_panic]`
+(the attribute is the assertion) and `#[ignore]` (an honest declaration) are
+both excluded. Also reported: tests that `return` early when a fixture is
+missing, which pass having checked nothing and, unlike `#[ignore]`, invisibly —
+14 in pmat, 173 in aprender.
+
+As with the other two, the report refuses to look clean when it is not: zero
+tests examined is an error rather than a pass, and unparseable files are counted
+together with the `#[test]` markers inside them, so pmat's floor reads "30 files
+not analysed, holding 545 unjudged `#[test]` fns" instead of a caveat a reader
+walks past.
+
+**All three new analyzers are CLI-only** (#1029). The MCP surface is a
+hand-curated list of 16 tools, not a projection of the CLI, so a new
+`AnalyzeCommands` variant appears in `pmat analyze --help` immediately and in
+`tools/list` never. Registering one tool touches six live sites and a seventh
+that `pmat analyze reachability` reports as an orphan — `mcp_impl_server.rs`
+dispatches `analyze_satd` and has never been compiled. Deriving the tool list
+from the clap enum is the fix; hand-adding three tools across six files ahead of
+a release is not.
+
+**`pmat init`** (alias `bootstrap`, #1030) — writes an agent-ready workspace: the
+quality hook, the MCP registration, a skill, and a root `AGENTS.md`.
+
+```
+pmat init [--target agy|claude|ultracode] [--path DIR] [--force] [--format human|json]
+```
+
+Three properties are the point of it, and each is a test rather than a claim:
+
+*It never destroys work.* An existing file is read and compared before anything is
+written — identical bytes are left alone, different bytes are left alone and reported,
+and only `--force` replaces them (without a backup, which the flag's help says).
+
+*The MCP registration it writes actually speaks MCP.* The template this repository
+itself shipped named `pmat serve --transport stdio`, and `stdio` is not an accepted
+value of that flag — clap exits 2 having written zero bytes — with `cargo run --bin
+pmat` as the fallback, which exits 101 in any checkout that is not pmat's, i.e. every
+workspace `init` is for. The test reads the JSON it just wrote, spawns exactly that
+argv from a non-Cargo working directory, and requires a JSON-RPC `initialize` reply:
+16 tools, 0 bytes of stderr, 0 non-JSON bytes on stdout.
+
+*It refuses rather than inventing.* `.agents/plugins.json` (#1031) and the "Ultracode
+schemas" half of #1032 have no field list, required-key set or version anywhere in this
+repository or in any document it cites, so they are reported as refusals naming exactly
+what is missing, on the `pmat agy sync` precedent (MACS-017, #984). Refusals are
+printed, counted, and carried in `--format json` under `refused[]`; they do not fail
+the run, because exiting non-zero after correctly writing five files would break every
+`pmat init && …` anyone writes. A target whose plan is *entirely* undefined is refused
+whole. GEMINI.md is not written — nothing here documents a consumer for it. The
+defined half of #1032 is generated: a `contracts/workflows/*.ultracode.mjs` judgment
+workflow, `node --check` clean.
+
+**Four `pmat comply check` checks for the artifacts `pmat init` writes** (CB-1663…1666,
+#1031) — the read side of the generator, so a bootstrapped workspace can be re-verified
+rather than trusted:
+
+| check | judges |
+|---|---|
+| CB-1663 | `.agents/` structure: every `*.json` parses, every `rules/*.md` is non-empty, every `skills/<name>/` holds a `SKILL.md` |
+| CB-1664 | `.agents/hooks.json` `PreToolUse` layout |
+| CB-1665 | `.agents/skills/*/SKILL.md` frontmatter schema |
+| CB-1666 | `.agents/mcp_config.json` is a usable MCP client config |
+
+Each reports **how many artifacts it judged**, so zero is distinguishable from clean,
+and an absent `.agents/` is Skip-with-a-reason rather than Pass. CB-1664 warns rather
+than fails: #1031 names the schema and specifies no shape, and the nesting it would
+otherwise enforce is derived from a different product — enforcing a guess is the same
+sin the generator refuses to commit. CB-1666 is a two-entry denylist that executes
+nothing; its own documentation used to claim a "liveness" half it has never had, and
+now says so, including why spawning a command out of an audited config is the wrong
+fix.
+
+### Fixed
+
+**`pmat quality-gate` printed FAILED and exited 0**, so the repo's own gate could not
+fail. Exiting non-zero lived behind an opt-in `--fail-on-violation`: the command whose
+NAME is a gate delivered a REPORT by default, and the two were indistinguishable to
+anything that reads only an exit code — which is everything that calls it from a
+shell. Under 3.31.0, with this repo's own `make dogfood-all` invocation:
+
+```
+$ pmat quality-gate --perf --max-complexity-p99 20
+⚠️ Quality gate found N blocking violations (M total findings)
+$ echo $?
+0
+```
+
+`N` is not quoted here because it is not a property of the commit. Run against a
+pristine `f47d75170` worktree it is 36; run against the working checkout this entry
+was written in — same commit, plus gitignored `.pmat/` cache state — it is 35, and
+both binaries agree on both trees. **Only the exit code changed between 3.31.0 and
+3.32.0**, and it changed from `0` to `1` on every tree tried. That is the claim to
+check:
+
+```
+$ pmat quality-gate --perf --max-complexity-p99 20 >/dev/null; echo $?   # 3.31.0 → 0
+$ pmat quality-gate --perf --max-complexity-p99 20 >/dev/null; echo $?   # 3.32.0 → 1
+$ pmat quality-gate --perf --max-complexity-p99 20 --report-only >/dev/null; echo $?  # → 0
+```
+
+`Makefile:2239` is `pmat quality-gate … || (echo "❌ Quality gate failed" && exit 1)`,
+so that `||` arm could never run — pmat's own dogfood gate was decorative, as was
+every `gate || fail` line anyone else had written against it. Blocking violations
+that do not block is a contradiction in terms.
+
+Blocking violations now exit 1 **by default**, for `--file` as well as project runs.
+`--report-only` (alias `--no-fail`) is the opt-out for dashboards and drift tracking:
+it reports the identical findings and exits 0. `--fail-on-violation` is still accepted
+and still gates, but it now describes the default, so its `--help` text names it as a
+no-op rather than leaving it to look load-bearing; passing it together with
+`--report-only` is a usage error rather than a silent guess.
+
+**pmat's scaffolder wrote a config section pmat does not read** (#1019). The
+generated `.pmat-gates.toml` carried a `[gates]` table — `run_tests`,
+`test_timeout`, `run_clippy`, `clippy_strict`, `min_coverage`, `max_complexity`
+— and nothing in pmat parses a `[gates]` section. The readers of that file look
+for `[entropy]`, `[tdg]` and `[quality]`. Checked key by key: `run_tests` and
+`test_timeout` have zero struct-field declarations anywhere in the tree.
+
+So a user ran the scaffolder, set `run_tests = false`, and pmat kept running
+tests — silently, because TOML ignores unknown keys. A config that is read and
+satisfied is indistinguishable from one that is never opened; both produce no
+output.
+
+This is pmat's own instance of what the audit found fleet-wide: #1019 records
+**wos at 99 of 99 config keys parsed by nothing** and whisper.apr at 51 of 58 —
+that issue's counts, on the trees it names, by its own key-by-key method, not
+re-derived here. The one piece of it that is still checkable by inspection is the
+shape: whisper.apr's `.pmat-gates.toml` carries a `[file-health]` section spelled
+with a hyphen where pmat reads `file_health` with an underscore in
+`.pmat-metrics.toml`. Rejecting (or warning on) unknown keys is the general fix
+and is **not** in this release — it would turn every existing typo into a hard
+error, which needs its own deprecation path. #1019 stays open for it.
+
+**`pmat comply check` asked this machine for ~192 GB of RAM.** It sized its
+concurrency from CPU count while its binding constraint is memory. Peak RSS and
+wall clock here are properties of the host and of what the checkout contains, not
+of a tree: on a bare clone with no `.pmat/` state the whole run is 5 seconds and
+31 MB, because most of the expensive checks have nothing to read. The figures
+below are from a full working checkout on a 48-core / 125 GB host, `/usr/bin/time
+-v`, varying only `RAYON_NUM_THREADS`, with the 3.31.0 binary — reproduce with
+`RAYON_NUM_THREADS=N /usr/bin/time -v pmat comply check`, and expect your own
+machine's numbers, not these:
+
+| threads | peak RSS | wall | cpu |
+|---|---|---|---|
+| 1 | 4.1 GB | 2:23 | 99% |
+| 4 | 15.5 GB | 1:12 | 334% |
+| default | 58.7 GB | 0:38 | 823% |
+
+Nothing is shared between checks — 42 files under `check_handlers/` do their own
+directory walks and there are 161 `read_to_string` call sites — so every concurrent
+check re-reads the tree into its own buffers. Extrapolating the per-worker cost to
+one worker per core on that host is a ~192 GB ask, more RAM than exists; measured,
+it reached 58.7 GB against pmat and ~94 GB against aprender, drove load average to
+75 and tripped the OOM guard.
+
+Concurrency is now bounded by whichever runs out first — available RAM / 8, CPU
+count, group count, and a ceiling of 4 — inside a **dedicated** rayon pool. The
+dedicated pool is load-bearing: comply nests rayon, so capping only the outer loop
+lets the inner level re-expand to one worker per core. Re-measured on the 3.32.0
+binary against the same checkout with `/usr/bin/time -v`, the run that peaked at
+58.7 GB now peaks at **8.5 GB** — 2 workers over 13 groups, 823% CPU → 197%, 0:38
+→ 1:07 wall. Roughly thirty seconds bought for fifty gigabytes. The run states its
+own budget before it starts (`comply: 13 group(s), 2 at a time (~8 GB peak;
+PMAT_COMPLY_JOBS overrides)`), so the announced figure and the measured one can be
+compared rather than trusted — that announced line is the reproducible part; the
+peak beside it is whatever your host and checkout produce. The bound is a
+tourniquet; the real fix is a shared read-once cache (#1014).
+
+**SATD was blind to doc comments.** `/// TODO: implement X` was invisible to every
+SATD surface — debt recorded in the public API documentation, where it is most
+visible to a human reader and least visible to the tool. Doc comments are now
+scanned but classified by **marker only, never by prose phrase-matching**. That
+asymmetry is the whole point: #925 measured a 92% false-positive rate from
+phrase-matching ordinary prose, and doc comments are overwhelmingly prose. Verified
+in both directions, by a fixture anyone can re-run rather than by a count of another
+repository that has moved since: over a two-function crate, `/// TODO: implement X`
+produces exactly one violation and `/// Deterministic order: ties broken by path`
+(#925's literal false positive) produces none.
+
+**SATD was counted three different ways.** The agent-context index carried its own
+raw-substring scanner that disagreed with `analyze satd` in both directions at once
+(`/// TODO: implement X` → 0 vs 1; `// the TODO list is empty` → 1 vs 0), and its own
+block-comment and raw-string tracking. It now delegates to the one detector. This is
+the third time this shape has been fixed: #831 removed the same style of scan from
+`five-whys`, where it reported 808 markers against `analyze satd`'s 39 for one repo.
+
+**SATD reported a count with no denominator.** `analyze satd -p src` on this repo
+printed a violation count and said nothing about the 1400-odd files the walk declined
+to read — every test, `examples/`, `demo/`, fuzz, generated and vendored file. A clean
+tree and a barely-read tree produced the same sentence. Both output formats now
+disclose scope. The shape of the note is the point; run it rather than reading the
+digits below. At `f47d75170`, `pmat analyze satd -p src` answers:
+
+```
+$ git -C <clean checkout> checkout f47d75170 && cargo build --release --bin pmat
+$ ./target/release/pmat analyze satd -p src
+Found 3 SATD violations in 3 files (1444 file(s) not read: 1378 test (use --include-tests), 66 examples/demo/fuzz/generated)
+```
+
+The note names the actionable flag rather than just a number, lists only non-zero
+reasons, and survives the summary restatement that follows severity filtering.
+
+**…and one of that note's own buckets was structurally pinned at 0.** `files_not_read.tests`
+reported 0 for every tree, `tests/` directory or not, because discovery dropped test
+files before the counting loop that records skips ever saw them — so the bucket whose
+whole job is to disclose declined test files rendered a string (`N test (use
+--include-tests)`) that nothing could ever produce. A count that cannot be non-zero is
+the same defect one level down.
+
+**Thirteen analyzers answered a tree they had read nothing from with a clean zero**
+(#1015). `ensure_analysis_path_exists` closed "the tree is not there"; an *empty but
+perfectly readable* directory went straight past it and produced, on stdout, with exit
+0, the byte-for-byte document a genuinely clean project produces:
+
+| command | what an empty directory printed |
+|---|---|
+| `analyze dag` | `graph TD` |
+| `analyze duplicates` | `Duplication: 0.0% (0 / 0 lines)` |
+| `analyze big-o` | `Total Functions Analyzed: 0` + eight zero buckets |
+| `analyze provability` | `Average provability score: 0.0%` |
+| `analyze deep-context` | `Files Analyzed: 0 / Average Complexity: 0.0` |
+| `analyze symbol-table` | `Total symbols: 0` |
+| `analyze graph-metrics` | `Total nodes: 0 / Density: 0.000` |
+| `analyze proof-annotations` | `Total proofs: 0 / High confidence: 0 (0.0%)` |
+| `analyze comprehensive` | `Quality Score: 100.0%` + "Code quality looks good!" |
+| `analyze complexity` | `Files analyzed: 0` + `Median Cyclomatic: 0.0` |
+| `analyze assembly-script` | `**Files analyzed**: 0` |
+| `analyze web-assembly` | `**Files analyzed**: 0` |
+| `analyze name-similarity` | `Found: 0 matches` |
+
+A ratio whose denominator is zero is not zero, it is undefined, and a distribution over
+an empty population is not a measurement — so a CI gate pointed at the wrong directory
+went green. All thirteen now refuse, with the sentence `analyze satd` already used:
+`no source files were found under <path>, so no <measurement> measurement was taken.
+This is not a clean result.`
+
+Three of them name a different population, because "source files" would be false there:
+a tree full of Rust holds no AssemblyScript, and saying otherwise blames the tree for
+the wrong thing. Same sentence, true noun — `no AssemblyScript files were found under
+<path>`, `no WebAssembly (.wasm/.wat) files …`, `no names were found …` — from one
+helper (`ensure_files_were_analyzed`) that `ensure_source_files_were_analyzed` now
+delegates to, so it is one sentence with a hole in it rather than a second convention.
+
+`analyze comprehensive` was the worst of them, and it is the reason a second sweep
+happened at all: it runs `analyze satd`, *caught* satd's refusal, printed it as
+`Warning: satd analysis failed`, and then awarded the tree a perfect score — a passing
+command wrapped around a refusing one. Its `quality_score` was a bare `f64` set to
+`100.0` whenever `total_issues == 0`, a condition an empty directory satisfies; it is
+now `Option<f64>`, so the fabricated number is unrepresentable rather than merely
+discouraged. `analyze complexity` had the same shape with a twist — the one line that
+disclosed the empty denominator went to *stderr*, so `--output`, a pipe and
+`--format json` all carried a report of zeros. `analyze name-similarity` was the
+subtlest: its stdout over an empty directory was byte-identical to its stdout over a
+real codebase for a query that genuinely matches nothing, because the report printed
+the numerator and never the denominator — `total_candidates` was set to the number of
+*matches*. It now prints `N matches out of M names searched`.
+
+The refusals are keyed on what was *read*, never on what was *found*, because a refusal
+that fires on real input is a worse bug than the one it fixes. Files that were read and
+then dropped by `--max-cyclomatic`, a `.wat`-only tree that yields no metrics row by
+design, a file that declares nothing annotatable, and a query that matches nothing over
+a real corpus are all measured zeros and all keep exit 0. Every one of the thirteen is
+tested against three trees — empty, non-git-with-sources, git-with-sources — so a
+version of the fix that refused everything would fail.
+
+**`pmat quality-gate`'s complexity verdict depended on the directory you typed it in**
+(#1020). `check_complexity` read the global `configuration()` singleton, which is built
+from `std::env::current_dir().join("pmat.toml")`. Under 3.31.0 the same
+`pmat quality-gate --project-path X --checks complexity` on the same fixture answered
+`complexity_violations: 1` run from this repo (whose `pmat.toml` sets
+`max_cognitive_complexity = 100`) and `2` run from `/tmp` (no `pmat.toml`, so the
+default 25 applied); 3.32.0 answers `2` from both. The fixture — one function at
+cyclomatic ≈ 37 / cognitive ≈ 72, in the gap between the two ceilings — is written by
+`tests/modules/quality_gate_cwd_independence_test.rs`, so the comparison is re-runnable
+rather than described. A gate whose answer is a function of the caller's shell is not
+reproducible, and CI and a laptop disagree with nothing visible to explain it.
+
+Thresholds now resolve against `<project_path>/pmat.toml` and then the built-in
+defaults; **the working directory is not consulted at any step**, not even as a
+lower-priority fallback — a fallback would still make the verdict depend on the
+caller's location, merely more rarely, firing exactly on the fixture and freshly-cloned
+cases. This also makes complexity consistent with `load_exclude_paths`,
+`load_entropy_threshold`, `load_max_pattern_repetition`, `load_provability_threshold`,
+`load_entropy_gate_config` and `load_tdg_gate_overrides`, all of which already resolved
+against the project path. The resolved source is now named on stderr; the JSON on
+stdout is byte-identical across working directories. `pmat config --set` still writes
+the CWD's `pmat.toml` — only the gate's *reading* of it is pinned to the analysed tree.
+
+**`analyze dag --dag-type call-graph` was empty for every real project** (#1020).
+`DagBuilder::build_from_project` truncates to a 400-edge Mermaid budget and then keeps
+only the nodes those surviving edges touch — which, on any tree with more than 400
+import edges, is *zero function nodes*. The call-edge pass ran afterwards and had
+nothing to walk from. Over `src/services` — 1341 files on the tree this release ships —
+3.31.0's `call-graph` answered "0 nodes, 0 edges" (`graph TD` and nothing else on the
+CLI) while `full-dependency` over the identical path answered 368/400; and
+`src/services/complexity`, ten files and so under the budget, answered 28/24 — which is
+why every existing test passed. #653 fixed `--dag-type` on the CLI only, and this shows
+that fix never worked either. The pipeline now runs in the only order that works —
+complete graph, enrich, select by type, apply the presentation budget **last** — in one
+function (`services::dag_pipeline::build_typed_dag`) that the CLI, the MCP `analyze_dag`
+tool and the extended-tools handler all call, so the three cannot drift again. The same
+`src/services` invocation now answers `node_count: 419, edge_count: 400` — and the
+payload states what those were computed from, because 400 *is* the Mermaid budget and
+quoting it as a measurement would repeat the original defect one level up. (419 is the
+count of nodes those 400 edges touch, so it too is a fact about the budget rather than
+about `src/services`.) Beside them, `analyzed` publishes `files`, `function_nodes`,
+`call_edges`, `total_nodes` and `total_edges`: what was walked, before presentation
+trimmed it. Those five are tree-scale counts that move with every commit — read them
+from the payload, not from here.
+
+`top_nodes[].complexity` was 1 for every node in the same payload, including functions
+the complexity analyzer scored 7 in the same process. It is the real value now, with
+`complexity: null` and `complexity_source: "not-measured"` for the node kinds nobody
+measures (structs, traits, modules) — a `complexity` of 1 beside a sibling field saying
+no measurement exists is two fields in one object contradicting each other. An empty
+graph now carries `empty_reason` and the `analyzed` counters it was computed from,
+instead of being reported as a completed analysis of nothing.
+
+**`analyze dead-code` answered "no dead code" over dead code it had found.**
+`--min-dead-lines` defaulted to **10**, and `dead_lines` on the cargo path is an
+*estimate* (5 lines per dead function, 3 per struct/enum, 2 otherwise), not a measured
+span — so the default invocation discarded every file whose entire finding set
+estimated under 10 lines, i.e. any file with a single dead function. `pmat analyze
+dead-code` on such a crate printed `dead_functions: 0, files: []` while the same tool's
+MCP `analyze_dead_code` named the function and its line, and the CLI's own JSON carried
+`files_with_dead_code_found: 1` beside the zeros. The default is now **0** — list every
+file with a finding — and whatever a raised threshold removes is counted in a new
+`omitted` block and named in the summary, so a trimmer can never again turn a finding
+into a silent zero.
+
+**`analyze dead-code` answered a subdirectory of a crate with a clean zero.** `cargo
+check` was run in the directory the command was POINTED AT, and every "is this a
+library" question was asked of that directory too. Point it at a subdirectory and both
+went wrong in the same step: no `Cargo.toml` was found there, so the crate read as
+binary-only, `--lib` was dropped from the cargo invocation, `cargo check --bins` on a
+lib-only crate matched no target and compiled **nothing** — and the command published
+`dead_functions: 0, dead_classes: 0` at exit 0 over a subtree holding a dead private
+function and a never-constructed struct. A path inside a crate is not a crate, it is a
+VIEW of one; rustc cannot type-check half a crate. The enclosing `Cargo.toml` is now
+found once (nearest ancestor wins, so a workspace member resolves to the member), and
+the cargo invocation, the library verdict and the scope the report is restricted to all
+come from it. On this repo `analyze dead-code -p src/models` used to assert, in
+`library_target.detail`, that the crate "declares no [lib] and there is no src/lib.rs"
+about a crate whose `src/lib.rs` is two directories up.
+
+**A library's public API was reported as dead code, and the verdict was invisible.**
+A library's exports are un-called *by construction* — their callers are outside the
+tree — so an engine whose only rule is "nothing calls it" reports the whole API as
+dead. The multi-language engine now detects a library target per language (Rust
+`[lib]`/`src/lib.rs`, Python `__all__` and packaging metadata, C-family external
+linkage, a Lua module return) and seeds those exports as reachability roots, and the
+answer is **published** rather than left as an invisible default: every dead-code
+report, on every surface, now carries `library_target` — `verdict` (`library`,
+`not-a-library`, `undetermined`), the `detail` behind it, and `exported_roots`. The
+`undetermined` verdict is the one that matters: it means exports were NOT kept, so an
+un-called export IS in the list, and the reader has to supply the knowledge the
+analyzer lacked. Two narrower defects fell out of the same pass: a `.c` translation
+unit was invisible to the C++ strategy, so a pure-C project with a `CMakeLists.txt`
+(which scores as `cpp` whatever its sources are) was dispatched there and analysed
+**zero files** — "0 files analyzed, 0 with dead code" over a file holding a dead
+function; and `dead_percentage` was computed by five separate inline copies of the same
+zero-denominator guard, now one helper.
+
+**`pmat split`'s `impact.circular_risks` was structurally always empty.** The field was
+literally `Vec::new(), // TODO: detect circular deps`, so the report's one warning
+about splitting a file that is already in a mutual dependency could not fire for any
+input — the same defect as `files_not_read.tests` one section above, in a different
+report. It is now computed: a file that both calls into the analysed file and is called
+by it is named, sorted, before the split is executed. On the tree this release ships,
+`pmat split src/cli/analysis_utilities/quality_gate_project.rs --format json` names two
+— `src/cli/analysis_utilities/quality_gate_suite.rs` and
+`src/cli/handlers/quality_gate_check_runner.rs`. The names are the check; how many there
+are depends on which files import that one today.
+
+**`analyze coverage-improve` picked its targets from hash order.** The top-N selection
+sorted by score alone, so files with equal scores were ordered by the iteration order of
+a `HashMap` — the same tree could yield a different target list on consecutive runs,
+with nothing in the output to show that the two runs disagreed. Ties are now broken by
+path, and the count that was the hardcoded `let top_n = 10; // TODO: Make this
+configurable` is the new `--max-targets` flag, defaulting to that same 10 so nobody's
+existing invocation moves; `--max-targets 0` lifts the limit.
+
+**Four analyzers walked past `.gitignore` and counted the tree once per worktree.**
+`cuda-tdg`, `validate-docs`, `analyze assembly-script` and `analyze web-assembly` each
+hand-rolled a `walkdir` walk, because the shared discovery applies a source-extension
+whitelist that `.cu`, `.ptx`, `.wgsl`, `.wasm`, `.wat` and `.md` are not in. None of
+the four read a `.gitignore`, so all four descended into the author's gitignored
+`.claude/worktrees/` — 48 checkouts of pmat inside pmat.
+
+**Every figure in this paragraph is a property of that checkout rather than of the
+commit**, and none of them will reproduce from a clean clone: the multiplier IS the
+gitignored worktrees, and they are not in git. The table below is what the two
+binaries answered against that checkout while this entry was being written; the
+worktrees have themselves moved since, so expect neighbouring numbers, not these.
+Ratios are the durable part.
+
+| command (working checkout, 48 worktrees) | 3.31.0 | 3.32.0 |
+|---|---|---|
+| `pmat cuda-tdg .` | ~205,600 files | ~4,350 files |
+| `pmat validate-docs` | ~30,900 Markdown files, ~2min, ~2,080 broken links | ~430 Markdown files, ~5s, ~30 broken links |
+| `pmat analyze assembly-script -p .` | 48 copies of one file | 1 file |
+
+The collapse in broken links is deduplication, not repair: one real broken link
+reported once per worktree became one report. The residue is the ~30 distinct broken
+links that were always there. The *only* part of this reproducible from `f47d75170`
+alone is the convergence claim — in a pristine worktree of that commit, with no
+worktrees nested inside it, `cuda-tdg` answers 4349 under 3.31.0 and 4348 under
+3.32.0, and `assembly-script` answers 1 under both. That is the check to run.
+
+There is now one ignore policy
+(`services::file_discovery::project_files`) with the extension question left to the
+caller, and its caps are deliberately off: `FileDiscoveryConfig`'s defaults (depth 15,
+50,000 files) would silently shrink the population a verdict covers.
+
+**`pmat analyze makefile` could not parse this repository's own Makefile.** GNU make's
+recipe grammar ignores blank lines and comment-only lines *among* recipe lines; pmat's
+parser ended the recipe at the first line that was not a tab. Every recipe written that
+way was cut in half, and the remaining tab lines came back to the top-level parser,
+where a tab with no rule above it is rejected — so one target documented by six comment
+lines between `pmat-validate-docs:` and its first command made `pmat analyze makefile
+Makefile` exit **4** with twelve parse errors on a file GNU make runs without complaint.
+Comment nodes are still recorded in the AST, so a rule that consults comments does not
+lose them to the fix.
+
+**`pmat serve`'s diagnostic denied the transport that works.** It printed `error: pmat
+serve HTTP transport not yet implemented` for a *websocket* request, throughout the
+release in which the streamable-HTTP MCP transport shipped (#999 EV-6). The message now
+names the transport that was actually requested and points at the one that works:
+`--transport http`, with `PMAT_MCP_HTTP_TOKEN` set. The
+subcommand's own `--help` said `[NOT IMPLEMENTED] HTTP/WebSocket server — exits with an
+error`; it now says what is implemented, what is not (`web-socket`, `http-sse`, `both`,
+`all`, all still exit 2), that there is no `stdio` value, and — in builds without the
+feature — that HTTP was not compiled in.
+
+**The MCP `quality_gate` tool advertised nine checks and ran two.** It described itself
+as "complexity, SATD, dead code, lint, docs, etc." — there is no `lint` check on any
+pmat gate — while running TDG plus SATD. Over a one-file fixture with two planted
+markers — the one `src/mcp_pmcp/tool_functions_gate_parity_tests.rs` writes, so this is
+re-runnable — 3.31.0's `pmat quality-gate --checks all` reported `{satd: 2, coverage: 1}`
+and its MCP tool reported `{satd: 2}`, with `not_measured: []` beside it. The missing row is
+coverage's own *disclosure* row ("Code coverage was NOT measured…"), so the surface
+that dropped seven of nine checks was the one claiming to have left nothing out.
+
+The fix is not a second list of checks in the MCP file. `run_gate_suite` calls the same
+`run_all_project_checks` / `run_all_single_file_checks` that `pmat quality-gate` calls,
+at thresholds pinned to clap's own defaults by test, so the two surfaces cannot report
+different findings for the same path without the CLI reporting them too. A check that
+did not run is *named* rather than skipped: the five project-wide checks a single file
+cannot answer appear in `not_measured` and, with a per-path reason, in
+`checks.not_run[]`.
+
+**The MCP `analyze_dead_code` tool ran a different analyzer than the CLI of the same
+name**, and the two disagreed in both directions at once. Under 3.31.0, over two
+throwaway crates and one path in this repo:
+
+```text
+  bin crate: 1 private dead fn + 2 never-constructed structs
+    CLI  {dead_functions: 1, dead_classes: 2}   MCP  {total_dead_code: 1}
+  lib crate: pub entry(), 2 private dead fns, 1 dead method,
+             1 private never-constructed struct
+    CLI  {never_called_one, never_called_two, dead_method, NeverConstructed}
+    MCP  {entry, never_called_one, never_called_two, dead_method}
+  src/models (this repo)
+    CLI  0                                      MCP  50
+```
+
+(The bin-crate row needs a file long enough that 3.31.0's `--min-dead-lines 10` does not
+also swallow it — the estimate is bounded by the file's own length, which is the
+neighbouring defect below.)
+
+The reachability analyzer has no notion of a dead *type*, so `dead_classes` could not
+cross to that surface at all; and it calls every un-called `pub` item dead, which is
+exactly wrong for a library, whose public API *is* its entry point — hence `entry`, and
+hence all 50 findings over `src/models`. A disclosure field would have left both numbers
+wrong and merely annotated. One runner (`run_dead_code_suite`) now serves both surfaces
+at the CLI's defaults: Rust goes to cargo's own dead-code pass, everything else to the
+reachability analyzer, and neither surface can pick a different engine than the other
+for the same path. Which one answered is published in the payload.
+
+**Four MCP tools reported the caller's mistakes as server faults, and waved half of
+them through.** `pmat_query_code`, `pmat_get_function`, `pmat_find_similar` and
+`pmat_index_stats` read every optional argument as
+`params[key].as_T().unwrap_or(default)`, which collapses three different caller intents
+into one. The upper bounds were enforced and the lower ones were not, which is what made
+the hole hard to see: `{"limit": 9999}` was refused against a documented `maximum: 100`
+while `{"limit": -1}` came back as an ordinary 10-result page. `include_source: "false"`
+— a JSON-typing slip that costs a caller their whole context window — read as the
+default `true`, the exact opposite of the request, silently. So did `rebuild: "yes"`
+(the caller asked for a fresh index and got a stale one) and `min_similarity: "high"`.
+
+And the bounds that *were* enforced arrived under the wrong JSON-RPC code. Both adapter
+layers guessed a failure's origin from a hand-maintained list of message *prefixes*, so
+three documented bounds that were not on the list — and, in the
+`mcp_integration` adapters, *every* failure including `Missing required parameter` —
+came back as `-32603 Internal error`, sending hosts to debug pmat for a value they had
+sent. The classification now travels with the error (`ToolError::InvalidParams` /
+`Internal`) from the site that knows it, so a new bound cannot silently join the
+internal bucket. A missing key, or an explicit `null`, remains the only thing that
+selects a default.
+
+**A benchmark that had never run, guarding a published speedup claim.**
+`criterion_main!` sat inside a module, so it defined `bench::main` and the crate had
+none — `cargo bench --bench topk_selection --features analytics-simd`, the exact
+command in the file's own header, failed with `error[E0601]`. Its stated job is to
+"validate 5-28x speedup claims from specification"; those claims had never been
+measured by it. The failure was invisible because the other arm compiled: without
+the feature the file is an empty `fn main()` that benchmarks nothing and exits 0.
+
+**`src/transport/` — 1434 lines and 39 tests that had never been compiled** (#1009,
+26 `#[test]` and 13 `#[tokio::test]`; deleted in `2093ed492`, so
+`git show 2093ed492^:src/transport/*.rs | wc -l` is the 1434 — `git show --stat` says
+1439 for the same five files, because none of them ended in a newline, which is the
+sort of gap between two counts of "the same thing" this release is about).
+No `mod` declaration reached it, so `cargo test <name>` printed `0 passed` and exited
+0. Declaring it produces 18 errors: `pmcp::transport` no longer exists and two of its
+crates are not dependencies of pmat at all. Deleted rather than revived.
+
+**Three tests that measured the machine rather than the tree** (#1013). All three
+failed under `cargo llvm-cov` while passing under `cargo test` on the same commit,
+because the dead-code phase is a wall-clock budget around `cargo check` and the
+instrumented harness starves it. Not fixed by raising the budget a third time —
+120s had already been raised to 600s after the identical failure. The finding test
+lost the deadline it could hit (the budget itself is still covered by a separate
+one-second test), and `label_refactoring_pass` was extracted as a pure function so
+the exact-equality property is asserted over every input state on synthetic data —
+strictly stronger than the cross-run comparison it replaces, and unable to flake.
+
+### Changed
+
+Everything a consumer can observe, field by field. Nothing here needs a code change to
+be noticed — it needs a re-read of whatever parses pmat's output.
+
+**Exit codes**
+
+- `pmat quality-gate` exits **1** on blocking violations, for `--file` as well as
+  project runs. Previously 0 unless `--fail-on-violation` was passed.
+- Thirteen `pmat analyze` subcommands exit **non-zero** over a tree they read nothing
+  from — `dag`, `duplicates`, `big-o`, `provability`, `deep-context`, `symbol-table`,
+  `graph-metrics`, `proof-annotations`, `comprehensive`, `complexity`,
+  `assembly-script`, `web-assembly`, `name-similarity`. Previously 0 with a report of
+  zeros.
+- `pmat serve` still exits 2 for an unimplemented transport; the set of unimplemented
+  transports no longer includes `http`.
+
+**Flags**
+
+- `quality-gate` gains `--report-only` (alias `--no-fail`). `--fail-on-violation` keeps
+  parsing and keeps gating, but now states in its own help text that it has no effect,
+  because it asks for what already happens. Passing both is a usage error (exit 2)
+  rather than a silent guess.
+- `analyze dead-code --min-dead-lines` **defaults to 0**, was 10.
+- `analyze coverage-improve` gains `--max-targets` (default 10 — the value that was
+  hardcoded, so no existing invocation moves; `0` lifts the limit).
+- `analyze satd`'s MCP counterpart accepts `include_tests`; see below.
+- The three new subcommands carry aliases: `reachability` = `orphans` = `unreachable`,
+  `hardcoded-paths` = `abs-paths` = `path-leaks`, `vacuous-tests` = `vacuous` =
+  `fake-tests`. `pmat init` = `pmat bootstrap`.
+
+**Configuration**
+
+- `quality-gate`'s complexity thresholds are read from `<project-path>/pmat.toml`, never
+  from the process working directory. A `pmat.toml` in the CWD that used to decide the
+  verdict is now ignored outright.
+
+**CLI output**
+
+- `analyze satd` JSON gains `files_not_read`, and `SatdAnalysisResult` gains `skipped`.
+  `files_not_read.tests` is now a real count; it was structurally 0.
+- `analyze dead-code` JSON gains an always-present `omitted` object — `files`,
+  `dead_lines`, `dead_functions`, `dead_classes`, `dead_modules`, `unreachable_blocks`,
+  `reasons` — so "nothing was dropped" is stated rather than inferred.
+- `analyze dead-code` gains **`library_target`** on every output format: a
+  `{verdict, detail, exported_roots}` object in JSON (`verdict` is `library`,
+  `not-a-library` or `undetermined`; `exported_roots` is `null` on the cargo engine,
+  which defers to rustc rather than seeding roots itself), a `Library target:` line in
+  the human summary, a `Library Target` row in the Markdown table, and
+  `properties.libraryTarget` in SARIF. It decides which findings exist, so it travels
+  with them.
+- `analyze dead-code -p <subdirectory>` reports the enclosing crate's findings
+  restricted to that subtree, and says so in `library_target.detail`. It previously
+  compiled nothing and reported zeros.
+- `pmat split`'s `impact.circular_risks` is a real list; it was structurally always
+  empty.
+- `analyze coverage-improve`'s target list is deterministic — equal scores are ordered
+  by path, where they were ordered by `HashMap` iteration order.
+- `pmat work` item progress is the fraction of acceptance criteria ticked off when the
+  criteria carry `[x]`/`[ ]` markers, falling back to the status-derived number only
+  when not one criterion records a state. The stored criteria keep their marker; it
+  used to be stripped on read, which is what made the completed ones unreadable.
+- `analyze comprehensive`'s `quality_score` is **nullable**: `null` plus a reason where
+  a fabricated `100.0` used to sit.
+- `analyze name-similarity`'s `total_candidates` is the number of names *searched*. It
+  used to carry the number of *matches*, i.e. the numerator twice. Human and Markdown
+  output print `N matches out of M names searched`.
+- `analyze dag` reports the reason a graph is empty rather than drawing `graph TD`.
+- `pmat serve`'s unimplemented-transport message names the requested transport and the
+  feature flag for the one that works. `pmat serve --help` no longer says
+  `[NOT IMPLEMENTED]`.
+
+**MCP payloads and schemas**
+
+- `quality_gate` gains `checks.ran` (the checks that produced the verdict) and
+  `checks.not_run[{check, path, reason}]`. `not_measured` now also lists every
+  advertised check that did not run, so an empty list is once again a positive claim of
+  full coverage. Both `check_quality_gates` and `check_quality_gate_file` carry it. The
+  tool's `description` is rewritten to name the nine checks it runs; it previously
+  advertised a `lint` check that does not exist on any pmat gate.
+- `analyze_dead_code` gains `by_kind` (a counter for every kind the report can produce,
+  summing to `total_dead_code`), `engines`, a top-level `files_analyzed`, `paths[]`
+  (per requested path: `requested` — the path as the caller spelled it — plus the
+  `engine`, `language`, `total_functions`, `analysis_root`, `files_analyzed`,
+  `files_listed`, `library_target`, `findings_outside_requested_path`) and
+  `paths_not_analyzed[{path, reason}]`. `analyzer` is now `pmat analyze dead-code`
+  — the string changed, from `multi-language-reachability` — and the per-file rows
+  carry every kind, not only `dead_functions`: `dead_classes`, `dead_variables`,
+  `dead_modules`, `unreachable_blocks`, `other` and a `counts` object whose six fields
+  head the six lists, so every listed item has a counter and every counter a list. Each
+  item gains `reason` (rustc's own sentence on the cargo engine) beside `name` and
+  `line`. Report paths are absolute on both engines; cargo's are relative and were
+  previously emitted as-is.
+- `analyze_dead_code`'s `total_functions` is **nullable**, and `languages` is now
+  sorted. Changing the analyzer briefly dropped both keys outright — a breaking payload
+  change nothing recorded — and dropping `total_functions` in a release whose theme is
+  that a count without a denominator is the defect was the wrong direction: it is the
+  denominator for `by_kind.dead_functions`, and without it `3` reads the same over a
+  four-function tree and a nine-hundred-function one. Both keys are back. The engine
+  that answers now decides the value: `multi-language-reachability` walks a call graph
+  and so counts the live functions, while cargo's engine reports what rustc's dead-code
+  pass found dead and never enumerates what exists, so `total_functions` is `null` there
+  rather than a `0` that would read as an empty crate — and `null` rather than a number
+  counted some other way, which would be measured over a different file set than the
+  findings it heads (`cargo check` skips the test, example and bench targets). It is
+  also `null` when only some of several requested paths could be counted, because a sum
+  over a subset is not a denominator for a numerator drawn from all of them; `paths[]`
+  says which path had no count. `languages` remains the languages actually READ, which
+  the engine name does not stand in for: the multi-language engine reads one language
+  per project and skips every other source file under the path.
+- `analyze_satd` advertises `include_tests` in `tools/list` — the parameter was already
+  honoured and materially changes the count, so two callers sending the documented
+  arguments could get different answers and neither could explain why. Its payload
+  gains `files_read`, `files_not_read{total, tests, examples_demo_fuzz_generated,
+  minified_or_vendor, too_large}` and `violations_truncated`.
+- `analyze_dag` nodes gain `complexity_source`, and `complexity` is **nullable** for the
+  node kinds nobody measures. An empty graph carries `empty_reason` and an `analyzed`
+  block (`files`, `function_nodes`, `call_edges`, `total_nodes`, `total_edges`).
+- `pmat_query_code`'s `min_grade` enum lists all eleven grades (`A+` … `F`), was five,
+  and the description states it is case-insensitive. The filter already accepted all
+  eleven; `A-` worked undocumented and `Z` was neither documented nor rejected — it
+  returned `total: 0`, a legitimate-looking empty result for a grade that does not
+  exist. `min_grade: "Z"` is now `-32602` naming the eleven accepted values.
+- `pmat_query_code`, `pmat_get_function`, `pmat_find_similar` and `pmat_index_stats`
+  return **`-32602 Invalid params`** for a caller-supplied value that fails a documented
+  bound, where they returned `-32603 Internal error`. Out-of-range and wrongly-typed
+  values are refused rather than silently replaced by the default: `limit: -1`,
+  `limit: 2.5`, `limit: "10"`, `limit: 9999`, `include_source: "false"`,
+  `rebuild: "yes"`, `min_similarity: "high"` and `min_grade: "Z"` are all errors now
+  (`limit: 9999` was already refused, but as `-32603`). A missing key or an explicit
+  `null` still selects the default.
+
+### Known limitations
+
+Named because a release note that lists only what was fixed is the same defect this
+release is about. None of the following is fixed here.
+
+**An A+ under the new TDG model means one thing: the unit is small and does not branch
+much.** It is not evidence that the code is correct, tested, well-named, or worth
+having. Nesting depth is measured and stored, because it explains why a unit is hard to
+read, but it does not score — a nesting gateway would add 10 failures out of 22,724, so
+shipping it as a component would be a term that never fires, which is the defect the
+dead SATD term already was. Nothing charges for coupling, argument count or naming. The
+walk cannot see inside a macro body at the site where it expands. And the grade only
+covers what the index holds: a definition the chunker does not emit — a module-level
+`const` table, an `impl` header, a body that lives inside a macro — is not graded at
+all, and in every aggregate an ungraded definition is indistinguishable from a passing
+one. A model that cannot see part of the code it grades is one indexer change away from
+being wrong in a direction nobody will notice.
+
+**Unknown config keys are still ignored silently.** The #1019 fix removed pmat's own
+generated `[gates]` section, but nothing rejects or warns on a key no reader parses, so
+the general case survives — including the fleet instances the audit found: **wos has 99
+of 99 config keys parsed by nothing**, and whisper.apr has 51 of 58, one of them a
+`[file-health]` section spelled with a hyphen where pmat reads `file_health` with an
+underscore. Rejecting unknown keys turns every existing typo into a hard error and needs
+its own deprecation path. #1019 stays open for it.
+
+**The three new analyzers are CLI-only.** `reachability`, `hardcoded-paths` and
+`vacuous-tests` are not in `tools/list` and cannot be reached over MCP or HTTP (#1029).
+The MCP surface is a hand-curated list of 16 tools rather than a projection of the clap
+enum, and deriving it from the enum is the fix; hand-adding three tools across six live
+sites ahead of a release is not.
+
+**A shared read-once cache for `comply check` is not built.** The concurrency bound
+above is a tourniquet: nothing is shared between checks, 42 files under
+`check_handlers/` still do their own directory walks, and there are still 161
+`read_to_string` call sites, so every concurrent check still re-reads the tree into its
+own buffers. #1014.
+
+**`analyze entropy`, `analyze tdg` and `analyze defect-prediction` still exit 0 over an
+empty tree.** They are not in the thirteen above because each already *says* it measured
+nothing rather than printing a fabricated number — `Average Score: not measured (no
+files analysed)`, `Pattern Diversity: not measured`, `Analyzed 0 of 0 discovered
+files` — so the report is honest even though the exit code is not. A gate scripted as
+`pmat analyze entropy -p $DIR && …` still cannot tell an empty directory from a clean
+one, and `analyze tdg` still ends on `✅ TDG analysis complete`. Measured on the 3.32.0
+binary, not assumed.
+
+**CI does not build any `tests/*.rs` target, so nothing there can gate a release.**
+`.github/workflows/ci.yml` calls the org's reusable `sovereign-ci.yml`, which pins the
+test scope to `--lib` (`--workspace --lib` only for callers that opt into
+`test_workspace`, which pmat does not). The two commands that run are `cargo test --lib`
+and `cargo llvm-cov test --lib …`, and `--lib` cannot see an integration target. The
+`all` target — 199 modules under `tests/modules/`, including every test that spawns the
+built binary — is therefore compiled by `cargo clippy --all-targets` and executed by
+nobody but a
+developer typing `cargo test` locally. The end-to-end proofs in `tests/e2e_cli_t.rs`,
+`tests/e2e_mcp_stdio_t.rs`, `tests/e2e_http_serve_t.rs`, `tests/init_workspace_t.rs` and
+`tests/modules/quality_gate_exit_status.rs` are real and they are run by the release
+protocol, but they are not a gate on merge. This release adds a lib-target guard for the
+quality-gate exit code specifically
+(`src/cli/analysis_utilities/quality_gate_exit_status_guard_tests.rs`, which re-executes
+the test binary to observe a real process exit code) rather than leaving that one
+regression invisible to CI; the general fix is a CI job that runs the integration
+targets, and it is not in this release.
+
+**The shell scripts are not clean, and the figure previously quoted here — "56 findings,
+from 126" — was not reproducible.** No invocation in this repository produces it: bashrs
+6.66.2 over all 59 `*.sh` files in the checkout reports **3921 findings** — 519 error,
+1292 warning, 2110 info — of which **48 are SEC010** on paths built from string
+literals, left deliberately: see paiml/bashrs#227, where a no-op `validate_path(){ :; }`
+clears the rule while a real inline guard does not. bashrs's own summary line cannot be
+used as the count either; on that run it prints `2 error(s)` immediately above `Linted
+59 file(s): 37 with errors`. `make lint-makefile` ends in `|| true` and so gates
+nothing; the Makefile itself is clean under the ignore list in `.bashrsignore`.
+Reproduce with:
+
+```
+find . -name '*.sh' -not -path './.claude/*' -not -path './target/*' -print0 \
+  | xargs -0 bashrs lint
+```
+
+**The `checks.ran` / `checks.not_run` disclosure is MCP-only; `pmat quality-gate
+--format json` still reports a check that did not run as a zero.** The CLI's JSON
+carries per-check counters and nothing that separates "ran and found nothing" from "was
+never asked". Over a directory with no `README.md` the MCP tool answers
+`checks.not_run: [{check: "sections", reason: "no README.md, so there is nothing for the
+documentation-sections check to read"}]` while the CLI answers `section_violations: 0` —
+the same defect this release fixed on the other surface, on the surface more people
+parse. (Coverage is the exception: the CLI discloses that one as a violation row.) The
+runner is already shared, so the fix is to publish `run_gate_suite`'s `ran` / `not_run`
+from the CLI formatter too; it is not in this release.
+
+**The project context graph has no edges, so nothing in it is ranked.**
+`build_context_graph` — called by `analyze_project_with_cache`, and through it by
+deep-context — extracts every function, struct and trait as a CSR node and extracts no
+relationships at all: `num_edges()` is 0 and `hot_symbols()` is empty for every project,
+so the `update_hotness()` call on the same path scores nothing. What callers get is an
+O(1) symbol index, not a call graph, and no PageRank-based importance ordering exists
+behind it despite that being the advertised reason for the graph. The input is why:
+`FileContext` keeps only `AstItem`s, and an `AstItem::Function` records a name,
+visibility, async-ness and a line — never its callees, so producing edges means a second
+full parse on a path already dominated by parsing. Call edges are therefore built only
+where that parse is paid for deliberately, in `dag_call_edges::add_call_edges` for
+`analyze dag`. This release documents the gap at the function; it does not close it.
+
+**The GPU analytics backend is never selected, and would be slower if it were.**
+`BackendSelector::auto_select` now calls `is_gpu_available()` rather than skipping the
+rung with a comment, but that function never probes for an adapter and always answers
+`false` — on a machine with a working GPU exactly as on one without. That is deliberate
+rather than merely unfinished: `GpuDevice::compute_sum` sums on the CPU because the
+compute shaders do not exist, and `GpuDevice::get_or_init` panics when no adapter is
+found, after a 240 MB PCIe calibration transfer. Reporting `true` would route callers
+into a path that is slower than the scalar one and can abort the process, to reach the
+same arithmetic. Selection is SIMD or Scalar in every build.
+
+**`analyze dead-code`'s `dead_lines` is still an estimate, not a measured span.** The
+cargo engine charges 5 lines per dead function, 3 per struct/enum and 2 otherwise,
+bounded by the file's own length. `--min-dead-lines` now defaults to 0 so nothing is
+dropped by it silently, but any non-zero threshold is compared against that estimate, and
+`dead_percentage` is derived from it. rustc's diagnostics carry a span; reading it is the
+fix and is not in this release.
+
+**`library_target: "undetermined"` is a real answer, and it means the findings below it
+are weaker than they look.** For Python without `__all__` and for any tree where the
+export set cannot be named, exported items are NOT seeded as roots, so an un-called
+export appears in the dead list — reported dead because nothing calls it, not because it
+is known to be unreachable. The verdict says so in `detail`; nothing filters on it, and
+consumers that treat every finding alike will act on the wrong ones.
+
+**`pmat mutate` / the `mutants` CI job has still never reported a caught-or-missed
+count.** The job's baseline timeout and its inert `mutants.toml` are fixed, but
+`min_mutation_score_pct = 80.0` in `.pmat-metrics.toml` still names a quantity nobody has
+ever measured, and both `continue-on-error` flags are still set. Removing them before one
+master run reports a real number would replace a silent no-op with a gate whose threshold
+has never been observed.
+
+**A moderate advisory was in `Cargo.lock`, our own gate could not see it, and both are
+fixed.** `thrift 0.17.0` carried GHSA-2f9f-gq7v-9h6m (moderate, memory allocation from an
+untrusted length), reachable as `pmat -> aprender-db 0.61 -> parquet 57.3.1 -> thrift`.
+
+*The dependency.* `aprender-db` moved to `0.64`, which uses arrow/parquet `^59`, and
+**parquet 59 dropped its thrift dependency entirely**. pmat's `arrow` pin went 57 -> 59 in
+the same commit, because the two must move together: RecordBatch type identity crosses the
+`trueno_db` boundary, and a mismatch surfaces as confusing trait errors rather than a clean
+version conflict. `cargo tree -i thrift` now returns nothing and `Cargo.lock` carries zero
+occurrences. This was very nearly shipped as a disclosed known-issue on the belief that the
+upstream move had not happened yet; querying the registry rather than reading our own pin
+showed 0.64 had already made it.
+
+Worth keeping in view for anyone auditing the old advisory: `aprender-db` is optional and
+reachable only through `analytics-simd -> advanced-analysis -> full`, so **`cargo install
+pmat` never compiled parquet or thrift** even before the bump. The exposure was the
+lockfile and `--features full` builds, not the stock binary.
+
+*The worse half, which is a real defect and not a dependency.* `cargo deny check advisories`
+printed `advisories ok` and exited 0 on the affected tree. It was not lying about its
+database — RustSec has 1,235 advisories and no thrift entry at all — it was answering "is
+anything here listed in RustSec" while CI read it as "is anything here known-vulnerable".
+GitHub's advisory database is a superset and did carry it. The one blocking security gate in
+this repository had a permanent structural blind spot and reported it as a pass: the same
+**absence-rendered-as-success** shape this release spent itself fixing everywhere else. It
+had recurred on the same crate twice, because the first occurrence was worked around by hand
+and nothing was added to CI.
+
+A Dependabot-API check exists (`scripts/dependabot-alert-gate.sh`) to sit alongside `cargo
+deny` rather than replace it — but **its workflow ships DISABLED**
+(`security-advisories.yml.disabled`), by owner decision. Run by hand it passes; it is not
+wired into CI. Why it is off rather than fixed: `GITHUB_TOKEN` cannot read the Dependabot
+alerts endpoint and `permissions: security-events: read` does not cover it, so without a
+`DEPENDABOT_ALERTS_TOKEN` secret it exits 2 (CANNOT MEASURE) on every run — correct, and a
+permanently red check is one everybody learns to walk past, which is worse than no check.
+Re-enabling is a secret plus a rename. **Until then the `cargo deny` blind spot described
+above is unmitigated in CI: cross-check Dependabot by hand before a release.** The script's
+design is still worth recording —
+neither source subsumes the other, and RustSec carries unmaintained/yanked findings
+Dependabot does not model. Three properties it was built to have, each of which had bitten
+someone first:
+
+- **It FAILS when it cannot measure.** An API error, a missing token or Dependabot disabled
+  exits 2, not 0. "We could not see it" must never render as "nothing found".
+- **It refuses to trust a single page.** `gh api` paginates at 30, so a truncated alert list
+  reads as a short clean one; the gate cross-checks a `--paginate` walk against the count and
+  says so (`66 alerts over 1 page(s) … an independent --paginate walk agreed at 66`).
+- **Acceptance is a recorded, EXPIRING decision**, not a deleted check — an acknowledgement
+  carries an owner, a justification and an expiry date, mirroring `deny.toml`'s
+  `[advisories] ignore`.
+
+It needs a `DEPENDABOT_ALERTS_TOKEN` repository secret: `GITHUB_TOKEN` cannot read Dependabot
+alerts, and `permissions: security-events: read` does not cover that endpoint. Until the
+secret is provisioned the workflow fails loudly rather than passing quietly, which is the
+design. It is deliberately not a required status check while that is outstanding.
+
 ## [3.31.0] - 2026-08-15
 
 ### Added

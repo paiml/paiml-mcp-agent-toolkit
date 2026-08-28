@@ -18,8 +18,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Test configuration
+# Test configuration. This directory is created and written to in the current
+# working directory, so assert it stays a repo-relative name: an absolute or
+# '..'-bearing value would have the script scribble outside the checkout.
 TEST_PROJECT="test_project"
+if [ -z "$TEST_PROJECT" ] || [[ "$TEST_PROJECT" == *".."* ]] || [[ "$TEST_PROJECT" == /* ]]; then
+    echo "❌ Refusing to use test project path '$TEST_PROJECT'" >&2
+    exit 1
+fi
 
 # Find binary: prefer release, fall back to debug
 if [[ -f "./target/release/pmat" ]]; then
@@ -86,10 +92,10 @@ fi
 
 # Test 5: Verify commands complete within reasonable time
 echo -n "Test 5: Commands complete within reasonable time... "
-start_time=$(date +%s)
+# Bash's SECONDS counter measures elapsed time without shelling out twice
+SECONDS=0
 timeout 30s "$BINARY" analyze complexity --project-path "$TEST_PROJECT" --timeout 25 > /dev/null 2>&1
-end_time=$(date +%s)
-duration=$((end_time - start_time))
+duration=$SECONDS
 
 if [[ $duration -lt 25 ]]; then
     echo -e "${GREEN}✅ PASS (${duration}s)${NC}"

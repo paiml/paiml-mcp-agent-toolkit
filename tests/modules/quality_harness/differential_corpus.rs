@@ -122,6 +122,189 @@ const NON_MEASURING: &[(&str, &str)] = &[
 /// claim someone must defend.
 const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
     // (command path, json leaf path, why it is legitimately constant)
+
+    // ── CB-2104's self-test: constant BY CONSTRUCTION, and that is the point ──
+    //
+    // `comply numeric-claims` runs a COMMITTED fixture of 4 planted defects on
+    // every invocation and refuses to print a real result unless it recovers
+    // 4/4. The fixture does not vary with the repo under test — it is the
+    // control that proves the detector still works, so a run against an empty
+    // project and a run against a defect-rich one MUST report the same 4/4.
+    //
+    // A varying self-test would mean the control was reading the corpus, which
+    // is exactly what a control must not do. These are the one case where
+    // "identical for empty and large" is the requirement rather than the defect.
+    //
+    // The guard against these going vacuous is not this gate: it is
+    // `removing_a_planted_defect_fails_the_self_test`, which mutates
+    // `recovers()` to a constant `true` and watches the suite go red.
+    (
+        "comply numeric-claims",
+        "self_test.planted",
+        "the self-test fixture is committed and fixed at 4 planted defects; it does not vary with the audited repo, because it is the control that proves the detector still works. Pinned by removing_a_planted_defect_fails_the_self_test",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.recovered",
+        "4 of 4 recovered on every run, or the real result is not printed at all. Varying with the corpus would mean the control was reading the corpus",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.passed",
+        "the boolean form of recovered == planted; constant for the same reason",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.innocent_items",
+        "36 = 26 digit-carrying lines in the innocent/ fixture plus 10 correct derivations. A committed corpus of numbers that must NOT fire; its size is a property of the fixture, not of the audited tree",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.findings[].len",
+        "4, matching planted. See self_test.planted",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.false_positives[].len",
+        "0 on the committed fixture, and a non-zero here fails the run outright rather than being reported as a finding",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.missed[].len",
+        "0 on the committed fixture; a miss means the detector has rotted and the run refuses",
+    ),
+    (
+        "comply numeric-claims",
+        "self_test.unexpected[].len",
+        "0 on the committed fixture; same refusal path as missed",
+    ),
+        (
+        "analyze satd",
+        "files_unaccounted",
+        "a LEAK DETECTOR, not a measurement, and the twin of `analysis_provenance.unrecorded` below. #1035 gave SATD a census whose buckets partition the walk exactly: analysed + not_read == discovered. `files_unaccounted` is what is left over when they do not, so 0 on every corpus is the REQUIREMENT and a non-zero value here is the defect. Constant BECAUSE the code is correct. The guard against it going vacuous is `census_has_a_denominator_tests`, which drops a bucket and watches the partition break",
+    ),
+    (
+        "analyze satd",
+        "census_balances",
+        "an INVARIANT stated as a boolean: `analysed + not_read == discovered`. It is `true` on every corpus for the same reason `files_unaccounted` is 0 — they are two spellings of one claim, published together so a consumer can check the cheap one. A corpus that made this vary would be a corpus on which SATD had miscounted",
+    ),
+    (
+        "analyze complexity",
+        "analysis_provenance.unrecorded",
+        "a LEAK DETECTOR, not a measurement: it counts files whose provenance nothing recorded, and the other provenance counters are asserted to partition files_analyzed exactly. 0 on every corpus is the invariant — a non-zero value here is the defect, and would be caught by the partition assertion in the complexity tests rather than by this gate. Constant BECAUSE the code is correct",
+    ),
+    // ── CB-2104 leaves that are constant for STATED reasons ──────────────
+    //
+    // `exit` heads this list because it is the strongest case in the file: the
+    // check is WARN-ONLY by design, so exit 0 on both corpora is the
+    // requirement, not a symptom. Exit 2 is reserved for UNMEASURABLE, which
+    // neither corpus is. A varying exit code would mean findings had become
+    // blocking, which is the one thing this check must never do.
+    (
+        "comply numeric-claims",
+        "exit",
+        "WARN-ONLY by design: findings exit 0 on every corpus, and exit 2 is reserved for UNMEASURABLE. A varying exit code here would mean findings had become blocking, which is the property the check was specified never to have",
+    ),
+    (
+        "comply numeric-claims",
+        "warnings[].len",
+        "operator warnings (`--min-sites` below the measured-precision floor, `--include-generated`) fire on FLAGS, not on the corpus. Neither differential run passes either flag. Exercised by census_tests::min_sites_below_the_floor_warns",
+    ),
+    // The five suppression counters below stayed 0 after the corpus gained
+    // material for each guard, and each has a specific reason. They are
+    // exercised by unit tests rather than by this gate, which is stated here
+    // rather than left for a reader to discover: a counter nothing exercises
+    // ANYWHERE would be a real defect, and these are not that.
+    (
+        "comply numeric-claims",
+        "census.excluded_machine_managed",
+        "both corpora carry a Cargo.lock, so the count is equal rather than absent — the exclusion fires on both and cancels. Exercised by corpus_tests, which asserts the exclusion by name",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_derivation",
+        "the derivation guard needs an annotation that RESTATES its value arithmetically (`512  # 2 * 256`); the corpus carries one, but R2 drops the pair before the guard is reached because neither side names the same quantity. Exercised by annotate_tests::correct_derivations_are_never_flagged",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_multi_slot",
+        "G2 needs a template whose OTHER numeric slots also vary, and the corpus rollup fixture supplies one — but it is dropped earlier, by the measurement framing, for lacking a repo-artifact noun. Exercised by cohort_tests::r1_silent_on_multi_varying_slots, which is the ablation proof",
+    ),
+    (
+        "comply numeric-claims",
+        "census.suppressed_unresolved_xref",
+        "fires only on a NAMED cross-reference whose target cannot be resolved. Neither corpus contains a cross-reference at all, resolvable or not",
+    ),
+    (
+        "comply numeric-claims",
+        "census.unreadable",
+        "R1 reads prose and config; the corpus's invalid-UTF-8 file is a .rs, which contributes comments only and is skipped before the read. The unreadable counter for THAT corpus file is analyze satd's, which does respond",
+    ),
+    (
+        "analyze duplicates",
+        "listing.top_files",
+        "the --top-files LIMIT echoed back, not a measurement. 10 is the default on both corpora because neither run passes the flag. It responds to the flag rather than to the corpus, which is the shape of every configuration leaf here",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.files",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_lines",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_functions",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_classes",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.dead_modules",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.unreachable_blocks",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze dead-code",
+        "omitted.reasons[].len",
+        "the default invocation lists every file it found (16 of 16 on the large corpus), so nothing is omitted. The family DOES respond, to the flags rather than to the corpus: `--top-files 2` reports omitted.files=14, dead_lines=399, dead_functions=72, dead_classes=13 and reasons ['below --min-dead-lines', 'beyond --top-files']. Verified 2026-08-21",
+    ),
+    (
+        "analyze satd",
+        "files_not_read.too_large",
+        "both SATD walks now share ONE size rule, MAX_FILE_BYTES = 10,000,000 (satd_detector/types.rs) — the >512KB/unbounded split that made the two surfaces report different numbers for the same tree was removed in #1035, upwards, so no file that was read before is skipped now. The corpus's largest file is 748,903 bytes, well under the limit, so zero files go unread for size: a true zero, and one the counter can be shown to leave — a file past 10 MB books `too_large` and is NAMED in `files_not_read.oversized`. Verified one file at a time, 2026-08-21; rule re-verified 2026-08-25",
+    ),
+    (
+        "analyze comprehensive",
+        "satd.census.not_read.too_large",
+        "both SATD walks now share ONE size rule, MAX_FILE_BYTES = 10,000,000 (satd_detector/types.rs) — the >512KB/unbounded split that made the two surfaces report different numbers for the same tree was removed in #1035, upwards, so no file that was read before is skipped now. The corpus's largest file is 748,903 bytes, well under the limit, so zero files go unread for size: a true zero, and one the counter can be shown to leave — a file past 10 MB books `too_large` and is NAMED in `files_not_read.oversized`. Verified one file at a time, 2026-08-21; rule re-verified 2026-08-25",
+    ),
+    (
+        "quality-gate",
+        "results.checks_run[].len",
+        "the sweep runs one fixed check selection, so the NUMBER of checks run is a property of the invocation, not of the tree. The leaf exists so that a run which selected checks and executed none is distinguishable from one that executed them; `files_examined` and the violation counts are what respond to the corpus",
+    ),
+    (
+        "comply check",
+        "is_compliant",
+        "both corpora are non-compliant, and legitimately so: an empty crate fails the same structural checks a defect-rich one does, so the boolean is false either way. What separates them is the breakdown — summary.pass/warn/fail respond across the corpora (see the `summary.total` entry above)",
+    ),
+    (
+        "comply report",
+        "is_compliant",
+        "both corpora are non-compliant, and legitimately so: an empty crate fails the same structural checks a defect-rich one does, so the boolean is false either way. What separates them is the breakdown — summary.pass/warn/fail respond across the corpora (see the `summary.total` entry above)",
+    ),
     (
         "comply check",
         "checks[].len",

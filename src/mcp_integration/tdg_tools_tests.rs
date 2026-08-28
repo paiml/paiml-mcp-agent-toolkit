@@ -7,6 +7,21 @@ mod tests {
     use std::io::Write;
     use tempfile::NamedTempFile;
 
+    /// A temp file TDG will actually grade.
+    ///
+    /// These tests used to call `NamedTempFile::new()`, which produces
+    /// `/tmp/.tmpXXXXXX` — no extension. TDG decides what it grades by file
+    /// extension (`crate::tdg::file_discovery::refusal`), so every one of those
+    /// files is refused as "not source", and the three tests that expected a
+    /// score got `-32603 File analysis failed` instead. The extension is not
+    /// decoration here; it is the input that selects the language.
+    fn rust_temp_file(body: &str) -> NamedTempFile {
+        let mut f = NamedTempFile::with_suffix(".rs").expect("temp file");
+        write!(f, "{body}").expect("write temp source");
+        f.flush().expect("flush temp source");
+        f
+    }
+
     /// RED TEST: Analyze technical debt tool should have correct metadata
     #[test]
     fn red_analyze_technical_debt_tool_metadata() {
@@ -81,13 +96,11 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = AnalyzeTechnicalDebtTool::new(registry);
 
-        // Create temporary Rust file
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "fn simple_function() {{").unwrap();
-        writeln!(temp_file, "    let x = 1;").unwrap();
-        writeln!(temp_file, "    println!(\"{{}}\" x);").unwrap();
-        writeln!(temp_file, "}}").unwrap();
-        temp_file.flush().unwrap();
+        // Create temporary Rust file. The body has to be real Rust: the
+        // analyzer refuses to grade a file that does not parse, and the comma
+        // this `println!` used to be missing made it exactly that.
+        let temp_file =
+            rust_temp_file("fn simple_function() {\n    let x = 1;\n    println!(\"{}\", x);\n}\n");
 
         let result = tool
             .execute(json!({
@@ -125,17 +138,16 @@ mod tests {
         let tool = GetQualityRecommendationsTool::new(registry);
 
         // Create temporary file with high complexity
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "fn complex_function(a: i32, b: i32, c: i32) {{").unwrap();
+        let mut body = String::from("fn complex_function(a: i32, b: i32, _c: i32) {\n");
         for i in 0..10 {
-            writeln!(temp_file, "    if a > {} {{", i).unwrap();
-            writeln!(temp_file, "        if b > {} {{", i).unwrap();
-            writeln!(temp_file, "            println!(\"nested\");").unwrap();
-            writeln!(temp_file, "        }}").unwrap();
-            writeln!(temp_file, "    }}").unwrap();
+            body.push_str(&format!("    if a > {i} {{\n"));
+            body.push_str(&format!("        if b > {i} {{\n"));
+            body.push_str("            println!(\"nested\");\n");
+            body.push_str("        }\n");
+            body.push_str("    }\n");
         }
-        writeln!(temp_file, "}}").unwrap();
-        temp_file.flush().unwrap();
+        body.push_str("}\n");
+        let temp_file = rust_temp_file(&body);
 
         let result = tool
             .execute(json!({
@@ -144,7 +156,7 @@ mod tests {
             }))
             .await;
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Should analyze valid file: {result:?}");
         let response = result.unwrap();
 
         assert_eq!(response["status"], "completed");
@@ -230,9 +242,7 @@ mod tests {
         let registry = Arc::new(AgentRegistry::new());
         let tool = AnalyzeTechnicalDebtTool::new(registry);
 
-        let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "fn test() {{ let x = 1; }}").unwrap();
-        temp_file.flush().unwrap();
+        let temp_file = rust_temp_file("fn demo() {\n    let _x = 1;\n}\n");
 
         // Default analysis_type should be "auto"
         let result = tool
@@ -242,7 +252,41 @@ mod tests {
             .await;
 
         // Should succeed with default options
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "auto analysis of a file: {result:?}");
+        // "auto" on a path that is not a directory means file analysis.
+        assert_eq!(result.unwrap()["analysis_type"], "file");
+    }
+
+    /// A path TDG will not grade must come back as a refusal with the reason,
+    /// not as a fabricated score.
+    ///
+    /// This is the rule that broke the three tests above: an extensionless
+    /// file is not source as far as `crate::tdg::file_discovery` is concerned,
+    /// and the MCP surface has to say so rather than hand back the untouched
+    /// component caps (90.0/A) it used to.
+    #[tokio::test]
+    async fn test_analyze_technical_debt_refuses_ungradable_file() {
+        let registry = Arc::new(AgentRegistry::new());
+        let tool = AnalyzeTechnicalDebtTool::new(registry);
+
+        let mut temp_file = NamedTempFile::new().unwrap(); // no extension
+        writeln!(temp_file, "fn demo() {{ let _x = 1; }}").unwrap();
+        temp_file.flush().unwrap();
+
+        let err = tool
+            .execute(json!({
+                "path": temp_file.path().to_str().unwrap(),
+                "analysis_type": "file"
+            }))
+            .await
+            .expect_err("a file TDG does not grade must not come back with a score");
+
+        assert_eq!(err.code, error_codes::INTERNAL_ERROR);
+        assert!(
+            err.message.contains("TDG grades source files"),
+            "the refusal must carry the reason, got: {}",
+            err.message
+        );
     }
 
     #[tokio::test]

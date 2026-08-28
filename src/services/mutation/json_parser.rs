@@ -21,11 +21,22 @@
 //!
 //! ```rust
 //! use pmat::services::mutation::json_parser::CargoMutantsReport;
+//! use pmat::services::mutation::types::MutantStatus;
 //! use std::path::PathBuf;
 //!
-//! let output_dir = PathBuf::from("mutants.out");
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # let output_dir = std::env::temp_dir().join("pmat_doc_mutation_overview");
+//! # std::fs::create_dir_all(&output_dir)?;
+//! # std::fs::write(output_dir.join("outcomes.json"), r#"{"outcomes":[{"scenario":"Baseline","summary":"Success"},{"scenario":{"Mutant":{"package":"demo","file":"src/lib.rs","function":{"function_name":"add"},"span":{"start":{"line":10}},"replacement":"()","genre":"FnValue"}},"summary":"CaughtMutant"}]}"#)?;
+//! // `output_dir` is a cargo-mutants `mutants.out/` directory holding `outcomes.json`.
 //! let report = CargoMutantsReport::from_output_dir(&output_dir)?;
 //! let pmat_report = report.to_pmat_report();
+//!
+//! assert_eq!(pmat_report.len(), 1);
+//! assert_eq!(pmat_report[0].original_file, PathBuf::from("src/lib.rs"));
+//! assert_eq!(pmat_report[0].status, MutantStatus::Killed);
+//! # Ok(())
+//! # }
 //! ```
 
 use serde::{Deserialize, Serialize};
@@ -156,9 +167,22 @@ impl CargoMutantsReport {
     ///
     /// # Example
     /// ```rust
-    /// use std::path::PathBuf;
-    /// let output_dir = PathBuf::from("mutants.out");
+    /// use pmat::services::mutation::json_parser::{CargoMutantsReport, MutantOutcome};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let output_dir = std::env::temp_dir().join("pmat_doc_from_output_dir");
+    /// # std::fs::create_dir_all(&output_dir)?;
+    /// # std::fs::write(output_dir.join("outcomes.json"), r#"{"outcomes":[{"scenario":"Baseline","summary":"Success"},{"scenario":{"Mutant":{"package":"demo","file":"src/lib.rs","function":{"function_name":"add"},"span":{"start":{"line":10}},"replacement":"()","genre":"FnValue"}},"summary":"CaughtMutant"}]}"#)?;
+    /// // `output_dir` is a cargo-mutants `mutants.out/` directory holding `outcomes.json`.
     /// let report = CargoMutantsReport::from_output_dir(&output_dir)?;
+    ///
+    /// // The `Baseline` scenario is skipped; only real mutants are returned.
+    /// assert_eq!(report.mutants.len(), 1);
+    /// assert_eq!(report.mutants[0].file, "src/lib.rs");
+    /// assert_eq!(report.mutants[0].line, 10);
+    /// assert_eq!(report.mutants[0].outcome, MutantOutcome::Caught);
+    /// # Ok(())
+    /// # }
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_output_dir(dir: &std::path::Path) -> Result<Self> {
@@ -208,9 +232,15 @@ impl CargoMutantsReport {
     ///
     /// # Example
     /// ```rust
+    /// # #![allow(deprecated)]
+    /// use pmat::services::mutation::json_parser::CargoMutantsReport;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let json = r#"{"mutants": []}"#;
     /// let report = CargoMutantsReport::from_json(json)?;
     /// assert_eq!(report.mutants.len(), 0);
+    /// # Ok(())
+    /// # }
     /// ```
     #[deprecated(
         note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format"
@@ -235,10 +265,17 @@ impl CargoMutantsReport {
     ///
     /// # Example
     /// ```rust
+    /// # #![allow(deprecated)]
+    /// use pmat::services::mutation::json_parser::CargoMutantsReport;
+    /// use pmat::services::mutation::types::MutantStatus;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let json = r#"{"mutants": [{"outcome": "caught", "file": "src/lib.rs", "line": 10}]}"#;
     /// let report = CargoMutantsReport::from_json(json)?;
     /// let pmat_report = report.to_pmat_report();
     /// assert_eq!(pmat_report[0].status, MutantStatus::Killed);
+    /// # Ok(())
+    /// # }
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_pmat_report(&self) -> Vec<Mutant> {
@@ -256,12 +293,18 @@ impl CargoMutantsReport {
     ///
     /// # Example
     /// ```rust
+    /// # #![allow(deprecated)]
+    /// use pmat::services::mutation::json_parser::CargoMutantsReport;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let json = r#"{"mutants": [
     ///     {"outcome": "caught", "file": "src/lib.rs", "line": 10},
     ///     {"outcome": "missed", "file": "src/lib.rs", "line": 20}
     /// ]}"#;
     /// let report = CargoMutantsReport::from_json(json)?;
     /// assert_eq!(report.mutation_score(), 50.0);
+    /// # Ok(())
+    /// # }
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn mutation_score(&self) -> f64 {

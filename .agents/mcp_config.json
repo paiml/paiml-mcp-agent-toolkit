@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pmat": {
+      "command": "pmat",
+      "args": ["--mode", "mcp"],
+      "env": {}
+    }
+  }
+}

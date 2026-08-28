@@ -21,6 +21,15 @@ struct FunctionInfo {
     name: String,
     file: String,
     line: usize,
+    /// Does this definition leave the tree — i.e. is it part of what a caller
+    /// outside the analysed source could call?
+    ///
+    /// Set from the language's OWN visibility declaration and nothing else:
+    /// absence of `static` in C, `pub` in Rust, membership of `__all__` or an
+    /// `__init__.py` re-export in Python, a field of a returned module table in
+    /// Lua. It is only honoured when [`LibraryTarget`] says the target is a
+    /// library — in a program an exported symbol still has no outside caller.
+    exported: bool,
 }
 
 /// Analyze C files to find function definitions and calls
@@ -62,6 +71,7 @@ fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<F
                 name,
                 file: file_str.to_string(),
                 line: line_idx + 1,
+                exported: has_external_linkage(line),
             });
         } else if line_idx + 1 < lines.len() {
             let combined = format!("{} {}", line, lines[line_idx + 1].trim());
@@ -70,6 +80,7 @@ fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<F
                     name,
                     file: file_str.to_string(),
                     line: line_idx + 2,
+                    exported: has_external_linkage(&combined),
                 });
                 skip_next_line = true;
             }
@@ -86,6 +97,16 @@ fn try_extract_c_func_name(line: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+/// Does this C definition have EXTERNAL linkage?
+///
+/// `static` is C's own visibility keyword: a `static` function cannot be named
+/// from another translation unit, so it is not part of a library's API and an
+/// un-called one is dead however the target is linked. Everything else is
+/// visible to the linker and therefore callable from outside the analysed tree.
+fn has_external_linkage(definition_line: &str) -> bool {
+    !definition_line.trim_start().starts_with("static")
 }
 
 /// C keywords to exclude from call tracking
@@ -121,9 +142,15 @@ fn analyze_cpp_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
     analyze_c_files(files)
 }
 
-/// Analyze Python files
+/// Analyze Python files.
+///
+/// `declared_exports` is what the tree states its public API to be
+/// ([`python_declared_exports`]); a definition whose name is in it is marked
+/// exported, which keeps a package's `__all__` out of the dead list once
+/// [`detect_python_library_target`] has confirmed the target is a library.
 fn analyze_python_files(
     files: &[std::path::PathBuf],
+    declared_exports: &HashSet<String>,
 ) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
@@ -141,6 +168,7 @@ fn analyze_python_files(
                     // Skip main and special methods
                     if func_name != "main" && !func_name.starts_with("__") {
                         defined_functions.push(FunctionInfo {
+                            exported: declared_exports.contains(&func_name),
                             name: func_name,
                             file: file.display().to_string(),
                             line: line_idx + 1,

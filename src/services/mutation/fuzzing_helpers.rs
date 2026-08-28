@@ -47,8 +47,19 @@ fn mutate_input(seed: &[u8]) -> Vec<u8> {
             mutated.insert(idx, rng.random::<u8>());
         }
         3 => {
-            // Delete byte
-            if !mutated.is_empty() {
+            // Delete byte.
+            //
+            // `> 1`, not `!is_empty()`: deleting the only byte of a 1-byte
+            // seed returns an empty input, which contradicts this function's
+            // own contract -- the empty-seed branch above deliberately hands
+            // back a fresh byte rather than nothing -- and feeds a degenerate
+            // entry straight back into the coverage-guided corpus in
+            // `fuzzing_strategy.rs`. Deletion is 1 of 5 strategies chosen
+            // uniformly, so a 1-byte seed came back empty 20% of the time;
+            // that is why `test_mutate_input_single_byte` failed on the second
+            // run of the `full` suite and passed on the first. libFuzzer's
+            // EraseBytes has the same floor for the same reason.
+            if mutated.len() > 1 {
                 let idx = rng.random_range(0..mutated.len());
                 mutated.remove(idx);
             }

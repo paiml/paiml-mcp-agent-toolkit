@@ -2,6 +2,14 @@
 // Extracted for file health compliance (CB-040)
 
 use super::*;
+// CB-040 (1008e33ec) moved these markdown helpers out of refactor_auto_handlers
+// into refactor_auto_types and imported only two of them back, so `use super::*`
+// stopped reaching the rest. This module was already unbuildable by then and was
+// formally quarantined three days later, so nothing ever reported it. Imported
+// explicitly on revival (#1023).
+use crate::cli::handlers::refactor_auto_types::{
+    extract_link_path, has_proper_headers, has_unspecified_code_blocks,
+};
 
 mod tests {
     use super::*;
@@ -565,7 +573,7 @@ mod coverage_tests {
 
     #[test]
     fn test_refactoring_type_variants() {
-        let types = vec![
+        let types = [
             RefactoringType::ComplexityReduction,
             RefactoringType::LintFix,
             RefactoringType::SatdCleanup,
@@ -587,7 +595,7 @@ mod coverage_tests {
 
     #[test]
     fn test_refactoring_priority_variants() {
-        let priorities = vec![
+        let priorities = [
             RefactoringPriority::Critical,
             RefactoringPriority::High,
             RefactoringPriority::Medium,
@@ -608,7 +616,7 @@ mod coverage_tests {
 
     #[test]
     fn test_refactoring_effort_variants() {
-        let efforts = vec![
+        let efforts = [
             RefactoringEffort::Trivial,
             RefactoringEffort::Minor,
             RefactoringEffort::Moderate,
@@ -654,7 +662,7 @@ mod coverage_tests {
 
     #[test]
     fn test_fix_strategy_variants() {
-        let strategies = vec![
+        let strategies = [
             FixStrategy::ExtractFunction,
             FixStrategy::SimplifyCondition,
             FixStrategy::RemoveDeadCode,

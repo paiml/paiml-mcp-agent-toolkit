@@ -34,10 +34,10 @@ echo -e "${GREEN}✓ Dependencies: ${dep_count_before}${NC}"
 # Measure current compile time (dev build for speed)
 echo -e "${YELLOW}→ Measuring compile time (dev build)...${NC}"
 cargo clean -p pmat &>/dev/null
-# shellcheck disable=DET002  # Timestamp needed for compile time measurement
+# bashrs disable=DET002  # Timestamp needed for compile time measurement
 compile_start=$(date +%s)
 cargo build --lib 2>&1 | grep -E "(Compiling|Finished)" | tail -5
-# shellcheck disable=DET002  # Timestamp needed for compile time measurement
+# bashrs disable=DET002  # Timestamp needed for compile time measurement
 compile_end=$(date +%s)
 compile_time_before=$((compile_end - compile_start))
 echo -e "${GREEN}✓ Compile time: ${compile_time_before}s${NC}"
@@ -65,7 +65,7 @@ echo -e "${YELLOW}→ Running cargo-machete analysis...${NC}"
 cargo machete --with-metadata 2>&1 | tee /tmp/machete-output.log || true
 
 # Count unused dependencies
-unused_count=$(grep -E "^\s+(tree-sitter-|ahash|arc-swap)" /tmp/machete-output.log | wc -l || echo "0")
+unused_count=$(grep -cE "^\s+(tree-sitter-|ahash|arc-swap)" /tmp/machete-output.log || echo "0")
 echo -e "${GREEN}✓ Found ${unused_count} potentially unused dependencies${NC}"
 
 echo ""
@@ -123,12 +123,22 @@ echo ""
 echo -e "${BLUE}📝 Step 6: Generate Implementation Report${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Report date. Honours SOURCE_DATE_EPOCH so the generated report is
+# reproducible; falls back to wall clock for interactive runs.
+report_date() {
+    if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+            || date -u -r "${SOURCE_DATE_EPOCH}" +"%Y-%m-%d %H:%M:%S"
+    else
+        date +"%Y-%m-%d %H:%M:%S"
+    fi
+}
+report_generated_at=$(report_date)
+
 cat > /tmp/dependency-reduction-report.md << EOF
 # Dependency Reduction Implementation Report
 
-$(# shellcheck disable=DET002  # Timestamp needed for report metadata
-)
-**Date**: $(date +"%Y-%m-%d %H:%M:%S")
+**Date**: ${report_generated_at}
 **Baseline Version**: v2.202.0
 **Specification**: docs/specifications/scientifically-remove-dependencies-time-improve-compile-speed-test-speed.md
 

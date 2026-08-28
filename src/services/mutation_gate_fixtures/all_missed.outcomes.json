@@ -1,0 +1,485 @@
+{
+ "outcomes": [
+  {
+   "scenario": "Baseline",
+   "summary": "Success",
+   "log_path": "log/baseline.log",
+   "diff_path": null,
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.102140376,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.050718501,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:5: replace fee -> u32 with 1",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 5
+      },
+      "end": {
+       "line": 2,
+       "column": 47
+      }
+     },
+     "replacement": "1",
+     "genre": "FnValue"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_5_001.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_5_001.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.100848865,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.050953858,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:14: replace > with < in fee",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 14
+      },
+      "end": {
+       "line": 2,
+       "column": 15
+      }
+     },
+     "replacement": "<",
+     "genre": "BinaryOperator"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_14_001.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_14_001.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.101045392,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.051012656,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:14: replace > with == in fee",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 14
+      },
+      "end": {
+       "line": 2,
+       "column": 15
+      }
+     },
+     "replacement": "==",
+     "genre": "BinaryOperator"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_14.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_14.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.101657777,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.051206809,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:5: replace fee -> u32 with 0",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 5
+      },
+      "end": {
+       "line": 2,
+       "column": 47
+      }
+     },
+     "replacement": "0",
+     "genre": "FnValue"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_5.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_5.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.150929983,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.051507544,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:14: replace > with >= in fee",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 14
+      },
+      "end": {
+       "line": 2,
+       "column": 15
+      }
+     },
+     "replacement": ">=",
+     "genre": "BinaryOperator"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_14_002.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_14_002.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.150879127,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.051747897,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:29: replace / with * in fee",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 29
+      },
+      "end": {
+       "line": 2,
+       "column": 30
+      }
+     },
+     "replacement": "*",
+     "genre": "BinaryOperator"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_29_001.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_29_001.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.151011397,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.051172998,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  },
+  {
+   "scenario": {
+    "Mutant": {
+     "name": "src/lib.rs:2:29: replace / with % in fee",
+     "package": "mtdemo",
+     "file": "src/lib.rs",
+     "function": {
+      "function_name": "fee",
+      "return_type": "-> u32",
+      "span": {
+       "start": {
+        "line": 1,
+        "column": 1
+       },
+       "end": {
+        "line": 3,
+        "column": 2
+       }
+      }
+     },
+     "span": {
+      "start": {
+       "line": 2,
+       "column": 29
+      },
+      "end": {
+       "line": 2,
+       "column": 30
+      }
+     },
+     "replacement": "%",
+     "genre": "BinaryOperator"
+    }
+   },
+   "summary": "MissedMutant",
+   "log_path": "log/src__lib.rs_line_2_col_29.log",
+   "diff_path": "diff/src__lib.rs_line_2_col_29.diff",
+   "phase_results": [
+    {
+     "phase": "Build",
+     "duration": 0.151670243,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--no-run",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    },
+    {
+     "phase": "Test",
+     "duration": 0.05086287,
+     "process_status": "Success",
+     "argv": [
+      "/home/noah/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+      "test",
+      "--verbose",
+      "--package=mtdemo@0.1.0"
+     ]
+    }
+   ]
+  }
+ ],
+ "total_mutants": 7,
+ "missed": 7,
+ "caught": 0,
+ "timeout": 0,
+ "unviable": 0,
+ "success": 0,
+ "start_time": "2026-08-18T09:44:37.468584085Z",
+ "end_time": "2026-08-18T09:44:38.001020516Z",
+ "cargo_mutants_version": "27.0.0"
+}

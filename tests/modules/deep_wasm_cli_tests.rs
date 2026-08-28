@@ -380,8 +380,10 @@ fn test_deep_wasm_quality_gate_violation() {
         };
 
         // Create service with very strict gates to trigger violation
-        let mut gates = WasmQualityGates::default();
-        gates.max_module_size = 1; // Extremely low limit
+        let gates = WasmQualityGates {
+            max_module_size: 1, // Extremely low limit
+            ..Default::default()
+        };
 
         let service = DeepWasmService::new().with_quality_gates(gates);
         service.analyze(request).await

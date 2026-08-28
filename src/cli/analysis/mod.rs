@@ -41,3 +41,7 @@ mod tests {
         assert_eq!(1 + 1, 2);
     }
 }
+
+#[cfg(test)]
+#[path = "regex_hoisting_tests.rs"]
+mod regex_hoisting_tests;

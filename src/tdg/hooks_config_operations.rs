@@ -24,13 +24,10 @@ impl TdgHooksConfig {
     /// Create default configuration file at .pmat/tdg-rules.toml
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_default(project_root: &Path) -> Result<()> {
-        let pmat_dir = project_root.join(".pmat");
+        // Create .pmat directory if it doesn't exist, with its own ignore rule
+        // (#1070); the config write below reports if it could not be made.
+        let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(project_root);
         let config_path = pmat_dir.join("tdg-rules.toml");
-
-        // Create .pmat directory if it doesn't exist
-        if !pmat_dir.exists() {
-            fs::create_dir_all(&pmat_dir)?;
-        }
 
         // Don't overwrite existing config
         if config_path.exists() {

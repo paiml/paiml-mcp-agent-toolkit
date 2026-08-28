@@ -311,7 +311,7 @@
             output: "()".to_string(),
             output_file: None,
         };
-        assert_eq!(CliInput::get_qdd_command_name(&qdd_cmd), "qdd-create");
+        assert_eq!(crate::cli::command_wire_names::qdd_command_name(&qdd_cmd), "qdd-create");
     }
 
     #[test]
@@ -325,7 +325,7 @@
             output: None,
             dry_run: false,
         };
-        assert_eq!(CliInput::get_qdd_command_name(&qdd_cmd), "qdd-refactor");
+        assert_eq!(crate::cli::command_wire_names::qdd_command_name(&qdd_cmd), "qdd-refactor");
     }
 
     #[test]
@@ -337,7 +337,7 @@
             output: None,
             strict: false,
         };
-        assert_eq!(CliInput::get_qdd_command_name(&qdd_cmd), "qdd-validate");
+        assert_eq!(crate::cli::command_wire_names::qdd_command_name(&qdd_cmd), "qdd-validate");
     }
 
     // === CliOutput Tests ===

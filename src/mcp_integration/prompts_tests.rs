@@ -17,10 +17,18 @@ mod coverage_tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_code_analysis_prompt_default() {
+        // `X::default()` on a unit struct is what clippy's
+        // default_constructed_unit_structs wants rewritten to `X` -- but the
+        // `Default` impl IS the subject here, so rewriting it would delete
+        // the test. Allowed locally, and given something that can actually
+        // fail: `Default` and `new()` must produce the same prompt.
         let prompt = CodeAnalysisPrompt::default();
-        // Default should work same as new
-        let _ = prompt;
+        assert_eq!(
+            prompt.metadata().name,
+            CodeAnalysisPrompt::new().metadata().name
+        );
     }
 
     #[test]
@@ -151,9 +159,18 @@ mod coverage_tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_refactoring_prompt_default() {
+        // `X::default()` on a unit struct is what clippy's
+        // default_constructed_unit_structs wants rewritten to `X` -- but the
+        // `Default` impl IS the subject here, so rewriting it would delete
+        // the test. Allowed locally, and given something that can actually
+        // fail: `Default` and `new()` must produce the same prompt.
         let prompt = RefactoringPrompt::default();
-        let _ = prompt;
+        assert_eq!(
+            prompt.metadata().name,
+            RefactoringPrompt::new().metadata().name
+        );
     }
 
     #[test]
@@ -259,9 +276,18 @@ mod coverage_tests {
     }
 
     #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
     fn test_quality_assessment_prompt_default() {
+        // `X::default()` on a unit struct is what clippy's
+        // default_constructed_unit_structs wants rewritten to `X` -- but the
+        // `Default` impl IS the subject here, so rewriting it would delete
+        // the test. Allowed locally, and given something that can actually
+        // fail: `Default` and `new()` must produce the same prompt.
         let prompt = QualityAssessmentPrompt::default();
-        let _ = prompt;
+        assert_eq!(
+            prompt.metadata().name,
+            QualityAssessmentPrompt::new().metadata().name
+        );
     }
 
     #[test]

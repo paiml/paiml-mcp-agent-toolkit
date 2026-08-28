@@ -64,17 +64,32 @@ fn compute_line_coverage(files: &serde_json::Map<String, serde_json::Value>) -> 
 
 /// Read aggregate coverage from `.pmat-metrics/coverage.json`.
 fn read_coverage_from_metrics(project_path: &Path) -> Option<f64> {
-    let content =
-        std::fs::read_to_string(project_path.join(".pmat-metrics/coverage.json")).ok()?;
+    let content = std::fs::read_to_string(project_path.join(".pmat-metrics/coverage.json")).ok()?;
     let cache: serde_json::Value = serde_json::from_str(&content).ok()?;
     cache.get("coverage")?.as_f64()
+}
+
+/// The README the sections check reads, or `None` when there is none to read.
+///
+/// ONE answer to "is there anything here for the sections check to measure".
+/// `check_sections` returns an empty violation list for a project with no
+/// README, which is the same value it returns for a README carrying all four
+/// required sections — so a caller reporting what the gate covered asks this
+/// rather than inferring "clean" from a zero, exactly as `read_coverage_from_cache`
+/// is asked instead of reading `check_coverage`'s empty list as a pass.
+fn sections_source(project_path: &Path) -> Option<PathBuf> {
+    let readme = project_path.join("README.md");
+    readme.is_file().then_some(readme)
 }
 
 async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
 
     // Check for required documentation sections
-    if let Ok(readme) = tokio::fs::read_to_string(project_path.join("README.md")).await {
+    let Some(readme_path) = sections_source(project_path) else {
+        return Ok(violations);
+    };
+    if let Ok(readme) = tokio::fs::read_to_string(readme_path).await {
         let required_sections = ["Installation", "Usage", "Contributing", "License"];
         for section in required_sections {
             if !readme.contains(&format!("# {section}"))

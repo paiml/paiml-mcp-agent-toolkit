@@ -169,12 +169,22 @@ pub(crate) fn check_l2_public_fn_coverage(project_path: &Path) -> ComplianceChec
 /// The character class `[ \t]` (not `\s`) keeps the match on a single line
 /// so signatures split across lines do not false-positive off of arbitrary
 /// tokens on adjacent lines.
+///
+/// The pattern is a compile-time literal, so its compilation cannot depend on
+/// runtime input. `LazyLock` compiles it once for the process (the previous
+/// form rebuilt it on every call) and `pub_fn_regex_compiles` forces the cell
+/// so a malformed edit to the literal fails the test suite rather than the
+/// production run. Returning `false` on a compile error was not an option: it
+/// would report "this file declares no public function", turning a broken
+/// checker into a gate that passes everything.
 fn file_has_pub_fn(text: &str) -> bool {
-    let re = Regex::new(
-        r#"(?m)^[ \t]*pub(\([^)]*\))?(?:[ \t]+(?:async|unsafe|const|safe|extern(?:[ \t]+"[^"]*")?))*[ \t]+fn[ \t]+\w+"#,
-    )
-    .unwrap();
-    re.is_match(text)
+    static PUB_FN_RE: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+        Regex::new(
+            r#"(?m)^[ \t]*pub(\([^)]*\))?(?:[ \t]+(?:async|unsafe|const|safe|extern(?:[ \t]+"[^"]*")?))*[ \t]+fn[ \t]+\w+"#,
+        )
+        .expect("CB-1637 pub-fn regex is a literal; compilation is proven by pub_fn_regex_compiles")
+    });
+    PUB_FN_RE.is_match(text)
 }
 
 /// Return true iff `text` contains at least one

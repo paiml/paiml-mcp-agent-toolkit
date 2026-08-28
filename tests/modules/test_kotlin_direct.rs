@@ -43,19 +43,19 @@ class TestClass {
 
             // Verify we found the main function
             let main_found = context.items.iter().any(|item| {
-                matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "main")
+                matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "com.example.test::main")
             });
             assert!(main_found, "Should find main function");
 
             // Verify we found the TestClass
             let class_found = context.items.iter().any(|item| {
-                matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "TestClass")
+                matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "com.example.test::TestClass")
             });
             assert!(class_found, "Should find TestClass");
 
             // Verify we found the testMethod
             let method_found = context.items.iter().any(|item| {
-                matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "testMethod")
+                matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "com.example.test::testMethod")
             });
             assert!(method_found, "Should find testMethod");
         }

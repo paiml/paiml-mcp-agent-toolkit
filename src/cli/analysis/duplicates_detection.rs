@@ -129,6 +129,17 @@ pub async fn handle_analyze_duplicates(
     )
     .await?;
 
+    // #1015: "Duplication: 0.0% (0 / 0 lines)" was printed, with exit 0, for a
+    // directory holding no source file at all — byte-identical to the report a
+    // genuinely duplicate-free tree produces. `file_statistics` carries one
+    // entry per file this run actually read, so an empty map is the denominator
+    // saying it does not exist. 0/0 is undefined, not clean.
+    crate::cli::ensure_source_files_were_analyzed(
+        "duplication",
+        &project_path,
+        report.file_statistics.len(),
+    )?;
+
     print_duplicate_summary(&report);
 
     if perf {
@@ -306,7 +317,11 @@ async fn write_duplicate_output(
         crate::cli::DuplicateOutputFormat::Detailed => {
             format_text_output(report, top_files, TextDetail::Detailed)?
         }
-        other => format_output(report, other)?,
+        // `json`, `csv` and `sarif`. `--top-files` used to stop at the three
+        // text renderers above, so `--format json` and `--format json
+        // --top-files 5` were byte-identical documents — 387 MB of them on
+        // depyler. See [`DuplicateListing`].
+        other => format_output(report, other, top_files)?,
     };
 
     if let Some(output_path) = output {

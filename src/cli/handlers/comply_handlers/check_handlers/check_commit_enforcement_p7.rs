@@ -224,10 +224,9 @@ pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
 /// Called by `pmat comply refresh-bindings`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()> {
-    let pmat_dir = project_path.join(".pmat");
-    if !pmat_dir.exists() {
-        fs::create_dir_all(&pmat_dir)?;
-    }
+    // Created with its own ignore rule (#1070); the index write below reports
+    // if the directory could not be made.
+    let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
 
     let mut index: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
     let mut binding_count = 0usize;
@@ -244,8 +243,25 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     let output_path = pmat_dir.join("binding-index.json");
     fs::write(&output_path, &json)?;
 
-    crate::status_println!("✅ Binding index generated: {}", output_path.display());
-    crate::status_println!("   {} file(s) → {} binding(s)", index.len(), binding_count);
+    // Coloured through the shared helpers, so `--color` is not accepted and
+    // ignored here. The flag-efficacy sweep booked `comply refresh-bindings
+    // --color` a NO-OP: 163 bytes and zero ANSI escapes with `always` and with
+    // `never` alike, because the only marker was the ✅ EMOJI — which reads as
+    // colour and is not.
+    //
+    // `pass` and `path` are the same helpers every other status line uses, so
+    // the honesty of the flag does not depend on this call site remembering to
+    // be special.
+    crate::status_println!(
+        "{} Binding index generated: {}",
+        crate::cli::colors::pass("✅"),
+        crate::cli::colors::path(&output_path.display().to_string())
+    );
+    crate::status_println!(
+        "   {} file(s) → {} binding(s)",
+        crate::cli::colors::number(&index.len().to_string()),
+        crate::cli::colors::number(&binding_count.to_string())
+    );
 
     // 4. Generate O(1) cache files (R-5 remediation)
     let mut cache_count = 0u8;

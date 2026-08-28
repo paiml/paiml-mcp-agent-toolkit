@@ -17,6 +17,7 @@ fn main() {
 #[cfg(feature = "standard-deps")]
 mod full {
     use anyhow::Result;
+    use pmat::cli_exit::ExitCode;
     use pmat::{cli, stateless_server::StatelessTemplateServer};
     use std::io::IsTerminal;
     use std::process;
@@ -31,36 +32,6 @@ mod full {
         /// MCP opt-in. Print help and exit non-zero instead of blocking on stdin
         /// (see GH-285).
         HelpAndExit,
-    }
-
-    /// POSIX-compliant exit codes for CLI interface
-    /// Per SPECIFICATION.md Section 23: CLI Interface
-    #[derive(Debug, Clone, Copy)]
-    pub enum ExitCode {
-        /// Success
-        Success = 0,
-        /// General error
-        GeneralError = 1,
-        /// Misuse of shell command
-        MisuseError = 2,
-        /// Permission denied
-        PermissionDenied = 126,
-        /// Command not found
-        CommandNotFound = 127,
-        /// Invalid argument to exit
-        InvalidExitArg = 128,
-        /// Quality gate failure (custom)
-        QualityGateFailure = 3,
-        /// Configuration error (custom)
-        ConfigurationError = 4,
-        /// Analysis error (custom)
-        AnalysisError = 5,
-    }
-
-    impl From<ExitCode> for i32 {
-        fn from(code: ExitCode) -> Self {
-            code as i32
-        }
     }
 
     fn detect_execution_mode() -> ExecutionMode {
@@ -203,32 +174,12 @@ mod full {
         }
     }
 
+    /// The process exit code, taken from the error itself.
+    ///
+    /// Delegates to [`pmat::cli_exit::code_for`], which reads a code DECLARED by
+    /// the raise site. See that module for what this replaced and why.
     fn categorize_error(error: &anyhow::Error) -> ExitCode {
-        let error_str = error.to_string().to_lowercase();
-
-        match () {
-            _ if is_quality_gate_error(&error_str) => ExitCode::QualityGateFailure,
-            _ if is_configuration_error(&error_str) => ExitCode::ConfigurationError,
-            _ if is_analysis_error(&error_str) => ExitCode::AnalysisError,
-            _ if is_permission_error(&error_str) => ExitCode::PermissionDenied,
-            _ => ExitCode::GeneralError,
-        }
-    }
-
-    fn is_quality_gate_error(error_str: &str) -> bool {
-        error_str.contains("quality gate") || error_str.contains("violation")
-    }
-
-    fn is_configuration_error(error_str: &str) -> bool {
-        error_str.contains("config") || error_str.contains("parse")
-    }
-
-    fn is_analysis_error(error_str: &str) -> bool {
-        error_str.contains("analysis") || error_str.contains("complexity")
-    }
-
-    fn is_permission_error(error_str: &str) -> bool {
-        error_str.contains("permission") || error_str.contains("access")
+        pmat::cli_exit::code_for(error)
     }
 
     async fn run_main() -> Result<()> {

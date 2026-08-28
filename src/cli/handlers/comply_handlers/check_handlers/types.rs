@@ -441,10 +441,9 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
         Ok(toml::from_str(&content)?)
     } else {
         let config = ProjectConfig::default();
-        let pmat_dir = project_path.join(".pmat");
-        if !pmat_dir.exists() {
-            std::fs::create_dir_all(&pmat_dir)?;
-        }
+        // Created with its own ignore rule (#1070); the config write below
+        // reports if the directory could not be made.
+        crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
         let content = toml::to_string_pretty(&config)?;
         std::fs::write(&config_path, &content)?;
         Ok(config)

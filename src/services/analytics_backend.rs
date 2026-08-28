@@ -44,7 +44,9 @@ pub struct BackendSelector;
 impl BackendSelector {
     /// Automatically select best available backend
     ///
-    /// Preference order: GPU > SIMD > Scalar
+    /// Preference order: GPU > SIMD > Scalar. In practice the GPU rung is never
+    /// taken — `is_gpu_available` always reports false, and its docs say why — so
+    /// this returns SIMD where that feature is enabled and Scalar otherwise.
     ///
     /// # Example
     ///
@@ -58,7 +60,11 @@ impl BackendSelector {
     pub fn auto_select() -> Backend {
         #[cfg(feature = "analytics-gpu")]
         {
-            // GPU availability check not yet implemented; fall through to SIMD
+            // Always false today; kept as a call so the selector cannot drift from
+            // whatever `is_gpu_available` decides once detection is real.
+            if Self::is_gpu_available() {
+                return Backend::Gpu;
+            }
         }
 
         #[cfg(feature = "analytics-simd")]
@@ -70,11 +76,25 @@ impl BackendSelector {
         Backend::Scalar
     }
 
-    /// Check if GPU backend is available
+    /// Whether the GPU backend is available. **Always reports `false`.**
+    ///
+    /// GPU device detection is not implemented: this never probes for an adapter,
+    /// so it answers `false` on a machine with a working GPU just as it does on
+    /// one without.
+    ///
+    /// That is deliberate rather than merely unfinished, because the GPU backend
+    /// has nothing to offer yet. [`gpu::GpuDevice::compute_sum`] sums on the CPU —
+    /// the compute shaders do not exist — and [`gpu::GpuDevice::get_or_init`]
+    /// panics when no adapter is found, after running a 240 MB PCIe calibration
+    /// transfer. Reporting `true` would therefore route a caller into a path that
+    /// is slower than the scalar one and can abort the process, to reach the same
+    /// arithmetic. `false` steers callers to a backend that works.
+    ///
+    /// [`BackendSelector::auto_select`] agrees with this and never returns
+    /// [`Backend::Gpu`]. When real GPU kernels land, both need changing together.
     #[cfg(feature = "analytics-gpu")]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_gpu_available() -> bool {
-        // TODO: Implement GPU device detection
         false
     }
 

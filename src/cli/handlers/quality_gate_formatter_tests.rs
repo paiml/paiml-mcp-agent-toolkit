@@ -7,6 +7,9 @@ mod tests {
     // Helper function to create test quality gate results
     fn create_test_results(passed: bool, total: usize) -> QualityGateResults {
         QualityGateResults {
+            files_examined: 0,
+            files_not_read: std::collections::BTreeMap::new(),
+            checks_run: Vec::new(),
             passed,
             total_violations: total,
             blocking_violations: total,

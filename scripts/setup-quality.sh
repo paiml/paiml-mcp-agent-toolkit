@@ -4,6 +4,20 @@
 
 echo "🔧 Setting up PMAT quality enforcement (Toyota Way integration)..."
 
+# Timestamps written into the generated templates below. Honours
+# SOURCE_DATE_EPOCH so a re-run produces byte-identical scaffolding; falls back
+# to wall clock otherwise.
+scaffold_timestamp() {
+    if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" "+$1" 2>/dev/null \
+            || date -u -r "${SOURCE_DATE_EPOCH}" "+$1"
+    else
+        date -u "+$1"
+    fi
+}
+GENERATED_AT=$(scaffold_timestamp "%Y-%m-%d %H:%M:%S UTC")
+GENERATED_AT_ISO=$(scaffold_timestamp "%Y-%m-%dT%H:%M:%S+00:00")
+
 # Install pre-commit hook
 echo "📝 Installing pre-commit hook..."
 cp scripts/pre-commit .git/hooks/pre-commit
@@ -52,7 +66,9 @@ fi
 # Initialize quality-gates.md if not exists (should already exist)
 if [ ! -s docs/execution/quality-gates.md ]; then
     echo "📊 Initializing quality gates template..."
-    cat > docs/execution/quality-gates.md << 'EOF'
+    # Unquoted heredoc: ${GENERATED_AT} must be substituted. With 'EOF' the
+    # generated file carried the literal, unexpanded substitution instead.
+    cat > docs/execution/quality-gates.md << EOF
 # PMAT Quality Gates
 
 ## Enforcement Status
@@ -69,7 +85,7 @@ if [ ! -s docs/execution/quality-gates.md ]; then
 - Lint warnings: 0
 
 ## Last Sprint Report
-Generated: $(date)
+Generated: ${GENERATED_AT}
 All quality gates configured and active
 EOF
     echo "✓ Quality gates template created"
@@ -80,12 +96,14 @@ fi
 # Initialize velocity.json if not exists (should already exist)
 if [ ! -s docs/execution/velocity.json ]; then
     echo "📈 Initializing velocity tracking..."
-    cat > docs/execution/velocity.json << 'EOF'
+    # Unquoted heredoc: ${GENERATED_AT_ISO} must be substituted, otherwise
+    # last_updated is the literal string of an unexpanded substitution.
+    cat > docs/execution/velocity.json << EOF
 {
   "metadata": {
     "version": "1.0",
     "project": "PMAT (PAIML MCP Agent Toolkit)",
-    "last_updated": "$(date -Iseconds)",
+    "last_updated": "${GENERATED_AT_ISO}",
     "measurement_period": "daily"
   },
   "quality_metrics": {

@@ -9,6 +9,8 @@ pub mod advanced_analysis_handlers;
 pub mod agent_handlers;
 pub mod agy_handler;
 pub mod analysis;
+#[cfg(test)]
+mod analysis_empty_tree_regression_tests; // #1015
 pub mod analysis_handlers;
 #[cfg(test)]
 mod analysis_path_guard_regression_tests; // GH-662/663/664/666/681/682
@@ -58,12 +60,14 @@ pub mod hooks_command_handlers;
 pub mod hooks_stack_handler; // Stack-wide hook management for sovereign AI repos
 pub mod incremental_coverage_handler;
 pub mod infra_score_handlers; // Infra Score: CI/CD infrastructure quality scoring
+pub mod init_handler; // `pmat init`: agent workspace bootstrap (#1030/#1031/#1032)
 pub mod kaizen_handler; // GH-213: Autonomous continuous improvement (Toyota Way Kaizen)
 pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod localize_handlers; // GH-103: Tarantula fault localization
 pub mod mcp_manifest;
+pub mod mcp_onboarding; // `pmat mcp` guide + generated-token onboarding for `serve --transport http`
 pub mod memory;
 #[cfg(feature = "mutation-testing")]
 pub mod mutate;

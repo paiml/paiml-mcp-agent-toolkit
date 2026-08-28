@@ -339,6 +339,81 @@ mod context_tests {
     }
 
     // ============================================================================
+    // build_context_graph Tests
+    // ============================================================================
+
+    /// Pins what `build_context_graph` documents about itself: every symbol
+    /// becomes a node, no edges are produced, and PageRank therefore ranks
+    /// nothing. If a future change starts extracting edges, this test fails and
+    /// the doc comment above `build_context_graph` has to be corrected with it.
+    #[test]
+    fn test_build_context_graph_indexes_symbols_without_edges() {
+        let files = vec![FileContext {
+            path: "src/main.rs".to_string(),
+            language: "rust".to_string(),
+            items: vec![
+                AstItem::Function {
+                    name: "main".to_string(),
+                    visibility: "pub".to_string(),
+                    is_async: false,
+                    line: 1,
+                },
+                AstItem::Function {
+                    name: "helper".to_string(),
+                    visibility: "fn".to_string(),
+                    is_async: false,
+                    line: 10,
+                },
+                AstItem::Struct {
+                    name: "Config".to_string(),
+                    visibility: "pub".to_string(),
+                    fields_count: 2,
+                    derives: vec![],
+                    line: 20,
+                },
+            ],
+            complexity_metrics: None,
+        }];
+
+        let graph = build_context_graph(&files).expect("graph builds");
+
+        // Nodes: the O(1) index this function does provide.
+        assert_eq!(graph.num_nodes(), 3);
+        assert!(graph.get_item("main").is_some());
+        assert!(graph.get_item("helper").is_some());
+        assert!(graph.get_item("Config").is_some());
+
+        // Edges: none, as documented — `main` calling `helper` is invisible here
+        // because AstItem carries no call data.
+        assert_eq!(graph.num_edges(), 0, "no edge extraction happens here");
+        assert!(
+            graph.hot_symbols().is_empty(),
+            "PageRank over an edgeless graph ranks nothing"
+        );
+    }
+
+    /// Duplicate symbol names across files collapse to one node rather than erroring.
+    #[test]
+    fn test_build_context_graph_dedupes_symbol_names() {
+        let make_file = |path: &str| FileContext {
+            path: path.to_string(),
+            language: "rust".to_string(),
+            items: vec![AstItem::Function {
+                name: "new".to_string(),
+                visibility: "pub".to_string(),
+                is_async: false,
+                line: 1,
+            }],
+            complexity_metrics: None,
+        };
+
+        let graph = build_context_graph(&[make_file("a.rs"), make_file("b.rs")])
+            .expect("graph builds");
+
+        assert_eq!(graph.num_nodes(), 1);
+    }
+
+    // ============================================================================
     // ProjectContext Tests
     // ============================================================================
 

@@ -372,10 +372,30 @@ async fn build_project_summary(
     summary
 }
 
-/// Build O(1) context graph for symbol lookups and PageRank
+/// Build O(1) context graph for symbol lookups.
 ///
-/// Extracts all functions/structs/etc from files and builds a trueno-graph CSR
-/// for O(1) symbol lookups and PageRank-based importance scoring.
+/// Extracts all functions/structs/etc from files into a trueno-graph CSR keyed by
+/// symbol name, giving O(1) `get_item` lookups.
+///
+/// # What this does not do
+///
+/// **No edges are extracted, so the graph has no relationships and PageRank
+/// produces nothing**: `num_edges()` is 0 and `hot_symbols()` is empty for every
+/// project. `update_hotness()` is still called below, but on an edgeless CSR it
+/// returns early without scoring anything. Callers get a symbol index, not a call
+/// graph, and nothing here ranks symbols by importance.
+///
+/// The reason is that the input has no call data to extract: [`FileContext`]
+/// keeps only [`AstItem`]s, and an `AstItem::Function` records a name, visibility,
+/// async-ness and a line number — never its callees. Producing edges here means
+/// re-parsing every source file a second time, on a path
+/// (`analyze_project_with_cache`, and through it deep-context) whose cost is
+/// already dominated by parsing.
+///
+/// Call edges therefore live where the extra parse is paid for deliberately:
+/// [`crate::services::dag_call_edges::add_call_edges`] walks the Rust sources and
+/// adds `EdgeType::Calls` edges to a `DependencyGraph`, resolving conservatively
+/// so an ambiguous callee yields no edge. Use that for call-graph questions.
 ///
 /// # Arguments
 ///
@@ -383,7 +403,7 @@ async fn build_project_summary(
 ///
 /// # Returns
 ///
-/// ProjectContextGraph with all symbols and relationships, or error
+/// ProjectContextGraph containing every symbol as a node, and no edges
 fn build_context_graph(
     files: &[FileContext],
 ) -> Result<crate::services::context_graph::ProjectContextGraph, TemplateError> {
@@ -408,11 +428,10 @@ fn build_context_graph(
         }
     }
 
-    // Phase 2: Extract edges (function calls, struct usage, etc.)
-    // TODO: Implement call graph edge extraction in future iteration
-    // For now, just return the graph with nodes (still provides O(1) lookups)
+    // No edge phase: see the note on this function. The graph is a symbol index.
 
-    // Phase 3: Run PageRank to identify "hot" symbols
+    // PageRank over an edgeless CSR scores nothing, so this is a no-op in
+    // practice; it is kept so the graph gains hotness the moment edges do exist.
     if let Err(e) = graph.update_hotness() {
         eprintln!("Warning: Failed to compute PageRank: {}", e);
     }

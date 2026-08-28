@@ -9,8 +9,17 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<SATDAnalysisResult, TemplateError> {
-        let files = self.discover_files(root, include_tests).await?;
+        let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
+        // The denominator: everything the walk found, tests included, before
+        // any skip rule ran. Without it the buckets below are counts with
+        // nothing to divide them by (#1035).
+        analysis_stats.census = FileCensus::over(files.len() + tests_dropped);
+        // Discovery, not the loop below, is where test files are dropped, so
+        // the count has to be seeded here or the bucket reads 0 forever.
+        analysis_stats
+            .census
+            .record_discovery_dropped_tests(tests_dropped);
 
         self.process_project_files(&files, include_tests, &mut analysis_stats)
             .await;
@@ -21,58 +30,39 @@ impl SATDDetector {
         Ok(self.build_analysis_result(analysis_stats, avg_age_days))
     }
 
-    /// Discover the files an analysis will read.
+    /// Discover the files an analysis will read, and how many test files that
+    /// discovery dropped.
     ///
-    /// `find_source_files` filters every candidate through
-    /// `is_valid_source_file`, which is `is_source_file() && !is_test_file()`:
-    /// test files are dropped during DISCOVERY. So `--include-tests` — whose
-    /// only job is to add them — had nothing left to add, and pointing satd
-    /// straight at a `tests/` directory reported 0 violations. When tests are
-    /// wanted the walk below applies the same directory exclusions and the same
-    /// source-file test, minus that drop.
+    /// `find_source_files` drops test files during DISCOVERY. So
+    /// `--include-tests` — whose only job is to add them — had nothing left to
+    /// add, and pointing satd straight at a `tests/` directory reported 0
+    /// violations. When tests are wanted the walk below applies the same
+    /// directory exclusions and the same source-file test, minus that drop.
+    ///
+    /// The second element of the pair is the number of test files dropped, and
+    /// it exists because a silent drop is unreportable: `SkipCounts::tests` was
+    /// structurally pinned at 0 while the walk was quietly declining to read
+    /// every test file in the tree.
     async fn discover_files(
         &self,
         root: &Path,
         include_tests: bool,
-    ) -> Result<Vec<std::path::PathBuf>, TemplateError> {
+    ) -> Result<(Vec<std::path::PathBuf>, usize), TemplateError> {
+        // Issue #1050 P9. ONE discovery, both ways. The `include_tests` branch
+        // used to call `collect_files_including_tests`, a second walk with a
+        // different directory policy, so a flag that only widens the scan could
+        // make the denominator go to ZERO — `all 1 source file(s) … were
+        // skipped` became `no source files were found` for a file that exists
+        // and is a source file in both runs. See
+        // `find_source_files_partitioned`.
+        let (files, tests) = self.find_source_files_partitioned(root).await?;
         if !include_tests {
-            return self.find_source_files(root).await;
+            return Ok((files, tests.len()));
         }
-        let mut files = Vec::new();
-        self.collect_files_including_tests(root, &mut files).await?;
-        Ok(files)
-    }
-
-    fn collect_files_including_tests<'a>(
-        &'a self,
-        dir: &'a Path,
-        files: &'a mut Vec<std::path::PathBuf>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), TemplateError>> + Send + 'a>>
-    {
-        Box::pin(async move {
-            if dir.is_file() {
-                if self.is_source_file(dir) {
-                    files.push(dir.to_path_buf());
-                }
-                return Ok(());
-            }
-            if !dir.is_dir() {
-                return Ok(());
-            }
-
-            let mut entries = tokio::fs::read_dir(dir).await.map_err(TemplateError::Io)?;
-            while let Some(entry) = entries.next_entry().await.map_err(TemplateError::Io)? {
-                let path = entry.path();
-                if path.is_dir() {
-                    if !self.should_skip_directory(&path) {
-                        self.collect_files_including_tests(&path, files).await?;
-                    }
-                } else if self.is_source_file(&path) {
-                    files.push(path);
-                }
-            }
-            Ok(())
-        })
+        // Nothing was declined for being a test: they are all in `files`.
+        let mut all = files;
+        all.extend(tests);
+        Ok((all, 0))
     }
 
     /// Toyota Way: Extract Method - process all files in project (complexity <=8)
@@ -84,13 +74,21 @@ impl SATDDetector {
     ) {
         for file_path in files {
             if let Some(reason) = self.skip_reason(file_path, include_tests).await {
-                reason.record(&mut stats.skipped);
+                stats.census.record_skip(file_path, reason);
                 continue;
             }
 
+            // Increment only on a file that was actually read and scanned; see
+            // `process_file_for_debts`.
+            if let Some(reason) = self
+                .process_single_file(file_path, include_tests, stats)
+                .await
+            {
+                stats.census.record_skip(file_path, reason);
+                continue;
+            }
             stats.total_files_analyzed += 1;
-            self.process_single_file(file_path, include_tests, stats)
-                .await;
+            stats.census.record_analyzed();
         }
     }
 
@@ -122,63 +120,73 @@ impl SATDDetector {
         }
 
         // Check file size constraints
-        if let Ok(metadata) = tokio::fs::metadata(file_path).await {
-            if metadata.len() > crate::services::file_classifier::LARGE_FILE_THRESHOLD as u64 {
-                eprintln!(
-                    "Warning: Skipped: {} (large file >500KB)",
-                    file_path.display()
-                );
-                return Some(SkipReason::TooLarge);
-            }
-
-            if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
-                eprintln!(
-                    "Warning: Skipped: {} (minified content)",
-                    file_path.display()
-                );
-                return Some(SkipReason::MinifiedOrVendor);
-            }
+        if let Some(reason) = self.size_skip_reason(file_path).await {
+            return Some(reason);
         }
 
         None
     }
 
-    /// Toyota Way: Extract Method - process individual file (complexity <=8)
+    /// Why this file is too big to read, or `None`.
+    ///
+    /// THE size rule, shared by both walks. This one used to drop anything over
+    /// `LARGE_FILE_THRESHOLD` (512,000 bytes) while `skip_reason_for_analysis`
+    /// had no size rule at all below 1 MB of *minified* content, so
+    /// `quality-gate --checks satd` and `analyze satd` read different
+    /// populations of the same tree and reported different numbers for it
+    /// (#1035). Both now use [`MAX_FILE_BYTES`].
+    ///
+    /// The drop no longer announces itself only on stderr, either — the caller
+    /// records it into [`FileCensus::oversized`], which survives `--format json`
+    /// and `--output FILE`, both of which discard stderr. A file skipped for
+    /// size used to leave a clean-looking total behind it.
+    async fn size_skip_reason(&self, file_path: &Path) -> Option<SkipReason> {
+        let metadata = tokio::fs::metadata(file_path).await.ok()?;
+        if metadata.len() > MAX_FILE_BYTES {
+            return Some(SkipReason::TooLarge {
+                bytes: metadata.len(),
+            });
+        }
+        if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
+            return Some(SkipReason::MinifiedOrVendor);
+        }
+        None
+    }
+
+    /// Read and scan one file, or return WHY it was not scanned.
+    ///
+    /// The three early returns below used to be bare `return`s and empty
+    /// match arms, after the caller had already counted the file as analysed.
+    /// They now surface as a `SkipReason` so the caller can count them where a
+    /// reader will see them.
     async fn process_single_file(
         &self,
         file_path: &Path,
         include_tests: bool,
         stats: &mut ProjectAnalysisStats,
-    ) {
-        match tokio::fs::read_to_string(file_path).await {
-            Ok(content) => {
-                if content.len() > 10_000_000 {
-                    eprintln!(
-                        "Warning: Skipping large file {}: {} bytes",
-                        file_path.display(),
-                        content.len()
-                    );
-                    return;
-                }
+    ) -> Option<SkipReason> {
+        let content = match tokio::fs::read_to_string(file_path).await {
+            Ok(content) => content,
+            Err(_e) => return Some(SkipReason::Unreadable),
+        };
 
-                match self.extract_from_content_with_tests(&content, file_path, include_tests) {
-                    Ok(debts) => {
-                        if !debts.is_empty() {
-                            stats.files_with_debt += 1;
-                        }
-                        stats.all_debts.extend(debts);
-                    }
-                    Err(_e) => {
-                        // Silently skip files that fail parsing (e.g., line too long)
-                        // Analysis continues successfully with remaining files
-                        // BUG-010: Removed noisy warning that interleaved with progress
-                    }
+        if content.len() as u64 > MAX_FILE_BYTES {
+            return Some(SkipReason::TooLarge {
+                bytes: content.len() as u64,
+            });
+        }
+
+        match self.extract_from_content_with_tests(&content, file_path, include_tests) {
+            Ok(debts) => {
+                if !debts.is_empty() {
+                    stats.files_with_debt += 1;
                 }
+                stats.all_debts.extend(debts);
+                None
             }
-            Err(_e) => {
-                // Silently skip unreadable files
-                // BUG-010: Removed noisy warning that interleaved with progress
-            }
+            // e.g. a line too long for the scanner. The file was opened and
+            // not scanned; that is not the same as scanned and clean.
+            Err(_e) => Some(SkipReason::Unreadable),
         }
     }
 
@@ -210,7 +218,7 @@ impl SATDDetector {
             },
             total_files_analyzed: stats.total_files_analyzed,
             files_with_debt: stats.files_with_debt,
-            skipped: stats.skipped.clone(),
+            census: stats.census.clone(),
             analysis_timestamp: chrono::Utc::now(),
         }
     }
@@ -274,32 +282,48 @@ impl SATDDetector {
         &self,
         root: &Path,
         include_tests: bool,
-    ) -> Result<(Vec<TechnicalDebt>, SkipCounts), TemplateError> {
-        let mut skipped = SkipCounts::default();
+    ) -> Result<(Vec<TechnicalDebt>, FileCensus), TemplateError> {
         let mut all_debts = Vec::new();
-        let files = self.discover_files(root, include_tests).await?;
-        let discovered = files.len();
-        let mut analyzed = 0usize;
+        let (files, tests_dropped) = self.discover_files(root, include_tests).await?;
+        // The denominator, counted before any rule ran. `files` has already had
+        // the test files taken out of it, so they are added back here or the
+        // population would silently shrink by the size of `tests/`.
+        let mut census = FileCensus::over(files.len() + tests_dropped);
+        // Discovery already declined these; the loop below never sees them, so
+        // this is the only place the count can be recorded.
+        census.record_discovery_dropped_tests(tests_dropped);
 
         for file_path in files {
             if let Some(reason) = self
                 .skip_reason_for_analysis(&file_path, include_tests)
                 .await
             {
-                reason.record(&mut skipped);
+                census.record_skip(&file_path, reason);
                 continue;
             }
 
-            analyzed += 1;
-            let debts = self.process_file_for_debts(&file_path, include_tests).await;
-            all_debts.extend(debts);
+            // `analyzed` is incremented only once the file has actually been
+            // read and scanned. It used to be incremented BEFORE the read, so
+            // an unreadable file both inflated the analysed denominator and
+            // contributed a guaranteed-empty finding list.
+            match self.process_file_for_debts(&file_path, include_tests).await {
+                Ok(debts) => {
+                    census.record_analyzed();
+                    all_debts.extend(debts);
+                }
+                Err(reason) => census.record_skip(&file_path, reason),
+            }
         }
 
-        if analyzed == 0 {
-            return Err(Self::nothing_measured(root, discovered));
+        if census.analyzed == 0 {
+            return Err(Self::nothing_measured(
+                root,
+                census.discovered,
+                include_tests,
+            ));
         }
 
-        Ok((all_debts, skipped))
+        Ok((all_debts, census))
     }
 
     /// The refusal returned when a walk analysed nothing.
@@ -319,29 +343,55 @@ impl SATDDetector {
     /// the shape #923 was about in the first place: one rule, two
     /// implementations, free to drift the moment either is edited. Both copies
     /// were byte-identical, so this is a pure substitution.
-    fn nothing_measured(root: &Path, discovered: usize) -> TemplateError {
+    ///
+    /// Issue #1050 P9, second half. The reason list and the remedy were fixed
+    /// strings, so a run that had ALREADY passed `--include-tests` was told to
+    /// pass `--include-tests` — advice that cannot work, beside a skip reason
+    /// ("test") that the flag in force had already ruled out. Both halves are
+    /// now a function of the flag, so the sentence describes the run that
+    /// produced it.
+    fn nothing_measured(root: &Path, discovered: usize, include_tests: bool) -> TemplateError {
+        let (skipped_because, remedy) = if include_tests {
+            (
+                "fuzz, vendored, generated, minified or oversized",
+                "point the analysis at the project root: --include-tests is already in force, \
+                 so test code is not what was excluded here.",
+            )
+        } else {
+            (
+                "test, fuzz, vendored, generated, minified or oversized",
+                "point the analysis at the project root, or pass --include-tests to measure \
+                 test code.",
+            )
+        };
         TemplateError::ValidationError {
             parameter: "path".to_string(),
             reason: crate::services::defect_detector::unmeasured::refusal(
                 "SATD",
                 root,
                 discovered,
-                "test, example, fuzz, vendored, generated, minified or oversized",
-                "point the analysis at the project root, or pass --include-tests to measure \
-                 test code.",
+                skipped_because,
+                remedy,
             ),
         }
     }
 
     /// Why this file will not be read on the `analyze_directory` path, or `None`.
     ///
-    /// Deliberately NOT merged with `skip_reason`, despite being nearly the same
-    /// list: that one additionally drops files over 500 KB, and folding the two
-    /// together would make this path skip MORE files than it does today — fewer
-    /// findings, which is the wrong direction to move a detector by accident.
-    /// The duplication is recorded rather than silently resolved; unifying them
-    /// is a behaviour change that deserves its own measurement.
-    async fn skip_reason_for_analysis(
+    /// The one difference from `skip_reason` used to be size, and it was a real
+    /// disagreement rather than a nuance: this path read anything under 10 MB
+    /// while that one dropped anything over 512,000 bytes, so the two commands
+    /// measured different populations of the same tree and printed different
+    /// finding counts for it. Both now call [`Self::size_skip_reason`] — the
+    /// unification is UPWARDS, so no file that was read before is skipped now
+    /// (#1035).
+    ///
+    /// `pub(crate)` because the MCP `analyze_satd` tool needs the SAME answer:
+    /// it built its own file list and then reported nothing at all about what
+    /// it declined to read, so its payload was a count with no denominator.
+    /// A second opinion about "why was this file not read" is how these two
+    /// surfaces drifted apart in the first place (#997).
+    pub(crate) async fn skip_reason_for_analysis(
         &self,
         file_path: &Path,
         include_tests: bool,
@@ -362,33 +412,27 @@ impl SATDDetector {
         }
 
         // Check file size and minification for large files
-        if self.should_skip_large_file(file_path).await {
-            return Some(SkipReason::MinifiedOrVendor);
-        }
-        None
+        self.size_skip_reason(file_path).await
     }
 
-    async fn should_skip_large_file(&self, file_path: &Path) -> bool {
-        if let Ok(metadata) = tokio::fs::metadata(file_path).await {
-            if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
-                return true;
-            }
-        }
-        false
-    }
-
+    /// Read one file and scan it, or say why it could not be scanned.
+    ///
+    /// Returns `Err(SkipReason)` rather than an empty `Vec` for the three
+    /// failure paths below. That empty vec is #1035's root cause in its
+    /// original form — `Ok(Vec::new())` on a failure to measure — and it sat
+    /// one level BELOW the skip predicate, so every disclosure fix above it
+    /// counted these files as analysed-and-clean. A file whose bytes were
+    /// never decoded cannot support the claim that it contains no debt.
     async fn process_file_for_debts(
         &self,
         file_path: &Path,
         include_tests: bool,
-    ) -> Vec<TechnicalDebt> {
+    ) -> Result<Vec<TechnicalDebt>, SkipReason> {
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => self.extract_debts_from_content(&content, file_path, include_tests),
-            Err(_e) => {
-                // Silently skip unreadable files
-                // BUG-010: Removed noisy warning that interleaved with progress
-                Vec::new()
-            }
+            // Not silent any more: an I/O error or non-UTF-8 content is a file
+            // this run did not measure, and it is counted as such.
+            Err(_e) => Err(SkipReason::Unreadable),
         }
     }
 
@@ -397,19 +441,17 @@ impl SATDDetector {
         content: &str,
         file_path: &Path,
         include_tests: bool,
-    ) -> Vec<TechnicalDebt> {
-        // Validate file size before processing
-        if content.len() > 10_000_000 {
-            eprintln!(
-                "Warning: Skipping large file {}: {} bytes",
-                file_path.display(),
-                content.len()
-            );
-            return Vec::new();
+    ) -> Result<Vec<TechnicalDebt>, SkipReason> {
+        // Validate file size before processing. `size_skip_reason` already
+        // declined anything this large from its metadata, so this is a second
+        // line of defence for callers that arrive with content in hand.
+        if content.len() as u64 > MAX_FILE_BYTES {
+            return Err(SkipReason::TooLarge {
+                bytes: content.len() as u64,
+            });
         }
 
-        // Silently skip files that fail parsing (BUG-010: Removed noisy warning)
         self.extract_from_content_with_tests(content, file_path, include_tests)
-            .unwrap_or_default()
+            .map_err(|_| SkipReason::Unreadable)
     }
 }

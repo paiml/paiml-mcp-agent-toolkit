@@ -39,6 +39,25 @@ static PY_DEF_CHECK_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\s*def\s+\w+\s*\(").expect("PY_DEF_CHECK_REGEX: hardcoded constant pattern")
 });
 
+// Python `__all__` assignment: the module's own statement of its public API.
+// Accepts the annotated form (`__all__: list[str] = [...]`) too.
+static PY_DUNDER_ALL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\s*__all__\s*(?::[^=]+)?(?:\+)?=")
+        .expect("PY_DUNDER_ALL_REGEX: hardcoded constant pattern")
+});
+
+// A quoted identifier inside an `__all__` list.
+static PY_NAME_LITERAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"["']([A-Za-z_]\w*)["']"#)
+        .expect("PY_NAME_LITERAL_REGEX: hardcoded constant pattern")
+});
+
+// `from .core import public_api, another_export` — a package re-export.
+static PY_FROM_IMPORT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\s*from\s+[.\w]+\s+import\s+(.+)$")
+        .expect("PY_FROM_IMPORT_REGEX: hardcoded constant pattern")
+});
+
 // Rust function definition regex
 static RUST_DEF_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*[<(]")

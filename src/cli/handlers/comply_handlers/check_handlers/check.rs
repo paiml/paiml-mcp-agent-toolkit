@@ -51,7 +51,10 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
-    let report = compute_compliance_report(project_path, failures_only)?;
+    let mut report = compute_compliance_report(project_path)?;
+    if failures_only {
+        retain_blocking_checks(&mut report, strict);
+    }
 
     output_compliance_report(&report, format, project_path)?;
 
@@ -99,16 +102,18 @@ fn guard_analysable_project(project_path: &Path) -> Result<()> {
 /// and report's JSON was byte-identical for an empty project and a 121-file
 /// defect-ridden one bar the timestamp. Both commands now share this function,
 /// so there is exactly one answer to give.
-pub(crate) fn compute_compliance_report(
-    project_path: &Path,
-    failures_only: bool,
-) -> Result<ComplianceReport> {
+pub(crate) fn compute_compliance_report(project_path: &Path) -> Result<ComplianceReport> {
     guard_analysable_project(project_path)?;
 
     crate::status_eprintln!("Checking PMAT compliance for {}", project_path.display());
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
+    // An advisory-only rule that a config quietly promotes to `error` would be
+    // obeyed in the severity column and ignored in the verdict, which is worse
+    // than either honest answer. Refuse the configuration instead.
+    super::check_evidence_gates::validate_advisory_only_severities(comply_config)
+        .map_err(|e| anyhow::anyhow!(e))?;
     announce_suppressions(project_path, comply_config);
 
     let (config, version_source) = load_project_config_with_source(project_path)?;
@@ -119,7 +124,6 @@ pub(crate) fn compute_compliance_report(
         checks,
         project_version,
         version_source,
-        failures_only,
     ))
 }
 
@@ -251,6 +255,26 @@ pub(crate) fn exit_policy(report: &ComplianceReport, strict: bool) -> ExitPolicy
     }
 }
 
+/// Narrow the report to the checks that BLOCK, for `--failures-only`.
+///
+/// This used to keep `Fail` and nothing else, wherever `--strict` was set. But
+/// `--strict` is the flag that makes a warning fail the run, so on a tree with
+/// 12 warnings and 0 failures, `comply check --failures-only --strict` printed
+/// an empty check list and exited 2 — the report showed nothing at all, and the
+/// twelve things that caused the exit were the twelve it had just dropped.
+///
+/// The rule is that `--failures-only` shows everything that contributed to the
+/// exit code, which is what `--strict` changes. `summary` is deliberately left
+/// alone: it is tallied over every check before this runs, so the counts stay
+/// honest about what was measured even when the list is narrowed.
+fn retain_blocking_checks(report: &mut ComplianceReport, strict: bool) {
+    report.checks.retain(|c| match c.status {
+        CheckStatus::Fail => true,
+        CheckStatus::Warn => strict,
+        CheckStatus::Pass | CheckStatus::Skip => false,
+    });
+}
+
 /// Apply the report's exit policy, explaining any non-zero code on stderr.
 fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
     let policy = exit_policy(report, strict);
@@ -330,6 +354,22 @@ fn build_all_compliance_checks(
             "macs",
             Box::new(move || build_macs_checks(project_path, comply_config)),
         ),
+        (
+            "evidence",
+            Box::new(move || build_evidence_gate_checks(project_path, comply_config)),
+        ),
+        (
+            "gate-effect",
+            Box::new(move || build_gate_effect_checks(project_path, comply_config)),
+        ),
+        (
+            "ratchet",
+            Box::new(move || build_ratchet_checks(project_path, comply_config)),
+        ),
+        (
+            "coherence",
+            Box::new(move || build_coherence_checks(project_path, comply_config)),
+        ),
     ];
     run_check_groups(groups)
 }
@@ -385,14 +425,31 @@ fn comply_concurrency(groups: usize) -> usize {
             }
         }
     }
-    let cpus = num_cpus::get().max(1);
-    // Never 0: one worker always runs, even on a machine with no headroom,
-    // because refusing to check anything is worse than checking slowly.
-    let by_memory = available_memory_bytes()
+    comply_concurrency_bound(available_memory_bytes(), num_cpus::get(), groups)
+}
+
+/// The bound itself, with every machine reading passed in.
+///
+/// Split out from [`comply_concurrency`] so the MEMORY half is testable. It was
+/// not, and that mattered: the tests around this pinned only the ceiling and the
+/// group count, both of which stay green if the memory term is deleted
+/// outright — on the very machine class the bug was reported from (#1014: a
+/// 48-core box asked for ~192 GB), the ceiling alone looks like a fix. The one
+/// property worth pinning is that a machine with little free RAM gets FEWER
+/// workers than its CPU count would buy, and that is not observable through the
+/// `/proc/meminfo` read.
+///
+/// `available` is `None` where the reading cannot be taken (every non-Linux
+/// platform); the CPU-and-ceiling bound applies alone there, which is no worse
+/// than the behaviour this replaced. Never 0: one worker always runs, even on a
+/// machine with no headroom, because refusing to check anything is worse than
+/// checking slowly.
+fn comply_concurrency_bound(available: Option<u64>, cpus: usize, groups: usize) -> usize {
+    let by_memory = available
         .map(|avail| ((avail / COMPLY_MEMORY_DIVISOR) / COMPLY_BYTES_PER_WORKER).max(1) as usize)
         .unwrap_or(COMPLY_MAX_DEFAULT_JOBS);
     by_memory
-        .min(cpus)
+        .min(cpus.max(1))
         .min(groups.max(1))
         .min(COMPLY_MAX_DEFAULT_JOBS)
         .max(1)
@@ -494,7 +551,6 @@ fn build_compliance_report(
     checks: Vec<ComplianceCheck>,
     project_version: &str,
     version_source: VersionSource,
-    failures_only: bool,
 ) -> ComplianceReport {
     debug_assert!(
         !project_version.is_empty(),
@@ -525,14 +581,7 @@ fn build_compliance_report(
         is_compliant: failures == 0,
         versions_behind,
         summary: CheckSummary::tally(&checks),
-        checks: if failures_only {
-            checks
-                .into_iter()
-                .filter(|c| c.status == CheckStatus::Fail)
-                .collect()
-        } else {
-            checks
-        },
+        checks,
         breaking_changes,
         recommendations,
         timestamp: Utc::now(),
@@ -604,23 +653,49 @@ fn sarif_rule_id(name: &str) -> String {
     format!("pmat/{}", slug.trim_matches('-'))
 }
 
-/// SARIF level for a check result. Skipped and passing checks produce no
-/// result at all — a SARIF run reports findings, not a roll call.
-fn sarif_level(check: &ComplianceCheck) -> Option<&'static str> {
+/// The SARIF `(level, kind)` for a check result, or `None` when the check
+/// should produce no result at all.
+///
+/// Only PASSING checks produce nothing. A skipped check used to be dropped
+/// alongside them, on the reasoning that "a SARIF run reports findings, not a
+/// roll call" — but a skip is not the absence of a finding, it is the absence
+/// of a MEASUREMENT, and the two are opposite claims. `rules[]` declares every
+/// check including the skipped ones, so a consumer that saw a declared rule
+/// with no result concluded the check had run and was clean. On a machine where
+/// 40 of 155 checks skip for want of gitignored `.pmat/` state, that is 40
+/// unmeasured checks rendered as 40 green ones.
+///
+/// SARIF 2.1.0 has the vocabulary for this: `kind: "notApplicable"` says the
+/// rule did not apply, and `level: "none"` keeps it out of the failure counts.
+/// With skips carried explicitly, the mapping is total and absence now means
+/// exactly one thing — the check ran and passed.
+fn sarif_result_shape(check: &ComplianceCheck) -> Option<(&'static str, &'static str)> {
     match check.status {
-        CheckStatus::Fail => Some(match check.severity {
-            Severity::Critical | Severity::Error => "error",
-            Severity::Warning => "warning",
-            Severity::Info => "note",
-        }),
-        CheckStatus::Warn => Some("warning"),
-        CheckStatus::Pass | CheckStatus::Skip => None,
+        CheckStatus::Fail => Some((
+            match check.severity {
+                Severity::Critical | Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::Info => "note",
+            },
+            "fail",
+        )),
+        CheckStatus::Warn => Some(("warning", "fail")),
+        CheckStatus::Skip => Some(("none", "notApplicable")),
+        CheckStatus::Pass => None,
     }
 }
 
 /// A SARIF 2.1.0 document for pmat's own compliance report.
 fn build_sarif(report: &ComplianceReport, project_path: &Path) -> serde_json::Value {
-    let uri = project_path.display().to_string();
+    // Every result is about the project as a whole: `ComplianceCheck` carries a
+    // name, status, message and severity, and no file. This used to be encoded
+    // as `project_path` verbatim, which put the ABSOLUTE path of whoever ran it
+    // into the document — "/home/noah/src/paiml-mcp-agent-toolkit". That output
+    // is uploaded to code scanning, so it published a developer's home
+    // directory, and it made the document differ between two checkouts of the
+    // same commit. `%SRCROOT%` is the standard base id for repository-relative
+    // locations, and "." under it is the root without naming anyone's disk.
+    let _ = project_path;
 
     let rules: Vec<serde_json::Value> = report
         .checks
@@ -638,14 +713,15 @@ fn build_sarif(report: &ComplianceReport, project_path: &Path) -> serde_json::Va
         .checks
         .iter()
         .filter_map(|check| {
-            let level = sarif_level(check)?;
+            let (level, kind) = sarif_result_shape(check)?;
             Some(serde_json::json!({
                 "ruleId": sarif_rule_id(&check.name),
                 "level": level,
+                "kind": kind,
                 "message": { "text": format!("{}: {}", check.name, check.message) },
                 "locations": [{
                     "physicalLocation": {
-                        "artifactLocation": { "uri": uri }
+                        "artifactLocation": { "uri": ".", "uriBaseId": "%SRCROOT%" }
                     }
                 }],
             }))
@@ -722,11 +798,27 @@ mod build_compliance_report_tests {
         }
     }
 
+    /// A minimal report carrying just the checks under test.
+    fn report_of(checks: Vec<ComplianceCheck>) -> ComplianceReport {
+        ComplianceReport {
+            project_version: "1.0".into(),
+            project_version_source: VersionSource::PinnedByProject,
+            summary: CheckSummary::tally(&checks),
+            current_version: "1.0".into(),
+            is_compliant: checks.iter().all(|c| c.status != CheckStatus::Fail),
+            versions_behind: 0,
+            checks,
+            breaking_changes: vec![],
+            recommendations: vec![],
+            timestamp: Utc::now(),
+            history: None,
+        }
+    }
+
     #[test]
     fn test_compliant_when_no_failures() {
         let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Warn)];
-        let report =
-            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
+        let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject);
         assert!(report.is_compliant);
         assert_eq!(report.checks.len(), 2);
     }
@@ -734,22 +826,75 @@ mod build_compliance_report_tests {
     #[test]
     fn test_non_compliant_when_any_fail() {
         let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Fail)];
-        let report =
-            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
+        let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject);
         assert!(!report.is_compliant);
     }
 
     #[test]
-    fn test_failures_only_filter_drops_non_fail_checks() {
-        let checks = vec![
+    fn failures_only_keeps_just_the_failures() {
+        let mut report = report_of(vec![
             check("p", CheckStatus::Pass),
             check("w", CheckStatus::Warn),
             check("s", CheckStatus::Skip),
             check("f", CheckStatus::Fail),
-        ];
-        let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, true);
+        ]);
+        retain_blocking_checks(&mut report, false);
         assert_eq!(report.checks.len(), 1);
         assert_eq!(report.checks[0].name, "f");
+    }
+
+    /// `--failures-only --strict` must not hide what made the run exit non-zero.
+    ///
+    /// `--strict` is defined as "warnings are errors", and the filter kept
+    /// `Fail` only regardless. So a tree with 12 warnings and 0 failures printed
+    /// an EMPTY check list and exited 2: every one of the twelve reasons had
+    /// just been dropped from the report that was supposed to explain them.
+    #[test]
+    fn failures_only_under_strict_shows_the_warnings_that_caused_the_exit() {
+        let mut report = report_of(vec![
+            check("p", CheckStatus::Pass),
+            check("s", CheckStatus::Skip),
+            check("w", CheckStatus::Warn),
+        ]);
+        assert_eq!(
+            exit_policy(&report, true).code,
+            2,
+            "precondition: --strict must fail this report"
+        );
+
+        retain_blocking_checks(&mut report, true);
+
+        let names: Vec<&str> = report.checks.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec!["w"],
+            "the warning that caused exit 2 must survive the filter"
+        );
+    }
+
+    /// Narrowing the LIST must not rewrite the COUNTS.
+    ///
+    /// The summary is what tells a reader how much was measured. If filtering
+    /// the displayed checks also re-tallied it, `--failures-only` would report
+    /// "1 check, 1 failure" on a run that examined 154 — an absence of output
+    /// reading as an absence of work.
+    #[test]
+    fn narrowing_the_list_leaves_the_summary_alone() {
+        let mut report = report_of(vec![
+            check("p", CheckStatus::Pass),
+            check("s", CheckStatus::Skip),
+            check("w", CheckStatus::Warn),
+            check("f", CheckStatus::Fail),
+        ]);
+        let before = report.summary;
+
+        retain_blocking_checks(&mut report, false);
+
+        assert_eq!(report.checks.len(), 1);
+        assert_eq!(report.summary.total, before.total, "total was rewritten");
+        assert_eq!(report.summary.pass, before.pass, "pass was rewritten");
+        assert_eq!(report.summary.skip, before.skip, "skip was rewritten");
+        assert_eq!(report.summary.warn, before.warn, "warn was rewritten");
     }
 
     #[test]
@@ -759,15 +904,13 @@ mod build_compliance_report_tests {
             check("w", CheckStatus::Warn),
             check("f", CheckStatus::Fail),
         ];
-        let report =
-            build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject, false);
+        let report = build_compliance_report(checks, "1.0.0", VersionSource::PinnedByProject);
         assert_eq!(report.checks.len(), 3);
     }
 
     #[test]
     fn test_project_version_propagates() {
-        let report =
-            build_compliance_report(vec![], "2.5.0", VersionSource::PinnedByProject, false);
+        let report = build_compliance_report(vec![], "2.5.0", VersionSource::PinnedByProject);
         assert_eq!(report.project_version, "2.5.0");
         assert!(!report.current_version.is_empty());
     }
@@ -775,8 +918,7 @@ mod build_compliance_report_tests {
     #[test]
     fn test_empty_checks_compliant() {
         // No failures = compliant by definition
-        let report =
-            build_compliance_report(vec![], "1.0.0", VersionSource::PinnedByProject, false);
+        let report = build_compliance_report(vec![], "1.0.0", VersionSource::PinnedByProject);
         assert!(report.is_compliant);
         assert_eq!(report.checks.len(), 0);
     }
@@ -884,7 +1026,10 @@ mod build_compliance_report_tests {
             fail: 0,
             skip: 115,
         };
-        // What `--failures-only` leaves behind: no failures, so no checks.
+        // What `--failures-only` leaves behind WITHOUT --strict: no failures,
+        // so no checks. (With --strict the warnings are now kept — see
+        // `failures_only_under_strict_shows_the_warnings_that_caused_the_exit`.
+        // The point here is that the exit code does not move either way.)
         let filtered = report_with(summary, vec![]);
         let unfiltered = report_with(summary, vec![check("w", CheckStatus::Warn)]);
 
@@ -954,21 +1099,115 @@ mod build_compliance_report_tests {
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0]["tool"]["driver"]["name"], "pmat");
 
-        // One result per Fail/Warn, none for Pass/Skip.
+        // One result per Fail/Warn/Skip. Only a PASS produces nothing, so
+        // absence in results[] means exactly one thing.
         let results = runs[0]["results"].as_array().expect("results[]");
-        assert_eq!(results.len(), 2, "{results:#?}");
+        assert_eq!(results.len(), 3, "{results:#?}");
         assert_eq!(results[0]["ruleId"], "CB-030");
         assert_eq!(results[0]["level"], "error");
+        assert_eq!(results[0]["kind"], "fail");
         assert!(results[0]["message"]["text"]
             .as_str()
             .expect("message")
             .contains("hook missing"));
         assert_eq!(results[1]["ruleId"], "pmat/quality-thresholds");
         assert_eq!(results[1]["level"], "warning");
+        assert_eq!(results[2]["ruleId"], "pmat/disabled-check");
+        assert_eq!(results[2]["kind"], "notApplicable");
 
         // The document must NOT be the plain compliance report.
         assert!(sarif.get("checks").is_none());
         assert!(sarif.get("is_compliant").is_none());
+    }
+
+    /// A check that did not RUN must not be indistinguishable from one that ran
+    /// clean.
+    ///
+    /// `sarif_level` returned `None` for `Skip` as well as `Pass`, so a skipped
+    /// check vanished from `results[]` — while `rules[]` still declared it. A
+    /// consumer reading that document sees a rule it was told about, finds no
+    /// result against it, and concludes the check ran and passed. On a machine
+    /// where 40 of 155 checks skip for want of gitignored `.pmat/` state, the
+    /// upload showed 40 green checks nobody had measured.
+    #[test]
+    fn a_skipped_check_is_not_erased_from_the_sarif() {
+        let report = report_of(vec![
+            check("Ran And Passed", CheckStatus::Pass),
+            check("Never Ran", CheckStatus::Skip),
+        ]);
+
+        let sarif = build_sarif(&report, Path::new("."));
+        let results = sarif["runs"][0]["results"]
+            .as_array()
+            .expect("results[]")
+            .clone();
+
+        let skipped: Vec<_> = results
+            .iter()
+            .filter(|r| r["ruleId"] == "pmat/never-ran")
+            .collect();
+        assert_eq!(
+            skipped.len(),
+            1,
+            "the skipped check must be carried, not dropped: {results:#?}"
+        );
+        assert_eq!(
+            skipped[0]["kind"], "notApplicable",
+            "a skip is an absent measurement, not an absent finding: {skipped:#?}"
+        );
+        assert_eq!(
+            skipped[0]["level"], "none",
+            "an unmeasured check must not count as a failure: {skipped:#?}"
+        );
+
+        // The counter-test: a PASS still produces nothing, so absence in
+        // results[] now means "ran and passed" and nothing else.
+        assert!(
+            !results.iter().any(|r| r["ruleId"] == "pmat/ran-and-passed"),
+            "a passing check should not be rolled call: {results:#?}"
+        );
+    }
+
+    /// The document must not carry the absolute path of whoever produced it.
+    ///
+    /// Every result's `artifactLocation.uri` was `project_path` verbatim, so
+    /// `comply check -f sarif` emitted "/home/<user>/src/<repo>" once per
+    /// finding. That output is uploaded to code scanning, publishing a home
+    /// directory, and it makes the same commit produce different SARIF on two
+    /// machines.
+    #[test]
+    fn the_sarif_carries_no_absolute_machine_path() {
+        let report = report_of(vec![check("Some Rule", CheckStatus::Fail)]);
+        let sarif = build_sarif(&report, Path::new("/home/someone/src/their-repo"));
+        let text = serde_json::to_string(&sarif).expect("serialize");
+
+        assert!(
+            !text.contains("/home/someone"),
+            "the producer's absolute path leaked into the SARIF: {text}"
+        );
+        assert!(
+            !text.contains("their-repo"),
+            "the producer's checkout name leaked into the SARIF: {text}"
+        );
+    }
+
+    /// Two checkouts of one commit must produce one document.
+    ///
+    /// Embedding `project_path` made the SARIF depend on where the repository
+    /// happened to be cloned, so a diff between a developer's run and CI's was
+    /// noise on every result.
+    #[test]
+    fn the_sarif_is_identical_from_two_checkout_paths() {
+        let checks = vec![
+            check("Some Rule", CheckStatus::Fail),
+            check("Never Ran", CheckStatus::Skip),
+        ];
+        let a = build_sarif(&report_of(checks.clone()), Path::new("/build/one"));
+        let b = build_sarif(&report_of(checks), Path::new("/somewhere/else/two"));
+        assert_eq!(
+            a["runs"][0]["results"], b["runs"][0]["results"],
+            "the same checks produced different SARIF from two checkout paths"
+        );
     }
 
     /// #939: resolving the project's pinned version CREATED
@@ -1009,8 +1248,8 @@ mod build_compliance_report_tests {
         .expect("write manifest");
         std::fs::write(dir.path().join("src/lib.rs"), "//! x\n").expect("write lib");
 
-        let first = compute_compliance_report(dir.path(), false).expect("run 1");
-        let second = compute_compliance_report(dir.path(), false).expect("run 2");
+        let first = compute_compliance_report(dir.path()).expect("run 1");
+        let second = compute_compliance_report(dir.path()).expect("run 2");
 
         assert_eq!(first.summary, second.summary, "verdict moved on its own");
         assert_eq!(first.is_compliant, second.is_compliant);
@@ -1086,6 +1325,13 @@ include!("check_builders_foundation.rs");
 include!("check_builders_contracts.rs");
 include!("check_builders_commits.rs");
 include!("check_builders_work.rs");
+include!("check_builders_evidence.rs");
+include!("check_gate_effect.rs");
+include!("check_builders_gate_effect.rs");
+include!("check_metrics_ratchet.rs");
+include!("check_builders_ratchet.rs");
+include!("check_threshold_coherence.rs");
+include!("check_builders_coherence.rs");
 include!("check_individual_basic.rs");
 include!("check_individual_cb.rs");
 include!("check_individual_ci.rs");
@@ -1171,6 +1417,76 @@ mod comply_concurrency_tests {
             comply_concurrency(13),
             7,
             "PMAT_COMPLY_JOBS must override the computed bound"
+        );
+    }
+
+    /// The MEMORY half, which nothing pinned before (#1014).
+    ///
+    /// This is the bug as reported: a 48-core machine sized the run by CPU count
+    /// and asked for ~4 GB x 48 = ~192 GB. The property is not "at most four
+    /// workers" — that is the ceiling, and the ceiling alone would still let a
+    /// 4-core laptop with 2 GB free start four 4 GB workers. It is that the
+    /// bound falls with AVAILABLE MEMORY, independently of how many cores the
+    /// box has.
+    ///
+    /// RED, replacing the `by_memory` term with `COMPLY_MAX_DEFAULT_JOBS`
+    /// (i.e. deleting the memory bound and keeping only the ceiling):
+    /// ```text
+    /// 2 GB available on a 48-core box authorised 4 workers (~16 GB): the
+    /// bound must fall with memory, not with core count
+    /// ```
+    /// Every other test in this module stays green under that mutation, which
+    /// is why this one exists.
+    #[test]
+    fn the_bound_falls_with_available_memory_not_core_count() {
+        const GB: u64 = 1024 * 1024 * 1024;
+        let cramped = comply_concurrency_bound(Some(2 * GB), 48, 13);
+        assert_eq!(
+            cramped,
+            1,
+            "2 GB available on a 48-core box authorised {cramped} workers (~{} GB): the \
+             bound must fall with memory, not with core count",
+            (cramped as u64 * COMPLY_BYTES_PER_WORKER) / GB
+        );
+
+        // Counter-test: the memory term is a BOUND, not a cap that ignores the
+        // machine. A box with room to spare still gets the ceiling, so the fix
+        // cannot be "always one worker".
+        assert_eq!(
+            comply_concurrency_bound(Some(512 * GB), 48, 13),
+            COMPLY_MAX_DEFAULT_JOBS,
+            "a machine with ample free RAM must still reach the default ceiling"
+        );
+
+        // Monotone in memory, across the whole range: more headroom never buys
+        // fewer workers.
+        let mut prev = 0;
+        for gb in [1_u64, 8, 16, 32, 64, 128, 256] {
+            let jobs = comply_concurrency_bound(Some(gb * GB), 48, 13);
+            assert!(
+                jobs >= prev,
+                "{gb} GB authorised {jobs} workers, less than the {prev} authorised by less \
+                 memory"
+            );
+            assert!(jobs >= 1, "{gb} GB authorised no workers at all");
+            prev = jobs;
+        }
+    }
+
+    /// Where the reading cannot be taken (every non-Linux platform), the run is
+    /// still bounded — by the ceiling, the core count and the group count. An
+    /// unreadable `/proc/meminfo` must not read as "unlimited memory".
+    #[test]
+    fn an_unreadable_memory_reading_is_still_bounded() {
+        assert_eq!(
+            comply_concurrency_bound(None, 48, 13),
+            COMPLY_MAX_DEFAULT_JOBS,
+            "no memory reading must fall back to the ceiling, never to the core count"
+        );
+        assert_eq!(
+            comply_concurrency_bound(None, 1, 13),
+            1,
+            "a single-core machine gets one worker whatever the memory reading"
         );
     }
 

@@ -2,7 +2,7 @@
 # Record build/test/lint metrics for O(1) pre-commit validation
 # Spec: docs/specifications/quick-test-build-O(1)-checking.md
 # Pattern: Hash-based caching (similar to 27fea2ae)
-# shellcheck disable=DET002
+# bashrs disable-file=DET002
 # Intentional: Timestamps required for metric recording
 set -euo pipefail
 
@@ -12,6 +12,17 @@ METRICS_DIR=".pmat-metrics"
 if [ -z "$METRIC_NAME" ]; then
     echo "Usage: $0 <metric-name>" >&2
     echo "Example: $0 lint" >&2
+    exit 1
+fi
+
+# $METRIC_NAME becomes a path component under $METRICS_DIR, so constrain its
+# shape BEFORE any path is built from it. The dispatch `case` below does reject
+# unknown names, but it runs too late: $START_FILE is assembled and read with
+# `cat` above it. Verified with `bash -x record-metric.sh ../victim/pwned`,
+# which ran `cat .pmat-metrics/../victim/pwned.start` and only then printed
+# "Unknown metric".
+if [ "$METRIC_NAME" != "${METRIC_NAME%%..*}" ] || [ "$METRIC_NAME" != "${METRIC_NAME%%/*}" ]; then
+    echo "Invalid metric name (must not contain '..' or '/'): $METRIC_NAME" >&2
     exit 1
 fi
 

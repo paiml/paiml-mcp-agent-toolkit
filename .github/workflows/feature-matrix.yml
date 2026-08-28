@@ -24,6 +24,14 @@
 #
 # A feature a user can type is a feature that must build. This job is the only
 # thing that checks that.
+#
+# COMPILING IS NOT RUNNING. `cargo check` neither lints nor executes, so a
+# feature can be green in the two jobs above and still ship a broken test suite.
+# The `feature-tests` job is where test bodies actually execute. Read its
+# comment before adding a feature anywhere in this file: the three regression
+# tests added in the 3.32.0 cycle for `mcp_integration` were compiled by
+# `individual` and executed by nothing, which is the same as not having written
+# them.
 name: Feature Matrix
 
 on:
@@ -168,6 +176,290 @@ jobs:
       - name: clippy --all-targets (compiles benches and examples)
         run: cargo clippy --all-targets --locked -- -D warnings
 
+  # `cargo check` proves a feature COMPILES. It never runs a line of it, and it
+  # never lints it. Both jobs above are checks, and `ci.yml`'s reusable workflow
+  # runs `cargo test --lib` + `clippy` on DEFAULT FEATURES ONLY — so a feature
+  # outside `default` has its test bodies compiled and then thrown away.
+  #
+  # Measured with `cargo test --lib --features F -- --list`:
+  #
+  #                      3.32.0    f47d75170 (this branch)
+  #   default            20,283    20,291   <- what ci.yml runs
+  #   full               22,203    22,204
+  #   mcp-integration    21,200    21,201
+  #   unified-protocol   20,570    20,575
+  #   agents-md          20,530    (unmeasured this pass)
+  #
+  # `unified-protocol` is why this job exists. It is in neither `default` nor
+  # `full`, so its 287 lib tests had never once executed, and no invocation had
+  # ever pointed clippy at it: it sat with two `-D warnings` errors in
+  # `error_tests.rs` (`io::Error::new(ErrorKind::Other, _)`) that were
+  # unreportable because `cargo check` does not run lints and nothing else
+  # named the feature. A feature can be green under `cargo check` and still be
+  # red under the two things that decide whether it works.
+  #
+  # Scope, deliberately: only features VERIFIED green go in the matrix. Each
+  # entry below records the run that earned it a slot.
+  feature-tests:
+    name: run the tests / ${{ matrix.features }}
+    runs-on: ubuntu-latest
+    # 90, not 60: `full` and `mcp-integration` each spend ~5 min in the test
+    # binary alone (303.18s and 302.10s measured locally), on top of a cold
+    # dependency compile. 60 was sized for `unified-protocol`, whose delta over
+    # a default build is 284 tests.
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Verified at the commit that added this job: `clippy --all-targets
+          # --features unified-protocol -- -D warnings` exits 0, and the suite
+          # ran 20,425 of 20,575 tests with ZERO failures. The remainder was not
+          # reached because two DEFAULT-features tests,
+          # `mcp_pmcp::simple_unified_server::eof_drain_tests::{
+          # eof_does_not_signal_while_a_request_is_in_flight,
+          # waits_for_every_outstanding_request}`, hang under load. That is
+          # pre-existing and unrelated: the file is unmodified at HEAD
+          # (642b8df04), and `cargo test --lib -- eof_drain_tests` hangs the
+          # same way with this feature OFF, so `ci.yml`'s own `cargo test --lib`
+          # already carries the identical risk. Fixing it is its own ticket.
+          #
+          # Only add a feature here once you have run both locally — a gate that
+          # lands red blocks every PR and gets reverted, which is how the last
+          # one stopped covering anything.
+          - features: unified-protocol
+
+          # `full` is the bundle `cargo install pmat --features full` builds,
+          # and until this commit NOTHING had ever executed a line of its
+          # +1,913 extra lib tests or pointed clippy at them. Both are now
+          # measured, at f47d75170, on the machine that added this entry:
+          #
+          #   cargo clippy --all-targets --features full -- -D warnings
+          #     -> 24 errors, all in code no lint gate had ever compiled:
+          #        11x unreachable_pub (src/demo/), 3x approx_constant (ruchy
+          #        tests), 3x manual descending sorts, 2x stray duplicated
+          #        outer attribute (src/wasm/), useless_vec, and an
+          #        `assert!(count >= 0)` on a u32 that could not fail — plus
+          #        17 more in tests/ and examples/ that `--all-targets`
+          #        reaches and `--lib` does not. All fixed here; now exits 0.
+          #   cargo test --lib --features full
+          #     -> 22,034 passed; 0 failed; 172 ignored; finished in 303.27s
+          #
+          # THE FIRST TWO RUNS OF THIS LEG DISAGREED. Run 1 was 22,032/0; run 2
+          # failed `services::mutation::fuzzing::tests::
+          # test_mutate_input_single_byte`. `mutate_input`'s delete-byte
+          # strategy is 1 of 5 drawn uniformly, so a 1-byte seed came back
+          # empty 20% of the time — a flake that had been sitting in a shipped
+          # feature for as long as nothing ran it. Fixed at the source
+          # (fuzzing_helpers.rs) and pinned by
+          # `mutate_input_never_empties_a_non_empty_seed`. A test suite nobody
+          # runs does not merely fail to catch regressions; it also hides which
+          # of its own tests are nondeterministic.
+          #
+          # Per-PR rather than nightly, deliberately: 303s of test time is the
+          # same order as the `unified-protocol` leg already running here, and
+          # the `bundles` job above already pays for `full`'s dependency
+          # compile. A nightly-only gate reports a break to nobody who can
+          # still fix it cheaply.
+          - features: full
+
+          # `mcp-integration` gates 910 lib tests that no invocation had ever
+          # run, INCLUDING three regression tests added in this very release
+          # cycle — `mcp_integration::tdg_tools::tests::
+          # test_analyze_technical_debt_refuses_ungradable_file` and the two
+          # `mcp_integration::tools::context_adapters::tests::*`. A regression
+          # test behind a feature nothing executes is a comment.
+          #
+          # The previous revision of this file excluded it as "clippy-red (14
+          # errs)". Measured at f47d75170 that was 11 errors, all in test
+          # bodies no gate had compiled with lints on (default_constructed_
+          # unit_structs, for_kv_map, len_zero, manual_range_contains,
+          # field_reassign_with_default, unused_mut in a macro expansion).
+          # Fixed in this commit; now:
+          #
+          #   cargo clippy --all-targets --features mcp-integration -- -D warnings
+          #     -> exits 0
+          #   cargo test --lib --features mcp-integration
+          #     -> 21,056 passed; 0 failed; 145 ignored; finished in 302.10s
+          - features: mcp-integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: feattests-${{ matrix.features }}
+      # Lints first: this is the invocation that was missing, and it is the
+      # cheaper of the two to fail on.
+      - name: clippy --all-targets --features ${{ matrix.features }}
+        run: cargo clippy --all-targets --locked --features '${{ matrix.features }}' -- -D warnings
+      - name: cargo test --lib --features ${{ matrix.features }}
+        run: |
+          set -uo pipefail
+          # A feature whose test bodies do not run is not tested, however green
+          # `cargo check` is. Print the count so the log carries the evidence.
+          # Floor, not an equality: a feature build is default + delta, so this
+          # only trips when the flag silently did nothing. Measured at
+          # f47d75170 with `cargo test --lib -- --list | grep -c ': test$'`.
+          default_tests=20291
+          n=$(cargo test --lib --locked --features '${{ matrix.features }}' -- --list \
+                | grep -c ': test$')
+          echo "::notice::${{ matrix.features }} -> ${n} lib tests"
+          if [ "$n" -le "$default_tests" ]; then
+            echo "::error::${n} tests is not more than the ${default_tests} a default build already runs — the feature flag did not take effect, so this job is measuring nothing"
+            exit 1
+          fi
+          cargo test --lib --locked --features '${{ matrix.features }}'
+
+  # A feature reachable from neither `default` nor `full` is one no bundle job
+  # ever tests. That set is derived here rather than hand-listed, because a
+  # hand-copied list silently stops covering features added later — the same
+  # defect the `individual` job exists to catch, one level up.
+  #
+  # Every orphan must be either TESTED by the job above or EXCLUDED with a
+  # written reason. Adding a new feature that is in neither fails this job, so
+  # "nobody noticed the feature existed" stops being a possible outcome.
+  orphan-ledger:
+    name: no silent orphan features
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: every orphan feature is tested or explained
+        shell: bash
+        run: |
+          set -uo pipefail
+          python3 - <<'PY'
+          import re, sys
+          body = re.search(r'^\[features\]\n(.*?)(?=^\[)', open('Cargo.toml').read(), re.S | re.M).group(1)
+          feats = {}
+          for m in re.finditer(r'^([a-zA-Z0-9_-]+)\s*=\s*(\[.*?\])', body, re.S | re.M):
+              feats[m.group(1)] = [d for d in re.findall(r'"([^"]+)"', m.group(2))
+                                   if not d.startswith('dep:') and '/' not in d]
+          if len(feats) < 40:
+              sys.exit(f"::error::only {len(feats)} features parsed — the parser is broken, not the crate")
+
+          def closure(root):
+              seen, stack = set(), [root]
+              while stack:
+                  f = stack.pop()
+                  if f in seen or f not in feats:
+                      continue
+                  seen.add(f)
+                  stack.extend(feats[f])
+              return seen
+
+          orphans = set(feats) - (closure('default') | closure('full'))
+
+          # Executed by the `feature-tests` job above.
+          #
+          # `full` is NOT listed here and must not be: it is a closure root, so
+          # it is not an orphan, and the `stale` check below would reject it.
+          # Its leg lives in the `feature-tests` matrix all the same.
+          TESTED = {'unified-protocol', 'mcp-integration'}
+
+          # Each entry is a reason this feature's tests are not executed here.
+          # Every reason below was checked against the tree, not assumed.
+          # `files_with_cfg` is `grep -rl 'feature = "F"' src/ --include='*.rs'`.
+          EXCLUDED = {
+              # MEASURED DEBT, not a clean bill of health. The previous
+              # revision excluded all three of these as one "clippy-red" group
+              # of 14 errors. `mcp-integration` has since been fixed and
+              # promoted to TESTED (11 of those errors were reachable from it
+              # alone). These two have NOT been re-measured since that fix, so
+              # the honest state is unknown, not red:
+              'agents-md':         'clippy state unremeasured since the mcp-integration fix; +247 lib tests never run',
+              'agent-daemon':      'clippy state unremeasured since the mcp-integration fix; lib-test delta unmeasured',
+
+              # Deliberate quarantines.
+              'broken-tests':      'deliberate non-compiling quarantine (#1023)',
+              'red-phase-tests':   'deliberate expected-failure quarantine',
+
+              # Cannot run on this runner.
+              'gpu':               'needs GPU hardware; ubuntu-latest has none',
+              # NOTE: over-broad for at least one test. `services::
+              # analytics_backend::test_gpu_is_reported_unavailable_and_never_
+              # selected` (added in the 3.32.0 cycle) asserts that GPU
+              # detection reports FALSE and that the selector never picks
+              # Backend::Gpu -- it wants a GPU-less runner, which is exactly
+              # what ubuntu-latest is. Splitting the hardware-needing tests
+              # from the hardware-asserting ones would let this feature be
+              # tested here; until someone does, it is unrun.
+              'analytics-gpu':     'needs GPU hardware; ubuntu-latest has none',
+
+              # Select tests/ targets rather than lib tests; a Makefile target
+              # owns each one. Target names verified present in Makefile.
+              'integration-tests': 'selects tests/ targets, not lib tests; make test-services / test-protocols / test-integration',
+              'e2e-tests':         'selects tests/ targets, not lib tests; make test-e2e',
+              'perf-tests':        'selects tests/ targets, not lib tests; make test-performance',
+
+              # No cfg site anywhere in src/ (files_with_cfg == 0), so enabling
+              # them cannot add or remove a single lib test.
+              'most-languages':    'bundle, 0 cfg sites in src/; members covered by default or full',
+              'extended-languages':'bundle, 0 cfg sites in src/; members covered by default or full',
+              'rust-only':         'bundle, 0 cfg sites in src/; members covered by default',
+              'internal_tests':    '0 cfg sites in src/; nothing behind it to run',
+
+              # Referenced by no Makefile target, no script and no workflow —
+              # the flag exists and selects nothing. Left excluded rather than
+              # silently gated, because the honest fix is to wire it up or drop
+              # it, not to add it to a matrix where it would measure nothing.
+              'cli-integration':   'dead switch: no Makefile/script/workflow references it',
+
+              # Sprint 46 removed these features' dependencies but kept the flag
+              # so the surviving `#[cfg]` guards still compile. They ARE still
+              # cfg sites in src/ (java 11, csharp 11, scala 10, ruby 1,
+              # polyglot-* 1 each), so this is 'unmeasured', not 'empty'.
+              'java-ast':          'dep-less back-compat flag, 11 cfg sites; lib-test delta unmeasured',
+              'csharp-ast':        'dep-less back-compat flag, 11 cfg sites; lib-test delta unmeasured',
+              'scala-ast':         'dep-less back-compat flag, 10 cfg sites; lib-test delta unmeasured',
+              'ruby-ast':          'dep-less back-compat flag, 1 cfg site; lib-test delta unmeasured',
+              'polyglot-java':     'dep-less back-compat flag, 1 cfg site; lib-test delta unmeasured',
+              'polyglot-csharp':   'dep-less back-compat flag, 1 cfg site; lib-test delta unmeasured',
+              'polyglot-ruby':     'dep-less back-compat flag, 1 cfg site; lib-test delta unmeasured',
+              'polyglot-scala':    'dep-less back-compat flag, 1 cfg site; lib-test delta unmeasured',
+              'reporting':         'no-op alias kept for `--features reporting` (#672), 1 cfg site',
+
+              # Compile-checked by the `individual` job above; their lib-test
+              # delta has NOT been measured. Honest IOUs, not clean bills.
+              'skip-slow-tests':      'lib-test delta unmeasured; compile-checked only',
+              'polyglot-kotlin':      'lib-test delta unmeasured; compile-checked only',
+              'kotlin-ast':           'lib-test delta unmeasured; compile-checked only',
+              'tui':                  'lib-test delta unmeasured; compile-checked only',
+              'dap':                  'lib-test delta unmeasured; compile-checked only',
+              'git-lib':              'lib-test delta unmeasured; compile-checked only',
+              'github-api':           'lib-test delta unmeasured; compile-checked only',
+              'diagnostics':          'lib-test delta unmeasured; compile-checked only',
+              'watch':                'lib-test delta unmeasured; compile-checked only',
+              'simd':                 'lib-test delta unmeasured; compile-checked only',
+              'sovereign-compression':'lib-test delta unmeasured; compile-checked only',
+              'syntax-highlighting':  'lib-test delta unmeasured; compile-checked only',
+              'org-intelligence':     'lib-test delta unmeasured; compile-checked only',
+              'prometheus-metrics':   'lib-test delta unmeasured; compile-checked only',
+              'raft-consensus':       'lib-test delta unmeasured; compile-checked only',
+          }
+
+          unaccounted = sorted(orphans - TESTED - set(EXCLUDED))
+          stale = sorted((TESTED | set(EXCLUDED)) - orphans)
+
+          print(f"{len(feats)} features, {len(orphans)} reachable from neither default nor full")
+          print(f"  tested here: {len(TESTED & orphans)}")
+          print(f"  excluded with a reason: {len(orphans & set(EXCLUDED))}")
+
+          rc = 0
+          for f in unaccounted:
+              print(f"::error::feature '{f}' is in neither `default` nor `full`, so no job runs its "
+                    f"tests, and it is in neither TESTED nor EXCLUDED in this workflow. Add it to "
+                    f"the feature-tests matrix, or record why it is exempt.")
+              rc = 1
+          for f in stale:
+              print(f"::error::'{f}' is listed in this job but is no longer an orphan feature — "
+                    f"remove the stale entry so the ledger keeps meaning something.")
+              rc = 1
+          sys.exit(rc)
+          PY
+
   # crates.io rejects an upload over 10 MiB compressed, and it does NOT say so:
   # `cargo publish` returns a bare 503 from the gateway, and `--dry-run` passes
   # because it never uploads. 3.30.0 went out at 9.4 MiB — 94% of the ceiling —
@@ -215,18 +507,168 @@ jobs:
             echo "::warning::package is ${mib} MiB compressed; the budget is 9.0 and the hard limit is 10."
           fi
 
+  # `orphan-ledger` above asks whether every orphan FEATURE is tested or
+  # explained. It says nothing about a TEST that lives behind a feature no leg
+  # runs, and that gap shipped four regression tests in the 3.32.0 cycle which
+  # have never executed once: three under `mcp-integration`
+  # (`mcp_integration::tdg_tools::tests::test_analyze_technical_debt_refuses_
+  # ungradable_file` and two in `mcp_integration::tools::context_adapters::
+  # tests`) and one under `analytics-gpu`.
+  #
+  # Two of those four were invisible to a name search, which is the part worth
+  # understanding: `mcp_pmcp::agent_context_handlers::tests` holds tests with
+  # IDENTICAL names that DO run, so `cargo test --lib -- --list | grep <name>`
+  # printed the name while the hidden copy compiled in no invocation. This job
+  # keys on the full module path, never the bare name.
+  #
+  # `cargo check --features X` — what `bundles` and `individual` run — is not
+  # coverage here and is not counted as a leg: it compiles no `#[cfg(test)]`
+  # item and executes no body.
+  #
+  # Replayed against the tree at f47d751709 (the commit before
+  # `mcp-integration` became a leg, i.e. f32f57dcf's parent): all four named,
+  # neither twin flagged.
+  unrun-tests:
+    name: no test behind a feature nothing runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: unrun-tests
+      # `cargo run` rather than a hand-written `./target/...` path: a local
+      # `.cargo/config.toml` can redirect CARGO_TARGET_DIR, and a hardcoded path
+      # then validates a STALE binary while reporting success. Cargo knows where
+      # it put the artefact; nothing else reliably does.
+      - name: cargo build --bin pmat
+        run: cargo build --release --locked --bin pmat
+      # `--executed ''` declares the one test-running leg that is NOT in this
+      # repository: `ci / test` lives in the reusable paiml/.github workflow and
+      # runs `cargo test --lib` on default features. Every other leg is derived
+      # from the workflow files, so a leg added or removed here changes the
+      # answer without anyone editing this job.
+      #
+      # Exits non-zero on: a test newly unrun, a test no longer unrun (a stale
+      # ledger is a confident wrong answer), a bucket with no recorded reason,
+      # a cfg predicate the analysis cannot decide, or a file it cannot parse.
+      - name: every test is executed by some leg, or the ledger says why
+        run: cargo run --release --locked --quiet --bin pmat -- analyze unrun-tests --executed '' --check-ledger
+
+
+  # ── The falsification gate that had never run.
+  #
+  # `tests/modules/quality_harness/differential_corpus.rs` asserts that no metric
+  # may read the same for an empty project and a defect-rich one. It is reachable
+  # only from `tests/all.rs`, an integration target, and every other leg runs
+  # `cargo test --lib` — so the gate written to catch unmeasured metrics was
+  # itself never measured. Run by hand for the first time it was RED, with 16
+  # constant leaves: four fixture gaps (the corpus held nothing for those
+  # counters to count, since fixed) and twelve configuration constants (excused
+  # in ALLOWED_CONSTANTS, each with the evidence that earned the excuse).
+  #
+  # NOT `continue-on-error`. A gate that cannot fail is not a gate, and this one
+  # is green at the commit that adds this job. Its sibling
+  # `make gate-flag-efficacy` was deliberately left out while it was red; it
+  # reached ZERO no-op flags and is now wired up beside this one.
+  #
+  # Default features on purpose — that is what `make gate-differential` runs. The
+  # harness resolves the binary through `env!("CARGO_BIN_EXE_pmat")`, so cargo
+  # builds `pmat` for the integration test itself; no separate build step.
+  #
+  # It lives HERE, not in quality-gate.yml, because `feature-gate` below is the
+  # aggregator this repository already uses to make a leg blocking — and it is a
+  # required branch-protection context, while an individual job in
+  # quality-gate.yml is not. A gate that cannot fail the merge is not a gate,
+  # which is the exact defect this gate exists to catch. `feature-gate` already
+  # carries legs that are not about features (orphan-ledger, package-size,
+  # unrun-tests); it is the general "every leg must pass" gate.
+  differential-corpus:
+    name: falsification / differential-corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Pinned so the report path is a fact rather than a coincidence: the harness
+    # writes to `std::env::temp_dir()` (differential_corpus.rs:665), which honours
+    # TMPDIR, while the upload step below names /tmp. They agree by default on
+    # this runner; this makes them agree by construction.
+    env:
+      TMPDIR: /tmp
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The corpora are git-initialised and `churn`/`bottleneck` read history.
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: differential-corpus
+      - name: every metric must differ between an empty and a defect-rich project
+        run: make gate-differential
+      - name: upload the per-leaf report when the gate fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: differential-corpus-report
+          path: /tmp/pmat-differential-corpus-report.txt
+          if-no-files-found: warn
+
+  # ── The second falsification gate, wired up now that it is green.
+  #
+  # `make gate-flag-efficacy` asserts that every CLI flag changes something
+  # observable. It went 19 no-ops -> 0 over this release:
+  #
+  #   19  starting point
+  #   15  --lower denied (it rewrites a tracked baseline), --color fixed on four
+  #       analyze commands
+  #   13  --fail-on-violation discloses itself instead of being accepted silently
+  #    6  RUST_LOG scrubbed in the harness and declared per-flag in PROBE_ENV —
+  #       seven --quiet "no-ops" were the sweep reading the developer's shell
+  #    2  the corpus given a machine path, a vacuous test and an unrun lib test,
+  #       so the four --fail-on-* flags have something to fail on
+  #    0  --mutation-threshold enforced, coverage-improve --color honoured
+  #
+  # Same placement reasoning as differential-corpus: it is in `feature-gate`'s
+  # needs, which is a required branch-protection context, so a red result blocks
+  # the merge. A gate that reports and cannot block is not a gate.
+  #
+  # ~6 minutes: it spawns several hundred processes against three corpora.
+  flag-efficacy:
+    name: falsification / flag-efficacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TMPDIR: /tmp
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: flag-efficacy
+      - name: every CLI flag must change something observable
+        run: make gate-flag-efficacy
+      - name: upload the per-flag report when the gate fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flag-efficacy-report
+          path: /tmp/pmat-flag-efficacy-report.txt
+          if-no-files-found: warn
+
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, package-size]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, unrun-tests, differential-corpus, flag-efficacy]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.package-size.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} package-size=${{ needs.package-size.result }}"
+              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
               exit 1
             fi
           done
-          echo "every advertised feature compiles and the package fits"
+          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, and the package fits"

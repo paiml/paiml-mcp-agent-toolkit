@@ -146,7 +146,11 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         include: Vec<String>,
 
-        /// Watch mode for continuous analysis
+        /// [NOT AVAILABLE in the default build] Watch mode for continuous analysis — needs --features watch
+        ///
+        /// `watch` is not in the default feature set: a `cargo install pmat`
+        /// binary exits rc=1 with "Watch mode requires the 'watch' feature"
+        /// before it analyses anything.
         #[arg(long)]
         watch: bool,
 
@@ -248,8 +252,25 @@ pub enum AnalyzeCommands {
         #[arg(long, short = 'u')]
         include_unreachable: bool,
 
-        /// Minimum dead lines to report a file (default: 10)
-        #[arg(long, default_value = "10")]
+        // The default was 10, and `dead_lines` on the cargo path is an ESTIMATE
+        // of 5 lines per dead function (3 per struct/enum, 2 otherwise), not a
+        // measured span — so the DEFAULT invocation discarded every file whose
+        // whole finding set estimated under 10 lines, i.e. any file with a
+        // single dead function. `pmat analyze dead-code` on a crate with one
+        // dead function answered `dead_functions: 0, files: []` while the same
+        // tool's MCP `analyze_dead_code` answered with the function's name and
+        // line, and the CLI's own JSON carried `files_with_dead_code_found: 1`
+        // beside the zeros. A trimmer may narrow a long list on request; it may
+        // not answer "no dead code" by default over dead code the analyzer
+        // found. `--top-files`, the other trimmer, already defaults to showing
+        // everything.
+        /// Minimum estimated dead lines before a file is listed (default: 0 —
+        /// list every file with a finding)
+        ///
+        /// Trims the reported list only. Whatever it removes is still counted
+        /// in the report's `omitted` block and named in the summary, so raising
+        /// it can never turn a finding into a silent zero.
+        #[arg(long, default_value = "0")]
         min_dead_lines: usize,
 
         /// Include test files in analysis
@@ -318,6 +339,126 @@ pub enum AnalyzeCommands {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
+    },
+
+    /// Report tracked .rs files that no compilation unit reaches
+    ///
+    /// rustc emits no diagnostic for a `.rs` file that no `mod`, `#[path]` or
+    /// `include!` reaches, so an orphaned module compiles to nothing and its
+    /// tests report `0 passed; ok`. A stack-wide audit found ~475 such files,
+    /// >320,000 lines and ~8,900 tests that have never executed.
+    #[command(name = "reachability", visible_aliases = &["orphans", "unreachable"])]
+    Reachability {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when any tracked file is unreachable
+        #[arg(long)]
+        fail_on_orphan: bool,
+    },
+
+    /// Find machine-specific absolute paths baked into source
+    ///
+    /// aprender shipped binaries containing `/home/noah/…`: correct on the
+    /// machine that built them, inert everywhere else, and invisible to every
+    /// gate — the code compiled, clippy was clean, and the path was just a
+    /// string literal. Flags a path only when it names a specific user, nix
+    /// store hash or build root; `/usr/bin/env` and `/home/$USER` are portable
+    /// and are not findings.
+    #[command(name = "hardcoded-paths", visible_aliases = &["abs-paths", "path-leaks"])]
+    HardcodedPaths {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when a path leaks into shipped (non-test, non-doc) code
+        #[arg(long)]
+        fail_on_shipped: bool,
+
+        /// Exit non-zero on any finding, including tests and documentation
+        #[arg(long)]
+        fail_on_any: bool,
+    },
+
+    /// Report tests no CI leg executes, keyed on the full module path
+    ///
+    /// Four regression tests shipped in the 3.32.0 cycle behind features no job
+    /// ran — three under `mcp-integration`, one under `analytics-gpu`. Two were
+    /// invisible to a name search because identically-named tests under
+    /// `mcp_pmcp` DO run, so `cargo test -- --list | grep <name>` printed the
+    /// name while the hidden copy never executed. `cargo check --features X`
+    /// compiles no `#[cfg(test)]` body and is therefore not coverage.
+    #[command(name = "unrun-tests", visible_aliases = &["unrun", "test-ledger"])]
+    UnrunTests {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// A test-running invocation defined outside this repository, as a
+        /// comma-separated feature spec ("" for default features). `ci / test`
+        /// lives in the reusable paiml/.github workflow and cannot be read here.
+        #[arg(long = "executed", value_name = "FEATURES")]
+        executed: Vec<String>,
+
+        /// Rewrite the committed ledger from the tree
+        #[arg(long)]
+        write_ledger: bool,
+
+        /// With --write-ledger, write even when the git tree has uncommitted
+        /// changes to tracked files. Default is to refuse: a ledger written
+        /// from a dirty tree records whatever unrelated, uncommitted edits
+        /// happen to be sitting there, which no clean checkout of the
+        /// resulting commit will reproduce (PMAT-630 / #1034).
+        #[arg(long, requires = "write_ledger")]
+        allow_dirty: bool,
+
+        /// Exit non-zero when the committed ledger has drifted
+        #[arg(long)]
+        check_ledger: bool,
+
+        /// Exit non-zero when any test is executed by no leg
+        #[arg(long)]
+        fail_on_any: bool,
+    },
+
+    /// Find #[test] functions that cannot fail
+    ///
+    /// A stack-wide audit counted ~933 tests whose bodies contain nothing that
+    /// can fail — 584 of forjar's 802 use `let _ = <fallible call>;`, the
+    /// minimum edit that executes a line without checking it. Line coverage is
+    /// the only fleet metric with a hard floor, and it measures execution, not
+    /// verification. Also reports tests that `return` early when a fixture is
+    /// missing: those pass having checked nothing, invisibly, unlike #[ignore].
+    #[command(name = "vacuous-tests", visible_aliases = &["vacuous", "fake-tests"])]
+    VacuousTests {
+        /// Path to analyze (defaults to current directory)
+        #[arg(long, short = 'p', default_value = ".")]
+        path: PathBuf,
+
+        /// Output format
+        #[arg(long, short = 'f', default_value = "summary")]
+        format: String,
+
+        /// Exit non-zero when the vacuous rate exceeds this percentage
+        #[arg(long)]
+        max_rate: Option<f64>,
+
+        /// Exit non-zero when any test cannot fail
+        #[arg(long)]
+        fail_on_any: bool,
     },
 
     // ── Debt Analysis ─────────────────────────────────────────────
@@ -1263,6 +1404,10 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         exclude: Vec<String>,
 
+        /// Maximum files to target per iteration (0 = no limit)
+        #[arg(long, default_value = "10")]
+        max_targets: usize,
+
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
@@ -1572,7 +1717,13 @@ pub enum AnalyzeCommands {
         include_tests: bool,
     },
 
-    /// Analyze WebAssembly modules for quality, security, and performance
+    /// [NOT AVAILABLE in the default build] Analyze WebAssembly modules — needs --features wasm-ast
+    ///
+    /// Quality, security and performance analysis of a compiled `.wasm`
+    /// module. `wasm-ast` is not in the default feature set, so a
+    /// `cargo install pmat` binary exits rc=1 with "WASM analysis requires
+    /// the 'wasm-ast' feature" as soon as it is given a file. Rebuild with
+    /// `cargo install pmat --features wasm-ast` to use it.
     Wasm {
         /// Path to WASM file to analyze
         wasm_file: PathBuf,

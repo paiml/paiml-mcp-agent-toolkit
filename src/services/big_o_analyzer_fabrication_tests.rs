@@ -256,15 +256,34 @@ mod fabrication_tests {
         assert_eq!(names, vec!["fetch", "raw", "shift"]);
     }
 
-    /// output_derived_from_input: an empty project yields an empty report.
+    /// output_derived_from_input: an empty project yields a REFUSAL, not a
+    /// report of zeros.
+    ///
+    /// This test used to assert `analyzed_functions == 0` on the report an
+    /// empty directory produced — which is the whole defect (#1015): that
+    /// report is byte-identical to the one a real tree of trivial functions
+    /// produces, so `analyze big-o` on the wrong path exited 0 with a clean
+    /// complexity distribution. A distribution over zero functions discovered
+    /// in zero files is not a measurement of anything.
     #[tokio::test]
-    async fn test_empty_project_yields_empty_report() {
+    async fn test_empty_project_is_refused_not_reported_as_zero() {
         let temp_dir = TempDir::new().unwrap();
-        let report = BigOAnalyzer::new()
+        let err = BigOAnalyzer::new()
             .analyze(config(temp_dir.path(), 0))
             .await
-            .unwrap();
-        assert_eq!(report.analyzed_functions, 0);
-        assert!(report.high_complexity_functions.is_empty());
+            .expect_err("an empty project cannot yield a big-O measurement");
+        let message = err.to_string();
+        assert!(
+            message.contains("no source files were found"),
+            "the refusal must name what was missing, got: {message}"
+        );
+        assert!(
+            message.contains("This is not a clean result"),
+            "the refusal must say a zero here is not clean, got: {message}"
+        );
+        assert!(
+            message.contains(&temp_dir.path().display().to_string()),
+            "the refusal must name the path it refused, got: {message}"
+        );
     }
 }

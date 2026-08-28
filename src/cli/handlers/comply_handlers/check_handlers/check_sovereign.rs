@@ -397,8 +397,9 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
         );
         return Ok(());
     }
-    let pmat_dir = project_path.join(".pmat");
-    fs::create_dir_all(&pmat_dir)?;
+    // Created with its own ignore rule (#1070); `baseline.save` below reports
+    // if the directory could not be made.
+    let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
     let baseline_path = pmat_dir.join("file-health-baseline.json");
     baseline.save(&baseline_path)?;
     crate::status_println!(

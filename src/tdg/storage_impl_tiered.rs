@@ -14,6 +14,13 @@ impl TieredStore {
     /// Create new tiered storage instance with default Libsql backend
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(db_path: impl AsRef<Path>) -> Result<Self> {
+        // Issue #1050 P8. `pmat tdg <repo>` left `?? .pmat/` in that repo's git
+        // status, holding `tdg-cold.db` and `tdg-warm.db`. An analysis tool must
+        // not dirty the tree it is analysing, and the ignore rule travels with
+        // the directory rather than being something each project has to add and
+        // then keep in step with pmat's filenames.
+        let _ = crate::utils::pmat_cache_dir::ensure_cache_dir(db_path.as_ref());
+
         let warm_config = StorageConfig {
             backend_type: crate::tdg::storage_backend::StorageBackendType::Libsql,
             path: Some(db_path.as_ref().join(".pmat/tdg-warm.db")),

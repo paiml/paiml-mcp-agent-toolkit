@@ -2,18 +2,108 @@
 fn format_output(
     report: &DuplicateReport,
     format: crate::cli::DuplicateOutputFormat,
+    top_files: usize,
 ) -> Result<String> {
     match format {
-        crate::cli::DuplicateOutputFormat::Json => format_json_output(report),
-        crate::cli::DuplicateOutputFormat::Human => format_human_output(report),
+        crate::cli::DuplicateOutputFormat::Json => format_json_output(report, top_files),
+        crate::cli::DuplicateOutputFormat::Human => {
+            format_text_output(report, top_files, TextDetail::Human)
+        }
         crate::cli::DuplicateOutputFormat::Summary => {
-            format_text_output(report, DEFAULT_TOP_FILES, TextDetail::Summary)
+            format_text_output(report, top_files, TextDetail::Summary)
         }
         crate::cli::DuplicateOutputFormat::Detailed => {
-            format_text_output(report, DEFAULT_TOP_FILES, TextDetail::Detailed)
+            format_text_output(report, top_files, TextDetail::Detailed)
         }
-        crate::cli::DuplicateOutputFormat::Sarif => format_sarif_output(report),
-        crate::cli::DuplicateOutputFormat::Csv => format_csv_output(report),
+        crate::cli::DuplicateOutputFormat::Sarif => format_sarif_output(report, top_files),
+        crate::cli::DuplicateOutputFormat::Csv => format_csv_output(report, top_files),
+    }
+}
+
+/// The rows a machine-readable rendering LISTS, and the totals it left out.
+///
+/// Issue #1050 P10. `--top-files` reached the three TEXT renderers and stopped
+/// there: `analyze duplicates --format json` and `--format json --top-files 5`
+/// were byte-identical, at 853,863 bytes on copia and **387 MB on depyler**.
+/// The document carried no limit, no truncation control and no truncation
+/// marker, so a machine consumer had no bounded way to read this command at all
+/// — and no way to tell a complete listing from a clipped one.
+///
+/// `--top-files N` is documented as "Number of top files to show by duplication
+/// (0 = all)", so the listing is the top N FILES and the blocks that fall in
+/// them. What it is NOT allowed to touch is the measurement: `total_duplicates`,
+/// `duplicate_lines`, `duplication_percentage` and the per-class counts stay
+/// whole-project, exactly as the text path already requires (see
+/// `top_files_does_not_change_the_measurement_tests`). A display limit that
+/// moved the headline number is the defect this one replaced, not a licence to
+/// reintroduce it.
+struct DuplicateListing<'a> {
+    /// The listed files, most-duplicated first — the same order, and the same
+    /// `0 = all` rule, as the text renderer's "Top Files by Duplication".
+    files: Vec<(&'a String, &'a FileStats)>,
+    /// Every block with at least one location in a listed file.
+    blocks: Vec<&'a DuplicateBlock>,
+    /// Files the run read, before the limit.
+    files_total: usize,
+    /// Blocks the run found, before the limit.
+    blocks_total: usize,
+    /// The limit as the user gave it, so the disclosure names the knob.
+    top_files: usize,
+}
+
+impl<'a> DuplicateListing<'a> {
+    fn of(report: &'a DuplicateReport, top_files: usize) -> Self {
+        let sorted = get_sorted_file_stats(&report.file_statistics);
+        let files: Vec<_> = crate::cli::top_files_slice(&sorted, top_files).to_vec();
+        let listed: std::collections::HashSet<&str> =
+            files.iter().map(|(path, _)| path.as_str()).collect();
+        // A block is listed when one of its sites is in a listed file — OR
+        // when NONE of its sites is a file this report has statistics for.
+        //
+        // The second clause is not a corner case, it is the honesty rule: a
+        // finding that cannot be attributed to any counted file cannot be
+        // withheld on the grounds that its file did not make the top N, because
+        // no top-N decision was ever made about it. Dropping unattributable
+        // findings silently is the defect class this whole listing exists to
+        // close, one level down.
+        let blocks = report
+            .duplicate_blocks
+            .iter()
+            .filter(|block| {
+                block
+                    .locations
+                    .iter()
+                    .any(|loc| listed.contains(loc.file.as_str()))
+                    || !block
+                        .locations
+                        .iter()
+                        .any(|loc| report.file_statistics.contains_key(&loc.file))
+            })
+            .collect();
+        Self {
+            files,
+            blocks,
+            files_total: report.file_statistics.len(),
+            blocks_total: report.duplicate_blocks.len(),
+            top_files,
+        }
+    }
+
+    /// What this listing shows and what it hides, in the same document.
+    ///
+    /// Always present, including when nothing was dropped: "the listing is
+    /// complete" is a claim a consumer needs to be able to READ, and an absent
+    /// field is not one.
+    fn disclosure(&self) -> serde_json::Value {
+        serde_json::json!({
+            "top_files": self.top_files,
+            "files_total": self.files_total,
+            "files_listed": self.files.len(),
+            "files_truncated": self.files.len() < self.files_total,
+            "blocks_total": self.blocks_total,
+            "blocks_listed": self.blocks.len(),
+            "blocks_truncated": self.blocks.len() < self.blocks_total,
+        })
     }
 }
 
@@ -47,15 +137,25 @@ fn count_of(report: &DuplicateReport, clone_type: CloneType) -> usize {
 }
 
 /// Format output as JSON
-fn format_json_output(report: &DuplicateReport) -> Result<String> {
+fn format_json_output(report: &DuplicateReport, top_files: usize) -> Result<String> {
+    let listing = DuplicateListing::of(report, top_files);
     // Create enhanced JSON with test-expected fields
     let enhanced_json = serde_json::json!({
         "total_duplicates": report.total_duplicates,
         "duplicate_lines": report.duplicate_lines,
         "total_lines": report.total_lines,
         "duplication_percentage": report.duplication_percentage,
-        "duplicate_blocks": report.duplicate_blocks,
-        "file_statistics": report.file_statistics,
+        // Bounded by `--top-files`, and the bound is declared beside it under
+        // `listing`. See [`DuplicateListing`]: this document used to be the
+        // whole engine output with no limit and no marker — 387 MB on depyler —
+        // while the flag that exists to bound it changed not one byte.
+        "duplicate_blocks": listing.blocks,
+        "file_statistics": listing
+            .files
+            .iter()
+            .map(|(path, stats)| ((*path).clone(), stats))
+            .collect::<std::collections::BTreeMap<_, _>>(),
+        "listing": listing.disclosure(),
         // Each count reads the block's MEASURED clone class. `exact_duplicates`
         // used to be `similarity >= 1.0` over blocks whose only producer wrote
         // `similarity: 1.0` as a literal, so it equalled `total_duplicates` for
@@ -84,6 +184,7 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
         // needs entropy should call `pmat analyze entropy`, which measures it.
         //
         // See contracts/pmat-no-fabrication-v1.yaml, equation `measured_or_absent`.
+        // The MEASUREMENT, whole-project and untouched by the listing limit.
         "metrics": {
             "files_processed": report.file_statistics.len(),
             "blocks_analyzed": report.duplicate_blocks.len()
@@ -580,7 +681,7 @@ mod top_files_is_a_row_limit_tests {
     #[test]
     fn the_format_dispatcher_keeps_the_three_text_formats_apart() {
         let report = report_with_blocks(25);
-        let of = |f| format_output(&report, f).unwrap();
+        let of = |f| format_output(&report, f, DEFAULT_TOP_FILES).unwrap();
         let summary = of(crate::cli::DuplicateOutputFormat::Summary);
         let human = of(crate::cli::DuplicateOutputFormat::Human);
         let detailed = of(crate::cli::DuplicateOutputFormat::Detailed);
@@ -596,7 +697,7 @@ mod top_files_is_a_row_limit_tests {
     #[test]
     fn sarif_reports_the_running_pmat_version() {
         let report = report_with_blocks(1);
-        let sarif = format_sarif_output(&report).unwrap();
+        let sarif = format_sarif_output(&report, DEFAULT_TOP_FILES).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&sarif).unwrap();
         let driver = &parsed["runs"][0]["tool"]["driver"];
 
@@ -630,7 +731,8 @@ mod top_files_is_a_row_limit_tests {
 }
 
 /// Format output as SARIF
-fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
+fn format_sarif_output(report: &DuplicateReport, top_files: usize) -> Result<String> {
+    let listing = DuplicateListing::of(report, top_files);
     // `tool.driver.version` / `semanticVersion` were the literals "1.0.0" and
     // "2.97.0" — two different, both wrong, answers to "which pmat produced
     // this?". SARIF consumers key result provenance on these, so a run from
@@ -648,7 +750,10 @@ fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
                     "semanticVersion": env!("CARGO_PKG_VERSION")
                 }
             },
-            "results": report.duplicate_blocks.iter().map(|block| {
+            // Bounded by `--top-files`, like the JSON listing beside it: a
+            // SARIF file is read by a machine too, and an unbounded one is the
+            // same defect in a second format.
+            "results": listing.blocks.iter().map(|block| {
                 serde_json::json!({
                     "ruleId": "duplicate-code",
                     "level": "warning",
@@ -693,11 +798,12 @@ fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
 /// `Type` is the block's measured clone class. It was the literal string
 /// `"exact"` on every row of every run, which carried "these two are byte
 /// identical" into a spreadsheet about clones that are not.
-fn format_csv_output(report: &DuplicateReport) -> Result<String> {
+fn format_csv_output(report: &DuplicateReport, top_files: usize) -> Result<String> {
+    let listing = DuplicateListing::of(report, top_files);
     let mut csv = String::new();
     csv.push_str("Type,File1,Start1,End1,File2,Start2,End2\n");
 
-    for block in &report.duplicate_blocks {
+    for block in &listing.blocks {
         let Some((first, rest)) = block.locations.split_first() else {
             continue;
         };
@@ -789,7 +895,7 @@ fn second_caller() -> usize {
     }
 
     fn json_of(report: &DuplicateReport) -> serde_json::Value {
-        serde_json::from_str(&format_json_output(report).unwrap()).unwrap()
+        serde_json::from_str(&format_json_output(report, 0).unwrap()).unwrap()
     }
 
     fn data_rows(csv: &str) -> Vec<&str> {
@@ -853,7 +959,7 @@ fn second_caller() -> usize {
     #[test]
     fn the_csv_type_column_is_the_measured_clone_class() {
         let renamed = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
-        let csv = format_csv_output(&renamed).unwrap();
+        let csv = format_csv_output(&renamed, 0).unwrap();
         let rows = data_rows(&csv);
         assert!(!rows.is_empty(), "fixture must produce CSV rows");
         for row in &rows {
@@ -864,7 +970,7 @@ fn second_caller() -> usize {
         }
 
         let exact = report_for(IDENTICAL_TWICE, DuplicateType::Exact);
-        let csv = format_csv_output(&exact).unwrap();
+        let csv = format_csv_output(&exact, 0).unwrap();
         for row in data_rows(&csv) {
             assert!(row.starts_with("exact,"), "{row}");
         }
@@ -885,7 +991,7 @@ fn second_caller() -> usize {
              test cannot see the defect"
         );
 
-        let csv = format_csv_output(&report).unwrap();
+        let csv = format_csv_output(&report, 0).unwrap();
         let rows = data_rows(&csv);
 
         let expected: usize = report
@@ -926,10 +1032,265 @@ fn second_caller() -> usize {
     #[test]
     fn the_csv_schema_is_unchanged() {
         let report = report_for(RENAMED_FOURFOLD, DuplicateType::Renamed);
-        let csv = format_csv_output(&report).unwrap();
+        let csv = format_csv_output(&report, 0).unwrap();
         assert!(csv.starts_with("Type,File1,Start1,End1,File2,Start2,End2\n"));
         for row in data_rows(&csv) {
             assert_eq!(row.split(',').count(), 7, "{row}");
         }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod top_files_bounds_the_machine_readable_listings_tests {
+    //! Issue #1050 P10. `--top-files` reached the text renderers and nothing
+    //! else, so `analyze duplicates --format json` and the same command with
+    //! `--top-files 5` produced byte-identical documents — 853,863 bytes on
+    //! copia, 387 MB on depyler — with no limit, no marker and no way for a
+    //! consumer to tell a complete listing from a clipped one.
+    use super::*;
+
+    /// N files, each with one clone family of its own, so a top-N cut over
+    /// files has something to cut. File `i` duplicates `i + 1` lines out of a
+    /// fixed 100, which makes the duplication ranking strict and the ordering
+    /// of the listing a fact rather than a tie-break.
+    fn report_over(files: usize) -> DuplicateReport {
+        let mut file_statistics = BTreeMap::new();
+        let mut duplicate_blocks = Vec::new();
+        for i in 0..files {
+            let path = format!("src/f{i:03}.rs");
+            // `i` is a small loop index, so the widening is exact.
+            let pct = f32::from(u8::try_from(i + 1).expect("fixture stays small"));
+            file_statistics.insert(
+                path.clone(),
+                FileStats {
+                    duplicate_lines: i + 1,
+                    total_lines: 100,
+                    duplication_percentage: pct,
+                },
+            );
+            duplicate_blocks.push(DuplicateBlock {
+                hash: format!("h{i:03}"),
+                lines: i + 1,
+                tokens: 20,
+                similarity: 1.0,
+                clone_type: CloneType::Exact,
+                locations: vec![
+                    DuplicateLocation {
+                        file: path.clone(),
+                        start_line: 1,
+                        end_line: 6,
+                        content_preview: "fn dup() {}".to_string(),
+                    },
+                    DuplicateLocation {
+                        file: path,
+                        start_line: 50,
+                        end_line: 55,
+                        content_preview: "fn dup() {}".to_string(),
+                    },
+                ],
+            });
+        }
+        DuplicateReport {
+            total_duplicates: duplicate_blocks.len(),
+            duplicate_lines: (1..=files).sum(),
+            total_lines: files * 100,
+            duplication_percentage: 1.0,
+            duplicate_blocks,
+            file_statistics,
+        }
+    }
+
+    fn json(report: &DuplicateReport, top_files: usize) -> serde_json::Value {
+        serde_json::from_str(&format_json_output(report, top_files).expect("json renders"))
+            .expect("the JSON must parse")
+    }
+
+    /// The reproducer, in the surface a consumer reads: two documents that used
+    /// to be equal must now differ, and the smaller one must be smaller.
+    #[test]
+    fn top_files_changes_the_json_document() {
+        let report = report_over(40);
+
+        let all = format_json_output(&report, 0).expect("json renders");
+        let five = format_json_output(&report, 5).expect("json renders");
+
+        assert_ne!(all, five, "--top-files changed not one byte of the JSON");
+        assert!(
+            five.len() < all.len(),
+            "a listing limit must SHRINK the document: {} vs {}",
+            five.len(),
+            all.len()
+        );
+    }
+
+    /// What the limit keeps: the top N files by duplication, and the blocks
+    /// that fall in them — not an arbitrary prefix.
+    #[test]
+    fn the_listing_is_the_top_files_by_duplication() {
+        let value = json(&report_over(40), 3);
+
+        let files: Vec<&str> = value["file_statistics"]
+            .as_object()
+            .expect("file_statistics is an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        // f039 duplicates 40 lines, f038 39, f037 38 — the three worst.
+        assert_eq!(files, ["src/f037.rs", "src/f038.rs", "src/f039.rs"]);
+        assert_eq!(
+            value["duplicate_blocks"]
+                .as_array()
+                .expect("duplicate_blocks is an array")
+                .len(),
+            3
+        );
+    }
+
+    /// The disclosure, which is the half that makes truncation honest: a
+    /// consumer must be able to READ that rows were withheld, and how many.
+    #[test]
+    fn the_document_declares_what_it_withheld() {
+        let value = json(&report_over(40), 3);
+        let listing = &value["listing"];
+
+        assert_eq!(listing["top_files"], 3);
+        assert_eq!(listing["files_total"], 40);
+        assert_eq!(listing["files_listed"], 3);
+        assert_eq!(listing["files_truncated"], true);
+        assert_eq!(listing["blocks_total"], 40);
+        assert_eq!(listing["blocks_listed"], 3);
+        assert_eq!(listing["blocks_truncated"], true);
+    }
+
+    /// The counter-test bounding the correction in two directions at once.
+    ///
+    /// `0 = all` must still mean all — a fix that bounded the document
+    /// unconditionally would replace an unbounded listing with an
+    /// undisclosed-but-clipped one, which is worse. And "nothing was withheld"
+    /// must be stated rather than inferred from an absent field.
+    #[test]
+    fn zero_still_lists_everything_and_says_so() {
+        let value = json(&report_over(40), 0);
+
+        assert_eq!(
+            value["file_statistics"]
+                .as_object()
+                .expect("file_statistics is an object")
+                .len(),
+            40
+        );
+        assert_eq!(
+            value["duplicate_blocks"]
+                .as_array()
+                .expect("duplicate_blocks is an array")
+                .len(),
+            40
+        );
+        assert_eq!(value["listing"]["files_truncated"], false);
+        assert_eq!(value["listing"]["blocks_truncated"], false);
+        assert_eq!(value["listing"]["files_listed"], 40);
+    }
+
+    /// The invariant the text path already carries (see
+    /// `top_files_does_not_change_the_measurement_tests`), now asserted on the
+    /// JSON path too: a DISPLAY limit may not move a MEASUREMENT. The previous
+    /// implementation of `--top-files` recomputed the report from the survivors
+    /// and made the same tree read 12.2% or 19.4% depending on how many rows
+    /// were asked for; nothing here may bring that back.
+    #[test]
+    fn the_measurement_is_identical_at_every_limit() {
+        let report = report_over(40);
+        let measured = |v: &serde_json::Value| {
+            (
+                v["total_duplicates"].clone(),
+                v["duplicate_lines"].clone(),
+                v["total_lines"].clone(),
+                v["duplication_percentage"].clone(),
+                v["exact_duplicates"].clone(),
+                v["renamed_duplicates"].clone(),
+                v["structural_similarities"].clone(),
+                v["metrics"].clone(),
+            )
+        };
+
+        let whole = measured(&json(&report, 0));
+        for limit in [1, 3, 5, 10, 39, 41, 1000] {
+            assert_eq!(
+                measured(&json(&report, limit)),
+                whole,
+                "--top-files {limit} moved a measured number"
+            );
+        }
+    }
+
+    /// A block whose sites are in NO counted file must not be withheld.
+    ///
+    /// Caught by the existing CSV/SARIF tests, whose fixtures carry blocks and
+    /// an EMPTY `file_statistics`: ranking files and then keeping only their
+    /// blocks silently emitted nothing at all — 0 CSV rows for a 4-site clone
+    /// family. `ensure_source_files_were_analyzed` makes that unreachable from
+    /// the CLI today, which is exactly why it needs a test: the emitters are
+    /// reachable from anywhere, and a listing that drops what it cannot rank is
+    /// the same defect this module was written to close.
+    #[test]
+    fn a_block_no_counted_file_owns_is_still_listed() {
+        let mut report = report_over(4);
+        // A fifth family, in files the statistics know nothing about, while the
+        // limit is tight enough to have excluded them had they been ranked.
+        report.duplicate_blocks.push(DuplicateBlock {
+            hash: "orphan".to_string(),
+            lines: 9,
+            tokens: 30,
+            similarity: 1.0,
+            clone_type: CloneType::Exact,
+            locations: vec![DuplicateLocation {
+                file: "src/uncounted.rs".to_string(),
+                start_line: 1,
+                end_line: 9,
+                content_preview: "fn dup() {}".to_string(),
+            }],
+        });
+
+        let value = json(&report, 1);
+        let listed: Vec<&str> = value["duplicate_blocks"]
+            .as_array()
+            .expect("array")
+            .iter()
+            .map(|b| b["hash"].as_str().expect("hash"))
+            .collect();
+        assert!(listed.contains(&"orphan"), "{listed:?}");
+        // …and the counted files are still cut to the limit.
+        assert_eq!(value["listing"]["files_listed"], 1);
+    }
+
+    /// CSV and SARIF are machine surfaces too, and were unbounded for the same
+    /// reason.
+    #[test]
+    fn csv_and_sarif_are_bounded_by_the_same_flag() {
+        let report = report_over(40);
+
+        let rows = |limit| {
+            format_csv_output(&report, limit)
+                .expect("csv renders")
+                .lines()
+                .skip(1)
+                .filter(|l| !l.is_empty())
+                .count()
+        };
+        assert_eq!(rows(0), 40);
+        assert_eq!(rows(3), 3);
+
+        let results = |limit| {
+            let v: serde_json::Value =
+                serde_json::from_str(&format_sarif_output(&report, limit).expect("sarif renders"))
+                    .expect("the SARIF must parse");
+            v["runs"][0]["results"]
+                .as_array()
+                .expect("results is an array")
+                .len()
+        };
+        assert_eq!(results(0), 40);
+        assert_eq!(results(3), 3);
     }
 }

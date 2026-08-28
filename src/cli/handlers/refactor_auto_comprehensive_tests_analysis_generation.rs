@@ -293,3 +293,4 @@
         assert!(matches!(request.priority, RefactoringPriority::High));
         assert!(matches!(request.estimated_effort, RefactoringEffort::Minor));
     }
+

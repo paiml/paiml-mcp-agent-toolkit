@@ -7,6 +7,7 @@
 use super::{format_grade, TdgCommandConfig};
 use crate::cli::colors as c;
 use crate::cli::TdgOutputFormat;
+use crate::tdg::formatters::ungraded;
 use anyhow::Result;
 
 /// What the project aggregate knows that a bare `TdgScore` cannot say.
@@ -55,6 +56,25 @@ fn grade_headline(score: &crate::tdg::TdgScore, project: ProjectContext<'_>) -> 
 /// True when the run analysed no file at all, so there is no breakdown to show.
 fn nothing_was_measured(project: ProjectContext<'_>) -> bool {
     project.is_some_and(|p| p.total_files == 0)
+}
+
+/// The walk census, when there is a project walk to take one of.
+fn census(project: ProjectContext<'_>) -> Option<ungraded::WalkCensus> {
+    project.map(ungraded::WalkCensus::of)
+}
+
+/// True when this run did not measure everything it walked (issue #1064).
+///
+/// `nothing_was_measured` above is the ZERO case, and it is what the JSON's
+/// `not_measured` used to report — so a tree where one file of sixteen graded
+/// answered `false`, which a machine consumer reads as "the headline covers the
+/// tree". It does not: fifteen files were walked and refused. The boolean now
+/// answers the question its name asks, and the census beside it says by how
+/// much, so nothing has to be inferred from a bare `true`.
+///
+/// A single-file run has no walk to be incomplete (`project` is `None`).
+fn walk_was_incomplete(project: ProjectContext<'_>) -> bool {
+    census(project).is_some_and(|c| !c.measured_the_whole_walk())
 }
 
 /// Format TDG output based on config (cognitive complexity ≤3)
@@ -203,14 +223,24 @@ fn format_tdg_score_table(
     // next row says so: an unexplained `99.8/100 (B)` next to a `96.7/100 (A+)`
     // from the same command is not a report, it is a contradiction. The note
     // gets its own row because `box_row` clips at the frame width.
-    let grade_str = format_grade(score.grade);
-    line(box_row(&format!(
-        "Overall Score: {}/100 ({})",
-        c::number(&format!("{:.1}", score.total)),
-        c::grade(&grade_str)
-    )));
-    if let Some(note) = cap_note(project) {
-        line(box_row(&format!("⚠ Grade {note}")));
+    if nothing_was_measured(project) {
+        // An empty population supports no grade. This printed
+        // `Overall Score: 0.0/100 (F)` over a directory pmat could not read one
+        // file of — an F is a claim about a codebase's quality, and zero files
+        // is the absence of evidence for any claim at all. The same run already
+        // suppressed the component breakdown for exactly this reason; the
+        // headline just never asked.
+        line(box_row("Overall Score: not measured (0 files analyzed)"));
+    } else {
+        let grade_str = format_grade(score.grade);
+        line(box_row(&format!(
+            "Overall Score: {}/100 ({})",
+            c::number(&format!("{:.1}", score.total)),
+            c::grade(&grade_str)
+        )));
+        if let Some(note) = cap_note(project) {
+            line(box_row(&format!("⚠ Grade {note}")));
+        }
     }
     // A file that was walked but REFUSED is disclosed beside the score it is
     // missing from. `pmat tdg <dir>` on a crate whose only Rust file fails to
@@ -317,16 +347,93 @@ fn format_tdg_score_json(
         "file": score.file_path.as_ref().map(|p| p.to_string_lossy().to_string()),
         "language": format!("{:?}", score.language),
         "confidence": score.confidence,
+        // The census PARTITIONS the walk: analyzed plus ungraded is walked, and
+        // there is no third bucket. `files_analyzed: 1` was the whole census on
+        // a sixteen-file tree, which reads as a one-file project rather than a
+        // one-sixteenth measurement (issue #1064).
         "files_analyzed": project.map(|p| p.total_files),
+        "files_ungraded": project.map(|p| p.ungraded_files.len()),
+        "files_walked": census(project).map(|c| c.walked()),
         "grade_capped": project.map(|p| p.grade_capped),
         "grade_uncapped": project
             .filter(|p| p.grade_capped)
             .and_then(crate::tdg::ProjectScore::uncapped_grade)
             .map(format_grade),
         "f_grade_count": project.map(|p| p.f_grade_count),
+        // TRUE only when NOTHING was measured — unchanged meaning, and the
+        // comment below says why.
+        //
+        // This briefly reported `walk_was_incomplete` instead, so that a tree
+        // with one ungradable file flipped it. The fleet dogfood killed that
+        // immediately: 8 of 11 real repositories reported `not_measured: true`
+        // beside a perfectly good grade, usually because of a single `.sh`
+        // script. A boolean that is true almost everywhere carries almost no
+        // information, and consumers pinned to the old meaning would have read
+        // "refuse this result" on nearly every project.
+        //
+        // "Some of the walk was refused" is a real fact and it now has its own
+        // fields — `files_walked`, `files_ungraded`, `ungraded_files` — which
+        // is what #1064 actually asked for. It did not ask for an existing
+        // published boolean to be redefined underneath its consumers.
+        "not_measured": nothing_was_measured(project),
+        // Issue #1050 P2. The table caps its list and tells the reader
+        // `… and N more (--format json lists every one under "ungraded_files")`
+        // — a promise compiled into the shipped binary as a literal, against a
+        // JSON document that had no such key. aprender walks 152 files it
+        // cannot grade; every one of them was invisible to a machine consumer,
+        // which saw `not_measured: false` and a headline score over the
+        // subset that parsed.
+        //
+        // `not_measured` is NOT the place for this and is deliberately left
+        // alone: it means "nothing at all was measured", and a tree where 1 of
+        // 16 files graded really did measure something. "Some of the walk was
+        // refused" is a different fact and needs its own field — which is the
+        // one the binary already names.
+        //
+        // The list is UNCAPPED here. The 49-column box truncates because it is
+        // a box; a JSON document that silently dropped rows would reintroduce
+        // the same defect in the format the box points at as the escape hatch.
+        "ungraded_files": project.map(|p| ungraded::ungraded_json(&p.ungraded_files)),
+        // Issue #1050. The duplication component measured only WITHIN each file,
+        // so ten byte-identical files each scored the full 20/20 and their mean
+        // did too — full marks for a tree `analyze duplicates` calls 100%
+        // duplicated. The project-wide number now exists; it has to be legible
+        // here or the fix is invisible to every machine consumer.
+        //
+        // `measured: false` is the case that matters: TDG grades languages the
+        // clone engine has no tokenizer for (Go, Java, Ruby, Lua, …), and for
+        // those the component is UNMEASURED, not clean. A null ratio beside a
+        // stated reason is the only shape that cannot be misread as zero.
+        "duplication": project.map(|p| serde_json::json!({
+            "cross_file_ratio": p.cross_file_duplication_ratio,
+            "measured": p.cross_file_duplication_ratio.is_some(),
+            "unmeasured_reason": p.cross_file_duplication_unmeasured,
+            // A ratio over PART of a tree is not a ratio for the tree: TDG
+            // grades more languages than the clone engine tokenizes, so a mixed
+            // repo measures only its readable subset. Publishing the size of
+            // that subset is what stops the number being read as whole-tree.
+            "files_measured": p.cross_file_duplication_coverage.map(|c| c.measured),
+            "files_total": p.cross_file_duplication_coverage.map(|c| c.total),
+            "covers_every_graded_file": p
+                .cross_file_duplication_coverage
+                .map(crate::tdg::project_score::CrossFileDuplicationCoverage::covers_every_graded_file),
+        })),
         "score": {
-            "total": score.total,
-            "grade": format_grade(score.grade),
+            // Null, not 0.0/"F". A machine consumer averaging `total` over a
+            // tree folded an unreadable directory in as a genuine zero, and one
+            // testing `grade == "F"` could not tell "graded badly" from "never
+            // graded". `grade_uncapped` is already nullable here, so a null
+            // grade is a shape this document could always produce.
+            "total": if nothing_was_measured(project) {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!(score.total)
+            },
+            "grade": if nothing_was_measured(project) {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!(format_grade(score.grade))
+            },
             "breakdown": if include_components && !nothing_was_measured(project) {
                 Some(serde_json::json!({
                     "structural_complexity": score.structural_complexity,
@@ -370,16 +477,33 @@ fn format_tdg_score_markdown(
         output.push_str(&format!("**File**: `{}`\n\n", file_path.display()));
     }
 
-    output.push_str(&format!(
-        "**Overall Score**: {:.1}/100 ({})\n",
-        score.total,
-        grade_headline(score, project)
-    ));
+    if nothing_was_measured(project) {
+        output.push_str("**Overall Score**: not measured — 0 files analyzed\n");
+    } else {
+        output.push_str(&format!(
+            "**Overall Score**: {:.1}/100 ({})\n",
+            score.total,
+            grade_headline(score, project)
+        ));
+    }
     output.push_str(&format!(
         "**Language**: {:?} (confidence: {:.0}%)\n\n",
         score.language,
         score.confidence * 100.0
     ));
+
+    // Issue #1050 P2. The table discloses walked-but-unmeasured files; this
+    // renderer printed the headline over the subset that parsed and said
+    // nothing at all. One implementation of the disclosure, shared with the
+    // other markdown renderer, so the two cannot drift apart again.
+    if let Some(p) = project.filter(|p| !p.ungraded_files.is_empty()) {
+        output.push_str("\n## Not Graded\n\n");
+        for line in ungraded::ungraded_markdown_lines(&p.ungraded_files) {
+            output.push_str(&line);
+            output.push('\n');
+        }
+        output.push('\n');
+    }
 
     if include_components && nothing_was_measured(project) {
         output.push_str("## Component Breakdown\n\nNot measured — 0 files analyzed.\n");
@@ -621,6 +745,246 @@ mod cap_disclosure_tests {
         assert_eq!(value["f_grade_count"], 1);
     }
 
+    /// Issue #1050 P2. The table caps its list and points the reader at
+    /// `--format json ... under "ungraded_files"` — a sentence compiled into
+    /// the shipped binary — while the JSON document had no such key. On a
+    /// 16-file fixture where 15 were walked and refused, JSON carried
+    /// `files_analyzed: 1`, `not_measured: false` and nothing else, so every
+    /// machine consumer was told the headline covered the tree.
+    ///
+    /// RED CONTROL: deleting the `"ungraded_files"` entry from
+    /// `format_tdg_score_json` fails this on the first assertion.
+    #[test]
+    fn json_lists_every_file_the_walk_could_not_grade() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for i in 0..15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "no TDG analyzer for .sh".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        let listed = value["ungraded_files"]
+            .as_array()
+            .expect("the key the binary promises must exist and be an array");
+        // EVERY one. The box caps at ten because it is 49 columns wide; the
+        // document it points at as the complete list must not inherit the cap.
+        assert_eq!(
+            listed.len(),
+            15,
+            "the box says json lists every one; got {} of 15",
+            listed.len()
+        );
+        assert_eq!(listed[0]["path"], "/tmp/ngfix/s0.sh");
+        assert!(
+            listed[0]["reason"]
+                .as_str()
+                .is_some_and(|r| r.contains("no TDG analyzer")),
+            "each entry must carry the reason, got {}",
+            listed[0]["reason"]
+        );
+    }
+
+    /// COUNTER-TEST for the above: the fix must not manufacture a disclosure.
+    /// A tree where everything walked was graded has an EMPTY list, not a
+    /// missing key and not a fabricated row — an empty array is the honest
+    /// rendering of "nothing was refused", and it is the only value that lets
+    /// a consumer tell "clean" from "this pmat is too old to say".
+    #[test]
+    fn json_ungraded_list_is_empty_when_nothing_was_refused() {
+        let project = ProjectScore::aggregate(vec![file_at(100.0), file_at(90.0)]);
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(
+            value["ungraded_files"].as_array().map(Vec::len),
+            Some(0),
+            "a clean walk must publish an empty list, not a row and not nothing"
+        );
+    }
+
+    /// Issue #1064. A run that listed fifteen refusals while its census denied
+    /// them: `ungraded_files` populated beside `files_analyzed: 1` and no way
+    /// for a machine consumer to see the walk had been partial.
+    ///
+    /// The fix is the CENSUS — `files_walked`, `files_ungraded`,
+    /// `ungraded_files` — and those counts PARTITION, so the claim can be
+    /// checked rather than believed.
+    ///
+    /// It is deliberately NOT `not_measured`, and this test now pins that
+    /// distinction, because the first version of the fix got it wrong in a way
+    /// only the fleet dogfood caught. Redefining `not_measured` to mean "the
+    /// walk was incomplete" made it TRUE on 8 of 11 real repositories — usually
+    /// on the strength of one `.sh` script — beside a perfectly good grade. A
+    /// boolean that is true almost everywhere carries almost no information,
+    /// and every consumer pinned to the old meaning would have started reading
+    /// "refuse this result" on nearly every project.
+    ///
+    /// So: `not_measured` keeps meaning NOTHING was measured. A partial refusal
+    /// is not a refusal — the graded subset really does have a score.
+    #[test]
+    fn a_partial_refusal_is_disclosed_by_the_census_not_by_not_measured() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        for i in 0..15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "no TDG analyzer for .sh".to_string(),
+            });
+        }
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["not_measured"], false,
+            "one file of sixteen DID grade, so something was measured; \
+             `not_measured` must stay reserved for the zero case: {json}"
+        );
+        assert_eq!(value["files_analyzed"], 1, "{json}");
+        assert_eq!(value["files_ungraded"], 15, "{json}");
+        assert_eq!(
+            value["files_walked"], 16,
+            "the census must add up, or it is the same defect one key over: {json}"
+        );
+        // A PARTIAL refusal is not a refusal: the score over the file that did
+        // grade is still a measurement and must not be nulled out.
+        assert_eq!(
+            value["score"]["total"], 100.0,
+            "the graded subset still has a score: {json}"
+        );
+        // …but the refusals must be VISIBLE. This is the half of #1064 that
+        // matters, and it is what stops "keep not_measured false" from being a
+        // silent regression back to the original defect.
+        assert_eq!(
+            value["ungraded_files"].as_array().map(Vec::len),
+            Some(15),
+            "every refused file must be listed, uncapped: {json}"
+        );
+    }
+
+    /// COUNTER-TEST for the above. "Always say the walk was incomplete" would
+    /// pass it. A project where every walked file graded has to say so: false,
+    /// an empty list, and a census whose ungraded column is zero.
+    #[test]
+    fn json_says_the_walk_was_whole_when_nothing_was_refused() {
+        let project = ProjectScore::aggregate(vec![file_at(100.0), file_at(90.0)]);
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["not_measured"], false,
+            "nothing was refused; claiming otherwise is the fix over-applied: {json}"
+        );
+        assert_eq!(value["files_walked"], 2, "{json}");
+        assert_eq!(value["files_analyzed"], 2, "{json}");
+        assert_eq!(value["files_ungraded"], 0, "{json}");
+    }
+
+    /// The markdown renderer printed the headline over the subset that parsed
+    /// and said nothing at all about the rest (issue #1050 P2, third bullet).
+    #[test]
+    fn markdown_discloses_files_that_could_not_be_graded() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "/tmp/ngfix/s1.sh".to_string(),
+            reason: "no TDG analyzer for .sh".to_string(),
+        });
+        let score = project.average();
+
+        let md = format_tdg_score_markdown(&score, None, false, Some(&project)).expect("render");
+        assert!(
+            md.contains("s1.sh"),
+            "markdown must name the refused file, got:\n{md}"
+        );
+    }
+
+    /// Issue #1050: a duplication verdict the detector could NOT reach must say
+    /// so in the payload. A component that silently keeps its full 20/20 because
+    /// nothing could measure it is the defect this whole change exists to
+    /// remove, and a disclosure that never leaves `ProjectScore` is no
+    /// disclosure at all — `--format json` is where a machine consumer looks.
+    #[test]
+    fn an_unmeasured_duplication_component_is_disclosed_in_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
+        project.record_cross_file_duplication(
+            &crate::tdg::cross_file_duplication::CrossFileDuplication::unmeasured(
+                "no file among the 2 graded has a clone tokenizer",
+                2,
+            ),
+        );
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+
+        assert_eq!(
+            value["duplication"]["measured"], false,
+            "an unreachable population must not be reported as measured"
+        );
+        assert!(
+            value["duplication"]["cross_file_ratio"].is_null(),
+            "no ratio may be invented, got {}",
+            value["duplication"]["cross_file_ratio"]
+        );
+        assert!(
+            value["duplication"]["unmeasured_reason"]
+                .as_str()
+                .is_some_and(|r| r.contains("clone tokenizer")),
+            "the payload must say WHY, got {}",
+            value["duplication"]["unmeasured_reason"]
+        );
+    }
+
+    /// The measured case is equally explicit: `0.0` here means the detector ran
+    /// and found nothing, which a reader must be able to tell apart from the
+    /// null above.
+    #[test]
+    fn a_measured_duplication_ratio_reaches_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0)]);
+        project.record_cross_file_duplication(
+            &crate::tdg::cross_file_duplication::CrossFileDuplication::measured_at(0.42),
+        );
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(value["duplication"]["measured"], true);
+        assert_eq!(value["duplication"]["cross_file_ratio"], 0.42);
+        assert!(value["duplication"]["unmeasured_reason"].is_null());
+    }
+
+    /// Partial coverage must be visible in the payload, not just on the struct.
+    #[test]
+    fn partial_duplication_coverage_reaches_json() {
+        let mut project = ProjectScore::aggregate(vec![file_at(100.0), file_at(100.0)]);
+        project.cross_file_duplication_ratio = Some(0.1);
+        project.cross_file_duplication_coverage =
+            Some(crate::tdg::project_score::CrossFileDuplicationCoverage {
+                measured: 1,
+                total: 2,
+            });
+        let score = project.average();
+
+        let json = format_tdg_score_json(&score, None, false, Some(&project)).expect("render");
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
+        assert_eq!(value["duplication"]["files_measured"], 1);
+        assert_eq!(value["duplication"]["files_total"], 2);
+        assert_eq!(
+            value["duplication"]["covers_every_graded_file"], false,
+            "a ratio over half the tree must not present as whole-tree"
+        );
+    }
+
     /// An uncapped run must not grow a cap note out of nowhere.
     #[test]
     fn uncapped_grade_is_printed_bare() {
@@ -643,7 +1007,21 @@ mod cap_disclosure_tests {
 
         let json = format_tdg_score_json(&score, None, true, Some(&project)).expect("render");
         let value: serde_json::Value = serde_json::from_str(&json).expect("valid json");
-        assert_eq!(value["score"]["total"], 0.0);
+        // NOT 0.0, and NOT "F". This asserted `total == 0.0`, which pinned the
+        // headline defect in place: a consumer averaging `total` across a tree
+        // folded an unreadable directory in as a genuine zero, and one testing
+        // `grade == "F"` could not tell "graded badly" from "never graded".
+        assert!(
+            value["score"]["total"].is_null(),
+            "total must be null when no file was analyzed, got {}",
+            value["score"]["total"]
+        );
+        assert!(
+            value["score"]["grade"].is_null(),
+            "grade must be null when no file was analyzed, got {}",
+            value["score"]["grade"]
+        );
+        assert_eq!(value["not_measured"], true);
         assert!(
             value["score"]["breakdown"].is_null(),
             "breakdown must be null when no file was analyzed, got {}",
@@ -654,9 +1032,19 @@ mod cap_disclosure_tests {
         let table = format_tdg_score_table(&score, None, true, Some(&project)).expect("render");
         assert!(table.contains("not measured"), "got:\n{table}");
         assert!(!table.contains("25.0"), "got:\n{table}");
+        // The HEADLINE, not just the breakdown: `Overall Score: 0.0/100 (F)`
+        // was printed over a directory pmat could not read one file of.
+        assert!(
+            !table.contains("(F)"),
+            "an empty population must not be graded F: {table}"
+        );
 
         let md = format_tdg_score_markdown(&score, None, true, Some(&project)).expect("render");
         assert!(md.contains("Not measured"), "got:\n{md}");
+        assert!(
+            !md.contains("0.0/100"),
+            "an empty population must not be scored 0.0/100: {md}"
+        );
     }
 
     /// A single-file run has no project aggregate; nothing may be suppressed or

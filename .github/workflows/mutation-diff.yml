@@ -1,0 +1,210 @@
+# PMAT-630 / #1034 EV-4 — mutation testing on the diff.
+#
+# WHY THIS EXISTS
+# ---------------
+# Nothing in this repository asked whether a NEW test could actually fail.
+# Three fixtures shipped in this release that avoided their own defect: the
+# dead-code parity test compared only dead FUNCTIONS on only a BIN crate — the
+# two conditions under which the two analyzers agree; and CB-2100's two hop
+# fixtures both used a bare `run: make comply`, the one shape in which the
+# suppressed-hop bug cannot appear. All three were green, and coverage was no
+# help: coverage says a line ran, mutation says a line's behaviour is pinned.
+#
+# `cargo mutants` was already in ci.yml and in three Makefile targets, but
+# `--in-diff` was wired nowhere, so no run ever asked the question about the
+# code a change actually touched. This workflow is that question.
+#
+# The rules, and the fact that all three fail closed, live in
+# scripts/mutation-diff-gate.sh next to the measured cargo-mutants behaviour
+# that makes each one necessary. In short: a surviving mutant fails (INV-1); an
+# empty mutant set over changed code fails, because cargo-mutants exits 0 and
+# writes no report when `--in-diff` matches nothing (INV-2); and a run that
+# caught nothing, or whose unmutated baseline did not pass, fails, because an
+# all-unviable run also exits 0 with a mere WARN (INV-3).
+#
+# WHERE IT RUNS, AND WHY NOT ON EVERY PUSH
+# ----------------------------------------
+# Measured on this repository, on the 48-core self-hosted box, with the numbers
+# recorded in the PMAT-630 report:
+#
+#   * `cargo test --lib` is the unit of work cargo-mutants repeats once per
+#     mutant, and it is minutes, not seconds;
+#   * a representative PR diff (the CB-2100 hop fix: 2 files, 259 changed
+#     lines) generates 20 mutants;
+#   * larger real commits on this branch generate 139, 222, 279, 512 and 538.
+#
+# Per-mutant cost times mutant count puts a busy PR in the hours. A gate that
+# takes hours on every push is a gate someone switches off, and switching it off
+# is the failure this backlog exists to remove. So it runs, whole and
+# uncushioned, in three places, and nowhere is it softened:
+#
+#   1. NIGHTLY over everything that landed on master in the previous 24h. This
+#      is the standing cadence — no merge escapes it for longer than a day.
+#   2. ON A PULL REQUEST LABELLED `mutation`. Opt-in per PR, for a change whose
+#      author wants the proof before merging rather than the morning after.
+#   3. ON DEMAND (`workflow_dispatch`), with an explicit base.
+#
+# A timeout here is a failure, deliberately: "mutation could not finish
+# analysing this range" is not "this range is verified".
+#
+# REQUIRED CHECK (PMAT-630 B2). `mutation-diff` — this job's context, since it
+# is a plain top-level job with no matrix and no reusable-workflow indirection
+# — is registered directly in this repository's classic branch protection
+# `required_status_checks`, alongside `docs build (docs.rs environment)` and
+# `pmat score`. All three live in a workflow file separate from
+# feature-matrix.yml, and all three are required THAT way rather than via
+# `feature-gate`'s `needs:`, because GitHub Actions' `needs:` cannot cross
+# workflow files — `feature-gate` can only depend on jobs defined inside
+# feature-matrix.yml itself. A standalone required-status-check entry is the
+# established, and only working, mechanism for a job that lives in its own
+# file. Verified against the live setting:
+#
+#   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection \
+#     --jq '.required_status_checks.contexts'
+#   -> ["ci / gate","feature-gate","docs build (docs.rs environment)",
+#       "pmat score","mutation-diff"]
+#
+# Precisely what "required" buys, because the job below still SKIPS on an
+# unlabelled PR (see its own `if:` below): GitHub posts a `skipped` check-run
+# for a job whose job-level `if:` did not run, and branch protection treats a
+# `skipped` required check as PASSING. So on an ordinary PR this context now
+# exists and is green, and still gates nothing — unchanged from before. What
+# changed is the PR that DOES carry the `mutation` label: previously a red run
+# there blocked nothing at all (the job sat outside every `needs:` list);
+# now, being a required context, a red run blocks that PR's merge. Nightly and
+# `workflow_dispatch` runs are not evaluated against any PR's head commit, so
+# branch protection never applies to them regardless of this setting.
+name: Mutation (diff)
+
+on:
+  schedule:
+    # 03:17 UTC, off the hour to avoid the top-of-hour scheduling queue.
+    - cron: '17 3 * * *'
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'Git ref to diff against (default origin/master)'
+        required: false
+        default: 'origin/master'
+
+concurrency:
+  group: mutation-diff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-diff:
+    # Only when asked for, or on the nightly schedule. A pull_request run
+    # without the `mutation` label is SKIPPED — not silently passed in the
+    # sense of asserting anything false, since it asserts nothing at all — but
+    # branch protection's required-status-check semantics read a skipped run
+    # as passing regardless, so an unlabelled PR is exactly as ungated as it
+    # was before this became a required check (see the header comment above
+    # `name:`). Add the `mutation` label to a PR to make this job, and
+    # therefore this requirement, real for it.
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'mutation')
+    runs-on: [self-hosted, X64, Linux]
+    container:
+      image: localhost:5000/sovereign-ci:stable
+    timeout-minutes: 300
+    # DECLARE THE SHELL. Measured, not assumed: every one of this lane's first
+    # seven scheduled runs (2026-08-21 .. 2026-08-27, runs 32445403699 ..
+    # 33080877162) died in "Resolve the base to diff against" with
+    #
+    #   /__w/_temp/<id>.sh: 1: set: Illegal option -o pipefail
+    #   ##[error]Process completed with exit code 2
+    #
+    # because a step in a `container:` job on this fleet's runners is launched
+    # as `sh -e {0}` — and /bin/sh in localhost:5000/sovereign-ci:stable is
+    # dash, which has no `-o pipefail`. (Bare-metal steps in the same repo get
+    # `/usr/bin/bash --noprofile --norc -e -o pipefail {0}`, which is why the
+    # script below reads as correct: it is correct, for the shell its author was
+    # looking at.) bash IS present in the image at /usr/bin/bash, so the fix is
+    # to ask for it rather than to strip the bashisms and leave the next step
+    # to rediscover this. Job-level, so a step added later cannot re-enter the
+    # trap by omission. The gate never ran once in those seven nights.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The gate diffs against a merge base; a shallow clone has none.
+          fetch-depth: 0
+
+      # Every `git` below this line fails without it. The container runs as
+      # root; the workspace on the self-hosted runner is owned by uid 1000, and
+      # git refuses a repository it does not trust:
+      #
+      #   fatal: detected dubious ownership in repository at
+      #   '/__w/paiml-mcp-agent-toolkit/paiml-mcp-agent-toolkit'
+      #
+      # actions/checkout works because it writes safe.directory into a
+      # TEMPORARY gitconfig under an overridden HOME and removes it in its post
+      # step, so the exemption does not outlive the action. Measured in run
+      # 33159844910, the first run in this lane's life to get past step 4:
+      # `git merge-base` failed here and the gate died with "cannot find a merge
+      # base with 'origin/master'". The nightly path fails one step earlier and
+      # for the same reason — its `git rev-list -1 --before='24 hours ago'`
+      # returns empty, which the base resolver reports as an unresolvable ref.
+      #
+      # `git config --global --add safe.directory "$GITHUB_WORKSPACE"` is the
+      # fleet's standing remedy for exactly this: sovereign-ci.yml does it in
+      # both its `test` and `coverage` container jobs, with the same comment.
+      - name: Trust the checked-out workspace (container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+
+      - name: Resolve the base to diff against
+        id: base
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            pull_request)
+              base="origin/${{ github.base_ref }}"
+              ;;
+            workflow_dispatch)
+              base="${{ github.event.inputs.base }}"
+              ;;
+            *)
+              # Nightly: everything that landed on master in the last 24 hours.
+              # If nothing landed, this resolves to HEAD, the diff is empty, and
+              # the gate reports "not applicable" rather than inventing a pass.
+              base="$(git rev-list -1 --before='24 hours ago' HEAD)"
+              ;;
+          esac
+          if [ -z "$base" ]; then
+            echo "could not resolve a base ref; refusing to run a gate over an unknown range"
+            exit 1
+          fi
+          echo "base=$base" >>"$GITHUB_OUTPUT"
+          echo "diffing against $base"
+
+      - name: Build the gate
+        # Ahead of the mutation run, so that "the gate does not compile" is a
+        # distinct, early, unmistakable failure rather than something discovered
+        # hours later at the moment the verdict is due.
+        run: cargo build --example mutation_gate --locked
+
+      - name: Mutation gate on the diff
+        run: scripts/mutation-diff-gate.sh run --base '${{ steps.base.outputs.base }}'
+
+      - name: Upload mutation report
+        # `always()` so the surviving mutants are readable on the run that
+        # failed, which is the only run anybody needs them for. This does not
+        # affect the gate's verdict — the step above has already decided it.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-diff-report
+          path: mutants.out/
+          if-no-files-found: ignore

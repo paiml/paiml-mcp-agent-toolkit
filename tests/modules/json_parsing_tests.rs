@@ -1,4 +1,11 @@
 #![cfg(feature = "mutation-testing")]
+// `CargoMutantsReport::from_json` is deprecated in favour of
+// `from_output_dir()`, which reads cargo-mutants v25.3.1's on-disk layout. This
+// file is the coverage for the LEGACY string-parsing path, which is still
+// public and still shipped, so it has to call the deprecated function by name.
+// The crate's own unit tests for the same function carry the same allow
+// (src/services/mutation/json_parser.rs:369).
+#![allow(deprecated)]
 
 //! GREEN Phase Tests for PMAT-070-002: JSON Parsing
 //!

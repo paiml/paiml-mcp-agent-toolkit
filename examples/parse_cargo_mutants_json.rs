@@ -47,7 +47,12 @@ fn main() {
     println!("{}\n", sample_json);
 
     // GREEN Phase: Parse and convert JSON
-    match CargoMutantsReport::from_json(sample_json) {
+    // Deliberately the deprecated legacy-format entry point: this example
+    // demonstrates parsing a JSON string, and the replacement
+    // (`from_output_dir`) reads a directory instead.
+    #[allow(deprecated)]
+    let parsed = CargoMutantsReport::from_json(sample_json);
+    match parsed {
         Ok(report) => {
             println!("✅ Parsed {} mutants from JSON\n", report.mutants.len());
 

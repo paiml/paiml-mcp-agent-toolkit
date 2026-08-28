@@ -180,6 +180,19 @@ fn scrub_cargo_env(cmd: &mut Command) {
 /// empty output — "no output" is the exact shape of the pass-by-default bug
 /// these harnesses exist to catch.
 pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
+    run_with_env(args, cwd, timeout, &[])
+}
+
+/// As [`run`], with an environment overlay a single flag declares it needs to be
+/// observable at all.
+///
+/// Per-flag, never global — see the RUST_LOG note below.
+pub(crate) fn run_with_env(
+    args: &[&str],
+    cwd: &Path,
+    timeout: Duration,
+    extra_env: &[(&str, &str)],
+) -> Observable {
     let mut cmd = Command::new(pmat_bin());
     cmd.args(args)
         .current_dir(cwd)
@@ -193,9 +206,52 @@ pub(crate) fn run(args: &[&str], cwd: &Path, timeout: Duration) -> Observable {
         .env("PMAT_NO_UPDATE_CHECK", "1")
         .env("RAYON_NUM_THREADS", "2")
         .env_remove("PMAT_CONFIG")
+        // MCP_VERSION makes pmat ignore its subcommand entirely and run the
+        // stdio MCP server ("Explicit MCP opt-in via env var always wins",
+        // src/bin/pmat.rs:41, for Claude Desktop). The child then reads EOF on
+        // the closed stdin and exits 0 with an EMPTY stdout.
+        //
+        // That combination is the worst possible one for this harness, because
+        // it walks straight through both anti-vacuity guards in
+        // `flag_efficacy.rs`: `baseline_unusable` requires `!succeeded()`, and
+        // `compare_probes`'s `rendered_nothing` branch requires BOTH probes to
+        // have failed. An exit-0 empty baseline satisfies neither, so every flag
+        // under it compares equal and is booked `Verdict::NoOp` — the gate
+        // manufacturing the exact defect class it exists to detect. That is the
+        // fourth instance of that failure mode recorded in this harness.
+        //
+        // Scrubbed BEFORE the `extra_env` overlay, deliberately, so a flag may
+        // still declare it in PROBE_ENV — the ordering rule this file documents
+        // below.
+        .env_remove("MCP_VERSION")
+        // RUST_LOG is scrubbed for the same reason NO_COLOR is not SET: the
+        // sweep's verdict must be a property of the binary, not of the shell it
+        // was launched from.
+        //
+        // `--quiet` is honoured ABOVE clap dispatch (cli/mod.rs
+        // `effective_trace_filter` drops the RUST_LOG fallback, then
+        // `log_level_directive` forces "error"), so it suppresses framework
+        // chatter for EVERY command. With RUST_LOG unset there is no chatter to
+        // suppress and `--quiet` reads as a no-op on ~43 commands; with
+        // RUST_LOG=info exported it reads as effective on all of them. The
+        // verdict flipped on the developer's environment — the same class as the
+        // NO_COLOR bug above, third instance in this file.
+        //
+        // Removed rather than set: setting it globally would make `--verbose`
+        // measure 129B against 129B and read as a no-op on every command. A
+        // flag that needs an environment to be observable declares it per-flag
+        // in PROBE_ENV, never globally.
+        .env_remove("RUST_LOG")
         .stdin(std::process::Stdio::null());
 
     scrub_cargo_env(&mut cmd);
+
+    // LAST, deliberately. The chain above calls `.env_remove("RUST_LOG")`, so
+    // applying the overlay before it would delete the very variable a flag
+    // declared it needs — the fix would compile, run, and change nothing.
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
 
     cmd.stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
@@ -957,6 +1013,54 @@ pub fn locate(values: &[i64], needle: i64) -> usize {
 ";
     write_module(root, "searching", searching, &mut modules);
 
+    // Findings the `--fail-on-*` flags need in order to be observable AT ALL.
+    //
+    // `analyze hardcoded-paths --fail-on-any` and `--fail-on-shipped`,
+    // `analyze vacuous-tests --fail-on-any` and `analyze unrun-tests
+    // --fail-on-any` were all reported as no-ops by the flag-efficacy sweep.
+    // They are wired correctly — each reaches a `std::process::exit` — and the
+    // corpus simply gave them nothing to fail on: 0 machine-specific paths,
+    // 0 vacuous tests, and 0 LIB tests (the corpus's only test lives in
+    // tests/basic.rs, an integration target, which is why unrun-tests read
+    // "0 of 0 lib tests").
+    //
+    // A flag that cannot fail because the fixture is clean is indistinguishable
+    // from one that cannot fail at all, which is the whole reason this harness
+    // exists. One module supplies all three findings:
+    let fail_on_fixtures = "\
+//! Deliberate findings, so the --fail-on-* flags have something to act on.
+
+/// A machine-specific path in SHIPPED code — `/home/<user>/` with the trailing
+/// slash is what `analyze hardcoded-paths` looks for, and being outside a test
+/// module is what makes it Site::Shipped rather than Site::Test. That
+/// distinction is the difference between --fail-on-any and --fail-on-shipped.
+pub fn cache_dir() -> &'static str {
+    \"/home/alice/.cache/corpus\"
+}
+
+#[cfg(test)]
+mod tests {
+    /// Vacuous by construction: it executes a line and checks nothing, so it
+    /// catches a panic and not a wrong answer. `analyze vacuous-tests` calls
+    /// this NoFailureMode.
+    #[test]
+    fn smoke() {
+        let _ = super::cache_dir();
+    }
+
+    /// A LIB test behind a feature the corpus's only CI leg does not enable —
+    /// its ci.yml runs `cargo test --all`, i.e. default features, and `simd` is
+    /// not in `default`. So no leg compiles this, which is precisely what
+    /// `analyze unrun-tests` reports.
+    #[cfg(feature = \"simd\")]
+    #[test]
+    fn simd_only() {
+        assert_eq!(super::cache_dir().len(), 27);
+    }
+}
+";
+    write_module(root, "fail_on_fixtures", fail_on_fixtures, &mut modules);
+
     // A file that is almost entirely dead, so `quality-gate`'s dead-code check
     // has something to fire on. The `dead_*` family above leaves the corpus at
     // ~3% dead overall with a worst file of ~17.5%, and the check's thresholds
@@ -1132,6 +1236,265 @@ pub fn copy_prefix(src: &[u8], dst: &mut [u8]) {
         ),
     )
     .expect("write lib.rs");
+
+    // Two files that exist only to be DECLINED, each carrying debt so that
+    // declining them is observable.
+    //
+    // `analyze satd` reports `files_not_read` broken down by reason, and two of
+    // those buckets read 0 for every corpus — not because the counters are
+    // broken (both fire: a `vendor/` file books `out_of_scope`, a `.min.` file
+    // books `minified_or_vendor`, verified one file at a time) but because no
+    // corpus contained anything for them to count. A bucket that is 0 on every
+    // input is indistinguishable from a bucket nothing can ever reach, which is
+    // the very thing this harness exists to catch.
+    //
+    // Neither is declared in `lib.rs`: `bundled.min.rs` is not a valid module
+    // name, and `vendor/upstream.rs` is not part of the crate. Both are still
+    // walked by the analysers, which is the point.
+    std::fs::write(
+        root.join("src/bundled.min.rs"),
+        "// TODO: vendored bundle, not ours to fix
+// FIXME: regenerate from upstream
+pub fn bundled_entry() -> u32 {
+    7
+}
+",
+    )
+    .expect("write bundled.min.rs");
+    // An UNREADABLE file, for the same reason as the two above: the
+    // `files_not_read.unreadable` bucket read 0 on every corpus, and a bucket
+    // that is 0 on every input is indistinguishable from one nothing can reach.
+    // The differential gate caught it the day the counter was added.
+    //
+    // Unreadable here means invalid UTF-8, not absent and not permission-denied:
+    // a `.rs` file the walker finds and offers to the analyser, which then
+    // cannot decode it. That is the case the counter exists to report, and it
+    // is the one a real tree produces — a stray binary saved with a source
+    // extension. Permissions would be the wrong mechanism: this suite runs as
+    // root in the clean-room container, where chmod 000 is still readable.
+    //
+    // The alternative was an ALLOWED_CONSTANTS entry saying "no corpus has an
+    // unreadable file". True, and an admission that the counter was untested.
+    // Making the corpus dirty in the way the tool measures is the fix; excusing
+    // the measurement is not.
+    std::fs::write(
+        root.join("src/broken_encoding.rs"),
+        [
+            b"// A source file that is not valid UTF-8.\npub fn x() -> u8 { ".as_slice(),
+            &[0xF0, 0x28, 0x8C, 0xBC],
+            b" }\n".as_slice(),
+        ]
+        .concat(),
+    )
+    .expect("write broken_encoding.rs");
+
+    // A file past the SATD size cap, so the `oversized` bucket has something to
+    // report. #1035 gave SATD a census whose buckets partition the walk, and
+    // `files_not_read.oversized` is the one that names each skipped file with
+    // its size and the limit — the fix for a skip that used to reach stderr
+    // only, where `--format json` and `--output FILE` both discarded it.
+    //
+    // The differential gate booked it constant at 0 on every corpus, which was
+    // correct: no corpus had a file over the cap, so the bucket was measuring
+    // properly and had nothing to measure. Same call as `broken_encoding.rs`
+    // above — make the corpus dirty in the way the tool measures rather than
+    // excuse the measurement.
+    //
+    // `MAX_FILE_BYTES` is 10_000_000, so this is one byte past it. The cost is
+    // a write, not a read: SATD stats the file, sees the size and skips it, so
+    // the several hundred flag-efficacy invocations against this corpus never
+    // pay to read it.
+    {
+        // WIDE, not TALL. The first version padded with 10,000,001 NEWLINES,
+        // which made this one file ~99.99% of every line the dead-code analyser
+        // walks — and `analyze dead-code` reports dead code as a percentage OF
+        // ALL LINES WALKED. The corpus went from 3.8% dead to 0.0044%, so the
+        // flag-efficacy sweep's `--max-percentage 1.0` probe stopped
+        // discriminating and reported `--fail-on-violation` and
+        // `--max-percentage` as no-ops. The flags were fine; the corpus had
+        // been diluted underneath them.
+        //
+        // Padding with a long comment line instead keeps the file over
+        // `MAX_FILE_BYTES` — which is all the SATD size-cap bucket needs — while
+        // adding ~10k lines rather than 10M, leaving every other analyser's
+        // denominator where it was.
+        let mut oversized = Vec::with_capacity(10_000_001);
+        oversized.extend_from_slice(
+            b"// TODO: this marker must NOT be counted: the file is past the \
+              size cap, so it is reported as skipped rather than analysed.\n",
+        );
+        let filler = format!("// {}\n", "x".repeat(996));
+        while oversized.len() < 10_000_001 {
+            oversized.extend_from_slice(filler.as_bytes());
+        }
+        oversized.truncate(10_000_001);
+        std::fs::write(root.join("src/oversized.rs"), &oversized).expect("write oversized.rs");
+    }
+
+    // NUMERIC CLAIMS, for CB-2104 — for the same reason as the unreadable file
+    // above: its whole census read 0 on every corpus, which is
+    // indistinguishable from a check that cannot measure anything at all. The
+    // differential gate caught it the day the check landed.
+    //
+    // Three shapes, because the census counts three different things:
+    //   * a REPLICATED DIVERGENT CLAIM — the same sentence in several files
+    //     with disagreeing numbers, which is R1's whole subject
+    //   * an ASSERTIVE ANNOTATION on a limit — R2's `assertive()` gate
+    //   * a DERIVATION that must NOT fire, so `suppressed_derivation` is
+    //     exercised rather than merely defined
+    //
+    // The numbers are deliberately wrong in the way real ones go wrong: a count
+    // copied into several READMEs and then updated in only some of them.
+    for (i, n) in [7usize, 7, 7, 7, 7, 9, 9].iter().enumerate() {
+        std::fs::write(
+            root.join(format!("docs/claim_{i:02}.md")),
+            format!("# Module {i}\n\nThis workspace contains {n} crates.\n"),
+        )
+        .or_else(|_| {
+            std::fs::create_dir_all(root.join("docs")).and_then(|()| {
+                std::fs::write(
+                    root.join(format!("docs/claim_{i:02}.md")),
+                    format!("# Module {i}\n\nThis workspace contains {n} crates.\n"),
+                )
+            })
+        })
+        .expect("write numeric claim fixture");
+    }
+    std::fs::write(
+        root.join("limits.toml"),
+        "[thresholds]\n\
+         # A limit whose same-line annotation ASSERTS an observation breaching it.\n\
+         max_open_files = 100  # Current: 412\n\
+         # ...and a derivation, which must NOT fire: 512 = 2 * 256.\n\
+         buffer_bytes = 512  # 2 * 256\n",
+    )
+    .expect("write limits.toml");
+
+    // One file per SUPPRESSION counter, so each guard is exercised rather than
+    // merely defined. A guard that never fires on any corpus is
+    // indistinguishable from a guard that cannot fire — the defect this whole
+    // harness exists to catch, one level down.
+    //
+    // G1, by marker: a generated file carrying a divergent claim. R1 must drop
+    // it, and say it dropped it.
+    std::fs::write(
+        root.join("docs/claim_generated.md"),
+        "<!-- @generated by build.rs — DO NOT EDIT. -->\n\n\
+         This workspace contains 3 crates.\n",
+    )
+    .expect("write generated claim");
+
+    // G2, multi-varying slot: co-varying machine data, not a replicated claim.
+    for (i, (a, b)) in [
+        (1, 10),
+        (2, 20),
+        (3, 30),
+        (4, 40),
+        (5, 50),
+        (6, 60),
+        (7, 70),
+    ]
+    .iter()
+    .enumerate()
+    {
+        std::fs::write(
+            root.join(format!("docs/rollup_{i:02}.md")),
+            format!("Processed {a} batches yielding {b} records.\n"),
+        )
+        .expect("write rollup fixture");
+    }
+
+    // Unit ambiguity: `50_000_000  # 50 MB` must NOT fire, because MB is
+    // ambiguous between 10^6 and 2^20 and only ONE reading disagrees.
+    std::fs::write(
+        root.join("sizes.toml"),
+        "[limits]\nmax_bytes = 50_000_000  # 50 MB\n",
+    )
+    .expect("write sizes.toml");
+
+    // Machine-managed: excluded from the corpus entirely, and counted as such.
+    std::fs::write(
+        root.join("Cargo.lock"),
+        "# This file is automatically @generated by Cargo.\n\
+         version = 4\n\n[[package]]\nname = \"corpus\"\nversion = \"1.2.3\"\n",
+    )
+    .expect("write Cargo.lock");
+
+    // A file the AST parser CANNOT read, so `analyze complexity` falls back to
+    // its heuristic counter and records that it did.
+    //
+    // #1068 added `analysis_provenance`, and both its fallback counters read 0
+    // on every corpus — a provenance marker that never marks anything. The
+    // whole value of the field is telling a reader that a number came from the
+    // heuristic rather than the AST; a counter stuck at 0 says the opposite by
+    // omission.
+    //
+    // Deliberately broken syntax rather than an unsupported language: the point
+    // is a file pmat TRIES to parse and cannot, which is the case the fallback
+    // exists for.
+    std::fs::write(
+        root.join("src/unparseable.rs"),
+        "pub fn broken(x: i32) -> i32 {\n\
+         \x20   if x > 0 { let y = ; return y }\n\
+         \x20   match x { => }\n\
+         }\n",
+    )
+    .expect("write unparseable.rs");
+
+    // A `*_tests.rs`, which `is_include_fragment` matches by FILENAME — see the
+    // note on `heuristic_include_fragment`. Without one the counter reads 0 on
+    // every corpus and marks nothing.
+    std::fs::write(
+        root.join("src/helper_tests.rs"),
+        "// An include fragment by pmat's filename heuristic (PMAT-507).\n\
+         fn helper_case(x: usize) -> usize {\n\
+         \x20   if x > 3 { x * 2 } else { x }\n\
+         }\n",
+    )
+    .expect("write helper_tests.rs");
+    // A VENDORED file: code this project cannot fix in place, so it books
+    // `out_of_scope` rather than being read.
+    //
+    // This used to be `examples/demo.rs`, which stopped booking that bucket in
+    // #1035: an example is shipped, compiled code and is analysed now, so a
+    // marker in it is a FINDING. The bucket still needs an input, and vendored
+    // source is the case it actually exists for.
+    std::fs::create_dir_all(root.join("vendor")).expect("mkdir vendor");
+    std::fs::write(
+        root.join("vendor/upstream.rs"),
+        "//! Vendored dependency: not ours to fix, so it books `out_of_scope`
+//! rather than being read.
+
+// TODO: upstream still uses the old API
+// HACK: patched locally so the build succeeds
+
+pub fn upstream_entry() -> u32 {
+    3
+}
+",
+    )
+    .expect("write vendor/upstream.rs");
+
+    // An EXAMPLE target, which #1035 moved into the analysed population: it is
+    // built by `cargo build --examples` and shipped by `cargo publish`, so a
+    // marker in it is real debt. It is here as the CONTROL for the bucket
+    // above — the two files are byte-similar and land on opposite sides of the
+    // partition, so a rule that quietly re-excluded examples would show up as a
+    // drop in findings rather than as nothing at all.
+    std::fs::create_dir_all(root.join("examples")).expect("mkdir examples");
+    std::fs::write(
+        root.join("examples/demo.rs"),
+        "//! Example target: shipped, compiled code, so it is READ.
+
+// TODO: the example still uses the old API
+// HACK: hardcoded so the demo always succeeds
+
+fn main() {
+    println!(\"demo\");
+}
+",
+    )
+    .expect("write examples/demo.rs");
 
     // A test file, so test-aware analyses have something to find — carrying
     // debt of its own, because a flag whose job is to *include test files*

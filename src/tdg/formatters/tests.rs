@@ -98,6 +98,9 @@ mod tests {
                 files_truncated: count > 0,
                 list_filter: None,
                 ungraded_files: Vec::new(),
+                cross_file_duplication_ratio: None,
+                cross_file_duplication_unmeasured: None,
+                cross_file_duplication_coverage: None,
             };
             assert_box_is_rectangular(
                 &format_project(&project),
@@ -435,6 +438,9 @@ mod tests {
             files_truncated: true,
             list_filter: None,
             ungraded_files: Vec::new(),
+            cross_file_duplication_ratio: None,
+            cross_file_duplication_unmeasured: None,
+            cross_file_duplication_coverage: None,
         };
 
         let output = format_project(&project);

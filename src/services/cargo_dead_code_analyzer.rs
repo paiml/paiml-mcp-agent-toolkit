@@ -37,7 +37,11 @@ use std::process::Command;
 /// deserialise — and if it could, it would restore exactly the erased-kind
 /// report (`dead_functions: 0` over six dead functions) that removing the
 /// variant fixed.
-pub const DEAD_CODE_CACHE_SCHEMA: u32 = 3;
+/// 4: `compiler_scan` was added. A schema-3 entry deserialises it as `None`,
+/// which is the one value that means "this engine has no compiler layer" — so
+/// a cached report would deny having a compiler layer at all, and the reduced
+/// scan this field exists to disclose would be invisible again.
+pub const DEAD_CODE_CACHE_SCHEMA: u32 = 4;
 
 /// Cached dead code result with metadata for O(1) invalidation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +87,15 @@ pub struct AccurateDeadCodeReport {
     pub dead_lines: usize,
     /// Summary by type
     pub dead_by_type: HashMap<String, usize>,
+    /// Whether Layer 2 — rustc's dead-code lint, via `cargo check` — actually
+    /// ran, and what stopped it when it did not.
+    ///
+    /// `calculate_metrics` builds the report before it can know, so it is
+    /// `None` there and filled in by `analyze`. A `None` that escapes to a
+    /// consumer means the same thing it means everywhere else: no compiler
+    /// layer was involved, NOT that one ran.
+    #[serde(default)]
+    pub compiler_scan: Option<crate::models::dead_code::CompilerScanReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +175,39 @@ pub enum DeadCodeKind {
 
 /// Cargo-based dead code analyzer for accurate detection with O(1) caching
 pub struct CargoDeadCodeAnalyzer {
+    /// The path the caller asked about, exactly as given. Everything the report
+    /// describes is measured over this: the walk that counts files and lines,
+    /// the suppression scan, and the paths the rows are relative to.
     project_path: PathBuf,
+    /// `project_path` made absolute, which is what a cargo diagnostic's file
+    /// name is compared against to decide whether it is inside the requested
+    /// tree. Kept beside `project_path` rather than replacing it so the cache
+    /// location and the reported row paths do not move.
+    report_root: PathBuf,
+    /// The directory the reported row paths are relative to: `report_root`
+    /// itself, or its parent when the requested path is a single FILE.
+    ///
+    /// Membership and naming are two different questions and a file answers
+    /// them differently: `<crate>/src/inner/mod.rs` is in scope only if it IS
+    /// that file, but naming a row relative to itself yields the empty string —
+    /// a row that names no file at all, next to a `total_lines: 0` that reads
+    /// as a measurement. So the row is named against the directory holding it
+    /// while scope stays pinned to the file.
+    report_base: PathBuf,
+    /// The crate `cargo check` is run in: `project_path` itself when it holds a
+    /// `Cargo.toml` declaring a `[package]`, otherwise the nearest ancestor that
+    /// does.
+    ///
+    /// These are the same directory for the ordinary "analyse this crate" call
+    /// and they differ for "analyse this subdirectory of a crate", which is the
+    /// case that used to compile nothing at all — see
+    /// [`enclosing_crate_root`]. A `[workspace]` manifest declares no package
+    /// and so is not one of those ancestors: a workspace is not a compilation
+    /// unit, and treating its root as a crate is what published a zero over a
+    /// workspace whose members were never compiled. When no ancestor declares a
+    /// package this falls back to `report_root`, and `cargo check` then fails
+    /// the way it always did; the CLI refuses before reaching that point.
+    cargo_root: PathBuf,
     exclude_tests: bool,
     exclude_examples: bool,
     exclude_benches: bool,
@@ -206,8 +251,24 @@ impl CargoDeadCodeAnalyzer {
     /// Create a new analyzer for the given project path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: impl AsRef<Path>) -> Self {
+        let project_path = project_path.as_ref().to_path_buf();
+        let report_root = absolutize(&project_path);
+        // Resolved once, here, so that the cargo invocation and everything that
+        // reasons about the crate's shape cannot disagree about which crate is
+        // being compiled.
+        let cargo_root = enclosing_crate_root(&project_path).unwrap_or_else(|| report_root.clone());
+        let report_base = if report_root.is_file() {
+            report_root
+                .parent()
+                .map_or_else(|| report_root.clone(), Path::to_path_buf)
+        } else {
+            report_root.clone()
+        };
         Self {
-            project_path: project_path.as_ref().to_path_buf(),
+            project_path,
+            report_root,
+            report_base,
+            cargo_root,
             exclude_tests: true,
             // `--include-tests` is the only scope flag the CLI (and MCP) ever
             // exposes, so defaulting these two to `true` did not narrow the
@@ -224,6 +285,17 @@ impl CargoDeadCodeAnalyzer {
             force_refresh: false,
             timeout: std::time::Duration::from_secs(DEFAULT_ANALYSIS_TIMEOUT_SECS),
         }
+    }
+
+    /// The crate this analysis compiles, which is the requested path itself
+    /// only when that path is a crate root.
+    ///
+    /// Readable because the difference between it and the requested path is the
+    /// whole of the subtree case: a caller that wants to know which crate
+    /// answered must be able to ask rather than re-derive it.
+    #[must_use]
+    pub fn cargo_root(&self) -> &Path {
+        &self.cargo_root
     }
 
     /// How long this analysis may run before `cargo check` is killed.
@@ -301,6 +373,7 @@ pub async fn analyze_dead_code(project_path: impl AsRef<Path>) -> Result<Accurat
 }
 
 // Include implementation files
+include!("cargo_dead_code_analyzer/crate_root.rs");
 include!("cargo_dead_code_analyzer/cache_operations.rs");
 include!("cargo_dead_code_analyzer/analysis.rs");
 include!("cargo_dead_code_analyzer/parsing.rs");
@@ -313,3 +386,37 @@ mod dead_line_bound_tests;
 #[cfg(test)]
 #[path = "cargo_dead_code_analyzer/cargo_target_scope_tests.rs"]
 mod cargo_target_scope_tests;
+
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/crate_root_tests.rs"]
+mod crate_root_tests;
+
+/// Give a TEST fixture crate the `Cargo.lock` a real project would have.
+///
+/// `analyze dead-code` passes `--locked` (#1076), so it no longer creates one —
+/// and a fixture that has none is now analysed at REDUCED fidelity, with the
+/// compiler layer skipped. Without this the tests below would keep passing
+/// their own assertions while silently measuring nothing, which is the exact
+/// failure mode the disclosure exists to prevent.
+///
+/// `--offline` keeps it hermetic: every fixture that calls this is
+/// dependency-free, so the resolution needs no registry.
+#[cfg(test)]
+pub(crate) fn write_fixture_lockfile(crate_root: &Path) {
+    let output = Command::new("cargo")
+        .current_dir(crate_root)
+        .args(["generate-lockfile", "--offline"])
+        .output()
+        .expect("cargo generate-lockfile runs");
+    assert!(
+        output.status.success(),
+        "could not give the fixture at {} a lockfile: {}",
+        crate_root.display(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+// The analyser must not write a Cargo.lock into the tree it measures (#1076).
+#[cfg(test)]
+#[path = "cargo_dead_code_analyzer/lockfile_tests.rs"]
+mod lockfile_tests;

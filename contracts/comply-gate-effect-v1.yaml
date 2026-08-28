@@ -1,0 +1,410 @@
+metadata:
+  version: "2.0.0"
+  kind: kernel
+  created: "2026-08-18"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Gate-effect verification (CB-2100). pmat enforces "gates or theatre" across
+    the fleet and, until this rule, had nothing that checked whether its own
+    rules block anything. Every "enforced in CI" claim rests on one chain: a
+    REQUIRED STATUS CHECK CONTEXT STRING -> the job that reports that context ->
+    a step (or a Makefile/script one hop away) that invokes the rule -> whose
+    non-zero exit can still fail the job. Break any link and the rule is
+    decoration.
+
+    The roots are the UNION of the repository's required contexts, taken from
+    branch protection. Nothing in the rule may name a gate: a rule that
+    hardcodes `gate` stops checking the day a repository renames a job, which
+    is the failure INV-2100-3 already describes, self-inflicted.
+
+    Rule id: CB-2100. Every id the source backlog proposed collides with a live
+    rule (CB-1400 "Agent Contract Existence", CB-1403 "Assume-Guarantee Chain",
+    CB-1404 "Agent Comply Usage", CB-1211 "Codegen Fidelity", CB-1300 "CLI Arg
+    Contracts", CB-1302 "MCP Schema Contracts", CB-1305 "Contract Surface
+    Classification"), and reusing one would have deleted it. CB-21xx was
+    audited free across src/, contracts/, docs/, .github/, the work list and
+    the whole git history. v1 of this contract shipped the same engine as
+    CB-1411 with three invariants; v2 renames it to CB-2100 and adds four.
+  contract: comply-gate-effect
+  status: enforced
+  verification:
+    kani_status: not_discharged
+    measured_at: "pmat 3.32.0, kani 0.67.0, 2026-08-18"
+    detail: >
+      The three `kani_harness` names below are REAL harnesses — `#[kani::proof]`
+      functions at the bottom of src/services/gate_effect/kernel.rs, held to
+      their names by
+      tests_cb2100.rs::every_kani_harness_the_contract_names_exists. They are
+      NOT discharged: nothing in this repository has ever run them, and with
+      kani installed they cannot be run at all. Measured, not assumed:
+
+      (1) `cargo kani --harness verify_gates_only_on_exit_code` fails with
+      "error: target `pmat-agent` in package `pmat` requires the features:
+      `mcp-integration`" — kani enumerates every target in the package, and one
+      of them does not build under default features.
+
+      (2) `cargo kani --harness verify_gates_only_on_exit_code --features
+      mcp-integration` fails with "error: rustc 1.93.0-nightly is not supported
+      by the following package: sysinfo@0.39.6 requires rustc 1.95" — kani
+      0.67.0 pins a nightly older than a transitive dependency's MSRV.
+
+      (3) No .github/workflows job, Makefile target or script invokes kani, so
+      not one of the repository's `#[kani::proof]` harnesses is compiled by any
+      gate (count them with `grep -rn '#\[kani::proof\]' src/ | wc -l`; the
+      number moves, the fact that nothing runs them does not). `#[cfg(kani)]` code is not built by `cargo test` either.
+
+      These harnesses are therefore ASPIRATIONAL: they state the intended
+      theorems and are the specification a future proof will discharge, but
+      `kind: kernel` here must not be read as "proved". Naming that is the
+      honest alternative to deleting the harnesses or letting the reader infer
+      a proof that never ran — a contract that names a proof which does not
+      discharge is exactly the defect class this backlog exists to rule on.
+
+      To make them real: kernel.rs has no dependencies beyond the contract
+      attribute macro, so lifting it into its own workspace crate would give
+      kani a dependency graph it can build. That is a separate work item and
+      has not been done.
+  references:
+    - src/services/gate_effect/kernel.rs
+    - src/services/gate_effect/mod.rs
+    - src/services/gate_effect/graph.rs
+    - src/services/gate_effect/resolve.rs
+    - src/services/gate_effect/effect.rs
+    - src/services/gate_effect/reach.rs
+    - src/services/gate_effect/required.rs
+    - src/services/gate_effect/roster.rs
+    - src/services/gate_effect/ledger.rs
+    - src/cli/handlers/comply_handlers/check_handlers/check_gate_effect.rs
+    - docs/status/comply-enforcement-ledger.md
+
+equations:
+  reachable:
+    formula: >
+      reachable(G, R, n) = exists r in R, exists a path r -> ... -> n in G whose
+      every edge is live
+    domain: >
+      G a finite directed graph over node indices 0..node_count with edges
+      carrying a `live` flag; R a set of root indices; n a node index
+    codomain: bool
+    invariants:
+    - "INV-2100-1: every severity=error comply rule is reachable from SOME required context — the roots are unioned, never taken one at a time"
+    - "INV-2100-2: a reachable invocation whose failure cannot propagate is NOT reachable (not continue_on_error and not suppressed and exit_code_compared)"
+    - "reachable agrees with an independent transitive closure over any bounded graph"
+    - "neutering every edge leaves exactly the roots reachable"
+    - "an empty root set reaches nothing: fail closed, never a vacuous pass"
+    - "an out-of-range target is unreachable, never an error and never a pass"
+    preconditions:
+    - "node indices are less than node_count; out-of-range indices are ignored rather than trusted"
+    kani_harness: verify_reachable_matches_transitive_closure
+
+  select_by_context:
+    formula: >
+      select_by_context(C, q) = min { i : C[i].context = q }, where C[i] =
+      (context, display_name)
+    domain: a list of (context, display) candidates and one required context string
+    codomain: Option<index>
+    invariants:
+    - "INV-2100-3: reachability is computed against the required-check CONTEXT STRING, never the job display name"
+    - "two candidate lists differing only in display names select the same candidate"
+    - "a selected candidate's context equals the required string"
+    - "a display name equal to a required context never, on its own, satisfies reachability"
+    - "`gate` and `ci / gate` are different contexts and may resolve to different jobs"
+    - "INV-2100-7: no gate name is hardcoded anywhere in the rule; the roots come from branch protection"
+    preconditions:
+    - "the candidate list enumerates every context this repository's workflows can produce; an external reusable callee is Opaque, never a Job"
+    kani_harness: verify_select_ignores_display_names
+
+  gates:
+    formula: "gates(printed_failure_verdict, exit_code) = not printed_failure_verdict or exit_code != 0"
+    domain: "one command's observed output classification and its exit status"
+    codomain: bool
+    invariants:
+    - "INV-2100-4: a command that PRINTS a failure verdict and exits 0 does not gate"
+    - "a command that printed no failure verdict gates: there was no verdict to contradict"
+    - "any non-zero exit gates"
+    preconditions: []
+    kani_harness: verify_gates_only_on_exit_code
+
+  gate_effect:
+    formula: >
+      enforced(rule) = exists ctx in required_contexts, exists job in
+      resolve(ctx) union needs_closure(resolve(ctx)), exists step in job.steps,
+      invokes(step, rule) and propagates(step)
+    domain: >
+      required_contexts is a non-empty list of GitHub branch-protection context
+      strings; workflows is the parsed set of .github/workflows/*.y[a]ml
+    codomain: >
+      GateEffectReport with passed() true only when every severity=error rule is
+      enforced and no hole was recorded
+    invariants:
+    - "INV-2100-1: every severity=error comply rule is reachable from a required check context"
+    - "INV-2100-2: a reachable invocation whose failure cannot propagate is NOT reachable"
+    - "INV-2100-3: reachability is computed against the required-check CONTEXT STRING, not the job display name"
+    - "INV-2100-4: a command that prints a failure verdict and exits 0 does not gate"
+    - "INV-2100-5: an invocation that can never succeed does not gate"
+    - "INV-2100-6: a job that COMPILES tests without executing them does not establish reachability for those tests"
+    - "INV-2100-7: no hardcoded gate name anywhere in the rule"
+    - "an empty severity=error roster is a failure, not a vacuous pass"
+    - "an empty or unresolvable required-context list is a failure, not a pass"
+    - "a required context produced by no job (phantom gate) is a failure"
+    - "a required context resolving into an unreadable external reusable workflow is a failure, because no rule can be SHOWN to run through it"
+    - "a workflow that does not parse is a hole in the reachability graph, and a hole fails"
+    - "zero jobs across all workflows is a failure, not a pass"
+    - "a required context that reaches no invocation is named in the verdict, not silently counted as coverage"
+    - "a required context that was READ IN FULL and reaches nothing is a measured zero; one that is opaque, phantom or unresolved is a HOLE, and the two must never render identically"
+    preconditions:
+    - ".github/workflows exists (otherwise the rule Skips: there is no Actions gate to verify)"
+
+  context_string_resolution:
+    formula: >
+      context(job) = job.name if present else job.id;
+      context(caller.uses(callee)) = context(caller) + " / " + context(callee_job)
+    domain: a parsed workflow set and one required context string
+    codomain: Resolution in {Job, Opaque, Phantom}
+    invariants:
+    - "a top-level job reports as its display name when it has one, else its job id"
+    - "a reusable-workflow call reports one context per callee job, namespaced `<caller> / <callee>`"
+    - "an external `owner/repo/...@ref` callee resolves to Opaque, never to a Job"
+    - "Opaque is never evidence of enforcement"
+    preconditions:
+    - "workflow YAML parses"
+
+  failure_propagation:
+    formula: >
+      propagates(inv) = not job.continue_on_error and not step.continue_on_error
+      and not suppressed(line) and exit_code_compared(script, line)
+      and not compiles_only(line) and not dead(line) and not verdict_without_exit(script, line)
+    domain: one shell line invoking the rule, within its script and its job
+    codomain: boolean, with the reasons it is false
+    invariants:
+    - "`continue-on-error: true` at job or step level suppresses"
+    - "a `continue-on-error` EXPRESSION suppresses: `might be false` is not `provably propagates`"
+    - "`|| true`, `|| :`, `|| echo ...`, `|| exit 0` suppress"
+    - "a Makefile recipe line prefixed with `-` suppresses"
+    - "a pipeline suppresses unless the script sets pipefail (GitHub runs `run:` under `bash -e`, pipefail off)"
+    - "an exit code captured into a variable, consumed by `if`, or disarmed by `set +e` propagates only when a later line exits non-zero"
+    - "a `needs` edge under `if: always()` propagates only when the job inspects needs.<id>.result"
+    - "INV-2100-4: a wrapper that prints a failure verdict and then exits 0 suppresses"
+    - "INV-2100-5: a line after an unconditional failure under errexit never runs, and a job containing one can never succeed"
+    - "INV-2100-5 control: `exit 1` inside an `if` is a working gate, not an impossibility"
+    - "INV-2100-6: `--no-run`, `--dry-run` and `--list` build the invocation without executing it"
+    preconditions:
+    - "the invocation line was found in a `run:` block, or one hop away in a Makefile recipe or shell script"
+
+  enforcement_ledger:
+    formula: >
+      ledger = { (rule, severity, status, carrier, file:line) : rule in roster },
+      status in {ENFORCED, NEUTERED, UNREACHABLE}
+    domain: >
+      the comply rule REGISTRY — the clause ids the check builders register with
+      filter_check_by_config, as enumerated by enumerate_comply_rule_ids, the
+      same authority CB-1703 holds the documentation to
+    codomain: a deterministic markdown document
+    invariants:
+    - "the ledger covers exactly the registered rule set: no invented rows, no omissions"
+    - "one row per CB rule, each with a file:line citation"
+    - "a rule whose status cannot be established is UNREACHABLE, never blank"
+    - "a registered rule with no findable definition site is UNREACHABLE and says so"
+    - "an unenumerable or empty registry is an error, not a clean sheet"
+    - "the rendering is deterministic: no timestamps, no version stamps, rows sorted by rule id"
+    - "a required context that carries no rule is listed as carrying none"
+    - "the population is read from the existing registry, never recounted: one rule, one answer"
+    - "drift is keyed on the ledger's DATA — rule id, title, severity, status, carrier, and the FILE a rule is declared in — never on its presentation"
+    - "a moved line number is NOT drift: an edit above a rule declaration changes nothing about what the repository enforces"
+    - "the provenance label of an IDENTICAL root list is NOT drift: the same four contexts read from PMAT_REQUIRED_STATUS_CHECKS instead of the manifest are the same four contexts"
+    - "loosening drift must not blind it: a changed status, carrier, declaring file, severity, title or id, and a missing or added row, are each still drift"
+    preconditions:
+    - "the repository declares CB rules in-tree (src/cli/handlers/comply_handlers exists); a repo that merely runs the rules owes no ledger"
+
+preconditions:
+  - "pmat >= 3.32.0 with `pmat comply check` running CB-2100"
+  - "required contexts resolvable from PMAT_REQUIRED_STATUS_CHECKS, .github/required-status-checks.txt, or the GitHub branch-protection API"
+
+postconditions:
+  - "CB-2100 reports Skip only when .github/workflows/ is absent"
+  - "CB-2100 reports Fail with severity=error whenever any invariant above is violated"
+  - "CB-2100's Fail message names the job and the key responsible"
+  - "CB-2100 fails when docs/status/comply-enforcement-ledger.md is missing or has drifted"
+
+falsification_tests:
+  - id: f_1
+    rule: "F-1: the job invoking `pmat comply check` carries `continue-on-error: true` and CB-2100 still passes"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f1_job_level_continue_on_error_fails_citing_job_and_key
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_2
+    rule: "F-2: the step is `pmat comply check || true` and CB-2100 still passes"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f2_or_true_fails
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_3
+    rule: "F-3: a job whose DISPLAY NAME equals the required context string is credited as the job that reports it"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f3_a_display_name_equal_to_the_required_context_is_not_a_match
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_4
+    rule: "F-4: a workflow with zero jobs yields a pass instead of a fail"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f4_zero_jobs_fails_closed
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_5
+    rule: "F-5: an unfetchable branch-protection API yields a pass instead of a fail"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f5_unresolvable_required_contexts_fail_closed
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6_control
+    rule: "F-6 (the control): the live shape — required context `ci / gate` beside an unrequired job literally named `gate` — fails, so every other fixture proves nothing"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::f6_required_context_beside_an_unrequired_job_named_the_same_thing_passes
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f
+    rule: "INV-2100-4: a wrapper that prints a failure verdict and exits 0 is credited as a gate"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_4_a_wrapper_that_prints_failed_and_exits_zero_does_not_gate
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_6
+    rule: "INV-2100-5: an invocation inside a job that can never succeed is credited as a gate"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_job_that_can_never_succeed_does_not_gate
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control
+    rule: "INV-2100-5 control: `exit 1` inside an `if` is misread as an impossibility, failing every correctly-written workflow"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_5_a_guarded_exit_is_a_gate_not_an_impossibility
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_7
+    rule: "INV-2100-6: a job that compiles a test suite without running it establishes reachability for those tests"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_6_compiling_a_test_is_not_running_it
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_8
+    rule: "INV-2100-7: the rule hardcodes a gate name and so stops checking the day a job is renamed"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_7_no_gate_name_is_hardcoded_in_the_rule
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_9
+    rule: "INV-2100-1: the roots are taken one at a time, so one healthy required check answers for four"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::inv_2100_1_any_root_may_carry_the_roster
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_10
+    rule: "an empty severity=error roster yields a vacuous pass"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::control_roster_is_not_empty
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_11
+    rule: "an empty CB rule roster yields an empty ledger instead of an error"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::ledger_over_an_empty_roster_is_an_error_not_a_clean_sheet
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_12
+    rule: "the ledger invents or omits rows because it recounts the rules instead of reading the registry"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::the_roster_is_exactly_the_registered_rule_set
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_13
+    rule: "a configuration that declares rules and grades none of them error is reported as a clean roster"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_config_whose_checks_are_all_sub_error_is_a_hole_with_a_diagnosis
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_14
+    rule: "the contract names kani harnesses that do not exist, or that were renamed out from under it — `#[cfg(kani)]` code is never compiled by `cargo test`, so nothing would notice"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::every_kani_harness_the_contract_names_exists
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_15
+    rule: "`kind: kernel` plus a `kani_harness` per equation is read as a discharged proof, though nothing in this repository can run one"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::the_contract_states_whether_its_kani_harnesses_discharge
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_16
+    rule: "the not_discharged note rots into a false claim: the contract says the harnesses are discharged while nothing runs kani, or a runner is added and the note is left stale"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_discharged_claim_requires_something_that_actually_runs_kani
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_17
+    rule: "an opaque required context — one resolving into a workflow this repository cannot read — renders identically to a context that was read in full and reaches nothing, so a hole is reported as a measured zero"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::an_opaque_root_is_not_rendered_as_a_measured_zero
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_18
+    rule: "a phantom required context renders as a measured zero"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_phantom_root_is_not_rendered_as_a_measured_zero
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_2
+    rule: "the control: every root is rendered `unknown`, which satisfies the two tests above and destroys the table"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_root_that_carries_the_roster_still_reads_as_yes
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_19
+    rule: "a ledger row renders a blank Title, which is indistinguishable from `has no title`, `never names itself` and `the scanner lost it`"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::the_ledger_never_renders_a_blank_title
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_20
+    rule: "the roster's `#[cfg(test)]` guard is a substring match, so a file that MENTIONS the attribute in a comment loses every rule declared below the mention"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_cfg_test_mention_in_a_comment_does_not_truncate_the_roster_scan
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_3
+    rule: "the control: loosening that guard makes the roster cite lines that do not declare the rule they are attributed to"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::every_citation_points_at_a_line_that_names_its_rule
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_21
+    rule: "a check owns a CB id and never reports it, so no finding it emits can be tied back to its ledger row"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::every_rule_that_owns_a_cb_id_reports_it_at_runtime
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_22
+    rule: "an edit two lines above a rule declaration moves its citation and is reported as ledger drift, so the gate reddens on changes it does not measure"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::an_edit_above_a_rule_declaration_is_not_ledger_drift
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_23
+    rule: "supplying the IDENTICAL required contexts through PMAT_REQUIRED_STATUS_CHECKS instead of the manifest is reported as ledger drift"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::the_provenance_of_the_root_list_is_not_ledger_drift
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_control_4
+    rule: "the control: drift is loosened until a changed status, carrier, declaring file, severity, title or id no longer registers"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_changed_status_carrier_or_file_is_still_ledger_drift
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_control_5
+    rule: "the control: drift is loosened until a ledger missing a whole rule still reads as up to date"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::a_missing_row_is_still_ledger_drift
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_24
+    rule: "the ledger is non-deterministic, so nobody can diff it and drift goes unnoticed"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests_cb2100.rs::the_rendered_ledger_is_deterministic
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_25
+    rule: "a required context that no job produces is treated as absence of evidence rather than a phantom gate"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::a_phantom_required_context_fails
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_26
+    rule: "an unreadable external reusable workflow is credited as enforcement"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::falsify_2100_3b_external_reusable_workflow_is_opaque_not_compliant
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_27
+    rule: "a `run:` block that pipes the invocation is credited with its exit code although bash -e leaves pipefail off"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::falsify_2100_2c_piped_invocation_loses_its_status
+    if_fails: "P1 — this contract's guarantee does not hold"
+  - id: f_28
+    rule: "an `if: always()` summary job is credited with its needs' failures although it never inspects needs.<id>.result"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::if_always_without_a_result_check_breaks_the_edge
+    if_fails: "P0 — this contract's guarantee does not hold"
+  - id: f_29
+    rule: "every fixture fails, including the healthy one, so the rule proves nothing"
+    prediction: "the named test fails when this condition holds"
+    test: src/services/gate_effect/tests.rs::control_a_plain_enforcing_job_passes
+    if_fails: "P0 — this contract's guarantee does not hold"

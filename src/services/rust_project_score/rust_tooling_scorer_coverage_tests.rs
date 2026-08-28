@@ -857,9 +857,36 @@ fn test_score_internal_fast_mode_rustfmt_toml_exists() {
         .score_internal(temp_dir.path(), ScoringMode::Fast, None)
         .unwrap();
 
-    // Fast mode with rustfmt.toml should give 3 pts for rustfmt instead of 2.5
-    // Total: 5 (clippy) + 3 (rustfmt) + 3.5 (audit) + 0 (deny) + ... = varies
-    assert!(result.earned > 0.0);
+    // #1035 INVERTED THIS ASSERTION, and the old comment said why it had to go:
+    // "Fast mode with rustfmt.toml should give 3 pts for rustfmt instead of
+    // 2.5". A config file that nobody ran moved the score — presence of
+    // `rustfmt.toml` paid 3.0 points without rustfmt ever executing.
+    //
+    // Fast mode does not run clippy, rustfmt or cargo-audit. Those checks now
+    // leave the DENOMINATOR by exactly what they would have contributed
+    // (N/A, not half marks), so a fixture with nothing but a manifest and a
+    // config file earns 0.0 of a correspondingly smaller maximum. 100% of what
+    // was measured over a smaller denominator is an honest report; 50% of a
+    // check that never ran is not.
+    assert_eq!(
+        result.earned, 0.0,
+        "fast mode measures none of clippy/rustfmt/audit, and a bare fixture \
+         has nothing else to earn — a non-zero score here is credit for work \
+         that was never done"
+    );
+    // The counter-assertion, and the reason this is not just "assert zero":
+    // the unmeasured points must leave the MAXIMUM too. If `max` still carried
+    // them, this fixture would read as 0% — a failing project — rather than as
+    // a project whose measured surface was smaller.
+    assert_eq!(
+        result.max, 108.0,
+        "the three unmeasured checks (clippy 10 + rustfmt 5 + audit 7 = 22) \
+         must leave the DENOMINATOR, not sit in it unearned: 130 - 22 = 108. \
+         If max still carried them this fixture would read as 0% — a failing \
+         project — rather than as one whose measured surface was smaller. \
+         got max={}",
+        result.max
+    );
 }
 
 #[test]
@@ -873,7 +900,13 @@ fn test_score_internal_fast_mode_dot_rustfmt_toml() {
         .score_internal(temp_dir.path(), ScoringMode::Fast, None)
         .unwrap();
 
-    assert!(result.earned > 0.0);
+    // Same contract as the sibling test above, for the dotted spelling: the
+    // FILE's presence is not evidence that the TOOL ran.
+    assert_eq!(
+        result.earned, 0.0,
+        "`.rustfmt.toml` existing is not rustfmt having run (#1035)"
+    );
+    assert_eq!(result.max, 108.0, "130 - 22 unmeasured in fast mode");
 }
 
 // Scorer Trait Tests

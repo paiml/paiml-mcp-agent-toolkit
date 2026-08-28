@@ -42,9 +42,62 @@ fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[Q
     }
 }
 
-/// Handles the exit status based on quality gate results
-fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
-    if fail_on_violation && !passed {
+/// THE exit-status policy for `pmat quality-gate`, in one place.
+///
+/// A gate that reports "35 blocking violations" and exits 0 is, to every caller
+/// that reads only the exit code, indistinguishable from a clean tree — and
+/// every shell caller reads only the exit code. Exiting 1 on a failed verdict
+/// used to be opt-in behind `--fail-on-violation`, which made this repo's own
+/// `make dogfood-all` line
+/// (`pmat quality-gate --perf --max-complexity-p99 20 || (… exit 1)`) a
+/// decoration: the `||` arm could not run. The name promises a gate, so the
+/// default is a gate; `--report-only` is the documented opt-out for callers
+/// that want the report without the verdict.
+///
+/// Both dispatchers call this rather than each spelling out `!report_only`, so
+/// the CLI cannot grow a second answer.
+/// What `--fail-on-violation` gets told, since it can no longer do anything.
+///
+/// The flag is accepted for compatibility and has had no effect since 3.32.0 —
+/// blocking violations exit non-zero by default now, so the behaviour it used
+/// to request is the unconditional default. Accepting it in SILENCE is the
+/// problem: the user asked for something and got no acknowledgement that their
+/// request was redundant rather than honoured.
+///
+/// This is the house convention for a self-declared inert flag, not a new one.
+/// `analyze big-o --analyze-space` and `analyze complexity --wasm-complexity`
+/// each emit a named `*_NOOP_NOTE` const on stderr, and neither carries an
+/// ALLOWED_NOOPS entry, because the disclosure makes the flag observable on its
+/// own bare probe. `--fail-on-violation` is simply the one that missed it.
+///
+/// Named as a const so the note is covered by a test rather than only by eye.
+pub const FAIL_ON_VIOLATION_NOOP_NOTE: &str = concat!(
+    "note: --fail-on-violation is a no-op since 3.32.0 — blocking violations ",
+    "exit non-zero by default; pass --report-only for the old ",
+    "report-and-exit-0 behaviour"
+);
+
+/// The note to print, or `None` when the flag was not passed.
+///
+/// Both dispatchers call this rather than each spelling out the condition —
+/// there are TWO sites that used to discard `fail_on_violation` into `_`, and
+/// fixing one would have left the defect live on the other route.
+#[must_use]
+pub fn fail_on_violation_note(fail_on_violation: bool) -> Option<&'static str> {
+    fail_on_violation.then_some(FAIL_ON_VIOLATION_NOOP_NOTE)
+}
+
+#[must_use]
+pub fn gate_exits_on_violation(report_only: bool) -> bool {
+    !report_only
+}
+
+/// Handles the exit status based on quality gate results.
+///
+/// `exit_on_violation` is the resolved policy from `gate_exits_on_violation`,
+/// not a flag the user typed: it is `true` unless `--report-only` was passed.
+fn handle_quality_gate_exit_status(exit_on_violation: bool, passed: bool) {
+    if exit_on_violation && !passed {
         eprintln!("\n❌ Quality gate FAILED");
         std::process::exit(1);
     }
@@ -219,15 +272,97 @@ mod part2b_pure_tests {
 
     #[test]
     fn test_handle_quality_gate_exit_status_not_fail_on_violation_noop() {
-        // fail_on_violation=false: never exits regardless of passed flag.
+        // exit_on_violation=false (`--report-only`): never exits, pass or fail.
         handle_quality_gate_exit_status(false, false);
         handle_quality_gate_exit_status(false, true);
     }
 
     #[test]
     fn test_handle_quality_gate_exit_status_passed_fail_on_violation_noop() {
-        // fail_on_violation=true + passed=true: no exit.
+        // exit_on_violation=true + passed=true: no exit.
         handle_quality_gate_exit_status(true, true);
+    }
+
+    // ── the exit-status policy, resolved from the parser ─────────────────
+    //
+    // These ask clap what a given argv means rather than restating the default
+    // in a constant: a policy that only *looks* like the CLI's is the defect
+    // this is here to catch. `try_parse_from` needs the 8MB stack, hence
+    // `on_big_stack` (a bare `cargo test --lib` otherwise aborts the binary).
+
+    /// (report_only, fail_on_violation) as clap resolves them for `argv`.
+    fn parse_gate_flags(argv: &[&str]) -> (bool, bool) {
+        let argv: Vec<String> = argv.iter().map(|s| (*s).to_string()).collect();
+        crate::cli::commands::on_big_stack(move || {
+            use clap::Parser;
+            let cli = crate::cli::Cli::try_parse_from(&argv).expect("argv must parse");
+            let crate::cli::Commands::QualityGate {
+                report_only,
+                fail_on_violation,
+                ..
+            } = cli.command
+            else {
+                panic!("{argv:?} must parse as QualityGate");
+            };
+            (report_only, fail_on_violation)
+        })
+    }
+
+    #[test]
+    fn a_bare_quality_gate_invocation_exits_on_blocking_violations() {
+        let (report_only, fail_on_violation) = parse_gate_flags(&["pmat", "quality-gate"]);
+        assert!(
+            !fail_on_violation,
+            "fixture assumption: the compatibility flag is off unless typed"
+        );
+        assert!(
+            gate_exits_on_violation(report_only),
+            "`pmat quality-gate` with no flags must exit non-zero on blocking \
+             violations — otherwise every `gate || fail` caller is decorative"
+        );
+    }
+
+    #[test]
+    fn report_only_and_its_alias_opt_out_of_the_exit_status() {
+        for argv in [
+            ["pmat", "quality-gate", "--report-only"],
+            ["pmat", "quality-gate", "--no-fail"],
+        ] {
+            let (report_only, _) = parse_gate_flags(&argv);
+            assert!(
+                !gate_exits_on_violation(report_only),
+                "{argv:?} must report without failing"
+            );
+        }
+    }
+
+    #[test]
+    fn fail_on_violation_is_still_accepted_and_still_gates() {
+        let (report_only, fail_on_violation) =
+            parse_gate_flags(&["pmat", "quality-gate", "--fail-on-violation"]);
+        assert!(fail_on_violation, "the flag must still parse, not error");
+        assert!(
+            gate_exits_on_violation(report_only),
+            "existing `--fail-on-violation` callers must keep gating"
+        );
+    }
+
+    #[test]
+    fn report_only_with_fail_on_violation_is_refused_rather_than_guessed() {
+        crate::cli::commands::on_big_stack(|| {
+            use clap::Parser;
+            let parsed = crate::cli::Cli::try_parse_from([
+                "pmat",
+                "quality-gate",
+                "--report-only",
+                "--fail-on-violation",
+            ]);
+            assert!(
+                parsed.is_err(),
+                "asking for a report AND a failure is a contradiction; clap must \
+                 say so rather than pick one silently"
+            );
+        });
     }
 
     // ── parse_entropy_score_factors: all three prefix arms + unknown skipped ──

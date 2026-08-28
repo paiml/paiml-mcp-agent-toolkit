@@ -283,7 +283,8 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     }
 
     let tdg_config = load_tdg_configuration(&config)?;
-    let mut analyzer = TdgAnalyzer::with_storage(tdg_config)?;
+    // Project-scoped cache, not $HOME-scoped: see TdgAnalyzer::with_storage_at.
+    let mut analyzer = TdgAnalyzer::with_storage_at(tdg_config, &config.path)?;
     setup_git_context(&mut analyzer, &config);
 
     if let Some(ref cmd) = config.command {
@@ -308,6 +309,26 @@ pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     let git_context = analyzer.get_git_context();
     let output_str = formatting::format_tdg_analysis(&analysis, git_context, &config)?;
     formatting::write_tdg_output(&output_str, &config)?;
+
+    // The report is written first, then the run REFUSES. `pmat tdg <dir>` on a
+    // directory holding nothing pmat can parse — an empty one, or one of COBOL
+    // — printed `Overall Score: 0.0/100 (F)` and exited 0. Both halves were
+    // wrong in the same direction: an F is a claim about a codebase's quality,
+    // zero files is the absence of evidence for any claim, and a zero exit told
+    // CI the measurement had been taken. `analyze complexity` on that same
+    // directory already exits 5 saying "This is not a clean result"; two
+    // commands over one tree must not disagree about whether it was measured.
+    if analysis
+        .project
+        .as_ref()
+        .is_some_and(|p| p.total_files == 0)
+    {
+        return Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+            "no gradable source files were found under {}, so no TDG measurement was taken. \
+             This is not a clean result.",
+            analysis.root.display()
+        )));
+    }
 
     Ok(())
 }

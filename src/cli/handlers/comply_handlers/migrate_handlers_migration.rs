@@ -51,7 +51,10 @@ async fn handle_migrate(
     }
 
     if !no_backup && !dry_run {
-        let backup_path = project_path.join(".pmat").join("backup");
+        // `.pmat/` first, so it gets its ignore rule (#1070) before the backup
+        // subdirectory appears inside it.
+        let pmat_dir = crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
+        let backup_path = pmat_dir.join("backup");
         fs::create_dir_all(&backup_path)?;
         crate::status_println!("{} {}", c::pass("Created backup at:"), c::path(&backup_path.display().to_string()));
     }

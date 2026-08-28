@@ -84,7 +84,6 @@ fn apply_ux_settings(cli: &commands::Cli) {
 /// Parse CLI with command suggestions on failure
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_with_suggestions() -> Result<Cli, String> {
-    use crate::utils::command_suggestions::CommandSuggester;
     use clap::Parser;
 
     // Try to parse normally first
@@ -104,24 +103,25 @@ fn parse_with_suggestions() -> Result<Cli, String> {
                     print!("{clap_error}");
                     std::process::exit(0);
                 }
-                _ => {
-                    // For other errors, provide suggestions
-                    let args: Vec<String> = std::env::args().skip(1).collect();
-                    let suggester = CommandSuggester::new();
-
-                    // Get suggestion based on the failed arguments
-                    if let Some(suggestion) = suggester.suggest_command(&args) {
-                        let error_msg = format!(
-                            "error: unrecognized subcommand\n\n{suggestion}\n\nFor more information, try 'pmat --help'"
-                        );
-                        Err(error_msg)
-                    } else {
-                        // If no suggestion, show the original clap error with examples
-                        let examples = CommandSuggester::get_help_examples();
-                        let error_msg = format!("{clap_error}{examples}");
-                        Err(error_msg)
-                    }
-                }
+                // Clap's own error, verbatim.
+                //
+                // This used to hand the argv to `CommandSuggester` and, whenever
+                // it returned anything at all, REPLACE clap's error with
+                // "error: unrecognized subcommand" plus a guess. The diagnosis
+                // was wrong for every failure that is not an unknown
+                // subcommand, and the most common one is a bad flag:
+                //
+                //     $ pmat analyze complexity --bogus-flag
+                //     error: unrecognized subcommand
+                //     Did you mean 'pmat analyze complexity'?
+                //
+                // The subcommand IS recognized, the suggestion is the command
+                // the user already typed, and `--bogus-flag` — the actual
+                // problem — is never named. Clap says
+                // "unexpected argument '--bogus-flag' found" and offers a real
+                // suggestion, and it knows which of the ~40 error kinds it
+                // raised; a Levenshtein pass over argv does not.
+                _ => Err(format!("{clap_error}")),
             }
         }
     }

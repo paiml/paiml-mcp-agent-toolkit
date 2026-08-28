@@ -1,16 +1,24 @@
 #!/bin/bash
 # shellcheck disable=SC2032  # Variables are used within this script
-# bashrs-disable: DET002 SEC010  # Timestamps and paths are intentional for benchmarking
+#
+# The line that used to sit here, "# bashrs-disable: DET002 SEC010", suppressed
+# nothing: bashrs has no inline suppression syntax at all — only the `--ignore`
+# flag and `.bashrsignore` — so the comment was decoration and both rules had
+# been firing on this file the whole time. The timestamps below are now derived
+# from SOURCE_DATE_EPOCH, which is the actual remedy DET002 asks for, verified
+# to clear the rule rather than assumed to.
 set -e
 
 OUTPUT_DIR=".pmat-metrics/build-benchmarks"
 # shellcheck disable=SC2174
 mkdir -p "$OUTPUT_DIR"
-TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+# Honour SOURCE_DATE_EPOCH (reproducible-builds.org) so a benchmark run can be
+# reproduced byte-for-byte; fall back to wall-clock when it is unset.
+TIMESTAMP="$(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m%d_%H%M%S)"
 BASELINE_FILE="$OUTPUT_DIR/baseline_$TIMESTAMP.txt"
 
 echo "=== Build Performance Benchmark ===" | tee "$BASELINE_FILE"
-echo "Date: $(date)" | tee -a "$BASELINE_FILE"
+echo "Date: $(date -u -d "@${SOURCE_DATE_EPOCH:-$(date +%s)}")" | tee -a "$BASELINE_FILE"
 echo "Git commit: $(git rev-parse HEAD)" | tee -a "$BASELINE_FILE"
 echo "" | tee -a "$BASELINE_FILE"
 

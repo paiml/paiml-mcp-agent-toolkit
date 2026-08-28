@@ -159,17 +159,44 @@ impl RoadmapItem {
             let total: u16 = self.phases.iter().map(|p| p.completion as u16).sum();
             (total / self.phases.len() as u16) as u8
         } else if !self.acceptance_criteria.is_empty() {
-            // Count completed criteria (basic heuristic)
-            0 // TODO: Track individual criteria completion
+            // Fraction of criteria ticked off, when the criteria record that.
+            Self::criteria_completion(&self.acceptance_criteria)
+                .unwrap_or_else(|| Self::status_completion(self.status))
         } else {
-            match self.status {
-                ItemStatus::Planned => 0,
-                ItemStatus::InProgress => 50,
-                ItemStatus::Review => 90,
-                ItemStatus::Completed => 100,
-                ItemStatus::Cancelled => 0,
-                ItemStatus::Blocked => 0,
-            }
+            Self::status_completion(self.status)
+        }
+    }
+
+    /// Percentage of acceptance criteria that are ticked off.
+    ///
+    /// Returns `None` when not one criterion carries a checkbox — such a list
+    /// records nothing about progress, so the caller must fall back to another
+    /// signal rather than report a fabricated 0%.
+    fn criteria_completion(criteria: &[String]) -> Option<u8> {
+        let states: Vec<Option<bool>> = criteria
+            .iter()
+            .map(|c| parse_criterion(c).0)
+            .collect();
+
+        if states.iter().all(Option::is_none) {
+            return None;
+        }
+
+        // An unmarked criterion in an otherwise marked list counts as not done:
+        // it has not been ticked off.
+        let done = states.iter().filter(|s| **s == Some(true)).count();
+        Some((done * 100 / states.len()) as u8)
+    }
+
+    /// Completion implied by an item's status alone.
+    fn status_completion(status: ItemStatus) -> u8 {
+        match status {
+            ItemStatus::Planned => 0,
+            ItemStatus::InProgress => 50,
+            ItemStatus::Review => 90,
+            ItemStatus::Completed => 100,
+            ItemStatus::Cancelled => 0,
+            ItemStatus::Blocked => 0,
         }
     }
 
@@ -178,4 +205,44 @@ impl RoadmapItem {
     pub fn is_github_synced(&self) -> bool {
         self.github_issue.is_some()
     }
+}
+
+/// Split an acceptance criterion into the completion state it records and its text.
+///
+/// Acceptance criteria are free-form strings, and most of them — hand-written
+/// roadmap YAML in particular — say nothing about whether they are done. Only a
+/// leading markdown checkbox does: `[x]`/`[X]` for ticked, `[ ]` for not, with an
+/// optional `- ` bullet in front. Everything else yields `None`, which callers
+/// must read as "unknown", never as "not done".
+///
+/// ```
+/// use pmat::models::roadmap::parse_criterion;
+///
+/// assert_eq!(parse_criterion("- [x] Parquet reader"), (Some(true), "Parquet reader"));
+/// assert_eq!(parse_criterion("[ ] Morsel paging"), (Some(false), "Morsel paging"));
+/// assert_eq!(parse_criterion("Morsel paging"), (None, "Morsel paging"));
+/// ```
+#[must_use]
+pub fn parse_criterion(criterion: &str) -> (Option<bool>, &str) {
+    let rest = criterion.trim();
+    let rest = rest.strip_prefix('-').map_or(rest, str::trim_start);
+
+    for (marker, done) in [("[x]", true), ("[X]", true), ("[ ]", false)] {
+        if let Some(text) = rest.strip_prefix(marker) {
+            return (Some(done), text.trim());
+        }
+    }
+
+    (None, criterion.trim())
+}
+
+/// Render a criterion as a markdown checkbox, preserving any state it records.
+///
+/// A criterion whose state is unknown is written unticked, which is what a fresh
+/// checklist should say.
+#[must_use]
+pub fn format_criterion_checkbox(criterion: &str) -> String {
+    let (state, text) = parse_criterion(criterion);
+    let box_ = if state == Some(true) { "[x]" } else { "[ ]" };
+    format!("- {} {}", box_, text)
 }

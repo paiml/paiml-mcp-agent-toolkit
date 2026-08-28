@@ -3617,3 +3617,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-630
+  github_issue: null
+  item_type: task
+  title: 'CB-2100: assert every error-severity rule is reachable from the required status checks'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-08-18T10:28:38Z
+  updated: 2026-08-18T10:28:46.330253107+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Union all four required contexts as reachability roots, read from the branch-protection API — no gate name is hardcoded. Fail on unreachable error-severity rules and on invocations neutered by continue-on-error, || true, an uncompared exit code, a printed failure verdict beside exit 0, an invocation that can never succeed, or a compile mistaken for an execution. Generates docs/status/comply-enforcement-ledger.md. Shipped as CB-2100: every id the backlog proposed (CB-1400/1403/1404/1211/1300/1302/1305) collides with a live rule. Refs #1034.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

@@ -171,8 +171,9 @@ pub(crate) fn handle_ratchet_override(
     reason: &str,
     work_item: Option<&str>,
 ) -> anyhow::Result<()> {
-    let metrics_dir = project_path.join(".pmat-metrics");
-    fs::create_dir_all(&metrics_dir)?;
+    // #1070: created with its own ignore rule, so recording an override does
+    // not also leave `?? .pmat-metrics/` in the project's git status.
+    let metrics_dir = crate::utils::pmat_cache_dir::ensure_metrics_dir(project_path);
 
     let entry = serde_json::json!({
         "timestamp": chrono_free_timestamp(),

@@ -51,41 +51,32 @@
 //!
 //! # Available Tools
 //!
-//! The pmcp server implements 24 MCP tools across different categories:
+//! The live server advertises exactly the tools in
+//! [`tool_manifest::LIVE_MCP_TOOLS`] — 19 at the time of writing. That const is
+//! the single source of truth: `mcp.json` is rendered from it, and
+//! `manifest_matches_server` pins it to the server's actual `.tool(...)`
+//! registrations.
 //!
-//! ## Analysis Tools
-//! - `analyze_complexity` - Analyze code complexity metrics
-//! - `analyze_satd` - Detect self-admitted technical debt
-//! - `analyze_dead_code` - Find unused code
-//! - `analyze_dag` - Generate dependency graphs
-//! - `analyze_deep_context` - Comprehensive code analysis
-//! - `analyze_big_o` - Big-O complexity analysis
+//! This section used to enumerate "24 MCP tools" by hand, including four
+//! `refactor.*` tools unregistered in EV-0 (#999) and six `tdg_*` tools this
+//! server has never registered. A hand-written inventory beside a machine-
+//! readable one is a second answer to "what does pmat serve", and it drifted by
+//! eight tools — so the list is not repeated here. Read the const, or ask the
+//! server:
 //!
-//! ## Refactoring Tools
-//! - `refactor.start` - Start a refactoring session
-//! - `refactor.nextIteration` - Advance refactoring state
-//! - `refactor.getState` - Get current refactoring state
-//! - `refactor.stop` - Stop refactoring session
+//! ```bash
+//! printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | pmat --mode mcp
+//! ```
 //!
-//! ## Quality Tools
-//! - `quality_gate` - Run comprehensive quality checks
-//! - `quality_proxy` - Proxy code changes through quality gates
-//!
-//! ## Git Tools
-//! - `git_operation` - Perform git operations
-//!
-//! ## Context Tools
-//! - `generate_context` - Generate project context
-//! - `generate_template` - Generate file from template
-//! - `scaffold_project` - Create project structure
-//!
-//! ## TDG System Tools (Sprint 31)
-//! - `tdg_system_diagnostics` - Comprehensive TDG system diagnostics
-//! - `tdg_storage_management` - Manage TDG storage operations
-//! - `tdg_analyze_with_storage` - Analyze files with transactional storage
-//! - `tdg_performance_metrics` - Real-time performance metrics
-//! - `tdg_configure_storage` - Configure and validate storage backends
-//! - `tdg_health_check` - Comprehensive system health check
+//! Note what the surface does NOT cover: `pmat analyze` has 35 subcommands and
+//! nine of them have MCP counterparts. The other 26 are declared, one row each,
+//! in [`crate::cli::analyze_mcp_exposure`] (#1029) — either as a reasoned
+//! `CliOnly` decision or as a ratcheted `Backlog` entry. That registry is a
+//! TOTAL MATCH over `AnalyzeCommands` with no catch-all arm, so a new
+//! subcommand cannot be CLI-only in silence any more: it fails to compile until
+//! someone declares it. It can still be CLI-only — that is a legitimate answer,
+//! and for the three analyzers that rewrite the working tree it is the right
+//! one.
 //!
 //! # Performance
 //!
@@ -101,9 +92,18 @@
 //! // Memory usage: 50MB (50% reduction)
 //! ```
 
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod advertised_schema_parity_tests; // honoured-parameter vs advertised-schema drift guard
 pub mod agent_context_handlers;
 pub mod analyze_handlers;
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod cli_mcp_surface_parity_tests; // #1029: module-doc inventory guard (the parity registry is cli::analyze_mcp_exposure)
 pub mod context_handlers;
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dead_code_payload_contract_tests; // analyze_dead_code payload-key contract
 pub mod discovery;
 pub mod handlers;
 pub mod http_server;

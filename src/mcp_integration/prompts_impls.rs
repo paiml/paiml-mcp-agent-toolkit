@@ -158,38 +158,41 @@ impl McpPrompt for RepoScorePrompt {
 
 **Categories (100 base points):**
 
-1. **Documentation (A): 20 points**
-   - A1: README Accuracy (10 pts) - File exists, not empty, valid markdown
-   - A2: Comprehensiveness (10 pts) - Overview, Install, Usage, License, Contributing
+1. **Documentation (A): 15 points**
+   - A1: README Accuracy (5 pts) - File exists, not empty, valid markdown
+   - A2: README Comprehensiveness (5 pts) - Overview, Install, Usage, License, Contributing
+   - A3: Professional Structure (5 pts) - Badges, headings, code samples
 
 2. **Pre-commit Hooks (B): 20 points**
    - B1: Hook Present (10 pts) - .git/hooks/pre-commit exists & executable
-   - B2: Performance (10 pts) - Fast execution, quality checks
+   - B2: Hook Gate Coverage (10 pts) - Which quality gates the hook invokes
 
-3. **Repository Hygiene (C): 10 points**
+3. **Repository Hygiene (C): 15 points**
    - C1: No Cruft Files (5 pts) - No temp files, build artifacts
-   - C2: No Team Files (5 pts) - No .idea/, .vscode/
+   - C2: No Team-Specific Files (5 pts) - No .idea/, .vscode/
+   - C3: No Large Files in Git History (5 pts) - No oversized blobs committed
 
 4. **Build & Test (D): 25 points**
    - D1: Makefile Present (5 pts) - Valid Makefile exists
-   - D2: Required Targets (15 pts) - test-fast, test, lint, coverage
-   - D3: Performance (5 pts) - Optimized fast targets
+   - D2: Required Targets Present (15 pts) - test-fast, test, lint, coverage
+   - D3: Target Performance (5 pts) - Optimized fast targets
 
 5. **CI/CD (E): 20 points**
-   - E1: Workflows Present (10 pts) - .github/workflows/ with YAML files
-   - E2: Configured (10 pts) - Valid structure, testing, linting
+   - E1: CI Workflows Present (6 pts) - .github/workflows/ with YAML files
+   - E2: Workflows Configured Properly (6 pts) - Valid structure, testing, linting
+   - E3: Advanced CI Features (8 pts) - Caching, matrix builds, coverage upload
 
 6. **PMAT Compliance (F): 5 points**
-   - F1: Config Present (2.5 pts) - .pmat-gates.toml exists & valid
-   - F2: No Violations (2.5 pts) - Quality gates defined
+   - F1: PMAT Configuration Present (2.5 pts) - .pmat-gates.toml exists & valid
+   - F2: No PMAT Violations (2.5 pts) - Quality gates defined
 
-**Not scored:** `BonusScores` (property tests, fuzzing, mutation testing,
-living documentation) is defined in the model but never added to the total, so
-no run can exceed 100. Describing it as "+10 bonus points" advertised a scale
-the command does not emit (GH #685).
+**Not scored:** `BonusScores` is defined in the model -- Property-based testing,
+Fuzzing, Mutation testing and Living documentation -- but is never added to the
+total, so no run can exceed 100. Do not report these as points. Describing them
+as "+10 bonus points" advertised a scale the command does not emit (GH #685).
 
 **Grading Scale:**
-- A+ (95-110): Exceptional (includes bonus)
+- A+ (95-100): Exceptional
 - A (90-94): Excellent
 - A- (85-89): PMAT standard (minimum for production)
 - B+ (80-84): Good

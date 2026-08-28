@@ -70,7 +70,7 @@ impl MutationScorer {
         }
 
         // Sort by survived mutants (most critical first)
-        weak_spots.sort_by(|a, b| b.survived_mutants.cmp(&a.survived_mutants));
+        weak_spots.sort_by_key(|w| std::cmp::Reverse(w.survived_mutants));
 
         weak_spots
     }

@@ -42,7 +42,11 @@ pub const TOKEN_ENV: &str = "PMAT_MCP_HTTP_TOKEN";
 ///
 /// Not security theatre: the failure mode being prevented is a deployment that
 /// sets `PMAT_MCP_HTTP_TOKEN=x`, passes its smoke test, and is effectively open.
-const MIN_TOKEN_LEN: usize = 16;
+///
+/// Public so the help text and the generated-token path state the SAME floor
+/// this constructor enforces. `serve --help` used to describe the minimum in
+/// prose, which is how a documented number drifts from an enforced one.
+pub const MIN_TOKEN_LEN: usize = 16;
 
 /// Bearer-token auth over a single shared secret.
 #[derive(Clone)]
@@ -69,12 +73,19 @@ impl BearerToken {
     pub fn from_env() -> Result<Self> {
         match std::env::var(TOKEN_ENV) {
             Ok(t) => Self::new(t),
-            Err(_) => bail!(
+            // Exit code DECLARED, not inferred. This message used to reach
+            // `ExitCode::ConfigurationError` (4) because the substring "config"
+            // appears in "no auth provider is configured" — a clause about
+            // pmcp's behaviour, in a message about a missing token. The help at
+            // commands_enum/definition.rs:933 documents exit 4 as a contract,
+            // so the code is kept and now stated here, where it cannot be
+            // changed by editing prose.
+            Err(_) => Err(crate::cli_exit::configuration_error(anyhow::anyhow!(
                 "{TOKEN_ENV} is not set. `pmat serve` will not start an unauthenticated MCP \
                  endpoint: pmcp serves every request when no auth provider is configured, so \
                  starting without a token would publish the full tool surface to anyone who \
                  can reach the port."
-            ),
+            ))),
         }
     }
 

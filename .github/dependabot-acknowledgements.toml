@@ -1,0 +1,56 @@
+# Accepted Dependabot findings — read by scripts/dependabot-alert-gate.sh.
+#
+# This is the GHSA-side counterpart to deny.toml's `[advisories] ignore`, with
+# the two things that file has no way to express:
+#
+#   * an EXPIRY DATE. An acknowledgement decays. When it lapses the gate goes
+#     red again and someone has to decide a second time, with whatever is known
+#     then. deny.toml's ignore list has entries "reviewed 2026-03-26" that have
+#     never been revisited, because nothing makes them come back.
+#   * an OWNER. A name attached to the decision.
+#
+# Rules, all enforced by the gate, all of them failing CLOSED:
+#
+#   * every key is required — ghsa, package, expires, owner, reason
+#   * an UNKNOWN key is an error, not a warning. A misspelled `expries` that got
+#     silently dropped would be an acknowledgement that never expires.
+#   * `expires` is at most 180 days out. An acknowledgement that outlives the
+#     release it unblocked is a deleted check with extra steps.
+#   * `reason` must be at least 20 characters. This is the record of why a known
+#     vulnerability was shipped.
+#   * an entry matching NO open alert at or above the threshold is a STALE
+#     ACKNOWLEDGEMENT and FAILS the gate. This is deliberate, and it is the one
+#     thing cargo-deny gets wrong: `advisory-not-detected` is only a warning
+#     there, which is how five entries in deny.toml came to describe crates the
+#     check could not even see (#1074, closing note). When the finding below is
+#     fixed, DELETE the entry in the same pull request — the gate will tell you
+#     so, by name, and fail until you do.
+#
+# An acknowledgement narrows the gate to exactly one GHSA on exactly one crate.
+# It never turns the gate off, and it never affects any other finding.
+
+# --------------------------------------------------------------------------
+# thrift 0.17.0 — GHSA-2f9f-gq7v-9h6m / CVE-2026-43868, moderate (CVSS 5.3)
+#
+# This is the finding that #1074 is about: `cargo deny check advisories` exits 0
+# on it because RustSec carries no thrift advisory at all, so the acknowledgement
+# HAS to live here rather than in deny.toml — there is nothing there to ignore.
+#
+# Path: thrift -> parquet 57 -> aprender-db 0.61 -> pmat.
+# Fix tracked in #1075; upstream in paiml/aprender#2531 (parquet 59 drops thrift).
+#
+# Accepted for 3.32.0 rather than blocking the release: the vulnerability is an
+# unchecked allocation size when DECODING an untrusted Thrift stream, and pmat
+# reaches thrift only through parquet's file-footer metadata reader. pmat writes
+# those parquet files itself under .pmat/; it does not accept parquet or thrift
+# input from any network or user-supplied source. Availability-only impact
+# (C:N/I:N/A:L).
+#
+# When #1075 lands and alert #66 closes, DELETE this entry. The gate fails on a
+# stale acknowledgement, by design, so it cannot be forgotten.
+[[acknowledged]]
+ghsa    = "GHSA-2f9f-gq7v-9h6m"
+package = "thrift"
+expires = 2026-10-24
+owner   = "noahgift"
+reason  = "Unchecked allocation when decoding untrusted Thrift input; reached only via parquet footer metadata on files pmat writes itself under .pmat/, never from network or user input. Availability-only (CVSS 5.3). Fix needs parquet 59 upstream — tracked in #1075 / paiml/aprender#2531."

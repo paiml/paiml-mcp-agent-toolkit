@@ -8,6 +8,58 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<PathBuf>, TemplateError> {
+        self.find_source_files_counting_tests(root)
+            .await
+            .map(|(files, _)| files)
+    }
+
+    /// As [`Self::find_source_files`], but also reports HOW MANY test files the
+    /// filter dropped.
+    ///
+    /// Discovery drops test files silently, so `SkipCounts::tests` — the bucket
+    /// whose whole job is to disclose them, and whose `note()` renders
+    /// "N test (use --include-tests)" — could never be anything but 0: by the
+    /// time the counting loop in `analyze_directory_with_stats` ran, the test
+    /// files were already gone. `analyze satd` on a tree with a `tests/`
+    /// directory reported `files_not_read.tests: 0`, which is the same
+    /// count-with-no-denominator #1015 set out to remove, one level down.
+    pub(crate) async fn find_source_files_counting_tests(
+        &self,
+        root: &Path,
+    ) -> Result<(Vec<PathBuf>, usize), TemplateError> {
+        let (files, tests) = self.find_source_files_partitioned(root).await?;
+        Ok((files, tests.len()))
+    }
+
+    /// The same walk, keeping the test files instead of counting them.
+    ///
+    /// Issue #1050 P9. `--include-tests` used to switch to a SECOND discovery
+    /// implementation (`collect_files_including_tests`), a filesystem walk that
+    /// skips any directory named `book`, `dist`, `build`, `node_modules`,
+    /// `target`, `__pycache__` or starting with `.` — while this one asks
+    /// `git ls-files`, which does not. So a flag that only WIDENS the scan
+    /// turned
+    ///
+    /// ```text
+    ///   all 1 source file(s) under /tmp/bookfix were skipped — test, example,
+    ///   fuzz, vendored, generated, minified or oversized …
+    /// ```
+    ///
+    /// into
+    ///
+    /// ```text
+    ///   no source files were found under /tmp/bookfix …
+    /// ```
+    ///
+    /// The file exists and is a source file in both runs; the denominator
+    /// vanished because the second walk never descended into `book/`. One
+    /// discovery for both, and the per-file skip reasons — which already know
+    /// about generated output — do the excluding, where they can be counted
+    /// and named.
+    pub(crate) async fn find_source_files_partitioned(
+        &self,
+        root: &Path,
+    ) -> Result<(Vec<PathBuf>, Vec<PathBuf>), TemplateError> {
         // Try git ls-files first to respect .gitignore
         if let Ok(output) = tokio::process::Command::new("git")
             .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -17,21 +69,26 @@ impl SATDDetector {
         {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                let files: Vec<PathBuf> = stdout
+                let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) = stdout
                     .lines()
                     .filter(|line| !line.is_empty())
                     .map(|line| root.join(line))
-                    .filter(|path| self.is_valid_source_file(path))
-                    .collect();
+                    .filter(|path| self.is_source_file(path))
+                    .partition(|path| !self.is_test_file(path));
+                // Unchanged: an empty *analysable* list still falls through to
+                // the walk below, which is what makes a non-git checkout work.
                 if !files.is_empty() {
-                    return Ok(files);
+                    return Ok((files, tests));
                 }
             }
         }
         // Fallback: recursive walk (non-git projects)
-        let mut files = Vec::new();
-        self.collect_files_recursive(root, &mut files).await?;
-        Ok(files)
+        let mut candidates = Vec::new();
+        self.collect_files_recursive(root, &mut candidates).await?;
+        let (files, tests): (Vec<PathBuf>, Vec<PathBuf>) = candidates
+            .into_iter()
+            .partition(|path| !self.is_test_file(path));
+        Ok((files, tests))
     }
 
     /// Recursively collect source files
@@ -105,14 +162,17 @@ impl SATDDetector {
         .contains(&name)
     }
 
+    /// Collect every SOURCE file, test files included.
+    ///
+    /// The test-file drop used to happen here, inside a predicate named
+    /// `is_valid_source_file` (`is_source_file() && !is_test_file()`), which
+    /// conflated two questions and made the drop uncountable — see
+    /// [`Self::find_source_files_counting_tests`], which now partitions instead
+    /// so the files it declines to read can be disclosed rather than vanish.
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
-        if self.is_valid_source_file(path) {
+        if self.is_source_file(path) {
             files.push(path.to_path_buf());
         }
-    }
-
-    fn is_valid_source_file(&self, path: &Path) -> bool {
-        self.is_source_file(path) && !self.is_test_file(path)
     }
 
     /// Check if a file is a supported source file
@@ -188,13 +248,33 @@ impl SATDDetector {
     /// ancestor directory named `examples`, `demo`, `fuzz`, `vendor`, `book`
     /// or `target` — none of which the analysed project chose — excluded the
     /// entire tree and reported "0 violations in 0 files" with exit 0 (#923).
+    ///
+    /// `examples/` and `demo/` are NOT on this list any more (#1035, Cluster 1).
+    /// They were, and the audits behind that issue measured what it cost: on
+    /// pforge, 25 `.rs` files — 37% of the repository — were invisible to every
+    /// SATD run, confirmed the same way on depyler, forjar and pepita. An
+    /// example is shipped code: `cargo build --examples` compiles it, `cargo
+    /// publish` ships it, and it is the first thing a new user reads. A marker
+    /// there is debt like any other, and the exclusion was not disclosed — the
+    /// files did not appear as skipped, they simply were not in the answer.
+    ///
+    /// The filename rule that went with it (`contains("_demo")`) is gone for the
+    /// same reason #925 deleted `contains("/build.rs")`: a substring test on a
+    /// name excludes production source that merely reads like support code —
+    /// here `src/services/repo_score/scorers/demo_scorer_find_demo_files.rs`.
+    ///
+    /// What stays excluded is code this project cannot fix in place (vendored,
+    /// generated, minified), its own build manifests, fuzz harnesses, and
+    /// pmat's own SATD analyser. Every one of those is COUNTED — see
+    /// [`FileCensus`](crate::services::satd_detector::FileCensus) — so a
+    /// narrowing shows up as a change in a disclosed denominator rather than as
+    /// a silent drop in findings.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = source_scope::project_relative_str(file_path);
 
         self.is_satd_analysis_tool(&path_str)
             || self.is_build_or_config_file(&path_str)
-            || self.is_example_or_demo(&path_str)
             || self.is_fuzz_target(&path_str)
             || self.is_generated_or_vendor(&path_str)
     }
@@ -218,11 +298,6 @@ impl SATDDetector {
         matches!(path_str, "/build.rs" | "/Cargo.toml")
             || path_str.ends_with(".gitignore")
             || path_str.ends_with("README.md")
-    }
-
-    fn is_example_or_demo(&self, path_str: &str) -> bool {
-        source_scope::has_dir_component(path_str, &["examples", "demo"])
-            || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {

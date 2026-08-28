@@ -292,24 +292,40 @@ mod tests {
 
     #[test]
     fn test_invalid_repo_format_trailing_slash() {
-        let result = GitHubClient::new("owner/");
-        // This parses as ["owner", ""] which is 2 parts but one is empty
-        // The code doesn't validate empty parts, so this may succeed
-        // Let's verify it doesn't crash
-        if result.is_ok() {
-            let client = result.unwrap();
-            assert_eq!(client.repo_owner, "owner");
-            assert_eq!(client.repo_name, "");
+        // "owner/" splits into ["owner", ""] — two parts, so it PASSES the
+        // format check and then fails (or not) on GITHUB_TOKEN.
+        //
+        // This used to read `if result.is_ok() { ...assert... }`, which asserted
+        // nothing whenever GITHUB_TOKEN was unset — i.e. on every CI machine and
+        // most laptops. The subject here is the FORMAT rule, not the token, so
+        // assert on the format outcome directly and unconditionally.
+        match GitHubClient::new("owner/") {
+            Ok(client) => {
+                assert_eq!(client.repo_owner, "owner");
+                assert_eq!(client.repo_name, "");
+            }
+            Err(e) => assert!(
+                !e.to_string().contains("Invalid repo format"),
+                "an empty name is two parts and must pass the format check; \
+                 the only acceptable failure here is the token: {e}"
+            ),
         }
     }
 
     #[test]
     fn test_invalid_repo_format_leading_slash() {
-        let result = GitHubClient::new("/repo");
-        if result.is_ok() {
-            let client = result.unwrap();
-            assert_eq!(client.repo_owner, "");
-            assert_eq!(client.repo_name, "repo");
+        // "/repo" splits into ["", "repo"] — also two parts, so it too passes
+        // the format check. Same reasoning as above: assert unconditionally.
+        match GitHubClient::new("/repo") {
+            Ok(client) => {
+                assert_eq!(client.repo_owner, "");
+                assert_eq!(client.repo_name, "repo");
+            }
+            Err(e) => assert!(
+                !e.to_string().contains("Invalid repo format"),
+                "an empty owner is two parts and must pass the format check; \
+                 the only acceptable failure here is the token: {e}"
+            ),
         }
     }
 

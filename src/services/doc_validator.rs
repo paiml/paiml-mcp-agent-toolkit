@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "http-client")]
 use std::time::Duration;
 use std::time::Instant;
-use walkdir::WalkDir;
 
 /// Core validator that orchestrates link checking
 pub struct DocValidator {

@@ -17,8 +17,8 @@
       },
       "min_grade": {
         "type": "string",
-        "enum": ["A", "B", "C", "D", "F"],
-        "description": "Minimum TDG grade filter."
+        "enum": ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"],
+        "description": "Minimum TDG grade filter (A+ is best). Case-insensitive."
       },
       "max_complexity": {
         "type": "integer",

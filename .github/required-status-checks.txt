@@ -1,0 +1,88 @@
+# The required status check CONTEXT STRINGS for master, as branch protection
+# reports them. Read by CB-2100 (comply gate-effect verification) so the rule
+# can be evaluated on a runner that has no admin read on the repository.
+#
+# This file is CROSS-CHECKED, not trusted: whenever the branch-protection API
+# is reachable, CB-2100 fails on any disagreement between the two. Do not edit
+# it to make a gate look reachable — regenerate it from the API:
+#
+#   gh api repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection \
+#     --jq '.required_status_checks.contexts[]'
+#
+# Note that these are CONTEXTS, not job names. `ci / gate` is a job inside the
+# reusable workflow ci.yml calls; the unrequired top-level job in ci.yml whose
+# display name is `gate` reports as plain `gate` and is a different check.
+ci / gate
+feature-gate
+docs build (docs.rs environment)
+pmat score
+provable ladder
+#
+# NOT LISTED, DELIBERATELY: `mutation-diff`. It was added to live branch
+# protection mid-session by an agent, and reverted. The workflow that produces
+# that context (.github/workflows/mutation-diff.yml) exists only on
+# feat/cb-2100-gate-effect and is not on master, so requiring the context makes
+# EVERY pull request permanently unmergeable -- including the one that would
+# land the workflow. A required check whose producer does not exist on the
+# default branch is not a gate, it is a deadlock.
+#
+# Correct order, to be done by hand AFTER that PR merges:
+#   gh api -X PATCH repos/paiml/paiml-mcp-agent-toolkit/branches/master/protection/required_status_checks \
+#     --input - <<'JSON'
+#   {"strict": true, "contexts": ["ci / gate","feature-gate","docs build (docs.rs environment)","pmat score","mutation-diff"]}
+#   JSON
+# and add `mutation-diff` back to this file in the same change, so the manifest
+# and live protection never disagree -- which is the drift CB-2100 exists to catch.
+#
+# REVIEW REQUIREMENT (CB-1700), set 2026-08-19. master now carries
+# `required_pull_request_reviews.required_approving_review_count = 1`; before
+# that the block was absent entirely, so the default branch required zero
+# approving reviews. Nothing else in the protection config changed — the PUT
+# endpoint REPLACES the whole configuration, so the payload was built by reading
+# the live state and adding exactly one key; contexts, strict, enforce_admins,
+# force-push, deletions, linear-history and conversation-resolution were all
+# carried forward verbatim and diffed afterwards to prove it.
+#
+# REVERSED the same day, deliberately. The consequence above landed exactly as
+# written: PR #1021 went BLOCKED / REVIEW_REQUIRED, and GitHub does not let an
+# author approve their own pull request. On a repository whose changes are
+# produced by agents and gated by CI, a human-approval requirement does not add
+# review -- it adds an admin override to every merge, and an override that
+# happens every time has stopped being a control.
+#
+# So `required_pull_request_reviews` is removed again and repo-level auto-merge
+# is ON. The gate is now the four required status checks above, which run the
+# tests, the lints, the feature matrix and `pmat score` (including a blocking
+# `cargo deny check`). That is a real gate: `feature-gate` caught a drifted
+# unrun-tests ledger on this very PR, minutes before it would have merged.
+#
+# CB-1700 FAILS because of this, and that is the honest outcome rather than a
+# bug to be silenced. The rule asserts "modern code review needs at least 1
+# approving review" and models no posture in which machines produce the changes
+# and CI reviews them. Do not edit the rule to make this repository pass; either
+# it grows a model of that posture, or this repository stays red on it and the
+# reason is written here. Tracked in paiml-mcp-agent-toolkit#1036.
+#
+# What is NOT weakened, and must not be: `enforce_admins` stays false only
+# because the admin override is the break-glass path; force pushes and deletions
+# remain disabled; `strict` remains true so a stale branch cannot merge.
+#
+# `provable ladder` ADDED 2026-08-20. It runs the L1-L5 contract ladder: the
+# binding registry at L1, `lake build` over contracts/lean/Theorems/ at L5, and
+# a grep that fails the job on any `sorry` or `admit`. Until now it reported and
+# could not block, so a Lean proof failure could not stop a merge — 13 theorems
+# proving the TDG grade order sat behind a check nothing required, which is the
+# same shape as CB-2100's original finding (155 registered rules, 0 reachable)
+# one layer up.
+#
+# Safe to require because it passes: five consecutive successes on
+# release/3.32.0 before it was added, and PR #1021 merged with it green.
+#
+# ORDERING, which matters more than it looks. The job still carries
+# `Ladder gate - pmat comply` under `continue-on-error: true`
+# (quality-gate.yml:171). Requiring the job is safe BECAUSE of that flag.
+# Removing the flag while the job is required would deadlock every pull request
+# on comply's four current failures. The sequence is: require the job, add the
+# pv obligation gate, and only then remove `continue-on-error` once comply is
+# green. An agent nearly deadlocked this repository by requiring `mutation-diff`
+# in the other order.

@@ -69,9 +69,20 @@ impl ToolHandler for QualityGateTool {
             "strict": { "type": "boolean", "description": "Fail the gate on any violation (no tolerance)" },
             "file":   { "type": "string",  "description": "Check only this single file instead of the paths list" }
         });
+        // What it RUNS, checked against what it runs: this advertised
+        // "complexity, SATD, dead code, lint, docs, etc." while running TDG and
+        // SATD, and there is no `lint` check on any pmat gate — the CLI's
+        // `--checks` takes exactly the nine named below. The suite is
+        // `pmat quality-gate --checks all`'s, called rather than re-listed
+        // (`run_gate_suite`), and a check a path cannot answer — the five
+        // project-wide ones, for a single file — is named in `not_measured` and
+        // in `checks.not_run` rather than passed over.
         Some(build_tool_info(
             "quality_gate",
-            "Run comprehensive quality-gate checks (complexity, SATD, dead code, lint, docs, etc.) against the given paths.",
+            "Run the `pmat quality-gate --checks all` suite (complexity, dead code, SATD, entropy, \
+             security, duplicates, coverage, documentation sections, provability) plus a TDG score \
+             against the given paths. Any check a path could not answer is named in `not_measured` \
+             and, with its reason, in `checks.not_run`.",
             paths_object_schema(extra, vec!["paths"]),
         ))
     }

@@ -327,40 +327,10 @@ impl CliOutput {
     }
 }
 
-/// Toyota Way Extract Method: Categories for analyze command dispatch
-/// Reduces complexity from 24 branches to 4 categories
-/// Extracted for file health compliance (CB-040)
-#[derive(Debug, Clone, Copy)]
-pub enum AnalyzeCommandCategory {
-    /// Core analysis commands (basic metrics): churn, complexity, dead code, SATD, TDG, lint hotspots
-    Basic,
-    /// Advanced analysis commands (comprehensive): deep context, comprehensive, defect prediction, duplicates, `BigO`
-    Advanced,
-    /// Graph and structural analysis: DAG, graph metrics, symbol table, name similarity
-    Structural,
-    /// Specialized analysis commands: makefile, provability, proof annotations, coverage, WebAssembly
-    Specialized,
-}
-
-/// Toyota Way Extract Method: Categories for general CLI command dispatch
-/// Reduces complexity from 23 branches to logical groups
-/// Extracted for file health compliance (CB-040)
-#[derive(Debug, Clone, Copy)]
-pub enum CommandCategory {
-    /// Generation and creation commands: generate, scaffold
-    Generation,
-    /// Analysis and assessment commands: analyze (delegated), quality-gate, report
-    Analysis,
-    /// Operations and maintenance commands: serve, cache, memory, telemetry
-    Operations,
-    /// Development workflow commands: refactor, test, roadmap, validate
-    Workflow,
-    /// System interaction commands: list, search, context, diagnose
-    System,
-    /// Configuration and setup commands: config, agent, tdg
-    Configuration,
-    /// Demo and examples: demo
-    Demo,
-    /// Runtime enforcement: enforce
-    Enforcement,
-}
+// The two category enums moved to `crate::cli::command_wire_names`, which
+// compiles under default features. They were defined here, behind
+// `#[cfg(feature = "unified-protocol")]`, together with the total match that
+// uses them — so no build the project ships ever type-checked that match.
+// Re-exported rather than renamed so existing `cli_helpers::CommandCategory`
+// paths keep resolving.
+pub use crate::cli::command_wire_names::{AnalyzeCommandCategory, CommandCategory};

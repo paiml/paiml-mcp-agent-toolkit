@@ -78,3 +78,44 @@
         a.detect_memory_patterns(content, &path, &mut analysis);
         assert!(analysis.coalescing.coalesced_operations >= 1);
     }
+
+    // =========================================================================
+    // Integration: the directory walk is the shared, ignore-aware one
+    // =========================================================================
+
+    /// The walk under this analyzer used to be a private `walkdir` with a
+    /// hand-written directory blacklist and no gitignore support. On pmat's own
+    /// repository that meant descending into the gitignored
+    /// `.claude/worktrees/` — 48 checkouts of pmat inside pmat — for **205,607
+    /// files analysed** and a grade of C on a corpus that was ~48 copies of one
+    /// tree. `rust-project-score` reads that grade for its GPU/SIMD category.
+    ///
+    /// The fixture deliberately uses a plain-named ignored directory: a walk
+    /// that skipped only *hidden* entries would pass on `.claude/` while the
+    /// defect survived for `vendor/`, `worktrees/` and every other ignored
+    /// directory with an ordinary name.
+    #[test]
+    fn a_gitignored_copy_of_the_project_is_not_analysed() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root = temp_dir.path();
+        let kernel = "__global__ void k(float* a) { __syncthreads(); a[threadIdx.x] = 1.0f; }\n";
+
+        std::fs::write(root.join(".gitignore"), "worktrees/\n").unwrap();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("src/kernel.cu"), kernel).unwrap();
+
+        // Two gitignored copies of the same project, as a worktree pool makes.
+        for copy in ["worktrees/a/src", "worktrees/b/src"] {
+            std::fs::create_dir_all(root.join(copy)).unwrap();
+            std::fs::write(root.join(copy).join("kernel.cu"), kernel).unwrap();
+        }
+
+        let result = analyzer().analyze(root).unwrap();
+
+        assert_eq!(
+            result.files_analyzed, 1,
+            "only the kernel.cu that is part of the project counts; the \
+             gitignored copies inflated this 3x"
+        );
+        assert_eq!(result.cuda_files, 1, "one CUDA file, counted once");
+    }

@@ -130,7 +130,29 @@ pub struct JsonFormatter;
 
 impl DeadCodeFormatter for JsonFormatter {
     fn format(&self, result: &DeadCodeResult) -> Result<String> {
-        Ok(serde_json::to_string_pretty(result)?)
+        let mut value = serde_json::to_value(result)?;
+        // Issue #1058. This document names its two counts `total_files` (what
+        // the walk discovered) and `analyzed_files` (what the engine read);
+        // the MCP payload for the SAME analysis named the second one
+        // `files_analyzed` and had no counterpart for the first. Asking both
+        // transports for "dead-code files" therefore got 38 from here and 29
+        // from there — on copia, where the two agree exactly at 29.
+        //
+        // `analyze complexity` already publishes the pair as
+        // `files_analyzed` / `files_discovered`. Adding those spellings here,
+        // and the missing count there, gives one reader that works on both
+        // surfaces. The original keys stay: clients read them.
+        if let Some(obj) = value.as_object_mut() {
+            obj.insert(
+                "files_analyzed".to_string(),
+                serde_json::json!(result.analyzed_files),
+            );
+            obj.insert(
+                "files_discovered".to_string(),
+                serde_json::json!(result.total_files),
+            );
+        }
+        Ok(serde_json::to_string_pretty(&value)?)
     }
 }
 
@@ -384,6 +406,10 @@ mod tests {
             analyzed_files: 100,
             files_with_dead_code_found: 10,
             files_truncated: false,
+            library_target: None,
+            // Renderer fixture: no engine produced this result, so there
+            // is no compiler-scan verdict for it to state.
+            compiler_scan: None,
         }
     }
 
@@ -406,6 +432,10 @@ mod tests {
 
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         assert_eq!(parsed["total_files"], 100);
+        // Issue #1058: the canonical spellings the MCP payload also carries.
+        // Two names for one number, never two numbers.
+        assert_eq!(parsed["files_discovered"], parsed["total_files"]);
+        assert_eq!(parsed["files_analyzed"], parsed["analyzed_files"]);
     }
 
     #[test]

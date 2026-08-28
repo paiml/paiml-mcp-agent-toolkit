@@ -5,8 +5,19 @@
 set -e
 
 PMAT="./target/debug/pmat"
-TEST_DIR="/tmp/cli_integration_test"
+# A private temp dir, not a fixed /tmp name: a fixed name in a world-writable
+# directory can be pre-created or symlinked by another user, and this script
+# rm -rf's it.
+TEST_DIR=$(mktemp -d)
 EXIT_CODE=0
+
+# mktemp can yield an empty or relative path under a hostile TMPDIR; refuse to
+# write to - or rm -rf - anything that is not a plain absolute path.
+if [ -z "$TEST_DIR" ] || [[ "$TEST_DIR" == *".."* ]] || [[ "$TEST_DIR" != /* ]]; then
+    echo "FATAL: unusable temp directory: '$TEST_DIR'" >&2
+    exit 1
+fi
+trap 'rm -rf "$TEST_DIR"' EXIT
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,11 +29,7 @@ echo "=== Sprint 1 CLI Integration Tests ==="
 echo "Testing uniform contracts implementation"
 echo ""
 
-# Setup test environment
-rm -rf "$TEST_DIR"
-mkdir -p "$TEST_DIR"
-
-# Create test files
+# Create test files (TEST_DIR was created empty by mktemp -d above)
 cat > "$TEST_DIR/test.py" << 'EOF'
 def simple_function():
     """A simple Python function"""
@@ -197,8 +204,8 @@ else
     EXIT_CODE=1
 fi
 
-# Cleanup
-rm -rf "$TEST_DIR"
+# Cleanup is handled by the EXIT trap installed at the top, so it also runs
+# when a test aborts the script under `set -e`.
 
 echo ""
 echo "=== Test Summary ==="

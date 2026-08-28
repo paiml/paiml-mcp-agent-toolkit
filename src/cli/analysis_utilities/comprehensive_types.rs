@@ -21,6 +21,38 @@ pub struct QualityGateResults {
     pub section_violations: usize,
     pub provability_violations: usize,
     pub provability_score: Option<f64>,
+    /// Source files the gate actually looked at.
+    ///
+    /// Without it, a gate over an EMPTY DIRECTORY and a gate over a clean
+    /// project were byte-identical: same JSON, same stderr, both `passed:true`,
+    /// both exit 0. "Nothing was wrong" and "nothing was examined" are not the
+    /// same claim, and a consumer could not tell them apart.
+    pub files_examined: usize,
+    /// The population each check measured over, keyed by check name: files
+    /// walked, files read, and the rest by reason.
+    ///
+    /// `files_examined` above is counted independently of any check, by walking
+    /// the tree — so it is the population the gate COULD have looked at, and it
+    /// catches only the extreme case where that population is zero. It does not
+    /// partition against anything and must not be read as a denominator. The
+    /// ordinary case, a check that read some files and silently declined others,
+    /// had no disclosure at all: `satd_violations: 1` beside `files_examined: 7`
+    /// on a tree where the SATD check read one file, refused five, and two of
+    /// the five it refused held markers.
+    ///
+    /// A narrowing of scope now shows up as a change in a disclosed denominator
+    /// instead of a silent drop in findings (#1035). Always serialized, empty map
+    /// included: an absent key is exactly the ambiguity this removes.
+    pub files_not_read:
+        std::collections::BTreeMap<String, crate::services::satd_detector::FileCensus>,
+    /// The checks that were selected and ran.
+    ///
+    /// The nine `*_violations` counters below always serialize, so
+    /// `--checks complexity` still reported `security_violations: 0` for a
+    /// check that never executed — eight zeros that mean "not run" rendered
+    /// identically to zeros that mean "clean". This names what ran, so the
+    /// difference is recoverable.
+    pub checks_run: Vec<String>,
     /// One line per violation, in the same order as the full `violations` array
     /// emitted alongside these results.
     ///
@@ -67,6 +99,9 @@ impl Default for QualityGateResults {
     fn default() -> Self {
         Self {
             passed: true, // Default to passed when no violations
+            files_examined: 0,
+            files_not_read: std::collections::BTreeMap::new(),
+            checks_run: Vec::new(),
             total_violations: 0,
             blocking_violations: 0,
             complexity_violations: 0,
@@ -284,4 +319,3 @@ fn is_test_filename(path: &Path) -> bool {
         false
     }
 }
-

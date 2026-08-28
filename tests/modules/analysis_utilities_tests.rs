@@ -961,6 +961,11 @@ mod dead_code_formatter_comprehensive {
             analyzed_files: file_count,
             files_with_dead_code_found: file_count,
             files_truncated: false,
+            library_target: None,
+            // A fixture, so no compiler scan was performed. `None` is the honest
+            // value: it means "not run", which the field's own docs distinguish
+            // from a scan that ran and found nothing.
+            compiler_scan: None,
         }
     }
 

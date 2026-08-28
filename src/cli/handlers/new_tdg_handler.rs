@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::enums::TdgOutputFormat;
 use crate::tdg::formatters::{
-    format_comparison, format_human, format_json, format_markdown, format_project,
+    format_comparison, format_human, format_json, format_markdown, format_project, ungraded,
 };
 use crate::tdg::TdgAnalyzer;
 
@@ -232,6 +232,30 @@ async fn run_tdg_analysis(config: TdgAnalysisConfig, enforce_threshold: bool) ->
 
     write_or_print_result(&result, config.output).await?;
 
+    // Report first, then REFUSE. `analyze tdg` over a directory holding nothing
+    // it can grade printed
+    //
+    //     Average Score: not measured (no files analysed)
+    //     Total Files: 0
+    //
+    // and exited 0. The sentence and the exit code said opposite things, and CI
+    // reads the exit code. The honest verdict was already computed —
+    // `measured_score` is `None` precisely here, and `enforce_tdg_threshold`
+    // has long refused it on the grounds that "a gate that could not measure
+    // must not report a pass" — but only `analyze build-tdg` ever consulted it.
+    // `pmat tdg` refuses the same tree at exit 5; three commands over one
+    // directory must not disagree about whether it was measured.
+    //
+    // Gated runs are left alone: `build-tdg` already fails below, with a
+    // message about the threshold it could not check.
+    if !enforce_threshold && measured_score.is_none() {
+        return Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+            "no file under {} could be graded, so no TDG measurement was taken. \
+             This is not a clean result.",
+            config.path.display()
+        )));
+    }
+
     // KNOWN DEFECTS v2.1: Check for critical defects. Auto-fail is the gated
     // (`analyze build-tdg`) command's job only — see #705.
     check_for_critical_defects(&config.path, enforce_threshold).await?;
@@ -400,8 +424,7 @@ fn project_markdown(project: &crate::tdg::ProjectScore, include_components: bool
     // gave three different answers. Markdown has no frame, so nothing is
     // elided here.
     if !project.ungraded_files.is_empty() {
-        let lines =
-            crate::tdg::formatters::ungraded::ungraded_markdown_lines(&project.ungraded_files);
+        let lines = ungraded::ungraded_markdown_lines(&project.ungraded_files);
         let _ = writeln!(w, "{}\n", lines[0]);
         for line in &lines[1..] {
             let _ = writeln!(w, "{line}");
@@ -679,13 +702,25 @@ fn sarif_file_result(score: &crate::tdg::TdgScore) -> serde_json::Value {
 /// project score was 94.15/A- the SARIF document announced 72.5/100 (B-) — the
 /// worst file — and disagreed with every other renderer of the same command.
 fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serde_json::Value {
+    let census = ungraded::WalkCensus::of(project);
     // GH #704: with nothing analysed there is no score to quote at all — the
     // message used to quote the 0.0/F default while explaining that it was not
     // based on any measured file.
+    //
+    // Issue #1064: "over 1 file(s)" is true and misleading on a walk of sixteen.
+    // The sentence names the denominator when the two differ, so the one line a
+    // SARIF viewer shows cannot be read as covering the tree.
     let text = match (project.average_score, project.average_grade) {
-        (Some(score), Some(grade)) => format!(
+        (Some(score), Some(grade)) if census.measured_the_whole_walk() => format!(
             "Project TDG score {score:.1}/100 ({grade}) over {} file(s).",
             project.total_files
+        ),
+        (Some(score), Some(grade)) => format!(
+            "Project TDG score {score:.1}/100 ({grade}) over {} of {} file(s) walked; \
+             {} could not be graded (see properties.ungraded_files).",
+            project.total_files,
+            census.walked(),
+            census.ungraded
         ),
         _ => format!(
             "No analyzable files were found under {}; there is no project TDG score.",
@@ -704,8 +739,17 @@ fn sarif_project_result(project: &crate::tdg::ProjectScore, root: &Path) -> serd
         "properties": {
             "tdg_score": project.average_score,
             "grade": project.average_grade.map(|g| g.to_string()),
-            "not_measured": project.not_measured,
+            "not_measured": ungraded::not_measured_names(
+                &project.not_measured,
+                &project.ungraded_files,
+            ),
             "total_files": project.total_files,
+            // The same census the run properties carry, because this result is
+            // a second reader of the same facts and said `total_files: 1` on a
+            // sixteen-file tree with nothing beside it (issue #1064).
+            "files_analyzed": census.analyzed,
+            "files_ungraded": census.ungraded,
+            "files_walked": census.walked(),
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         },
@@ -773,6 +817,7 @@ pub(crate) fn create_sarif_output(
     let mut results = vec![sarif_project_result(project, root)];
     results.extend(files.into_iter().map(sarif_file_result));
 
+    let census = ungraded::WalkCensus::of(project);
     sarif_document(
         results,
         serde_json::json!({
@@ -781,7 +826,28 @@ pub(crate) fn create_sarif_output(
             // analysed, never the 0.0/"F" default.
             "average_score": project.average_score,
             "average_grade": project.average_grade.map(|g| g.to_string()),
-            "not_measured": project.not_measured,
+            // Issue #1064. This was `project.not_measured` — the list of SCORE
+            // FIELDS that could not be produced — so on the reproducer, where
+            // one file of sixteen graded, it was `[]`, and `[]` is how a SARIF
+            // consumer is told nothing was skipped. Fifteen files were. Both
+            // kinds of answer belong under the key that asks the question, and
+            // they do not collide: a field of this document is a bare
+            // identifier, a refused file is the path as walked.
+            "not_measured": ungraded::not_measured_names(
+                &project.not_measured,
+                &project.ungraded_files,
+            ),
+            // The structured form of the same population, with the reason each
+            // file was refused — this is the key the human box names when it
+            // caps its own list.
+            "ungraded_files": ungraded::ungraded_json(&project.ungraded_files),
+            // `total_files` above counts the GRADED files and keeps its name for
+            // the consumers that already read it. These three say what it does
+            // not: the walk partitions into analyzed plus ungraded, and neither
+            // half has to be inferred from the length of a list.
+            "files_analyzed": census.analyzed,
+            "files_ungraded": census.ungraded,
+            "files_walked": census.walked(),
             "f_grade_count": project.f_grade_count,
             "grade_capped": project.grade_capped,
         }),
@@ -812,6 +878,64 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    /// A tree with nothing gradable in it must not exit 0.
+    ///
+    /// `analyze tdg` printed "Average Score: not measured (no files analysed)"
+    /// and exited 0 — the sentence and the exit code said opposite things, and
+    /// CI reads the exit code. `pmat tdg` and `analyze complexity` both exit 5
+    /// over the same directory, and `analyze build-tdg` already failed here;
+    /// only this path disagreed.
+    #[tokio::test]
+    async fn an_ungradable_tree_does_not_exit_zero() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("legacy.cbl"), "IDENTIFICATION DIVISION.\n")
+            .expect("write cobol");
+
+        let err = handle_analyze_tdg(TdgAnalysisConfig {
+            path: dir.path().to_path_buf(),
+            threshold: None,
+            top_files: None,
+            format: TdgOutputFormat::Table,
+            include_components: false,
+            output: Some(dir.path().join("out.txt")),
+            critical_only: false,
+            verbose: false,
+        })
+        .await
+        .expect_err("a tree with no gradable file must not report success");
+
+        assert!(
+            err.to_string().contains("not a clean result"),
+            "the refusal must say why: {err}"
+        );
+    }
+
+    /// The counter-test: a tree it CAN grade still succeeds.
+    ///
+    /// Without this, refusing unconditionally would pass the test above.
+    #[tokio::test]
+    async fn a_gradable_tree_still_succeeds() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(
+            dir.path().join("ok.rs"),
+            "//! A tiny module.\n\n/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .expect("write rs");
+
+        handle_analyze_tdg(TdgAnalysisConfig {
+            path: dir.path().to_path_buf(),
+            threshold: None,
+            top_files: None,
+            format: TdgOutputFormat::Table,
+            include_components: false,
+            output: Some(dir.path().join("out.txt")),
+            critical_only: false,
+            verbose: false,
+        })
+        .await
+        .expect("a gradable tree must still succeed");
+    }
 
     #[tokio::test]
     async fn test_handle_analyze_tdg_file() -> Result<()> {
@@ -1188,5 +1312,109 @@ mod tests {
                 "components must be present with the flag: {with}"
             );
         }
+    }
+
+    // ── Issue #1064: SARIF must not deny the files the walk refused ─────────
+
+    /// The reproducer's shape: one Rust file graded, fifteen shell scripts
+    /// walked and refused.
+    fn project_with_refusals() -> crate::tdg::ProjectScore {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![graded(
+            "src/lib.rs",
+            100.0,
+            crate::tdg::Grade::APlus,
+        )]);
+        for i in 1..=15 {
+            project.ungraded_files.push(crate::tdg::UngradedFile {
+                path: format!("/tmp/ngfix/s{i}.sh"),
+                reason: "Bash source: this build has no TDG analyzer for .sh".to_string(),
+            });
+        }
+        project
+    }
+
+    /// Issue #1064. `properties.not_measured` is what a SARIF consumer reads to
+    /// learn what a run could not answer for, and on a tree where fifteen of
+    /// sixteen walked files were never graded it was `[]` — an empty array
+    /// asserting nothing was skipped, beside `total_files: 1`, which reads as a
+    /// one-file project rather than a one-sixteenth measurement.
+    ///
+    /// RED CONTROL: at HEAD `not_measured` is empty and the three census keys
+    /// do not exist, so this fails on its first assertion.
+    #[test]
+    fn sarif_not_measured_names_what_the_walk_could_not_measure() {
+        let project = project_with_refusals();
+        let sarif = create_sarif_output(&project, Path::new("/tmp/ngfix"));
+        let props = &sarif["runs"][0]["properties"];
+
+        let not_measured = props["not_measured"]
+            .as_array()
+            .expect("not_measured must stay an array of names");
+        assert_eq!(
+            not_measured.len(),
+            15,
+            "an empty list asserts nothing was skipped; fifteen files were: {not_measured:?}"
+        );
+        assert!(
+            not_measured
+                .iter()
+                .any(|v| v.as_str() == Some("/tmp/ngfix/s1.sh")),
+            "the entries must name the files, not merely count them: {not_measured:?}"
+        );
+        // The census has to partition here exactly as it does in --format json.
+        assert_eq!(props["files_analyzed"], 1, "{props}");
+        assert_eq!(props["files_ungraded"], 15, "{props}");
+        assert_eq!(props["files_walked"], 16, "{props}");
+        // The per-result properties are a second reader of the same facts, and
+        // said `total_files: 1` with nothing beside it.
+        let project_result = &sarif["runs"][0]["results"][0]["properties"];
+        assert_eq!(project_result["files_walked"], 16, "{project_result}");
+        assert_eq!(project_result["files_ungraded"], 15, "{project_result}");
+    }
+
+    /// COUNTER-TEST: "always report a refusal" would pass the test above. A
+    /// project whose whole walk graded must publish an EMPTY disclosure and a
+    /// census whose ungraded column is zero.
+    #[test]
+    fn sarif_not_measured_stays_empty_when_the_walk_was_whole() {
+        let project = two_file_project();
+        assert!(project.ungraded_files.is_empty(), "fixture precondition");
+        let sarif = create_sarif_output(&project, Path::new("/tmp/x"));
+        let props = &sarif["runs"][0]["properties"];
+
+        assert_eq!(
+            props["not_measured"].as_array().map(Vec::len),
+            Some(0),
+            "nothing was refused; a manufactured entry is the fix over-applied: {props}"
+        );
+        assert_eq!(props["files_walked"], 2, "{props}");
+        assert_eq!(props["files_analyzed"], 2, "{props}");
+        assert_eq!(props["files_ungraded"], 0, "{props}");
+    }
+
+    /// The other half of GH #704's convention has to survive: when NOTHING was
+    /// gradable the unmeasured aggregate FIELDS are still named, and the refused
+    /// files are added to them rather than replacing them.
+    #[test]
+    fn sarif_not_measured_keeps_the_unmeasured_field_names() {
+        let mut project = crate::tdg::ProjectScore::aggregate(vec![]);
+        project.ungraded_files.push(crate::tdg::UngradedFile {
+            path: "/tmp/ngfix/s1.sh".to_string(),
+            reason: "Bash source: this build has no TDG analyzer for .sh".to_string(),
+        });
+        let sarif = create_sarif_output(&project, Path::new("/tmp/ngfix"));
+        let props = &sarif["runs"][0]["properties"];
+
+        let names: Vec<&str> = props["not_measured"]
+            .as_array()
+            .expect("array")
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .collect();
+        assert!(names.contains(&"average_score"), "{names:?}");
+        assert!(names.contains(&"average_grade"), "{names:?}");
+        assert!(names.contains(&"/tmp/ngfix/s1.sh"), "{names:?}");
+        assert_eq!(props["files_analyzed"], 0, "{props}");
+        assert_eq!(props["files_walked"], 1, "{props}");
     }
 }

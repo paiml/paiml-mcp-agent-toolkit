@@ -1270,6 +1270,14 @@ mod agent_quality_hook_tests {
     }
 
     /// Both client configs must exist, parse, and point at the one entrypoint.
+    ///
+    /// **Schema migration (#1031).** This used to read
+    /// `hooks[0].handler.command` — the `{"hooks":[{"event":…,"handler":…}]}`
+    /// shape `.agents/hooks.json` carried at the time. PMAT-INIT-002 claim 1
+    /// names the `PreToolUse` schema instead, and that is what
+    /// `pmat init --target agy` now emits, so the manifest moved and this
+    /// reader moved with it. Leaving the old accessor would have meant
+    /// shipping a generator whose output this repository's own suite rejects.
     #[test]
     fn both_client_configs_point_at_the_same_entrypoint() {
         let root = hook();
@@ -1285,9 +1293,9 @@ mod agent_quality_hook_tests {
         let claude_cmd = claude["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
             .as_str()
             .expect("claude command");
-        let anti_cmd = anti["hooks"][0]["handler"]["command"]
+        let anti_cmd = anti["pmat-quality-feedback"]["PreToolUse"][0]["hooks"][0]["command"]
             .as_str()
-            .expect("antigravity command");
+            .expect("antigravity command (PreToolUse schema, PMAT-INIT-002 claim 1)");
 
         assert!(
             claude_cmd.contains("pmat-quality-feedback.sh") && claude_cmd.ends_with("claude"),
@@ -1300,6 +1308,16 @@ mod agent_quality_hook_tests {
         assert!(
             script().is_file(),
             "the entrypoint both configs name must exist"
+        );
+
+        // The generator and the repository's own manifest must not drift
+        // apart: `pmat init --target agy` writes this exact file, so if
+        // someone edits one without the other, this fails rather than users
+        // discovering the difference.
+        assert_eq!(
+            std::fs::read_to_string(root.join(".agents/hooks.json")).expect("agents hooks"),
+            crate::services::workspace_init::templates::AGY_HOOKS_JSON,
+            "this repo's .agents/hooks.json no longer matches what `pmat init --target agy` emits"
         );
     }
 

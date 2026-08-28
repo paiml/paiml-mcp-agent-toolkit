@@ -16,11 +16,9 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
         return Ok(());
     }
 
-    // Create .pmat directory
-    let pmat_dir = project_path.join(".pmat");
-    if !pmat_dir.exists() {
-        fs::create_dir_all(&pmat_dir)?;
-    }
+    // Create .pmat directory, with its own ignore rule (#1070); the config
+    // write below reports if the directory could not be made.
+    crate::utils::pmat_cache_dir::ensure_cache_dir(project_path);
 
     // Create default config
     let config = ProjectConfig::default();

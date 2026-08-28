@@ -26,8 +26,8 @@ use crate::models::error::TemplateError;
 use crate::services::defect_detector::source_scope;
 
 use super::types::{
-    AstContext, AstNodeType, DebtClassifier, ProjectAnalysisStats, SATDAnalysisResult,
-    SATDDetector, SATDSummary, SkipCounts, SkipReason, TechnicalDebt, TestBlockTracker,
+    AstContext, AstNodeType, DebtClassifier, FileCensus, ProjectAnalysisStats, SATDAnalysisResult,
+    SATDDetector, SATDSummary, SkipReason, TechnicalDebt, TestBlockTracker, MAX_FILE_BYTES,
 };
 
 include!("detection_extraction.rs");
@@ -476,8 +476,11 @@ mod checkout_location_regression_tests {
         );
     }
 
-    /// Guard rail: the package's OWN examples/ and tests/ trees are still
-    /// support code. The rule became project-relative; it did not go away.
+    /// Guard rail: the package's OWN support directories are still support
+    /// code. The rule became project-relative; it did not go away.
+    ///
+    /// `examples/` and `demo/` LEFT this list in #1035 and have their own test
+    /// below — they are shipped, compiled code, not support code.
     #[test]
     fn a_packages_own_support_directories_are_still_excluded() {
         let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -485,14 +488,7 @@ mod checkout_location_regression_tests {
         crate_at(&root);
         let detector = SATDDetector::new();
 
-        for support in [
-            "examples",
-            "demo",
-            "fuzz",
-            "vendor",
-            "node_modules",
-            "target",
-        ] {
+        for support in ["fuzz", "vendor", "node_modules", "target"] {
             let file = root.join(support).join("thing.rs");
             std::fs::create_dir_all(file.parent().expect("parent")).expect("dir");
             std::fs::write(&file, LIB_RS).expect("file");
@@ -521,17 +517,20 @@ mod checkout_location_regression_tests {
         let root = tmp.path().join("myproject");
         crate_at(&root);
 
-        let examples = root.join("examples");
-        std::fs::create_dir_all(&examples).expect("examples dir");
+        // `vendor/`, not `examples/`: #1035 moved examples into the analysed
+        // population, so a tree of examples is no longer a tree where every
+        // candidate is excluded. Vendored code still is.
+        let vendored = root.join("vendor");
+        std::fs::create_dir_all(&vendored).expect("vendor dir");
         for name in ["a.rs", "b.rs"] {
-            std::fs::write(examples.join(name), LIB_RS).expect("example file");
+            std::fs::write(vendored.join(name), LIB_RS).expect("vendored file");
         }
 
         let detector = SATDDetector::new();
         let err = detector
-            .analyze_directory(&examples)
+            .analyze_directory(&vendored)
             .await
-            .expect_err("every candidate under examples/ is excluded — nothing was measured");
+            .expect_err("every candidate under vendor/ is excluded — nothing was measured");
         let message = err.to_string();
         assert!(
             message.contains("path"),
@@ -546,7 +545,8 @@ mod checkout_location_regression_tests {
             "a walk over zero source files reported a clean verdict"
         );
 
-        // Control: the crate's own src/ IS measured, and measures 1.
+        // Control: the crate's own src/ IS measured, and measures 1. The two
+        // vendored copies of the same marker are NOT added to it.
         assert_eq!(
             detector
                 .analyze_directory(&root)
@@ -815,5 +815,549 @@ mod include_tests_reaches_inline_blocks {
             .expect("extraction");
         assert_eq!(without.len(), 1, "production marker only: {without:?}");
         assert_eq!(with.len(), 3, "production + both inline markers: {with:?}");
+    }
+}
+
+#[cfg(test)]
+mod unreadable_file_disclosure_tests {
+    //! #1035: a file the walk selected and then failed to decode was counted
+    //! as an ANALYSED file with no debt.
+    //!
+    //! The three drops sat below the skip predicate, inside the per-file read
+    //! — `Err(_) => Vec::new()`, `unwrap_or_default()`, and an oversized-content
+    //! `return` — so every disclosure fix layered above them still reported
+    //! these files as measured and clean. That is the issue's root-cause shape
+    //! (`// If parsing fails, return empty (graceful degradation)`) surviving
+    //! inside the analyzer the earlier fixes hardened.
+    use super::*;
+    use std::io::Write;
+
+    /// A tree with one readable marker-bearing file and one file whose bytes
+    /// are not UTF-8. `read_to_string` fails on the second; nothing else in
+    /// the walk declines it.
+    fn tree_with_one_undecodable_file() -> tempfile::TempDir {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        std::fs::write(
+            d.path().join("src/good.rs"),
+            "fn ok() {}\n// TODO: a real marker\n",
+        )
+        .expect("write good");
+        let mut bad = std::fs::File::create(d.path().join("src/bad.rs")).expect("create bad");
+        bad.write_all(b"fn bad() {}\n// TODO: hidden marker \xff\xfe\n")
+            .expect("write bad");
+        d
+    }
+
+    #[tokio::test]
+    async fn an_undecodable_file_is_disclosed_not_counted_as_clean() {
+        let d = tree_with_one_undecodable_file();
+        let (debts, skipped) = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect("the readable file was analysed, so this is not a refusal");
+
+        assert_eq!(
+            debts.len(),
+            1,
+            "the readable marker is still found: {debts:?}"
+        );
+        assert_eq!(
+            skipped.not_read.unreadable, 1,
+            "the undecodable file must be DISCLOSED, not silently treated as a \
+             file that was read and found clean: {skipped:?}"
+        );
+        assert!(
+            skipped.not_read.total() >= 1,
+            "an undisclosed skip makes the total a lie: {skipped:?}"
+        );
+        assert!(
+            skipped.partitions(),
+            "and the disclosure must add up: {skipped:?}"
+        );
+        let note = skipped
+            .note()
+            .expect("something was not read, so the report must say so");
+        assert!(
+            note.contains("1 unreadable"),
+            "the human-readable summary must name it: {note}"
+        );
+    }
+
+    /// Counter-test: the lazy over-correction — counting every file as
+    /// unreadable, or refusing any tree containing one — must not pass.
+    #[tokio::test]
+    async fn a_fully_readable_tree_discloses_no_unreadable_files() {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        std::fs::write(
+            d.path().join("src/a.rs"),
+            "fn a() {}\n// TODO: marker one\n",
+        )
+        .expect("write a");
+        std::fs::write(d.path().join("src/b.rs"), "fn b() {}\n").expect("write b");
+
+        let (debts, skipped) = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect("analysis");
+        assert_eq!(debts.len(), 1, "{debts:?}");
+        assert_eq!(
+            skipped.not_read.unreadable, 0,
+            "no file failed to decode, so nothing may be reported as unread: \
+             {skipped:?}"
+        );
+        assert_eq!(skipped.not_read.total(), 0, "{skipped:?}");
+        // The note is no longer silent on a fully-read tree: it states the
+        // denominator, which is the sentence that makes a zero mean something
+        // (#1035). What it must NOT do is claim a skip that did not happen.
+        let note = skipped.note().expect("the population is always stated");
+        assert!(note.contains("analysed 2 of 2"), "{note}");
+        assert!(!note.contains("not read"), "{note}");
+    }
+
+    /// And the extreme case still refuses rather than reporting a clean tree:
+    /// when EVERY candidate failed to decode, nothing was measured.
+    #[tokio::test]
+    async fn a_tree_of_only_undecodable_files_is_a_refusal_not_a_clean_report() {
+        let d = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(d.path().join("src")).expect("mkdir");
+        for name in ["x.rs", "y.rs"] {
+            let mut f = std::fs::File::create(d.path().join("src").join(name)).expect("create");
+            f.write_all(b"fn f() {}\n// TODO: \xff\xfe\n")
+                .expect("write");
+        }
+        let err = SATDDetector::new()
+            .analyze_directory_with_stats(d.path(), false)
+            .await
+            .expect_err(
+                "nothing in this tree was decoded; reporting `0 violations` \
+                 would be the exact defect #1035 names",
+            );
+        let msg = err.to_string();
+        assert!(
+            msg.to_lowercase().contains("satd"),
+            "the refusal must name the analysis it declined to perform: {msg}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod include_tests_must_not_empty_the_denominator {
+    //! REGRESSION (#1050 P9): `--include-tests` only WIDENS the scan, so it
+    //! cannot turn "1 source file, all skipped" into "no source files were
+    //! found". It did, for any tree with a directory named `book`, `dist`,
+    //! `build`, `node_modules`, `target` or `__pycache__` — because the flag
+    //! selected a second discovery implementation whose directory policy
+    //! differed from the default one's.
+    //!
+    //! The trigger is the DIRECTORY NAME, not the language: `foo/a.js`
+    //! analysed normally in both runs.
+    use super::*;
+
+    async fn discovered_under(root: &std::path::Path, include_tests: bool) -> usize {
+        let detector = SATDDetector::new();
+        detector
+            .discover_files(root, include_tests)
+            .await
+            .expect("discovery must not error on a readable tree")
+            .0
+            .len()
+    }
+
+    /// The fixture must be a GIT checkout, because that is the only place the
+    /// two walks differed: the default path asks `git ls-files`, which lists
+    /// `book/a.js`, while the flag's path used a filesystem walk that never
+    /// descended into `book/`. In a NON-git tree both fall back to the same
+    /// filesystem walk and both report 0 — the same denominator-vanishing
+    /// defect, but symmetric, so it cannot show a disagreement. That
+    /// non-git zero is recorded here rather than fixed: widening the
+    /// filesystem fallback changes what `analyze satd` reads on every non-git
+    /// tree, which is a separate measurement.
+    ///
+    /// RED CONTROL: restoring the `collect_files_including_tests` branch makes
+    /// the `true` case 0 while the `false` case stays 1 — the exact pair the
+    /// two error messages were built from.
+    #[tokio::test]
+    async fn a_widening_flag_cannot_shrink_the_population() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().to_path_buf();
+        std::fs::create_dir_all(root.join("book")).expect("book dir");
+        std::fs::write(root.join("book/a.js"), "function a(){ return 1; }\n").expect("js");
+        // `--template=` keeps the user's global hook template out of the
+        // fixture; no commit is needed, `--others` lists untracked files.
+        let init = std::process::Command::new("git")
+            .args(["init", "-q", "--template="])
+            .current_dir(&root)
+            .output()
+            .expect("git must be available to reproduce this");
+        assert!(init.status.success(), "git init failed: {init:?}");
+
+        let without = discovered_under(&root, false).await;
+        let with = discovered_under(&root, true).await;
+
+        assert_eq!(
+            without, 1,
+            "the default walk sees the file; that is the baseline the flag must not lose"
+        );
+        assert!(
+            with >= without,
+            "--include-tests only widens: it found {with} where the default found {without}"
+        );
+    }
+
+    /// COUNTER-TEST: the fix must not make the flag a no-op. A tree with a real
+    /// test file still discovers strictly MORE with the flag than without.
+    #[tokio::test]
+    async fn the_flag_still_widens_where_there_is_something_to_widen_to() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().to_path_buf();
+        std::fs::create_dir_all(root.join("src")).expect("src");
+        std::fs::create_dir_all(root.join("tests")).expect("tests");
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> i32 { 1 }\n").expect("lib");
+        std::fs::write(root.join("tests/it.rs"), "#[test] fn t() {}\n").expect("it");
+
+        let without = discovered_under(&root, false).await;
+        let with = discovered_under(&root, true).await;
+
+        assert_eq!(without, 1, "the test file is declined by default");
+        assert_eq!(with, 2, "…and reached by the flag");
+    }
+}
+
+#[cfg(test)]
+mod the_refusal_describes_the_run_that_produced_it {
+    //! Issue #1050 P9, second half. The refusal's remedy and its list of skip
+    //! reasons were fixed strings, so a run that had ALREADY passed
+    //! `--include-tests` was told, as its remedy, to pass `--include-tests` —
+    //! advice that cannot work — beside a reason list whose first entry
+    //! ("test") the flag in force had already ruled out.
+    //!
+    //! Advice that cannot work is the same defect class as #1045's "index is
+    //! stale, run `pmat query`" against a code path that never refreshes: a
+    //! sentence a reader will act on, and acting on it changes nothing.
+    use super::*;
+
+    fn refusal(include_tests: bool) -> String {
+        let error =
+            SATDDetector::nothing_measured(std::path::Path::new("/tmp/bookfix"), 1, include_tests);
+        error.to_string()
+    }
+
+    /// The half that regressed nothing: without the flag, the remedy is still
+    /// the one that works.
+    #[test]
+    fn the_default_run_is_told_about_the_flag_it_has_not_used() {
+        let msg = refusal(false);
+        assert!(msg.contains("pass --include-tests"), "{msg}");
+        assert!(msg.contains("all 1 source file(s)"), "{msg}");
+        assert!(msg.contains("test, fuzz"), "{msg}");
+    }
+
+    /// The fix: a run WITH the flag is never told to pass the flag, and is not
+    /// told that test-ness might be why its files were dropped.
+    #[test]
+    fn a_run_that_already_passed_the_flag_is_not_told_to_pass_it() {
+        let msg = refusal(true);
+        assert!(
+            !msg.contains("pass --include-tests"),
+            "the remedy names a flag that is already in force: {msg}"
+        );
+        assert!(
+            !msg.contains("test, fuzz"),
+            "test-ness cannot be a skip reason under --include-tests: {msg}"
+        );
+        assert!(msg.contains("--include-tests is already in force"), "{msg}");
+    }
+
+    /// The counter-test bounding the correction. Only the REMEDY and the reason
+    /// list may move: the denominator, and the sentence that stops a gate
+    /// reading this as a pass, are identical in both runs. #1050 P9's first
+    /// half was exactly a denominator that vanished when the flag was added.
+    #[test]
+    fn the_measurement_half_of_the_sentence_is_identical_either_way() {
+        for msg in [refusal(false), refusal(true)] {
+            assert!(msg.contains("all 1 source file(s)"), "{msg}");
+            assert!(msg.contains("no SATD measurement was taken"), "{msg}");
+            assert!(msg.contains("This is not a clean result"), "{msg}");
+            assert!(!msg.contains("no source files were found"), "{msg}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod census_has_a_denominator_tests {
+    //! Issue #1035, Cluster 1 — the two exclusions that were rendered as a
+    //! clean measurement, and the census that makes any future one legible.
+    //!
+    //! Both defects are instances of one root cause: **a failure to measure was
+    //! rendered as a passing measurement**. SATD reported findings with no
+    //! denominator, so `0 violations` was byte-identical whether a tree was read
+    //! in full and found clean or whether nothing in it was read at all.
+    //!
+    //! RED, on the build before this module existed, over the fixture below —
+    //! four markers planted outside `src/`, one of them reported:
+    //!
+    //! ```text
+    //! $ pmat analyze satd -p fx --format json
+    //! { "total_files": 2, "total_violations": 2,
+    //!   "files_not_read": { "total": 4, "tests": 1,
+    //!                       "examples_demo_fuzz_generated": 3, "too_large": 0 } }
+    //! ```
+    //!
+    //! The two markers in `examples/hello.rs` were absent from the answer and
+    //! present only inside a bucket of 3 that also held the vendored and the
+    //! generated file — a reader could not tell shipped code from a dependency.
+    //! `total_files: 2` is the count of files that HELD a violation, so there was
+    //! no denominator anywhere: 2 + 4 could not be checked against anything.
+    use super::*;
+
+    const MARKER: &str = "// TODO: a marker\n";
+
+    /// `src/lib.rs` (ordinary), `examples/hello.rs` (shipped code, two markers),
+    /// `vendor/dep.rs` and `src/schema.generated.rs` (must STAY excluded),
+    /// `tests/harness.rs` (excluded without `--include-tests`), and
+    /// `src/huge.rs`, one byte past [`MAX_FILE_BYTES`].
+    ///
+    /// The oversized file is sparse: its length is a metadata fact and the walk
+    /// declines it without reading a byte, so the fixture costs no disk.
+    fn fixture() -> tempfile::TempDir {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path();
+        for sub in ["src", "examples", "vendor", "tests"] {
+            std::fs::create_dir_all(root.join(sub)).expect("dir");
+        }
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"fx\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(root.join("src/lib.rs"), MARKER).expect("lib.rs");
+        std::fs::write(
+            root.join("examples/hello.rs"),
+            "// TODO: marker one in examples\n// FIXME: marker two in examples\n",
+        )
+        .expect("hello.rs");
+        std::fs::write(root.join("vendor/dep.rs"), MARKER).expect("dep.rs");
+        std::fs::write(root.join("src/schema.generated.rs"), MARKER).expect("generated");
+        std::fs::write(root.join("tests/harness.rs"), MARKER).expect("harness.rs");
+        let huge = std::fs::File::create(root.join("src/huge.rs")).expect("huge.rs");
+        huge.set_len(MAX_FILE_BYTES + 1).expect("size huge.rs");
+        tmp
+    }
+
+    async fn walk(root: &Path) -> (Vec<TechnicalDebt>, FileCensus) {
+        SATDDetector::new()
+            .analyze_directory_with_stats(root, false)
+            .await
+            .expect("the fixture has analysable files")
+    }
+
+    fn names(debts: &[TechnicalDebt]) -> Vec<String> {
+        debts.iter().map(|d| d.file.display().to_string()).collect()
+    }
+
+    /// DEFECT A. `examples/` is shipped, compiled, user-facing code: `cargo
+    /// build --examples` builds it and `cargo publish` ships it. A marker there
+    /// is debt like any other. The audits behind #1035 measured the cost of the
+    /// exclusion on pforge — 25 `.rs` files, 37% of the repository, invisible to
+    /// every SATD run, confirmed the same way on depyler, forjar and pepita.
+    #[tokio::test]
+    async fn markers_in_examples_are_reported_as_debt() {
+        let fx = fixture();
+        let (debts, _) = walk(fx.path()).await;
+
+        assert_eq!(
+            debts.len(),
+            3,
+            "one marker in src/ and two in examples/: {:?}",
+            names(&debts)
+        );
+        assert!(
+            names(&debts).iter().any(|f| f.contains("hello.rs")),
+            "the example's debt must be named: {:?}",
+            names(&debts)
+        );
+    }
+
+    /// COUNTER-TEST for defect A. The fix must not become "report everything as
+    /// debt". Code this project cannot fix in place stays excluded — and stays
+    /// COUNTED, which is the half that makes the exclusion legible rather than
+    /// silent.
+    #[tokio::test]
+    async fn vendored_and_generated_stay_excluded_and_are_counted_as_excluded() {
+        let fx = fixture();
+        let (debts, census) = walk(fx.path()).await;
+
+        let files = names(&debts);
+        assert!(
+            !files.iter().any(|f| f.contains("vendor")),
+            "a vendored dependency is not this project's debt: {files:?}"
+        );
+        assert!(
+            !files.iter().any(|f| f.contains(".generated")),
+            "generated output is not hand-written debt: {files:?}"
+        );
+        assert_eq!(
+            census.not_read.out_of_scope, 2,
+            "excluded is not the same as absent — both must be counted: {census:?}"
+        );
+        assert_eq!(
+            census.not_read.tests, 1,
+            "tests/harness.rs was found and declined: {census:?}"
+        );
+    }
+
+    /// DEFECT B. The size skip printed `Warning: Skipped: … (large file >500KB)`
+    /// to stderr and nothing at all to the JSON, and `--format json` and
+    /// `--output FILE` both discard stderr. A consumer reading the payload could
+    /// not tell "clean" from "not looked at".
+    #[tokio::test]
+    async fn the_size_skip_is_carried_in_the_census_not_only_on_stderr() {
+        let fx = fixture();
+        let (_, census) = walk(fx.path()).await;
+
+        assert_eq!(census.not_read.too_large, 1, "{census:?}");
+        let oversized = census
+            .oversized
+            .first()
+            .expect("a count alone cannot say WHICH file was not looked at");
+        assert!(oversized.path.contains("huge.rs"), "{oversized:?}");
+        assert_eq!(oversized.limit_bytes, MAX_FILE_BYTES);
+        assert!(
+            oversized.bytes > oversized.limit_bytes,
+            "size and limit are both stated, so the rule is visible: {oversized:?}"
+        );
+    }
+
+    /// DEFECT B, second half: ONE size rule. `analyze satd` read anything under
+    /// 10 MB while the walk behind `quality-gate --checks satd` dropped anything
+    /// over 512,000 bytes, so the two commands reported different numbers for
+    /// the same tree and neither said why. An 800 KB file with a marker is read
+    /// by BOTH now.
+    #[tokio::test]
+    async fn both_walks_use_one_size_rule() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("src")).expect("src");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"fx\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("manifest");
+        let mut big = String::from("// TODO: a marker inside an 800 KB file\n");
+        while big.len() < 800_000 {
+            big.push_str("// filler\n");
+        }
+        std::fs::write(root.join("src/big.rs"), big).expect("big.rs");
+
+        let detector = SATDDetector::new();
+        let (walk_debts, _) = detector
+            .analyze_directory_with_stats(root, false)
+            .await
+            .expect("analysable");
+        let project = detector
+            .analyze_project(root, false)
+            .await
+            .expect("analysable");
+
+        assert_eq!(walk_debts.len(), 1, "the 800 KB file is read");
+        assert_eq!(
+            project.items.len(),
+            walk_debts.len(),
+            "the two walks must measure the same population: {:?} vs {:?}",
+            project.items.len(),
+            walk_debts.len()
+        );
+        assert_eq!(
+            project.census.not_read.too_large, 0,
+            "800 KB is an ordinary source file, not a pathological one: {:?}",
+            project.census
+        );
+    }
+
+    /// THE POINT OF THE ISSUE. The buckets must PARTITION: a census that does
+    /// not add up is the same defect in a new place.
+    #[tokio::test]
+    async fn the_census_partitions_the_files_it_walked() {
+        let fx = fixture();
+        let (_, census) = walk(fx.path()).await;
+
+        assert_eq!(
+            census.discovered, 6,
+            "six .rs files were walked: {census:?}"
+        );
+        assert_eq!(
+            census.analyzed, 2,
+            "src/lib.rs and examples/hello.rs: {census:?}"
+        );
+        assert_eq!(census.not_read.total(), 4, "{census:?}");
+        assert!(
+            census.partitions(),
+            "analysed + not read must equal walked: {census:?}"
+        );
+        assert_eq!(census.unaccounted(), 0, "{census:?}");
+    }
+
+    /// COUNTER-TEST for the census. A clean tree must report zero findings over
+    /// a NON-ZERO denominator. Without this half, "everything was skipped" and
+    /// "nothing was found" go back to being the same output, which is the defect
+    /// rather than the fix.
+    #[tokio::test]
+    async fn a_clean_tree_reports_zero_over_a_nonzero_denominator() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path();
+        std::fs::create_dir_all(root.join("src")).expect("src");
+        std::fs::create_dir_all(root.join("examples")).expect("examples");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"clean\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::write(root.join("src/lib.rs"), "pub fn a() -> u32 { 1 }\n").expect("lib.rs");
+        std::fs::write(root.join("examples/hello.rs"), "fn main() {}\n").expect("hello.rs");
+
+        let (debts, census) = walk(root).await;
+
+        assert!(debts.is_empty(), "the tree really is clean: {debts:?}");
+        assert_eq!(census.discovered, 2, "{census:?}");
+        assert_eq!(
+            census.analyzed, 2,
+            "the zero above was measured over two files, not over nothing: {census:?}"
+        );
+        assert_eq!(census.not_read.total(), 0, "{census:?}");
+        assert!(census.partitions(), "{census:?}");
+
+        let note = census.note().expect("a clean tree still states its scope");
+        assert!(note.contains("analysed 2 of 2"), "{note}");
+        assert!(
+            !note.contains("not read"),
+            "an empty bucket is noise, not disclosure: {note}"
+        );
+    }
+
+    /// The census must survive `--include-tests`, which moves a file from one
+    /// side of the partition to the other and must not change the total.
+    #[tokio::test]
+    async fn include_tests_moves_a_file_across_the_partition_without_changing_it() {
+        let fx = fixture();
+        let detector = SATDDetector::new();
+        let (_, without) = detector
+            .analyze_directory_with_stats(fx.path(), false)
+            .await
+            .expect("analysable");
+        let (_, with) = detector
+            .analyze_directory_with_stats(fx.path(), true)
+            .await
+            .expect("analysable");
+
+        assert_eq!(
+            without.discovered, with.discovered,
+            "a flag that only widens the scan must not change the denominator"
+        );
+        assert_eq!(without.not_read.tests, 1);
+        assert_eq!(with.not_read.tests, 0);
+        assert_eq!(with.analyzed, without.analyzed + 1);
+        assert!(without.partitions() && with.partitions(), "{without:?}");
     }
 }

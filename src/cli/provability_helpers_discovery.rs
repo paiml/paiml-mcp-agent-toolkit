@@ -50,6 +50,14 @@ pub async fn discover_project_functions(project_path: &Path) -> Result<Vec<Funct
     }
 
     crate::status_eprintln!("\u{1f4ca} Found {file_count} source files");
+
+    // #1015: zero discovered files produced "Total functions analyzed: 0 /
+    // Average provability score: 0.0%" with exit 0. 0.0% reads as "nothing in
+    // this tree is provable" when the truth is that nothing was scored — a mean
+    // over an empty set. Both `analyze provability` handlers route through this
+    // discovery, so the refusal lives here and neither can drift from it.
+    crate::cli::ensure_source_files_were_analyzed("provability", project_path, file_count)?;
+
     Ok(function_ids)
 }
 

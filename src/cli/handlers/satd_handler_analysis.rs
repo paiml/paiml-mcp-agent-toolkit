@@ -188,7 +188,7 @@ fn recompute_totals(result: &mut SatdAnalysisResult) {
     // declined to read, which no amount of post-filtering changes, and dropping
     // it here would put back the sentence #923 was about: a count with no
     // denominator, identical whether the tree was clean or barely read.
-    let scope = result.skipped.note().map(|n| format!(" ({n})")).unwrap_or_default();
+    let scope = result.census.note().map(|n| format!(" ({n})")).unwrap_or_default();
     result.summary = format!(
         "Found {} SATD violations in {} files{scope}",
         result.violations.len(),
@@ -274,7 +274,7 @@ mod fail_on_violation_tests {
 
     fn result_with(n: usize) -> SatdAnalysisResult {
         SatdAnalysisResult {
-            skipped: Default::default(),
+            census: Default::default(),
             total_files: usize::from(n > 0),
             violations: (0..n)
                 .map(|i| SatdViolation {

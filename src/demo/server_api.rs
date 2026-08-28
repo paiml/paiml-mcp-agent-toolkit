@@ -206,7 +206,7 @@ pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<B
         ];
     } else {
         // Sort by complexity descending
-        hotspots.sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
+        hotspots.sort_unstable_by_key(|h| std::cmp::Reverse(h.complexity));
 
         // Assign ranks and take top 10
         for (idx, entry) in hotspots.iter_mut().enumerate() {

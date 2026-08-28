@@ -64,9 +64,23 @@ pub async fn handle_analyze_defect_prediction(config: DefectPredictionConfig) ->
 
     // Perform analysis using facade
     let result = facade.analyze_project(request).await?;
+    let files_analyzed = result.total_files_analyzed;
+    let project_path = config.project_path.clone();
 
     // Format and output results
     output_results(result, config.format, config.output).await?;
+
+    // Report first, then REFUSE. Over an empty directory this printed
+    // "Analyzed 0 of 0 discovered files: 0 high risk, 0 medium risk, 0 low
+    // risk" and exited 0 — a risk distribution over an empty population, which
+    // is not a measurement, handed to CI as a pass. The eleven analyzers that
+    // already call this helper refuse the same case; this one was written
+    // before it existed.
+    crate::cli::ensure_source_files_were_analyzed(
+        "defect-prediction",
+        &project_path,
+        files_analyzed,
+    )?;
 
     {
         use crate::cli::colors as c;
@@ -590,5 +604,66 @@ mod tests {
             data_line.ends_with("not measured"),
             "csv duplication column must be 'not measured', got: {data_line}"
         );
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod empty_population_tests {
+    use super::*;
+
+    fn predict_over(path: &std::path::Path) -> DefectPredictionConfig {
+        DefectPredictionConfig {
+            project_path: path.to_path_buf(),
+            confidence_threshold: 0.5,
+            min_lines: 1,
+            include_low_confidence: true,
+            format: DefectPredictionOutputFormat::Summary,
+            high_risk_only: false,
+            include_recommendations: false,
+            include: None,
+            exclude: None,
+            output: None,
+            perf: false,
+            top_files: 10,
+        }
+    }
+
+    /// A risk distribution over an empty population is not a measurement.
+    ///
+    /// Over a directory with nothing it can read, this printed "Analyzed 0 of 0
+    /// discovered files: 0 high risk, 0 medium risk, 0 low risk" and exited 0 —
+    /// handed to CI as a pass. Eleven analyzers already refuse this case
+    /// through `ensure_source_files_were_analyzed`; this one predates it.
+    #[tokio::test]
+    async fn a_prediction_over_zero_files_does_not_exit_zero() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("legacy.cbl"), "IDENTIFICATION DIVISION.\n")
+            .expect("write cobol");
+
+        let err = handle_analyze_defect_prediction(predict_over(dir.path()))
+            .await
+            .expect_err("zero files analysed must not report success");
+        assert!(
+            err.to_string().to_lowercase().contains("defect-prediction"),
+            "the refusal must name the measurement: {err}"
+        );
+    }
+
+    /// The counter-test: a tree it CAN read still succeeds, so refusing
+    /// unconditionally cannot pass the test above.
+    #[tokio::test]
+    async fn a_prediction_over_real_files_still_succeeds() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::create_dir_all(dir.path().join("src")).expect("mkdir");
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "//! Tiny.\n\n/// Adds.\npub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n",
+        )
+        .expect("write rs");
+
+        handle_analyze_defect_prediction(predict_over(dir.path()))
+            .await
+            .expect("a readable tree must still succeed");
     }
 }

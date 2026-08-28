@@ -240,6 +240,20 @@ mod tests_harness {
         assert!(!file_has_pub_fn("// pub fn f() {}"));
     }
 
+    /// Force the `PUB_FN_RE` `LazyLock` so a malformed edit to the regex
+    /// literal fails here rather than panicking mid-`comply check`. The
+    /// pattern is a compile-time constant, so success at test time proves
+    /// success at run time — which is what lets `file_has_pub_fn` keep an
+    /// infallible signature instead of reporting "no pub fn" on a broken
+    /// regex, a false Pass.
+    #[test]
+    fn pub_fn_regex_compiles() {
+        // Any call dereferences the lazy cell; the assertion additionally
+        // pins that a compiled regex actually matches, so the test cannot be
+        // satisfied by a regex that compiles to something inert.
+        assert!(file_has_pub_fn("pub fn forces_lazy_lock() {}"));
+    }
+
     // ── CB-1639 Kani harness macro reference tests ──────────────────────
 
     /// Materialise a ticket at `.pmat-work/<id>/contract.json` with a

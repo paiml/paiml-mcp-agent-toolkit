@@ -66,6 +66,12 @@ impl CommandDispatcher {
             Commands::Agy(cmd) => {
                 handlers::handle_agy_command(&cmd, std::path::Path::new("")).await
             }
+            Commands::Init {
+                target,
+                path,
+                force,
+                format,
+            } => handlers::init_handler::handle_init(target, &path, force, format),
             cmd @ Commands::Query { .. } => Self::route_query_command(cmd).await,
             Commands::Sql {
                 query,
@@ -75,35 +81,21 @@ impl CommandDispatcher {
                 examples,
                 path,
             } => {
-                use crate::cli::handlers::sql_handler;
+                use crate::cli::handlers::sql_handler::{self, SqlAction};
 
-                if examples {
-                    sql_handler::handle_examples();
-                    return Ok(());
+                // The five-way decision lives in `sql_handler::plan`, which is
+                // pure and tested; this arm only supplies the database.
+                // `--examples` is dispatched first because it must not need
+                // one — `find_db_path` fails in a project with no index.
+                match sql_handler::plan(query.as_deref(), &format, schema, examples) {
+                    SqlAction::Examples => {
+                        sql_handler::handle_examples();
+                        Ok(())
+                    }
+                    action => {
+                        sql_handler::run(action, &sql_handler::find_db_path(&path, workspace)?)
+                    }
                 }
-
-                let db_path = sql_handler::find_db_path(&path, workspace)?;
-
-                if schema {
-                    return sql_handler::handle_schema(&db_path);
-                }
-
-                let sql = query.as_deref().unwrap_or("grade-dist");
-
-                // Support `.schema` and `.tables` dot-commands
-                if sql.eq_ignore_ascii_case(".schema") {
-                    return sql_handler::handle_schema(&db_path);
-                }
-                if sql.eq_ignore_ascii_case(".tables") {
-                    return sql_handler::handle_sql(
-                        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
-                        sql_handler::SqlOutputFormat::Table,
-                        &db_path,
-                    );
-                }
-
-                let fmt = sql_handler::SqlOutputFormat::from_str_opt(&format);
-                sql_handler::handle_sql(sql, fmt, &db_path)
             }
             Commands::Analyze(analyze_cmd) => Self::execute_analyze_command(analyze_cmd).await,
             Commands::Qdd(qdd_cmd) => Self::execute_qdd_command(qdd_cmd).await,

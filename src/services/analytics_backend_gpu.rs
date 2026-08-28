@@ -147,7 +147,7 @@ impl GpuDevice {
 
         // Validate bandwidth is within realistic range
         // Note: wgpu overhead can dominate for small transfers, so we use conservative limits
-        if bandwidth_gbps < 0.1 || bandwidth_gbps > 35.0 {
+        if !(0.1..=35.0).contains(&bandwidth_gbps) {
             bail!(
                 "PCIe calibration out of range: {:.2} GB/s (expected 0.1-35 GB/s). \
                  This may indicate severe driver issues or GPU unavailability.",

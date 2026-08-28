@@ -511,6 +511,103 @@ mod tests {
     }
 }
 
+/// What the analyzer decided about the analysed target being a LIBRARY.
+///
+/// A library's exported API is un-called *by construction* — its callers are
+/// outside the tree — so an engine whose only rule is "nothing calls it" reports
+/// the whole API as dead. Which way that question was answered decides which
+/// findings exist, so it is published beside them rather than left as an
+/// invisible default.
+///
+/// The `undetermined` verdict is the one that matters most: it means exported
+/// items were NOT kept, so an un-called export IS in the list below, and the
+/// reader has to supply the knowledge the analyzer lacked. Naming that gap is
+/// the point.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LibraryTargetReport {
+    /// `"library"`, `"not-a-library"` or `"undetermined"`.
+    pub verdict: String,
+    /// The evidence behind the verdict, or — for `"undetermined"` — what could
+    /// not be decided and why.
+    pub detail: String,
+    /// How many exported items this analyzer seeded as reachability roots.
+    ///
+    /// `None` when the analyzer did not make that decision itself: the cargo
+    /// engine defers to rustc's own dead-code pass, which already treats a
+    /// library's public API as reachable. A `0` there would read as "it looked
+    /// and found none".
+    pub exported_roots: Option<usize>,
+}
+
+/// Verdict for a compiler-lint layer that ran and reported.
+pub const COMPILER_SCAN_FULL: &str = "full";
+/// Verdict for a run whose compiler-lint layer was refused, leaving only the
+/// layers that need no compiler.
+pub const COMPILER_SCAN_REDUCED: &str = "reduced";
+/// Machine-readable cause for [`COMPILER_SCAN_FULL`].
+pub const COMPILER_SCAN_REASON_OK: &str = "compiler-lint-ran";
+/// Machine-readable cause for a scan given up because running it would have
+/// written a `Cargo.lock` into the analysed repository.
+pub const COMPILER_SCAN_REASON_LOCKFILE: &str = "lockfile-would-be-written";
+/// Machine-readable cause for a scan suppressed by `PMAT_DEAD_CODE_SKIP`.
+pub const COMPILER_SCAN_REASON_ENV_SKIP: &str = "suppressed-by-env";
+
+/// Whether the COMPILER-LINT layer of the scan actually ran.
+///
+/// Rust dead code is found by two layers: a source scan for explicit
+/// `allow(dead_code)` admissions, and rustc's own dead-code lint driven by
+/// `cargo check`. Only the second one finds code nobody admitted was dead — the
+/// overwhelming majority of real findings — so a run without it produces the
+/// same report SHAPE over a far smaller search, and `0 dead items` then means
+/// "nothing was admitted", not "nothing is dead".
+///
+/// That difference is invisible in the numbers, so it is published as a field.
+/// This is the same disclosure contract as [`LibraryTargetReport`]: name what
+/// the analyzer could not do and why, rather than let a silent default stand in
+/// for a measurement.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompilerScanReport {
+    /// [`COMPILER_SCAN_FULL`] or [`COMPILER_SCAN_REDUCED`].
+    pub verdict: String,
+    /// A stable token for the cause, so a consumer never has to match on prose.
+    /// One of [`COMPILER_SCAN_REASON_OK`], [`COMPILER_SCAN_REASON_LOCKFILE`],
+    /// [`COMPILER_SCAN_REASON_ENV_SKIP`].
+    pub reason: String,
+    /// The evidence: for a reduced scan, what was refused and what the reader
+    /// can do about it.
+    pub detail: String,
+}
+
+impl CompilerScanReport {
+    /// The compiler layer ran; the report covers everything both layers see.
+    #[must_use]
+    pub fn full() -> Self {
+        Self {
+            verdict: COMPILER_SCAN_FULL.to_string(),
+            reason: COMPILER_SCAN_REASON_OK.to_string(),
+            detail: "cargo check ran against the existing lockfile; rustc's dead-code lint \
+                     contributed to these findings"
+                .to_string(),
+        }
+    }
+
+    /// The compiler layer did not run. `detail` must say what stopped it.
+    #[must_use]
+    pub fn reduced(reason: &str, detail: String) -> Self {
+        Self {
+            verdict: COMPILER_SCAN_REDUCED.to_string(),
+            reason: reason.to_string(),
+            detail,
+        }
+    }
+
+    /// Did the compiler layer contribute to this report?
+    #[must_use]
+    pub fn is_full(&self) -> bool {
+        self.verdict == COMPILER_SCAN_FULL
+    }
+}
+
 // Additional type for handler compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// Result of dead code operation.
@@ -530,6 +627,18 @@ pub struct DeadCodeResult {
     /// True when `--top-files` cut the list short.
     #[serde(default)]
     pub files_truncated: bool,
+    /// Whether the analyzer decided this target was a library, and hence
+    /// whether its exported items were kept as entry points rather than listed
+    /// as dead. See [`LibraryTargetReport`].
+    #[serde(default)]
+    pub library_target: Option<LibraryTargetReport>,
+    /// Whether rustc's dead-code lint contributed to these findings, and — when
+    /// it did not — what stopped it. See [`CompilerScanReport`].
+    ///
+    /// `None` only for engines that have no compiler layer to report on (the
+    /// multi-language analyzer), never as a stand-in for "it ran".
+    #[serde(default)]
+    pub compiler_scan: Option<CompilerScanReport>,
 }
 
 impl DeadCodeResult {

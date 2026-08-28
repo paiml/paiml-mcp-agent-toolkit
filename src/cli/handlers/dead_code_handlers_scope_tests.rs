@@ -71,6 +71,8 @@ fn narrowed_result() -> DeadCodeResult {
         analyzed_files: 40,
         files_with_dead_code_found: 3,
         files_truncated: false,
+        library_target: None,
+        compiler_scan: None,
     }
 }
 
@@ -224,6 +226,37 @@ fn the_omission_reason_names_the_filters_when_filters_ran() {
         line.contains("removed by --include/--exclude"),
         "omission reason blames the wrong knob: {line:?}"
     );
+}
+
+/// The omission line used to report only how many FILES were cut, so the "Dead
+/// functions: 0" printed below it read as a measurement of the project rather
+/// than of what survived the filters. It names what went with them.
+#[test]
+fn the_omission_line_names_what_was_cut_not_just_how_many_files() {
+    let rendered = render(
+        &narrowed_result(),
+        super::DeadCodeReportScope {
+            omitted: super::DeadCodeFindingTotals {
+                files: 2,
+                dead_lines: 9,
+                dead_functions: 1,
+                dead_classes: 2,
+                dead_modules: 0,
+                unreachable_blocks: 0,
+            },
+            ..super::DeadCodeReportScope::default()
+        },
+    );
+    let line = rendered
+        .lines()
+        .find(|l| l.contains("Files found with dead code"))
+        .expect("the omission line must be present");
+    assert!(
+        line.contains("1 dead function,") && line.contains("2 dead classes"),
+        "the cut items are not named: {line:?}"
+    );
+    // Categories with nothing in them are not invented.
+    assert!(!line.contains("dead module"), "{line:?}");
 }
 
 #[test]

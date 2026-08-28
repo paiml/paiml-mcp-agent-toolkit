@@ -21,6 +21,15 @@
 
 set -euo pipefail
 
+# measure() reads $EPOCHREALTIME, whose decimal separator follows LC_NUMERIC;
+# bc needs a '.', so pin it.
+export LC_NUMERIC=C
+
+if [ -z "${EPOCHREALTIME:-}" ]; then
+    echo "This suite needs bash >= 5 (EPOCHREALTIME) for timing." >&2
+    exit 1
+fi
+
 PMAT="pmat"
 PROJECT="/home/noah/src/paiml-mcp-agent-toolkit"
 cd "$PROJECT"
@@ -44,13 +53,23 @@ fail() {
     echo "  FAIL  $name: $reason"
 }
 
+# Returns wall-clock seconds as a float. Takes the command as an argv vector
+# (measure cmd arg...), not as one string to re-parse: `eval "$@"` re-ran the
+# caller's quoting through the parser, so every argument containing a space,
+# quote or backslash had to be double-escaped at each call site.
+#
+# Timing comes from bash's $EPOCHREALTIME rather than from two forked date
+# calls: each fork cost ~1-3ms, and the teardown of the first subshell landed
+# inside the interval being measured, biasing every reading upward against
+# thresholds as tight as 750ms.
 measure() {
-    # Returns wall-clock seconds as float
     local start end
-    start=$(date +%s%N)
-    eval "$@" > /dev/null 2>&1 || true
-    end=$(date +%s%N)
-    echo "scale=3; ($end - $start) / 1000000000" | bc
+    start=$EPOCHREALTIME
+    "$@" > /dev/null 2>&1 || true
+    end=$EPOCHREALTIME
+    # "/ 1" forces bc to apply scale, keeping the historic 3-decimal format the
+    # callers feed to `bc | cut -d. -f1`.
+    echo "scale=3; ($end - $start) / 1" | bc
 }
 
 echo "=== pmat query Performance Falsification Suite ==="
@@ -78,7 +97,7 @@ fi
 
 # ─── G2: Semantic query total < 750ms ──────────────────────────────────
 echo "── G2: Semantic query total < 750ms ──"
-TOTAL_SEC=$(measure "$PMAT query 'error handling' --limit 5 --quiet")
+TOTAL_SEC=$(measure "$PMAT" query "error handling" --limit 5 --quiet)
 TOTAL_MS=$(echo "$TOTAL_SEC * 1000" | bc | cut -d. -f1)
 if [ "$TOTAL_MS" -lt 750 ]; then
     pass "G2: semantic total = ${TOTAL_MS}ms < 750ms"
@@ -87,7 +106,7 @@ else
 fi
 
 # Run a second query to verify consistency
-TOTAL_SEC2=$(measure "$PMAT query 'dispatch request' --limit 10 --quiet")
+TOTAL_SEC2=$(measure "$PMAT" query "dispatch request" --limit 10 --quiet)
 TOTAL_MS2=$(echo "$TOTAL_SEC2 * 1000" | bc | cut -d. -f1)
 if [ "$TOTAL_MS2" -lt 750 ]; then
     pass "G2b: second semantic = ${TOTAL_MS2}ms < 750ms"
@@ -292,7 +311,7 @@ fi
 
 # ─── G16: Regex timing (source pre-load adds overhead but < 1s total) ─
 echo "── G16: Regex total < 1000ms ──"
-REGEX_SEC=$(measure "$PMAT query --regex 'fn\\s+test_\\w+' --limit 5 --quiet")
+REGEX_SEC=$(measure "$PMAT" query --regex 'fn\s+test_\w+' --limit 5 --quiet)
 REGEX_MS=$(echo "$REGEX_SEC * 1000" | bc | cut -d. -f1)
 if [ "$REGEX_MS" -lt 1000 ]; then
     pass "G16: regex total = ${REGEX_MS}ms < 1000ms"
@@ -302,7 +321,7 @@ fi
 
 # ─── G17: Literal timing (source pre-load adds overhead but < 1s total) ─
 echo "── G17: Literal total < 1000ms ──"
-LIT_SEC=$(measure "$PMAT query --literal '.unwrap()' --limit 5 --quiet")
+LIT_SEC=$(measure "$PMAT" query --literal '.unwrap()' --limit 5 --quiet)
 LIT_MS=$(echo "$LIT_SEC * 1000" | bc | cut -d. -f1)
 if [ "$LIT_MS" -lt 1000 ]; then
     pass "G17: literal total = ${LIT_MS}ms < 1000ms"
@@ -361,7 +380,7 @@ fi
 
 # ─── G22: Full enrichment combo ──────────────────────────────────────
 echo "── G22: Full enrichment combo ──"
-FULL_SEC=$(measure "$PMAT query 'dispatch' --churn --duplicates --entropy --faults -G --limit 3 --quiet")
+FULL_SEC=$(measure "$PMAT" query dispatch --churn --duplicates --entropy --faults -G --limit 3 --quiet)
 FULL_MS=$(echo "$FULL_SEC * 1000" | bc | cut -d. -f1)
 if [ "$FULL_MS" -lt 5000 ]; then
     pass "G22: full enrichment combo = ${FULL_MS}ms < 5000ms"

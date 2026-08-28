@@ -30,6 +30,7 @@ impl GitHookManager {
 
         let hook_content = r#"#!/usr/bin/env bash
 # PMAT Quality Gate Pre-Commit Hook
+# auto-managed by PMAT — DO NOT EDIT
 
 set -e
 
@@ -96,6 +97,7 @@ echo "✅ All quality gates passed!"
 
         let hook_content = r#"#!/usr/bin/env bash
 # PMAT Commit Message Quality Hook
+# auto-managed by PMAT — DO NOT EDIT
 
 COMMIT_MSG_FILE=$1
 COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
@@ -169,8 +171,10 @@ else
     FAILED=1
 fi
 
-# Build/clippy/test are intentionally NOT run here — they belong in CI
-# so `git push` stays O(1). Pre-push is for local sanity (format only).
+# Clippy is NOT re-run here: PMAT-630 moved it into the pre-commit hook, where
+# it is content-addressed and costs ~0.3s on an already-proven tree. Every commit
+# being pushed has therefore already been linted with `ci / lint`'s exact flags.
+# Build and test still belong to CI, so `git push` stays O(1).
 
 if [ "$FAILED" -ne 0 ]; then
     echo ""

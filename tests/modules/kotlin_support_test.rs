@@ -1,4 +1,14 @@
 #![cfg(feature = "kotlin-ast")]
+//
+// NAMES ARE PACKAGE-QUALIFIED. `KotlinAstVisitor::get_qualified_name` emits
+// `<package>::<name>` whenever a `package` declaration is present, so a fixture
+// that opens with `package com.example.demo` yields `com.example.demo::Person`,
+// not `Person`. These assertions were written against unqualified names and had
+// been failing ever since qualification landed — invisibly, because CI runs
+// `cargo test --lib` and never compiles this target.
+//
+// An interface is an `AstItem::Trait`, not a `Struct`; the interface test
+// asserted `Struct` and so could not have passed under any naming scheme.
 
 use pmat::services::ast_strategies::{AstStrategy, KotlinAstStrategy};
 use pmat::services::file_classifier::FileClassifier;
@@ -33,12 +43,12 @@ class Person(val name: String, var age: Int) {
 
     // Check that we found the class and function
     let class_found = context.items.iter().any(|item| {
-        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Person")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "com.example.demo::Person")
     });
     assert!(class_found, "Should find Person class");
 
     let function_found = context.items.iter().any(|item| {
-        matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "greet")
+        matches!(item, pmat::services::context::AstItem::Function { name, .. } if name == "com.example.demo::greet")
     });
     assert!(function_found, "Should find greet function");
 }
@@ -79,12 +89,12 @@ class Car : Vehicle {
 
     // Check that we found the interface and class
     let interface_found = context.items.iter().any(|item| {
-        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Vehicle")
+        matches!(item, pmat::services::context::AstItem::Trait { name, .. } if name == "com.example.demo::Vehicle")
     });
     assert!(interface_found, "Should find Vehicle interface");
 
     let class_found = context.items.iter().any(|item| {
-        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "Car")
+        matches!(item, pmat::services::context::AstItem::Struct { name, .. } if name == "com.example.demo::Car")
     });
     assert!(class_found, "Should find Car class");
 }

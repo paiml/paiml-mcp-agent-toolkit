@@ -13,7 +13,7 @@ mod tests {
     #[test]
     fn test_format_summary() {
         let result = SatdAnalysisResult {
-            skipped: Default::default(),
+            census: Default::default(),
             total_files: 10,
             violations: vec![SatdViolation {
                 file_path: "test.rs".to_string(),
@@ -43,7 +43,7 @@ mod tests {
 
     fn result_with_all_severities() -> SatdAnalysisResult {
         SatdAnalysisResult {
-            skipped: Default::default(),
+            census: Default::default(),
             total_files: 4,
             violations: vec![
                 make_violation(FacadeSeverity::Critical, "FIXME"),
@@ -57,7 +57,7 @@ mod tests {
 
     fn empty_result() -> SatdAnalysisResult {
         SatdAnalysisResult {
-            skipped: Default::default(),
+            census: Default::default(),
             total_files: 0,
             violations: vec![],
             summary: "Empty".to_string(),

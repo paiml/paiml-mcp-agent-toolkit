@@ -174,13 +174,37 @@ fn test_performance_benchmark_evidence() {
 
     let evidence = gatherer.gather_evidence(&claim, &context);
 
+    // Absent benchmark data is reported as NotMeasured, not as a
+    // BenchmarkResults row that fails the claim.
+    //
+    // This assertion used to look for `EvidenceSource::BenchmarkResults` with
+    // `supports_claim: false` and details "No benchmark data" — the behaviour
+    // that made red-team report EVERY Performance claim in every repository as
+    // a hallucination, `perf: 0% faster` included, in trees holding ten
+    // benchmark files. `EvidenceSource::NotMeasured` was added because absence
+    // had no representation; missing data contradicts nothing. The test was
+    // pinning the defect.
     let benchmark_evidence = evidence
         .iter()
-        .find(|e| e.source == EvidenceSource::BenchmarkResults)
-        .expect("Benchmark evidence should exist");
+        .find(|e| e.source == EvidenceSource::NotMeasured)
+        .expect("an unread benchmark must still be REPORTED, as NotMeasured");
 
-    assert!(!benchmark_evidence.supports_claim); // No data = cannot verify
-    assert!(benchmark_evidence.details.contains("No benchmark data"));
+    // Not support: an unread artefact certifies nothing.
+    assert!(!benchmark_evidence.supports_claim);
+    // Not a contradiction either, which is the whole point of the variant.
+    assert_eq!(benchmark_evidence.confidence, 0.0);
+    assert!(
+        benchmark_evidence.details.contains("NOT MEASURED"),
+        "the row must say it was not measured, got: {}",
+        benchmark_evidence.details
+    );
+    // And no BenchmarkResults row may be fabricated from data nobody read.
+    assert!(
+        !evidence
+            .iter()
+            .any(|e| e.source == EvidenceSource::BenchmarkResults),
+        "no benchmark was read, so no BenchmarkResults evidence may exist"
+    );
 }
 
 // RED Test 9: Bug fix verification via issue tracker

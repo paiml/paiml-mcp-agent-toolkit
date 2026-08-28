@@ -194,9 +194,9 @@ pub(crate) fn write_json_status(
     value: &serde_json::Value,
 ) -> std::io::Result<()> {
     let path = project_path.join(relative);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
+    // #1070: `.pmat-metrics/` is created with its own ignore rule, so a verdict
+    // written into a consumer repo does not dirty that repo's git status.
+    crate::utils::pmat_cache_dir::ensure_parent_dir(&path)?;
     std::fs::write(path, serde_json::to_string_pretty(value)?)
 }
 

@@ -133,12 +133,12 @@ mod ruchy_unit_tests {
     #[test]
     fn test_ruchy_token_literals() {
         let int_token = RuchyToken::Integer(42);
-        let float_token = RuchyToken::Float(3.14);
+        let float_token = RuchyToken::Float(2.75);
         let string_token = RuchyToken::String("hello".to_string());
         let bool_token = RuchyToken::Bool(true);
 
         assert!(matches!(int_token, RuchyToken::Integer(42)));
-        assert!(matches!(float_token, RuchyToken::Float(f) if (f - 3.14).abs() < 0.001));
+        assert!(matches!(float_token, RuchyToken::Float(f) if (f - 2.75).abs() < 0.001));
         assert!(matches!(string_token, RuchyToken::String(s) if s == "hello"));
         assert!(matches!(bool_token, RuchyToken::Bool(true)));
     }
@@ -531,10 +531,10 @@ mod ruchy_unit_tests {
 
     #[test]
     fn test_lexer_numbers() {
-        let mut lexer = RuchyLexer::new("42 3.14 0 -5".to_string());
+        let mut lexer = RuchyLexer::new("42 2.75 0 -5".to_string());
 
         assert!(matches!(lexer.next_token(), RuchyToken::Integer(42)));
-        assert!(matches!(lexer.next_token(), RuchyToken::Float(f) if (f - 3.14).abs() < 0.001));
+        assert!(matches!(lexer.next_token(), RuchyToken::Float(f) if (f - 2.75).abs() < 0.001));
         assert!(matches!(lexer.next_token(), RuchyToken::Integer(0)));
     }
 

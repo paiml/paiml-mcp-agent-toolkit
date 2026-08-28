@@ -129,6 +129,7 @@ pub mod agents_md; // AGENTS.md integration for AI agent guidance
 pub mod ast; // Unified AST module for all language parsing
 #[cfg(feature = "standard-deps")]
 pub mod cli;
+pub mod cli_exit;
 #[cfg(feature = "standard-deps")]
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
                    // Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
@@ -635,3 +636,30 @@ mod lib_unit_tests {
 #[allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 #[path = "../build_support.rs"]
 mod build_support;
+
+// PMAT-630 (#1034 EV-4): the mutation-on-diff gate is a shell script, for the
+// same reason `build_support` is compiled here — the thing CI runs has to be the
+// thing that is tested. Registering the module in `lib.rs` rather than adding a
+// file under `tests/` is not a style choice: `autotests = false`
+// (`Cargo.toml:30`) means an unregistered test file is silently never compiled,
+// and a mutation gate whose own tests do not run would be the joke it exists to
+// prevent. `cargo test --lib -- mutation_diff_gate` lists them.
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod mutation_diff_gate_tests;
+
+// #1023: the `broken-tests` quarantine census. Registered here for the same
+// reason as the two modules above — `autotests = false`, so an unregistered
+// test file is silently never compiled, and a census of unrun tests that does
+// not itself run would be self-refuting. `cargo test --lib -- quarantine`.
+#[cfg(test)]
+mod broken_tests_quarantine_tests;
+
+// #1075: the lockfile dependency policy that keeps thrift (GHSA-2f9f-gq7v-9h6m)
+// out and the aprender/arrow stack at one version. Registered here for the same
+// reason as the three modules above — `autotests = false`, so an unregistered
+// test file is silently never compiled, and a supply-chain assertion that never
+// runs reads as a guarantee while providing none.
+// `cargo test --lib -- dependency_policy`.
+#[cfg(test)]
+mod dependency_policy_tests;

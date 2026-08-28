@@ -176,6 +176,7 @@ TOTAL   241150  203105  15.78%  17533  14596  16.75%  173884  145810  16.15%  0 
                 mutation_threshold: 80.0,
                 focus_patterns: vec!["*.rs".to_string()],
                 exclude_patterns: vec!["**/target/**".to_string()],
+                max_targets: 10,
             };
 
             let cloned = config.clone();

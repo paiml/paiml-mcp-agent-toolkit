@@ -1,3 +1,6 @@
+    // Setup Refactoring Context Tests
+
+    #[tokio::test]
     async fn test_setup_refactoring_context_project_wide() {
         let temp_dir = TempDir::new().unwrap();
 
@@ -161,3 +164,5 @@
             context.config.patterns.ignore_file_path,
             Some(ignore_file)
         );
+    }
+

@@ -59,9 +59,9 @@ impl VariableInspector {
                 }
             }
 
-            match node.parent() {
-                Some(parent) => node = parent,
-                None => return None,
+            {
+                let parent = node.parent()?;
+                node = parent
             }
         }
     }

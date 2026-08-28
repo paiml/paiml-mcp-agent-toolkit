@@ -31,6 +31,12 @@ fn corpus(source: &str) -> (TempDir, std::path::PathBuf) {
     let dir = TempDir::new().expect("tempdir");
     let file = dir.path().join("widget.rs");
     std::fs::write(&file, source).expect("write fixture");
+    // The MCP tool now runs the whole `--checks all` suite, so the corpus has to
+    // be clean of everything EXCEPT the one SATD finding this test is about.
+    // With no coverage report the gate reports a blocking "coverage was NOT
+    // measured" row (`run_coverage_check`), which would decide the MCP verdict
+    // here and hide the severity rule under test.
+    write_gate_artifacts(dir.path(), 95.0);
     (dir, file)
 }
 

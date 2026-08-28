@@ -87,6 +87,14 @@ pub struct SymbolTable {
     /// How many distinct names have at least one resolved use site — the whole
     /// that `most_referenced` is the top slice of.
     pub referenced_symbol_count: usize,
+    /// How many source files this table was extracted from.
+    ///
+    /// The denominator `total_symbols` had none of (#1015): "Total symbols: 0"
+    /// was printed, and `{"total_symbols": 0}` serialized, both for a project
+    /// whose files genuinely declare nothing and for a directory holding no
+    /// source file at all. A consumer could not tell the two apart, and the
+    /// handler refuses the second case using this count.
+    pub files_scanned: usize,
 }
 
 include!("symbol_table_references.rs");

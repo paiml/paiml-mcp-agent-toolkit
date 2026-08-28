@@ -355,12 +355,25 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["qd"])]
     Qdd(QddCommands),
 
-    /// [NOT AVAILABLE in the default build] Interactive demo — needs --features demo.
+    /// Interactive demo of pmat's analysis output
     ///
     /// `cargo install pmat` produces a build in which every demo mode (including
     /// `--cli`) exits 1 with "Demo feature not enabled", so all the flags below
     /// are inert. Listed the same way `serve` is: an entry that cannot run must
     /// say so in the command list rather than advertise itself as working.
+    ///
+    /// The label is CONDITIONAL, matching `Org` below. It used to be an
+    /// unconditional doc comment, so a binary built with `--features demo` —
+    /// one in which the command works — still told its user
+    /// "[NOT AVAILABLE in the default build]". A disclosure that is wrong in
+    /// the build that enables the feature is a new defect, not a fix for the
+    /// old one.
+    #[cfg_attr(
+        not(feature = "demo"),
+        command(
+            about = "[NOT AVAILABLE in the default build] Interactive demo — needs --features demo"
+        )
+    )]
     #[command(visible_aliases = &["d", "show"])]
     Demo {
         /// Repository path (defaults to current directory)
@@ -462,13 +475,45 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["organization"])]
     Org(OrgCommands),
 
-    /// MCP manifest and schema management
+    /// Connect pmat to an MCP client: every transport, in one place
+    ///
+    /// `pmat mcp connect` prints all of pmat's MCP surfaces — `pmat --mode mcp`,
+    /// `MCP_VERSION=1 pmat`, and `pmat serve --transport http` — when to use
+    /// which, and the properties of the HTTP endpoint that are not guessable
+    /// (ROOT path, no `/health`, 16-character token minimum, mandatory `Accept`
+    /// header). `pmat mcp token` mints a conforming bearer token.
     #[command(subcommand)]
     Mcp(McpCommands),
 
     /// Google Anti-Gravity customizations translator
     #[command(subcommand, visible_aliases = &["antigravity"])]
     Agy(AgyCommands),
+
+    /// Bootstrap an agent-ready workspace: quality hook, MCP registration,
+    /// skill and root rules file
+    ///
+    /// Existing files are never overwritten without `--force`; the report says
+    /// what was skipped and why. Artifacts whose format nobody has defined are
+    /// refused with a reason rather than filled in with a guess.
+    #[command(visible_aliases = &["bootstrap"])]
+    Init {
+        /// Which client's layout to write
+        #[arg(long, value_enum, default_value = "agy")]
+        target: InitTarget,
+
+        /// Workspace root to write into (must already exist)
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+
+        /// Replace files whose contents differ from the template. Your version
+        /// is not backed up.
+        #[arg(long)]
+        force: bool,
+
+        /// Report format
+        #[arg(long, value_enum, default_value = "human")]
+        format: InitFormat,
+    },
 
     /// AI prompt generation (defect-aware, ticket-based, spec-based)
     #[command(subcommand, visible_aliases = &["p"])]
@@ -491,7 +536,27 @@ pub enum Commands {
         #[arg(short = 'f', long, value_enum, default_value = "summary")]
         format: QualityGateOutputFormat,
 
-        /// Exit with non-zero code if quality gate fails
+        // A blocking violation that does not block is a contradiction in terms.
+        // Exit 1 on a failed verdict used to be opt-in behind
+        // `--fail-on-violation`, so the default invocation printed "Quality
+        // gate found 35 blocking violations" and exited 0 — indistinguishable,
+        // to any caller that reads only the exit code, from a clean tree. This
+        // repo's own `make dogfood-all` ran
+        // `pmat quality-gate --perf --max-complexity-p99 20 || (echo "❌ …" &&
+        // exit 1)`, whose `||` arm was therefore unreachable. The gate now
+        // gates by default and `--report-only` is the opt-out.
+        /// Report findings without failing: exit 0 even when the gate finds
+        /// blocking violations
+        ///
+        /// For dashboards and drift tracking, where the report is the product
+        /// and the verdict is not. Without it, blocking violations exit 1.
+        #[arg(long, visible_alias = "no-fail", conflicts_with = "fail_on_violation")]
+        report_only: bool,
+
+        /// Accepted for compatibility; has no effect since 3.32.0, when
+        /// blocking violations began exiting non-zero by default
+        ///
+        /// Pass `--report-only` for the old default (report, always exit 0).
         #[arg(long)]
         fail_on_violation: bool,
 
@@ -843,10 +908,105 @@ pub enum Commands {
     },
 
     // ── Infrastructure commands ────────────────────────────────────
-    /// [NOT IMPLEMENTED] HTTP/WebSocket server — exits with an error.
+    /// Serve the MCP tool surface over streamable HTTP (`--transport http`)
     ///
-    /// Advertised as working for long enough that users discovered otherwise by
-    /// running it. Use `MCP_VERSION=1 pmat` for MCP over stdio today.
+    /// QUICK START — no arguments, no token, nothing to assemble:
+    ///
+    /// ```text
+    /// pmat serve --transport http --port 8765
+    /// ```
+    ///
+    /// With `PMAT_MCP_HTTP_TOKEN` unset on a loopback bind, pmat GENERATES a
+    /// conforming bearer token, prints it, and prints the exact `claude mcp
+    /// add` line for the port it bound, e.g.
+    ///
+    /// ```text
+    /// claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ --header "Authorization: Bearer $TOKEN"
+    /// ```
+    ///
+    /// A generated token dies with the process, so restarting mints a new one
+    /// and a client registered with the old one gets 401. Pin a stable token
+    /// with `export PMAT_MCP_HTTP_TOKEN=$(pmat mcp token)`. Run `pmat mcp connect`
+    /// for all of pmat's MCP surfaces in one place.
+    ///
+    /// FOUR THINGS ABOUT THIS ENDPOINT THAT ARE NOT GUESSABLE:
+    ///
+    /// (1) MCP is served at the ROOT path. `POST /` is 200; `/mcp` is 404.
+    ///
+    /// (2) There is NO health endpoint. `/health` is 404, so it cannot be a
+    /// readiness probe — poll the root with a real RPC instead.
+    ///
+    /// (3) Auth is mandatory and `PMAT_MCP_HTTP_TOKEN` must be at least 16
+    /// characters. A shorter token is REFUSED and the server does not start;
+    /// unauthenticated requests get 401. Generation never waives this.
+    ///
+    /// (4) A hand-rolled client must send `Accept: application/json,
+    /// text/event-stream` on every RPC call. Without it the server answers 406,
+    /// and `curl -f` reports that as an empty string with no message.
+    ///
+    /// It serves exactly the same tools as the stdio server — one `build_server`
+    /// builds both, so the two surfaces cannot drift — and is in the DEFAULT
+    /// build as of 3.32.0 (it needed `--features mcp-http` before).
+    ///
+    /// It binds `127.0.0.1` unless you pass `--host`. On a NON-loopback bind a
+    /// token is not generated and `PMAT_MCP_HTTP_TOKEN` must be set: a
+    /// generated token would change on every restart and silently 401 every
+    /// client of a shared endpoint. Compiling the transport in does not start
+    /// it: only this subcommand binds a socket.
+    ///
+    /// The other `--transport` values — `web-socket`, `http-sse`, `both`,
+    /// `all` — are NOT IMPLEMENTED and exit 2.
+    ///
+    /// There is no `stdio` value for `--transport`; passing one is a clap error
+    /// (exit 2). For MCP over stdio run `pmat --mode mcp` or `MCP_VERSION=1
+    /// pmat`.
+    //
+    // History, deliberately a code comment and not help text: this entry
+    // declared the whole command unimplemented and "exits with an error" for
+    // the entire release in which the HTTP transport shipped (EV-6, #999; its
+    // end-to-end gate is `tests/e2e_http_serve_t.rs`, which spawns the binary
+    // and round-trips MCP over HTTP). Help that hides a shipped feature is the
+    // same defect as help that promises a missing one. The text above therefore
+    // names what works, what does not, and the build flag between them —
+    // `--transport stdio` really is rejected by clap, so it says that too.
+    //
+    // The featureless text below then got the *error* wrong in the other
+    // direction: it promised, unconditionally, that `--transport http` "exits
+    // with an error naming that feature". `serve_streamable_http` reads
+    // `PMAT_MCP_HTTP_TOKEN` before it ever reaches the feature stub, so with no
+    // token set — every first run — the diagnostic names the variable and never
+    // mentions `mcp-http` (exit 4, `ExitCode::ConfigurationError`); only once a
+    // token is set do you reach the feature error (exit 1). Help that names the
+    // one error most users never see is the same class of defect again, so the
+    // text now states both cases and which comes first.
+    #[cfg_attr(
+        not(feature = "mcp-http"),
+        command(
+            about = "[HTTP NOT COMPILED IN this build] MCP server over streamable HTTP — needs --features mcp-http",
+            long_about = "Serve the MCP tool surface over streamable HTTP (`--transport http`).\n\n\
+                          This binary was built WITHOUT `--features mcp-http`, so `--transport http` \
+                          cannot serve here — nothing binds a socket either way. The error names \
+                          `mcp-http` whether or not `PMAT_MCP_HTTP_TOKEN` is set: on a loopback bind \
+                          pmat now generates a token when that variable is unset, so the token is \
+                          never what stops you in this build. (Before 3.32.0 an unset \
+                          `PMAT_MCP_HTTP_TOKEN` produced a token error that never mentioned the \
+                          build, which is the error most users hit and the one this help used to \
+                          omit.)\n\n\
+                          Rebuild with `--features mcp-http` — it is in the DEFAULT build as of \
+                          3.32.0, so a plain `cargo install pmat` already has it. In that build \
+                          `pmat serve --transport http` needs no arguments: it generates a bearer \
+                          token, prints it, and prints the exact `claude mcp add` line. Auth is \
+                          mandatory there (at least 16 characters; unauthenticated requests get \
+                          401), MCP is served at the ROOT path (`/mcp` and `/health` are 404), and \
+                          a hand-rolled client must send \
+                          `Accept: application/json, text/event-stream` or get 406.\n\n\
+                          The other `--transport` values — `web-socket`, `http-sse`, `both`, `all` — \
+                          are NOT IMPLEMENTED in any build and exit 2.\n\n\
+                          There is no `stdio` value for `--transport`; passing one is a clap error \
+                          (exit 2). For MCP over stdio run `pmat --mode mcp` or `MCP_VERSION=1 pmat`, \
+                          which works in THIS build — run `pmat mcp connect` for the full picture."
+        )
+    )]
     #[command(visible_aliases = &["server", "api"])]
     Serve {
         /// Port to bind the server to
@@ -1053,7 +1213,14 @@ pub enum Commands {
         timestamp: Option<i64>,
     },
 
-    /// Start Claude Code background agent for continuous quality monitoring
+    /// [NOT AVAILABLE in the default build] Claude Code background agent — needs --features agent-daemon
+    ///
+    /// Continuous quality monitoring by a background daemon. `agent-daemon`
+    /// is not in the default feature set, so on a `cargo install pmat`
+    /// binary every one of the subcommands below — `start`, `stop`,
+    /// `status`, `monitor`, `unmonitor`, `health`, `reload`,
+    /// `quality-gate`, `mcp-server` — exits rc=1 with "Agent daemon feature
+    /// not enabled".
     #[command(visible_aliases = &["ag"])]
     Agent {
         /// Agent mode subcommand
@@ -1824,25 +1991,298 @@ mod command_availability_tests {
         })
     }
 
+    /// The text `pmat <cmd> --help` prints, which is `long_about` when the
+    /// command has one and `about` otherwise — the same fallback clap applies.
+    fn long_about_of(name: &str) -> String {
+        let name = name.to_string();
+        crate::cli::commands::on_big_stack(move || {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let subcommand = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == name)
+                .unwrap_or_else(|| panic!("{name} subcommand must exist"))
+                .clone();
+            subcommand
+                .get_long_about()
+                .or_else(|| subcommand.get_about())
+                .map(std::string::ToString::to_string)
+                .unwrap_or_default()
+        })
+    }
+
     /// The default (`cargo install pmat`) build cannot run any demo mode, yet
-    /// the command list advertised "Run interactive demo of all capabilities"
-    /// while the sibling `serve` entry was explicitly relabelled. A command list
-    /// that promises a working command the shipped binary cannot run is the
-    /// defect.
+    /// the command list advertised "Run interactive demo of all capabilities".
+    /// A command list that promises a working command the shipped binary cannot
+    /// run is the defect.
+    ///
+    /// Both directions, because the label is conditional. It asserted only the
+    /// first and therefore failed the `full` leg, which enables `demo`
+    /// transitively (58 features) and correctly drops the label — the test was
+    /// demanding a warning that would have been a lie in that build. A
+    /// one-directional assertion here cannot tell "the label is right" from
+    /// "the label is always printed".
     #[test]
-    fn demo_is_labelled_unavailable_like_serve() {
+    fn demo_label_matches_the_build() {
         let demo = about_of("demo");
+        if cfg!(feature = "demo") {
+            assert!(
+                !demo.contains("NOT AVAILABLE") && !demo.contains("NOT IMPLEMENTED"),
+                "this build enables `demo`, so the command list must not call it \
+                 unavailable, got: {demo}"
+            );
+        } else {
+            assert!(
+                demo.contains("NOT AVAILABLE") || demo.contains("NOT IMPLEMENTED"),
+                "demo must be labelled unavailable in the command list, got: {demo}"
+            );
+            assert!(
+                demo.contains("--features demo"),
+                "the label must name the feature that would enable it, got: {demo}"
+            );
+        }
+    }
+
+    /// The mirror image of the `demo` defect: `serve`'s help declared the whole
+    /// command "[NOT IMPLEMENTED] ... exits with an error" while
+    /// `--transport http` was shipped, wired from `main` and covered by
+    /// `tests/e2e_http_serve_t.rs`. Help that hides a working feature is as
+    /// wrong as help that promises a missing one.
+    ///
+    /// Accuracy here is not "say something positive": `--transport stdio` really
+    /// is rejected by clap, and the other transports really do exit 2, so the
+    /// text must say which transports work and keep pointing at
+    /// `pmat --mode mcp` / `MCP_VERSION=1 pmat` for stdio MCP.
+    #[test]
+    fn serve_help_says_which_transports_work() {
+        let help = long_about_of("serve");
+
         assert!(
-            demo.contains("NOT AVAILABLE") || demo.contains("NOT IMPLEMENTED"),
-            "demo must be labelled unavailable in the command list, got: {demo}"
+            !help.contains("[NOT IMPLEMENTED] HTTP/WebSocket server"),
+            "the HTTP transport is implemented; help must not deny the whole \
+             command, got: {help}"
         );
         assert!(
-            demo.contains("--features demo"),
-            "the label must name the feature that would enable it, got: {demo}"
+            help.contains("--transport http") || help.contains("`--transport http`"),
+            "help must name the transport that works, got: {help}"
+        );
+        assert!(
+            help.contains("mcp-http"),
+            "help must name the feature the HTTP transport is compiled behind, \
+             got: {help}"
+        );
+        assert!(
+            help.contains("PMAT_MCP_HTTP_TOKEN"),
+            "help must name the token without which the server refuses to \
+             start, got: {help}"
         );
 
-        let serve = about_of("serve");
-        assert!(serve.contains("NOT IMPLEMENTED"), "regression guard: {serve}");
+        // The transports that genuinely do not work must still say so, or this
+        // fix would trade one inaccurate help text for another.
+        for unimplemented in ["web-socket", "http-sse", "both", "all"] {
+            assert!(
+                help.contains(unimplemented),
+                "help must name `{unimplemented}` among the transports that are \
+                 not implemented, got: {help}"
+            );
+        }
+        assert!(
+            help.contains("NOT IMPLEMENTED"),
+            "the unimplemented transports must be labelled, got: {help}"
+        );
+
+        // `--transport stdio` is a clap error, so the help must not read as if
+        // stdio were a transport value here, and must route stdio MCP to the
+        // entry points that serve it.
+        assert!(
+            help.contains("--mode mcp"),
+            "help must point at `pmat --mode mcp` for stdio MCP, got: {help}"
+        );
+        assert!(
+            help.contains("MCP_VERSION=1"),
+            "help must point at `MCP_VERSION=1 pmat` for stdio MCP, got: {help}"
+        );
+        assert!(
+            help.contains("no `stdio` value"),
+            "help must say `stdio` is not a --transport value, got: {help}"
+        );
+    }
+
+    /// The claim `serve_help_says_which_transports_work` makes about `stdio`
+    /// has to stay true of the enum, not just of the prose.
+    #[test]
+    fn transport_has_no_stdio_value() {
+        use clap::ValueEnum;
+        let values: Vec<String> = crate::cli::commands::ServeTransport::value_variants()
+            .iter()
+            .filter_map(|v| {
+                clap::ValueEnum::to_possible_value(v).map(|p| p.get_name().to_string())
+            })
+            .collect();
+        assert!(
+            values.iter().any(|v| v == "http"),
+            "http is the transport that works: {values:?}"
+        );
+        assert!(
+            !values.iter().any(|v| v == "stdio"),
+            "if a stdio transport is ever added, the help text that says there \
+             is none must be updated with it: {values:?}"
+        );
+    }
+
+    /// The sentences of a help text, with clap's line wrapping normalised away
+    /// so an assertion cannot pass or fail on where a paragraph happens to
+    /// break. `;` ends a clause here as much as `.` does.
+    fn sentences(help: &str) -> Vec<String> {
+        help.replace('\n', " ")
+            .split(['.', ';'])
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
+
+    /// The sentence that describes what happens when no token is set, if the
+    /// help has one: it must name the variable *and* say the variable is unset,
+    /// because a mention that only promises the token matters after a rebuild
+    /// does not describe this build's behaviour.
+    fn sentence_about_the_missing_token(help: &str) -> Option<String> {
+        sentences(help).into_iter().find(|s| {
+            let lower = s.to_lowercase();
+            s.contains("PMAT_MCP_HTTP_TOKEN")
+                && (lower.contains("unset") || lower.contains("not set") || lower.contains("without"))
+        })
+    }
+
+    /// Drive `pmat serve --transport http` in-process with the token env var in
+    /// a chosen state and return the error it produces.
+    ///
+    /// NEVER call this with a combination that succeeds: since 3.32.0 an unset
+    /// token on a LOOPBACK bind generates one and serves, so in a build with
+    /// `mcp-http` that combination binds a socket and never returns. The two
+    /// combinations that are guaranteed to fail before any socket is touched —
+    /// and so are the only ones used here — are a non-loopback host with no
+    /// token, and a token below the 16-character floor.
+    async fn serve_http_error(token: Option<&str>, host: &str) -> String {
+        use crate::mcp_pmcp::http_server::TOKEN_ENV;
+        let saved = std::env::var(TOKEN_ENV).ok();
+        match token {
+            Some(t) => std::env::set_var(TOKEN_ENV, t),
+            None => std::env::remove_var(TOKEN_ENV),
+        }
+        let got = crate::cli::handlers::utility_serve_handlers::handle_serve(
+            host.to_string(),
+            0,
+            false,
+            crate::cli::commands::ServeTransport::Http,
+        )
+        .await;
+        match saved {
+            Some(v) => std::env::set_var(TOKEN_ENV, v),
+            None => std::env::remove_var(TOKEN_ENV),
+        }
+        got.expect_err("`--transport http` must not serve in this test")
+            .to_string()
+    }
+
+    /// A host that is routable-looking but not loopback, so `resolve_token`
+    /// takes the refusal branch without anything ever binding. RFC 5737
+    /// TEST-NET-1, which is reserved for exactly this.
+    const NON_LOOPBACK: &str = "192.0.2.1";
+
+    /// The help must describe what an unset `PMAT_MCP_HTTP_TOKEN` actually
+    /// does, and since 3.32.0 that is no longer a failure at all on a loopback
+    /// bind: pmat generates a conforming token and serves.
+    ///
+    /// Two earlier revisions of this help got the unset case wrong in opposite
+    /// directions — first promising an `mcp-http` error the user never reaches,
+    /// then describing a token refusal. Describing a refusal that no longer
+    /// happens would be the same defect a third time, so the assertion is that
+    /// the help says GENERATED, not that it says "error".
+    #[test]
+    fn serve_help_says_an_unset_token_is_generated_not_refused() {
+        let help = long_about_of("serve");
+        let described = sentence_about_the_missing_token(&help)
+            .expect("`pmat serve --help` must describe what an unset PMAT_MCP_HTTP_TOKEN does");
+        let lower = described.to_lowercase();
+        assert!(
+            lower.contains("generate"),
+            "an unset token on a loopback bind is generated, not refused; the \
+             help must say so, got: {described}"
+        );
+        assert!(
+            help.contains("claude mcp add"),
+            "the help must carry the copy-pasteable registration line that the \
+             generated-token path prints, got: {help}"
+        );
+    }
+
+    /// The counter-test, and the one that must never be allowed to rot: a token
+    /// the USER supplied that is too short is still REFUSED. Generating a token
+    /// when none was offered is a convenience about supplying a secret; it must
+    /// never become "accept anything". Measured against the binary, then held
+    /// against the prose.
+    #[tokio::test]
+    #[serial_test::serial(pmat_mcp_http_token)]
+    async fn a_weak_token_is_still_refused_and_the_help_says_so() {
+        let measured = serve_http_error(Some("tooshort"), "127.0.0.1").await;
+        assert!(
+            measured.contains("at least"),
+            "reality check: a token under the floor must still be refused with a \
+             message naming the floor, got: {measured}"
+        );
+
+        let help = long_about_of("serve");
+        assert!(
+            help.contains("16"),
+            "the help must state the token minimum that is enforced, got: {help}"
+        );
+    }
+
+    /// A non-loopback bind does not get a generated token, because a generated
+    /// token changes on every restart and would silently 401 every client of a
+    /// shared endpoint. Measured, then held against the help.
+    #[tokio::test]
+    #[serial_test::serial(pmat_mcp_http_token)]
+    async fn a_non_loopback_bind_still_demands_an_explicit_token() {
+        let measured = serve_http_error(None, NON_LOOPBACK).await;
+        assert!(
+            measured.contains("PMAT_MCP_HTTP_TOKEN"),
+            "reality check: a non-loopback bind with no token must name the \
+             variable to set, got: {measured}"
+        );
+        assert!(
+            measured.contains("loopback"),
+            "reality check: the refusal must say why it refused here and not on \
+             127.0.0.1, got: {measured}"
+        );
+
+        let help = long_about_of("serve");
+        assert!(
+            help.to_lowercase().contains("loopback"),
+            "the help must state that generation is confined to loopback binds, \
+             got: {help}"
+        );
+    }
+
+    /// In a build WITHOUT the feature, the `mcp-http` error is now the one the
+    /// user sees on a plain `pmat serve --transport http`: generation removes
+    /// the token error that used to mask it. The help in that build must not
+    /// go back to blaming the token.
+    #[cfg(not(feature = "mcp-http"))]
+    #[tokio::test]
+    #[serial_test::serial(pmat_mcp_http_token)]
+    async fn without_the_feature_the_build_error_is_what_an_unset_token_reaches() {
+        let measured = serve_http_error(None, "127.0.0.1").await;
+        assert!(
+            measured.contains("mcp-http"),
+            "reality check: with a token generated for the loopback bind, the \
+             feature stub is what fails, got: {measured}"
+        );
+
+        let help = long_about_of("serve");
+        assert!(
+            help.contains("mcp-http"),
+            "the help must name the feature that is missing, got: {help}"
+        );
     }
 
     /// Same defect as `demo`: in the default build every `org` subcommand exits
@@ -1883,6 +2323,45 @@ mod command_availability_tests {
         assert!(
             analyze.contains("REMOVED"),
             "org analyze must be labelled removed, got: {analyze}"
+        );
+    }
+
+    /// PMAT-INIT-001 claim 1: "CLI provides a `pmat init` command."
+    ///
+    /// `pmat init --help` used to answer "unrecognized subcommand". The
+    /// end-to-end proof is in `tests/init_workspace_t.rs`, which spawns the
+    /// binary — but that target does not run under `cargo test --lib`, which
+    /// is what CI executes, so the presence of the command and of every target
+    /// it advertises is also asserted here, against the clap tree itself.
+    #[test]
+    fn init_exists_and_offers_all_three_targets() {
+        let (about, targets) = crate::cli::commands::on_big_stack(|| {
+            let cmd = Commands::augment_subcommands(clap::Command::new("pmat"));
+            let init = cmd
+                .get_subcommands()
+                .find(|s| s.get_name() == "init")
+                .expect("init subcommand must exist")
+                .clone();
+            let about = init.get_about().map(ToString::to_string).unwrap_or_default();
+            let targets: Vec<String> = init
+                .get_arguments()
+                .find(|a| a.get_id() == "target")
+                .expect("init must take --target")
+                .get_possible_values()
+                .iter()
+                .map(|v| v.get_name().to_string())
+                .collect();
+            (about, targets)
+        });
+
+        assert!(
+            about.contains("Bootstrap"),
+            "init must describe what it does, got: {about}"
+        );
+        assert_eq!(
+            targets,
+            vec!["agy", "claude", "ultracode"],
+            "the advertised targets drifted from the generator's"
         );
     }
 }

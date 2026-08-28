@@ -12,6 +12,11 @@ use super::types::CLAIM_PATTERNS;
 /// Parse acceptance criteria from GitHub issue body
 ///
 /// Looks for markdown checklists in the body and extracts them as criteria.
+///
+/// The `[x]`/`[ ]` marker is kept on each criterion rather than stripped: it is
+/// the only record of whether that criterion is done, and
+/// `RoadmapItem::completion_percentage` reads it back via
+/// [`crate::models::roadmap::parse_criterion`].
 pub(super) fn parse_acceptance_criteria(body: &str) -> Vec<String> {
     let mut criteria = Vec::new();
 
@@ -19,14 +24,12 @@ pub(super) fn parse_acceptance_criteria(body: &str) -> Vec<String> {
         let trimmed = line.trim();
         // Match markdown checkboxes: - [ ] or - [x]
         if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [x]") {
-            let criterion = trimmed
-                .trim_start_matches("- [ ]")
-                .trim_start_matches("- [x]")
-                .trim()
-                .to_string();
-            if !criterion.is_empty() {
-                criteria.push(criterion);
+            let (state, text) = crate::models::roadmap::parse_criterion(trimmed);
+            if text.is_empty() {
+                continue;
             }
+            let marker = if state == Some(true) { "[x]" } else { "[ ]" };
+            criteria.push(format!("{} {}", marker, text));
         }
     }
 

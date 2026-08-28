@@ -24,6 +24,12 @@ fn main() {
 
     // Create sample results with violations
     let results = QualityGateResults {
+        files_examined: 0,
+        // #1035: every check declares what it declined to read. This demo runs no
+        // check, so the map is empty — an empty map is "nothing was skipped", which
+        // is a different claim from an absent key.
+        files_not_read: std::collections::BTreeMap::new(),
+        checks_run: Vec::new(),
         passed: false,
         total_violations: 5,
         // Of the 5 findings, 4 are verdict-bearing (warning/error) and one is

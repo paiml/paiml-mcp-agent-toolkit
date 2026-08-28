@@ -414,7 +414,7 @@ mod tests_part2 {
             let files = discovery.discover_all(temp_dir.path());
 
             // Should find at least the real file
-            assert!(files.len() >= 1);
+            assert!(!files.is_empty());
         }
     }
 

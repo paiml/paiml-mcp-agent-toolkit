@@ -145,6 +145,32 @@ impl ProjectFileDiscovery {
     }
 }
 
+/// Every file under `root` that the project's ignore policy admits — whatever
+/// its extension — with no depth or count cap.
+///
+/// THE entry point for an analyzer whose file types are not in the source
+/// whitelist [`ProjectFileDiscovery::discover_files`] applies: `.cu`, `.ptx`,
+/// `.wgsl`, `.wasm`, `.wat`, `.md`. Four analyzers (`cuda-tdg`,
+/// `validate-docs`, `analyze assembly-script`, `analyze web-assembly`) each
+/// hand-rolled a `walkdir` walk instead, none of which read a `.gitignore`; all
+/// four therefore descended into this repository's gitignored
+/// `.claude/worktrees/`, 48 checkouts of pmat inside pmat, and counted the tree
+/// ~48 times over. One ignore policy, one implementation.
+///
+/// The caps are deliberately off. `FileDiscoveryConfig`'s defaults (depth 15,
+/// 50,000 files) silently shrink the population an analyzer reports on, and a
+/// verdict that quietly covers part of a tree is the defect this function
+/// exists to remove.
+pub fn project_files(root: &Path) -> Result<Vec<PathBuf>> {
+    ProjectFileDiscovery::new(root.to_path_buf())
+        .with_config(FileDiscoveryConfig {
+            max_depth: None,
+            max_files: None,
+            ..FileDiscoveryConfig::default()
+        })
+        .discover_all_files()
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 /// Statistics for discovery.
 pub struct DiscoveryStats {

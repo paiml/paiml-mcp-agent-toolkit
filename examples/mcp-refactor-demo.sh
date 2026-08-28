@@ -25,6 +25,16 @@ send_request() {
 
 # Create test files for demonstration
 TEST_DIR=$(mktemp -d)
+
+# mktemp can yield an empty or relative path under a hostile TMPDIR; refuse to
+# write to - or rm -rf - anything that is not a plain absolute path.
+if [ -z "$TEST_DIR" ] || [[ "$TEST_DIR" == *".."* ]] || [[ "$TEST_DIR" != /* ]]; then
+    echo "FATAL: unusable temp directory: '$TEST_DIR'" >&2
+    exit 1
+fi
+# Clean up even when a demo step aborts the script under `set -e`
+trap 'rm -rf "$TEST_DIR"' EXIT
+
 echo "Creating test files in $TEST_DIR..."
 
 cat > "$TEST_DIR/complex_function.rs" << 'EOF'
@@ -99,8 +109,7 @@ send_request "refactor.stop" "{}" 5
 echo "=== Demo 6: Attempting to Get State After Stop (Should Fail) ==="
 send_request "refactor.getState" "{}" 6
 
-# Cleanup
+# Cleanup runs from the EXIT trap installed above
 echo "Cleaning up test directory..."
-rm -rf "$TEST_DIR"
 
 echo "Demo complete!"

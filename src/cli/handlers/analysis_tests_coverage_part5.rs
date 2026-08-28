@@ -82,6 +82,7 @@
             mutation_threshold: 80.0,
             focus: vec!["src/".to_string()],
             exclude: vec!["tests/".to_string()],
+            max_targets: 10,
             output: None,
             format: CoverageImproveOutputFormat::Summary,
         };

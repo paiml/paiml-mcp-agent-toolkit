@@ -17,6 +17,14 @@ impl CommandDispatcher {
                 project_path,
                 file,
                 format,
+                report_only,
+                // A no-op since 3.32.0 — the gate exits non-zero on blocking
+                // violations by default — and its help text says so. Still
+                // parsed so existing `--fail-on-violation` callers keep working,
+                // and now DISCLOSED rather than accepted in silence: a user who
+                // asks for something deserves to be told their request was
+                // redundant rather than honoured. Discarding it into `_` is what
+                // made it invisible.
                 fail_on_violation,
                 checks,
                 max_dead_code,
@@ -27,11 +35,16 @@ impl CommandDispatcher {
                 perf,
             } => {
                 // Pass QualityGateOutputFormat directly to preserve Junit/Markdown (#230)
+                if let Some(note) =
+                    crate::cli::analysis_utilities::fail_on_violation_note(fail_on_violation)
+                {
+                    eprintln!("{note}");
+                }
                 crate::cli::analysis_utilities::handle_quality_gate(
                     project_path,
                     file,
                     format,
-                    fail_on_violation,
+                    crate::cli::analysis_utilities::gate_exits_on_violation(report_only),
                     checks,
                     max_dead_code,
                     min_entropy,

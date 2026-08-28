@@ -85,7 +85,22 @@ impl KotlinAstVisitor {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
                 if *part == "class" && i + 1 < parts.len() {
-                    let class_name = parts[i + 1].trim_end_matches('{').trim_end_matches(':');
+                    // Split at '(' FIRST: a Kotlin primary constructor sits
+                    // directly against the class name, so `class Person(val
+                    // name: String)` tokenises as `Person(val` and trimming
+                    // only `{` and `:` left the parameter list glued on. Every
+                    // class with a primary constructor — idiomatic Kotlin — was
+                    // reported under a name like `com.example.demo::Person(val`.
+                    // `extract_function_name_from_line` already splits at '('
+                    // for exactly this reason; this arm did not.
+                    let class_name = parts[i + 1]
+                        .split('(')
+                        .next()?
+                        .trim_end_matches('{')
+                        .trim_end_matches(':');
+                    if class_name.is_empty() {
+                        return None;
+                    }
                     return Some(class_name.to_string());
                 }
             }

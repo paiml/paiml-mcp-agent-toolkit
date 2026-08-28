@@ -336,10 +336,13 @@ enum TestEnum {
         let server = Arc::new(server_result.unwrap());
         assert!(Arc::strong_count(&server) > 0);
 
-        // Test environment variable handling
-        std::env::set_var("MCP_VERSION", "1.0.0");
-        assert!(std::env::var("MCP_VERSION").is_ok());
-        std::env::remove_var("MCP_VERSION");
+        // A `set_var` / `assert!(var(..).is_ok())` / `remove_var` block stood
+        // here. It asserted that `std::env` remembers what it was just told —
+        // it could not fail — and it paid for that with a process-wide mutation
+        // every test in this binary could see. Cargo runs a binary's tests as
+        // parallel THREADS, and MCP_VERSION makes any pmat child ignore its
+        // subcommand and run the stdio MCP server (src/bin/pmat.rs:41). This
+        // was one of the two windows that failed the 3.32.0 release dogfood.
 
         // Test tracing setup
         use tracing_subscriber::EnvFilter;

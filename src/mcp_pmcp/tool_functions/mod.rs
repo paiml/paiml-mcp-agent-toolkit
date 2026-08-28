@@ -31,3 +31,9 @@ mod tests;
 #[cfg(test)]
 #[path = "../tool_functions_unmeasured_gate_tests.rs"]
 mod unmeasured_gate_tests;
+
+// The MCP gate and `pmat quality-gate` must run the same checks and disclose
+// the same holes.
+#[cfg(test)]
+#[path = "../tool_functions_gate_parity_tests.rs"]
+mod gate_parity_tests;

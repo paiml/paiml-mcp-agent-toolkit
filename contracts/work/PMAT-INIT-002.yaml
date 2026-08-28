@@ -1,0 +1,139 @@
+# Hand-authored work contract — NOT auto-generated, and nothing regenerates it.
+#
+# There is no .pmat-work/PMAT-INIT-002/ directory, so `generate_work_contract_yamls`
+# (src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement_p8.rs)
+# never emits this path. The placeholder this replaces cited
+# ".pmat-work/PMAT-INIT-002/contract.json" as its only reference; that path has
+# never existed. The references below are real.
+#
+# WHY IT WAS REWRITTEN. The prior version carried five `falsifiable_claims`
+# entries with exactly one key each — `id`, a title string — and `pv validate`
+# passed it. A title asserts nothing and names no way to be proved wrong. Every
+# claim below carries `hypothesis` + `method` in the shape the 8
+# MACS-0xx.cot.yaml contracts use, and every `method` was run on this tree.
+#
+# The ticket's claim 3 ("progressive skills with SKILL.md frontmatter and
+# plugins.json scaffold") was delivered in part and REFUSED in part. Both halves
+# are recorded below (C5, C6, C13); a contract that listed only what shipped
+# would misrepresent the release.
+#
+# LEVEL. `current_level` is L1, which is what this contract has earned.
+#
+# A previous revision set L0 and explained that "L1 means a codegen'd
+# `debug_assert!` contract module compiles and runs, and no contracts/work/
+# PMAT-INIT-002.rs exists". That misread the file it cited.
+# `VerificationLevel::evidenced_level_from_yaml`
+# (src/cli/handlers/work_verification_level.rs) returns L1 for any bound YAML as
+# its FLOOR — `if !yaml_section_non_empty(yaml, "equations") { return Self::L1 }`
+# — and climbs to L2 only once an `equations:` section exists. No `.rs` artifact
+# is involved at any rung, and none of the 45 contracts in this directory at L3
+# has one either.
+#
+# The understatement was not harmless: CB-1330 fails a contract whose
+# `current_level` is below its `target_level`, so declaring L0 against a target of
+# L1 reported this file as a REGRESSION while 61 sibling contracts declaring L1
+# passed unexamined. CB-1330 compares two numbers inside one file; it never checks
+# that a declared `current_level` is true. This file was penalised for modesty by a
+# gate that cannot detect the opposite error.
+#
+# To reach L2, add an `equations:` section binding a clause to an equation.
+name: "PMAT-INIT-002"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "AGY (Antigravity 2.0) workspace support and CB-1663..1666 comply integration (#1031) — including the plugins.json refusal"
+  references:
+    - "src/services/workspace_init/mod.rs"
+    - "src/services/workspace_init/templates.rs"
+    - "src/services/workspace_init/tests.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_agy.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_agy_hooks.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_agy_skills.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_agy_mcp.rs"
+    - "src/cli/handlers/comply_handlers/check_handlers/check_macs_tests_agy.rs"
+    - "https://github.com/paiml/paiml-mcp-agent-toolkit/issues/1031"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 13
+proof_obligations:
+- id: "PO-C1"
+  statement: "`pmat init --target agy` writes .agents/hooks.json in the PreToolUse shape rather than one invented for the occasion: `pmat-quality-feedback.PreToolUse[0]` carries `matcher: \"write_file|code_execution\"` and `hooks[0].command` ending in `pmat-quality-feedback.sh antigravity`, so the shared entrypoint is invoked in the mode that emits a decision."
+  evidence_method: "cargo test --lib services::workspace_init::tests::agy_hooks_manifest_uses_the_pretooluse_schema"
+- id: "PO-C2"
+  statement: "The agy target writes the whole .agents/ layout, not a fragment of it: hooks.json, hooks/pmat-quality-feedback.sh, mcp_config.json and skills/pmat-quality/SKILL.md."
+  evidence_method: "cargo test --lib services::workspace_init::tests::agy_target_writes_the_agents_layout"
+- id: "PO-C3"
+  statement: "The emitted .agents/mcp_config.json declares the invocation that works (`pmat --mode mcp`) AND does not declare the one that does not (`serve --transport stdio`, a clap parse error). The assertion has both halves deliberately: checking only for the working one would still pass if someone re-added the broken one beside it."
+  evidence_method: "cargo test --lib services::workspace_init::tests::mcp_config_declares_the_invocation_that_works_and_not_the_broken_one"
+- id: "PO-C4"
+  statement: "The generated .agents/skills/pmat-quality/SKILL.md frontmatter uses the documented keys and pins an `effort` value that the lint accepts — session-only values such as max/ultracode are rejected by design."
+  evidence_method: "cargo test --lib services::workspace_init::tests::skill_frontmatter_uses_the_documented_keys_and_a_lintable_effort"
+- id: "PO-C5"
+  statement: "REFUSED: the ticket's claim 3 asks for a \"plugins.json scaffold\". No plugins.json schema exists in this repository or in any document it cites — no field list, no required keys, no version, no example to derive one from — so nothing is written at .agents/plugins.json. The omission is reported as a refusal that names the missing fact and points at issue 1031, because a plausible-looking guess would be indistinguishable from working code until it failed silently in the user's editor."
+  evidence_method: "cargo test --lib services::workspace_init::tests::agy_refuses_plugins_json_instead_of_inventing_it"
+- id: "PO-C6"
+  statement: "That refusal is visible at the CLI, not just in a unit test: `--format json` carries `.agents/plugins.json` in `refused[]`, no file is created for it, and the process still exits 0 — a refusal is a reported outcome, not an error."
+  evidence_method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d --format json > $d/r.json; echo exit=$?; jq -r '.refused[].artifact' $d/r.json; test ! -e $d/.agents/plugins.json && echo 'CONFIRMED: refused and not written'"
+- id: "PO-C7"
+  statement: "Every refusal, for every target, is actionable on its own: it names the artifact, gives a reason longer than 120 characters, and carries a https://github.com/ tracking pointer. A refusal without a pointer is untriageable."
+  evidence_method: "cargo test --lib services::workspace_init::tests::every_refusal_is_actionable"
+- id: "PO-C8"
+  statement: "CB-1663 validates .agents/ structure and JSON syntax and never passes vacuously: it is red on malformed JSON, on an empty rule file, on a skill directory with no SKILL.md, on an empty .agents/, and when .agents is a file rather than a directory; it Skips with an explicit reason when .agents/ is absent."
+  evidence_method: "cargo test --lib cb1663"
+- id: "PO-C9"
+  statement: "CB-1664 enforces hooks.json PreToolUse correctness: red on a missing matcher, on a missing hook script, on a hook script that is not executable, on malformed JSON and on an empty object."
+  evidence_method: "cargo test --lib cb1664_red"
+- id: "PO-C10"
+  statement: "NOT A GATE, BY DESIGN: CB-1664 only WARNS on the older flat hooks layout, and its message says so (\"flat layout\", \"PreToolUse\", \"Reported, not gated\"). Failing there would be failing on a guess, since no Anti-Gravity schema is published anywhere this repository can cite — the same reason `pmat agy sync` and the plugins.json path refuse. Flip it to Fail only when such a schema exists to point at."
+  evidence_method: "cargo test --lib cb1664_warns_but_does_not_gate_on_the_older_flat_layout"
+- id: "PO-C11"
+  statement: "CB-1665 enforces the SKILL.md frontmatter schema: it names a missing key, names a missing effort key, is red on a session-only effort value and on absent frontmatter, tolerates a trailing comment and a block scalar, and never skips on an empty skills directory."
+  evidence_method: "cargo test --lib cb1665"
+- id: "PO-C12"
+  statement: "CB-1666 judges the MCP client config by whether it can work: red on the dead `serve --transport stdio` entrypoint, on bare `pmat serve`, on zero servers, on a missing mcpServers key and on a missing command; green on the measured working entrypoint and on `serve --mode mcp`; and it does not score a foreign server against pmat's facts."
+  evidence_method: "cargo test --lib cb1666"
+- id: "PO-C13"
+  statement: "PARTIAL, RECORDED: claim 3's word \"progressive\" was not delivered as a progressive-disclosure hierarchy. Exactly one skill file is generated — .agents/skills/pmat-quality/SKILL.md — with no reference or supporting files beneath it. What shipped is one lintable skill, and this obligation exists so the singular is not read as the plural."
+  evidence_method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d >/dev/null; (cd $d && find .agents/skills -type f)"
+falsifiable_claims:
+- hypothesis: "`pmat init --target agy` writes .agents/hooks.json in the PreToolUse shape rather than one invented for the occasion: `pmat-quality-feedback.PreToolUse[0]` carries `matcher: \"write_file|code_execution\"` and `hooks[0].command` ending in `pmat-quality-feedback.sh antigravity`, so the shared entrypoint is invoked in the mode that emits a decision."
+  method: "cargo test --lib services::workspace_init::tests::agy_hooks_manifest_uses_the_pretooluse_schema"
+  from_step: "C1"
+- hypothesis: "The agy target writes the whole .agents/ layout, not a fragment of it: hooks.json, hooks/pmat-quality-feedback.sh, mcp_config.json and skills/pmat-quality/SKILL.md."
+  method: "cargo test --lib services::workspace_init::tests::agy_target_writes_the_agents_layout"
+  from_step: "C2"
+- hypothesis: "The emitted .agents/mcp_config.json declares the invocation that works (`pmat --mode mcp`) AND does not declare the one that does not (`serve --transport stdio`, a clap parse error). The assertion has both halves deliberately: checking only for the working one would still pass if someone re-added the broken one beside it."
+  method: "cargo test --lib services::workspace_init::tests::mcp_config_declares_the_invocation_that_works_and_not_the_broken_one"
+  from_step: "C3"
+- hypothesis: "The generated .agents/skills/pmat-quality/SKILL.md frontmatter uses the documented keys and pins an `effort` value that the lint accepts — session-only values such as max/ultracode are rejected by design."
+  method: "cargo test --lib services::workspace_init::tests::skill_frontmatter_uses_the_documented_keys_and_a_lintable_effort"
+  from_step: "C4"
+- hypothesis: "REFUSED: the ticket's claim 3 asks for a \"plugins.json scaffold\". No plugins.json schema exists in this repository or in any document it cites — no field list, no required keys, no version, no example to derive one from — so nothing is written at .agents/plugins.json. The omission is reported as a refusal that names the missing fact and points at issue 1031, because a plausible-looking guess would be indistinguishable from working code until it failed silently in the user's editor."
+  method: "cargo test --lib services::workspace_init::tests::agy_refuses_plugins_json_instead_of_inventing_it"
+  from_step: "C5"
+- hypothesis: "That refusal is visible at the CLI, not just in a unit test: `--format json` carries `.agents/plugins.json` in `refused[]`, no file is created for it, and the process still exits 0 — a refusal is a reported outcome, not an error."
+  method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d --format json > $d/r.json; echo exit=$?; jq -r '.refused[].artifact' $d/r.json; test ! -e $d/.agents/plugins.json && echo 'CONFIRMED: refused and not written'"
+  from_step: "C6"
+- hypothesis: "Every refusal, for every target, is actionable on its own: it names the artifact, gives a reason longer than 120 characters, and carries a https://github.com/ tracking pointer. A refusal without a pointer is untriageable."
+  method: "cargo test --lib services::workspace_init::tests::every_refusal_is_actionable"
+  from_step: "C7"
+- hypothesis: "CB-1663 validates .agents/ structure and JSON syntax and never passes vacuously: it is red on malformed JSON, on an empty rule file, on a skill directory with no SKILL.md, on an empty .agents/, and when .agents is a file rather than a directory; it Skips with an explicit reason when .agents/ is absent."
+  method: "cargo test --lib cb1663"
+  from_step: "C8"
+- hypothesis: "CB-1664 enforces hooks.json PreToolUse correctness: red on a missing matcher, on a missing hook script, on a hook script that is not executable, on malformed JSON and on an empty object."
+  method: "cargo test --lib cb1664_red"
+  from_step: "C9"
+- hypothesis: "NOT A GATE, BY DESIGN: CB-1664 only WARNS on the older flat hooks layout, and its message says so (\"flat layout\", \"PreToolUse\", \"Reported, not gated\"). Failing there would be failing on a guess, since no Anti-Gravity schema is published anywhere this repository can cite — the same reason `pmat agy sync` and the plugins.json path refuse. Flip it to Fail only when such a schema exists to point at."
+  method: "cargo test --lib cb1664_warns_but_does_not_gate_on_the_older_flat_layout"
+  from_step: "C10"
+- hypothesis: "CB-1665 enforces the SKILL.md frontmatter schema: it names a missing key, names a missing effort key, is red on a session-only effort value and on absent frontmatter, tolerates a trailing comment and a block scalar, and never skips on an empty skills directory."
+  method: "cargo test --lib cb1665"
+  from_step: "C11"
+- hypothesis: "CB-1666 judges the MCP client config by whether it can work: red on the dead `serve --transport stdio` entrypoint, on bare `pmat serve`, on zero servers, on a missing mcpServers key and on a missing command; green on the measured working entrypoint and on `serve --mode mcp`; and it does not score a foreign server against pmat's facts."
+  method: "cargo test --lib cb1666"
+  from_step: "C12"
+- hypothesis: "PARTIAL, RECORDED: claim 3's word \"progressive\" was not delivered as a progressive-disclosure hierarchy. Exactly one skill file is generated — .agents/skills/pmat-quality/SKILL.md — with no reference or supporting files beneath it. What shipped is one lintable skill, and this obligation exists so the singular is not read as the plural."
+  method: "d=$(mktemp -d); cargo run -q --bin pmat -- init --target agy --path $d >/dev/null; (cd $d && find .agents/skills -type f)"
+  from_step: "C13"

@@ -17,7 +17,9 @@
 //! PMAT_FLAG_SWEEP=all cargo test ...    # the whole tree, for a release gate
 //! ```
 
-use super::{build_corpus, help_for, parse_help, run, CorpusSize, HelpFlag, DEFAULT_TIMEOUT};
+use super::{
+    build_corpus, help_for, parse_help, run, run_with_env, CorpusSize, HelpFlag, DEFAULT_TIMEOUT,
+};
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::Path;
@@ -103,6 +105,21 @@ const DENY_FLAGS: &[&str] = &[
     "--auto-commit",
     "--commit",
     "--apply",
+    // `comply ratchet --lower` REWRITES `.pmat-ratchet.toml` — its own help says
+    // "every baseline the tree has beaten is rewritten to the measured value,
+    // and the entry's `justification` ... is removed". The sweep was invoking it
+    // unattended and booking the result as a no-op.
+    //
+    // Precisely: probes run with the CORPUS as cwd, so this could not reach
+    // THIS repository's baselines. It was a no-op only because no corpus
+    // carries a `.pmat-ratchet.toml`, so the handler bails before it writes —
+    // and the corpus is a thing we add files to (it just gained an `examples/`
+    // and a `.min.` file so two satd counters could move). The first corpus to
+    // carry a ratchet file would have its baselines silently lowered, and the
+    // sweep would record that as "changes nothing".
+    //
+    // A flag that rewrites a file is not a flag to probe for observable output.
+    "--lower",
 ];
 
 /// The fast subset, run by default so this is affordable on every commit.
@@ -356,6 +373,11 @@ const ALLOWED_NOOPS: &[(&str, &str, &str)] = &[
         "--stack",
         "appends the 'Stack Quality (CB-150)' block listing sovereign dependencies found in Cargo.toml (score_handler_display.rs:5-31); adding `aprender`/`trueno` to the fixture's Cargo.toml makes it appear. The corpus has an empty [dependencies] section, and the function early-returns when none are found",
     ),
+    (
+        "comply check",
+        "--strict",
+        "escalates warnings to a failing exit and nothing else — exit_policy (comply_handlers/check_handlers/check.rs:229-256) returns code 2 only when `is_compliant && warn > 0 && fail == 0`; a report with failures already exits 1 and the flag has nothing left to escalate. Demonstrated on this corpus: give it a `deny.toml` naming all four families and a `.github/workflows/ci.yml` whose `gate` job runs the CB-reaching commands, then `PMAT_REQUIRED_STATUS_CHECKS=gate pmat comply check` exits 0 and the same run with --strict exits 2 with 'the report is COMPLIANT (0 failures), but --strict treats warnings as errors: 9 warning(s)'. The swept corpus fails CB-1701 and CB-2100, so both runs exit 1 with byte-identical stdout (15,773B). Pinned as a tri-state by check_readonly_and_exemption_tests.rs::strict_exit_codes_are_a_documented_tri_state",
+    ),
 ];
 
 /// Where a probe writes when a flag's only observable is "a file was written".
@@ -374,6 +396,40 @@ const PROBE_OUTPUT_FILE: &str = "/tmp/pmat-flag-efficacy-probe-output.txt";
 /// Each entry is a claim that this context is where the flag lives, and is as
 /// reviewable as an `ALLOWED_NOOPS` entry — with the difference that the flag
 /// still has to prove itself.
+/// Environment a flag needs before its effect is observable at all.
+///
+/// `("*", flag, env)` applies to that flag on every command; a concrete path
+/// applies to that command only. Each row is a reviewable claim about WHERE the
+/// flag's effect lives, exactly like `PROBE_CONTEXT` is for arguments.
+///
+/// PER-FLAG, NEVER GLOBAL, and that is the whole design. `--quiet` is honoured
+/// above clap dispatch — `effective_trace_filter` drops the RUST_LOG fallback
+/// and `log_level_directive` forces "error" — so it suppresses framework
+/// chatter for every command in the tree. With RUST_LOG unset there is nothing
+/// to suppress and it reads as a no-op on ~43 commands; the sweep was reporting
+/// a property of the developer's shell.
+///
+/// Setting RUST_LOG globally in `run()` would fix `--quiet` and break
+/// `--verbose`, which would then measure 129B against 129B and read as a no-op
+/// on every command — the same trap as the NO_COLOR bug recorded in
+/// `mod.rs::run`, which turned ~40 `--color` flags into false positives. The
+/// overlay is therefore attached to the one flag whose effect it exposes.
+/// `(command path or "*", flag, environment)`.
+type ProbeEnvRow = (
+    &'static str,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+);
+
+const PROBE_ENV: &[ProbeEnvRow] = &[("*", "--quiet", &[("RUST_LOG", "info")])];
+
+fn probe_env(path: &str, flag: &str) -> &'static [(&'static str, &'static str)] {
+    PROBE_ENV
+        .iter()
+        .find(|(p, f, _)| (*p == "*" || *p == path) && *f == flag)
+        .map_or(&[][..], |(_, _, env)| *env)
+}
+
 const PROBE_CONTEXT: &[(&str, &str, &[&str])] = &[
     // `--quiet` suppresses the "Diagnostic report written to: ..." notice, which
     // only exists on the --output branch (project_diag_handlers.rs:123).
@@ -607,6 +663,36 @@ fn baseline_unusable(o: &super::Observable) -> Option<String> {
             return Some(why.into());
         }
     }
+    // STRUCTURAL, and deliberately last: a baseline that failed AND rendered
+    // nothing is not a control, whatever it printed on stderr.
+    //
+    // Every needle above is a specific phrase someone had to observe first.
+    // This rule needs no phrase, and it is the one that closes the class. CI
+    // caught `analyze coverage-improve --fast` as a no-op where the whole
+    // sweep was green locally: the harness corpus has no Makefile, so the
+    // command exits 1 with an empty stdout BEFORE `--fast` is ever read, and
+    // the flagged run reproduced the baseline exactly because both had failed
+    // identically. The flag is in fact wired (`calculator.rs:212,297,316`).
+    //
+    // `compare_probes` has carried this exact guard for the two-value paths
+    // since it booked `--format text|json` on this same command as a no-op.
+    // The boolean-switch path never got it, so the rule lived in one of the
+    // two places that needed it. Putting it HERE covers both, because both
+    // paths validate their baseline through this function.
+    //
+    // The `rendered_nothing` conjunct is load-bearing: a non-zero exit is the
+    // NORMAL outcome for the commands this gate exists to police — `analyze
+    // lint-hotspot`, `quality-gate` and `enforce extreme` all exit 1 on the
+    // defect-rich corpus while printing a full report. They keep a non-empty
+    // stdout and stay usable as controls. Skipping on exit code alone would
+    // excuse every no-op flag on every failing quality gate, trading one
+    // silent pass for another.
+    if !o.succeeded() && o.stdout.trim().is_empty() {
+        return Some(format!(
+            "baseline exited {} with empty stdout; the command failed before any              flag was read, so it is not a control",
+            o.code.map_or_else(|| "by signal".to_string(), |c| c.to_string())
+        ));
+    }
     None
 }
 
@@ -621,16 +707,17 @@ fn check_flag(
     }
     let path_str = path.join(" ");
     let extra = probe_context(&path_str, &flag.long);
+    let env = probe_env(&path_str, &flag.long);
     let mut refs: Vec<&str> = path.iter().map(|s| s.as_str()).collect();
     refs.extend_from_slice(extra);
 
-    // With a probe context the control must carry it too, or the comparison
-    // measures the context rather than the flag.
+    // With a probe context OR a probe environment the control must carry it too,
+    // or the comparison measures the context rather than the flag.
     let contextual_baseline;
-    let baseline = if extra.is_empty() {
+    let baseline = if extra.is_empty() && env.is_empty() {
         baseline
     } else {
-        contextual_baseline = run(&refs, cwd, DEFAULT_TIMEOUT);
+        contextual_baseline = run_with_env(&refs, cwd, DEFAULT_TIMEOUT, env);
         if let Some(why) = baseline_unusable(&contextual_baseline) {
             return Verdict::Skipped(format!("probe context {extra:?}: {why}"));
         }
@@ -650,8 +737,8 @@ fn check_flag(
         let mut b = refs.clone();
         b.push(&flag.long);
         b.push(&values[1]);
-        let oa = run(&a, cwd, DEFAULT_TIMEOUT);
-        let ob = run(&b, cwd, DEFAULT_TIMEOUT);
+        let oa = run_with_env(&a, cwd, DEFAULT_TIMEOUT, env);
+        let ob = run_with_env(&b, cwd, DEFAULT_TIMEOUT, env);
         return compare_probes(&oa, &ob);
     }
 
@@ -671,15 +758,15 @@ fn check_flag(
         let mut b = refs.clone();
         b.push(&flag.long);
         b.push(hi);
-        let oa = run(&a, cwd, DEFAULT_TIMEOUT);
-        let ob = run(&b, cwd, DEFAULT_TIMEOUT);
+        let oa = run_with_env(&a, cwd, DEFAULT_TIMEOUT, env);
+        let ob = run_with_env(&b, cwd, DEFAULT_TIMEOUT, env);
         return compare_probes(&oa, &ob);
     }
 
     // Boolean switch: presence must change the observable.
     let mut with = refs.clone();
     with.push(&flag.long);
-    let o = run(&with, cwd, DEFAULT_TIMEOUT);
+    let o = run_with_env(&with, cwd, DEFAULT_TIMEOUT, env);
     if o.timed_out {
         return Verdict::Skipped("timed out".into());
     }
@@ -1103,6 +1190,71 @@ fn unusable_baselines_are_skipped_not_blamed() {
     );
 }
 
+/// A baseline that FAILED and printed nothing is not a control — and one that
+/// failed while printing a full report still is.
+///
+/// RED-first: on the commit before the structural rule was added to
+/// `baseline_unusable`, the first assertion here fails. That is not a
+/// hypothetical — it is the CI failure that produced this test. The sweep was
+/// green on this workstation and red on the runner, reporting
+/// `pmat analyze coverage-improve --fast` as the one flag that "parses but
+/// changes nothing". It does not: `--fast` reaches `fast_mode` in
+/// `perfection_score/calculator.rs` at lines 212, 297 and 316. The corpus the
+/// runner sweeps has no Makefile, so the command exits 1 with an empty stdout
+/// before any flag is read, and the flagged run reproduced the baseline byte
+/// for byte because BOTH had already failed.
+///
+/// Measured on a Makefile-less fixture, both probes:
+///   `analyze coverage-improve --path FIX`          exit=1  stdout=0B
+///   `analyze coverage-improve --path FIX --fast`   exit=1  stdout=0B
+///
+/// The second and third assertions are the counter-test, and they are the
+/// reason the rule carries the `rendered_nothing` conjunct rather than keying
+/// on the exit code alone. `quality-gate`, `analyze lint-hotspot` and `enforce
+/// extreme` are the commands this gate exists to police, and exiting 1 while
+/// printing a full report is their NORMAL, healthy outcome. Were they skipped,
+/// every no-op flag on every failing quality gate would be excused — which is
+/// the same silent pass the harness was built to end, just relocated.
+#[test]
+fn a_baseline_that_failed_silently_is_not_a_control() {
+    let died_before_reading_flags = super::Observable {
+        code: Some(1),
+        stdout: String::new(),
+        stderr: "Error: Could not find Makefile in /tmp/corpus or parent directories".into(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&died_before_reading_flags).is_some(),
+        "a baseline that exited non-zero having rendered NOTHING cannot serve as          a control: every flag added to it reproduces it exactly and is booked a          no-op. This is the CI failure that reported `analyze coverage-improve          --fast` inert when it is wired to fast_mode."
+    );
+
+    // The counter-test. Without it, "skip every failing baseline" passes the
+    // assertion above and silently excuses the entire defect-rich corpus.
+    let failed_loudly = super::Observable {
+        code: Some(1),
+        stdout: "TDG Score: 42.1 (F)\n12 violations found\n".into(),
+        stderr: String::new(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&failed_loudly).is_none(),
+        "exiting non-zero while printing a full report is the NORMAL outcome for          `quality-gate`, `analyze lint-hotspot` and `enforce extreme` on the          defect corpus. Skipping these would excuse every no-op flag they carry."
+    );
+
+    // ...and success with empty stdout is still a control: plenty of commands
+    // report on stderr and exit 0. Only the CONJUNCTION is disqualifying.
+    let quiet_success = super::Observable {
+        code: Some(0),
+        stdout: String::new(),
+        stderr: "analysed 12 files".into(),
+        timed_out: false,
+    };
+    assert!(
+        baseline_unusable(&quiet_success).is_none(),
+        "a command that succeeded is a usable control even with an empty stdout"
+    );
+}
+
 /// A flag that refuses because it is unimplemented satisfies the invariant.
 ///
 /// pmat exits non-zero with, e.g., "--ml is not implemented: complexity scores
@@ -1383,6 +1535,38 @@ fn declined_preconditions_are_skipped_not_blamed() {
             "must be skipped, not blamed on its flags: {what}"
         );
     }
+}
+
+/// A flag whose own help says it REWRITES a tracked file must never be swept.
+///
+/// `comply ratchet --lower` was being swept, and booked as a no-op. It is one
+/// only by accident: no corpus carries a `.pmat-ratchet.toml`, so the handler
+/// bails before it writes. Probes run with the corpus as cwd, so this never
+/// reached THIS repository — but the corpus is a thing we add files to, and the
+/// first one to carry a ratchet file would have its baselines silently lowered
+/// with the damage recorded as "changes nothing".
+///
+/// The two halves are asserted together so neither can drift alone: the help
+/// must still describe a rewrite, AND the flag must be denied. If `--lower`
+/// ever stops mutating, this fails and says so, rather than leaving a flag
+/// permanently over-denied for a reason that expired.
+#[test]
+fn a_flag_that_rewrites_a_tracked_file_is_never_swept() {
+    let cwd = std::env::current_dir().expect("cwd");
+    let help = help_for(&["comply", "ratchet"], &cwd)
+        .expect("`pmat comply ratchet --help` must be readable");
+
+    assert!(
+        help.contains("rewritten") || help.contains("rewrite"),
+        "--lower's help no longer describes a rewrite. Re-check whether it still \
+         mutates before leaving it in DENY_FLAGS:\n{help}"
+    );
+    assert!(
+        DENY_FLAGS.contains(&"--lower"),
+        "a flag whose own help says it rewrites a tracked file must be in \
+         DENY_FLAGS, or the sweep will invoke it against whatever tree it is \
+         pointed at"
+    );
 }
 
 /// Every allow-listed no-op must name a demonstrated effect, and none may

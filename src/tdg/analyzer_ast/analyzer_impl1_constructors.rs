@@ -42,6 +42,52 @@ impl TdgAnalyzerAst {
         })
     }
 
+    /// Create an analyzer whose cache lives with the PROJECT being analysed.
+    ///
+    /// `with_storage` sends every invocation to `$HOME/.pmat/tdg-{warm,cold}.db`
+    /// via `TieredStorageFactory::create_default` — one pair of SQLite files for
+    /// every project on the machine and every concurrent run. Two `pmat tdg`
+    /// invocations on unrelated projects contend on the same file, and the
+    /// twelve `sarif_format_fidelity` tests contend despite each building its
+    /// own `TempDir`, because the fixture isolates the INPUT and not the STORE.
+    /// One of 20,394 tests failed that way under llvm-cov with "Error code 5:
+    /// The database file is locked", taking `ci / coverage` and the merge with
+    /// it.
+    ///
+    /// A cache keyed to a project belongs beside that project. `.pmat/` is
+    /// already where the context index lives and is already gitignored, so this
+    /// puts the TDG cache where a reader would look for it and gives every
+    /// project — and every test fixture — its own file.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn with_storage_at(
+        config: TdgConfig,
+        project_root: impl AsRef<std::path::Path>,
+    ) -> Result<Self> {
+        // `pmat tdg -p <file>` is legal, and the cache root must be a
+        // DIRECTORY: TieredStore joins `.pmat/tdg-warm.db` onto whatever it is
+        // given, and joining onto a file yields a path whose parent is a file,
+        // which `create_dir_all` refuses. Analysing a single file caches beside
+        // it, in the directory that contains it.
+        let given = project_root.as_ref();
+        let root = if given.is_file() {
+            given.parent().unwrap_or_else(|| std::path::Path::new("."))
+        } else {
+            given
+        };
+        let storage = TieredStorageFactory::create_at_path(root)?;
+        let scheduler = SchedulerFactory::create_balanced();
+        let adaptive_manager = AdaptiveThresholdFactory::create_default();
+        let resource_controller = ResourceControllerFactory::create_default();
+        Ok(Self {
+            config,
+            storage: Some(storage),
+            scheduler: Some(scheduler),
+            adaptive_manager: Some(adaptive_manager),
+            resource_controller: Some(resource_controller),
+            git_context: None,
+        })
+    }
+
     /// Create analyzer with in-memory storage for testing (no file I/O conflicts)
     #[cfg(test)]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

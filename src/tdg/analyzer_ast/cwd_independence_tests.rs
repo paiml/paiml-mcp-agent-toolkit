@@ -138,3 +138,68 @@ fn test_critical_defect_grade_is_cwd_independent() {
         score.total
     );
 }
+
+/// The same independence, one layer down: TDG must not depend on the caller's
+/// HOME either.
+///
+/// `with_storage` routes every invocation to `$HOME/.pmat/tdg-{warm,cold}.db`
+/// via `TieredStorageFactory::create_default` (storage_impl_queries.rs:151),
+/// regardless of which project it is analysing. Two projects share one pair of
+/// SQLite files, and so do two concurrent test fixtures — the fixture isolates
+/// the INPUT and not the STORE.
+///
+/// That is what failed `ci / coverage` on PR #1021: one of 20,394 tests died on
+/// "Error code 5: The database file is locked" because the twelve
+/// `sarif_format_fidelity` tests contended on a single file while each believed
+/// its own `TempDir` had isolated it. Under llvm-cov the suite runs ~7x slower,
+/// which widened the window enough to make it certain rather than rare.
+///
+/// Asserts BOTH directions: the chosen root owns the database, and a second
+/// unrelated root owns its OWN. A fix that merely relocated the global file
+/// would satisfy the first assertion and fail the second.
+#[test]
+fn storage_is_scoped_to_the_project_not_the_home_directory() {
+    let a = tempfile::TempDir::new().expect("temp dir a");
+    let b = tempfile::TempDir::new().expect("temp dir b");
+
+    let _a = TdgAnalyzerAst::with_storage_at(crate::tdg::TdgConfig::default(), a.path())
+        .expect("analyzer for root a");
+    let _b = TdgAnalyzerAst::with_storage_at(crate::tdg::TdgConfig::default(), b.path())
+        .expect("analyzer for root b");
+
+    for root in [a.path(), b.path()] {
+        assert!(
+            root.join(".pmat").join("tdg-warm.db").is_file(),
+            "each project root must own its cache; {} has none",
+            root.display()
+        );
+    }
+}
+
+/// `pmat tdg -p <file>` is legal, so the cache root must resolve to a directory.
+///
+/// `TieredStore` joins `.pmat/tdg-warm.db` onto whatever root it is handed. Hand
+/// it a FILE and the result is a path whose parent is a file, which
+/// `create_dir_all` refuses — so scoping the cache to the project broke every
+/// single-file invocation until the path was resolved to its container. Caught
+/// by `test_tdg_command_sarif_on_a_file_is_a_sarif_document` on CI across three
+/// feature legs; pinned directly here so the property has a test that names it.
+#[test]
+fn a_single_file_target_caches_in_its_containing_directory() {
+    let dir = tempfile::TempDir::new().expect("temp dir");
+    let file = dir.path().join("target.rs");
+    std::fs::write(&file, "pub fn f() {}\n").expect("write target");
+
+    TdgAnalyzerAst::with_storage_at(crate::tdg::TdgConfig::default(), &file)
+        .expect("analysing a single file must not fail on cache setup");
+
+    assert!(
+        dir.path().join(".pmat").join("tdg-warm.db").is_file(),
+        "cache must land beside the file, in {}",
+        dir.path().display()
+    );
+    assert!(
+        !file.join(".pmat").exists(),
+        "cache must not be nested under the file itself"
+    );
+}

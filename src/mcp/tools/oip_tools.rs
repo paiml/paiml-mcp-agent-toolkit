@@ -286,10 +286,18 @@ mod tests {
         let response = generate_prevention_prompt(request)?;
 
         assert!(response.found);
-        assert!(response.prompt.contains("ConfigurationErrors"));
+        assert!(response.prompt.contains("# Preventing ConfigurationErrors"));
+        // The generator emits markdown, so the label is bold. Asserting the
+        // unbolded "Historical Frequency: 25 occurrences" could never match --
+        // this test only runs under --features org-intelligence, so it had never
+        // been executed. The producer's own test pins the same bold form:
+        // prompts::defect_aware_prompts::defect_aware_prompts_tests.
         assert!(response
             .prompt
-            .contains("Historical Frequency: 25 occurrences"));
+            .contains("**Historical Frequency**: 25 occurrences"));
+        assert!(response
+            .prompt
+            .contains("**Average Code Quality**: TDG 45.2/100"));
 
         Ok(())
     }

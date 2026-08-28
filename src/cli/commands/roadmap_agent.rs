@@ -137,15 +137,15 @@ pub enum TestSuite {
 #[derive(Clone, Debug, clap::ValueEnum)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ServeTransport {
-    /// HTTP transport (REST API)
+    /// Streamable-HTTP MCP endpoint at the ROOT path. THE ONLY ONE IMPLEMENTED
     Http,
-    /// WebSocket transport (real-time bidirectional)
+    /// NOT IMPLEMENTED — exits 2
     WebSocket,
-    /// HTTP Server-Sent Events transport (streaming)
+    /// NOT IMPLEMENTED — exits 2
     HttpSse,
-    /// Both HTTP and WebSocket (hybrid mode)
+    /// NOT IMPLEMENTED — exits 2
     Both,
-    /// All transports (HTTP, WebSocket, SSE)
+    /// NOT IMPLEMENTED — exits 2
     All,
 }
 

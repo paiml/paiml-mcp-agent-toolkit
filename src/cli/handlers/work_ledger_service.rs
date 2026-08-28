@@ -320,10 +320,12 @@ impl FalsificationLedger {
             else {
                 continue;
             };
-            if prev.is_some_and(|p| num < p) {
+            // `filter` binds the predecessor the guard already proved present,
+            // so the ordering violation is reported from a value rather than
+            // re-derived by unwrapping the Option a second time.
+            if let Some(p) = prev.filter(|&p| num < p) {
                 report.r1_violations.push(format!(
-                    "MACS-{num:03} appears after MACS-{:03} (out of ascending order)",
-                    prev.unwrap()
+                    "MACS-{num:03} appears after MACS-{p:03} (out of ascending order)"
                 ));
             }
             prev = Some(num);

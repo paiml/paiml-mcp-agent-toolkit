@@ -39,8 +39,47 @@ pub struct AnalysisSummary {
     pub total_files: usize,
     pub total_issues: usize,
     pub critical_issues: usize,
-    pub quality_score: f64,
+    /// `None` when `total_files == 0`: a quality score is issues per file, and
+    /// over zero files that ratio has no denominator.
+    ///
+    /// This used to be a bare `f64` set to `100.0` whenever `total_issues == 0`
+    /// — a condition an EMPTY DIRECTORY satisfies — so `analyze comprehensive`
+    /// answered a tree it had read nothing from with
+    /// "Quality Score: 100.0% / Total Files: 0 / Total Issues: 0" and the
+    /// recommendation "Code quality looks good! Continue following best
+    /// practices." The type now makes the fabricated number unrepresentable;
+    /// renderers print "not measured" and the reason instead.
+    pub quality_score: Option<f64>,
     pub recommendations: Vec<String>,
+}
+
+/// What the report prints where the quality score would go when there was no
+/// denominator to divide by.
+pub const QUALITY_SCORE_UNMEASURED: &str = "not measured (no file was analysed)";
+
+/// The quality score over `total_issues` issues found across `total_files`
+/// analysed files, or `None` when nothing was analysed.
+///
+/// Split out of `build_result` so the zero-denominator rule has a name, a
+/// doctest and a unit test of its own rather than living inside a 70-line
+/// function.
+///
+/// ```
+/// use pmat::services::facades::analysis_orchestrator::quality_score;
+/// assert_eq!(quality_score(0, 0), None, "an empty tree has no score");
+/// assert_eq!(quality_score(10, 0), Some(100.0));
+/// assert_eq!(quality_score(10, 5), Some(95.0));
+/// ```
+#[must_use]
+pub fn quality_score(total_files: usize, total_issues: usize) -> Option<f64> {
+    if total_files == 0 {
+        return None;
+    }
+    if total_issues == 0 {
+        return Some(100.0);
+    }
+    let issue_density = total_issues as f64 / total_files as f64;
+    Some((100.0 - (issue_density * 10.0)).max(0.0))
 }
 
 /// Enum to handle different analysis result types
@@ -263,13 +302,11 @@ impl AnalysisOrchestrator {
             r.violations.iter().filter(|v| v.complexity > 25).count()
         }) + satd.as_ref().map_or(0, |r| r.violations.len()); // All SATD considered critical
 
-        // Calculate quality score (0-100)
-        let quality_score = if total_issues == 0 {
-            100.0
-        } else {
-            let issue_density = total_issues as f64 / total_files.max(1) as f64;
-            (100.0 - (issue_density * 10.0)).max(0.0)
-        };
+        // Calculate quality score (0-100), or `None` over zero files. The old
+        // `total_files.max(1)` here was the tell: it invented a denominator so
+        // the arithmetic would not divide by zero, which is exactly the case
+        // that has no answer.
+        let quality_score = quality_score(total_files, total_issues);
 
         // Generate recommendations
         let mut recommendations = Vec::new();
@@ -295,8 +332,14 @@ impl AnalysisOrchestrator {
         }
 
         if recommendations.is_empty() {
-            recommendations
-                .push("Code quality looks good! Continue following best practices.".to_string());
+            // "Code quality looks good!" is a verdict on code that was read.
+            // Over zero files the congratulation was the loudest part of the
+            // empty-directory report; say what happened instead.
+            recommendations.push(if total_files == 0 {
+                "No file was analysed, so nothing here is a verdict on this tree.".to_string()
+            } else {
+                "Code quality looks good! Continue following best practices.".to_string()
+            });
         }
 
         Ok(ComprehensiveAnalysisResult {

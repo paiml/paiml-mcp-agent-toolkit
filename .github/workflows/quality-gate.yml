@@ -48,6 +48,60 @@ jobs:
       - name: Install pmat
         run: cargo install --path . --locked
 
+      # CB-1701 (supply chain). `pmat score` is a REQUIRED status check, so a
+      # blocking cargo-deny here is the only thing making a supply-chain failure
+      # able to stop a merge in this repository.
+      #
+      # Bare `cargo deny check` on purpose: with no family argument it runs all
+      # four of advisories, bans, licenses and sources. Naming families is how
+      # coverage silently narrows — the organisation's shared CI appends
+      # `|| echo ...` to its licenses and sources run, which prints the findings
+      # and then exits 0, so the job is green whatever cargo-deny found. Do not
+      # add `|| true`, `continue-on-error`, or a family list to this step.
+      #
+      # Verified against the tree at the time of writing: all four families exit
+      # 0 (8/29/2/1 warnings, 0 errors), so this blocks nothing that was passing.
+      #
+      # KNOWN BLIND SPOT — do not read a green tick here as "no known
+      # vulnerabilities". cargo-deny's advisories family is backed by the RustSec
+      # database, and an advisory that exists only as a GHSA/CVE is invisible to
+      # it. Live example at the time of writing: GHSA-2f9f-gq7v-9h6m /
+      # CVE-2026-43868 in `thrift v0.17.0`, which GitHub Dependabot reports as a
+      # moderate alert on this repository while `cargo deny check advisories`
+      # exits 0. There is no RustSec advisory for thrift, and no `ignore` entry
+      # in deny.toml — cargo-deny cannot suppress what it has never heard of.
+      # The path is thrift -> parquet 57 -> aprender-db 0.61 -> pmat, tracked in
+      # paiml/aprender#2531 (parquet 59 drops thrift) and paiml/.github#48.
+      #
+      # Closing it needs a second source that reads GitHub's advisory data (the
+      # Dependabot alerts API). That source now EXISTS, as its own workflow:
+      # .github/workflows/security-advisories.yml, job `dependabot-alerts`,
+      # running scripts/dependabot-alert-gate.sh. It fails on any open alert at
+      # or above `medium` unless the finding carries a dated, owned, expiring
+      # entry in .github/dependabot-acknowledgements.toml, and it fails — rather
+      # than skipping — whenever it cannot measure. (#1074)
+      #
+      # It is NOT called from this job, and it is not yet a required status
+      # check, for the reason this comment already gave: it needs a token
+      # permission this workflow has never exercised, and a gate whose API call
+      # fails must fail the build rather than skip, so it has to be proven
+      # working before it guards a required check. The gate is proven against
+      # the live API and against fixtures; the GITHUB_TOKEN path is not, and can
+      # only be proven by running it. Promotion instructions, to be done after
+      # one green run on master, are at the top of security-advisories.yml.
+      #
+      # Until that promotion happens, a green tick on THIS job still does not
+      # mean "no known vulnerabilities" — it means "nothing RustSec knows about".
+      # Read the `dependabot-alerts` check for the other half.
+      #
+      # The thrift finding named above is currently ACCEPTED, not fixed:
+      # acknowledged by noahgift, expiring 2026-10-24, pending #1075.
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Supply chain gate — cargo deny (blocking, all families)
+        run: cargo deny check
+
       - name: Run unified quality gate
         run: pmat score --gate 60 --format json -o score.json
 
@@ -163,10 +217,78 @@ jobs:
       - name: L1 — binding registry AllImplemented (build.rs, already enforced by install)
         run: echo "contracts/binding.yaml AllImplemented enforced at build time (build.rs)."
 
+      # ── L2/L3: the contracts must be readable BY THE TOOL THAT AUDITS THEM.
+      #
+      # `pv` reads `falsification_tests:`. Thirteen contracts carried their
+      # obligations under `falsification:`, so `pv status` reported 0 for them
+      # and 135 of this repository's 179 obligations were invisible to the audit
+      # meant to cover them — including all 90 test-bearing ones, in three
+      # contracts written on this very branch.
+      #
+      # This step is blocking and `provable ladder` is a required check, so an
+      # obligation that pv cannot read now fails the merge instead of reporting
+      # a confident zero. Entries with no `test:` field are left alone: those
+      # are alert thresholds, not falsification tests, and forcing them into
+      # the schema would fabricate tests that do not exist.
+      # PINNED. This gate is blocking and `provable ladder` is required, so an
+      # upstream release that tightens validation would redden every pull
+      # request without a commit here. 0.63.0 is the version the gate was
+      # verified against; bump it deliberately and re-run the gate locally.
+      - name: Install pv (provable-contracts CLI)
+        run: cargo install aprender-contracts-cli --version 0.63.0 --locked
+      - name: L2/L3 — every contract validates and its obligations are visible to pv
+        run: python3 scripts/pv-obligation-gate.py
+
       # ── Ladder gate: activates CB-1205/1206/1308/1330/1614/1618/1619 at once.
-      # Advisory during the 30-day grace period (ALADR-012); flip
-      # `continue-on-error` to false to make `provable ladder / comply` a
-      # required branch-protection check.
+      #
+      # STILL `continue-on-error`, and this is the "verdict reaches nothing"
+      # defect — CB-2100 says so about this exact step, from inside this exact
+      # step. Do not read the comment that used to be here ("flip
+      # continue-on-error to false to make it required") as a free action: it is
+      # not, because THIS COMMAND IS CURRENTLY RED. Flipping it today reddens
+      # `provable ladder`, which IS a required branch-protection context, on
+      # master and on every open pull request.
+      #
+      # Measured, not inferred — run 32564647018, job 97011391296, master,
+      # 2026-08-22, from the job log (`##[error]Process completed with exit code 1`):
+      #
+      #   comply: 166 checks in 279.6s (4 fail) — 56 pass · 18 warn · 4 fail · 88 skip
+      #     ✗ CB-040  File Health: 2 files >2000 lines, 32 >1000, 195 >500 (grade D)
+      #     ✗ CB-1700 Branch Protection: unreadable — `gh api repos/...` exits 4,
+      #               "set the GH_TOKEN environment variable". This job sets no
+      #               GH_TOKEN at all, so the check is unverifiable, and comply
+      #               correctly scores unverifiable as failed rather than passed.
+      #     ✗ CB-1701 Supply Chain: advisory database age unknown (no advisory DB
+      #               under ~/.cargo in THIS job — the `cargo deny check` that
+      #               would create one runs in the `score` job, not here) and the
+      #               required-status-check set unknown (same missing GH_TOKEN).
+      #     ✗ CB-2100 Comply Gate Effect: 9 error-severity rules unreachable from
+      #               the required checks — CB-050, CB-060, CB-1100, CB-124,
+      #               CB-200, CB-2100, CB-2101, CB-2102, CB-302.
+      #
+      # NOTE for anyone auditing this from the API rather than the logs: a step
+      # under `continue-on-error` reports `"conclusion": "success"` on
+      # /actions/runs/{id}/jobs even as its command exits 1. The green tick this
+      # step has shown on every run since it was added is that artefact. Only the
+      # raw job log is honest here.
+      #
+      # Sequence to make it blocking, in this order — each step is separately
+      # verifiable, and none of them is "lower the threshold":
+      #   1. CB-1700 + CB-1701's token half: add `GH_TOKEN` to this job. Verify it
+      #      actually closes them; `repos/{owner}/{repo}/branches/*/protection`
+      #      needs admin scope, which the default GITHUB_TOKEN does not have, so
+      #      this may convert "no token" into "403" — a different unverifiable,
+      #      not a pass. Do not flip anything on the strength of an assumption.
+      #   2. CB-1701's advisory half: this job never runs cargo-deny, so the
+      #      advisory DB it looks for cannot exist. Either run it here or teach
+      #      the check to read the `score` job's.
+      #   3. CB-040: real file-health debt. Split the two >2000-line files.
+      #   4. CB-2100: partially addressed by promoting `windows-check` in ci.yml;
+      #      the remaining hole is `ci / gate` resolving into
+      #      paiml/.github/.github/workflows/sovereign-ci.yml@main, whose steps
+      #      this repository cannot read. That is an upstream change.
+      #   5. ONLY when a master run of this step exits 0 on its own, delete
+      #      `continue-on-error` here.
       - name: Ladder gate — pmat comply
         continue-on-error: true
         run: pmat comply check --failures-only

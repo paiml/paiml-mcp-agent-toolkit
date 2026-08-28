@@ -263,7 +263,7 @@ mod coverage_tests {
 
         // Rate should still be valid
         let rate = controller.get_current_rate();
-        assert!(rate >= 10 && rate <= 500);
+        assert!((10..=500).contains(&rate));
     }
 
     #[actix_rt::test]

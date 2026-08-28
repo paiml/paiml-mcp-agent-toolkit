@@ -7,11 +7,18 @@
 pub mod analysis;
 pub mod analysis_helpers;
 pub mod analysis_utilities;
+/// #1029: which `analyze` subcommands MCP advertises, as a total match.
+pub mod analyze_mcp_exposure;
 pub mod args;
 pub mod cache_clearing;
 pub mod colors;
 pub mod command_dispatcher;
 pub mod command_structure;
+pub mod command_wire_names;
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+#[path = "command_wire_names_tests.rs"]
+mod command_wire_names_tests;
 pub mod commands;
 pub mod coverage_helpers;
 pub mod dead_code_formatter;
@@ -40,6 +47,14 @@ pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 pub mod unified_help;
 pub mod verify;
+pub mod verify_lint_receipt;
+
+// PMAT-630 (#1034 CASE 1): end-to-end replay of the clippy-red commit the
+// pre-commit hook waved through. Declared here rather than dropped in `tests/`
+// because `autotests = false` (`Cargo.toml:30`) silently never compiles an
+// undeclared test file. `cargo test --lib -- hook_clippy_gate` lists them.
+#[cfg(test)]
+mod hook_clippy_gate_tests;
 
 // Re-export commonly used types from submodules
 pub use commands::{
@@ -401,6 +416,81 @@ pub fn ensure_analysis_path_exists(path: &Path) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Refuse a run in which the analyzer opened no source file at all.
+///
+/// [`ensure_analysis_path_exists`] closes the "the tree is not there" hole; this
+/// closes the one behind it — the tree IS there, is readable, and contains
+/// nothing this analyzer can measure. Eight analyzers answered that case with a
+/// full report of zeros and exit 0: over an empty directory `analyze dag` drew
+/// `graph TD`, `analyze duplicates` reported "Duplication: 0.0% (0 / 0 lines)",
+/// `analyze big-o` printed a complexity distribution of eight zeros,
+/// `analyze provability` printed "Average provability score: 0.0%",
+/// `analyze deep-context` printed "Files Analyzed: 0", `analyze symbol-table`
+/// "Total symbols: 0", `analyze graph-metrics` "Density: 0.000" and
+/// `analyze proof-annotations` "Total proofs: 0" — every one of them the same
+/// document a genuinely clean tree produces, so a CI gate pointed at the wrong
+/// directory went green.
+///
+/// A ratio whose denominator is zero is not zero, it is undefined, and a
+/// distribution over an empty population is not a measurement. Where files WERE
+/// opened and a derived metric still has no denominator the honest answer is
+/// "not measured" plus a reason (what `analyze entropy` prints, and what
+/// `DagBuildStats::explain_empty` prints for a parsed-but-edgeless graph); this
+/// helper is for the case one step earlier, where nothing was looked at.
+///
+/// The sentence is the one `analyze satd` already refuses with
+/// (`unmeasured::refusal`), so the whole CLI says this the same way.
+///
+/// # Errors
+///
+/// When `files_analyzed` is 0. That is the point.
+pub fn ensure_source_files_were_analyzed(
+    measurement: &str,
+    path: &Path,
+    files_analyzed: usize,
+) -> anyhow::Result<()> {
+    ensure_files_were_analyzed("source files", measurement, path, files_analyzed)
+}
+
+/// [`ensure_source_files_were_analyzed`] for an analyzer whose population is
+/// not "source files".
+///
+/// `analyze assembly-script` and `analyze web-assembly` each measure ONE file
+/// type, and a tree full of Rust holds none of it. Saying "no source files were
+/// found" there would be false, so the population is named:
+/// `population = "AssemblyScript files"` yields
+/// "no AssemblyScript files were found under …, so no AssemblyScript
+/// measurement was taken. This is not a clean result." — the same sentence
+/// `analyze satd` refuses with, with the noun that is actually true.
+///
+/// This is one sentence with a hole in it, not a second convention: the whole
+/// CLI still refuses an unmeasured run the same way.
+///
+/// # Errors
+///
+/// When `files_analyzed` is 0. That is the point.
+pub fn ensure_files_were_analyzed(
+    population: &str,
+    measurement: &str,
+    path: &Path,
+    files_analyzed: usize,
+) -> anyhow::Result<()> {
+    if files_analyzed > 0 {
+        return Ok(());
+    }
+    // Exit 5 DECLARED, not inferred. This refusal reached
+    // `ExitCode::AnalysisError` only because the interpolated `measurement` was
+    // sometimes the word "complexity", which the old substring classifier
+    // matched. The same refusal for a different analysis — where `measurement`
+    // is "dead-code" or "churn" — matched nothing and exited 1, so one class of
+    // failure had two exit codes decided by an interpolation.
+    Err(crate::cli_exit::analysis_error(anyhow::anyhow!(
+        "no {population} were found under {}, so no {measurement} measurement was taken. \
+         This is not a clean result.",
+        path.display()
+    )))
 }
 
 /// The single implementation of `--top-files N`.

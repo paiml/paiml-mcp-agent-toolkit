@@ -17,6 +17,21 @@
 //! - CB-1654: Refusal Events Acked — no ticket carries an unacknowledged
 //!   Refusal event (MACS E5): a refusal-terminated turn must map to a
 //!   paused ticket, never a completed (or quietly abandoned) one.
+//!
+//! AGY (`.agents/`) client config — PMAT-INIT-002 claims 4 and 5, GH #1031.
+//! The read side of `pmat init --target agy`; see `check_macs_agy.rs` for the
+//! Skip/Pass discipline all four share (a Skip must say it judged nothing).
+//!
+//! - CB-1663: AGY Directory Structure — every `.agents/**/*.json` parses,
+//!   every `rules/*.md` is non-empty, every `skills/<name>/` has a SKILL.md.
+//! - CB-1664: AGY Hooks Schema — `hooks.json` PreToolUse shape, and the
+//!   referenced script exists and is executable (a missing one is a silent
+//!   no-op: both clients fail open).
+//! - CB-1665: AGY Skill Frontmatter — `skills/*/SKILL.md` declares `effort`
+//!   (model-level tier) and `description`; the missing key is named.
+//! - CB-1666: AGY MCP Client Config — `mcp_config.json` declares
+//!   `mcpServers.<name>.command`/`args`, and pmat's own dead entrypoints
+//!   (`cargo run …`, `--transport stdio`, bare `serve`) are rejected.
 
 use super::types::*;
 use std::path::Path;
@@ -31,6 +46,14 @@ include!("check_macs_skill_effort.rs");
 
 include!("check_macs_artifacts.rs");
 
+include!("check_macs_agy.rs");
+
+include!("check_macs_agy_hooks.rs");
+
+include!("check_macs_agy_skills.rs");
+
+include!("check_macs_agy_mcp.rs");
+
 include!("check_macs_tests_provenance.rs");
 
 include!("check_macs_tests_ladder.rs");
@@ -40,3 +63,5 @@ include!("check_macs_tests_derivation.rs");
 include!("check_macs_tests_skill_effort.rs");
 
 include!("check_macs_tests_artifacts.rs");
+
+include!("check_macs_tests_agy.rs");

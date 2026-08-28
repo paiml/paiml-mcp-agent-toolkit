@@ -874,18 +874,92 @@ fn parse_level_string(s: &str) -> Option<u8> {
     stripped.parse::<u8>().ok()
 }
 
+/// The level a contract YAML EVIDENCES, not the level it mentions.
+///
+/// This was a substring test — `content.contains("lean_theorem:")` graded a
+/// contract L5 — so naming a proof technique scored as having performed the
+/// proof. On rmedia that produced two Pass rows that cannot both be true, for a
+/// repo with 8 kani harnesses and ZERO `.lean` files:
+///
+/// ```text
+/// CB-1206: Verification Levels: 14 obligations: L2=15 tests, L4=16 kani (114%)
+/// CB-1308: Verification Ladder: 3/3 contracts at L5 (lean_theorem)
+/// ```
+///
+/// 114% is not a possible ratio, and L5 is a Lean proof in a repo with no Lean.
+///
+/// The rigorous rule already exists — `crate::quality::ladder_evidence`, whose
+/// own docs say "Declared harnesses without a run never count" and require
+/// `lean_theorem.status == "proved"`. It is keyed on a `WorkContract` plus an
+/// execution record, so this file cannot call it directly for a bare YAML; what
+/// it CAN do is stop treating a mention as evidence. A key with no value, an
+/// empty list, or a `lean_theorem` that is not `status: proved` no longer
+/// promotes the level.
 fn level_number(content: &str) -> u8 {
-    if content.contains("lean_theorem:") {
+    if lean_theorem_is_proved(content) {
         5
-    } else if content.contains("kani_harnesses:") {
+    } else if has_nonempty_block(content, "kani_harnesses") {
         4
-    } else if content.contains("falsification:") || content.contains("falsification_tests:") {
+    } else if has_nonempty_block(content, "falsification_tests")
+        || has_nonempty_block(content, "falsification")
+    {
         3
-    } else if content.contains("proof_obligations:") {
+    } else if has_nonempty_block(content, "proof_obligations") {
         2
     } else {
         1
     }
+}
+
+/// Is `key:` present AND followed by at least one list item or mapping entry?
+///
+/// `kani_harnesses:` with nothing under it is a declaration of intent, not a
+/// harness. The old contains() check could not tell those apart.
+fn has_nonempty_block(content: &str, key: &str) -> bool {
+    let needle = format!("{key}:");
+    let Some(idx) = content.find(&needle) else {
+        return false;
+    };
+    let after_key = &content[idx + needle.len()..];
+    // Inline form: `kani_harnesses: [a, b]` — non-empty only if the brackets are.
+    if let Some(rest) = after_key.trim_start().strip_prefix('[') {
+        return !rest.trim_start().starts_with(']');
+    }
+    // Block form: the next non-blank, non-comment line must be more indented
+    // than the key and carry content.
+    after_key.lines().skip(1).find_map(|line| {
+        let t = line.trim();
+        if t.is_empty() || t.starts_with('#') {
+            return None;
+        }
+        let indented = line.len() - line.trim_start().len() > 0;
+        Some(indented && (t.starts_with("- ") || t.contains(':')))
+    }) == Some(true)
+}
+
+/// L5 requires the theorem to be PROVED, not merely referenced.
+///
+/// `ladder_evidence.rs:29` states the rule this mirrors: "the YAML ceiling
+/// reports `lean_theorem.status == \"proved\"`". A `sorry` anywhere in the block
+/// is an admitted hole and disqualifies it.
+fn lean_theorem_is_proved(content: &str) -> bool {
+    let Some(idx) = content.find("lean_theorem:") else {
+        return false;
+    };
+    let block = &content[idx..];
+    // Bound the block at the next top-level (column-0) key.
+    let end = block
+        .lines()
+        .skip(1)
+        .scan(0usize, |off, line| {
+            let start = *off;
+            *off += line.len() + 1;
+            Some((start, line))
+        })
+        .find(|(_, line)| !line.is_empty() && !line.starts_with([' ', '\t', '-', '#']))
+        .map_or(block.len(), |(start, _)| start + "lean_theorem:".len());
+    let block = &block[..end.min(block.len())];
+    block.contains("status: proved") && !block.contains("sorry")
 }
 
 fn level_label(n: u8) -> &'static str {
@@ -1446,5 +1520,62 @@ mod contract_surface_tests {
         )
         .unwrap();
         assert_eq!(load_verification_min_level(tmp.path()), 2);
+    }
+}
+
+#[cfg(all(test, not(coverage_nightly)))]
+mod ladder_evidence_not_mention_tests {
+    use super::*;
+
+    /// A declared technique is not a performed proof.
+    ///
+    /// `level_number` was `content.contains("lean_theorem:")`, so on rmedia —
+    /// 8 kani harnesses, ZERO .lean files — CB-1308 reported
+    /// `✓ 3/3 contracts at L5 (lean_theorem)` and CB-1206 reported
+    /// `L4=16 kani (114%)`. Neither number can be true.
+    #[test]
+    fn a_named_technique_with_no_evidence_does_not_promote_the_level() {
+        // Bare key, nothing under it: intent, not evidence.
+        assert_eq!(level_number("lean_theorem:\n"), 1);
+        assert_eq!(level_number("kani_harnesses:\n"), 1);
+        assert_eq!(level_number("falsification_tests:\n"), 1);
+        assert_eq!(level_number("proof_obligations:\n"), 1);
+        // Empty inline list is equally empty.
+        assert_eq!(level_number("kani_harnesses: []\n"), 1);
+    }
+
+    #[test]
+    fn evidence_still_promotes_the_level() {
+        assert_eq!(level_number("proof_obligations:\n  - id: o1\n"), 2);
+        assert_eq!(level_number("falsification_tests:\n  - id: t1\n"), 3);
+        assert_eq!(level_number("kani_harnesses:\n  - name: h1\n"), 4);
+        assert_eq!(level_number("kani_harnesses: [h1]\n"), 4);
+    }
+
+    /// L5 is a PROVED theorem. This mirrors `ladder_evidence.rs:29`, whose rule
+    /// is `lean_theorem.status == "proved"`.
+    #[test]
+    fn l5_requires_a_proved_theorem_not_a_reference() {
+        let referenced = "kani_harnesses:\n  - name: h\nlean_theorem:\n  name: thm\n";
+        assert_eq!(
+            level_number(referenced),
+            4,
+            "a referenced but unproved theorem must not reach L5"
+        );
+
+        let proved = "kani_harnesses:\n  - name: h\nlean_theorem:\n  status: proved\n";
+        assert_eq!(level_number(proved), 5);
+    }
+
+    /// `sorry` is an admitted hole in the proof.
+    #[test]
+    fn a_theorem_containing_sorry_is_not_proved() {
+        let with_sorry =
+            "kani_harnesses:\n  - name: h\nlean_theorem:\n  status: proved\n  body: sorry\n";
+        assert_eq!(
+            level_number(with_sorry),
+            4,
+            "a proof with `sorry` in it is not a proof"
+        );
     }
 }
