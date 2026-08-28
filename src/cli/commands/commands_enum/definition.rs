@@ -912,13 +912,17 @@ pub enum Commands {
     ///
     /// QUICK START — no arguments, no token, nothing to assemble:
     ///
-    ///     pmat serve --transport http --port 8765
+    /// ```text
+    /// pmat serve --transport http --port 8765
+    /// ```
     ///
     /// With `PMAT_MCP_HTTP_TOKEN` unset on a loopback bind, pmat GENERATES a
     /// conforming bearer token, prints it, and prints the exact `claude mcp
     /// add` line for the port it bound, e.g.
     ///
-    ///     claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ --header "Authorization: Bearer $TOKEN"
+    /// ```text
+    /// claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ --header "Authorization: Bearer $TOKEN"
+    /// ```
     ///
     /// A generated token dies with the process, so restarting mints a new one
     /// and a client registered with the old one gets 401. Pin a stable token
