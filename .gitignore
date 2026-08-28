@@ -249,3 +249,6 @@ pmat-*.tar.gz
 *-aarch64-apple-darwin.tar.gz
 /.pmat-metrics/
 .pmat/baseline.json
+
+# AI / Agent — runtime data (never version-controlled)
+.claude/
