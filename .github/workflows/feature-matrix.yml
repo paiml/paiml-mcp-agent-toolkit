@@ -511,6 +511,74 @@ jobs:
             echo "::warning::package is ${mib} MiB compressed; the budget is 9.0 and the hard limit is 10."
           fi
 
+  # ── The security gate that could not see a whole advisory database.
+  #
+  # `cargo deny check advisories` resolves against RustSec. GitHub's advisory
+  # database is a SUPERSET — it ingests RustSec *and* GHSA-native advisories,
+  # CVEs mapped to crates, and maintainer-reported issues never filed with
+  # RustSec — so cargo-deny has a permanent, structural blind spot and is silent
+  # about it. Measured on this repository at 3.32.0, both reading the same
+  # Cargo.lock:
+  #
+  #   cargo deny check advisories        -> "advisories ok", exit 0
+  #   dependabot/alerts?state=open       -> #66 medium thrift GHSA-2f9f-gq7v-9h6m
+  #
+  # The one that blocked CI said clean. It had happened before with the same
+  # crate, was worked around by hand, nothing was added to CI, and it recurred.
+  # This is that missing job. (#1074)
+  #
+  # It runs BESIDE cargo-deny, not instead of it: RustSec carries
+  # unmaintained/yanked findings Dependabot does not model, so neither source
+  # subsumes the other.
+  dependabot-alerts:
+    name: dependabot alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Reading Dependabot alerts needs this scope explicitly; without it the API
+      # answers 403 and the gate FAILS rather than reporting zero alerts.
+      security-events: read
+    steps:
+      - uses: actions/checkout@v4
+      # The control runs FIRST and on every invocation, against fixtures rather
+      # than the live API. #1074 asked for a named mutation proving the gate can
+      # fail; a one-off mutation decays the moment someone edits the script, so
+      # the proof runs every time. Five arms: a known-vulnerable fixture must be
+      # RED, a clean one GREEN, an expired acknowledgement must not suppress, a
+      # live one must, and an unreadable source must FAIL rather than read as
+      # empty.
+      - name: the gate proves it can fail
+        run: ./scripts/dependabot-alerts-gate.sh --self-test
+      - name: no open Dependabot alerts at or above medium
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: ./scripts/dependabot-alerts-gate.sh
+      # cargo-deny 0.19 has no flag to escalate `advisory-not-detected`, and a
+      # warning in a green build is one everybody scrolls past. Seven such
+      # entries had accumulated in deny.toml, each naming an advisory matching no
+      # crate in the graph — an allowlist quietly broader than the risk it
+      # covers.
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: dependabot-alerts
+      - name: cargo install cargo-deny
+        run: cargo install cargo-deny --locked --version ^0.19 || cargo install cargo-deny --locked
+      - name: no stale advisory ignores in deny.toml
+        shell: bash
+        run: |
+          set -uo pipefail
+          out="$(cargo deny --all-features check advisories 2>&1 || true)"
+          stale="$(printf '%s' "$out" | grep -c 'advisory-not-detected' || true)"
+          if [ "$stale" -ne 0 ]; then
+            printf '%s\n' "$out" | grep -A3 'advisory-not-detected' || true
+            echo "::error::${stale} ignore(s) in deny.toml match no advisory in the graph. Remove them: an ignore that suppresses nothing only makes the allowlist look larger than the risk it covers."
+            exit 1
+          fi
+          echo "✅ every deny.toml ignore still matches something"
+
   # ── The size gate that had never run, and then could not be asked to.
   #
   # `src/tests/binary_size.rs` asserted `size < 50 MiB` and NEVER COMPILED:
@@ -708,15 +776,15 @@ jobs:
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, unrun-tests, differential-corpus, flag-efficacy]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, differential-corpus, flag-efficacy]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
+              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }}"
               exit 1
             fi
           done
-          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, the package fits, and the binary is inside its size band"
+          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, the package fits, the binary is inside its size band, and no Dependabot advisory is open that cargo-deny cannot see"
