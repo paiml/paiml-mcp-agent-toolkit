@@ -318,8 +318,15 @@ pub(crate) struct ProjectAnalysisStats {
 pub struct SkipCounts {
     /// Test files, when `--include-tests` was not given.
     pub tests: usize,
-    /// Fuzz harnesses, generated and vendored code, the package's own build
-    /// manifests, and pmat's own SATD analyser.
+    /// Fuzz harnesses, generated and vendored code, and the package's own
+    /// build script and manifests.
+    ///
+    /// pmat's own SATD analyser was in this bucket too, and is not any more.
+    /// The predicate behind it matched a SUBSTRING of the whole path, which
+    /// falls back to the ABSOLUTE path whenever no VCS marker or manifest sits
+    /// above the file — so a scratch tree that merely lived in a directory
+    /// called `satd-testbed` had every candidate dropped in here and reported
+    /// as third-party code. See `SATDDetector::should_exclude_file`.
     ///
     /// `examples/` and `demo/` used to be counted here and are not any more:
     /// they are shipped, compiled code and are analysed (#1035). On pforge that
@@ -562,7 +569,10 @@ impl SkipCounts {
             parts.push(format!("{} test (use --include-tests)", self.tests));
         }
         if self.out_of_scope > 0 {
-            parts.push(format!("{} fuzz/generated/vendored", self.out_of_scope));
+            parts.push(format!(
+                "{} build-config/fuzz/generated/vendored",
+                self.out_of_scope
+            ));
         }
         if self.minified_or_vendor > 0 {
             parts.push(format!("{} minified/vendor", self.minified_or_vendor));
@@ -755,7 +765,17 @@ mod skip_counts_tests {
             note.contains("--include-tests"),
             "the actionable flag must be named: {note}"
         );
-        assert!(note.contains("66 fuzz/generated/vendored"), "{note}");
+        // The label must cover EVERYTHING the bucket holds. It used to read
+        // "66 fuzz/generated/vendored", so a file dropped as the package's own
+        // build script or manifest — `is_build_or_config_file`, which records
+        // into this same bucket — was disclosed to the reader as vendored
+        // third-party code: a reason that is not merely vague but false, and
+        // one that points at a remedy (go and fix it upstream) that does not
+        // exist.
+        assert!(
+            note.contains("66 build-config/fuzz/generated/vendored"),
+            "{note}"
+        );
         // `examples/` left this bucket in #1035 — it is analysed now — so the
         // label must not still advertise it. A stale reason is a false claim
         // about scope, which is the class of defect the bucket exists to end.

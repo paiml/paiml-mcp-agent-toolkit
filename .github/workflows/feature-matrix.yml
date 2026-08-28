@@ -507,6 +507,50 @@ jobs:
             echo "::warning::package is ${mib} MiB compressed; the budget is 9.0 and the hard limit is 10."
           fi
 
+  # ── The size gate that had never run, and then could not be asked to.
+  #
+  # `src/tests/binary_size.rs` asserted `size < 50 MiB` and NEVER COMPILED:
+  # nothing declares `src/tests/`, so `cargo test binary_size_regression`
+  # reported `0 passed; 0 filtered out` while the binary sat at 55.2 MB, 2.8 MB
+  # past the limit it was supposedly enforcing. #1079 replaced it with a band in
+  # `tests/modules/binary_size_band.rs`, reachable from `tests/all.rs`.
+  #
+  # That fix left half the defect standing. The band DECLINES when it finds no
+  # release binary unless `PMAT_REQUIRE_BINARY_SIZE=1` says the caller wanted the
+  # measurement — and NOTHING SET THAT VARIABLE, in this repository or anywhere
+  # else. Every leg that ran it printed "THIS RUN VERIFIED NOTHING" and passed.
+  # A gate nobody asks to assert is the same gate as one that never compiled.
+  #
+  # So this job exists to be the caller. It builds the release binary and sets
+  # the variable, which makes a missing binary a FAILURE here even though a bare
+  # `cargo test` still declines (a developer running the suite must not be made
+  # to produce a release build).
+  #
+  # NOT folded into `package-size` below — that job measures the crates.io
+  # TARBALL, which is a different artefact with a different limit for a
+  # different reason. One job, one measurement.
+  binary-size:
+    name: binary size band
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: binary-size
+      - name: cargo build --release --bin pmat
+        run: cargo build --release --locked --bin pmat
+      # The test resolves the path from CARGO_TARGET_DIR, else `cargo metadata`.
+      # Never a literal `target/release/pmat`: a local `.cargo/config.toml` or a
+      # `target` symlink redirects where cargo writes, and the literal then
+      # measures a stale binary while reporting success. Two release gates in
+      # this repo did exactly that before it was noticed.
+      - name: the shipped binary stays inside its size band
+        env:
+          PMAT_REQUIRE_BINARY_SIZE: "1"
+        run: cargo test --test all --locked the_shipped_binary_size_stays_in_band -- --nocapture
+
   # `orphan-ledger` above asks whether every orphan FEATURE is tested or
   # explained. It says nothing about a TEST that lives behind a feature no leg
   # runs, and that gap shipped four regression tests in the 3.32.0 cycle which
@@ -660,15 +704,15 @@ jobs:
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, unrun-tests, differential-corpus, flag-efficacy]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, unrun-tests, differential-corpus, flag-efficacy]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
+              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} unrun-tests=${{ needs.unrun-tests.result }}"
               exit 1
             fi
           done
-          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, and the package fits"
+          echo "every advertised feature compiles, its tests run or its exemption is written down, no test hides behind a feature nothing runs, the package fits, and the binary is inside its size band"

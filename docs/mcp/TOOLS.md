@@ -2,24 +2,39 @@
 
 **Protocol Version**: MCP v2024-11-05
 **Transport**: stdio (JSON-RPC 2.0)
-**Server**: `pmat agent mcp-server` (`src/mcp_pmcp/simple_unified_server.rs`)
-**Total Tools**: 20 (16 core + 4 agent-context)
-**Last Updated**: 2026-06-13 (v3.19.2)
+**Server**: `MCP_VERSION=1 pmat` (equivalently `pmat --mode mcp`) — `src/mcp_pmcp/simple_unified_server.rs`
+**Total Tools**: 19
+**Last Updated**: 2026-08-28
 
 > Exact, authoritative input schemas for every tool are published by the server
 > itself — call `tools/list` after `initialize`. This catalog gives the tool name,
-> category, and purpose. The 20-tool set is pinned by tests and was validated
-> end-to-end (per-tool calls + 8-way concurrent sessions + framing purity) in v3.18.2.
+> category, and purpose.
+>
+> **The counts in this file are checked.** `tools_doc_states_the_live_tool_count`
+> (`src/mcp_pmcp/tool_manifest.rs`) reads this document and compares every number
+> it states — the `Total Tools` header, every "N tools" sentence, and the
+> per-section counts in both the table of contents and the section headings —
+> against `LIVE_MCP_TOOLS.len()`. Update one and not the others and the test
+> fails. That guard exists because this catalog had, in a single revision,
+> asserted 16 in one paragraph and 20 in another while the server advertised 19,
+> with a table of contents that reached 20 by counting four tools that had been
+> unregistered and omitting three that had been added.
+>
+> **`pmat agent mcp-server` does not run this server.** That subcommand starts
+> `ClaudeCodeAgentMcpServer`, a different surface of four agent-monitoring tools,
+> and it is compiled out entirely unless `--features agent-daemon` is set — which
+> is not in `default`. This document described it as the entry point for years.
 
 ## Table of Contents
 
 1. [Core Analysis Tools (6)](#core-analysis-tools-6)
-2. [Refactoring Tools (4)](#refactoring-tools-4)
+2. [Forensic Analyzers (3)](#forensic-analyzers-3)
 3. [Quality Tools (3)](#quality-tools-3)
 4. [Git & Context Tools (3)](#git--context-tools-3)
 5. [Agent-Context Tools (4)](#agent-context-tools-4)
-6. [Error Handling](#error-handling)
-7. [Tool Discovery](#tool-discovery)
+6. [Unregistered: the refactor.* tools](#unregistered-the-refactor-tools)
+7. [Error Handling](#error-handling)
+8. [Tool Discovery](#tool-discovery)
 
 ---
 
@@ -27,121 +42,150 @@
 
 ### 1. `analyze_complexity`
 Computes cyclomatic and cognitive complexity per function/file and flags functions
-over configured thresholds. Typical args: `path`, `top_files`, `format`.
+over configured thresholds. Typical args: `paths`, `top_files`, `threshold`.
 
 ### 2. `analyze_satd`
-Detects self-admitted technical debt — `TODO` / `FIXME` / `HACK` / `XXX` style
-comments — and classifies them. Typical args: `path`, `format`.
+Detects self-admitted technical debt — `TODO` / `FIXME` / `HACK` style comments —
+and classifies them. Typical args: `paths`, `include_resolved`, `include_tests`.
 
 ### 3. `analyze_dead_code`
-Detects dead / unreachable code. For Rust this is cargo/rustc-backed for accuracy;
-the walk is `.gitignore`/hidden-dir aware (it does not descend into hidden git
-worktrees). Typical args: `path`, `top_files`, `format`.
+Finds unreachable or unused code (functions, types, modules). For Rust this is
+cargo/rustc-backed for accuracy; the walk is `.gitignore`/hidden-dir aware (it does
+not descend into hidden git worktrees). Typical args: `paths`, `include_tests`.
 
 ### 4. `analyze_dag`
-Builds the project dependency / call-graph (DAG). Typical args: `path`,
-`target_nodes`, `enhanced`, `format` (Mermaid or JSON). Advertises a non-empty
+Builds the project dependency graph — call graph, import graph, inheritance, or the
+full dependency DAG. Typical args: `paths`, `dag_type`. Advertises a non-empty
 schema requiring `paths` (fixed in v3.18.2).
 
 ### 5. `analyze_deep_context`
-Generates full AST-based deep context for a project (the data behind
-`pmat context`). Typical args: `paths`, `format` (`markdown` / `json` /
-`llm-optimized`). Advertises a non-empty schema requiring `paths` (fixed in v3.18.2).
+Runs the full deep-context pipeline (AST, complexity, churn, dead code) over the
+given paths — the data behind `pmat context`. Typical args: `paths`. Advertises a
+non-empty schema requiring `paths` (fixed in v3.18.2).
 
 ### 6. `analyze_big_o`
-Estimates Big-O algorithmic complexity of functions. Typical args: `paths`.
-Advertises a non-empty schema requiring `paths` (fixed in v3.18.2).
+Classifies the Big-O time complexity of functions. Typical args: `paths`,
+`top_files`. Advertises a non-empty schema requiring `paths` (fixed in v3.18.2).
 
 ---
 
-## Refactoring Tools (4)
+## Forensic Analyzers (3)
 
-These drive a single **stateful, resumable refactoring session** (state held by the
-server's state manager).
+Registered in **#1029**. These three shipped CLI-only in 3.32.0 because the MCP
+tool list was hand-curated beside `AnalyzeCommands` rather than derived from it;
+which `analyze` subcommands belong on MCP is now decided by a total match in
+`cli::analyze_mcp_exposure`, so the next variant cannot reach a release
+undeclared. Each takes one `project_path`, not a `paths` array.
 
-### 7. `refactor.start`
-Begins an interactive refactoring session for a target.
+### 7. `analyze_reachability`
+Reports tracked `.rs` files that no compilation unit reaches — orphaned modules
+that compile to nothing and whose tests never run.
 
-### 8. `refactor.nextIteration`
-Advances the refactoring state machine by one step.
+### 8. `analyze_hardcoded_paths`
+Finds machine-specific absolute paths baked into source (a user's home, a nix store
+hash, a build root) — correct where they were written, inert everywhere else.
 
-### 9. `refactor.getState`
-Returns the current refactoring session state.
-
-### 10. `refactor.stop`
-Ends the refactoring session.
-
-> **REMOVED (EV-0, #999).** `refactor.start` / `nextIteration` / `getState` /
-> `stop` are no longer advertised: they are absent from `tools/list` and from
-> `mcp.json`, and the surface is 16 tools, not 20.
->
-> They were removed rather than documented because the engine behind them is not
-> an analyzer. `find_violations` (`src/models/refactor_impls.rs:140-145`) returns
-> a hardcoded `HighComplexity` violation at *"line 100, column 1"* for any file
-> whose **path contains the substring `"complex"`**, and nothing otherwise. It
-> reads no source and builds no AST.
->
-> This note previously disclosed that, and a test asserted the disclosure was
-> present in each tool's description. A disclosure is not a guard: an agent calls
-> `tools/list`, sees four tools, and acts on fabricated line numbers and a
-> `suggested_fix`. The test now asserts **absence** instead.
->
-> The state machine, handlers and tests remain in the tree. Re-registering is
-> four lines in `SimpleUnifiedServer::run()` — do it when the engine analyses
-> something.
+### 9. `analyze_vacuous_tests`
+Finds `#[test]` functions that cannot fail: no assertion, an assertion over
+constants, or a body that silently returns when a fixture is missing.
 
 ---
 
 ## Quality Tools (3)
 
-### 11. `quality_gate`
-Runs the quality gate (complexity / SATD / lint / etc.) and returns a **pass/fail
-verdict**. The verdict comparison was fixed in v3.18.2 (`Grade`'s derived `Ord` is
-reversed; a single `Grade::meets_threshold()` now drives the decision) — earlier
-versions could return an inverted `passed`.
+### 10. `quality_gate`
+Runs the `pmat quality-gate --checks all` suite (complexity, dead code, SATD,
+entropy, security, duplicates, coverage, documentation sections, provability) plus a
+TDG score, and returns a **pass/fail verdict**. Any check a path could not answer is
+named in `not_measured` and, with its reason, in `checks.not_run`. The verdict
+comparison was fixed in v3.18.2 (`Grade`'s derived `Ord` is reversed; a single
+`Grade::meets_threshold()` now drives the decision) — earlier versions could return
+an inverted `passed`.
 
-### 12. `quality_proxy`
-Quality-proxy metrics for fast gating.
+### 11. `quality_proxy`
+**Writes files.** Proxies a file operation (`write` / `edit` / `append`) through the
+quality gate, optionally auto-fixing violations. Args: `operation`, `file_path`,
+`content` / `old_content` / `new_content`, `mode` (`strict` / `advisory` /
+`auto_fix`), `quality_config`. The packaged `mcp.json` described this as "Proxy a
+quality-scored analysis request", which named neither the file operation nor the
+write — see `manifest_descriptions_match_handler_metadata`.
 
-### 13. `pdmt_deterministic_todos`
-Deterministic todo / task generation (PDMT). IDs are deterministic UUIDv8s derived
-from seed/index/requirement (v3.18.2) — byte-identical output for identical input,
-so results can be cached, diffed, and reproduced across agents.
+### 12. `pdmt_deterministic_todos`
+Generates deterministic, quality-enforced todo lists from a list of requirements.
+IDs are deterministic UUIDv8s derived from seed/index/requirement (v3.18.2) —
+byte-identical output for identical input, so results can be cached, diffed, and
+reproduced across agents.
 
 ---
 
 ## Git & Context Tools (3)
 
-### 14. `git_operation`
-Git context operations (history, churn, blame) used to enrich analysis.
+Two of these three are named for a mutation they do not perform. The names are
+historical aliases held for wire compatibility; the behaviour below is what the
+handlers actually do, and it is what `tools/list` says.
 
-### 15. `generate_context`
-Generates AI-ready project context — the MCP equivalent of `pmat context`. Typical
-args: `path`, `format` (`markdown` / `json` / `llm-optimized`).
+### 13. `git_operation`
+**Read-only.** Despite the name, this is `GitStatusTool`: it queries git
+working-tree status for the given repository path and performs no git operation of
+any kind. Args: `path`.
 
-### 16. `scaffold_project`
-Scaffolds a new project or files from PMAT templates.
+### 14. `generate_context`
+Generates project context (file tree plus an optional dependency graph) for LLM/agent
+consumption — the MCP equivalent of `pmat context`. Args: `paths`, `format` (`json`),
+`max_depth`, `include_dependencies`.
+
+### 15. `scaffold_project`
+**Writes nothing.** Despite the name, this is `ContextSummaryTool`: it produces a
+high-level project summary for the given paths. It does not scaffold a project and
+does not create files. Args: `paths`, `level` (`brief` / `normal` / `detailed`).
 
 ---
 
 ## Agent-Context Tools (4)
 
 Added in **KAIZEN-0165**. Backed by the SQLite + FTS5 code index, these are the
-primary code-intelligence surface for autonomous agents.
+primary code-intelligence surface for autonomous agents. Their schemas and
+descriptions are generated from `mcp_tool_schemas/*.json` by `build.rs`
+(KAIZEN-0178), so they cannot drift from what the handler advertises.
 
-### 17. `pmat_query_code`
-Semantic code search by intent. Returns quality-annotated functions (TDG grade,
-complexity, fault patterns). The MCP analogue of `pmat query`.
+### 16. `pmat_query_code`
+Searches code functions by natural-language query with TDG quality filtering.
+Returns semantically ranked results with complexity, fault patterns, and call-graph
+context. The MCP analogue of `pmat query`.
 
-### 18. `pmat_get_function`
-Fetches a function's full source plus its quality metrics. (Source retrieval was
-restored in v3.18.2 after an incremental-save bug that wiped the `source` column.)
+### 17. `pmat_get_function`
+Returns detailed information about a function by its ID: full metadata including
+source code, quality metrics, and SATD markers. (Source retrieval was restored in
+v3.18.2 after an incremental-save bug that wiped the `source` column.)
 
-### 19. `pmat_find_similar`
-Finds functions similar to a given one — useful for refactoring and de-duplication.
+### 18. `pmat_find_similar`
+Finds functions similar to a reference function — related code, potential
+duplicates, or other implementations of the same pattern.
 
-### 20. `pmat_index_stats`
-Reports code-index health and statistics (function count, index freshness, etc.).
+### 19. `pmat_index_stats`
+Reports code-index statistics: function counts, quality distribution, index health.
+
+---
+
+## Unregistered: the refactor.* tools
+
+`refactor.start` / `refactor.nextIteration` / `refactor.getState` / `refactor.stop`
+were **removed from the advertised surface in EV-0 (#999)**. They are absent from
+`tools/list` and from `mcp.json`, and they are not counted above.
+
+They were four of the twenty tools then advertised, and the engine behind them is
+not an analyzer. `find_violations` (`src/models/refactor_impls.rs:140-145`) returns a
+hardcoded `HighComplexity` violation at *"line 100, column 1"* for any file whose
+**path contains the substring `"complex"`**, and nothing otherwise. It reads no
+source and builds no AST.
+
+This document previously disclosed that in prose, and a test asserted the disclosure
+was present in each tool's description. A disclosure is not a guard: an agent calls
+`tools/list`, sees four tools, and acts on fabricated line numbers and a
+`suggested_fix`. The test now asserts **absence** instead.
+
+The state machine, handlers and tests remain in the tree. Re-registering is four
+lines in `SimpleUnifiedServer::run()` — do it when the engine analyses something.
 
 ---
 
@@ -182,11 +226,22 @@ Discover the tools (with full, authoritative schemas) at runtime:
 { "jsonrpc": "2.0", "id": 1, "method": "tools/list" }
 ```
 
-The response lists all 20 tools with their names, descriptions, and input schemas
+or, in one shot from a shell:
+
+```bash
+printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | pmat --mode mcp
+```
+
+The response lists all 19 tools with their names, descriptions, and input schemas
 (every tool advertises non-empty metadata — pinned by tests since v3.18.2).
+
+The packaged `mcp.json` at the repository root advertises the same 19 tools with the
+same descriptions. It is **generated**, never hand-edited: regenerate it with
+`cargo test --lib regenerate_mcp_json -- --ignored` (or `pmat mcp manifest --write`)
+after changing `LIVE_MCP_TOOLS`.
 
 ---
 
 **Maintained by**: PAIML
 **Server source**: `src/mcp_pmcp/simple_unified_server.rs`
-**Last Updated**: 2026-06-13 (v3.19.2)
+**Tool list source of truth**: `src/mcp_pmcp/tool_manifest.rs` (`LIVE_MCP_TOOLS`)

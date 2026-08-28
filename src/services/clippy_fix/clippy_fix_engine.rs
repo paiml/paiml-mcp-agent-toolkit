@@ -54,7 +54,21 @@ impl ClippyFixEngine {
         }
     }
 
-    /// Apply a single fix (complexity: 5)
+    /// Compute what a fixed version of `source` would look like. IN MEMORY ONLY.
+    ///
+    /// The rewritten source comes back in `FixResult::modified_source`. This
+    /// method does not open, create or write any file, and neither does
+    /// anything else in this module — there is no `fs::write` anywhere in
+    /// `src/services/clippy_fix/`. `pmat analyze clippy` nevertheless
+    /// reported `"action": "applied"`, a non-zero `successful_fixes` and a
+    /// populated `fixed_files` over a byte-identical tree, which is #1086. The
+    /// response now says `previewed` and the apply path is gone; see
+    /// `src/mcp_pmcp/tools/auto_clippy_fix.rs`.
+    ///
+    /// Do NOT close the gap by writing `modified_source` back: see the warning
+    /// on `apply_fix_internal` for why its output must not reach a file.
+    ///
+    /// Complexity: 5
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn apply_fix(
         &self,
@@ -84,9 +98,31 @@ impl ClippyFixEngine {
         Ok(result)
     }
 
-    /// Internal fix application (complexity: 6)
+    /// Internal fix transform (complexity: 6). ITS OUTPUT IS NOT SAFE TO WRITE.
+    ///
+    /// No branch here consults the diagnostic's span, even though `diagnostic`
+    /// carries `line_start` and `column_start`:
+    ///
+    /// - `clippy::needless_return` is `source.replace("return ", "")` over the
+    ///   WHOLE file, so it strikes that substring wherever it occurs — inside a
+    ///   string literal or a comment as readily as at the `return` statement
+    ///   clippy flagged.
+    /// - the suggestion branch replaces every occurrence of the diagnostic's
+    ///   human-readable *message* text with the suggestion, and when the
+    ///   suggestion contains `{{` or `}}` it APPENDS it to the end of the file
+    ///   instead.
+    /// - everything else returns the source unchanged.
+    ///
+    /// The suggestion branches are unreachable from `pmat analyze clippy`:
+    /// `ClippyDiagnostic::parse_json_value` sets `suggestion: None`
+    /// unconditionally, so only the first and last apply there.
+    ///
+    /// This is why #1086 is fixed by removing the "applied" claim rather than
+    /// by adding the missing `fs::write`: writing this output would corrupt
+    /// user source. A real fix needs a span-based rewrite, which this is not.
+    /// `clippy_fix_tests.rs` pins the corruption so the hazard stays visible.
     fn apply_fix_internal(&self, source: &str, diagnostic: &ClippyDiagnostic) -> Result<String> {
-        // Simple implementation for needless_return
+        // Whole-file substitution, NOT a span edit — see the doc comment above.
         if diagnostic.code == "clippy::needless_return" {
             Ok(source.replace("return ", ""))
         } else if let Some(suggestion) = &diagnostic.suggestion {
@@ -186,7 +222,17 @@ impl ClippyFixEngine {
             .collect()
     }
 
-    /// Generate comprehensive report (complexity: 5)
+    /// Summarise a batch of in-memory transforms.
+    ///
+    /// `successful_fixes` and `success_rate` count TRANSFORMS ATTEMPTED, not
+    /// files changed: `apply_fix` builds its `FixResult` with `success: true`
+    /// unconditionally, and no caller writes `modified_source` anywhere. This
+    /// report reached the `pmat analyze clippy` payload as `successful_fixes`
+    /// and `fixed_files` over an unmodified tree (#1086); it no longer does.
+    /// `auto_clippy_fix` has no apply path, so no command in this crate now
+    /// puts these numbers in front of a user — only tests call it.
+    ///
+    /// Complexity: 5
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(&self, results: Vec<FixResult>) -> FixReport {
