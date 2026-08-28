@@ -37,6 +37,103 @@ pub(crate) fn lint_line_severity(line: &str) -> ViolationSeverity {
     }
 }
 
+/// Stderr fragments that mean **clippy never ran**, as opposed to clippy
+/// having run and disliked the code.
+///
+/// Each is emitted by cargo/rustup *before* any code is compiled.
+const CLIPPY_UNAVAILABLE_MARKERS: &[&str] = &[
+    // rustup: the shim exists, the component does not (rust:*-slim, and any
+    // minimal-profile toolchain):
+    //   error: 'cargo-clippy' is not installed for the toolchain '1.95.0-...'
+    "is not installed for the toolchain",
+    // rustup: the whole toolchain is missing:
+    //   error: toolchain '1.95.0-x86_64-unknown-linux-gnu' is not installed
+    // Anchored on rustup's closing quote so it cannot match a rustc diagnostic
+    // that merely contains the words.
+    "' is not installed",
+    // cargo: no `cargo-clippy` on PATH at all.
+    "no such command:",
+    // cargo (pre-1.54 wording).
+    "no such subcommand:",
+];
+
+/// Why `cargo clippy` could not deliver a verdict — `None` when it did.
+///
+/// This exists because a tool that did not run was being read as a judgement
+/// about the code. `rust:1.95-slim` installs the MINIMAL rustup profile, so
+/// `/usr/local/cargo/bin/cargo-clippy` is present as a *shim* while the clippy
+/// component is not installed. `cargo clippy` then writes, to stderr, exit 1:
+///
+/// ```text
+/// error: 'cargo-clippy' is not installed for the toolchain '1.95.0-x86_64-unknown-linux-gnu'.
+/// help: run `rustup component add clippy` to install it
+/// ```
+///
+/// Both lines begin with a rustc-shaped level prefix, so `lint_line_severity`
+/// filed the first as [`ViolationSeverity::Error`], `passed` became false, and
+/// `ProxyMode::Strict` answered `Rejected`. The caller cannot tell that
+/// rejection apart from "your code does not compile" — and the property test
+/// `test_high_quality_code_accepted` duly reported a minimal failing input
+/// (`file_path = "a.rs"`, `fn_name = "a"`), i.e. a logic bug that does not
+/// exist. Measured in paiml/infra run 33091353601, `clean-room (pmat)` GATE B2:
+/// 21024 passed, 9 failed, every failure this string.
+///
+/// A missing verifier is a NO-GO, never a verdict. Returning the reason here
+/// lets the lint stage fail loudly and name the tool.
+pub(crate) fn clippy_unavailable_reason(stderr: &str) -> Option<String> {
+    stderr.lines().find_map(|line| {
+        let trimmed = line.trim();
+        // Only cargo's/rustup's own diagnostics, not source spans that might
+        // quote one of these phrases inside the code being linted.
+        if !(trimmed.starts_with("error:") || trimmed.starts_with("error[")) {
+            return None;
+        }
+        CLIPPY_UNAVAILABLE_MARKERS
+            .iter()
+            .any(|marker| trimmed.contains(marker))
+            .then(|| trimmed.to_string())
+    })
+}
+
+/// Turn one completed `cargo clippy` run into lint findings, or into a loud
+/// error when the run produced no verdict to read.
+///
+/// Split out from [`QualityProxyService::run_lint_checks`] so the
+/// did-the-tool-even-run decision is a pure function over the process output
+/// and can be tested against the exact bytes the clean room saw.
+pub(crate) fn interpret_clippy_output(
+    output: &std::process::Output,
+) -> Result<Vec<(usize, String)>> {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if let Some(reason) = clippy_unavailable_reason(&stderr) {
+        anyhow::bail!(
+            "the quality proxy's lint stage did not run: {reason}\n\
+             This is a missing tool, not a finding about the code under review. \
+             Install it with `rustup component add clippy`. No lint verdict was \
+             produced, so none is reported."
+        );
+    }
+
+    let mut violations = Vec::new();
+    // Warnings are reported on a *successful* run too, so the findings are
+    // collected regardless of exit status.
+    for line in stderr.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("warning:")
+            || trimmed.starts_with("error:")
+            || trimmed.starts_with("error[")
+        {
+            // Extract line number if possible
+            let line_num = 1; // Default line number
+            let message = line.to_string();
+            violations.push((line_num, message));
+        }
+    }
+
+    Ok(violations)
+}
+
 impl QualityProxyService {
     async fn analyze_content(
         &self,
@@ -132,25 +229,27 @@ impl QualityProxyService {
             }
         }
 
-        // Run lint checks using cargo clippy directly
-        let lint_violations = match self.run_lint_checks(content).await {
-            Ok(violations_found) => {
-                for (line, message) in &violations_found {
-                    violations.push(QualityViolation {
-                        violation_type: ViolationType::Lint,
-                        severity: lint_line_severity(message),
-                        location: format!("{file_path}:{line}"),
-                        message: message.clone(),
-                        suggestion: Some("Fix lint issue".to_string()),
-                    });
-                }
-                violations_found.len()
-            }
-            Err(e) => {
-                warn!("Failed to run lint checks: {}", e);
-                0
-            }
-        };
+        // Run lint checks using cargo clippy directly.
+        //
+        // A lint stage that did not run is NOT "zero lint violations". This arm
+        // used to `warn!` and substitute 0, publishing `metrics.lint_violations
+        // = 0` — a measurement nobody took — into the same QualityReport that
+        // callers read as evidence. The failure is propagated instead: the
+        // report either carries a lint measurement or it does not exist.
+        let violations_found = self
+            .run_lint_checks(content)
+            .await
+            .context("quality proxy lint stage failed; no lint measurement was produced")?;
+        for (line, message) in &violations_found {
+            violations.push(QualityViolation {
+                violation_type: ViolationType::Lint,
+                severity: lint_line_severity(message),
+                location: format!("{file_path}:{line}"),
+                message: message.clone(),
+                suggestion: Some("Fix lint issue".to_string()),
+            });
+        }
+        let lint_violations = violations_found.len();
 
         // Check documentation
         if config.require_docs {
@@ -260,27 +359,25 @@ edition = "2021"
         // style lint apart from content that does not compile. Levels are left
         // as rustc reports them so `lint_line_severity` can be trusted; the
         // caller decides what fails the gate.
-        let output = Command::new("cargo")
+        let output = match Command::new("cargo")
             .arg("clippy")
             .current_dir(temp_dir.path())
-            .output()?;
-
-        let mut violations = Vec::new();
-
-        // Warnings are reported on a *successful* run too, so the findings are
-        // collected regardless of exit status.
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        for line in stderr.lines() {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with("warning:") || trimmed.starts_with("error:") || trimmed.starts_with("error[") {
-                // Extract line number if possible
-                let line_num = 1; // Default line number
-                let message = line.to_string();
-                violations.push((line_num, message));
+            .output()
+        {
+            Ok(output) => output,
+            // `cargo` itself is not on PATH. Spawning failed, so there is no
+            // stderr to classify — say so here rather than let a caller read
+            // an io error as a lint finding.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => anyhow::bail!(
+                "the quality proxy's lint stage did not run: `cargo` is not on PATH ({e}). \
+                 This is a missing tool, not a finding about the code under review."
+            ),
+            Err(e) => {
+                return Err(e).context("failed to spawn `cargo clippy` for the quality proxy")
             }
-        }
+        };
 
-        Ok(violations)
+        interpret_clippy_output(&output)
     }
 
     async fn format_rust_code(&self, content: &str) -> Result<String> {
@@ -413,5 +510,147 @@ mod analysis_measurement_tests {
                 ViolationSeverity::Warning
             ));
         }
+    }
+}
+
+#[cfg(test)]
+mod lint_stage_availability_tests {
+    //! A missing tool must never be reported as a verdict about the code.
+    //!
+    //! These are not synthetic strings. `MISSING_COMPONENT_STDERR` is what
+    //! `cargo clippy` printed inside the `rust:1.95-slim` clean-room container
+    //! in paiml/infra run 33091353601, `clean-room (pmat)` GATE B2, where it
+    //! cost nine tests — including a proptest that reported a "minimal failing
+    //! input" for a logic bug that does not exist.
+    use super::*;
+
+    /// Verbatim from the clean-room job log (2026-08-27T17:07:27Z).
+    const MISSING_COMPONENT_LINE: &str =
+        "error: 'cargo-clippy' is not installed for the toolchain '1.95.0-x86_64-unknown-linux-gnu'.";
+    const MISSING_COMPONENT_STDERR: &str = concat!(
+        "error: 'cargo-clippy' is not installed for the toolchain '1.95.0-x86_64-unknown-linux-gnu'.\n",
+        "help: run `rustup component add clippy` to install it\n",
+    );
+
+    /// What clippy prints when it HAS run and found something.
+    const REAL_FINDINGS_STDERR: &str = "\
+    Checking temp_quality_check v0.1.0 (/tmp/.tmpXYZ)
+warning: function `simple` is never used
+ --> src/lib.rs:1:4
+warning: `temp_quality_check` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.31s
+";
+
+    /// What clippy prints when it HAS run and the content does not compile.
+    const REAL_COMPILE_ERROR_STDERR: &str = "\
+    Checking temp_quality_check v0.1.0 (/tmp/.tmpXYZ)
+error: expected one of `!` or `::`, found `is`
+ --> src/lib.rs:1:6
+error: could not compile `temp_quality_check` (lib) due to 1 previous error
+";
+
+    fn output(stderr: &str) -> std::process::Output {
+        std::process::Output {
+            // Exit status is deliberately not consulted: the missing-component
+            // run and a genuine compile error both exit non-zero.
+            status: Default::default(),
+            stdout: Vec::new(),
+            stderr: stderr.as_bytes().to_vec(),
+        }
+    }
+
+    /// THE regression. Falsification first: the same bytes, run through the
+    /// severity classifier the proxy actually uses, are an Error — which is how
+    /// "clippy is not installed" became `ProxyStatus::Rejected`. The guard is
+    /// therefore load-bearing, not decoration.
+    #[test]
+    fn a_missing_clippy_component_is_not_a_code_verdict() {
+        assert!(
+            MISSING_COMPONENT_STDERR.starts_with(MISSING_COMPONENT_LINE),
+            "the two constants must describe the same captured stderr"
+        );
+        assert!(
+            matches!(
+                lint_line_severity(MISSING_COMPONENT_LINE),
+                ViolationSeverity::Error
+            ),
+            "precondition: this line is what the proxy used to file as an Error \
+             about the code under review"
+        );
+
+        let reason = clippy_unavailable_reason(MISSING_COMPONENT_STDERR)
+            .expect("a toolchain without the clippy component ran nothing");
+        assert!(reason.contains("cargo-clippy"), "{reason}");
+
+        let err = interpret_clippy_output(&output(MISSING_COMPONENT_STDERR))
+            .expect_err("no verdict was produced, so none may be returned");
+        let msg = err.to_string();
+        assert!(msg.contains("did not run"), "{msg}");
+        assert!(
+            msg.contains("rustup component add clippy"),
+            "the failure has to name the tool and how to get it; got: {msg}"
+        );
+    }
+
+    #[test]
+    fn a_missing_toolchain_is_not_a_code_verdict() {
+        let stderr = "error: toolchain '1.95.0-x86_64-unknown-linux-gnu' is not installed\n";
+        assert!(clippy_unavailable_reason(stderr).is_some(), "{stderr}");
+        assert!(interpret_clippy_output(&output(stderr)).is_err());
+    }
+
+    #[test]
+    fn a_cargo_without_the_clippy_subcommand_is_not_a_code_verdict() {
+        for stderr in [
+            "error: no such command: `clippy`\n",
+            "error: no such subcommand: `clippy`\n",
+        ] {
+            assert!(clippy_unavailable_reason(stderr).is_some(), "{stderr}");
+            assert!(
+                interpret_clippy_output(&output(stderr)).is_err(),
+                "{stderr}"
+            );
+        }
+    }
+
+    /// The counter-test. A guard that refuses every run would hide real lint
+    /// findings, which is the same defect pointed the other way.
+    #[test]
+    fn a_clippy_run_that_actually_happened_still_reports_its_findings() {
+        assert!(clippy_unavailable_reason(REAL_FINDINGS_STDERR).is_none());
+        let found = interpret_clippy_output(&output(REAL_FINDINGS_STDERR))
+            .expect("clippy ran; its findings are a verdict");
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert!(found
+            .iter()
+            .all(|(_, m)| m.trim_start().starts_with("warning:")));
+    }
+
+    /// Content that does not compile is a verdict about the content, and must
+    /// keep reaching strict mode as an Error.
+    #[test]
+    fn a_compile_error_is_still_a_verdict_about_the_code() {
+        assert!(clippy_unavailable_reason(REAL_COMPILE_ERROR_STDERR).is_none());
+        let found = interpret_clippy_output(&output(REAL_COMPILE_ERROR_STDERR))
+            .expect("clippy ran; a compile error is its answer");
+        assert!(
+            found
+                .iter()
+                .any(|(_, m)| matches!(lint_line_severity(m), ViolationSeverity::Error)),
+            "{found:?}"
+        );
+    }
+
+    /// The markers are matched only on cargo's own diagnostic lines, so a
+    /// source span that happens to quote one is still a finding.
+    #[test]
+    fn a_source_span_quoting_the_marker_is_not_mistaken_for_a_missing_tool() {
+        let stderr = "\
+warning: unused variable: `x`
+ --> src/lib.rs:2:9
+  |
+2 |     let x = \"no such command: nope\";
+";
+        assert!(clippy_unavailable_reason(stderr).is_none(), "{stderr}");
     }
 }
