@@ -240,7 +240,7 @@ which = { version = "8.0", optional = true }  # Sprint 70: Find cargo-mutants in
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
 swc_ecma_parser = { version = "43.0", optional = true }
 swc_common = { version = "24.0", optional = true }
-swc_ecma_ast = { version = "27.0", optional = true }
+swc_ecma_ast = { version = "29.0", optional = true }
 swc_ecma_visit = { version = "27.0", optional = true }
 # For Python parsing (conditional) - REMOVED: Migrated to tree-sitter-python
 # rustpython-parser = { version = "0.4.0", optional = true }
