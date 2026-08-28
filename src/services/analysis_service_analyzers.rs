@@ -2,20 +2,37 @@
 // Included from analysis_service.rs - shares parent scope (no use imports allowed)
 
 impl AnalysisService {
+    /// There is no complexity analyzer behind this service, and it now says so.
+    ///
+    /// #1090 / T7: this body was `Ok(ComplexityResults { total_files: 10,
+    /// average_complexity: 5.5, max_complexity: 15, violations: vec![] })`. The
+    /// same three constants came back for an empty directory and for this
+    /// repository, because neither `_path` nor `_options` was ever read — a
+    /// value that is identical for every input measures nothing.
+    ///
+    /// It did not stay a harmless placeholder. `QualityGateService::check_complexity`
+    /// called this, discarded the result, and reported "All functions within
+    /// complexity limit", so `pmat agent`'s quality gate answered PASSED for a
+    /// tree it had not opened. A fabricated number is worse than no number
+    /// precisely because it survives being passed on.
+    ///
+    /// So this refuses rather than inventing. The real analyzer lives behind
+    /// `pmat analyze complexity` / `pmat quality-gate --checks complexity`
+    /// (`src/services/complexity/`); wiring it into this service is a separate
+    /// change, and until it lands the honest answer here is "this service does
+    /// not know".
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_complexity(
         &self,
         _path: &Path,
         _options: &AnalysisOptions,
     ) -> Result<ComplexityResults> {
-        // Implementation would call the actual complexity analyzer
-        // This is a simplified version
-        Ok(ComplexityResults {
-            total_files: 10,
-            average_complexity: 5.5,
-            max_complexity: 15,
-            violations: vec![],
-        })
+        anyhow::bail!(
+            "complexity is not_measured: AnalysisService has no complexity analyzer wired in \
+             (it returned three fixed constants for every path it was ever handed). Run \
+             `pmat analyze complexity` or `pmat quality-gate --checks complexity`, which read \
+             the tree."
+        )
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]

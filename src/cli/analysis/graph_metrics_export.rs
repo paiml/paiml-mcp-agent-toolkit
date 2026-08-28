@@ -29,10 +29,11 @@ fn render_graphml(graph: &SimpleGraph) -> Result<String> {
 
 /// Escape the XML predefined entities.
 ///
-/// Node labels are file names, and a file name may legally contain `&` or `<`.
-/// Interpolating one raw into an attribute or element produced a document that
-/// is not even well-formed XML, which is the one thing an exporter must never
-/// emit.
+/// A node label is derived from a file path (`normalize_path` rewrites only
+/// `/`, `.` and `-`), and a path may legally contain `&` or `<`, which therefore
+/// survive into the label. Interpolating one raw into an attribute or element
+/// produced a document that is not even well-formed XML, which is the one thing
+/// an exporter must never emit.
 fn escape_xml(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
@@ -73,9 +74,13 @@ fn write_graphml_header(graphml: &mut String) -> Result<()> {
 /// `GraphML` reader can load. The graph is what `--help` promises to export, so
 /// the graph is what gets declared.
 ///
-/// Identity is the node index, with the name carried as a `label`, because
-/// names are bare file names: any repository with two `mod.rs` files would
-/// otherwise emit duplicate `id`s and silently merge two distinct nodes.
+/// Identity is the node index, with the name carried as a `label`. When this
+/// command built its own graph the names were bare file BASE names, so a
+/// repository with two `mod.rs` files emitted duplicate `id`s and silently
+/// merged two distinct nodes. Since #1087 the names are the dependency graph's
+/// node ids, which are the keys of its node map and so unique already; the index
+/// stays the identity because it is unique by construction and cannot be
+/// re-broken by whatever names a later graph source supplies.
 fn write_graphml_nodes(graphml: &mut String, graph: &SimpleGraph) -> Result<()> {
     use std::fmt::Write;
     for idx in graph.node_indices() {

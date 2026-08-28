@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23583 of 26809 lib tests are executed; 3226 are compiled by no leg.
+23631 of 26859 lib tests are executed; 3228 are compiled by no leg.
 
 ## `<unsatisfiable>` — 18 test(s)
 
@@ -39,7 +39,7 @@ crate::services::mutation::state::tests::test_mutation_state_creation
 crate::services::mutation::state::tests::test_mutation_state_save_load
 crate::services::mutation::state::tests::test_mutation_state_save_with_backup
 
-## `agent-daemon` — 267 test(s)
+## `agent-daemon` — 269 test(s)
 
 reachable from neither `default` nor `full`; orphan-ledger excludes it as 'clippy state unremeasured since the mcp-integration fix'.
 
@@ -96,6 +96,8 @@ crate::agent::daemon::tests::tests::test_quality_gate_result_failed
 crate::agent::daemon::tests::tests::test_quality_gate_result_no_violations_info
 crate::agent::daemon::tests::tests::test_quality_gate_result_passed
 crate::agent::daemon::tests::tests::test_quality_gate_result_serialization
+crate::agent::mcp_server::complexity_disclosure_tests::the_analyze_complexity_tool_discloses_that_it_measured_nothing
+crate::agent::mcp_server::complexity_disclosure_tests::the_complexity_report_states_that_nothing_was_measured
 crate::agent::mcp_server::tests::coverage_tests::test_agent_config_custom
 crate::agent::mcp_server::tests::coverage_tests::test_agent_config_debug
 crate::agent::mcp_server::tests::coverage_tests::test_agent_config_default_watch_patterns

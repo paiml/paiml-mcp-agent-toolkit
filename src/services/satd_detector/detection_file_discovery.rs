@@ -264,26 +264,58 @@ impl SATDDetector {
     /// here `src/services/repo_score/scorers/demo_scorer_find_demo_files.rs`.
     ///
     /// What stays excluded is code this project cannot fix in place (vendored,
-    /// generated, minified), its own build manifests, fuzz harnesses, and
-    /// pmat's own SATD analyser. Every one of those is COUNTED — see
+    /// generated, minified), plus its own build script and manifests and its
+    /// fuzz harnesses. Every one of those is COUNTED — see
     /// [`FileCensus`](crate::services::satd_detector::FileCensus) — so a
     /// narrowing shows up as a change in a disclosed denominator rather than as
     /// a silent drop in findings.
+    ///
+    /// A fifth predicate, `is_satd_analysis_tool`, is gone. It excluded any path
+    /// CONTAINING `satd_detector`, `satd_property_tests`, `quality_proxy`, or
+    /// both `test` and `satd` — the last raw `contains()` in this function whose
+    /// needle was THIS ANALYSER'S OWN NAME, and so #923 rewritten in place.
+    /// `project_relative_str` falls back to the ABSOLUTE path when no VCS marker
+    /// and no manifest is found above the file (`source_scope::project_root_of`
+    /// returns `None`; `defect_detector_rust.rs`), so that predicate read
+    /// directory names the analysed project never chose. Two byte-identical
+    /// manifest-less trees differing only in the name of the directory holding
+    /// them:
+    ///
+    /// ```text
+    ///   <tmp>/plainbed      -> Found 1 SATD violations in 1 files (analysed 1 of 1)
+    ///   <tmp>/satd-testbed  -> Error: all 1 source file(s) ... were skipped
+    /// ```
+    ///
+    /// and no flag recovered the second. The `test`-and-`satd` conjunct even
+    /// outranked `--include-tests`, re-excluding files that flag had explicitly
+    /// been asked to include.
+    ///
+    /// The self-exemption was redundant as well as harmful. This detector is
+    /// content-aware twice over — a marker inside a string literal is not a
+    /// comment, and an inline `#[cfg(test)]` block is skipped unless
+    /// `--include-tests` — so bypassing the filter over pmat's own
+    /// `satd_detector/` and `quality_proxy/` trees yields no production
+    /// findings at all. It hid nothing in this repository and only ever fired
+    /// on other people's code.
+    ///
+    /// That removal did NOT eradicate the mechanism from this function, and an
+    /// earlier revision of this comment claimed it did. One raw substring test
+    /// over the whole `path_str` survives, one predicate over:
+    /// `is_generated_or_vendor`'s `path_str.contains(".generated")` — see the
+    /// note there. Of the rest, `matches!` on the whole string and `ends_with`
+    /// on its tail can only become MORE permissive when the fallback prepends
+    /// ancestors, so neither can drop a file over a directory name; but
+    /// `has_dir_component` still reads every component of whatever string it is
+    /// handed, so it too answers for ancestor directories under the fallback.
+    /// It is narrower than `contains` — a whole path component rather than any
+    /// substring — not immune.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
         let path_str = source_scope::project_relative_str(file_path);
 
-        self.is_satd_analysis_tool(&path_str)
-            || self.is_build_or_config_file(&path_str)
+        self.is_build_or_config_file(&path_str)
             || self.is_fuzz_target(&path_str)
             || self.is_generated_or_vendor(&path_str)
-    }
-
-    fn is_satd_analysis_tool(&self, path_str: &str) -> bool {
-        path_str.contains("satd_detector")
-            || path_str.contains("satd_property_tests")
-            || path_str.contains("quality_proxy")
-            || (path_str.contains("test") && path_str.contains("satd"))
     }
 
     /// The package's own build script and manifest — the ones that sit beside
@@ -304,6 +336,23 @@ impl SATDDetector {
         source_scope::has_dir_component(path_str, &["fuzz", "fuzz_targets"])
     }
 
+    /// KNOWN, RECORDED, NOT FIXED HERE: the `.generated` arm is a raw
+    /// `contains()` over the whole `path_str`, and `path_str` is
+    /// `source_scope::project_relative_str(file_path)`, which hands back the
+    /// ABSOLUTE path whenever no VCS marker and no manifest sits above the file.
+    /// So this arm can still be decided by a directory the analysed project
+    /// never chose: for a manifest-less, VCS-less tree at
+    /// `<tmp>/build.generated/src/main.rs`, `path_str` is that absolute path,
+    /// `contains(".generated")` is true, and every candidate in the tree is
+    /// dropped as "generated" — the #923 mechanism, one predicate over from the
+    /// one removed above.
+    ///
+    /// Left alone deliberately in the change that removed `is_satd_analysis_tool`:
+    /// narrowing it (match a file-name suffix, or a `*.generated` component)
+    /// changes what a normal in-repo run excludes, which is a separate blast
+    /// radius and needs its own fixture. Recorded here so the next reader does
+    /// not have to rediscover it, and so no comment in this file can go on
+    /// claiming the class is gone.
     fn is_generated_or_vendor(&self, path_str: &str) -> bool {
         source_scope::has_dir_component(path_str, &["target", "vendor", "node_modules", "book"])
             || path_str.contains(".generated")
@@ -349,5 +398,135 @@ impl SATDDetector {
             }
             Err(_) => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod analyser_self_exclusion_regression_tests {
+    //! `should_exclude_file` used to carry a fifth predicate,
+    //! `is_satd_analysis_tool`, that dropped any path CONTAINING
+    //! `satd_detector`, `satd_property_tests`, `quality_proxy`, or both `test`
+    //! and `satd`. It reintroduced #923 exactly: when no VCS marker and no
+    //! manifest sits above a file, `project_relative_str` hands back the
+    //! ABSOLUTE path, so the verdict became a property of a directory name the
+    //! analysed project never chose. A scratch checkout under a directory
+    //! called `satd-testbed` lost its whole measurement while the same bytes
+    //! under `plainbed` reported a finding, and no flag recovered it.
+    //!
+    //! What it was the LAST of is the analyser's own name: no predicate left in
+    //! `should_exclude_file` matches on pmat's own module names. It was not the
+    //! last raw `contains()` over a whole path — an earlier revision of this
+    //! module doc said so and it was false. `is_generated_or_vendor`'s
+    //! `path_str.contains(".generated")` is one, still, and the tests below
+    //! deliberately do not cover it: fixing it changes what an in-repo run
+    //! excludes and needs its own fixture. See the note on that function.
+    use super::*;
+
+    /// One analysable file whose only content is a marker-leading comment. The
+    /// marker is inside a Rust string literal here, which this detector does
+    /// not read as a comment, so it does not become debt of its own.
+    const MARKED: &str = "// TODO: measure this file wherever it sits\n\
+                          pub fn f() -> i32 { 1 }\n";
+
+    const MANIFEST: &str =
+        "[package]\nname = \"myproject\"\nversion = \"0.1.0\"\nedition = \"2021\"\n";
+
+    /// The runtime proof, as a test: four trees holding byte-identical source,
+    /// none of them a repository and none of them carrying a manifest, so the
+    /// path every predicate reads is the caller's absolute one. Whether the
+    /// directory above the source mentions this analyser must not decide
+    /// whether the analyser measures anything.
+    #[tokio::test]
+    async fn a_tree_whose_own_name_mentions_this_analyser_is_still_measured() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let detector = SATDDetector::new();
+        let mut verdicts = Vec::new();
+
+        for dir in ["plainbed", "satd-testbed", "quality_proxy", "satd_detector"] {
+            let root = tmp.path().join(dir);
+            std::fs::create_dir_all(&root).expect("scratch tree");
+            let file = root.join("main.rs");
+            std::fs::write(&file, MARKED).expect("source file");
+
+            assert!(
+                !detector.should_exclude_file(&file),
+                "a directory named {dir:?} above the tree excluded its own source"
+            );
+
+            let measured = detector.analyze_directory(&root).await;
+            assert!(
+                measured.is_ok(),
+                "{dir}: the tree holds one analysable file, so a measurement \
+                 is possible — every candidate was excluded instead: {measured:?}"
+            );
+            verdicts.push((dir, measured.map_or(0, |found| found.len())));
+        }
+
+        assert!(
+            verdicts.iter().all(|(_, n)| *n == 1),
+            "the enclosing directory's name changed how much debt exists: {verdicts:?}"
+        );
+    }
+
+    /// The conjunct that defeated the flag. `--include-tests` exists to widen
+    /// the scan to test code; `contains("test") && contains("satd")` narrowed
+    /// it back again for any test file whose name mentions this analyser, and
+    /// this one is project-relative (`/tests/satd_it.rs`), so a manifest at the
+    /// root did not save it either.
+    #[tokio::test]
+    async fn include_tests_reaches_a_test_file_that_names_this_analyser() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().join("myproject");
+        std::fs::create_dir_all(root.join("tests")).expect("tests dir");
+        std::fs::write(root.join("Cargo.toml"), MANIFEST).expect("manifest");
+        let it = root.join("tests/satd_it.rs");
+        std::fs::write(&it, MARKED).expect("test file");
+
+        let detector = SATDDetector::new();
+        assert!(
+            !detector.should_exclude_file(&it),
+            "a test file named after this analyser is still test code, and \
+             --include-tests is the flag that decides whether it is read"
+        );
+
+        let found = detector
+            .analyze_directory_with_tests(&root, true)
+            .await
+            .expect("--include-tests was passed, so the one test file is in scope");
+        assert_eq!(
+            found.len(),
+            1,
+            "--include-tests was overruled by the file's name: {found:?}"
+        );
+    }
+
+    /// Guard rail: dropping the self-exemption did not widen anything else.
+    /// The three surviving predicates still read the path RELATIVE to its own
+    /// project root, and still exclude what the project cannot fix in place.
+    #[test]
+    fn the_surviving_exclusions_are_unchanged() {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().join("myproject");
+        std::fs::create_dir_all(root.join("src")).expect("src dir");
+        std::fs::write(root.join("Cargo.toml"), MANIFEST).expect("manifest");
+        let detector = SATDDetector::new();
+
+        for excluded in ["fuzz/target.rs", "vendor/dep.rs", "node_modules/dep.js"] {
+            let file = root.join(excluded);
+            std::fs::create_dir_all(file.parent().expect("parent")).expect("dir");
+            std::fs::write(&file, MARKED).expect("file");
+            assert!(
+                detector.should_exclude_file(&file),
+                "{excluded} must stay out of scope"
+            );
+        }
+
+        let production = root.join("src/satd_detector.rs");
+        std::fs::write(&production, MARKED).expect("file");
+        assert!(
+            !detector.should_exclude_file(&production),
+            "a module a project chose to call satd_detector.rs is its own \
+             production code, and this analyser has no say over it"
+        );
     }
 }

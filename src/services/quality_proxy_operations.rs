@@ -45,19 +45,19 @@ impl QualityProxyService {
         );
 
         let content = self.get_operation_content(&request)?;
-        let file_extension = Path::new(&request.file_path)
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("rs");
 
-        let ((quality_metrics, passed), violations) = self
-            .analyze_content(
-                &content,
-                &request.file_path,
-                file_extension,
-                &request.quality_config,
-            )
+        // The gates are chosen from the language, not from a raw extension
+        // string. This lookup used to end in `.unwrap_or("rs")`, so an
+        // extensionless `Makefile` or `Dockerfile` was handed to `cargo clippy`
+        // as Rust and rejected with fabricated parse errors; see
+        // `proxy_language` for that and for the case-sensitivity that let a
+        // `.RS` file skip every gate.
+        let language = proxy_language(&request.file_path);
+
+        let outcome = self
+            .analyze_content(&content, &request.file_path, language, &request.quality_config)
             .await?;
+        let passed = outcome.passed;
 
         let (status, final_content, refactoring_applied, refactoring_plan) = match request.mode {
             ProxyMode::Strict => {
@@ -76,26 +76,36 @@ impl QualityProxyService {
                         .auto_fix_content(
                             &content,
                             &request.file_path,
-                            file_extension,
+                            language,
                             &request.quality_config,
                         )
                         .await
                     {
                         Ok((fixed_content, plan)) => {
-                            let ((_, fixed_passed), _) = self
+                            let fixed = self
                                 .analyze_content(
                                     &fixed_content,
                                     &request.file_path,
-                                    file_extension,
+                                    language,
                                     &request.quality_config,
                                 )
                                 .await?;
 
-                            if fixed_passed {
+                            if fixed.passed {
                                 (ProxyStatus::Modified, fixed_content, true, Some(plan))
                             } else {
+                                // The plan is carried on the rejection too. It
+                                // is the only place the *reason* an auto-fix
+                                // did nothing can surface — for a language with
+                                // no auto-fix implemented, `auto_fix_content`
+                                // records a "skipped" step naming it, and
+                                // dropping the plan here turned that back into
+                                // a bare `refactoring_applied: false`, which is
+                                // indistinguishable from "there was nothing to
+                                // fix". `refactoring_applied` stays false: this
+                                // is what was attempted, not what was applied.
                                 warn!("Auto-fix failed to meet quality standards");
-                                (ProxyStatus::Rejected, String::new(), false, None)
+                                (ProxyStatus::Rejected, String::new(), false, Some(plan))
                             }
                         }
                         Err(e) => {
@@ -111,8 +121,10 @@ impl QualityProxyService {
             status,
             quality_report: QualityReport {
                 passed,
-                metrics: quality_metrics,
-                violations,
+                metrics: outcome.metrics,
+                violations: outcome.violations,
+                language: outcome.language,
+                gates_run: outcome.gates_run,
             },
             final_content,
             refactoring_applied,
