@@ -194,4 +194,96 @@ mod help_text_guards {
             }
         });
     }
+
+    /// A short flag and the id of the argument that owns it.
+    type ShortBindings = Vec<(char, String)>;
+
+    /// Every short flag `cmd` declares itself. `only_global` narrows that to the
+    /// ones clap copies down into subcommands.
+    fn declared_shorts(cmd: &clap::Command, only_global: bool) -> ShortBindings {
+        cmd.get_arguments()
+            .filter(|a| !only_global || a.is_global_set())
+            .filter_map(|a| a.get_short().map(|s| (s, a.get_id().to_string())))
+            .collect()
+    }
+
+    /// Names every short flag bound more than once in one command's set.
+    fn double_bound(path: &str, bindings: &ShortBindings) -> Vec<String> {
+        let mut first_owner: ShortBindings = Vec::new();
+        let mut clashes = Vec::new();
+        for (short, id) in bindings {
+            let first = first_owner
+                .iter()
+                .find(|(seen, _)| seen == short)
+                .map(|(_, owner)| owner.clone());
+            match first {
+                Some(owner) => clashes.push(format!(
+                    "`{path}`: -{short} is bound by both `{owner}` and `{id}`"
+                )),
+                None => first_owner.push((*short, id.clone())),
+            }
+        }
+        clashes
+    }
+
+    /// Reproduce clap's per-command view of the short flags — what the command
+    /// declares, plus the globals it inherits — and recurse.
+    fn walk_shorts(
+        cmd: &clap::Command,
+        path: &str,
+        inherited: &ShortBindings,
+        out: &mut Vec<String>,
+    ) {
+        // `Command::_propagate_global_args` skips a global whose id the
+        // subcommand already declares, so a redeclared name shadows the global
+        // rather than colliding with it.
+        let redeclared: Vec<String> = cmd
+            .get_arguments()
+            .map(|a| a.get_id().to_string())
+            .collect();
+        let inherited: ShortBindings = inherited
+            .iter()
+            .filter(|(_, id)| !redeclared.contains(id))
+            .cloned()
+            .collect();
+
+        let mut here = inherited.clone();
+        here.extend(declared_shorts(cmd, false));
+        out.extend(double_bound(path, &here));
+
+        let mut descends = inherited;
+        descends.extend(declared_shorts(cmd, true));
+        for sub in cmd.get_subcommands() {
+            walk_shorts(sub, &format!("{path} {}", sub.get_name()), &descends, out);
+        }
+    }
+
+    /// clap's "Short option names must be unique for each argument" check is a
+    /// debug assertion: `assert_app` is called from `Command::_build_self`
+    /// behind `#[cfg(debug_assertions)]`, so a duplicate short is merely ugly in
+    /// a release build and fatal in a debug one. 3.32.0 shipped `prompt
+    /// implement` binding `-s` to both `--spec` and `--summary`; the released
+    /// binary printed both in `--help` and exited 0, while a debug build of the
+    /// same source aborted before the command could run (#1083).
+    ///
+    /// clap reaches that assertion only for the command actually being invoked,
+    /// which is why nothing caught it: no test built `prompt implement`. This
+    /// walks the whole tree in one pass and reports every collision rather than
+    /// the first, so the next one fails here instead of in a user's debug build.
+    #[test]
+    fn no_command_binds_the_same_short_flag_twice() {
+        on_a_big_stack(|| {
+            use clap::CommandFactory;
+
+            let root = <crate::cli::Cli as CommandFactory>::command();
+            let mut clashes = Vec::new();
+            walk_shorts(&root, "pmat", &Vec::new(), &mut clashes);
+
+            assert!(
+                clashes.is_empty(),
+                "clap aborts these commands in any debug build:\n{}",
+                clashes.join("\n")
+            );
+        });
+    }
 }

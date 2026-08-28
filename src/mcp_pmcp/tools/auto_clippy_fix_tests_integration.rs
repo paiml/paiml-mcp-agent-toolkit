@@ -1,4 +1,4 @@
-// Integration and async tests for auto_clippy_fix: simulate_fixes, apply_fixes,
+// Integration and async tests for auto_clippy_fix: simulate_fixes,
 // create_fix_response, confidence ordering, and edge cases.
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -7,6 +7,18 @@ mod integration_tests {
     use super::*;
     use crate::services::clippy_fix::{ClippyDiagnostic, DiagnosticLevel};
     use std::path::PathBuf;
+
+    /// Keys that can only be true of a tool that edits files.
+    ///
+    /// The response carried all four (#1086) while `md5sum` on the named file
+    /// was unchanged. They are asserted absent, not merely zeroed: a key that
+    /// does not exist cannot be misread.
+    const MUTATION_CLAIM_KEYS: &[&str] = &[
+        "successful_fixes",
+        "fixed_files",
+        "success_rate",
+        "would_fix",
+    ];
 
     fn create_test_diagnostic(code: &str) -> ClippyDiagnostic {
         ClippyDiagnostic {
@@ -32,10 +44,13 @@ mod integration_tests {
         let result = simulate_fixes(&engine, vec![]).await;
         assert!(result.is_ok());
 
-        let json = result.unwrap();
-        assert_eq!(json["dry_run"], true);
-        assert_eq!(json["total_fixes"], 0);
-        assert!(json["fixes"].as_array().unwrap().is_empty());
+        let json = result.expect("simulate_fixes on an empty list");
+        assert_eq!(json["preview_only"], true);
+        assert_eq!(json["total_previewed"], 0);
+        assert!(json["previewed"]
+            .as_array()
+            .expect("previewed is an array")
+            .is_empty());
     }
 
     #[tokio::test]
@@ -49,74 +64,86 @@ mod integration_tests {
         let result = simulate_fixes(&engine, diagnostics).await;
         assert!(result.is_ok());
 
-        let json = result.unwrap();
-        assert_eq!(json["dry_run"], true);
-        assert_eq!(json["total_fixes"], 2);
+        let json = result.expect("simulate_fixes over two diagnostics");
+        assert_eq!(json["preview_only"], true);
+        assert_eq!(json["total_previewed"], 2);
 
-        let fixes = json["fixes"].as_array().unwrap();
-        assert_eq!(fixes.len(), 2);
+        let previewed = json["previewed"]
+            .as_array()
+            .expect("previewed is an array");
+        assert_eq!(previewed.len(), 2);
 
-        // Check first fix structure
-        let fix0 = &fixes[0];
-        assert_eq!(fix0["file"], "test.rs");
-        assert_eq!(fix0["line"], 1);
-        assert_eq!(fix0["code"], "clippy::needless_return");
-        assert_eq!(fix0["would_fix"], true);
-        assert_eq!(fix0["confidence"], "High");
+        // Check first entry structure
+        let first = &previewed[0];
+        assert_eq!(first["file"], "test.rs");
+        assert_eq!(first["line"], 1);
+        assert_eq!(first["code"], "clippy::needless_return");
+        assert_eq!(first["confidence"], "High");
 
-        // Check second fix has different confidence
-        let fix1 = &fixes[1];
-        assert_eq!(fix1["confidence"], "Medium");
+        // Check second entry has different confidence
+        let second = &previewed[1];
+        assert_eq!(second["confidence"], "Medium");
     }
 
-    // ========================================================================
-    // Tests for apply_fixes
-    // ========================================================================
-
+    /// A preview must not describe an edit it cannot perform.
+    ///
+    /// Each entry used to carry `"would_fix": true`, hardcoded on every element
+    /// — a promise about a module that contains no `fs::write` at all (#1086).
+    ///
+    /// Contradicts the pre-fix `auto_clippy_fix_core.rs` line
+    /// `"would_fix": true,` inside `simulate_fixes`, and the sibling
+    /// `"dry_run": true` / `"total_fixes"` keys of the same payload.
     #[tokio::test]
-    async fn test_apply_fixes_empty() {
+    async fn preview_entries_promise_nothing_about_writing() {
         let engine = ClippyFixEngine::new();
-        let result = apply_fixes(&engine, vec![]).await;
-        assert!(result.is_ok());
+        let diagnostics = vec![create_test_diagnostic("clippy::needless_return")];
+        let json = simulate_fixes(&engine, diagnostics)
+            .await
+            .expect("simulate_fixes");
 
-        let json = result.unwrap();
-        assert_eq!(json["dry_run"], false);
-        assert!(json["report"].is_object());
-        assert!(json["detailed_results"].as_array().unwrap().is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_apply_fixes_with_diagnostics() {
-        let engine = ClippyFixEngine::new();
-        let diagnostics = vec![
-            create_test_diagnostic("clippy::needless_return"),
-            create_test_diagnostic("clippy::manual_map"),
-        ];
-
-        let result = apply_fixes(&engine, diagnostics).await;
-        assert!(result.is_ok());
-
-        let json = result.unwrap();
-        assert_eq!(json["dry_run"], false);
-
-        // Check report structure
-        let report = &json["report"];
-        assert_eq!(report["total_diagnostics"], 2);
-        let _ = report["successful_fixes"].as_u64().unwrap();
-        assert!(report["success_rate"].is_number());
-        assert!(report["total_duration_ms"].is_number());
-
-        // Check detailed results
-        let results = json["detailed_results"].as_array().unwrap();
-        assert_eq!(results.len(), 2);
-
-        for r in results {
-            assert!(r["file"].is_string());
-            assert!(r["line"].is_number());
-            assert!(r["code"].is_string());
-            assert!(r["success"].is_boolean());
-            assert!(r["duration_ms"].is_number());
+        let text = serde_json::to_string(&json).expect("payload serializes");
+        for key in MUTATION_CLAIM_KEYS {
+            assert!(
+                !text.contains(key),
+                "preview payload must not carry `{key}`: {text}"
+            );
         }
+        assert!(
+            !text.contains("dry_run"),
+            "there is no wet run to contrast with: {text}"
+        );
+    }
+
+    /// Previewing a diagnostic leaves the file it names byte-identical.
+    ///
+    /// This is a guard, not a regression test: the pre-fix code also wrote
+    /// nothing — that was the defect, since it reported `"action": "applied"`
+    /// and a populated `fixed_files` while doing so. The test exists so that a
+    /// later attempt to make the preview path write is caught here rather than
+    /// in a user's working tree, given the transform behind it is a whole-file
+    /// `source.replace("return ", "")`.
+    #[tokio::test]
+    async fn previewing_leaves_the_named_file_untouched_on_disk() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let file = dir.path().join("main.rs");
+        let original = "fn main() {\n    return println!(\"return now\");\n}\n";
+        std::fs::write(&file, original).expect("seed fixture");
+        let before = std::fs::read(&file).expect("read fixture");
+
+        let engine = ClippyFixEngine::new();
+        let mut diagnostic = create_test_diagnostic("clippy::needless_return");
+        diagnostic.file = file.clone();
+
+        let json = simulate_fixes(&engine, vec![diagnostic])
+            .await
+            .expect("simulate_fixes");
+        assert_eq!(json["total_previewed"], 1);
+
+        let after = std::fs::read(&file).expect("re-read fixture");
+        assert_eq!(
+            before, after,
+            "preview must not modify the file it names on disk"
+        );
     }
 
     // ========================================================================
@@ -143,7 +170,7 @@ mod integration_tests {
     /// is clippy-clean" are opposite claims, and only the second was reported.
     #[test]
     fn diagnostics_found_survives_the_confidence_filter() {
-        let response = create_fix_response(json!({}), false, &census(76, 0));
+        let response = create_fix_response(json!({}), &census(76, 0));
         let pmcp::Content::Text { text } = &response.content[0] else {
             unreachable!("Expected Text content")
         };
@@ -169,7 +196,7 @@ mod integration_tests {
     /// Without this, warning on every run would pass the test above.
     #[test]
     fn a_crate_with_no_diagnostics_still_reads_as_clean() {
-        let response = create_fix_response(json!({}), false, &census(0, 0));
+        let response = create_fix_response(json!({}), &census(0, 0));
         let pmcp::Content::Text { text } = &response.content[0] else {
             unreachable!("Expected Text content")
         };
@@ -183,49 +210,110 @@ mod integration_tests {
         );
     }
 
-    #[test]
-    fn test_create_fix_response_dry_run() {
-        let results = json!({
-            "dry_run": true,
-            "total_fixes": 5,
-            "fixes": []
-        });
-
-        let response = create_fix_response(results, true, &census(5, 5));
-
-        assert!(!response.is_error);
-        assert_eq!(response.content.len(), 1);
-
-        if let pmcp::Content::Text { text } = &response.content[0] {
-            assert!(text.contains("analyzed"));
-            assert!(text.contains("clippy reported"));
-            assert!(text.contains("dry_run"));
-        } else {
-            panic!("Expected Text content");
-        }
+    /// Read the single text payload out of a tool result.
+    fn payload(response: &pmcp::ToolResult) -> String {
+        let pmcp::Content::Text { text } = &response.content[0] else {
+            unreachable!("Expected Text content")
+        };
+        text.clone()
     }
 
     #[test]
-    fn test_create_fix_response_applied() {
+    fn test_create_fix_response_preview_shape() {
         let results = json!({
-            "dry_run": false,
-            "report": {
-                "total_diagnostics": 10,
-                "successful_fixes": 8
-            }
+            "preview_only": true,
+            "total_previewed": 5,
+            "previewed": []
         });
 
-        let response = create_fix_response(results, false, &census(10, 8));
+        let response = create_fix_response(results, &census(5, 5));
 
         assert!(!response.is_error);
         assert_eq!(response.content.len(), 1);
 
-        if let pmcp::Content::Text { text } = &response.content[0] {
-            assert!(text.contains("applied"));
-            assert!(text.contains("clippy reported"));
-        } else {
-            panic!("Expected Text content");
+        let text = payload(&response);
+        assert!(text.contains("previewed"), "{text}");
+        assert!(text.contains("clippy reported"), "{text}");
+        assert!(text.contains("preview_only"), "{text}");
+    }
+
+    /// The response can never say "applied".
+    ///
+    /// This is the #1086 regression. `create_fix_response` chose its verb with
+    /// `let action = if is_dry_run { "analyzed" } else { "applied" };`, and the
+    /// "applied" arm was returned — with `successful_fixes` and a named
+    /// `fixed_files` — by a code path with no `fs::write` behind it: the file
+    /// was byte-identical afterwards. On the pre-fix code this test fails on
+    /// the very first assertion, since a non-dry-run call produced exactly the
+    /// string it forbids.
+    ///
+    /// The verb is now a constant, and the flag that used to pick it is gone
+    /// from the signature, so no caller can reintroduce the claim.
+    #[test]
+    fn the_response_can_never_claim_a_fix_was_applied() {
+        // Every census shape the tool can produce, including the ones the old
+        // "apply" branch served.
+        for (found, eligible) in [(0, 0), (10, 8), (76, 0), (3, 3)] {
+            let results = json!({ "preview_only": true, "total_previewed": eligible });
+            let text = payload(&create_fix_response(results, &census(found, eligible)));
+            let doc: serde_json::Value = serde_json::from_str(&text).expect("valid json");
+
+            assert_eq!(
+                doc["action"], "previewed",
+                "action must state what happened: {text}"
+            );
+            assert!(
+                !text.contains("applied"),
+                "nothing was applied, so the word must not appear: {text}"
+            );
+            for key in MUTATION_CLAIM_KEYS {
+                assert!(
+                    !text.contains(key),
+                    "response must not carry `{key}`: {text}"
+                );
+            }
         }
+    }
+
+    /// The full payload, assembled the way `auto_clippy_fix` assembles it.
+    ///
+    /// Guards the seam between the two halves: a preview result wrapped by
+    /// `create_fix_response` must not acquire a mutation claim on the way out.
+    /// Fails on the pre-fix code, which wrote `"action": "applied"` around a
+    /// results object carrying `"dry_run"` and `"would_fix"`.
+    #[tokio::test]
+    async fn the_assembled_payload_carries_no_mutation_claim() {
+        let engine = ClippyFixEngine::new();
+        let diagnostics = vec![
+            create_test_diagnostic("clippy::needless_return"),
+            create_test_diagnostic("clippy::manual_map"),
+        ];
+        let results = simulate_fixes(&engine, diagnostics)
+            .await
+            .expect("simulate_fixes");
+
+        let text = payload(&create_fix_response(results, &census(2, 2)));
+        let doc: serde_json::Value = serde_json::from_str(&text).expect("valid json");
+
+        assert_eq!(doc["action"], "previewed", "{text}");
+        assert_eq!(doc["results"]["preview_only"], true, "{text}");
+        for key in MUTATION_CLAIM_KEYS {
+            assert!(!text.contains(key), "payload must not carry `{key}`: {text}");
+        }
+        assert!(
+            !text.contains("applied"),
+            "no file was written, so nothing was applied: {text}"
+        );
+
+        let message = doc["message"].as_str().expect("message");
+        assert!(
+            message.contains("previewed"),
+            "the message states the verb too: {message}"
+        );
+        assert!(
+            message.contains("No file was modified"),
+            "the message must say plainly that nothing was written: {message}"
+        );
     }
 
     // ========================================================================
@@ -302,12 +390,16 @@ mod integration_tests {
         diagnostic.message = "specific test message".to_string();
         diagnostic.line_start = 42;
 
-        let result = simulate_fixes(&engine, vec![diagnostic]).await.unwrap();
-        let fixes = result["fixes"].as_array().unwrap();
-        let fix = &fixes[0];
+        let result = simulate_fixes(&engine, vec![diagnostic])
+            .await
+            .expect("simulate_fixes");
+        let previewed = result["previewed"]
+            .as_array()
+            .expect("previewed is an array");
+        let entry = &previewed[0];
 
-        assert_eq!(fix["message"], "specific test message");
-        assert_eq!(fix["line"], 42);
+        assert_eq!(entry["message"], "specific test message");
+        assert_eq!(entry["line"], 42);
     }
 
     #[test]
@@ -318,18 +410,27 @@ mod integration_tests {
         assert!(result.unwrap().is_empty());
     }
 
+    /// The census drives the message; there is no second mode to differ from.
+    ///
+    /// This test used to build two responses from the same census, one with
+    /// `is_dry_run = true` and one with `false`, and assert they DIFFERED —
+    /// `text_dry.contains("analyzed")`, `text_apply.contains("applied")`. That
+    /// difference was the defect: the second was a claim that files had been
+    /// rewritten, produced by a path that wrote nothing (#1086). The parameter
+    /// is gone, so the property worth pinning is the opposite one — the same
+    /// census yields the same verdict, every time.
     #[test]
-    fn test_create_fix_response_message_formatting() {
-        let response_dry = create_fix_response(json!({}), true, &census(3, 3));
-        let response_apply = create_fix_response(json!({}), false, &census(3, 3));
+    fn the_same_census_always_yields_the_same_verdict() {
+        let first = payload(&create_fix_response(json!({}), &census(3, 3)));
+        let second = payload(&create_fix_response(json!({}), &census(3, 3)));
+        assert_eq!(first, second);
 
-        // Verify different messages for dry run vs apply
-        if let (pmcp::Content::Text { text: text_dry }, pmcp::Content::Text { text: text_apply }) =
-            (&response_dry.content[0], &response_apply.content[0])
-        {
-            assert!(text_dry.contains("analyzed"));
-            assert!(text_apply.contains("applied"));
-            assert_ne!(text_dry, text_apply);
-        }
+        let doc: serde_json::Value = serde_json::from_str(&first).expect("valid json");
+        assert_eq!(doc["action"], "previewed", "{first}");
+
+        // A different census must still change the message, or the assertion
+        // above would pass on a constant string.
+        let other = payload(&create_fix_response(json!({}), &census(9, 1)));
+        assert_ne!(first, other);
     }
 }

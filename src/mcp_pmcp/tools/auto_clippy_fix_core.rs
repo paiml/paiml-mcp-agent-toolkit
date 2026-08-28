@@ -1,5 +1,8 @@
-// Core helper functions for auto_clippy_fix: parsing, filtering, simulation,
-// fix application, and MCP response creation.
+// Core helper functions for auto_clippy_fix: parsing, filtering, preview, and
+// MCP response creation.
+//
+// There is deliberately no fix-application helper here. See `simulate_fixes`
+// and `create_fix_response` below, and #1086.
 
 /// Parse confidence level from string (complexity: 3)
 fn parse_confidence_level(level: &Option<String>) -> Result<ConfidenceLevel> {
@@ -83,65 +86,36 @@ fn confidence_meets_minimum(actual: ConfidenceLevel, minimum: ConfidenceLevel) -
     )
 }
 
-/// Simulate fixes without applying (complexity: 4)
+/// Describe the eligible diagnostics. Reads only; writes nothing.
+///
+/// Every key here names a description, not an edit. The previous payload said
+/// `"dry_run": true`, `"total_fixes"` and `"would_fix": true` — a mode flag
+/// implying a counterpart that writes, a count of "fixes", and a per-entry
+/// promise — for a module that contains no writer (#1086). `would_fix` was also
+/// a hardcoded `true` on every entry, so it distinguished nothing.
+///
+/// Complexity: 4
 async fn simulate_fixes(
     engine: &ClippyFixEngine,
     diagnostics: Vec<ClippyDiagnostic>,
 ) -> Result<Value> {
-    let mut fixes = Vec::new();
+    let mut previewed = Vec::new();
 
     for diagnostic in diagnostics {
         let confidence = engine.calculate_confidence(&diagnostic);
-        fixes.push(json!({
+        previewed.push(json!({
             "file": diagnostic.file,
             "line": diagnostic.line_start,
             "code": diagnostic.code,
             "message": diagnostic.message,
             "confidence": format!("{:?}", confidence),
-            "would_fix": true,
         }));
     }
 
     Ok(json!({
-        "dry_run": true,
-        "total_fixes": fixes.len(),
-        "fixes": fixes,
-    }))
-}
-
-/// Apply fixes to code (complexity: 5)
-async fn apply_fixes(
-    engine: &ClippyFixEngine,
-    diagnostics: Vec<ClippyDiagnostic>,
-) -> Result<Value> {
-    let results = engine.apply_batch_fixes(&diagnostics).await?;
-    let report = engine.generate_report(results.clone());
-
-    let detailed_results: Vec<Value> = results
-        .iter()
-        .map(|r| {
-            json!({
-                "file": r.diagnostic.file,
-                "line": r.diagnostic.line_start,
-                "code": r.diagnostic.code,
-                "success": r.success,
-                "error": r.error,
-                "duration_ms": r.duration.as_millis(),
-            })
-        })
-        .collect();
-
-    Ok(json!({
-        "dry_run": false,
-        "report": {
-            "total_diagnostics": report.total_diagnostics,
-            "successful_fixes": report.successful_fixes,
-            "failed_fixes": report.failed_fixes,
-            "success_rate": report.success_rate,
-            "total_duration_ms": report.total_duration.as_millis(),
-            "fixed_files": report.fixed_files,
-        },
-        "detailed_results": detailed_results,
+        "preview_only": true,
+        "total_previewed": previewed.len(),
+        "previewed": previewed,
     }))
 }
 
@@ -179,25 +153,33 @@ impl DiagnosticCensus {
             );
         }
         format!(
-            "\u{1f527} clippy reported {} diagnostic(s); {} met confidence {} and were {}, \
-             {} left untouched",
+            "\u{1f50e} clippy reported {} diagnostic(s); {} met confidence {} and were {}, \
+             {} left untouched. No file was modified — `analyze clippy` previews only.",
             self.found, self.eligible, self.min_confidence, action, skipped
         )
     }
 }
 
 /// Create MCP response (complexity: 2)
-fn create_fix_response(results: Value, is_dry_run: bool, census: &DiagnosticCensus) -> ToolResult {
-    let action = if is_dry_run { "analyzed" } else { "applied" };
+///
+/// `action` is a constant, and the `is_dry_run` parameter that used to choose it
+/// is gone. It read `if is_dry_run { "analyzed" } else { "applied" }`, and the
+/// "applied" arm was reached by a code path that wrote nothing to disk (#1086).
+/// A field that can only ever report what actually happened cannot be made to
+/// lie by a caller passing the wrong flag.
+fn create_fix_response(results: Value, census: &DiagnosticCensus) -> ToolResult {
+    // Nothing in this module writes, in any mode, so this is the only verb the
+    // response is entitled to use.
+    const ACTION: &str = "previewed";
 
     let response = json!({
-        "action": action,
+        "action": ACTION,
         "diagnostics_found": census.found,
         "diagnostics_eligible": census.eligible,
         "diagnostics_filtered_out": census.found.saturating_sub(census.eligible),
         "min_confidence": census.min_confidence,
         "results": results,
-        "message": census.message(action)
+        "message": census.message(ACTION)
     });
 
     ToolResult::new(vec![pmcp::Content::Text {

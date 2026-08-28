@@ -432,9 +432,12 @@ fn test_graphml_declares_every_edge_endpoint() {
     }
 }
 
-/// Node names are bare file names, so any repository with two `mod.rs` files
-/// produced two `<node id="mod.rs">` elements — duplicate ids that silently
-/// merge two distinct nodes.
+/// When this command built its own graph, node names were bare file names, so
+/// any repository with two `mod.rs` files produced two `<node id="mod.rs">`
+/// elements — duplicate ids that silently merge two distinct nodes. Since #1087
+/// the names come from the dependency graph and are unique, so this now pins the
+/// exporter's own guarantee rather than a property of the graph source: given
+/// colliding names, the ids must still be distinct.
 ///
 /// RED on the old code: the id was `node.name`.
 #[test]
@@ -522,5 +525,96 @@ async fn test_export_graphml_output_file_holds_graphml() {
     assert!(
         !content.contains("Graph Metrics Analysis"),
         "the metrics summary overwrote the export: {content}"
+    );
+}
+
+/// #1087 + CB-1335. The graph is now the project's dependency graph, whose node
+/// map is an `FxHashMap`; numbering the nodes in that map's iteration order
+/// would give two runs over one unchanged tree two different numberings, and
+/// with them two different rankings wherever nodes tie — which, on a sparse
+/// graph scored by degree, is most of them.
+///
+/// Honest about what this is RED on. The non-zero edge assertion fails on the
+/// pre-#1087 builder: it resolved `use crate::printer::print;` to a file named
+/// `crate.rs`, found none, and produced 0 edges on this exact fixture shape
+/// (measured: `pmat analyze graph-metrics -p .` reported "2 nodes and 0 edges"
+/// where `pmat analyze dag -p .` reported "4 nodes and 2 edges"). The ordering
+/// assertions do NOT fail on it — that builder numbered nodes in directory-walk
+/// order, which is stable within a process. They fail on the new builder with
+/// the `ids.sort_unstable()` / `edges.sort_unstable()` calls in
+/// `simple_graph_from_dependencies` removed, which is the regression they exist
+/// to catch; the "sorted" assertion pins those calls directly rather than hoping
+/// an unsorted `FxHashMap` disagrees with itself inside one process.
+#[tokio::test]
+async fn the_graph_and_its_ranking_are_identical_across_two_runs() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = dir.path().join("src");
+    std::fs::create_dir_all(&src).expect("mkdir src");
+    std::fs::write(src.join("printer.rs"), "pub fn print() {}\n").expect("write printer");
+    std::fs::write(
+        src.join("parser.rs"),
+        "use crate::printer::print;\n\npub fn parse() {\n    print();\n}\n",
+    )
+    .expect("write parser");
+    std::fs::write(
+        src.join("lexer.rs"),
+        "use crate::printer::print;\n\npub fn lex() {\n    print();\n}\n",
+    )
+    .expect("write lexer");
+    std::fs::write(
+        src.join("driver.rs"),
+        "use crate::parser::parse;\nuse crate::lexer::lex;\n\npub fn drive() {\n    parse();\n    lex();\n}\n",
+    )
+    .expect("write driver");
+
+    let names = |graph: &SimpleGraph| -> Vec<String> {
+        graph
+            .node_indices()
+            .map(|idx| graph.get_node(idx).clone())
+            .collect()
+    };
+    let ranking = |graph: &SimpleGraph| -> Vec<String> {
+        let metrics = calculate_metrics(graph, vec![GraphMetricType::All], vec![], 0.85, 100, 1e-6)
+            .expect("metrics");
+        filter_results(metrics, 50, 0.0)
+            .nodes
+            .into_iter()
+            .map(|node| node.name)
+            .collect()
+    };
+
+    let first = build_dependency_graph(dir.path(), &None, &None)
+        .await
+        .expect("first run");
+    let second = build_dependency_graph(dir.path(), &None, &None)
+        .await
+        .expect("second run");
+
+    assert!(
+        first.edge_count() > 0,
+        "every file in this fixture depends on another one; a 0-edge graph over it \
+         makes every centrality 0 by construction ({} nodes)",
+        first.node_count()
+    );
+
+    let first_names = names(&first);
+    assert_eq!(
+        first_names,
+        names(&second),
+        "node numbering moved between two runs over one unchanged tree"
+    );
+
+    let mut sorted = first_names.clone();
+    sorted.sort();
+    assert_eq!(
+        first_names, sorted,
+        "node ids must be numbered in sorted order, so the numbering does not \
+         depend on FxHashMap iteration order (CB-1335)"
+    );
+
+    assert_eq!(
+        ranking(&first),
+        ranking(&second),
+        "the ranking moved between two runs over one unchanged tree"
     );
 }
