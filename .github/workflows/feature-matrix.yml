@@ -536,9 +536,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      # Reading Dependabot alerts needs this scope explicitly; without it the API
-      # answers 403 and the gate FAILS rather than reporting zero alerts.
-      security-events: read
     steps:
       - uses: actions/checkout@v4
       # The control runs FIRST and on every invocation, against fixtures rather
@@ -550,11 +547,44 @@ jobs:
       # empty.
       - name: the gate proves it can fail
         run: ./scripts/dependabot-alerts-gate.sh --self-test
+      # THE LIVE ARM NEEDS A PAT, AND THIS REPOSITORY DOES NOT HAVE ONE.
+      #
+      # `GITHUB_TOKEN` cannot read Dependabot alerts at all — measured, not
+      # assumed: with `permissions: security-events: read` set, the API answers
+      #
+      #   403 {"message":"Resource not accessible by integration"}
+      #
+      # `security-events` covers code scanning; Dependabot alerts are a separate
+      # repository permission that `GITHUB_TOKEN` is never granted. A PAT with
+      # the `security_events` scope, stored as `DEPENDABOT_TOKEN`, is the only
+      # way to run this arm from CI.
+      #
+      # So this step SAYS WHAT IT DID NOT DO rather than passing quietly. That is
+      # the whole point of #1074: "we could not look" must not render as "nothing
+      # found". The job does not fail on a missing secret — a permanently red
+      # required gate gets disabled, which would leave nothing at all — but the
+      # gap is annotated on every run and written to the job summary, and #1074
+      # stays open naming this as the remaining step.
       - name: no open Dependabot alerts at or above medium
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DEPENDABOT_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: ./scripts/dependabot-alerts-gate.sh
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::the LIVE Dependabot arm did NOT run: no DEPENDABOT_TOKEN secret. GITHUB_TOKEN cannot read Dependabot alerts (403 Resource not accessible by integration). This run verified the gate's logic, NOT this repository's advisories."
+            {
+              echo "### Dependabot alerts: live arm NOT run"
+              echo
+              echo "The self-test passed, so the gate works. But **no advisory was checked on this repository**:"
+              echo "\`GITHUB_TOKEN\` cannot read Dependabot alerts, and no \`DEPENDABOT_TOKEN\` secret is set."
+              echo
+              echo "Add a PAT with the \`security_events\` scope as \`DEPENDABOT_TOKEN\` to close this gap (#1074)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          ./scripts/dependabot-alerts-gate.sh
       # cargo-deny 0.19 has no flag to escalate `advisory-not-detected`, and a
       # warning in a green build is one everybody scrolls past. Seven such
       # entries had accumulated in deny.toml, each naming an advisory matching no

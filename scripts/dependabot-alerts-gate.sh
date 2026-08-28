@@ -52,7 +52,10 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-die() { echo "::error::$*"; echo "SECURITY GATE FAILED: $*" >&2; exit 1; }
+# Both streams on purpose: `::error::` on stdout so GitHub annotates the run, and
+# a plain line on stderr so the message survives when this function is called
+# from inside a command substitution (which captures stdout).
+die() { echo "::error::$*" >&2; echo "SECURITY GATE FAILED: $*" >&2; exit 1; }
 
 # Rank severities so a threshold is a comparison rather than a list to keep in
 # sync. Anything GitHub reports that is not in this table is treated as ABOVE
@@ -289,4 +292,12 @@ if [ "$SELF_TEST" = "1" ]; then
     exit $?
 fi
 
-evaluate "$(fetch_alerts)"
+# NOT `evaluate "$(fetch_alerts)"`. `die` inside a command substitution exits the
+# SUBSHELL, not this script, so a failed fetch printed its message and then let
+# an empty payload flow into `evaluate` — which failed too, but on a parse error
+# whose text says nothing about the 403 that actually happened. Two errors, the
+# useful one buried. Capture, check the status, then evaluate.
+if ! ALERTS="$(fetch_alerts)"; then
+    exit 1
+fi
+evaluate "$ALERTS"
