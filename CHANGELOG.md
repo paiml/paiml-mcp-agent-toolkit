@@ -218,6 +218,16 @@ exercises this path.
   pass, and the path comes from `CARGO_TARGET_DIR`/`cargo metadata` rather than the literal
   `target/release/pmat`, which in this checkout resolves to a stale binary in a different
   directory than cargo builds into. Proven to fail in both directions by named mutation.
+
+  **And then the fix left half the defect standing, which is worth stating plainly.** The
+  band declines unless `PMAT_REQUIRE_BINARY_SIZE=1` says a caller wanted the measurement —
+  and *nothing set that variable*, anywhere. Every leg that ran the band printed
+  `THIS RUN VERIFIED NOTHING` and passed, which is the same gate as one that never
+  compiled, reached by a different route. A `binary size band` job now builds the release
+  binary and sets the variable, and `feature-gate` `needs:` it, because a job nothing
+  depends on cannot fail the build either. Falsified on identical conditions: with no
+  binary at the resolved path, the test passes and says it verified nothing *without* the
+  variable, and fails with "This is a FAILURE, not a skip" *with* it.
 - **`Mutation (diff)` died in dash on every one of its seven nights** (#1034). Every
   scheduled run since the workflow landed failed in the same step with
   `set: Illegal option -o pipefail`: a `run:` step in a `container:` job is launched as
