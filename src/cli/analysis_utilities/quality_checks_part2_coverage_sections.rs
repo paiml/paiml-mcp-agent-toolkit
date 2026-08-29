@@ -85,19 +85,101 @@ fn sections_source(project_path: &Path) -> Option<PathBuf> {
 /// The text of an ATX heading, with the `#` run and any leading decoration
 /// removed; `None` when the line is not a heading.
 ///
-/// STUB — returns `None` for everything, which is exactly today's behaviour:
-/// the sections check has no notion of a heading at all. Replaced in the next
-/// commit. Committed in this state so the tests below are shown going red
-/// against the defect before the fix makes them green.
-fn heading_text(_line: &str) -> Option<&str> {
-    None
+/// Decoration is *only* the leading run of non-alphanumeric characters — an
+/// emoji, a badge, `1.`, `*`. Once the text has begun it is returned verbatim,
+/// so `## Q&A` stays `Q&A` and `## C++ Usage` stays `C++ Usage`.
+///
+/// The whitespace requirement after the `#` run is CommonMark's: `##Contributing`
+/// is a paragraph that starts with hashes, not a heading, and must not be able
+/// to satisfy a required section.
+fn heading_text(line: &str) -> Option<&str> {
+    let after_hashes = line.trim_start().strip_prefix('#')?.trim_start_matches('#');
+    if !after_hashes.is_empty() && !after_hashes.starts_with([' ', '\t']) {
+        return None;
+    }
+    let text = after_hashes
+        .trim()
+        .trim_start_matches(|c: char| !c.is_alphanumeric())
+        .trim_start();
+    let text = strip_leading_ordinal(text);
+    (!text.is_empty()).then_some(text)
+}
+
+/// Drop a leading `1.` / `2)` / `3:` numbering from heading text.
+///
+/// Digits are alphanumeric, so the non-alphanumeric trim above cannot see this
+/// one, and `## 1. Installation` is the same false positive as `## 🚀 Installation`.
+///
+/// Narrow on purpose: BOTH a separator and the whitespace after it are
+/// required, so `## 2024 Roadmap` keeps its number and `## 3.5 Release` keeps
+/// its version. A rule that dropped any leading digit run would rename those.
+fn strip_leading_ordinal(text: &str) -> &str {
+    let digits = text.len() - text.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    if digits == 0 {
+        return text;
+    }
+    let Some(after_sep) = text[digits..].strip_prefix(['.', ')', ':']) else {
+        return text;
+    };
+    if !after_sep.starts_with([' ', '\t']) {
+        return text;
+    }
+    after_sep.trim_start()
 }
 
 /// Does `readme` provide `section`?
 ///
-/// STUB — the substring test this file has always used, lifted out unchanged.
+/// THE DEFECT THIS EXISTS FOR.
+///
+/// The check used to ask `readme.contains("## Contributing")` against the whole
+/// file. Measured on `paiml/interactive.paiml.com`, whose README carries
+///
+/// ```markdown
+/// ## 🤝 Contributing
+/// ## 📄 License
+/// ```
+///
+/// `pmat quality-gate` answered `Missing required section: Contributing` and
+/// `Missing required section: License`. Both sections are there, in the right
+/// place, at the right level. Two of that repository's 60 blocking violations
+/// were an emoji: a substring test has no notion of a heading, so the only
+/// headings it can recognise are those whose text begins immediately after the
+/// `# ` — and a README that decorates its headings, which is most of them, is
+/// told to add sections it already has.
+///
+/// That is the shape of defect this gate exists to catch in other people's
+/// code: a check reporting a result it did not measure. It measured "does this
+/// byte sequence occur", and reported "is this section present".
+///
+/// THE FIX IS ADDITIVE, ON PURPOSE. The original substring test is still
+/// consulted first, so no README that satisfied this check before can begin
+/// failing it — every change below can only remove a false "missing", never
+/// add one. That matters because this check is already enforced in repositories
+/// nobody here can see; a matcher that got *stricter* would turn green gates
+/// red on a pmat upgrade, for a reason the owner did not choose.
+///
+/// The second path is heading-aware: it compares the required section against
+/// `heading_text` for each line, case-insensitively, and requires a word
+/// boundary after it — `Licenses` is a different section from `License`, and
+/// only the boundary check stops the decoration-stripping path from accepting
+/// it. (The substring path has always accepted `Licensed under MIT`, which the
+/// boundary does not undo; widening THAT is a behaviour change, and this commit
+/// deliberately makes none.)
 fn readme_provides_section(readme: &str, section: &str) -> bool {
-    readme.contains(&format!("# {section}")) || readme.contains(&format!("## {section}"))
+    if readme.contains(&format!("# {section}")) || readme.contains(&format!("## {section}")) {
+        return true;
+    }
+    let wanted = section.to_lowercase();
+    readme.lines().any(|line| {
+        heading_text(line).is_some_and(|text| {
+            let lowered = text.to_lowercase();
+            lowered.starts_with(&wanted)
+                && lowered[wanted.len()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|c| !c.is_alphanumeric())
+        })
+    })
 }
 
 async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
@@ -488,7 +570,10 @@ mod coverage_sections_tests {
         assert_eq!(heading_text("## 🤝 Contributing"), Some("Contributing"));
         assert_eq!(heading_text("# License"), Some("License"));
         assert_eq!(heading_text("###   1. Installation"), Some("Installation"));
-        assert_eq!(heading_text("## ⚠️ CRITICAL: Testing"), Some("CRITICAL: Testing"));
+        assert_eq!(
+            heading_text("## ⚠️ CRITICAL: Testing"),
+            Some("CRITICAL: Testing")
+        );
     }
 
     #[test]
@@ -496,6 +581,15 @@ mod coverage_sections_tests {
         // Only the LEADING run is decoration. A heading is not re-punctuated.
         assert_eq!(heading_text("## Q&A"), Some("Q&A"));
         assert_eq!(heading_text("## C++ Usage"), Some("C++ Usage"));
+    }
+
+    /// COUNTER-TEST for `strip_leading_ordinal`'s narrowness. A digit run that
+    /// is not a numbering must survive: dropping it would rename the heading.
+    #[test]
+    fn test_heading_text_keeps_a_leading_number_that_is_not_a_numbering() {
+        assert_eq!(heading_text("## 2024 Roadmap"), Some("2024 Roadmap"));
+        assert_eq!(heading_text("## 3.5 Release"), Some("3.5 Release"));
+        assert_eq!(heading_text("## 10x Faster"), Some("10x Faster"));
     }
 
     #[test]
@@ -508,7 +602,13 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_readme_provides_section_is_case_insensitive_on_the_decorated_path() {
-        assert!(readme_provides_section("## 🤝 contributing\n", "Contributing"));
-        assert!(!readme_provides_section("## 🤝 contributors\n", "Contributing"));
+        assert!(readme_provides_section(
+            "## 🤝 contributing\n",
+            "Contributing"
+        ));
+        assert!(!readme_provides_section(
+            "## 🤝 contributors\n",
+            "Contributing"
+        ));
     }
 }
