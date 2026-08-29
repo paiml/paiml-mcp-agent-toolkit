@@ -143,6 +143,6 @@ include!("onboarding_scoring.rs");
 include!("tutorial_library.rs");
 
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;

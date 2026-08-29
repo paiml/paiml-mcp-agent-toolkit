@@ -9,6 +9,21 @@ updates:
       day: "monday"
       time: "03:00"
     open-pull-requests-limit: 5
+    ignore:
+      # prettyplease 0.3 is the `syn` 3.0 line. pmat is on `syn` 2, so the bump
+      # puts two incompatible `syn` versions in the graph and
+      # `prettyplease::unparse(file)` stops accepting our `syn::File`:
+      #
+      #   error[E0308]: expected `syn::file::File`, found `syn::File`
+      #   note: there are multiple different versions of crate `syn`
+      #
+      # This is not a dependabot fault and not fixable in the bump: it needs a
+      # `syn` 2 -> 3 migration across 693 `syn::` uses in 83 files. Ignoring the
+      # 0.3 line keeps that decision explicit and stops a PR that cannot pass
+      # from being reopened weekly. Drop this entry as part of the migration.
+      # See #1028.
+      - dependency-name: "prettyplease"
+        versions: [">=0.3.0"]
     groups:
       # Group all patch updates together
       patch-updates:

@@ -1,0 +1,22 @@
+# Accepted Dependabot findings, with an expiry. Read by
+# scripts/dependabot-alerts-gate.sh (#1074).
+#
+# Format, whitespace-separated, one per line:
+#
+#   GHSA-xxxx-xxxx-xxxx   YYYY-MM-DD   why this is accepted, and by whom
+#
+# THE EXPIRY IS MANDATORY AND IS CHECKED. An entry whose date has passed does
+# NOT suppress the finding — the gate reports it as an EXPIRED acknowledgement
+# and fails. This is the one thing `deny.toml`'s `[advisories] ignore` lacks: an
+# ignore with no expiry is how an allowlist quietly becomes broader than anyone
+# intended, which is exactly how `deny.toml` came to carry two
+# `advisory-not-detected` entries matching no crate in the tree.
+#
+# Accepting a finding here is a RECORDED DECISION, not a deleted check: the
+# alert is still printed on every run, with its GHSA id, severity, vulnerable
+# range and first patched version, above a line saying it was suppressed.
+#
+# Prefer upgrading. Add an entry only when the fix is genuinely unavailable, and
+# set the shortest expiry you can defend.
+
+# (no accepted findings — the tree currently has zero open alerts)

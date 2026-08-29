@@ -772,7 +772,7 @@ mod active_tests {
 }
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod coverage_tests {
     include!("proof_annotations_coverage_tests.rs");
     include!("proof_annotations_coverage_tests_part2.rs");

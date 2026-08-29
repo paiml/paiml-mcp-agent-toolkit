@@ -170,6 +170,66 @@ fn force_push_allowed(body: &Value) -> Option<bool> {
         .and_then(Value::as_bool)
 }
 
+/// Whether deleting the default branch is permitted. Same `None` convention as
+/// [`force_push_allowed`]: silence is not consent.
+fn deletion_allowed(body: &Value) -> Option<bool> {
+    body.get("allow_deletions")
+        .and_then(|f| f.get("enabled"))
+        .and_then(Value::as_bool)
+}
+
+/// Whether a branch must be up to date with the base before merging.
+///
+/// `strict` is what stops a green-but-stale branch from landing: without it,
+/// every required check below was measured against a tree that is no longer the
+/// tree being merged.
+fn strict_status_checks(body: &Value) -> Option<bool> {
+    body.get("required_status_checks")
+        .and_then(|c| c.get("strict"))
+        .and_then(Value::as_bool)
+}
+
+/// Why this branch does NOT qualify as CI-gated, or empty if it does.
+///
+/// The second posture recognised by CB-1700 (#1036). A repository where agents
+/// write the changes and CI reviews them cannot satisfy
+/// `required_approving_review_count >= 1`: GitHub forbids an author approving
+/// their own PR, so on a repository with one active human EVERY merge needs the
+/// admin override. An override exercised on every merge is not a control — it
+/// converts "unreviewed merges are visible" into "unreviewed merges are routine
+/// and logged as admin bypass", which is measurably worse because the bypass
+/// stops being a signal.
+///
+/// So this posture asks for something checkable and, for that repository,
+/// stronger than a click: every merge must pass named required checks, measured
+/// against the tree actually being merged, on a branch whose history cannot be
+/// rewritten or removed.
+///
+/// It deliberately does NOT re-derive whether those checks are reachable — that
+/// is CB-2100's job, and duplicating it here would give two answers to one
+/// question. What this asserts is that the doctrinal gates are present as
+/// REQUIRED CONTEXTS, which the caller has already established above.
+fn ci_gated_shortfalls(body: &Value) -> Vec<String> {
+    let mut missing = Vec::new();
+    if required_contexts(body).is_empty() {
+        missing.push("no required status check");
+    }
+    match strict_status_checks(body) {
+        Some(true) => {}
+        Some(false) => {
+            missing.push("required_status_checks.strict is false, so a stale branch can merge")
+        }
+        None => missing.push("required_status_checks.strict was not reported"),
+    }
+    if force_push_allowed(body) != Some(false) {
+        missing.push("force pushes are not disabled");
+    }
+    if deletion_allowed(body) != Some(false) {
+        missing.push("branch deletion is not disabled");
+    }
+    missing.into_iter().map(str::to_string).collect()
+}
+
 /// Collect every branch-protection violation in `body`.
 fn branch_protection_violations(body: &Value, gates: &[String]) -> Vec<String> {
     let mut violations = Vec::new();
@@ -189,15 +249,31 @@ fn branch_protection_violations(body: &Value, gates: &[String]) -> Vec<String> {
             ));
         }
     }
-    match required_approving_reviews(body) {
-        Some(n) if n >= 1 => {}
-        Some(n) => violations.push(format!(
-            "required_approving_review_count is {n}; modern code review needs at least 1"
-        )),
-        None => violations.push(
-            "no required_pull_request_reviews block: the default branch requires zero approving reviews"
-                .to_string(),
-        ),
+    // TWO POSTURES, either of which satisfies review (#1036). Human-gated:
+    // someone approves. CI-gated: named required checks pass against the tree
+    // being merged, on a branch nobody can rewrite. A repository is asked to
+    // satisfy one of them, not both, and the failure message names what each
+    // would need — because "requires zero approving reviews" told a CI-gated
+    // repository to adopt a control it cannot exercise without bypassing it.
+    let reviews = required_approving_reviews(body);
+    if reviews.is_none_or(|n| n < 1) {
+        let shortfalls = ci_gated_shortfalls(body);
+        if !shortfalls.is_empty() {
+            let stated = match reviews {
+                Some(n) => format!("required_approving_review_count is {n}"),
+                None => {
+                    "no required_pull_request_reviews block, so zero approving reviews are required"
+                        .to_string()
+                }
+            };
+            violations.push(format!(
+                "{stated}, and this branch does not qualify as CI-gated either: {}. \
+                 Satisfy ONE of: (a) require at least 1 approving review, or (b) make \
+                 every merge pass named required checks against the tree being merged \
+                 — strict status checks, force pushes and deletions disabled",
+                shortfalls.join("; ")
+            ));
+        }
     }
     match force_push_allowed(body) {
         Some(false) => {}
@@ -1128,5 +1204,142 @@ pub(crate) fn validate_advisory_only_severities(
              absolute threshold; they may be disabled, but not promoted to a failure.",
             bad.join("; ")
         ))
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod branch_protection_posture_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The four checks this repository actually requires, so the doctrinal-gate
+    /// loop is satisfied and the tests below isolate the review posture.
+    fn gates() -> Vec<String> {
+        ["ci / gate", "feature-gate", "pmat score"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    }
+
+    fn protection(strict: bool, force_push: bool, deletions: bool, reviews: Option<u64>) -> Value {
+        let mut body = json!({
+            "required_status_checks": {
+                "strict": strict,
+                "contexts": ["ci / gate", "feature-gate", "pmat score"],
+            },
+            "allow_force_pushes": { "enabled": force_push },
+            "allow_deletions": { "enabled": deletions },
+        });
+        if let Some(n) = reviews {
+            body["required_pull_request_reviews"] = json!({ "required_approving_review_count": n });
+        }
+        body
+    }
+
+    /// #1036: an agent-authored, CI-gated repository passes with ZERO required
+    /// approving reviews.
+    ///
+    /// This is the shape of `paiml-mcp-agent-toolkit`'s own `master`. Requiring
+    /// a review there made every merge an admin bypass, because GitHub forbids
+    /// an author approving their own PR and the repository has one active human.
+    #[test]
+    fn a_ci_gated_branch_passes_without_any_required_review() {
+        let body = protection(true, false, false, None);
+        let violations = branch_protection_violations(&body, &gates());
+        assert!(
+            violations.is_empty(),
+            "a strict, unrewritable branch with named required checks is CI-gated: {violations:?}"
+        );
+    }
+
+    /// The human-gated posture still passes on its own terms, with none of the
+    /// CI-gated properties set.
+    #[test]
+    fn a_human_gated_branch_still_passes_with_one_review() {
+        let body = protection(false, false, true, Some(1));
+        let violations = branch_protection_violations(&body, &gates());
+        assert!(
+            violations.is_empty(),
+            "one approving review is still sufficient by itself: {violations:?}"
+        );
+    }
+
+    /// THE CONTROL THAT MATTERS. Zero reviews and not CI-gated must still fail.
+    ///
+    /// Without this, "recognise a second posture" is indistinguishable from
+    /// "accept zero reviews unconditionally", which #1036 asks explicitly not to
+    /// do — it would delete the requirement for every repository that genuinely
+    /// needs a human approver.
+    #[test]
+    fn zero_reviews_without_the_ci_gated_properties_still_fails() {
+        for (label, body) in [
+            (
+                "stale branches can merge",
+                protection(false, false, false, None),
+            ),
+            ("history is rewritable", protection(true, true, false, None)),
+            ("branch can be deleted", protection(true, false, true, None)),
+        ] {
+            let violations = branch_protection_violations(&body, &gates());
+            assert!(
+                violations
+                    .iter()
+                    .any(|v| v.contains("does not qualify as CI-gated")),
+                "{label}: expected a review violation, got {violations:?}"
+            );
+        }
+    }
+
+    /// A branch with no required check at all is not CI-gated, whatever else it
+    /// disables — there is nothing doing the reviewing.
+    #[test]
+    fn no_required_checks_is_not_a_ci_gated_posture() {
+        let body = json!({
+            "required_status_checks": { "strict": true, "contexts": [] },
+            "allow_force_pushes": { "enabled": false },
+            "allow_deletions": { "enabled": false },
+        });
+        let violations = branch_protection_violations(&body, &gates());
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.contains("does not qualify as CI-gated")),
+            "an empty context list cannot review anything: {violations:?}"
+        );
+    }
+
+    /// Silence is not consent. A field the API did not report must not be read
+    /// as the permissive value, which is the convention `force_push_allowed`
+    /// already documents.
+    #[test]
+    fn unreported_protection_fields_are_not_treated_as_disabled() {
+        let body = json!({
+            "required_status_checks": { "strict": true, "contexts": ["ci / gate", "feature-gate", "pmat score"] },
+        });
+        let shortfalls = ci_gated_shortfalls(&body);
+        assert!(
+            shortfalls.iter().any(|s| s.contains("force pushes")),
+            "an absent allow_force_pushes must not count as disabled: {shortfalls:?}"
+        );
+        assert!(
+            shortfalls.iter().any(|s| s.contains("deletion")),
+            "an absent allow_deletions must not count as disabled: {shortfalls:?}"
+        );
+    }
+
+    /// The failure message must name both remedies, because the old one named
+    /// only the review count and sent a CI-gated repository to adopt a control
+    /// it can only exercise by bypassing it.
+    #[test]
+    fn the_failure_names_both_ways_to_satisfy_it() {
+        let body = protection(false, true, true, None);
+        let violations = branch_protection_violations(&body, &gates());
+        let review = violations
+            .iter()
+            .find(|v| v.contains("CI-gated"))
+            .expect("a review violation");
+        assert!(review.contains("at least 1 approving review"), "{review}");
+        assert!(review.contains("strict status checks"), "{review}");
     }
 }

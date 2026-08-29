@@ -56,12 +56,29 @@ provable ladder
 # `cargo deny check`). That is a real gate: `feature-gate` caught a drifted
 # unrun-tests ledger on this very PR, minutes before it would have merged.
 #
-# CB-1700 FAILS because of this, and that is the honest outcome rather than a
-# bug to be silenced. The rule asserts "modern code review needs at least 1
-# approving review" and models no posture in which machines produce the changes
-# and CI reviews them. Do not edit the rule to make this repository pass; either
-# it grows a model of that posture, or this repository stays red on it and the
-# reason is written here. Tracked in paiml-mcp-agent-toolkit#1036.
+# CB-1700 USED TO FAIL because of this, and that was the honest outcome rather
+# than a bug to be silenced: the rule asserted "modern code review needs at least
+# 1 approving review" and modelled no posture in which machines produce the
+# changes and CI reviews them.
+#
+# RESOLVED in #1036 by giving the rule a SECOND posture rather than by weakening
+# the first. A branch now satisfies CB-1700 if EITHER:
+#
+#   (a) it requires at least one approving review -- unchanged, and still the
+#       requirement for any repository that declares a human-review posture; or
+#   (b) it is CI-gated: at least one required status check, `strict` true so the
+#       checks are measured against the tree actually being merged, and force
+#       pushes and deletions disabled so that history cannot be rewritten out
+#       from under them.
+#
+# master satisfies (b): strict=true, 5 required contexts, force pushes and
+# deletions both disabled. Zero approving reviews with NONE of those properties
+# still fails, and the test `zero_reviews_without_the_ci_gated_properties_still_fails`
+# exists to keep it that way -- "recognise a second posture" must not decay into
+# "accept zero reviews unconditionally".
+#
+# If this repository ever drops `strict`, or re-enables force pushes or branch
+# deletion, CB-1700 goes red again and the message names both remedies.
 #
 # What is NOT weakened, and must not be: `enforce_admins` stays false only
 # because the admin override is the break-glass path; force pushes and deletions

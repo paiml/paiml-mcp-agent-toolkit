@@ -22,13 +22,21 @@
 pub const REASONS: &[(&str, &str)] = &[
     (
         "<unsatisfiable>",
-        "NOT a clean bill of health — the strongest finding in this ledger. \
-         14 of these are `#[cfg(all(feature = \"F\", not(feature = \"F\")))]`: a \
-         `test_..._without_feature` body written to cover the feature-OFF branch, \
-         placed inside a module already gated ON that feature. The remaining 4 are \
-         `#[cfg(any())]`, which is `false` by definition. No `--features` \
-         invocation can ever compile any of them; only moving the bodies out of \
-         the gated module can.",
+        "NOT a clean bill of health — the strongest finding in this ledger, and \
+         it grew from 18 to 2199 without a single test changing. #1023 moved the \
+         `broken-tests` quarantine from a Cargo FEATURE to the cfg flag \
+         `pmat_broken_tests`, and that reclassified 2181 tests out of five \
+         `broken-tests,*` buckets into this one. The old buckets read as \
+         'enable this feature and they run', which was never true — the bodies do \
+         not compile. `<unsatisfiable>` says what is actually the case. \
+         \
+         Of the original 18: 14 are `#[cfg(all(feature = \"F\", not(feature = \
+         \"F\")))]` — a `test_..._without_feature` body written to cover the \
+         feature-OFF branch, placed inside a module already gated ON that feature \
+         — and 4 are `#[cfg(any())]`, which is `false` by definition. No \
+         `--features` invocation can compile any of these; only moving the bodies \
+         out of the gated module can. The 2181 quarantined ones need their tests \
+         repaired or deleted, which is #1023's remaining work.",
     ),
     (
         "agent-daemon",
@@ -50,28 +58,6 @@ pub const REASONS: &[(&str, &str)] = &[
          selector never picks `Backend::Gpu`, so it wants a GPU-LESS runner, which \
          is exactly what ubuntu-latest is. The real cost is the wgpu + pollster + \
          aprender-db/gpu compile a leg would add.",
-    ),
-    (
-        "broken-tests",
-        "deliberate non-compiling quarantine (#1023). These bodies do not build \
-         under any feature set, so no leg can run them by construction.",
-    ),
-    (
-        "broken-tests,mcp-integration",
-        "quarantined (#1023); the quarantine alone is sufficient.",
-    ),
-    (
-        "broken-tests,not(cpp-ast)",
-        "quarantined (#1023); the quarantine alone is sufficient.",
-    ),
-    (
-        "broken-tests,ruchy-ast",
-        "quarantined (#1023); the quarantine alone is sufficient.",
-    ),
-    (
-        "broken-tests,unified-protocol",
-        "quarantined (#1023). `unified-protocol` IS a leg, so the quarantine is \
-         the only thing keeping these unrun.",
     ),
     (
         "csharp-ast",

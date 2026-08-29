@@ -104,7 +104,7 @@ include!("defect_report.rs");
 
 // Tests extracted to tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax (missing QualityGateResults import)
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod tests;
 
 // Entropy quality-gate regression tests (#683 + determinism).

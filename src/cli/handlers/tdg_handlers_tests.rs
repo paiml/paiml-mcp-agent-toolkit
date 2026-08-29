@@ -1384,10 +1384,10 @@ mod sarif_format_fidelity {
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
 /// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tdg_handlers_coverage_tests.rs"]
 mod coverage_tests;
 
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tdg_handlers_coverage_tests2.rs"]
 mod coverage_tests2;

@@ -537,10 +537,16 @@ swift-ast = []
 lean-ast = []
 skip-slow-tests = []
 internal_tests = []
-# Feature flag for tests with broken syntax (split across include!() boundaries)
-# Empty feature: exists only so cfg(feature = "broken-tests") compiles without warnings
-# NEVER add to any feature bundle (default, full, all-languages, etc.)
-broken-tests = []
+# `broken-tests` WAS a feature here. It is now the cfg flag `pmat_broken_tests`
+# (declared in [lints.rust] check-cfg below), and the move is the whole point:
+# a Cargo feature is reachable by `--all-features`, and this quarantine does not
+# compile, so `cargo check --all-features --tests` failed on every tree forever.
+# Five separate workarounds existed in this repo alone to route around that —
+# in the Makefile, post-release.yml, feature-matrix.yml and the dogfood runner.
+# A cfg flag cannot be reached by `--all-features` at all, so the quarantine
+# stays quarantined and `--all-features` becomes a usable command again.
+# Enable it deliberately with RUSTFLAGS="--cfg pmat_broken_tests" (it will not
+# compile; that is what it is for). See #1023.
 # Feature flag for red-phase TDD tests (expected failures, not yet passing)
 # Empty feature: exists only so cfg(feature = "red-phase-tests") compiles without warnings
 # NEVER add to any feature bundle (default, full, all-languages, etc.)
@@ -996,7 +1002,7 @@ unreachable_pub = "warn"
 missing_docs = "allow"
 dead_code = "allow"
 # Coverage: Allow coverage cfg flags from cargo-llvm-cov
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)', 'cfg(coverage_attr_stable)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)', 'cfg(coverage_attr_stable)', 'cfg(pmat_broken_tests)'] }
 
 [lints.clippy]
 correctness = { level = "deny", priority = -1 }

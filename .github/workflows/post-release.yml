@@ -117,11 +117,11 @@ jobs:
       # of code no user installs. It also enables `gpu`/`analytics-gpu`, which no
       # hosted runner can build for.
       #
-      # `--all-features` additionally implies `broken-tests`, the deliberate
-      # non-compiling quarantine (#1023) that Cargo.toml marks "NEVER add to any
-      # feature bundle". `cargo check` without `--tests` happens not to compile
-      # its `#[cfg(all(test, ...))]` bodies, so that is not what failed here —
-      # but it is a second reason this flag is the wrong one to reach for.
+      # `--all-features` used to imply `broken-tests`, a deliberate non-compiling
+      # quarantine, which was a second reason to avoid the flag. #1023 retired
+      # that feature in favour of the cfg `pmat_broken_tests`, which
+      # `--all-features` cannot reach, so only the MSRV reason above survives —
+      # and it is on its own sufficient.
       #
       # What users can actually install is `cargo install pmat` (default) and
       # `cargo install pmat --features full`. Those two are the MSRV contract,

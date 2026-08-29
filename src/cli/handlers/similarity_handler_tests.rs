@@ -23,6 +23,6 @@ mod tests {
 }
 
 /// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "similarity_handler_coverage_tests.rs"]
 mod coverage_tests;

@@ -423,7 +423,7 @@ mod ruchy_unit_tests {
     }
 
     // RED tests: access private methods/fields, gated behind broken-tests
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_analyzer_infer_literal_type() {
         let analyzer = RuchyComplexityAnalyzer::new();
@@ -454,7 +454,7 @@ mod ruchy_unit_tests {
         );
     }
 
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_analyzer_infer_binary_type_arithmetic() {
         let analyzer = RuchyComplexityAnalyzer::new();
@@ -468,7 +468,7 @@ mod ruchy_unit_tests {
         assert_eq!(result, RuchyType::Float);
     }
 
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_analyzer_infer_binary_type_comparison() {
         let analyzer = RuchyComplexityAnalyzer::new();
@@ -485,7 +485,7 @@ mod ruchy_unit_tests {
         assert_eq!(result, RuchyType::Bool);
     }
 
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_analyzer_infer_binary_type_logical() {
         let analyzer = RuchyComplexityAnalyzer::new();
@@ -499,7 +499,7 @@ mod ruchy_unit_tests {
         assert_eq!(result, RuchyType::Bool);
     }
 
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_analyzer_infer_binary_type_string_concat() {
         let analyzer = RuchyComplexityAnalyzer::new();
@@ -510,7 +510,7 @@ mod ruchy_unit_tests {
     }
 
     // RuchyLexer tests — access private fields, gated behind broken-tests
-    #[cfg(feature = "broken-tests")]
+    #[cfg(pmat_broken_tests)]
     #[test]
     fn test_lexer_new() {
         let lexer = RuchyLexer::new("fun test() {}".to_string());

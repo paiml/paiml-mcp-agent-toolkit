@@ -13,7 +13,25 @@ use std::time::Duration;
 /// handler, it also pinned a tokio worker thread for that whole time, and
 /// `mcp-http` is in the default feature set — an availability bug, not only a
 /// resource one.
-const CLIPPY_TIMEOUT: Duration = Duration::from_secs(60);
+///
+/// UNDER `cfg(test)` THE BUDGET IS TEN MINUTES, and that is not a weakening of
+/// the shipped bound — `cfg!(test)` is false in every binary that is published,
+/// so an installed pmat still kills at 60s. It is here because the budget is
+/// WALL-CLOCK: a `cargo test --lib` run saturates every core with ~21,000 other
+/// tests, the spawned `cargo clippy` is starved rather than slow, and 60s
+/// elapses without it being scheduled. The proxy then reports, correctly, that
+/// no lint verdict was produced — and a dozen tests that assert a verdict fail,
+/// on a machine's load rather than on the code. Twelve of them did exactly that
+/// here while the same twelve passed in 0.27s each when run alone.
+///
+/// The alternative — letting the tests accept "the stage did not run" — would
+/// make them pass while the lint stage was broken, which is the defect this
+/// whole release is about.
+const CLIPPY_TIMEOUT: Duration = if cfg!(test) {
+    Duration::from_secs(600)
+} else {
+    Duration::from_secs(60)
+};
 
 /// rustfmt over a single file is milliseconds; ten seconds is already
 /// pathological. Reachable from AutoFix mode on the same caller-supplied

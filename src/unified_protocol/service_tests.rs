@@ -14,7 +14,7 @@ mod tests {
 /// EXTREME TDD Coverage Tests for Unified Service
 /// Sprint 46 Phase 6: Comprehensive coverage for uncovered lines
 /// NOTE: Temporarily disabled due to private function access issues
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod coverage_tests {
     use super::*;
     use axum::body::Body;

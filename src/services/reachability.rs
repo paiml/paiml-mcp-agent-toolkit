@@ -42,10 +42,19 @@ pub struct Orphan {
 /// defect this module exists to fix — a number with no denominator.
 #[derive(Debug, Clone, Default)]
 pub struct Report {
-    /// Tracked `.rs` files reached from some target root.
+    /// Tracked `.rs` files reached from some target root by an edge that
+    /// COMPILES — i.e. not through the quarantine feature.
     pub reachable: usize,
     /// Tracked `.rs` files reached from nothing.
     pub orphans: Vec<Orphan>,
+    /// Tracked `.rs` files reached ONLY through a [`QUARANTINE_FEATURE`] edge.
+    ///
+    /// Not orphans — something declares them — and not reachable either, because
+    /// the declaration is behind a feature that is in no bundle and does not
+    /// compile. Counting them as reachable is what hid them: 47 modules whose
+    /// tests exist, are tracked, are counted by every file-based metric, and run
+    /// in no build. See #1023.
+    pub quarantined: Vec<Orphan>,
     /// Target roots enumerated from the manifest.
     pub roots: usize,
     /// `mod` declarations whose file could not be found on disk.
@@ -63,25 +72,54 @@ impl Report {
         self.orphans.iter().map(|o| o.tests).sum()
     }
 
+    /// `#[test]` functions inside quarantined modules — declared, tracked, and
+    /// executed by no build.
+    #[must_use]
+    pub fn quarantined_tests(&self) -> usize {
+        self.quarantined.iter().map(|o| o.tests).sum()
+    }
+
+    /// Lines inside quarantined modules.
+    #[must_use]
+    pub fn quarantined_lines(&self) -> usize {
+        self.quarantined.iter().map(|o| o.lines).sum()
+    }
+
     /// A one-line verdict that always states the scope it was measured over.
+    ///
+    /// Quarantined files are reported SEPARATELY from orphans and never folded
+    /// into `reachable`. They are a third state, and collapsing them into either
+    /// of the other two loses the distinction that matters: an orphan is
+    /// declared by nothing, a quarantined module is declared by something that
+    /// does not compile, and both run exactly as often.
     #[must_use]
     pub fn summary(&self) -> String {
-        let scanned = self.reachable + self.orphans.len();
-        if self.orphans.is_empty() {
-            return format!(
+        let scanned = self.reachable + self.orphans.len() + self.quarantined.len();
+        let mut s = if self.orphans.is_empty() {
+            format!(
                 "all {scanned} tracked .rs file(s) are reachable from {} target root(s)",
                 self.roots
-            );
+            )
+        } else {
+            format!(
+                "{} of {scanned} tracked .rs file(s) are reachable from {} target root(s); \
+                 {} unreachable ({} lines, {} #[test] fns that never run)",
+                self.reachable,
+                self.roots,
+                self.orphans.len(),
+                self.orphan_lines(),
+                self.orphan_tests()
+            )
+        };
+        if !self.quarantined.is_empty() {
+            s.push_str(&format!(
+                "; {} quarantined behind `pmat_broken_tests` ({} lines, {} #[test] fns that \
+                 no build compiles) — declared, so not orphans, but they run exactly as often",
+                self.quarantined.len(),
+                self.quarantined_lines(),
+                self.quarantined_tests()
+            ));
         }
-        let mut s = format!(
-            "{} of {scanned} tracked .rs file(s) are reachable from {} target root(s); \
-             {} unreachable ({} lines, {} #[test] fns that never run)",
-            self.reachable,
-            self.roots,
-            self.orphans.len(),
-            self.orphan_lines(),
-            self.orphan_tests()
-        );
         if !self.unresolved.is_empty() {
             s.push_str(&format!(
                 " — {} `mod` declaration(s) could not be resolved, so this is a FLOOR, not a total",
@@ -92,17 +130,34 @@ impl Report {
     }
 }
 
+/// The feature that marks a deliberately non-compiling quarantine (#1023).
+///
+/// `pmat_broken_tests` is set by no build, so a `mod` behind it is compiled out of every
+/// build anybody runs. The declaration still exists, which is the problem: a
+/// file reached only through one of these edges looked REACHABLE to this walker
+/// while its tests ran in no build at all — the same "looks measured and is not"
+/// shape this module was written to expose, one level down.
+const QUARANTINE_FEATURE: &str = "pmat_broken_tests";
+
+/// One outgoing edge: the module name or `#[path]`/`include!` target, and
+/// whether the declaration that produced it sits behind [`QUARANTINE_FEATURE`].
+type Edge = (String, bool);
+
 /// Module declarations in one file: `mod x;`, `#[path = "y.rs"] mod x;`,
 /// `include!("z.rs")`.
+///
+/// Each edge carries whether it is QUARANTINED — declared behind
+/// [`QUARANTINE_FEATURE`], so rustc never follows it in any build that ships.
 ///
 /// Deliberately a scanner rather than a full parser. It must not follow a `mod`
 /// that appears inside a string literal or a comment, because over-reporting
 /// reachability is the dangerous direction: it would mark an orphan as live and
 /// hide exactly what this module looks for.
-fn declarations(src: &str) -> (Vec<String>, Vec<String>) {
+fn declarations(src: &str) -> (Vec<Edge>, Vec<Edge>) {
     let mut mods = Vec::new();
     let mut paths = Vec::new();
     let mut pending_path: Option<String> = None;
+    let mut pending_quarantine = false;
 
     for raw in src.lines() {
         // Strip a trailing line comment BEFORE parsing. `pub mod agent; // …`
@@ -117,6 +172,14 @@ fn declarations(src: &str) -> (Vec<String>, Vec<String>) {
         if line.is_empty() {
             continue;
         }
+        // A `#[cfg(...)]` naming the quarantine feature applies to the NEXT
+        // declaration, exactly like `#[path]`. Both spellings occur in the tree:
+        // `#[cfg(all(test, pmat_broken_tests))]` and the bare
+        // `#[cfg(pmat_broken_tests)]`.
+        if line.starts_with("#[cfg(") && line.contains(QUARANTINE_FEATURE) {
+            pending_quarantine = true;
+            continue;
+        }
         // `#[path = "…"]` applies to the NEXT mod declaration.
         if let Some(rest) = line.strip_prefix("#[path") {
             if let Some(v) = rest.split('"').nth(1) {
@@ -126,10 +189,23 @@ fn declarations(src: &str) -> (Vec<String>, Vec<String>) {
         }
         if let Some(rest) = line.strip_prefix("include!") {
             if let Some(v) = rest.split('"').nth(1) {
-                paths.push(v.to_string());
+                paths.push((v.to_string(), pending_quarantine));
             }
+            pending_quarantine = false;
             continue;
         }
+        // This line CONSUMES the pending marker, whatever it turns out to be —
+        // taken, not merely read, exactly like `pending_path` below.
+        //
+        // Taking it is what makes the marker apply to the next declaration and
+        // nothing further. Clearing it with a bare `if !line.starts_with("#[")`
+        // instead cleared it on the very `mod tests;` line it was meant to
+        // describe, so every quarantined edge read as live and the whole feature
+        // reported zero. Leaving it set until some later line clears it has the
+        // opposite failure: a `#[cfg(pmat_broken_tests)]` on a FUNCTION
+        // would leak onto an unrelated `mod` further down and report a live
+        // module as quarantined.
+        let quarantined = std::mem::take(&mut pending_quarantine);
         // `mod x;` / `pub mod x;` / `pub(crate) mod x;` — a declaration, not an
         // inline `mod x {` block, which needs no file.
         let after_vis = line
@@ -142,8 +218,8 @@ fn declarations(src: &str) -> (Vec<String>, Vec<String>) {
                 let name = name.trim();
                 if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
                     match pending_path.take() {
-                        Some(p) => paths.push(p),
-                        None => mods.push(name.to_string()),
+                        Some(p) => paths.push((p, quarantined)),
+                        None => mods.push((name.to_string(), quarantined)),
                     }
                 }
             } else {
@@ -196,8 +272,20 @@ fn count_tests(src: &str) -> usize {
 /// `roots` are the target source paths (lib.rs, main.rs, each bin/example/bench)
 /// and `tracked` the repository's tracked `.rs` files, both supplied by the
 /// caller so this stays pure and testable — no cargo invocation, no git.
-#[must_use]
-pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> Report {
+/// One breadth-first walk from the target roots.
+///
+/// `follow_quarantined` selects which graph is walked. Running it twice — once
+/// refusing quarantined edges, once accepting them — is what separates the three
+/// states, and it is done this way rather than by threading a flag through the
+/// queue because a file can be reached by BOTH a live and a quarantined edge.
+/// Only the set difference answers "reached ONLY through the quarantine"; a
+/// per-edge flag would answer "the last edge that reached it", which is
+/// whichever the queue happened to pop first.
+fn walk(
+    project_root: &Path,
+    roots: &[PathBuf],
+    follow_quarantined: bool,
+) -> (BTreeSet<PathBuf>, Vec<String>) {
     let mut seen: BTreeSet<PathBuf> = BTreeSet::new();
     let mut unresolved = Vec::new();
     let root_set: BTreeSet<PathBuf> = roots.iter().filter_map(|p| p.canonicalize().ok()).collect();
@@ -216,7 +304,10 @@ pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> R
             .map(|c| root_set.contains(&c))
             .unwrap_or(false);
         let (mods, paths) = declarations(&src);
-        for name in mods {
+        for (name, quarantined) in mods {
+            if quarantined && !follow_quarantined {
+                continue;
+            }
             match resolve_mod(&file, &name, is_root) {
                 Some(p) => queue.push_back(p),
                 None => unresolved.push(format!(
@@ -225,7 +316,10 @@ pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> R
                 )),
             }
         }
-        for rel in paths {
+        for (rel, quarantined) in paths {
+            if quarantined && !follow_quarantined {
+                continue;
+            }
             if let Some(parent) = file.parent() {
                 let p = parent.join(&rel);
                 if p.is_file() {
@@ -234,8 +328,20 @@ pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> R
             }
         }
     }
+    (seen, unresolved)
+}
+
+#[must_use]
+pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> Report {
+    // Live graph: what rustc actually compiles. Quarantined graph: that plus the
+    // edges behind `pmat_broken_tests`. `unresolved` comes from the FULL walk so an
+    // unfollowable quarantined `mod` still degrades the answer to a floor rather
+    // than disappearing.
+    let (live_seen, _) = walk(project_root, roots, false);
+    let (all_seen, unresolved) = walk(project_root, roots, true);
 
     let mut orphans = Vec::new();
+    let mut quarantined = Vec::new();
     let mut reachable = 0usize;
     for t in tracked {
         let abs = if t.is_absolute() {
@@ -244,22 +350,29 @@ pub fn analyze(project_root: &Path, roots: &[PathBuf], tracked: &[PathBuf]) -> R
             project_root.join(t)
         };
         let canonical = abs.canonicalize().unwrap_or_else(|_| abs.clone());
-        if seen.contains(&canonical) {
+        if live_seen.contains(&canonical) {
             reachable += 1;
             continue;
         }
         let src = std::fs::read_to_string(&abs).unwrap_or_default();
-        orphans.push(Orphan {
+        let entry = Orphan {
             path: t.display().to_string(),
             lines: src.lines().count(),
             tests: count_tests(&src),
-        });
+        };
+        if all_seen.contains(&canonical) {
+            quarantined.push(entry);
+        } else {
+            orphans.push(entry);
+        }
     }
     orphans.sort();
+    quarantined.sort();
 
     Report {
         reachable,
         orphans,
+        quarantined,
         roots: roots.len(),
         unresolved,
     }
@@ -311,6 +424,18 @@ pub fn discover(project_root: &Path) -> std::io::Result<(Vec<PathBuf>, Vec<PathB
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The quarantine attribute, ASSEMBLED rather than written out.
+    ///
+    /// `broken_tests_quarantine_tests.rs` censuses the tree by looking for a
+    /// line that starts with `#[` and names the marker, and caps the count at a
+    /// ceiling that may only fall. A fixture written as a literal
+    /// `"#[cfg(all(test, pmat_broken_tests))]\n"` inside a raw-string block is
+    /// indistinguishable from a real declaration at that level — it added two
+    /// phantom sites and pushed the census over its ceiling. Building the string
+    /// from this const keeps the fixtures honest without weakening the census
+    /// with a path exclusion, which is the #923 mistake.
+    const Q_ATTR: &str = "#[cfg(all(test, pmat_broken_tests))]";
 
     fn write(root: &Path, rel: &str, body: &str) {
         let p = root.join(rel);
@@ -441,6 +566,170 @@ mod tests {
             report.summary().contains("all 2 tracked"),
             "{}",
             report.summary()
+        );
+    }
+
+    /// #1023: a module declared ONLY behind `pmat_broken_tests` is a third state.
+    ///
+    /// It is not an orphan — something declares it, so a search for "who
+    /// references this file" finds an answer — and it is not reachable, because
+    /// the feature is in no bundle and rustc never follows the edge. Before this
+    /// distinction existed the walker counted it as REACHABLE, which is how 82
+    /// files and 2,021 `#[test]` functions in this repository read as measured
+    /// while running in no build at all.
+    #[test]
+    fn a_module_declared_only_behind_broken_tests_is_quarantined_not_reachable() {
+        let tmp = tempfile::tempdir().expect("tempdir for the reachability fixture");
+        let root = tmp.path();
+        write(
+            root,
+            "src/lib.rs",
+            &format!("pub mod live;\n{Q_ATTR}\n#[path = \"quarantined.rs\"]\nmod quarantined;\n"),
+        );
+        write(root, "src/live.rs", "pub fn f() {}\n");
+        write(
+            root,
+            "src/quarantined.rs",
+            "pub fn g() {}\n#[test]\nfn t1() {}\n#[test]\nfn t2() {}\n",
+        );
+
+        let report = analyze(
+            root,
+            &[root.join("src/lib.rs")],
+            &[
+                PathBuf::from("src/lib.rs"),
+                PathBuf::from("src/live.rs"),
+                PathBuf::from("src/quarantined.rs"),
+            ],
+        );
+
+        assert!(
+            report.orphans.is_empty(),
+            "a declared module is not an orphan: {:?}",
+            report.orphans
+        );
+        assert_eq!(
+            report.quarantined.len(),
+            1,
+            "expected exactly the quarantined file, got {:?}",
+            report.quarantined
+        );
+        assert_eq!(report.quarantined[0].path, "src/quarantined.rs");
+        assert_eq!(
+            report.quarantined_tests(),
+            2,
+            "the two #[test] fns behind the quarantine must be counted"
+        );
+        assert_eq!(
+            report.reachable, 2,
+            "the quarantined file must NOT be counted as reachable — that is the defect"
+        );
+        assert!(
+            report
+                .summary()
+                .contains("quarantined behind `pmat_broken_tests`"),
+            "the summary must name the third state: {}",
+            report.summary()
+        );
+    }
+
+    /// The control for the test above. Change ONLY the cfg, and the same file
+    /// must come back reachable.
+    ///
+    /// Without this, a bug that marked every `#[path]` edge quarantined would
+    /// satisfy the assertions above and look like a working feature.
+    #[test]
+    fn the_same_module_declared_without_the_feature_is_plain_reachable() {
+        let tmp = tempfile::tempdir().expect("tempdir for the reachability fixture");
+        let root = tmp.path();
+        write(
+            root,
+            "src/lib.rs",
+            "pub mod live;\n\
+             #[cfg(test)]\n\
+             #[path = \"quarantined.rs\"]\n\
+             mod quarantined;\n",
+        );
+        write(root, "src/live.rs", "pub fn f() {}\n");
+        write(
+            root,
+            "src/quarantined.rs",
+            "pub fn g() {}\n#[test]\nfn t1() {}\n",
+        );
+
+        let report = analyze(
+            root,
+            &[root.join("src/lib.rs")],
+            &[
+                PathBuf::from("src/lib.rs"),
+                PathBuf::from("src/live.rs"),
+                PathBuf::from("src/quarantined.rs"),
+            ],
+        );
+        assert!(
+            report.quarantined.is_empty(),
+            "only `pmat_broken_tests` marks a quarantine, not any cfg: {:?}",
+            report.quarantined
+        );
+        assert_eq!(report.reachable, 3);
+    }
+
+    /// A file reached by BOTH a live and a quarantined edge is REACHABLE.
+    ///
+    /// This is why the implementation walks twice and takes a set difference
+    /// rather than tagging each visited file with the flag of the edge that
+    /// reached it: which edge arrives first is queue order, so a per-edge tag
+    /// would report this file quarantined about half the time.
+    #[test]
+    fn a_file_reached_by_both_a_live_and_a_quarantined_edge_is_reachable() {
+        let tmp = tempfile::tempdir().expect("tempdir for the reachability fixture");
+        let root = tmp.path();
+        write(
+            root,
+            "src/lib.rs",
+            &format!("pub mod a;\n{Q_ATTR}\n#[path = \"shared.rs\"]\nmod shared_q;\n"),
+        );
+        write(
+            root,
+            "src/a.rs",
+            "#[path = \"shared.rs\"]\nmod shared_live;\n",
+        );
+        write(root, "src/shared.rs", "pub fn g() {}\n");
+
+        let report = analyze(
+            root,
+            &[root.join("src/lib.rs")],
+            &[
+                PathBuf::from("src/lib.rs"),
+                PathBuf::from("src/a.rs"),
+                PathBuf::from("src/shared.rs"),
+            ],
+        );
+        assert!(
+            report.quarantined.is_empty(),
+            "a file with any live edge is reachable: {:?}",
+            report.quarantined
+        );
+        assert_eq!(report.reachable, 3);
+    }
+
+    /// The marker applies to the NEXT declaration and nothing further.
+    ///
+    /// A `#[cfg(pmat_broken_tests)]` on a function must not leak onto a
+    /// `mod` declared later in the same file. The first implementation cleared
+    /// the flag on any non-attribute line, which cleared it on the very
+    /// `mod tests;` line it described and reported ZERO quarantined files on a
+    /// tree with 82 of them — a feature that silently did nothing.
+    #[test]
+    fn the_marker_does_not_leak_onto_a_later_declaration() {
+        let src =
+            format!("#[cfg({QUARANTINE_FEATURE})]\nfn disabled_helper() {{}}\npub mod later;\n");
+        let src = src.as_str();
+        let (mods, _) = declarations(src);
+        assert_eq!(
+            mods,
+            vec![("later".to_string(), false)],
+            "the marker leaked past the function it was attached to"
         );
     }
 }

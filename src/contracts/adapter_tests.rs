@@ -1317,6 +1317,6 @@ mod tests {
 }
 
 /// NOTE: Temporarily disabled due to private type access issues
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "adapter_coverage_tests.rs"]
 mod coverage_tests;

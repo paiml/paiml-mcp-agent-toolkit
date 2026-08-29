@@ -1,5 +1,5 @@
 /// NOTE: Temporarily disabled due to struct definition mismatches
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod coverage_tests_part2 {
     use super::*;
     use chrono::TimeZone;

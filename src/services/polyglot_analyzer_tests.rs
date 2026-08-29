@@ -138,10 +138,10 @@ mod tests {
 
 // Coverage tests extracted to polyglot_analyzer_coverage_tests.rs for file health compliance (CB-040)
 // TEMPORARILY DISABLED: File splitting broke syntax
-#[cfg(feature = "broken-tests")]
+#[cfg(pmat_broken_tests)]
 #[path = "polyglot_analyzer_coverage_tests.rs"]
 mod coverage_tests;
 
-#[cfg(feature = "broken-tests")]
+#[cfg(pmat_broken_tests)]
 #[path = "polyglot_analyzer_coverage_tests2.rs"]
 mod coverage_tests2;

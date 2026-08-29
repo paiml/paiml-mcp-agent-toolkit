@@ -982,7 +982,7 @@ mod eof_shutdown_tests {
 }
 
 /// NOTE: Temporarily disabled - tool methods don't exist
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 mod coverage_tests {
     use super::*;
 

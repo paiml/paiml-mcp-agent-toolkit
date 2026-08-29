@@ -67,6 +67,6 @@ include!("polyglot_tools_analysis.rs");
 include!("polyglot_tools_boundary.rs");
 
 // TEMPORARILY DISABLED: File splitting broke syntax (missing json! macro import)
-#[cfg(all(test, feature = "broken-tests"))]
+#[cfg(all(test, pmat_broken_tests))]
 #[path = "tests.rs"]
 mod tests;

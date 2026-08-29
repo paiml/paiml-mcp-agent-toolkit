@@ -58,6 +58,18 @@ fn decide_flag(name: &str) -> Tri {
         "windows" | "doc" | "doctest" | "miri" | "kani" | "coverage" | "coverage_nightly"
         | "tarpaulin" | "llvm_cov" | "docsrs" | "cargo_publish" | "fuzzing" | "clippy"
         | "rustfmt" | "loom" | "madsim" => Tri::False,
+        // The deliberate non-compiling quarantine (#1023). It is a cfg rather
+        // than a Cargo feature precisely so that NOTHING can turn it on —
+        // `--all-features` included — so `False` is the whole truth about it and
+        // not an assumption about which legs run. Enabling it requires an
+        // explicit `RUSTFLAGS="--cfg pmat_broken_tests"`, and the code behind it
+        // does not compile, which is what it is for.
+        //
+        // Before this entry it was `Unknown`, and 2,180 tests moved from
+        // "unsatisfiable, and here is why" to "this analysis cannot decide" the
+        // moment the quarantine stopped being a feature. Same tests, same
+        // never-run status, worse answer.
+        "pmat_broken_tests" => Tri::False,
         _ => Tri::Unknown,
     }
 }
