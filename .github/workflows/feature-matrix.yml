@@ -751,7 +751,7 @@ jobs:
         run: make gate-differential
       - name: upload the per-leaf report when the gate fails
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: differential-corpus-report
           path: /tmp/pmat-differential-corpus-report.txt
@@ -795,7 +795,7 @@ jobs:
         run: make gate-flag-efficacy
       - name: upload the per-flag report when the gate fails
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flag-efficacy-report
           path: /tmp/pmat-flag-efficacy-report.txt
