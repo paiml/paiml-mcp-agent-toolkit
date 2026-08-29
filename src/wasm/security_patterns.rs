@@ -81,7 +81,15 @@ impl PatternDetector {
                 if let Some(location) = pattern.matches(&operators) {
                     self.found.push(VulnerabilityMatch {
                         pattern: pattern.name.to_string(),
-                        location: body.range().clone(),
+                        // `FunctionBody::range()` is `Range<u64>` as of
+                        // wasmparser 0.258; `VulnerabilityMatch::location` is a
+                        // byte offset into a buffer we already hold in memory,
+                        // so it stays `Range<usize>` and the conversion is here.
+                        location: {
+                            let r = body.range();
+                            usize::try_from(r.start).unwrap_or(usize::MAX)
+                                ..usize::try_from(r.end).unwrap_or(usize::MAX)
+                        },
                         severity: pattern.severity.clone(),
                         operator_index: location,
                     });
