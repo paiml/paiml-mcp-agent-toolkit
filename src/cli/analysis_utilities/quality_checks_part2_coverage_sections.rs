@@ -82,6 +82,24 @@ fn sections_source(project_path: &Path) -> Option<PathBuf> {
     readme.is_file().then_some(readme)
 }
 
+/// The text of an ATX heading, with the `#` run and any leading decoration
+/// removed; `None` when the line is not a heading.
+///
+/// STUB — returns `None` for everything, which is exactly today's behaviour:
+/// the sections check has no notion of a heading at all. Replaced in the next
+/// commit. Committed in this state so the tests below are shown going red
+/// against the defect before the fix makes them green.
+fn heading_text(_line: &str) -> Option<&str> {
+    None
+}
+
+/// Does `readme` provide `section`?
+///
+/// STUB — the substring test this file has always used, lifted out unchanged.
+fn readme_provides_section(readme: &str, section: &str) -> bool {
+    readme.contains(&format!("# {section}")) || readme.contains(&format!("## {section}"))
+}
+
 async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
     let mut violations = Vec::new();
 
@@ -92,9 +110,7 @@ async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
     if let Ok(readme) = tokio::fs::read_to_string(readme_path).await {
         let required_sections = ["Installation", "Usage", "Contributing", "License"];
         for section in required_sections {
-            if !readme.contains(&format!("# {section}"))
-                && !readme.contains(&format!("## {section}"))
-            {
+            if !readme_provides_section(&readme, section) {
                 violations.push(QualityViolation {
                     check_type: "sections".to_string(),
                     severity: "warning".to_string(),
@@ -345,5 +361,154 @@ mod coverage_sections_tests {
             assert_eq!(x.check_type, "sections");
             assert_eq!(x.severity, "warning");
         }
+    }
+
+    // ── check_sections: a heading the matcher could not see past ──
+    //
+    // Every test below fails against the substring matcher these replace, or
+    // passes against it for a reason that must survive the fix. The four
+    // counter-tests are marked; they are green before AND after, which is what
+    // makes them evidence of no over-reach rather than passengers.
+
+    /// THE DEFECT, verbatim. paiml/interactive.paiml.com's README carries
+    /// `## 🤝 Contributing` and `## 📄 License`, and the gate reported both as
+    /// missing — two of that repository's 60 blocking violations were an emoji.
+    #[tokio::test]
+    async fn test_check_sections_emoji_prefixed_headings_are_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Python Command Line Tools: Interactive Edition\n\
+             ## 🚀 Overview\n\
+             ## Installation\n\
+             ## Usage\n\
+             ## 🤝 Contributing\n\
+             ## 📄 License\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert!(
+            v.is_empty(),
+            "an emoji before the heading text is decoration, not a missing section; got {:?}",
+            v.iter().map(|x| &x.message).collect::<Vec<_>>()
+        );
+    }
+
+    /// Decoration is not only emoji. A numbered or bulleted heading is the same
+    /// shape of false positive.
+    #[tokio::test]
+    async fn test_check_sections_numbered_and_bulleted_headings_are_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n\
+             ## 1. Installation\n\
+             ## 2. Usage\n\
+             ## ✦ Contributing\n\
+             ### 📄 License\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert!(
+            v.is_empty(),
+            "leading decoration of any kind is not a missing section; got {:?}",
+            v.iter().map(|x| &x.message).collect::<Vec<_>>()
+        );
+    }
+
+    /// COUNTER-TEST. A README that genuinely lacks a section must still be
+    /// flagged — the fix must remove false positives, not the check.
+    #[tokio::test]
+    async fn test_check_sections_emoji_readme_missing_one_is_still_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n## 🚀 Installation\n## 📖 Usage\n## 🤝 Contributing\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert_eq!(v.len(), 1, "only License is absent; got {v:?}");
+        assert_eq!(v[0].message, "Missing required section: License");
+    }
+
+    /// COUNTER-TEST. The section name in body text is not a section. The check
+    /// reads headings; a mention in a paragraph must not satisfy it.
+    #[tokio::test]
+    async fn test_check_sections_name_in_prose_is_not_a_heading() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n\
+             ## Installation\n\
+             ## Usage\n\
+             🤝 Contributing guidelines live in CONTRIBUTING.md.\n\
+             📄 License information is in LICENSE.\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert_eq!(v.len(), 2, "prose is not a heading; got {v:?}");
+    }
+
+    /// COUNTER-TEST. CommonMark requires whitespace after the `#` run, so
+    /// `##Contributing` is a paragraph beginning with hashes, not a heading.
+    #[tokio::test]
+    async fn test_check_sections_hashes_without_space_are_not_a_heading() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n## Installation\n## Usage\n##Contributing\n##📄License\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert_eq!(v.len(), 2, "`#` with no space is not a heading; got {v:?}");
+    }
+
+    /// COUNTER-TEST for the word boundary. `Licenses` starts with `License`,
+    /// and only the boundary check stops the decoration-stripping path from
+    /// accepting it. The old substring matcher never sees this line at all
+    /// (the emoji separates `##` from the word), so this discriminates the new
+    /// path on its own.
+    #[tokio::test]
+    async fn test_check_sections_longer_word_does_not_satisfy_the_section() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n## Installation\n## Usage\n## 🤝 Contributing\n### 📄 Licenses\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert_eq!(v.len(), 1, "`Licenses` is a different word; got {v:?}");
+        assert_eq!(v[0].message, "Missing required section: License");
+    }
+
+    // ── heading_text: the pure part ──
+
+    #[test]
+    fn test_heading_text_strips_hashes_and_leading_decoration() {
+        assert_eq!(heading_text("## 🤝 Contributing"), Some("Contributing"));
+        assert_eq!(heading_text("# License"), Some("License"));
+        assert_eq!(heading_text("###   1. Installation"), Some("Installation"));
+        assert_eq!(heading_text("## ⚠️ CRITICAL: Testing"), Some("CRITICAL: Testing"));
+    }
+
+    #[test]
+    fn test_heading_text_keeps_punctuation_once_the_text_has_begun() {
+        // Only the LEADING run is decoration. A heading is not re-punctuated.
+        assert_eq!(heading_text("## Q&A"), Some("Q&A"));
+        assert_eq!(heading_text("## C++ Usage"), Some("C++ Usage"));
+    }
+
+    #[test]
+    fn test_heading_text_rejects_non_headings() {
+        assert_eq!(heading_text("Contributing"), None);
+        assert_eq!(heading_text("##Contributing"), None);
+        assert_eq!(heading_text("  not a heading"), None);
+        assert_eq!(heading_text(""), None);
+    }
+
+    #[test]
+    fn test_readme_provides_section_is_case_insensitive_on_the_decorated_path() {
+        assert!(readme_provides_section("## 🤝 contributing\n", "Contributing"));
+        assert!(!readme_provides_section("## 🤝 contributors\n", "Contributing"));
     }
 }
