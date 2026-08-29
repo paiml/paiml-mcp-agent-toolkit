@@ -85,7 +85,13 @@ impl AsyncProfiler {
             let payload = payload?;
 
             if let Payload::CodeSectionEntry(body) = payload {
-                let size = body.range().len();
+                // wasmparser 0.258 changed `FunctionBody::range()` to
+                // `Range<u64>`, and `Range<u64>` has no `len()` — that method
+                // comes from `ExactSizeIterator`, which is implemented only for
+                // the pointer-sized ranges. Subtracting is the same arithmetic
+                // `len()` did, stated explicitly.
+                let r = body.range();
+                let size = usize::try_from(r.end - r.start).unwrap_or(usize::MAX);
                 function_sizes.push(size);
                 total_size += size;
             }
