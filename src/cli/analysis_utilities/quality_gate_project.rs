@@ -51,6 +51,108 @@ fn unparsable_gate_configs(project_path: &Path) -> Vec<(String, String)> {
     broken
 }
 
+/// Sections of `pmat.toml` that no reader in pmat will ever consult, paired
+/// with the nearest section that IS read.
+///
+/// #1019 acceptance criterion 1, the half that was deferred. The guard above
+/// asks only "does the file parse as TOML?", treating "parses" as a proxy for
+/// "will be applied". It is not one. Measured on 3.34.0 in
+/// `paiml/interactive.paiml.com`, whose `pmat.toml` says
+///
+/// ```toml
+/// [quality_gate]
+/// max_cyclomatic_complexity = 15
+/// max_cognitive_complexity = 20
+/// ```
+///
+/// `pmat quality-gate` printed `Complexity thresholds: cyclomatic 30, cognitive
+/// 25 (from built-in defaults)` and 51 violations. `[quality_gate]` is not a
+/// section pmat has ever read — those thresholds live in `[quality]`, as
+/// `max_complexity` / `max_cognitive_complexity` — and because the file parses,
+/// `unparsable_gate_configs` is silent about it. The repo believed it had
+/// zero-tolerance enforcement at 15/20 and was being measured at 30/25, with
+/// one parenthetical on stderr as the only hint.
+///
+/// This is the same failure the guard above exists to stop, one level up: a
+/// configured limit that had no effect, reading as a limit that was met. So it
+/// carries the same verdict — blocking, not advisory.
+///
+/// The accepted set is taken FROM THE SCHEMA (`PmatConfig`), never from a list
+/// maintained beside it: two hand-maintained lists with nothing tying them
+/// together is exactly how a validator comes to disagree with the reader it is
+/// supposed to police. Add a field to `PmatConfig` and this set grows on its
+/// own — `every_schema_section_is_accepted` below fails if it ever does not.
+///
+/// Scope is `pmat.toml` deliberately. `.pmat-gates.toml` and
+/// `.pmat-metrics.toml` have no declared type to derive an accepted set from,
+/// so the same check over them could only be a hand-maintained list — the thing
+/// this function refuses to be. Giving those two files a schema is the
+/// prerequisite, and a separate change.
+///
+/// Scope is SECTIONS, not keys, for the same reason. `[quality]` legitimately
+/// carries keys that are not `QualityConfig` fields — this repository's own
+/// `pmat.toml` sets `min_pattern_diversity`, `max_pattern_repetition` and
+/// `max_entropy_violations` there, consumed by the ad-hoc readers in
+/// `quality_gate_config.rs` — so the accepted KEY set cannot be derived from
+/// the schema alone, and writing it out by hand would put a second list beside
+/// the readers with nothing tying them together. The consequence is measured
+/// and real: `[quality] max_cyclomatic_complexity = 15` (right section, wrong
+/// key) still resolves to the built-in 30 in silence. Closing that needs the
+/// ad-hoc readers to declare the keys they consume first.
+fn inapplicable_pmat_toml_sections(project_path: &Path) -> Vec<(String, Option<String>)> {
+    let known = schema_pmat_toml_sections();
+
+    // Absent is a project with no config, not a broken one; unparsable belongs
+    // to `unparsable_gate_configs`, which already blocks on it — reporting it
+    // here too would mean guessing at sections we could not read.
+    let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) else {
+        return Vec::new();
+    };
+    let Ok(table) = content.parse::<toml::Table>() else {
+        return Vec::new();
+    };
+
+    table
+        .keys()
+        .filter(|section| !known.contains(section.as_str()))
+        .map(|section| (section.clone(), nearest_known_section(section, &known)))
+        .collect()
+}
+
+/// The top-level sections `pmat.toml` may contain, read off `PmatConfig` itself.
+///
+/// Derived, not listed: the serialised default config IS the schema, so the
+/// accepted set cannot fall behind the struct the readers deserialise.
+fn schema_pmat_toml_sections() -> std::collections::BTreeSet<String> {
+    use crate::services::configuration_service::ConfigurationService;
+
+    toml::Value::try_from(ConfigurationService::default_config())
+        .ok()
+        .and_then(|v| match v {
+            toml::Value::Table(t) => Some(t.keys().cloned().collect()),
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
+/// The known section a misspelling most likely meant, or `None` when nothing is
+/// close enough to name without guessing.
+///
+/// Deliberately conservative: only a shared prefix in either direction counts,
+/// which is what turns `[quality_gate]` into "did you mean `[quality]`?" while
+/// leaving `[markdown]` — a section that was never a near-miss for anything —
+/// unannotated rather than pointed at an unrelated one.
+fn nearest_known_section(
+    unknown: &str,
+    known: &std::collections::BTreeSet<String>,
+) -> Option<String> {
+    known
+        .iter()
+        .filter(|k| unknown.starts_with(k.as_str()) || k.starts_with(unknown))
+        .max_by_key(|k| k.len())
+        .cloned()
+}
+
 /// Handles project-wide quality gate checks
 #[allow(clippy::too_many_arguments)]
 async fn handle_project_quality_gate(
@@ -160,6 +262,25 @@ async fn handle_project_quality_gate(
                 "{file} exists but is not valid TOML ({error}), so every threshold in \
                  it was silently replaced by pmat's built-in defaults — the gate that \
                  ran is not the gate this project configured"
+            ),
+            details: None,
+        });
+    }
+    // …and a file that DOES parse but puts its settings where nothing reads them
+    // is the same defect one level up: thresholds the project wrote, replaced by
+    // pmat's defaults, with no signal. Blocking for the same reason.
+    for (section, nearest) in inapplicable_pmat_toml_sections(&project_path) {
+        let hint = nearest.map_or_else(String::new, |n| format!(" (did you mean `[{n}]`?)"));
+        violations.push(QualityViolation {
+            check_type: "config".to_string(),
+            severity: "error".to_string(),
+            file: "pmat.toml".to_string(),
+            line: None,
+            message: format!(
+                "pmat.toml declares `[{section}]`, which no part of pmat reads{hint}, \
+                 so every setting under it had no effect and the run used pmat's \
+                 built-in defaults instead — the gate that ran is not the gate this \
+                 project configured"
             ),
             details: None,
         });
@@ -422,5 +543,119 @@ mod gate_config_parse_tests {
         let broken = unparsable_gate_configs(dir.path());
         assert_eq!(broken.len(), 1, "{broken:?}");
         assert_eq!(broken[0].0, ".pmat-metrics.toml");
+    }
+}
+
+#[cfg(test)]
+mod inapplicable_config_tests {
+    //! #1019 acceptance criterion 1: a `pmat.toml` that parses but whose
+    //! settings land where nothing reads them.
+    use super::inapplicable_pmat_toml_sections;
+
+    fn sections(contents: &str) -> Vec<(String, Option<String>)> {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        std::fs::write(dir.path().join("pmat.toml"), contents).expect("write");
+        let mut found = inapplicable_pmat_toml_sections(dir.path());
+        found.sort();
+        found
+    }
+
+    /// THE reported defect, verbatim from `paiml/interactive.paiml.com`.
+    ///
+    /// Before the fix this returns `[]` and the gate runs at 30/25 while the
+    /// file asks for 15/20, saying so only in a parenthetical on stderr.
+    #[test]
+    fn the_interactive_paiml_com_defect_is_reported() {
+        let found = sections(
+            "[quality_gate]\n\
+             max_cyclomatic_complexity = 15\n\
+             max_cognitive_complexity = 20\n\
+             max_satd_comments = 0\n",
+        );
+        assert_eq!(
+            found.len(),
+            1,
+            "a section pmat never reads must not be silently ignored: {found:?}"
+        );
+        assert_eq!(found[0].0, "quality_gate");
+        assert_eq!(
+            found[0].1.as_deref(),
+            Some("quality"),
+            "the message has to name the section that WOULD work, or the user \
+             is told only that they are wrong: {found:?}"
+        );
+    }
+
+    /// Counter-test one, and the load-bearing half: pmat's OWN schema must
+    /// round-trip clean. Serialise the built-in default config to a
+    /// `pmat.toml` and every section in it must be accepted.
+    ///
+    /// This is what stops the accepted set from being a second, drifting copy
+    /// of the schema: add a field to `PmatConfig` and forget this function, and
+    /// this test goes red rather than the field going silently unreadable.
+    #[test]
+    fn every_schema_section_is_accepted() {
+        use crate::services::configuration_service::ConfigurationService;
+        let cfg = ConfigurationService::default_config();
+        let rendered =
+            toml::to_string(&toml::Value::try_from(&cfg).expect("schema serialises to toml"))
+                .expect("schema renders");
+        let found = sections(&rendered);
+        assert!(
+            found.is_empty(),
+            "pmat's own default config must not be reported as inapplicable — \
+             the accepted set has drifted from the schema: {found:?}"
+        );
+    }
+
+    /// Counter-test two: no config is not a broken config.
+    #[test]
+    fn an_absent_pmat_toml_is_not_a_finding() {
+        let dir = tempfile::TempDir::new().expect("temp dir");
+        assert!(inapplicable_pmat_toml_sections(dir.path()).is_empty());
+    }
+
+    /// Counter-test three: a file that does not parse belongs to
+    /// `unparsable_gate_configs`, which already blocks on it. Reporting it
+    /// twice, once with a message that guesses at sections it could not read,
+    /// would be noise.
+    #[test]
+    fn an_unparsable_pmat_toml_is_left_to_the_parse_guard() {
+        assert!(sections("[quality\nmax_complexity = 5\n").is_empty());
+    }
+
+    /// Counter-test four: a correctly-written config is silent. Without this,
+    /// the fix fails every repo that configured pmat properly, and a gate
+    /// nobody can pass is a gate everybody bypasses.
+    #[test]
+    fn a_correctly_written_config_is_silent() {
+        assert!(sections("[quality]\nmax_complexity = 15\nmax_cognitive_complexity = 20\n")
+            .is_empty());
+    }
+
+    /// A nested table is part of its top-level section, not a section of its
+    /// own: `[roadmap.git]` is read, and `[python.quality]` is reported once as
+    /// `python` rather than twice.
+    #[test]
+    fn nested_tables_are_attributed_to_their_top_level_section() {
+        let found = sections(
+            "[roadmap.git]\ncreate_branches = false\n\
+             [python]\nversion = \"3.12\"\n\
+             [python.quality]\nallow_satd = false\n",
+        );
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].0, "python");
+    }
+
+    /// Every unknown section is reported, not just the first — a file with
+    /// nineteen inert sections must say nineteen things, once each.
+    #[test]
+    fn every_unknown_section_is_reported_once() {
+        let found = sections("[alpha]\na = 1\n[quality]\nmax_complexity = 5\n[beta]\nb = 2\n");
+        assert_eq!(
+            found.iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>(),
+            vec!["alpha", "beta"],
+            "{found:?}"
+        );
     }
 }
