@@ -7,6 +7,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.34.0] - 2026-08-29
+
+Minor rather than patch, for the third release running, and for the same reason: this
+changes what pmat *reports* on unchanged code. `analyze reachability` moves 82 files out
+of `reachable` on this tree without a line of source changing, and CB-1700 changes its
+verdict on any repository that gates merges with CI rather than approvals. Read this
+before upgrading a gate.
+
+3.33.0's theme was a gate that could not measure reporting that there was nothing to
+find. This release is the next layer down: **three gates that were reporting on a
+population, a posture, or a database they could not see.** Two of them are gates 3.33.0
+itself had just repaired, which is the part worth stating plainly — repairing a gate's
+logic and stopping is how "we added a check for that" becomes true and useless at once.
+
+### `analyze reachability` counted the quarantine as reachable
+
+A module declared behind `#[cfg(all(test, feature = "broken-tests"))]` was followed by the
+walker and left the report as **reachable**. The declaration exists — but the feature is in
+no bundle and the code behind it does not compile, so those tests ran in no build at all.
+That is the exact shape this command was written to expose, one level below where it was
+looking.
+
+The transitive closure is far larger than the 49 declaration sites #1023 counted. On this
+tree: **82 files, 35,856 lines, 2,021 `#[test]` functions**, all previously folded silently
+into `reachable`.
+
+**A third state, not a longer orphan list.** An orphan is declared by *nothing*; a
+quarantined module is declared by something that *does not compile*. Collapsing them loses
+the distinction that matters, so `Report` gains `quarantined` beside `orphans`, the summary
+names it, and the JSON gains `quarantined`, `quarantined_count`, `quarantined_lines` and
+`quarantined_tests` as **new** keys — a consumer that only knows the old ones reads exactly
+what it read before.
+
+It is two walks and a set difference, not a flag threaded through the queue: a file can be
+reached by *both* a live and a quarantined edge, and only the difference answers "reached
+ONLY through the quarantine". A per-edge flag answers "whichever edge the queue popped
+first", which is not a property of the code.
+
+### `cargo check --all-features --tests` builds, for the first time
+
+`broken-tests` was a Cargo **feature**, and `--all-features` reaches every feature, so a
+quarantine that deliberately does not compile made this fail on every tree that has ever
+existed:
+
+```
+$ cargo check --all-features --tests
+error: this file contains an unclosed delimiter        # before
+    Finished `dev` profile                             # after
+```
+
+Five separate workarounds existed *in this repository alone* to route around that — in the
+Makefile, `post-release.yml`, `feature-matrix.yml` twice, and the dogfood runner — each
+correctly reasoning that `--all-features` measures the quarantine rather than the crate.
+
+The quarantine is now the cfg flag **`pmat_broken_tests`**, declared in `[lints.rust]
+check-cfg`, which `--all-features` cannot reach at all. 51 sites migrated. Enabling it
+still requires an explicit `RUSTFLAGS="--cfg pmat_broken_tests"`, and it still does not
+compile — that is what it is for. **`--features broken-tests` is no longer accepted**, and
+the fleet-wide filter in the dogfood runner stays, because the other repositories have not
+moved.
+
+Three consequences, each fixed rather than absorbed:
+
+- **`unrun-tests` decides cfg atoms from an allowlist**, and a bare identifier is `Unknown`.
+  The migration moved 2,180 tests from "unsatisfiable, and here is why" to "this analysis
+  cannot decide" — same tests, same never-run status, worse answer. `pmat_broken_tests` is
+  now decided as `false`, which is not an assumption about which legs run: *nothing can set
+  it*, which is the point of it being a cfg.
+- **The ledger's `<unsatisfiable>` bucket goes 18 → 2199** and five `broken-tests,*` buckets
+  disappear. Better classification, not a regression — those buckets read as "enable this
+  feature and they run", which was never true. Total unrun is unchanged at 3228.
+- **The new test fixtures were counted by the quarantine census.** A string literal
+  `"#[cfg(all(test, pmat_broken_tests))]\n"` is indistinguishable from a real declaration to
+  a line scanner, and two of them pushed the census over its ceiling. Built from a const
+  instead — *not* excused with a path exclusion, which is the #923 mistake.
+
+### CB-1700 asserted human review as the only valid posture
+
+The rule failed any repository without an approving review, and modelled exactly one
+arrangement: humans write, humans review. Setting `required_approving_review_count = 1` here
+to satisfy it had an immediate effect — PR #1021 went `BLOCKED / REVIEW_REQUIRED`, GitHub
+does not let an author approve their own pull request, and on a repository with one active
+human every merge then needed the admin override.
+
+**An override exercised on every merge is not a control.** The rule converted "unreviewed
+merges are visible" into "unreviewed merges are routine and logged as admin bypass".
+
+CB-1700 now passes a branch on **either** posture: at least one approving review, *or*
+CI-gated — at least one required status check, `strict` true so the checks are measured
+against the tree actually being merged, and force pushes and deletions disabled so history
+cannot be rewritten out from under them.
+
+**The rule is not weaker.** Zero reviews with none of those properties still fails, and a
+test drives all three ways to fall out of it, because "recognise a second posture" must not
+decay into "accept zero reviews unconditionally" — that would delete the requirement for
+every repository that genuinely needs an approver. A protection field the API did not
+report is still a shortfall, not permission.
+
+### `cargo deny` cannot see GitHub's advisory database, and says nothing about it
+
+Both tools read the same `Cargo.lock`. At 3.32.0 they disagreed, and the one that blocks CI
+was wrong:
+
+```
+cargo deny check advisories    → "advisories ok", exit 0
+dependabot/alerts?state=open   → #66 medium thrift GHSA-2f9f-gq7v-9h6m
+```
+
+cargo-deny resolves against RustSec; GitHub's database is a **superset**, ingesting RustSec
+plus GHSA-native advisories, CVEs mapped to crates, and maintainer reports never filed with
+RustSec. There is no "N advisories consulted, M sources unavailable" line anywhere in its
+output — `advisories ok` prints identically whether the database is comprehensive, stale or
+empty. It had already happened once with this same crate, was worked around by hand, nothing
+was added to CI, and it recurred.
+
+`scripts/dependabot-alerts-gate.sh` runs **beside** cargo-deny, not instead of it — RustSec
+carries unmaintained and yanked findings Dependabot does not model. It paginates at 100
+(`gh api` truncates at 30, and a truncated list looks complete), fails on any unmeasurable
+condition, and supports acknowledgements with a **mandatory expiry**: an expired entry fails
+rather than continuing to suppress, which is the one thing `deny.toml`'s `ignore` lacks.
+
+It proves it can fail on **every run**, not once: `--self-test` drives five arms against
+fixtures before the live check — a known-vulnerable payload must be red, a clean one green,
+an expired acknowledgement must not suppress, a live one must, and an unreadable source must
+fail rather than read as empty.
+
+**Seven `deny.toml` ignores were pruned as stale, and the prune was reverted** — which is
+the more useful entry. cargo-deny 0.19.0 reports all seven as `advisory-not-detected` here
+and answers `advisories ok` with them removed, reproducibly, including with
+`unmaintained = "all"` and an advisory database at the same commit CI uses. CI, on the same
+`Cargo.lock`, fails with `error[unmaintained]: paste — RUSTSEC-2024-0436`, matching an ignore
+that measurement had called dead. Two instruments, one lockfile, opposite answers, and the
+verification that should have caught it checked that the *warnings* were gone — trivially
+true once the lines are deleted — instead of checking that no *error* had appeared. `deny.toml`
+is unchanged, and the CI assertion that would have encoded whichever answer the runner gives
+is not shipped until the disagreement is explained.
+
+**The live arm does not run in this repository's CI, and the job says so.** `GITHUB_TOKEN`
+cannot read Dependabot alerts — measured, not assumed: with `security-events: read` set the
+API answers `403 Resource not accessible by integration`, because that permission covers
+code scanning and Dependabot alerts are a separate one `GITHUB_TOKEN` is never granted. The
+self-test stays blocking; the live step emits a warning and a job-summary block stating that
+the run verified the gate's logic and **not** this repository's advisories. Failing on the
+missing secret would make a required gate permanently red, and a permanently red gate gets
+disabled; passing silently would be the defect itself.
+
+### The quality proxy's clippy budget is ten minutes under `cfg(test)`
+
+Twelve `quality_proxy` tests failed in the full suite and passed in 0.27s each alone. The
+60-second bound 3.33.0 added is **wall-clock**, `cargo test --lib` saturates every core with
+21,000 other tests, and the spawned `cargo clippy` is *starved rather than slow*. The proxy
+then reports — correctly — that no lint verdict was produced, and tests asserting a verdict
+fail on the machine's load rather than on the code.
+
+`cfg!(test)` is false in every published binary, so **the shipped bound is still 60
+seconds**. Letting the tests accept "the stage did not run" would make them pass while the
+lint stage was broken, which is the defect 3.33.0 was about.
+
+### Dependencies
+
+- **The swc ecosystem moves as a unit**: `swc_ecma_parser` 43 → 45.1, `swc_common` 24 → 26,
+  `swc_ecma_ast` 27 → 29, `swc_ecma_visit` 27 → 29. Dependabot had opened three PRs each
+  bumping one crate, and every one was individually unbuildable — not a dependabot fault:
+  pinning any single one forward puts two incompatible copies of the AST types in the graph,
+  and the failure surfaces as type mismatches in code the PR does not touch.
+- **`prettyplease` is held at 0.2.** 0.3 is the `syn` 3.0 line, and pmat is on `syn` 2, so
+  `prettyplease::unparse` stops accepting our `syn::File`. Taking it needs a `syn` 2 → 3
+  migration across 693 uses in 83 files; `.github/dependabot.yml` records that inline and
+  ignores the 0.3 line, and dropping that entry is the marker for when the migration happens.
+
+### Triage
+
+`ring` is **not** linked into the binary. #1053 reported ~1.3 MiB of duplicated crypto
+backend; measured on the stripped release binary, `aws_lc_0_` appears 68 times and
+`ring_core_` **zero** times — both providers compile, one links, and the 1.3 MiB is the
+provider doing the work rather than a duplicate of it. The real cost is ~14 MB of `ring`
+rlib nothing links, which is build time, and it can only be removed upstream in `pmcp`,
+whose manifest turns the feature on additively. Closed with the measurement.
 ## [3.33.0] - 2026-08-28
 
 Minor rather than patch, for the same reason 3.32.0 was: most of this release changes
