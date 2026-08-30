@@ -253,13 +253,13 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_detail_cache_missing_file_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
     }
 
     #[test]
     fn test_read_coverage_from_detail_cache_malformed_json_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "not json").unwrap();
         assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
@@ -267,7 +267,7 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_detail_cache_no_files_key_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "{}").unwrap();
         assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
@@ -275,27 +275,27 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_detail_cache_total_zero_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         // Empty files object → total=0 → None.
         std::fs::write(
             tmp.path().join(".pmat/coverage-cache.json"),
             "{\"files\":{}}",
         )
-        .unwrap();
+        .expect("write README");
         assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
     }
 
     #[test]
     fn test_read_coverage_from_detail_cache_valid_returns_percentage() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         // 4 lines, 3 covered → 75%.
         std::fs::write(
             tmp.path().join(".pmat/coverage-cache.json"),
             "{\"files\":{\"a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}}",
         )
-        .unwrap();
+        .expect("write README");
         let pct = read_coverage_from_detail_cache(tmp.path()).unwrap();
         assert!((pct - 75.0).abs() < 1e-6);
     }
@@ -304,32 +304,32 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_metrics_missing_file_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         assert!(read_coverage_from_metrics(tmp.path()).is_none());
     }
 
     #[test]
     fn test_read_coverage_from_metrics_valid_returns_value() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 92.5}",
         )
-        .unwrap();
+        .expect("write README");
         let pct = read_coverage_from_metrics(tmp.path()).unwrap();
         assert!((pct - 92.5).abs() < 1e-6);
     }
 
     #[test]
     fn test_read_coverage_from_metrics_missing_coverage_key_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"other\": 1}",
         )
-        .unwrap();
+        .expect("write README");
         assert!(read_coverage_from_metrics(tmp.path()).is_none());
     }
 
@@ -337,7 +337,7 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_cache_detail_preferred_over_metrics() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         // Detail cache present + metrics also present → detail wins.
@@ -345,33 +345,33 @@ mod coverage_sections_tests {
             tmp.path().join(".pmat/coverage-cache.json"),
             "{\"files\":{\"a.rs\":{\"1\":1,\"2\":0}}}",
         )
-        .unwrap(); // 50%
+        .expect("write README"); // 50%
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 92.5}",
         )
-        .unwrap();
+        .expect("write README");
         let pct = read_coverage_from_cache(tmp.path()).unwrap();
         assert!((pct - 50.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_read_coverage_from_cache_falls_back_to_metrics() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         // No detail cache → fallback to metrics.
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 80.0}",
         )
-        .unwrap();
+        .expect("write README");
         let pct = read_coverage_from_cache(tmp.path()).unwrap();
         assert!((pct - 80.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_read_coverage_from_cache_no_files_is_none() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         assert!(read_coverage_from_cache(tmp.path()).is_none());
     }
 
@@ -379,20 +379,20 @@ mod coverage_sections_tests {
 
     #[tokio::test]
     async fn test_check_coverage_no_data_no_violations() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         let v = check_coverage(tmp.path(), 95.0).await.unwrap();
         assert!(v.is_empty(), "no data → skip, no violations");
     }
 
     #[tokio::test]
     async fn test_check_coverage_below_threshold_flagged() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 60.0}",
         )
-        .unwrap();
+        .expect("write README");
         let v = check_coverage(tmp.path(), 95.0).await.unwrap();
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].check_type, "coverage");
@@ -401,13 +401,13 @@ mod coverage_sections_tests {
 
     #[tokio::test]
     async fn test_check_coverage_above_threshold_no_violation() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 97.0}",
         )
-        .unwrap();
+        .expect("write README");
         let v = check_coverage(tmp.path(), 95.0).await.unwrap();
         assert!(v.is_empty());
     }
@@ -416,28 +416,28 @@ mod coverage_sections_tests {
 
     #[tokio::test]
     async fn test_check_sections_no_readme_no_violations() {
-        let tmp = tempfile::tempdir().unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert!(v.is_empty());
     }
 
     #[tokio::test]
     async fn test_check_sections_complete_readme_no_violations() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n## Installation\n## Usage\n## Contributing\n## License\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert!(v.is_empty());
     }
 
     #[tokio::test]
     async fn test_check_sections_missing_sections_all_flagged() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(tmp.path().join("README.md"), "# Project only\n").unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert_eq!(v.len(), 4, "all 4 required sections missing");
         for x in &v {
             assert_eq!(x.check_type, "sections");
@@ -457,7 +457,7 @@ mod coverage_sections_tests {
     /// missing — two of that repository's 60 blocking violations were an emoji.
     #[tokio::test]
     async fn test_check_sections_emoji_prefixed_headings_are_found() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Python Command Line Tools: Interactive Edition\n\
@@ -467,8 +467,8 @@ mod coverage_sections_tests {
              ## 🤝 Contributing\n\
              ## 📄 License\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert!(
             v.is_empty(),
             "an emoji before the heading text is decoration, not a missing section; got {:?}",
@@ -480,7 +480,7 @@ mod coverage_sections_tests {
     /// shape of false positive.
     #[tokio::test]
     async fn test_check_sections_numbered_and_bulleted_headings_are_found() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n\
@@ -489,8 +489,8 @@ mod coverage_sections_tests {
              ## ✦ Contributing\n\
              ### 📄 License\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert!(
             v.is_empty(),
             "leading decoration of any kind is not a missing section; got {:?}",
@@ -502,13 +502,13 @@ mod coverage_sections_tests {
     /// flagged — the fix must remove false positives, not the check.
     #[tokio::test]
     async fn test_check_sections_emoji_readme_missing_one_is_still_flagged() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n## 🚀 Installation\n## 📖 Usage\n## 🤝 Contributing\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert_eq!(v.len(), 1, "only License is absent; got {v:?}");
         assert_eq!(v[0].message, "Missing required section: License");
     }
@@ -517,7 +517,7 @@ mod coverage_sections_tests {
     /// reads headings; a mention in a paragraph must not satisfy it.
     #[tokio::test]
     async fn test_check_sections_name_in_prose_is_not_a_heading() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n\
@@ -526,8 +526,8 @@ mod coverage_sections_tests {
              🤝 Contributing guidelines live in CONTRIBUTING.md.\n\
              📄 License information is in LICENSE.\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert_eq!(v.len(), 2, "prose is not a heading; got {v:?}");
     }
 
@@ -535,13 +535,13 @@ mod coverage_sections_tests {
     /// `##Contributing` is a paragraph beginning with hashes, not a heading.
     #[tokio::test]
     async fn test_check_sections_hashes_without_space_are_not_a_heading() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n## Installation\n## Usage\n##Contributing\n##📄License\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert_eq!(v.len(), 2, "`#` with no space is not a heading; got {v:?}");
     }
 
@@ -552,13 +552,13 @@ mod coverage_sections_tests {
     /// path on its own.
     #[tokio::test]
     async fn test_check_sections_longer_word_does_not_satisfy_the_section() {
-        let tmp = tempfile::tempdir().unwrap();
+        let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(
             tmp.path().join("README.md"),
             "# Project\n## Installation\n## Usage\n## 🤝 Contributing\n### 📄 Licenses\n",
         )
-        .unwrap();
-        let v = check_sections(tmp.path()).await.unwrap();
+        .expect("write README");
+        let v = check_sections(tmp.path()).await.expect("check_sections");
         assert_eq!(v.len(), 1, "`Licenses` is a different word; got {v:?}");
         assert_eq!(v[0].message, "Missing required section: License");
     }
