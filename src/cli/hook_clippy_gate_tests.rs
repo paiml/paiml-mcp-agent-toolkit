@@ -85,6 +85,33 @@ fn clippy_verdict(dir: &Path, lib_rs: &str) -> (bool, String) {
         // Its own target dir: the fixture must not read or write the real one.
         .env("CARGO_TARGET_DIR", dir.join("t"))
         .env("RUSTC_WORKSPACE_WRAPPER", "")
+        // AND ITS OWN LINT LEVELS. `--cap-lints=warn` caps EVERY diagnostic at
+        // warn, so `-D warnings` cannot promote one to an error and clippy
+        // exits 0 having found the defect and declined to act on it:
+        //
+        //   note: the `clippy::question_mark` lint ignores `-D warnings`
+        //
+        // Nothing in this file asks for that. It arrives in the environment:
+        // `scripts/mutation-diff-gate.sh` runs cargo-mutants with
+        // `--cap-lints true` (deliberately — a mutant must not be killed by a
+        // lint), cargo-mutants implements that by appending to the rustflags it
+        // passes down, and the baseline `cargo test` it spawns hands them to
+        // every child, this fixture's clippy included. So the two rejection
+        // tests below saw a PASS from a linter that had been told it may not
+        // fail, and the nightly `Mutation (diff)` lane has been red on the
+        // baseline since at least 2026-08-21 (paiml/infra triage 2026-08-30).
+        //
+        // Measured, both directions, on the same fixture:
+        //
+        //   RUSTFLAGS="-C linker=clang"                    -> exit 101
+        //   RUSTFLAGS="-C linker=clang --cap-lints=warn"   -> exit 0, "warning:"
+        //
+        // The fixture is a dependency-free crate that is only ever `check`ed,
+        // so it needs no inherited rustflags at all; the safe scrub is to drop
+        // both spellings. `CARGO_ENCODED_RUSTFLAGS` takes precedence over
+        // `RUSTFLAGS` when set, so removing only one leaves the cap in place.
+        .env_remove("RUSTFLAGS")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .output()
         .expect("spawn cargo clippy");
     let text = format!(
@@ -116,6 +143,23 @@ fn clippy_verdict(dir: &Path, lib_rs: &str) -> (bool, String) {
          Install it with `rustup component add clippy`. A missing verifier \
          is a NO-GO, not a lint verdict.\nFull output:\n{text}",
         unavailable.as_deref().unwrap_or("")
+    );
+
+    // A LINT THAT MAY NOT FAIL HAS NO VERDICT EITHER — the same class as the
+    // absent component above, one step further in. Under `--cap-lints=warn`
+    // clippy still reports the defect, so the output looks like a real run;
+    // only the exit status is silently defanged, and a rejection test reading
+    // that status records a pass. The scrub above removes the two environment
+    // variables that carry it, and this catches any OTHER route to the same
+    // state (a `[build] rustflags` in a config.toml, a wrapper, a future
+    // cargo-mutants that passes it another way) rather than trusting that the
+    // scrub was exhaustive. Clippy names the condition itself, so ask it.
+    let defanged = text.contains("ignores `-D warnings`") || text.contains("--cap-lints");
+    assert!(
+        !defanged,
+        "cargo clippy ran with its lints capped, so it could not fail and this \
+         test measured nothing. A linter told it may not fail is not a verdict, \
+         it is a formality.\nFull output:\n{text}"
     );
 
     (out.status.success(), text)
