@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.35.0] - 2026-08-30
+
+Minor rather than patch, for the fourth release running, and for the same reason the
+last three were: **this changes what pmat reports on unchanged code.** Measured on
+paiml/interactive.paiml.com with nothing in that repository touched — 2 blocking
+violations at 3.34.0, 19 at this release. Both numbers are new; neither is a regression.
+The 2 were false, the 19 are true, and a gate that swaps one for the other is a minor.
+Read this before upgrading a gate.
+
+All three fixes are to gates that were reporting a result they had not measured.
+
+### The `sections` check could not see a heading behind an emoji
+
+Measured on paiml/interactive.paiml.com at 3.34.0. Its `README.md` carries
+
+```markdown
+## 🤝 Contributing
+## 📄 License
+```
+
+and `pmat quality-gate` answered
+
+```
+[sections] README.md - Missing required section: Contributing
+[sections] README.md - Missing required section: License
+```
+
+Both sections are there, at the right level, in the right place. The check
+asked `readme.contains("## Contributing")` against the whole file, and a
+substring test has no notion of a heading: the only headings it can recognise
+are the ones whose text begins immediately after the `## `. A README that
+decorates its headings — which is most of them — gets told to add sections it
+already has. **Two of that repository's 60 blocking violations were an emoji.**
+
+The check now parses headings and compares normalised heading *text*, so a
+leading emoji, an anchor span, or trailing punctuation no longer hides a
+section. The over-reach counter-tests are the load-bearing half and they were
+written to pass against the unfixed stub: prose containing the word is still
+not a heading, `##Contributing` with no space is still not a heading, and a
+README genuinely missing a section is still flagged. (#1106)
+
+Verified against the released binary, four fixtures, same invocation:
+
+| README under test | 3.34.0 | 3.35.0 |
+|---|---|---|
+| `## 🤝 Contributing` / `## 📄 License` | FAIL (2) | **PASS (0)** |
+| genuinely missing both sections | FAIL (2) | FAIL (2) |
+| the words appear in prose, not a heading | FAIL (2) | FAIL (2) |
+| `##Contributing` — no space, not a heading | FAIL (2) | FAIL (2) |
+
+Only the first row moves. The other three are the reason this is a narrowed
+false positive and not a weakened check.
+
+### A `pmat.toml` section pmat cannot honour resolved to defaults, silently
+
+An unrecognised or unhonoured configuration section was dropped on the floor
+and the run continued against built-in defaults, so a repository could carry a
+config pmat had never applied and get a green gate that measured something
+else entirely. (#1105)
+
+### The clippy-gate replay ran under `--cap-lints=warn`, so it could not fail
+
+`Mutation (diff)` had been red on its **baseline** — not on a mutant — since at
+least 2026-08-21, as far back as the run history goes. cargo-mutants requires a
+green baseline, so the lane produced no mutation verdict at all for nine
+consecutive nights. Two tests write a fixture crate, lint it with `pmat verify
+--stage clippy`'s own flag constants, and assert the linter REJECTS it; under
+`--cap-lints=warn` clippy reported the defect and exited 0, so the assertion
+that the gate *fails* could not itself fail. Found while triaging paiml/infra's
+nightly dead-lane switch. (#1107)
+
+
 ## [3.34.0] - 2026-08-29
 
 Minor rather than patch, for the third release running, and for the same reason: this
