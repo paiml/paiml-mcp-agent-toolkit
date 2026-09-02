@@ -99,15 +99,17 @@ impl TDGCalculator {
         let domain_risk = self.calculate_domain_risk(path).await?;
 
         // Calculate weighted TDG value
-        // CB-128: dead_code component added but set to 0.0 for now
-        // Full integration requires calling CargoDeadCodeAnalyzer
+        // CB-128 added `dead_code` as the sixth TDG dimension with weight 0.20
+        // and never integrated CargoDeadCodeAnalyzer, so the component is a
+        // constant 0.0 in every grade — a 20 % term that was never measured.
+        // Tracked as PMAT-639; this line is the debt, not a note about it.
         let components = TDGComponents {
             complexity,
             churn,
             coupling,
             domain_risk,
             duplication,
-            dead_code: 0.0, // TODO(CB-128): Integrate with CargoDeadCodeAnalyzer
+            dead_code: 0.0, // PMAT-639: not measured — see the comment above
         };
 
         let value = self.calculate_weighted_tdg(&components, provability);

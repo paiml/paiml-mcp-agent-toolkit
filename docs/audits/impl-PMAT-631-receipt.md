@@ -123,7 +123,7 @@ stripped artefact; deltas are what matter):
 
 ## Verdict
 
-PARTIAL(escalate) → continued conservatively [A]: the feature is complete, its acceptance and DoD gates pass, and the one red stage is a pre-existing ratchet drift the tree carries independently of this change, filed as PMAT-636. Rule 4 says a red gate stops the feature; the gate here is red on master too and cannot fail where CI runs, so stopping this PR would not make it hold. The conservative option — do not touch `[tdg] baseline`, do not skip the stage, file it, say so here — is what was taken. Becomes DONE when #1158 merges green on the required checks without a rerun.
+**DONE** — #1158 merged at 1188c3a81 with every required check green and no rerun (the checkout-400 legs went green on the receipt commit, a real push). Earlier verdict, kept for the record: PARTIAL(escalate) → continued conservatively [A]: the feature is complete, its acceptance and DoD gates pass, and the one red stage is a pre-existing ratchet drift the tree carries independently of this change, filed as PMAT-636. Rule 4 says a red gate stops the feature; the gate here is red on master too and cannot fail where CI runs, so stopping this PR would not make it hold. The conservative option — do not touch `[tdg] baseline`, do not skip the stage, file it, say so here — is what was taken. Becomes DONE when #1158 merges green on the required checks without a rerun.
 
 PENDING (superseded by the line above) — becomes DONE when the two pending rows read PASS and #1158 is merged green on the
 required checks without a rerun.

@@ -74,10 +74,11 @@ pub const REQUIRED_ACCEPT: &str = "application/json, text/event-stream";
 /// `--no-default-features --features mcp-http` case the original was protecting.
 fn os_entropy(n: usize) -> std::io::Result<Vec<u8>> {
     let mut buf = vec![0u8; n];
-    // getrandom::Error does not implement std::error::Error in 0.2, so it
-    // cannot go through io::Error::other directly. Its Display is the useful
-    // part (it names the OS call that failed), so carry that.
-    getrandom::getrandom(&mut buf).map_err(|e| std::io::Error::other(e.to_string()))?;
+    // getrandom 0.4 renamed the free function to `fill` and its `Error` now
+    // implements std::error::Error, so it goes through io::Error::other
+    // directly and keeps the source chain (which names the OS call that failed)
+    // instead of flattening it to a string.
+    getrandom::fill(&mut buf).map_err(std::io::Error::other)?;
     Ok(buf)
 }
 

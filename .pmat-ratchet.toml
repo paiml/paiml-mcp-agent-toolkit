@@ -179,7 +179,7 @@ in a known direction rather than an argument.
 """
 
 [metric.satd_markers_src_comments]
-baseline = 327
+baseline = 324
 unit = "count"
 band = 10
 includes_test_files = true
