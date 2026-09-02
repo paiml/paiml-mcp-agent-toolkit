@@ -937,6 +937,130 @@ means `src/cli/analysis_utilities/mod.rs` in §4/§8.11 and `src/cli/language_an
 
 ---
 
+### 8.0 Verification aftermath — read this before implementing any item below
+
+Everything in §8 was put through a **second, independent falsification round** after the
+document was first written: one agent per item, told to be hostile, which **re-ran each
+acceptance test against the built binary at HEAD** and then tried to pass that test with a
+lazy fix that repairs nothing. A separate second-opinion review by a different model
+(Google Antigravity, `agy --mode plan`) read the same document without access to the first
+round's findings. Both are recorded here rather than quietly absorbed, because their headline
+result is uncomfortable and load-bearing:
+
+> **Every one of the 32 acceptance tests was gameable as first written, and five items stated
+> a root cause that the cited source does not support.** The defects themselves survived —
+> all 32 symptoms reproduce — but a test that a lazy fix can pass is the exact failure mode
+> this document exists to name, and it shipped in the first draft of the document that names it.
+
+**Seven items were then fully re-hardened**, each with its gameable legs replaced, its
+already-green legs deleted or relabelled as controls, and the rewritten test **re-run at HEAD
+and confirmed still failing**: CRUX-01, CRUX-03, CRUX-05, CRUX-06, CRUX-09, CRUX-10, CRUX-12.
+Those seven are implementation-ready.
+
+**The remaining 25 are not, and the table below says exactly why.** Before implementing any
+of them, close the gaming route named in its row. "green today" counts legs that already pass
+on the unfixed binary and therefore prove nothing; "unrunnable" counts legs that cannot be
+executed as written.
+
+| item | verdict | legs | green today | unrunnable | stated cause | the lazy fix that passes it |
+|---|---|---|---|---|---|---|
+| CRUX-02 | MIXED | 8 | 2 | 0 | OK | Four independent lazy fixes pass this test without repairing anything, and one of them makes the product strictly worse. 1. LEG 3 — pass by DELETING the only duplicate detector that exists. Leg 3 asserts only t… |
+| CRUX-04 | MIXED | 8 | 2 | 0 | OK | YES — and separately the spec's own proposal FAILS the test (see root_cause_note). Lazy fix that passes all seven legs verbatim without fixing the problem: **key the cache on `HEAD:` + a hash of `git status --p… |
+| CRUX-07 | MIXED | 16 | 7 | 2 | OK | FIVE lazy fixes pass parts of this test without fixing the problem; two of them pass an entire leg. 1. (a) len()-ONLY, no ctime — the strongest game, and it is the item's OWN non-unix branch. The spec's fixture… |
+| CRUX-08 | MIXED | 14 | 1 | 1 | OK | YES — four lazy fixes pass the acceptance test as written. The spec anticipated only the first family (deleting repair_outbound) and blocked it with clause (1); these four survive. (A) DELETE TOOLS. Nothing in … |
+| CRUX-11 | MIXED | 10 | 1 | 1 | OK | YES — a two-line change turns legs a1, a2 and a3 all green while the metric gets no better, and one of the two is explicitly blessed by the test's own wording. LAZY FIX PART 1 (kills a1 and a2 together). In tdg… |
+| CRUX-13 | MIXED | 5 | 1 | 0 | OK | Yes — three independent lazy fixes, one of which needs no code at all. (A) **Fixture-shaped allowlist (the big one).** The acceptance test names every extension it tests, so adding exactly `"sh" | "yaml" | "md"… |
+| CRUX-14 | MIXED | 14 | 3 | 1 | OK | Five distinct lazy fixes pass this acceptance test without repairing what §8.14 says is broken. 1. LEG 3 — the test permits exactly the fix its own CORRECTION forbids. The Acceptance text for (3) is only "the t… |
+| CRUX-15 | MIXED | 12 | 5 | 0 | OK | Yes — badly, and one lazy fix is already the shipped state of another subcommand. 1. DELETE `--format` from the four subcommands. The item explicitly claims "the four together block 'delete `--format`'". They d… |
+| CRUX-16 | MIXED | 8 | 2 | 1 | OK | Four lazy fixes green this test without fixing anything. (1) CORPUS SCOPE — the decisive one. The gate reads only README.md + CLAUDE.md. Proposal (a)'s sanctioned route ("delete all seven README claims") makes … |
+| CRUX-17 | MIXED | 12 | 6 | 1 | **WRONG — see below** | YES, in five separate ways, one per leg. (1) Leg 1c ('one code for path-not-found') is passed by a clap `value_parser` that rejects a missing path — every probe then exits 2 uniformly, one code, no envelope log… |
+| CRUX-18 | MIXED | 10 | 2 | 3 | OK | YES — the whole eight-leg suite is passed by a fix with no ranking whatsoever. I built four candidate "lazy fixes" as real files and ran every leg against them. **Winner: uniform random selection.** `let mut or… |
+| CRUX-19 | MIXED | 8 | 3 | 1 | OK | Yes, on both of the legs that fail today; only leg (2b) even resists casually, and not much. LAZY FIX 1 — passes BOTH source-pin assertions of leg (1) with zero behavioural change. Replace let output = std::pro… |
+| CRUX-20 | MIXED | 9 | 4 | 1 | OK | Leg (c) is the gameable one, because it pins two numbers the implementation itself chooses and no wall-clock at all. The lazy fix: (1) re-bucket the profiler so `load_index:` covers only the SQLite open and the… |
+| CRUX-21 | GAMEABLE | 8 | 1 | 1 | OK | Three lazy fixes pass every written leg. (1) RUNTIME cwd lookup instead of a build-time embed. LEG 3 invokes `./target/release/pmat --version` with cwd = the extracted crate dir, which is the one directory on e… |
+| CRUX-22 | MIXED | 5 | 3 | 0 | OK | Three ways, in descending order of how likely an implementer is to take them. (1) TRADE TIME FOR MEMORY AND PASS EVERYTHING. Neither leg asserts wall clock or CPU seconds, yet the item is titled "defaults to th… |
+| CRUX-23 | MIXED | 9 | 5 | 2 | OK | Four ways, three of them demonstrated green on a faithful fixture, and the intended fix is indistinguishable from all of them: (1) SELF-DEFEATING — write the `--lib` gate the item itself proposes. Any gate file… |
+| CRUX-24 | MIXED | 6 | 3 | 1 | OK | Three independent lazy fixes pass the test as written: 1. **Leg A by `println!`.** The banner is one `format!` at quality_checks_part1_complexity.rs:74. Appending a hardcoded ` (warn at {})` with `max_cyclomati… |
+| CRUX-25 | MIXED | 5 | 0 | 3 | **WRONG — see below** | Yes — trivially, three independent ways, one of them DEMONSTRATED: (1) ONE-TOKEN RENAME, semantics unchanged. `sed 's/contracts\.len()/contracts.iter().count()/'` makes the grep exit 1 (leg satisfied) while the… |
+| CRUX-26 | GAMEABLE | 11 | 4 | 0 | OK | Three independent lazy fixes, two of them proved with mocks: 1. DELETE THE FEATURE. `-le 3` accepts 0. Make `--files-with-matches` and `--count` deprecated no-ops (warning to stderr, nothing on stdout, exit 0) … |
+| CRUX-27 | MIXED | 5 | 2 | 1 | **WRONG — see below** | YES — empirically demonstrated, with a shim that passes every leg while implementing nothing. The lazy fix, in three lines of behaviour: (a) delete the 8,998-byte help entirely and print `error: missing subcomm… |
+| CRUX-28 | MIXED | 5 | 2 | 1 | OK | Two one-line comments. (1) `# TODO: someday declare scripts/dogfood/pmat-gate-mcp-surface.sh` appended anywhere in Cargo.toml passes leg 1 — the grep matches file text, never the parsed `[package.metadata.dogfo… |
+| CRUX-29 | GAMEABLE | 4 | 3 | 0 | OK | Three lazy fixes, one of them demonstrated end-to-end on a fixture: (1) RENAME, not exclude. `git mv` the 698 `src/**/*_tests.rs` to `*_testcases.rs` / `*_spec.rs` and sed the 395 `include!` strings. Leg 1's `g… |
+| CRUX-30 | GAMEABLE | 4 | 0 | 0 | OK | Three lazy fixes, one demonstrated empirically. 1. (DEMONSTRATED) Delete the backticks around the dead citation instead of repairing the claim. One edit to CLAUDE.md:209, changing `src/tests/binary_size.rs:40` … |
+| CRUX-31 | GAMEABLE | 4 | 1 | 2 | **WRONG — see below** | Three separate lazy fixes pass this acceptance test. 1. THE ONE-LINE COMMENT. Leg 2 is a raw `wc -l > 0` over src/ and tests/. Demonstrated: `printf '// aws-lc-rs is the linked provider\n' > src/note.rs` takes … |
+| CRUX-32 | GAMEABLE | 5 | 2 | 0 | **WRONG — see below** | TWO one-line fixes pass both legs AND the counter-test while leaving all 28 files absent from the context. (1) THE DOMINANT ONE — make the checked thing unreachable. `pub fn is_include_fragment` already ships a… |
+#### 8.0.1 The five items whose stated root cause is wrong
+
+Each symptom below is real and reproduces. In each case the *cause* named in the item is not
+what the cited source says, so **the proposed fix would repair nothing**. Correct the cause
+before writing code.
+
+- **CRUX-17** — the item builds its discrimination check on `tdg`'s exit 5 as an instance of
+  "path not found". It is not that class of error, so leg 1 measures a different thing from
+  the one the item is about. The census of `cli_exit` adoption (9 real call sites; `PmatError`
+  with zero production callers; `quality_gates_handler_execution.rs:68,109` both bare
+  `std::process::exit(1)`) all verifies exactly — only the leg-1 datum is misclassified.
+- **CRUX-25** — the code shape is exact (`check_ladder_parses` reports `contracts.len()`, the
+  loop population, while nothing counts the inspected subset; the correct shape with
+  `checked += 1` sits 60 lines below in the same file). But the stated worst case — *N
+  contracts, zero readable files, "All N parse"* — **cannot occur**: `load_active_contracts`
+  only pushes a contract when `WorkContract::load` returned `Ok` on the same path the check
+  re-reads. The defect is a real disclosure gap, not the unbounded false-clean the item claims.
+- **CRUX-27** — the item says the no-args help path is "inside `Cli::parse()`". `Cli::parse()`
+  is never called anywhere in `src/bin/pmat.rs`. The 8,998 bytes come from pmat's own
+  hand-written arm at `src/bin/pmat.rs:227-232` (`ExecutionMode::HelpAndExit`), so the fix is a
+  one-line edit there, **not** an interception of a clap parse error.
+- **CRUX-31** — every file citation holds, but the item says "land this before #1113 merges".
+  **#1113 merged at 2026-09-02T12:24:03Z**, two hours before the commit that asserts it is
+  open. The TLS-provider question is unchanged; its urgency framing is not.
+- **CRUX-32** — the proposed repair **cannot work**. "Parse the includer and attribute spans
+  back to the fragment" fails because `syn` does not expand `include!`: parsing a balanced
+  includer yields an opaque macro invocation and zero fragment items. Several of the includers
+  are themselves behind `cfg(pmat_broken_tests)` or are orphans referenced by nothing. The
+  28-file parse gap is real; this is not the way to close it.
+
+#### 8.0.2 Findings from the independent second-opinion review
+
+Produced by `agy --mode plan` against this document and the same binary, with no sight of the
+first round. Its verdict was **"NOT safe to implement without resolving these flaws"**. Three
+findings are test-logic defects the first round did not catch:
+
+- **CRUX-30's test can never pass.** Its anti-vacuity guard requires the extraction to yield
+  `-ge 30` paths; the regex it specifies extracts **23** from `CLAUDE.md` today. The guard
+  fails unconditionally, fixed or not.
+- **CRUX-22's pin is self-defeating.** It asserts `blocks_analyzed == 9085`, a figure measured
+  under the *current* default `--detection-type all`. The item's own proposal changes that
+  default to `exact`, under which the same invocation yields **8855**. Implementing the fix
+  fails its own acceptance test.
+- **CRUX-26 is passed by printing nothing.** Legs 2 and 2b pipe output to `wc -l` and assert
+  `<= 3`; making `pmat query` exit 1 with empty output satisfies both.
+- **CRUX-21's cause is wrong in the same class as §8.0.1.** Cargo clones a git dependency into
+  `~/.cargo/git/checkouts/` as a *real git repository*, so `git rev-parse HEAD` there returns
+  pmat's own sha, not the consumer's. Only **path and vendored** dependencies exhibit the
+  described failure. The crates.io-tarball half of the item stands.
+- **CRUX-29 is ranked wrong.** The document itself calls the 11.79 MB of shipped test source
+  against a 9.0 MiB hard limit "the audit's only near-term release blocker", then ranks it
+  29th of 32, below dead-code cleanup and performance work. A release blocker outranks
+  ergonomics; treat it as such regardless of its number.
+- **Two competitor figures carry no URL** — "GitHub MCP's 23 toolsets" and "SonarQube MCP's
+  40+" in §9.2 — against this document's own rule that every competitor cell cites a source.
+  Treat both as UNVERIFIED until re-fetched.
+- **The largest memory consumer was never profiled.** `pmat comply check` was excluded by the
+  audit's own hard rules (it saturates the shared host), so the 12.7 GiB figure in §8.19 rests
+  on `strace` attribution and secondary observation, not on a measurement of that process.
+  §8.19's proposal is unaffected — the defect is the *hidden spawn*, which is proven by
+  `execve` — but no claim about comply's own memory profile should be read as measured.
+
+#### 8.0.3 What this means for §12's definition of done
+
+Rule 1 of §12.2 already forbids an acceptance test that cannot fail. This section is the
+evidence that stating the rule is not the same as satisfying it. **An item is implementation-
+ready only once its test has been run at HEAD, observed to fail, and shown to reject the lazy
+fix named in its row above.** Seven items meet that bar today. The other 25 are findings with
+draft tests, and should be treated as such.
+
+---
+
 ### 8.1 CRUX-01 — `pmat verify` reports `ok: true` on a tree `quality-gate` fails with 35 blocking violations
 
 **Problem.** CLAUDE.md makes `pmat verify` MANDATORY before every agent commit and promises "green
@@ -946,86 +1070,259 @@ complexity reporting `ok: null, not_applicable: "no Rust files changed vs HEAD�
 composite never consults a stage that declined; (b) the SATD stage passes `--strict`, which finds 0
 where the default finds 3.
 
-**Evidence.** `src/cli/verify.rs:194` `ok: !failed && measured > 0` (`:193` is the `VerifyReport {`
-line itself); the guard `let not_measured = (measured == 0).then(...)` at `:189-192` fires only at
-`measured == 0`, and `not_measured` (`:131`) is `Option<String>`, not a list.
-`VerifyReport.ok` is `bool` (`:126`); only `StageReport.ok` is `Option<bool>`. `StageResult::
-NotApplicable` shipped in v3.30.0 (`125a7b73e`) with the all-or-nothing rule only. Verify's SATD
+**Evidence.** `src/cli/verify.rs:194` `ok: !failed && measured > 0` (`:193` is the `let report =
+VerifyReport {` line itself); the guard `let not_measured = (measured == 0).then(...)` at `:189-192`
+fires only at `measured == 0`, and `not_measured` (`:131`) is `Option<String>`, not a list.
+`VerifyReport.ok` is `bool` (`:126`); only `StageReport.ok` is `Option<bool>` (`:110`). The
+`StageResult::NotApplicable` arm at `:173-181` pushes the stage and touches neither `failed` nor
+`measured`; the all-or-nothing rule it was written under is stated in the comment at `:185-188`.
+`StageResult::NotApplicable` shipped in v3.30.0 (`125a7b73e`) with that rule only. Verify's SATD
 call is `:456-463` (`analyze satd --strict --format json --fail-on-violation`); `satd_verdict`
-(`:471-474`) passes on `Some(0)`. Repo: `analyze satd` → 3 (`quality_checks_part4.rs:117` `Bug:`,
-`canonical_query.rs:52` `todo!()` in a `//!` example, `tdg_calculator_core.rs:110` `TODO(CB-128):`);
-`--strict` → **0**. `quality-gate --format json` → `.results.blocking_violations 35`,
-`.total_violations 37`, 14 `severity=error`.
+(`:472-474`) passes on `Some(0)`. Repo: `analyze satd` → 3 (`quality_checks_part4.rs:117` `// Bug:
+Previously used walkdir directly…`, `canonical_query.rs:52` `todo!()` in a `//!` example,
+`tdg_calculator_core.rs:110` `// TODO(CB-128): Integrate with CargoDeadCodeAnalyzer`); `--strict`
+→ **0**. Re-measured at HEAD (`8d30699ca`, binary `01fba4f65`): `quality-gate --format json` →
+`.results.blocking_violations 35`, `.total_violations 37`, `satd 3`, `complexity 6`, `entropy 28`,
+severity counts `{error: 14, warning: 21, info: 2}`. **Those totals are a one-shot census, quoted so
+a reviewer can tell a fix from a re-interpretation; no leg of the acceptance test asserts any of
+them, and none may be committed as a gate.**
 
 **CORRECTION — the stated cause of (b) was wrong, so the fix changes.** Not "strict misses trailing
 comments". Measured, one file per row: trailing `// TODO:` → strict **1**; trailing `// FIXME:` →
 **1**; line-initial `// TODO(x):` → **0**; `// TODO[x]:` → **0**; `// TODO! ` → **0**; `// Bug:` →
 **0**; `// BUG:` → **1**. Position is irrelevant. `MarkerMode::Strict`
 (`src/services/satd_detector/classifier.rs:244-250`) requires `head == marker` (exact upper case,
-`STRICT_MARKERS` `:120`) **and** `rest.strip_prefix(':')`; `Standard` (`:262-265`) accepts any of
-`SEPARATORS = [':','(','[','!']` (`:139`) in any case. The blind spots are the **separator** and the
-**case** — exactly why strict misses both markers quality-gate blocks on (`TODO(CB-128):` paren;
-`Bug:` case, and that one is the `severity=error`). The proposed trailing-comment fix repairs
-neither.
+`STRICT_MARKERS` `:121`) **and** `rest.strip_prefix(':')`; `Standard` (`:257-260`) accepts any of
+`SEPARATORS = [':','(','[','!']` (`:139`) in any case, subject to `!work_item_of(rest).is_empty()`.
+The blind spots are the **separator** and the **case** — exactly why strict misses both markers
+quality-gate blocks on (`TODO(CB-128):` paren; `Bug:` case, and that one is the `severity=error`).
+The proposed trailing-comment fix repairs neither.
 
-**Proposal.** (a) When any selected, non-skipped stage returns `NotApplicable`, set top-level `ok`
-to `null` and emit `not_measured` as a **list of stage names** (`Vec<&'static str>` — a field-type
-change from `Option<String>`). Keep exit 0: the command stops asserting safety, it does not start
-failing. (b) Let `Strict` accept the same `SEPARATORS` as `Standard` while keeping the upper-case
-marker and non-empty work-item requirement, so `TODO(CB-128): x`, `TODO[CB-128]: x` and `TODO: x`
-match while `todo:`, `TODO x` and "this is a todo list" do not; decide explicitly whether lowercase
-`Bug:` is debt (verify and quality-gate disagree today). Fix the `--strict` help string —
-`STRICT_MARKERS` is five markers including XXX and imposes a `: <work item>` shape the help never
-mentions.
+**SECOND CORRECTION — the remedy, not the cause.** The cause above survived falsification line by
+line; the *fix* did not. An earlier draft of the proposal read "when any selected, non-skipped stage
+returns `NotApplicable`, set top-level `ok` to `null` … Keep exit 0". Implemented literally that is
+a **regression**: on a fixture where SATD genuinely fails *and* complexity declines, today's binary
+gives `ok:false` / exit 1, and the literal rewrite gives `ok:null` / exit 0 — a red gate turned
+green — and it re-opens the empty-directory hole `verify.rs:185-188` was written to close ("the two
+gave opposite verdicts on an empty directory"). Exit status has a single site, `if !report.ok`
+(`:204`), and today that one branch carries both "a stage failed" and "nothing was measured". The
+tri-state must not collapse them.
 
-**Acceptance test.**
+**Proposal.**
+
+(a) Make the composite verdict tri-state and derive it, in this order:
+
+| condition | `ok` | exit |
+|---|---|---|
+| any *measured* stage failed | `false` | 1 |
+| `measured == 0` (nothing could be measured at all) | `false` | 1 |
+| `measured > 0`, nothing failed, ≥ 1 stage declined | `null` | 0 |
+| `measured > 0`, nothing failed, nothing declined | `true` | 0 |
+
+`VerifyReport.ok` becomes `Option<bool>` (`:126`), and `not_measured` (`:131`) becomes
+`Vec<&'static str>` with `skip_serializing_if = "Vec::is_empty"` — populated **only** from the
+`NotApplicable` arm at `:173-181`, never from `StageReport.ok == None`, because that is also how a
+`--skip`ped stage is spelled. Exit 1 iff `ok == Some(false)`; `print_text` renders the third state.
+The command stops asserting safety over what it did not measure; it does not start failing on it.
+
+(b) Let `Strict` accept the same `SEPARATORS` and the same `!work_item_of(rest).is_empty()` test as
+`Standard`, and widen the marker gate from `head == marker` to `head == marker || head ==
+Capitalised(marker)` — so `TODO(CB-128): x`, `TODO[CB-128]: x`, `TODO: x` and `Bug: x` match while
+`todo:`, `TODO x`, `// TODO:` (no work item) and "this is a todo list" do not. **The case clause is
+decided, not left open: lower-case-initial `Bug:` IS debt.** That is the whole point of the item —
+it is the tree's only `severity=error` SATD finding and the one place verify and quality-gate
+visibly disagree, so a fix that leaves it invisible to verify leaves the "green here ⇒ green in CI"
+promise broken. Note the two clauses are only jointly satisfiable by this ad-hoc rule: plain
+case-insensitivity would also match `// todo: finish this` and break the separator clause's only
+discriminating negative. Fix the `--strict` help string too — `STRICT_MARKERS` is five markers
+including XXX and imposes a `MARKER<sep> <work item>` shape the help never mentions.
+
+**Acceptance test.** Hermetic: every leg runs in a `mktemp -d` fixture, because the live repo's
+state decides the answer — `changed_rust_files_in` (`verify.rs:739`) unions `git ls-files --others
+--exclude-standard`, so one untracked `.rs` from anything else on the machine makes complexity RUN
+and leg 1 fail for the wrong reason. Legs are marked **EVIDENCE** (red at HEAD; they are the proof
+the defect exists) or **CONTROL** (green at HEAD by design; they exist to kill a lazy fix and must
+never be read as evidence). All legs are fixture invariants and may become permanent gates, except
+the last, which is **one-shot PR evidence**.
+
 ```sh
 set -euo pipefail; fail(){ echo "FAIL: $*"; exit 1; }
-pmat verify --skip clippy,tests --format json | python3 -c '
-import sys,json; d=json.load(sys.stdin)
-assert d["ok"] is None and d["not_measured"]==["complexity"] and d["stages_measured"]==2' \
-  || fail "leg 1: verify still asserts over a stage it declined"
-# scratch crate: pub fn f() -> u8 { let x: u8 = 0; // TODO(CB-9): finish this
-pmat analyze satd --path "$D" --strict --format json | jq -e '.total_violations == 1' \
-  || fail "leg 2: strict still misses the paren separator"   # today 0
-```
-*Anti-vacuity (all four required).* **A1** blocks "always null": with one real Rust edit vs HEAD,
-complexity RUNS → `isinstance(d['ok'], bool)` and `'not_measured' not in d`. **A2** blocks deleting
-a stage: `[s['name'] for s in d['stages']] == ['format','complexity','satd','clippy','tests']`.
-**A3** blocks `strict := default`, the lazy fix — **split into a mandatory half and a decided
-half, because the merged single control forecloses the decision the proposal leaves open.**
-*Mandatory (separator clause):* `TODO(CB-128): x` and `TODO[CB-128]: x` must match under Strict
-while `todo:`, `TODO x` and `// this is a todo list` do not. *Decided (case clause):* lowercase
-`Bug:` is the tree's **only** `severity=error` SATD finding and the one place verify and
-quality-gate visibly disagree, so `Bug:`/`BUG:` is an explicit sub-deliverable with **both**
-outcomes' fixture values written down before the code changes: if `Bug:` **is** debt, the fixture
-(` ```/ //! todo!("…") / ``` `, `// this is a todo list`, `// Bug: Previously used walkdir
-directly…`) must give `strict == 1` and `default == 2`; if it is **not**, `strict == 0` and
-`default == 2`. Whichever is chosen, the fixture is updated deliberately — the merged control
-demanded `strict == 0`, i.e. it silently answered "no" and left the divergence in place, so an
-implementer who made verify and quality-gate agree would have failed the item's own test.
-**A4** deletion: the same fixture minus the TODO → 0 under both. Repo consequence: with `tdg_calculator_core.rs:110` unchanged,
-`pmat verify --skip clippy,tests --format json` must report `satd.ok == false`.
+P=${PMAT:-pmat}; R=${REPO:-.}; W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+crate(){ mkdir -p "$W/$1/src"
+  printf '[package]\nname = "%s"\nversion = "0.1.0"\nedition = "2021"\n' "$1" >"$W/$1/Cargo.toml"
+  cat >"$W/$1/src/lib.rs"
+  ( cd "$W/$1" && git init -q . && git add -A \
+    && git -c core.hooksPath=/dev/null -c user.email=a@b -c user.name=c commit -qm i ); }
+crate clean  <<'EOF'
+pub fn f(x: u8) -> u8 {
+    x + 1
+}
+EOF
+crate red    <<'EOF'
+pub fn f(x: u8) -> u8 {
+    // TODO: finish this
+    x + 1
+}
+EOF
+crate sep    <<'EOF'
+pub fn a(x: u8) -> u8 {
+    // TODO(CB-128): widen the separator
+    x
+}
+pub fn b(x: u8) -> u8 {
+    // TODO[CB-128]: widen the bracket too
+    x
+}
+pub fn c(x: u8) -> u8 {
+    // todo: finish this
+    x
+}
+pub fn d(x: u8) -> u8 {
+    // TODO:
+    x
+}
+EOF
+crate bug    <<'EOF'
+//! ```
+//!         todo!("Create proper QueryResult")
+//! ```
+// Bug: Previously used walkdir directly, bypassing ignore file support
+pub fn f(x: u8) -> u8 {
+    x
+}
+EOF
+crate nodebt <<'EOF'
+pub fn f(x: u8) -> u8 {
+    x
+}
+EOF
+crate l2     <<'EOF'
+pub fn f() -> u8 {
+    let x: u8 = 0; // TODO(CB-9): finish this
+    x
+}
+EOF
+mkdir -p "$W/empty"
+V(){ ( cd "$W/$1" && shift && $P verify --format json "$@" ); }
+S(){ $P analyze satd --path "$W/$1" "${@:2}" --format json 2>/dev/null; }
 
-**Effort.** **M** — (a) is arguably S (~10 lines plus the field-type change); (b) is a match-arm
+# leg 1 — EVIDENCE. Declining a stage must withdraw the verdict, not fail the build.
+out=$(V clean --skip clippy,tests) && rc=0 || rc=$?
+jq -e '.ok == null and (.not_measured|type) == "array"
+       and .not_measured == ["complexity"] and .stages_measured == 2' >/dev/null <<<"$out" \
+  || fail "leg 1: verify still asserts over a stage it declined"
+[ "$rc" -eq 0 ] || fail "leg 1: a declined stage must not start failing the build"
+
+# leg 1-RED — CONTROL (green today). A measured failure must survive a co-declining stage.
+out=$(V red --skip clippy,tests) && rc=0 || rc=$?
+jq -e '.ok == false and ([.stages[]|select(.name=="satd").ok] == [false])' >/dev/null <<<"$out" \
+  || fail "leg 1-RED: a measured failure went green because another stage declined"
+[ "$rc" -eq 1 ] || fail "leg 1-RED: ok:false must still exit 1"
+
+# leg 1-EMPTY — EVIDENCE for the list type, CONTROL for the v3.30.0 verdict.
+out=$(V empty --skip clippy,tests) && rc=0 || rc=$?
+jq -e '.ok == false and .stages_measured == 0 and (.not_measured|type) == "array"
+       and (.not_measured|sort) == ["complexity","format","satd"]' >/dev/null <<<"$out" \
+  || fail "leg 1-EMPTY: all-declined contract regressed, or not_measured is not derived"
+[ "$rc" -eq 1 ] || fail "leg 1-EMPTY: nothing measured is not a pass"
+
+# leg 1-SKIP — CONTROL (green today). A skipped stage is not an unmeasured one.
+V clean --skip clippy,tests,complexity \
+  | jq -e '(.ok|type) == "boolean" and (has("not_measured")|not) and .stages_measured == 2' >/dev/null \
+  || fail "leg 1-SKIP: --skip reported as unmeasured"
+
+# leg 2 — EVIDENCE. The separator blind spot, minimal reproduction. Today 0.
+S l2 --strict | jq -e '.total_violations == 1' >/dev/null \
+  || fail "leg 2: strict still misses the paren separator"
+
+# A3-M — EVIDENCE. Separator widened; case and the work-item requirement are NOT.
+S sep --strict | jq -e '[.violations[].line]|sort == [2,6]' >/dev/null \
+  || fail "A3-M: strict must match TODO(x): and TODO[x]: and nothing else in this file"
+S sep         | jq -e '[.violations[].line]|sort == [2,6,10]' >/dev/null \
+  || fail "A3-M: default mode moved"
+
+# A3-D — EVIDENCE. The decided case clause: capitalised `Bug:` is debt, lower-case `todo!(` is not.
+S bug --strict | jq -e '[.violations[].line] == [4]' >/dev/null \
+  || fail "A3-D: strict must see Bug: and only Bug:"
+S bug          | jq -e '[.violations[].line]|sort == [2,4]' >/dev/null \
+  || fail "A3-D: default mode moved"
+
+# A3-D2 — EVIDENCE, and the one invariant here fit to become a permanent gate:
+# every severity=error SATD finding quality-gate blocks on is visible to verify's own stage.
+blk=$($P quality-gate --checks satd --format json -p "$W/bug" 2>/dev/null \
+      | jq -c '[.violations[]|select(.severity=="error")|.line]|sort' || true)
+jq -e 'length >= 1' >/dev/null <<<"$blk" || fail "A3-D2: fixture no longer reproduces the divergence"
+st=$(S bug --strict | jq -c '[.violations[].line]|sort')
+jq -ne --argjson b "$blk" --argjson s "$st" '$b - $s == []' >/dev/null \
+  || fail "A3-D2: quality-gate blocks on SATD verify's strict stage cannot see"
+
+# A4 — CONTROL (green today). No marker, no finding, in either mode.
+S nodebt          | jq -e '.total_violations == 0' >/dev/null || fail "A4: default reported debt"
+S nodebt --strict | jq -e '.total_violations == 0' >/dev/null || fail "A4: strict reported debt"
+
+# A1 — CONTROL (green today). Blocks "always null": one real Rust edit and complexity RUNS.
+printf 'pub fn g(x: u8) -> u8 {\n    x\n}\n' >>"$W/clean/src/lib.rs"
+V clean --skip clippy,tests \
+  | jq -e '(.ok|type) == "boolean" and (has("not_measured")|not) and .stages_measured == 3' >/dev/null \
+  || fail "A1: no verdict on a tree verify fully measured"
+git -C "$W/clean" checkout -- src/lib.rs
+
+# A2 — CONTROL (green today). Blocks deleting a stage.
+V clean --skip clippy,tests | jq -e '[.stages[].name] == ["format","complexity","satd","clippy","tests"]' \
+  >/dev/null || fail "A2: a stage disappeared from the report"
+
+# REPO — ONE-SHOT PR EVIDENCE, never a committed gate: the site that motivates the fix.
+$P analyze satd --path "$R" --strict --format json 2>/dev/null \
+  | jq -e '[.violations[]|select(.file|endswith("services/tdg_calculator_core.rs"))]|length == 1' \
+  >/dev/null || fail "REPO: verify's own stage still cannot see tdg_calculator_core.rs:110"
+echo "PASS"
+```
+
+*Status at HEAD (`8d30699ca`, binary `01fba4f65`, run 2026-09-02).* The suite **fails**, first at
+leg 1: `FAIL: leg 1: verify still asserts over a stage it declined` — FX_CLEAN returns `ok:true`,
+`stages_measured:2`, complexity `not_applicable: "no Rust files changed vs HEAD, so nothing was
+measured"`, no `not_measured` key, exit 0. Running every leg without `set -e` gives **7 red**
+(leg 1, leg 1-EMPTY, leg 2, A3-M strict, A3-D strict, A3-D2, REPO) and **5 green** (leg 1-RED,
+leg 1-SKIP, A4, A1, A2 — the controls, exactly the ones labelled so).
+
+*Each lazy fix, and the leg that kills it.* Every row was executed against a wrapper binary
+implementing that fix over the real 3.34.0 one, not argued:
+
+| lazy fix | dies at |
+|---|---|
+| any `NotApplicable` ⇒ `ok: null`, keep exit 0 (the literal earlier proposal) | **leg 1-RED** — a genuinely failing SATD stage goes `ok:false`/1 → `ok:null`/0 |
+| the same, plus a hardcoded `not_measured = ["complexity"]` | **leg 1-RED**, then **leg 1-EMPTY** (`["complexity","format","satd"]`) and **leg 1-SKIP** (absent) — no constant satisfies all three sites |
+| `not_measured` populated from every stage with `ok == null` | **leg 1** — the list comes back `["complexity","clippy","tests"]` |
+| `ok: null` whenever fewer than all five stages ran (skipped counted as unmeasured) | **leg 1-SKIP** — `--skip clippy,tests,complexity` must still return a boolean |
+| `Strict := Standard` | **A3-M** — `// todo:` (line 10) appears under strict |
+| widen the separator only, and "decide" `Bug:` is not debt (a no-op that is green on 3.34.0 today and stays green after the separator fix) | **A3-D** and **A3-D2** — strict must be `[4]`, and quality-gate's `severity=error` set must be a subset of strict's |
+
+*Satisfiability.* A wrapper implementing the whole proposal — the tri-state table of (a) plus (b)'s
+separator widening and capitalised-or-upper marker rule — runs the suite to `PASS`. The test is
+demanding, not impossible.
+
+**Effort.** **M** — (a) is arguably S (~15 lines: the verdict table, the `Option<bool>` and
+`Vec<&'static str>` field changes, the exit predicate and `print_text`); (b) is a match-arm
 widening plus a fixture.
 
-**Risk.** `ok: null` breaks scripts keying on `ok == true`; keep exit 0 and announce the field.
-Widening strict SATD surfaces findings fleet-wide — a one-time ratchet rebase. **Out of scope:**
+**Risk.** `ok: null` breaks scripts keying on `ok == true`; keep exit 0 for the null state and
+announce the field. A caller that keys on the exit code alone still cannot tell "passed" from "no
+verdict" — that is the deliberate trade (a pre-commit gate that failed every commit with no Rust
+change would be turned off within a day), and it is why the JSON, not the status, is the contract.
+Widening strict SATD surfaces findings fleet-wide — a one-time ratchet rebase; it also drops the
+"space after the colon" requirement, so `// TODO:x` becomes strict-visible. **Out of scope:**
 `.pmat-ratchet.toml:186`'s `satd_markers_src_comments`. Its `^[[:space:]]*(//|/\*|\*)` anchor is a
 *different*, deliberate blind spot documented at `:188-192` ("the same markers occur 1,102 times
 across `src/` once string literals, test fixtures and this project's own SATD ANALYSER are
 counted"); widening it raises baseline 327 and needs its own `justification`.
 
 **Framing (verification correction).** "35" is the true divergence but the fix closes **1** of it:
-28 are entropy (not a verify stage), 5 of 6 complexity blockers are at or below the configured
-limit, and of 3 SATD findings 1 is unambiguous debt. The defensible claim is narrow — *verify
-asserts safety over a stage it did not measure.*
+28 are entropy (not a verify stage), 5 of 6 complexity blockers are at or below the configured limit
+(CRUX-24), and of 3 SATD findings 1 is unambiguous debt. The defensible claim is narrow — *verify
+asserts safety over a stage it did not measure* — and it is the claim leg 1 tests.
 
 **Related issue.** #1035. Every verify defect in this family (#762–#765, #944) is CLOSED; not a
 duplicate.
-
----
 
 ### 8.2 CRUX-02 — `quality-gate` renders three unmeasured dimensions as clean
 
@@ -1119,92 +1416,291 @@ satd reports 55" is the same shape for another check).
 
 ### 8.3 CRUX-03 — `pmat config --validate` certifies a config it could not parse
 
-**Problem.** The command validates the defaults it silently fell back to. Four inputs give
-**byte-identical stdout and exit 0** — but for *two different reasons*, and conflating them
-mis-states the fix. Three are the fallback defect: a `pmat.toml` with a section pmat cannot honour,
-`not even toml ][`, and no config file at all, each certified after a silent fall-back to defaults.
-The fourth — the repo's own fully valid `pmat.toml` copied into a scratch dir — **parses**, emits no
-stderr warning, and still produces the same bytes, because the statistics block is hardcoded
-(`configuration_handlers_validation.rs:118-122`: the literals `Sections: 7` and
-`Total Settings: ~50`). That is a content-free report, not a fallback, and anti-vacuity control **C**
-below is aimed at it specifically. Only stderr differs, and only for the corrupt case.
+**Problem.** The command validates the defaults it silently fell back to. **Seven** different
+inputs give **byte-identical stdout and exit 0** — same 249 bytes, same
+`sha256 3331247a0083585980a70957b9c8556f3268d19e1356d2dbb0371edd98fa47c6` — but for *three*
+different reasons, and conflating them mis-states the fix.
 
-**Evidence.** All four print `Configuration is valid / All settings are within acceptable ranges /
+| # | input | why it prints the same bytes |
+|---|---|---|
+| 1 | `not even toml ][` | fallback: unparsable, replaced by defaults |
+| 2 | no config file at all | fallback: nothing to validate, replaced by defaults |
+| 3 | the repo's own fully valid `pmat.toml` | **parses** — the report is simply content-free |
+| 4 | 3 + `[quality_gate]` | parses; unknown section invisible |
+| 5 | 3 + `[markdown]` | parses; unknown section invisible |
+| 6 | 3 with `[telemetry]` renamed `[telemetryy]` | fallback (strict deserialize fails) |
+| 7 | 3 + `zzz_not_read_by_anything` inside `[quality]` | parses; unknown **key** invisible |
+
+Row 3 is not a fallback at all: the statistics block is hardcoded
+(`configuration_handlers_validation.rs:117-122`: the literals `println!("   Sections: 7")` at
+`:120` and `println!("   Total Settings: ~50")` at `:121`). That is a content-free report, and
+control **A** plus leg **6** below are aimed at it specifically. Rows 4, 5 and 7 are the
+inverse — files that load cleanly and carry settings nothing reads. Only stderr differs, and only
+for rows 1 and 6.
+
+**Evidence.** All seven print `Configuration is valid / All settings are within acceptable ranges /
 No issues detected / Sections: 7 / Total Settings: ~50 / Custom Settings: 0`, exit 0. The warning
 goes to **stderr** (`eprintln!`, `src/services/configuration_impl.rs:53`), so a CI job capturing
 stdout and checking the exit code sees a clean pass with no warning at all. Cause is one level
 below the observation: `ConfigurationService::new` (`:32`) is
 `read_config_file(&default_path).unwrap_or_else(Self::default_config)`, and `read_config_file`
-(`:45-68`) returns `None` for both "absent" and "present but unparsable" — the load status is
-destroyed there; the handler (`src/cli/handlers/configuration_handlers_validation.rs:13`) then
-validates the defaults. `PmatConfig` (`src/services/configuration_types.rs:6-34`) has nine sections
-and `#[serde(default)]` on one (`semantic`), which is why any partial file fails strict deserialize.
-The command has **zero tests**. **Same-tree contradiction as of 3.35.0:** `quality-gate` emits a
-**blocking** `[error] config:` violation for the same bytes
-(`quality_gate_project.rs:254-286`, #1105) while `config --validate` says valid and exits 0.
+(`:45-68`) returns `None` for both "absent" (`:46-48`) and "present but unparsable" (`:50-58`) —
+the load status is destroyed there; the handler
+(`src/cli/handlers/configuration_handlers_validation.rs:13`, `let config = config_service.get_config()?`)
+then validates the defaults. `PmatConfig` (`src/services/configuration_types.rs:6-34`) has nine
+sections and `#[serde(default)]` on one (`semantic`, `:29-30`), which is why any partial file fails
+strict deserialize.
+
+Three further facts, all measured on this tree:
+
+- **The single-run self-contradiction.** A file containing only `[quality]\nmax_complexity = 25`
+  is a file pmat *honours* — `load_complexity_thresholds`
+  (`quality_checks_part1_complexity.rs:173-215`) parses it as a generic `toml::Table` and resolves
+  `max_cyclomatic = 25`. The same file makes `config --validate` write
+  `warning: …/pmat.toml is not valid pmat configuration (… missing field 'max_cognitive_complexity'); using defaults`
+  to stderr and `Configuration is valid / No issues detected` to stdout, in the same run, exit 0.
+- **Same-tree contradiction with `quality-gate` as of 3.35.0.** `quality-gate` emits a **blocking**
+  `[error] config:` violation for rows 1, 4, 5 and 6 (`quality_gate_project.rs:254-286`, #1105) —
+  naming the section and, for near-misses, suggesting the right one — while `config --validate` says
+  valid and exits 0 for all four. Row 7 (unknown *key*) is invisible to **both**: `quality-gate`
+  exits 0 on it too, so this half of the defect is genuinely unguarded anywhere.
+- **`scripts/setup-quality.sh:134-158`** — pmat's own setup script writes a `pmat.toml` containing
+  `[quality_gate]`, `[documentation]` and `[toyota_way]`, and no `[system]`. Extracted from the
+  heredoc and run: `quality-gate` exits 1 with three `no part of pmat reads` violations, while
+  `config --validate` exits 0 with a 280-byte stderr warning nobody sees.
+
+**CORRECTION to an earlier draft of this item — "the command has zero tests" is false, and the
+truth is worse.** `src/cli/handlers/configuration_handlers.rs:161-169` is
+`#[tokio::test] async fn test_configuration_validation()`, which builds a `ConfigurationService`
+on a path inside a `tempdir()` that is never created and asserts `result.is_ok()`. It is a test
+that **pins the defect**: validate an absent config, return `Ok`. It asserts nothing about output.
+`git grep -c validate_configuration -- src tests` hits only `configuration_handlers.rs` (2) and
+`configuration_handlers_validation.rs` (2); no integration test spawns `pmat config --validate`.
+Whoever implements this must delete or invert that test first, or it will keep certifying the bug.
 
 **Proposal.** (1) Carry the load status out of `ConfigurationService` and exit non-zero when a file
-exists but did not load, naming file and key. (2) With no file, report "no configuration found —
-validated nothing". (3) Print the source path of every setting validated, so `Custom Settings: 0`
-cannot sit under a verdict. (4) **Reuse #1105's machinery** — `schema_pmat_toml_sections()`
-(`quality_gate_project.rs:126`) and `nearest_known_section()` (`:145`) made `pub(crate)`; do **not**
-build a second list (that commit's own doc comment warns two hand-maintained lists is how a
-validator comes to disagree with the reader it polices). (5) Fix `scripts/setup-quality.sh:136-155`,
-which still generates `[quality_gate]` / `max_cyclomatic_complexity` / `max_satd_comments` /
-`min_test_coverage` and no `[system]` — pmat's own setup script writes a config that trips pmat's
-own new blocking gate.
+exists but did not load, naming file and location. (2) With no file, report "no configuration
+found — validated nothing". (3) Print the source of every setting validated — `pmat.toml` or
+built-in default, with the value — so `Custom Settings: 0` cannot sit under a verdict. (4) **Reuse
+#1105's machinery** — `schema_pmat_toml_sections()` (`quality_gate_project.rs:126`, which derives
+the accepted set from the serialised `default_config()` rather than listing it) and
+`nearest_known_section()` (`:145`, deliberately conservative: prefix match in either direction, so
+`[quality_gate]` gets "did you mean `[quality]`?" and `[markdown]` gets nothing) made
+`pub(crate)`; do **not** build a second list (that commit's own doc comment warns two
+hand-maintained lists is how a validator comes to disagree with the reader it polices).
+(5) Extend the same idea one level down to unknown **keys inside known sections**, against a
+registry unioning all readers — `min_pattern_diversity` (`quality_gate_config.rs:155-161`),
+`max_pattern_repetition` (`quality_checks_part1_entropy.rs:218-226`) and `max_entropy_violations`
+(`quality_gate_config.rs:199-205`) are all read off a generic table and none is a `QualityConfig`
+field. (6) Fix `scripts/setup-quality.sh:134-158`. (7) Delete or invert
+`test_configuration_validation`.
 
 **CORRECTION — `PmatConfig`'s derive is the wrong oracle, both ways.** *Too strict:* partial files
-pmat genuinely honours would start failing —
-`quality_checks_part1_complexity.rs:176-215` deliberately parses a generic `toml::Table` with the
-comment "`PmatConfig` has no serde defaults, so a strict deserialize of a partial file fails and
+pmat genuinely honours would start failing — `quality_checks_part1_complexity.rs:180-183` carries
+the comment "`PmatConfig` has no serde defaults, so a strict deserialize of a partial file fails and
 would silently drop the thresholds the user did write". *Too loose:* no `deny_unknown_fields`, so
 unknown keys are invisible — the repo's own `pmat.toml` carries `min_pattern_diversity`,
-`max_pattern_repetition`, `max_entropy_violations` under `[quality]`, none of them `QualityConfig`
-fields, and `config --validate` prints "Configuration is valid … Custom Settings: 0" while
-`quality_gate_config.rs:155-161` actually **reads** `min_pattern_diversity`. Validate against a key
+`max_pattern_repetition` and `max_entropy_violations` under `[quality]`, none of them
+`QualityConfig` fields, and `config --validate` prints "Configuration is valid … Custom Settings: 0"
+while `quality_gate_config.rs:155-161` actually **reads** the first of them. Validate against a key
 registry unioning all readers, parsing generically.
 
-**Acceptance test.** Four legs, all failing today.
-```sh
-set -euo pipefail; fail(){ echo "FAIL: $*"; exit 1; }
-printf 'not even toml ][\n' > pmat.toml
-pmat config --validate && fail "leg 1: corrupt config still exits 0"
-pmat config --validate 2>/dev/null | grep -q 'No issues detected' && fail "leg 1b: still certifies"
-rm -f pmat.toml
-pmat config --validate | grep -qi 'no configuration' || fail "leg 2: absent config not disclosed"
-cp <repo>/pmat.toml . && printf '\n[quality_gate]\nmax_cyclomatic_complexity = 15\n' >> pmat.toml
-pmat config --validate && fail "leg 3: unknown section still valid"
-# leg 3 output must name `quality_gate` AND suggest `quality`
-# leg 4: in the repo root, validate must NAME quality.min_pattern_diversity as honoured
-pmat config --validate | grep -q 'min_pattern_diversity' || fail "leg 4"
-```
-Leg 3 is **hardened**: `[quality_gate]` *alone* fails to deserialize today (`missing field
-'system'`), so the merged leg is satisfied by "exit non-zero on any parse failure" with zero
-unknown-section detection and #1019's ask never gets built. Verified distinguishable: the full valid
-config plus `[quality_gate]` parses, prints no warning, and still says valid at exit 0.
-*Anti-vacuity, replacing the merged control.* `[quality] max_complexity = 30` **does not
-deserialize** today (`missing field 'max_cognitive_complexity'`), so "must keep exiting 0" is
-unsatisfiable within S. Use: **A** — a complete config from `pmat config --reset` exits 0 with no
-stderr warning; **B** (works today, proves the validator is not always-pass) — that file with
-`max_complexity = 0` → "Configuration validation failed / - Quality: max_complexity must be > 0",
-exit 1; **C** — the printed section count must equal `schema_pmat_toml_sections().len()`, killing
-the hardcoded `Sections: 7` / `Total Settings: ~50` at
-`configuration_handlers_validation.rs:116-122` (PmatConfig has 9).
+**Acceptance test.** Seven legs plus two controls, **24 assertions red at HEAD** (`8d30699ca`,
+binary `3.34.0 / 01fba4f6554742ae690fa00131444ddf722a5334`; `git diff` over all five cited source
+files between the two is empty). Nothing here is DEFERRED — every leg was executed against that
+binary, and the suite was additionally run against three mock implementations of the lazy fixes it
+exists to reject.
 
-**Effort.** **S** — the failure path exists and is already wired to exit 1; the change is pushing
-one more issue into the existing vec plus carrying load status out of the service. Note
-`validate_all_sections` (`:22-28`) validates only 5 of 9 sections, so "No issues detected" is partly
-vacuous even on a config that did load.
+Two structural repairs to the previous version of this snippet, both of which had made it
+unfalsifiable rather than merely weak:
+
+- **Nothing pipes `pmat` into `grep` any more.** Under `set -o pipefail` a pipeline carries pmat's
+  status, so `pmat … | grep -q X && fail` stops firing the moment pmat starts exiting non-zero —
+  which is precisely what this item asks it to do — and `pmat … | grep -q X || fail` fires on a
+  correct warning-with-exit-1 implementation *even when the string is present*, reporting it as
+  "not disclosed". Demonstrated with a stub that exits 1 and still prints `No issues detected`: the
+  old leg 1b was green on it; the new leg 1b is red on it.
+- **Nothing writes into the repo.** The old snippet did `rm -f pmat.toml` and `cp <repo>/pmat.toml .`
+  in an unspecified CWD; run in the repo root, leg 2 deletes the file leg 3 then needs and `set -e`
+  aborts. Every fixture now lives in a `mktemp -d` and the golden config comes from
+  `git show HEAD:pmat.toml`.
+
+```sh
+set -eu
+fail(){ echo "FAIL: $*"; exit 1; }
+FIX=$(mktemp -d); REPO=$(git rev-parse --show-toplevel); trap 'rm -rf "$FIX"' EXIT
+new(){ D="$FIX/$1"; mkdir -p "$D"; }
+gold(){ git -C "$REPO" show HEAD:pmat.toml >"$FIX/$1/pmat.toml"; }
+# Capture rc, stdout and stderr SEPARATELY. No leg pipes pmat into grep: under
+# pipefail a pipeline carries pmat's status, so `pmat … | grep -q X && fail`
+# stops firing the moment pmat starts exiting non-zero — the very change this
+# item asks for — and `… || fail` fires on a correct warning-with-exit-1.
+run(){ D="$FIX/$1"; RC=0; ( cd "$D" && pmat config --validate >out.txt 2>err.txt ) || RC=$?; }
+
+# --- leg 1 — a config that did not load is fatal, and says which file and where
+new c; printf 'not even toml ][\n' >"$FIX/c/pmat.toml"; run c
+[ "$RC" -ne 0 ]                             || fail "leg1: corrupt config exited 0"
+grep -q 'No issues detected' "$D/out.txt"   && fail "leg1b: still certifies (asserted independently of RC)"
+grep -q 'pmat.toml' "$D/out.txt"            || fail "leg1c: failure does not name the file"
+grep -q 'line 1'    "$D/out.txt"            || fail "leg1d: failure does not name the location"
+
+# --- leg 2 — absence disclosed, and ONLY when absent
+new a; run a
+grep -qi 'no configuration' "$D/out.txt"    || fail "leg2: absent config not disclosed"
+new g; gold g; run g
+grep -qi 'no configuration' "$D/out.txt"    && fail "leg2b: 'no configuration' printed with a config present"
+
+# --- leg 3 — unknown section NAMED and ATTRIBUTED, by #1105's reader
+new u; gold u; printf '\n[quality_gate]\nmax_cyclomatic_complexity = 15\n' >>"$FIX/u/pmat.toml"; run u
+[ "$RC" -ne 0 ]                             || fail "leg3: unknown section still valid"
+grep -q 'quality_gate' "$D/out.txt"         || fail "leg3b: does not NAME the offending section"
+grep -q 'did you mean `\[quality\]`' "$D/out.txt" || fail "leg3c: does not SUGGEST the near-miss"
+( cd "$FIX/u" && pmat quality-gate --project-path . --checks complexity ) >"$D/qg.txt" 2>/dev/null || true
+grep -q 'did you mean `\[quality\]`' "$D/qg.txt"  || fail "leg3d: #1105's reader no longer says this — two lists have diverged"
+new m; gold m; printf '\n[markdown]\nx = 1\n' >>"$FIX/m/pmat.toml"; run m
+[ "$RC" -ne 0 ]                             || fail "leg3e: unrelated unknown section accepted"
+grep -q 'markdown' "$D/out.txt"             || fail "leg3f: unrelated unknown section not named"
+grep -q 'did you mean' "$D/out.txt"         && fail "leg3g: invented a suggestion for [markdown]"
+new t; git -C "$REPO" show HEAD:pmat.toml | sed 's/^\[telemetry\]$/[telemetryy]/' >"$FIX/t/pmat.toml"
+# the rename must leave the table COUNT untouched — that is what kills a count heuristic.
+# Derived from the file, never pinned: adding a 10th section to pmat.toml must not break this.
+[ "$(grep -c '^\[[a-z_]*\]$' "$FIX/t/pmat.toml")" -eq "$(grep -c '^\[[a-z_]*\]$' "$FIX/g/pmat.toml")" ] \
+                                            || fail "leg3h fixture: the rename changed the table count"
+run t
+[ "$RC" -ne 0 ]                             || fail "leg3h: same-table-count file with a renamed section accepted"
+grep -q 'telemetryy' "$D/out.txt"           || fail "leg3i: renamed section not named"
+grep -q 'did you mean `\[telemetry\]`' "$D/out.txt" || fail "leg3j: near-miss not suggested"
+
+# --- leg 4 — DISCRIMINATION: a key pmat reads vs a key nothing reads
+new k; git -C "$REPO" show HEAD:pmat.toml | sed '/^\[quality\]$/a zzz_not_read_by_anything = 1' >"$FIX/k/pmat.toml"; run k
+grep -q 'min_pattern_diversity'    "$D/out.txt" || fail "leg4: honoured key not reported"
+grep -q 'zzz_not_read_by_anything' "$D/out.txt" || fail "leg4b: dead key not reported"
+grep -Eq 'zzz_not_read_by_anything.*(no part of pmat reads|not read|ignored)' "$D/out.txt" \
+                                                || fail "leg4c: dead key not DISTINGUISHED from the honoured one"
+grep -Eq 'zzz_not_read_by_anything.*(honoured|read by)' "$D/out.txt" \
+                                                && fail "leg4d: dead key mislabelled as honoured"
+new n; git -C "$REPO" show HEAD:pmat.toml | grep -v '^min_pattern_diversity' >"$FIX/n/pmat.toml"; run n
+grep -q 'min_pattern_diversity' "$D/out.txt"    && fail "leg4e: named a key the file does not set (static legend, not analysis)"
+
+# --- leg 5 — per-setting provenance; partial files pmat honours stay valid
+new p; printf '[quality]\nmax_complexity = 25\n' >"$FIX/p/pmat.toml"; run p
+[ "$RC" -eq 0 ]                                 || fail "leg5: a partial config pmat honours was rejected (too strict)"
+[ ! -s "$D/err.txt" ]                           || fail "leg5b: partial config still warned about on stderr"
+grep -Eq 'max_complexity.*25.*pmat\.toml|pmat\.toml.*max_complexity.*25' "$D/out.txt" \
+                                                || fail "leg5c: the value 25 is not attributed to pmat.toml"
+grep -Eq 'max_cognitive_complexity.*(built-in default|default)' "$D/out.txt" \
+                                                || fail "leg5d: a setting the file omits is not attributed to the built-in default"
+
+# --- CONTROL A (green today, must STAY green) — a complete config still passes
+new r; ( cd "$FIX/r" && pmat config --reset >/dev/null ); run r
+[ "$RC" -eq 0 ]                                 || fail "ctlA: a complete default config was rejected"
+[ ! -s "$D/err.txt" ]                           || fail "ctlA: stderr not empty on a valid config"
+grep -q 'No issues detected' "$D/out.txt"       || fail "ctlA: the pass verdict disappeared"
+# --- CONTROL B (green today, must STAY green) — the validator can still say no
+new b; cp "$FIX/r/pmat.toml" "$FIX/b/pmat.toml"; sed -i 's/^max_complexity = .*/max_complexity = 0/' "$FIX/b/pmat.toml"; run b
+[ "$RC" -eq 1 ]                                 || fail "ctlB: a bad threshold no longer fails"
+grep -q 'Quality: max_complexity must be > 0' "$D/out.txt" || fail "ctlB: the message was lost"
+
+# --- leg 6 — the statistics block is derived, not literal
+N=$(grep -c '^\[[a-z_]*\]$' "$FIX/r/pmat.toml")
+[ "$N" -ge 2 ]                                  || fail "leg6 fixture: --reset wrote no sections"
+run r
+grep -q "Sections: $N" "$D/out.txt"             || fail "leg6: printed count != schema_pmat_toml_sections().len() ($N)"
+grep -q 'Sections:' "$D/out.txt"                || fail "leg6b: statistics block deleted rather than derived"
+grep -q 'Total Settings: ~' "$D/out.txt"        && fail "leg6c: '~50' is still an approximation literal"
+new s; git -C "$REPO" show HEAD:pmat.toml | sed '/^\[telemetry\]$/,/^$/d' >"$FIX/s/pmat.toml"; run s
+grep -Eq 'telemetry.*(built-in default|default|not set)' "$D/out.txt" \
+                                                || fail "leg6d: a section absent from the file is not reported as defaulted"
+# --- leg 7 — pmat's own setup script must stop writing a config pmat blocks
+new q; sed -n "/cat > pmat.toml << 'EOF'/,/^EOF$/p" "$REPO/scripts/setup-quality.sh" | sed '1d;$d' >"$FIX/q/pmat.toml"
+[ -s "$FIX/q/pmat.toml" ]                       || fail "leg7 fixture: heredoc not extracted"
+run q
+[ "$RC" -eq 0 ]                                 || fail "leg7: setup-quality.sh writes a config config --validate rejects"
+[ ! -s "$D/err.txt" ]                           || fail "leg7b: ...and it still warns about it on stderr"
+( cd "$FIX/q" && pmat quality-gate --project-path . --checks complexity ) >"$D/qg.txt" 2>/dev/null || true
+grep -q 'no part of pmat reads' "$D/qg.txt"     && fail "leg7c: the generated config still trips pmat's own blocking config gate"
+echo "PASS"
+```
+
+*Transcript at HEAD (`8d30699ca`), fail-fast:*
+
+```
+$ PATH=<release-binary-dir>:$PATH bash hardened.sh
+FAIL: leg1: corrupt config exited 0
+exit=1
+```
+
+*The same suite with `fail()` degraded to a printer, so every assertion is exercised — **24 red**:*
+
+```
+RED leg1  corrupt config exited 0                RED leg4   honoured key not reported
+RED leg1b still certifies                        RED leg4b  dead key not reported
+RED leg1c failure does not name the file         RED leg4c  dead key not DISTINGUISHED
+RED leg1d failure does not name the location     RED leg5b  partial config still warned about on stderr
+RED leg2  absent config not disclosed            RED leg5c  the value 25 is not attributed to pmat.toml
+RED leg3  unknown section still valid            RED leg5d  omitted setting not attributed to the default
+RED leg3b does not NAME the offending section    RED leg6   printed count != schema…len() (9)
+RED leg3c does not SUGGEST the near-miss         RED leg6c  '~50' is still an approximation literal
+RED leg3e unrelated unknown section accepted     RED leg6d  absent section not reported as defaulted
+RED leg3f unrelated unknown section not named    RED leg7b  ...and it still warns about it on stderr
+RED leg3h renamed section accepted               RED leg7c  still trips pmat's own blocking config gate
+RED leg3i renamed section not named              RED leg3j  near-miss not suggested
+```
+
+**Which legs are green today, and why that is not the "test that cannot fail" defect.** Four
+classes, labelled so no reader mistakes one for evidence:
+
+- **CONTROL A and CONTROL B** are *anti-vacuity controls*: green today **by design**, and their job
+  is to stay green after the fix. A alone constrains only exit code, stderr and the pass verdict —
+  which is why leg 2b exists. B proves the validator is not always-pass. Note that on the failure
+  path `report_validation_failure` returns `Err` via `?` at
+  `configuration_handlers_validation.rs:95`, so `print_configuration_statistics` (`:98`) never runs
+  — leg 6 is observable only on the success path, which is why its fixture is the `--reset` config.
+- **leg 3d** is a *cross-check control* on the #1105 reader, green today, and must stay green: it
+  fails only if `quality-gate` stops emitting the wording, i.e. if someone built the second
+  hand-maintained section list Proposal (4) forbids.
+- **leg 5's `RC -eq 0`** and **leg 7's `RC -eq 0`** are *anti-regression guards* against the "too
+  strict" half of the CORRECTION — a fix that rejects every partial file passes legs 1/3 and breaks
+  real users. Green today, paired with legs 5b/5c/5d and 7b/7c which are red.
+- **leg 3g, leg 4d, leg 4e** are *negative guards*, vacuously green today because the command prints
+  nothing to be wrong about. They are unsatisfiable-by-silence once their positive twins (3f, 4b/4c)
+  must go green, which is the point of pairing them.
+
+**One-shot evidence vs permanent gate.** Every leg here is behavioural and **all of it is
+permanent-gate-eligible** — no whole-tree census constant is pinned. The suite contains exactly one
+number, `N` in leg 6, and it is *measured at runtime* from the config `pmat config --reset` writes,
+so adding a tenth section to `PmatConfig` moves the expectation with it; leg 3h's guard likewise
+compares two measured counts rather than a literal.
+
+**Games this suite rejects, each demonstrated with a mock binary.** Three mock `pmat`
+implementations were written and run against the suite:
+
+| lazy fix | passes the old snippet? | killed by |
+|---|---|---|
+| dump `pmat.toml` verbatim so leg 4's grep matches | yes (verified in a clean CWD) | leg 4c — a dump prints the honoured and the dead key identically; leg 5d — it can never print a key the file omits |
+| print a static legend naming `min_pattern_diversity` | yes | leg 4e — remove the key from the file and the claim must disappear |
+| exit 1 on any unknown top-level key, or on >9 tables, with no naming | yes (leg 3's real requirement was a shell *comment*) | leg 3b/3c/3f/3i/3j (naming and suggestion are now assertions) and leg 3h (same table count, one section renamed) |
+| print "no configuration found" unconditionally | yes | leg 2b — the phrase must be absent when a config is present |
+| edit `println!("   Sections: 7")` to `9` | yes | leg 5c/5d and leg 6d — a literal cannot report per-setting provenance or say which section was defaulted |
+| delete the statistics block | yes | leg 6b |
+| the full lazy implementation (generic parse + unknown-top-level-key + verbatim dump + `Sections: 9`, `validate_all_sections` untouched) | yes | **fails at leg 4c**, then 5c, 5d, 6d, 7, 7c |
+
+**Effort.** **S→M** — the failure path exists and is already wired to exit 1, and (1)–(4) are
+carrying load status out of the service plus pushing issues into the existing vec against
+machinery #1105 already ships. (3) and (5) — per-setting provenance and the unknown-key registry —
+are the new work, and (7) must land first or the pinned test keeps certifying the bug. Note
+`validate_all_sections` (`:22-28`) validates only 5 of 9 sections (system, quality, analysis,
+performance, mcp; roadmap, telemetry, semantic and custom are unvalidated), so "No issues detected"
+is partly vacuous even on a config that did load.
 
 **Risk.** Users with a stale `pmat.toml` start getting non-zero exits from a command they may run in
-CI; stage as warning-with-exit-1, and land with the `setup-quality.sh` fix.
+CI; stage as warning-with-exit-1, and land with the `setup-quality.sh` fix in the same PR — pmat's
+own setup script is one of those users, and leg 7 will not go green until it is fixed.
 
-**Related issue.** #1019. (#851 is CLOSED and covers `--config-path`, a different flag: today
-`--config-path /does/not/exist.toml` correctly errors and exits 1 while the implicit `./pmat.toml`
+**Related issue.** #1019. (#851 is CLOSED and covers `--config-path`, a different flag: verified
+today, `pmat config --validate --config-path /does/not/exist.toml` prints
+`Error: config file not found: /does/not/exist.toml` and exits 1, while the implicit `./pmat.toml`
 silently defaults.)
-
----
 
 ### 8.4 CRUX-04 — the dead-code cache is keyed on the committed tree
 
@@ -1286,18 +1782,24 @@ working tree, so "the detector misses it entirely" is plausibly this cache, not 
 **Problem.** `Cargo.toml:226` builds clap with `default-features = false` and only
 `std, derive, help, env`. On the shipped binary: **0 of 71** subcommands print a usable `Usage:`
 line, and every misuse error is context-free. For a CLI with 71 top-level and 35 `analyze`
-subcommands and **no shell completions**, that is the entire discovery surface.
+subcommands and **no shell completions** (`clap_complete` appears nowhere in `Cargo.toml` or
+`src/`), that is the entire discovery surface.
 
 **Evidence.** `pmat --help | head -6 | cat -A` → `Usage: $`. Sweep over the root Commands block:
 `total=71 usage_pmat=0 empty_usage=70 no_usage_line=1` (the outlier is clap's built-in `help`,
-which has no help page). `analyze complexity --bogus-flag` → 34 B, exit 2,
+which has no help page) — **this census is ONE-SHOT PR EVIDENCE, not a gate; see the acceptance
+test, which pins no count at all.** `analyze complexity --bogus-flag` → 34 B, exit 2,
 `grep -c -- '--bogus-flag'` = **0**. `analyze complexit` → 32 B, no suggestion. Not a terminal
 artefact: byte-identical at `COLUMNS=200`, under a pty (`script -qec`), and from
 `~/.cargo/bin/pmat`. Control on the same box: `bashrs lnt` names `'lnt'`, tips `'init'`/`'lint'`,
-prints `Usage: bashrs [OPTIONS] <COMMAND>`. Mechanism: `clap_builder-4.6.6/src/output/usage.rs`
+prints `Usage: bashrs [OPTIONS] <COMMAND>`. Mechanism: `clap_builder-4.6.6/src/output/usage.rs:75-95`
 `write_usage_no_title` is `#[cfg(not(feature = "usage"))] { false }` — writes nothing while the help
-template still emits the heading; clap's `default` is
-`["std","color","help","usage","error-context","suggestions"]`.
+template still emits the heading; clap's `default` (`clap-4.6.6/Cargo.toml:114-121`) is
+`["std","color","help","usage","error-context","suggestions"]`. The suggestion and footer text lives
+in `clap_builder-4.6.6/src/error/format.rs`: `did_you_mean` at `:471-494` is
+`#[cfg(feature = "error-context")]`, and the `KindFormatter` this build falls back to (`:39-56`)
+never calls `try_help` (`:457`), which is why the 34 B error has no `For more information, try …`
+footer at all.
 **How it survived:** `grep -rn 'contains("Usage:")' src/ tests/` → **14 sites**, not the five filed.
 The load-bearing one is *product code*: `src/docs_enforcement/cli_checker_validation.rs:74`
 `report.has_usage_section = help_text.contains("Usage:")`, one of five conjuncts of
@@ -1307,46 +1809,221 @@ its own empty Usage sections as present.** Test-side: `src/tests/clap_command_st
 `tests/modules/cli_docs_enforcement.rs:58,77,423,446`; `tests/bin/pmat_tests.rs:21`;
 `tests/modules/quality_harness/mod.rs:2132`; `tests/modules/cli_functional_harness.rs:20`;
 `tests/modules/cli_comprehensive_integration.rs:567`.
-**Strongest single artefact:** commit `02292aaf8` (2026-08-20, on master, "fix: a bad flag was
-reported as an unrecognized subcommand") quotes its own verified "Now:" output as
-`error: unrecognized subcommand 'analyz'` / `tip: some similar subcommands exist` /
-`Usage: pmat [OPTIONS] <COMMAND>`. Measured on a binary *containing* that commit: no token, no tip,
-no usage line. A shipped fix was verified against a clap built with default features and its
+**Strongest single artefact:** commit `02292aaf8` (2026-08-20, an ancestor of `01fba4f65`, "fix: a
+bad flag was reported as an unrecognized subcommand") quotes its own verified "Now:" output as
+`error: unrecognized subcommand 'analyz'` / `tip: some similar subcommands exist: 'a', 'an', 'analyze'` /
+`Usage: pmat [OPTIONS] <COMMAND>` / `error: unexpected argument '--bogus-flag' found` /
+`Usage: pmat analyze complexity [OPTIONS]`. Measured on a binary *containing* that commit: no token,
+no tip, no usage line. A shipped fix was verified against a clap built with default features and its
 evidence never held in the shipped build.
+**The cheap fake is already in-tree.** `src/cli/help_generator_formatting.rs:210-227`
+(`format_command_not_found`, reached from `:45`, behind `HelpGenerator`, exported at
+`src/cli/mod.rs:65`) already prints `Did you mean:` with fuzzy suggestions — but it never sees
+clap's parse errors. It is one `main` edit away from satisfying any test that only greps for the
+word *similar*. The acceptance test below is written so that it does not.
 
 **Proposal.** Add `"usage", "error-context", "suggestions"` (consider `"color"`, `"wrap_help"`) at
 `Cargo.toml:226`. Repair **all 14** sites to assert content, including the product checker, so the
-regression cannot return the way it arrived.
+regression cannot return the way it arrived. Do **not** substitute `Command::override_usage`, a
+hand-rolled help printer, or a canned tip line: clap consults `get_overridden_usage()` at
+`usage.rs:77`, *before* the `#[cfg(feature = "usage")]` gate at `:81`, so an ~8-line recursive walk
+over `Cli::command()` produces all 71 usage lines from one format string with the dependency line
+untouched — that is a fake, and legs 6b/7/9 below reject it.
 
-**Acceptance test.** Five legs, all false today.
+**Acceptance test.** Nine legs. **Every one of the nine fails on the HEAD binary
+(`01fba4f65`, `pmat 3.34.0`, 54,633,288 B) — measured, one leg at a time, transcript below.** No leg
+pins a census constant, so all nine are permanent-gate-safe. Five sub-assertions are marked
+`CONTROL`: they are green today **and must stay green after the fix** — they are what rejects the
+lazy fixes, and a reader must not mistake them for evidence of the defect.
+
 ```sh
-set -euo pipefail; fail(){ echo "FAIL: $*"; exit 1; }
-pmat --help | grep -qE '^Usage: +pmat .*<COMMAND>'        || fail "leg 1"
+set -euo pipefail
+fail(){ echo "FAIL: $*"; exit 1; }
+# clap exits 2 on a usage error, so `pmat … | grep` under pipefail returns 2 even
+# when grep matches. Capture first, match second.
+run(){ out=$("$@" 2>&1 || true); }
+say(){ printf '%s' "$out"; }
+
+# ---- leg 1 — root usage line -------------------------------------------- GATE
+pmat --help | grep -qE '^Usage: +pmat .*<COMMAND>' || fail "leg 1: root Usage line"
+
+# ---- leg 2 — second-level usage line ------------------------------------ GATE
 pmat quality-gate --help | grep -qE '^Usage: +pmat quality-gate' || fail "leg 2"
-pmat analyze complexity --bogus-flag 2>&1 | grep -q -- '--bogus-flag' || fail "leg 3"
-pmat analyze complexit 2>&1 | grep -qiE 'similar|did you mean'        || fail "leg 4"
-# leg 5 — accumulate, then assert emptiness; the denominator guard is its own assertion
+
+# ---- leg 3 — DIFFERENTIAL error context --------------------------------- GATE
+run pmat analyze complexity -p /tmp/zzsentinel-Q7x --zzz-nope
+say | grep -qF -- '--zzz-nope' || fail "leg 3a: error does not name the bad flag"
+if say | grep -qF -- 'zzsentinel-Q7x'; then
+  fail "leg 3b CONTROL: error echoes argv instead of identifying the token"
+fi
+say | grep -qF "For more information, try '" || fail "leg 3c: no error-context footer"
+
+# ---- leg 4 — NEAREST-NEIGHBOUR suggestions ------------------------------ GATE
+run pmat analyze complexit
+say | grep -qw 'complexity' || fail "leg 4a: no suggestion for 'complexit'"
+run pmat analyze dead-cod
+say | grep -qw 'dead-code'  || fail "leg 4b: no suggestion for 'dead-cod'"
+if say | grep -qw 'complexity'; then
+  fail "leg 4c CONTROL: suggestion is constant, not computed"
+fi
+run pmat analyze zzzzqqqq
+if say | grep -qwE 'complexity|dead-code'; then
+  fail "leg 4d CONTROL: suggests a neighbour for a nonsense token"
+fi
+
+# ---- leg 5 — every advertised subcommand, as an INVARIANT ---------------- GATE
 cmds=$(pmat --help | awk '/^Commands:/{f=1;next} /^Options:/{f=0} f && /^  [a-z]/ {print $1}' | sort -u)
-[ "$(printf '%s\n' "$cmds" | wc -l)" -ge 70 ] || fail "leg 5 denominator: only $(printf '%s\n' "$cmds" | wc -l) subcommands"
-missing=$(for c in $cmds; do
-  pmat "$c" --help 2>&1 | grep -qE '^Usage: +pmat' || echo "$c"; done)
-# `help` is clap's built-in and legitimately has no help page
-missing=$(printf '%s\n' "$missing" | grep -v '^help$' | grep -v '^$' || true)
-[ -z "$missing" ] || fail "leg 5: no usable Usage line for: $missing"
+# anti-shrink guard, stated as an invariant rather than a census pin: the leg must
+# not pass by emptying the Commands block.
+for spine in analyze context quality-gate query score verify; do
+  printf '%s\n' "$cmds" | grep -qx "$spine" \
+    || fail "leg 5 guard: '$spine' absent — extractor broken or surface shrunk"
+done
+missing=$(printf '%s\n' "$cmds" | while read -r c; do
+    if [ "$c" != help ]; then          # clap's built-in; legitimately has no help page
+      h=$(pmat "$c" --help 2>&1 || true)
+      printf '%s\n' "$h" | grep -qE "^Usage: +pmat $c( |\$)" || printf '%s\n' "$c"
+    fi
+  done)
+[ -z "$missing" ] || fail "leg 5: no usable Usage line for: $(printf '%s' "$missing" | tr '\n' ' ')"
+
+# ---- leg 6 — full path AND placeholder on the SAME line ------------------ GATE
+u=$(pmat analyze complexity --help | grep -m1 -E '^Usage:' || true)
+printf '%s' "$u" | grep -qE '^Usage: +pmat analyze complexity +(\[OPTIONS\]|<|\.\.\.)' \
+  || fail "leg 6a: leaf usage line is not the full three-level path + placeholder"
+if printf '%s' "$u" | grep -qF '<COMMAND>'; then
+  fail "leg 6b CONTROL: leaf command advertises <COMMAND> — one format string, not clap"
+fi
+pmat analyze --help | grep -qE '^Usage: +pmat analyze .*<COMMAND>' \
+  || fail "leg 6c: parent usage line omits <COMMAND>"
+
+# ---- leg 7 — the mechanism ----------------------------------------------- GATE
+[ "$(grep -c '^clap = ' Cargo.toml)" -eq 1 ] || fail "leg 7a: not exactly one clap dependency line"
+line=$(grep -m1 '^clap = ' Cargo.toml)
+for f in usage error-context suggestions; do
+  printf '%s' "$line" | grep -qF "\"$f\"" || fail "leg 7b: Cargo.toml clap lacks \"$f\""
+done
+if grep -rq --include='*.rs' 'override_usage' src/; then
+  fail "leg 7c CONTROL: usage is hardcoded, not generated by clap"
+fi
+
+# ---- leg 8 — the blind guards -------------------------------------------- GATE
+bare=$(grep -rn 'contains("Usage:")' src/ tests/ | wc -l || true)
+[ "$bare" -eq 0 ] || fail "leg 8: $bare bare contains(\"Usage:\") predicates remain"
+
+# ---- leg 9 — the shipped artefact, not just the manifest ----------------- GATE
+bin=$(command -v pmat) || fail "leg 9: pmat not on PATH"
+grep -qaE ' (a|some) similar ' "$bin" \
+  || fail "leg 9: clap's did_you_mean literals absent from the binary"
+
+echo "ALL LEGS PASS"
 ```
-**CORRECTION — the merged leg 5 could not fail.** Its `for … do … || echo "MISSING $c"; done` loop
-exits with the status of its last command. Run verbatim against the HEAD binary it **printed 71
-`MISSING <subcommand>` lines and returned exit 0** — the identical shell defect §3 and §8.6
-diagnose, shipped inside an item about gates that cannot fail. The version above accumulates and
-asserts emptiness. **The sweep's baseline is 0 of 71, not "1 of 71"**, and the denominator guard is
-now its own failing assertion rather than prose, so the leg cannot pass by shrinking the list.
-*Anti-vacuity.* **(a)** unit test on the product code: `validate_sections("Usage: \n\nOptions:\n-h\n",
-&mut r)` must leave `r.has_usage_section == false` and `r.is_valid() == false` — fails today.
-**(b)** a source assertion that the bare predicate is gone from all 14 sites. **(c)** `Usage: pmat`
-alone is gameable by one `override_usage` or a hardcoded footer (clap honours
-`get_overridden_usage()` on the same path either way), so assert the line names the **full
-subcommand path** plus a placeholder: `^Usage: +pmat analyze complexity` and a match on
-`\[OPTIONS\]|<|\.\.\.` — a three-level path no single hardcode produces.
+
+**Transcript at HEAD (`01fba4f65`), legs run individually so each is seen to fail on its own:**
+
+```
+[exit 1] leg 1: FAIL: leg 1: root Usage line
+[exit 1] leg 2: FAIL: leg 2
+[exit 1] leg 3: FAIL: leg 3a: error does not name the bad flag
+[exit 1] leg 4: FAIL: leg 4a: no suggestion for 'complexit'
+[exit 1] leg 5: FAIL: leg 5: no usable Usage line for: agent agy analyze brick-score
+                cache … verify work            (70 names — all but `help`)
+[exit 1] leg 6: FAIL: leg 6a: leaf usage line is not the full three-level path + placeholder
+[exit 1] leg 7: FAIL: leg 7b: Cargo.toml clap lacks "usage"
+[exit 1] leg 8: FAIL: leg 8: 14 bare contains("Usage:") predicates remain
+[exit 1] leg 9: FAIL: leg 9: clap's did_you_mean literals absent from the binary
+controls, run in isolation: 3b green · 4c green · 4d green · 6b green · 7c green (exit 0)
+```
+
+**CORRECTION 1 — the merged leg 5 could not fail.** Its `for … do … || echo "MISSING $c"; done`
+loop exits with the status of its last command. Run verbatim against the HEAD binary it **printed
+71 `MISSING <subcommand>` lines and returned exit 0** — the identical shell defect §3 and §8.6
+diagnose, shipped inside an item about gates that cannot fail. Leg 5 above accumulates and asserts
+emptiness. **The sweep's baseline is 0 of 71, not "1 of 71".**
+
+**CORRECTION 2 — the merged legs 3 and 4 could not *pass*.** Both were written
+`pmat … 2>&1 | grep -q …`, and clap exits **2** on a usage error, so under this section's mandatory
+`set -o pipefail` the pipeline returns 2 *even when grep matches*. Proved with a stand-in that
+prints clap's exact fixed output and exits 2: pipeline status **2**; the same stand-in returning 0
+gives 0. Those legs therefore failed identically before and after any fix and distinguished nothing
+— the same class of defect as CORRECTION 1, in the same item. Hence `run()`/`say()`: capture first,
+match second.
+
+**CORRECTION 3 — the merged anti-vacuity (c) was half green and its argument was wrong.** Its
+placeholder half, `pmat analyze complexity --help | grep -qE '\[OPTIONS\]|<|\.\.\.'`, **exits 0 on
+the unfixed binary**, matched by `--mode <MODE>` in the *Options* block, so as two separate greps
+it asserted nothing. It is now one anchored regex on the usage line itself (leg 6a). And its stated
+justification — that a full three-level path is "a three-level path no single hardcode produces" —
+is **false**, refuted by this item's own mechanism paragraph: `get_overridden_usage()` is consulted
+at `usage.rs:77`, before the `usage` cfg gate, so one recursive `override_usage` walk emits all 71
+paths. The anti-gaming burden therefore moves off output shape and onto the mechanism (legs 7, 9)
+and onto shape properties one format string *cannot* satisfy (leg 6b: a leaf must not advertise
+`<COMMAND>` while its parent must).
+
+**Why each leg exists — the lazy fix it rejects.** Each was measured against a stand-in `pmat` on
+`PATH` implementing exactly that fix, with `Cargo.toml:226` untouched.
+
+| lazy fix | passes the merged 5 legs? | rejected by |
+|---|---|---|
+| recursive `override_usage(format!("pmat {path} [OPTIONS] <COMMAND>"))` over `Cli::command()` | **yes, all five + anti-vacuity (c)** | 6b (leaf must not say `<COMMAND>`), 7c, 7b, 9 |
+| `eprintln!("… {}", env::args().join(" "))` in main's error branch | yes (leg 3) | 3b (sentinel `zzsentinel-Q7x` passed to `-p` must not appear) |
+| one unconditional `tip: … similar …` line | yes (leg 4) | 4a/4b/4c/4d (two typos ⇒ two *different* real commands; nonsense ⇒ neither) |
+| hardcoding the exact word leg 4a wants (`tip: a similar subcommand exists: 'complexity'`) | yes | 4b, 4c, 6c, 7b, 8 |
+| wiring `HelpGenerator::format_command_not_found` (a real fuzzy suggester, already in-tree) into `main` | yes | 3c (clap's exact footer), 7b, 9 |
+| shrinking the advertised surface so the old `-ge 70` floor still holds | yes | leg 5's spine invariant — and no count is pinned, so there is nothing to shrink *under* |
+| a hand-rolled help printer in `main` intercepting `--help` before clap | yes | 7a/7b, 9, 3c |
+
+**On leg 9.** It is the only leg that reads the *artefact* rather than the manifest, and it exists
+so a fix cannot be "edited `Cargo.toml`, shipped a stale or feature-unified binary". The sentinel is
+the format-string fragment in `did_you_mean` (`clap_builder-4.6.6/src/error/format.rs:471-494`,
+`#[cfg(feature = "error-context")]`). **Verified in both directions on this box**, which is what
+makes it a gate rather than a guess: `grep -qaE ' (a|some) similar '` **fails** on
+`release/pmat` (0 matches for ` a similar `, ` some similar `, `tip:`) and **passes** on
+`~/.cargo/bin/bashrs` 7.0.1, an unrelated clap-default-features binary (2 and 1 matches). It is
+pinned to clap 4.6.x; if clap moves, re-derive with
+`grep -rn 'similar {context}' ~/.cargo/registry/src/*/clap_builder-*/src/error/format.rs`.
+
+*Anti-vacuity — the product-code half, in `src/docs_enforcement/cli_checker_tests.rs` (the file
+`cli_checker.rs` `include!`s, so `use super::*` reaches the private `validate_sections`).*
+**DEFERRED here: needs `cargo test -p pmat --lib docs_enforcement`, which this audit's read-only
+rules forbid; it must be run in the PR.** The merged wording was vacuous in half and must not be
+implemented as written: `is_valid()` ANDs `has_help` **first**
+(`cli_checker.rs:36-42`), and `CliDocumentationReport` has no `Default`, so any hand-built fixture
+with the natural `has_help: false` makes `is_valid() == false` before a line of the fix is written.
+Set every other conjunct true so the usage conjunct is the only thing that can flip it, and add the
+positive control so "always report no usage section" cannot pass:
+
+```rust
+#[test]
+fn an_empty_usage_heading_is_not_a_usage_section() {
+    // NEGATIVE — this is exactly what clap-with-`usage`-off emits today.
+    let mut r = CliDocumentationReport {
+        command: "x".to_string(),
+        has_help: true,                 // ← every other is_valid() conjunct satisfied,
+        has_usage_section: false,       //   so the usage conjunct alone decides
+        has_options_section: false,     //   (validate_sections sets this one)
+        has_examples_section: false,
+        documented_flags: vec![],
+        generic_descriptions: vec![],
+        missing_descriptions: vec![],
+        issues: vec![],
+    };
+    validate_sections("Usage: \n\nOptions:\n  -h, --help  Print help\n", &mut r);
+    assert!(!r.has_usage_section, "an empty `Usage:` heading is not a usage section");
+    assert!(r.has_options_section, "guard: only the usage conjunct may be false");
+    assert!(!r.is_valid(), "attributable to the usage conjunct alone");
+
+    // POSITIVE CONTROL — a real usage line must still validate, so the fix cannot be
+    // "make has_usage_section always false".
+    let mut ok = CliDocumentationReport {
+        has_usage_section: false, issues: vec![], ..r.clone()
+    };
+    validate_sections("Usage: pmat analyze complexity [OPTIONS]\n\nOptions:\n  -h, --help  Print help\n",
+                      &mut ok);
+    assert!(ok.has_usage_section);
+    assert!(ok.is_valid());
+}
+```
 
 **Effort.** **S** for the dependency line; the 14 guard repairs are mechanical.
 
@@ -1356,72 +2033,272 @@ for what should be a few hundred KB (strsim + anstream). But the **quiet band is
 (52.25–57.75 MB), ~3.1 MB before the test prints drift loudly; expect that output rather than
 treating it as a regression. **Non-goal:** widening `QUIET_PCT` or `FAIL_PCT`. Deliberately raising
 `EXPECTED_BYTES` is the documented process (`binary_size_band.rs:162`); loosening bands is not.
+Second risk, from leg 8: some of the 14 sites are `assert!`s in tests that will start failing the
+moment they assert *content*; that is the point, but it means the guard repairs and the dependency
+line must land in the same PR, not sequenced.
 
 **Related issue.** #1018 (the 14 blind guards and the product checker), #999 (discovery). **No open
 or closed issue names this defect**, and `fable-review.md` has zero hits for clap/usage/help-text.
 
----
-
 ### 8.6 CRUX-06 — `build.rs:21` declares a path outside the repo, so there is no incremental build
 
-**Problem.** `cargo:rerun-if-changed=../assets/demo/` names a path that does not exist
-(`ls -d ../assets` → *No such file*), carried into the root `build.rs` by `2aa5832a1` (the
-single-crate refactor that deleted `server/build.rs`, where it resolved). Line 20 already declares
-the real `assets/demo/`. Cargo treats a declared-but-missing rerun target as permanently stale, so
+**Problem.** `cargo:rerun-if-changed=../assets/demo/` names a path **outside `CARGO_MANIFEST_DIR`**,
+and outside version control. It was carried into the root `build.rs` by `2aa5832a1` (the single-crate
+refactor that deleted `server/build.rs`, where it resolved); line 20 already declares the real,
+present `assets/demo/`. Cargo treats a declared-but-missing rerun target as permanently stale, so
 the build script re-runs and the lib and bin relink on **every** invocation.
 
+State the defect as *escape*, not as *absence* — the two differ, and the difference is the whole of
+this item's history. An earlier draft's acceptance script asserted only `[ -e "$p" ]` while its own
+Proposal asked that "each resolves under `CARGO_MANIFEST_DIR`"; the script was therefore strictly
+weaker than the fix it was policing, and three separate one-line dodges were **measured green**
+against it with the defect fully intact (below). A watch that leaves the manifest dir is wrong
+whether or not it happens to resolve on the machine doing the checking: it makes the build's
+freshness a function of the runner's parent directory.
+
 **Evidence.** §5.5: 55.28 s wall / 263.46 s user / 499 % for a no-op release build, twice;
-`build3.gitstat.before` == `.after`; cargo's fingerprint log names exactly one stale item. Static
-replay at HEAD: 10 directives, `../assets/demo/` the only missing one. Mechanism reproduced in an
-isolated 3-file control crate: declaring one present and one absent path reproduces pmat's exact
-messages on every no-op build; deleting the missing-path line makes the next two builds print
-`Finished dev profile … in 0.00s` with no `Compiling` line. No masked second cause: every other
-declared path's max recursive mtime is weeks older than the build-script output fingerprint. Line 21
-is dead in a second sense — its only consumer, `minify_demo_assets()` (`build.rs:489`), runs at
-`:76` behind `if env::var("CARGO_FEATURE_DEMO").is_ok()`, and `demo` is not a default feature.
+`build3.gitstat.before` == `.after`; cargo's fingerprint log names exactly one stale item,
+`stale: missing ".../../assets/demo/"`. Static replay at HEAD (`8d30699ca`): `grep -n
+'rerun-if-changed' build.rs` → 10 sites (`:19-23`, `:1393`, `:1487`, `:1515`, `:1677`, `:1678`) =
+nine distinct literal paths plus one interpolated directive; `../assets/demo/` is the only literal
+that does not exist, and `ls -d ../assets` → *No such file or directory*.
+
+*Origin, verified.* `2aa5832a1` "refactor: convert workspace to single-crate project structure"
+shows as a pure rename, `server/build.rs => build.rs | 0`. At `2aa5832a1^` the identical directive
+sat at `server/build.rs:13`, and `git ls-tree -d 2aa5832a1^ assets/demo` returns a repo-root
+`assets/demo` tree — so `../assets/demo/` resolved from `server/` and stopped resolving the moment
+the file moved up one level. Nothing was rewritten; the ground moved.
+
+*Cargo really is tracking it, obtained without running a build.* The recorded fingerprint of the
+last release build, `<target>/release/.fingerprint/pmat-*/run-build-script-build-script-build.json`,
+carries under `local[].RerunIfChanged.paths` exactly fifteen entries — `.git/HEAD`, `.git/index`,
+`assets/vendor/`, `assets/demo/`, **`../assets/demo/`**, `templates/`,
+`src/schema/refactor_state.capnp`, `contracts/binding.yaml`, `mcp_tool_schemas`, and six
+`mcp_tool_schemas/*.json` — of which `../assets/demo/` is the only one that does not exist. This is
+cargo's own bookkeeping, not a re-derivation from the source.
+
+*Mechanism, isolated.* Reproduced in a 3-file control crate: declaring one present and one absent
+path reproduces pmat's exact messages on every no-op build; deleting the missing-path line makes the
+next two builds print `Finished dev profile … in 0.00s` with no `Compiling` line.
+
+**CORRECTION — the "no masked second cause" sentence was measurement-time-dependent and is false
+today.** An earlier draft claimed "every other declared path's max recursive mtime is weeks older
+than the build-script output fingerprint". Measured at HEAD: the six non-provenance paths are indeed
+weeks older (`assets/vendor` 2026-04-20, `assets/demo` and the capnp schema 2026-07-02, `templates`
+2026-08-15, `contracts/binding.yaml` and `mcp_tool_schemas` 2026-08-21) against a fingerprint of
+2026-09-02 03:35:52 — but `.git/HEAD` is 2026-09-02 **14:38:41** and `.git/index` is **15:08:08**,
+both *newer*. That does not disturb the diagnosis (a missing path is stale unconditionally; a
+present-but-newer one only after a git operation), and the Risk paragraph below already states the
+`.git/index` re-trigger correctly. It does mean "no masked second cause" holds **only on a
+git-quiet tree**, which is why the behavioural leg's precondition is corrected below.
+
+*Dead in a second sense.* Line 21's only consumer is `minify_demo_assets()` (`build.rs:489`), which
+reads `Path::new("../assets/demo")` at `:492` and is called at `:77` behind
+`if env::var("CARGO_FEATURE_DEMO").is_ok() && !is_publishing()` (`:75`) — and `demo`
+(`Cargo.toml:586`) is not in `default` (`Cargo.toml:461` = `core-languages`, `viz`, `http-client`,
+`standard-deps`, `mcp-http`). The line watches a path for a function no default build ever calls.
 
 **Proposal.** Delete `build.rs:21`. Close the class with a `--lib` test extracting every literal
-`cargo:rerun-if-changed=<path>`, asserting each resolves under `CARGO_MANIFEST_DIR`, and asserting
-it extracted enough paths that a broken regex fails rather than certifies.
+`cargo:rerun-if-changed=<path>` and asserting **containment before existence**: reject any declared
+path whose components include `Component::ParentDir`, `RootDir` or `Prefix` *before* touching the
+filesystem, then assert `Path::new(env!("CARGO_MANIFEST_DIR")).join(p).exists()`. Do **not** reach
+for `canonicalize()` alone — it fails on the very path under test, which would reclassify the defect
+as an I/O error and lose the shape violation. The same test must assert it extracted enough paths
+that a rotted regex fails rather than certifies, and must assert the required watches **by name**
+rather than by count.
 
-**Acceptance test — the merged version could not fail; this one does.**
+**Acceptance test — the merged version was green against three separate one-line dodges; this one
+is not.** Requires GNU `grep -P`, `jq`, and `cargo metadata`. Run from anywhere inside the checkout.
+
 ```sh
-set -uo pipefail; fail(){ echo "FAIL: $*"; exit 1; }
-n=$(grep -c 'rerun-if-changed=' build.rs) || fail "build.rs unreadable"
-[ "$n" -ge 9 ] || fail "only $n directives (expected >=9)"
-grep -q 'rerun-if-changed=\.git/HEAD'  build.rs || fail "provenance watch .git/HEAD removed"
-grep -q 'rerun-if-changed=\.git/index' build.rs || fail "provenance watch .git/index removed"
-dyn=$(grep -c 'rerun-if-changed={' build.rs); [ "$dyn" -eq 1 ] || fail "$dyn dynamic directives"
-bad=$(grep -oP 'rerun-if-changed=\K[^"]+' build.rs | grep -v '[{$]' \
-      | while read -r p; do [ -e "$p" ] || echo "$p"; done)
-[ -z "$bad" ] || fail "declared but missing: $bad"
+set -euo pipefail
+fail(){ echo "FAIL: $*" >&2; exit 1; }
+
+# audit <tree> — prints one finding per line for every rerun-if-changed defect in
+# <tree>/build.rs and nothing at all when it is clean. Legs 1-4 live here so leg 5
+# can replay them against planted mutants.
+audit() {
+  t=$1
+  raw=$(grep -oP 'cargo:rerun-if-changed=\K[^"]*' "$t/build.rs") \
+       || { echo "EXTRACTOR-ROTTED:no-directives"; return 0; }
+  lit=$(printf '%s\n' "$raw" | grep -v '[{$]' | sort -u)
+  n=$(printf '%s\n' "$lit" | grep -c . ) || n=0
+  # leg 1 CONTROL — green today AND after the fix. Anti-vacuity only: a rotted
+  # regex must fail rather than certify. NOT evidence of the defect. `sort -u`
+  # first, so duplicate lines cannot pad the floor.
+  [ "$n" -ge 8 ] || echo "EXTRACTOR-ROTTED:only-${n}-distinct-literals"
+  # leg 2 INVARIANT — required watches by NAME, so a deleted watch cannot be
+  # padded back with a duplicate of another. Replaces the old ">= 9" census.
+  for req in assets/vendor/ assets/demo/ templates/ \
+             src/schema/refactor_state.capnp contracts/binding.yaml \
+             mcp_tool_schemas .git/HEAD .git/index; do
+    printf '%s\n' "$lit" | grep -qxF "$req" || echo "WATCH-REMOVED:$req"
+  done
+  # leg 3 — exactly one interpolated directive and it is the schema walk. Matches
+  # interpolation ANYWHERE in the directive, not just immediately after '='.
+  dynl=$(grep -n 'cargo:rerun-if-changed=[^"]*[{$]' "$t/build.rs" || true)
+  dynn=$(printf '%s\n' "$dynl" | grep -c . ) || dynn=0
+  [ "$dynn" -eq 1 ] || echo "INTERPOLATED-DIRECTIVES:$dynn"
+  printf '%s\n' "$dynl" | grep -q 'path\.display()' || echo "UNKNOWN-INTERPOLATED-DIRECTIVE"
+  printf '%s\n' "$dynl" | sed -n 's/.*cargo:rerun-if-changed=\([^{$]*\)[{$].*/\1/p' \
+    | while read -r pre; do
+        case "$pre" in /*|*..*) echo "ESCAPES-MANIFEST-DIR:${pre}{}";; esac
+      done
+  # leg 4 — THE DEFECT DETECTOR. Every literal path must be manifest-dir-relative
+  # (SHAPE, checked before existence) AND present under the tree under test.
+  printf '%s\n' "$lit" | while read -r p; do
+    [ -n "$p" ] || continue
+    case "$p" in /*|*..*) echo "ESCAPES-MANIFEST-DIR:$p"; continue;; esac
+    [ -e "$t/$p" ] || echo "MISSING:$p"
+  done
+}
+
+root=$(git rev-parse --show-toplevel) || fail "leg 0: not run from inside the checkout"
+test -f "$root/build.rs" || fail "leg 0: no build.rs at $root"
+
+# ---- leg 5 CONTROL (green today by construction): the auditor is mutation-tested.
+sb=$(mktemp -d) || fail "leg 5: mktemp"
+trap 'rm -rf "$sb"' EXIT
+plant() {  # plant <name> -> echoes a sandbox whose repo/ has the real skeleton
+  d=$sb/$1; mkdir -p "$d/repo/assets/vendor" "$d/repo/assets/demo" "$d/repo/templates" \
+     "$d/repo/src/schema" "$d/repo/contracts" "$d/repo/mcp_tool_schemas" "$d/repo/.git"
+  : >"$d/repo/src/schema/refactor_state.capnp"; : >"$d/repo/contracts/binding.yaml"
+  : >"$d/repo/.git/HEAD"; : >"$d/repo/.git/index"
+  cp "$root/build.rs" "$d/repo/build.rs"; echo "$d"
+}
+reject(){ [ -n "$(audit "$2/repo")" ] || fail "leg 5: mutant $1 ACCEPTED — the gate is gameable by it"; }
+accept(){ [ -z "$(audit "$2/repo")" ] || fail "leg 5: real fix REJECTED — the gate can never pass"; }
+
+d=$(plant g1); mkdir -p "$d/assets/demo"; reject "G1 out-of-tree sibling materialised" "$d"
+d=$(plant g2); mkdir -p "$d/assets/demo"
+  sed -i 's|println!("cargo:rerun-if-changed=../assets/demo/");|println!("cargo:rerun-if-changed=../{}", "assets/demo/");|' "$d/repo/build.rs"
+  reject "G2 escape hidden behind an interpolation" "$d"
+d=$(plant g2b); mkdir -p "$d/assets/demo"
+  sed -i 's|println!("cargo:rerun-if-changed=../assets/demo/");|println!("cargo:rerun-if-changed={}", "../assets/demo/");|' "$d/repo/build.rs"
+  reject "G2b whole path behind {}" "$d"
+d=$(plant g3); mkdir -p "$d/pmat-book"
+  sed -i 's|cargo:rerun-if-changed=../assets/demo/|cargo:rerun-if-changed=../pmat-book/|' "$d/repo/build.rs"
+  reject "G3 repointed at a different EXISTING sibling" "$d"
+d=$(plant g4)
+  awk '/rerun-if-changed=\.\.\/assets\/demo\/|rerun-if-changed=\.git\/HEAD|rerun-if-changed=\.git\/index/{next}
+       /rerun-if-changed=templates\//{print;print;print;next}{print}' \
+      "$d/repo/build.rs" >"$d/b" && mv "$d/b" "$d/repo/build.rs"
+  reject "G4 provenance watches deleted, count padded with duplicates" "$d"
+d=$(plant g5)
+  sed -i 's|cargo:rerun-if-changed=[^"]*|cargo:rerun-if-changed=templates/|g' "$d/repo/build.rs"
+  reject "G5 every directive flattened to one present path" "$d"
+d=$(plant fix)
+  grep -vF 'rerun-if-changed=../assets/demo/' "$d/repo/build.rs" >"$d/b" && mv "$d/b" "$d/repo/build.rs"
+  accept "the real fix (build.rs:21 deleted, nothing else)" "$d"
+echo "leg 5 CONTROL ok: 6 games rejected, the real fix accepted"
+
+# ---- leg 6 — the verdict on the tree under test. RED today.
+found=$(audit "$root") || fail "leg 6: auditor crashed"
+[ -z "$found" ] || fail "leg 6: $(printf '%s' "$found" | tr '\n' ' ')"
+
+# ---- leg 7 — cargo's own recorded fingerprint must agree. Precondition: one
+# completed release build. Fails loudly (never skips) when unmet.
+td=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory') \
+   || fail "leg 7: cargo metadata failed"
+fp=$(ls -t "$td"/release/.fingerprint/pmat-*/run-build-script-build-script-build.json 2>/dev/null | head -1) || true
+[ -n "${fp:-}" ] || fail "leg 7: no build-script fingerprint under $td — run 'cargo build --release' once to arm this leg"
+jq -e '[.local[].RerunIfChanged.paths // empty] | flatten | length >= 9' "$fp" >/dev/null \
+   || fail "leg 7: fingerprint $fp records <9 tracked paths — wrong artefact or a rotted schema"
+esc=$(jq -r '[.local[].RerunIfChanged.paths // empty] | flatten | .[]' "$fp" \
+      | while read -r p; do
+          case "$p" in /*|*..*) echo "TRACKS-ESCAPING:$p"; continue;; esac
+          [ -e "$root/$p" ] || echo "TRACKS-MISSING:$p"
+        done)
+[ -z "$esc" ] || fail "leg 7: cargo is tracking $(printf '%s' "$esc" | tr '\n' ' ')"
+
+echo "PASS: build.rs declares 8 literal watches, all inside CARGO_MANIFEST_DIR and present;"
+echo "      1 interpolated directive (the schema walk); cargo tracks nothing outside the tree."
 ```
-Measured: HEAD → `FAIL: declared but missing: ../assets/demo/`, exit 1. Line 21 deleted → PASS.
-**Dodge 1** (line 21 rewritten as a `{}` format string, defect intact) → FAIL on `2 dynamic
-directives`; the merged version **passed** this dodge, because the `[{$]` filter needed for the one
-legitimate dynamic directive (`build.rs:1515`) also hides a bad path behind a format string.
-**Dodge 2** (delete 21 *and* the two `.git/*` watches, silently weakening `PMAT_GIT_SHA` /
-`PMAT_GIT_DIRTY`, consumed at `src/cli/commands/cli_struct.rs:27,29`) → FAIL on the count. The
-merged script printed `MISSING:` and **exited 0** — a `while read … do [ -e ] || echo; done` loop
-exits with the status of its last command.
-*Behavioural half*, on the mechanism rather than wall-clock, with the git precondition the win
-depends on: `git status --porcelain >/dev/null` before both builds, then a second
-`CARGO_LOG=cargo::core::compiler::fingerprint=info cargo build --release` whose log must contain
-neither `Compiling pmat` nor `stale: missing`. UNVERIFIED by this audit (no `cargo build` was run);
-the control crate is the substitute.
 
-**Effort.** **S** — one deleted line plus a ~15-line text test.
+**Measured at HEAD (`8d30699ca`), from the repo root:**
 
-**Risk.** Essentially none; nothing can depend on a path that does not exist. **Claim correctly:**
-cargo short-circuits on the *first* stale item, so `.git/index` (`build.rs:1678`) was never
-evaluated and re-triggers the same relink after any git operation that rewrites the index. The win
-is "a git-quiet tree now builds incrementally", not "no-op builds are free forever". CI blast radius
-is limited (§5.5). Optional follow-up: `minify_demo_assets()` still reads the same non-existent
-path behind the non-default `demo` feature — the other half of the same fossil.
+```
+leg 5 CONTROL ok: 6 games rejected, the real fix accepted
+FAIL: leg 6: ESCAPES-MANIFEST-DIR:../assets/demo/
+exit=1
+```
 
-**Related issue.** None filed; absent from every issue search and from fable-review §4/§5.
+Leg 6 names `build.rs:21` and names it on **shape**, so it stays red on a box where the sibling
+exists. Leg 7 is unreachable at HEAD because leg 6 fail-fasts, so it was run standalone and is
+independently red for its own reason:
 
----
+```
+fingerprint: <target>/release/.fingerprint/pmat-c1123f33f982d822/run-build-script-build-script-build.json
+FAIL: leg 7: cargo is tracking TRACKS-ESCAPING:../assets/demo/
+exit=1
+```
+
+**Leg 5's mutant table — each game was PASS against the merged script.** Run standalone so every
+classification is visible; the tag after `::` is what the auditor actually printed:
+
+| mutant | the lazy fix it stands for | auditor's verdict |
+|---|---|---|
+| G1 | `mkdir -p ../assets/demo` next to the checkout; `build.rs` untouched | `ESCAPES-MANIFEST-DIR:../assets/demo/` |
+| G2 | line 21 → `println!("cargo:rerun-if-changed=../{}", "assets/demo/")` | `INTERPOLATED-DIRECTIVES:2` + `ESCAPES-MANIFEST-DIR:../{}` |
+| G2b | line 21 → `println!("cargo:rerun-if-changed={}", "../assets/demo/")` | `INTERPOLATED-DIRECTIVES:2` |
+| G3 | line 21 repointed at an existing `../pmat-book/` | `ESCAPES-MANIFEST-DIR:../pmat-book/` |
+| G4 | delete 21 **and** both `.git/*` watches, pad the count with duplicate `templates/` | `EXTRACTOR-ROTTED:only-6-distinct-literals`, `WATCH-REMOVED:.git/HEAD`, `WATCH-REMOVED:.git/index` |
+| G5 | every directive rewritten to the same present path | 7 × `WATCH-REMOVED`, `INTERPOLATED-DIRECTIVES:0`, `UNKNOWN-INTERPOLATED-DIRECTIVE` |
+| **FIX** | **the real repair: delete 21, nothing else** | **ACCEPTED (empty)** |
+
+The `FIX` row is not decoration. A gate that is unconditionally red is the same defect as a gate
+that cannot fail, and an anti-vacuity floor set above what the *fixed* tree can produce makes the
+test unpassable — both classes were found elsewhere in this document. `FIX` is what proves the
+`>= 8` floor is satisfiable: the fixed tree has exactly 8 distinct literal watches, measured, not
+assumed.
+
+**Which legs may become permanent, and which are one-shot.** Legs 2, 3 and 4 are **invariants** and
+belong in CI as the `--lib` test: *every declared watch is inside the manifest dir and present*,
+*the required watches are present by name*, *exactly one directive interpolates and it is the schema
+walk*. Legs 1 and 5 are **controls**, permanent but never evidence — leg 1 is green today and green
+after the fix, and exists solely so a rotted regex fails instead of certifying; leg 5 is green today
+and guards the auditor, not the tree. Leg 7 is **one-shot PR evidence**: it is the cargo-side
+confirmation for this change and it depends on a warm target directory, which CI's fresh checkout
+does not have. No literal whole-tree census is pinned anywhere; the two numeric constants that
+remain (`>= 8` distinct literals, `== 1` interpolated directive) are invariants of this one file's
+structure and both are asserted satisfiable by the `FIX` mutant.
+
+**Behavioural half — DEFERRED, and its precondition is corrected.** The wall-clock proof was **not**
+run by this audit (no `cargo build` was permitted), so the 55.28 s → incremental win remains
+UNVERIFIED; leg 7 corroborates the *mechanism* only. What would run it, on any machine with a warm
+target dir:
+
+```sh
+git status --porcelain >/dev/null                 # tree must be git-quiet
+cargo build --release                             # WARM-UP — not measured
+cargo build --release 2>&1 | tee b1.log           # measured no-op #1
+CARGO_LOG=cargo::core::compiler::fingerprint=info \
+  cargo build --release 2>&1 | tee b2.log         # measured no-op #2
+grep -q 'Compiling pmat' b2.log && exit 1
+grep -q 'stale: missing'  b2.log && exit 1
+```
+
+The warm-up build is the correction: the first build after **any** git operation is stale on
+`.git/index` (`build.rs:1678`) regardless of line 21, so without it the leg goes red for the wrong
+reason and gets dismissed as flaky. That is the same `.git/index` re-trigger the Risk paragraph
+describes, and it is why the Evidence's "no masked second cause" claim holds only on a git-quiet
+tree.
+
+**Effort.** **S** — one deleted line, plus the `--lib` containment test the Proposal describes.
+
+**Risk.** Essentially none; nothing can depend on a path that does not exist, and `minify_demo_assets()`
+— the only consumer — is behind a non-default feature. **Claim correctly:** cargo short-circuits on
+the *first* stale item, so `.git/index` (`build.rs:1678`) was never evaluated and re-triggers the
+same relink after any git operation that rewrites the index. The win is "a git-quiet tree now builds
+incrementally", not "no-op builds are free forever". CI blast radius is limited (§5.5). Optional
+follow-up, the other half of the same fossil: `minify_demo_assets()` still reads
+`Path::new("../assets/demo")` at `build.rs:492` behind the non-default `demo` feature, so enabling
+`demo` today would minify from a directory that does not exist — the acceptance test above does not
+cover it, because it audits directives rather than function bodies.
+
+**Related issue.** None filed; absent from every issue search and from `fable-review.md` §4/§5. The
+*class* — a gate whose verdict depends on the runner's filesystem rather than on the tree under
+test — belongs with #1018 (tests that cannot fail), which does not yet name it.
 
 ### 8.7 CRUX-07 — the index is not a faithful, reproducible view of the tree
 
@@ -1648,146 +2525,680 @@ actually take. Calling every tool exactly as the manifest describes it fails for
 `pmat_index_stats` is declared `additionalProperties: false` with no properties while the live tool
 accepts `rebuild`, so a validating client rejects its own valid call.
 
-**Evidence.** `tool_schema()` (`src/mcp_pmcp/tool_manifest.rs:131-167`) returns one of three canned
-shapes by name, carrying the comment "minimal is not the same as wrong: advertising `paths` for a
+**Evidence.** `tool_schema()` (`src/mcp_pmcp/tool_manifest.rs:131-168`) returns one of three canned
+shapes by name, carries the comment "minimal is not the same as wrong: advertising `paths` for a
 tool whose handler rejects it would put an unusable argument name in a file that ships inside the
-crate (#1029)" — while advertising `paths` for 15 of 19, including the six that reject it.
-Field-by-field diff against a live `tools/list`: names 19/19 equal, descriptions 19/19 equal,
-**inputSchema 19/19 different**. Behavioural probe on a git fixture: **6 of 19 fail** —
-`quality_proxy` (missing `operation`), `pdmt_deterministic_todos` (`requirements`), `git_operation`
-(`path`), `pmat_query_code` (`query`), `pmat_get_function` / `pmat_find_similar` (`function_id`). (A
-7th, `analyze_vacuous_tests`, failed for a legitimate fixture reason — verified by rebuilding the
-fixture with two `#[test]` fns, after which it returns ok.) The six guards at `tool_manifest.rs:239-599`
+crate (#1029)" verbatim at `:139-141` — while advertising `paths` for 15 of 19, including the six
+that reject it — and has exactly one call site, the `"inputSchema"` field of `render_manifest`
+(`:181`). Field-by-field diff of the committed `mcp.json` against a live `tools/list` from the HEAD
+binary: names 19/19 equal, descriptions 19/19 equal, **inputSchema 19/19 different**. Census of the
+two artefacts, same run: shipped **19 tools / 18 properties / 0 property descriptions / 3 `required`
+entries across 3 tools**, live **19 / 51 / 50 / 19 across 18**; the shipped file's entire `required`
+vocabulary is `["project_path"]` against the live `["file_path","function_id","operation","path",
+"paths","project_path","query","requirements"]`. Behavioural probe on a `tempfile` git fixture
+carrying two `#[test]` fns, arguments synthesized **from the shipped manifest**: filling every
+declared property, **6 of 19 fail** on argument shape — `quality_proxy` (missing `operation`),
+`pdmt_deterministic_todos` (`requirements`), `git_operation` (`path`), `pmat_query_code` (`query`),
+`pmat_get_function` / `pmat_find_similar` (`function_id`); sending only what the manifest marks
+`required`, **15 of 19 fail**, the extra nine on `missing field paths`. Those are two different
+probes of the same file and both are red — the acceptance test runs both rather than choosing.
+The **nine** `#[test]` fns at `tool_manifest.rs:238-609` (one an `#[ignore]`d regenerator, `:586`)
 compare names, descriptions, the doc's tool count, two-run determinism and build-artifact paths —
-**none compares inputSchema**. `mcp.json` is absent from `Cargo.toml`'s `exclude`, so the wrong file
-is in the published tarball. The only schema-comparing test,
+**none compares inputSchema**; the word does not appear in the file outside the fabricator at
+`:131` and the renderer at `:181`. `mcp.json` is absent from `Cargo.toml`'s `exclude` (`:21`), there
+is no `include` key, and `cargo package --list --offline` prints `mcp.json` among 4,931 entries, so
+the wrong file is in the published tarball. The only schema-comparing test,
 `src/mcp_pmcp/advertised_schema_parity_tests.rs`, pins each handler's args struct to its own
-`metadata()` — the live side only. Related: `ls mcp_tool_schemas/ | wc -l` → **6** against 19 tools,
-and `tool_metadata!`, the documented entry point, has **zero production call sites**.
+`metadata()` — the live side only; it greps 0 hits for each of `mcp.json`, `render_manifest` and
+`LIVE_MCP_TOOLS`, and its `advertised()` helper (`:65-75`) reads `metadata().input_schema` alone.
+Related: `ls mcp_tool_schemas/ | wc -l` → **6** against 19 tools, and `tool_metadata!`, the
+documented entry point, has **zero production call sites** (five doc comments plus one `#[cfg(test)]`
+use at `tool_schemas_generated.rs:226`).
 
-**CORRECTION.** "19/19 differ" holds under canonical equality, but 3 (`analyze_reachability`,
-`analyze_hardcoded_paths`, `analyze_vacuous_tests`) differ **only** in a property's human-readable
-description; **16 of 19 differ in shape**. State the criterion as "19/19 byte-equal (today 0/19;
-16/19 differ even ignoring description text)" so a fix cannot be scored partial by arguing prose.
+**CORRECTION 1 — the criterion.** "19/19 differ" holds under canonical equality, but 3
+(`analyze_reachability`, `analyze_hardcoded_paths`, `analyze_vacuous_tests`) differ **only** in a
+property's human-readable description; **16 of 19 differ in shape**. State the criterion as "19/19
+byte-equal (today 0/19; 16/19 differ even ignoring description text)" so a fix cannot be scored
+partial by arguing prose. Legs A1 and A2 assert both readings.
+
+**CORRECTION 2 — this item's own Risk paragraph was wrong, and it was the load-bearing sentence.**
+An earlier draft read "CB-1656 already compares the committed manifest to a fresh render, so a
+hand-edit cannot fake the fix". **False.** `check_mcp_manifest_faithful`
+(`src/cli/handlers/comply_handlers/check_handlers/check_macs_artifacts.rs:33-42`) compares
+`manifest_tool_names(value) == canonical_tool_names()` — the sorted **name** set — and its own doc at
+`:3-6` says so ("Compares the tool NAME set … version churn is intentionally ignored").
+`git grep -n render_manifest -- src tests` returns nine hits and **not one** compares it to the
+committed file: `check_macs_tests_artifacts.rs:125,138` write a fresh render into a `tempdir` and
+score *that*, `mcp_manifest.rs:17` is the `--write` regenerator, `:40-58` are determinism and
+name-set tests. The only other read of the committed file is `tool_manifest.rs:568-577`, a
+`"target/release"` substring check. The audit inherited the falsehood from `tool_manifest.rs:9-11`'s
+own module doc, which claims "CB-1656 compares the committed manifest against a fresh render —
+hand-edits are drift". This matters because it is the sentence that persuades a reviewer the
+acceptance test need not pin the shipped file — and without that pin the whole test is passable
+while the packaged artefact stays exactly as broken. Legs A1/A2/B1/B3/D1 close it from outside the
+process; leg E closes it in-tree.
 
 **Proposal.** Delete `tool_schema()`. Render the manifest's inputSchema from each handler's
-`metadata()` — the source `tools/list` serves — and add `manifest_schemas_match_handler_metadata`
-beside `manifest_descriptions_match_handler_metadata`, which already instantiates all 19 handlers
-synchronously. This completes a fix the file half-made one release ago: its module doc (`:16`) reads
-"Only names and counts were ever compared, so the texts drifted for releases"; descriptions were
-pinned in 3.33.0, schemas were left in exactly that state.
+`metadata()` — the source `tools/list` already serves — and add
+`manifest_schemas_match_handler_metadata` beside `manifest_descriptions_match_handler_metadata`,
+which already instantiates all 19 handlers synchronously (`tool_manifest.rs:354-373`). **Then
+regenerate the committed file** (`cargo test --lib regenerate_mcp_json -- --ignored`) **and pin it
+byte-for-byte** with `include_str!("../../mcp.json") == render_manifest(env!("CARGO_PKG_VERSION"))`:
+fixing the renderer without regenerating the file leaves the defect wholly intact in the tarball and
+nothing in the tree today would notice. This completes a fix the file half-made one release ago: its
+module doc (`:16`) reads "Only names and counts were ever compared, so the texts drifted for
+releases"; descriptions were pinned in 3.33.0, schemas were left in exactly that state.
 
-**Acceptance test.** Four legs, all red.
-**A.** Per tool, `render_manifest(v)`'s `inputSchema` must equal that handler's
-`metadata().input_schema` under canonical JSON; assert the handler-vec length equals
-`LIVE_MCP_TOOLS.len()` equals the count of `.tool(` registrations parsed from
-`simple_unified_server.rs` — **not** a hardcoded ≥19, so shrinking the surface cannot pass.
-**B — richness floor, the clause that blocks the lazy fix.** Leg A is an equality between two
-artefacts both under the author's control; the cheapest way to make 19/19 equal is to degrade the
-handlers' `metadata()` down to the canned shape. Measured census, the floor: LIVE = 19 tools /
-**51 properties** / **50 property descriptions** / **19 `required` entries across 18 tools**; the
-manifest today has 18 / 0 / 3 across 3. Assert `properties ≥ 51`, `with-description ≥ 50`,
-`required ≥ 19` over `≥ 18` tools, and that `pmat_index_stats` exposes `rebuild`.
-**C — negative control, asserted not described.** Clone the handler vec, drop one property, assert
-the comparator reports a mismatch; without it a comparator that compares nothing passes forever.
-**D — behavioural, in-repo.** The research script hardcodes both the binary and repo paths, which
-CLAUDE.md's rule forbids; port it to a `tests/` test spawning `env!("CARGO_BIN_EXE_pmat") --mode mcp`
-against a `tempfile` git fixture containing a `#[test]`. Synthesize each call's arguments **from the
-manifest**, honouring `required`/`type`/`enum` (pick `enum[0]`, skip non-required). Assert: every
-tool produced a response (a truncated stream must FAIL, not pass); the enumerated count equals the
-manifest's own `tool_count`; and no response error is in the argument-shape family (`missing field`,
-`Missing required parameter`, `unknown field`, `Invalid arguments`). **Semantic errors must be
-asserted as permitted** — once the manifest carries honest schemas, naive synthesis legitimately
-produces `Invalid function_id format`, `Unsupported dag_type`, `Unsupported format`,
-`Invalid min_grade` (measured: 7 such failures against live schemas), so A and D are in direct
-tension unless D is scoped to the argument-shape family.
+**Acceptance test.** Thirteen legs. **RED at HEAD (evidence): A1, A2, B1, B3, D1, D1b.**
+**GREEN at HEAD by construction and labelled CONTROLS, not evidence: P, A3, B2, C, D2, D3.** A leg
+that is green before the work starts proves nothing about the defect; each is kept only because it
+closes a specific lazy fix, and each says so. **Leg E is DEFERRED** — it needs `cargo test`, which
+the audit session was forbidden.
+
+Run from the repo root. `PMAT_BIN` is located, never hand-written (CLAUDE.md).
+
+```bash
+#!/usr/bin/env bash
+# CRUX-09 acceptance. RED legs: A1 A2 B1 B3 D1 D1b. CONTROLS (green today): P A3 B2 C D2 D3.
+set -euo pipefail
+fail(){ echo "FAIL: $*" >&2; exit 1; }
+
+BIN="${PMAT_BIN:?PMAT_BIN unset — locate it, never hand-write it:
+  cargo build --release --message-format=json 2>/dev/null | python3 -c \"import sys,json;[print(j['executable']) for j in map(json.loads,sys.stdin) if j.get('executable')]\"}"
+REPO="$(git rev-parse --show-toplevel)"
+W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+
+# --- fixture: a real git repo with two #[test] fns (analyze_vacuous_tests needs them) ---
+mkdir -p "$W/fx/src"
+printf '[package]\nname="fx"\nversion="0.1.0"\nedition="2021"\n' > "$W/fx/Cargo.toml"
+cat > "$W/fx/src/lib.rs" <<'RS'
+pub fn add(a: i32, b: i32) -> i32 { a + b }
+#[cfg(test)] mod t {
+    use super::*;
+    #[test] fn a() { assert_eq!(add(1,2),3); }
+    #[test] fn b() { assert!(add(0,0)==0); }
+}
+RS
+git -C "$W/fx" -c init.defaultBranch=main init -q
+git -C "$W/fx" add -A
+git -C "$W/fx" -c core.hooksPath=/dev/null -c user.email=a@b -c user.name=c commit -qm init --no-verify
+
+mcp(){ # mcp <calls.jsonl> <out.jsonl>
+  { echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"crux09","version":"1"}}}'
+    echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+    cat "$1"; } | timeout 900 "$BIN" --mode mcp > "$2" 2>"$2.err"
+}
+
+# ============================ the ONE comparator ============================
+# Every leg re-enters this. Leg C mutates its inputs and asserts it REPORTS,
+# so a comparator that compares nothing fails leg C as well as A and B.
+cat > "$W/cmp.py" <<'PY'
+import json,sys
+canon=lambda o: json.dumps(o,sort_keys=True,separators=(",",":"))
+def sd(o):
+    if isinstance(o,dict): return {k:sd(v) for k,v in o.items() if k!="description"}
+    if isinstance(o,list): return [sd(v) for v in o]
+    return o
+def mismatches(man,live,ig=False):
+    m={t["name"]:t for t in man}; l={t["name"]:t for t in live}; f=sd if ig else (lambda x:x)
+    return sorted(n for n in l
+                  if n not in m or canon(f(m[n].get("inputSchema")))!=canon(f(l[n].get("inputSchema"))))
+def census(ts):
+    p=[(t["name"],k,v) for t in ts for k,v in ((t.get("inputSchema") or {}).get("properties") or {}).items()]
+    r=[(t["name"],x) for t in ts for x in ((t.get("inputSchema") or {}).get("required") or [])]
+    return {"tools":len(ts),"properties":len(p),
+            "with_description":sum(1 for _,_,v in p if (v or {}).get("description")),
+            "required_entries":len(r),"tools_with_required":len({n for n,_ in r}),
+            "required_names":sorted({x for _,x in r}),
+            "index_stats_has_rebuild":any(t["name"]=="pmat_index_stats" and "rebuild" in ((t.get("inputSchema") or {}).get("properties") or {}) for t in ts)}
+if __name__=="__main__":
+    op=sys.argv[1]
+    if op=="mismatch":
+        out=mismatches(json.load(open(sys.argv[2])),json.load(open(sys.argv[3])),len(sys.argv)>4)
+        print(json.dumps({"differ":len(out),"tools":out}))
+    elif op=="census": print(json.dumps(census(json.load(open(sys.argv[2])))))
+PY
+
+# ============================ artefacts under test ==========================
+jq -e '.mcp.tools' "$REPO/mcp.json" > "$W/shipped.json" || fail "mcp.json has no mcp.tools"
+: > "$W/list.jsonl"; echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > "$W/list.jsonl"
+mcp "$W/list.jsonl" "$W/list.out"
+jq -e 'select(.id==2)|.result.tools' "$W/list.out" > "$W/live.json" || fail "tools/list returned nothing"
+
+# --- P: precondition CONTROL (green today). The wrong file really ships. -----
+cargo package --list --offline --allow-dirty 2>/dev/null | grep -qx 'mcp.json' \
+  || fail "P (control): mcp.json is no longer in the package — this item is moot, re-scope it"
+
+# --- A3: CONTROL (green today). Anti-shrink / anti-rename. No literal 19. ----
+jq -e --slurpfile l "$W/live.json" '
+  ([.mcp.tools[].name]|sort) as $mn | ([$l[0][].name]|sort) as $ln |
+  ($mn==$ln) and (.mcp.tool_count == (.mcp.tools|length)) and (.mcp.tool_count == ($l[0]|length))
+' "$REPO/mcp.json" >/dev/null || fail "A3 (control): name set / tool_count drifted between mcp.json and tools/list"
+jq -e --slurpfile l "$W/live.json" '
+  ([$l[0][]|{key:.name,value:.description}]|from_entries) as $ld |
+  all(.mcp.tools[]; .description == $ld[.name])
+' "$REPO/mcp.json" >/dev/null || fail "A3 (control): a description drifted (3.33.0 pinned these)"
+
+# --- A1: RED. The shipped inputSchema must BE the served inputSchema. -------
+python3 "$W/cmp.py" mismatch "$W/shipped.json" "$W/live.json" > "$W/a1.json"
+jq -e '.differ == 0' "$W/a1.json" >/dev/null \
+  || fail "A1: $(jq -r .differ "$W/a1.json")/$(jq -r length "$W/live.json") shipped inputSchemas differ from tools/list: $(jq -c .tools "$W/a1.json")"
+
+# --- A2: RED. Same, ignoring description prose, so no partial credit. -------
+python3 "$W/cmp.py" mismatch "$W/shipped.json" "$W/live.json" --ignore-desc > "$W/a2.json"
+jq -e '.differ == 0' "$W/a2.json" >/dev/null \
+  || fail "A2: $(jq -r .differ "$W/a2.json")/$(jq -r length "$W/live.json") differ in SHAPE, not merely in prose"
+
+python3 "$W/cmp.py" census "$W/shipped.json" > "$W/cs.json"
+python3 "$W/cmp.py" census "$W/live.json"    > "$W/cl.json"
+
+# --- B1: RED. Richness INVARIANT — equality with the live census, no literal.
+jq -e --slurpfile s "$W/cs.json" '
+  ($s[0].properties        == .properties)        and
+  ($s[0].with_description  == .with_description)  and
+  ($s[0].required_entries  == .required_entries)  and
+  ($s[0].tools_with_required == .tools_with_required) and
+  ($s[0].index_stats_has_rebuild == .index_stats_has_rebuild)
+' "$W/cl.json" >/dev/null \
+  || fail "B1: shipped census $(jq -c '{properties,with_description,required_entries,tools_with_required,index_stats_has_rebuild}' "$W/cs.json") != live $(jq -c '{properties,with_description,required_entries,tools_with_required,index_stats_has_rebuild}' "$W/cl.json")"
+
+# --- B2: CONTROL (green today). One-shot floor: the fix must not be a
+#     downgrade of the LIVE side to meet B1. Literals are PR evidence only.
+jq -e '.properties>=51 and .with_description>=50 and .required_entries>=19
+       and .tools_with_required>=18 and .index_stats_has_rebuild' "$W/cl.json" >/dev/null \
+  || fail "B2 (control): live metadata was DEGRADED to make B1 pass"
+
+# --- B3: RED. The required-name set, so the six paths-rejecting tools are named.
+jq -e --slurpfile s "$W/cs.json" '$s[0].required_names == .required_names' "$W/cl.json" >/dev/null \
+  || fail "B3: shipped required names $(jq -c .required_names "$W/cs.json") != live $(jq -c .required_names "$W/cl.json")"
+
+# --- C: CONTROL, green by construction. Four mutations, each must be REPORTED.
+python3 - "$W" <<'PY' || fail "C (control): the comparator did not report a mutation — it compares nothing"
+import json,sys,copy,importlib.util,pathlib
+W=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location("c",W/"cmp.py")
+c=importlib.util.module_from_spec(spec); spec.loader.exec_module(c)
+live=json.load(open(W/"live.json")); ship=json.load(open(W/"shipped.json"))
+assert c.mismatches(live,live)==[], "C0: comparator reports a mismatch against itself"
+m1=copy.deepcopy(live); k=next(iter(m1[0]["inputSchema"]["properties"])); del m1[0]["inputSchema"]["properties"][k]
+assert c.mismatches(m1,live), "C1: dropped property not reported"
+m2=copy.deepcopy(live); m2[0]["inputSchema"]["required"]=[]
+assert c.mismatches(m2,live), "C2: dropped required entry not reported"
+m3=copy.deepcopy(live); m3[0]["inputSchema"]["properties"][k]["description"]=""
+assert c.mismatches(m3,live), "C3: blanked description not reported by A1"
+assert c.mismatches(m3,live,True)==[], "C3b: A2 must IGNORE description prose, or A1/A2 are the same leg"
+m4=copy.deepcopy(ship); m4[0]["inputSchema"]["properties"]["zzz"]={"type":"string"}
+assert c.census(m4)["properties"]==c.census(ship)["properties"]+1, "C4: census returns a constant"
+print("C control: 6/6 mutations reported")
+PY
+
+# --- D: behavioural. Arguments synthesized from THE SHIPPED mcp.json. -------
+cat > "$W/synth.py" <<'PY'
+import json,sys
+FIX,MODE=sys.argv[2],sys.argv[3]           # MODE: required | fillall | dropreq
+def val(n,s):
+    if s.get("enum"): return s["enum"][0]
+    t=s.get("type","string")
+    if t=="array": return [FIX] if s.get("items",{}).get("type","string")=="string" else [1]
+    if t=="boolean": return False
+    if t in ("integer","number"): return 1
+    if t=="object": return {}
+    l=n.lower()
+    return FIX if any(w in l for w in ("path","dir","root","file")) else "x"
+for i,t in enumerate(json.load(open(sys.argv[1]))):
+    s=t.get("inputSchema") or {}; p=s.get("properties") or {}; r=s.get("required") or []
+    if MODE=="required": keys=list(r)
+    elif MODE=="fillall": keys=list(p)
+    else:
+        if not r: continue
+        keys=[x for x in r if x!=r[0]]
+    print(json.dumps({"jsonrpc":"2.0","id":100+i,"method":"tools/call",
+                      "params":{"name":t["name"],"arguments":{k:val(k,p.get(k,{})) for k in keys}}}))
+PY
+cat > "$W/classify.py" <<'PY'
+import json,re,sys
+SHAPE=re.compile(r"missing field|Missing required parameter|unknown field|Invalid arguments|invalid type",re.I)
+calls=[json.loads(l) for l in open(sys.argv[1])]
+resp={o["id"]:o for o in map(json.loads,open(sys.argv[2])) if isinstance(o.get("id"),int) and o["id"]>=100}
+shape=[];sem=[];ok=[];missing=[]
+for c in calls:
+    o=resp.get(c["id"]); n=c["params"]["name"]
+    if o is None: missing.append(n); continue
+    e=o["error"]["message"] if "error" in o else (
+        " ".join(x.get("text","") for x in o.get("result",{}).get("content",[])) if o.get("result",{}).get("isError") else None)
+    (ok if e is None else (shape if SHAPE.search(e) else sem)).append(n if e is None else [n,e[:140]])
+print(json.dumps({"asked":len(calls),"responded":len(resp),"missing":missing,
+                  "shape":shape,"semantic":sem,"ok":ok}))
+PY
+
+python3 "$W/synth.py" "$W/shipped.json" "$W/fx" required > "$W/d.calls"
+mcp "$W/d.calls" "$W/d.out"
+python3 "$W/classify.py" "$W/d.calls" "$W/d.out" > "$W/d.json"
+
+# D2: CONTROL (green today). Anti-truncation — a short stream must FAIL, not pass.
+jq -e --slurpfile d "$W/d.json" '
+  ($d[0].missing|length)==0 and $d[0].responded==$d[0].asked and $d[0].asked==.mcp.tool_count
+' "$REPO/mcp.json" >/dev/null || fail "D2 (control): the stdio stream truncated — $(jq -c '{asked,responded,missing}' "$W/d.json")"
+
+# D1: RED. Calling every tool exactly as the SHIPPED manifest describes it must
+# never produce an argument-SHAPE error. Semantic errors are permitted.
+jq -e '(.shape|length)==0' "$W/d.json" >/dev/null \
+  || fail "D1: $(jq -r '.shape|length' "$W/d.json")/$(jq -r .asked "$W/d.json") calls built from mcp.json were rejected on ARGUMENT SHAPE: $(jq -c '[.shape[][0]]' "$W/d.json")"
+
+# D1b: RED. Same probe, filling every declared property (the manifest read the
+# other legitimate way). Reconciles the Evidence paragraph's separate count.
+python3 "$W/synth.py" "$W/shipped.json" "$W/fx" fillall > "$W/f.calls"
+mcp "$W/f.calls" "$W/f.out"
+python3 "$W/classify.py" "$W/f.calls" "$W/f.out" > "$W/f.json"
+jq -e '(.shape|length)==0' "$W/f.json" >/dev/null \
+  || fail "D1b: $(jq -r '.shape|length' "$W/f.json") tools reject the manifest's own full argument set: $(jq -c '[.shape[][0]]' "$W/f.json")"
+
+# D3: CONTROL (green today). Closes the "make every field Option<_>" fix:
+# omitting a LIVE-required field must still be an argument-shape error.
+python3 "$W/synth.py" "$W/live.json" "$W/fx" dropreq > "$W/l.calls"
+mcp "$W/l.calls" "$W/l.out"
+python3 "$W/classify.py" "$W/l.calls" "$W/l.out" > "$W/l.json"
+jq -e '(.ok|length)==0 and (.semantic|length)==0 and (.shape|length)==(.asked)' "$W/l.json" >/dev/null \
+  || fail "D3 (control): $(jq -r '(.ok|length)+(.semantic|length)' "$W/l.json") handlers ACCEPTED a call missing a required field — validation was deleted, not fixed: $(jq -c '.ok + [.semantic[][0]]' "$W/l.json")"
+
+echo "PASS: CRUX-09 (A1 A2 B1 B3 D1 D1b green; controls P A3 B2 C D2 D3 green)"
+```
+
+**Leg E — the permanent in-tree gate, DEFERRED.** A `--lib` test beside
+`manifest_descriptions_match_handler_metadata`: (a) for each of the 19 tools, canonical-JSON equality
+of `render_manifest(env!("CARGO_PKG_VERSION"))`'s `inputSchema` with that handler's
+`metadata().input_schema`; (b) `include_str!("../../mcp.json") == render_manifest(env!("CARGO_PKG_VERSION"))`
+byte-for-byte — the assertion the tree does not have and CORRECTION 2 shows nothing else supplies.
+**What would run it:** `cargo test --lib manifest_schemas_match_handler_metadata`. Not executed
+during this audit (no `cargo test`); the shell legs above assert the same invariant from outside the
+process against the built binary, so leg E is not the only thing keeping the file honest and its
+deferral leaves no leg that silently cannot fail.
+
+**What each leg is for, and which lazy fix it kills.**
+
+| leg | at HEAD | kind | kills |
+|---|---|---|---|
+| P | green | control | the item silently going moot because `mcp.json` stopped shipping |
+| A1 | **19/19 red** | gate, invariant | the defect itself: shipped schema ≠ served schema |
+| A2 | **16/19 red** | gate, invariant | scoring the fix partial by arguing the difference is prose |
+| A3 | green | control | shrinking or renaming the surface to make A1 vacuous; hardcodes no `19` |
+| B1 | **red** | gate, invariant | fixing the renderer and shipping the stale file (census read from the file) |
+| B2 | green | **one-shot** | degrading handler `metadata()` down to the canned shape to meet B1 |
+| B3 | **red** | gate, invariant | advertising `paths` everywhere; names the six tools that reject it |
+| C | green | control | a comparator that compares nothing; C3b proves A1 ⊐ A2 |
+| D1 | **15/19 red** | gate, invariant | a schema honest on paper that no client can actually call |
+| D1b | **6/19 red** | gate, invariant | same file read the other legitimate way; reconciles the Evidence's 6 |
+| D2 | green | control | a truncated stdio stream reading as a pass |
+| D3 | green | control | greening D1 by making every args field `Option<_>`/`#[serde(default)]` |
+| E | **red**, DEFERRED | gate, invariant | a hand-edited `mcp.json`; a fixed renderer with an unregenerated file |
+
+**One-shot evidence vs permanent gate.** Every leg except B2 is an **invariant** and may be
+committed as a permanent gate: not one pins a whole-tree census constant — B1 and B3 assert equality
+between the shipped census and the live census *measured in the same run*, A3 derives its count from
+`tool_count` rather than a literal `19`, D2 from the manifest's own `tool_count`. **B2 alone carries
+literals** (`properties ≥ 51`, `with_description ≥ 50`, `required_entries ≥ 19`, over `≥ 18` tools) —
+today's live census, quoted so a reviewer can tell a fix from a downgrade. It is **one-shot PR
+evidence**. If it is wanted permanently it belongs in `.pmat-ratchet.toml` with the command that
+reproduces it, where lowering it needs a written `justification` checked against the previous commit,
+not as a hand-baselined `assert` that the next on-call re-baselines.
+
+**Transcript at HEAD (`8d30699ca`, release binary of HEAD, `mcp.json` @ 3.34.0).** The gate stops at
+the first red leg, having passed the controls that precede it:
+
+```text
+$ PMAT_BIN=… ./crux09.sh ; echo "exit=$?"
+FAIL: A1: 19/19 shipped inputSchemas differ from tools/list: ["analyze_big_o","analyze_complexity",
+"analyze_dag","analyze_dead_code","analyze_deep_context","analyze_hardcoded_paths",
+"analyze_reachability","analyze_satd","analyze_vacuous_tests","generate_context","git_operation",
+"pdmt_deterministic_todos","pmat_find_similar","pmat_get_function","pmat_index_stats",
+"pmat_query_code","quality_gate","quality_proxy","scaffold_project"]
+exit=1
+```
+
+With `fail()` neutered to record-and-continue, so every leg reports (evidence only — the committed
+gate exits at the first failure):
+
+```text
+RED  : A1: 19/19 shipped inputSchemas differ from tools/list: [… all 19 …]
+RED  : A2: 16/19 differ in SHAPE, not merely in prose
+RED  : B1: shipped census {"properties":18,"with_description":0,"required_entries":3,
+            "tools_with_required":3,"index_stats_has_rebuild":false}
+        != live {"properties":51,"with_description":50,"required_entries":19,
+            "tools_with_required":18,"index_stats_has_rebuild":true}
+RED  : B3: shipped required names ["project_path"] != live ["file_path","function_id","operation",
+            "path","paths","project_path","query","requirements"]
+C control: 6/6 mutations reported
+RED  : D1: 15/19 calls built from mcp.json were rejected on ARGUMENT SHAPE: ["analyze_complexity",
+            "analyze_satd","analyze_dead_code","analyze_dag","analyze_deep_context","analyze_big_o",
+            "quality_gate","quality_proxy","pdmt_deterministic_todos","git_operation",
+            "generate_context","scaffold_project","pmat_query_code","pmat_get_function",
+            "pmat_find_similar"]
+RED  : D1b: 6 tools reject the manifest's own full argument set: ["quality_proxy",
+            "pdmt_deterministic_todos","git_operation","pmat_query_code","pmat_get_function",
+            "pmat_find_similar"]
+```
+
+P, A3, B2, C, D2 and D3 printed nothing — the six controls are green, as designed.
+
+**Post-fix control, measured, so the bar is known to be reachable.** Re-running leg D's synthesis
+against the **live** schemas instead of the shipped ones gives **0 argument-shape failures** and 3
+permitted semantic ones — `pmat_get_function` / `pmat_find_similar` "Invalid function_id format.
+Expected 'file_path::function_name', got: x" and `quality_proxy` "Write operation requires content".
+Leg D therefore discriminates 15 → 0 across the fix rather than being unsatisfiable, which is why
+the shape family is the assertion and semantic errors are permitted. Leg D3's 18 probes are already
+18/18 shape-family rejections today, so the anti-leniency control has a real reading, not a vacuous
+one.
 
 **Effort.** **M** for delete + share + regenerate + the tests. **Split out** the migration of 13
 hand-rolled `json!` blocks onto `mcp_tool_schemas/`; a separate M that must not gate this.
 
-**Risk.** Some handlers' metadata may be as thin as the canned shapes — a finding, not a regression.
-Rendering from handlers makes `mcp.json` churn on every schema change; pin it with the new test.
-CB-1656 already compares the committed manifest to a fresh render, so a hand-edit cannot fake the
-fix — but note fable-review §4 `mcp-inventory-parity` leg (a)
-(`include_str!(mcp.json) == render_manifest(...)`) would **not** catch this defect: it pins the file
-to the renderer, and the renderer is what fabricates the schemas.
+**Risk.** Some handlers' metadata may be as thin as the canned shapes — a finding, not a regression;
+leg B2 is what turns that into a visible downgrade rather than a quiet one. Rendering from handlers
+makes `mcp.json` churn on every schema change; pin it with leg E(b), which also makes the churn a
+required part of the diff instead of a surprise. **Nothing in the tree today backstops a hand-edit
+of `mcp.json`** — see CORRECTION 2; CB-1656 compares the name set and stops there. Note also that
+fable-review §4's `mcp-inventory-parity` leg (a) (`include_str!(mcp.json) == render_manifest(...)`)
+is necessary but **not sufficient** on its own: it pins the file to the renderer, and the renderer is
+what fabricates the schemas — it is leg E(b), and it only bites once leg E(a) has made the renderer
+honest. Ship both or ship neither.
 
 **Related issue.** #1029.
 
----
-
 ### 8.10 CRUX-10 — `quality_proxy`, the only MCP tool advertised as writing, never writes
 
-**Problem.** In seven live `operation: "write"` invocations — several returning `status: accepted` —
-**no file was created**; `find` over the target dir returns zero files. It returns `final_content`
-for the caller to write, so every agent bypasses the gate using its own harness's writer. Three of
-#1090's named bypasses reproduce verbatim, and two further tool **names** assert mutations their
-handlers do not perform.
+**Problem.** Across the full cross product of the tool's own enums — 3 modes × 3 operations,
+**9 live calls, 7 of them returning `status: accepted`** — **no file was created**; `find` over the
+target dir returns zero files, and **not one response carries any field a client could read to
+learn that** (`has("written")` is `false` on all 9). It returns `final_content` for the caller to
+write, so every agent bypasses the gate using its own harness's writer. Three of #1090's named
+bypasses reproduce verbatim, and two further tool **names** assert mutations their handlers do not
+perform.
 
 **Evidence.** `grep -n 'fs::write' src/services/quality_proxy_operations.rs` → exactly one hit,
-`:268`, inside `#[cfg(test)]`. `proxy_operation` (`:36`) returns `(status, final_content, …)` and
-never touches the target. Live: `{"operation":"write","file_path":".../OK.rs","content":"/// d\npub
-fn ok(){}\n"}` → `status: accepted, passed: true`, `test -f OK.rs` → **False**. Bypasses:
-`mode:"advisory"` → `accepted` while `passed:false` (unconditional at `:70`); client
-`quality_config {"max_complexity":9999,"allow_satd":true}` → `passed` flips false→true **and the
-SATD violation is deleted from `violations[]`** while `satd_count` stays 1. Mis-named:
-`scaffold_project` returns "Context summary generated from file system analysis" with `ls -R`
-byte-identical before and after; `git_operation`'s schema has one property `path`, no `operation`,
-described as "Query git working-tree status". The repo asserts the opposite of its own behaviour
-twice in comments written to justify a prior fix (`src/mcp_pmcp/tool_manifest.rs:39` "never learned
-that the tool writes files"; `:324`), and `docs/mcp/TOOLS.md:105-107` now reads "**Writes files.**"
-— a more emphatic false statement than the text it replaced. **#794** ("status 'accepted' for
-operation=write/append is returned without ever writing the file") was filed against 3.29.0 and
-**closed COMPLETED**; neither branch of its own suggested fix landed.
+`:268` (`std::fs::write(&path, THREE_LINES).expect("write fixture")`), inside the file's only
+`#[cfg(test)]`, which opens at `:245`. `proxy_operation` (`:36`) returns
+`(status, final_content, refactoring_applied, refactoring_plan)` and never touches the target;
+widening the search to the whole request path — `quality_proxy.rs`, `quality_proxy_operations.rs`,
+`src/mcp_pmcp/quality_proxy_handler*.rs`, `src/mcp/handlers/quality_proxy.rs` — for
+`fs::write|File::create|write_all|OpenOptions` returns nothing (the two `File::create` in
+`quality_proxy_analysis.rs:564,577` build a scratch cargo project for the lint gate, not the
+target). Live: `{"operation":"write","file_path":".../OK.rs","content":"/// d\npub fn ok(){}\n"}`
+→ `status: accepted, passed: true`, `test -f OK.rs` → **False**. Bypasses: `mode:"advisory"` →
+`accepted` while `passed:false`, unconditional at `:70`
+(`ProxyMode::Advisory => (ProxyStatus::Accepted, content, false, None)` — `passed` is not
+consulted); client `quality_config {"max_complexity":9999,"allow_satd":true}` → `passed` flips
+false→true **and the SATD violation is deleted from `violations[]`** while `satd_count` stays 1, so
+the count and the list of the same run contradict each other. The proxy reads **no** config source —
+`grep -n 'pmat.toml\|PmatConfig\|load_config'` over both proxy files exits 1 — so the schema
+defaults are the only gate a client cannot already overwrite. Mis-named: `scaffold_project` returns
+`{"status":"completed","message":"Context summary generated from file system analysis",…}` with a
+before/after filesystem snapshot byte-identical; `git_operation`'s live schema has one property
+`path`, no `operation`, described "Query git working-tree status for the given repository path."
+The repo asserts the opposite of its own behaviour twice in comments written to justify a prior fix
+(`src/mcp_pmcp/tool_manifest.rs:39` "never learned that the tool writes files"; `:324`), and
+`docs/mcp/TOOLS.md:105-107` now reads "**Writes files.**" — a more emphatic false statement than the
+text it replaced. **#794** ("status 'accepted' for operation=write/append is returned without ever
+writing the file") was filed against 3.29.0 and **closed COMPLETED** (`stateReason: COMPLETED`);
+neither branch of its own suggested fix landed. Every citation in this paragraph was re-read at the
+cited line during hardening and holds verbatim; the cause is correctly located, and the defect this
+round found was in the acceptance test, not in the diagnosis.
 
 **Proposal.** **Prefer the rename**, against the merged record's preference, because
 `CHANGELOG.md:545-550` (3.33.0, "Not done, deliberately") records the colliding decision: "No
 `pmat_write_file` / `pmat_edit_file`. MCP has no primitive by which a server can gate a client's own
 tools … pmat already owns the only layer that can intercept — the harness `PreToolUse` hook matching
-`Write|Edit`." So: rename to `quality_check_content`, drop `write` from the enum, add
-`written: false` to `ProxyResponse` (`src/models/proxy.rs:163-170` has no such field, so a client
-cannot tell today). If the write is built instead, scope it under the project root, refuse on
-blocking verdicts, never auto-fix silently. Independently close the two live bypasses — `advisory`
-must never return `accepted` when `passed:false`, and client `quality_config` may only **tighten**
-relative to the project's `pmat.toml` (the proxy reads no config source today, so "ignore it" leaves
-the schema defaults as the only gate). Rename `scaffold_project` → `context_summary` and
-`git_operation` → `git_status`, aliased for one release.
+`Write|Edit`." So: rename to `quality_check_content`, drop **every** mutation value from the
+`operation` enum (dropping `write` while keeping `append` is not the fix), and serve the old name as
+a deprecated alias for exactly one release. If the write is built instead, scope it under the
+project root, refuse on blocking verdicts, never auto-fix silently.
 
-**Acceptance test.** Use only schema-declared fields, inspect the filesystem after each call.
-**CORRECTIONS:** `"mode":"blocking"` is **not** in the enum (`quality_proxy_handler_impl.rs:12` →
-strict|advisory|auto_fix|auto-fix) and returns `-32602 Invalid mode` before any gate runs, so the
-merged leg 2 passes today *and* under the unconditional writer it was meant to exclude; use
-`strict` (also the serde default). `"apply": true` is not a schema field and is silently ignored (no
-`deny_unknown_fields` anywhere in `src/mcp_pmcp/`); drop it.
-**L0 control:** record the pre-fix transcript (L1 returns `accepted` with the file absent).
-**L1:** `{"operation":"write","file_path":"$T/OK.rs","content":"/// d\npub fn ok(){}\n",
-"mode":"strict"}` → `status == "accepted"` AND `test -f $T/OK.rs` AND
-`sha256($T/OK.rs) == sha256(response.final_content)` (the hash blocks a fix creating an empty file
-to satisfy `test -f`). **L2 refusal, real mode:** same call, `content:"// TODO: x\npub fn f(){}\n"`,
-`mode:"strict"` → `rejected` AND `test ! -e $T/BAD.rs`. **L3 advisory must not write:** same bad
-content, `mode:"advisory"` → `passed == false` AND `test ! -e $T/ADV.rs` (today advisory returns
-`accepted`, so a fix keying the write off `status` alone fails here). **L4 no-clobber:**
-pre-populate `$T/EXIST.rs`; a rejected write must leave its sha256 unchanged. **L5 name honesty**,
-satisfiable by *either* branch so the test does not force the capability expansion: a `--lib` test
-asserting that for every `LIVE_MCP_TOOLS` entry the leading verb matches the handler's declared
-effect (read | summarise | write); `scaffold_project` and `git_operation` fail until renamed,
-`quality_proxy` passes only if it performs L1–L4 or carries no mutation verb and no `"write"` in its
-enum.
-**DELETE the polyglot leg** — it demanded a **regression** (§3). If a cross-language leg is wanted,
-invert it into a guard for behaviour already correct: `# TODO: x` scores satd 1 as `.py`/`.sh` and 0
-as `.rs`; `// TODO: x` scores 1 as `.rs` and 0 as `.py`/`.sh`; an unknown extension keeps the
-conservative 1.
+**Three deliverables are branch-independent and must land either way.** (1) **Disclosure**: add
+`written: bool` to `ProxyResponse` (`src/models/proxy.rs:161-170` is `{status, quality_report,
+final_content, refactoring_applied, refactoring_plan}` — there is no such field, so a client cannot
+tell today, which is the whole defect restated as a missing field), true iff the target's bytes
+changed. This is the load-bearing change: it converts an unobservable behaviour into an assertable
+one, and it is what makes the "must not write" legs below discriminating instead of vacuous.
+(2) `advisory` must never return `accepted` when `passed:false`. (3) Client `quality_config` may
+only **tighten** relative to the project's `pmat.toml`, and `metrics.<x>_count` may never disagree
+with the number of `violations[]` entries of type `<x>` in the same response. Independently, rename
+`scaffold_project` → `context_summary` and `git_operation` → `git_status`, aliased for one release,
+and delete the "**Writes files.**" claim from `docs/mcp/TOOLS.md` and the mutation verbs from the
+live `quality_proxy` description.
 
-**Effort.** **M** for the rename branch plus the two bypass closures plus L5; **M/L** if the write is
-built.
+**Acceptance test — rewritten. The merged version admitted four lazy fixes, five of its seven legs
+were green on the unfixed binary, and its own preferred Proposal branch failed three of them.**
+Use only schema-declared fields and inspect the filesystem after every call.
+
+*Corrections carried forward and re-verified:* `"mode":"blocking"` is **not** in the enum
+(`quality_proxy_handler_impl.rs:12` → `strict|advisory|auto_fix|auto-fix`) and returns
+`-32602 Validation error: Invalid mode: blocking` before any gate runs; use `strict`, also the serde
+default. `"apply": true` is not a schema field and is silently ignored — there is no
+`deny_unknown_fields` anywhere in `src/mcp_pmcp/` (`grep -rn` exits 1) and the extra key was
+accepted live; drop it.
+
+*Four structural repairs, each tied to a way the merged test could be passed without fixing
+anything:*
+
+| lazy fix the merged test admitted | what defeats it now |
+|---|---|
+| Write a zero-byte file and echo `final_content:""`. The merged L1's `sha256(file) == sha256(final_content)` compares **two server-produced values** — both are `e3b0c442…98b7852b855` — so the exact game the spec said the hash blocked, it passed | **W1** pins the file to the **client's** bytes, computed by the test from its own 20-byte literal before the call: `sha == bef5a6738c87788fae58d0e7e67cf0825a100d38a10a95a3dc3e82298e90a566` and `len == 20`. The `final_content` equality is kept as a *second* assertion (it catches a divergent echo) and is never the only one |
+| Do nothing, or delete the feature: merged L2, L3 and L4 were all fully green on the unfixed binary and bankable in isolation | Every "must not write" leg is now (a) **conjunctive** — it runs in one session after a W1 that must have written, under `set -e`, so the script dies before reaching it — and (b) **paired with a positive control on the same path**: the path refused in W2/W3/W4 must accept good content immediately afterwards. A never-writing implementation fails the control half |
+| Land the item's own **preferred** rename branch: with `write` gone from the enum every call returns `-32602`, so merged L1/L2/L3 have no `status` at all and go red. As written the test blocked the fix the item recommends | A **branch selector** reads `tools/list` and dispatches on `"write" ∈ operation.enum`. Exactly one branch is live; a deleted tool fails the selector rather than skipping the branch |
+| Drop `write` from the enum and stop — the cheapest way into the rename branch | The rename branch is R1–R5: `-32602` *and* nothing created, the alias served under both names with byte-identical payloads, `written:false` disclosed, **no** mutation value left in the enum, and the "Writes files." claim gone from `TOOLS.md` and from the live description |
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+fail(){ echo "FAIL: $*"; exit 1; }
+PMAT=${PMAT:-$(command -v pmat)}
+
+mcp(){ { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"crux10","version":"0"}}}'
+        printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+        jq -cn --arg n "$1" --argjson a "$2" '{jsonrpc:"2.0",id:2,method:"tools/call",params:{name:$n,arguments:$a}}'
+      } | "$PMAT" --mode mcp 2>/dev/null | grep '^{' \
+        | jq -c 'select(.id==2)|if .error then {error:.error} else (.result.content[0].text|fromjson) end'; }
+mcplist(){ { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"crux10","version":"0"}}}'
+             printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+             printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+           } | "$PMAT" --mode mcp 2>/dev/null | grep '^{' | jq -c 'select(.id==2)|.result'; }
+
+T=$(mktemp -d); OUT=$(mktemp -d); ROOT=$(mktemp -d); mkdir -p "$ROOT/src"
+trap 'rm -rf "$T" "$OUT" "$ROOT"' EXIT
+printf '%b' '/// d\npub fn ok(){}\n'     > "$T/.good"     # the client's bytes, and the only
+printf '%b' '// TODO: x\npub fn f(){}\n' > "$T/.bad"      # constants this test pins
+OK_SHA=$(sha256sum "$T/.good"|cut -c1-64); OK_LEN=$(stat -c%s "$T/.good")
+EMPTY_SHA=$(printf '' | sha256sum | cut -c1-64)
+req(){ jq -cn --arg p "$1" --rawfile c "$2" --arg m "$3" '{operation:"write",file_path:$p,content:$c,mode:$m}'; }
+sha(){ sha256sum "$1" 2>/dev/null | cut -c1-64 || true; }
+exists(){ test -e "$1" && echo true || echo false; }
+
+# ---- S (permanent): branch selector. Exactly one branch is live; deleting the tool fails HERE.
+LIST=$(mcplist)
+NAME=$(printf '%s' "$LIST" | jq -r '[.tools[].name]|if index("quality_proxy") then "quality_proxy" elif index("quality_check_content") then "quality_check_content" else "" end')
+[ -n "$NAME" ] || fail "S: neither quality_proxy nor quality_check_content is served"
+printf '%s' "$LIST" | jq -e --arg n "$NAME" '[.tools[]|select(.name==$n)]|length==1' >/dev/null || fail "S: tool not uniquely served"
+WRITE_IN_ENUM=$(printf '%s' "$LIST" | jq -r --arg n "$NAME" '[.tools[]|select(.name==$n)][0].inputSchema.properties.operation.enum // [] | index("write") != null')
+echo "S: tool=$NAME write_in_enum=$WRITE_IN_ENUM client_sha=$OK_SHA len=$OK_LEN"
+
+# ---- B0 (permanent, branch-independent): the response must DISCLOSE what it did.
+r=$(mcp "$NAME" "$(req "$T/B0.rs" "$T/.good" strict)")
+printf '%s' "$r" | jq -e 'has("written") and (.written|type=="boolean")' >/dev/null || fail "B0: no boolean 'written' in the response"
+printf '%s' "$r" | jq -e --argjson o "$(exists "$T/B0.rs")" '.written == $o' >/dev/null || fail "B0: 'written' contradicts the filesystem"
+
+# ---- B1 (permanent, branch-independent): advisory must not launder a failing verdict.
+r=$(mcp "$NAME" "$(req "$T/ADV.rs" "$T/.bad" advisory)")
+printf '%s' "$r" | jq -e '.quality_report.passed == false' >/dev/null || fail "B1 setup: bad fixture graded as passing"
+printf '%s' "$r" | jq -e '.status != "accepted"' >/dev/null || fail "B1: advisory returned accepted while passed==false"
+
+# ---- B2 (permanent, branch-independent): client quality_config may only tighten; count==list.
+r=$(mcp "$NAME" "$(jq -cn --arg p "$T/CFG.rs" --rawfile c "$T/.bad" '{operation:"write",file_path:$p,content:$c,mode:"strict",quality_config:{max_complexity:9999,allow_satd:true}}')")
+printf '%s' "$r" | jq -e '.quality_report.passed == false' >/dev/null || fail "B2: client config loosened the project gate"
+printf '%s' "$r" | jq -e '([.quality_report.violations[]|select(.type=="satd")]|length) == .quality_report.metrics.satd_count' >/dev/null || fail "B2: satd_count contradicts violations[]"
+
+if [ "$WRITE_IN_ENUM" = true ]; then
+# ===================== WRITE BRANCH — one session, conjunctive =====================
+# W1 (permanent): the accepted write lands, as the CLIENT's bytes.
+r=$(mcp "$NAME" "$(req "$T/OK.rs" "$T/.good" strict)")
+printf '%s' "$r" | jq -e '.status == "accepted" and .written == true' >/dev/null || fail "W1: not accepted, or no written:true"
+test -f "$T/OK.rs"                        || fail "W1: accepted write created no file"
+[ "$(sha "$T/OK.rs")" = "$OK_SHA" ]       || fail "W1: file bytes are not the client's bytes"
+[ "$(stat -c%s "$T/OK.rs")" = "$OK_LEN" ] || fail "W1: wrong length"
+[ "$(sha "$T/OK.rs")" != "$EMPTY_SHA" ]   || fail "W1: empty-file game — file sha == sha256(\"\")"
+printf '%s' "$r" | jq -j '.final_content' | cmp -s - "$T/.good" || fail "W1: final_content diverges from the client's bytes"
+# W2 (conjunctive; vacuous alone): refusal writes nothing, then the SAME path must accept.
+r=$(mcp "$NAME" "$(req "$T/BAD.rs" "$T/.bad" strict)")
+printf '%s' "$r" | jq -e '.status == "rejected" and .written == false' >/dev/null || fail "W2: refusal not reported as rejected+written:false"
+test ! -e "$T/BAD.rs" || fail "W2: rejected write created a file"
+r=$(mcp "$NAME" "$(req "$T/BAD.rs" "$T/.good" strict)")
+[ "$(sha "$T/BAD.rs")" = "$OK_SHA" ] || fail "W2 control: that path never accepts — the feature does not write at all"
+# W3 (conjunctive): advisory refuses to write failing content, still writes passing content.
+r=$(mcp "$NAME" "$(req "$T/ADV2.rs" "$T/.bad" advisory)")
+printf '%s' "$r" | jq -e '.written == false' >/dev/null || fail "W3: advisory did not disclose written:false"
+test ! -e "$T/ADV2.rs" || fail "W3: advisory wrote failing content"
+r=$(mcp "$NAME" "$(req "$T/ADV2.rs" "$T/.good" advisory)")
+[ "$(sha "$T/ADV2.rs")" = "$OK_SHA" ] || fail "W3 control: advisory never writes"
+# W4 (conjunctive): no-clobber on refusal, real clobber on acceptance.
+printf 'pre\n' > "$T/EXIST.rs"; before=$(sha "$T/EXIST.rs")
+r=$(mcp "$NAME" "$(req "$T/EXIST.rs" "$T/.bad" strict)")
+printf '%s' "$r" | jq -e '.written == false' >/dev/null || fail "W4: did not disclose written:false on refusal"
+[ "$(sha "$T/EXIST.rs")" = "$before" ] || fail "W4: rejected write clobbered an existing file"
+r=$(mcp "$NAME" "$(req "$T/EXIST.rs" "$T/.good" strict)")
+[ "$(sha "$T/EXIST.rs")" = "$OK_SHA" ] || fail "W4 control: the accepted overwrite never happened"
+# W5 (conjunctive): the write is scoped to the project root.
+for p in "$OUT/ESCAPE.rs" "$ROOT/src/../../ESCAPE2.rs"; do
+  r=$(cd "$ROOT" && mcp "$NAME" "$(req "$p" "$T/.good" strict)")
+  printf '%s' "$r" | jq -e '.written == false' >/dev/null || fail "W5: no written:false for an out-of-root path ($p)"
+  test ! -e "$p" || fail "W5: created $p outside the project root"
+done
+else
+# ============ RENAME BRANCH — DEFERRED at HEAD: the selector chooses W today ============
+r=$(mcp "$NAME" "$(req "$T/R1.rs" "$T/.good" strict)")
+printf '%s' "$r" | jq -e '.error.code == -32602' >/dev/null || fail "R1: operation=write still reaches a handler"
+test ! -e "$T/R1.rs" || fail "R1: a refused operation created a file"
+printf '%s' "$LIST" | jq -e '[.tools[].name]|(index("quality_proxy") != null) and (index("quality_check_content") != null)' >/dev/null || fail "R2: the one-release deprecated alias is not served"
+a=$(mcp quality_proxy "$(req "$T/R2.rs" "$T/.good" strict)"); b=$(mcp quality_check_content "$(req "$T/R2.rs" "$T/.good" strict)")
+[ "$a" = "$b" ] || fail "R2: alias and new name return different payloads"
+printf '%s' "$a" | jq -e 'has("written") and .written == false' >/dev/null || fail "R3: no written:false disclosure"
+printf '%s' "$LIST" | jq -e --arg n "$NAME" '[.tools[]|select(.name==$n)][0].inputSchema.properties.operation.enum // [] | map(select(["write","edit","append"]|index(.))) | length == 0' >/dev/null || fail "R5: a mutation value survives in the operation enum"
+grep -qi 'writes files' docs/mcp/TOOLS.md && fail "R4: docs/mcp/TOOLS.md still asserts a write"
+printf '%s' "$LIST" | jq -e --arg n "$NAME" '[.tools[]|select(.name==$n)][0].description|test("write|edit|append";"i")|not' >/dev/null || fail "R4: the live description still asserts a mutation"
+fi
+echo "PASS"
+```
+
+**RUN at HEAD (3.34.0, `commit: 01fba4f6554742ae690fa00131444ddf722a5334`, `worktree: clean`) — it
+fails, at B0:**
+
+```
+S: tool=quality_proxy write_in_enum=true client_sha=bef5a673…8e90a566 len=20
+FAIL: B0: no boolean 'written' in the response
+$ echo $?
+1
+```
+
+A keep-going copy (`fail(){ echo "  RED <- $*"; }`, `set -e` dropped) shows **every** leg red — the
+`written` disclosure is what makes the four previously-vacuous legs discriminate, so W2–W5 now fail
+on the unfixed binary rather than banking:
+
+```
+S: tool=quality_proxy write_in_enum=true client_sha=bef5a673…8e90a566 len=20
+  RED <- B0: no boolean 'written' in the response
+  RED <- B0: 'written' contradicts the filesystem
+  RED <- B1: advisory returned accepted while passed==false
+  RED <- B2: client config loosened the project gate
+  RED <- B2: satd_count contradicts violations[]
+  RED <- W1: not accepted, or no written:true
+  RED <- W1: accepted write created no file
+  RED <- W1: file bytes are not the client's bytes
+  RED <- W1: wrong length
+  RED <- W2: refusal not reported as rejected+written:false
+  RED <- W2 control: that path never accepts — the feature does not write at all
+  RED <- W3: advisory did not disclose written:false
+  RED <- W3 control: advisory never writes
+  RED <- W4: did not disclose written:false on refusal
+  RED <- W4 control: the accepted overwrite never happened
+  RED <- W5: no written:false for an out-of-root path (…/ESCAPE.rs)
+  RED <- W5: no written:false for an out-of-root path (…/src/../../ESCAPE2.rs)
+```
+
+The one sub-assertion that is green today is W1's `final_content` comparison — the echo *is*
+faithful — which is why it is a second assertion and never the only one. The empty-file game is
+shown defeated directly: against a zero-byte `OK.rs`, the merged leg's
+`sha256(file) == sha256(final_content:"")` is `e3b0c442… == e3b0c442…` and **passes**, while
+`sha == bef5a673…` and `len == 20` **fail**.
+
+**L0 — CONTROL, one-shot PR evidence, green today BY DESIGN; do not read it as a gate.** The merged
+item said "record the pre-fix transcript", which has no pass/fail criterion, no artifact and nowhere
+it is checked in, so nothing could ever make it red. Replace it with a committed fixture — the raw
+`tools/call` response above plus `test ! -e OK.rs` — and one assertion that it **no longer
+reproduces**: the fixture's response has no `written` key, and the test fails if the live response
+still matches it byte-for-byte modulo paths. That is the #794 regression test, and it is the only
+form in which the control can go red.
+
+**Census, one-shot PR evidence, NOT a gate.** 3 modes × 3 operations = **9 calls, 7 `accepted`, 0
+files created, `has("written")` false on all 9**, measured at HEAD. Committed as CI it would be
+re-baselined on the first enum change; what becomes permanent is the invariant B0 asserts —
+`written == (the target's bytes changed)` — never the count. Note that the only constants the script
+pins (`OK_SHA`, `OK_LEN`) are *computed at run time from a 20-byte literal inside the test*, not
+transcribed, so they cannot rot.
+
+**L5 name/effect honesty — restated, because as merged it was unsatisfiable. DEFERRED here.** The
+merged wording ("the leading verb matches the handler's declared effect") cannot pass even after a
+correct fix: **8 of the 19 `LIVE_MCP_TOOLS` entries have no leading verb at all** (`quality_gate`,
+`quality_proxy`, `pdmt_deterministic_todos`, `git_operation`, `pmat_query_code`,
+`pmat_get_function`, `pmat_find_similar`, `pmat_index_stats`), and all three of this item's
+replacement names — `quality_check_content`, `git_status`, `context_summary` — are noun-led too;
+under the obvious repair ("exempt names with no leading verb") `git_operation` passes **today**,
+contradicting the claim that it fails until renamed. Restate as three arms:
+
+- **(a) Annotation.** Every `LIVE_MCP_TOOLS` entry (`tool_manifest.rs:43`) carries an explicit
+  `effect: Read | Summarise | Write` beside its registration.
+- **(b) Annotation checked against a MEASURED effect**, in both directions, so "annotate everything
+  `Read`" is not a fix: invoke each tool against a scratch corpus and compare a
+  `find -type f -exec sha256sum` snapshot before and after; `effect == Write` **iff** the snapshot
+  changed. The method is demonstrated — `scaffold_project` over a one-file corpus leaves the
+  snapshot byte-identical, i.e. measured `Summarise`, against a name carrying `scaffold`.
+- **(c) Name and text honesty.** The name may contain no token from the fixed denylist
+  {`write`, `edit`, `append`, `create`, `apply`, `fix`, `scaffold`, `install`, `delete`, `remove`,
+  `commit`, `operation`} unless `effect == Write`; likewise the manifest description and the tool's
+  `docs/mcp/TOOLS.md` entry may assert no mutation unless `effect == Write`. Measured against
+  today's 19 entries the denylist fires on exactly **`git_operation`** (`operation`, measured
+  effect Read via `GitStatusTool`) and **`scaffold_project`** (`scaffold`, measured Summarise via
+  `ContextSummaryTool`), and the text arm fires on `quality_proxy` — live description "Proxy a file
+  operation (write/edit/append)…" and `TOOLS.md:106` "**Writes files.**" against a measured effect
+  of Read. `generate_context` is deliberately **not** on the denylist: it returns a document rather
+  than writing one, this item does not rename it, and adding `generate` would fire the rule on a
+  tool nobody flagged. The rule is one-directional — it forbids a mutation token on a non-`Write`
+  tool, it does not require one on a `Write` tool — which is what lets both branches satisfy it.
+
+  **DEFERRED**: no such test exists (`grep -rniE 'leading verb|mutation verb|verb_matches|
+  name_honesty|effect_matches' src/mcp_pmcp/` exits 1; the nearest, `tool_manifest.rs:331`
+  `manifest_descriptions_match_handler_metadata`, compares descriptions to handler text, not verb to
+  effect) and this round is barred from `cargo`. What runs it: arms (a) and (c) as
+  `env -u RUST_MIN_STACK cargo test --lib mcp_pmcp::tool_manifest`; arm (b) as an integration test
+  spawning `pmat --mode mcp` against a scratch corpus, which is the shape the script above already
+  uses.
+
+**The polyglot leg is DELETED, and so is its proposed replacement.** The merged leg demanded a
+**regression** (§3). Its replacement guard — `# TODO: x` scoring satd 1 as `.py`/`.sh` and 0 as
+`.rs`, `// TODO: x` the mirror, unknown extensions keeping the conservative 1 — was measured and
+**all seven sub-assertions are green on today's binary**. The spec is honest that it guards
+behaviour already correct, so it is not a hidden vacuity, but it is zero evidence that a CRUX-10 fix
+landed and it does not belong in an acceptance test presented as failing today. Keep it, if wanted,
+as a plain regression test elsewhere.
+
+**Effort.** **M** for the rename branch plus the three branch-independent deliverables (disclosure,
+advisory, config-tightening) plus L5; **M/L** if the write is built. The `written: bool` field is
+small and must land first — every other leg's discriminating power depends on it.
 
 **Risk.** A real write is a capability expansion colliding with a recorded decision. Renaming breaks
-clients with hardcoded names — one release, both names aliased.
+clients with hardcoded names — one release, both names aliased, and R2 asserts the alias is actually
+served rather than merely promised. Adding `written` to `ProxyResponse` is additive and safe;
+closing the `advisory` bypass changes a status any current client may be branching on, so it belongs
+in a minor release with a CHANGELOG entry.
 
-**Related issue.** #1090 (OPEN; legs 1–4 verbatim). #794 is CLOSED-as-completed and still reproduces
-— a ready-made regression-test target. Leg 5 appears nowhere in #1090.
-
----
+**Related issue.** #1090 (OPEN; the bypass legs verbatim). #794 is CLOSED-as-completed and still
+reproduces — the ready-made regression-test target, and the reason L0 must be a committed fixture
+rather than prose. L5 appears nowhere in #1090.
 
 ### 8.11 CRUX-11 — `include!` defeats pmat's own headline metric: A (93.4) split, C (60.9) flattened
 
@@ -1895,84 +3306,229 @@ quarantined behind `cfg(pmat_broken_tests)` (35,856 lines, 2,021 tests) and call
 76,461 lines / 4,335 tests declared in no `mod` — 82 named `coverage_boost_*` (3,214 tests, 42,886
 lines, added 2026-02-01..04-07), written to raise coverage and contributing none.
 `Cargo.toml:30 autotests = false` makes the omission silent, and the set is growing:
-`.pmat-ratchet.toml:77` records 166 files in `src/tests` where there are now 188.
+`.pmat-ratchet.toml:76-77` records 166 files in `src/tests` where there are now 188. The analyzer
+half is correct and cheap. The gate half does not exist: **nothing in CI, the Makefile or either
+hook runs it**, which is the defect this item is about — not the count.
 
-**Evidence.** Live at HEAD, 0.32 s / 22,656 kB: `{"reachable":3944,"roots":137,"orphan_count":407,
-"orphan_lines":126933,"orphan_tests":6292,"quarantined_count":82,"quarantined_lines":35856,
-"quarantined_tests":2021,"unresolved_mods":35}`. `[o for o in orphans if
-o.file.startswith("src/tests/")]` → **188**. `grep -nE '^(pub )?mod ' src/lib.rs | grep -w tests` →
-nothing; no `src/main.rs`; `grep -n 'src/tests' tests/all.rs` → nothing.
+**Evidence.** Live at HEAD (`8d30699ca`), 0.35 s / 22,656 kB:
+`{"reachable":3944,"roots":137,"orphan_count":407,"orphan_lines":126933,"orphan_tests":6292,
+"quarantined_count":82,"quarantined_lines":35856,"quarantined_tests":2021,"unresolved_mods":35}`,
+and `3944 + 407 + 82 == 4433 == git ls-files '*.rs' | wc -l`, so the three populations partition the
+tracked tree exactly. `[o for o in orphans if o.file.startswith("src/tests/")]` → **188**; 298 of the
+407 orphans hold at least one `#[test]` and 109 hold none. `grep -nE '^(pub )?mod ' src/lib.rs |
+grep -w tests` → nothing; no `src/main.rs`; `grep -n 'src/tests' tests/all.rs` → nothing.
 `docs/status/unrun-tests-ledger.md` → "23659 of 26887 lib tests are executed; 3228 are compiled by no
 leg", `<unsatisfiable>` = 2,199. **Gate absence:** `grep -rn reachability .github/workflows/ Makefile`
-→ nothing; same on both hooks. The only caller is
+→ nothing (exit 1); same over `.git/hooks/` and `scripts/install-git-hooks.sh`. The only caller is
 `scripts/dogfood/pmat-dogfood-runner.sh:909-912`, whose `:911` is literally `mark reachability WARN`,
-and nothing in `.github`/Makefile invokes that script. `--fail-on-orphan` → exit 1 in 0.34 s, so the
-flag works. **The template exists and is gated:** `feature-matrix.yml:701` runs
-`analyze unrun-tests --executed '' --check-ledger` and `:807` lists it in `feature-gate`'s `needs`.
+and `grep -rn pmat-dogfood-runner .github/ Makefile` → nothing, so the analyzer's one caller is
+itself invoked by nobody and downgrades the answer to WARN even then. `--fail-on-orphan` → exit 1 in
+0.33 s, so the flag works. **The template exists and is gated:** `feature-matrix.yml:701` runs
+`analyze unrun-tests --executed '' --check-ledger` and `:807` lists `unrun-tests` in `feature-gate`'s
+`needs`. All numbers in this paragraph are **one-shot evidence at `8d30699ca`**, not gate inputs;
+nothing below pins one.
 
 **Proposal.** Mirror `unrun-tests`: `--write-ledger` / `--check-ledger` writing
-`docs/status/orphan-files-ledger.md` with a per-file reason from a **closed enum**
-(`registered-pending`, `deleted-<reason>`, `quarantined-<issue>`), a `.pmat-ratchet.toml` metric
-whose command re-derives the count, and a `reachability` job in feature-matrix inside
-`feature-gate`'s `needs`. Use a ledger rather than a bare `--fail-on-orphan`: 407 must ratchet down,
-not block on day one. Then resolve `src/tests/` file by file — register (`#[cfg(test)] #[path]`) or
-delete — expecting a compile-failure wave, which is the point. **Name the job
-`reachability-ledger`:** feature-matrix already has an `orphan-ledger` job (`:326`, in
-`feature-gate`'s needs) about orphan **features** in `Cargo.toml`; it shares the word and covers none
-of this.
+`docs/status/orphan-files-ledger.md`, one row per unreachable file —
+`` | `path` | reason | tests | lines | `` — with the reason drawn from a **closed enum every member
+of which the analyzer can refute**:
 
-**Acceptance test.**
+| reason | what the analyzer must then see | refuted by |
+|---|---|---|
+| `registered-<target>` | path tracked **and** absent from `.orphans` and `.quarantined` | a path that is still unreachable |
+| `pending-#<issue>` | path present in `.orphans` | a path that is reachable (a stale row) |
+| `quarantined-#<issue>` | path present in `.quarantined` | anything else |
+| `deleted-<reason>` | path **not** tracked by git | a file still in the tree |
+
+`registered-pending`, the enum the first draft proposed, is dropped: it asserts registration and
+non-registration in one token, so nothing can check it. `pending-#<issue>` is the honest name for the
+same bucket — and it is the bucket the ratchet counts, so it can only shrink.
+
+Add two `.pmat-ratchet.toml` metrics whose `command` **re-derives the analyzer's own number**
+(`orphan_files` ← `.orphan_count`, `quarantined_files` ← `.quarantined_count`; both normalised
+bigger-is-worse, as `MetricBaseline`'s contract requires — `config.rs:55-64`). The second is
+anti-vacuity clause (iii): it stops the fix becoming a second quarantine, mirroring the ceiling of 47
+that `src/broken_tests_quarantine_tests.rs:40` already enforces on `pmat_broken_tests` modules.
+
+Then a `reachability-ledger` job in `feature-matrix.yml`, **in `feature-gate`'s `needs` *and* in its
+require-every-leg loop**. Both, not either: `feature-gate` is `if: always()`, so a job named only in
+`needs` cannot fail the gate — the `for r in "${{ needs.*.result }}"` loop at `:812` is what exits 1.
+A gate wired half-way is this item's own defect committed a second time. **Name it
+`reachability-ledger`:** `feature-matrix.yml:326` already has an `orphan-ledger` job (in
+`feature-gate`'s needs) about orphan **features** in `Cargo.toml`; it shares the word and covers none
+of this. Use a ledger rather than a bare `--fail-on-orphan`: 407 must ratchet down, not block on day
+one. Then resolve `src/tests/` file by file — register (`#[cfg(test)] #[path]`) or delete —
+expecting a compile-failure wave, which is the point.
+
+**Acceptance test.** Legs 1–7 are the **permanent gate** and are what the fix PR must turn green; leg
+8 is the **completion criterion** for the population, tracked on #1017, not on that PR. No leg pins a
+census constant: every threshold is either re-derived from the analyzer in the same run or read out
+of the ratchet file, per §8's one-shot-vs-permanent rule.
+
 ```sh
 set -euo pipefail; fail(){ echo "FAIL: $*"; exit 1; }
-grep -q '^\[metric.orphan_files\]' .pmat-ratchet.toml \
-  || fail "no orphan_files ratchet metric"          # absent today (6 metrics, none this)
-pmat comply ratchet -p . 2>&1 | grep -q orphan_files \
-  || fail "ratchet does not evaluate it"            # absent today
-pmat analyze reachability -f json \
-  | jq -e '[.orphans[]|select(.file|startswith("src/tests/"))]|length == 0' \
-  || fail "src/tests/ orphans remain"               # today 188
-```
-Every leg is `|| fail`-guarded and every `jq` carries `-e`: the merged snippet's first two legs were
-bare `grep -q` that could not stop the script (no `set -e`), and its third ended in a bare `jq` with
-no `-e`, so it returned 0 whatever reachability reported.
-**CORRECTION:** the merged first leg, `pmat comply ratchet --format json | jq …`, **cannot be run** —
-that subcommand has no `--format` (`error: unexpected argument found`; only `comply coherence` has
-`-f/--format`). Either add `--format` to `comply ratchet` as part of the work (small, and it closes a
-real machine-readability asymmetry) or assert against what exists, as above.
-*Build-cost leg, labelled:* `pmat comply ratchet` exits 0 on unmodified HEAD and non-zero **naming
-the file** after a `mod` line is deleted on a scratch branch — it shells to
-`cargo clippy --features full` for one existing metric, so this leg costs a build.
-*Instrument regression guard (0.3 s, passes today):* a two-file fixture where `pub mod b;` present →
-`orphan_count 0` / exit 0, deleted → `orphan_count 1` naming `src/b.rs` / exit 1. Verified both ways.
-*Anti-vacuity — the deletion hole the merged version left open.* `git rm -r src/tests/` drops
-`orphan_count` 407 → 219, the ledger accounts for the rest, and **every leg goes green while 4,335
-test functions and 76,461 lines leave the tree** — and "register or delete" makes mass deletion
-on-policy. Add: (i) the ledger row carries `tests` and `lines` per file so a deletion is a diff, not
-an absence; (ii) the CI leg fails if total declared test functions decreased while `orphan_count`
-decreased. **CORRECTION — the merged floor does not close the hole it names.** The cited command's
-own output at `512c60139` is **36,147** (`-- 'src/*.rs'` → 33,475 and `-- 'tests/*.rs'` → 2,672; note
-that `src/*.rs` **is recursive** in git pathspec syntax and therefore already includes all of
-`src/tests/`), while the floor quoted beside it was 4,340 — a number from a different scope, and not
-even the right one for that scope (`-- 'src/tests/*.rs'` → **4,335**; 4,340 is the looser *occurrence*
-count this item's own Risk paragraph warns against using). Wiring 4,340 gives a gate that stays green
-after `git rm -r src/tests/`: 36,147 − 4,335 = 31,812 ≫ 4,340 — precisely the deletion hole the clause
-claims to close. State the floor as the command's own current output with its exact pathspec and
-regex (**36,147** at `512c60139`), and express the invariant as a **delta**: the leg fails if
-`orphan_count` decreased by more than the number of files whose ledger rows changed to a non-deleted
-reason. Better, follow clause (i) and assert **conservation**: Σ(ledger `tests`) + Σ(registered
-tests) must not decrease; (iii) the quarantine class carries a ceiling, mirroring the
-existing `pmat_broken_tests` ceiling of 47 enforced by a `--lib` test.
+P=${PMAT:-pmat}; FM=.github/workflows/feature-matrix.yml; L=docs/status/orphan-files-ledger.md
+tom(){ python3 - "$1" "$2" <<'PY'
+import sys,tomllib
+try: print(tomllib.load(open(".pmat-ratchet.toml","rb"))["metric"][sys.argv[1]][sys.argv[2]])
+except KeyError: sys.exit(1)
+PY
+}
+body(){ awk -v j="  $1:" '$0==j{f=1;next} f&&/^  [a-z0-9-]+:$/{f=0} f' "$FM"; }
+cell(){ awk -F' *\| *' -v f="\`$1\`" -v n="$2" '$2==f{print $n}' "$L"; }
 
-**Effort.** **M** for ledger + ratchet + CI leg. **Out of scope:** `#[serde(default)] reachable:
-Option<bool>` on `BaselineEntry` and the TDG `grade_distribution` exclusion — real, but a separable
-subsystem and what pushes an honest M toward L. (#1017's triage comment already specifies the
-`BaselineEntry` change and names a second construction site at
+# 0. CONTROL (green today, by design — the instrument works; that was never in doubt)
+R=$("$P" analyze reachability -f json) || fail "leg 0 (CONTROL): the analyzer did not run"
+
+# 1. the metrics exist — parsed as TOML, never grepped as a header spelling
+CMD=$(tom orphan_files command)       || fail "leg 1a: no [metric.orphan_files] in .pmat-ratchet.toml"
+QCMD=$(tom quarantined_files command) || fail "leg 1b: no [metric.quarantined_files]"
+
+# 2. they MEASURE THE TREE. 2a+2c+2f together are what kill `command = '''echo 407'''`
+grep -q 'analyze reachability' <<<"$CMD" || fail "leg 2a: orphan_files never invokes the analyzer"
+OBS=$(bash -o pipefail -c "$CMD")        || fail "leg 2b: the orphan_files command does not run"
+[ "$OBS" = "$(jq -er .orphan_count <<<"$R")" ]       || fail "leg 2c: metric $OBS != analyzer $(jq -er .orphan_count <<<"$R")"
+QOBS=$(bash -o pipefail -c "$QCMD")      || fail "leg 2d: the quarantined_files command does not run"
+[ "$QOBS" = "$(jq -er .quarantined_count <<<"$R")" ] || fail "leg 2e: quarantined_files is not the analyzer's number"
+#    2f — DIFFERENTIAL: the same command, on a tree whose true answer is 1, not 407
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT; ( cd "$T" && git init -q . && mkdir src \
+  && printf '[package]\nname="fx"\nversion="0.0.0"\nedition="2021"\n' > Cargo.toml \
+  && printf '\n' > src/lib.rs && printf '#[test]\nfn a(){}\n' > src/b.rs && git add -A \
+  && git -c user.email=t@t -c user.name=t commit -q --no-verify -m fx >/dev/null )
+FT=$(cd "$T" && "$P" analyze reachability -f json | jq -er .orphan_count) || fail "leg 2f: the fixture did not measure"
+[ "$FT" = 1 ] || fail "leg 2f: the fixture is not the one this leg needs (orphan_count $FT, expected 1)"
+FO=$(cd "$T" && bash -o pipefail -c "$CMD" | tr -d '[:space:]')
+[ "$FO" = "$FT" ] || fail "leg 2f: on a fixture whose orphan_count is $FT the metric printed $FO — it measures no tree"
+
+# 3. BUILD-COST LEG. the ratchet EVALUATES it — decoupled from the ratchet's own verdict, so an
+#    unrelated red metric cannot masquerade as "not evaluated". Note the `|| true` and the absent pipe.
+OUT=$("$P" comply ratchet -p . 2>&1 || true)
+grep -qE '^orphan_files +([0-9]+|unmeasured) +/' <<<"$OUT" || fail "leg 3a: comply ratchet does not evaluate orphan_files"
+! grep -qE '^orphan_files +unmeasured +/'        <<<"$OUT" || fail "leg 3b: unmeasurable is not a pass"
+
+# 4. the instrument is WIRED — to the leg that can actually fail the gate, not only to `needs:`
+grep -qE '^  reachability-ledger:' "$FM"                     || fail "leg 4a: no reachability-ledger job"
+body reachability-ledger | grep -q 'analyze reachability'    || fail "leg 4b: the job does not run the analyzer"
+G=$(awk '/^  feature-gate:/,0' "$FM")
+grep -qE '^    needs: \[.*reachability-ledger.*\]' <<<"$G"   || fail "leg 4c: not in feature-gate's needs"
+grep -q 'needs\.reachability-ledger\.result'       <<<"$G"   || fail "leg 4d: not in feature-gate's require-every-leg loop"
+
+# 5. the ledger accounts for EVERY unreachable file, with the analyzer's own tests+lines
+[ -f "$L" ] || fail "leg 5a: $L does not exist"
+while read -r f t l; do
+  r=$(cell "$f" 3); [ -n "$r" ] || fail "leg 5b: no ledger row for $f"
+  case "$r" in registered-*|pending-\#[0-9]*|deleted-*|quarantined-\#[0-9]*) ;;
+               *) fail "leg 5c: reason '$r' for $f is outside the closed enum" ;; esac
+  [ "$(cell "$f" 4)" = "$t" ] && [ "$(cell "$f" 5)" = "$l" ] \
+    || fail "leg 5d: $f row disagrees with the analyzer ($t tests / $l lines)"
+done < <(jq -r '(.orphans[],.quarantined[])|"\(.file) \(.tests) \(.lines)"' <<<"$R")
+[ "$(grep -cE '^\| `[^`]+` \| pending-#'     "$L")" = "$(jq -er .orphan_count <<<"$R")" ]      || fail "leg 5e: pending- rows != orphan_count"
+[ "$(grep -cE '^\| `[^`]+` \| quarantined-#' "$L")" = "$(jq -er .quarantined_count <<<"$R")" ] || fail "leg 5f: quarantined- rows != quarantined_count"
+
+# 6. every reason is a CLAIM THE ANALYZER CHECKS — so relocation cannot be spelled as a fix
+UN=$(jq -r '(.orphans[],.quarantined[]).file' <<<"$R" | sort); QU=$(jq -r '.quarantined[].file' <<<"$R" | sort)
+while IFS= read -r ln; do
+  f=$(sed -E 's/^\| `([^`]*)` .*/\1/' <<<"$ln"); r=$(awk -F' *\| *' '{print $3}' <<<"$ln")
+  case "$r" in
+    registered-*)  git ls-files --error-unmatch "$f" >/dev/null 2>&1 || fail "leg 6a: registered $f is not tracked"
+                   ! grep -qxF "$f" <<<"$UN" || fail "leg 6a: $f claims registered- and is still unreachable" ;;
+    deleted-*)     ! git ls-files --error-unmatch "$f" >/dev/null 2>&1 || fail "leg 6b: $f claims deleted- and is tracked" ;;
+    quarantined-*) grep -qxF "$f" <<<"$QU" || fail "leg 6c: $f claims quarantined- and the analyzer disagrees" ;;
+    pending-*)     grep -qxF "$f" <<<"$UN" || fail "leg 6d: $f claims pending- and is reachable — stale row" ;;
+  esac
+done < <(grep -E '^\| `[^`]+` \|' "$L")
+
+# 7. ANTI-VACUITY GUARD (green today, by design — labelled, not evidence). Conservation as a git
+#    DELTA between two tree-ishes: no constant to transcribe, and no constant to re-baseline.
+census(){ git grep -cE '^[[:space:]]*#\[(tokio::)?test' "$1" -- 'src/*.rs' 'tests/*.rs' | awk -F: '{n+=$3} END{print n+0}'; }
+B=$(git merge-base HEAD origin/master) || fail "leg 7a: no merge-base to compare against"
+NOW=$(census HEAD); WAS=$(census "$B")
+[ "$NOW" -gt 0 ] && [ "$WAS" -gt 0 ] || fail "leg 7b: the census predicate measured nothing — it has rotted"
+[ "$NOW" -ge "$WAS" ] || fail "leg 7c: declared #[test] fell $WAS -> $NOW; orphans were deleted, not registered"
+
+# 8. COMPLETION CRITERION (#1017), not the day-one gate: an invariant, not a count
+jq -e '[.orphans[]|select(.tests>0)]|length == 0' <<<"$R" >/dev/null \
+  || fail "leg 8: $(jq -r '[.orphans[]|select(.tests>0)]|length' <<<"$R") orphan files still hold #[test] fns"
+echo PASS
+```
+
+**Ran at HEAD (`8d30699ca`), fail-fast, with the release binary:**
+`FAIL: leg 1a: no [metric.orphan_files] in .pmat-ratchet.toml` / `EXIT=1`. Every leg was then probed
+individually, because a fail-fast script only proves its first leg:
+
+| leg | today | probe |
+|---|---|---|
+| 0 CONTROL | GREEN *(by design)* | analyzer returns the JSON above in 0.35 s |
+| 1a / 1b | RED | `.pmat-ratchet.toml` declares 6 metrics — `unwrap_calls_src_total`, `unwrap_calls_shipped_code`, `unwrap_calls_src_outside_cfg_test`, `satd_markers_src_comments`, `panic_macro_calls_src`, `allow_attributes_src`. Neither of ours is among them |
+| 2a–2f | RED | unreachable: there is no metric to bind |
+| 3a | RED | `comply ratchet` prints 6 rows, none named `orphan_files` |
+| 4a–4d | RED | `reachability-ledger` matches nothing in `feature-matrix.yml` |
+| 5a–5f, 6a–6d | RED | `docs/status/` holds three ledgers; `orphan-files-ledger.md` is not one |
+| 7 GUARD | GREEN *(by design)* | `36165 -> 36165` across `512c60139..HEAD` |
+| 8 | RED | 298 orphan files hold at least one `#[test]` |
+
+**The leg-4 regexes discriminate, they are not merely red.** Substituting the two jobs that *are*
+wired: `orphan-ledger` and `unrun-tests` each pass 4a, 4c and 4d, and `unrun-tests` passes 4b.
+`reachability-ledger` fails all four. Without that control, four always-red greps would be
+indistinguishable from four correct ones.
+
+**Every game the falsification round demonstrated, and the leg that now stops it.**
+
+| game | why it used to work | defeated by |
+|---|---|---|
+| `[metric.orphan_files] command = '''echo 1'''` (run green in a fixture: `all 2 baseline(s) held`, exit 0) | nothing bound the metric to the analyzer, or to the tree | **2a** (the command must name `analyze reachability`) + **2c** (its output must equal the live `orphan_count`) + **2f**. 2f is the one that matters: a constant that has been tuned to today's 407, comment and all, prints 407 on a fixture whose true answer is 1. Both cases run: the honest command printed `1`, `echo 407 # analyze reachability` printed `407` |
+| `git rm -r src/tests/` — 188 files, 76,461 lines, 4,335 `#[test]` leave the tree and `orphan_count` falls 407 → 219 | the old leg asked for the *absence* of `src/tests/` orphans, so deleting them was a pass, and "register or delete" made it on-policy | **7**. Simulated by pathspec on the real tree: the census is 36,165 at HEAD and **31,830** with `':(exclude)src/tests/*.rs'`, so leg 7c fires. **5d/5e** also fire: a deleted file's row must carry the analyzer's `tests`/`lines`, so a deletion is a diff, not an absence |
+| `git mv src/tests src/tests_disabled` — nothing compiled, nothing registered, nothing deleted | the old leg tested a **path prefix**, not a property | **6**. Run against a fixture in the post-rename state, three of the four reasons are refuted by the analyzer itself — `registered-lib` → "still unreachable", `deleted-renamed` → "is tracked", `quarantined-#1017` → "the analyzer disagrees". Only `pending-#1017` is legal, and it buys nothing: `orphan_files` stays 407, so **3** shows no movement and **8** stays red at 298 |
+| implement all of it and invoke it from nowhere — the item's own title | no leg mentioned CI at all | **4a–4d**, and specifically **4d**: `feature-gate` is `if: always()`, so adding the job to `needs:` alone leaves it unable to fail the build. The loop at `feature-matrix.yml:812` is the gate |
+| *(false-RED, not a false-green)* the old leg 2 was a pipeline under `set -euo pipefail`, so it exited 7 and printed "ratchet does not evaluate it" whenever **any unrelated** metric was red | the leg took `pmat`'s exit status through the pipe | **3a**'s `|| true` plus a grep on the captured text. Not hypothetical: `comply ratchet` exits 1 on this tree today, because `unwrap_calls_shipped_code` reports `unmeasured` |
+
+*Leg 3 costs a build, and that is declared:* `comply ratchet` runs **every** metric, and
+`unwrap_calls_shipped_code` shells to `cargo clippy --lib --bins --features full`
+(`.pmat-ratchet.toml:60-62`). It was run here with `cargo` removed from `PATH` — a declared deviation
+that cannot change the outcome, because 3a reads only the metric-name column
+`ratchet_handler.rs:42-45` prints from the config's metric table, and `measure_now()`
+(`measure.rs:155`, `.output()` at `:181`) captures subprocess output, so no cargo text reaches
+stdout. The transcript with the deviation: six rows, none named `orphan_files`,
+`Error: .pmat-ratchet.toml: the ratchet is red`, exit 1.
+
+**CORRECTION (retained).** `pmat comply ratchet --format json` **cannot be run** — that subcommand
+has no `--format` (`--help` lists only `--mode`, `-p`, `--lower`, and the log flags; only
+`comply coherence` has `-f/--format`). The test above therefore asserts against the text `comply
+ratchet` actually prints. Adding `--format` to `comply ratchet` is worth doing on its own — it closes
+a real machine-readability asymmetry — but the acceptance test must not presuppose it.
+
+**CORRECTION (new, and it changes a number this document published).** The floor the first draft
+quoted, **36,147** at `512c60139`, comes from the predicate `^[[:space:]]*#\[(tokio::)?test\]` — with
+the closing bracket. That spelling silently drops **18 real declarations**: ten
+`#[tokio::test(flavor = "multi_thread", worker_threads = 2)]`, seven `#[tokio::test(start_paused =
+true)]`, one `#[tokio::test(flavor = "multi_thread")]`. The open predicate gives **36,165** at the
+same commit and at HEAD. Two spellings of "the cited command", 18 apart, is exactly why
+`.pmat-ratchet.toml` requires the reproduction command rather than the number — and why leg 7
+compares two tree-ishes through **one** `census()` function instead of pinning either total.
+
+**CORRECTION (new, and it changes which predicate may be ratcheted).** The analyzer's per-file
+`tests` field is **line-anchored**. In a two-file fixture, `src/b.rs` containing
+`#[cfg(test)] mod t { #[test] fn one() {} }` on one line and a line-anchored `#[test] fn two()`
+reports `{"file":"src/b.rs","lines":3,"tests":1}` — one of the two. So `orphan_tests` (6,292) is a
+floor by a second, unstated mechanism, and it must **not** be the conservation quantity. Leg 7 counts
+`#[test]` attributes with git instead; leg 5d still records the analyzer's `tests` per row, where it
+is an accounting key rather than a total.
+
+**Effort.** **M** for ledger + two ratchet metrics + the CI leg — legs 1–7. The `src/tests/`
+resolution behind leg 8 is the **L** tail and belongs to #1017, not to this PR. **Out of scope:**
+`#[serde(default)] reachable: Option<bool>` on `BaselineEntry` and the TDG `grade_distribution`
+exclusion — real, but a separable subsystem and what pushes an honest M toward L. (#1017's triage
+comment already specifies the `BaselineEntry` change and names a second construction site at
 `src/mcp_pmcp/tool_functions/quality_tools.rs:598` the merged record omits; omitting it would
 reproduce #1029's CLI/MCP divergence class.)
 
 **Risk.** Registering 4,335 tests surfaces a compile-failure wave and will tempt a second quarantine
-— require a written reason per file and a ceiling. Quote the tool's numbers, not grep's: 4,335 tests
-vs a naive grep's 3,872 lines / 4,340 occurrences; 76,479 lines vs `wc -l`'s 76,461.
+— `quarantined_files` (leg 1b/2d) is the ceiling that makes that visible, and every file still needs
+a written reason. `pending-#<issue>` is the other pressure valve, so watch leg 5e: it is the ratchet's
+own number, and a PR that grows it is a PR that made things worse. Quote the tool's numbers, not
+grep's: 4,335 tests vs a naive grep's 3,872 lines / 4,340 occurrences; 76,479 lines vs `wc -l`'s
+76,461 — and note that the occurrence count is precisely the sort of number the correction above
+caught being 18 out.
 
 **Related issue.** #1017 (OPEN; its triage comment states AC4 is NOT MET — "no hook, no CI job, no
 verify stage"), #1018. **File it as "finish fable-review §4 EV-3"**: the analyzer half shipped in
@@ -1981,8 +3537,6 @@ verify stage"), #1018. **File it as "finish fable-review §4 EV-3"**: the analyz
 because registering those as `#[cfg(test)] mod` puts them in the **lib** target the existing
 `cargo test --lib` leg already runs; only the 43 orphans under `tests/` need the `[[test]]` targets
 first.
-
----
 
 ### 8.13 CRUX-13 — `analyze satd` does not walk shell scripts, and its census hides the omission
 
