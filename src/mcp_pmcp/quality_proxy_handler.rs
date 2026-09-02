@@ -8,17 +8,19 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::{debug, info};
 
-/// Input parameters for the quality proxy tool.
+/// Input parameters for `quality_check_content` (and its one-release alias
+/// `quality_proxy`).
+///
+/// No `operation`: the tool grades `content` for `file_path` and returns it;
+/// it never writes, edits or appends (CRUX-10, #1151 — the write it advertised
+/// had never existed, and every caller was writing with its own harness while
+/// believing the gate had). `deny_unknown_fields` is what turns a stale
+/// `operation: "write"` into `-32602` instead of a silently ignored key.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct QualityProxyInput {
-    pub operation: String,
     pub file_path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub old_content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub new_content: Option<String>,
+    pub content: String,
     #[serde(default = "default_mode")]
     pub mode: String,
     #[serde(default)]
@@ -179,6 +181,18 @@ fn default_auto_format() -> bool {
 /// };
 /// ```ignore
 pub struct QualityProxyTool;
+
+/// The deprecated name, served for exactly one release after the rename.
+/// Same schema, same handler, same payload — `quality_proxy` never wrote a
+/// file, so the alias asserts nothing the new name does not.
+pub struct QualityProxyAliasTool;
+
+/// The live tool's name.
+pub const QUALITY_CHECK_CONTENT: &str = "quality_check_content";
+/// The name it replaced, kept as an alias for one release.
+pub const QUALITY_PROXY_ALIAS: &str = "quality_proxy";
+
+const QUALITY_CHECK_DESCRIPTION: &str = "Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.";
 
 include!("quality_proxy_handler_impl.rs");
 include!("quality_proxy_handler_tests.rs");

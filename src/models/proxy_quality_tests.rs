@@ -220,6 +220,7 @@ fn test_proxy_response_accepted() {
         },
         final_content: "fn test() {}".to_string(),
         refactoring_applied: false,
+        written: false,
         refactoring_plan: None,
     };
 
@@ -250,6 +251,7 @@ fn test_proxy_response_modified_with_refactoring() {
         },
         final_content: "fn helper() {}\nfn test() { helper(); }".to_string(),
         refactoring_applied: true,
+        written: false,
         refactoring_plan: Some(vec![plan_step]),
     };
 
@@ -283,6 +285,7 @@ fn test_proxy_response_rejected() {
         },
         final_content: String::new(),
         refactoring_applied: false,
+        written: false,
         refactoring_plan: None,
     };
 
@@ -314,6 +317,7 @@ fn test_proxy_response_serialization_roundtrip() {
         },
         final_content: "fn foo() {}".to_string(),
         refactoring_applied: false,
+        written: false,
         refactoring_plan: None,
     };
 

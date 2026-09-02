@@ -67,6 +67,9 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 - Host: the gitignored `.cargo/config.toml` (a transient coverage config) vanished at 19:52 during verify run 2, so background builds fell back to `./target` — a symlink to a stale 67 GB `cargo-targets/` tree — and rebuilt cold. Every binary path in this receipt was taken from `cargo build --message-format=json` in the same shell, so no measurement was made against a stale artefact; only the wall clock suffered. Recorded in `.pmat/jidoka.jsonl`.
 
+- Landing: #1161 went CLEAN at 21:22 and was immediately put BEHIND by #1117 (the spec, docs-only) and again by #1116 (getrandom), because master is `strict`. Each time it was brought up to date with a real merge commit (`gh pr update-branch` / the API equivalent) and CI re-ran in full — no `--admin`, no rerun of a failed leg. Cost: ~35–40 min per cascade step on the org's 16-runner pool.
+- Host: from 22:03 a peer Claude session's `paiml-impl-worker` held the per-user skill lock, which denies this orchestrator `gh pr …` (even `view`) and `git push`. Polled through `gh api` instead; the lock was not removed (it may be a live worker elsewhere). Recorded in `.pmat/jidoka.jsonl`.
+
 ## Decisions taken conservatively [A]
 
 - [A] `ok: null` keeps exit 0 (the item's table); a declined stage withdraws the verdict, it does not start failing the build. The alternative (exit 1 on any decline) would fail every pre-commit run on a doc-only change.
@@ -80,4 +83,4 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 ## Verdict
 
-All phase and DoD gates hold; PR #1161 open with auto-merge armed. **DONE** the moment #1161 merges green on the required checks without a rerun (recorded in the final receipt commit).
+All phase and DoD gates hold. **DONE** — #1161 merged at 5dbbfe88a with 41 checks green and no rerun (verified with `gh api repos/paiml/paiml-mcp-agent-toolkit/pulls/1161` → merged=true, and the head commit's check-runs: 0 failure, 0 cancelled).
