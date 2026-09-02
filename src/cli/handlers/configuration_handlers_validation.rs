@@ -350,7 +350,7 @@ mod validation_tests {
     fn unknown_section_is_named_and_near_miss_suggested() {
         let raw: toml::Table = "[quality_gate]\nmax_cyclomatic_complexity = 15\n"
             .parse()
-            .unwrap();
+            .expect("fixture TOML parses");
         let (sections, keys) = inapplicable_entries(&raw, &schema());
         assert_eq!(sections, vec![("quality_gate".to_string(), Some("quality".to_string()))]);
         assert!(keys.is_empty());
@@ -358,14 +358,14 @@ mod validation_tests {
 
     #[test]
     fn unrelated_unknown_section_gets_no_suggestion() {
-        let raw: toml::Table = "[markdown]\nx = 1\n".parse().unwrap();
+        let raw: toml::Table = "[markdown]\nx = 1\n".parse().expect("fixture TOML parses");
         let (sections, _) = inapplicable_entries(&raw, &schema());
         assert_eq!(sections, vec![("markdown".to_string(), None)]);
     }
 
     #[test]
     fn renamed_section_with_same_table_count_is_still_caught() {
-        let raw: toml::Table = "[telemetryy]\nenabled = true\n".parse().unwrap();
+        let raw: toml::Table = "[telemetryy]\nenabled = true\n".parse().expect("fixture TOML parses");
         let (sections, _) = inapplicable_entries(&raw, &schema());
         assert_eq!(sections, vec![("telemetryy".to_string(), Some("telemetry".to_string()))]);
     }
@@ -375,7 +375,7 @@ mod validation_tests {
         let raw: toml::Table =
             "[quality]\nmax_complexity = 25\nmin_pattern_diversity = 0.3\nzzz_not_read_by_anything = 1\n"
                 .parse()
-                .unwrap();
+                .expect("fixture TOML parses");
         let (sections, keys) = inapplicable_entries(&raw, &schema());
         assert!(sections.is_empty());
         assert_eq!(keys, vec![("quality".to_string(), "zzz_not_read_by_anything".to_string())]);
@@ -383,7 +383,7 @@ mod validation_tests {
 
     #[test]
     fn custom_section_is_free_form() {
-        let raw: toml::Table = "[custom]\nanything = \"goes\"\n".parse().unwrap();
+        let raw: toml::Table = "[custom]\nanything = \"goes\"\n".parse().expect("fixture TOML parses");
         let (sections, keys) = inapplicable_entries(&raw, &schema());
         assert!(sections.is_empty() && keys.is_empty());
     }

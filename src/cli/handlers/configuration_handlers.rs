@@ -179,9 +179,9 @@ mod tests {
     /// back to, exit 0.
     #[tokio::test]
     async fn a_config_that_does_not_parse_fails_validation() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("pmat.toml");
-        std::fs::write(&config_path, "not even toml ][\n").unwrap();
+        std::fs::write(&config_path, "not even toml ][\n").expect("write fixture");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
         assert!(matches!(
@@ -197,16 +197,16 @@ mod tests {
     /// wholesale.
     #[tokio::test]
     async fn a_partial_config_is_honoured_not_replaced() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("pmat.toml");
-        std::fs::write(&config_path, "[quality]\nmax_complexity = 25\n").unwrap();
+        std::fs::write(&config_path, "[quality]\nmax_complexity = 25\n").expect("write fixture");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
         assert_eq!(
             config_service.load_status(),
             &crate::services::configuration_service::ConfigLoadStatus::Loaded
         );
-        let config = config_service.get_config().unwrap();
+        let config = config_service.get_config().expect("config");
         assert_eq!(
             config.quality.max_complexity, 25,
             "the one key set is applied"
@@ -226,7 +226,7 @@ mod tests {
     /// gives it, from the same derived list.
     #[tokio::test]
     async fn an_unknown_section_fails_validation() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("pmat.toml");
         std::fs::write(
             &config_path,
@@ -244,7 +244,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_configuration_values() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("test_config.toml");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
@@ -256,7 +256,7 @@ mod tests {
         let result = set_configuration_values(&config_service, set_values).await;
         assert!(result.is_ok());
 
-        let config = config_service.get_config().unwrap();
+        let config = config_service.get_config().expect("config");
         assert_eq!(config.quality.max_complexity, 25);
         assert!(config.system.verbose);
     }
@@ -274,7 +274,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reset_configuration() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("test_config.toml");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
@@ -292,7 +292,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify reset
-        let config = config_service.get_config().unwrap();
+        let config = config_service.get_config().expect("config");
         assert_eq!(config.quality.max_complexity, 30); // Default value
     }
 }
