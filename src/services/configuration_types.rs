@@ -2,27 +2,41 @@
 // Included by configuration_service.rs — shares parent module scope
 
 /// Central configuration for the entire PMAT system
+///
+/// Every section and every field carries `#[serde(default)]`, so a `pmat.toml`
+/// that sets only `[quality] max_complexity = 25` is a file pmat HONOURS — the
+/// one key is applied and everything else is the built-in default. Before
+/// CRUX-03 (#1147) the same file failed strict deserialisation and was
+/// silently replaced by the defaults in full, with the warning on stderr and
+/// `config --validate` certifying the defaults it had fallen back to.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PmatConfig {
     /// System-wide settings
+    #[serde(default)]
     pub system: SystemConfig,
 
     /// Quality gate configurations
+    #[serde(default)]
     pub quality: QualityConfig,
 
     /// Analysis configurations
+    #[serde(default)]
     pub analysis: AnalysisConfig,
 
     /// Performance testing configurations
+    #[serde(default)]
     pub performance: PerformanceConfig,
 
     /// MCP server configurations
+    #[serde(default)]
     pub mcp: McpConfig,
 
     /// Roadmap and project management
+    #[serde(default)]
     pub roadmap: RoadmapConfig,
 
     /// Telemetry settings
+    #[serde(default)]
     pub telemetry: TelemetryConfig,
 
     /// Semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
@@ -31,11 +45,13 @@ pub struct PmatConfig {
     pub semantic: SemanticConfig,
 
     /// Custom user configurations
+    #[serde(default)]
     pub custom: HashMap<String, serde_json::Value>,
 }
 
 /// System-wide configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SystemConfig {
     /// Project name
     pub project_name: String,
@@ -61,6 +77,7 @@ pub struct SystemConfig {
 
 /// Quality gate configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct QualityConfig {
     /// Maximum cyclomatic complexity allowed
     pub max_complexity: u32,
@@ -86,6 +103,7 @@ pub struct QualityConfig {
 
 /// Analysis configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AnalysisConfig {
     /// Include patterns for file analysis
     pub include_patterns: Vec<String>,
@@ -114,6 +132,7 @@ pub struct AnalysisConfig {
 
 /// Performance testing configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PerformanceConfig {
     /// Enable regression testing
     pub enable_regression_tests: bool,
@@ -138,6 +157,7 @@ pub struct PerformanceConfig {
 
 /// MCP server configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct McpConfig {
     /// Server name
     pub server_name: String,
@@ -163,6 +183,7 @@ pub struct McpConfig {
 
 /// Roadmap and project management configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct RoadmapConfig {
     /// Path to roadmap file
     pub roadmap_path: PathBuf,
@@ -191,6 +212,7 @@ pub struct RoadmapConfig {
 
 /// Git integration configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GitConfig {
     /// Create branches for tasks
     pub create_branches: bool,
@@ -207,6 +229,7 @@ pub struct GitConfig {
 
 /// Telemetry configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct TelemetryConfig {
     /// Enable telemetry collection
     pub enabled: bool,

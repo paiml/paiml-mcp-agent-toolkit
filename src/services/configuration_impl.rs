@@ -5,8 +5,31 @@
 pub struct ConfigurationService {
     config: Arc<RwLock<PmatConfig>>,
     config_path: PathBuf,
+    /// What `new()` found on disk. Kept beside the config because the config
+    /// alone cannot say whether it was read or fallen back to — the two are
+    /// byte-identical when the file is absent or unparsable (CRUX-03, #1147).
+    load_status: ConfigLoadStatus,
     metrics: Arc<RwLock<ServiceMetrics>>,
     watchers: Arc<RwLock<Vec<Box<dyn ConfigWatcher + Send + Sync>>>>,
+}
+
+/// How the configuration in a [`ConfigurationService`] came to be.
+///
+/// `Absent` and `Unparsable` both leave the service holding the built-in
+/// defaults, which is the right runtime behaviour for a tool that must still
+/// run without a config — but a validator that reports on those defaults as
+/// though they were the file is certifying something it never read. The
+/// status is what lets `config --validate` tell the two apart.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfigLoadStatus {
+    /// No file at the path; the defaults are in use.
+    Absent,
+    /// The file was read and deserialised; sections it omits are defaults.
+    Loaded,
+    /// The file exists but could not be read or parsed. The defaults are in
+    /// use and the string is the parser's own message, which for TOML names
+    /// the line and column.
+    Unparsable(String),
 }
 
 /// Trait for configuration change watchers
@@ -29,32 +52,48 @@ impl ConfigurationService {
         // `start()`, which nothing calls, so every reader saw the built-in
         // defaults: `config --set quality.max_complexity=5` wrote pmat.toml,
         // reported success, and the next `config` invocation still printed 30.
-        let config = Self::read_config_file(&default_path).unwrap_or_else(Self::default_config);
+        let (config, load_status) = Self::read_config_file(&default_path);
+        let config = config.unwrap_or_else(Self::default_config);
 
         Self {
             config: Arc::new(RwLock::new(config)),
             config_path: default_path,
+            load_status,
             metrics: Arc::new(RwLock::new(ServiceMetrics::default())),
             watchers: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
-    /// Read and parse a config file, returning None when there is nothing
-    /// usable on disk. A malformed file is reported on stderr rather than
-    /// silently replaced by defaults.
-    fn read_config_file(path: &std::path::Path) -> Option<PmatConfig> {
+    /// Whether the configuration was read from disk, defaulted because no file
+    /// exists, or defaulted because the file could not be parsed.
+    #[must_use]
+    pub fn load_status(&self) -> &ConfigLoadStatus {
+        &self.load_status
+    }
+
+    /// The path this service reads and writes.
+    #[must_use]
+    pub fn config_path(&self) -> &std::path::Path {
+        &self.config_path
+    }
+
+    /// Read and parse a config file, returning the config (None when there is
+    /// nothing usable on disk) together with WHY. A malformed file is reported
+    /// on stderr rather than silently replaced by defaults, and the same fact
+    /// is carried in the status so a caller writing to stdout can say it too.
+    fn read_config_file(path: &std::path::Path) -> (Option<PmatConfig>, ConfigLoadStatus) {
         if !path.exists() {
-            return None;
+            return (None, ConfigLoadStatus::Absent);
         }
         match std::fs::read_to_string(path) {
             Ok(content) => match toml::from_str::<PmatConfig>(&content) {
-                Ok(config) => Some(config),
+                Ok(config) => (Some(config), ConfigLoadStatus::Loaded),
                 Err(e) => {
                     eprintln!(
                         "warning: {} is not valid pmat configuration ({e}); using defaults",
                         path.display()
                     );
-                    None
+                    (None, ConfigLoadStatus::Unparsable(e.to_string()))
                 }
             },
             Err(e) => {
@@ -62,7 +101,7 @@ impl ConfigurationService {
                     "warning: could not read {} ({e}); using defaults",
                     path.display()
                 );
-                None
+                (None, ConfigLoadStatus::Unparsable(e.to_string()))
             }
         }
     }
@@ -407,6 +446,71 @@ mod new_reads_disk_tests {
 }
 
 // Global configuration service instance (singleton pattern)
+/// `[quality]` keys that are read by pmat but are NOT fields of
+/// `QualityConfig`: the ad-hoc `toml::Table` readers in
+/// `src/cli/analysis_utilities/quality_gate_config.rs` and
+/// `quality_checks_part1_entropy.rs` consume them directly. Listed here, next
+/// to the schema they extend, so the validator and the readers cannot drift
+/// apart without a test noticing (`ad_hoc_quality_keys_are_still_read`).
+pub const AD_HOC_QUALITY_KEYS: &[(&str, &str)] = &[
+    ("min_pattern_diversity", "quality-gate entropy threshold (#227)"),
+    ("max_entropy_violations", "quality-gate entropy violation ceiling (#227)"),
+    ("max_pattern_repetition", "quality-gate entropy repetition limit (#219)"),
+];
+
+/// The top-level sections `pmat.toml` may contain, read off `PmatConfig` itself.
+///
+/// Derived, not listed: the serialised default config IS the schema, so the
+/// accepted set cannot fall behind the struct the readers deserialise. Both
+/// `pmat quality-gate` (which blocks on an unknown section) and
+/// `pmat config --validate` (which names it) call THIS function, so the two
+/// can never disagree about what a known section is.
+#[must_use]
+pub fn schema_pmat_toml_sections() -> std::collections::BTreeSet<String> {
+    schema_pmat_toml_keys().into_keys().collect()
+}
+
+/// Every `section -> keys` pair the schema declares, read off the serialised
+/// default config. Nested tables (`[roadmap.git]`) appear as a key of their
+/// parent section, which is how the file spells them too.
+#[must_use]
+pub fn schema_pmat_toml_keys(
+) -> std::collections::BTreeMap<String, std::collections::BTreeSet<String>> {
+    let Ok(toml::Value::Table(table)) = toml::Value::try_from(ConfigurationService::default_config())
+    else {
+        return std::collections::BTreeMap::new();
+    };
+    table
+        .into_iter()
+        .map(|(section, value)| {
+            let keys = match value {
+                toml::Value::Table(t) => t.keys().cloned().collect(),
+                _ => std::collections::BTreeSet::new(),
+            };
+            (section, keys)
+        })
+        .collect()
+}
+
+/// The known section a misspelling most likely meant, or `None` when nothing is
+/// close enough to name without guessing.
+///
+/// Deliberately conservative: only a shared prefix in either direction counts,
+/// which is what turns `[quality_gate]` into "did you mean `[quality]`?" while
+/// leaving `[markdown]` — a section that was never a near-miss for anything —
+/// unannotated rather than pointed at an unrelated one.
+#[must_use]
+pub fn nearest_known_section(
+    unknown: &str,
+    known: &std::collections::BTreeSet<String>,
+) -> Option<String> {
+    known
+        .iter()
+        .filter(|k| unknown.starts_with(k.as_str()) || k.starts_with(unknown))
+        .max_by_key(|k| k.len())
+        .cloned()
+}
+
 lazy_static::lazy_static! {
     static ref CONFIGURATION: Arc<ConfigurationService> = Arc::new(ConfigurationService::new(None));
 }
