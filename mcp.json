@@ -25,9 +25,21 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "top_files": {
+              "type": "integer",
+              "description": "Return only the top N most-complex files"
+            },
+            "threshold": {
+              "type": "integer",
+              "description": "Minimum cyclomatic complexity to report"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -40,9 +52,21 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "include_resolved": {
+              "type": "boolean",
+              "description": "Include items already marked resolved"
+            },
+            "include_tests": {
+              "type": "boolean",
+              "description": "Include test files and #[cfg(test)] blocks (default: false, matching `pmat analyze satd`)"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -55,9 +79,17 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "include_tests": {
+              "type": "boolean",
+              "description": "Include test files when searching for dead code"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -70,9 +102,23 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "dag_type": {
+              "type": "string",
+              "enum": [
+                "call-graph",
+                "import-graph",
+                "inheritance",
+                "full-dependency"
+              ],
+              "description": "Dependency graph type to generate (default: full-dependency)"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -85,9 +131,13 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -100,9 +150,17 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "top_files": {
+              "type": "integer",
+              "description": "Return only the top N files by algorithmic complexity"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -112,7 +170,8 @@
           "type": "object",
           "properties": {
             "project_path": {
-              "type": "string"
+              "type": "string",
+              "description": "Project root to analyze (the directory holding Cargo.toml / the git worktree)"
             }
           },
           "required": [
@@ -127,7 +186,8 @@
           "type": "object",
           "properties": {
             "project_path": {
-              "type": "string"
+              "type": "string",
+              "description": "Project root to analyze (the directory holding Cargo.toml / the git worktree)"
             }
           },
           "required": [
@@ -142,7 +202,8 @@
           "type": "object",
           "properties": {
             "project_path": {
-              "type": "string"
+              "type": "string",
+              "description": "Project root to analyze (the directory holding Cargo.toml / the git worktree)"
             }
           },
           "required": [
@@ -160,9 +221,21 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "strict": {
+              "type": "boolean",
+              "description": "Fail the gate on any violation (no tolerance)"
+            },
+            "file": {
+              "type": "string",
+              "description": "Check only this single file instead of the paths list"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -171,13 +244,63 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
+            "operation": {
+              "type": "string",
+              "enum": [
+                "write",
+                "edit",
+                "append"
+              ],
+              "description": "File operation to proxy"
+            },
+            "file_path": {
+              "type": "string",
+              "description": "Target file path"
+            },
+            "content": {
+              "type": "string",
+              "description": "New content for `write`/`append`"
+            },
+            "old_content": {
+              "type": "string",
+              "description": "Old string for `edit` operations"
+            },
+            "new_content": {
+              "type": "string",
+              "description": "New string for `edit` operations"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "advisory",
+                "auto_fix",
+                "auto-fix"
+              ],
+              "description": "Proxy enforcement mode"
+            },
+            "quality_config": {
+              "type": "object",
+              "properties": {
+                "max_complexity": {
+                  "type": "integer"
+                },
+                "allow_satd": {
+                  "type": "boolean"
+                },
+                "require_docs": {
+                  "type": "boolean"
+                },
+                "auto_format": {
+                  "type": "boolean"
+                }
               }
             }
-          }
+          },
+          "required": [
+            "operation",
+            "file_path"
+          ]
         }
       },
       {
@@ -186,13 +309,62 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
+            "requirements": {
               "type": "array",
               "items": {
                 "type": "string"
+              },
+              "description": "Requirements to convert into deterministic actionable todos"
+            },
+            "project_name": {
+              "type": "string",
+              "description": "Project or component name"
+            },
+            "granularity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "description": "Task detail level (default: high)"
+            },
+            "quality_config": {
+              "type": "object",
+              "description": "Quality enforcement config",
+              "properties": {
+                "enforcement_mode": {
+                  "type": "string",
+                  "enum": [
+                    "strict",
+                    "advisory",
+                    "auto_fix"
+                  ]
+                },
+                "coverage_threshold": {
+                  "type": "number"
+                },
+                "max_complexity": {
+                  "type": "integer"
+                },
+                "require_doctests": {
+                  "type": "boolean"
+                },
+                "require_property_tests": {
+                  "type": "boolean"
+                },
+                "require_examples": {
+                  "type": "boolean"
+                },
+                "zero_satd_tolerance": {
+                  "type": "boolean"
+                }
               }
             }
-          }
+          },
+          "required": [
+            "requirements"
+          ]
         }
       },
       {
@@ -201,13 +373,14 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "path": {
+              "type": "string",
+              "description": "Path to the git repository to query"
             }
-          }
+          },
+          "required": [
+            "path"
+          ]
         }
       },
       {
@@ -220,9 +393,28 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "json"
+              ],
+              "description": "Output format"
+            },
+            "max_depth": {
+              "type": "integer",
+              "description": "Max directory-tree depth to include"
+            },
+            "include_dependencies": {
+              "type": "boolean",
+              "description": "Include dependency graph"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -235,9 +427,22 @@
               "type": "array",
               "items": {
                 "type": "string"
-              }
+              },
+              "description": "Filesystem paths (files or directories) to analyze"
+            },
+            "level": {
+              "type": "string",
+              "enum": [
+                "brief",
+                "normal",
+                "detailed"
+              ],
+              "description": "Summary detail level"
             }
-          }
+          },
+          "required": [
+            "paths"
+          ]
         }
       },
       {
@@ -246,13 +451,69 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "query": {
+              "type": "string",
+              "description": "Natural language search query describing the code intent."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10,
+              "description": "Maximum number of results to return."
+            },
+            "min_grade": {
+              "type": "string",
+              "enum": [
+                "A+",
+                "A",
+                "A-",
+                "B+",
+                "B",
+                "B-",
+                "C+",
+                "C",
+                "C-",
+                "D",
+                "F"
+              ],
+              "description": "Minimum TDG grade filter (A+ is best). Case-insensitive."
+            },
+            "max_complexity": {
+              "type": "integer",
+              "description": "Maximum cyclomatic complexity filter."
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "rust",
+                "typescript",
+                "python",
+                "go",
+                "java",
+                "c",
+                "cpp"
+              ],
+              "description": "Language filter."
+            },
+            "path_pattern": {
+              "type": "string",
+              "description": "Path glob pattern filter."
+            },
+            "include_source": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include source code in results."
+            },
+            "rebuild_index": {
+              "type": "boolean",
+              "default": false,
+              "description": "Force index rebuild before query."
             }
-          }
+          },
+          "required": [
+            "query"
+          ]
         }
       },
       {
@@ -261,13 +522,19 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "function_id": {
+              "type": "string",
+              "description": "Function ID from pmat_query_code results (e.g., 'src/handlers/auth.rs::handle_login')"
+            },
+            "include_source": {
+              "type": "boolean",
+              "description": "Include full source code (default: true)",
+              "default": true
             }
-          }
+          },
+          "required": [
+            "function_id"
+          ]
         }
       },
       {
@@ -276,13 +543,28 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "paths": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "function_id": {
+              "type": "string",
+              "description": "Function ID to find similar functions for"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of similar functions (default: 5, max: 20)",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
+            },
+            "min_similarity": {
+              "type": "number",
+              "description": "Minimum similarity score (0.0-1.0, default: 0.3)",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "default": 0.3
             }
-          }
+          },
+          "required": [
+            "function_id"
+          ]
         }
       },
       {
@@ -290,8 +572,13 @@
         "description": "Get statistics about the code index including function counts, quality distribution, and index health.",
         "inputSchema": {
           "type": "object",
-          "properties": {},
-          "additionalProperties": false
+          "properties": {
+            "rebuild": {
+              "type": "boolean",
+              "description": "Rebuild the index before returning stats (default: false)",
+              "default": false
+            }
+          }
         }
       }
     ]

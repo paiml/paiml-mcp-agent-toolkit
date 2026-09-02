@@ -3634,3 +3634,35 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-631
+  github_issue: null
+  item_type: task
+  title: 'CRUX-09: mcp.json inputSchema rendered from handler metadata and pinned byte-for-byte (#1150)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:16:48Z
+  updated: 2026-09-02T16:16:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-632
+  github_issue: null
+  item_type: task
+  title: 'paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''make gate-artifact'' and the CLAUDE.md-mandated ''pmat verify'' exist'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:16:48Z
+  updated: 2026-09-02T16:16:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
