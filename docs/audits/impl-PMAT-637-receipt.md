@@ -76,7 +76,7 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 | K̂ | basis | K | actual |
 |---|---|---|---|
-| 3 | first-run[U] | 120 | recorded in .pmat/estimates.jsonl at close |
+| 3 | first-run[U] (`estimate.sh`, 0 rows: K̂ is a phase count, not a turn count) | 120 | ~135 orchestrator turns from ticket open to PR green — three full `pmat verify` runs (~8 min each), two line-stops (strict SATD findings → PMAT-639; the ratchet vocabulary), and the #1160 remerge and spec-PR upkeep interleaved. Recorded in `.pmat/estimates.jsonl`. |
 
 ## Verdict
 
