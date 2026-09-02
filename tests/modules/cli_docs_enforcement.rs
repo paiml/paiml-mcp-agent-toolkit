@@ -55,7 +55,7 @@ fn red_test_all_commands_have_help() {
             .arg("--help")
             .assert()
             .success()
-            .stdout(predicate::str::contains("Usage:"));
+            .stdout(predicate::str::is_match(r"(?m)^Usage:\\s+\\w+").unwrap());
     }
 }
 
@@ -74,7 +74,12 @@ fn red_test_help_has_basic_structure() {
 
     let help = String::from_utf8(output).unwrap();
 
-    assert!(help.contains("Usage:"), "Missing Usage section");
+    assert!(
+        regex::Regex::new(r"(?m)^Usage:\s+\w+")
+            .unwrap()
+            .is_match(&help),
+        "Missing Usage section"
+    );
     assert!(
         help.contains("Options:") || help.contains("FLAGS:"),
         "Missing Options/FLAGS section"
@@ -420,7 +425,7 @@ fn red_test_hooks_commands_documented() {
             .arg("--help")
             .assert()
             .success()
-            .stdout(predicate::str::contains("Usage:"));
+            .stdout(predicate::str::is_match(r"(?m)^Usage:\\s+\\w+").unwrap());
     }
 }
 
@@ -443,7 +448,7 @@ fn red_test_analyze_commands_documented() {
             .arg("--help")
             .assert()
             .success()
-            .stdout(predicate::str::contains("Usage:"));
+            .stdout(predicate::str::is_match(r"(?m)^Usage:\\s+\\w+").unwrap());
     }
 }
 

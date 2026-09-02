@@ -71,7 +71,8 @@ fn execute_help_command(binary_path: &str, command: &[&str]) -> Result<String, i
 
 /// Validate presence of required sections and add issues if missing
 fn validate_sections(help_text: &str, report: &mut CliDocumentationReport) {
-    report.has_usage_section = help_text.contains("Usage:");
+    let usage_re = regex::Regex::new(r"(?m)^Usage:[ \t]+\S").expect("static regex must compile");
+    report.has_usage_section = usage_re.is_match(help_text);
     report.has_options_section = help_text.contains("Options:") || help_text.contains("FLAGS:");
     report.has_examples_section = help_text.contains("EXAMPLE")
         || help_text.contains("Example")

@@ -1,0 +1,5 @@
+   Compiling pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit)
+warning: pmat@3.34.0: KAIZEN-0178: generated 6 MCP tool schema(s)
+warning: pmat@3.34.0: Skipping unchanged templates (O(1) hash check)
+warning: pmat@3.34.0: Generating MCP discovery optimization tables
+    Finished `release` profile [optimized] target(s) in 56.06s
