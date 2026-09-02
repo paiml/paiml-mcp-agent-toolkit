@@ -33,7 +33,13 @@ edit → pmat verify --format json → (red? read violations, fix) → repeat �
     "violations": [ {"file":"src/x.rs","line":230,"rule":"clippy::nonminimal_bool","message":"..."} ] } ] }
 ```
 
-- Top-level `ok: true` ⇒ safe to commit. `ok: false` ⇒ do **not** commit.
+- Top-level `ok` is tri-state. `ok: true` ⇒ safe to commit. `ok: false` ⇒ do
+  **not** commit (exit 1). `ok: null` ⇒ **no verdict**: nothing measured failed,
+  but at least one selected stage declined to measure — `not_measured[]` names
+  it (typically `complexity`, which is scoped to files changed vs `HEAD` and
+  declines on a tree with no Rust change). Exit is 0, but "safe to commit" was
+  not asserted; run the stage another way, or `quality-gate`, before trusting
+  the tree. A `--skip`ped stage is not "declined" and never appears there.
 - For `clippy`, each `violations[]` entry is `file:line:rule` — go fix that
   exact site. For `format`/`complexity`/`satd`/`tests`, read the stage `detail`
   (tail of the tool output).
