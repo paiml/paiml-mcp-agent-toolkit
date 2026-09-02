@@ -125,60 +125,93 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
     ),
 ];
 
-/// A minimal object inputSchema for a tool (the manifest advertises the
-/// surface; full per-tool schemas live in the pmcp handler metadata and are
-/// covered by the deterministic sweep, MACS-011).
-fn tool_schema(name: &str) -> serde_json::Value {
-    // No-arg tools carry an empty, closed object; the rest accept a paths
-    // array — the shared shape across the analyze/generate family.
-    let no_arg = matches!(
-        name,
-        "refactor.nextIteration" | "refactor.getState" | "refactor.stop" | "pmat_index_stats"
-    );
-    // ...except the three repo-wide analyzers, which take ONE project root.
-    // The manifest is deliberately minimal, but minimal is not the same as
-    // wrong: advertising `paths` for a tool whose handler rejects it would put
-    // an unusable argument name in a file that ships inside the crate (#1029).
-    let project_root = matches!(
-        name,
-        "analyze_reachability" | "analyze_hardcoded_paths" | "analyze_vacuous_tests"
-    );
-    if project_root {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "project_path": {"type": "string"}
-            },
-            "required": ["project_path"]
-        })
-    } else if no_arg {
-        serde_json::json!({
-            "type": "object",
-            "properties": {},
-            "additionalProperties": false
-        })
-    } else {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "paths": {"type": "array", "items": {"type": "string"}}
-            }
-        })
-    }
+/// The 19 live tools' `metadata()`, in registration order — the SAME objects
+/// `tools/list` serves, so the manifest cannot describe a tool differently
+/// from the server (CRUX-09, #1150).
+///
+/// The previous renderer chose one of three canned inputSchemas by tool NAME:
+/// 15 of 19 tools were advertised as taking `paths: string[]` whatever they
+/// actually took, six could not be called at all as the shipped file described
+/// them, and `pmat_index_stats` was declared `additionalProperties: false` with
+/// no properties while the live tool accepts `rebuild` — so a validating
+/// client rejected its own valid call. Descriptions were pinned to the handlers
+/// in 3.33.0; schemas were left in exactly that state.
+///
+/// Cheap to construct: `IndexManager::new` only stores the path and opens
+/// nothing. The list mirrors the `.tool(...)` registrations in
+/// `SimpleUnifiedServer::run()`; `manifest_descriptions_match_handler_metadata`
+/// asserts the order against `LIVE_MCP_TOOLS` positionally.
+#[must_use]
+pub fn live_tool_infos() -> Vec<Option<pmcp::types::ToolInfo>> {
+    use crate::mcp::tools::agent_context_tools::IndexManager;
+    use crate::mcp_pmcp::agent_context_handlers::{
+        PmatFindSimilarHandler, PmatGetFunctionHandler, PmatIndexStatsHandler, PmatQueryCodeHandler,
+    };
+    use crate::mcp_pmcp::analyze_handlers::{
+        AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
+        AnalyzeDeepContextTool, AnalyzeSatdTool, HardcodedPathsTool, ReachabilityTool,
+        VacuousTestsTool,
+    };
+    use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
+    use crate::mcp_pmcp::pdmt_handler::PdmtTool;
+    use crate::mcp_pmcp::quality_handlers::QualityGateTool;
+    use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
+    use pmcp::ToolHandler;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    let index_manager = Arc::new(IndexManager::new(PathBuf::from(".")));
+    vec![
+        AnalyzeComplexityTool.metadata(),
+        AnalyzeSatdTool.metadata(),
+        AnalyzeDeadCodeTool.metadata(),
+        AnalyzeDagTool.metadata(),
+        AnalyzeDeepContextTool.metadata(),
+        AnalyzeBigOTool.metadata(),
+        ReachabilityTool.metadata(),
+        HardcodedPathsTool.metadata(),
+        VacuousTestsTool.metadata(),
+        QualityGateTool.metadata(),
+        QualityProxyTool.metadata(),
+        PdmtTool::new().metadata(),
+        GitTool.metadata(),
+        GenerateContextTool.metadata(),
+        ScaffoldProjectTool.metadata(),
+        PmatQueryCodeHandler::new(index_manager.clone()).metadata(),
+        PmatGetFunctionHandler::new(index_manager.clone()).metadata(),
+        PmatFindSimilarHandler::new(index_manager.clone()).metadata(),
+        PmatIndexStatsHandler::new(index_manager).metadata(),
+    ]
 }
 
-/// Render `mcp.json` deterministically from `LIVE_MCP_TOOLS`. Pure: output
-/// depends only on the tool list (canonical, sorted keys via serde with the
+/// The inputSchema a tool serves over `tools/list`, or `None` when its handler
+/// declares no metadata at all — which `render_manifest` refuses to paper over.
+fn served_schema(name: &str) -> Option<serde_json::Value> {
+    live_tool_infos()
+        .into_iter()
+        .flatten()
+        .find(|info| info.name == name)
+        .map(|info| info.input_schema)
+}
+
+/// Render `mcp.json` deterministically from `LIVE_MCP_TOOLS` and the handlers'
+/// own `metadata()`. Pure: output depends only on the tool list (canonical, sorted keys via serde with the
 /// tools map ordered by registration index encoded in a `tools` array-of-
 /// objects to preserve order stably).
 pub fn render_manifest(version: &str) -> String {
     let tools: Vec<serde_json::Value> = LIVE_MCP_TOOLS
         .iter()
         .map(|(name, desc)| {
+            // The served schema, never a canned one. A tool whose handler
+            // declares no metadata gets an honest open object rather than a
+            // shape invented from its name; `every_live_tool_declares_metadata`
+            // keeps that branch unreachable.
+            let schema =
+                served_schema(name).unwrap_or_else(|| serde_json::json!({"type": "object"}));
             serde_json::json!({
                 "name": name,
                 "description": desc,
-                "inputSchema": tool_schema(name),
+                "inputSchema": schema,
             })
         })
         .collect();
@@ -329,49 +362,7 @@ mod tests {
     /// assertion before it can reach a release carrying two descriptions.
     #[test]
     fn manifest_descriptions_match_handler_metadata() {
-        use crate::mcp::tools::agent_context_tools::IndexManager;
-        use crate::mcp_pmcp::agent_context_handlers::{
-            PmatFindSimilarHandler, PmatGetFunctionHandler, PmatIndexStatsHandler,
-            PmatQueryCodeHandler,
-        };
-        use crate::mcp_pmcp::analyze_handlers::{
-            AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-            AnalyzeDeepContextTool, AnalyzeSatdTool, HardcodedPathsTool, ReachabilityTool,
-            VacuousTestsTool,
-        };
-        use crate::mcp_pmcp::context_handlers::{
-            GenerateContextTool, GitTool, ScaffoldProjectTool,
-        };
-        use crate::mcp_pmcp::pdmt_handler::PdmtTool;
-        use crate::mcp_pmcp::quality_handlers::QualityGateTool;
-        use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
-        use pmcp::ToolHandler;
-        use std::path::PathBuf;
-        use std::sync::Arc;
-
-        // Cheap: `IndexManager::new` only stores the path, it opens nothing.
-        let index_manager = Arc::new(IndexManager::new(PathBuf::from(".")));
-        let advertised: Vec<Option<pmcp::types::ToolInfo>> = vec![
-            AnalyzeComplexityTool.metadata(),
-            AnalyzeSatdTool.metadata(),
-            AnalyzeDeadCodeTool.metadata(),
-            AnalyzeDagTool.metadata(),
-            AnalyzeDeepContextTool.metadata(),
-            AnalyzeBigOTool.metadata(),
-            ReachabilityTool.metadata(),
-            HardcodedPathsTool.metadata(),
-            VacuousTestsTool.metadata(),
-            QualityGateTool.metadata(),
-            QualityProxyTool.metadata(),
-            PdmtTool::new().metadata(),
-            GitTool.metadata(),
-            GenerateContextTool.metadata(),
-            ScaffoldProjectTool.metadata(),
-            PmatQueryCodeHandler::new(index_manager.clone()).metadata(),
-            PmatGetFunctionHandler::new(index_manager.clone()).metadata(),
-            PmatFindSimilarHandler::new(index_manager.clone()).metadata(),
-            PmatIndexStatsHandler::new(index_manager).metadata(),
-        ];
+        let advertised = live_tool_infos();
         assert_eq!(
             advertised.len(),
             LIVE_MCP_TOOLS.len(),
@@ -574,6 +565,73 @@ mod tests {
                 "committed mcp.json still advertises '{bad}' — regenerate it: cargo test --lib regenerate_mcp_json -- --ignored"
             );
         }
+    }
+
+    /// CRUX-09 (#1150): the shipped inputSchema must BE the served one, for
+    /// every tool, not a shape chosen by name.
+    #[test]
+    fn manifest_schemas_match_handler_metadata() {
+        let rendered: serde_json::Value =
+            serde_json::from_str(&render_manifest("9.9.9")).expect("manifest is JSON");
+        let shipped: std::collections::BTreeMap<String, serde_json::Value> = rendered["mcp"]
+            ["tools"]
+            .as_array()
+            .expect("tools array")
+            .iter()
+            .map(|t| {
+                (
+                    t["name"].as_str().expect("name").to_string(),
+                    t["inputSchema"].clone(),
+                )
+            })
+            .collect();
+        let served: Vec<pmcp::types::ToolInfo> = live_tool_infos().into_iter().flatten().collect();
+        assert_eq!(
+            served.len(),
+            LIVE_MCP_TOOLS.len(),
+            "every live tool declares metadata"
+        );
+        for info in served {
+            assert_eq!(
+                shipped.get(&info.name),
+                Some(&info.input_schema),
+                "{}: the packaged mcp.json and tools/list advertise different inputSchemas",
+                info.name
+            );
+        }
+    }
+
+    /// The `unwrap_or_else` open-object fallback in `render_manifest` must stay
+    /// unreachable: a handler with no metadata is a defect, not a tool with an
+    /// open schema.
+    #[test]
+    fn every_live_tool_declares_metadata() {
+        for (i, info) in live_tool_infos().iter().enumerate() {
+            assert!(
+                info.is_some(),
+                "handler at registration index {i} ({}) declares no metadata",
+                LIVE_MCP_TOOLS[i].0
+            );
+        }
+    }
+
+    /// Fixing the renderer without regenerating the file leaves the defect
+    /// wholly intact in the tarball, so the committed file is pinned to the
+    /// renderer byte-for-byte. Version-only churn is the one tolerated diff:
+    /// `check_macs_artifacts.rs` ignores it for the same reason.
+    #[test]
+    fn committed_mcp_json_is_pinned_to_the_renderer() {
+        let committed = include_str!("../../mcp.json");
+        let version = serde_json::from_str::<serde_json::Value>(committed)
+            .ok()
+            .and_then(|v| v["version"].as_str().map(str::to_string))
+            .expect("committed mcp.json carries a version");
+        assert_eq!(
+            committed,
+            render_manifest(&version),
+            "mcp.json is not what the renderer produces — regenerate it: \
+             cargo test --lib regenerate_mcp_json -- --ignored"
+        );
     }
 
     #[test]
