@@ -1,0 +1,5 @@
+cmd: /mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit/release/pmat analyze dead-code --format json
+dir: /home/noah/src/paiml-mcp-agent-toolkit
+2026-09-02T12:13:03+02:00
+ 12:13:03 up 23:01,  1 user,  load average: 0.76, 6.29, 13.21
+exit=0
