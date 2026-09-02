@@ -130,8 +130,18 @@ git -C "$W/clean" checkout -- src/lib.rs
 V clean --skip clippy,tests | jq -e '[.stages[].name] == ["format","complexity","satd","clippy","tests"]' \
   >/dev/null || fail "A2: a stage disappeared from the report"
 
-# REPO — ONE-SHOT PR EVIDENCE, never a committed gate: the site that motivates the fix.
-$P analyze satd --path "$R" --strict --format json 2>/dev/null \
-  | jq -e '[.violations[]|select(.file|endswith("services/tdg_calculator_core.rs"))]|length == 1' \
-  >/dev/null || fail "REPO: verify's own stage still cannot see tdg_calculator_core.rs:110"
+# REPO — ONE-SHOT PR EVIDENCE, never a committed gate: the site that motivated the fix.
+# It PASSED on the fix commit (70771f654) and then the line was stopped on that very
+# finding: the marker was real debt (TDG's dead_code weight is a constant 0.0) and was
+# converted to a tracked ticket (PMAT-639) in 210810163. Once the marker is gone the
+# leg has nothing to see, by design; the permanent invariant is A3-D2 above.
+if grep -q 'TODO(CB-128)' "$R/src/services/tdg_calculator_core.rs" 2>/dev/null; then
+  $P analyze satd --path "$R" --strict --format json 2>/dev/null \
+    | jq -e '[.violations[]|select(.file|endswith("services/tdg_calculator_core.rs"))]|length == 1' \
+    >/dev/null || fail "REPO: verify's own stage still cannot see tdg_calculator_core.rs:110"
+else
+  grep -q 'PMAT-639' "$R/src/services/tdg_calculator_core.rs" 2>/dev/null \
+    || fail "REPO: the marker is gone but the site does not cite the ticket that replaced it"
+  echo "INFO: REPO leg — marker resolved into PMAT-639; nothing left for strict to see"
+fi
 echo "PASS"

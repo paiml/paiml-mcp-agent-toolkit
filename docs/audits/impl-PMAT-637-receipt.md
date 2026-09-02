@@ -41,7 +41,9 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 | unwrap ratchet | 20343 | 20343 |
 | `pmat verify` (full) on the fixed binary, run 1 | ok:true (the defect) | **ok:false, satd RED — the repaired stage found 2 markers on this tree**: `tdg_calculator_core.rs:110` (real debt → PMAT-639) and `quality_checks_part4.rs:117` (a fixed-bug narrative). Line stopped; both resolved in 210810163; strict → 0, default → 1 (the `todo!()` doc example, unchanged) |
 | `pmat verify` (full) on the fixed binary, run 2 (after 210810163) | — | format ok, **satd ok (strict now 0)**, clippy ok, tests **1 failed**: `the_committed_ratchet_holds_at_head` — `satd_markers_src_comments` 331 vs 327. Attributed: my own `///` help and doc comments spelled the marker words (+7, −3 from the line they replaced); the ratchet measures the analyser's vocabulary on comment lines, not debt. Fixed by moving the clap help into an `#[arg(help = …)]` string and rewording one doc line → 324; baseline lowered 327→324 by `pmat comply ratchet --lower` (the sanctioned move; a beaten baseline may not be left as slack). All three ratchet self-tests green. |
-| `pmat verify` (full), run 3 (after the ratchet fix) | — | PENDING |
+| `pmat verify` (full), run 3 (after the ratchet fix, 24d4fd04f) | — | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format, satd, clippy, tests (21119 passed) all green; complexity declined (no Rust change vs HEAD on a clean tree). This is the tri-state verdict doing exactly what the item asks, on the repository's own tree. |
+| spec §8.1 script on the final binary (24d4fd04f) | — | fail-fast **PASS**; all legs **PASS**. The REPO one-shot leg reports `INFO: marker resolved into PMAT-639` — it PASSED on the fix commit (run 1), then the marker it looked for was resolved into tracked debt, so the committed script now asserts the site cites the ticket instead. Permanent invariant: A3-D2. |
+| `pmat analyze satd --help` renders the strict rule from the attribute string | — | yes (text verbatim under `--strict`) |
 | CLAUDE.md command + dead-path checkers | — | clean on the patched copy (dry run) |
 | `make gate-artifact` | — | **PASS** — "artifact falsification gates passed" at 053c528d0 (the two commits after it are a comment rewording and the receipt) |
 
@@ -63,6 +65,8 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 - PMAT-638: `pmat work complete` hangs on its quality gates; `--skip-quality` is forbidden; store moved with `work edit -s`.
 - #1160 went DIRTY after #1158 merged (both regenerated `docs/status/unrun-tests-ledger.md`); resolved by merging master and regenerating the ledger on the merged tree — a real commit, not a rerun.
 
+- Host: the gitignored `.cargo/config.toml` (a transient coverage config) vanished at 19:52 during verify run 2, so background builds fell back to `./target` — a symlink to a stale 67 GB `cargo-targets/` tree — and rebuilt cold. Every binary path in this receipt was taken from `cargo build --message-format=json` in the same shell, so no measurement was made against a stale artefact; only the wall clock suffered. Recorded in `.pmat/jidoka.jsonl`.
+
 ## Decisions taken conservatively [A]
 
 - [A] `ok: null` keeps exit 0 (the item's table); a declined stage withdraws the verdict, it does not start failing the build. The alternative (exit 1 on any decline) would fail every pre-commit run on a doc-only change.
@@ -76,4 +80,4 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 ## Verdict
 
-PENDING
+All phase and DoD gates hold; PR #1161 open with auto-merge armed. **DONE** the moment #1161 merges green on the required checks without a rerun (recorded in the final receipt commit).
