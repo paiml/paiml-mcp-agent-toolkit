@@ -564,7 +564,7 @@ fn test_subcommand_help() {
         cmd.args([subcmd, "--help"])
             .assert()
             .success()
-            .stdout(predicate::str::contains("Usage:"));
+            .stdout(predicate::str::is_match(r"(?m)^Usage:\\s+\\w+").unwrap());
     }
 }
 
