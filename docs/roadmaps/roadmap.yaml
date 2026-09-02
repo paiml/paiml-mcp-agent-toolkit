@@ -3714,3 +3714,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-636
+  github_issue: null
+  item_type: task
+  title: 'CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/context.db there) and passes; locally, a cold index of master by the 3.35.0 binary reads 1709 below-A vs the 1688 banked 2026-08-22 — the ratchet drifted 21 with no leg able to see it'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:02:05Z
+  updated: 2026-09-02T17:02:05Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

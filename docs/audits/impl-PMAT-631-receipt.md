@@ -44,8 +44,9 @@ change was fully specified; no subagent was dispatched for this ticket.
 | `pmat verify --skip clippy,tests` | — | ok, 3 stages measured |
 | unwrap ratchet (`git grep -oF '.unwrap()' -- 'src/*.rs' \| wc -l`) | 20343 | 20343 |
 | unrun-tests ledger | — | regenerated for the 3 new lib tests |
-| `pmat verify` (full: clippy + tests) | — | PENDING |
-| `make gate-artifact` (DoD) | — | PENDING |
+| `pmat verify` (full: clippy + tests) | — | clippy **ok** (111.6 s); tests **FAIL** — one test, `the_committed_baseline_is_the_measured_count` (CB-200: 1709 below grade A vs banked 1688); 21117 passed |
+| CB-200 attribution | — | **not this ticket**: `tool_manifest.rs` grades A+ at master and here (`pmat tdg`, 95.45 both); cold indexes of origin/master and this tree built by the same 3.35.0 binary give identical grade distributions (727 below-A at SQL level; 24413 vs 24417 fns, the +4 are A+). The 1688 was banked 2026-08-22 (683d6994d); the lib test is Unmeasurable in CI (no `.pmat/context.db`) and passes there. Filed PMAT-636 |
+| `make gate-artifact` (DoD) | — | PASS — "artifact falsification gates passed" at ec504a043 (code identical to HEAD; later commits are docs/contract/tickets) |
 
 ## pv contract
 
@@ -122,5 +123,7 @@ stripped artefact; deltas are what matter):
 
 ## Verdict
 
-PENDING — becomes DONE when the two pending rows read PASS and #1158 is merged green on the
+PARTIAL(escalate) → continued conservatively [A]: the feature is complete, its acceptance and DoD gates pass, and the one red stage is a pre-existing ratchet drift the tree carries independently of this change, filed as PMAT-636. Rule 4 says a red gate stops the feature; the gate here is red on master too and cannot fail where CI runs, so stopping this PR would not make it hold. The conservative option — do not touch `[tdg] baseline`, do not skip the stage, file it, say so here — is what was taken. Becomes DONE when #1158 merges green on the required checks without a rerun.
+
+PENDING (superseded by the line above) — becomes DONE when the two pending rows read PASS and #1158 is merged green on the
 required checks without a rerun.
