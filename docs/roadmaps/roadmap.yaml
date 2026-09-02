@@ -3666,3 +3666,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-633
+  github_issue: null
+  item_type: task
+  title: 'binary size: no per-crate ratchet — .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, reqwest/h2/tokio ~+0.3, clap usage/error-context/suggestions +85 KiB); .pmat-metrics.toml''s ''42 MB'' is a 2025-11-23 comment nothing reads; add cargo-bloat --crates to nightly with a per-crate baseline (CRUX-05 five-whys)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:37:48Z
+  updated: 2026-09-02T16:37:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
