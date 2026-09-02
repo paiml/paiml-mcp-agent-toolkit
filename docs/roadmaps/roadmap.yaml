@@ -3682,3 +3682,35 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-634
+  github_issue: null
+  item_type: task
+  title: 'CRUX-05: clap usage/error-context/suggestions restored; 14 blind Usage: guards assert content (#1148)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T16:40:04Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-635
+  github_issue: null
+  item_type: task
+  title: pmat work add allocates ids from the tracked docs/roadmaps/roadmap.yaml of the CURRENT checkout, so two branches off the same base both mint the same id (PMAT-631 twice today); allocate from the highest id across refs, or from .pmat/ state
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T16:40:04Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

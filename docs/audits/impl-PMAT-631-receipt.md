@@ -63,6 +63,10 @@ change was fully specified; no subagent was dispatched for this ticket.
 - PMAT-632 (scope): the skill doc describes an edit/deny hook that is not installed; enforcement is
   orchestrator discipline plus the transcript gate.
 - PMAT-633: binary-size growth has no per-crate attribution (five-whys attached below).
+- PMAT-635: `pmat work add` allocates ids from the checkout's tracked roadmap.yaml, so a worktree at
+  the branch base minted PMAT-631 a second time. [A] Tickets PMAT-634 (CRUX-05) and PMAT-635 are
+  committed on THIS branch so master carries them first; the CRUX-05 PR references PMAT-634 without
+  re-adding it, which avoids a duplicate entry at merge without hand-editing the YAML.
 
 ## Estimates
 
