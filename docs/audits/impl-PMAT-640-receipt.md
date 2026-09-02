@@ -37,7 +37,7 @@
 | `pmat verify --format json` run 1 | **exit 1: complexity** — `proxy_operation` cyclomatic 15 / cognitive 34 (pre-existing; surfaced because the file changed). Stop-the-line: decision and auto-fix branches extracted (`auto_fix_decision`, `operation_name`, `Decision`); no `--skip` |
 | `pmat verify --format json` run 2 (dirty tree, after the refactor) | **exit 1**: format ✓ complexity ✓ (35 ms — `proxy_operation` now under the gate) satd ✓ clippy ✓ (94 s) tests ✗ — 5 of 21,123: two 19-tool pins (`test_all_live_tools_advertise_description_and_schema`, `simulated_refactor_tools_are_not_advertised`), `readme_tool_count_matches` (`\| MCP Tools \| 19 available \|`), `the_committed_baselines_have_no_slack_left_in_them` (panic_macro_calls_src 781 < 784), `the_committed_ledger_matches_the_tree` (rendered text). Each fixed at its source: pins → 20 with the retire-to-19 note; README → 20; `pmat comply ratchet --lower` (784→781); ledger regenerated on the committed tree |
 | `pmat verify --format json` run 3 (committed tree eb4b30401) | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format ✓ satd ✓ clippy ✓ (52 s) tests ✓ (343 s, 0 failed); complexity withdrawn because the gate measures changed files and the tree is clean (CRUX-01 semantics) — its measurement is run 2 |
-| `make gate-artifact` | PENDING |
+| `make gate-artifact` (CARGO_BUILD_JOBS=2, committed tree) | **exit 0** — flag-efficacy sweep 509 s, 1 passed; differential leg 77 s, 1 passed |
 
 ## Named mutation (both sides)
 
@@ -65,11 +65,10 @@ Restored: `2 passed; 0 failed`. (A first attempt planted the mutant in the Stric
 
 ## Gaps
 
-- `make gate-artifact` and `pmat verify` run 2: PENDING at draft time — this section is overwritten with the measured result before the PR opens.
 - pv contract `status: draft` until the PR merges.
 - `transcript-gate.sh` reports `PASS … 0 subagents ran in …/memory/ (vacuous but honest)`: it scanned the memory directory, not the session transcript. No subagent was dispatched in this pass (the transcript count above is the orchestrator's own turns), but the gate's evidence is the wrong directory — skill defect, to file against `~/.claude/skills/paiml-implement/scripts/transcript-gate.sh`, not this repo.
 - `status-lint.sh`: PASS, 7 blocks, all with `basis=`.
 
 ## Verdict
 
-PENDING — becomes DONE when verify run 2 and gate-artifact are green, the PR is open with auto-merge, and CI merges without a rerun.
+All phase and DoD gates hold; PR #1163 open (draft while gate-artifact ran, then ready) with auto-merge armed. **DONE** the moment #1163 merges green on the required checks without a rerun (recorded in the final receipt commit).
