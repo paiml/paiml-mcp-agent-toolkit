@@ -46,7 +46,7 @@ async fn test_help_flag() -> Result<()> {
     // Test short help
     let result = runner.run_success(["-h"])?;
     TestValidators::assert_performance(&result, Duration::from_secs(2))?;
-    assert!(result.stdout_text.contains("Usage:"));
+    assert!(regex::Regex::new(r"(?m)^Usage:\s+\w+").unwrap().is_match(&result.stdout_text));
 
     Ok(())
 }
@@ -225,7 +225,7 @@ async fn test_help_system_consistency() -> Result<()> {
 
         // Help should contain usage information
         assert!(
-            result.stdout_text.contains("Usage:")
+            regex::Regex::new(r"(?m)^Usage:\s+\w+").unwrap().is_match(&result.stdout_text)
                 || result.stdout_text.contains("USAGE:")
                 || result.stdout_text.to_lowercase().contains("usage"),
             "Command '{}' help does not contain usage information",

@@ -133,7 +133,7 @@ mod tests {
 
         // Just check that we got valid help output with Usage
         assert!(
-            help_str.contains("Usage:"),
+            regex::Regex::new(r"(?m)^Usage:[ \t]+\S").expect("static regex must compile").is_match(&help_str),
             "Help should contain Usage section"
         );
     }
@@ -353,7 +353,7 @@ mod clap_output_validation_tests {
         let help_str = String::from_utf8_lossy(&help);
 
         // Check for expected sections
-        assert!(help_str.contains("Usage:"));
+        assert!(regex::Regex::new(r"(?m)^Usage:[ \t]+\S").expect("static regex must compile").is_match(&help_str));
         assert!(help_str.contains("Commands:"));
         assert!(help_str.contains("Options:"));
 
