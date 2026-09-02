@@ -1324,6 +1324,8 @@ asserts safety over a stage it did not measure* — and it is the claim leg 1 te
 **Related issue.** #1035. Every verify defect in this family (#762–#765, #944) is CLOSED; not a
 duplicate.
 
+**Implemented (PR #1161, PMAT-637).** Both sides held as written: 7 RED / 5 controls at master, PASS on every leg after. Two things the implementation added to the record. (1) The REPO one-shot leg did what it was for: once strict could see `tdg_calculator_core.rs:110`, the line was stopped on it, and the marker turned out to be worse than a TODO — CB-128 gave TDG a `dead_code` dimension with weight 0.20 and never integrated `CargoDeadCodeAnalyzer`, so every TDG grade carries a 20 % term that is a constant 0.0. Filed as PMAT-639; the site now cites it. (2) The other marker, `quality_checks_part4.rs:117 Bug: …`, narrated a bug the line above it had fixed; it is reworded, not silenced. Both named mutations (the old composite rule; the old `MARKER:`-only strict arm) were observed RED and restored byte-identical.
+
 ### 8.2 CRUX-02 — `quality-gate` renders three unmeasured dimensions as clean
 
 **Problem.** The aggregate gate reports 0 violations for what it did not or could not measure, in
