@@ -1,5 +1,5 @@
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   created: "2026-07-02"
   author: PAIML Engineering
   references:
@@ -36,6 +36,16 @@ equations:
       - hand-edits are drift (CB-1656 red)
     preconditions: []
 
+  manifest_schema_faithful:
+    formula: inputSchema(mcp.json, t) = inputSchema(tools/list, t) for every live tool t
+    domain: mcp.json at repo root, and the handlers' metadata() the server serves
+    codomain: bool
+    invariants:
+      - the manifest renders each inputSchema FROM handler metadata, never from a shape chosen by tool name
+      - the committed file equals render_manifest(<its own version>) byte-for-byte
+      - every live tool declares metadata (no open-object fallback is reachable)
+    preconditions: []
+
   docs_current:
     formula: denylist_hits(docs) = 0 outside allow-list
     domain: docs/** with deny-list {claude-3-*, claude-2*, gpt-4-turbo}
@@ -49,6 +59,9 @@ falsification:
     severity: P0
     action: reject_push
   - condition: "mcp.json drifts from tool defs with green comply"
+    severity: P0
+    action: reject_push
+  - condition: "mcp.json advertises an inputSchema a tool's handler does not accept (CRUX-09, #1150)"
     severity: P0
     action: reject_push
   - condition: "A deny-listed model id appears outside docs/agent-models.md"
@@ -66,6 +79,16 @@ falsification_tests:
     prediction: two renders at different times share one content_hash
     test: cargo test --lib hash_covers_sources_not_wallclock
     if_fails: ROADMAP.yaml churns on every render, defeating drift detection
+  - id: manifest_schema_faithful
+    rule: the shipped inputSchema IS the served inputSchema, per tool
+    prediction: a canned paths-array schema for pmat_index_stats fails; the handler's own schema passes
+    test: cargo test --lib manifest_schemas_match_handler_metadata
+    if_fails: a validating client rejects its own valid call, or calls a tool as the manifest says and gets -32602
+  - id: manifest_pinned
+    rule: the committed mcp.json equals the renderer's output byte-for-byte
+    prediction: editing one property in mcp.json without regenerating fails; regenerating passes
+    test: cargo test --lib committed_mcp_json_is_pinned_to_the_renderer
+    if_fails: a renderer fix ships with the old file still in the tarball, and nothing notices
   - id: docs_current
     rule: no superseded model ids in docs outside the registry
     prediction: reintroducing claude-3-opus outside agent-models.md fails CB-1657
