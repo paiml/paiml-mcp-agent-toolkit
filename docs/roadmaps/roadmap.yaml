@@ -3634,3 +3634,99 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-631
+  github_issue: null
+  item_type: task
+  title: 'CRUX-09: mcp.json inputSchema rendered from handler metadata and pinned byte-for-byte (#1150)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:16:48Z
+  updated: 2026-09-02T16:16:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-632
+  github_issue: null
+  item_type: task
+  title: 'paiml-implement discover.sh: gate_cmd fell back to ''cargo test --workspace'' on pmat although ''make gate-artifact'' and the CLAUDE.md-mandated ''pmat verify'' exist'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:16:48Z
+  updated: 2026-09-02T16:16:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-633
+  github_issue: null
+  item_type: task
+  title: 'binary size: no per-crate ratchet — .text grew ~3.4 MiB since ece3baf11 (pmat +1.9 MiB, pmcp +0.7, reqwest/h2/tokio ~+0.3, clap usage/error-context/suggestions +85 KiB); .pmat-metrics.toml''s ''42 MB'' is a 2025-11-23 comment nothing reads; add cargo-bloat --crates to nightly with a per-crate baseline (CRUX-05 five-whys)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:37:48Z
+  updated: 2026-09-02T16:37:48Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-634
+  github_issue: null
+  item_type: task
+  title: 'CRUX-05: clap usage/error-context/suggestions restored; 14 blind Usage: guards assert content (#1148)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T16:40:04Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-635
+  github_issue: null
+  item_type: task
+  title: pmat work add allocates ids from the tracked docs/roadmaps/roadmap.yaml of the CURRENT checkout, so two branches off the same base both mint the same id (PMAT-631 twice today); allocate from the highest id across refs, or from .pmat/ state
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T16:40:04Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-636
+  github_issue: null
+  item_type: task
+  title: 'CB-200: the lib test the_committed_baseline_is_the_measured_count is Unmeasurable in CI (no .pmat/context.db there) and passes; locally, a cold index of master by the 3.35.0 binary reads 1709 below-A vs the 1688 banked 2026-08-22 — the ratchet drifted 21 with no leg able to see it'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:02:05Z
+  updated: 2026-09-02T17:02:05Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

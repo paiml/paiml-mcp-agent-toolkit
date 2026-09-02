@@ -1,0 +1,5 @@
+cmd: /mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit/release/pmat analyze duplicates --format json
+dir: /home/noah/src/paiml-mcp-agent-toolkit
+2026-09-02T12:13:20+02:00
+ 12:13:20 up 23:02,  1 user,  load average: 3.21, 6.51, 13.13
+exit=0

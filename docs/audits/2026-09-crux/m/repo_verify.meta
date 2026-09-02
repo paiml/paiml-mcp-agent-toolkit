@@ -1,0 +1,5 @@
+cmd: /mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit/release/pmat verify --skip clippy,tests --format json
+dir: /home/noah/src/paiml-mcp-agent-toolkit
+2026-09-02T12:13:09+02:00
+ 12:13:09 up 23:01,  1 user,  load average: 3.52, 6.68, 13.26
+exit=0
