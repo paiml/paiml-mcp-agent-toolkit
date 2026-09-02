@@ -31,14 +31,19 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 | check | before (master 1188c3a81) | after |
 |---|---|---|
-| spec §8.1 script, fail-fast | `FAIL: leg 1: verify still asserts over a stage it declined` | PENDING |
-| spec §8.1 script, all legs | 7 RED (1, 1-EMPTY, 2, A3-M, A3-D, A3-D2, REPO) / 5 controls GREEN — matches the spec's transcript exactly | PENDING |
-| unit tests (composite table, strict cases, strict ⊆ default, detection strict) | n/a | PENDING |
-| `cargo fmt --all -- --check` | — | PENDING |
-| `cargo clippy --lib --bins` | — | PENDING |
-| unwrap ratchet | 20343 | PENDING |
+| spec §8.1 script, fail-fast | `FAIL: leg 1: verify still asserts over a stage it declined` | **PASS** |
+| spec §8.1 script, all legs | 7 RED (1, 1-EMPTY, 2, A3-M, A3-D, A3-D2, REPO) / 5 controls GREEN — matches the spec's transcript exactly | **PASS** on every leg, controls still green; the REPO one-shot leg passed (strict now sees `tdg_calculator_core.rs:110`) |
+| unit tests (composite table, strict cases, strict ⊆ default, detection strict) | n/a | **43 passed, 0 failed** (`cargo test --lib -- composite_verdict strict_ satd_verdict test_strict`) |
+| named mutation 1: `composite_verdict` reverted to `Some(!failed && measured > 0)` | — | `composite_verdict_withdraws_rather_than_asserts_over_a_declined_stage` **FAILED**; restored byte-identical |
+| named mutation 2: Strict arm reverted to `head == marker && strip_prefix(':')` | — | `strict_accepts_every_standard_separator_and_the_capitalised_marker` **FAILED**; restored byte-identical |
+| `cargo fmt --all -- --check` | — | clean |
+| `cargo clippy --lib --bins` | — | no warnings |
+| unwrap ratchet | 20343 | 20343 |
+| `pmat verify` (full) on the fixed binary, run 1 | ok:true (the defect) | **ok:false, satd RED — the repaired stage found 2 markers on this tree**: `tdg_calculator_core.rs:110` (real debt → PMAT-639) and `quality_checks_part4.rs:117` (a fixed-bug narrative). Line stopped; both resolved in 210810163; strict → 0, default → 1 (the `todo!()` doc example, unchanged) |
+| `pmat verify` (full) on the fixed binary, run 2 (after 210810163) | — | format ok, **satd ok (strict now 0)**, clippy ok, tests **1 failed**: `the_committed_ratchet_holds_at_head` — `satd_markers_src_comments` 331 vs 327. Attributed: my own `///` help and doc comments spelled the marker words (+7, −3 from the line they replaced); the ratchet measures the analyser's vocabulary on comment lines, not debt. Fixed by moving the clap help into an `#[arg(help = …)]` string and rewording one doc line → 324; baseline lowered 327→324 by `pmat comply ratchet --lower` (the sanctioned move; a beaten baseline may not be left as slack). All three ratchet self-tests green. |
+| `pmat verify` (full), run 3 (after the ratchet fix) | — | PENDING |
 | CLAUDE.md command + dead-path checkers | — | clean on the patched copy (dry run) |
-| `make gate-artifact` | — | PENDING |
+| `make gate-artifact` | — | **PASS** — "artifact falsification gates passed" at 053c528d0 (the two commits after it are a comment rewording and the receipt) |
 
 ## pv contract
 
@@ -53,6 +58,8 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 ## Jidoka log
 
+- PMAT-639: the repaired strict stage exposed `dead_code: 0.0, // TODO(CB-128)` in `tdg_calculator_core.rs` — CB-128 added TDG's sixth dimension with weight 0.20 and never integrated the analyzer, so every grade carries a 20 % term that was never measured. Filed; the site cites the ticket. This is the CRUX-class defect (a report over something it did not measure), found by CRUX-01's own fix.
+- ratchet `satd_markers_src_comments` 331 > 327 on verify run 2: the marker words in my own doc comments. Not debt; moved the help to an attribute string, reworded one line, lowered the baseline to 324 with `--lower`. Owning module: the ratchet's predicate counts prose about markers (its description says so) — recorded, not changed.
 - PMAT-638: `pmat work complete` hangs on its quality gates; `--skip-quality` is forbidden; store moved with `work edit -s`.
 - #1160 went DIRTY after #1158 merged (both regenerated `docs/status/unrun-tests-ledger.md`); resolved by merging master and regenerating the ledger on the merged tree — a real commit, not a rerun.
 

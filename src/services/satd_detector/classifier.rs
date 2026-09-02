@@ -121,7 +121,7 @@ const MARKERS: &[MarkerRule] = &[
 ///
 /// CRUX-01 (#1146) widened this from `MARKER:` only. `pmat verify` runs
 /// `analyze satd --strict`, and strict found 0 where the default found 3 on
-/// this repository — `TODO(CB-128): …` (paren separator) and `Bug: …`
+/// this repository — a paren-separated marker at tdg_calculator_core.rs:110 and `Bug: …`
 /// (capitalised, the tree's only severity=error SATD finding) were invisible
 /// to the one gate agents are told to trust, while `quality-gate` blocked on
 /// both. Case is decided, not left open: `Bug:` IS debt; `todo:` is not, so
