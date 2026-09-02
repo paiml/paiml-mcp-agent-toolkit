@@ -3686,11 +3686,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-05: clap usage/error-context/suggestions restored; 14 blind Usage: guards assert content (#1148)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:40:04Z
-  updated: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T18:23:17Z
   spec: null
   acceptance_criteria: []
   phases: []
