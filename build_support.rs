@@ -457,4 +457,92 @@ mod tests {
             "a source that cannot be read must be treated as changed"
         );
     }
+
+    // ---- rerun-if-changed hygiene (CRUX-06) ------------------------------
+
+    /// Every literal `cargo:rerun-if-changed=` path in `build.rs` must sit inside
+    /// `CARGO_MANIFEST_DIR` and exist there. A declared-but-missing path makes
+    /// cargo mark the build script permanently stale, so the whole crate
+    /// relinks on every invocation — `../assets/demo/` did exactly that from the
+    /// deleted `server/` layout until 3.36.0 (55 s / 265 CPU-s per no-op
+    /// release build). The shape check runs BEFORE the existence check, so
+    /// materialising a sibling directory next to the checkout cannot pass it.
+    /// `assets/vendor/` is absent from the required set on purpose: the script
+    /// writes it, and it is gitignored — its watch was the second stale path,
+    /// found by this test's first run in CI.
+    #[test]
+    fn rerun_if_changed_paths_exist_inside_the_tree() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let build_rs = include_str!("build.rs");
+        let literal: std::collections::BTreeSet<&str> = build_rs
+            .lines()
+            .filter_map(|l| l.split("cargo:rerun-if-changed=").nth(1))
+            .filter_map(|rest| rest.split('"').next())
+            .filter(|p| !p.contains('{') && !p.contains('$'))
+            .collect();
+
+        // Anti-vacuity: the extractor must still find the directives. A rotted
+        // pattern must fail here rather than certify an empty set.
+        assert!(
+            literal.len() >= 5,
+            "extractor found only {} distinct literal watches: {literal:?}",
+            literal.len()
+        );
+        // The required watches, by NAME — a deleted watch cannot be padded back
+        // with a duplicate of another, and the provenance watches on `.git/`
+        // (which keep PMAT_GIT_SHA honest) cannot be dropped quietly.
+        for req in [
+            "assets/demo/",
+            "templates/",
+            "src/schema/refactor_state.capnp",
+            "contracts/binding.yaml",
+            "mcp_tool_schemas",
+        ] {
+            assert!(literal.contains(req), "build.rs no longer watches {req}");
+        }
+
+        let mut bad = Vec::new();
+        for p in &literal {
+            let path = std::path::Path::new(p);
+            if path.is_absolute() || p.split('/').any(|seg| seg == "..") {
+                bad.push(format!("escapes the manifest dir: {p}"));
+            } else if !manifest_dir.join(path).exists() {
+                bad.push(format!("missing: {p}"));
+            }
+        }
+        assert!(
+            bad.is_empty(),
+            "rerun-if-changed defects in build.rs: {bad:?}"
+        );
+
+        // Exactly two interpolated directive SITES are expected: the per-file
+        // schema walk, and the git provenance watches (`HEAD`, `index`) resolved
+        // through `git rev-parse --git-path` so a worktree — where `.git` is a
+        // file — watches a path that exists. Both interpolate `path.display()`.
+        let dynamic: Vec<&str> = build_rs
+            .lines()
+            .filter(|l| {
+                l.contains("cargo:rerun-if-changed=") && (l.contains('{') || l.contains('$'))
+            })
+            .collect();
+        assert_eq!(
+            dynamic.len(),
+            2,
+            "unexpected interpolated rerun-if-changed directives: {dynamic:?}"
+        );
+        assert!(
+            dynamic.iter().all(|l| l.contains("path.display()")),
+            "an interpolated directive is not the schema walk or the git watch: {dynamic:?}"
+        );
+        // …and the provenance watches are still emitted, through git, not
+        // spelled as `.git/HEAD` (which does not exist in a worktree).
+        assert!(
+            build_rs.contains("git_path(name)") && build_rs.contains(r#"["HEAD", "index"]"#),
+            "the git provenance watches must resolve through `git rev-parse --git-path`"
+        );
+        assert!(
+            !build_rs.contains("rerun-if-changed=.git/"),
+            "a literal `.git/…` watch is missing in every worktree checkout"
+        );
+    }
 }
