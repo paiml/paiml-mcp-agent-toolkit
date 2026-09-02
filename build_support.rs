@@ -457,4 +457,81 @@ mod tests {
             "a source that cannot be read must be treated as changed"
         );
     }
+
+    // ---- rerun-if-changed hygiene (CRUX-06) ------------------------------
+
+    /// Every literal `cargo:rerun-if-changed=` path in `build.rs` must sit inside
+    /// `CARGO_MANIFEST_DIR` and exist there. A declared-but-missing path makes
+    /// cargo mark the build script permanently stale, so the whole crate
+    /// relinks on every invocation — `../assets/demo/` did exactly that from the
+    /// deleted `server/` layout until 3.36.0 (55 s / 265 CPU-s per no-op
+    /// release build). The shape check runs BEFORE the existence check, so
+    /// materialising a sibling directory next to the checkout cannot pass it.
+    #[test]
+    fn rerun_if_changed_paths_exist_inside_the_tree() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let build_rs = include_str!("build.rs");
+        let literal: std::collections::BTreeSet<&str> = build_rs
+            .lines()
+            .filter_map(|l| l.split("cargo:rerun-if-changed=").nth(1))
+            .filter_map(|rest| rest.split('"').next())
+            .filter(|p| !p.contains('{') && !p.contains('$'))
+            .collect();
+
+        // Anti-vacuity: the extractor must still find the directives. A rotted
+        // pattern must fail here rather than certify an empty set.
+        assert!(
+            literal.len() >= 8,
+            "extractor found only {} distinct literal watches: {literal:?}",
+            literal.len()
+        );
+        // The required watches, by NAME — a deleted watch cannot be padded back
+        // with a duplicate of another, and the provenance watches on `.git/`
+        // (which keep PMAT_GIT_SHA honest) cannot be dropped quietly.
+        for req in [
+            "assets/vendor/",
+            "assets/demo/",
+            "templates/",
+            "src/schema/refactor_state.capnp",
+            "contracts/binding.yaml",
+            "mcp_tool_schemas",
+            ".git/HEAD",
+            ".git/index",
+        ] {
+            assert!(literal.contains(req), "build.rs no longer watches {req}");
+        }
+
+        let mut bad = Vec::new();
+        for p in &literal {
+            let path = std::path::Path::new(p);
+            if path.is_absolute() || p.split('/').any(|seg| seg == "..") {
+                bad.push(format!("escapes the manifest dir: {p}"));
+            } else if !manifest_dir.join(path).exists() {
+                bad.push(format!("missing: {p}"));
+            }
+        }
+        assert!(
+            bad.is_empty(),
+            "rerun-if-changed defects in build.rs: {bad:?}"
+        );
+
+        // Exactly one interpolated directive is expected — the per-file schema
+        // walk — and it must be manifest-relative before the `{}`.
+        let dynamic: Vec<&str> = build_rs
+            .lines()
+            .filter(|l| {
+                l.contains("cargo:rerun-if-changed=") && (l.contains('{') || l.contains('$'))
+            })
+            .collect();
+        assert_eq!(
+            dynamic.len(),
+            1,
+            "unexpected interpolated rerun-if-changed directives: {dynamic:?}"
+        );
+        assert!(
+            dynamic[0].contains("path.display()"),
+            "the one interpolated directive is not the schema walk: {}",
+            dynamic[0]
+        );
+    }
 }

@@ -15,10 +15,15 @@ fn main() {
     // claims to come from (see `emit_build_provenance`).
     emit_build_provenance();
 
-    // Only watch files that actually exist - missing files cause constant rebuilds
+    // Only watch files that actually exist, and only inside CARGO_MANIFEST_DIR.
+    // A declared-but-missing path makes cargo treat this script as permanently
+    // stale, so the lib and bin relink on EVERY invocation: `../assets/demo/`
+    // sat here from the deleted `server/` layout until 3.36.0 and cost 55 s and
+    // 265 CPU-seconds per no-op `cargo build --release` (CRUX-06). The literal
+    // paths below are asserted by `rerun_if_changed_paths_exist_inside_the_tree`
+    // in build_support.rs, which fails the `--lib` suite if one goes missing.
     println!("cargo:rerun-if-changed=assets/vendor/");
     println!("cargo:rerun-if-changed=assets/demo/");
-    println!("cargo:rerun-if-changed=../assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
     println!("cargo:rerun-if-env-changed=PMAT_FAST_BUILD");
