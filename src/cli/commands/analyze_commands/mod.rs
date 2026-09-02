@@ -486,7 +486,9 @@ pub enum AnalyzeCommands {
         #[arg(long)]
         include_tests: bool,
 
-        /// Use strict mode (only TODO/FIXME/HACK/BUG comments)
+        /// Strict mode: only the canonical markers TODO/FIXME/HACK/XXX/BUG
+        /// (upper case or capitalised), followed by `:`, `(`, `[` or `!` and a
+        /// work item — `TODO(CB-1): x`, `Bug: x`; not `todo:`, not `TODO x`
         #[arg(long)]
         strict: bool,
 
