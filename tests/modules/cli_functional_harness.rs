@@ -17,7 +17,9 @@ fn test_all_cli_commands_work() {
 
     assert!(output.status.success(), "Help command should succeed");
     assert!(
-        combined.contains("Usage:"),
+        regex::Regex::new(r"(?m)^Usage:\s+\w+")
+            .unwrap()
+            .is_match(&combined),
         "Help should contain Usage section"
     );
     assert!(
