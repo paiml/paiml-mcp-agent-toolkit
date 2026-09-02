@@ -121,10 +121,21 @@ found=$(audit "$root") || fail "leg 6: auditor crashed"
 
 # ---- leg 7 — cargo's own recorded fingerprint must agree. Precondition: one
 # completed release build. Fails loudly (never skips) when unmet.
-td=$(cargo metadata --no-deps --format-version 1 | jq -r '.target_directory') \
-   || fail "leg 7: cargo metadata failed"
-fp=$(ls -t "$td"/release/.fingerprint/pmat-*/run-build-script-build-script-build.json 2>/dev/null | head -1) || true
-[ -n "${fp:-}" ] || fail "leg 7: no build-script fingerprint under $td — run 'cargo build --release' once to arm this leg"
+#
+# The target dir is taken from the build-script-executed message of a real
+# `cargo build`, NOT from `cargo metadata`: on a host with a local
+# .cargo/config.toml that redirects target-dir, metadata reports one directory
+# while builds land in another, and this leg then reads a fingerprint from a
+# build that predates the fix. A no-op build costs 0.27 s here.
+out_dir=$(cargo build --release --message-format=json 2>/dev/null \
+          | jq -r 'select(.reason=="build-script-executed" and (.package_id|test("pmat"))) | .out_dir' \
+          | tail -1) || fail "leg 7: cargo build --message-format=json failed"
+[ -n "${out_dir:-}" ] || fail "leg 7: cargo reported no build-script-executed message for pmat"
+# OUT_DIR = <target>/release/build/pmat-<hash>/out ; fingerprint shares the <hash>
+hashdir=$(basename "$(dirname "$out_dir")")
+profdir=$(dirname "$(dirname "$(dirname "$out_dir")")")
+fp="$profdir/.fingerprint/$hashdir/run-build-script-build-script-build.json"
+[ -f "$fp" ] || fail "leg 7: no build-script fingerprint at $fp"
 jq -e '[.local[].RerunIfChanged.paths // empty] | flatten | length >= 9' "$fp" >/dev/null \
    || fail "leg 7: fingerprint $fp records <9 tracked paths — wrong artefact or a rotted schema"
 esc=$(jq -r '[.local[].RerunIfChanged.paths // empty] | flatten | .[]' "$fp" \
