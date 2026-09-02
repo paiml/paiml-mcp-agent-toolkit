@@ -175,7 +175,7 @@ pre-commit hook and `pmat quality-gate` both miss clippy + tests; `pmat verify`
 does not.
 
 ```bash
-pmat verify --format json          # canonical agent check; ok:true ⇒ safe to commit
+pmat verify --format json          # canonical agent check; ok:true ⇒ safe to commit; ok:null ⇒ no verdict (a stage declined — see not_measured[])
 pmat verify --fix                  # auto-apply cargo fmt / clippy --fix first
 pmat verify --skip clippy,tests    # fast inner loop (format+complexity+satd)
 ```

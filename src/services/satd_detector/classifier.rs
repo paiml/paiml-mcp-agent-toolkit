@@ -116,9 +116,26 @@ const MARKERS: &[MarkerRule] = &[
     },
 ];
 
-/// Strict mode's markers (issue #651): the five canonical ones, upper case,
-/// with a `MARKER: <work item>` shape.
+/// Strict mode's markers (issue #651): the five canonical ones, upper case
+/// or capitalised, followed by one of [`SEPARATORS`] and a work item.
+///
+/// CRUX-01 (#1146) widened this from `MARKER:` only. `pmat verify` runs
+/// `analyze satd --strict`, and strict found 0 where the default found 3 on
+/// this repository — a paren-separated marker at tdg_calculator_core.rs:110 and `Bug: …`
+/// (capitalised, the tree's only severity=error SATD finding) were invisible
+/// to the one gate agents are told to trust, while `quality-gate` blocked on
+/// both. Case is decided, not left open: `Bug:` IS debt; `todo:` is not, so
+/// the separator clause keeps its only discriminating negative.
 const STRICT_MARKERS: [&str; 5] = ["TODO", "FIXME", "HACK", "XXX", "BUG"];
+
+/// `Bug` for `BUG`: the capitalised spelling strict mode also accepts.
+fn capitalised(marker: &str) -> String {
+    let mut c = marker.chars();
+    match c.next() {
+        Some(f) => f.to_uppercase().collect::<String>() + &c.as_str().to_ascii_lowercase(),
+        None => String::new(),
+    }
+}
 
 /// How demanding the marker match is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -240,13 +257,13 @@ impl DebtClassifier {
         let rest = &text[marker.len()..];
 
         match self.mode {
-            // `MARKER: <work item>` — canonical spelling only.
+            // `MARKER<sep> <work item>` — canonical upper case or capitalised,
+            // any of the standard separators, and something admitted after it.
             MarkerMode::Strict => {
                 STRICT_MARKERS.contains(&marker)
-                    && head == marker
-                    && rest
-                        .strip_prefix(':')
-                        .is_some_and(|r| r.starts_with([' ', '\t']) && !r.trim().is_empty())
+                    && (head == marker || head == capitalised(marker))
+                    && rest.starts_with(|c: char| SEPARATORS.contains(&c))
+                    && !work_item_of(rest).is_empty()
             }
             // A marker is followed by punctuation and then the admitted work
             // item. Whitespace is deliberately NOT a separator: `TODO the same
@@ -563,6 +580,39 @@ mod tests {
         assert_eq!(strict.classify_comment("this is a todo list"), None);
         // Not one of the five canonical markers.
         assert_eq!(strict.classify_comment("OPTIMIZE: use a bitset"), None);
+    }
+
+    /// CRUX-01 (#1146): the separator and case blind spots that made verify's
+    /// strict stage read 0 where quality-gate blocked on 3.
+    #[test]
+    fn strict_accepts_every_standard_separator_and_the_capitalised_marker() {
+        let strict = DebtClassifier::new_strict();
+        for yes in [
+            "TODO(CB-128): Integrate with CargoDeadCodeAnalyzer",
+            "TODO[CB-128]: widen the bracket too",
+            "TODO: finish this",
+            "Bug: Previously used walkdir directly, bypassing ignore file support",
+            "FIXME! broken input handling",
+        ] {
+            assert!(
+                strict.classify_comment(yes).is_some(),
+                "strict must match {yes:?}"
+            );
+        }
+        for no in [
+            "todo: finish this",      // lower case is not a canonical marker
+            "TODO:",                  // no work item admitted
+            "TODO finish this",       // no separator: a sentence, not an admission
+            "// this is a todo list", // prose
+            "bug: something",         // lower case
+            "TODO-123: tracker id",   // `-` is not a separator
+        ] {
+            assert_eq!(
+                strict.classify_comment(no),
+                None,
+                "strict must not match {no:?}"
+            );
+        }
     }
 
     #[test]
