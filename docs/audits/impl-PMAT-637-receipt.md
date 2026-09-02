@@ -83,4 +83,4 @@ Quorum: never. Routing direct: `|M|=2` (`src/cli/verify.rs`, `src/services/satd_
 
 ## Verdict
 
-All phase and DoD gates hold; PR #1161 open with auto-merge armed. **DONE** the moment #1161 merges green on the required checks without a rerun (recorded in the final receipt commit).
+All phase and DoD gates hold. **DONE** — #1161 merged at 5dbbfe88a with 41 checks green and no rerun (verified with `gh api repos/paiml/paiml-mcp-agent-toolkit/pulls/1161` → merged=true, and the head commit's check-runs: 0 failure, 0 cancelled).

@@ -88,8 +88,12 @@ pub const LIVE_MCP_TOOLS: &[(&str, &str)] = &[
          and, with its reason, in `checks.not_run`.",
     ),
     (
+        "quality_check_content",
+        "Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.",
+    ),
+    (
         "quality_proxy",
-        "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
+        "Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.",
     ),
     (
         "pdmt_deterministic_todos",
@@ -173,6 +177,7 @@ pub fn live_tool_infos() -> Vec<Option<pmcp::types::ToolInfo>> {
         VacuousTestsTool.metadata(),
         QualityGateTool.metadata(),
         QualityProxyTool.metadata(),
+        crate::mcp_pmcp::quality_proxy_handler::QualityProxyAliasTool.metadata(),
         PdmtTool::new().metadata(),
         GitTool.metadata(),
         GenerateContextTool.metadata(),
@@ -302,8 +307,8 @@ mod tests {
         );
         assert_eq!(
             declared.len(),
-            19,
-            "the live server advertises 19 tools: 16 after the 4 refactor.* tools were unregistered in EV-0 (#999) for synthesizing violations from a path substring, plus the 3 forensic analyzers #1029 found CLI-only by omission"
+            20,
+            "the live server advertises 20 tools: 16 after the 4 refactor.* tools were unregistered in EV-0 (#999) for synthesizing violations from a path substring, plus the 3 forensic analyzers #1029 found CLI-only by omission, plus the one-release `quality_proxy` alias of `quality_check_content` (CRUX-10, #1151) — drop it back to 19 when the alias is retired"
         );
     }
 

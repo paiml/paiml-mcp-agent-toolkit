@@ -418,9 +418,18 @@ impl SimpleUnifiedServer {
             // handlers and their tests remain, so implementing real AST
             // analysis is re-registering four lines, not rebuilding. Until
             // then it is not advertised.
-            // === Quality Tools (3) ===
+            // === Quality Tools (4, one an alias) ===
             .tool("quality_gate", QualityGateTool)
-            .tool("quality_proxy", QualityProxyTool)
+            // String literals on purpose: `manifest_matches_server` reads the
+            // names out of this source text, so a const here would hide a
+            // registration from the drift guard. The consts in
+            // quality_proxy_handler.rs must spell the same two names.
+            .tool("quality_check_content", QualityProxyTool)
+            // One-release alias for the name CRUX-10 retired (#1151).
+            .tool(
+                "quality_proxy",
+                crate::mcp_pmcp::quality_proxy_handler::QualityProxyAliasTool,
+            )
             .tool("pdmt_deterministic_todos", PdmtTool::new())
             // === Git and Context Tools (3) ===
             .tool("git_operation", GitTool)
@@ -747,7 +756,13 @@ mod active_tests {
             ("analyze_vacuous_tests", VacuousTestsTool.metadata(), true),
             // refactor.* unregistered in EV-0 (#999) — see run()
             ("quality_gate", QualityGateTool.metadata(), true),
-            ("quality_proxy", QualityProxyTool.metadata(), true),
+            ("quality_check_content", QualityProxyTool.metadata(), true),
+            // One-release alias (CRUX-10, #1151): same handler under the old name.
+            (
+                "quality_proxy",
+                crate::mcp_pmcp::quality_proxy_handler::QualityProxyAliasTool.metadata(),
+                true,
+            ),
             ("pdmt_deterministic_todos", PdmtTool::new().metadata(), true),
             ("git_operation", GitTool.metadata(), true),
             ("generate_context", GenerateContextTool.metadata(), true),
@@ -855,9 +870,10 @@ mod active_tests {
         }
         assert_eq!(
             declared.len(),
-            19,
-            "the surface should be 19 tools: 16 after removing the 4 simulated ones, plus \
-             the 3 forensic analyzers exposed in #1029"
+            20,
+            "the surface should be 20 tools: 16 after removing the 4 simulated ones, plus \
+             the 3 forensic analyzers exposed in #1029, plus the one-release `quality_proxy` \
+             alias of `quality_check_content` (CRUX-10, #1151) — 19 again once it is retired"
         );
     }
 }

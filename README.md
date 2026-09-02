@@ -46,7 +46,7 @@
 - **Compliance Governance** - 157 checks across code quality, best practices, and reproducibility
 - **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
-- **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents over **stdio and HTTP** (identical surfaces), validated end-to-end for concurrent multi-agent (ultracode) workflows — see [MCP Server](#mcp-server)
+- **MCP Integration** - 20 tools for Claude Code, Cline, and AI agents over **stdio and HTTP** (identical surfaces), validated end-to-end for concurrent multi-agent (ultracode) workflows — see [MCP Server](#mcp-server)
 - **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
 - **20+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, Lean, and more
 
@@ -132,7 +132,7 @@ export PMAT_MCP_HTTP_TOKEN='pmat-mcp-demo-token-0123456789'   # >= 16 chars; use
 pmat serve --transport http --port 8765 &
 #   pmat MCP (streamable HTTP) listening on http://127.0.0.1:8765/
 #     auth: Bearer, from PMAT_MCP_HTTP_TOKEN; unauthenticated requests get 401
-#     tools: 19
+#     tools: 20
 sleep 2
 
 claude mcp add --scope user --transport http pmat http://127.0.0.1:8765/ \
@@ -204,7 +204,7 @@ No MCP session id is involved: `initialize` returns no `Mcp-Session-Id` header, 
 
 ### HTTP is not a reduced surface
 
-Both transports are built from the same registry, so HTTP serves **all 19 tools, not a
+Both transports are built from the same registry, so HTTP serves **all 20 tools, not a
 subset**. The `tools/list` payloads are byte-identical:
 
 ```bash
@@ -284,7 +284,7 @@ dynamic-workflow orchestration — as both the test harness and the target
 workload:
 
 - **Full CLI sweep**: 111 commands exercised by parallel agent fleets per release
-- **MCP surface**: all 19 tools validated over stdio JSON-RPC — per-tool calls
+- **MCP surface**: all 20 tools validated over stdio JSON-RPC — per-tool calls
   with schema-derived arguments, 8-way concurrent server sessions against one
   working tree (zero lock errors, zero scratch leftovers), and byte-level
   framing checks (stdout is exclusively JSON-RPC) — plus a transport-parity
@@ -533,7 +533,7 @@ pmat/
 | Coverage | 99.66% |
 | Mutation Score | >80% |
 | Languages | 20 supported + MLOps model formats |
-| MCP Tools | 19 available |
+| MCP Tools | 20 available |
 
 ### Falsifiable Quality Commitments
 

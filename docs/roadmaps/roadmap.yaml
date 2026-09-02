@@ -3794,3 +3794,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-641
+  github_issue: null
+  item_type: task
+  title: 'CRUX-10 acceptance script: B0-B2 send operation=write, so the rename branch it prefers can never pass its own B0 while R1 passes'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-02T21:34:43Z
+  updated: 2026-09-02T21:34:43Z
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.10 script: req() always emits operation:"write"; on the rename branch that key is refused with -32602 (R1 requires it), so B0 (has(written)) fails on the same request. The rename branch was never run (script says DEFERRED at HEAD). Fix: branch-aware req() after selector S; R1 uses an explicit stale-key request; selector prefers quality_check_content. Linked: PMAT-640 / #1151.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

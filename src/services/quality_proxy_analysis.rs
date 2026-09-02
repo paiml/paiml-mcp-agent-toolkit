@@ -370,22 +370,28 @@ impl QualityProxyService {
             .satd_detector
             .extract_from_content(content, Path::new(file_path))?;
         let satd_count = satd_instances.len();
-
-        let mut violations = Vec::new();
-        if !config.allow_satd && satd_count > 0 {
-            for instance in &satd_instances {
-                violations.push(QualityViolation {
-                    violation_type: ViolationType::Satd,
-                    severity: ViolationSeverity::Error,
-                    location: format!("{}:{}", file_path, instance.line),
-                    message: format!("SATD detected: {}", instance.text),
-                    suggestion: Some(
-                        "Remove TODO/FIXME comments and implement the functionality".to_string(),
-                    ),
-                });
-            }
-        }
-
+        // Every instance is LISTED, whatever `allow_satd` says: with it on, the
+        // list used to be dropped while `metrics.satd_count` kept counting, so
+        // one response said 1 and [] about the same run (CRUX-10 B2, #1151).
+        // `allow_satd` decides the severity — Warning does not fail the gate —
+        // never whether the finding exists.
+        let severity = if config.allow_satd {
+            ViolationSeverity::Warning
+        } else {
+            ViolationSeverity::Error
+        };
+        let violations = satd_instances
+            .iter()
+            .map(|instance| QualityViolation {
+                violation_type: ViolationType::Satd,
+                severity: severity.clone(),
+                location: format!("{}:{}", file_path, instance.line),
+                message: format!("SATD detected: {}", instance.text),
+                suggestion: Some(
+                    "Remove TODO/FIXME comments and implement the functionality".to_string(),
+                ),
+            })
+            .collect();
         Ok((satd_count, violations))
     }
 
