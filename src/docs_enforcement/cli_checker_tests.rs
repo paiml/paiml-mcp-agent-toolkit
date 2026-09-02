@@ -265,4 +265,34 @@ Arguments:
         let missing = find_undocumented_flags(&expected, &documented);
         assert!(missing.is_empty());
     }
+
+    #[test]
+    fn an_empty_usage_heading_is_not_a_usage_section() {
+        // NEGATIVE — this is exactly what clap-with-`usage`-off emits today.
+        let mut r = CliDocumentationReport {
+            command: "x".to_string(),
+            has_help: true,                 // ← every other is_valid() conjunct satisfied,
+            has_usage_section: false,       //   so the usage conjunct alone decides
+            has_options_section: false,     //   (validate_sections sets this one)
+            has_examples_section: false,
+            documented_flags: vec![],
+            generic_descriptions: vec![],
+            missing_descriptions: vec![],
+            issues: vec![],
+        };
+        validate_sections("Usage: \n\nOptions:\n  -h, --help  Print help\n", &mut r);
+        assert!(!r.has_usage_section, "an empty `Usage:` heading is not a usage section");
+        assert!(r.has_options_section, "guard: only the usage conjunct may be false");
+        assert!(!r.is_valid(), "attributable to the usage conjunct alone");
+
+        // POSITIVE CONTROL — a real usage line must still validate, so the fix cannot be
+        // "make has_usage_section always false".
+        let mut ok = CliDocumentationReport {
+            has_usage_section: false, issues: vec![], ..r.clone()
+        };
+        validate_sections("Usage: pmat analyze complexity [OPTIONS]\n\nOptions:\n  -h, --help  Print help\n",
+                          &mut ok);
+        assert!(ok.has_usage_section);
+        assert!(ok.is_valid());
+    }
 }

@@ -223,7 +223,7 @@ octocrab = { version = "0.54", optional = true }
 notify = { version = "8.0", optional = true }
 
 # CLI support
-clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env"] }
+clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "env", "usage", "error-context", "suggestions"] }
 num_cpus = { version = "1.17", optional = true }
 serde_yaml_ng = { version = "0.10", optional = true }
 

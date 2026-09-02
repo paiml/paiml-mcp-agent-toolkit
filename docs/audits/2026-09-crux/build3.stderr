@@ -1,0 +1,12 @@
+   0.355922954s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="pmat"}: cargo::core::compiler::fingerprint: stale: missing "/home/noah/src/paiml-mcp-agent-toolkit/../assets/demo/"
+   0.361212252s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="pmat"}: cargo::core::compiler::fingerprint: fingerprint dirty for pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit)/Build/TargetInner { name_inferred: true, ..: lib_target("pmat", ["lib"], "/home/noah/src/paiml-mcp-agent-toolkit/src/lib.rs", Edition2021) }
+   0.361230540s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="pmat"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { unit: UnitIndex(277) })
+   0.370442016s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint dirty for pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit)/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "/home/noah/src/paiml-mcp-agent-toolkit/build.rs", Edition2021) }
+   0.370459272s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="build-script-build"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(MissingFile { path: "/home/noah/src/paiml-mcp-agent-toolkit/../assets/demo/" }))
+   0.383882284s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="pmat"}: cargo::core::compiler::fingerprint: fingerprint dirty for pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit)/Build/TargetInner { name: "pmat", doc: true, ..: with_path("/home/noah/src/paiml-mcp-agent-toolkit/src/bin/pmat.rs", Edition2021) }
+   0.383899850s  INFO prepare_target{force=false package_id=pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit) target="pmat"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { unit: UnitIndex(274) })
+   Compiling pmat v3.34.0 (/home/noah/src/paiml-mcp-agent-toolkit)
+warning: pmat@3.34.0: KAIZEN-0178: generated 6 MCP tool schema(s)
+warning: pmat@3.34.0: Skipping unchanged templates (O(1) hash check)
+warning: pmat@3.34.0: Generating MCP discovery optimization tables
+    Finished `release` profile [optimized] target(s) in 55.22s
