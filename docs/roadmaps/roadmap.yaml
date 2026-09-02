@@ -3638,11 +3638,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-09: mcp.json inputSchema rendered from handler metadata and pinned byte-for-byte (#1150)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:16:48Z
-  updated: 2026-09-02T16:16:48Z
+  updated: 2026-09-02T17:34:25Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3686,11 +3686,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-05: clap usage/error-context/suggestions restored; 14 blind Usage: guards assert content (#1148)'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T16:40:04Z
-  updated: 2026-09-02T16:40:04Z
+  updated: 2026-09-02T18:23:17Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3723,6 +3723,54 @@ roadmap:
   assigned_to: null
   created: 2026-09-02T17:02:05Z
   updated: 2026-09-02T17:02:05Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-637
+  github_issue: null
+  item_type: task
+  title: 'CRUX-01: pmat verify withdraws its verdict over a declined stage (ok tri-state, not_measured[]) and strict SATD sees every marker quality-gate blocks on (#1146)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:31:11Z
+  updated: 2026-09-02T17:34:25Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-638
+  github_issue: null
+  item_type: task
+  title: pmat work complete runs quality gates that hang past 2 min on this repo and the only documented bypass is --skip-quality; a ticket whose PR merged green cannot be closed without a skip — separate the state transition from the gate, or bound the gate
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:35:52Z
+  updated: 2026-09-02T17:35:52Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-639
+  github_issue: null
+  item_type: task
+  title: 'TDG dead_code component is hardcoded 0.0 while carrying weight 0.20 (CB-128 ''6th dimension''): every TDG grade includes a 20% term that was never measured — integrate CargoDeadCodeAnalyzer or mark the component not-measured and stop weighting it (found by CRUX-01''s strict SATD stage, tdg_calculator_core.rs:110)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T17:49:52Z
+  updated: 2026-09-02T17:49:52Z
   spec: null
   acceptance_criteria: []
   phases: []

@@ -76,4 +76,4 @@ One subagent (agy) ran for this ticket, in a worktree, alone. No overlapping int
 
 ## Verdict
 
-PENDING → DONE when #1160 merges green on the required checks without a rerun.
+**DONE** — #1160 merged at 20:21 (2026-09-02) with every required check green and no rerun (its one red leg, `ci / security` at `actions/checkout` HTTP 400, went green on the next real commit — the receipt — and is recorded on paiml/.github#57).

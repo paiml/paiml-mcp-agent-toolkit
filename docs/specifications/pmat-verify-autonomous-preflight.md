@@ -34,7 +34,7 @@ stage first), with machine-readable output, scoped to the diff where possible.
 
 1. **format** — `cargo fmt --all -- --check` (sub-second once built)
 2. **complexity** — pmat's analyzer, gate: cyclomatic ≤ 30, cognitive ≤ 25 (always scoped to files changed vs `HEAD`)
-3. **satd** — pmat's in-process SATD detector, strict mode
+3. **satd** — `analyze satd --strict`: the canonical markers TODO/FIXME/HACK/XXX/BUG, upper case or capitalised, followed by `:`, `(`, `[` or `!` and a work item (`TODO(CB-1): x`, `Bug: x`; not `todo:`, not `TODO x`)
 4. **clippy** — `cargo clippy --lib --bins -- -D warnings` (CI-faithful — the Makefile `lint` target; **not** `--all-features`, which builds optional batuta-stack feature combos CI never compiles)
 5. **tests** — `cargo test --lib` (or, with `--changed`, only the test modules reachable from changed files via the call graph)
 
@@ -58,14 +58,28 @@ the incremental pre-commit gate); a whole-project scan would flag pre-existing
 high-complexity *test* files that CI never gates. clippy and tests are
 whole-crate (a single crate cannot scope clippy below the crate).
 
-Exit code: `0` iff every (non-skipped) stage passed. Non-zero otherwise — the
-agent's signal to fix before committing.
+Exit code and the composite `ok` (tri-state since CRUX-01, #1146):
+
+| condition | `ok` | exit |
+|---|---|---|
+| any measured stage failed | `false` | 1 |
+| nothing could be measured at all | `false` | 1 |
+| measured > 0, nothing failed, ≥ 1 selected stage **declined** (`not_applicable`) | `null` | 0 |
+| measured > 0, nothing failed, nothing declined | `true` | 0 |
+
+`not_measured[]` lists the declined stages by name; it is derived from the
+stages, never from a constant, and a `--skip`ped stage is not in it. Before
+this, the composite was `!failed && measured > 0`, so a tree whose complexity
+stage had declined (no Rust file changed vs `HEAD`) read `ok: true` while
+`quality-gate` failed it with 35 blocking violations. The third state withdraws
+the verdict; it does not start failing the build.
 
 ### Machine-readable output (`--format json`)
 
 ```json
 {
   "ok": false,
+  "stages_measured": 4,
   "duration_ms": 51234,
   "stages": [
     {"name": "format",     "ok": true,  "duration_ms": 320},

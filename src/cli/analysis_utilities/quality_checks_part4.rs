@@ -112,9 +112,10 @@ pub async fn analyze_project_files(
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
-    // CRITICAL FIX: Use ProjectFileDiscovery instead of WalkDir
-    // This ensures .pmatignore and .paimlignore files are respected
-    // Bug: Previously used walkdir directly, bypassing ignore file support
+    // Use ProjectFileDiscovery instead of WalkDir so .pmatignore and
+    // .paimlignore are respected. The earlier version walked the directory
+    // directly and bypassed ignore-file support; that defect is fixed here,
+    // and this comment records the history rather than admitting open debt.
     let discovery_config = FileDiscoveryConfig {
         respect_gitignore: true, // Respect .gitignore, .pmatignore, .paimlignore
         ..Default::default()
