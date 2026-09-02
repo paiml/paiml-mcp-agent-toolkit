@@ -188,7 +188,7 @@ rand = { version = "0.10", optional = true }
 # already being compiled. Direct because `mcp-http` generates a bearer token and
 # must do so on Windows too: reading /dev/urandom by hand shipped in 3.32.0 and
 # failed with "The system cannot find the path specified" (#1081).
-getrandom = "0.2"
+getrandom = "0.4"
 rayon = { version = "1.10", optional = true }
 # Optional: saves 67 transitive deps when disabled - falls back to shell `git` commands
 git2 = { version = "0.21", default-features = false, features = ["https"], optional = true }
