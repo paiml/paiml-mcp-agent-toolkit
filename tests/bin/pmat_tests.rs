@@ -18,7 +18,7 @@ fn test_pmat_help() {
     cmd.arg("--help");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Usage:"))
+        .stdout(predicate::str::is_match(r"(?m)^Usage:\\s+\\w+").unwrap())
         .stdout(predicate::str::contains("Commands:"));
 }
 
