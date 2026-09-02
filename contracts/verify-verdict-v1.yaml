@@ -1,0 +1,65 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-architecture-crux-audit.md section 8.1 (CRUX-01, issue 1146)"
+    - "docs/specifications/pmat-verify-autonomous-preflight.md"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    pmat verify is the one gate agents are told to trust before every commit.
+    Its composite verdict must never assert safety over a stage it did not
+    measure, and its strict SATD stage must see every marker quality-gate
+    blocks on. On the repository's own clean tree it returned ok:true with the
+    complexity stage declined and strict SATD reading 0 where the default read 3.
+  contract: verify-verdict
+  status: draft
+
+equations:
+  verdict_tri_state:
+    formula: "ok = Some(false) if failed or measured == 0; None if measured > 0 and declined > 0; Some(true) otherwise"
+    domain: "the selected stages of one pmat verify run"
+    codomain: "Option<bool> plus exit code (1 iff Some(false))"
+    invariants:
+      - "not_measured[] is derived from the stages that returned not_applicable, never from a constant"
+      - "a --skip'ped stage is not declined and never appears in not_measured[]"
+      - "a measured failure is Some(false) whatever else declined"
+    preconditions: []
+
+  strict_sees_what_the_gate_blocks:
+    formula: "for every SATD finding quality-gate reports at severity error, analyze satd --strict reports the same line"
+    domain: "any tree; the repository's own tdg_calculator_core.rs:110 and quality_checks_part4.rs:117 are the motivating sites"
+    codomain: bool
+    invariants:
+      - "strict accepts the canonical markers upper case or capitalised, any standard separator, and a non-empty work item"
+      - "strict remains a subset of default: todo:, TODO x, and prose are not debt in strict"
+    preconditions: []
+
+falsification:
+  - condition: "verify prints ok:true on a run in which a selected stage declined to measure (CRUX-01, issue 1146)"
+    severity: P0
+    action: reject_push
+  - condition: "a stage that measured a failure is reported as anything but ok:false with exit 1"
+    severity: P0
+    action: reject_push
+  - condition: "quality-gate blocks on a SATD line that analyze satd --strict does not report"
+    severity: P1
+    action: reject_push
+
+falsification_tests:
+  - id: verdict_tri_state
+    rule: "the composite table, every row"
+    prediction: "composite_verdict(false, 2, 1) is None; (true, 1, 1) and (false, 0, 3) are Some(false); (false, 3, 0) is Some(true)"
+    test: "cargo test --lib composite_verdict_withdraws_rather_than_asserts_over_a_declined_stage"
+    if_fails: "verify asserts safe-to-commit over a stage it never looked at"
+  - id: verdict_end_to_end
+    rule: "on a clean crate with no Rust change vs HEAD, verify reports ok:null, not_measured [complexity], exit 0; with a TODO it reports ok:false, exit 1"
+    prediction: "legs 1, 1-RED, 1-EMPTY and 1-SKIP of scripts/verify-verdict-audit.sh"
+    test: "bash scripts/verify-verdict-audit.sh against the release binary"
+    if_fails: "the JSON contract agents read is not the one the table promises"
+  - id: strict_sees_what_the_gate_blocks
+    rule: "TODO(x): and TODO[x]: and Bug: are debt in strict; todo:, TODO x and TODO: with no work item are not"
+    prediction: "strict_accepts_every_standard_separator_and_the_capitalised_marker passes; strict_is_a_subset_of_default still passes"
+    test: "cargo test --lib strict_accepts_every_standard_separator_and_the_capitalised_marker strict_is_a_subset_of_default"
+    if_fails: "verify's SATD stage is green on a tree quality-gate blocks"

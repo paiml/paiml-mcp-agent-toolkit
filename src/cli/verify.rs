@@ -123,14 +123,42 @@ struct StageReport {
 
 #[derive(Debug, Serialize)]
 struct VerifyReport {
-    ok: bool,
+    /// Tri-state (CRUX-01, #1146): `Some(false)` a measured stage failed, or
+    /// nothing could be measured; `Some(true)` everything selected was
+    /// measured and passed; `None` nothing failed but at least one selected
+    /// stage DECLINED to measure — verify then withdraws its verdict rather
+    /// than asserting safety over what it did not look at. Before this the
+    /// composite was `!failed && measured > 0`, so a tree whose complexity
+    /// stage had declined read `ok: true`, "safe to commit", on a tree
+    /// `quality-gate` failed with 35 blocking violations.
+    ok: Option<bool>,
     /// How many selected stages actually produced a measurement.
     stages_measured: usize,
-    /// Set when `stages_measured == 0`: there is no verdict to give.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    not_measured: Option<String>,
+    /// The selected stages that declined to measure (`not_applicable`), by
+    /// name. Derived from the stages, never from a constant, and never from
+    /// `--skip` — a skipped stage was the caller's choice, not a blind spot.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    not_measured: Vec<&'static str>,
     duration_ms: u64,
     stages: Vec<StageReport>,
+}
+
+/// The composite verdict, as a pure table so it can be tested without a shell.
+///
+/// | condition | `ok` | exit |
+/// |---|---|---|
+/// | any measured stage failed | `Some(false)` | 1 |
+/// | nothing could be measured | `Some(false)` | 1 |
+/// | measured > 0, nothing failed, >= 1 declined | `None` | 0 |
+/// | measured > 0, nothing failed, nothing declined | `Some(true)` | 0 |
+fn composite_verdict(failed: bool, measured: usize, declined: usize) -> Option<bool> {
+    if failed || measured == 0 {
+        Some(false)
+    } else if declined > 0 {
+        None
+    } else {
+        Some(true)
+    }
 }
 
 /// Run the CI-faithful gate set fail-fast; exit non-zero on any failure.
@@ -182,16 +210,19 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
         }
     }
 
-    // A run that measured nothing has not passed. This is the half of the
-    // contract `enforce` already had and `verify` did not: the two gave opposite
-    // verdicts on an empty directory ("safe to commit" vs "Violating,
-    // complexity/satd not measured").
-    let not_measured = (measured == 0).then(|| {
-        "no selected stage could measure anything here, so verify has no verdict to give"
-            .to_string()
-    });
+    // A run that measured nothing has not passed — the half of the contract
+    // `enforce` already had (the two gave opposite verdicts on an empty
+    // directory). And a run that measured SOME stages but had another decline
+    // has no verdict either: it must not assert safety over the stage it did
+    // not look at (CRUX-01). Only `not_applicable` stages count as declined;
+    // a `--skip`ped stage is spelled the same way in `ok` and is not one.
+    let not_measured: Vec<&'static str> = stages
+        .iter()
+        .filter(|s| s.not_applicable.is_some())
+        .map(|s| s.name)
+        .collect();
     let report = VerifyReport {
-        ok: !failed && measured > 0,
+        ok: composite_verdict(failed, measured, not_measured.len()),
         stages_measured: measured,
         not_measured,
         duration_ms: overall.elapsed().as_millis() as u64,
@@ -201,7 +232,7 @@ pub async fn handle_verify(args: VerifyArgs) -> Result<()> {
         VerifyFormat::Json => println!("{}", serde_json::to_string_pretty(&report)?),
         VerifyFormat::Text => print_text(&report),
     }
-    if !report.ok {
+    if report.ok == Some(false) {
         std::process::exit(1);
     }
     Ok(())
@@ -475,7 +506,8 @@ fn satd_verdict(output: &str) -> (bool, Option<String>) {
         Some(n) => (
             false,
             Some(format!(
-                "{n} strict-mode SATD violation(s) (TODO/FIXME/HACK/BUG)\n{}",
+                "{n} strict-mode SATD violation(s) (TODO/FIXME/HACK/XXX/BUG, upper case or capitalised, \
+                 with a separator and a work item)\n{}",
                 tail(output, 25).unwrap_or_default()
             )),
         ),
@@ -797,23 +829,29 @@ fn print_text(report: &VerifyReport) {
             }
         }
     }
-    if let Some(reason) = &report.not_measured {
+    match (report.ok, report.stages_measured) {
         // "safe to commit" over zero measured stages was the defect: an empty
         // directory got a green pre-commit verdict.
-        println!(
-            "\n{red}✗ verify measured nothing{reset} ({}ms) — {reason}",
+        (Some(false), 0) => println!(
+            "\n{red}✗ verify measured nothing{reset} ({}ms) — no selected stage could \
+             measure anything here, so verify has no verdict to give",
             report.duration_ms
-        );
-    } else if report.ok {
-        println!(
-            "\n{green}✓ verify passed{reset} ({}ms) — safe to commit",
-            report.duration_ms
-        );
-    } else {
-        println!(
+        ),
+        (Some(false), _) => println!(
             "\n{red}✗ verify failed{reset} ({}ms) — fix before committing",
             report.duration_ms
-        );
+        ),
+        (None, _) => println!(
+            "\n{dim}~ verify has no verdict{reset} ({}ms) — nothing measured failed, but \
+             {} declined to measure: {}",
+            report.duration_ms,
+            report.not_measured.len(),
+            report.not_measured.join(", ")
+        ),
+        (Some(true), _) => println!(
+            "\n{green}✓ verify passed{reset} ({}ms) — safe to commit",
+            report.duration_ms
+        ),
     }
 }
 
@@ -1055,6 +1093,21 @@ mod tests {
     }
 
     /// The satd stage must fail on debt the subcommand reports while exiting 0.
+    /// CRUX-01: the composite verdict table, every row.
+    #[test]
+    fn composite_verdict_withdraws_rather_than_asserts_over_a_declined_stage() {
+        // measured failure beats everything, including a co-declining stage
+        assert_eq!(composite_verdict(true, 1, 1), Some(false));
+        assert_eq!(composite_verdict(true, 3, 0), Some(false));
+        // nothing measured is not a pass, whatever declined
+        assert_eq!(composite_verdict(false, 0, 0), Some(false));
+        assert_eq!(composite_verdict(false, 0, 3), Some(false));
+        // measured, clean, but a stage declined: no verdict
+        assert_eq!(composite_verdict(false, 2, 1), None);
+        // measured, clean, nothing declined: the only green
+        assert_eq!(composite_verdict(false, 3, 0), Some(true));
+    }
+
     #[test]
     fn test_satd_verdict_fails_on_reported_violations() {
         let report = r#"{
