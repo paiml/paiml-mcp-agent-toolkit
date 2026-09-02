@@ -3734,11 +3734,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-01: pmat verify withdraws its verdict over a declined stage (ok tri-state, not_measured[]) and strict SATD sees every marker quality-gate blocks on (#1146)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T17:31:11Z
-  updated: 2026-09-02T17:34:25Z
+  updated: 2026-09-02T20:49:56Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3771,6 +3771,22 @@ roadmap:
   assigned_to: null
   created: 2026-09-02T17:49:52Z
   updated: 2026-09-02T17:49:52Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-640
+  github_issue: null
+  item_type: task
+  title: 'CRUX-10: quality_proxy → quality_check_content — never writes and says so (written:false), advisory does not launder a failing verdict, client quality_config only tightens, satd_count == violations[] (#1151)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-02T20:49:56Z
+  updated: 2026-09-02T20:49:56Z
   spec: null
   acceptance_criteria: []
   phases: []
