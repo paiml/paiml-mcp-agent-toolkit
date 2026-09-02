@@ -1,0 +1,20 @@
+== version1 done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.00
+== version2 done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.00
+== help1 done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.00
+== fix_complexity done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.21
+== fix_satd done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.01
+== fix_deadcode done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.11
+== fix_complexity2 done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.01
+== repo_query1 done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.25
+MEASURE2 START 2026-09-02T12:13:01+02:00
+== repo_complexity exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.50 	Maximum resident set size (kbytes): 56220 
+== repo_satd exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.17 	Maximum resident set size (kbytes): 21724 
+== repo_deadcode exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.06 	Maximum resident set size (kbytes): 20172 
+== repo_tdg exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.08 	Maximum resident set size (kbytes): 538668 
+== repo_verify exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.73 	Maximum resident set size (kbytes): 307924 
+== repo_qualitygate exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.00 	Maximum resident set size (kbytes): 57252 
+== repo_context exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.99 	Maximum resident set size (kbytes): 284820 
+== repo_dag exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.00 	Maximum resident set size (kbytes): 16512 
+== repo_duplicates exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:16.22 	Maximum resident set size (kbytes): 1772556 
+== repo_score exit done 	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:19.85 	Maximum resident set size (kbytes): 10237248 
+MEASURE2 ALL DONE 2026-09-02T12:14:56+02:00

@@ -2129,7 +2129,10 @@ pub(crate) fn help_for(path: &[&str], cwd: &Path) -> Option<String> {
         return None;
     }
     let text = format!("{}{}", out.stdout, out.stderr);
-    if text.contains("Usage:") {
+    if regex::Regex::new(r"(?m)^Usage:\s+\w+")
+        .unwrap()
+        .is_match(&text)
+    {
         Some(text)
     } else {
         None

@@ -1,0 +1,5 @@
+cmd: /mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit/release/pmat --version
+dir: /home/noah/src/paiml-mcp-agent-toolkit
+2026-09-02T12:01:37+02:00
+ 12:01:37 up 22:50,  1 user,  load average: 32.14, 24.20, 18.98
+exit=0

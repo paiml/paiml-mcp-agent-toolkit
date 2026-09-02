@@ -463,7 +463,7 @@ async fn test_analyze_help_consistency() -> Result<()> {
 
         // Help should contain usage information
         assert!(
-            result.stdout_text.contains("Usage:")
+            regex::Regex::new(r"(?m)^Usage:\s+\w+").unwrap().is_match(&result.stdout_text)
                 || result.stdout_text.contains("USAGE:")
                 || result.stdout_text.to_lowercase().contains("usage"),
             "Analyze subcommand '{}' help does not contain usage information",
