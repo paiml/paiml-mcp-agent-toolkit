@@ -22,7 +22,12 @@ fn main() {
     // 265 CPU-seconds per no-op `cargo build --release` (CRUX-06). The literal
     // paths below are asserted by `rerun_if_changed_paths_exist_inside_the_tree`
     // in build_support.rs, which fails the `--lib` suite if one goes missing.
-    println!("cargo:rerun-if-changed=assets/vendor/");
+    //
+    // `assets/vendor/` is deliberately NOT watched. This script creates that
+    // directory and writes into it (`process_assets`), so watching it re-runs
+    // the script on its own output; and it is gitignored, so in a clean CI
+    // checkout it does not exist at fingerprint time and the crate rebuilt in
+    // full on every run. The gate above caught that on its first CI run.
     println!("cargo:rerun-if-changed=assets/demo/");
     println!("cargo:rerun-if-changed=templates/");
     println!("cargo:rerun-if-changed=src/schema/refactor_state.capnp");
@@ -1678,7 +1683,32 @@ fn emit_build_provenance() {
     println!("cargo:rustc-env=PMAT_GIT_SHA={sha}");
     println!("cargo:rustc-env=PMAT_GIT_DIRTY={dirty}");
     // Rebuild when the checked-out revision changes, so the embedded SHA cannot
-    // go stale behind an otherwise-cached build.
-    println!("cargo:rerun-if-changed=.git/HEAD");
-    println!("cargo:rerun-if-changed=.git/index");
+    // go stale behind an otherwise-cached build. Resolved through git rather
+    // than spelled `.git/HEAD`: in a worktree `.git` is a FILE pointing at
+    // `<main>/.git/worktrees/<name>/`, so the literal path does not exist, cargo
+    // treats the watch as permanently stale, and every worktree build recompiles
+    // the whole crate (CRUX-06 — found by the gate in build_support.rs).
+    for name in ["HEAD", "index"] {
+        if let Some(path) = git_path(name) {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
+}
+
+/// Where git keeps `name` for THIS checkout — `.git/HEAD` in a normal clone,
+/// `<main>/.git/worktrees/<wt>/HEAD` in a worktree. `None` when not a git
+/// checkout at all (a crates.io tarball), in which case there is nothing to
+/// watch and the provenance is `unknown` anyway.
+fn git_path(name: &str) -> Option<std::path::PathBuf> {
+    let out = std::process::Command::new("git")
+        .args(["rev-parse", "--git-path", name])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())?;
+    let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if p.is_empty() {
+        return None;
+    }
+    let p = std::path::PathBuf::from(p);
+    p.exists().then_some(p)
 }

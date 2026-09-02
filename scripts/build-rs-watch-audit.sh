@@ -31,20 +31,24 @@ audit() {
   # leg 1 CONTROL — green today AND after the fix. Anti-vacuity only: a rotted
   # regex must fail rather than certify. NOT evidence of the defect. `sort -u`
   # first, so duplicate lines cannot pad the floor.
-  [ "$n" -ge 8 ] || echo "EXTRACTOR-ROTTED:only-${n}-distinct-literals"
+  [ "$n" -ge 5 ] || echo "EXTRACTOR-ROTTED:only-${n}-distinct-literals"
   # leg 2 INVARIANT — required watches by NAME, so a deleted watch cannot be
   # padded back with a duplicate of another. Replaces the old ">= 9" census.
-  for req in assets/vendor/ assets/demo/ templates/ \
+  for req in assets/demo/ templates/ \
              src/schema/refactor_state.capnp contracts/binding.yaml \
-             mcp_tool_schemas .git/HEAD .git/index; do
+             mcp_tool_schemas; do
     printf '%s\n' "$lit" | grep -qxF "$req" || echo "WATCH-REMOVED:$req"
   done
-  # leg 3 — exactly one interpolated directive and it is the schema walk. Matches
-  # interpolation ANYWHERE in the directive, not just immediately after '='.
+  # leg 3 — exactly two interpolated directive sites: the schema walk and the
+  # git provenance watches (HEAD, index) resolved via `git rev-parse --git-path`,
+  # because in a worktree `.git` is a file and a literal `.git/HEAD` is missing.
+  # Matches interpolation ANYWHERE in the directive, not just after '='.
   dynl=$(grep -n 'cargo:rerun-if-changed=[^"]*[{$]' "$t/build.rs" || true)
   dynn=$(printf '%s\n' "$dynl" | grep -c . ) || dynn=0
-  [ "$dynn" -eq 1 ] || echo "INTERPOLATED-DIRECTIVES:$dynn"
-  printf '%s\n' "$dynl" | grep -q 'path\.display()' || echo "UNKNOWN-INTERPOLATED-DIRECTIVE"
+  [ "$dynn" -eq 2 ] || echo "INTERPOLATED-DIRECTIVES:$dynn"
+  [ "$(printf '%s\n' "$dynl" | grep -c 'path\.display()')" = "$dynn" ] || echo "UNKNOWN-INTERPOLATED-DIRECTIVE"
+  grep -q 'git rev-parse\|--git-path' "$t/build.rs" || echo "GIT-WATCH-NOT-RESOLVED"
+  ! grep -q 'rerun-if-changed=\.git/' "$t/build.rs" || echo "LITERAL-GIT-WATCH"
   printf '%s\n' "$dynl" | sed -n 's/.*cargo:rerun-if-changed=\([^{$]*\)[{$].*/\1/p' \
     | while read -r pre; do
         case "$pre" in /*|*..*) echo "ESCAPES-MANIFEST-DIR:${pre}{}";; esac
@@ -76,10 +80,9 @@ cleanup() {
 }
 trap cleanup EXIT
 plant() {  # plant <name> -> echoes a sandbox whose repo/ has the real skeleton
-  d=$sb/$1; mkdir -p "$d/repo/assets/vendor" "$d/repo/assets/demo" "$d/repo/templates" \
-     "$d/repo/src/schema" "$d/repo/contracts" "$d/repo/mcp_tool_schemas" "$d/repo/.git"
+  d=$sb/$1; mkdir -p "$d/repo/assets/demo" "$d/repo/templates" \
+     "$d/repo/src/schema" "$d/repo/contracts" "$d/repo/mcp_tool_schemas"
   : >"$d/repo/src/schema/refactor_state.capnp"; : >"$d/repo/contracts/binding.yaml"
-  : >"$d/repo/.git/HEAD"; : >"$d/repo/.git/index"
   cp "$root/build.rs" "$d/repo/build.rs"; echo "$d"
 }
 reject(){ [ -n "$(audit "$2/repo")" ] || fail "leg 5: mutant $1 ACCEPTED — the gate is gameable by it"; }
@@ -103,17 +106,21 @@ d=$(plant g3); mkdir -p "$d/pmat-book"
   printf '%s\n' 'println!("cargo:rerun-if-changed=../pmat-book/");' >>"$d/repo/build.rs"
   reject "G3 repointed at a different EXISTING sibling" "$d"
 d=$(plant g4)
-  awk '/rerun-if-changed=\.git\/HEAD|rerun-if-changed=\.git\/index/{next}
+  awk '/for name in \["HEAD", "index"\]/{skip=5} skip>0{skip--;next}
        /rerun-if-changed=templates\//{print;print;print;next}{print}' \
       "$d/repo/build.rs" >"$d/b" && mv "$d/b" "$d/repo/build.rs"
   reject "G4 provenance watches deleted, count padded with duplicates" "$d"
+d=$(plant g6)
+  sed -i 's|println!("cargo:rerun-if-changed={}", path.display());\(.*\)|println!("cargo:rerun-if-changed=.git/HEAD");\1|' "$d/repo/build.rs"
+  printf '%s\n' 'println!("cargo:rerun-if-changed=.git/index");' >>"$d/repo/build.rs"
+  reject "G6 git watches spelled literally, which no worktree can satisfy" "$d"
 d=$(plant g5)
   sed -i 's|cargo:rerun-if-changed=[^"]*|cargo:rerun-if-changed=templates/|g' "$d/repo/build.rs"
   reject "G5 every directive flattened to one present path" "$d"
 d=$(plant fix); printf '%s\n' "$esc" >>"$d/repo/build.rs"
   grep -vF 'rerun-if-changed=../assets/demo/' "$d/repo/build.rs" >"$d/b" && mv "$d/b" "$d/repo/build.rs"
   accept "the real fix (the planted line deleted, nothing else)" "$d"
-echo "leg 5 CONTROL ok: 7 mutants rejected, the real fix accepted"
+echo "leg 5 CONTROL ok: 8 mutants rejected, the real fix accepted"
 
 # ---- leg 6 — the verdict on the tree under test. RED today.
 found=$(audit "$root") || fail "leg 6: auditor crashed"
@@ -136,16 +143,20 @@ hashdir=$(basename "$(dirname "$out_dir")")
 profdir=$(dirname "$(dirname "$(dirname "$out_dir")")")
 fp="$profdir/.fingerprint/$hashdir/run-build-script-build-script-build.json"
 [ -f "$fp" ] || fail "leg 7: no build-script fingerprint at $fp"
-jq -e '[.local[].RerunIfChanged.paths // empty] | flatten | length >= 9' "$fp" >/dev/null \
-   || fail "leg 7: fingerprint $fp records <9 tracked paths — wrong artefact or a rotted schema"
+# the git provenance watches resolve to the checkout's git dir, which in a
+# worktree is OUTSIDE the tree by design — that is the one sanctioned escape.
+gitdir=$(git rev-parse --absolute-git-dir) || fail "leg 7: not a git checkout"
+jq -e '[.local[].RerunIfChanged.paths // empty] | flatten | length >= 7' "$fp" >/dev/null \
+   || fail "leg 7: fingerprint $fp records <7 tracked paths — wrong artefact or a rotted schema"
 esc=$(jq -r '[.local[].RerunIfChanged.paths // empty] | flatten | .[]' "$fp" \
       | while read -r p; do
           case "$p" in
+            "$gitdir"/*) [ -e "$p" ] || echo "TRACKS-MISSING:$p" ;;
             /*|*..*) echo "TRACKS-ESCAPING:$p" ;;
             *) [ -e "$root/$p" ] || echo "TRACKS-MISSING:$p" ;;
           esac
         done)
 [ -z "$esc" ] || fail "leg 7: cargo is tracking $(printf '%s' "$esc" | tr '\n' ' ')"
 
-echo "PASS: build.rs declares 8 literal watches, all inside CARGO_MANIFEST_DIR and present;"
-echo "      1 interpolated directive (the schema walk); cargo tracks nothing outside the tree."
+echo "PASS: build.rs declares 5 literal watches, all inside CARGO_MANIFEST_DIR and present;"
+echo "      2 interpolated sites (schema walk, git provenance via rev-parse); cargo tracks nothing outside the tree."

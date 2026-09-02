@@ -467,6 +467,9 @@ mod tests {
     /// deleted `server/` layout until 3.36.0 (55 s / 265 CPU-s per no-op
     /// release build). The shape check runs BEFORE the existence check, so
     /// materialising a sibling directory next to the checkout cannot pass it.
+    /// `assets/vendor/` is absent from the required set on purpose: the script
+    /// writes it, and it is gitignored — its watch was the second stale path,
+    /// found by this test's first run in CI.
     #[test]
     fn rerun_if_changed_paths_exist_inside_the_tree() {
         let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -481,7 +484,7 @@ mod tests {
         // Anti-vacuity: the extractor must still find the directives. A rotted
         // pattern must fail here rather than certify an empty set.
         assert!(
-            literal.len() >= 8,
+            literal.len() >= 5,
             "extractor found only {} distinct literal watches: {literal:?}",
             literal.len()
         );
@@ -489,14 +492,11 @@ mod tests {
         // with a duplicate of another, and the provenance watches on `.git/`
         // (which keep PMAT_GIT_SHA honest) cannot be dropped quietly.
         for req in [
-            "assets/vendor/",
             "assets/demo/",
             "templates/",
             "src/schema/refactor_state.capnp",
             "contracts/binding.yaml",
             "mcp_tool_schemas",
-            ".git/HEAD",
-            ".git/index",
         ] {
             assert!(literal.contains(req), "build.rs no longer watches {req}");
         }
@@ -515,8 +515,10 @@ mod tests {
             "rerun-if-changed defects in build.rs: {bad:?}"
         );
 
-        // Exactly one interpolated directive is expected — the per-file schema
-        // walk — and it must be manifest-relative before the `{}`.
+        // Exactly two interpolated directive SITES are expected: the per-file
+        // schema walk, and the git provenance watches (`HEAD`, `index`) resolved
+        // through `git rev-parse --git-path` so a worktree — where `.git` is a
+        // file — watches a path that exists. Both interpolate `path.display()`.
         let dynamic: Vec<&str> = build_rs
             .lines()
             .filter(|l| {
@@ -525,13 +527,22 @@ mod tests {
             .collect();
         assert_eq!(
             dynamic.len(),
-            1,
+            2,
             "unexpected interpolated rerun-if-changed directives: {dynamic:?}"
         );
         assert!(
-            dynamic[0].contains("path.display()"),
-            "the one interpolated directive is not the schema walk: {}",
-            dynamic[0]
+            dynamic.iter().all(|l| l.contains("path.display()")),
+            "an interpolated directive is not the schema walk or the git watch: {dynamic:?}"
+        );
+        // …and the provenance watches are still emitted, through git, not
+        // spelled as `.git/HEAD` (which does not exist in a worktree).
+        assert!(
+            build_rs.contains("git_path(name)") && build_rs.contains(r#"["HEAD", "index"]"#),
+            "the git provenance watches must resolve through `git rev-parse --git-path`"
+        );
+        assert!(
+            !build_rs.contains("rerun-if-changed=.git/"),
+            "a literal `.git/…` watch is missing in every worktree checkout"
         );
     }
 }
