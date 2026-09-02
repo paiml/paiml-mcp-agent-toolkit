@@ -2300,6 +2300,31 @@ cover it, because it audits directives rather than function bodies.
 *class* — a gate whose verdict depends on the runner's filesystem rather than on the tree under
 test — belongs with #1018 (tests that cannot fail), which does not yet name it.
 
+**Correction found while implementing (PR for #1149).** The leg-5 mutation control above, as
+first hardened, copied the live `build.rs` into each sandbox and assumed the defective line
+was still in it. Run on the unfixed tree it was RED on leg 6, as claimed. Run *after* the
+one-line fix it was RED on **leg 5** — `mutant G1 ACCEPTED` — because the copied file was now
+clean and there was nothing for the auditor to reject. A test that cannot go green after the
+correct fix is the CRUX-30 class, and it shipped here one section after §8.0 named it. The
+committed form at `scripts/build-rs-watch-audit.sh` makes every mutant **plant its own
+defect** (the historical line is appended, then dodged), adds the historical line itself as a
+seventh rejected mutant, and applies the real fix to a planted copy for the positive control.
+Both sides now hold: RED on the pre-fix tree (leg 6, `ESCAPES-MANIFEST-DIR:../assets/demo/`),
+GREEN on the fixed tree with leg 7 armed by a release build. Legs 1–4 also run permanently as
+`rerun_if_changed_paths_exist_inside_the_tree` in `build_support.rs` under `cargo test --lib`.
+
+**Two further watches, found by the gate itself (PR #1154).** On its first CI run the new
+`--lib` gate failed with `missing: assets/vendor/`: that directory is **gitignored and written by
+`build.rs`** (it downloads four assets from `unpkg.com`, two at `@latest`, into it — filed as
+#1156), so the watch was a self-trigger locally and a permanently-missing path in every clean CI
+checkout. Then, run inside a git **worktree**, the audit reported `.git/HEAD` and `.git/index`
+missing — in a worktree `.git` is a file — so every worktree build had been permanently stale too.
+Both are fixed in #1154: the provenance watches now resolve through `git rev-parse --git-path`,
+the literal set is five, exactly two interpolated sites are permitted, a literal `.git/…` watch is
+rejected outright, and the audit script carries an eighth mutant for it. The item's original claim
+of "one stale path" was therefore an undercount by two, and the 57 s rebuild the first
+implementation could not explain is most plausibly the `assets/vendor/` self-trigger.
+
 ### 8.7 CRUX-07 — the index is not a faithful, reproducible view of the tree
 
 **Problem.** Three defects in the artefact CLAUDE.md mandates over grep. **(a)** `check_mtime_reuse`
