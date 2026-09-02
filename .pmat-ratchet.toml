@@ -192,6 +192,41 @@ and that number measures pmat's feature set rather than its debt. Trailing
 comments after code are not counted.
 """
 
+[metric.orphan_files]
+baseline = 407
+unit = "count"
+band = 0
+includes_test_files = true
+zero_is_reachable = true
+analyzer = "reachability.orphan_count"
+command = '''pmat analyze reachability -f json | jq -er .orphan_count'''
+description = """
+Tracked .rs files that no compilation unit reaches — no `mod`, `#[path]` or
+`include!` from any target root `cargo metadata` declares — as `pmat analyze
+reachability` reports them. 407 files, 126,933 lines and 6,292 `#[test]` fns at
+the baseline commit, growing since 3.34.0 while nothing was required to look.
+Measured IN-PROCESS by the named analyzer, not by spawning `pmat` from $PATH:
+`command` is the shell reproduction and must print the same number
+(CRUX-12, #1152, #1017). May only fall; every file has a row in
+docs/status/orphan-files-ledger.md, checked by `--check-ledger` in CI.
+"""
+
+[metric.quarantined_files]
+baseline = 82
+unit = "count"
+band = 0
+includes_test_files = true
+zero_is_reachable = true
+analyzer = "reachability.quarantined_count"
+command = '''pmat analyze reachability -f json | jq -er .quarantined_count'''
+description = """
+Tracked .rs files reached ONLY through the `pmat_broken_tests` cfg — declared,
+never compiled — 82 files, 35,856 lines and 2,021 `#[test]` fns at the baseline
+commit (#1023). Ratcheted beside `orphan_files` so that registering an orphan
+behind the quarantine cfg cannot pass as a fix: a file leaving one bucket for
+the other moves this number up, and up is red.
+"""
+
 [metric.panic_macro_calls_src]
 baseline = 784
 unit = "count"

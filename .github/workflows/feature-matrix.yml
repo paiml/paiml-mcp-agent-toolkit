@@ -701,6 +701,35 @@ jobs:
         run: cargo run --release --locked --quiet --bin pmat -- analyze unrun-tests --executed '' --check-ledger
 
 
+  # ── CRUX-12 (#1152): the ledger of files no build compiles.
+  #
+  # `pmat analyze reachability` has reported ~407 orphaned .rs files and 82
+  # quarantined ones — 8,313 #[test] fns no compilation unit reaches — since
+  # 3.34.0, and nothing in CI, the Makefile or either hook ran it. A count
+  # nobody is required to look at is not a gate. This leg checks the committed
+  # docs/status/orphan-files-ledger.md against the tree: a file newly
+  # unreachable, a stale row, or a reason the tree refutes is red. The
+  # .pmat-ratchet.toml metrics `orphan_files` / `quarantined_files` ratchet the
+  # same two numbers downward from `cargo test --lib`.
+  #
+  # In `feature-gate`'s `needs` AND its require-every-leg loop, because that
+  # gate is `if: always()` — a job named only in `needs` cannot fail it.
+  reachability-ledger:
+    name: every unreachable .rs file is ledgered, and the ledger is current
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: reachability-ledger
+      # `cargo run`, never a hand-written ./target path — see unrun-tests above.
+      - name: cargo build --bin pmat
+        run: cargo build --release --locked --bin pmat
+      - name: the committed orphan-files ledger matches the tree
+        run: cargo run --release --locked --quiet --bin pmat -- analyze reachability --check-ledger
+
   # ── The falsification gate that had never run.
   #
   # `tests/modules/quality_harness/differential_corpus.rs` asserts that no metric
@@ -804,14 +833,14 @@ jobs:
   feature-gate:
     name: feature-gate
     runs-on: ubuntu-latest
-    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, differential-corpus, flag-efficacy]
+    needs: [bundles, individual, all-targets, feature-tests, orphan-ledger, package-size, binary-size, dependabot-alerts, unrun-tests, reachability-ledger, differential-corpus, flag-efficacy]
     if: always()
     steps:
       - name: Require every leg
         run: |
-          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
+          for r in "${{ needs.bundles.result }}" "${{ needs.individual.result }}" "${{ needs.all-targets.result }}" "${{ needs.feature-tests.result }}" "${{ needs.orphan-ledger.result }}" "${{ needs.package-size.result }}" "${{ needs.binary-size.result }}" "${{ needs.dependabot-alerts.result }}" "${{ needs.unrun-tests.result }}" "${{ needs.reachability-ledger.result }}" "${{ needs.differential-corpus.result }}" "${{ needs.flag-efficacy.result }}"; do
             if [ "$r" != "success" ]; then
-              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }}"
+              echo "a leg failed: flag-efficacy=${{ needs.flag-efficacy.result }} differential-corpus=${{ needs.differential-corpus.result }} bundles=${{ needs.bundles.result }} individual=${{ needs.individual.result }} all-targets=${{ needs.all-targets.result }} feature-tests=${{ needs.feature-tests.result }} orphan-ledger=${{ needs.orphan-ledger.result }} package-size=${{ needs.package-size.result }} binary-size=${{ needs.binary-size.result }} dependabot-alerts=${{ needs.dependabot-alerts.result }} unrun-tests=${{ needs.unrun-tests.result }} reachability-ledger=${{ needs.reachability-ledger.result }}"
               exit 1
             fi
           done
