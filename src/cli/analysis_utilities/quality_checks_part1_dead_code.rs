@@ -236,8 +236,8 @@ mod dead_code_outcome_tests {
         let rt = tokio::runtime::Runtime::new().expect("rt");
         let o = rt.block_on(check_dead_code_outcome(tmp.path(), 15.0)).expect("outcome");
         // The whole outcome is in the message so a red run names the path the
-        // analyzer took (the ratchet counts `panic!(` sites, so an assert, not
-        // a panic, carries the diagnostic).
+        // analyzer took. An assert carries it: the ratchet counts every literal
+        // panic-macro call site in src/, comments included.
         assert!(
             o.not_measured.is_some(),
             "not_measured must be set for an uncompilable crate; outcome was: \
