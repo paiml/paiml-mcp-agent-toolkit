@@ -3828,3 +3828,88 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-643
+  github_issue: null
+  item_type: task
+  title: 'CRUX-06: build.rs watched ../assets/demo/, a path outside the repo, so no build was ever incremental (PR #1154, merged b7f2bde62)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:42:38Z
+  updated: 2026-09-03T07:43:14Z
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-644
+  github_issue: null
+  item_type: task
+  title: 'CRUX-12: a ledger and two ratchet metrics for the 489 files no build compiles (PR #1157, merged cd6f796d6)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:43:14Z
+  updated: 2026-09-03T07:43:24Z
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-645
+  github_issue: null
+  item_type: task
+  title: 'CRUX-03: config --validate certified the defaults it had silently fallen back to (PR #1155, open, auto-merge armed)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:43:24Z
+  updated: 2026-09-03T07:43:24.375699801+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-646
+  github_issue: null
+  item_type: task
+  title: 'CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events, 07:41–07:51Z); workflow_dispatch on the same head did'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:59:51Z
+  updated: 2026-09-03T07:59:51Z
+  spec: null
+  acceptance_criteria:
+  - 'Observed during PMAT-642. Pushes ce2178577 and a80527dcb and the ready-for-review event produced zero runs (actions/runs?head_sha= → 0; check-suites empty) while #1155''s push at 07:37Z produced runs. githubstatus: Actions/Webhooks/PRs operational. Workaround used: gh workflow run for ci.yml, feature-matrix.yml, docsrs.yml, quality-gate.yml on the branch. Also: master has had no push-triggered runs since 2026-08-21 (auto-merge pushes?) — separate observation. Root cause not established.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-647
+  github_issue: null
+  item_type: task
+  title: models::quality_gate::QualityGateResults still carries duplicate_violations after CRUX-02 renamed the CLI gate's field to identical_files
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-03T07:59:51Z
+  updated: 2026-09-03T07:59:51Z
+  spec: null
+  acceptance_criteria:
+  - 'CRUX-02 (PMAT-642) renamed the CLI results field; src/models/quality_gate.rs is a separate results type (used by no MCP or CLI surface found by grep) that keeps the misleading name. Decide: delete the orphan model or rename with its consumers. Follow-up, not in PMAT-642''s scope.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
