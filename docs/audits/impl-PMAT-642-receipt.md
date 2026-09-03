@@ -34,8 +34,12 @@
 | `pv validate` / `pv lint contracts/quality-gate-not-measured-v1.yaml` | valid; PASS |
 | `bashrs lint scripts/quality-gate-not-measured-audit.sh` | 0 errors |
 | `pmat verify --format json` run 1 (committed tree b1b45b753) | **exit 1**: format ✓ complexity withdrawn (clean tree) satd ✓ clippy ✓ (96 s) tests ✗ — 1 of 21,134: `the_committed_ratchet_holds_at_head`, `panic_macro_calls_src` 787 > 781. Cause: the six new coverage-guard tests each carried an `other => panic!(..)` arm. Fixed at the source (ce2178577: `assert!(matches!(..))`, same assertions, no new `panic!`); ratchet 781 again. **Process finding:** my earlier `pmat comply ratchet` read was piped through a grep that kept only the unwrap and satd rows, so the red panic row was filtered out before `--lower` — the phase gate caught what my filtered read did not |
-| `pmat verify --format json` run 2 (committed tree ce2178577) | PENDING |
-| `make gate-artifact` | PENDING |
+| `pmat verify --format json` run 2 (committed tree ce2178577) | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format ✓ satd ✓ clippy ✓ (50 s) tests ✓ (303 s, 21,134 passed, 0 failed); complexity withdrawn because the tree was clean at both runs (CRUX-01 semantics) |
+| complexity, measured directly with verify's own command (`analyze complexity --max-cyclomatic 30 --max-cognitive 25 --fail-on-violation --files <10 changed non-test src files>`) | **exit 0**; control at `--max-cyclomatic 5 --max-cognitive 5` → **exit 1** with 22 flagged lines, so the measurement can fail on these files |
+| collateral of the substring rename (found by reading `git diff master...HEAD`) | the rename had also mangled entropy's `deduplicate_violations` helper and renamed the field of the separate `models::quality_gate` results type — both reverted (de078070a); `entropy::violation_detector` + `models::quality_gate` tests 47 passed. Follow-up PMAT-647 (that model still says `duplicate_violations`) |
+| CI events on #1164 | pushes ce2178577, a80527dcb, de078070a and the ready-for-review event created **no** workflow runs (`actions/runs?head_sha=` → 0), while #1155's push at 07:37Z did; `workflow_dispatch` on the same head creates runs. Required workflows dispatched by hand on de078070a (ci, feature-matrix, docsrs, quality-gate). Filed PMAT-646; not a rerun of a failed leg — no leg had run |
+| `make gate-artifact` run 1 (committed tree de078070a) | **exit 2** — flag-efficacy PASS; `gate-differential` FAILED: `metrics_must_respond_to_the_corpus` found two numeric leaves identical for the empty and the defect-rich corpus: `results.not_measured[].len = 1`, `results.not_applicable[].len = 0`. They are disclosure lists — properties of the run, not of the corpus — and the duplicates disclosure is 1 by design. Declared in `ALLOWED_CONSTANTS` with the reason and the guards that keep them falsifiable (the acceptance script's broken-crate and fabricated-cache fixtures move exactly these lists); `make gate-differential` → exit 0, `0 constant leaf/leaves` (678726838) |
+| `make gate-artifact` run 2 (committed tree 678726838) | **exit 0** — gate-differential 80 s, 1 passed (`0 constant leaf/leaves`); flag-efficacy sweep 526 s, 1 passed |
 
 ## Named mutation (both sides)
 
@@ -61,10 +65,9 @@ None filed: no defect outside this item's scope surfaced. One pre-existing test 
 
 ## Gaps
 
-- `pmat verify` and `make gate-artifact`: PENDING at draft time — overwritten with the measured result before the PR opens.
 - pv contract `status: draft` until the PR merges.
 - `transcript-gate.sh` scans the memory directory (vacuous PASS) — skill defect, not this repo; 0 subagents were used.
 
 ## Verdict
 
-PENDING — becomes DONE when verify and gate-artifact are green, the PR is open with auto-merge, and CI merges without a rerun.
+All phase and DoD gates hold; PR #1164 open with auto-merge armed (CI runs created by `workflow_dispatch` on the head — see the CI-events row and PMAT-646; no leg was rerun). **DONE** the moment #1164 merges green on the required checks (recorded in the next receipt commit).
