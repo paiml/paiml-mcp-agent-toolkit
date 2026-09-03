@@ -3947,3 +3947,54 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-650
+  github_issue: null
+  item_type: task
+  title: 'Agentic delivery spec: docs/specifications/agentic-delivery-pmat.md — map the whiteboard''s three zones to pmat/paiml-implement/agy with acceptance tests; backlog AD-01..AD-10'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T13:07:46Z
+  updated: 2026-09-03T13:07:46.238382271+00:00
+  spec: null
+  acceptance_criteria:
+  - Approved plan /home/noah/.claude/plans/immutable-orbiting-moore.md (reviewed by one agy /teamwork-preview lane, conversation 0a2b5862). Spec only; AD-01..AD-10 become their own tickets after it merges.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-651
+  github_issue: null
+  item_type: task
+  title: 'AD-01: post-merge release check — a merged release PR must produce a tag, a GitHub release and a crates.io version (3.35.0 never did)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T13:18:32Z
+  updated: 2026-09-03T13:18:32.440132243+00:00
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 3.5 / 9.1. scripts/release-check.sh reads the version from Cargo.toml; when it exceeds the latest v* tag it requires the tag, the GitHub release and the crates.io version, else exit 1 naming the version. Control: --self-test with a fixture at 9.9.9 must fail all three legs. CI job on master (push + schedule), NOT a required PR check.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-652
+  github_issue: null
+  item_type: task
+  title: 'AD-02: post-publish dog-food — install the version crates.io serves and run the release gate against it, writing a receipt'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T13:22:47Z
+  updated: 2026-09-03T13:22:47.738403253+00:00
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 3.6 / 9.2. scripts/dogfood-published.sh <version>: cargo install pmat --version <v> --locked into a temp root; the binary must report the version; scripts/dogfood-use.sh runs with BIN= that binary; the registry entry is checked (P7); receipt docs/audits/release-<v>-dogfood.md names the installed commit. Control: a fabricated version fails at the install leg, exit 1.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
