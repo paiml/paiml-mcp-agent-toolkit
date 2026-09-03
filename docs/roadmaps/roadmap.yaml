@@ -3998,3 +3998,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-654
+  github_issue: null
+  item_type: task
+  title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T21:34:43Z
+  updated: 2026-09-03T21:34:43Z
+  spec: null
+  acceptance_criteria:
+  - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
