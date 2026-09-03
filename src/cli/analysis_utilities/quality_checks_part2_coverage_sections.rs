@@ -431,10 +431,8 @@ mod coverage_sections_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "not json").unwrap();
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Rejected(r) => assert!(r.contains("not valid JSON"), "{r}"),
-            other => panic!("a malformed cache must be rejected by name, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.contains("not valid JSON")), "a malformed cache must be rejected by name, got {read:?}");
     }
 
     #[test]
@@ -469,10 +467,8 @@ mod coverage_sections_tests {
             "{\"files\":{\"a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}}",
         )
         .expect("write cache");
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Rejected(r) => assert!(r.starts_with("git_hash:"), "{r}"),
-            other => panic!("expected the git_hash guard, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("git_hash:")), "expected the git_hash guard, got {read:?}");
     }
 
     /// A throwaway git checkout with one committed `src/a.rs`, so the guards
@@ -514,22 +510,16 @@ mod coverage_sections_tests {
         let (tmp, head) = git_fixture();
         // 4 lines, 3 covered → 75%; the one Rust source is listed → breadth 100%.
         write_cache(tmp.path(), &head, "{\"src/a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}");
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Accepted(pct) => assert!((pct - 75.0).abs() < 1e-6),
-            other => panic!("a fresh report from HEAD must be accepted, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(read, CoverageCacheRead::Accepted(pct) if (pct - 75.0).abs() < 1e-6), "a fresh report from HEAD must be accepted, got {read:?}");
     }
 
     #[test]
     fn a_report_from_an_unknown_commit_is_rejected_by_the_hash_guard() {
         let (tmp, _head) = git_fixture();
         write_cache(tmp.path(), "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", "{\"src/a.rs\":{\"1\":1}}");
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Rejected(r) => {
-                assert!(r.starts_with("git_hash:") && r.contains("deadbeef"), "{r}");
-            }
-            other => panic!("expected the git_hash guard, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("git_hash:") && r.contains("deadbeef")), "expected the git_hash guard, got {read:?}");
     }
 
     #[test]
@@ -543,10 +533,8 @@ mod coverage_sections_tests {
             .open(tmp.path().join(".pmat/coverage-cache.json"))
             .expect("fixture");
         f.set_modified(old).expect("fixture");
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Rejected(r) => assert!(r.starts_with("mtime:") && r.contains("src/a.rs"), "{r}"),
-            other => panic!("expected the mtime guard, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("mtime:") && r.contains("src/a.rs")), "expected the mtime guard, got {read:?}");
     }
 
     #[test]
@@ -554,12 +542,8 @@ mod coverage_sections_tests {
         let (tmp, head) = git_fixture();
         // The spec's fabricated cache: HEAD's hash, one file that does not exist.
         write_cache(tmp.path(), &head, "{\"src/deleted.rs\":{\"1\":5}}");
-        match read_coverage_from_detail_cache(tmp.path()) {
-            CoverageCacheRead::Rejected(r) => {
-                assert!(r.starts_with("breadth:") && r.contains("0 of 1"), "{r}");
-            }
-            other => panic!("expected the breadth guard, got {other:?}"),
-        }
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("breadth:") && r.contains("0 of 1")), "expected the breadth guard, got {read:?}");
     }
 
     #[test]
