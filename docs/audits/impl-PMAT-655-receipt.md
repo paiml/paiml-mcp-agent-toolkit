@@ -20,10 +20,11 @@
 | `cargo test --lib -- commit_enforcement_tests hook_generation hooks_command` | 96 passed (5 new + every existing hook test); re-run after the quorum fixes: see the row below |
 | **AD-04 quorum review of e668cf180** (3 agy lanes, `docs/audits/quorum-PMAT-655.json` on this branch) | 3 FAIL, cited: `--strict` reached only the commit-msg hook (`hook_generation.rs` read `[hooks] strict` and ignored the flag); `hooks verify --fix` / `hooks update` / the comply auto-install re-generated the hook with `strict=false`; dead `PMAT_TASK_ID_PATTERN` export; receipt test count wrong. All four fixed here |
 | regression tests RED on the pre-fix tree (e668cf180 + the two tests, `installed_strict()` assert removed) | `0 passed; 2 failed` — `--strict must reach the pre-commit hook, not only commit-msg` and `an automatic rewrite dropped --strict`; the hook text in both failures carries `PMAT_HOOKS_STRICT=0` |
-| regression tests GREEN on this tree | see the full-suite row below |
+| **AD-04 quorum after the fix** (scratch rebase onto the AD-02 branch so the diff is AD-03 alone, head a7484a1cf) | **3 lanes, 3 PASS, agreed** — `docs/audits/quorum-PMAT-655-after-fix.json` on the AD-04 branch; re-run on the PR head before it is armed |
+| regression tests GREEN on this tree | in the `pmat verify` tests stage above |
 | named mutation: strict branch `exit 1` → `exit 0` | `a_commit_without_a_ticket_trailer_is_refused_in_strict_mode` **FAILED** ("a commit without Pmat-Ticket must be refused"); 4 passed, 1 failed; restored → 5 passed |
 | acceptance script, pre-fix binary (3.36.0 release candidate) | **exit 1 — `FAIL: 1: hooks install --strict failed`** (no such flag, no commit-msg hook) |
-| acceptance script, this tree's release binary | PENDING |
+| acceptance script (`scripts/commit-enforcement-audit.sh`) against this tree's build | GREEN, exit 0 (4 legs) — measured on the pre-quorum tree; re-measured on the final tree in the PR body |
 | `bashrs lint scripts/commit-enforcement-audit.sh` | 0 errors |
 | `pv validate` / `pv lint contracts/commit-enforcement-v1.yaml` | valid; PASS |
 | `pmat verify --format json` | PENDING |
