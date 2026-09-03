@@ -21,7 +21,7 @@ the first two buckets and may only fall. To move a file out, register it
 (edit the row to `registered-<target>`) or delete it (`deleted-<reason>`) in the
 same change; do not edit counts by hand.
 
-4434 tracked `.rs` files: 3945 reachable from 137 target root(s), 407 orphaned (126933 lines, 6292 `#[test]` fns), 82 quarantined (35856 lines, 2021 `#[test]` fns).
+4434 tracked `.rs` files: 3945 reachable from 137 target root(s), 407 orphaned (126933 lines, 6292 `#[test]` fns), 82 quarantined (35876 lines, 2021 `#[test]` fns).
 
 | `path` | reason | tests | lines |
 |---|---|---|---|
@@ -57,10 +57,10 @@ same change; do not edit counts by hand.
 | `src/cli/analysis_utilities/tests_core_part1.rs` | quarantined-#1023 | 10 | 520 |
 | `src/cli/analysis_utilities/tests_core_part2.rs` | quarantined-#1023 | 17 | 477 |
 | `src/cli/analysis_utilities/tests_core_part3.rs` | quarantined-#1023 | 16 | 491 |
-| `src/cli/analysis_utilities/tests_core_part4.rs` | quarantined-#1023 | 15 | 497 |
+| `src/cli/analysis_utilities/tests_core_part4.rs` | quarantined-#1023 | 15 | 509 |
 | `src/cli/analysis_utilities/tests_coverage.rs` | quarantined-#1023 | 64 | 494 |
-| `src/cli/analysis_utilities/tests_extreme_tdd.rs` | quarantined-#1023 | 98 | 950 |
-| `src/cli/analysis_utilities/tests_markdown.rs` | quarantined-#1023 | 11 | 240 |
+| `src/cli/analysis_utilities/tests_extreme_tdd.rs` | quarantined-#1023 | 98 | 956 |
+| `src/cli/analysis_utilities/tests_markdown.rs` | quarantined-#1023 | 11 | 242 |
 | `src/cli/analysis_utilities/tests_pmatignore.rs` | quarantined-#1023 | 3 | 119 |
 | `src/cli/analysis_utilities/tests_red_bug.rs` | quarantined-#1023 | 4 | 107 |
 | `src/cli/command_dispatcher/command_dispatcher_tests.rs` | quarantined-#1023 | 0 | 38 |
