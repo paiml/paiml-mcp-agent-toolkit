@@ -110,12 +110,48 @@ async fn execute_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    execute_quality_check_template(
-        check_dead_code(project_path, max_dead_code),
-        |count| results.dead_code_violations = count,
-        violations,
-    )
-    .await
+    run_dead_code_check(project_path, max_dead_code, violations, results).await
+}
+
+/// The dead-code check with its outcome DISCLOSED: findings into
+/// `violations`, and the run that could not measure (or had nothing to
+/// measure) into `results.not_measured` / `results.not_applicable`. Both gate
+/// paths — `--checks <selection>` here and `--checks all` in
+/// `run_all_project_checks` — go through this one function so the two cannot
+/// disclose differently (CRUX-02, #1153).
+///
+/// # Errors
+/// Only the contract macro's own; analyzer failures are disclosed, not raised.
+pub(crate) async fn run_dead_code_check(
+    project_path: &Path,
+    max_dead_code: f64,
+    violations: &mut Vec<QualityViolation>,
+    results: &mut QualityGateResults,
+) -> Result<()> {
+    let outcome = check_dead_code_outcome(project_path, max_dead_code).await?;
+    results.dead_code_violations = outcome.violations.len();
+    violations.extend(outcome.violations);
+    results.not_measured.extend(outcome.not_measured);
+    results.not_applicable.extend(outcome.not_applicable);
+    Ok(())
+}
+
+/// What the gate's duplicate check does NOT measure, said in the payload.
+///
+/// `check_duplicates` hashes whole files; `analyze duplicates` finds
+/// block-level clones (21.67 % on this tree while the gate reported 0). Until
+/// that detector is wired behind the gate — a separate item, because it costs
+/// 8× the wall clock and ~180× the CPU of the whole gate — every run says so
+/// here, beside the `identical_files` count it did measure.
+pub(crate) fn duplicates_block_level_disclosure(project_path: &Path) -> UnmeasuredCheck {
+    UnmeasuredCheck {
+        check: "duplicates".to_string(),
+        path: project_path.display().to_string(),
+        reason: "block-level duplicate detection is not wired into this gate: `identical_files` \
+                 counts whole files with byte-identical content only; run `pmat analyze \
+                 duplicates` for clone blocks (separate item)"
+            .to_string(),
+    }
 }
 
 /// Helper for SATD check execution
@@ -196,10 +232,12 @@ async fn execute_duplicates_check(
 ) -> Result<()> {
     execute_quality_check_template(
         check_duplicates(project_path),
-        |count| results.duplicate_violations = count,
+        |count| results.identical_files = count,
         violations,
     )
-    .await
+    .await?;
+    results.not_measured.push(duplicates_block_level_disclosure(project_path));
+    Ok(())
 }
 
 /// Helper for coverage check execution

@@ -18,6 +18,33 @@ const QUALITY_GATE_COVERAGE_MIN: f64 = 80.0;
 /// "was there a measurement", and only the caller composing the two can answer
 /// the second without the first losing its meaning.
 async fn run_coverage_check(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    // A cache that exists but failed a guard is disclosed by name: the gate
+    // used to trust any file it found (CRUX-02, #1153).
+    if let CoverageCacheRead::Rejected(reason) = read_coverage_from_detail_cache(project_path) {
+        if read_coverage_from_metrics(project_path).is_none() {
+            return Ok(vec![QualityViolation {
+                check_type: "coverage".to_string(),
+                severity: "error".to_string(),
+                file: "project".to_string(),
+                line: None,
+                message: format!(
+                    "Code coverage report REJECTED ({reason}), so the \
+                     {QUALITY_GATE_COVERAGE_MIN:.1}% minimum is unverified — this gate does not \
+                     cover coverage until a report taken from this tree exists"
+                ),
+                details: Some(ViolationDetails {
+                    affected_files: Vec::new(),
+                    example_code: None,
+                    fix_suggestion: Some(
+                        "Regenerate the report from this tree — `pmat query --coverage` runs \
+                         cargo-llvm-cov and rewrites .pmat/coverage-cache.json — then re-run the gate."
+                            .to_string(),
+                    ),
+                    score_factors: vec![format!("coverage: report rejected — {reason}")],
+                }),
+            }]);
+        }
+    }
     if read_coverage_from_cache(project_path).is_none() {
         return Ok(vec![QualityViolation {
             check_type: "coverage".to_string(),
@@ -123,11 +150,12 @@ pub async fn run_all_project_checks(
         }};
     }
 
-    run_check!(
-        "dead code",
-        check_dead_code(project_path, max_dead_code),
-        dead_code_violations
-    );
+    if !crate::cli::progress::quiet_mode_enabled() {
+        eprint!("  🔍 Checking dead code...");
+    }
+    let dead_code_start = perf.then(Instant::now);
+    run_dead_code_check(project_path, max_dead_code, violations, results).await?;
+    report_dead_code_outcome(results, dead_code_start);
     run_check!("technical debt", check_satd(project_path), satd_violations);
     run_entropy_check_gated(project_path, min_entropy, violations, results, perf).await?;
     run_check!(
@@ -138,8 +166,9 @@ pub async fn run_all_project_checks(
     run_check!(
         "duplicates",
         check_duplicates(project_path),
-        duplicate_violations
+        identical_files
     );
+    results.not_measured.push(duplicates_block_level_disclosure(project_path));
     run_check!(
         "test coverage",
         run_coverage_check(project_path),
@@ -218,5 +247,21 @@ fn merge_excludes(base: &mut Vec<String>, extra: &[String]) {
         if !base.contains(pattern) {
             base.push(pattern.clone());
         }
+    }
+}
+
+/// The progress line for the dead-code check, which unlike its neighbours has
+/// three outcomes to report, not a count alone.
+fn report_dead_code_outcome(results: &QualityGateResults, start: Option<std::time::Instant>) {
+    let what = if let Some(u) = results.not_measured.iter().find(|u| u.check == DEAD_CODE_CHECK) {
+        format!("NOT MEASURED ({})", u.reason)
+    } else if results.not_applicable.iter().any(|u| u.check == DEAD_CODE_CHECK) {
+        "not applicable (no Cargo.toml)".to_string()
+    } else {
+        format!("{} violations found", results.dead_code_violations)
+    };
+    match start {
+        Some(s) => crate::status_eprintln!(" {what} ({:.3}s)", s.elapsed().as_secs_f64()),
+        None => crate::status_eprintln!(" {what}"),
     }
 }
