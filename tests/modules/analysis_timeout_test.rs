@@ -91,6 +91,7 @@ mod analysis_timeout_tests {
             vec![],            // include
             vec![],            // exclude
             8,                 // max_depth
+            false,             // no_cache
         )
         .await;
         let elapsed = start_time.elapsed();
@@ -292,6 +293,7 @@ mod cli_timeout_integration {
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         }) {
             AnalyzeCommands::DeadCode { timeout, .. } => timeout,
             _ => panic!("Pattern match should work"),

@@ -41,7 +41,11 @@ use std::process::Command;
 /// which is the one value that means "this engine has no compiler layer" — so
 /// a cached report would deny having a compiler layer at all, and the reduced
 /// scan this field exists to disclose would be invisible again.
-pub const DEAD_CODE_CACHE_SCHEMA: u32 = 4;
+/// 5: the cache is keyed on the WORKING tree (scratch-index `git write-tree`)
+/// instead of `git rev-parse HEAD:`, and the report carries `cache`. Every
+/// schema-4 entry is keyed on a commit tree and must be a miss, or an existing
+/// cache keeps serving pre-fix answers after upgrade (CRUX-04, #1153).
+pub const DEAD_CODE_CACHE_SCHEMA: u32 = 5;
 
 /// Cached dead code result with metadata for O(1) invalidation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,7 +66,7 @@ pub struct CachedDeadCodeResult {
 }
 
 /// Dead code analysis result with accurate metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct AccurateDeadCodeReport {
     /// Files with dead code
     pub files_with_dead_code: Vec<FileDeadCode>,
@@ -96,6 +100,11 @@ pub struct AccurateDeadCodeReport {
     /// layer was involved, NOT that one ran.
     #[serde(default)]
     pub compiler_scan: Option<crate::models::dead_code::CompilerScanReport>,
+    /// Whether this report was replayed from the cache, and the working-tree
+    /// hash it is keyed on. Set by `analyze()`, never persisted as a hit: an
+    /// entry is written with `hit: false` and marked `hit: true` when served.
+    #[serde(default)]
+    pub cache: Option<crate::models::dead_code::DeadCodeCacheReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

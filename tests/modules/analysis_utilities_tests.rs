@@ -966,6 +966,7 @@ mod dead_code_formatter_comprehensive {
             // value: it means "not run", which the field's own docs distinguish
             // from a scan that ran and found nothing.
             compiler_scan: None,
+            cache: None,
         }
     }
 

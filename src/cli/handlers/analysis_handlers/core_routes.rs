@@ -118,6 +118,7 @@ pub(super) async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()>
         include,
         exclude,
         max_depth,
+        no_cache,
     } = cmd
     {
         crate::cli::handlers::dead_code_handlers::handle_analyze_dead_code(
@@ -134,6 +135,7 @@ pub(super) async fn route_dead_code_analysis(cmd: AnalyzeCommands) -> Result<()>
             include,
             exclude,
             max_depth,
+            no_cache,
         )
         .await
     } else {

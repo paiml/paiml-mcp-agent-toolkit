@@ -311,6 +311,12 @@ pub enum AnalyzeCommands {
         /// Exclude file patterns (e.g., "tests/**", "target/**")
         #[arg(long)]
         exclude: Vec<String>,
+        /// Bypass the dead-code cache: run `cargo check` even if an entry for
+        /// this exact working tree exists, and write nothing. The report's
+        /// `cache.hit` says whether a run was replayed; this is the escape
+        /// hatch that used to require deleting `.pmat/dead-code-cache-*.json`.
+        #[arg(long)]
+        no_cache: bool,
 
         /// Maximum directory traversal depth (default: 8 levels)
         #[arg(long, default_value = "8")]

@@ -228,6 +228,14 @@ async fn run_dead_code_analysis_with_filters(
     // analyzer used its own hardcoded 90s, which both ignored a smaller
     // `--timeout` and silently capped a larger one.
     .with_timeout(budget);
+    // `--no-cache`: the builder switch existed (`without_cache`), the flag did
+    // not, so the only way to force a fresh compiler pass was deleting a file
+    // a developer has no reason to know exists (CRUX-04, #1153).
+    let cargo_analyzer = if filters.no_cache {
+        cargo_analyzer.without_cache()
+    } else {
+        cargo_analyzer
+    };
 
     // Run cargo-based analysis for accurate results
     let accurate_report = cargo_analyzer.analyze().await?;
@@ -256,6 +264,10 @@ async fn run_dead_code_analysis_with_filters(
     // a verdict here; the fallback exists only so an older cached report cannot
     // publish `null` -- which on this engine would mean "no compiler layer",
     // the one thing that is never true of it.
+    // Whether this report was replayed from the cache, and the working-tree
+    // hash it is keyed on (CRUX-04, #1153). Taken with `compiler_scan`, before
+    // `accurate_report` is consumed.
+    let cache = accurate_report.cache.clone();
     let compiler_scan = Some(accurate_report.compiler_scan.clone().unwrap_or_else(|| {
         crate::models::dead_code::CompilerScanReport::reduced(
             crate::models::dead_code::COMPILER_SCAN_REASON_LOCKFILE,
@@ -342,6 +354,7 @@ dead-code lint ran, so it cannot be relied on as a full scan"
             // On this engine it is the difference between "nothing is dead"
             // and "nothing was ADMITTED to be dead"; see #1076.
             compiler_scan,
+            cache,
         },
         project_dead_percentage,
         scope: DeadCodeReportScope {
@@ -612,6 +625,7 @@ fn run_multi_language_dead_code(
             // "there was none", which is the only honest value -- a `full`
             // here would claim a compile that never happened.
             compiler_scan: None,
+            cache: None,
         },
         // The multi-language analyzer never counts the project's total lines,
         // only the lines of the files it flagged, so there is no project-wide
