@@ -20,12 +20,24 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
             force,
             backup,
             tdg_enforcement,
-        } => handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await,
+            strict,
+        } => {
+            handle_install(
+                &hooks_cmd,
+                *force,
+                *backup,
+                *interactive,
+                *tdg_enforcement,
+                *strict,
+            )
+            .await
+        }
         HooksCommands::Install {
             interactive,
             force,
             backup,
             tdg_enforcement,
+            strict,
             stack,
             update,
         } => {
@@ -35,7 +47,15 @@ pub async fn handle_hooks_command(cmd: &HooksCommands) -> Result<()> {
                 )
                 .await;
             }
-            handle_install(&hooks_cmd, *force, *backup, *interactive, *tdg_enforcement).await
+            handle_install(
+                &hooks_cmd,
+                *force,
+                *backup,
+                *interactive,
+                *tdg_enforcement,
+                *strict,
+            )
+            .await
         }
         HooksCommands::Uninstall { restore_backup } => {
             handle_uninstall(&hooks_cmd, *restore_backup).await
@@ -67,6 +87,7 @@ async fn handle_install(
     backup: bool,
     interactive: bool,
     tdg_enforcement: bool,
+    strict: bool,
 ) -> Result<()> {
     // Handle TDG enforcement installation (Sprint 66 Phase 3)
     if tdg_enforcement {
@@ -86,7 +107,21 @@ async fn handle_install(
     }
     // Don't print backup message here - only print after actual backup happens
 
-    let result = hooks_cmd.install(force, backup, interactive).await?;
+    // `--strict` or `[hooks] strict = true` — either turns the warnings into refusals.
+    let strict = strict
+        || crate::services::configuration_service::configuration()
+            .get_config()
+            .map(|c| c.hooks.strict)
+            .unwrap_or(false);
+    if strict {
+        println!(
+            "  {}",
+            c::dim("Strict mode: SATD over the threshold and unticketed commits are refused")
+        );
+    }
+    let result = hooks_cmd
+        .install(force, backup, interactive, strict)
+        .await?;
 
     if result.success {
         if result.backup_created {

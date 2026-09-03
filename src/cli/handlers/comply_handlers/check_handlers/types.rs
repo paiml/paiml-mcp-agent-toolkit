@@ -687,10 +687,10 @@ pub(crate) async fn update_project_hooks(
     }
     match action {
         HookAction::Install => {
-            hooks_cmd.install(false, true, false).await?;
+            hooks_cmd.install(false, true, false, false).await?;
         }
         HookAction::ForceReplace => {
-            hooks_cmd.install(true, true, false).await?;
+            hooks_cmd.install(true, true, false, false).await?;
         }
         HookAction::Refresh => {
             hooks_cmd.refresh().await?;

@@ -77,14 +77,18 @@ export PMAT_MAX_CYCLOMATIC_COMPLEXITY={}
 export PMAT_MAX_COGNITIVE_COMPLEXITY={}
 export PMAT_MIN_TEST_COVERAGE={}
 export PMAT_MAX_SATD_COMMENTS=5
-export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
+export PMAT_TASK_ID_PATTERN="{}"
+# AD-03: 1 = SATD over the threshold and a commit without a ticket are REFUSED, not warned about.
+export PMAT_HOOKS_STRICT={}
 # GH-301: directories excluded from any hook filesystem scan.
 # Override with: PMAT_PRECOMMIT_EXCLUDE_DIRS=".claude/worktrees target ..." git commit
 export PMAT_PRECOMMIT_EXCLUDE_DIRS="${{PMAT_PRECOMMIT_EXCLUDE_DIRS:-.claude/worktrees .cursor/worktrees target node_modules .venv}}"
 "#,
             config.quality.max_complexity,
             config.quality.max_cognitive_complexity,
-            config.quality.min_coverage as u32
+            config.quality.min_coverage as u32,
+            config.hooks.ticket_pattern,
+            u8::from(config.hooks.strict)
         )
     }
 
@@ -376,6 +380,12 @@ SATD_COUNT=$(printf '%s' "$SATD_OUTPUT" | sed -n 's/.*Total violations:[[:space:
 [ -n "$SATD_COUNT" ] || SATD_COUNT=0
 if [ "$SATD_COUNT" -le "$PMAT_MAX_SATD_COMMENTS" ] 2>/dev/null; then
     echo "✅ ($SATD_COUNT SATD comments)"
+elif [ "${PMAT_HOOKS_STRICT:-0}" = "1" ]; then
+    # AD-03: under [hooks] strict this is a refusal. It used to warn and fall
+    # through to the success banner (#1126).
+    echo "❌ ($SATD_COUNT SATD comments, threshold: $PMAT_MAX_SATD_COMMENTS)"
+    echo "   SATD comments exceed the threshold and [hooks] strict is on"
+    exit 1
 else
     echo "⚠️  ($SATD_COUNT SATD comments, threshold: $PMAT_MAX_SATD_COMMENTS)"
 fi
@@ -390,16 +400,9 @@ if [ -d "docs/execution" ] || [ -f "CHANGELOG.md" ]; then
     fi
 fi
 
-# 5. Task ID validation (if commit message available)
-if [ -n "$1" ]; then
-    echo -n "  Task ID check... "
-    if echo "$1" | grep -qE "$PMAT_TASK_ID_PATTERN"; then
-        echo "✅"
-    else
-        echo "⚠️"
-        echo "   Warning: Commit message should contain task ID matching $PMAT_TASK_ID_PATTERN"
-    fi
-fi
+# 5. Task ID validation lives in the commit-msg hook (AD-03): a pre-commit
+#    hook receives no message, so the check that used to sit here read an
+#    empty "$1" and never ran.
 
 echo ""
 echo "✅ All quality gates passed!"
