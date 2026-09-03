@@ -368,6 +368,7 @@ impl CargoDeadCodeAnalyzer {
             // Filled in by `analyze`, which is the only caller that knows
             // whether Layer 2 ran. `None` is not "it ran".
             compiler_scan: None,
+            cache: None,
         })
     }
 }

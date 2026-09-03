@@ -546,6 +546,11 @@ pub const COMPILER_SCAN_FULL: &str = "full";
 pub const COMPILER_SCAN_REDUCED: &str = "reduced";
 /// Machine-readable cause for [`COMPILER_SCAN_FULL`].
 pub const COMPILER_SCAN_REASON_OK: &str = "compiler-lint-ran";
+/// Reason token for a FULL verdict served from the dead-code cache: rustc's
+/// lint ran when the entry was written, not in this invocation. A replay used
+/// to say `compiler-lint-ran` in the present tense with zero compilers exec'd
+/// (CRUX-04, #1153).
+pub const COMPILER_SCAN_REASON_CACHED: &str = "compiler-lint-cached";
 /// Machine-readable cause for a scan given up because running it would have
 /// written a `Cargo.lock` into the analysed repository.
 pub const COMPILER_SCAN_REASON_LOCKFILE: &str = "lockfile-would-be-written";
@@ -579,6 +584,22 @@ pub struct CompilerScanReport {
 }
 
 impl CompilerScanReport {
+    /// A FULL verdict replayed from the cache: the lint ran when the entry was
+    /// written, for this exact working tree, and did not run now.
+    #[must_use]
+    pub fn cached(written_at: chrono::DateTime<chrono::Utc>) -> Self {
+        Self {
+            verdict: COMPILER_SCAN_FULL.to_string(),
+            reason: COMPILER_SCAN_REASON_CACHED.to_string(),
+            detail: format!(
+                "served from the dead-code cache written at {} for this exact working tree; \
+                 cargo check did not run in this invocation — it ran when the entry was written \
+                 (pass --no-cache to force a fresh compiler pass)",
+                written_at.to_rfc3339()
+            ),
+        }
+    }
+
     /// The compiler layer ran; the report covers everything both layers see.
     #[must_use]
     pub fn full() -> Self {
@@ -639,6 +660,32 @@ pub struct DeadCodeResult {
     /// multi-language analyzer), never as a stand-in for "it ran".
     #[serde(default)]
     pub compiler_scan: Option<CompilerScanReport>,
+    /// Whether this report was replayed from the dead-code cache, and from
+    /// which working tree. A warm run used to be byte-indistinguishable from a
+    /// 50-second compiler pass; `hit` and `compiler_scan.reason` now move
+    /// together (CRUX-04, #1153). `None` for engines that have no cache.
+    #[serde(default)]
+    pub cache: Option<DeadCodeCacheReport>,
+}
+
+/// The dead-code cache's part in a report.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeadCodeCacheReport {
+    /// True when the findings were replayed from a cache entry keyed on this
+    /// exact working tree; false when the analyzer ran (and, if caching is on,
+    /// wrote the entry named below).
+    pub hit: bool,
+    /// The git tree hash of the WORKING tree the entry is keyed on — a scratch
+    /// index of the checkout as it is now, so an uncommitted edit is a
+    /// different key. `git rev-parse HEAD:` used to be the key, which is
+    /// byte-identical before and after any uncommitted edit.
+    pub tree_hash: String,
+    /// When the entry was written: the file's own timestamp on a hit, the
+    /// moment of writing on a miss, `None` when nothing was written
+    /// (`--no-cache`, or no git tree to key on).
+    pub written_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// The pmat version that wrote the entry.
+    pub pmat_version: String,
 }
 
 impl DeadCodeResult {

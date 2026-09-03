@@ -57,10 +57,23 @@ impl CargoDeadCodeAnalyzer {
         // the condition that produced it and go on understating a tree that can
         // now be scanned properly. A reduced scan ran no `cargo check`, so
         // there is no expensive work to preserve.
-        if scanned_fully {
-            self.save_cache(&report);
-        }
-
+        let written = if scanned_fully {
+            self.save_cache(&report)
+        } else {
+            None
+        };
+        // The run says whether it was replayed (it was not) and what it is
+        // keyed on, so a cold pass and a warm replay are never byte-identical.
+        report.cache = Some(crate::models::dead_code::DeadCodeCacheReport {
+            hit: false,
+            tree_hash: written
+                .as_ref()
+                .map(|(h, _)| h.clone())
+                .or_else(|| self.get_tree_hash())
+                .unwrap_or_default(),
+            written_at: written.map(|(_, t)| t),
+            pmat_version: env!("CARGO_PKG_VERSION").to_string(),
+        });
         Ok(report)
     }
 

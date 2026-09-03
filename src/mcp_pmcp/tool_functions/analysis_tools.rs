@@ -688,6 +688,12 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
             // (#1076). An agent that cannot read this cannot tell an empty
             // finding list from a search that never ran.
             "compiler_scan": run.report.compiler_scan,
+            // Whether the findings were replayed from the dead-code cache, and
+            // the WORKING-tree hash the entry is keyed on. `hit: true` beside
+            // `compiler_scan.reason: compiler-lint-cached` is a replay; a cold
+            // pass says `hit: false` (CRUX-04, #1153). `null` for engines that
+            // have no cache.
+            "cache": run.report.cache,
             // null for a directory (nothing was restricted away), a full
             // per-kind count for a file.
             "findings_outside_requested_path": requested_file

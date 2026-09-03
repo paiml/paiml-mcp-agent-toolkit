@@ -636,6 +636,7 @@ pub async fn run_dead_code_analysis(
         Vec::new(),              // include
         Vec::new(),              // exclude
         8,                       // max_depth
+        false,                   // no_cache
     )
     .await;
 
