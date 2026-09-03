@@ -179,6 +179,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         let output = handler.output_result(result, &cmd);

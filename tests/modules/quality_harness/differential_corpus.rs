@@ -503,6 +503,20 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "the fixed E1/E2/E3 checklist, `vec![e1, e2, e3]` (ci_scorer.rs:58); \
          score 0/0/6 and findings[] 2/2/8 in the same runs",
     ),
+    // ── CRUX-04 (PMAT-648): `analyze dead-code`'s cache disclosure ──
+    //
+    // `cache.hit` says whether THIS run replayed an entry keyed on this exact
+    // working tree. The corpus sweep runs each command cold, so it is `false`
+    // for the empty crate and for the defect-rich one alike — a property of
+    // the run, not of the corpus. What keeps it from going vacuous is not this
+    // gate: states B and D of `scripts/dead-code-cache-audit.sh` require
+    // `hit == true` paired with zero cargo execs, and A/C/E require `false`
+    // paired with exactly one.
+    (
+        "analyze dead-code",
+        "cache.hit",
+        "false on every cold run whatever the corpus; a replay (true) is asserted by the acceptance script's states B and D together with a zero cargo exec count",
+    ),
 ];
 
 #[derive(Debug, Clone, PartialEq)]

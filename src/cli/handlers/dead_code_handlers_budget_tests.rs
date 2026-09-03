@@ -43,6 +43,7 @@ fn filters(min_dead_lines: usize) -> DeadCodeAnalysisFilters {
         include: Vec::new(),
         exclude: Vec::new(),
         max_depth: 10,
+        no_cache: false,
     }
 }
 
@@ -968,6 +969,7 @@ fn the_json_report_publishes_both_counts_under_the_canonical_names() {
         files_truncated: false,
         library_target: None,
         compiler_scan: None,
+        cache: None,
     };
 
     let rendered = format_dead_code_result(
