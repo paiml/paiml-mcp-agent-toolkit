@@ -3782,11 +3782,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-10: quality_proxy → quality_check_content — never writes and says so (written:false), advisory does not launder a failing verdict, client quality_config only tightens, satd_count == violations[] (#1151)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T20:49:56Z
-  updated: 2026-09-02T20:49:56Z
+  updated: 2026-09-03T06:52:02Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3798,14 +3798,150 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-10 acceptance script: B0-B2 send operation=write, so the rename branch it prefers can never pass its own B0 while R1 passes'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-02T21:34:43Z
-  updated: 2026-09-02T21:34:43Z
+  updated: 2026-09-03T06:52:54Z
   spec: null
   acceptance_criteria:
   - 'spec 8.10 script: req() always emits operation:"write"; on the rename branch that key is refused with -32602 (R1 requires it), so B0 (has(written)) fails on the same request. The rename branch was never run (script says DEFERRED at HEAD). Fix: branch-aware req() after selector S; R1 uses an explicit stale-key request; selector prefers quality_check_content. Linked: PMAT-640 / #1151.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-642
+  github_issue: null
+  item_type: task
+  title: 'CRUX-02: quality-gate renders three unmeasured dimensions as clean (dead-code not_measured vs not_applicable; coverage cache guards; duplicate_violations → identical_files; --help names cargo check)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T06:48:23Z
+  updated: 2026-09-03T06:52:02.354106699+00:00
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.2, epic 1153. Legs: (1) dead-code Err arm distinguishes ''could not compile'' (not_measured) from ''no Cargo.toml'' (not_applicable); (2) coverage cache accepted only if git_hash is HEAD-or-ancestor, mtime newer than the newest tracked source, breadth >= N% of files_examined — reason names the guard; (3) duplicate_violations renamed identical_files with a not_measured entry naming the block-level detector as a separate item; (4) quality-gate --help says it runs cargo check.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-643
+  github_issue: null
+  item_type: task
+  title: 'CRUX-06: build.rs watched ../assets/demo/, a path outside the repo, so no build was ever incremental (PR #1154, merged b7f2bde62)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:42:38Z
+  updated: 2026-09-03T07:43:14Z
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-644
+  github_issue: null
+  item_type: task
+  title: 'CRUX-12: a ledger and two ratchet metrics for the 489 files no build compiles (PR #1157, merged cd6f796d6)'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:43:14Z
+  updated: 2026-09-03T07:43:24Z
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-645
+  github_issue: null
+  item_type: task
+  title: 'CRUX-03: config --validate certified the defaults it had silently fallen back to (PR #1155, open, auto-merge armed)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:43:24Z
+  updated: 2026-09-03T07:43:24.375699801+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Retroactive ticket: implemented before the paiml-implement pass via agy workers; receipt written from the PR''s own evidence. Epic #1153.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-646
+  github_issue: null
+  item_type: task
+  title: 'CI: pull_request synchronize/ready_for_review events on PR #1164 created no workflow runs (3 events, 07:41–07:51Z); workflow_dispatch on the same head did'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T07:59:51Z
+  updated: 2026-09-03T07:59:51Z
+  spec: null
+  acceptance_criteria:
+  - 'Observed during PMAT-642. Pushes ce2178577 and a80527dcb and the ready-for-review event produced zero runs (actions/runs?head_sha= → 0; check-suites empty) while #1155''s push at 07:37Z produced runs. githubstatus: Actions/Webhooks/PRs operational. Workaround used: gh workflow run for ci.yml, feature-matrix.yml, docsrs.yml, quality-gate.yml on the branch. Also: master has had no push-triggered runs since 2026-08-21 (auto-merge pushes?) — separate observation. Root cause not established.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-647
+  github_issue: null
+  item_type: task
+  title: models::quality_gate::QualityGateResults still carries duplicate_violations after CRUX-02 renamed the CLI gate's field to identical_files
+  status: planned
+  priority: low
+  assigned_to: null
+  created: 2026-09-03T07:59:51Z
+  updated: 2026-09-03T07:59:51Z
+  spec: null
+  acceptance_criteria:
+  - 'CRUX-02 (PMAT-642) renamed the CLI results field; src/models/quality_gate.rs is a separate results type (used by no MCP or CLI surface found by grep) that keeps the misleading name. Decide: delete the orphan model or rename with its consumers. Follow-up, not in PMAT-642''s scope.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-648
+  github_issue: null
+  item_type: task
+  title: 'CRUX-04: the dead-code cache is keyed on the committed tree — key on git write-tree, disclose cache.hit and compiler-lint-cached, add --no-cache'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T08:36:40Z
+  updated: 2026-09-03T08:36:40Z
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.4, epic 1153, precedent #748. P1 key = git write-tree (temp index) with HEAD^{tree} fallback, schema bump (old cache = miss); P2 cache object {hit, tree_hash, written_at, pmat_version} and reason compiler-lint-ran|compiler-lint-cached in CLI JSON and the MCP analyze_dead_code mirror, --no-cache flag; P3 quality-gate --checks dead-code sees an uncommitted dead fn; P4 shim-based acceptance script A-G, pv contract, mutation.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-649
+  github_issue: null
+  item_type: task
+  title: comply check panics on a char boundary in check_contract_surfaces.rs:961 (lean_theorem block slicing) — reported by the aprender release session, PMAT-742 there
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T10:14:21Z
+  updated: 2026-09-03T10:30:10.021112151+00:00
+  spec: null
+  acceptance_criteria:
+  - 'pmat 3.34.0 on paiml/aprender main 68b059ca9: thread comply-2 panicked at src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs:961:23: end byte index 1000 is not a char boundary; it is inside a box-drawing char. The scan slices &block[..start + "lean_theorem:".len()] by byte arithmetic. Fix in pmat: slice on the found line''s start / floor_char_boundary. Repro: cd /mnt/nvme-raid0/agent-wt/pp-base && RUST_BACKTRACE=1 pmat comply check --format json. Contracts: contracts/document-integrity-v1.yaml, contracts/aprender/apr-serve-v1.yaml, contracts/aprender/apr-architecture-schema-v1.yaml. COORDINATION 2026-09-03: the aprender release session (its PMAT-742) said it will open a small PR against pmat for :961 (is_char_boundary guard + regression test with a box-drawing line after a lean_theorem block) — check for that PR before starting; aprender carries a disclosed, reversible stopgap meanwhile. Patch release still owed after merge.'
   phases: []
   subtasks: []
   estimated_effort: null
