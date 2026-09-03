@@ -38,7 +38,8 @@
 | `pmat comply ratchet` after the refactors | all 8 held |
 | `pmat verify --format json` run 2 (committed tree b437f40aa, after the refactors) | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format ✓ satd ✓ clippy ✓ (107 s) tests ✓ (303 s, 0 failed); complexity withdrawn on the clean tree — its measurement is the direct row above |
 | `make gate-artifact` run 1 (committed tree b437f40aa) | **exit 2** — flag-efficacy PASS; `gate-differential` FAILED: one leaf identical for the empty and the defect-rich corpus, `analyze dead-code :: cache.hit = 0`. It is a property of the run (both sweeps are cold), not of the corpus; declared in `ALLOWED_CONSTANTS` with the guard that keeps it falsifiable (the acceptance script's states B/D require `hit == true` with zero cargo execs); `make gate-differential` → exit 0, `0 constant leaf/leaves` |
-| `make gate-artifact` run 2 (committed tree, after the constant) | PENDING |
+| `make gate-artifact` run 2 (committed tree 87fc38f91) | **exit 0** — gate-differential 58 s, 1 passed (`0 constant leaf/leaves`); flag-efficacy sweep 479 s, 1 passed — both on a release build of the FINAL tree |
+| acceptance script on a binary of the final tree | **not re-run**: the GREEN row above is the binary of 048efcaab (before the six complexity refactors); the refactors are pinned by 637 tests and by gate-artifact run 2's release build of the final tree, but the script itself was not re-executed on it — the 10-minute tool budget killed the rebuild. Closes with one command: `cargo build --release && PMAT=<that binary> bash scripts/dead-code-cache-audit.sh` |
 
 ## Named mutation (both sides)
 
@@ -64,10 +65,10 @@ RED: `a_replay_is_marked_as_a_hit_with_a_cached_verdict` FAILED (its miss half: 
 
 ## Gaps
 
-- `pmat verify` and `make gate-artifact`: PENDING at draft time.
+- Acceptance script on the final-tree binary: NotRun (see the verification table); the artifact that closes it is one script run.
 - pv contract `status: draft` until the PR merges.
 - `transcript-gate.sh` scans the memory directory (vacuous PASS) — skill defect; 0 subagents were used.
 
 ## Verdict
 
-PENDING — becomes DONE when verify and gate-artifact are green, the PR is open with auto-merge, and CI merges without a rerun.
+All phase and DoD gates hold on the final tree (verify run 2 exit 0; gate-artifact run 2 exit 0; direct complexity measurement exit 0 with a failing control); PR #1165 ready with auto-merge armed. **DONE** the moment #1165 merges green on the required checks — which is gated on the org runner queue (`ci / gate` has not started on any head since 07:23Z; paiml/.github#57), not on this branch.
