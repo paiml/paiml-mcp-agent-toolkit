@@ -134,6 +134,9 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
                 // ingesting an empty SARIF has no other way to tell "clean"
                 // from "the compiler layer was refused" (#1076).
                 "compilerScan": result.compiler_scan,
+                // Whether this SARIF is a replay from the dead-code cache
+                // (`hit`) and which working tree it is keyed on (CRUX-04).
+                "cache": result.cache,
             },
             "results": result.files.iter().flat_map(|file| {
                 file.items.iter().map(|item| {
@@ -402,6 +405,7 @@ fn write_compiler_scan_line(
         scan.reason,
         c::dim(&scan.detail)
     )?;
+    write_cache_line(output, result)?;
 
     Ok(())
 }
@@ -600,6 +604,7 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
 
     let library_row = markdown_library_row(result);
     let compiler_row = markdown_compiler_scan_row(result);
+    let cache_row = markdown_cache_row(result);
 
     format!(
         "# Dead Code Analysis Report\n\n\
@@ -613,7 +618,8 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
          | Total Dead Lines | {} |\n\
          | Dead Code Percentage | {:.2}% |\n\
          {library_row}\
-         {compiler_row}",
+         {compiler_row}\
+         {cache_row}",
         result.analyzed_files,
         result.total_files.saturating_sub(result.analyzed_files),
         result.summary.files_with_dead_code,
@@ -845,4 +851,53 @@ fn dead_code_refusal_sarif(path: &Path, error: &anyhow::Error) -> String {
             error.to_string().escape_default()
         )
     })
+}
+
+/// Say whether the findings were replayed from the dead-code cache and which
+/// working tree they are keyed on — the line that makes a 0.2 s replay
+/// distinguishable from a 50 s compiler pass (CRUX-04, #1153).
+fn write_cache_line(
+    output: &mut String,
+    result: &crate::models::dead_code::DeadCodeResult,
+) -> Result<()> {
+    use crate::cli::colors as c;
+    use std::fmt::Write;
+    let Some(cache) = &result.cache else {
+        return Ok(());
+    };
+    let when = cache
+        .written_at
+        .map_or_else(|| "nothing written".to_string(), |t| t.to_rfc3339());
+    writeln!(
+        output,
+        "  {} {} (working tree {}, entry {})\n",
+        c::label("Cache:"),
+        if cache.hit {
+            "hit — findings replayed"
+        } else {
+            "miss — analyzer ran"
+        },
+        &cache.tree_hash[..cache.tree_hash.len().min(12)],
+        when
+    )?;
+    Ok(())
+}
+
+/// The cache row beside the compiler-scan row (CRUX-04, #1153).
+fn markdown_cache_row(result: &crate::models::dead_code::DeadCodeResult) -> String {
+    match &result.cache {
+        Some(cache) => format!(
+            "| Cache | {} (working tree {}, entry {}) |\n",
+            if cache.hit {
+                "hit — findings replayed"
+            } else {
+                "miss — analyzer ran"
+            },
+            &cache.tree_hash[..cache.tree_hash.len().min(12)],
+            cache
+                .written_at
+                .map_or_else(|| "nothing written".to_string(), |t| t.to_rfc3339())
+        ),
+        None => String::new(),
+    }
 }
