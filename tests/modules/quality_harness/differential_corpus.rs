@@ -503,6 +503,33 @@ const ALLOWED_CONSTANTS: &[(&str, &str, &str)] = &[
         "the fixed E1/E2/E3 checklist, `vec![e1, e2, e3]` (ci_scorer.rs:58); \
          score 0/0/6 and findings[] 2/2/8 in the same runs",
     ),
+    // ── CRUX-02 (PMAT-642): the two DISCLOSURE lists of `quality-gate` ──
+    //
+    // `results.not_measured[]` and `results.not_applicable[]` say which checks
+    // could not measure their subject, and why. Their length is a property of
+    // the RUN — does the crate compile, is there a coverage report, is the
+    // block-level duplicate detector wired — not of the corpus's defect
+    // density, so an empty crate and a defect-rich one that both compile give
+    // the same lengths. `not_measured` is 1 on every run by design: the
+    // duplicates check discloses that block-level detection is not behind the
+    // gate (spec §8.2 proposal 3; wiring it is a separate item), and that
+    // sentence must not disappear just because a corpus is small.
+    //
+    // What guards these against going vacuous is not this gate: it is the
+    // CRUX-02 acceptance script (`scripts/quality-gate-not-measured-audit.sh`
+    // legs 1 and 2), whose broken-crate and fabricated-cache fixtures move
+    // exactly these lists, and the lib tests `dead_code_outcome_tests` /
+    // `coverage_sections_tests`.
+    (
+        "quality-gate",
+        "results.not_measured[].len",
+        "disclosure list: varies with the run environment (compiler, coverage report, detector availability), not with the corpus; 1 by design while block-level duplicates are a separate item",
+    ),
+    (
+        "quality-gate",
+        "results.not_applicable[].len",
+        "disclosure list: 0 for any corpus that is a cargo crate; it moves only for a path with no Cargo.toml, which neither corpus is",
+    ),
 ];
 
 #[derive(Debug, Clone, PartialEq)]
