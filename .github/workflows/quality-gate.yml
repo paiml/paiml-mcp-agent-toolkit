@@ -12,6 +12,10 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+  schedule:
+    # AD-01: the release check below runs daily on master, so a merged release
+    # PR that published nothing is red within a day even with no further push.
+    - cron: "17 6 * * *"
 
 concurrency:
   group: quality-gate-${{ github.event.pull_request.number || github.ref }}
@@ -292,3 +296,41 @@ jobs:
       - name: Ladder gate — pmat comply
         continue-on-error: true
         run: pmat comply check --failures-only
+
+  # AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5 / 9.1): the
+  # version Cargo.toml declares must be tagged, released on GitHub and on
+  # crates.io. pmat 3.35.0's release PR merged on 2026-09-02 and none of the
+  # three happened; every gate was green because none asked. This job runs on
+  # master after a merge and on the daily schedule — never on a pull request,
+  # and it is NOT a required PR check: a PR is not a release, and a merge must
+  # not be blocked by the registry's availability. GitHub-hosted runner on
+  # purpose, so it is not starved with the self-hosted fleet.
+  release-check:
+    name: release-check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: The declared version is tagged, released and published
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          bash scripts/release-check.sh 2>&1 | tee release-check.out
+      - name: Open or refresh the issue
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          title="release-check: $v is declared in Cargo.toml but not fully released"
+          body="$(printf 'AD-01 (docs/specifications/agentic-delivery-pmat.md section 3.5).\n\n```\n%s\n```\n\nRun: %s/%s/actions/runs/%s' "$(cat release-check.out)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+          n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
