@@ -368,7 +368,7 @@ mod extreme_tdd_coverage_tests {
         assert_eq!(results.satd_violations, 0);
         assert_eq!(results.entropy_violations, 0);
         assert_eq!(results.security_violations, 0);
-        assert_eq!(results.duplicate_violations, 0);
+        assert_eq!(results.identical_files, 0);
         assert_eq!(results.coverage_violations, 0);
         assert_eq!(results.section_violations, 0);
         assert_eq!(results.provability_violations, 0);
@@ -482,6 +482,8 @@ mod extreme_tdd_coverage_tests {
         let results = QualityGateResults {
             files_examined: 0,
             checks_run: Vec::new(),
+            not_measured: Vec::new(),
+            not_applicable: Vec::new(),
             passed: false,
             total_violations: 5,
             complexity_violations: 2,
@@ -489,7 +491,7 @@ mod extreme_tdd_coverage_tests {
             satd_violations: 1,
             entropy_violations: 1,
             security_violations: 0,
-            duplicate_violations: 0,
+            identical_files: 0,
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,
@@ -517,6 +519,8 @@ mod extreme_tdd_coverage_tests {
         let results = QualityGateResults {
             files_examined: 0,
             checks_run: Vec::new(),
+            not_measured: Vec::new(),
+            not_applicable: Vec::new(),
             passed: true,
             total_violations: 0,
             complexity_violations: 0,
@@ -524,7 +528,7 @@ mod extreme_tdd_coverage_tests {
             satd_violations: 0,
             entropy_violations: 0,
             security_violations: 0,
-            duplicate_violations: 0,
+            identical_files: 0,
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,
@@ -543,6 +547,8 @@ mod extreme_tdd_coverage_tests {
         let results = QualityGateResults {
             files_examined: 0,
             checks_run: Vec::new(),
+            not_measured: Vec::new(),
+            not_applicable: Vec::new(),
             passed: false,
             total_violations: 10,
             complexity_violations: 5,
@@ -550,7 +556,7 @@ mod extreme_tdd_coverage_tests {
             satd_violations: 2,
             entropy_violations: 0,
             security_violations: 0,
-            duplicate_violations: 0,
+            identical_files: 0,
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,

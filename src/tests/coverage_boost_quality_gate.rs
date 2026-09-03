@@ -162,7 +162,7 @@ fn test_quality_gate_results_default() {
     assert_eq!(results.satd_violations, 0);
     assert_eq!(results.entropy_violations, 0);
     assert_eq!(results.security_violations, 0);
-    assert_eq!(results.duplicate_violations, 0);
+    assert_eq!(results.identical_files, 0);
     assert_eq!(results.coverage_violations, 0);
     assert_eq!(results.section_violations, 0);
     assert_eq!(results.provability_violations, 0);

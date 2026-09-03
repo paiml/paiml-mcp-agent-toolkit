@@ -31,17 +31,186 @@ async fn check_coverage(project_path: &Path, min_coverage: f64) -> Result<Vec<Qu
 /// Priority: `.pmat/coverage-cache.json` > `.pmat-metrics/coverage.json`
 /// Computes line coverage from per-file hit data in coverage-cache.json.
 fn read_coverage_from_cache(project_path: &Path) -> Option<f64> {
-    read_coverage_from_detail_cache(project_path)
-        .or_else(|| read_coverage_from_metrics(project_path))
+    match read_coverage_from_detail_cache(project_path) {
+        CoverageCacheRead::Accepted(pct) => Some(pct),
+        CoverageCacheRead::Absent | CoverageCacheRead::Rejected(_) => {
+            read_coverage_from_metrics(project_path)
+        }
+    }
 }
 
-/// Read line coverage from `.pmat/coverage-cache.json` per-file hit data.
-fn read_coverage_from_detail_cache(project_path: &Path) -> Option<f64> {
-    let content = std::fs::read_to_string(project_path.join(".pmat/coverage-cache.json")).ok()?;
-    let cache: serde_json::Value = serde_json::from_str(&content).ok()?;
-    let files = cache.get("files")?.as_object()?;
+/// The smallest share of the project's Rust source files a detail cache must
+/// carry hit data for before the gate believes it describes this tree.
+pub(crate) const COVERAGE_CACHE_MIN_BREADTH_PCT: f64 = 25.0;
+
+/// What reading `.pmat/coverage-cache.json` produced.
+///
+/// The reader used to be a bare `read_to_string` + `from_str` + line ratio: a
+/// fabricated cache (`git_hash "deadbeef…"`, one nonexistent file, 97/100
+/// lines) passed the gate, and so did the repository's own cache 114 commits
+/// behind HEAD. A report is only evidence about THIS tree if it was taken
+/// from it, so three guards sit between the file and the number, and the
+/// rejection names which one tripped (CRUX-02, #1153).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum CoverageCacheRead {
+    /// No cache file (or one with no line data at all) — the existing
+    /// "NOT measured" disclosure covers this.
+    Absent,
+    /// A cache exists but a guard refused it; the reason names the guard.
+    Rejected(String),
+    /// Line coverage, in percent, from a cache that passed every guard.
+    Accepted(f64),
+}
+
+/// Read line coverage from `.pmat/coverage-cache.json`, guarded.
+pub(crate) fn read_coverage_from_detail_cache(project_path: &Path) -> CoverageCacheRead {
+    let cache_path = project_path.join(".pmat/coverage-cache.json");
+    let Ok(content) = std::fs::read_to_string(&cache_path) else {
+        return CoverageCacheRead::Absent;
+    };
+    let Ok(cache) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return CoverageCacheRead::Rejected(format!(
+            "{} is not valid JSON",
+            cache_path.display()
+        ));
+    };
+    let Some(files) = cache.get("files").and_then(|f| f.as_object()) else {
+        return CoverageCacheRead::Absent;
+    };
     let (total, covered) = compute_line_coverage(files);
-    (total > 0).then(|| covered as f64 / total as f64 * 100.0)
+    if total == 0 {
+        return CoverageCacheRead::Absent;
+    }
+    if let Some(reason) = coverage_cache_guard(project_path, &cache_path, &cache, files) {
+        return CoverageCacheRead::Rejected(reason);
+    }
+    CoverageCacheRead::Accepted(covered as f64 / total as f64 * 100.0)
+}
+
+/// The three guards, in the order they are cheapest to check; the first to
+/// trip is the reason. Each names its own evidence so one sentence cannot
+/// satisfy three tests.
+fn coverage_cache_guard(
+    project_path: &Path,
+    cache_path: &Path,
+    cache: &serde_json::Value,
+    files: &serde_json::Map<String, serde_json::Value>,
+) -> Option<String> {
+    // Guard 1: the commit the report was taken from must be HEAD or an
+    // ancestor of it — a report from another branch, or from nowhere, is not
+    // about this tree.
+    let hash = cache.get("git_hash").and_then(|h| h.as_str()).unwrap_or("");
+    match git_is_head_or_ancestor(project_path, hash) {
+        Some(true) => {}
+        Some(false) => {
+            return Some(format!(
+                "git_hash: the report's commit {hash} is not HEAD or an ancestor of HEAD in {}",
+                project_path.display()
+            ))
+        }
+        None => {
+            return Some(format!(
+                "git_hash: {} is not a git checkout (or `git` is unavailable), so the report's \
+                 commit {hash} cannot be placed relative to this tree",
+                project_path.display()
+            ))
+        }
+    }
+    // Guard 2: the report must be newer than the newest tracked source file.
+    let cache_mtime = std::fs::metadata(cache_path).and_then(|m| m.modified()).ok();
+    if let (Some(cache_mtime), Some((newest_path, newest_mtime))) =
+        (cache_mtime, newest_tracked_source(project_path))
+    {
+        if newest_mtime > cache_mtime {
+            return Some(format!(
+                "mtime: the report ({}) is older than the newest tracked source {} — the tree \
+                 changed after it was taken",
+                cache_path.display(),
+                newest_path.display()
+            ));
+        }
+    }
+    // Guard 3: breadth — the report must carry hit data for a meaningful share
+    // of the tree's Rust sources; one file out of thousands is not a
+    // measurement of the project.
+    let sources = rust_source_files(project_path);
+    let denominator = sources.len().max(1);
+    let listed_and_present = files
+        .keys()
+        .filter(|f| {
+            let p = Path::new(f);
+            let abs = if p.is_absolute() { p.to_path_buf() } else { project_path.join(p) };
+            abs.is_file()
+        })
+        .count();
+    let breadth = listed_and_present as f64 / denominator as f64 * 100.0;
+    if breadth < COVERAGE_CACHE_MIN_BREADTH_PCT {
+        return Some(format!(
+            "breadth: the report carries hit data for {listed_and_present} of {} Rust source \
+             files ({breadth:.1}% < {COVERAGE_CACHE_MIN_BREADTH_PCT:.0}%), so it does not \
+             describe this tree",
+            sources.len()
+        ));
+    }
+    None
+}
+
+/// `Some(true)` if `hash` is HEAD or an ancestor of HEAD; `None` when the
+/// question cannot be asked (no checkout, no git, empty hash).
+fn git_is_head_or_ancestor(project_path: &Path, hash: &str) -> Option<bool> {
+    if hash.is_empty() {
+        return Some(false);
+    }
+    let out = std::process::Command::new("git")
+        .args(["-C", &project_path.display().to_string(), "rev-parse", "--verify", "HEAD"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let is_ancestor = std::process::Command::new("git")
+        .args(["-C", &project_path.display().to_string(), "merge-base", "--is-ancestor", hash, "HEAD"])
+        .output()
+        .ok()?;
+    // exit 0: ancestor (or HEAD itself); exit 1: not an ancestor; anything
+    // else (unknown object) is "not placeable", reported as not an ancestor.
+    Some(is_ancestor.status.success())
+}
+
+/// The newest-modified tracked file under `project_path`, by mtime.
+fn newest_tracked_source(project_path: &Path) -> Option<(PathBuf, std::time::SystemTime)> {
+    let out = std::process::Command::new("git")
+        .args(["-C", &project_path.display().to_string(), "ls-files", "-z"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let mut newest: Option<(PathBuf, std::time::SystemTime)> = None;
+    for name in out.stdout.split(|b| *b == 0).filter(|n| !n.is_empty()) {
+        let rel = String::from_utf8_lossy(name).to_string();
+        let path = project_path.join(&rel);
+        let Ok(mtime) = std::fs::metadata(&path).and_then(|m| m.modified()) else {
+            continue;
+        };
+        if newest.as_ref().is_none_or(|(_, t)| mtime > *t) {
+            newest = Some((PathBuf::from(rel), mtime));
+        }
+    }
+    newest
+}
+
+/// Every `.rs` file under `project_path` the gate would examine.
+fn rust_source_files(project_path: &Path) -> Vec<PathBuf> {
+    ignore::WalkBuilder::new(project_path)
+        .hidden(true)
+        .git_ignore(true)
+        .build()
+        .filter_map(std::result::Result::ok)
+        .filter(|e| e.file_type().is_some_and(|t| t.is_file()))
+        .filter(|e| e.path().extension().is_some_and(|x| x == "rs"))
+        .map(|e| e.into_path())
+        .collect()
 }
 
 /// Compute total and covered lines from per-file hit maps.
@@ -252,17 +421,18 @@ mod coverage_sections_tests {
     // ── read_coverage_from_detail_cache ──
 
     #[test]
-    fn test_read_coverage_from_detail_cache_missing_file_is_none() {
+    fn test_read_coverage_from_detail_cache_missing_file_is_absent() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+        assert_eq!(read_coverage_from_detail_cache(tmp.path()), CoverageCacheRead::Absent);
     }
 
     #[test]
-    fn test_read_coverage_from_detail_cache_malformed_json_is_none() {
+    fn test_read_coverage_from_detail_cache_malformed_json_is_rejected_by_name() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "not json").unwrap();
-        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.contains("not valid JSON")), "a malformed cache must be rejected by name, got {read:?}");
     }
 
     #[test]
@@ -270,7 +440,7 @@ mod coverage_sections_tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
         std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "{}").unwrap();
-        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+        assert_eq!(read_coverage_from_detail_cache(tmp.path()), CoverageCacheRead::Absent);
     }
 
     #[test]
@@ -283,21 +453,108 @@ mod coverage_sections_tests {
             "{\"files\":{}}",
         )
         .expect("write README");
-        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+        assert_eq!(read_coverage_from_detail_cache(tmp.path()), CoverageCacheRead::Absent);
     }
 
     #[test]
-    fn test_read_coverage_from_detail_cache_valid_returns_percentage() {
+    fn test_read_coverage_from_detail_cache_outside_git_is_rejected_by_the_hash_guard() {
+        // This used to `unwrap()` a percentage out of a cache in a bare temp
+        // directory — a report from nowhere, trusted (CRUX-02, #1153).
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
-        // 4 lines, 3 covered → 75%.
         std::fs::write(
             tmp.path().join(".pmat/coverage-cache.json"),
             "{\"files\":{\"a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}}",
         )
-        .expect("write README");
-        let pct = read_coverage_from_detail_cache(tmp.path()).unwrap();
-        assert!((pct - 75.0).abs() < 1e-6);
+        .expect("write cache");
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("git_hash:")), "expected the git_hash guard, got {read:?}");
+    }
+
+    /// A throwaway git checkout with one committed `src/a.rs`, so the guards
+    /// have a HEAD to compare against. Returns (dir, HEAD hash).
+    fn git_fixture() -> (tempfile::TempDir, String) {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let run = |args: &[&str]| {
+            let out = std::process::Command::new("git")
+                .arg("-C")
+                .arg(tmp.path())
+                .args(args)
+                .output()
+                .expect("git");
+            assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        run(&["init", "-q"]);
+        run(&["config", "user.email", "t@t"]);
+        run(&["config", "user.name", "t"]);
+        std::fs::create_dir_all(tmp.path().join("src")).expect("fixture");
+        std::fs::write(tmp.path().join("src/a.rs"), "pub fn a() {}\n").expect("fixture");
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "one"]);
+        let head = run(&["rev-parse", "HEAD"]);
+        (tmp, head)
+    }
+
+    fn write_cache(dir: &Path, hash: &str, files_json: &str) {
+        std::fs::create_dir_all(dir.join(".pmat")).expect("fixture");
+        std::fs::write(
+            dir.join(".pmat/coverage-cache.json"),
+            format!("{{\"git_hash\":\"{hash}\",\"files\":{files_json}}}"),
+        )
+        .expect("write cache");
+    }
+
+    #[test]
+    fn a_report_from_head_covering_the_tree_is_accepted_with_its_percentage() {
+        let (tmp, head) = git_fixture();
+        // 4 lines, 3 covered → 75%; the one Rust source is listed → breadth 100%.
+        write_cache(tmp.path(), &head, "{\"src/a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}");
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(read, CoverageCacheRead::Accepted(pct) if (pct - 75.0).abs() < 1e-6), "a fresh report from HEAD must be accepted, got {read:?}");
+    }
+
+    #[test]
+    fn a_report_from_an_unknown_commit_is_rejected_by_the_hash_guard() {
+        let (tmp, _head) = git_fixture();
+        write_cache(tmp.path(), "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", "{\"src/a.rs\":{\"1\":1}}");
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("git_hash:") && r.contains("deadbeef")), "expected the git_hash guard, got {read:?}");
+    }
+
+    #[test]
+    fn a_report_older_than_the_newest_tracked_source_is_rejected_by_the_mtime_guard() {
+        let (tmp, head) = git_fixture();
+        write_cache(tmp.path(), &head, "{\"src/a.rs\":{\"1\":1}}");
+        // Age the cache by an hour, so the tracked source is newer.
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        let f = std::fs::File::options()
+            .write(true)
+            .open(tmp.path().join(".pmat/coverage-cache.json"))
+            .expect("fixture");
+        f.set_modified(old).expect("fixture");
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("mtime:") && r.contains("src/a.rs")), "expected the mtime guard, got {read:?}");
+    }
+
+    #[test]
+    fn a_report_listing_only_a_missing_file_is_rejected_by_the_breadth_guard() {
+        let (tmp, head) = git_fixture();
+        // The spec's fabricated cache: HEAD's hash, one file that does not exist.
+        write_cache(tmp.path(), &head, "{\"src/deleted.rs\":{\"1\":5}}");
+        let read = read_coverage_from_detail_cache(tmp.path());
+        assert!(matches!(&read, CoverageCacheRead::Rejected(r) if r.starts_with("breadth:") && r.contains("0 of 1")), "expected the breadth guard, got {read:?}");
+    }
+
+    #[test]
+    fn a_rejected_report_is_disclosed_as_a_coverage_finding_naming_the_guard() {
+        let (tmp, _head) = git_fixture();
+        write_cache(tmp.path(), "deadbeef", "{\"src/a.rs\":{\"1\":1}}");
+        let rt = tokio::runtime::Runtime::new().expect("rt");
+        let v = rt.block_on(run_coverage_check(tmp.path())).expect("check");
+        assert_eq!(v.len(), 1, "one disclosure finding");
+        assert_eq!(v[0].check_type, "coverage");
+        assert!(v[0].message.contains("REJECTED") && v[0].message.contains("git_hash:"), "{}", v[0].message);
     }
 
     // ── read_coverage_from_metrics ──
@@ -337,21 +594,17 @@ mod coverage_sections_tests {
 
     #[test]
     fn test_read_coverage_from_cache_detail_preferred_over_metrics() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
-        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
-        // Detail cache present + metrics also present → detail wins.
-        std::fs::write(
-            tmp.path().join(".pmat/coverage-cache.json"),
-            "{\"files\":{\"a.rs\":{\"1\":1,\"2\":0}}}",
-        )
-        .expect("write README"); // 50%
+        // An ACCEPTED detail cache wins over the metrics file; a detail cache
+        // from nowhere no longer does (it is rejected and the gate says so).
+        let (tmp, head) = git_fixture();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).expect("fixture");
+        write_cache(tmp.path(), &head, "{\"src/a.rs\":{\"1\":1,\"2\":0}}"); // 50%
         std::fs::write(
             tmp.path().join(".pmat-metrics/coverage.json"),
             "{\"coverage\": 92.5}",
         )
-        .expect("write README");
-        let pct = read_coverage_from_cache(tmp.path()).unwrap();
+        .expect("write metrics");
+        let pct = read_coverage_from_cache(tmp.path()).expect("fixture");
         assert!((pct - 50.0).abs() < 1e-6);
     }
 
