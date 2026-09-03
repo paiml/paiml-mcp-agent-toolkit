@@ -33,7 +33,8 @@
 | `pmat comply ratchet` | held; `--lower` unwrap_calls_src_total 20343→20339 (the rewritten tests dropped four) |
 | `pv validate` / `pv lint contracts/quality-gate-not-measured-v1.yaml` | valid; PASS |
 | `bashrs lint scripts/quality-gate-not-measured-audit.sh` | 0 errors |
-| `pmat verify --format json` | PENDING |
+| `pmat verify --format json` run 1 (committed tree b1b45b753) | **exit 1**: format ✓ complexity withdrawn (clean tree) satd ✓ clippy ✓ (96 s) tests ✗ — 1 of 21,134: `the_committed_ratchet_holds_at_head`, `panic_macro_calls_src` 787 > 781. Cause: the six new coverage-guard tests each carried an `other => panic!(..)` arm. Fixed at the source (ce2178577: `assert!(matches!(..))`, same assertions, no new `panic!`); ratchet 781 again. **Process finding:** my earlier `pmat comply ratchet` read was piped through a grep that kept only the unwrap and satd rows, so the red panic row was filtered out before `--lower` — the phase gate caught what my filtered read did not |
+| `pmat verify --format json` run 2 (committed tree ce2178577) | PENDING |
 | `make gate-artifact` | PENDING |
 
 ## Named mutation (both sides)
