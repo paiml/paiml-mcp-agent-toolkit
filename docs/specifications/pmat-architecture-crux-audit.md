@@ -1,5 +1,12 @@
 # PMAT Architecture, Performance & Competitive (CRUX) Audit
 
+> **Priority note (2026-09-03).** The delivery-pipeline capabilities in
+> [`agentic-delivery-pmat.md`](agentic-delivery-pmat.md) — AD-01…AD-10: a post-merge release
+> check, post-publish dog-food, commit enforcement, a quorum review skill, `quality-gate`
+> lint/churn/file-size, worker receipts that carry the gate, ticket↔commit linking — are ranked
+> **above every remaining CRUX item** (CRUX-07 onward). Reason: 3.35.0's release PR merged and was
+> never published, and no gate in this audit would have noticed. See §8.0.
+
 ## 1. Provenance
 
 > **Audited at.** Audited against `paiml/paiml-mcp-agent-toolkit` (crate `pmat`) at
@@ -1060,6 +1067,28 @@ fix named in its row above.** Seven items meet that bar today. The other 25 are 
 draft tests, and should be treated as such.
 
 ---
+
+### 8.0 Agentic delivery — AD-01…AD-10, prioritized above CRUX-07…CRUX-32
+
+The whiteboard "Agentic Delivery Architecture" (2026-09-03) is specified in
+[`agentic-delivery-pmat.md`](agentic-delivery-pmat.md): twenty-one capabilities across the delivery
+pipeline, pmat's quality enforcement and the orchestration layer, each with a measured status, an
+acceptance test and its anti-vacuity control, plus a micro-enforcement matrix (edit, commit, push,
+PR, sub-agent report, merge, publish, post-publish) and a ticket↔work linking model (the
+`Pmat-Ticket:` commit trailer). Its backlog is implemented **before** the items below, in this order:
+
+| # | item | why first |
+|---|---|---|
+| AD-01 | post-merge release check on `master` (tag + GitHub release + crates.io version for the version `Cargo.toml` declares) | 3.35.0 merged 2026-09-02 and was never published; nothing noticed |
+| AD-02 | post-publish dog-food of the crate crates.io serves | the diagram's "must pass Dog Food Skill" arrow has no enforcer |
+| AD-03 | commit enforcement: strict hook + `Pmat-Ticket:` commit-msg trailer (#1126) | a warning that exits 0 is not a gate |
+| AD-04 | Quorum Review Skill gating `gh pr merge --auto` | "nothing merges without a quorum verdict" has no enforcer |
+| AD-05 | `quality-gate --checks lint,churn,file-size` + a CI leg | three of the five quantitative rules have no gate |
+| AD-06 | worker receipt carries `pmat verify --format json` | "every sub-agent must comply" is not a contract |
+| AD-07 | `pmat work link` + comply trailer check | traceability is a habit, not a record |
+| AD-08 · AD-09 · AD-10 | swappable executor / width 20; single-orchestrator lock; Goal and Grill-me lane templates | orchestration-zone gaps |
+
+The CRUX items already landed before this note (CRUX-01, 02, 03, 04, 05, 06, 09, 10, 12) are unaffected.
 
 ### 8.1 CRUX-01 — `pmat verify` reports `ok: true` on a tree `quality-gate` fails with 35 blocking violations
 

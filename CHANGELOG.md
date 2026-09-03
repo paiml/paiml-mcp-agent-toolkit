@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.36.0] - 2026-09-03
+
+**3.35.0 was never published.** Its release PR (#1108) merged on 2026-09-02 but
+no tag, GitHub release or crates.io upload followed, so crates.io stopped at
+3.34.0. Everything under `[3.35.0]` below ships here for the first time,
+together with what merged since.
+
+### `pmat comply check` aborted on a box-drawing character (#1159)
+
+`lean_theorem_is_proved` bounded a `lean_theorem:` block with byte offsets
+computed over `lines().skip(1)` — never counting the first line — and patched
+the miss with `+ "lean_theorem:".len()`. Whenever the first line was longer
+than the bare key the cut landed inside the block's last line, and when that
+line was a box-drawing comment divider it landed inside a multibyte char:
+`byte index 1000 is not a char boundary; it is inside '─'`, exit 134, and every
+downstream fleet gate that runs `comply check --format json` read "could not
+parse". The bound is now the next column-0 key's line start (a char boundary by
+construction) behind a `floor_char_boundary` guard; the aprender tree that
+reproduced it now returns 166 checks. Twelve regression tests, ten of them
+contributed on #1166 by the aprender release session. (#1167)
+
+### A merged release must have become a release (AD-01, #1170)
+
+`scripts/release-check.sh` reads the version `Cargo.toml` declares and, when it
+exceeds the latest tag, requires the tag, the GitHub release and the crates.io
+version — exit 1 naming the first missing channel. A `release-check` job runs it
+on every push to master and daily, on a GitHub-hosted runner, and opens an
+issue on failure. On the tree that shipped this it was red: `Cargo.toml says
+3.35.0 but no tag v3.35.0`. The specification of the delivery pipeline it
+belongs to — twenty-one capabilities measured against pmat, the paiml-implement
+bundle and agy, a micro-enforcement matrix, a `Pmat-Ticket:` commit-trailer
+linking model, and nine further items ranked ahead of the remaining CRUX audit
+— is `docs/specifications/agentic-delivery-pmat.md` (#1168).
+
+### MCP: `quality_proxy` → `quality_check_content` — it never wrote, and now says so (CRUX-10, #1151, #1163)
+
+The tool advertised a write it never performed. It is now `quality_check_content`
+(`quality_proxy` served as a one-release alias): the schema has no `operation`
+and refuses unknown keys, `ProxyResponse.written` is always `false`, advisory
+mode reports `rejected` when `passed` is false instead of laundering it, a
+client's `quality_config` can only tighten the project's floor, and
+`satd_count` equals the SATD list. 20 tools in `tools/list`.
+
+### `mcp.json` advertised a wrong inputSchema for 19 of 19 tools (CRUX-09, #1158)
+
+The packaged manifest is now rendered from the handlers' own metadata and pinned
+by a test that fails when it drifts.
+
+### `pmat verify` withdraws its verdict over a declined stage (CRUX-01, #1161)
+
+`ok` is tri-state: `true`, `false`, or `null` with `not_measured[]` naming the
+stage that could not run — a green that skipped a stage is no longer a green.
+Strict SATD accepts the canonical markers with every standard separator.
+
+### One `Cargo.toml` line disabled clap's usage, error-context and suggestions (CRUX-05, #1160)
+
+70 of 71 subcommands printed an empty usage on error; the feature is back and
+pinned.
+
+### `build.rs` watched a path outside the repo, so no build was ever incremental (CRUX-06, #1154)
+
+A no-op `cargo build --release` went from 55 s / 4.45 GB to 0.27 s; a permanent
+test refuses any `rerun-if-changed` path outside the manifest directory.
+
+### Unreachable files are ledgered and ratcheted (CRUX-12, #1157)
+
+`docs/status/orphan-files-ledger.md` names every `.rs` file no build compiles
+with a reason from a closed enum; `orphan_files` (407) and `quarantined_files`
+(82) are ratchet metrics measured in-process, and CI's `reachability-ledger`
+job fails when the ledger drifts.
+
+### Dependencies
+
+pmcp 2.19.2 (#1113), uuid 1.26 (#1111), actix-rt 2.12 (#1110), getrandom 0.4
+(#1116), softprops/action-gh-release 3.0.3 (#1115), patch updates (#1109).
+
+### Also
+
+The CRUX architecture, performance and competitive audit — 32 items with
+falsifiable acceptance tests — is in
+`docs/specifications/pmat-architecture-crux-audit.md` (#1117), with per-item
+implementation receipts under `docs/audits/`.
+
+
 ## [3.35.0] - 2026-08-30
 
 Minor rather than patch, for the fourth release running, and for the same reason the
