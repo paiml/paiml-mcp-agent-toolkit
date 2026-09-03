@@ -3934,11 +3934,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: comply check panics on a char boundary in check_contract_surfaces.rs:961 (lean_theorem block slicing) — reported by the aprender release session, PMAT-742 there
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T10:14:21Z
-  updated: 2026-09-03T10:30:10.021112151+00:00
+  updated: 2026-09-03T19:31:11Z
   spec: null
   acceptance_criteria:
   - 'pmat 3.34.0 on paiml/aprender main 68b059ca9: thread comply-2 panicked at src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs:961:23: end byte index 1000 is not a char boundary; it is inside a box-drawing char. The scan slices &block[..start + "lean_theorem:".len()] by byte arithmetic. Fix in pmat: slice on the found line''s start / floor_char_boundary. Repro: cd /mnt/nvme-raid0/agent-wt/pp-base && RUST_BACKTRACE=1 pmat comply check --format json. Contracts: contracts/document-integrity-v1.yaml, contracts/aprender/apr-serve-v1.yaml, contracts/aprender/apr-architecture-schema-v1.yaml. COORDINATION 2026-09-03: the aprender release session (its PMAT-742) said it will open a small PR against pmat for :961 (is_char_boundary guard + regression test with a box-drawing line after a lean_theorem block) — check for that PR before starting; aprender carries a disclosed, reversible stopgap meanwhile. Patch release still owed after merge.'
@@ -3951,11 +3951,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Agentic delivery spec: docs/specifications/agentic-delivery-pmat.md — map the whiteboard''s three zones to pmat/paiml-implement/agy with acceptance tests; backlog AD-01..AD-10'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T13:07:46Z
-  updated: 2026-09-03T13:07:46.238382271+00:00
+  updated: 2026-09-03T19:31:11Z
   spec: null
   acceptance_criteria:
   - Approved plan /home/noah/.claude/plans/immutable-orbiting-moore.md (reviewed by one agy /teamwork-preview lane, conversation 0a2b5862). Spec only; AD-01..AD-10 become their own tickets after it merges.
@@ -3968,11 +3968,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'AD-01: post-merge release check — a merged release PR must produce a tag, a GitHub release and a crates.io version (3.35.0 never did)'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-03T13:18:32Z
-  updated: 2026-09-03T13:18:32.440132243+00:00
+  updated: 2026-09-03T19:31:11Z
   spec: null
   acceptance_criteria:
   - 'agentic-delivery-pmat.md section 3.5 / 9.1. scripts/release-check.sh reads the version from Cargo.toml; when it exceeds the latest v* tag it requires the tag, the GitHub release and the crates.io version, else exit 1 naming the version. Control: --self-test with a fixture at 9.9.9 must fail all three legs. CI job on master (push + schedule), NOT a required PR check.'
@@ -4010,6 +4010,18 @@ roadmap:
   spec: null
   acceptance_criteria:
   - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+- id: PMAT-653
+  github_issue: null
+  item_type: task
+  title: 'the_cargo_engine_attributes_the_decision_to_rustc hits the analyzer''s 600 s dead-code timeout on a coverage-instrumented shared runner (red ci/coverage on docs-only #1173; green on master minutes apart)'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T21:01:33Z
+  updated: 2026-09-03T21:01:33Z
+  spec: null
+  acceptance_criteria:
+  - 'src/cli/handlers/dead_code_library_disclosure_tests.rs:231 — the test runs the real cargo dead-code analyzer (cargo check on a fixture) with the library default 600 s budget. Under llvm-cov instrumentation on a runner shared with 16 other jobs it exceeded 600 s once (run 33796915546); same test passed on 627fb6a85 and c1c2dd1ad. The test asserts a decision attribution, not a wall-clock bound: give it its own explicit budget (or a pre-warmed fixture) so a slow runner cannot turn it red. Not a rerun: the PR was re-measured on a new head after a cascade merge.'
   phases: []
   subtasks: []
   estimated_effort: null
