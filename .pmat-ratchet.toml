@@ -228,7 +228,7 @@ the other moves this number up, and up is red.
 """
 
 [metric.panic_macro_calls_src]
-baseline = 784
+baseline = 781
 unit = "count"
 band = 20
 includes_test_files = true

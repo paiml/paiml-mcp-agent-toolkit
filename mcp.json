@@ -13,7 +13,7 @@
         "MCP_VERSION": "1"
       }
     },
-    "tool_count": 19,
+    "tool_count": 20,
     "tools": [
       {
         "name": "analyze_complexity",
@@ -239,35 +239,18 @@
         }
       },
       {
-        "name": "quality_proxy",
-        "description": "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
+        "name": "quality_check_content",
+        "description": "Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "operation": {
-              "type": "string",
-              "enum": [
-                "write",
-                "edit",
-                "append"
-              ],
-              "description": "File operation to proxy"
-            },
             "file_path": {
               "type": "string",
-              "description": "Target file path"
+              "description": "Path the content is destined for (decides the language and the project's pmat.toml)"
             },
             "content": {
               "type": "string",
-              "description": "New content for `write`/`append`"
-            },
-            "old_content": {
-              "type": "string",
-              "description": "Old string for `edit` operations"
-            },
-            "new_content": {
-              "type": "string",
-              "description": "New string for `edit` operations"
+              "description": "The proposed file content to grade"
             },
             "mode": {
               "type": "string",
@@ -298,8 +281,56 @@
             }
           },
           "required": [
-            "operation",
-            "file_path"
+            "file_path",
+            "content"
+          ]
+        }
+      },
+      {
+        "name": "quality_proxy",
+        "description": "Grade proposed file content against the project's quality gate (complexity, SATD, docs, lint) and return it with a verdict. Never touches the filesystem: hand the returned content to your own file tool, or let the harness PreToolUse hook gate the change.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path the content is destined for (decides the language and the project's pmat.toml)"
+            },
+            "content": {
+              "type": "string",
+              "description": "The proposed file content to grade"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "advisory",
+                "auto_fix",
+                "auto-fix"
+              ],
+              "description": "Proxy enforcement mode"
+            },
+            "quality_config": {
+              "type": "object",
+              "properties": {
+                "max_complexity": {
+                  "type": "integer"
+                },
+                "allow_satd": {
+                  "type": "boolean"
+                },
+                "require_docs": {
+                  "type": "boolean"
+                },
+                "auto_format": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "required": [
+            "file_path",
+            "content"
           ]
         }
       },

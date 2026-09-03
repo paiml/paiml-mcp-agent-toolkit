@@ -165,6 +165,16 @@ pub struct ProxyResponse {
     pub quality_report: QualityReport,
     pub final_content: String,
     pub refactoring_applied: bool,
+    /// Whether the target file's bytes changed as a result of this call.
+    ///
+    /// Always `false`: this tool never writes. It grades content and hands it
+    /// back as `final_content` for the CALLER's writer, and the only layer that
+    /// can gate a client's own writes is the harness `PreToolUse` hook (see
+    /// CHANGELOG 3.33.0, "Not done, deliberately"). The field exists so a client
+    /// can observe that, instead of inferring it from the absence of a file — nine
+    /// live calls in the CRUX-10 audit returned `accepted` and not one carried a
+    /// field that said no write had happened (#1151).
+    pub written: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refactoring_plan: Option<Vec<HashMap<String, serde_json::Value>>>,
 }

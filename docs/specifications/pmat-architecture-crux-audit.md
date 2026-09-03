@@ -3014,6 +3014,11 @@ anything:*
 
 ```bash
 #!/usr/bin/env bash
+# CRUX-10 — quality_check_content (formerly quality_proxy) audit (spec section 8.10, issue 1151).
+# S selects the live branch (rename vs write) from tools/list; B0-B2 are branch-independent;
+# the WRITE branch runs only if `operation` still carries "write"; the RENAME branch otherwise.
+# Every leg inspects the filesystem after the call and reads only schema-declared fields.
+# PMAT=<binary> overrides the pmat used.
 set -euo pipefail
 fail(){ echo "FAIL: $*"; exit 1; }
 PMAT=${PMAT:-$(command -v pmat)}
@@ -3021,26 +3026,36 @@ PMAT=${PMAT:-$(command -v pmat)}
 mcp(){ { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"crux10","version":"0"}}}'
         printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
         jq -cn --arg n "$1" --argjson a "$2" '{jsonrpc:"2.0",id:2,method:"tools/call",params:{name:$n,arguments:$a}}'
-      } | "$PMAT" --mode mcp 2>/dev/null | grep '^{' \
+      } | "${MCP_RUNNER[@]}" --mode mcp 2>/dev/null | grep '^{' \
         | jq -c 'select(.id==2)|if .error then {error:.error} else (.result.content[0].text|fromjson) end'; }
+# Run the server from another directory WITHOUT `cd`: `env -C` sets the child's cwd
+# (GNU coreutils), which is what W5's scoping probe needs. Default: no cwd change.
+MCP_RUNNER=("$PMAT")
+in_dir(){ MCP_RUNNER=(env -C "$1" "$PMAT"); }
+no_dir(){ MCP_RUNNER=("$PMAT"); }
 mcplist(){ { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"crux10","version":"0"}}}'
              printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
              printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-           } | "$PMAT" --mode mcp 2>/dev/null | grep '^{' | jq -c 'select(.id==2)|.result'; }
+           } | "${MCP_RUNNER[@]}" --mode mcp 2>/dev/null | grep '^{' | jq -c 'select(.id==2)|.result'; }
 
 T=$(mktemp -d); OUT=$(mktemp -d); ROOT=$(mktemp -d); mkdir -p "$ROOT/src"
-trap 'rm -rf "$T" "$OUT" "$ROOT"' EXIT
+cleanup(){ for d in "${T:-}" "${OUT:-}" "${ROOT:-}"; do case "$d" in "${TMPDIR:-/tmp}"/tmp.*|/tmp/tmp.*) [ -d "$d" ] && rm -rf -- "$d";; esac; done; }; trap cleanup EXIT
 printf '%b' '/// d\npub fn ok(){}\n'     > "$T/.good"     # the client's bytes, and the only
 printf '%b' '// TODO: x\npub fn f(){}\n' > "$T/.bad"      # constants this test pins
 OK_SHA=$(sha256sum "$T/.good"|cut -c1-64); OK_LEN=$(stat -c%s "$T/.good")
 EMPTY_SHA=$(printf '' | sha256sum | cut -c1-64)
-req(){ jq -cn --arg p "$1" --rawfile c "$2" --arg m "$3" '{operation:"write",file_path:$p,content:$c,mode:$m}'; }
+# The request shape follows the branch (set after S): the write branch still
+# carries `operation:"write"`; the rename branch has no `operation` at all, and
+# sending one is exactly what R1 proves is refused. req_stale() is that probe.
+req(){ if [ "$WRITE_IN_ENUM" = true ]; then req_stale "$@"; else jq -cn --arg p "$1" --rawfile c "$2" --arg m "$3" '{file_path:$p,content:$c,mode:$m}'; fi; }
+req_stale(){ jq -cn --arg p "$1" --rawfile c "$2" --arg m "$3" '{operation:"write",file_path:$p,content:$c,mode:$m}'; }
 sha(){ sha256sum "$1" 2>/dev/null | cut -c1-64 || true; }
 exists(){ test -e "$1" && echo true || echo false; }
 
 # ---- S (permanent): branch selector. Exactly one branch is live; deleting the tool fails HERE.
 LIST=$(mcplist)
-NAME=$(printf '%s' "$LIST" | jq -r '[.tools[].name]|if index("quality_proxy") then "quality_proxy" elif index("quality_check_content") then "quality_check_content" else "" end')
+# Prefer the live name; on the rename branch the alias is covered by R2, not by B0-B2.
+NAME=$(printf '%s' "$LIST" | jq -r '[.tools[].name]|if index("quality_check_content") then "quality_check_content" elif index("quality_proxy") then "quality_proxy" else "" end')
 [ -n "$NAME" ] || fail "S: neither quality_proxy nor quality_check_content is served"
 printf '%s' "$LIST" | jq -e --arg n "$NAME" '[.tools[]|select(.name==$n)]|length==1' >/dev/null || fail "S: tool not uniquely served"
 WRITE_IN_ENUM=$(printf '%s' "$LIST" | jq -r --arg n "$NAME" '[.tools[]|select(.name==$n)][0].inputSchema.properties.operation.enum // [] | index("write") != null')
@@ -3057,7 +3072,7 @@ printf '%s' "$r" | jq -e '.quality_report.passed == false' >/dev/null || fail "B
 printf '%s' "$r" | jq -e '.status != "accepted"' >/dev/null || fail "B1: advisory returned accepted while passed==false"
 
 # ---- B2 (permanent, branch-independent): client quality_config may only tighten; count==list.
-r=$(mcp "$NAME" "$(jq -cn --arg p "$T/CFG.rs" --rawfile c "$T/.bad" '{operation:"write",file_path:$p,content:$c,mode:"strict",quality_config:{max_complexity:9999,allow_satd:true}}')")
+r=$(mcp "$NAME" "$(req "$T/CFG.rs" "$T/.bad" strict | jq -c '. + {quality_config:{max_complexity:9999,allow_satd:true,require_docs:false}}')")
 printf '%s' "$r" | jq -e '.quality_report.passed == false' >/dev/null || fail "B2: client config loosened the project gate"
 printf '%s' "$r" | jq -e '([.quality_report.violations[]|select(.type=="satd")]|length) == .quality_report.metrics.satd_count' >/dev/null || fail "B2: satd_count contradicts violations[]"
 
@@ -3092,13 +3107,13 @@ r=$(mcp "$NAME" "$(req "$T/EXIST.rs" "$T/.good" strict)")
 [ "$(sha "$T/EXIST.rs")" = "$OK_SHA" ] || fail "W4 control: the accepted overwrite never happened"
 # W5 (conjunctive): the write is scoped to the project root.
 for p in "$OUT/ESCAPE.rs" "$ROOT/src/../../ESCAPE2.rs"; do
-  r=$(cd "$ROOT" && mcp "$NAME" "$(req "$p" "$T/.good" strict)")
+  in_dir "$ROOT"; r=$(mcp "$NAME" "$(req "$p" "$T/.good" strict)"); no_dir
   printf '%s' "$r" | jq -e '.written == false' >/dev/null || fail "W5: no written:false for an out-of-root path ($p)"
   test ! -e "$p" || fail "W5: created $p outside the project root"
 done
 else
-# ============ RENAME BRANCH — DEFERRED at HEAD: the selector chooses W today ============
-r=$(mcp "$NAME" "$(req "$T/R1.rs" "$T/.good" strict)")
+# ============ RENAME BRANCH — live since PMAT-640; the selector chose W before it ============
+r=$(mcp "$NAME" "$(req_stale "$T/R1.rs" "$T/.good" strict)")
 printf '%s' "$r" | jq -e '.error.code == -32602' >/dev/null || fail "R1: operation=write still reaches a handler"
 test ! -e "$T/R1.rs" || fail "R1: a refused operation created a file"
 printf '%s' "$LIST" | jq -e '[.tools[].name]|(index("quality_proxy") != null) and (index("quality_check_content") != null)' >/dev/null || fail "R2: the one-release deprecated alias is not served"
@@ -3111,6 +3126,15 @@ printf '%s' "$LIST" | jq -e --arg n "$NAME" '[.tools[]|select(.name==$n)][0].des
 fi
 echo "PASS"
 ```
+
+*Correction (PMAT-640 / PMAT-641, found when the rename branch was first executed):* the block
+above as merged emitted `operation:"write"` from `req()` and hard-coded it in B2, so on the rename
+branch — the one it prefers — B0–B2 got the `-32602` that R1 demands and could never pass; the
+branch was labelled "DEFERRED at HEAD" and had not been run. The request shape now follows the
+selector (`req` omits `operation` on the rename branch; `req_stale` is R1's probe), the selector
+prefers the live name (the alias is R2's job), and the repo copy `scripts/quality-check-content-audit.sh`
+is the executable version of this block — the two are kept byte-identical by this section.
+Executed both ways on 2026-09-02: pre-fix binary → `FAIL: B0` (exit 1); fixed binary → exit 0.
 
 **RUN at HEAD (3.34.0, `commit: 01fba4f6554742ae690fa00131444ddf722a5334`, `worktree: clean`) — it
 fails, at B0:**

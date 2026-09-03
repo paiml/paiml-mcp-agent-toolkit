@@ -3,7 +3,7 @@
 **Protocol Version**: MCP v2024-11-05
 **Transport**: stdio (JSON-RPC 2.0)
 **Server**: `MCP_VERSION=1 pmat` (equivalently `pmat --mode mcp`) — `src/mcp_pmcp/simple_unified_server.rs`
-**Total Tools**: 19
+**Total Tools**: 20
 **Last Updated**: 2026-08-28
 
 > Exact, authoritative input schemas for every tool are published by the server
@@ -29,7 +29,7 @@
 
 1. [Core Analysis Tools (6)](#core-analysis-tools-6)
 2. [Forensic Analyzers (3)](#forensic-analyzers-3)
-3. [Quality Tools (3)](#quality-tools-3)
+3. [Quality Tools (4)](#quality-tools-4)
 4. [Git & Context Tools (3)](#git--context-tools-3)
 5. [Agent-Context Tools (4)](#agent-context-tools-4)
 6. [Unregistered: the refactor.* tools](#unregistered-the-refactor-tools)
@@ -91,7 +91,7 @@ constants, or a body that silently returns when a fixture is missing.
 
 ---
 
-## Quality Tools (3)
+## Quality Tools (4)
 
 ### 10. `quality_gate`
 Runs the `pmat quality-gate --checks all` suite (complexity, dead code, SATD,
@@ -102,15 +102,29 @@ comparison was fixed in v3.18.2 (`Grade`'s derived `Ord` is reversed; a single
 `Grade::meets_threshold()` now drives the decision) — earlier versions could return
 an inverted `passed`.
 
-### 11. `quality_proxy`
-**Writes files.** Proxies a file operation (`write` / `edit` / `append`) through the
-quality gate, optionally auto-fixing violations. Args: `operation`, `file_path`,
-`content` / `old_content` / `new_content`, `mode` (`strict` / `advisory` /
-`auto_fix`), `quality_config`. The packaged `mcp.json` described this as "Proxy a
-quality-scored analysis request", which named neither the file operation nor the
-write — see `manifest_descriptions_match_handler_metadata`.
+### 11. `quality_check_content`
+**Never writes.** Grades proposed `content` for `file_path` against the project's
+quality gate and returns it with a verdict. Args: `file_path`, `content`, `mode`
+(`strict` / `advisory` / `auto_fix`), `quality_config`. The response carries
+`written: false` — always: the tool has no writer, and the only layer that can gate
+a client's own writes is the harness `PreToolUse` hook. `advisory` returns the
+content with `status: rejected` when the gate failed (it no longer launders a
+failing verdict as `accepted`); a client `quality_config` may only tighten the
+project's `[quality]` in `pmat.toml`; and `metrics.satd_count` always equals the
+number of `violations[]` of type `satd` in the same response (CRUX-10, #1151).
+Until 3.36.0 this tool was `quality_proxy`, took an `operation` of
+`write`/`edit`/`append`, and this catalog claimed the tool wrote to disk — nine live calls
+returned `accepted` and not one created a file. A request still carrying
+`operation` gets `-32602`.
 
-### 12. `pdmt_deterministic_todos`
+### 12. `quality_proxy`
+
+One-release alias of `quality_check_content` (CRUX-10, #1151): the same handler,
+the same schema, the same verdict, under the name the tool carried before
+3.36.0. It is a separate entry in `tools/list` so a client pinned to the old
+name keeps working for one release; it is removed the release after.
+
+### 13. `pdmt_deterministic_todos`
 Generates deterministic, quality-enforced todo lists from a list of requirements.
 IDs are deterministic UUIDv8s derived from seed/index/requirement (v3.18.2) —
 byte-identical output for identical input, so results can be cached, diffed, and
@@ -124,17 +138,17 @@ Two of these three are named for a mutation they do not perform. The names are
 historical aliases held for wire compatibility; the behaviour below is what the
 handlers actually do, and it is what `tools/list` says.
 
-### 13. `git_operation`
+### 14. `git_operation`
 **Read-only.** Despite the name, this is `GitStatusTool`: it queries git
 working-tree status for the given repository path and performs no git operation of
 any kind. Args: `path`.
 
-### 14. `generate_context`
+### 15. `generate_context`
 Generates project context (file tree plus an optional dependency graph) for LLM/agent
 consumption — the MCP equivalent of `pmat context`. Args: `paths`, `format` (`json`),
 `max_depth`, `include_dependencies`.
 
-### 15. `scaffold_project`
+### 16. `scaffold_project`
 **Writes nothing.** Despite the name, this is `ContextSummaryTool`: it produces a
 high-level project summary for the given paths. It does not scaffold a project and
 does not create files. Args: `paths`, `level` (`brief` / `normal` / `detailed`).
@@ -148,21 +162,21 @@ primary code-intelligence surface for autonomous agents. Their schemas and
 descriptions are generated from `mcp_tool_schemas/*.json` by `build.rs`
 (KAIZEN-0178), so they cannot drift from what the handler advertises.
 
-### 16. `pmat_query_code`
+### 17. `pmat_query_code`
 Searches code functions by natural-language query with TDG quality filtering.
 Returns semantically ranked results with complexity, fault patterns, and call-graph
 context. The MCP analogue of `pmat query`.
 
-### 17. `pmat_get_function`
+### 18. `pmat_get_function`
 Returns detailed information about a function by its ID: full metadata including
 source code, quality metrics, and SATD markers. (Source retrieval was restored in
 v3.18.2 after an incremental-save bug that wiped the `source` column.)
 
-### 18. `pmat_find_similar`
+### 19. `pmat_find_similar`
 Finds functions similar to a reference function — related code, potential
 duplicates, or other implementations of the same pattern.
 
-### 19. `pmat_index_stats`
+### 20. `pmat_index_stats`
 Reports code-index statistics: function counts, quality distribution, index health.
 
 ---
@@ -232,10 +246,10 @@ or, in one shot from a shell:
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | pmat --mode mcp
 ```
 
-The response lists all 19 tools with their names, descriptions, and input schemas
+The response lists all 20 tools with their names, descriptions, and input schemas
 (every tool advertises non-empty metadata — pinned by tests since v3.18.2).
 
-The packaged `mcp.json` at the repository root advertises the same 19 tools with the
+The packaged `mcp.json` at the repository root advertises the same 20 tools with the
 same descriptions. It is **generated**, never hand-edited: regenerate it with
 `cargo test --lib regenerate_mcp_json -- --ignored` (or `pmat mcp manifest --write`)
 after changing `LIVE_MCP_TOOLS`.

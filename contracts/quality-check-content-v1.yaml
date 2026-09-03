@@ -1,0 +1,73 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-architecture-crux-audit.md section 8.10 (CRUX-10, issue 1151)"
+    - "CHANGELOG.md 3.33.0 'Not done, deliberately' — no pmat_write_file; the harness PreToolUse hook is the write gate"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    The MCP tool formerly named quality_proxy advertised a write it never
+    performed: nine live calls across every mode and operation returned
+    accepted and created no file, and no response field said so. It is now
+    quality_check_content (alias quality_proxy for one release): it grades
+    content, discloses that it wrote nothing, never launders a failing verdict
+    as accepted, lets a client only tighten the project's gate, and keeps its
+    counts consistent with its lists.
+  contract: quality-check-content
+  status: draft
+
+equations:
+  never_writes_and_says_so:
+    formula: "for every call, response.written == false and the target path's bytes are unchanged"
+    domain: "any call to quality_check_content or its alias, any mode"
+    codomain: bool
+    invariants:
+      - "a request carrying operation is refused with -32602 (deny_unknown_fields), never silently accepted"
+      - "the alias returns a payload identical to the new name for the same request"
+    preconditions: []
+
+  advisory_does_not_launder:
+    formula: "mode == advisory and quality_report.passed == false implies status != accepted"
+    domain: "advisory-mode calls"
+    codomain: bool
+    invariants:
+      - "advisory still returns final_content, so the caller can proceed knowingly"
+    preconditions: []
+
+  client_config_only_tightens:
+    formula: "effective = tighten(project [quality] floor, client quality_config): min complexity, allow_satd only if both, require_docs if either"
+    domain: "a target path under a project with pmat.toml; no floor when there is none"
+    codomain: QualityConfig
+    invariants:
+      - "metrics.satd_count == count(violations[] where type == satd) in the same response, whatever allow_satd says"
+    preconditions: []
+
+falsification:
+  - condition: "a response reports accepted for content that created or changed a file, or omits written (CRUX-10, issue 1151)"
+    severity: P0
+    action: reject_push
+  - condition: "advisory returns accepted with passed == false"
+    severity: P0
+    action: reject_push
+  - condition: "a client quality_config raises max_complexity or enables allow_satd above the project's pmat.toml"
+    severity: P1
+    action: reject_push
+
+falsification_tests:
+  - id: never_writes_and_says_so
+    rule: "written is a boolean, false, and agrees with the filesystem; operation is refused"
+    prediction: "legs S, B0, R1, R2, R3, R5 of scripts/quality-check-content-audit.sh"
+    test: "bash scripts/quality-check-content-audit.sh against the release binary"
+    if_fails: "agents keep writing with their own harness believing the gate did"
+  - id: advisory_does_not_launder
+    rule: "advisory with a failing report is not accepted"
+    prediction: "leg B1; test_quality_proxy_advisory_mode asserts Rejected with content still returned"
+    test: "cargo test --test all test_quality_proxy_advisory_mode"
+    if_fails: "a status-only client treats rejected content as approved"
+  - id: client_config_only_tightens
+    rule: "the merge takes the stricter of project and client on every axis; satd_count equals the satd list"
+    prediction: "client_quality_config_can_only_tighten_the_project_floor and without_a_pmat_toml_the_default_config_is_the_floor pass; leg B2"
+    test: "cargo test --lib client_quality_config_can_only_tighten_the_project_floor"
+    if_fails: "any client can switch the gate off with two JSON keys"
