@@ -625,7 +625,7 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 | [aprender-zram-core](https://crates.io/crates/aprender-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.64 |
 | [aprender-contracts](https://crates.io/crates/aprender-contracts) | Provable contracts (with `aprender-contracts-macros`) | 0.64 |
 | [pmcp](https://crates.io/crates/pmcp) | MCP protocol SDK (streamable HTTP transport) | 2.17 |
-| **pmat** | Code analysis toolkit | 3.35.0 |
+| **pmat** | Code analysis toolkit | 3.36.0 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)

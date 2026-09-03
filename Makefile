@@ -1623,6 +1623,9 @@ release-dry:
 	@cargo release patch --dry-run
 
 # Verify release was successful
+release-check: ## AD-01: the version Cargo.toml declares must be tagged, released and on crates.io (exit 1 names the first missing channel)
+	@bash scripts/release-check.sh
+
 release-verify:
 	@echo "🔍 Verifying release..."
 	@LATEST_TAG=$$(git describe --tags --abbrev=0); \

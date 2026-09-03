@@ -32,144 +32,142 @@ const GENERIC_PLACEHOLDERS: &[&str] = &[
 /// Also detects semantic leaks: API-pattern contracts disguised as kernel-math.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_surface_classification(project_path: &Path) -> ComplianceCheck {
-    let contracts_dir = match resolve_contracts_dir(project_path) {
-        Some(d) => d,
-        None => {
-            return ComplianceCheck {
-                name: "CB-1305: Contract Surface Classification".into(),
-                status: CheckStatus::Skip,
-                message: "No contract YAML files found".into(),
-                severity: Severity::Info,
-            };
-        }
+    let skip = || ComplianceCheck {
+        name: "CB-1305: Contract Surface Classification".into(),
+        status: CheckStatus::Skip,
+        message: "No contract YAML files found".into(),
+        severity: Severity::Info,
     };
-
-    let mut total_contracts = 0usize;
-    let mut kernel_math = 0usize;
-    let mut cross_language = 0usize;
-    let mut schema_registry = 0usize;
-    let mut invariants_only = 0usize;
-    let mut semantic_leaks = 0usize;
-    let mut unclassified: Vec<String> = Vec::new();
-
-    for entry in walkdir::WalkDir::new(&contracts_dir)
-        .max_depth(3)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        if !path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
-            continue;
-        }
+    let Some(contracts_dir) = resolve_contracts_dir(project_path) else {
+        return skip();
+    };
+    let mut tally = SurfaceTally::default();
+    for path in contract_yaml_files(&contracts_dir, 3) {
         if path
             .file_name()
             .is_some_and(|n| n.to_string_lossy().contains("binding"))
         {
             continue;
         }
-
-        total_contracts += 1;
-        let Ok(content) = std::fs::read_to_string(path) else {
+        tally.total += 1;
+        let Ok(content) = std::fs::read_to_string(&path) else {
             continue;
         };
-
         let top_keys = extract_top_level_keys(&content);
-        let class = classify_contract(&top_keys, &content);
+        tally.record(classify_contract(&top_keys, &content), &path);
+    }
+    if tally.total == 0 {
+        return skip();
+    }
+    tally.verdict()
+}
 
+/// Every `.yaml`/`.yml` file under `dir`, at most `depth` levels down.
+fn contract_yaml_files(dir: &Path, depth: usize) -> Vec<std::path::PathBuf> {
+    walkdir::WalkDir::new(dir)
+        .max_depth(depth)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .is_some_and(|x| x == "yaml" || x == "yml")
+        })
+        .map(|e| e.into_path())
+        .collect()
+}
+
+/// What CB-1305 counted over the contracts directory.
+#[derive(Default)]
+struct SurfaceTally {
+    total: usize,
+    kernel_math: usize,
+    cross_language: usize,
+    schema_registry: usize,
+    invariants_only: usize,
+    semantic_leaks: usize,
+    /// The first five unclassified file names, for the message.
+    unclassified: Vec<String>,
+    unclassified_count: usize,
+}
+
+impl SurfaceTally {
+    fn record(&mut self, class: ContractClass, path: &Path) {
         match class {
-            ContractClass::KernelMath => kernel_math += 1,
-            ContractClass::CrossLanguage => cross_language += 1,
-            ContractClass::SchemaRegistry => schema_registry += 1,
-            ContractClass::InvariantsOnly => invariants_only += 1,
+            ContractClass::KernelMath => self.kernel_math += 1,
+            ContractClass::CrossLanguage => self.cross_language += 1,
+            ContractClass::SchemaRegistry => self.schema_registry += 1,
+            ContractClass::InvariantsOnly => self.invariants_only += 1,
             ContractClass::SemanticLeak => {
-                semantic_leaks += 1;
-                kernel_math += 1; // structurally it IS kernel-math
+                self.semantic_leaks += 1;
+                self.kernel_math += 1; // structurally it IS kernel-math
             }
             ContractClass::Unknown => {
-                let name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default();
-                if unclassified.len() < 5 {
-                    unclassified.push(name);
+                self.unclassified_count += 1;
+                if self.unclassified.len() < 5 {
+                    self.unclassified.push(
+                        path.file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default(),
+                    );
                 }
             }
         }
     }
 
-    if total_contracts == 0 {
-        return ComplianceCheck {
-            name: "CB-1305: Contract Surface Classification".into(),
-            status: CheckStatus::Skip,
-            message: "No contract YAML files found".into(),
-            severity: Severity::Info,
-        };
-    }
-
-    let unclassified_count = unclassified.len();
-    let classified = total_contracts - unclassified_count;
-    let unclassified_pct = unclassified_count as f64 / total_contracts as f64 * 100.0;
-
-    let mut issues = Vec::new();
-
-    // FAIL if >20% unclassified
-    if unclassified_pct > 20.0 {
-        issues.push(format!(
-            "{unclassified_count}/{total_contracts} ({unclassified_pct:.0}%) contracts unclassified — leak has outpaced spec"
-        ));
-    }
-
-    // WARN on semantic leaks (generic API patterns in kernel-math schema)
-    if semantic_leaks > 0 {
-        issues.push(format!(
-            "{semantic_leaks} semantic leak(s): API-pattern contracts with generic placeholders in kernel-math schema"
-        ));
-    }
-
-    if !issues.is_empty() {
-        let severity = if unclassified_pct > 20.0 {
-            Severity::Error
-        } else {
-            Severity::Warning
-        };
-        let status = if unclassified_pct > 20.0 {
-            CheckStatus::Fail
-        } else {
-            CheckStatus::Warn
-        };
-        let unclassified_list = if unclassified.is_empty() {
+    fn verdict(&self) -> ComplianceCheck {
+        let name = "CB-1305: Contract Surface Classification";
+        let unclassified_pct = self.unclassified_count as f64 / self.total as f64 * 100.0;
+        let mut issues = Vec::new();
+        if unclassified_pct > 20.0 {
+            issues.push(format!(
+                "{}/{} ({unclassified_pct:.0}%) contracts unclassified — leak has outpaced specification",
+                self.unclassified_count, self.total
+            ));
+        }
+        if self.semantic_leaks > 0 {
+            issues.push(format!(
+                "{} semantic leak(s): API-pattern contracts with generic placeholders in kernel-math schema",
+                self.semantic_leaks
+            ));
+        }
+        if issues.is_empty() {
+            let classified = self.total - self.unclassified_count;
+            let pure_kernel = self.kernel_math.saturating_sub(self.semantic_leaks);
+            let parts: Vec<String> = [
+                ("kernel", pure_kernel),
+                ("cross-lang", self.cross_language),
+                ("registry", self.schema_registry),
+                ("invariants", self.invariants_only),
+                ("leaks", self.semantic_leaks),
+            ]
+            .iter()
+            .filter(|(_, n)| *n > 0)
+            .map(|(k, n)| format!("{k}={n}"))
+            .collect();
+            return ComplianceCheck {
+                name: name.into(),
+                status: CheckStatus::Pass,
+                message: format!(
+                    "{classified}/{} classified ({})",
+                    self.total,
+                    parts.join(", ")
+                ),
+                severity: Severity::Info,
+            };
+        }
+        let failing = unclassified_pct > 20.0;
+        let unclassified_list = if self.unclassified.is_empty() {
             String::new()
         } else {
-            format!(" [{}]", unclassified.join(", "))
+            format!(" [{}]", self.unclassified.join(", "))
         };
         ComplianceCheck {
-            name: "CB-1305: Contract Surface Classification".into(),
-            status,
-            message: format!(
-                "{}{unclassified_list}",
-                issues.join("; ")
-            ),
-            severity,
-        }
-    } else {
-        let mut parts = Vec::new();
-        let pure_kernel = kernel_math.saturating_sub(semantic_leaks);
-        if pure_kernel > 0 { parts.push(format!("kernel={pure_kernel}")); }
-        if cross_language > 0 { parts.push(format!("cross-lang={cross_language}")); }
-        if schema_registry > 0 { parts.push(format!("registry={schema_registry}")); }
-        if invariants_only > 0 { parts.push(format!("invariants={invariants_only}")); }
-        if semantic_leaks > 0 { parts.push(format!("leaks={semantic_leaks}")); }
-        ComplianceCheck {
-            name: "CB-1305: Contract Surface Classification".into(),
-            status: CheckStatus::Pass,
-            message: format!(
-                "{classified}/{total_contracts} classified ({})",
-                parts.join(", ")
-            ),
-            severity: Severity::Info,
+            name: name.into(),
+            status: if failing { CheckStatus::Fail } else { CheckStatus::Warn },
+            message: format!("{}{unclassified_list}", issues.join("; ")),
+            severity: if failing { Severity::Error } else { Severity::Warning },
         }
     }
 }
@@ -425,30 +423,26 @@ pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCh
 /// for schema documentation. WARN if >20 arg structs lack doc comments.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1302: MCP Schema Contracts";
     let mcp_dir = project_path.join("src").join("mcp_pmcp");
     if !mcp_dir.exists() {
         return ComplianceCheck {
-            name: "CB-1302: MCP Schema Contracts".into(),
+            name: name.into(),
             status: CheckStatus::Skip,
             message: "No src/mcp_pmcp/ directory".into(),
             severity: Severity::Info,
         };
     }
-
     let mut total_arg_structs = 0usize;
     let mut undocumented = 0usize;
     let mut handler_files = 0usize;
-
     for entry in walkdir::WalkDir::new(&mcp_dir)
         .max_depth(2)
         .into_iter()
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        if path.extension().is_none_or(|e| e != "rs") {
+        if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
         let filename = path
@@ -461,63 +455,73 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
         if filename.contains("handler") {
             handler_files += 1;
         }
-
         let Ok(content) = std::fs::read_to_string(path) else {
             continue;
         };
-
-        let lines: Vec<&str> = content.lines().collect();
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-            if trimmed.contains("struct") && trimmed.contains("Args") && !trimmed.starts_with("//") {
-                total_arg_structs += 1;
-                // Check if previous line(s) have doc comments
-                let has_doc = (i > 0 && lines[i - 1].trim().starts_with("///"))
-                    || (i > 1 && lines[i - 2].trim().starts_with("///"));
-                if !has_doc {
-                    undocumented += 1;
-                }
-            }
-        }
+        let (total, undoc) = arg_struct_census(&content);
+        total_arg_structs += total;
+        undocumented += undoc;
     }
-
     if total_arg_structs == 0 {
         return ComplianceCheck {
-            name: "CB-1302: MCP Schema Contracts".into(),
+            name: name.into(),
             status: CheckStatus::Skip,
             message: "No MCP arg structs found".into(),
             severity: Severity::Info,
         };
     }
-
-    if undocumented > 20 {
-        ComplianceCheck {
-            name: "CB-1302: MCP Schema Contracts".into(),
-            status: CheckStatus::Fail,
-            message: format!(
+    let (status, severity, message) = if undocumented > 20 {
+        (
+            CheckStatus::Fail,
+            Severity::Error,
+            format!(
                 "{undocumented}/{total_arg_structs} MCP arg structs undocumented across {handler_files} handlers — add /// doc comments with input contracts"
             ),
-            severity: Severity::Error,
-        }
+        )
     } else if undocumented > 5 {
-        ComplianceCheck {
-            name: "CB-1302: MCP Schema Contracts".into(),
-            status: CheckStatus::Warn,
-            message: format!(
+        (
+            CheckStatus::Warn,
+            Severity::Warning,
+            format!(
                 "{undocumented}/{total_arg_structs} MCP arg structs lack doc comments ({handler_files} handlers)"
             ),
-            severity: Severity::Warning,
-        }
+        )
     } else {
-        ComplianceCheck {
-            name: "CB-1302: MCP Schema Contracts".into(),
-            status: CheckStatus::Pass,
-            message: format!(
+        (
+            CheckStatus::Pass,
+            Severity::Info,
+            format!(
                 "{total_arg_structs} MCP arg structs, {handler_files} handlers ({undocumented} undocumented)"
             ),
-            severity: Severity::Info,
+        )
+    };
+    ComplianceCheck {
+        name: name.into(),
+        status,
+        message,
+        severity,
+    }
+}
+
+/// (`*Args` structs, those without a `///` line in the two lines above).
+fn arg_struct_census(content: &str) -> (usize, usize) {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut total = 0usize;
+    let mut undocumented = 0usize;
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if !(trimmed.contains("struct") && trimmed.contains("Args") && !trimmed.starts_with("//")) {
+            continue;
+        }
+        total += 1;
+        let documented = (1..=2).any(|back| {
+            i >= back && lines[i - back].trim().starts_with("///")
+        });
+        if !documented {
+            undocumented += 1;
         }
     }
+    (total, undocumented)
 }
 
 /// CB-1306: TUI Widget Contract Coverage — verify presentar widget lifecycle
@@ -527,91 +531,46 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
 /// preconditions (not placeholders).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1306: TUI Widget Contracts";
     let contracts_dir = project_path.join("contracts");
-    // Check if this is a presentar-like project (has presentar-core dep or crate)
-    // Only flag as presentar project if it HAS the presentar-core crate as workspace member
-    // (not just as a dependency)
-    let is_presentar = project_path.join("crates").join("presentar-core").exists();
-
-    if !is_presentar {
+    if !project_path.join("crates").join("presentar-core").exists() {
         return ComplianceCheck {
-            name: "CB-1306: TUI Widget Contracts".into(),
+            name: name.into(),
             status: CheckStatus::Skip,
             message: "Not a presentar/TUI project".into(),
             severity: Severity::Info,
         };
     }
-
     if !contracts_dir.exists() {
         return ComplianceCheck {
-            name: "CB-1306: TUI Widget Contracts".into(),
+            name: name.into(),
             status: CheckStatus::Fail,
             message: "presentar project has no contracts/ directory".into(),
             severity: Severity::Error,
         };
     }
-
-    // Required contract coverage for TUI widget lifecycle
     let required_domains = &[
-        ("color", "contrast_ratio"),    // WCAG color contracts
-        ("geometry", "intersection"),    // rect geometry
-        ("layout", "constrain"),         // constraint solving
+        ("color", "contrast_ratio"), // WCAG color contracts
+        ("geometry", "intersection"), // rect geometry
+        ("layout", "constrain"),      // constraint solving
     ];
-
-    let mut covered = 0usize;
-    let mut missing: Vec<&str> = Vec::new();
-
-    for entry in walkdir::WalkDir::new(&contracts_dir)
-        .max_depth(2)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-        if !path.is_file() || !path.extension().is_some_and(|e| e == "yaml" || e == "yml") {
-            continue;
-        }
-        if let Ok(content) = std::fs::read_to_string(path) {
-            for (domain, equation) in required_domains {
-                if content.contains(equation) {
-                    covered += 1;
-                    break; // count file once even if multiple matches
-                }
-                let _ = domain; // used for diagnostics below
-            }
-        }
-    }
-
-    // Check which domains are missing
-    for (domain, equation) in required_domains {
-        let found = walkdir::WalkDir::new(&contracts_dir)
-            .max_depth(2)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .any(|e| {
-                e.path().is_file()
-                    && std::fs::read_to_string(e.path())
-                        .map(|c| c.contains(equation))
-                        .unwrap_or(false)
-            });
-        if !found {
-            missing.push(domain);
-        }
-    }
-
-    if !missing.is_empty() {
+    let contents: Vec<String> = contract_yaml_files(&contracts_dir, 2)
+        .iter()
+        .filter_map(|p| std::fs::read_to_string(p).ok())
+        .collect();
+    // A file counts once, however many domains it mentions.
+    let covered = contents
+        .iter()
+        .filter(|c| required_domains.iter().any(|(_, eq)| c.contains(eq)))
+        .count();
+    let missing: Vec<&str> = required_domains
+        .iter()
+        .filter(|(_, eq)| !contents.iter().any(|c| c.contains(eq)))
+        .map(|(domain, _)| *domain)
+        .collect();
+    if missing.is_empty() {
         ComplianceCheck {
-            name: "CB-1306: TUI Widget Contracts".into(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "{covered}/{} widget domains covered, missing: {}",
-                required_domains.len(),
-                missing.join(", ")
-            ),
-            severity: Severity::Warning,
-        }
-    } else {
-        ComplianceCheck {
-            name: "CB-1306: TUI Widget Contracts".into(),
+            name: name.into(),
             status: CheckStatus::Pass,
             message: format!(
                 "{}/{} widget lifecycle domains contracted (color, geometry, layout)",
@@ -619,6 +578,17 @@ pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck
                 required_domains.len()
             ),
             severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{covered}/{} widget domains covered, missing: {}",
+                required_domains.len(),
+                missing.join(", ")
+            ),
+            severity: Severity::Warning,
         }
     }
 }
@@ -948,18 +918,46 @@ fn lean_theorem_is_proved(content: &str) -> bool {
     };
     let block = &content[idx..];
     // Bound the block at the next top-level (column-0) key.
-    let end = block
-        .lines()
-        .skip(1)
-        .scan(0usize, |off, line| {
-            let start = *off;
-            *off += line.len() + 1;
-            Some((start, line))
-        })
-        .find(|(_, line)| !line.is_empty() && !line.starts_with([' ', '\t', '-', '#']))
-        .map_or(block.len(), |(start, _)| start + "lean_theorem:".len());
-    let block = &block[..end.min(block.len())];
+    //
+    // #1159: this used to compute offsets over `lines().skip(1)` — never
+    // counting the first line — and patch the miss with
+    // `+ "lean_theorem:".len()`. The bound was therefore right only when the
+    // first line was exactly the bare key; any longer first line put the cut
+    // inside the block's LAST line, and when that line was a box-drawing
+    // comment divider the cut landed inside a multibyte char and the whole
+    // `comply check` aborted (`byte index 1000 is not a char boundary`).
+    // Offsets are now accumulated over every line, ends included, so the cut
+    // is always a line start — a char boundary by construction.
+    let block = &block[..floor_char_boundary(block, next_top_level_key_offset(block))];
     block.contains("status: proved") && !block.contains("sorry")
+}
+
+/// Clamp `offset` into `s` and round it DOWN to a `char` boundary.
+///
+/// `min(s.len())` alone does not make a slice safe: `&s[..n]` panics just as
+/// hard when `n` is inside a multi-byte sequence as when it is past the end.
+/// Any offset derived from line arithmetic must pass through here.
+fn floor_char_boundary(s: &str, offset: usize) -> usize {
+    let mut end = offset.min(s.len());
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    end
+}
+
+/// The byte offset of the first column-0 key after the first line, or the
+/// block's length when there is none. Always a line start.
+fn next_top_level_key_offset(block: &str) -> usize {
+    let mut offset = 0usize;
+    for (i, line) in block.split_inclusive('\n').enumerate() {
+        let body = line.trim_end_matches(['\n', '\r']);
+        if i > 0 && !body.is_empty() && !body.starts_with([' ', '\t', '-', '#']) {
+            debug_assert!(block.is_char_boundary(offset));
+            return offset;
+        }
+        offset += line.len();
+    }
+    block.len()
 }
 
 fn level_label(n: u8) -> &'static str {
@@ -1319,41 +1317,30 @@ fn cargo_edition_is_modern(content: &str) -> bool {
 
 /// Extract dependency version from Cargo.toml content.
 fn extract_dep_version<'a>(content: &'a str, dep_name: &str) -> Option<&'a str> {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        // Must start with dep name followed by space or =
-        if !trimmed.starts_with(dep_name) {
-            continue;
-        }
-        let after_name = &trimmed[dep_name.len()..];
-        if !after_name.starts_with(' ') && !after_name.starts_with('=') {
-            continue;
-        }
-        // Inline table: dep = { version = "x.y", ... }
-        if trimmed.contains('{') {
-            // Find version = "x.y" inside the braces
-            if let Some(ver_start) = trimmed.find("version") {
-                let rest = &trimmed[ver_start + "version".len()..];
-                let rest = rest.trim_start_matches([' ', '=']);
-                if let Some(inner) = rest.strip_prefix('"') {
-                    if let Some(end) = inner.find('"') {
-                        return Some(&inner[..end]);
-                    }
-                }
-            }
-            continue;
-        }
-        // Simple: dep = "x.y"
-        if let Some(eq_pos) = trimmed.find('=') {
-            let after_eq = trimmed[eq_pos + 1..].trim();
-            if let Some(inner) = after_eq.strip_prefix('"') {
-                if let Some(end) = inner.find('"') {
-                    return Some(&inner[..end]);
-                }
-            }
-        }
+    content
+        .lines()
+        .map(str::trim)
+        .filter(|line| {
+            line.strip_prefix(dep_name)
+                .is_some_and(|rest| rest.starts_with(' ') || rest.starts_with('='))
+        })
+        .find_map(dep_line_version)
+}
+
+/// The quoted version on one `name = "1.2"` or `name = { version = "1.2", .. }`
+/// line; `None` when the line names the dependency without a quoted version.
+fn dep_line_version(line: &str) -> Option<&str> {
+    if line.contains('{') {
+        let rest = &line[line.find("version")? + "version".len()..];
+        return first_quoted(rest.trim_start_matches([' ', '=']));
     }
-    None
+    first_quoted(line[line.find('=')? + 1..].trim())
+}
+
+/// The content of the leading `"…"` in `s`, if `s` starts with a quote.
+fn first_quoted(s: &str) -> Option<&str> {
+    let inner = s.strip_prefix('"')?;
+    Some(&inner[..inner.find('"')?])
 }
 
 /// Simple semver minimum check: does `actual` >= `minimum`?
@@ -1577,5 +1564,230 @@ mod ladder_evidence_not_mention_tests {
             4,
             "a proof with `sorry` in it is not a proof"
         );
+    }
+}
+
+#[cfg(test)]
+mod lean_theorem_block_bounds_tests {
+    use super::lean_theorem_is_proved;
+
+    /// #1159: the block bound was computed from offsets that skipped the
+    /// first line without counting it, then patched with
+    /// `+ "lean_theorem:".len()`. Whenever the first line is longer than the
+    /// bare key the bound lands INSIDE the block's last line — and if that
+    /// line is a box-drawing comment divider, inside a multibyte char:
+    /// `byte index N is not a char boundary; it is inside '─'`.
+    #[test]
+    fn a_box_drawing_divider_before_the_next_key_does_not_panic() {
+        // Three spaces before the comment: the miscounted bound then lands 9
+        // bytes before `next:` — two bytes into a '─' of the divider.
+        let content = "lean_theorem:   # L5\n  status: proved\n  # ─────────────\nnext: 1\n";
+        assert!(lean_theorem_is_proved(content));
+    }
+
+    /// The bound must be the next column-0 key's line start: a `sorry` in the
+    /// following key must not disqualify the theorem, and one inside the block
+    /// must.
+    #[test]
+    fn the_block_ends_at_the_next_top_level_key() {
+        let proved_then_sorry_elsewhere =
+            "lean_theorem:\n  status: proved\n  # ──\nnotes: sorry, unrelated\n";
+        assert!(lean_theorem_is_proved(proved_then_sorry_elsewhere));
+        let sorry_inside = "lean_theorem:\n  status: proved\n  proof: sorry\nnotes: fine\n";
+        assert!(!lean_theorem_is_proved(sorry_inside));
+        let unbounded = "lean_theorem:\n  status: proved\n";
+        assert!(lean_theorem_is_proved(unbounded));
+    }
+}
+
+// Regression suite contributed on #1166 (the aprender release session), carried
+// here so one PR holds the fix, its tests and the complexity refactors.
+#[cfg(test)]
+mod check_contract_surfaces_char_boundary_tests {
+    use super::*;
+
+    /// Build a YAML fixture from explicit lines. Written this way on purpose:
+    /// a `\`-continued Rust string literal eats the leading whitespace of the
+    /// next line, which would silently un-indent every nested YAML key and
+    /// turn these fixtures into a different (passing) shape.
+    fn yaml(lines: &[&str]) -> String {
+        let mut s = String::new();
+        for line in lines {
+            s.push_str(line);
+            s.push('\n');
+        }
+        s
+    }
+
+    /// (a) The real-world shape: a block-scalar first line (`lean_theorem: |`,
+    /// 15 bytes, not 13) followed by a `# ────` divider comment immediately
+    /// before the next top-level key. The old arithmetic undershot by 3 bytes
+    /// and landed inside the divider's trailing `─`.
+    #[test]
+    fn divider_comment_before_the_next_key_does_not_panic() {
+        let content = yaml(&[
+            "equations:",
+            "lean_theorem: |",
+            "  theorem foo : True := trivial",
+            "  status: proved",
+            "# ──────────────────────────────",
+            "proof_obligations:",
+            "  - id: o1",
+        ]);
+        assert!(
+            lean_theorem_is_proved(&content),
+            "the proved status inside the block must still be seen"
+        );
+    }
+
+    /// The bound must still be the next top-level key: a `status: proved`
+    /// living *after* that key belongs to another surface and must not count.
+    #[test]
+    fn divider_comment_does_not_widen_the_block_past_the_next_key() {
+        let content = yaml(&[
+            "equations:",
+            "lean_theorem: |",
+            "  theorem foo : True := trivial",
+            "# ──────────────────────────────",
+            "proof_obligations:",
+            "  status: proved",
+        ]);
+        assert!(
+            !lean_theorem_is_proved(&content),
+            "a `status: proved` under the NEXT top-level key must not promote this one"
+        );
+    }
+
+    /// (b) aprender's minimal repro, verbatim. Against pmat 3.34.0 this aborted
+    /// with `end byte index 14 is not a char boundary; it is inside '─'`.
+    #[test]
+    fn aprender_minimal_repro_does_not_panic() {
+        let content = yaml(&["equations:", "lean_theorem:\u{2500}", "", "x:"]);
+        assert!(
+            !lean_theorem_is_proved(&content),
+            "no `status: proved` anywhere — the verdict is false, not a panic"
+        );
+    }
+
+    /// (c) The next top-level line *begins* with a multi-byte character, so the
+    /// boundary offset is itself the first byte of a 2-byte sequence; landing
+    /// one byte either side of it is a panic.
+    #[test]
+    fn next_top_level_key_starting_with_a_multibyte_char_does_not_panic() {
+        let inside = yaml(&[
+            "lean_theorem: Theorems.Foo",
+            "  status: proved",
+            "\u{e9}quations: v",
+        ]);
+        assert!(
+            lean_theorem_is_proved(&inside),
+            "the block ends at the e-acute-prefixed key; `status: proved` is inside it"
+        );
+
+        let after = yaml(&[
+            "lean_theorem: Theorems.Foo",
+            "\u{e9}quations: v",
+            "  status: proved",
+        ]);
+        assert!(
+            !lean_theorem_is_proved(&after),
+            "and a proved status past that key must not leak in"
+        );
+    }
+
+    /// Well-formed input keeps exactly the verdict it had before the fix.
+    #[test]
+    fn well_formed_input_keeps_its_verdict() {
+        assert!(lean_theorem_is_proved(
+            "lean_theorem:\n  status: proved\n"
+        ));
+        assert!(!lean_theorem_is_proved("lean_theorem:\n  name: thm\n"));
+        assert!(!lean_theorem_is_proved(
+            "lean_theorem:\n  status: proved\n  body: sorry\n"
+        ));
+        assert!(!lean_theorem_is_proved("kani_harnesses:\n  - name: h\n"));
+        assert!(
+            !lean_theorem_is_proved("lean_theorem:\n  name: thm\nother:\n  status: proved\n"),
+            "the block stops at the next top-level key"
+        );
+    }
+
+    /// The offset helper reports the TRUE byte position of the next top-level
+    /// key, independent of how long the first line is — that constant-13
+    /// assumption was the defect.
+    #[test]
+    fn offset_is_independent_of_the_first_line_length() {
+        for first in [
+            "lean_theorem:",
+            "lean_theorem: |",
+            "lean_theorem: Theorems.Foo",
+            "lean_theorem: a-very-long-theorem-reference-indeed",
+        ] {
+            let block = format!("{first}\n  status: proved\nnext_key:\n");
+            let expected = block.find("next_key:").expect("fixture has the key");
+            assert_eq!(
+                next_top_level_key_offset(&block),
+                expected,
+                "first line {first:?}"
+            );
+        }
+    }
+
+    /// `lines()` strips the `\r` of a CRLF terminator, so `line.len() + 1`
+    /// undercounts by one per line. `split_inclusive` does not.
+    #[test]
+    fn offset_is_correct_for_crlf_terminators() {
+        let block = "lean_theorem: |\r\n  status: proved\r\nnext_key:\r\n";
+        let expected = block.find("next_key:").expect("fixture has the key");
+        assert_eq!(next_top_level_key_offset(block), expected);
+        assert!(lean_theorem_is_proved(block));
+    }
+
+    /// With no following top-level key the whole block is in scope.
+    #[test]
+    fn offset_defaults_to_the_whole_block() {
+        let block = "lean_theorem: |\n  status: proved\n";
+        assert_eq!(next_top_level_key_offset(block), block.len());
+        assert_eq!(next_top_level_key_offset(""), 0);
+    }
+
+    #[test]
+    fn floor_char_boundary_never_lands_inside_a_char() {
+        let s = "ab\u{2500}cd";
+        assert_eq!(floor_char_boundary(s, 0), 0);
+        assert_eq!(floor_char_boundary(s, 2), 2);
+        // 3, 4 are inside the 3-byte `\u{2500}` at bytes 2..5.
+        assert_eq!(floor_char_boundary(s, 3), 2);
+        assert_eq!(floor_char_boundary(s, 4), 2);
+        assert_eq!(floor_char_boundary(s, 5), 5);
+        // Past the end clamps, and clamping alone is not enough in general.
+        assert_eq!(floor_char_boundary(s, 999), s.len());
+        for offset in 0..=s.len() {
+            let end = floor_char_boundary(s, offset);
+            assert!(s.is_char_boundary(end), "offset {offset} -> {end}");
+        }
+    }
+
+    /// No input may panic here, whatever the byte layout: insert a 3-byte
+    /// character at every char boundary of a realistic block and require a
+    /// verdict — any verdict — rather than an abort.
+    #[test]
+    fn no_byte_layout_can_panic() {
+        let base = yaml(&[
+            "equations:",
+            "lean_theorem: Theorems.Foo",
+            "  status: proved",
+            "proof_obligations:",
+        ]);
+        for cut in 0..=base.len() {
+            if !base.is_char_boundary(cut) {
+                continue;
+            }
+            let mut mutated = String::with_capacity(base.len() + 3);
+            mutated.push_str(&base[..cut]);
+            mutated.push('\u{2500}');
+            mutated.push_str(&base[cut..]);
+            let _ = lean_theorem_is_proved(&mutated);
+        }
     }
 }
