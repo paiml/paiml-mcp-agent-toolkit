@@ -947,19 +947,51 @@ fn lean_theorem_is_proved(content: &str) -> bool {
         return false;
     };
     let block = &content[idx..];
-    // Bound the block at the next top-level (column-0) key.
-    let end = block
-        .lines()
-        .skip(1)
-        .scan(0usize, |off, line| {
-            let start = *off;
-            *off += line.len() + 1;
-            Some((start, line))
-        })
-        .find(|(_, line)| !line.is_empty() && !line.starts_with([' ', '\t', '-', '#']))
-        .map_or(block.len(), |(start, _)| start + "lean_theorem:".len());
-    let block = &block[..end.min(block.len())];
+    let end = floor_char_boundary(block, next_top_level_key_offset(block));
+    let block = &block[..end];
     block.contains("status: proved") && !block.contains("sorry")
+}
+
+/// Byte offset within `block` of the next top-level (column-0) YAML key after
+/// `block`'s first line, or `block.len()` if there is none.
+///
+/// PMAT-649: this used to accumulate offsets relative to `block`'s SECOND line
+/// and convert back by adding the literal `"lean_theorem:".len()` (13) — correct
+/// only for a first line that is exactly that bare key. `lean_theorem: |` or the
+/// documented inline `lean_theorem: Theorems.Foo` shifted the result by
+/// `first_line.len() + 1 - 13` bytes, landing `end` at a position with no
+/// relationship to any line boundary; inside a multi-byte character that is a
+/// panic, and it truncated or over-ran the block even in pure ASCII.
+///
+/// `split_inclusive('\n')` keeps each line's terminator, so the running offset
+/// is the exact byte position of every line — no arithmetic to get wrong, and
+/// correct for `\r\n` too (which `lines()` strips, making `line.len() + 1` short
+/// by one).
+fn next_top_level_key_offset(block: &str) -> usize {
+    let mut offset = 0usize;
+    for (i, raw) in block.split_inclusive('\n').enumerate() {
+        if i > 0 {
+            let line = raw.trim_end_matches('\n').trim_end_matches('\r');
+            if !line.is_empty() && !line.starts_with([' ', '\t', '-', '#']) {
+                return offset;
+            }
+        }
+        offset += raw.len();
+    }
+    block.len()
+}
+
+/// Clamp `offset` into `s` and round it DOWN to a `char` boundary.
+///
+/// `min(s.len())` alone does not make a slice safe: `&s[..n]` panics just as
+/// hard when `n` is inside a multi-byte sequence as when it is past the end.
+/// Any offset derived from line arithmetic must pass through here.
+fn floor_char_boundary(s: &str, offset: usize) -> usize {
+    let mut end = offset.min(s.len());
+    while !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    end
 }
 
 fn level_label(n: u8) -> &'static str {
@@ -1577,5 +1609,204 @@ mod ladder_evidence_not_mention_tests {
             4,
             "a proof with `sorry` in it is not a proof"
         );
+    }
+}
+
+/// PMAT-649: `lean_theorem_is_proved` sliced `block` at a byte offset computed
+/// by line-length arithmetic that assumed the first line was exactly the
+/// 13-byte literal `"lean_theorem:"`. Any other first line — the documented
+/// inline form `lean_theorem: Theorems.Foo`, or `lean_theorem: |` — shifted the
+/// offset by `first_line.len() + 1 - 13` bytes, so `end` landed at an arbitrary
+/// position unrelated to any line boundary. When those bytes were a multi-byte
+/// character (box-drawing divider comments are common in these contracts)
+/// `&block[..end]` panicked, and the panic aborted the whole
+/// `pmat comply check` run: exit 134, no JSON at all, every other group lost.
+#[cfg(test)]
+mod check_contract_surfaces_char_boundary_tests {
+    use super::*;
+
+    /// Build a YAML fixture from explicit lines. Written this way on purpose:
+    /// a `\`-continued Rust string literal eats the leading whitespace of the
+    /// next line, which would silently un-indent every nested YAML key and
+    /// turn these fixtures into a different (passing) shape.
+    fn yaml(lines: &[&str]) -> String {
+        let mut s = String::new();
+        for line in lines {
+            s.push_str(line);
+            s.push('\n');
+        }
+        s
+    }
+
+    /// (a) The real-world shape: a block-scalar first line (`lean_theorem: |`,
+    /// 15 bytes, not 13) followed by a `# ────` divider comment immediately
+    /// before the next top-level key. The old arithmetic undershot by 3 bytes
+    /// and landed inside the divider's trailing `─`.
+    #[test]
+    fn divider_comment_before_the_next_key_does_not_panic() {
+        let content = yaml(&[
+            "equations:",
+            "lean_theorem: |",
+            "  theorem foo : True := trivial",
+            "  status: proved",
+            "# ──────────────────────────────",
+            "proof_obligations:",
+            "  - id: o1",
+        ]);
+        assert!(
+            lean_theorem_is_proved(&content),
+            "the proved status inside the block must still be seen"
+        );
+    }
+
+    /// The bound must still be the next top-level key: a `status: proved`
+    /// living *after* that key belongs to another surface and must not count.
+    #[test]
+    fn divider_comment_does_not_widen_the_block_past_the_next_key() {
+        let content = yaml(&[
+            "equations:",
+            "lean_theorem: |",
+            "  theorem foo : True := trivial",
+            "# ──────────────────────────────",
+            "proof_obligations:",
+            "  status: proved",
+        ]);
+        assert!(
+            !lean_theorem_is_proved(&content),
+            "a `status: proved` under the NEXT top-level key must not promote this one"
+        );
+    }
+
+    /// (b) aprender's minimal repro, verbatim. Against pmat 3.34.0 this aborted
+    /// with `end byte index 14 is not a char boundary; it is inside '─'`.
+    #[test]
+    fn aprender_minimal_repro_does_not_panic() {
+        let content = yaml(&["equations:", "lean_theorem:\u{2500}", "", "x:"]);
+        assert!(
+            !lean_theorem_is_proved(&content),
+            "no `status: proved` anywhere — the verdict is false, not a panic"
+        );
+    }
+
+    /// (c) The next top-level line *begins* with a multi-byte character, so the
+    /// boundary offset is itself the first byte of a 2-byte sequence; landing
+    /// one byte either side of it is a panic.
+    #[test]
+    fn next_top_level_key_starting_with_a_multibyte_char_does_not_panic() {
+        let inside = yaml(&[
+            "lean_theorem: Theorems.Foo",
+            "  status: proved",
+            "\u{e9}quations: v",
+        ]);
+        assert!(
+            lean_theorem_is_proved(&inside),
+            "the block ends at the e-acute-prefixed key; `status: proved` is inside it"
+        );
+
+        let after = yaml(&[
+            "lean_theorem: Theorems.Foo",
+            "\u{e9}quations: v",
+            "  status: proved",
+        ]);
+        assert!(
+            !lean_theorem_is_proved(&after),
+            "and a proved status past that key must not leak in"
+        );
+    }
+
+    /// Well-formed input keeps exactly the verdict it had before the fix.
+    #[test]
+    fn well_formed_input_keeps_its_verdict() {
+        assert!(lean_theorem_is_proved(
+            "lean_theorem:\n  status: proved\n"
+        ));
+        assert!(!lean_theorem_is_proved("lean_theorem:\n  name: thm\n"));
+        assert!(!lean_theorem_is_proved(
+            "lean_theorem:\n  status: proved\n  body: sorry\n"
+        ));
+        assert!(!lean_theorem_is_proved("kani_harnesses:\n  - name: h\n"));
+        assert!(
+            !lean_theorem_is_proved("lean_theorem:\n  name: thm\nother:\n  status: proved\n"),
+            "the block stops at the next top-level key"
+        );
+    }
+
+    /// The offset helper reports the TRUE byte position of the next top-level
+    /// key, independent of how long the first line is — that constant-13
+    /// assumption was the defect.
+    #[test]
+    fn offset_is_independent_of_the_first_line_length() {
+        for first in [
+            "lean_theorem:",
+            "lean_theorem: |",
+            "lean_theorem: Theorems.Foo",
+            "lean_theorem: a-very-long-theorem-reference-indeed",
+        ] {
+            let block = format!("{first}\n  status: proved\nnext_key:\n");
+            let expected = block.find("next_key:").expect("fixture has the key");
+            assert_eq!(
+                next_top_level_key_offset(&block),
+                expected,
+                "first line {first:?}"
+            );
+        }
+    }
+
+    /// `lines()` strips the `\r` of a CRLF terminator, so `line.len() + 1`
+    /// undercounts by one per line. `split_inclusive` does not.
+    #[test]
+    fn offset_is_correct_for_crlf_terminators() {
+        let block = "lean_theorem: |\r\n  status: proved\r\nnext_key:\r\n";
+        let expected = block.find("next_key:").expect("fixture has the key");
+        assert_eq!(next_top_level_key_offset(block), expected);
+        assert!(lean_theorem_is_proved(block));
+    }
+
+    /// With no following top-level key the whole block is in scope.
+    #[test]
+    fn offset_defaults_to_the_whole_block() {
+        let block = "lean_theorem: |\n  status: proved\n";
+        assert_eq!(next_top_level_key_offset(block), block.len());
+        assert_eq!(next_top_level_key_offset(""), 0);
+    }
+
+    #[test]
+    fn floor_char_boundary_never_lands_inside_a_char() {
+        let s = "ab\u{2500}cd";
+        assert_eq!(floor_char_boundary(s, 0), 0);
+        assert_eq!(floor_char_boundary(s, 2), 2);
+        // 3, 4 are inside the 3-byte `\u{2500}` at bytes 2..5.
+        assert_eq!(floor_char_boundary(s, 3), 2);
+        assert_eq!(floor_char_boundary(s, 4), 2);
+        assert_eq!(floor_char_boundary(s, 5), 5);
+        // Past the end clamps, and clamping alone is not enough in general.
+        assert_eq!(floor_char_boundary(s, 999), s.len());
+        for offset in 0..=s.len() {
+            let end = floor_char_boundary(s, offset);
+            assert!(s.is_char_boundary(end), "offset {offset} -> {end}");
+        }
+    }
+
+    /// No input may panic here, whatever the byte layout: insert a 3-byte
+    /// character at every char boundary of a realistic block and require a
+    /// verdict — any verdict — rather than an abort.
+    #[test]
+    fn no_byte_layout_can_panic() {
+        let base = yaml(&[
+            "equations:",
+            "lean_theorem: Theorems.Foo",
+            "  status: proved",
+            "proof_obligations:",
+        ]);
+        for cut in 0..=base.len() {
+            if !base.is_char_boundary(cut) {
+                continue;
+            }
+            let mut mutated = String::with_capacity(base.len() + 3);
+            mutated.push_str(&base[..cut]);
+            mutated.push('\u{2500}');
+            mutated.push_str(&base[cut..]);
+            let _ = lean_theorem_is_proved(&mutated);
+        }
     }
 }
