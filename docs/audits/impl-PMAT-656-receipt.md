@@ -31,10 +31,13 @@ Branch `PMAT-656-quorum-review`. Bundle side: `~/src/paiml-implement` branch `ad
 | `pv lint contracts/quorum-review-v1.yaml` | PASS (0 errors, 0 warnings) |
 | bashrs on the three scripts | 0 errors (SEC010/SEC011 findings resolved by validating the ticket id and removing bare-variable `rm -rf`) |
 
-The "clean diff → three PASS" control is therefore **not yet demonstrated on a real branch**: the first
-clean candidate was refuted for cause. It is re-run on the fixed AD-03 branch before that PR is armed, and
-its artifact is committed there. A quorum that passes everything would have been the vacuous outcome; this
-one refused a branch `pmat verify` and the author had both accepted.
+**Clean diff → three PASS, demonstrated after the fix.** The AD-03 branch was re-reviewed once the
+four findings were fixed (scratch rebase onto the AD-02 branch so the diff is AD-03 alone; head
+a7484a1cf): **3 lanes, 3 PASS, agreed** — `docs/audits/quorum-PMAT-655-after-fix.json`. The refuted
+first run is kept as `docs/audits/quorum-PMAT-655-first-run-refuted.json` and the planted control as
+`docs/audits/quorum-PMAT-655-planted-control.json`. A quorum that passes everything would have been
+the vacuous outcome; this one refused a branch `pmat verify` and the author had both accepted, then
+passed it once it was right.
 
 ## Gates
 
@@ -51,4 +54,4 @@ one refused a branch `pmat verify` and the author had both accepted.
   call) and one false "verify still running" reading — `pgrep -f 'verif[y] --format'` matched the agy lanes,
   whose argv carries the prompt text. Match on the binary path, never on a phrase the prompt may contain.
 
-Verdict: **DONE** (bundle PR + this PR), with the clean-diff control carried by the AD-03 PR.
+Verdict: **DONE** — bundle PR paiml/paiml-implement#5 merged (8bca212); this PR carries the acceptance, contract, receipt and the three lane artifacts.

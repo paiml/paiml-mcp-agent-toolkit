@@ -1,0 +1,103 @@
+{
+ "ticket": "PMAT-655",
+ "base": "origin/master",
+ "head": "535e3ccc3ff02ece3d6525e49a8549def3e410a3",
+ "width": 3,
+ "executor": "agy",
+ "agreed": false,
+ "lanes": [
+  {
+   "lane": 1,
+   "verdict": "FAIL",
+   "summary": "The diff fails to properly propagate the `strict` enforcement mode in two distinct ways, weakening the requested quality gates. First, `generate_quality_checks` (which outputs the pre-commit hook) ignores the `--strict` CLI flag because it strictly evaluates `config.hooks.strict` from `pmat.toml`. Therefore, `pmat hooks install --strict` will not make the pre-commit hook strict unless it is already configured in the TOML. Second, the automated repair paths in `comply check` (`update_project_hooks`) and `hooks check --fix` hardcode the `strict` argument to `false` when calling `install()`. This will silently overwrite a strict `commit-msg` hook with a warning-only hook, even if the user explicitly set `[hooks] strict = true` in their configuration.",
+   "findings": [
+    {
+     "claim": "`pmat hooks install --strict` ... makes the pre-commit SATD ... exit 1",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "fix": "Pass the `strict` parameter down from `HooksCommand::install` to `generate_quality_checks` rather than exclusively reading `config.hooks.strict`.",
+     "grounding": "cited",
+     "line": 89
+    },
+    {
+     "claim": "`[hooks] strict = true` in pmat.toml ... makes a generated commit-msg hook refuses a message",
+     "file": "src/cli/handlers/comply_handlers/check_handlers/types.rs",
+     "fix": "Instead of hardcoding `false` for the fourth parameter of `install()`, read the `strict` value from the active configuration so the generated hook respects `[hooks] strict = true`.",
+     "grounding": "cited",
+     "line": 690
+    },
+    {
+     "claim": "`[hooks] strict = true` in pmat.toml ... makes a generated commit-msg hook refuses a message",
+     "file": "src/cli/handlers/hooks_command_handlers/hooks_command.rs",
+     "fix": "Use the configured `strict` value when calling `self.install()` during the `--fix` operation, instead of hardcoding `false`.",
+     "grounding": "cited",
+     "line": 233
+    }
+   ],
+   "raw_bytes": 4733
+  },
+  {
+   "lane": 2,
+   "verdict": "FAIL",
+   "summary": "The diff fails because it includes unrelated changes for a different ticket (PMAT-654) and the `--strict` flag fails to apply to the pre-commit SATD check, meaning a receipt claim is not backed by the diff and the gate is weakened when run via the CLI.",
+   "findings": [
+    {
+     "claim": "The change includes code and test updates for PMAT-654 (git worktree .git parsing). This is an entirely unrelated ticket that the current ticket (PMAT-655) does not ask for.",
+     "file": "src/models/git_context.rs",
+     "grounding": "cited",
+     "line": 383
+    },
+    {
+     "claim": "The diff includes roadmap additions for PMAT-654, which is outside the scope of PMAT-655 and violates the requirement not to do things the ticket does not ask for.",
+     "file": "docs/roadmaps/roadmap.yaml",
+     "grounding": "cited",
+     "line": 4015
+    },
+    {
+     "claim": "The `--strict` CLI flag is ignored by the pre-commit SATD check. `generate_quality_checks` hardcodes `u8::from(config.hooks.strict)` directly from the config file, ignoring the CLI flag passed to `install`. The ticket explicitly requires `pmat hooks install --strict` to make the SATD check exit 1.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "grounding": "cited",
+     "line": 86
+    },
+    {
+     "claim": "The pre-commit hook template exports `PMAT_TASK_ID_PATTERN=\"{}\"`, but the block that actually used this variable (Task ID validation) was deleted further down in the file. This is dead code left behind.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "grounding": "cited",
+     "line": 80
+    }
+   ],
+   "raw_bytes": 4082
+  },
+  {
+   "lane": 3,
+   "verdict": "FAIL",
+   "summary": "The diff contains multiple severe flaws, including tests that assert the opposite of the ticket, weakening of enforcement during updates, and ignoring CLI flags.",
+   "findings": [
+    {
+     "claim": "A test explicitly claims that the ticket trailer is advisory under strict mode and uses a vacuous assertion to pass, directly contradicting the ticket.",
+     "file": "src/cli/handlers/hooks_command_handlers/commit_enforcement_tests.rs",
+     "grounding": "cited",
+     "line": 149
+    },
+    {
+     "claim": "The comply check hardcodes strict: false when installing hooks, wiping out strict mode on update.",
+     "file": "src/cli/handlers/comply_handlers/check_handlers/types.rs",
+     "grounding": "cited",
+     "line": 689
+    },
+    {
+     "claim": "The pre-commit SATD check reads config.hooks.strict and ignores the --strict CLI flag passed into install.",
+     "file": "src/cli/handlers/hooks_command_handlers/hook_generation.rs",
+     "grounding": "cited",
+     "line": 93
+    },
+    {
+     "claim": "The receipt states there are 5 tests driving git commit, but there are only 4.",
+     "file": "docs/audits/impl-PMAT-655-receipt.md",
+     "grounding": "cited",
+     "line": 13
+    }
+   ],
+   "raw_bytes": 6757
+  }
+ ]
+}
