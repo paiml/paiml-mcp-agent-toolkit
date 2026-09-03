@@ -3930,3 +3930,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-649
+  github_issue: null
+  item_type: task
+  title: comply check panics on a char boundary in check_contract_surfaces.rs:961 (lean_theorem block slicing) — reported by the aprender release session, PMAT-742 there
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T10:14:21Z
+  updated: 2026-09-03T10:30:10.021112151+00:00
+  spec: null
+  acceptance_criteria:
+  - 'pmat 3.34.0 on paiml/aprender main 68b059ca9: thread comply-2 panicked at src/cli/handlers/comply_handlers/check_handlers/check_contract_surfaces.rs:961:23: end byte index 1000 is not a char boundary; it is inside a box-drawing char. The scan slices &block[..start + "lean_theorem:".len()] by byte arithmetic. Fix in pmat: slice on the found line''s start / floor_char_boundary. Repro: cd /mnt/nvme-raid0/agent-wt/pp-base && RUST_BACKTRACE=1 pmat comply check --format json. Contracts: contracts/document-integrity-v1.yaml, contracts/aprender/apr-serve-v1.yaml, contracts/aprender/apr-architecture-schema-v1.yaml. COORDINATION 2026-09-03: the aprender release session (its PMAT-742) said it will open a small PR against pmat for :961 (is_char_boundary guard + regression test with a box-drawing line after a lean_theorem block) — check for that PR before starting; aprender carries a disclosed, reversible stopgap meanwhile. Patch release still owed after merge.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
