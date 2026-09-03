@@ -522,7 +522,18 @@ pub enum Commands {
     // ── Scoring commands ───────────────────────────────────────────
     /// Run quality gate checks on the codebase
     // `verify` is now the dedicated CI-faithful pre-flight command (see `Verify`).
-    #[command(visible_aliases = &["check", "c", "gate"])]
+    #[command(
+        visible_aliases = &["check", "c", "gate"],
+        long_about = "Run quality gate checks on the codebase.\n\n\
+            The dead-code check shells out to `cargo check` on the crate enclosing the path; a crate \
+            that does not compile is reported under `results.not_measured` (reason: could not compile), \
+            a path with no Cargo.toml under `results.not_applicable`. The coverage check reads a report \
+            someone else produced (.pmat/coverage-cache.json or .pmat-metrics/coverage.json) and rejects \
+            one whose git_hash is not HEAD-or-ancestor, that is older than the newest tracked source, or \
+            that covers too few source files — the rejection names the guard. `identical_files` counts \
+            whole files with byte-identical content; block-level clone detection is not part of this \
+            gate (see `pmat analyze duplicates`) and is disclosed under `results.not_measured`."
+    )]
     QualityGate {
         /// Project path to analyze (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]

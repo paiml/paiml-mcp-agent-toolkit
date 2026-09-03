@@ -16,7 +16,14 @@ pub struct QualityGateResults {
     pub satd_violations: usize,
     pub entropy_violations: usize,
     pub security_violations: usize,
-    pub duplicate_violations: usize,
+    /// Files whose entire content is byte-identical to another file's.
+    ///
+    /// This was `identical_files`, and the gate's word "duplicate" read
+    /// as the block-level detector `analyze duplicates` runs (21.67 % on this
+    /// tree). The gate hashes WHOLE files, so it reported 0 beside that number.
+    /// Named for what it measures; the block-level count is a separate item and
+    /// is disclosed in `not_measured` under `duplicates` (CRUX-02, #1153).
+    pub identical_files: usize,
     pub coverage_violations: usize,
     pub section_violations: usize,
     pub provability_violations: usize,
@@ -60,6 +67,29 @@ pub struct QualityGateResults {
     /// `entropy_violations` beside it reported 3 — a count heading a list that
     /// contradicted it. A consumer reading `results.violations` saw nothing.
     pub violations: Vec<String>,
+    /// Advertised checks that RAN but could not measure their subject, with
+    /// the reason — `dead_code` on a crate `cargo check` cannot compile,
+    /// `coverage` whose cache failed a guard, `duplicates` whose block-level
+    /// half has no detector behind the gate. Always serialized: an empty list
+    /// is the positive claim that every selected check measured what it
+    /// claims to (CRUX-02, #1153).
+    pub not_measured: Vec<UnmeasuredCheck>,
+    /// Advertised checks that do not apply to this path at all — `dead_code`
+    /// with no `Cargo.toml` at or above it. Kept apart from `not_measured` so
+    /// a non-Rust repository is not permanently amber for a check that has
+    /// nothing to measure. Always serialized.
+    pub not_applicable: Vec<UnmeasuredCheck>,
+}
+
+/// One check the gate could not measure (or could not apply) for one path.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct UnmeasuredCheck {
+    /// The check's name, spelled the way `--checks` spells it.
+    pub check: String,
+    /// The path it was not measured for.
+    pub path: String,
+    /// Why — names the guard or the failure, never a generic sentence.
+    pub reason: String,
 }
 
 impl QualityGateResults {
@@ -85,7 +115,7 @@ impl QualityGateResults {
         self.satd_violations = violations.iter().filter(|v| v.check_type == "satd").count();
         self.entropy_violations = violations.iter().filter(|v| v.check_type == "entropy").count();
         self.security_violations = violations.iter().filter(|v| v.check_type == "security").count();
-        self.duplicate_violations = violations.iter().filter(|v| v.check_type == "duplicates").count();
+        self.identical_files = violations.iter().filter(|v| v.check_type == "duplicates").count();
         self.coverage_violations = violations.iter().filter(|v| v.check_type == "coverage").count();
         self.section_violations = violations.iter().filter(|v| v.check_type == "sections").count();
         self.provability_violations = violations.iter().filter(|v| v.check_type == "provability").count();
@@ -102,6 +132,8 @@ impl Default for QualityGateResults {
             files_examined: 0,
             files_not_read: std::collections::BTreeMap::new(),
             checks_run: Vec::new(),
+            not_measured: Vec::new(),
+            not_applicable: Vec::new(),
             total_violations: 0,
             blocking_violations: 0,
             complexity_violations: 0,
@@ -109,7 +141,7 @@ impl Default for QualityGateResults {
             satd_violations: 0,
             entropy_violations: 0,
             security_violations: 0,
-            duplicate_violations: 0,
+            identical_files: 0,
             coverage_violations: 0,
             section_violations: 0,
             provability_violations: 0,
@@ -317,5 +349,31 @@ fn is_test_filename(path: &Path) -> bool {
         is_excluded_filename(&fname)
     } else {
         false
+    }
+}
+
+#[cfg(test)]
+mod unmeasured_shape_tests {
+    use super::*;
+
+    /// CRUX-02 leg 3 and the disclosure lists: the payload names what it
+    /// measured (`identical_files`), never the word it used to borrow
+    /// (`duplicate_violations`), and both disclosure lists serialize even when
+    /// empty — an absent key would be the ambiguity these remove.
+    #[test]
+    fn the_results_payload_carries_the_honest_name_and_both_disclosure_lists() {
+        let mut r = QualityGateResults::default();
+        r.not_measured.push(UnmeasuredCheck {
+            check: "dead_code".into(),
+            path: "/x".into(),
+            reason: "could not compile: `cargo check` failed (error: e)".into(),
+        });
+        let v = serde_json::to_value(&r).expect("serialize");
+        assert!(v.get("duplicate_violations").is_none(), "the misleading key must be gone");
+        assert_eq!(v["identical_files"], 0);
+        assert_eq!(v["not_measured"][0]["check"], "dead_code");
+        assert!(v["not_applicable"].as_array().is_some_and(Vec::is_empty), "empty list, not absent");
+        let empty = serde_json::to_value(QualityGateResults::default()).expect("serialize");
+        assert!(empty["not_measured"].as_array().is_some_and(Vec::is_empty));
     }
 }

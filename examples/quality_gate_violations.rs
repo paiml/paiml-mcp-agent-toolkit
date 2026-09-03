@@ -30,6 +30,8 @@ fn main() {
         // is a different claim from an absent key.
         files_not_read: std::collections::BTreeMap::new(),
         checks_run: Vec::new(),
+        not_measured: Vec::new(),
+        not_applicable: Vec::new(),
         passed: false,
         total_violations: 5,
         // Of the 5 findings, 4 are verdict-bearing (warning/error) and one is
@@ -41,7 +43,7 @@ fn main() {
         satd_violations: 1,
         entropy_violations: 1,
         security_violations: 0,
-        duplicate_violations: 0,
+        identical_files: 0,
         coverage_violations: 0,
         section_violations: 0,
         provability_violations: 0,

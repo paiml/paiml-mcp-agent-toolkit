@@ -170,7 +170,7 @@ fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) 
         ("SATD", results.satd_violations),
         ("Entropy", results.entropy_violations),
         ("Security", results.security_violations),
-        ("Duplicates", results.duplicate_violations),
+        ("Duplicates", results.identical_files),
         ("Coverage", results.coverage_violations),
         ("Sections", results.section_violations),
         ("Provability", results.provability_violations),

@@ -127,7 +127,7 @@ pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolatio
     let mut file_hashes: HashMap<u64, Vec<PathBuf>> = HashMap::new();
 
     collect_file_hashes(project_path, &mut file_hashes).await?;
-    generate_duplicate_violations(&file_hashes, &mut violations);
+    generate_identical_files(&file_hashes, &mut violations);
 
     Ok(violations)
 }
@@ -199,7 +199,7 @@ fn is_file_large_enough(normalized_content: &str) -> bool {
 }
 
 /// Generate duplicate violation reports from hash map
-fn generate_duplicate_violations(
+fn generate_identical_files(
     file_hashes: &std::collections::HashMap<u64, Vec<PathBuf>>,
     violations: &mut Vec<QualityViolation>,
 ) {
@@ -338,10 +338,10 @@ mod security_duplicates_tests {
         assert!(is_file_large_enough(&"x".repeat(1000)));
     }
 
-    // ── generate_duplicate_violations + create_violations_for_duplicate_group ──
+    // ── generate_identical_files + create_violations_for_duplicate_group ──
 
     #[test]
-    fn test_generate_duplicate_violations_emits_one_per_file_in_dup_group() {
+    fn test_generate_identical_files_emits_one_per_file_in_dup_group() {
         let mut map: std::collections::HashMap<u64, Vec<PathBuf>> =
             std::collections::HashMap::new();
         map.insert(
@@ -351,17 +351,17 @@ mod security_duplicates_tests {
         // Singleton group should be ignored.
         map.insert(99, vec![PathBuf::from("src/solo.rs")]);
         let mut v: Vec<QualityViolation> = Vec::new();
-        generate_duplicate_violations(&map, &mut v);
+        generate_identical_files(&map, &mut v);
         assert_eq!(v.len(), 2);
         assert!(v.iter().all(|x| x.check_type == "duplicate"));
         assert!(v.iter().all(|x| x.severity == "warning"));
     }
 
     #[test]
-    fn test_generate_duplicate_violations_empty_map_produces_nothing() {
+    fn test_generate_identical_files_empty_map_produces_nothing() {
         let map: std::collections::HashMap<u64, Vec<PathBuf>> = std::collections::HashMap::new();
         let mut v: Vec<QualityViolation> = Vec::new();
-        generate_duplicate_violations(&map, &mut v);
+        generate_identical_files(&map, &mut v);
         assert!(v.is_empty());
     }
 
