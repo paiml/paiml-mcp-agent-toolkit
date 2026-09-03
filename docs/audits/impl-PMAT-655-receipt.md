@@ -27,7 +27,7 @@
 | acceptance script (`scripts/commit-enforcement-audit.sh`) against this tree's build | GREEN, exit 0 (4 legs) — measured on the pre-quorum tree; re-measured on the final tree in the PR body |
 | `bashrs lint scripts/commit-enforcement-audit.sh` | 0 errors |
 | `pv validate` / `pv lint contracts/commit-enforcement-v1.yaml` | valid; PASS |
-| `pmat verify --format json` | PENDING |
+| `pmat verify --format json` | exit 0 on 124d2abcc — see the detailed row above; the receipt commit after it is docs-only |
 
 ## Jidoka
 The old pre-commit task-ID check read `$1`, which a pre-commit hook never receives — it had never run. Recorded in the hook text; the check now lives where the message is.
@@ -38,4 +38,4 @@ The old pre-commit task-ID check read `$1`, which a pre-commit hook never receiv
 - [A] `--no-verify` is not blocked here (it cannot be from inside a hook); AD-07's comply check over the branch is the catch.
 
 ## Verdict
-PENDING — DONE when the GREEN run and verify are recorded and the PR merges.
+**DONE** once the PR merges green: RED and GREEN both measured, the named mutation observed, `pmat verify` exit 0 on the cascaded tree, the AD-04 quorum agreed on the AD-03-only diff, contract `contracts/commit-enforcement-v1.yaml` in the same PR.
