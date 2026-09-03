@@ -119,38 +119,21 @@ fn inapplicable_pmat_toml_sections(project_path: &Path) -> Vec<(String, Option<S
         .collect()
 }
 
-/// The top-level sections `pmat.toml` may contain, read off `PmatConfig` itself.
-///
-/// Derived, not listed: the serialised default config IS the schema, so the
-/// accepted set cannot fall behind the struct the readers deserialise.
+/// The top-level sections `pmat.toml` may contain — the SAME derived set
+/// `pmat config --validate` uses, from `configuration_service`.
 fn schema_pmat_toml_sections() -> std::collections::BTreeSet<String> {
-    use crate::services::configuration_service::ConfigurationService;
-
-    toml::Value::try_from(ConfigurationService::default_config())
-        .ok()
-        .and_then(|v| match v {
-            toml::Value::Table(t) => Some(t.keys().cloned().collect()),
-            _ => None,
-        })
-        .unwrap_or_default()
+    crate::services::configuration_service::schema_pmat_toml_sections()
 }
 
-/// The known section a misspelling most likely meant, or `None` when nothing is
-/// close enough to name without guessing.
-///
-/// Deliberately conservative: only a shared prefix in either direction counts,
-/// which is what turns `[quality_gate]` into "did you mean `[quality]`?" while
-/// leaving `[markdown]` — a section that was never a near-miss for anything —
-/// unannotated rather than pointed at an unrelated one.
+/// One list, shared with `pmat config --validate`: both the gate and the
+/// validator call `crate::services::configuration_service::nearest_known_section`,
+/// so a section the gate blocks on is a section the validator names, with the
+/// same suggestion (CRUX-03 leg 3d).
 fn nearest_known_section(
     unknown: &str,
     known: &std::collections::BTreeSet<String>,
 ) -> Option<String> {
-    known
-        .iter()
-        .filter(|k| unknown.starts_with(k.as_str()) || k.starts_with(unknown))
-        .max_by_key(|k| k.len())
-        .cloned()
+    crate::services::configuration_service::nearest_known_section(unknown, known)
 }
 
 /// Handles project-wide quality gate checks
