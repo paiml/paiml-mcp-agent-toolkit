@@ -133,25 +133,19 @@ echo "✓ Git hooks configured"
 # Create pmat.toml if it doesn't exist (should already exist)
 if [ ! -f "pmat.toml" ]; then
     echo "⚙️  Creating pmat.toml configuration..."
+    # Only sections and keys pmat actually reads. The previous heredoc wrote
+    # [quality_gate], [documentation] and [toyota_way] — none of which any
+    # reader in pmat consults — so a fresh project got a config whose every
+    # threshold silently fell through to the built-in defaults, and since
+    # #1105 `pmat quality-gate` blocks on it as "no part of pmat reads".
+    # `[quality]` is the section the complexity/SATD/coverage thresholds live
+    # in; verify with `pmat config --validate` (CRUX-03, #1147).
     cat > pmat.toml << 'EOF'
-[quality_gate]
-max_cyclomatic_complexity = 30
+[quality]
+max_complexity = 30
 max_cognitive_complexity = 25
-max_satd_comments = 0
-min_test_coverage = 80.0
-
-[documentation]
-required_updates = [
-    "docs/execution/roadmap.md",
-    "docs/execution/quality-gates.md", 
-    "CHANGELOG.md"
-]
-task_id_pattern = "PMAT-[0-9]{4}"
-
-[toyota_way]
-enable_mcp_first_dogfooding = true
-require_genchi_genbutsu_analysis = true
-enforce_jidoka_automation = true
+allow_satd = false
+min_coverage = 80.0
 EOF
     echo "✓ pmat.toml configuration created"
 else

@@ -14,7 +14,7 @@ Legs consulted (3):
 - `feature-matrix.yml:feature-tests[mcp-integration]`
 - `feature-matrix.yml:feature-tests[unified-protocol]`
 
-23690 of 26918 lib tests are executed; 3228 are compiled by no leg.
+23700 of 26928 lib tests are executed; 3228 are compiled by no leg.
 
 ## `<unsatisfiable>` — 2199 test(s)
 
