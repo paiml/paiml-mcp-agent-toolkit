@@ -1,0 +1,79 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-03"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-architecture-crux-audit.md section 8.4 (CRUX-04, epic 1153)"
+    - "issue 748 (CLOSED) — the hooks cache keyed on HEAD^{tree} was invariant to the change it gated; moved to git write-tree"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    pmat analyze dead-code memoised cargo check on git rev-parse HEAD: — the
+    committed tree, byte-identical before and after any uncommitted edit — so
+    a warm run replayed 0 dead functions over a function appended a second
+    ago, and 1 dead function on line 9 of an 8-line file once the edit was
+    reverted; and a replay that opened no file and exec'd no compiler still
+    said compiler-lint-ran in the present tense with no cache marker. The key
+    is now the working tree (a scratch-index git write-tree; the user's index
+    is untouched), the report carries cache {hit, tree_hash, written_at,
+    pmat_version}, a replay says compiler-lint-cached, a schema-4 entry is a
+    miss, and --no-cache is the escape hatch.
+  contract: dead-code-cache
+  status: draft
+
+equations:
+  key_is_the_working_tree:
+    formula: "key(tree) = write-tree(scratch index filled by git add -A) ; fallback HEAD^{tree} ; None outside git => nothing cached"
+    domain: "any analyze dead-code run on a Rust crate inside a git checkout"
+    codomain: "tree hash"
+    invariants:
+      - "an unstaged edit changes the key; reverting it restores the key (states A, C, E)"
+      - "the user's index is never read or written; the scratch index is removed after use"
+      - "an entry written under the previous schema is a miss (state G)"
+    preconditions: []
+
+  replay_and_exec_count_move_together:
+    formula: "cache.hit == true  <=> 0 cargo check execs in this invocation and compiler_scan.reason == compiler-lint-cached ; cache.hit == false <=> exactly 1 cargo check exec and reason == compiler-lint-ran"
+    domain: "states A-E of scripts/dead-code-cache-audit.sh, with a PATH shim counting cargo execs"
+    codomain: bool
+    invariants:
+      - "state D (rerun after an uncommitted edit) is a HIT: a fix that bypasses the cache on any dirty tree fails here"
+      - "a reduced compiler scan replayed keeps its own reason; only the cache object says it was replayed"
+      - "--no-cache forces exactly one cargo check and hit == false"
+    preconditions: []
+
+  the_gate_sees_the_working_tree:
+    formula: "quality-gate --checks dead-code on state C reports the uncommitted dead function (same analyzer, use_cache on)"
+    domain: "state F of the acceptance script"
+    codomain: bool
+    invariants:
+      - "with the cache deleted, states A/C/E answer 0/1/0 (control: a fix that changed the answers rather than the key is caught)"
+    preconditions: []
+
+falsification:
+  - condition: "a warm run over an uncommitted dead function reports 0, or a run after reverting reports the reverted function (CRUX-04)"
+    severity: P0
+    action: reject_push
+  - condition: "a run with zero cargo execs reports compiler-lint-ran, or omits cache.hit"
+    severity: P0
+    action: reject_push
+  - condition: "a schema-4 cache entry is served after upgrade"
+    severity: P1
+    action: reject_push
+
+falsification_tests:
+  - id: key_is_the_working_tree
+    rule: "unstaged edit => new key; revert => old key; index untouched; old schema => miss"
+    prediction: "working_tree_key_tests (5) pass; states A, C, E, G of scripts/dead-code-cache-audit.sh"
+    test: "cargo test --lib working_tree_key_tests"
+    if_fails: "the cache answers for the last commit, not the checkout being analysed"
+  - id: replay_and_exec_count_move_together
+    rule: "hit pairs with +0 execs and compiler-lint-cached; miss with +1 and compiler-lint-ran"
+    prediction: "states B and D (hit, +0), A/C/E (miss, +1), and the --no-cache leg of the script"
+    test: "bash scripts/dead-code-cache-audit.sh against the release binary"
+    if_fails: "a 0.2 s replay is byte-identical to a 50 s compiler pass"
+  - id: the_gate_sees_the_working_tree
+    rule: "quality-gate --checks dead-code counts an uncommitted dead function; cache-deleted control answers 0/1/0"
+    prediction: "state F and the control legs of the script"
+    test: "bash scripts/dead-code-cache-audit.sh"
+    if_fails: "the pre-commit gate is stale for exactly the change it gates"

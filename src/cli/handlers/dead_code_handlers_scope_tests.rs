@@ -73,6 +73,7 @@ fn narrowed_result() -> DeadCodeResult {
         files_truncated: false,
         library_target: None,
         compiler_scan: None,
+        cache: None,
     }
 }
 
@@ -300,6 +301,7 @@ fn the_multi_language_path_reports_one_analyzed_file_count() {
         include: Vec::new(),
         exclude: Vec::new(),
         max_depth: 10,
+        no_cache: false,
     };
     let outcome =
         super::run_multi_language_dead_code(root, &filters, "python").expect("analysis runs");
@@ -336,6 +338,7 @@ fn the_multi_language_path_discloses_the_files_it_did_not_read() {
         include: Vec::new(),
         exclude: Vec::new(),
         max_depth: 10,
+        no_cache: false,
     };
     let outcome =
         super::run_multi_language_dead_code(root, &filters, "python").expect("analysis runs");

@@ -1790,6 +1790,22 @@ real consumers are `quality-gate --checks dead-code` and the MCP `analyze_dead_c
 falsifier **with the cache deleted** before building a recall corpus: that injection was into a
 working tree, so "the detector misses it entirely" is plausibly this cache, not a recall gap.
 
+*Implementation note (PMAT-648, 2026-09-03).* Landed as proposed, with one recorded deviation:
+`git write-tree` **verbatim** hashes the index, and a pre-commit hook gates the index — but this
+analyzer reads the checkout, and the item's own state C is an *unstaged* edit, which the index
+does not contain. The key is therefore `write-tree` of a **scratch index** filled by `git add -A`
+(`GIT_INDEX_FILE` under `.git/`, removed after use; the user's index is never read or written),
+with the `HEAD^{tree}` fallback kept and `None` outside git (nothing cached). Measured 0.26 s on
+this 4,019-file tree. `DEAD_CODE_CACHE_SCHEMA` 4 → 5 (state G); `cache {hit, tree_hash,
+written_at, pmat_version}` on the analyzer report, the CLI JSON/SARIF/text/markdown outputs and the
+MCP per-path object; a replay rewrites a full scan's reason to `compiler-lint-cached` (past tense,
+naming the entry's timestamp) and leaves a reduced scan's reason alone; `--no-cache` added.
+Acceptance: `scripts/dead-code-cache-audit.sh` (shim on PATH counting cargo execs; states A–E, F,
+G, the cache-deleted control, and `--no-cache`): pre-fix binary exit 1 at state A (no `cache`
+object); fixed tree exit 0. Named mutation: the key reverted to `git rev-parse HEAD:` fails
+`an_unstaged_edit_changes_the_key_and_a_revert_restores_it` and the miss half of
+`a_replay_is_marked_as_a_hit_with_a_cached_verdict`.
+
 ---
 
 ### 8.5 CRUX-05 — one `Cargo.toml` line disables clap's usage, error-context and suggestions

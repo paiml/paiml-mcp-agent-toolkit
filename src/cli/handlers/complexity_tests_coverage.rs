@@ -439,6 +439,7 @@ mod coverage_tests {
             include: vec![],
             exclude: vec![],
             max_depth: 10,
+            no_cache: false,
         };
 
         assert!(!filters.include_unreachable);
@@ -460,6 +461,7 @@ mod coverage_tests {
             include: vec!["src/".to_string()],
             exclude: vec!["vendor/".to_string()],
             max_depth: 5,
+            no_cache: false,
         };
 
         assert!(filters.include_unreachable);

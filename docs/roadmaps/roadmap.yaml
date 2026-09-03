@@ -3913,3 +3913,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-648
+  github_issue: null
+  item_type: task
+  title: 'CRUX-04: the dead-code cache is keyed on the committed tree — key on git write-tree, disclose cache.hit and compiler-lint-cached, add --no-cache'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T08:36:40Z
+  updated: 2026-09-03T08:36:40Z
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.4, epic 1153, precedent #748. P1 key = git write-tree (temp index) with HEAD^{tree} fallback, schema bump (old cache = miss); P2 cache object {hit, tree_hash, written_at, pmat_version} and reason compiler-lint-ran|compiler-lint-cached in CLI JSON and the MCP analyze_dead_code mirror, --no-cache flag; P3 quality-gate --checks dead-code sees an uncommitted dead fn; P4 shim-based acceptance script A-G, pv contract, mutation.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
