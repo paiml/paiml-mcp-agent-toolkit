@@ -32,6 +32,7 @@ fn unwrap_metric(band: u64) -> BTreeMap<String, MetricBaseline> {
             description: "test".into(),
             justification: None,
             zero_is_reachable: false,
+            analyzer: None,
         },
     );
     m

@@ -177,6 +177,7 @@ fn baseline(v: i64, justification: Option<&str>) -> MetricBaseline {
         description: "d".into(),
         justification: justification.map(str::to_string),
         zero_is_reachable: false,
+        analyzer: None,
     }
 }
 
@@ -287,7 +288,7 @@ fn every_committed_metric_command_still_measures() {
     let cfg = RatchetConfig::load(repo_root()).expect("the ratchet file parses");
     assert!(!cfg.metric.is_empty(), "an empty ratchet is not a gate");
     for (id, m) in &cfg.metric {
-        match measure::measure(repo_root(), &m.command) {
+        match measure::measure_metric(repo_root(), m) {
             Measurement::Value(_) => {}
             Measurement::Unavailable(why) => {
                 panic!(

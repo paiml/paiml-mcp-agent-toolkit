@@ -297,6 +297,9 @@ fn the_match_and_the_table_return_the_same_row() {
         path: std::path::PathBuf::from("."),
         format: "summary".to_string(),
         fail_on_orphan: false,
+        write_ledger: false,
+        allow_dirty: false,
+        check_ledger: false,
     };
     let from_match: AnalyzeMcpDecl = analyze_mcp_exposure(&cmd);
     let from_table = declaration_for("reachability").copied();

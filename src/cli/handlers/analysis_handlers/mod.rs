@@ -123,10 +123,14 @@ pub(super) fn reject_unimplemented_ml(ml: bool, command: &str, scores: &str) -> 
 /// Report tracked `.rs` files that no compilation unit reaches.
 async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
     use crate::services::reachability;
+    use crate::services::reachability_ledger as ledger;
     let cli::AnalyzeCommands::Reachability {
         path,
         format,
         fail_on_orphan,
+        write_ledger,
+        allow_dirty,
+        check_ledger,
     } = cmd
     else {
         unreachable!("Expected Reachability command")
@@ -143,6 +147,12 @@ async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
         );
     }
     let report = reachability::analyze(&path, &roots, &tracked);
+
+    if write_ledger {
+        ledger::write(&path, &report, allow_dirty).map_err(anyhow::Error::msg)?;
+        println!("wrote {}", ledger::LEDGER_PATH);
+        return Ok(());
+    }
 
     if format == "json" {
         println!(
@@ -205,10 +215,45 @@ async fn route_reachability(cmd: cli::AnalyzeCommands) -> anyhow::Result<()> {
         }
     }
 
-    if fail_on_orphan && !report.orphans.is_empty() {
+    let mut failed = fail_on_orphan && !report.orphans.is_empty();
+    if check_ledger {
+        let drift = ledger::check(&path, &report);
+        if drift.is_clean() {
+            println!("ledger is current: {}", ledger::LEDGER_PATH);
+        } else {
+            report_reachability_ledger_drift(&drift);
+            failed = true;
+        }
+    }
+    if failed {
         std::process::exit(1);
     }
     Ok(())
+}
+
+fn report_reachability_ledger_drift(drift: &crate::services::reachability_ledger::Drift) {
+    use crate::services::reachability_ledger::LEDGER_PATH;
+    eprintln!("{LEDGER_PATH} has drifted from the tree:");
+    for p in &drift.added {
+        eprintln!("  NEWLY UNREACHABLE  {p} — add a `pending-#<issue>` row, or register the file");
+    }
+    for p in &drift.removed {
+        eprintln!("  STALE ROW  {p} — no longer unreachable; mark it registered-<target> or deleted-<reason>");
+    }
+    for r in &drift.refuted {
+        eprintln!("  REFUTED  {r}");
+    }
+    for l in &drift.malformed {
+        eprintln!("  MALFORMED  {l}");
+    }
+    if drift.added.is_empty()
+        && drift.removed.is_empty()
+        && drift.refuted.is_empty()
+        && drift.malformed.is_empty()
+        && drift.text_differs
+    {
+        eprintln!("  the rendered ledger differs from the committed copy — re-run --write-ledger");
+    }
 }
 
 #[cfg(test)]

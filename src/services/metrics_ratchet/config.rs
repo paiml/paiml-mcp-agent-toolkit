@@ -108,6 +108,20 @@ pub struct MetricBaseline {
     /// a command line. Set it when a metric is genuinely converging on zero.
     #[serde(default)]
     pub zero_is_reachable: bool,
+    /// Measure this metric IN-PROCESS by a named analyzer instead of by
+    /// spawning `command` — `command` stays the shell reproduction a human
+    /// or a script cross-checks against.
+    ///
+    /// Exists for one reason: a `command` that runs `pmat` resolves it from
+    /// `$PATH`, which is whatever pmat happens to be installed — the defect
+    /// CRUX-19 names in `pmat score` — and is absent altogether under
+    /// `cargo test --lib` in CI, where `the_committed_ratchet_holds_at_head`
+    /// runs every metric. An analyzer this crate already contains is measured
+    /// by calling it. Known names: `reachability.orphan_count`,
+    /// `reachability.quarantined_count`. An unknown name is `Unavailable`,
+    /// never a zero (CRUX-12, #1152).
+    #[serde(default)]
+    pub analyzer: Option<String>,
 }
 
 /// Declarations that make the `.pmat-metrics.toml` audit total.

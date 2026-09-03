@@ -62,7 +62,56 @@ pub fn measure_all(
 /// read `0 <= 20390` as a Pass. Both gates went green on a metric that had
 /// stopped measuring anything at all.
 pub fn measure_metric(project_path: &Path, metric: &MetricBaseline) -> Measurement {
-    guard_zero(measure(project_path, &metric.command), metric)
+    let raw = match metric.analyzer.as_deref() {
+        Some(name) => measure_analyzer(project_path, name),
+        None => measure(project_path, &metric.command),
+    };
+    guard_zero(raw, metric)
+}
+
+/// Measure by calling an analyzer this crate contains, in-process.
+///
+/// No `pmat` is spawned: a `command` that ran `pmat` would resolve whichever
+/// pmat is first on `$PATH` (CRUX-19's defect, in a gate about honesty), and
+/// under `cargo test --lib` in CI there is none. The `command` field still
+/// carries the shell reproduction, and `drive_tests` cross-checks the two on a
+/// tree where both can run. An unknown analyzer name is `Unavailable` — a
+/// metric that names something this build cannot measure has rotted, and must
+/// not read as zero.
+fn measure_analyzer(project_path: &Path, name: &str) -> Measurement {
+    match name {
+        "reachability.orphan_count" | "reachability.quarantined_count" => {
+            use crate::services::reachability;
+            let (roots, tracked) = match reachability::discover(project_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Measurement::Unavailable(format!(
+                        "reachability discovery failed under {}: {e}",
+                        project_path.display()
+                    ))
+                }
+            };
+            if roots.is_empty() {
+                return Measurement::Unavailable(format!(
+                    "no cargo targets found under {} — reachability could not be measured",
+                    project_path.display()
+                ));
+            }
+            let report = reachability::analyze(project_path, &roots, &tracked);
+            let n = if name == "reachability.orphan_count" {
+                report.orphans.len()
+            } else {
+                report.quarantined.len()
+            };
+            match i64::try_from(n) {
+                Ok(v) => Measurement::Value(v),
+                Err(_) => Measurement::Unavailable("count does not fit in i64".into()),
+            }
+        }
+        other => Measurement::Unavailable(format!(
+            "unknown analyzer `{other}` — this build has no in-process measurement by that name"
+        )),
+    }
 }
 
 /// Turn an unexplained zero into an `Unavailable`. Pure, so the falsification
