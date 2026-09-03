@@ -235,13 +235,17 @@ mod dead_code_outcome_tests {
         let tmp = crate_with("pub fn broken( {\n");
         let rt = tokio::runtime::Runtime::new().expect("rt");
         let o = rt.block_on(check_dead_code_outcome(tmp.path(), 15.0)).expect("outcome");
-        let u = o.not_measured.unwrap_or_else(|| {
-            panic!(
-                "not_measured must be set for an uncompilable crate; outcome was: \
-                 violations={:?} not_applicable={:?}",
-                o.violations, o.not_applicable
-            )
-        });
+        // The whole outcome is in the message so a red run names the path the
+        // analyzer took (the ratchet counts `panic!(` sites, so an assert, not
+        // a panic, carries the diagnostic).
+        assert!(
+            o.not_measured.is_some(),
+            "not_measured must be set for an uncompilable crate; outcome was: \
+             violations={:?} not_applicable={:?}",
+            o.violations,
+            o.not_applicable
+        );
+        let u = o.not_measured.expect("checked above");
         assert_eq!(u.check, "dead_code");
         assert!(u.reason.contains("could not compile"), "{}", u.reason);
         assert!(o.not_applicable.is_none());
