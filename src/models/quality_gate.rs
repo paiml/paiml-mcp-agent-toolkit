@@ -21,7 +21,7 @@ pub struct QualityGateResults {
     pub satd_violations: usize,
     pub entropy_violations: usize,
     pub security_violations: usize,
-    pub identical_files: usize,
+    pub duplicate_violations: usize,
     pub coverage_violations: usize,
     pub section_violations: usize,
     pub violations: Vec<QualityViolation>,
@@ -55,7 +55,7 @@ impl Default for QualityGateResults {
             satd_violations: 0,
             entropy_violations: 0,
             security_violations: 0,
-            identical_files: 0,
+            duplicate_violations: 0,
             coverage_violations: 0,
             section_violations: 0,
             violations: Vec::new(),
@@ -124,7 +124,7 @@ mod tests {
         assert_eq!(results.satd_violations, 0);
         assert_eq!(results.entropy_violations, 0);
         assert_eq!(results.security_violations, 0);
-        assert_eq!(results.identical_files, 0);
+        assert_eq!(results.duplicate_violations, 0);
         assert_eq!(results.coverage_violations, 0);
         assert_eq!(results.section_violations, 0);
         assert!(results.violations.is_empty());
@@ -226,7 +226,7 @@ mod tests {
             satd_violations: 0,
             entropy_violations: 0,
             security_violations: 0,
-            identical_files: 0,
+            duplicate_violations: 0,
             coverage_violations: 0,
             section_violations: 0,
             violations: vec![QualityViolation {

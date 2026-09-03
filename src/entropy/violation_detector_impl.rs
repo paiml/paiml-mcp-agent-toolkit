@@ -37,7 +37,7 @@ impl ViolationDetector {
 
         // TOYOTA WAY FIX: Deduplicate violations to prevent false inflation
         // Issue: Same pattern reported by multiple detection methods
-        violations = self.deidentical_files(violations);
+        violations = self.deduplicate_violations(violations);
 
         // Sort by priority, then by message and affected file. Without the
         // tie-breaks a stable sort just preserves whatever order dedup produced,
@@ -341,7 +341,7 @@ impl ViolationDetector {
     ///
     /// Issue: Same pattern can be detected by multiple methods (repetitive, cross-file, etc.)
     /// causing inflated violation counts. This deduplicates based on pattern type and core message.
-    fn deidentical_files(
+    fn deduplicate_violations(
         &self,
         violations: Vec<ActionableViolation>,
     ) -> Vec<ActionableViolation> {
