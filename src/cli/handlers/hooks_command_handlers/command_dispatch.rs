@@ -307,134 +307,25 @@ async fn handle_run(
     if use_cache {
         let project_root = std::env::current_dir()?;
         let cache_manager = crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
-
         // Initialize cache if it doesn't exist
         if !project_root.join(".pmat/hooks-cache").exists() {
             let _ = cache_manager.init();
         }
-
-        match cache_manager.check() {
-            Ok(crate::tdg::hooks_cache::CacheCheckResult::Hit { result, cached_at }) => {
-                let elapsed = start_time.elapsed();
-
-                if verbose {
-                    println!("{} O(1) Cache HIT - Skipping full analysis", c::pass(""));
-                    println!("   {}: {:?}", c::dim("Cached result"), result);
-                    println!(
-                        "   {}: {}",
-                        c::dim("Cached at"),
-                        cached_at.format("%Y-%m-%d %H:%M:%S UTC")
-                    );
-                    println!(
-                        "   {}: {:.2}ms",
-                        c::dim("Check time"),
-                        elapsed.as_secs_f64() * 1000.0
-                    );
-                }
-
-                // Record the cache hit
-                let _ = cache_manager.record_run(true, elapsed.as_millis() as u64);
-
-                match result {
-                    crate::tdg::hooks_cache::CacheResult::Pass => {
-                        println!(
-                            "{} {}",
-                            c::pass("All quality gates passed"),
-                            c::dim("(cached)")
-                        );
-                        return Ok(());
-                    }
-                    crate::tdg::hooks_cache::CacheResult::Fail => {
-                        println!("{} {}", c::fail("Quality gates failed"), c::dim("(cached)"));
-                        return Err(anyhow::anyhow!("Pre-commit checks failed (cached)"));
-                    }
-                    crate::tdg::hooks_cache::CacheResult::Warn => {
-                        println!(
-                            "{} {}",
-                            c::warn("Quality gates passed with warnings"),
-                            c::dim("(cached)")
-                        );
-                        return Ok(());
-                    }
-                }
-            }
-            Ok(crate::tdg::hooks_cache::CacheCheckResult::Miss { reason }) => {
-                if verbose {
-                    println!("{} Cache MISS: {}", c::dim(""), reason);
-                    println!("   {}", c::dim("Running full analysis..."));
-                }
-            }
-            Ok(crate::tdg::hooks_cache::CacheCheckResult::Partial { .. }) => {
-                if verbose {
-                    println!(
-                        "{}",
-                        c::warn("Partial cache hit - running remaining gates...")
-                    );
-                }
-            }
-            Err(e) => {
-                if verbose {
-                    println!("{}", c::warn(&format!("Cache check failed: {}", e)));
-                    println!("   {}", c::dim("Running full analysis..."));
-                }
-            }
+        if let Some(outcome) = consult_hooks_cache(&cache_manager, verbose, start_time) {
+            return outcome;
         }
     }
 
     // Run full hooks
     let result = hooks_cmd.run(all_files, verbose).await?;
     let elapsed = start_time.elapsed();
-
-    if verbose {
-        println!();
-        println!("{}", c::subheader("Results:"));
-        println!(
-            "  {}: {}",
-            c::dim("Checks passed"),
-            c::number(&result.checks_passed.to_string())
-        );
-        println!(
-            "  {}: {}",
-            c::dim("Checks failed"),
-            if result.checks_failed > 0 {
-                format!("{}{}{}", c::RED, result.checks_failed, c::RESET)
-            } else {
-                result.checks_failed.to_string()
-            }
-        );
-        println!(
-            "  {}: {:.2}ms",
-            c::dim("Duration"),
-            elapsed.as_secs_f64() * 1000.0
-        );
-        println!();
-        println!("{}:", c::dim("Output"));
-        println!("{}", result.output);
-    } else {
-        // Non-verbose: just print output
-        println!("{}", result.output);
-    }
+    print_run_results(&result, elapsed, verbose);
 
     // Update cache if enabled
     if use_cache {
         let project_root = std::env::current_dir()?;
         let cache_manager = crate::tdg::hooks_cache::HooksCacheManager::new(&project_root);
-
-        let cache_result = if result.success {
-            crate::tdg::hooks_cache::CacheResult::Pass
-        } else {
-            crate::tdg::hooks_cache::CacheResult::Fail
-        };
-
-        // Update cache with results
-        if let Err(e) = cache_manager.update(cache_result, std::collections::HashMap::new()) {
-            if verbose {
-                println!("{}", c::warn(&format!("Failed to update cache: {}", e)));
-            }
-        }
-
-        // Record the cache miss run
-        let _ = cache_manager.record_run(false, elapsed.as_millis() as u64);
+        update_hooks_cache(&cache_manager, result.success, elapsed, verbose);
     }
 
     if result.success {
@@ -446,4 +337,142 @@ async fn handle_run(
         println!("{}", c::fail("Pre-commit checks failed"));
         Err(anyhow::anyhow!("Pre-commit checks failed"))
     }
+}
+
+/// A cache HIT decides the run (`Some(outcome)`); a miss, a partial hit or a cache
+/// error fall through to the full run (`None`).
+fn consult_hooks_cache(
+    cache_manager: &crate::tdg::hooks_cache::HooksCacheManager,
+    verbose: bool,
+    start_time: std::time::Instant,
+) -> Option<Result<()>> {
+    use crate::tdg::hooks_cache::CacheCheckResult;
+    match cache_manager.check() {
+        Ok(CacheCheckResult::Hit { result, cached_at }) => {
+            let elapsed = start_time.elapsed();
+            if verbose {
+                println!("{} O(1) Cache HIT - Skipping full analysis", c::pass(""));
+                println!("   {}: {:?}", c::dim("Cached result"), result);
+                println!(
+                    "   {}: {}",
+                    c::dim("Cached at"),
+                    cached_at.format("%Y-%m-%d %H:%M:%S UTC")
+                );
+                println!(
+                    "   {}: {:.2}ms",
+                    c::dim("Check time"),
+                    elapsed.as_secs_f64() * 1000.0
+                );
+            }
+            // Record the cache hit
+            let _ = cache_manager.record_run(true, elapsed.as_millis() as u64);
+            Some(cached_outcome(result))
+        }
+        Ok(CacheCheckResult::Miss { reason }) => {
+            if verbose {
+                println!("{} Cache MISS: {}", c::dim(""), reason);
+                println!("   {}", c::dim("Running full analysis..."));
+            }
+            None
+        }
+        Ok(CacheCheckResult::Partial { .. }) => {
+            if verbose {
+                println!(
+                    "{}",
+                    c::warn("Partial cache hit - running remaining gates...")
+                );
+            }
+            None
+        }
+        Err(e) => {
+            if verbose {
+                println!("{}", c::warn(&format!("Cache check failed: {}", e)));
+                println!("   {}", c::dim("Running full analysis..."));
+            }
+            None
+        }
+    }
+}
+
+fn cached_outcome(result: crate::tdg::hooks_cache::CacheResult) -> Result<()> {
+    use crate::tdg::hooks_cache::CacheResult;
+    match result {
+        CacheResult::Pass => {
+            println!(
+                "{} {}",
+                c::pass("All quality gates passed"),
+                c::dim("(cached)")
+            );
+            Ok(())
+        }
+        CacheResult::Fail => {
+            println!("{} {}", c::fail("Quality gates failed"), c::dim("(cached)"));
+            Err(anyhow::anyhow!("Pre-commit checks failed (cached)"))
+        }
+        CacheResult::Warn => {
+            println!(
+                "{} {}",
+                c::warn("Quality gates passed with warnings"),
+                c::dim("(cached)")
+            );
+            Ok(())
+        }
+    }
+}
+
+fn print_run_results(
+    result: &super::types::HookRunResult,
+    elapsed: std::time::Duration,
+    verbose: bool,
+) {
+    if !verbose {
+        // Non-verbose: just print output
+        println!("{}", result.output);
+        return;
+    }
+    println!();
+    println!("{}", c::subheader("Results:"));
+    println!(
+        "  {}: {}",
+        c::dim("Checks passed"),
+        c::number(&result.checks_passed.to_string())
+    );
+    println!(
+        "  {}: {}",
+        c::dim("Checks failed"),
+        if result.checks_failed > 0 {
+            format!("{}{}{}", c::RED, result.checks_failed, c::RESET)
+        } else {
+            result.checks_failed.to_string()
+        }
+    );
+    println!(
+        "  {}: {:.2}ms",
+        c::dim("Duration"),
+        elapsed.as_secs_f64() * 1000.0
+    );
+    println!();
+    println!("{}:", c::dim("Output"));
+    println!("{}", result.output);
+}
+
+fn update_hooks_cache(
+    cache_manager: &crate::tdg::hooks_cache::HooksCacheManager,
+    success: bool,
+    elapsed: std::time::Duration,
+    verbose: bool,
+) {
+    let cache_result = if success {
+        crate::tdg::hooks_cache::CacheResult::Pass
+    } else {
+        crate::tdg::hooks_cache::CacheResult::Fail
+    };
+    // Update cache with results
+    if let Err(e) = cache_manager.update(cache_result, std::collections::HashMap::new()) {
+        if verbose {
+            println!("{}", c::warn(&format!("Failed to update cache: {}", e)));
+        }
+    }
+    // Record the cache miss run
+    let _ = cache_manager.record_run(false, elapsed.as_millis() as u64);
 }

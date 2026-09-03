@@ -153,40 +153,65 @@ fn report_settings_provenance(
             continue;
         }
         let raw_section = raw.and_then(|r| r.get(section)).and_then(|v| v.as_table());
-        match raw_section {
-            None if raw.is_some() => {
-                println!("  [{section}] — not set in pmat.toml; built-in defaults");
-                continue;
-            }
-            None => println!("  [{section}] — built-in defaults"),
-            Some(_) => println!("  [{section}]"),
+        if !print_section_header(section, raw.is_some(), raw_section) {
+            continue;
         }
         let effective_section = effective.get(section).and_then(|v| v.as_table());
-        for key in keys {
-            let value = effective_section
-                .and_then(|t| t.get(key))
-                .map_or_else(|| "?".to_string(), render_toml_value);
-            let origin = if raw_section.is_some_and(|t| t.contains_key(key)) {
-                "pmat.toml"
-            } else {
-                "built-in default"
-            };
-            println!("    {key} = {value}  ({origin})");
-        }
+        print_section_keys(keys, effective_section, raw_section);
         if section == "quality" {
-            if let Some(t) = raw_section {
-                for (key, why) in AD_HOC_QUALITY_KEYS {
-                    if let Some(v) = t.get(*key) {
-                        println!(
-                            "    {key} = {}  (pmat.toml; honoured by {why})",
-                            render_toml_value(v)
-                        );
-                    }
-                }
-            }
+            print_ad_hoc_quality_keys(raw_section);
         }
     }
     println!();
+}
+
+/// Prints the `[section]` line; false when the section is absent from a pmat.toml that
+/// exists (the keys are then all defaults and are not listed one by one).
+fn print_section_header(section: &str, has_raw: bool, raw_section: Option<&toml::Table>) -> bool {
+    match raw_section {
+        None if has_raw => {
+            println!("  [{section}] — not set in pmat.toml; built-in defaults");
+            false
+        }
+        None => {
+            println!("  [{section}] — built-in defaults");
+            true
+        }
+        Some(_) => {
+            println!("  [{section}]");
+            true
+        }
+    }
+}
+
+fn print_section_keys(
+    keys: &BTreeSet<String>,
+    effective_section: Option<&toml::Table>,
+    raw_section: Option<&toml::Table>,
+) {
+    for key in keys {
+        let value = effective_section
+            .and_then(|t| t.get(key))
+            .map_or_else(|| "?".to_string(), render_toml_value);
+        let origin = if raw_section.is_some_and(|t| t.contains_key(key)) {
+            "pmat.toml"
+        } else {
+            "built-in default"
+        };
+        println!("    {key} = {value}  ({origin})");
+    }
+}
+
+fn print_ad_hoc_quality_keys(raw_section: Option<&toml::Table>) {
+    let Some(t) = raw_section else { return };
+    for (key, why) in AD_HOC_QUALITY_KEYS {
+        if let Some(v) = t.get(*key) {
+            println!(
+                "    {key} = {}  (pmat.toml; honoured by {why})",
+                render_toml_value(v)
+            );
+        }
+    }
 }
 
 fn render_toml_value(v: &toml::Value) -> String {
