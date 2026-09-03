@@ -36,8 +36,9 @@
 | complexity, measured directly with verify's own command over the 20 changed non-test src files (`analyze complexity --max-cyclomatic 30 --max-cognitive 25 --fail-on-violation --files …`) | **exit 1 first**: six pre-existing functions over cognitive 25 in files this item touched — `run_complexity_analysis` (enforce, 31), `analyze_satd` (MCP, 33), `analyze_dead_code` (MCP, 33), `scan_file_for_suppressions` (31), `named_targets` (28), `parse_cargo_warnings` (32). This is exactly the red the canonical edit→verify loop shows for a dirty tree, so the line stopped: each extracted into named helpers (`complexity_metrics`/`complexity_violations`, `unresolved_debts`/`satd_file_json`, `DeadCodeAccumulation`, `first_item_after`, `is_plain_target_of_kind`, `dead_item_from_message`), behaviour pinned by the existing tests (637 passed across the dead-code, MCP analysis, enforce and complexity slices). **Re-measured: exit 0**; control at `--max-cyclomatic 5 --max-cognitive 5` → exit 1 |
 | `cargo clippy --all-targets -- -D warnings` after the refactors | exit 0 |
 | `pmat comply ratchet` after the refactors | all 8 held |
-| `pmat verify --format json` run 2 (committed tree, after the refactors) | PENDING |
-| `make gate-artifact` | PENDING |
+| `pmat verify --format json` run 2 (committed tree b437f40aa, after the refactors) | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format ✓ satd ✓ clippy ✓ (107 s) tests ✓ (303 s, 0 failed); complexity withdrawn on the clean tree — its measurement is the direct row above |
+| `make gate-artifact` run 1 (committed tree b437f40aa) | **exit 2** — flag-efficacy PASS; `gate-differential` FAILED: one leaf identical for the empty and the defect-rich corpus, `analyze dead-code :: cache.hit = 0`. It is a property of the run (both sweeps are cold), not of the corpus; declared in `ALLOWED_CONSTANTS` with the guard that keeps it falsifiable (the acceptance script's states B/D require `hit == true` with zero cargo execs); `make gate-differential` → exit 0, `0 constant leaf/leaves` |
+| `make gate-artifact` run 2 (committed tree, after the constant) | PENDING |
 
 ## Named mutation (both sides)
 
