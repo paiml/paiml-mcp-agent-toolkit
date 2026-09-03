@@ -160,17 +160,91 @@ mod tests {
 
     #[tokio::test]
     async fn test_configuration_validation() {
+        // Absent config: the built-in defaults are validated and disclosed as
+        // such; that is a pass, not a failure (CRUX-03 leg 2).
         let temp_dir = tempdir().unwrap();
         let config_path = temp_dir.path().join("test_config.toml");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
+        assert_eq!(
+            config_service.load_status(),
+            &crate::services::configuration_service::ConfigLoadStatus::Absent
+        );
 
         let result = validate_configuration(&config_service).await;
         assert!(result.is_ok());
     }
 
+    /// CRUX-03 leg 1: a file that did not parse is not a file with zero
+    /// issues. Before this the validator certified the defaults it had fallen
+    /// back to, exit 0.
+    #[tokio::test]
+    async fn a_config_that_does_not_parse_fails_validation() {
+        let temp_dir = tempdir().expect("tempdir");
+        let config_path = temp_dir.path().join("pmat.toml");
+        std::fs::write(&config_path, "not even toml ][\n").expect("write fixture");
+        let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
+
+        assert!(matches!(
+            config_service.load_status(),
+            crate::services::configuration_service::ConfigLoadStatus::Unparsable(e) if e.contains("line 1")
+        ));
+        let result = validate_configuration(&config_service).await;
+        assert!(result.is_err(), "an unparsable config must not validate");
+    }
+
+    /// CRUX-03 leg 5: a partial file pmat honours loads with the rest
+    /// defaulted, instead of failing strict deserialisation and being replaced
+    /// wholesale.
+    #[tokio::test]
+    async fn a_partial_config_is_honoured_not_replaced() {
+        let temp_dir = tempdir().expect("tempdir");
+        let config_path = temp_dir.path().join("pmat.toml");
+        std::fs::write(&config_path, "[quality]\nmax_complexity = 25\n").expect("write fixture");
+        let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
+
+        assert_eq!(
+            config_service.load_status(),
+            &crate::services::configuration_service::ConfigLoadStatus::Loaded
+        );
+        let config = config_service.get_config().expect("config");
+        assert_eq!(
+            config.quality.max_complexity, 25,
+            "the one key set is applied"
+        );
+        assert_eq!(
+            config.quality.max_cognitive_complexity,
+            ConfigurationService::default_config()
+                .quality
+                .max_cognitive_complexity,
+            "a key the file omits is the built-in default"
+        );
+        assert!(validate_configuration(&config_service).await.is_ok());
+    }
+
+    /// CRUX-03 leg 3: a section nothing reads is a failed validation, named,
+    /// with the near-miss suggested — the same verdict `pmat quality-gate`
+    /// gives it, from the same derived list.
+    #[tokio::test]
+    async fn an_unknown_section_fails_validation() {
+        let temp_dir = tempdir().expect("tempdir");
+        let config_path = temp_dir.path().join("pmat.toml");
+        std::fs::write(
+            &config_path,
+            "[quality_gate]\nmax_cyclomatic_complexity = 15\n",
+        )
+        .unwrap();
+        let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
+
+        let result = validate_configuration(&config_service).await;
+        assert!(
+            result.is_err(),
+            "[quality_gate] is read by nothing and must not validate"
+        );
+    }
+
     #[tokio::test]
     async fn test_set_configuration_values() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("test_config.toml");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
@@ -182,7 +256,7 @@ mod tests {
         let result = set_configuration_values(&config_service, set_values).await;
         assert!(result.is_ok());
 
-        let config = config_service.get_config().unwrap();
+        let config = config_service.get_config().expect("config");
         assert_eq!(config.quality.max_complexity, 25);
         assert!(config.system.verbose);
     }
@@ -200,7 +274,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reset_configuration() {
-        let temp_dir = tempdir().unwrap();
+        let temp_dir = tempdir().expect("tempdir");
         let config_path = temp_dir.path().join("test_config.toml");
         let config_service = std::sync::Arc::new(ConfigurationService::new(Some(config_path)));
 
@@ -218,7 +292,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify reset
-        let config = config_service.get_config().unwrap();
+        let config = config_service.get_config().expect("config");
         assert_eq!(config.quality.max_complexity, 30); // Default value
     }
 }
