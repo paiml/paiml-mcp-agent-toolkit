@@ -203,33 +203,9 @@ pub async fn run_complexity_analysis(
     // The complexity service is called directly rather than through the
     // printing CLI handler: the handler returns `()`, so its result had to be
     // thrown away and a sample violation invented in its place.
-    let file_metrics = match specific_file {
-        Some(file) => {
-            match crate::services::complexity::analyze_file_complexity_uncached(file, None).await {
-                Ok(m) => vec![m],
-                Err(e) => {
-                    let reason = warn_not_measured("complexity", file, &e.to_string());
-                    return Ok(PhaseOutcome::unmeasured(reason));
-                }
-            }
-        }
-        None => {
-            match crate::cli::analysis_utilities::analyze_project_files(
-                project_path,
-                None,
-                &[],
-                profile.complexity_max,
-                profile.complexity_max,
-            )
-            .await
-            {
-                Ok(m) => m,
-                Err(e) => {
-                    let reason = warn_not_measured("complexity", project_path, &e.to_string());
-                    return Ok(PhaseOutcome::unmeasured(reason));
-                }
-            }
-        }
+    let file_metrics = match complexity_metrics(project_path, profile, specific_file).await {
+        Ok(m) => m,
+        Err(unmeasured) => return Ok(unmeasured),
     };
 
     // Zero analysable files is not a clean result — it is the absence of one.
@@ -258,29 +234,7 @@ pub async fn run_complexity_analysis(
         return Ok(PhaseOutcome::unmeasured(reason));
     }
 
-    let severe = profile.complexity_max.saturating_mul(2);
-    let mut violations = Vec::new();
-    for file in &file_metrics {
-        for func in &file.functions {
-            if func.metrics.cyclomatic > profile.complexity_max {
-                violations.push(QualityViolation {
-                    violation_type: "complexity".to_string(),
-                    severity: if func.metrics.cyclomatic > severe {
-                        "high".to_string()
-                    } else {
-                        "medium".to_string()
-                    },
-                    location: format!("{}:{}:{}", file.path, func.line_start, func.name),
-                    current: f64::from(func.metrics.cyclomatic),
-                    target: f64::from(profile.complexity_max),
-                    suggestion: "Extract method pattern - split the function into smaller units"
-                        .to_string(),
-                });
-            }
-        }
-    }
-
-    // Deterministic order: worst first, then by location.
+    let mut violations = complexity_violations(&file_metrics, profile);
     violations.sort_by(|a, b| {
         b.current
             .total_cmp(&a.current)
@@ -312,6 +266,65 @@ pub async fn run_complexity_analysis(
 ///
 /// Shares `satd_violation` with the project path so the two cannot drift in what
 /// they report; only the set of files differs.
+/// The complexity metrics for one file or the whole project, or the
+/// `PhaseOutcome` that says why they could not be measured.
+async fn complexity_metrics(
+    project_path: &Path,
+    profile: &QualityProfile,
+    specific_file: Option<&Path>,
+) -> std::result::Result<Vec<crate::services::complexity::FileComplexityMetrics>, PhaseOutcome> {
+    match specific_file {
+        Some(file) => crate::services::complexity::analyze_file_complexity_uncached(file, None)
+            .await
+            .map(|m| vec![m])
+            .map_err(|e| {
+                PhaseOutcome::unmeasured(warn_not_measured("complexity", file, &e.to_string()))
+            }),
+        None => crate::cli::analysis_utilities::analyze_project_files(
+            project_path,
+            None,
+            &[],
+            profile.complexity_max,
+            profile.complexity_max,
+        )
+        .await
+        .map_err(|e| {
+            PhaseOutcome::unmeasured(warn_not_measured(
+                "complexity",
+                project_path,
+                &e.to_string(),
+            ))
+        }),
+    }
+}
+
+/// One violation per function over the profile's cyclomatic ceiling; twice
+/// the ceiling is `high`.
+fn complexity_violations(
+    file_metrics: &[crate::services::complexity::FileComplexityMetrics],
+    profile: &QualityProfile,
+) -> Vec<QualityViolation> {
+    let severe = profile.complexity_max.saturating_mul(2);
+    file_metrics
+        .iter()
+        .flat_map(|file| file.functions.iter().map(move |func| (file, func)))
+        .filter(|(_, func)| func.metrics.cyclomatic > profile.complexity_max)
+        .map(|(file, func)| QualityViolation {
+            violation_type: "complexity".to_string(),
+            severity: if func.metrics.cyclomatic > severe {
+                "high".to_string()
+            } else {
+                "medium".to_string()
+            },
+            location: format!("{}:{}:{}", file.path, func.line_start, func.name),
+            current: f64::from(func.metrics.cyclomatic),
+            target: f64::from(profile.complexity_max),
+            suggestion: "Extract method pattern - split the function into smaller units"
+                .to_string(),
+        })
+        .collect()
+}
+
 fn single_file_satd(
     detector: &crate::services::satd_detector::SATDDetector,
     file: &Path,

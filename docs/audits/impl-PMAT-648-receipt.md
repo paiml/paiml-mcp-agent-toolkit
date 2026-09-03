@@ -32,7 +32,11 @@
 | `pmat comply ratchet` | all 8 baselines held (unfiltered output read this time) |
 | `pv validate` / `pv lint contracts/dead-code-cache-v1.yaml` | valid; PASS |
 | `bashrs lint scripts/dead-code-cache-audit.sh` | 0 errors (the `rm -rf` on a variable path was replaced by a pattern-scoped `rm -f` after SEC011) |
-| `pmat verify --format json` | PENDING |
+| `pmat verify --format json` run 1 (committed tree 048efcaab) | **exit 0, `ok: null`, `stages_measured: 4`, `not_measured: ["complexity"]`** — format ✓ satd ✓ clippy ✓ (104 s) tests ✓ (346 s, 0 failed); complexity withdrawn on the clean tree (CRUX-01 semantics) |
+| complexity, measured directly with verify's own command over the 20 changed non-test src files (`analyze complexity --max-cyclomatic 30 --max-cognitive 25 --fail-on-violation --files …`) | **exit 1 first**: six pre-existing functions over cognitive 25 in files this item touched — `run_complexity_analysis` (enforce, 31), `analyze_satd` (MCP, 33), `analyze_dead_code` (MCP, 33), `scan_file_for_suppressions` (31), `named_targets` (28), `parse_cargo_warnings` (32). This is exactly the red the canonical edit→verify loop shows for a dirty tree, so the line stopped: each extracted into named helpers (`complexity_metrics`/`complexity_violations`, `unresolved_debts`/`satd_file_json`, `DeadCodeAccumulation`, `first_item_after`, `is_plain_target_of_kind`, `dead_item_from_message`), behaviour pinned by the existing tests (637 passed across the dead-code, MCP analysis, enforce and complexity slices). **Re-measured: exit 0**; control at `--max-cyclomatic 5 --max-cognitive 5` → exit 1 |
+| `cargo clippy --all-targets -- -D warnings` after the refactors | exit 0 |
+| `pmat comply ratchet` after the refactors | all 8 held |
+| `pmat verify --format json` run 2 (committed tree, after the refactors) | PENDING |
 | `make gate-artifact` | PENDING |
 
 ## Named mutation (both sides)

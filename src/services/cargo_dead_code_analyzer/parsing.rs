@@ -4,50 +4,26 @@
 impl CargoDeadCodeAnalyzer {
     /// Parse cargo's JSON output for dead code warnings
     fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>> {
-        let mut dead_items = Vec::new();
-
-        for line in output.lines() {
-            if line.trim().is_empty() {
-                continue;
-            }
-
-            let json: Value = match serde_json::from_str(line) {
-                Ok(v) => v,
-                Err(_) => continue, // Skip non-JSON lines
-            };
-
-            // Check if this is a compiler message
-            if json["reason"] != "compiler-message" {
-                continue;
-            }
-
-            let message = &json["message"];
-
-            // Check if this is a dead code warning
-            if let Some(code) = message["code"]["code"].as_str() {
-                if code == "dead_code" {
-                    if let Some(item) = self.in_scope_finding(self.extract_dead_item(message)) {
-                        dead_items.push(item);
-                    }
-                } else if code == "unreachable_code" {
-                    // rustc's OTHER dead-code lint. It was discarded here, so
-                    // nothing on the CLI path could ever produce an unreachable
-                    // block and `--include-unreachable` was inert on every
-                    // input — a fixture with four statements after a `return`
-                    // still printed "Unreachable blocks: 0". Tagged with
-                    // `DeadCodeKind::UnreachableCode` so `group_by_file` can
-                    // keep it out of `dead_items` and out of every count a
-                    // default run prints.
-                    if let Some(item) =
-                        self.in_scope_finding(self.extract_unreachable_item(message))
-                    {
-                        dead_items.push(item);
-                    }
-                }
-            }
-        }
-
+        let dead_items = output
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            // Non-JSON lines (cargo's own chatter) are skipped.
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .filter(|json| json["reason"] == "compiler-message")
+            .filter_map(|json| self.dead_item_from_message(&json["message"]))
+            .collect();
         Ok(dead_items)
+    }
+
+    /// The in-scope finding a compiler message carries, if it is one of the
+    /// two lints this analyzer reads.
+    fn dead_item_from_message(&self, message: &Value) -> Option<(PathBuf, DeadItem)> {
+        let extracted = match message["code"]["code"].as_str()? {
+            "dead_code" => self.extract_dead_item(message),
+            "unreachable_code" => self.extract_unreachable_item(message),
+            _ => return None,
+        };
+        self.in_scope_finding(extracted)
     }
 
     /// A compiler finding, re-expressed against the path the caller asked
