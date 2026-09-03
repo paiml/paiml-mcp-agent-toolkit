@@ -101,6 +101,7 @@ mod coverage_tests {
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         // The handler should delegate to route_analyze_command
@@ -128,6 +129,7 @@ mod coverage_tests {
             include: vec!["**/*.rs".to_string()],
             exclude: vec!["target/**".to_string()],
             max_depth: 4,
+            no_cache: false,
         };
 
         let result = handle_dead_code(cmd).await;

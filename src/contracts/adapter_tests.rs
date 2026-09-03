@@ -509,6 +509,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let warnings = ContractAdapter::deprecation_warnings(&cmd);
@@ -821,6 +822,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -845,6 +847,7 @@ mod tests {
                 include: vec!["src/**".to_string()],
                 exclude: vec!["tests/**".to_string()],
                 max_depth: 10,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -868,6 +871,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -890,6 +894,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -913,6 +918,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);
@@ -936,6 +942,7 @@ mod tests {
                 include: vec![],
                 exclude: vec![],
                 max_depth: 8,
+                no_cache: false,
             };
 
             let result = ContractAdapter::from_cli(&cmd);

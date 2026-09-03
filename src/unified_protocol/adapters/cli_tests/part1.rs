@@ -363,6 +363,7 @@ mod tests {
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         });
 
         let input = CliInput::from_commands(command);

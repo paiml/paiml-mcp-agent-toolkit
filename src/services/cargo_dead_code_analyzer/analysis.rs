@@ -57,10 +57,23 @@ impl CargoDeadCodeAnalyzer {
         // the condition that produced it and go on understating a tree that can
         // now be scanned properly. A reduced scan ran no `cargo check`, so
         // there is no expensive work to preserve.
-        if scanned_fully {
-            self.save_cache(&report);
-        }
-
+        let written = if scanned_fully {
+            self.save_cache(&report)
+        } else {
+            None
+        };
+        // The run says whether it was replayed (it was not) and what it is
+        // keyed on, so a cold pass and a warm replay are never byte-identical.
+        report.cache = Some(crate::models::dead_code::DeadCodeCacheReport {
+            hit: false,
+            tree_hash: written
+                .as_ref()
+                .map(|(h, _)| h.clone())
+                .or_else(|| self.get_tree_hash())
+                .unwrap_or_default(),
+            written_at: written.map(|(_, t)| t),
+            pmat_version: env!("CARGO_PKG_VERSION").to_string(),
+        });
         Ok(report)
     }
 
@@ -201,59 +214,28 @@ impl CargoDeadCodeAnalyzer {
         item_re: &regex::Regex,
         suppressed_items: &mut Vec<(PathBuf, DeadItem)>,
     ) {
+        let relative_path = path
+            .strip_prefix(&self.project_path)
+            .unwrap_or(path)
+            .to_path_buf();
         for (i, line) in lines.iter().enumerate() {
-            if suppression_re.is_match(line) {
-                // Try to find the item on the next non-attribute line
-                let mut item_line = i + 1;
-                while item_line < lines.len() {
-                    let next_line = lines[item_line];
-                    // Skip additional attributes and empty lines
-                    if next_line.trim().starts_with("#[")
-                        || next_line.trim().starts_with("#![")
-                        || next_line.trim().is_empty()
-                    {
-                        item_line += 1;
-                        continue;
-                    }
-
-                    // Try to extract the item
-                    if let Some(caps) = item_re.captures(next_line) {
-                        let kind_str = caps.get(1).map(|m| m.as_str()).unwrap_or("unknown");
-                        let name = caps.get(2).map(|m| m.as_str()).unwrap_or("unknown");
-
-                        let relative_path = path
-                            .strip_prefix(&self.project_path)
-                            .unwrap_or(path)
-                            .to_path_buf();
-
-                        suppressed_items.push((
-                            relative_path,
-                            DeadItem {
-                                // The item's REAL kind, which the regex above
-                                // has just captured. This used to be a
-                                // `DeadCodeKind::Suppressed` that erased it, and
-                                // "suppressed" is a category no counter knows:
-                                // `dead_functions`/`dead_classes`/`dead_modules`
-                                // are counted by kind, so six dead functions
-                                // reported `dead_functions: 0` and every one of
-                                // them was typed `item_type: "variable"` in a
-                                // record whose own reason said `fn`. Provenance
-                                // (compiler lint vs. explicit admission) lives
-                                // in the message below, where it does not
-                                // displace the kind.
-                                kind: suppressed_item_kind(kind_str),
-                                name: name.to_string(),
-                                line: item_line + 1, // 1-indexed
-                                column: 1,
-                                message: format!(
-                                    "{kind_str} `{name}` carries an allow(dead_code) \
-                                     suppression (explicit dead code admission)"
-                                ),
-                            },
-                        ));
-                    }
-                    break;
-                }
+            if !suppression_re.is_match(line) {
+                continue;
+            }
+            if let Some((item_line, kind_str, name)) = first_item_after(lines, i + 1, item_re) {
+                suppressed_items.push((
+                    relative_path.clone(),
+                    DeadItem {
+                        kind: suppressed_item_kind(kind_str),
+                        name: name.to_string(),
+                        line: item_line + 1, // 1-indexed
+                        column: 1,
+                        message: format!(
+                            "{kind_str} `{name}` carries an allow(dead_code) \
+                             suppression (explicit dead code admission)"
+                        ),
+                    },
+                ));
             }
         }
     }
@@ -610,6 +592,29 @@ pub(crate) fn project_has_library(project_path: &std::path::Path) -> bool {
     false
 }
 
+/// The first item declaration at or after `start`, skipping attribute and
+/// blank lines: (0-indexed line, kind, name). `None` when the next
+/// non-attribute line is not an item.
+fn first_item_after<'a>(
+    lines: &[&'a str],
+    start: usize,
+    item_re: &regex::Regex,
+) -> Option<(usize, &'a str, &'a str)> {
+    let mut item_line = start;
+    while item_line < lines.len() {
+        let next = lines[item_line].trim();
+        if next.starts_with("#[") || next.starts_with("#![") || next.is_empty() {
+            item_line += 1;
+            continue;
+        }
+        let caps = item_re.captures(lines[item_line])?;
+        let kind = caps.get(1).map_or("unknown", |m| m.as_str());
+        let name = caps.get(2).map_or("unknown", |m| m.as_str());
+        return Some((item_line, kind, name));
+    }
+    None
+}
+
 /// Cargo targets of `kind` ("example" / "bench") belonging to the package at
 /// `project_path`, excluding any that need features this check does not enable.
 ///
@@ -637,35 +642,33 @@ fn named_targets(project_path: &std::path::Path, kind: &str) -> Vec<String> {
         return Vec::new();
     };
     let manifest = project_path.join("Cargo.toml");
-    let mut names: Vec<String> = Vec::new();
-    for package in meta["packages"].as_array().into_iter().flatten() {
-        // Workspace roots list every member; only the package being analysed
-        // can satisfy a bare `--example NAME` / `--bench NAME`.
-        if package["manifest_path"].as_str().map(std::path::Path::new) != Some(manifest.as_path()) {
-            continue;
-        }
-        for target in package["targets"].as_array().into_iter().flatten() {
-            let is_kind = target["kind"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .any(|k| k.as_str() == Some(kind));
-            if !is_kind {
-                continue;
-            }
-            let needs_features = target["required-features"]
-                .as_array()
-                .is_some_and(|f| !f.is_empty());
-            if needs_features {
-                continue;
-            }
-            if let Some(name) = target["name"].as_str() {
-                names.push(name.to_string());
-            }
-        }
-    }
+    let mut names: Vec<String> = meta["packages"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|package| {
+            package["manifest_path"].as_str().map(std::path::Path::new) == Some(manifest.as_path())
+        })
+        .flat_map(|package| package["targets"].as_array().into_iter().flatten())
+        .filter(|target| is_plain_target_of_kind(target, kind))
+        .filter_map(|target| target["name"].as_str().map(str::to_string))
+        .collect();
     names.sort();
     names
+}
+
+/// A target of `kind` that needs no feature to build — the only kind a plain
+/// `cargo check` compiles.
+fn is_plain_target_of_kind(target: &Value, kind: &str) -> bool {
+    let is_kind = target["kind"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|k| k.as_str() == Some(kind));
+    let needs_features = target["required-features"]
+        .as_array()
+        .is_some_and(|f| !f.is_empty());
+    is_kind && !needs_features
 }
 
 #[cfg(test)]

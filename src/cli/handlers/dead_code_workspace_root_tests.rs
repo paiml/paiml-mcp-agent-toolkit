@@ -43,6 +43,7 @@ fn filters() -> DeadCodeAnalysisFilters {
         include: Vec::new(),
         exclude: Vec::new(),
         max_depth: 10,
+        no_cache: false,
     }
 }
 

@@ -23,6 +23,8 @@ struct DeadCodeAnalysisFilters {
     include: Vec<String>,
     exclude: Vec<String>,
     max_depth: usize,
+    /// `--no-cache`: bypass the dead-code cache (read nothing, write nothing).
+    no_cache: bool,
 }
 
 // THE analysis that carries the name "dead code", in ONE place, for every
@@ -117,6 +119,7 @@ pub(crate) async fn run_dead_code_suite(
             include: Vec::new(),
             exclude: Vec::new(),
             max_depth: DEAD_CODE_DEFAULT_MAX_DEPTH,
+            no_cache: false,
         },
         std::time::Duration::from_secs(DEAD_CODE_DEFAULT_TIMEOUT_SECS),
     )
@@ -158,6 +161,7 @@ pub async fn handle_analyze_dead_code(
     include: Vec<String>,
     exclude: Vec<String>,
     max_depth: usize,
+    no_cache: bool,
 ) -> Result<()> {
     crate::status_eprintln!("☠️ Analyzing dead code in project...");
     crate::status_eprintln!("⏰ Analysis timeout set to {timeout} seconds");
@@ -194,6 +198,7 @@ pub async fn handle_analyze_dead_code(
             include,
             exclude,
             max_depth,
+            no_cache,
         },
         budget,
     )
@@ -454,6 +459,7 @@ mod output_tests {
             // Renderer fixture: no engine produced this result, so there
             // is no compiler-scan verdict for it to state.
             compiler_scan: None,
+            cache: None,
         }
     }
 
@@ -469,6 +475,7 @@ mod output_tests {
             // Renderer fixture: no engine produced this result, so there
             // is no compiler-scan verdict for it to state.
             compiler_scan: None,
+            cache: None,
         }
     }
 
@@ -887,6 +894,7 @@ mod multi_language_percentage_tests {
             include: Vec::new(),
             exclude: Vec::new(),
             max_depth: 10,
+            no_cache: false,
         }
     }
 

@@ -285,6 +285,7 @@ fn test_from_cli_dead_code_basic() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -309,6 +310,7 @@ fn test_from_cli_dead_code_with_all_options() {
         include: vec!["src/**".to_string()],
         exclude: vec!["tests/**".to_string()],
         max_depth: 10,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -332,6 +334,7 @@ fn test_from_cli_dead_code_no_top_files() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -354,6 +357,7 @@ fn test_from_cli_dead_code_invalid_path() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -831,6 +835,7 @@ fn test_dead_code_boundary_max_percentage() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -854,6 +859,7 @@ fn test_dead_code_boundary_zero_max_percentage() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);
@@ -1024,6 +1030,7 @@ fn test_dead_code_mapping_handles_optional_top_files() {
         include: vec![],
         exclude: vec![],
         max_depth: 8,
+        no_cache: false,
     };
 
     let result = ContractAdapter::from_cli(&cmd);

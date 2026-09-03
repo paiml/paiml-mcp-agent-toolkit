@@ -99,6 +99,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;
@@ -234,6 +235,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;
@@ -441,6 +443,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 8,
+            no_cache: false,
         };
 
         let output = handler.output_result(result, &cmd);
@@ -562,6 +565,7 @@
             include: vec![],
             exclude: vec![],
             max_depth: 5,
+            no_cache: false,
         };
 
         let result = handler.handle_analyze_command(cmd).await;

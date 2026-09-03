@@ -421,68 +421,23 @@ pub async fn analyze_satd(
 
     let mut total_satd = 0;
     let mut file_results = Vec::new();
-
     for path in &files {
-        match tokio::fs::read_to_string(path).await {
-            // `_with_tests`, not the plain wrapper. `include_tests` has TWO
-            // effects and they must move together: it selects test FILES above,
-            // and it reaches the inline `#[cfg(test)]` skip inside each file
-            // here. Wiring only the first made MCP report 3 markers where the
-            // CLI reported 4 on the same fixture — two fixes (#995 inline
-            // blocks, #997 MCP parity) that each worked alone and did not
-            // compose. Caught dogfooding the installed artifact, not by either
-            // fix's own tests.
-            Ok(content) => {
-                match detector.extract_from_content_with_tests(&content, path, include_tests) {
-                    Ok(debts) => {
-                        // Filter out resolved debt markers (DONE, RESOLVED, FIXED) unless include_resolved
-                        let debts: Vec<_> = if _include_resolved {
-                            debts
-                        } else {
-                            debts
-                                .into_iter()
-                                .filter(|d| {
-                                    let upper = d.text.to_uppercase();
-                                    !upper.contains("DONE")
-                                        && !upper.contains("RESOLVED")
-                                        && !upper.contains("FIXED")
-                                })
-                                .collect()
-                        };
-                        let satd_count = debts.len();
-                        total_satd += satd_count;
-                        // Counted from files that were actually decoded and
-                        // scanned. It used to be `files.len()` — the size of
-                        // the CANDIDATE list — so a file that failed to read
-                        // was reported both as read and as having no debt, the
-                        // exact "not measured rendered as clean" shape of
-                        // #1035, one level below the skip predicate that block
-                        // was added to disclose.
-                        census.record_analyzed();
-
-                        if satd_count > 0 {
-                            file_results.push(json!({
-                                "file": path.display().to_string(),
-                                "satd_count": satd_count,
-                                "debts": debts.iter().map(|debt| json!({
-                                    "line": debt.line,
-                                    "category": format!("{:?}", debt.category),
-                                    "severity": format!("{:?}", debt.severity),
-                                    "text": debt.text,
-                                })).collect::<Vec<_>>(),
-                            }));
-                        }
-                    }
-                    // The scan failed on a file that WAS opened. Not a finding
-                    // of zero — a file this run did not measure.
-                    Err(_) => census.record_skip(path, SkipReason::Unreadable),
-                }
-            }
-            // I/O error, or content that is not UTF-8.
-            Err(_) => census.record_skip(path, SkipReason::Unreadable),
+        let Ok(content) = tokio::fs::read_to_string(path).await else {
+            census.record_skip(path, SkipReason::Unreadable);
+            continue;
+        };
+        let Ok(debts) = detector.extract_from_content_with_tests(&content, path, include_tests)
+        else {
+            census.record_skip(path, SkipReason::Unreadable);
+            continue;
+        };
+        let debts = unresolved_debts(debts, _include_resolved);
+        total_satd += debts.len();
+        census.record_analyzed();
+        if !debts.is_empty() {
+            file_results.push(satd_file_json(path, &debts));
         }
     }
-
     Ok(json!({
         "status": "completed",
         "message": "SATD analysis completed",
@@ -550,136 +505,116 @@ pub async fn analyze_satd(
 /// surfaces call it: Rust goes to cargo's own dead-code pass, everything else
 /// goes to the reachability analyzer, and neither surface can pick a different
 /// engine than the other for the same path.
-#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result<Value> {
-    use crate::cli::handlers::dead_code_handlers::run_dead_code_suite;
-    use std::collections::{BTreeMap, BTreeSet};
+/// The debts a report should carry: every one when `include_resolved`, else
+/// only those whose text does not mark them done.
+fn unresolved_debts(
+    debts: Vec<crate::services::satd_detector::TechnicalDebt>,
+    include_resolved: bool,
+) -> Vec<crate::services::satd_detector::TechnicalDebt> {
+    if include_resolved {
+        return debts;
+    }
+    debts
+        .into_iter()
+        .filter(|d| {
+            let upper = d.text.to_uppercase();
+            !upper.contains("DONE") && !upper.contains("RESOLVED") && !upper.contains("FIXED")
+        })
+        .collect()
+}
 
-    // Validate input
-    if paths.is_empty() {
-        return Err(anyhow::anyhow!("At least one path must be provided"));
+/// One file's entry in the SATD payload.
+fn satd_file_json(
+    path: &std::path::Path,
+    debts: &[crate::services::satd_detector::TechnicalDebt],
+) -> Value {
+    json!({
+        "file": path.display().to_string(),
+        "satd_count": debts.len(),
+        "debts": debts.iter().map(|debt| json!({
+            "line": debt.line,
+            "category": format!("{:?}", debt.category),
+            "severity": format!("{:?}", debt.severity),
+            "text": debt.text,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+/// Everything `analyze_dead_code` gathers across its requested paths, so the
+/// per-path work is one method and the payload assembly reads it back flat.
+struct DeadCodeAccumulation {
+    dead_by_file: std::collections::BTreeMap<String, Vec<crate::models::dead_code::DeadCodeItem>>,
+    engines: std::collections::BTreeSet<&'static str>,
+    languages: std::collections::BTreeSet<String>,
+    per_path: Vec<Value>,
+    not_analyzed: Vec<Value>,
+    files_analyzed: usize,
+    total_files: usize,
+    total_functions: Option<usize>,
+    /// Stays true until a path's engine reports no function count.
+    every_path_counted_functions: bool,
+}
+
+impl DeadCodeAccumulation {
+    fn new() -> Self {
+        Self {
+            dead_by_file: std::collections::BTreeMap::new(),
+            engines: std::collections::BTreeSet::new(),
+            languages: std::collections::BTreeSet::new(),
+            per_path: Vec::new(),
+            not_analyzed: Vec::new(),
+            files_analyzed: 0,
+            total_files: 0,
+            total_functions: None,
+            every_path_counted_functions: true,
+        }
     }
 
-    // BTree, not Hash: the file list is published, and a HashMap ordered it
-    // differently on every call for no reason a client could act on.
-    let mut dead_by_file: BTreeMap<String, Vec<crate::models::dead_code::DeadCodeItem>> =
-        BTreeMap::new();
-    let mut engines: BTreeSet<&'static str> = BTreeSet::new();
-    // Sorted and de-duplicated, for the same reason `dead_by_file` is a BTree:
-    // this is published, and a per-call ordering is noise a client cannot act
-    // on. (Master built it with `Vec::contains`, in first-seen order.)
-    let mut languages: BTreeSet<String> = BTreeSet::new();
-    let mut per_path: Vec<Value> = Vec::new();
-    let mut not_analyzed: Vec<Value> = Vec::new();
-    let mut files_analyzed = 0usize;
-    // Issue #1058. The CLI publishes TWO counts under the names `total_files`
-    // (what the walk discovered) and `analyzed_files` (what the engine read);
-    // this payload published one, under a third name, `files_analyzed`. On
-    // copia that is 38 and 29 against 29, so a parity check that asked both
-    // transports for "dead-code files" was answered 38 by one and 29 by the
-    // other — and the two agree exactly. A key-name split reads as a
-    // measurement disagreement, which is worse than either number being wrong,
-    // because both surfaces look right alone.
-    let mut total_files = 0usize;
-    // The denominator for the dead-function count, summed over the paths that
-    // measured one — and only while EVERY analysed path did. A sum over the
-    // subset that happened to be countable is not a denominator for a numerator
-    // drawn from all of them, so the mixed case is `null`, and so is the case
-    // where nothing was analysed at all.
-    let mut total_functions: Option<usize> = None;
-    let mut every_path_counted_functions = true;
-
-    for path in paths {
+    /// Analyse one requested path and fold its run in; a path that cannot be
+    /// analysed is named in `not_analyzed` rather than dropped.
+    async fn add_path(&mut self, path: &std::path::Path, include_tests: bool) {
+        use crate::cli::handlers::dead_code_handlers::run_dead_code_suite;
         if !path.exists() {
-            // NAMED, not skipped. `Err(_) => continue` was the old handling for
-            // every failure here, so a path that could not be analysed at all
-            // was indistinguishable in the payload from a path with no dead
-            // code — the same "a check that did not run has not passed" rule the
-            // quality gate's `not_run` list exists for.
-            not_analyzed.push(json!({
+            self.not_analyzed.push(json!({
                 "path": path.display().to_string(),
                 "reason": "path does not exist",
             }));
-            continue;
+            return;
         }
-
-        // The analysis is rooted at a DIRECTORY (cargo runs in one). A file is
-        // answered by analysing its directory and then listing only that file,
-        // with both facts stated below rather than left for the caller to infer
-        // from a path that is not the one they asked about.
         let requested_file = path.is_file().then(|| canonical_path(path));
         let root = if path.is_file() {
             path.parent().unwrap_or_else(|| std::path::Path::new("."))
         } else {
-            path.as_path()
+            path
         };
-
         let run = match run_dead_code_suite(root, include_tests).await {
             Ok(run) => run,
             Err(e) => {
-                not_analyzed.push(json!({
+                self.not_analyzed.push(json!({
                     "path": path.display().to_string(),
                     "reason": format!("{e}"),
                 }));
-                continue;
+                return;
             }
         };
-
-        engines.insert(run.engine);
-        languages.insert(run.language.clone());
-        files_analyzed += run.report.analyzed_files;
-        total_files += run.report.total_files;
+        self.engines.insert(run.engine);
+        self.languages.insert(run.language.clone());
+        self.files_analyzed += run.report.analyzed_files;
+        self.total_files += run.report.total_files;
         match run.total_functions {
-            Some(counted) => total_functions = Some(total_functions.unwrap_or(0) + counted),
-            None => every_path_counted_functions = false,
+            Some(counted) => self.total_functions = Some(self.total_functions.unwrap_or(0) + counted),
+            None => self.every_path_counted_functions = false,
         }
-
-        // What the file restriction above removed, in the units the report
-        // counts in — so narrowing to one file cannot silently swallow the rest
-        // of the directory's findings.
-        let mut outside = DeadItemCounts::default();
-        let mut listed_files = 0usize;
-        for file in &run.report.files {
-            let absolute = absolute_report_path(root, &file.path);
-            if let Some(wanted) = &requested_file {
-                if &canonical_path(std::path::Path::new(&absolute)) != wanted {
-                    outside.add_items(&file.items);
-                    continue;
-                }
-            }
-            listed_files += 1;
-            dead_by_file
-                .entry(absolute)
-                .or_default()
-                .extend(file.items.iter().cloned());
-        }
-
-        per_path.push(json!({
+        let (outside, listed_files) =
+            self.fold_files(root, requested_file.as_ref(), &run.report.files);
+        self.per_path.push(json!({
             "requested": path.display().to_string(),
-            // Equal to `requested` for a directory; a file's enclosing
-            // directory otherwise.
             "analysis_root": root.display().to_string(),
             "engine": run.engine,
-            // Which language the engine actually READ under this path. Not
-            // inferable from `engine`: `multi-language-reachability` reads one
-            // language per project and skips the rest of the tree.
             "language": run.language,
-            // This path's share of the denominator, `null` where its engine
-            // measures none — so a `null` total below can be attributed to the
-            // path that could not be counted instead of reading as a failure of
-            // the whole call.
             "total_functions": run.total_functions,
             "files_analyzed": run.report.analyzed_files,
             "files_listed": listed_files,
-            // Whether the analyzer decided this path was a LIBRARY, and hence
-            // whether an un-called export is above or below the line.
-            //
-            // A library's public API is un-called by construction, so the
-            // verdict decides which findings exist — and where it is
-            // `undetermined` the list DOES contain exports, reported dead
-            // because nothing calls them rather than because they are known to
-            // be unreachable. An agent reading this payload has no summary text
-            // to fall back on, so the caveat travels with the findings.
             "library_target": run.report.library_target,
             // Whether rustc's dead-code lint contributed to these findings.
             // `null` for engines that have no compiler layer; `reduced` when
@@ -688,6 +623,12 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
             // (#1076). An agent that cannot read this cannot tell an empty
             // finding list from a search that never ran.
             "compiler_scan": run.report.compiler_scan,
+            // Whether the findings were replayed from the dead-code cache, and
+            // the WORKING-tree hash the entry is keyed on. `hit: true` beside
+            // `compiler_scan.reason: compiler-lint-cached` is a replay; a cold
+            // pass says `hit: false` (CRUX-04, #1153). `null` for engines that
+            // have no cache.
+            "cache": run.report.cache,
             // null for a directory (nothing was restricted away), a full
             // per-kind count for a file.
             "findings_outside_requested_path": requested_file
@@ -696,6 +637,59 @@ pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result
         }));
     }
 
+    /// Fold a run's file rows in: rows outside a requested single file are
+    /// counted, not listed. Returns (outside counts, files listed).
+    fn fold_files(
+        &mut self,
+        root: &std::path::Path,
+        requested_file: Option<&std::path::PathBuf>,
+        files: &[crate::models::dead_code::FileDeadCodeMetrics],
+    ) -> (DeadItemCounts, usize) {
+        let mut outside = DeadItemCounts::default();
+        let mut listed_files = 0usize;
+        for file in files {
+            let absolute = absolute_report_path(root, &file.path);
+            if let Some(wanted) = requested_file {
+                if &canonical_path(std::path::Path::new(&absolute)) != wanted {
+                    outside.add_items(&file.items);
+                    continue;
+                }
+            }
+            listed_files += 1;
+            self.dead_by_file
+                .entry(absolute)
+                .or_default()
+                .extend(file.items.iter().cloned());
+        }
+        (outside, listed_files)
+    }
+}
+
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn analyze_dead_code(paths: &[PathBuf], include_tests: bool) -> Result<Value> {
+
+    // Validate input
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    // BTree, not Hash: the file list is published, and a HashMap ordered it
+    // differently on every call for no reason a client could act on.
+    let mut acc = DeadCodeAccumulation::new();
+    for path in paths {
+        acc.add_path(path, include_tests).await;
+    }
+    let DeadCodeAccumulation {
+        dead_by_file,
+        engines,
+        languages,
+        per_path,
+        not_analyzed,
+        files_analyzed,
+        total_files,
+        total_functions,
+        every_path_counted_functions,
+    } = acc;
     let mut totals = DeadItemCounts::default();
     let file_results: Vec<Value> = dead_by_file
         .iter()
