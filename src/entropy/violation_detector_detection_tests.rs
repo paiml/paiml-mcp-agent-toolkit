@@ -135,7 +135,7 @@ mod detection_tests {
     }
 
     #[test]
-    fn test_deduplicate_violations() {
+    fn test_deidentical_files() {
         let detector = ViolationDetector::new(EntropyConfig::default());
 
         let violations = vec![
@@ -169,7 +169,7 @@ mod detection_tests {
             },
         ];
 
-        let deduped = detector.deduplicate_violations(violations);
+        let deduped = detector.deidentical_files(violations);
 
         // Should keep only the higher priority one
         assert_eq!(deduped.len(), 1);
@@ -180,7 +180,7 @@ mod detection_tests {
     /// newly-seen duplicate has priority_score <= existing. The prior test inserts
     /// low-then-high (always replaces); this inserts high-then-low (always keeps).
     #[test]
-    fn test_deduplicate_violations_keeps_existing_higher_priority() {
+    fn test_deidentical_files_keeps_existing_higher_priority() {
         let detector = ViolationDetector::new(EntropyConfig::default());
 
         let violations = vec![
@@ -214,7 +214,7 @@ mod detection_tests {
             },
         ];
 
-        let deduped = detector.deduplicate_violations(violations);
+        let deduped = detector.deidentical_files(violations);
 
         assert_eq!(deduped.len(), 1, "same key must collapse to one entry");
         assert_eq!(

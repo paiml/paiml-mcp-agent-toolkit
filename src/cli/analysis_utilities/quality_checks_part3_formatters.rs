@@ -66,7 +66,7 @@ fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) 
         ("Technical debt", results.satd_violations),
         ("Entropy", results.entropy_violations),
         ("Security", results.security_violations),
-        ("Duplicate code", results.duplicate_violations),
+        ("Duplicate code", results.identical_files),
     ];
 
     for (name, count) in counts {

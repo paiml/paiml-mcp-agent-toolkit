@@ -3782,11 +3782,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-10: quality_proxy → quality_check_content — never writes and says so (written:false), advisory does not launder a failing verdict, client quality_config only tightens, satd_count == violations[] (#1151)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-09-02T20:49:56Z
-  updated: 2026-09-02T20:49:56Z
+  updated: 2026-09-03T06:52:02Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3798,14 +3798,31 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'CRUX-10 acceptance script: B0-B2 send operation=write, so the rename branch it prefers can never pass its own B0 while R1 passes'
-  status: planned
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-09-02T21:34:43Z
-  updated: 2026-09-02T21:34:43Z
+  updated: 2026-09-03T06:52:54Z
   spec: null
   acceptance_criteria:
   - 'spec 8.10 script: req() always emits operation:"write"; on the rename branch that key is refused with -32602 (R1 requires it), so B0 (has(written)) fails on the same request. The rename branch was never run (script says DEFERRED at HEAD). Fix: branch-aware req() after selector S; R1 uses an explicit stale-key request; selector prefers quality_check_content. Linked: PMAT-640 / #1151.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-642
+  github_issue: null
+  item_type: task
+  title: 'CRUX-02: quality-gate renders three unmeasured dimensions as clean (dead-code not_measured vs not_applicable; coverage cache guards; duplicate_violations → identical_files; --help names cargo check)'
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T06:48:23Z
+  updated: 2026-09-03T06:52:02.354106699+00:00
+  spec: null
+  acceptance_criteria:
+  - 'spec 8.2, epic 1153. Legs: (1) dead-code Err arm distinguishes ''could not compile'' (not_measured) from ''no Cargo.toml'' (not_applicable); (2) coverage cache accepted only if git_hash is HEAD-or-ancestor, mtime newer than the newest tracked source, breadth >= N% of files_examined — reason names the guard; (3) duplicate_violations renamed identical_files with a not_measured entry naming the block-level detector as a separate item; (4) quality-gate --help says it runs cargo check.'
   phases: []
   subtasks: []
   estimated_effort: null

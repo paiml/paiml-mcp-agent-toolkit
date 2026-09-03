@@ -1412,6 +1412,19 @@ the point, but it needs a release note. Ship the duplicates change as a new name
 never folded into an existing threshold.
 
 **Related issue.** #1035 (its Cluster-1 row "quality-gate reports satd_violations=0 while analyze
+
+*Implementation note (PMAT-642, 2026-09-03).* Landed as proposed, with three recorded choices:
+(i) `results.not_measured[]` and `results.not_applicable[]` are two lists of `{check, path, reason}`,
+both always serialized — the dead-code check fills the first when `cargo check` fails (reason quotes
+cargo's first `error:` line) and the second when no `Cargo.toml` exists at or above the path;
+(ii) the coverage breadth guard's denominator is the tree's **Rust source files** (`.rs`, gitignore
+honoured), not `files_examined`, which counts every extensioned file (`.md`, `.toml`, …) and would
+make any real report fail the guard; N = 25 %; the three guards run cheapest-first (git_hash,
+mtime, breadth) and the first to trip is the reason; (iii) leg 4 is a clap `long_about`, so
+`quality-gate --help` names `cargo check` and both disclosure lists. The acceptance script is
+`scripts/quality-gate-not-measured-audit.sh` (pre-fix binary: exit 1 at leg 1; fixed tree: exit 0);
+named mutation: the dead-code `Err` arm swallowing the failure fails
+`a_crate_that_does_not_compile_is_reported_as_not_measured`.
 satd reports 55" is the same shape for another check).
 
 ---

@@ -40,7 +40,7 @@ captured_at_commit = "5794a8350"
 captured_at = "2026-08-19"
 
 [metric.unwrap_calls_src_total]
-baseline = 20343
+baseline = 20339
 unit = "count"
 band = 200
 includes_test_files = true

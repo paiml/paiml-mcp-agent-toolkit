@@ -1,0 +1,78 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-09-03"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-architecture-crux-audit.md section 8.2 (CRUX-02, epic 1153)"
+    - "issue 1035 — quality-gate reports satd_violations=0 while analyze satd reports 55 (same shape)"
+    - "Popper (1959) The Logic of Scientific Discovery"
+  registry: true
+  description: >
+    pmat quality-gate rendered three unmeasured dimensions as clean: dead code
+    on a crate cargo check could not compile printed 0 violations found, the
+    coverage check trusted any cache file it found, and duplicate_violations
+    reported 0 beside a 21.67 percent block-level duplication it never looked
+    for. The gate now discloses each: not_measured names the dead-code
+    compile failure and the block-level half of duplicates; not_applicable
+    names a path with no Cargo.toml; a coverage report is accepted only if
+    its commit is HEAD-or-ancestor, it is newer than the newest tracked
+    source, and it covers at least 25 percent of the tree's Rust sources — a
+    rejection names the guard; the whole-file count is identical_files.
+  contract: quality-gate-not-measured
+  status: draft
+
+equations:
+  unmeasured_is_disclosed_not_zeroed:
+    formula: "dead_code on a crate cargo check cannot compile => results.not_measured contains {check: dead_code, reason ~ 'could not compile'}; no Cargo.toml at or above the path => results.not_applicable contains {check: dead_code}"
+    domain: "any pmat quality-gate run that selects dead-code"
+    codomain: bool
+    invariants:
+      - "a compiling crate has no dead_code entry in either list (control A)"
+      - "not_applicable is never reported as not_measured (control B): a non-Rust repository is not permanently amber"
+      - "both lists always serialize, empty included"
+    preconditions: []
+
+  coverage_report_must_come_from_this_tree:
+    formula: "accept(cache) iff git_hash is HEAD-or-ancestor and mtime(cache) >= mtime(newest tracked source) and covered_sources / rust_sources >= 0.25; else a coverage finding whose message says REJECTED and names the guard (git_hash: | mtime: | breadth:)"
+    domain: ".pmat/coverage-cache.json under the gated path"
+    codomain: bool
+    invariants:
+      - "a fresh report from HEAD covering the tree is accepted (control)"
+      - "an accepted detail cache is preferred over .pmat-metrics/coverage.json"
+    preconditions: []
+
+  duplicates_named_for_what_is_measured:
+    formula: "results.identical_files == count(whole files with byte-identical content); results has no duplicate_violations key; results.not_measured contains {check: duplicates, reason ~ 'block-level'}"
+    domain: "any run that selects duplicates"
+    codomain: bool
+    invariants:
+      - "the block-level detector is a separate item; the gate does not claim it"
+    preconditions: []
+
+falsification:
+  - condition: "quality-gate reports dead_code_violations 0 with no not_measured entry on a crate cargo check fails to compile (CRUX-02)"
+    severity: P0
+    action: reject_push
+  - condition: "a coverage cache whose git_hash is not HEAD-or-ancestor, or listing only nonexistent files, yields coverage_violations 0"
+    severity: P0
+    action: reject_push
+  - condition: "the payload carries duplicate_violations, or identical_files without the block-level disclosure"
+    severity: P1
+    action: reject_push
+
+falsification_tests:
+  - id: unmeasured_is_disclosed_not_zeroed
+    rule: "uncompilable crate => not_measured (could not compile); no manifest => not_applicable; compiling crate => neither"
+    prediction: "leg 1 with controls A and B of scripts/quality-gate-not-measured-audit.sh; dead_code_outcome_tests (4) pass"
+    test: "cargo test --lib dead_code_outcome_tests"
+    if_fails: "a pre-commit gate on a broken crate reports clean"
+  - id: coverage_report_must_come_from_this_tree
+    rule: "three named guards; the first to trip is the reason"
+    prediction: "leg 2 and its control; the a_report_* and a_rejected_report_* tests in coverage_sections_tests pass"
+    test: "cargo test --lib coverage_sections_tests"
+    if_fails: "a 114-commit-old or fabricated report passes the coverage floor"
+  - id: duplicates_named_for_what_is_measured
+    rule: "identical_files present, duplicate_violations absent, duplicates disclosed as block-level not measured"
+    prediction: "leg 3; the_results_payload_carries_the_honest_name_and_both_disclosure_lists passes"
+    test: "cargo test --lib the_results_payload_carries_the_honest_name_and_both_disclosure_lists"
+    if_fails: "0 duplicates is read as 0 clones on a 21.67 percent tree"
