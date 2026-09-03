@@ -28,6 +28,7 @@ equations:
       - "a message with an issue reference (#NNN) is accepted"
       - "non-strict warns (stderr names Pmat-Ticket) and accepts"
       - "a pre-commit hook receives no message, so the ticket check lives in commit-msg only"
+      - "hooks verify --fix, hooks update and the comply auto-install re-generate the hook with the strictness it was installed with (installed_strict reads PMAT_HOOKS_STRICT=1 back)"
     preconditions: []
 
   strict_satd_is_a_refusal:
@@ -35,7 +36,7 @@ equations:
     domain: "the generated pre-commit hook"
     codomain: bool
     invariants:
-      - "PMAT_HOOKS_STRICT and PMAT_TASK_ID_PATTERN are exported from [hooks]; the shipped pattern PMAT-[0-9]{4} matched no real ticket id"
+      - "PMAT_HOOKS_STRICT is exported into the pre-commit hook from --strict OR [hooks] strict, resolved once for both hooks; the ticket pattern lives in the commit-msg hook only (the pre-commit export was dead — nothing read it)"
     preconditions: []
 
 falsification:

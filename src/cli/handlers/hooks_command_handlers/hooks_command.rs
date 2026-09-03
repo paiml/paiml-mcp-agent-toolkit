@@ -72,8 +72,11 @@ impl HooksCommand {
             }
         }
 
+        // AD-03: --strict OR [hooks] strict, resolved once so the pre-commit and the
+        // commit-msg hook can never disagree about it.
+        let strict = strict || Self::configured_strict();
         // Generate hook content from template
-        let hook_content = self.generate_hook_content().await?;
+        let hook_content = self.generate_hook_content(strict).await?;
 
         // Write hook file
         fs::write(&hook_path, &hook_content)?;
@@ -200,7 +203,7 @@ impl HooksCommand {
 
         // Check if config is up-to-date by comparing normalized content
         let config_up_to_date = if is_pmat_managed {
-            match self.generate_hook_content().await {
+            match self.generate_hook_content(self.installed_strict()).await {
                 Ok(expected) => {
                     Self::normalize_hook_content(&content)
                         == Self::normalize_hook_content(&expected)
@@ -230,7 +233,8 @@ impl HooksCommand {
         if !hook_path.exists() {
             issues.push("Hook not installed".to_string());
             if fix {
-                self.install(false, true, false, false).await?;
+                self.install(false, true, false, self.installed_strict())
+                    .await?;
                 fixes_applied.push("Installed missing hook".to_string());
             }
         } else if !self.is_pmat_managed(&hook_path)? {
@@ -239,7 +243,7 @@ impl HooksCommand {
             // Check if hook content is up-to-date (TICKET-PMAT-6011)
             // Strip timestamps before comparing to avoid false positives
             let current_content = fs::read_to_string(&hook_path)?;
-            let expected_content = self.generate_hook_content().await?;
+            let expected_content = self.generate_hook_content(self.installed_strict()).await?;
 
             let current_normalized = Self::normalize_hook_content(&current_content);
             let expected_normalized = Self::normalize_hook_content(&expected_content);
@@ -284,7 +288,7 @@ impl HooksCommand {
         }
 
         let current_content = fs::read_to_string(&hook_path)?;
-        let new_content = self.generate_hook_content().await?;
+        let new_content = self.generate_hook_content(self.installed_strict()).await?;
 
         let config_changes_detected = current_content != new_content;
 
@@ -367,6 +371,22 @@ impl HooksCommand {
     ///
     /// `strict` is the `--strict` flag OR `[hooks] strict = true`; the
     /// pattern comes from `[hooks] ticket_pattern`.
+    /// `[hooks] strict` from the configuration, or false when there is no configuration.
+    pub(crate) fn configured_strict() -> bool {
+        crate::services::configuration_service::configuration()
+            .get_config()
+            .map(|c| c.hooks.strict)
+            .unwrap_or(false)
+    }
+
+    /// Whether the pre-commit hook on disk was installed strict. `hooks verify --fix`,
+    /// `hooks update` and the comply auto-install re-generate the hook from this, so a
+    /// `--strict` given once is not silently dropped by the next automatic rewrite.
+    pub(crate) fn installed_strict(&self) -> bool {
+        let installed = fs::read_to_string(self.hooks_dir.join("pre-commit")).unwrap_or_default();
+        installed.contains("export PMAT_HOOKS_STRICT=1") || Self::configured_strict()
+    }
+
     pub(crate) fn install_commit_msg_hook(&self, strict: bool) -> Result<()> {
         let pattern = crate::services::configuration_service::configuration()
             .get_config()

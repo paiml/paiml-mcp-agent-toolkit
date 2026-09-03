@@ -273,8 +273,8 @@ Each item ships as one ticket and one PR under the paiml-implement discipline (R
 
 *Implementation note (PMAT-655, 2026-09-04).* `[hooks] strict = true` / `pmat hooks install --strict`
 (also on `hooks init`); `[hooks] ticket_pattern` (default `PMAT-[0-9]+|#[0-9]+` — the shipped
-`PMAT-[0-9]{4}` matched no real ticket id). The pre-commit hook exports `PMAT_HOOKS_STRICT` and the
-pattern; its SATD branch exits 1 under strict; its task-ID block is gone — a pre-commit hook receives
+`PMAT-[0-9]{4}` matched no real ticket id). The pre-commit hook exports `PMAT_HOOKS_STRICT` (`--strict` OR
+`[hooks] strict`, resolved once for both hooks; automatic rewrites keep it); its SATD branch exits 1 under strict; its task-ID block is gone — a pre-commit hook receives
 no message, so that check had read an empty `$1` since it was written. A generated `commit-msg` hook
 (`.git/hooks/commit-msg`, auto-managed) reads the trailer with `git interpret-trailers --parse`,
 falls back to the pattern over non-comment lines, refuses under strict naming `Pmat-Ticket:`, warns

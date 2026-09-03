@@ -149,3 +149,63 @@ fn the_pre_commit_satd_block_exits_1_under_strict() {
         "the strict branch must refuse with a reason, not a warning glyph"
     );
 }
+
+/// Found by the AD-04 quorum review of this branch (three lanes, all FAIL): the
+/// `--strict` flag reached only the commit-msg hook — the pre-commit generator
+/// read `[hooks] strict` from the configuration and ignored the flag, so
+/// `pmat hooks install --strict` in a repository without `pmat.toml` produced a
+/// pre-commit hook with `PMAT_HOOKS_STRICT=0`. Both hooks must agree.
+#[test]
+fn the_strict_flag_reaches_the_pre_commit_hook_without_a_config() {
+    let tmp = strict_repo();
+    let d = tmp.path();
+    assert!(
+        !d.join("pmat.toml").exists(),
+        "the control: no configuration file"
+    );
+    let cmd = HooksCommand::new(d.join(".git").join("hooks"), d.join("pmat.toml"));
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    let result = rt
+        .block_on(cmd.install(true, false, false, true))
+        .expect("install --strict");
+    assert!(result.success, "{}", result.message);
+    let pre_commit = std::fs::read_to_string(d.join(".git/hooks/pre-commit")).expect("hook");
+    assert!(
+        pre_commit.contains("export PMAT_HOOKS_STRICT=1"),
+        "--strict must reach the pre-commit hook, not only commit-msg:\n{pre_commit}"
+    );
+    assert!(
+        cmd.installed_strict(),
+        "installed_strict() must read the flag back"
+    );
+}
+
+/// Second finding of the same review: every automatic rewrite (`hooks verify --fix`,
+/// `hooks update`, the comply auto-install) re-generated the hook with `strict=false`,
+/// silently disarming a `--strict` install at the next refresh. The rewrite must
+/// keep the strictness of the hook it replaces.
+#[test]
+fn hooks_verify_fix_keeps_a_strict_install_strict() {
+    let tmp = strict_repo();
+    let d = tmp.path();
+    let cmd = HooksCommand::new(d.join(".git").join("hooks"), d.join("pmat.toml"));
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(cmd.install(true, false, false, true))
+        .expect("install --strict");
+    let hook_path = d.join(".git/hooks/pre-commit");
+    // Drift the installed hook so `verify --fix` takes its rewrite path.
+    let mut drifted = std::fs::read_to_string(&hook_path).expect("hook");
+    drifted.push_str("\n# drift\n");
+    std::fs::write(&hook_path, drifted).expect("write");
+    let verified = rt.block_on(cmd.verify(true)).expect("verify --fix");
+    assert!(
+        verified.fixes_applied.iter().any(|f| f.contains("Updated")),
+        "the control: verify --fix must have rewritten the hook: {:?}",
+        verified
+    );
+    let rewritten = std::fs::read_to_string(&hook_path).expect("hook");
+    assert!(
+        rewritten.contains("export PMAT_HOOKS_STRICT=1"),
+        "an automatic rewrite dropped --strict:\n{rewritten}"
+    );
+}

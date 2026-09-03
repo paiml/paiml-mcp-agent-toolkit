@@ -34,12 +34,14 @@ impl HooksCommand {
     }
 
     /// Generate hook content from template and configuration
-    pub(super) async fn generate_hook_content(&self) -> Result<String> {
+    /// `strict` is the resolved value (`--strict` OR `[hooks] strict`): the pre-commit
+    /// hook and the commit-msg hook must agree, whichever of the two turned it on.
+    pub(super) async fn generate_hook_content(&self, strict: bool) -> Result<String> {
         let config_service = configuration();
         let config = config_service.get_config()?;
 
         let header = self.generate_hook_header();
-        let env_vars = self.generate_env_vars(&config);
+        let env_vars = self.generate_env_vars(&config, strict || config.hooks.strict);
         let checks = self.generate_quality_checks();
 
         let hook_content = format!("{header}\n{env_vars}\n{checks}");
@@ -70,15 +72,15 @@ echo "================================"
     /// that must never be scanned by the hook. Space-separated path prefixes. The
     /// hook defaults cover Claude/Cursor ephemeral worktrees and common build/cache
     /// directories so agent sessions don't balloon pre-commit time.
-    fn generate_env_vars(&self, config: &PmatConfig) -> String {
+    fn generate_env_vars(&self, config: &PmatConfig, strict: bool) -> String {
         format!(
             r#"# Load current configuration dynamically
 export PMAT_MAX_CYCLOMATIC_COMPLEXITY={}
 export PMAT_MAX_COGNITIVE_COMPLEXITY={}
 export PMAT_MIN_TEST_COVERAGE={}
 export PMAT_MAX_SATD_COMMENTS=5
-export PMAT_TASK_ID_PATTERN="{}"
-# AD-03: 1 = SATD over the threshold and a commit without a ticket are REFUSED, not warned about.
+# AD-03: 1 = SATD over the threshold is REFUSED, not warned about (--strict or [hooks] strict).
+# The ticket check lives in the commit-msg hook, which carries [hooks] ticket_pattern itself.
 export PMAT_HOOKS_STRICT={}
 # GH-301: directories excluded from any hook filesystem scan.
 # Override with: PMAT_PRECOMMIT_EXCLUDE_DIRS=".claude/worktrees target ..." git commit
@@ -87,8 +89,7 @@ export PMAT_PRECOMMIT_EXCLUDE_DIRS="${{PMAT_PRECOMMIT_EXCLUDE_DIRS:-.claude/work
             config.quality.max_complexity,
             config.quality.max_cognitive_complexity,
             config.quality.min_coverage as u32,
-            config.hooks.ticket_pattern,
-            u8::from(config.hooks.strict)
+            u8::from(strict)
         )
     }
 
