@@ -44,6 +44,27 @@ if [ "$rc" = 0 ] && grep -q -- '--auto' "$T/merge-args" 2>/dev/null; then leg "a
 # leg 4b: a non-auto merge is passed through regardless of artifacts
 rm -f "$T/repo/docs/audits/"*.json "$T/merge-args"; rc=0; run --merge >/dev/null 2>&1 || rc=$?
 if [ "$rc" = 0 ] && [ -e "$T/merge-args" ]; then leg "non-auto merge passes through" 0; else leg "non-auto merge passes through (rc=$rc)" 1; fi
+# leg 4c: the verdict commit itself — an artifact for the parent counts when the head commit only adds docs/audits/quorum-*.json
+G="$T/git"; mkdir -p "$G/docs/audits"; ( cd "$G" && git init -q --template= && git config user.email t@t && git config user.name t && git config core.hooksPath /dev/null && echo a > a.txt && git add . && git commit -qm judged )
+JUDGED=$(git -C "$G" rev-parse HEAD)
+printf '{"ticket":"PMAT-4","head":"%s","agreed":true,"lanes":[]}\n' "$JUDGED" > "$G/docs/audits/quorum-PMAT-4.json"
+( cd "$G" && git add . && git commit -qm "verdict" )
+VHEAD=$(git -C "$G" rev-parse HEAD)
+cat > "$T/gh" <<STUB2
+#!/usr/bin/env bash
+case "\$1 \$2" in
+  "pr view") echo "$VHEAD";;
+  "pr merge") shift 2; printf '%s\n' "\$*" > "$T/merge-args"; exit 0;;
+  *) exit 99;;
+esac
+STUB2
+rm -f "$T/merge-args"; rc=0; ( cd "$G" && "$SKILL_DIR/pmat-merge" 42 --auto --merge >/dev/null 2>&1 ) || rc=$?
+if [ "$rc" = 0 ] && grep -q -- '--auto' "$T/merge-args" 2>/dev/null; then leg "verdict commit: artifact for the parent accepted when the head only adds the verdict" 0; else leg "verdict commit accepted (rc=$rc)" 1; fi
+# control: the same shape but the verdict commit also touches a source file → refused
+( cd "$G" && git reset -q --soft HEAD~1 && echo b > b.txt && git add . && git commit -qm "verdict plus code" )
+VHEAD2=$(git -C "$G" rev-parse HEAD); sed -i "s/$VHEAD/$VHEAD2/" "$T/gh"
+rm -f "$T/merge-args"; rc=0; ( cd "$G" && "$SKILL_DIR/pmat-merge" 42 --auto --merge >/dev/null 2>&1 ) || rc=$?
+if [ "$rc" = 1 ] && [ ! -e "$T/merge-args" ]; then leg "verdict-commit control: a head that also changes code is refused" 0; else leg "verdict-commit control refused (rc=$rc)" 1; fi
 verd(){ python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); print(a["width"], sum(1 for l in a["lanes"] if l["verdict"]=="PASS"), sum(1 for l in a["lanes"] if l["verdict"]=="FAIL"), a["agreed"])' "$1"; }
 if [ -n "$CLEAN" ]; then read -r w p f a < <(verd "$CLEAN"); if [ "$a" = True ] && [ "$p" = "$w" ]; then leg "clean diff: $p/$w PASS, agreed" 0; else leg "clean diff: $p/$w PASS ($f FAIL), agreed=$a" 1; fi; fi
 if [ -n "$PLANTED" ]; then read -r w p f a < <(verd "$PLANTED"); named=$(python3 -c 'import json,sys; a=json.load(open(sys.argv[1])); print(sum(1 for l in a["lanes"] for x in l["findings"] if "commit_enforcement_tests" in x.get("file","")))' "$PLANTED"); if [ "$a" = False ] && [ "$f" -ge 1 ] && [ "$named" -ge 1 ]; then leg "planted contradiction: $f/$w FAIL, $named finding(s) name the planted file, not agreed" 0; else leg "planted contradiction: $f/$w FAIL, named=$named, agreed=$a" 1; fi; fi

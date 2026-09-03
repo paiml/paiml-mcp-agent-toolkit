@@ -23,6 +23,8 @@ Branch `PMAT-656-quorum-review`. Bundle side: `~/src/paiml-implement` branch `ad
 | GREEN — installed skill, five offline legs | exit 0: no artifact → refused naming `docs/audits/quorum-<ticket>.json`, merge not called; other head / `agreed=false` → refused; agreeing artifact → `gh pr merge --auto` called; non-auto passthrough |
 | named mutation M1 (helper ignores `agreed`) | RED on the other-head / agreed=false leg |
 | named mutation M2 (helper ignores `head`) | RED on the same leg |
+| verdict commit (paiml-implement#6): an artifact for the parent counts when the head commit only adds `docs/audits/quorum-*.json`; a head that also changes code is refused | both legs GREEN |
+| named mutation M3 (helper accepts the parent unconditionally) | RED on the verdict-commit control |
 | live helper against PR #1174 (armed, head 8815540e0), no artifact | exit 1, refused; auto-merge state unchanged (`merge` before and after) |
 | live helper, fabricated agreeing artifact for that head | passed through to `gh pr merge --auto --merge` (idempotent on an already-armed PR); `agreed=false` variant refused |
 | **planted contradiction** (branch `PMAT-655-planted`, 535e3ccc3: a test claiming the trailer is advisory under strict) | 3 lanes, 3 FAIL, not agreed; lane 3 names `commit_enforcement_tests.rs:149` — "asserts the opposite of the ticket … vacuous assertion" |
@@ -46,7 +48,7 @@ passed it once it was right.
 | `pmat verify` (docs + scripts + contract; no Rust) | see PR body |
 | `make gate-artifact` | see PR body |
 | pv contract same PR | `contracts/quorum-review-v1.yaml` |
-| named mutation RED | M1, M2 above |
+| named mutation RED | M1, M2, M3 above |
 
 ## Jidoka / scope
 - The skill's own first run mis-parsed agy's output (fixed in the same change, both controls re-run).
