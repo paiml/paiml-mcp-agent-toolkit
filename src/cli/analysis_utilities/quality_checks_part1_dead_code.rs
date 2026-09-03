@@ -122,6 +122,24 @@ pub async fn check_dead_code_outcome(
             return Ok(outcome);
         }
     };
+    // A reduced scan — the compiler layer refused (lockfile) or was suppressed
+    // (PMAT_DEAD_CODE_SKIP) — measured only explicit `allow(dead_code)`
+    // admissions. That is not a measurement of dead code, and it must not
+    // render as one: disclose it, and keep whatever the reduced scan found.
+    if let Some(scan) = report
+        .compiler_scan
+        .as_ref()
+        .filter(|s| s.verdict == crate::models::dead_code::COMPILER_SCAN_REDUCED)
+    {
+        outcome.not_measured = Some(UnmeasuredCheck {
+            check: DEAD_CODE_CHECK.to_string(),
+            path: shown,
+            reason: format!(
+                "could not measure: rustc's dead-code lint did not run ({}) — {}",
+                scan.reason, scan.detail
+            ),
+        });
+    }
     outcome.violations = dead_code_violations(project_path, max_percentage, &report);
     Ok(outcome)
 }
@@ -212,11 +230,18 @@ mod dead_code_outcome_tests {
     /// and the reason says "could not compile" — where the gate used to print
     /// `0 violations found`.
     #[test]
+    #[serial_test::serial(dead_code_env)]
     fn a_crate_that_does_not_compile_is_reported_as_not_measured() {
         let tmp = crate_with("pub fn broken( {\n");
         let rt = tokio::runtime::Runtime::new().expect("rt");
         let o = rt.block_on(check_dead_code_outcome(tmp.path(), 15.0)).expect("outcome");
-        let u = o.not_measured.expect("not_measured must be set for an uncompilable crate");
+        let u = o.not_measured.unwrap_or_else(|| {
+            panic!(
+                "not_measured must be set for an uncompilable crate; outcome was: \
+                 violations={:?} not_applicable={:?}",
+                o.violations, o.not_applicable
+            )
+        });
         assert_eq!(u.check, "dead_code");
         assert!(u.reason.contains("could not compile"), "{}", u.reason);
         assert!(o.not_applicable.is_none());
@@ -226,6 +251,7 @@ mod dead_code_outcome_tests {
     /// Control A: the same crate with the syntax error removed is measured —
     /// no `dead_code` entry in either list.
     #[test]
+    #[serial_test::serial(dead_code_env)]
     fn the_same_crate_compiling_is_measured_with_no_disclosure() {
         let tmp = crate_with("pub fn fine() {}\n");
         let rt = tokio::runtime::Runtime::new().expect("rt");
@@ -238,6 +264,7 @@ mod dead_code_outcome_tests {
     /// `Cargo.toml` at or above it reports NOT APPLICABLE, never not_measured
     /// — otherwise every non-Rust repository is permanently amber.
     #[test]
+    #[serial_test::serial(dead_code_env)]
     fn a_directory_without_a_manifest_is_not_applicable_not_unmeasured() {
         let tmp = tempfile::tempdir().expect("tempdir");
         std::fs::write(tmp.path().join("main.py"), "print(1)\n").expect("py");
