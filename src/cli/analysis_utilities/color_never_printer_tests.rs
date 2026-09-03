@@ -200,6 +200,8 @@ fn qg_results(passed: bool) -> super::QualityGateResults {
     super::QualityGateResults {
         files_examined: 0,
         checks_run: Vec::new(),
+        not_measured: Vec::new(),
+        not_applicable: Vec::new(),
         passed,
         total_violations: 2,
         blocking_violations: if passed { 0 } else { 1 },

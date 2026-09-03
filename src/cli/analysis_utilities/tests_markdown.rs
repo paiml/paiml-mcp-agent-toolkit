@@ -9,6 +9,8 @@ mod markdown_formatting_tests {
         QualityGateResults {
             files_examined: 0,
             checks_run: Vec::new(),
+            not_measured: Vec::new(),
+            not_applicable: Vec::new(),
             passed,
             total_violations: violations as usize,
             complexity_violations: (violations / 3) as usize,
@@ -16,7 +18,7 @@ mod markdown_formatting_tests {
             satd_violations: (violations / 5) as usize,
             entropy_violations: (violations / 6) as usize,
             security_violations: (violations / 7) as usize,
-            duplicate_violations: (violations / 8) as usize,
+            identical_files: (violations / 8) as usize,
             coverage_violations: (violations / 9) as usize,
             section_violations: (violations / 10) as usize,
             provability_violations: (violations / 11) as usize,

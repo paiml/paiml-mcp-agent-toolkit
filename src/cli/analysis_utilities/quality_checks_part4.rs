@@ -20,7 +20,7 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
         ),
         (
             "Duplicates",
-            results.duplicate_violations.try_into().unwrap_or(0),
+            results.identical_files.try_into().unwrap_or(0),
         ),
         (
             "Coverage",
