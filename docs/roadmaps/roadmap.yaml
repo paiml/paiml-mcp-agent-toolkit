@@ -4015,3 +4015,71 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-654
+  github_issue: null
+  item_type: task
+  title: 'git_context tests fail in any git worktree: the repo-path helper requires .git/HEAD, but a worktree''s .git is a file'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-09-03T21:34:43Z
+  updated: 2026-09-03T21:34:43Z
+  spec: null
+  acceptance_criteria:
+  - 'src/models/git_context.rs tests: repo_path() walks up from CARGO_MANIFEST_DIR looking for .git/HEAD; in a linked worktree .git is a file (''gitdir: …''), so the walk falls through to manifest_dir.parent() (not a repo) and four tests fail: test_is_git_repo_returns_true_for_git_repo, test_from_current_dir_extracts_commit_sha, test_from_current_dir_extracts_author_info, test_git_context_serialization. Seen by the aprender session on #1166 and by pmat verify on the AD-02 worktree (PMAT-652). Fix: accept a .git file (or ask git rev-parse --show-toplevel). Linked: PMAT-652.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-655
+  github_issue: null
+  item_type: task
+  title: 'AD-03: commit enforcement — the generated hook''s SATD and task-ID checks block under strict mode, and a commit-msg hook requires a Pmat-Ticket trailer'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T22:07:13Z
+  updated: 2026-09-03T22:07:13Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 4.7 / 9.3; fixes #1126. pmat hooks install --strict (and [hooks] strict = true in pmat.toml) makes the pre-commit SATD and task-ID checks exit 1 instead of warning; a generated commit-msg hook refuses a message without ''Pmat-Ticket: PMAT-NNN'' (or ''#NNN'' where pmat work is absent). Controls: a commit without the trailer is refused (exit 1, message names the trailer); with it, accepted. The paiml-implement bundle turns strict on.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-656
+  github_issue: null
+  item_type: task
+  title: 'AD-04: Quorum Review Skill — three lanes review the diff against the ticket and receipt; the merge helper refuses auto-merge without three PASS verdicts'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T22:48:05Z
+  updated: 2026-09-03T22:48:05Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 3.1 / 5.2 / 9.4. Skill in the paiml-implement bundle: quorum-review.sh builds the prompt from git diff base...HEAD plus the ticket and receipt, runs three agy lanes under agy/quorum-schema.json, writes docs/audits/quorum-<ticket>.json and posts it as a PR comment; pmat-merge --auto refuses without three PASS. Controls: a planted contradiction gets at least one FAIL naming file:line; a clean diff gets three PASS; the helper refuses without the artifact.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-657
+  github_issue: null
+  item_type: task
+  title: 'AD-05: quality-gate --checks lint,churn,file-size — three thresholds the diagram names that no gate enforces'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-09-03T23:10:24Z
+  updated: 2026-09-03T23:10:24Z
+  spec: null
+  acceptance_criteria:
+  - 'agentic-delivery-pmat.md section 5.1 / 9.5. pmat quality-gate gains lint (clippy -D warnings via the verify stage), churn (max commits per file in 90 days) and file-size (max lines per file, reusing work_contract_profile''s max_file_lines default 500), with thresholds from pmat.toml [quality]; wired through the suite so the MCP quality_gate tool gets them. Controls: a 501-line file fails file-size and a 499-line one passes; a crate with one clippy warning fails lint; a file over the churn threshold fails churn.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
